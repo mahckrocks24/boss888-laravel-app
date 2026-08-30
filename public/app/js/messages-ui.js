@@ -39,7 +39,7 @@ window._msgMarkAllRead=function(){
 function _msgCreateFloater(){
   if(document.getElementById('lu-messages-floater'))return;
   var btn=document.createElement('div');
-  btn.id='lu-messages-floater';
+  btn.id='lu-messages-floater'; btn.setAttribute('data-adv','1'); btn.setAttribute('aria-label','Messages'); // P1-U2: Advanced-only — Basic talks to Sarah on the home
   btn.innerHTML=''+window.icon("message",14)+'<div id="lu-messages-badge"></div>';
   btn.onclick=_msgToggle;
   document.body.appendChild(btn);

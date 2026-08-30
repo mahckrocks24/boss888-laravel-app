@@ -162,8 +162,9 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;overflow-x:hidden;font-family:var(--fb);background:var(--bg);color:var(--t1);font-size:14px;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
 .engine-title,.page-title{font-weight:600;letter-spacing:-0.02em}
-button{font-family:var(--fb);cursor:pointer;border:none;outline:none}
-textarea,input{font-family:var(--fb);outline:none}
+button{font-family:var(--fb);cursor:pointer;border:none}
+textarea,input{font-family:var(--fb);}
+/* P1-U2 (2026-08-30): keyboard focus is always visible; mouse focus stays quiet (was a global outline:none). */button:focus:not(:focus-visible),input:focus:not(:focus-visible),textarea:focus:not(:focus-visible),select:focus:not(:focus-visible),[tabindex]:focus:not(:focus-visible){outline:none}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--p);outline-offset:2px}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
 
@@ -186,8 +187,20 @@ textarea,input{font-family:var(--fb);outline:none}
 /* 2026-05-28 — Basic / Advanced visibility mode.
    Basic shows only the 8 essential nav items; everything else hides via this single :not() rule.
    Section headers also hide in Basic so the list reads as a flat column. */
-body.lu-mode-basic .sb-nav .nav-section{display:none}
-body.lu-mode-basic .sb-nav .nav-item:not(#ni-workspace):not(#ni-agents):not(#ni-command):not(#ni-crm):not(#ni-calendar):not(#ni-billing):not(#ni-settings):not(#ni-reports){display:none !important}
+/* P1-U2 (2026-08-30) — ONE visibility model. <html data-mode="basic|advanced"> is the single source (server-synced
+   preference). Anything Advanced-only carries data-adv="1"; anything Basic-only carries data-basic="1". Nav AND
+   in-page surfaces obey the same two rules. Basic = the Sarah operating environment, not a smaller dashboard. */
+html[data-mode="basic"] [data-adv="1"]{display:none !important}
+html[data-mode="advanced"] [data-basic="1"]{display:none !important}
+html[data-mode="basic"] .sb-nav .nav-section{display:none}
+/* semantic, keyboard-operable nav (buttons) */
+.sb-nav .nav-item{min-height:44px;background:none;border:0;width:calc(100% - 16px);text-align:left;font-family:inherit}
+.sb-nav button.nav-item:focus-visible{outline:2px solid var(--p) !important;outline-offset:-2px}
+.sb-nav .nav-item.nav-sarah{font-weight:700;color:var(--t1)}
+.sb-nav .nav-item.nav-sarah .ni{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD27A,#F59E0B 55%,#B7700A)}
+.sb-nav .nav-item.nav-sarah.active{background:rgba(245,158,11,.14);color:var(--t1)}
+.sb-nav .nav-sub{padding:12px 24px 4px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
+.sb-nav .nav-adv-link{margin-top:auto}
 #sb-mode-toggle{margin:8px 10px 4px;padding:3px;background:var(--s3);border-radius:6px;display:flex;gap:2px}
 #sb-mode-toggle .lu-mode-btn{flex:1;padding:5px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2);transition:background .15s,color .15s}
 #sb-mode-toggle .lu-mode-btn.active{background:var(--p);color:#fff}
@@ -2280,6 +2293,7 @@ html.lgsc-embed-mode #view-seo > #seo-root {
 (function () {
   try {
     var saved = localStorage.getItem('lu_visibility_mode');
+    document.documentElement.setAttribute('data-mode', saved === 'advanced' ? 'advanced' : 'basic');
     if (saved !== 'advanced') {
       document.documentElement.classList.add('lu-mode-basic-preload');
     }
@@ -2291,7 +2305,7 @@ html.lgsc-embed-mode #view-seo > #seo-root {
    pre-body-paint hides nav-items too. After DOM ready, _lgsc_set_visibility_mode
    moves the class to <body> and drops the preload class. */
 html.lu-mode-basic-preload .sb-nav .nav-section{display:none}
-html.lu-mode-basic-preload .sb-nav .nav-item:not(#ni-workspace):not(#ni-agents):not(#ni-command):not(#ni-crm):not(#ni-calendar):not(#ni-billing):not(#ni-settings):not(#ni-reports){display:none !important}
+html.lu-mode-basic-preload [data-adv="1"]{display:none !important}
 </style>
 </head>
 <body>
@@ -2309,7 +2323,14 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
   mode = (mode === 'advanced') ? 'advanced' : 'basic';
   opts = opts || {};
   try { localStorage.setItem('lu_visibility_mode', mode); } catch (e) {}
+  document.documentElement.setAttribute('data-mode', mode);   // P1-U2: the one switch every surface reads
   document.documentElement.classList.remove('lu-mode-basic-preload');
+  // P1-U2: if the current view is not part of the mode we just entered, land on that mode's home.
+  try {
+    var _cur = (typeof currentView !== 'undefined') ? currentView : null;
+    var _basicViews = ['sarah','attention','results','website','customers','account','approvals','command','websites','crm','settings','billing','calendar','reports'];
+    if (!opts.skipServer && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav('workspace'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link
+  } catch (e) {}
   if (mode === 'basic') document.body.classList.add('lu-mode-basic');
   else                  document.body.classList.remove('lu-mode-basic');
   var btns = document.querySelectorAll('#sb-mode-toggle .lu-mode-btn');
@@ -2328,7 +2349,7 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
   if (! opts.skipServer) {
     window._lgsc_mode_user_changed = true;
     try {
-      var token = localStorage.getItem('lu_access_token') || localStorage.getItem('lu_jwt') || localStorage.getItem('token');
+      var token = localStorage.getItem('lu_token') || localStorage.getItem('lu_access_token') || localStorage.getItem('lu_jwt') || localStorage.getItem('token');
       if (token && typeof fetch === 'function') {
         fetch('/api/user/preferences', {
           method: 'PUT',
@@ -2354,7 +2375,7 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
    of truth. */
 window._lgsc_reconcile_visibility_from_server = function () {
   try {
-    var token = localStorage.getItem('lu_access_token') || localStorage.getItem('lu_jwt') || localStorage.getItem('token');
+    var token = localStorage.getItem('lu_token') || localStorage.getItem('lu_access_token') || localStorage.getItem('lu_jwt') || localStorage.getItem('token');
     if (! token || typeof fetch !== 'function') return;
     fetch('/api/auth/me', {
       method: 'GET',
@@ -2396,7 +2417,9 @@ document.addEventListener('DOMContentLoaded', function () {
   // were swallowed by the mode-switch guard below: the engine bundle never loaded
   // and the Publish button had no handler at all. Publishing an article is core
   // product function, not an Advanced-only tool. Revert = remove the two entries.
-  var BASIC_VISIBLE = ['workspace','agents','command','crm','calendar','billing','settings','reports','blog','write'];
+  // P1-U2: Basic surfaces (Sarah + supporting views). Their aliases map onto the authoritative views, so a deep link
+  // to an object still opens the same object in either mode. Write/Blog stay reachable for object deep links.
+  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','command','websites','crm','calendar','settings','billing','reports','write','blog'];
   var _origNav = window.nav;
   if (typeof _origNav === 'function') {
     window.nav = function (view) {
@@ -2658,59 +2681,68 @@ window.luSwipeToClose = luSwipeToClose;
     <!-- 2026-05-28 — Basic / Advanced visibility mode toggle. Default = Basic for everyone.
          Hides all engines + tools that aren't in the essential 8-item list. AI Agent Chat
          and Aira chat bubbles stay visible in both modes. -->
-    <div id="sb-mode-toggle" role="radiogroup" aria-label="View mode" title="Basic shows the essentials. Switch to Advanced to see every engine and tool.">
+    <div id="sb-mode-toggle" data-adv="1" role="radiogroup" aria-label="View mode" title="Basic shows the essentials. Switch to Advanced to see every engine and tool.">
       <button type="button" data-mode="basic"    role="radio" aria-checked="true"  class="lu-mode-btn active" onclick="_lgsc_set_visibility_mode('basic')">Basic</button>
       <button type="button" data-mode="advanced" role="radio" aria-checked="false" class="lu-mode-btn"        onclick="_lgsc_set_visibility_mode('advanced')">Advanced</button>
     </div>
     <div class="sb-nav">
+      <!-- P1-U2 (2026-08-30): Basic home — Sarah. Supporting Basic views are secondary; Advanced keeps the full nav. -->
+      <button type="button" class="nav-item nav-sarah" onclick="nav('sarah')" id="ni-sarah" data-basic="1"><span class="ni" aria-hidden="true"></span>Sarah</button>
+      <div class="nav-sub" data-basic="1">When you need to look</div>
+      <button type="button" class="nav-item" onclick="nav('attention')" id="ni-attention" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l7 12H3z"/><path d="M10 8v3M10 13.5h.01"/></svg></span>Needs attention<span class="cmd-nav-badge" id="ni-attention-badge" style="margin-left:auto;display:none"></span></button>
+      <button type="button" class="nav-item" onclick="nav('results')" id="ni-results" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4-5 3 3 4-6 3 4"/><path d="M3 17h14"/></svg></span>Results</button>
+      <button type="button" class="nav-item" onclick="nav('website')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Website</button>
+      <button type="button" class="nav-item" onclick="nav('customers')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Customers</button>
+      <button type="button" class="nav-item" onclick="nav('account')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Account</button>
+      <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced')" id="ni-advanced" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
       <!-- /* b24-sidebar-reorganized */ -->
       <div class="nav-section">Workspace</div>
-      <div class="nav-item active" onclick="nav('workspace')" id="ni-workspace"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Workspace</div>
-      <div class="nav-item" onclick="nav('meeting')" id="ni-meeting" data-feature="meeting_room"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a6 6 0 016 6c0 2.5-1.5 4.7-3.7 5.7L12 17H8l-.3-3.3C5.5 12.7 4 10.5 4 8a6 6 0 016-6z"/><path d="M8 17h4M9 19h2"/></svg></span>Strategy Room</div>
-      <div class="nav-item" onclick="nav('projects')" id="ni-projects"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Projects</div>
-      <div class="nav-item" onclick="nav('command')" id="ni-command" data-feature="ai_agents"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Command Center<span id="cmd-nav-badge-approvals" class="cmd-nav-badge">0</span></div>
-      <div class="nav-item" onclick="nav('approvals')" id="ni-approvals"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/><path d="M16 13l2 2 3-3" transform="translate(-5 0)"/><circle cx="16" cy="15" r="1.5"/></svg></span>Review Queue<span id="nav-approval-badge" class="cmd-nav-badge">0</span></div>
-      <div class="nav-item" onclick="nav('queue')" id="ni-queue" data-admin-only="true" style="display:none"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/><circle cx="16" cy="14" r="2.5"/><path d="M15 13.5l1 1 2-2"/></svg></span>Worker Queue</div>
+      <button type="button" class="nav-item" onclick="nav('workspace')" id="ni-workspace" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Workspace</button>
+      <button type="button" class="nav-item" onclick="nav('meeting')" id="ni-meeting" data-feature="meeting_room" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a6 6 0 016 6c0 2.5-1.5 4.7-3.7 5.7L12 17H8l-.3-3.3C5.5 12.7 4 10.5 4 8a6 6 0 016-6z"/><path d="M8 17h4M9 19h2"/></svg></span>Strategy Room</button>
+      <button type="button" class="nav-item" onclick="nav('projects')" id="ni-projects" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Projects</button>
+      <button type="button" class="nav-item" onclick="nav('command')" id="ni-command" data-feature="ai_agents" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Command Center<span id="cmd-nav-badge-approvals" class="cmd-nav-badge">0</span></button>
+      <button type="button" class="nav-item" onclick="nav('approvals')" id="ni-approvals" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/><path d="M16 13l2 2 3-3" transform="translate(-5 0)"/><circle cx="16" cy="15" r="1.5"/></svg></span>Review Queue<span id="nav-approval-badge" class="cmd-nav-badge">0</span></button>
+      <button type="button" class="nav-item" onclick="nav('queue')" id="ni-queue" data-admin-only="true" style="display:none" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/><circle cx="16" cy="14" r="2.5"/><path d="M15 13.5l1 1 2-2"/></svg></span>Worker Queue</button>
       <!-- /* b24b-more-moves */ -->
       <div class="nav-section">Team</div>
-      <div class="nav-item" onclick="nav('agents')" id="ni-agents" data-feature="ai_agents"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4 18c0-3.314 2.686-6 6-6s6 2.686 6 6"/><circle cx="15.5" cy="6" r="2"/><path d="M17.5 12c1 .5 1.5 1.5 1.5 2.5"/></svg></span>Agents</div>
-            <div class="nav-item" onclick="nav('messages')" id="ni-messages"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H2v9a1 1 0 001 1h12l3 2V5z"/><path d="M6 9h8M6 11.5h5"/></svg></span>Messages</div>
+      <button type="button" class="nav-item" onclick="nav('agents')" id="ni-agents" data-feature="ai_agents" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4 18c0-3.314 2.686-6 6-6s6 2.686 6 6"/><circle cx="15.5" cy="6" r="2"/><path d="M17.5 12c1 .5 1.5 1.5 1.5 2.5"/></svg></span>Agents</button>
+            <button type="button" class="nav-item" onclick="nav('messages')" id="ni-messages" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H2v9a1 1 0 001 1h12l3 2V5z"/><path d="M6 9h8M6 11.5h5"/></svg></span>Messages</button>
       <div class="nav-section">Publishing</div>
-      <div class="nav-item" onclick="_bldShowTemplatePicker()" id="ni-wizard"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 3c-2 2-3 4.5-3 7s1 5 3 7M10 3c2 2 3 4.5 3 7s-1 5-3 7"/><path d="M3 10h14"/></svg></span>Website Wizard</div>
-      <div class="nav-item" onclick="nav('websites')" id="ni-websites"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</div>
+      <button type="button" class="nav-item" onclick="_bldShowTemplatePicker()" id="ni-wizard" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 3c-2 2-3 4.5-3 7s1 5 3 7M10 3c2 2 3 4.5 3 7s-1 5-3 7"/><path d="M3 10h14"/></svg></span>Website Wizard</button>
+      <button type="button" class="nav-item" onclick="nav('websites')" id="ni-websites" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</button>
       <!-- REMOVED: Pending Actions (ni-governance) — v5.5.2 — duplicated Review Queue (same approvals data via /api/governance/pending alias). Router redirects nav('governance') → nav('approvals'). View panel kept for back-compat deep-links. -->
       <!-- REMOVED: Review Queue (ni-previews) — v5.5.2 — legacy "Action Previews" (Phase 6.5) reading /api/previews which references non-existent `previews` table. Canonical Review Queue is ni-approvals → /api/approvals. Router redirects nav('previews') → nav('approvals'). -->
     <div class="nav-section">Engines</div>
-            <div class="nav-item" onclick="nav('crm')" id="ni-crm">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6" r="3"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7"/></svg></span>CRM</div>
-            <div class="nav-item" onclick="nav('seo')" id="ni-seo" data-feature="seo_suite">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M17 17l-3.5-3.5"/><path d="M7 9h4M9 7v4"/></svg></span>SEO</div>
-            <div class="nav-item" onclick="nav('write')" id="ni-write" data-feature="content_writing">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l4 4-9 9H4v-4L13 3z"/><path d="M11 5l4 4"/></svg></span>Write</div>
-            <div class="nav-item" onclick="nav('studio')" id="ni-studio">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M8 8l5 2.5L8 13V8z"/></svg></span>Studio</div>
-            <div class="nav-item" onclick="nav('social')" id="ni-social" data-feature="social">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="5" r="2"/><circle cx="5" cy="10" r="2"/><circle cx="15" cy="15" r="2"/><path d="M7 9l6-3M7 11l6 3"/></svg></span>Social</div>
-            <div class="nav-item" onclick="nav('chatbot')" id="ni-chatbot">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H8l-4 3v-3H5a2 2 0 01-2-2V5z"/><circle cx="7" cy="9" r="0.8" fill="currentColor"/><circle cx="10" cy="9" r="0.8" fill="currentColor"/><circle cx="13" cy="9" r="0.8" fill="currentColor"/></svg></span>Chatbot</div>
+            <button type="button" class="nav-item" onclick="nav('crm')" id="ni-crm" data-adv="1">
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6" r="3"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7"/></svg></span>CRM</button>
+            <button type="button" class="nav-item" onclick="nav('seo')" id="ni-seo" data-feature="seo_suite" data-adv="1">
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M17 17l-3.5-3.5"/><path d="M7 9h4M9 7v4"/></svg></span>SEO</button>
+            <button type="button" class="nav-item" onclick="nav('write')" id="ni-write" data-feature="content_writing" data-adv="1">
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3l4 4-9 9H4v-4L13 3z"/><path d="M11 5l4 4"/></svg></span>Write</button>
+            <button type="button" class="nav-item" onclick="nav('studio')" id="ni-studio" data-adv="1">
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="12" rx="2"/><path d="M8 8l5 2.5L8 13V8z"/></svg></span>Studio</button>
+            <button type="button" class="nav-item" onclick="nav('social')" id="ni-social" data-feature="social" data-adv="1">
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="15" cy="5" r="2"/><circle cx="5" cy="10" r="2"/><circle cx="15" cy="15" r="2"/><path d="M7 9l6-3M7 11l6 3"/></svg></span>Social</button>
+            <button type="button" class="nav-item" onclick="nav('chatbot')" id="ni-chatbot" data-adv="1">
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H8l-4 3v-3H5a2 2 0 01-2-2V5z"/><circle cx="7" cy="9" r="0.8" fill="currentColor"/><circle cx="10" cy="9" r="0.8" fill="currentColor"/><circle cx="13" cy="9" r="0.8" fill="currentColor"/></svg></span>Chatbot</button>
             <!-- ni-manualedit (also labeled "Studio") removed 2026-04-20 — Studio (studio.js) is now the single image-creation surface. ManualEdit JS files + view-manualedit container preserved for back-end compatibility. -->
-            <div class="nav-item" onclick="nav('calendar')" id="ni-calendar">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="14" rx="2"/><path d="M2 9h16M6 2v4M14 2v4"/></svg></span>Calendar</div>
+            <button type="button" class="nav-item" onclick="nav('calendar')" id="ni-calendar" data-adv="1">
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="14" rx="2"/><path d="M2 9h16M6 2v4M14 2v4"/></svg></span>Calendar</button>
             
             
             
       <div class="nav-section">Hosting</div>
-      <div class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosted Sites</div>
-      <div class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('domains'):nav('infrastructure'))" id="ni-infra-domains" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c1.9 2 3 4.7 3 7.5s-1.1 5.5-3 7.5c-1.9-2-3-4.7-3-7.5s1.1-5.5 3-7.5z"/></svg></span>Domains</div>
-      <div class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('email'):nav('infrastructure'))" id="ni-infra-email" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5 7-5"/></svg></span>Email Accounts</div>
+      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosted Sites</button>
+      <button type="button" class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('domains'):nav('infrastructure'))" id="ni-infra-domains" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c1.9 2 3 4.7 3 7.5s-1.1 5.5-3 7.5c-1.9-2-3-4.7-3-7.5s1.1-5.5 3-7.5z"/></svg></span>Domains</button>
+      <button type="button" class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('email'):nav('infrastructure'))" id="ni-infra-email" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5 7-5"/></svg></span>Email Accounts</button>
       <div class="nav-section">Data</div>
       
       
       <!-- REMOVED: Campaigns (ni-campaigns) — v5.5.2 — duplicate of Marketing engine's Campaigns tab (same /marketing/campaigns data, Marketing tab has richer UI). Router redirects nav('campaigns') → nav('marketing'). -->
-      <div class="nav-item" onclick="nav('reports')" id="ni-reports"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h8l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M12 2v4h4"/><path d="M6 10h8M6 13h5"/></svg></span>Reports &amp; History</div>
+      <button type="button" class="nav-item" onclick="nav('reports')" id="ni-reports" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h8l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M12 2v4h4"/><path d="M6 10h8M6 13h5"/></svg></span>Reports &amp; History</button>
       <!-- Tool Registry removed from app sidebar 2026-04-21 — admin-only feature, accessed via /admin/ panel -->
-            <div class="nav-item" onclick="nav('billing')" id="ni-billing"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16M5 13h3"/></svg></span>Billing</div>
-      <div class="nav-item" onclick="nav('settings')" id="ni-settings"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg></span>Settings</div>
+            <button type="button" class="nav-item" onclick="nav('billing')" id="ni-billing" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16M5 13h3"/></svg></span>Billing</button>
+      <button type="button" class="nav-item" onclick="nav('settings')" id="ni-settings" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg></span>Settings</button>
 
       </div>
     <div class="sb-bottom">
@@ -2726,7 +2758,9 @@ window.luSwipeToClose = luSwipeToClose;
   <div class="main">
 
     <!-- ── WORKSPACE ── -->
-    <div id="view-workspace" class="view active" style="display:flex;position:relative;height:100%;background:#0D0D0F"></div>
+    <!-- P1-U2: Sarah — the Basic home (sarah.js). -->
+    <div id="view-sarah" class="view" style="display:none;flex-direction:column;height:100%;min-height:0"><div id="sarah-root" style="flex:1;min-height:0;display:flex;flex-direction:column"></div></div>
+    <div id="view-workspace" class="view" style="display:none;position:relative;height:100%;background:#0D0D0F" data-adv="1"></div>
 
         <!-- ── MEETING ROOM ── -->
     <div id="view-meeting" class="view" style="display:none">
@@ -3322,7 +3356,7 @@ window.luSwipeToClose = luSwipeToClose;
       <div style="padding:28px;max-width:860px;width:100%;margin:0 auto">
         <div style="margin-bottom:28px">
           <h2 style="font-family:var(--fh);font-size:22px;font-weight:800;color:var(--t1);margin-bottom:4px">Settings</h2>
-          <p style="color:var(--t2);font-size:13px">Workspace configuration, billing, and API access.</p>
+          <p style="color:var(--t2);font-size:13px">Your profile, your business, your brand and your plan.</p>
         </div>
 
         <!-- ── GOVERNANCE: Workspace Intelligence Profile ── -->
@@ -3457,7 +3491,7 @@ window.luSwipeToClose = luSwipeToClose;
         </div>
 
         <!-- Execution Policy -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:3px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Execution Policy</div>
@@ -3535,7 +3569,7 @@ window.luSwipeToClose = luSwipeToClose;
         </script>
 
         <!-- API Keys -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
+        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
           <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Connected Accounts</div>
           <div style="font-size:11px;font-weight:700;color:var(--pu);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Social OAuth</div>
           
@@ -3681,7 +3715,7 @@ window.luSwipeToClose = luSwipeToClose;
         </script>
 
         <!-- ── Agent Team Builder ── -->
-        <div id="agent-team-section" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px;display:none">
+        <div id="agent-team-section" data-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px;display:none">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--t1)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><circle cx="5" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg> Your AI Agent Team</div>
@@ -3774,12 +3808,12 @@ window.luSwipeToClose = luSwipeToClose;
         </script>
 
         <!-- API Keys section — populated by window._renderApiKeys() -->
-        <div id="apk-section" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+        <div id="apk-section" data-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
         <!-- WordPress Sites section — populated by window._renderWpSites() -->
-        <div id="wps-section" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+        <div id="wps-section" data-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
-        <div style="background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:var(--rg);padding:20px">
+        <div style="background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:var(--rg);padding:20px" data-adv="1">
           <div style="font-size:13px;font-weight:700;color:var(--rd);margin-bottom:14px">Danger Zone</div>
           <div style="display:flex;gap:10px">
             <button class="btn btn-outline" style="border-color:rgba(248,113,113,.3);color:var(--rd)" onclick="showToast('Contact support to reset workspace data.','warning')">Reset Workspace Data</button>
@@ -4219,7 +4253,7 @@ window.luSwipeToClose = luSwipeToClose;
 </div>
 
 <!-- Direct Assign Modal (Workspace) -->
-  <div class="da-backdrop" id="da-backdrop">
+  <div class="da-backdrop" id="da-backdrop" data-adv="1">
     <div class="da-modal">
       <div class="da-hdr">
         <div class="da-title">Assign Task</div>
@@ -4483,7 +4517,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=p0c-20260830"></script>
-<script defer src="/app/js/core.js?v=p0e-20260830"></script>
+<script defer src="/app/js/core.js?v=p1u2g-20260830"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
@@ -4500,8 +4534,8 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 
 
 <!-- ── GLOBAL AI ASSISTANT (mounted at root, persists across views) ── -->
-<button class="ai-fab" id="ai-fab" onclick="toggleAssistant()" title="AI Assistant">✦<div class="ai-fab-badge" id="ai-fab-badge"></div></button>
-<div class="ai-panel" id="ai-panel">
+<button class="ai-fab" id="ai-fab" data-adv="1" onclick="toggleAssistant()" title="AI Assistant" aria-label="AI Assistant">✦<div class="ai-fab-badge" id="ai-fab-badge"></div></button>
+<div class="ai-panel" id="ai-panel" data-adv="1">
   <div class="ai-panel-hdr">
     <div class="ai-panel-av">✦</div>
     <div style="flex:1;min-width:0">
@@ -4685,7 +4719,8 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 
 <!-- JS in core.js -->
 
-<script defer src="/app/js/messages-ui.js?v=1.1.0-phase6"></script>
+<script defer src="/app/js/messages-ui.js?v=1.2.0-p1u2"></script>
+<script defer src="/app/js/sarah.js?v=1.0.1-p1u2"></script>
 <script defer src="/app/js/arthur-chat.js?v=p0c-20260830"></script>
 <script defer src="/app/js/chatbot-spa.js?v=p0d-20260830"></script>
 

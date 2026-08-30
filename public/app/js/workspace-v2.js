@@ -147,7 +147,7 @@
       + '</div>'
       + '<div class="wsv2-selection" id="wsv2-selection" style="display:none">'
       + '  <span class="wsv2-sel-info" id="wsv2-sel-count">0 agents selected</span>'
-      + '  <button class="wsv2-btn wsv2-btn-primary" onclick="wsv2_assignTask()">+ Assign Task</button>'
+      + '  <button class="wsv2-btn wsv2-btn-primary" data-adv="1" onclick="wsv2_assignTask()">+ Assign Task</button>'
       + '  <button class="wsv2-btn" onclick="wsv2_startMeeting()">Start Meeting</button>'
       + '  <button class="wsv2-btn" onclick="wsv2_analyzeWorkload()">Workload</button>'
       + '  <button class="wsv2-btn" onclick="wsv2_clearSelection()">&#x2715; Clear</button>'

@@ -818,11 +818,14 @@ window._luRouter = (function () {
   // 2026-05-31. If a new view is added to the SPA, add its key here.
   // Two redirect-only keys (governance, campaigns) are intentionally
   // omitted because canonical nav() redirects them to (approvals, marketing).
+  // P1-U2 (2026-08-30): retired views dropped (automation, builder, blog, manualedit, marketing, mentions, tools —
+  // they had no panel or were launch-scope removed); Basic surfaces added.
   var KNOWN_VIEWS = {
-    agents:1, approvals:1, automation:1, billing:1, blog:1, builder:1,
-    calendar:1, chatbot:1, command:1, crm:1, manualedit:1, marketing:1, mentions:1,
+    sarah:1, attention:1, results:1, website:1, customers:1, account:1,
+    agents:1, approvals:1, billing:1, blog:1,
+    calendar:1, chatbot:1, command:1, crm:1,
     meeting:1, messages:1, projects:1, queue:1, reports:1, seo:1,
-    settings:1, social:1, studio:1, tools:1, websites:1, workspace:1,
+    settings:1, social:1, studio:1, websites:1, workspace:1,
     write:1, infrastructure:1,
   };
 
@@ -833,6 +836,7 @@ window._luRouter = (function () {
   // path scheme.
   var URL_ALIASES = {
     strategy: 'command',  // proposals + Sarah's strategies surface here
+    builder: 'websites', manualedit: 'studio', marketing: 'workspace', automation: 'workspace', mentions: 'workspace', tools: 'workspace',
   };
 
   // v5.7.23 (2026-05-31) — per-view human titles for document.title.
@@ -840,6 +844,12 @@ window._luRouter = (function () {
   // (the bare brand) for the workspace home; everything else gets a
   // suffix so browser tabs / bookmarks read meaningfully.
   var VIEW_TITLES = {
+    sarah:      'Sarah',
+    attention:  'Needs attention',
+    results:    'Results',
+    website:    'Website',
+    customers:  'Customers',
+    account:    'Account',
     workspace:  'Workspace',
     infrastructure: 'Infrastructure',
     command:    'Command Center',
@@ -872,7 +882,8 @@ window._luRouter = (function () {
 
   // workspace is the default landing — pushes to /app/ rather than
   // /app/workspace so the URL stays clean on first load.
-  var DEFAULT_VIEW = 'workspace';
+  // P1-U2: the default landing depends on the mode — Basic lands on Sarah, Advanced on the workspace canvas.
+  var DEFAULT_VIEW = (function(){ try { return localStorage.getItem('lu_visibility_mode') === 'advanced' ? 'workspace' : 'sarah'; } catch (e) { return 'sarah'; } })();
   var BASE = '/app/';
 
   function enabled() {
@@ -1140,6 +1151,13 @@ async function nav(view, opts){
   // v5.7.19 — opts.silent skips history.pushState (used by popstate replays
   // and any internal call that doesn't represent a real navigation).
   opts = opts || {};
+  // P1-U2 (2026-08-30): Basic surfaces are ALIASES of the authoritative views until P3 rebuilds their content —
+  // attention→approvals, results→command, website→websites, customers→crm, account→settings. The URL keeps the
+  // Basic name; the panel and its objects are the same ones Advanced shows.
+  var _BASIC_ALIAS = { attention:'approvals', results:'command', website:'websites', customers:'crm', account:'settings' };
+  var _requested = view;
+  if (_BASIC_ALIAS[view]) { view = _BASIC_ALIAS[view]; }
+  if (typeof window.sarahUnload === 'function' && view !== 'sarah') { try { window.sarahUnload(); } catch (_e) {} }
   document.querySelectorAll('.view').forEach(v=>{
     v.classList.remove('active');
     // SEO view uses visibility (not display:none) to keep iframe alive
@@ -1159,19 +1177,19 @@ async function nav(view, opts){
     el.style.display='flex';
   }
   el.classList.add('active');
-  var ni=document.getElementById('ni-'+view);if(ni)ni.classList.add('active');
-  currentView=view;
+  var ni=document.getElementById('ni-'+(_requested||view));if(ni)ni.classList.add('active');
+  currentView=_requested||view;
   // v5.7.19 (2026-05-31) — Phase 1.0 URL routing. Push the URL after the
   // view has been resolved (so unknown views never pollute history), and
   // only when this nav() call represents a real navigation. Internal
   // switches and popstate replays pass {silent:true} to skip.
   if (!opts.silent && window._luRouter && window._luRouter.enabled()) {
-    window._luRouter.pushView(view, opts.tail || null);
+    window._luRouter.pushView(_requested||view, opts.tail || null);
   }
   // v5.7.23 — update document.title for browser tab + bookmark labels.
   // Runs regardless of silent flag so popstate/initial-URL also update.
   if (window._luRouter && window._luRouter.enabled() && typeof window._luRouter.setTitle === 'function') {
-    try { window._luRouter.setTitle(view); } catch (_e) {}
+    try { window._luRouter.setTitle(_requested||view); } catch (_e) {}
   }
   // 2026-05-15 — hide SEO AI Assistant FAB when navigating away from SEO.
   if (view !== 'seo' && typeof window._lgseHideFab === 'function') {
@@ -1180,6 +1198,7 @@ async function nav(view, opts){
   // Hide the Live Activity panel when in Strategy Room (it's a sibling of view-meeting, not a child of view-workspace)
   var _wsAct=document.getElementById('ws-activity-panel');
   if(_wsAct){ _wsAct.style.display = (view==='meeting') ? 'none' : ''; }
+  if(view==='sarah')      { var _sr=document.getElementById('sarah-root'); if(_sr && typeof window.sarahLoad==='function') window.sarahLoad(_sr); }
   if(view==='reports')    loadReports();
   if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); }
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
@@ -6074,7 +6093,11 @@ function _appEnterDashboard() {
         } catch (_e) {}
       }, 0);
     } else if (initialHit) {
-      // /app/ or /app/workspace direct landing — set title to match.
+      // /app/ direct landing — P1-U2: the default view is no longer pre-rendered in the markup (it depends on the
+      // mode: Sarah in Basic, the workspace canvas in Advanced), so mount it explicitly.
+      setTimeout(function () {
+        try { if (typeof window.nav === 'function') { window.nav(initialHit.view, { silent: true }); } } catch (e) { console.warn('[LU Router] default nav failed:', e); }
+      }, 0);
       try { window._luRouter.setTitle(initialHit.view); } catch (_e) {}
     }
   }
