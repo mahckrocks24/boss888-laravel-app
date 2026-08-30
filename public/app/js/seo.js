@@ -2882,6 +2882,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       // no indexed content yet. This fixes the "Overview doesn't move when
       // I edit metadata" complaint.
       var liveHealth = knowledge && knowledge.health_score;
+      // EMPTY-1 (2026-08-30): no audit, no live health and no indexed pages = nothing to score. Never
+      // paint "0 · Critical" or "your site looks healthy" over a blank workspace.
+      var __nothingScanned = !auditsArr.length
+        && (liveHealth === null || liveHealth === undefined || liveHealth === '')
+        && !countItems(indexed, 'items');
+      window.__lgseNothingScanned = __nothingScanned;
       var auditScore = parseInt(latest.score, 10);
       var score = (liveHealth !== null && liveHealth !== undefined)
         ? parseInt(liveHealth, 10)
@@ -2889,14 +2895,17 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
       // Main gauge fresh paint.
       var mg = document.getElementById('lgse-main-gauge');
-      if (mg) { mg.innerHTML = gauge(score, 120, true); animateGauge(mg, 60); }
+      if (mg) {
+        if (__nothingScanned) { mg.innerHTML = '<div style="font-size:34px;font-weight:700;color:var(--lgse-t3);line-height:120px">—</div>'; }
+        else { mg.innerHTML = gauge(score, 120, true); animateGauge(mg, 60); }
+      }
 
       // Tier label.
       var tier = document.getElementById('lgse-tier');
       if (tier) {
-        var tierName = score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Needs work' : 'Critical';
+        var tierName = __nothingScanned ? 'Not scanned yet' : score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Needs work' : 'Critical';
         tier.textContent = tierName;
-        tier.style.color = scoreColor(score);
+        tier.style.color = __nothingScanned ? 'var(--lgse-t3)' : scoreColor(score);
       }
 
       // Dimension scores — derive from audit results_json or knowledge.
@@ -2969,7 +2978,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       }
       if (issStrip) {
         if (combined.length === 0) {
-          issStrip.innerHTML = '<div style="grid-column:1/-1">' + emptyState('✓', 'No issues found', 'Your site looks healthy.') + '</div>';
+          issStrip.innerHTML = '<div style="grid-column:1/-1">' + (__nothingScanned
+            ? emptyState('·', 'Nothing to check yet', 'Add a website or run a scan — James lists issues here once there are pages to inspect.')
+            : emptyState('✓', 'No issues found', 'Your site looks healthy.')) + '</div>';
         } else {
           issStrip.innerHTML = combined.map(function (i) {
             var col = i.level === 'error' ? '#EF4444' : '#F59E0B';
@@ -3057,15 +3068,18 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       color: 'var(--lgse-amber)', tab: 'audit',
     });
 
+    var nothingScanned = !!window.__lgseNothingScanned;
     if (countEl) {
       countEl.textContent = tiles.length === 0
-        ? 'all clear'
+        ? (nothingScanned ? 'not scanned yet' : 'all clear')
         : tiles.length + (tiles.length === 1 ? ' priority' : ' priorities');
     }
 
     if (tiles.length === 0) {
       el.innerHTML = '<div style="grid-column:1/-1">'
-        + emptyState('✓', 'No critical issues found', 'Your site is in good shape — keep monitoring with weekly audits.')
+        + (nothingScanned
+          ? emptyState('·', 'Nothing scanned yet', 'Add a website or run a scan — quick wins appear here once James has pages to work on.')
+          : emptyState('✓', 'No critical issues found', 'Your site is in good shape — keep monitoring with weekly audits.'))
         + '</div>';
       return;
     }
