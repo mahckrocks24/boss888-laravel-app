@@ -90,6 +90,9 @@
       '.sh-send[disabled]{opacity:.5;cursor:default}.sh-send:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.sh-attach{width:44px;height:44px;border-radius:12px;border:1px solid var(--bd2);background:transparent;color:var(--t2);cursor:pointer;flex:none;font-size:16px}',
       '.sh-attach:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
+      '.sh-attach{display:inline-flex;align-items:center;justify-content:center}.sh-attach:hover{color:var(--t1);border-color:var(--p)}',
+      /* ATTACH-1: the composer library inserts its own paperclip next to the textarea — Sarah has one attach control, the plus. */
+      '.sh-compose .lu-att-paperclip{display:none !important}',
       '.sh-hint{max-width:920px;margin:6px auto 0;font-size:11.5px;color:var(--t2);text-align:center}',
       '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:38vh;overflow:auto}',
       '.sh-rail-track{display:flex;flex-direction:column;gap:8px}',
@@ -136,7 +139,7 @@
           '<div class="sh-feed" id="sh-feed" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with Sarah"></div>' +
           '<div class="sh-compose">' +
             '<div class="sh-compose-row">' +
-              '<button type="button" class="sh-attach" id="sh-attach" aria-label="Attach a file or image" title="Attach a file or image">📎</button>' +
+              '<button type="button" class="sh-attach" id="sh-attach" aria-label="Add a photo or file" title="Add a photo or file"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>' +
               '<label for="sh-input" style="position:absolute;left:-9999px">Message Sarah</label>' +
               '<textarea id="sh-input" class="sh-ta" rows="1" placeholder="Tell Sarah what you want to achieve…" autocomplete="off"></textarea>' +
               '<button type="button" class="sh-send" id="sh-send" aria-label="Send to Sarah" title="Send (Enter)">↑</button>' +
@@ -149,11 +152,13 @@
       S.input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
       S.input.addEventListener('input', function () { S.input.style.height = 'auto'; S.input.style.height = Math.min(160, S.input.scrollHeight) + 'px'; });
       document.getElementById('sh-attach').addEventListener('click', function () {
-        if (window.LU_attachComposer && typeof window.LU_attachComposer.pick === 'function') { window.LU_attachComposer.pick('sh-input'); }
-        else if (window.LU_attachComposer && typeof window.LU_attachComposer.observe === 'function') { window.LU_attachComposer.observe(S.input); showToast('Drop or paste an image into the message box to attach it.', 'info'); }
+        /* ATTACH-1: open the native chooser (camera / photos / files on a phone). Drag and paste still work on desktop. */
+        var ok = false;
+        try { if (window.LU_attachComposer && typeof window.LU_attachComposer.pick === 'function') ok = window.LU_attachComposer.pick('sh-input'); } catch (e) { ok = false; }
+        if (!ok) showToast("Couldn't open the file chooser — try again in a moment.", 'error');
         else { showToast('Attachments are not available right now.', 'info'); }
       });
-      try { if (window.LU_attachComposer && typeof window.LU_attachComposer.observe === 'function') window.LU_attachComposer.observe(S.input); } catch (e) {}
+      try { if (window.LU_attachComposer && typeof window.LU_attachComposer.observe === 'function') window.LU_attachComposer.observe('sh-input', {}); /* ATTACH-1: observe() takes the id — the element was passed before, so the composer never bound */ } catch (e) {}
       S.mounted = true;
     }
     loadContext(); loadBriefing(); loadRail(); loadThread(); startEvents();

@@ -178,17 +178,34 @@
     var fileEl = document.createElement('input');
     fileEl.type = 'file';
     fileEl.accept = _opts[textareaId].accept;
+    fileEl.multiple = true; // ATTACH-1: several at once
     fileEl.style.display = 'none';
+    _fileEl[textareaId] = fileEl;
 
     btn.onclick = function (e) { e.preventDefault(); fileEl.click(); };
     fileEl.onchange = function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (f) _addAttachment(textareaId, f);
+      addFiles(textareaId, e.target.files);
       e.target.value = '';
     };
 
     btnInsertBefore.parentElement.insertBefore(btn, btnInsertBefore);
     btnInsertBefore.parentElement.appendChild(fileEl);
+  }
+
+  /* ATTACH-1: programmatic entry points — a host's own button opens the native chooser; a host can hand over files. */
+  var _fileEl = {};
+  function pick(textareaId) {
+    if (!_bound[textareaId] && document.getElementById(textareaId)) bind(textareaId, _observed[textareaId] || {});
+    var el = _fileEl[textareaId];
+    if (!el) return false;
+    el.click();
+    return true;
+  }
+  function addFiles(textareaId, files) {
+    if (!files || !files.length) return 0;
+    var n = 0;
+    for (var i = 0; i < files.length; i++) { if (files[i]) { _addAttachment(textareaId, files[i]); n++; } }
+    return n;
   }
 
   function getPending(textareaId) {
@@ -387,6 +404,8 @@
   window.LU_attachComposer = {
     bind:        bind,
     observe:     observe,
+    pick:        pick,
+    addFiles:    addFiles,
     getPending:  getPending,
     hasUploads:  hasUploads,
     isBusy:      isBusy,
