@@ -176,7 +176,7 @@
     fix_orphans: 'linking pages nobody links to', generate_meta: 'writing page descriptions', meta_optimize: 'improving page descriptions',
     create_article: 'writing an article', write_article: 'writing an article', publish_article: 'publishing an article', improve_draft: 'polishing a draft',
     aeo_enrich: 'making an article easier for AI search to cite', generate_article: 'writing an article',
-    create_post: 'writing a social post', social_create_post: 'writing a social post', social_ai_post: 'writing a social post', publish_post: 'publishing a social post',
+    create_post: 'writing a social post', social_create_post: 'writing a social post', social_ai_post: 'writing a social post', publish_post: 'publishing a social post', social_publish_post: 'publishing a social post', social_schedule_post: 'scheduling a social post',
     schedule_post: 'scheduling a social post', generate_hashtags: 'choosing hashtags',
     create_lead: 'adding a new enquiry', update_lead: 'updating a customer record', log_activity: 'noting a customer conversation', score_lead: 'prioritising an enquiry',
     generate_outreach: 'drafting a customer email', create_event: 'adding a calendar entry',
