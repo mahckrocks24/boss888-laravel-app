@@ -244,11 +244,27 @@
   function checkOtherDevice() {
     api('GET', 'user/last-chat-workspace').then(function (r) {
       var w = r.json && r.json.workspace; if (!w || !w.id) return;
-      var cur = S.wsId || 0; /* WS-PICK-3: from workspace/status — localStorage is empty on a device that never switched */
+      var cur = S.wsId || parseInt((r.json && r.json.device_workspace_id) || 0, 10) || 0;
       var old = document.getElementById('sh-ws-banner'); if (old) old.remove();
       if (!cur || parseInt(w.id, 10) === cur) return;
       var fresh = true; try { fresh = (Date.now() - new Date(String(w.last_at).replace(' ', 'T') + 'Z').getTime()) < 6 * 3600e3; } catch (e) {}
       if (!fresh) return;
+      /* WS-FOLLOW: your conversation moved forward somewhere else and this device's thread is older — follow it.
+         Forward-only (other.last_at strictly newer than anything sent from THIS workspace) so two idle devices
+         cannot ping-pong; one attempt per target+timestamp per session so a failure cannot loop. */
+      var devLast = String((r.json && r.json.device_last_at) || '');
+      var ahead = true; try { ahead = !devLast || (new Date(String(w.last_at).replace(' ', 'T') + 'Z') > new Date(devLast.replace(' ', 'T') + 'Z')); } catch (e) {}
+      var guard = 'lu_follow_' + w.id + '_' + String(w.last_at).replace(/\D/g, '');
+      var guarded = false; try { guarded = sessionStorage.getItem(guard) === '1'; } catch (e) {}
+      if (ahead && !guarded) {
+        try { sessionStorage.setItem(guard, '1'); } catch (e) {}
+        showToast('Following your conversation to ' + w.name + '…', 'info');
+        fetch('/api/auth/switch-workspace', { method: 'POST', headers: { Authorization: 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ workspace_id: parseInt(w.id, 10) }), cache: 'no-store' })
+          .then(function (x) { return x.json(); }).then(function (d) {
+            if (d && d.access_token) { localStorage.setItem('lu_token', d.access_token); if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token); try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || w.id)); } catch (e) {} location.reload(); }
+          }).catch(function () {});
+        return;
+      }
       var top = document.querySelector('.sh-top'); if (!top) return;
       var b = document.createElement('div'); b.id = 'sh-ws-banner'; b.setAttribute('role', 'status');
       b.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:var(--ps);border-bottom:1px solid var(--bd);font-size:13px;color:var(--t1)';

@@ -637,7 +637,12 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ->orderByDesc('id')->first(['workspace_id', 'created_at']);
         if (!$row) return response()->json(['success' => true, 'workspace' => null]);
         $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', (int) $row->workspace_id)->first(['id', 'name']);
-        return response()->json(['success' => true, 'workspace' => $ws ? ['id' => (int) $ws->id, 'name' => (string) $ws->name, 'last_at' => (string) $row->created_at] : null]);
+        // WS-FOLLOW: the device workspace's own newest user message, so the client can follow FORWARD only.
+        $deviceWs = (int) $r->attributes->get('workspace_id');
+        $deviceLast = $deviceWs > 0 ? \Illuminate\Support\Facades\DB::table('agent_messages')->where('workspace_id', $deviceWs)->where('role', 'user')->max('created_at') : null;
+        return response()->json(['success' => true,
+            'device_workspace_id' => $deviceWs, 'device_last_at' => $deviceLast ? (string) $deviceLast : null,
+            'workspace' => $ws ? ['id' => (int) $ws->id, 'name' => (string) $ws->name, 'last_at' => (string) $row->created_at] : null]);
     });
 
     // 2026-05-28 — Per-user preferences (sidebar visibility mode, etc.).
