@@ -251,7 +251,7 @@
       }).join('');
       el.querySelectorAll('.cb-kb-del').forEach(function(b){
         b.onclick = function(){
-          var go = (typeof window.luConfirm === 'function') ? window.luConfirm('Delete knowledge', 'Remove this entry from the chatbot knowledge base?', { okLabel: 'Delete', cancelLabel: 'Keep', danger: true }) : Promise.resolve(confirm('Delete this knowledge entry?'));
+          var go = window.luConfirm('Delete knowledge', 'Remove this entry from the chatbot knowledge base?', { okLabel: 'Delete', cancelLabel: 'Keep', danger: true });
           Promise.resolve(go).then(function(ok){ if (!ok) return; _api('DELETE', '/knowledge/' + b.getAttribute('data-id')).then(function(){ _refreshKnowledge(); }); });
         };
       });

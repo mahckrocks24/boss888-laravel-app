@@ -145,62 +145,152 @@ function loadingCard(h) {
   return '<div style="display:flex;align-items:center;justify-content:center;min-height:' + (h || 200) + 'px;color:var(--t2,#8B97B0)"><div style="text-align:center"><div style="font-size:24px;margin-bottom:8px;animation:spin 1s linear infinite">⟳</div><div style="font-size:13px">Loading…</div></div></div>';
 }
 
-function showToast(msg, type) {
-  type = type || 'info';
-  var colors = { success: '#00E5A8', error: '#F87171', warning: '#F59E0B', info: '#3B8BF5' };
-  var bg = colors[type] || colors.info;
-  var el = document.createElement('div');
-  el.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;background:' + bg + ';color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,.3);transition:opacity .3s;max-width:400px';
-  el.textContent = msg;
-  document.body.appendChild(el);
-  setTimeout(function() { el.style.opacity = '0'; setTimeout(function() { el.remove(); }, 300); }, 3000);
-}
+// ═══ P0-A (2026-08-30) — the ONE dialog + ONE toast layer of the customer SPA ══════════════════════════
+// Before this, four definitions of luConfirm/luPrompt/luAlert (core, media-picker, studio ×2) with three
+// different argument orders overrode each other at boot, ~45 overlays sat on 20 z-index values and six toast
+// implementations existed (REPORT-0023 §2 UX-011/012/013). Everything below is tokenised, keyboard-operable
+// (Escape, Enter, Tab trap, focus return), labelled (role=dialog / role=status) and contrast-safe.
+(function () {
+  var Z_DIALOG = 100000, Z_TOAST = 100001;
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]; }); }
+  function ensureCss() {
+    if (document.getElementById('lu-dlg-css')) return;
+    var st = document.createElement('style'); st.id = 'lu-dlg-css';
+    st.textContent = [
+      '.lu-dlg-overlay{position:fixed;inset:0;z-index:' + Z_DIALOG + ';background:rgba(0,0,0,.62);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;font-family:var(--fb,"DM Sans",system-ui,sans-serif)}',
+      '.lu-dlg{background:var(--s1,#171A21);border:1px solid var(--bd2,rgba(255,255,255,.13));border-radius:var(--rg,14px);width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 24px 64px rgba(0,0,0,.6);color:var(--t1,#E8EDF5)}',
+      '.lu-dlg-head{padding:20px 22px 6px;font-weight:700;font-size:16px;letter-spacing:-.01em;font-family:var(--fh,"Syne",sans-serif);text-wrap:balance}',
+      '.lu-dlg-body{padding:6px 22px 18px;color:var(--t2,#8B97B0);font-size:13.5px;line-height:1.55;white-space:pre-line}',
+      '.lu-dlg-input{width:100%;box-sizing:border-box;margin:0 0 18px;background:var(--s2,#1E2230);border:1px solid var(--bd2,rgba(255,255,255,.13));color:var(--t1,#E8EDF5);padding:11px 14px;border-radius:var(--r,10px);font-size:14px;font-family:inherit;min-height:44px}',
+      '.lu-dlg-input:focus-visible{outline:2px solid var(--p,#6C5CE7);outline-offset:1px;border-color:var(--p,#6C5CE7)}',
+      '.lu-dlg-foot{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:12px 16px 16px;border-top:1px solid var(--bd,rgba(255,255,255,.07))}',
+      '.lu-dlg-btn{min-height:44px;padding:0 18px;border-radius:var(--r,10px);font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid transparent}',
+      '.lu-dlg-btn:focus-visible{outline:2px solid var(--p,#6C5CE7);outline-offset:2px}',
+      '.lu-dlg-btn.ghost{background:transparent;color:var(--t2,#8B97B0);border-color:var(--bd2,rgba(255,255,255,.13))}',
+      '.lu-dlg-btn.primary{background:var(--p,#6C5CE7);color:#fff}',
+      '.lu-dlg-btn.danger{background:var(--rd,#F87171);color:#1a0b0b}',
+      '#lu-toast-stack{position:fixed;right:24px;bottom:24px;z-index:' + Z_TOAST + ';display:flex;flex-direction:column;gap:8px;max-width:min(420px,calc(100vw - 24px));pointer-events:none}',
+      '@media (max-width:640px){#lu-toast-stack{right:12px;left:12px;bottom:12px;max-width:none}}',
+      '.lu-toast{pointer-events:auto;display:flex;align-items:flex-start;gap:10px;background:var(--s2,#1E2230);color:var(--t1,#E8EDF5);border:1px solid var(--bd2,rgba(255,255,255,.13));border-left:4px solid var(--bl,#3B8BF5);border-radius:var(--r,10px);padding:11px 12px 11px 14px;font-size:13.5px;line-height:1.45;box-shadow:0 10px 30px rgba(0,0,0,.4);opacity:0;transform:translateY(6px);transition:opacity .2s,transform .2s;font-family:var(--fb,"DM Sans",system-ui,sans-serif)}',
+      '.lu-toast.in{opacity:1;transform:none}',
+      '.lu-toast.success{border-left-color:var(--ac,#00E5A8)}.lu-toast.error{border-left-color:var(--rd,#F87171)}.lu-toast.warning{border-left-color:var(--am,#F59E0B)}',
+      '.lu-toast-msg{flex:1;min-width:0;word-break:break-word}',
+      '.lu-toast-x{flex:none;width:32px;height:32px;margin:-6px -6px -6px 0;border:0;background:transparent;color:var(--t2,#8B97B0);font-size:16px;cursor:pointer;border-radius:8px}',
+      '.lu-toast-x:hover{background:rgba(255,255,255,.06);color:var(--t1,#E8EDF5)}.lu-toast-x:focus-visible{outline:2px solid var(--p,#6C5CE7)}',
+      '@media (prefers-reduced-motion:reduce){.lu-toast{transition:none}}'
+    ].join('');
+    document.head.appendChild(st);
+  }
 
-// Alias for backwards compat — _luToast was referenced (~11 sites) but never defined.
-// All approval / reject / bulk action handlers used `if (typeof _luToast === 'function') _luToast(msg)`
-// which silently no-op'd. Now they route to showToast and the user sees feedback.
-var _luToast = function(msg, type) {
-  if (typeof showToast === 'function') showToast(msg, type || 'info');
-};
+  // luDialog({type:'alert'|'confirm'|'prompt', title, message, okLabel, cancelLabel, danger|destructive,
+  //           defaultValue, placeholder, inputType}) → Promise<true|false|string|null>
+  window.luDialog = function (opts) {
+    opts = opts || {};
+    ensureCss();
+    return new Promise(function (resolve) {
+      var type = opts.type || 'alert', isPrompt = type === 'prompt', isConfirm = type === 'confirm';
+      var prev = document.activeElement;
+      var root = document.createElement('div'); root.className = 'lu-dlg-overlay';
+      var id = 'lu-dlg-' + Date.now().toString(36);
+      var shell = document.createElement('div'); shell.className = 'lu-dlg';
+      shell.setAttribute('role', isPrompt || isConfirm ? 'dialog' : 'alertdialog'); shell.setAttribute('aria-modal', 'true');
+      if (opts.title) shell.setAttribute('aria-labelledby', id + '-t');
+      if (opts.message) shell.setAttribute('aria-describedby', id + '-b');
+      shell.innerHTML =
+        (opts.title ? '<div class="lu-dlg-head" id="' + id + '-t">' + esc(opts.title) + '</div>' : '') +
+        (opts.message ? '<div class="lu-dlg-body" id="' + id + '-b">' + esc(opts.message) + '</div>' : '') +
+        (isPrompt ? '<div style="padding:0 22px"><label for="' + id + '-i" style="position:absolute;left:-9999px">' + esc(opts.title || 'Value') + '</label><input class="lu-dlg-input" id="' + id + '-i" type="' + esc(opts.inputType || 'text') + '" placeholder="' + esc(opts.placeholder || '') + '" value="' + esc(opts.defaultValue || '') + '"></div>' : '') +
+        '<div class="lu-dlg-foot">' +
+          ((isConfirm || isPrompt) ? '<button type="button" class="lu-dlg-btn ghost" data-role="cancel">' + esc(opts.cancelLabel || 'Cancel') + '</button>' : '') +
+          '<button type="button" class="lu-dlg-btn ' + ((opts.danger || opts.destructive) ? 'danger' : 'primary') + '" data-role="ok">' + esc(opts.okLabel || (isConfirm ? 'Confirm' : 'OK')) + '</button>' +
+        '</div>';
+      root.appendChild(shell); document.body.appendChild(root);
+      var inp = shell.querySelector('input'), okBtn = shell.querySelector('[data-role=ok]'), cancelBtn = shell.querySelector('[data-role=cancel]');
+      var closed = false;
+      function done(val) {
+        if (closed) return; closed = true;
+        document.removeEventListener('keydown', onKey, true);
+        try { root.remove(); } catch (e) {}
+        try { if (prev && prev.focus && document.contains(prev)) prev.focus(); } catch (e) {}
+        resolve(val);
+      }
+      function cancelValue() { return isConfirm ? false : (isPrompt ? null : true); }
+      function focusables() { return Array.prototype.slice.call(shell.querySelectorAll('input,button')).filter(function (el) { return !el.disabled; }); }
+      function onKey(e) {
+        if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(cancelValue()); return; }
+        if (e.key === 'Enter' && (!inp || e.target === inp || e.target === okBtn)) { e.preventDefault(); okBtn.click(); return; }
+        if (e.key === 'Tab') {
+          var f = focusables(); if (!f.length) return;
+          var i = f.indexOf(document.activeElement);
+          if (e.shiftKey && (i <= 0)) { e.preventDefault(); f[f.length - 1].focus(); }
+          else if (!e.shiftKey && (i === f.length - 1 || i === -1)) { e.preventDefault(); f[0].focus(); }
+        }
+      }
+      document.addEventListener('keydown', onKey, true);
+      okBtn.onclick = function () { done(isPrompt ? (inp ? inp.value : '') : true); };
+      if (cancelBtn) cancelBtn.onclick = function () { done(cancelValue()); };
+      root.addEventListener('mousedown', function (e) { if (e.target === root && (isConfirm || isPrompt)) done(cancelValue()); });
+      setTimeout(function () { if (inp) { inp.focus(); inp.select(); } else if (isConfirm && cancelBtn && (opts.danger || opts.destructive)) { cancelBtn.focus(); } else { okBtn.focus(); } }, 20);
+    });
+  };
 
-function luConfirm(msg, title, confirmText, cancelText) {
-  return new Promise(function(resolve) {
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
-    overlay.innerHTML = '<div style="background:var(--s1,#171A21);border:1px solid var(--bd,#2a2d3e);border-radius:16px;padding:28px;max-width:400px;width:90%">' +
-      '<div style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--t1,#E8EDF5)">' + (title || 'Confirm') + '</div>' +
-      '<div style="font-size:13px;color:var(--t2,#8B97B0);margin-bottom:24px">' + msg + '</div>' +
-      '<div style="display:flex;gap:10px;justify-content:flex-end">' +
-      '<button id="_luc_cancel" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd,#2a2d3e);background:transparent;color:var(--t2,#8B97B0);cursor:pointer;font-size:13px">' + (cancelText || 'Cancel') + '</button>' +
-      '<button id="_luc_ok" style="padding:8px 16px;border-radius:8px;border:none;background:var(--p,#6C5CE7);color:#fff;cursor:pointer;font-size:13px;font-weight:600">' + (confirmText || 'Confirm') + '</button>' +
-      '</div></div>';
-    document.body.appendChild(overlay);
-    overlay.querySelector('#_luc_ok').onclick = function() { overlay.remove(); resolve(true); };
-    overlay.querySelector('#_luc_cancel').onclick = function() { overlay.remove(); resolve(false); };
-  });
-}
+  // luConfirm accepts every argument order that shipped in the SPA so no caller can mislabel a dialog again:
+  //   (title, message, opts)            — canonical
+  //   (message, opts)                   — Studio order
+  //   (message, title, okLabel, cancel) — original core order (2026-04 → 2026-08)
+  window.luConfirm = function (a, b, c, d) {
+    var o;
+    if (b && typeof b === 'object') { o = Object.assign({ message: a }, b); }
+    else if (typeof c === 'string' || typeof d === 'string') { o = { title: b, message: a, okLabel: c, cancelLabel: d }; }
+    else { o = Object.assign({ title: a, message: b }, (c && typeof c === 'object') ? c : {}); }
+    if (!o.title && o.message) { o.title = 'Please confirm'; }
+    if (o.danger == null && o.destructive == null && /\b(delete|remove|permanently|revoke|disconnect|discard|expire)\b/i.test((o.okLabel || '') + ' ' + (o.title || ''))) o.danger = true;
+    o.type = 'confirm';
+    return window.luDialog(o);
+  };
+  // luPrompt(title, defaultValue, placeholder|opts) canonical; (message, defaultValue, {title,…}) Studio order.
+  window.luPrompt = function (title, defaultValue, third) {
+    var o = { type: 'prompt', title: title, defaultValue: defaultValue == null ? '' : String(defaultValue) };
+    if (third && typeof third === 'object') { o = Object.assign(o, third); if (third.title) { o.message = title; o.title = third.title; } }
+    else if (typeof third === 'string') { o.placeholder = third; }
+    return window.luDialog(o);
+  };
+  // luAlert(title, message) canonical; (message, {title}) Studio order; a long first argument is treated as the message.
+  window.luAlert = function (a, b) {
+    var o = { type: 'alert' };
+    if (b && typeof b === 'object') { o.message = a; Object.assign(o, b); }
+    else if (typeof b === 'string' && (String(a).length > 60 || /\n/.test(String(a))) && b.length <= 60) { o.title = b; o.message = a; }
+    else { o.title = a; o.message = b; }
+    if (!o.title) o.title = 'Notice';
+    return window.luDialog(o);
+  };
 
-
-function luPrompt(msg, title, defaultVal) {
-  return new Promise(function(resolve) {
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center';
-    overlay.innerHTML = '<div style="background:var(--s1,#171A21);border:1px solid var(--bd,#2a2d3e);border-radius:16px;padding:28px;max-width:440px;width:90%">' +
-      '<div style="font-size:16px;font-weight:600;margin-bottom:12px;color:var(--t1,#E8EDF5)">' + (title || 'Input') + '</div>' +
-      '<div style="font-size:13px;color:var(--t2,#8B97B0);margin-bottom:16px">' + msg + '</div>' +
-      '<input id="_lup_input" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--bd,#2a2d3e);background:var(--s2,#1E2230);color:var(--t1,#E8EDF5);font-size:13px;margin-bottom:20px;outline:none;box-sizing:border-box" value="' + (defaultVal || '') + '">' +
-      '<div style="display:flex;gap:10px;justify-content:flex-end">' +
-      '<button id="_lup_cancel" style="padding:8px 16px;border-radius:8px;border:1px solid var(--bd,#2a2d3e);background:transparent;color:var(--t2,#8B97B0);cursor:pointer;font-size:13px">Cancel</button>' +
-      '<button id="_lup_ok" style="padding:8px 16px;border-radius:8px;border:none;background:var(--p,#6C5CE7);color:#fff;cursor:pointer;font-size:13px;font-weight:600">OK</button>' +
-      '</div></div>';
-    document.body.appendChild(overlay);
-    var inp = overlay.querySelector('#_lup_input');
-    setTimeout(function(){ inp.focus(); }, 50);
-    overlay.querySelector('#_lup_ok').onclick = function(){ overlay.remove(); resolve(inp.value); };
-    overlay.querySelector('#_lup_cancel').onclick = function(){ overlay.remove(); resolve(null); };
-    inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ overlay.remove(); resolve(inp.value); } });
-  });
-}
+  // showToast(msg, type='info'|'success'|'error'|'warning', opts{duration}) — stacked, announced, dismissible.
+  window.showToast = function (msg, type, opts) {
+    ensureCss(); opts = opts || {}; type = type || 'info';
+    var stack = document.getElementById('lu-toast-stack');
+    if (!stack) { stack = document.createElement('div'); stack.id = 'lu-toast-stack'; stack.setAttribute('role', 'status'); stack.setAttribute('aria-live', 'polite'); stack.setAttribute('aria-atomic', 'false'); document.body.appendChild(stack); }
+    while (stack.children.length >= 4) stack.removeChild(stack.firstChild);
+    var el = document.createElement('div'); el.className = 'lu-toast ' + type;
+    el.innerHTML = '<div class="lu-toast-msg"></div><button type="button" class="lu-toast-x" aria-label="Dismiss notification">✕</button>';
+    el.querySelector('.lu-toast-msg').textContent = String(msg == null ? '' : msg);
+    stack.appendChild(el);
+    requestAnimationFrame(function () { el.classList.add('in'); });
+    var ttl = opts.duration || (type === 'error' ? 7000 : 4000), t;
+    function remove() { clearTimeout(t); el.classList.remove('in'); setTimeout(function () { try { el.remove(); } catch (e) {} }, 220); }
+    el.querySelector('.lu-toast-x').onclick = remove;
+    el.addEventListener('mouseenter', function () { clearTimeout(t); });
+    el.addEventListener('mouseleave', function () { t = setTimeout(remove, 1500); });
+    t = setTimeout(remove, ttl);
+    return el;
+  };
+  window._luToast = function (msg, type) { return window.showToast(msg, type || 'info'); };
+})();
+function showToast(msg, type, opts) { return window.showToast(msg, type, opts); }
+function luConfirm(a, b, c, d) { return window.luConfirm(a, b, c, d); }
+function luPrompt(a, b, c) { return window.luPrompt(a, b, c); }
+function luAlert(a, b) { return window.luAlert(a, b); }
+function luDialog(o) { return window.luDialog(o); }
 
 // ESCAPE FUNCTIONS (6 variants across files -- consolidation needed):
 // core.js: _luEsc(s) -- full escape with &quot; | _escB(s) -- was missing &quot;, now fixed | _bldSafeText(t) -- no-op String()
@@ -414,6 +504,8 @@ function loadSettings() {
   if (!el) return;
   // Populate profile fields from cached user data
   _populateProfileFields();
+  // P0 (2026-08-30): Workspace + Billing credits from the pooled /workspace/status (was "—" / "0 / 0")
+  _settingsFillCredits();
   // Wire the API Keys + WordPress Sites cards (renderers defined at file tail)
   var apkEl = document.getElementById('apk-section');
   if (apkEl && typeof window._renderApiKeys === 'function') {
@@ -423,6 +515,27 @@ function loadSettings() {
   if (wpsEl && typeof window._renderWpSites === 'function') {
     try { window._renderWpSites(wpsEl); } catch (_) {}
   }
+}
+
+async function _settingsFillCredits() {
+  var wsCr = document.getElementById('st-ws-credits'), wsPl = document.getElementById('st-ws-plan'), bill = document.getElementById('billing-credits');
+  if (!wsCr && !bill && !wsPl) return;
+  try {
+    var r = await _luFetch('GET', '/workspace/status');
+    if (!r.ok) return;
+    var s = await r.json();
+    var bal = Math.round(Number(s.credit_balance) || 0), lim = Number(s.monthly_credit_limit) || 0;
+    var txt = lim > 0 ? bal + ' / ' + lim : String(bal);
+    var planName = (s.plan && (s.plan.plan_name || s.plan.plan_slug)) ? String(s.plan.plan_name || s.plan.plan_slug) : '';
+    var apply = function () {
+      if (wsCr) wsCr.textContent = txt;
+      if (bill) bill.textContent = txt;
+      if (wsPl && planName) wsPl.textContent = planName.charAt(0).toUpperCase() + planName.slice(1) + (s.is_trial ? ' (trial)' : '');
+    };
+    apply();
+    // index.html's inline /billing/status loader may land after us and write "0 / 0" — re-apply the pooled truth.
+    setTimeout(apply, 1500); setTimeout(apply, 4000);
+  } catch (e) {}
 }
 
 async function _populateProfileFields() {
@@ -3043,15 +3156,13 @@ async function sendAgentMessage(quickAction, overrideMessage){
         }
       } catch(_n) {}
     } else
-    if (typeof showToast === 'function') showToast('Error: '+e.message,'error');
-    else alert('Error: '+e.message);
+    showToast('Error: '+e.message,'error');
   }
   } catch (outerErr) {
     // 2026-05-22 FIX 10 — catch any pre-fetch DOM/state error so the user
     // sees what went wrong instead of a silent failure.
     console.error('[sendAgentMessage] uncaught error', outerErr);
-    if (typeof showToast === 'function') showToast('Chat error: ' + (outerErr && outerErr.message ? outerErr.message : outerErr), 'error');
-    else alert('Chat error: ' + (outerErr && outerErr.message ? outerErr.message : outerErr));
+    showToast('Chat error: ' + (outerErr && outerErr.message ? outerErr.message : outerErr), 'error');
   }
 }
 
@@ -5040,7 +5151,7 @@ function analyzeWorkload(){
     var state=active===0?'Available':active<=3?'Moderate ('+active+' tasks)':'Overloaded ('+active+' tasks)';
     return `${a.emoji||''} ${a.name||id}: ${state}`;
   });
-  luAlert(lines.join("\n"), "Workload Summary");
+  luAlert("Workload Summary", lines.join("\n"));
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -5582,6 +5693,9 @@ function _luBridgeTable(arr) {
 // ── LOAD PAGES (+ stats + library count) ──────────────────────────────
 // [builder] extracted to builder.js (lines 3338-5263)
 function arthurBindToComponent(cmp, si, ci, mi) {
+  // REPORT-0023 (2026-08-30): the inline Arthur bubble posted to POST builder/arthur, which does not
+  // exist. It never opens now; Arthur edits pages from the page editor (_t3ArthurSend). Markup stays.
+  arthurHidePanel(); return;
   var typeLabels = {heading:'Heading',text:'Text Block',button:'Button',image:'Image',video:'Video',cta:'CTA Block',testimonial:'Testimonial',pricing:'Pricing Card',faq:'FAQ',form:'Form',list:'List',html:'Custom HTML',spacer:'Spacer',divider:'Divider',card:'Card'};
   var typeIcons  = {heading:'H',text:'¶',button:'⬜',image:'🖼',video:'▶',cta:'🚀',testimonial:'💬',pricing:'💰',faq:'❓',form:'📋',list:'≡',html:'<>',spacer:'↕',divider:'—',card:'🗂'};
   var cmpType = cmp.component_type || cmp.type || 'text';
@@ -5630,6 +5744,8 @@ function arthurQuickCommand(prompt){
 }
 
 async function arthurSendCommand(){
+  // REPORT-0023 (2026-08-30): POST builder/arthur does not exist — no-op that closes the panel.
+  arthurHidePanel(); return;
   if(!arthurContext||arthurBusy) return;
   var inp=document.getElementById('arthur-input');
   var command=inp.value.trim(); if(!command) return;
@@ -6506,7 +6622,7 @@ function _aqRenderStats(s) {
       var h = s.oldest_pending_hours;
       var txt = h >= 24 ? Math.floor(h / 24) + 'd' : h + 'h';
       oldest.textContent = txt;
-      if (oldestMeta) oldestMeta.textContent = h > 24 ? 'overdue' : 'within SLA';
+      if (oldestMeta) oldestMeta.textContent = h > 24 ? 'waiting more than a day' : 'waiting'; // P0-E: no invented SLA (REPORT-0023 UX-022)
     } else { oldest.textContent = '—'; if (oldestMeta) oldestMeta.textContent = 'no pending'; }
   }
   if (oldestCard) {
@@ -6812,7 +6928,7 @@ function _aqBulkClear() {
 async function _aqBulkApprove() {
   var ids = Array.from(_aqState.selected);
   if (!ids.length) return;
-  if (!confirm('Approve ' + ids.length + ' selected item' + (ids.length === 1 ? '' : 's') + '?')) return;
+  if (!await luConfirm('Approve ' + ids.length + ' selected item' + (ids.length === 1 ? '' : 's') + '?', 'Your team will run these right away.', { okLabel: 'Approve' })) return;
   try {
     var r = await _luFetch('POST', '/approvals/bulk-approve', { ids: ids });
     var d = await r.json();
@@ -6823,11 +6939,18 @@ async function _aqBulkApprove() {
     if (typeof _luToast === 'function') _luToast('Bulk approve failed: ' + (e.message || 'unknown'));
   }
 }
-function _aqBulkRejectPrompt() {
+async function _aqBulkRejectPrompt() {
   var ids = Array.from(_aqState.selected);
   if (!ids.length) return;
-  var reason = prompt('Reason for rejecting ' + ids.length + ' items?');
-  if (!reason) return;
+  // A reason is required (same rule as the single-reject form) — re-prompt while empty, abort on cancel.
+  var reason;
+  for (;;) {
+    reason = await luPrompt('Reason for rejecting ' + ids.length + ' item' + (ids.length === 1 ? '' : 's') + ' (required)', '', 'Tell your team why these are being rejected');
+    if (reason === null) return;            // cancelled
+    reason = String(reason).trim();
+    if (reason) break;
+    showToast('A rejection reason is required.', 'warning');
+  }
   _aqBulkReject(ids, reason);
 }
 async function _aqBulkReject(ids, reason) {
@@ -6843,7 +6966,7 @@ async function _aqBulkReject(ids, reason) {
 }
 
 async function _aqExpireStalePrompt() {
-  if (!confirm('Expire all pending approvals older than 30 days in this workspace?')) return;
+  if (!await luConfirm('Expire stale approvals?', 'All pending approvals older than 30 days in this workspace will be expired.', { okLabel: 'Expire', danger: true })) return;
   try {
     var r = await _luFetch('POST', '/approvals/expire-stale', { older_than_days: 30 });
     var d = await r.json();
@@ -6872,6 +6995,8 @@ var _cmdcLastFeedIds    = new Set();  // timestamps we've seen (so we can animat
 var _cmdcLastApprovalN  = -1;
 
 window.loadCommandCenter = async function loadCommandCenter() {
+  // P0 (2026-08-30): index.html ships the literal "team\'s" in the loading subhead — fix the copy on entry.
+  try { var _sub0 = document.getElementById('cmd-subhead'); if (_sub0 && _sub0.textContent.indexOf("\\'") !== -1) _sub0.textContent = 'Loading your team\u2019s activity\u2026'; } catch (_e0) {}
   _cmdcLastFeedIds = new Set(); // reset on full reload so nothing animates on first paint
   await _cmdcFetchAndRender();
   _cmdcStartPolling();
@@ -6979,7 +7104,7 @@ function _cmdcRenderStrategy(p, totalWs, totalGlobal) {
   if (!el) return;
   if (!p) {
     el.innerHTML = '<div class="cmd-empty">Sarah will present her first strategy within 24 hours of onboarding.</div>';
-    if (footer) footer.textContent = (totalGlobal || 0) + ' strategies generated platform-wide';
+    if (footer) footer.innerHTML = '&nbsp;';   // P0 (2026-08-30): no platform-wide (global) counts on a customer surface
     return;
   }
   var statusClass = p.status === 'approved' ? 'cmd-chip-approved' : (p.status === 'pending' ? 'cmd-chip-pending' : 'cmd-chip-default');
@@ -6995,7 +7120,7 @@ function _cmdcRenderStrategy(p, totalWs, totalGlobal) {
     '<div class="cmd-strategy-chips">' + chips + '</div>' +
     btn;
   if (footer) {
-    var txt = (totalWs || 0) + ' on this workspace · ' + (totalGlobal || 0) + ' platform-wide · ' + (p.time_ago || '');
+    var txt = (totalWs || 0) + ' on this workspace' + (p.time_ago ? ' · ' + p.time_ago : '');
     footer.textContent = txt;
   }
 }
@@ -7102,7 +7227,7 @@ async function _cmdcApprovalAction(id, which, batchCount) {
     var promptMsg = n > 1
       ? 'Reason for rejecting all ' + n + ' tasks in this batch (required):'
       : 'Reason for rejection (required):';
-    var reason = window.prompt(promptMsg, '');
+    var reason = await luPrompt(promptMsg.replace(/:$/, ''), '', 'Why is this being rejected?');
     if (reason === null) return;            // cancelled
     reason = (reason || '').trim();
     if (!reason) { if (typeof _luToast === 'function') _luToast('A rejection reason is required.'); return; }
@@ -7607,7 +7732,7 @@ async function _billDowngradeToFree() {
   // MONEY-1 (2026-08-29): the old copy promised "at the end of the current period" and toasted
   // "Cancellation scheduled" — but POST /billing/cancel cancels and downgrades to Free NOW (the
   // Stripe subscription is cancelled immediately; AI access and paid credits stop). Say so, and
-  // use the app dialog (native confirm() deadlocks automation and breaks the shell's look).
+  // use the app dialog (a native confirm dialog deadlocks automation and breaks the shell's look).
   var ok = await _billConfirm('Cancel your plan and move to Free now?',
     'Your paid plan ends immediately: AI agents, tools and paid credits stop right away and your website(s) stay on the Free tier limits. This cannot be undone from here — you would need to subscribe again.',
     'Cancel plan now', 'Keep my plan');
@@ -7623,15 +7748,8 @@ async function _billDowngradeToFree() {
 }
 
 function _billConfirm(title, message, okLabel, cancelLabel) {
-  // RISK-0124: three luConfirm signatures exist; media-picker's luDialog is the richest and is
-  // loaded in the app shell, core's luConfirm(msg,title,ok,cancel) is the fallback.
-  try {
-    if (typeof window.luDialog === 'function') {
-      return Promise.resolve(window.luDialog({ type: 'confirm', title: title, message: message, okLabel: okLabel, cancelLabel: cancelLabel, danger: true }));
-    }
-    if (typeof luConfirm === 'function') return luConfirm(message, title, okLabel, cancelLabel);
-  } catch (e) {}
-  return Promise.resolve(window.confirm(title + '\n\n' + message));
+  // P0-A (2026-08-30): one dialog layer (core.js luDialog) — no native fallback.
+  return luConfirm(title, message, { okLabel: okLabel, cancelLabel: cancelLabel, danger: true });
 }
 
 async function _billConfirmUpgradeLanded() {
@@ -7726,7 +7844,7 @@ window._renderApiKeys = async function _renderApiKeys(el) {
 };
 
 window._generateApiKey = async function _generateApiKey() {
-  var name = prompt('Key name (e.g. "shukranuae.com connector"):', 'WP Connector');
+  var name = await luPrompt('Name this key', 'WP Connector', 'e.g. "shukranuae.com connector"');
   if (!name) return;
   try {
     var r = await _luFetch('POST', '/settings/api-keys', { name: name, type: 'connector' });
@@ -7765,7 +7883,7 @@ window._generateApiKey = async function _generateApiKey() {
 };
 
 window._revokeApiKey = async function _revokeApiKey(id) {
-  if (!confirm('Revoke this key? Any connected sites using it will stop working.')) return;
+  if (!await luConfirm('Revoke this key?', 'Any connected sites using it will stop working.', { okLabel: 'Revoke', danger: true })) return;
   try {
     var r = await _luFetch('DELETE', '/settings/api-keys/' + id);
     var d = await r.json();
@@ -7837,7 +7955,7 @@ window._renderWpSites = async function _renderWpSites(el) {
 };
 
 window._disconnectWpSite = async function _disconnectWpSite() {
-  if (!confirm('Disconnect this WordPress site? SEO data will be kept but the site will stop syncing.')) return;
+  if (!await luConfirm('Disconnect this WordPress site?', 'SEO data will be kept but the site will stop syncing.', { okLabel: 'Disconnect', danger: true })) return;
   try {
     var r = await _luFetch('DELETE', '/settings/wp-sites');
     var d = await r.json();
@@ -7852,7 +7970,7 @@ window._disconnectWpSite = async function _disconnectWpSite() {
 };
 
 window._rotateWebhookSecret = async function _rotateWebhookSecret() {
-  if (!confirm('Rotate webhook secret? You will need to update the secret in your WP plugin settings.')) return;
+  if (!await luConfirm('Rotate webhook secret?', 'You will need to update the secret in your WP plugin settings.', { okLabel: 'Rotate secret', danger: true })) return;
   try {
     var r = await _luFetch('POST', '/settings/wp-sites/rotate-secret');
     var d = await r.json();

@@ -388,6 +388,16 @@ class SeoService
     public function deepAudit(int $wsId, array $params): array
     {
         $url = $params['url'] ?? '';
+        // P0-B (2026-08-30, REPORT-0023 UX-018): a placeholder such as "sourdough_pre_order_url" reached this
+        // method as a URL, was "audited" (score 0) and polluted the score trend. A non-address is not a target;
+        // an empty value still resolves to the workspace's own site below.
+        if ($url !== '' && !preg_match('~^https?://[^\s/]+~i', (string) $url)) {
+            if (preg_match('~^[a-z0-9.-]+\.[a-z]{2,}(/.*)?$~i', (string) $url)) {
+                $url = 'https://' . ltrim((string) $url, '/');
+            } else {
+                throw new \InvalidArgumentException('"' . $url . '" is not a web address. Give me the page or site URL to audit.');
+            }
+        }
         if (empty($url)) {
             // 2026-07-23 — the runtime LLM rarely supplies a URL for a whole-site
             // audit. Resolve the workspace's own site deterministically:

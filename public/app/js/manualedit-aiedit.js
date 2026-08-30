@@ -37,11 +37,11 @@
   // a Studio design on a selected image, onApply lets the user explicitly apply
   // the chosen version back into Studio (undoable there).
   window.meOpenAiEdit = function (asset, opts) {
-    if (!asset || !asset.url) { alert('Select a completed image to edit.'); return; }
+    if (!asset || !asset.url) { showToast('Select a completed image to edit.', 'warning'); return; }
     var img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = function () { start(asset, img, opts || {}); };
-    img.onerror = function () { alert('Could not load this image for editing.'); };
+    img.onerror = function () { showToast('Could not load this image for editing.', 'error'); };
     img.src = asset.url;
   };
 

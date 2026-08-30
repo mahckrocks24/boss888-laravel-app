@@ -118,9 +118,7 @@
     return 'FILE';
   }
   function _toast(msg) {
-    if (typeof window.showToast === 'function') { window.showToast(msg, 'warning'); return; }
-    try { console.warn('[LU_attachComposer]', msg); } catch (_) {}
-    try { alert(msg); } catch (_) {}
+    window.showToast(msg, 'warning');
   }
 
   function bind(textareaId, opts) {

@@ -98,11 +98,20 @@ async function _wrPost(path, data) {
     }
 }
 async function _wrPut(path, data) {
-    var res = await fetch(_wrUrl(path), {
-        method: 'PUT', headers: _wrHeaders(), body: JSON.stringify(data)
-    });
+    var res;
+    try {
+        res = await fetch(_wrUrl(path), {
+            method: 'PUT', headers: _wrHeaders(), body: JSON.stringify(data)
+        });
+    } catch(e) {
+        return { ok:false, success:false, status:0, message:'Network error: ' + e.message };
+    }
     var body;
     try { body = await res.json(); } catch(e) { body = {}; }
+    if (!res.ok) {
+        // Surface HTTP failures instead of returning a bare body the caller reads as "saved".
+        return { ok:false, success:false, status:res.status, message:(body && (body.message || body.error)) || ('HTTP ' + res.status), body:body };
+    }
     return body;
 }
 async function _wrDelete(path) {
@@ -449,7 +458,7 @@ function _wrBindDashboard() {
     document.querySelectorAll('.wr-delete-btn').forEach(function(btn) {
         btn.addEventListener('click', async function(e) {
             e.stopPropagation();
-            if (!confirm('Delete this content item? This cannot be undone.')) return;
+            if (!(await luConfirm('Delete this content item?', 'This cannot be undone.', { okLabel:'Delete item', danger:true }))) return;
             var res = await _wrDelete('/articles/' + btn.dataset.id + '?workspace_id=' + encodeURIComponent(_wr.wsId));
             if (res && res.success) {
                 _wrToast('Content deleted.', 'success');
@@ -728,10 +737,10 @@ function _wrBindEditor() {
     var backBtn = document.getElementById('wr-back-btn');
     if (backBtn) backBtn.addEventListener('click', async function() {
         if (_wr.isDirty) {
-            var confirmed = confirm(
-                'You have unsaved changes.\n\n' +
-                'Click OK to discard them and go back.\n' +
-                'Click Cancel to stay and save your work.'
+            var confirmed = await luConfirm(
+                'Discard unsaved changes?',
+                'Your edits will be lost. Go back and click Save to keep them.',
+                { okLabel:'Discard changes', cancelLabel:'Keep editing', danger:true }
             );
             if (!confirmed) return;  // user chose to stay — do nothing
         }
@@ -915,7 +924,7 @@ async function _wrSaveContent(showToast) {
         _wrRefreshOutline(plain);
     } else {
         if (indicator) { indicator.textContent = '✕ Error'; indicator.style.color = 'var(--rd,#e74c3c)'; }
-        _wrToast((res && res.message) || 'Save failed.', 'error');
+        _wrToast('Couldn\'t save: ' + ((res && (res.message || res.error)) || 'unknown error'), 'error');
     }
 }
 

@@ -23,7 +23,12 @@ function _blApi(method, path, body) {
   var t=localStorage.getItem('lu_token')||'';
   var o={method:method,headers:{'Content-Type':'application/json','Accept':'application/json','Authorization':'Bearer '+t},cache:'no-store'};
   if(body)o.body=JSON.stringify(body);
-  return fetch('/api/write'+path,o).then(function(r){return r.json();});
+  return fetch('/api/write'+path,o).then(function(r){
+    return r.json().catch(function(){return {};}).then(function(j){
+      if(!r.ok){var err=new Error((j&&(j.message||j.error))||('Request failed (HTTP '+r.status+')'));err.status=r.status;err.body=j;throw err;}
+      return j;
+    });
+  });
 }
 
 function _blBtnStyle(type){
@@ -270,7 +275,7 @@ function _blRenderEditor(){
 // Falls back to URL input if the picker script didn't load.
 window._blPickFeaturedImage = function() {
     if (typeof window.openMediaPicker !== 'function') {
-        alert('Media picker is not loaded. Paste a URL instead.');
+        showToast('Media picker is not loaded. Paste a URL instead.', 'warning');
         return;
     }
     window.openMediaPicker({ type:'image', context:'blog', multiple:false }, function(file) {
@@ -287,9 +292,7 @@ window._blPickFeaturedImage = function() {
 window._blFilter=function(s){_bl.filterStatus=s;_blFetch().then(_blRender);};
 
 window._blNewPost=async function(){
-  var title = (typeof window.luPrompt === 'function')
-    ? await window.luPrompt('New article', '', 'Enter article title…')
-    : prompt('Enter article title:');
+  var title = await window.luPrompt('New article', '', 'Enter article title…');
   if(!title)return;
   try{
     var d=await _blApi('POST','/articles',{title:title,type:'blog_post',status:'draft',blog_category:'',content:'<p>Start writing...</p>'});
@@ -303,7 +306,7 @@ window._blNewPost=async function(){
 };
 
 window._blDeletePost=async function(id){
-  if(!confirm('Delete this article?'))return;
+  if(!(await luConfirm('Delete this article?', 'This cannot be undone.', {okLabel:'Delete article', danger:true})))return;
   try{
     await _blApi('DELETE','/articles/'+id);
     _bl.items=_bl.items.filter(function(i){return i.id!==id;});
@@ -313,8 +316,8 @@ window._blDeletePost=async function(id){
   }catch(e){if(typeof showToast==='function')showToast('Delete failed','error');}
 };
 
-window._blBackToDash=function(){
-  if(_bl.isDirty&&!confirm('You have unsaved changes. Discard?'))return;
+window._blBackToDash=async function(){
+  if(_bl.isDirty&&!(await luConfirm('Discard unsaved changes?', 'Your edits to this article will be lost.', {okLabel:'Discard changes', cancelLabel:'Keep editing', danger:true})))return;
   if(typeof window._blDestroyEditor==='function') window._blDestroyEditor();
   _bl.view='dashboard';_bl.currentItem=null;_bl.isDirty=false;_blFetch().then(_blRender);
 };
@@ -819,9 +822,9 @@ window._blCmd = function (cmd, params) {
 };
 
 // Image insert — routes through the unified media picker
-window._blInsertImage = function () {
+window._blInsertImage = async function () {
   if (typeof window.openMediaPicker !== 'function') {
-    var url = prompt('Paste an image URL:');
+    var url = await luPrompt('Insert image', '', 'Paste an image URL');
     if (url && window._blEditor) window._blEditor.chain().focus().setImage({ src: url }).run();
     return;
   }
@@ -842,9 +845,7 @@ window._blInsertImage = function () {
 window._blInsertLink = async function () {
   if (!window._blEditor) return;
   var current = window._blEditor.getAttributes('link').href || '';
-  var url = (typeof window.luPrompt === 'function')
-    ? await window.luPrompt('Insert link', current, 'https://example.com')
-    : prompt('Enter URL:', current);
+  var url = await window.luPrompt('Insert link', current, 'https://example.com');
   if (url === null) return;
   if (url === '') { window._blEditor.chain().focus().unsetLink().run(); return; }
   if (!/^https?:\/\//i.test(url)) url = 'https://' + url;

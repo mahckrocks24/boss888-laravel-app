@@ -392,7 +392,7 @@ function bld_analyzeWorkload(){
     const state=active===0?'Available':active<=3?'Moderate ('+active+' tasks)':'Overloaded ('+active+' tasks)';
     return `${a.emoji||''} ${a.name||id}: ${state}`;
   });
-  luAlert(lines.join("\n"), "Workload Summary");
+  luAlert("Workload Summary", lines.join("\n"));
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -1111,7 +1111,7 @@ function _t3ImgChoose() {
 async function _t3ImgPasteUrl() {
   var info = _t3ImgPanelInfo;
   if (!info) return;
-  // BUILDER888 D5 (2026-08-28) - native prompt()/confirm() block the page; use the app dialogs.
+  // BUILDER888 D5 (2026-08-28) - native browser prompt/confirm dialogs block the page; use the app dialogs.
   var url = await luPrompt('Use image from URL', info.currentSrc || '', 'https://example.com/photo.jpg');
   if (!url) return;
   url = url.trim();
@@ -2101,9 +2101,14 @@ async function wsDeleteSitePage(pageId, siteId) {
 async function wsNewSitePage(siteId){
   const title=await luPrompt('Enter page title:','','New Page');if(!title)return;
   try{
-    const r=await fetch(API+'builder/create',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},body:JSON.stringify({title:title,type:'page'})});
-    const d=await r.json();
-    if(d.success && d.page?.id){await wsOpenSite(siteId);bldOpenEditor(d.page.id,'standalone');}
+    // REPORT-0023 (2026-08-30): POST /builder/create requires website_id (400 without it) and the old
+    // bldOpenEditor was a stub — the new page now opens in the live page editor (wsEditSitePage).
+    const r=await fetch(API+'builder/create',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},body:JSON.stringify({title:title,type:'page',website_id:siteId})});
+    const d=await r.json().catch(function(){return {};});
+    const pid=(d.page&&d.page.id)||(d.data&&d.data.page&&d.data.page.id)||d.page_id||(d.data&&(d.data.page_id||d.data.id))||null;
+    if(r.ok && d.success!==false && pid){await wsOpenSite(siteId);wsEditSitePage(pid);}
+    else if(d.pending_approval){showToast(d.message||'Page creation was sent to your approval queue.','info');await wsOpenSite(siteId);}
+    else{showToast('Could not create the page: '+(d.error||d.message||('HTTP '+r.status)),'error');}
   }catch(e){showToast('Failed: '+e.message,'error');}
 }
 
@@ -2194,7 +2199,7 @@ async function wsVerifyDomain(){
 
 async function wsDisconnectDomain(){
   if(!wsPubTarget)return;
-  if(!confirm('Disconnect custom domain? Visitors will need to use the .levelupgrowth.io URL.'))return;
+  if(!await luConfirm('Disconnect custom domain?', 'Visitors will need to use the .levelupgrowth.io URL.', {okLabel:'Disconnect', cancelLabel:'Keep domain', danger:true}))return;
   try{
     var r=await fetch(bldApi+'websites/'+wsPubTarget.id+'/custom-domain',{
       method:'DELETE',
@@ -2411,11 +2416,7 @@ window._luConfirmSubdomain = async function (websiteId) {
     if (pmAlt) pmAlt.remove();
 
     var url = pubD.url || ('https://' + slug + '.levelupgrowth.io');
-    var toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10001;background:#10b981;color:#fff;padding:14px 18px;border-radius:10px;font-size:13px;box-shadow:0 4px 20px rgba(0,0,0,0.35);max-width:320px;font-family:system-ui,sans-serif;line-height:1.5';
-    toast.innerHTML = '🚀 <strong>Website published!</strong><br><a href="' + bld_escH(url) + '" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline">' + bld_escH(url) + '</a>';
-    document.body.appendChild(toast);
-    setTimeout(function () { toast.remove(); }, 7000);
+    showToast('Website published! ' + url, 'success', { duration: 8000 });
 
     // Refresh the websites grid + any open editor's status
     if (typeof wsLoadSites === 'function') wsLoadSites();
@@ -2703,7 +2704,7 @@ var _bldBuildPreviewHtml = function() {
   h += '  var siteId=' + JSON.stringify(window._wsReturnToSite || 0) + ';';
   h += '  var btn=document.querySelector("#preview-bar button:last-child");';
   h += '  if(btn){btn.textContent="Publishing...";btn.disabled=true;}';
-  h += '  fetch(__apiBase+"websites/"+siteId+"/publish",{method:"POST",headers:{"X-WP-Nonce":__nonce,"Content-Type":"application/json"},body:"{}"})';
+  h += '  fetch(__apiBase+"builder/websites/"+siteId+"/publish",{method:"POST",headers:{"Authorization":"Bearer "+(localStorage.getItem("lu_token")||""),"Content-Type":"application/json","Accept":"application/json"},body:"{}"})';
   h += '  .then(function(r){return r.json();})';
   h += '  .then(function(d){if(btn){btn.textContent=d.success?"Published!":"Publish Failed";btn.disabled=false;}})';
   h += '  .catch(function(){if(btn){btn.textContent="Publish";btn.disabled=false;}});';
@@ -2967,20 +2968,12 @@ document.addEventListener('keydown', function(e) {
     setTimeout(() => { const b = bar.querySelector('.exec-progress-bar'); if (b) b.style.width = '60%'; }, 300);
     setTimeout(() => { const b = bar.querySelector('.exec-progress-bar'); if (b) b.style.width = '85%'; }, 2000);
 
-    // Execution toast
-    let toast = document.getElementById('exec-toast');
-    if (toast) toast.remove();
-    toast = document.createElement('div');
-    toast.id = 'exec-toast';
-    toast.className = 'exec-toast';
-    toast.innerHTML = `<div class="et-spinner"></div><div><div style="font-size:12px;font-weight:600;color:var(--t1)">Executing: ${toolId}</div><div style="font-size:10px;color:var(--t3)">Processing request…</div></div>`;
-    document.body.appendChild(toast);
+    // Execution toast — P0 (2026-08-30): the app's one toast layer, not a module-private element.
+    showToast('Executing: ' + toolId + ' — processing request…', 'info');
   }
   function _execProgressHide() {
     const bar = document.getElementById('exec-progress');
     if (bar) { const b = bar.querySelector('.exec-progress-bar'); if (b) b.style.width = '100%'; setTimeout(() => bar.style.display = 'none', 400); }
-    const toast = document.getElementById('exec-toast');
-    if (toast) { toast.style.opacity = '0'; toast.style.transition = 'opacity .3s'; setTimeout(() => toast.remove(), 300); }
   }
 
   // ── Inline policy badge for any tool ───────────────────────────────

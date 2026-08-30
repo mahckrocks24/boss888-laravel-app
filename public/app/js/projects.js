@@ -645,7 +645,8 @@ function _pjOutcomesTab(d) {
 window._pjDispose = async function(outcome) {
   if (!_pj.activeId) return;
   const labels = {succeeded:'Succeeded', partially_succeeded:'Partial', failed:'Failed', abandoned:'Abandoned'};
-  if (!confirm('Mark this project as ' + (labels[outcome] || outcome) + '?\n\nSarah will write a closing note and record the outcome for future learning.')) return;
+  const ok = await luConfirm('Mark this project as ' + (labels[outcome] || outcome) + '?', 'Sarah will write a closing note and record the outcome for future learning.', { okLabel: 'Mark as ' + (labels[outcome] || outcome), danger: outcome === 'failed' || outcome === 'abandoned' });
+  if (!ok) return;
   try {
     const resp = await _pjApi('/projects/' + _pj.activeId + '/dispose', {
       method: 'POST',
@@ -657,10 +658,10 @@ window._pjDispose = async function(outcome) {
       _pj.single = null;
       _pjRenderSingle(document.getElementById('projects-root'), _pj.activeId);
     } else {
-      alert((resp && resp.error) || 'Failed to dispose');
+      showToast((resp && (resp.error || resp.message)) || 'Failed to dispose project', 'error');
     }
   } catch (e) {
-    alert('Error: ' + e.message);
+    showToast('Error: ' + e.message, 'error');
   }
 };
 
@@ -678,16 +679,16 @@ async function _pjPostRefresh(path, body, scope) {
       _pjRenderSingle(document.getElementById('projects-root'), _pj.activeId);
       return resp;
     }
-    alert((resp && resp.error) || 'Failed');
+    showToast((resp && (resp.error || resp.message)) || 'Request failed — please try again', 'error');
     return null;
   } catch (e) {
-    alert('Error: ' + e.message);
+    showToast('Error: ' + e.message, 'error');
     return null;
   }
 }
 
 window._pjMilestoneAchieve = async function(mid) {
-  const notes = prompt('What evidence supports this milestone being achieved?\n(Optional — leave blank to skip)');
+  const notes = await luPrompt('Milestone achieved', '', { placeholder: 'What evidence supports this? (optional)', okLabel: 'Mark achieved' });
   if (notes === null) return; // user cancelled
   await _pjPostRefresh(
     '/projects/' + _pj.activeId + '/milestones/' + mid + '/achieve',
@@ -721,7 +722,7 @@ window._pjMilestoneCreateForm = function() {
 
 window._pjMilestoneCreate = async function() {
   const title = (document.getElementById('pjnm-title') || {}).value || '';
-  if (!title.trim()) { alert('Title is required'); return; }
+  if (!title.trim()) { luAlert('Check the form', 'Title is required.'); return; }
   const desc   = (document.getElementById('pjnm-desc') || {}).value || '';
   const target = (document.getElementById('pjnm-target') || {}).value || '';
   const crit   = (document.getElementById('pjnm-crit') || {}).value || '';
@@ -733,10 +734,10 @@ window._pjMilestoneCreate = async function() {
 };
 
 window._pjKpiMeasure = async function(kid, target) {
-  const raw = prompt('Record a new measurement.\n(Target: ' + target + ')');
+  const raw = await luPrompt('Record a new measurement', '', { placeholder: 'Value (target: ' + target + ')', okLabel: 'Record' });
   if (raw === null) return;
   const v = parseFloat(raw);
-  if (isNaN(v)) { alert('Value must be numeric'); return; }
+  if (isNaN(v)) { luAlert('Check the form', 'Value must be numeric.'); return; }
   await _pjPostRefresh(
     '/projects/' + _pj.activeId + '/kpis/' + kid + '/measure',
     { value: v },
@@ -775,9 +776,9 @@ window._pjKpiCreateForm = function() {
 
 window._pjKpiCreate = async function() {
   const name = (document.getElementById('pjnk-name') || {}).value || '';
-  if (!name.trim()) { alert('Name is required'); return; }
+  if (!name.trim()) { luAlert('Check the form', 'Name is required.'); return; }
   const target = parseFloat((document.getElementById('pjnk-target') || {}).value);
-  if (isNaN(target)) { alert('Target value must be numeric'); return; }
+  if (isNaN(target)) { luAlert('Check the form', 'Target value must be numeric.'); return; }
   const body = {
     name: name.trim(),
     target_value: target,
@@ -830,8 +831,8 @@ window._pjNewProject = function() {
 window._pjProjectCreate = async function() {
   const name = (document.getElementById('pjnp-name') || {}).value || '';
   const goal = (document.getElementById('pjnp-goal') || {}).value || '';
-  if (!name.trim()) { alert('Project name is required'); return; }
-  if (!goal.trim()) { alert('Goal is required'); return; }
+  if (!name.trim()) { luAlert('Check the form', 'Project name is required.'); return; }
+  if (!goal.trim()) { luAlert('Check the form', 'Goal is required.'); return; }
   const body = { name: name.trim(), goal: goal.trim(), source_type: 'direct' };
   const desc = (document.getElementById('pjnp-desc') || {}).value || '';
   if (desc.trim()) body.description = desc.trim();
@@ -845,10 +846,10 @@ window._pjProjectCreate = async function() {
     if (resp && resp.success && resp.project_id) {
       _pjOpen(resp.project_id);
     } else {
-      alert((resp && resp.error) || 'Failed to create project');
+      showToast((resp && (resp.error || resp.message)) || 'Failed to create project', 'error');
     }
   } catch (e) {
-    alert('Error: ' + e.message);
+    showToast('Error: ' + e.message, 'error');
   }
 };
 

@@ -1212,14 +1212,10 @@
       _designId = null; _vd = null; _selectedId = null;
       _mountGallery();
     };
-    if (typeof window.luConfirm === 'function') {
-      window.luConfirm('Leave the editor? Unsaved changes will be lost.', {
-        title: 'Leave editor?', okLabel: 'Leave', cancelLabel: 'Stay',
-        destructive: true
-      }).then(proceed);
-    } else {
-      proceed(confirm('Leave the editor? Unsaved changes will be lost.'));
-    }
+    window.luConfirm('Leave the editor? Unsaved changes will be lost.', {
+      title: 'Leave editor?', okLabel: 'Leave', cancelLabel: 'Stay',
+      destructive: true
+    }).then(proceed);
   };
 
   // ── Tabs ──────────────────────────────────────────────────────
@@ -1326,11 +1322,7 @@
       // If user hasn't added any clips yet and uploaded ≥2 images, offer auto-slideshow
       if ((!_vd.clips || !_vd.clips.length) && arr.length >= 2) {
         var msg = 'Build a slideshow from these ' + arr.length + ' images automatically?';
-        if (typeof window.luConfirm === 'function') {
-          window.luConfirm(msg, { title:'Auto-slideshow', okLabel:'Build', cancelLabel:'Skip' }).then(function(ok){ if (ok) _autoSlideshow(); });
-        } else {
-          if (confirm(msg)) _autoSlideshow();
-        }
+        window.luConfirm(msg, { title:'Auto-slideshow', okLabel:'Build', cancelLabel:'Skip' }).then(function(ok){ if (ok) _autoSlideshow(); });
       }
     }).catch(function(err){ _toast('Upload failed: ' + err.message, 'error'); });
   }
@@ -4707,7 +4699,7 @@
 
   function _svRequestExit(){
     if (VE.dirty) {
-      var ok = window.luConfirm ? window.luConfirm('Unsaved changes. Leave anyway?', 'Unsaved changes', 'Leave', 'Stay') : Promise.resolve(confirm('Unsaved changes. Leave anyway?'));
+      var ok = window.luConfirm('Unsaved changes. Leave anyway?', 'Unsaved changes', 'Leave', 'Stay');
       Promise.resolve(ok).then(function(confirmed){ if (confirmed) _svTeardown(); });
     } else _svTeardown();
   }

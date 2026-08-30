@@ -199,7 +199,7 @@
     var overLimit = platform && access && !access.unlimited && access.limit > 0 && access.usage >= access.limit && !selected;
     var lockedUi = overLimit ? '<div class="lu-mp-lock"><span>\uD83D\uDD12</span><span>Upgrade</span></div>' : '';
     var clickHandler = overLimit
-      ? 'onclick="alert(\'You\\u2019ve reached your library limit. Upgrade to unlock more.\')"'
+      ? 'onclick="luAlert(\'Library limit reached\', \'You\\u2019ve reached your library limit. Upgrade to unlock more.\')"'
       : 'onclick="window._mpToggleSelect(' + id + ')"';
 
     return '<div class="lu-mp-tile ' + (selected ? 'selected' : '') + ' ' + (overLimit ? 'locked' : '') + '" ' + clickHandler + ' data-media-id="' + id + '">' +
@@ -453,7 +453,7 @@
     // Try to route into the main app billing/plans view. Falls back to a
     // nav event callers can listen for.
     if (typeof window.wsNavigate === 'function') { window.wsNavigate('billing'); _mpClose(); return; }
-    if (typeof window.nav === 'function') { window.nav('plans'); _mpClose(); return; }
+    if (typeof window.nav === 'function') { window.nav('billing'); _mpClose(); return; } // P0-A: 'plans' was never a view (UX-004)
     window.location.hash = '#billing';
     _mpClose();
   };
@@ -560,59 +560,6 @@
     ].join('');
   }
 
-  // ── Branded prompt/confirm/alert — replaces native browser dialogs ─
-  // Used by blog.js (_blInsertLink), media-picker internals (_mpCopyUrl,
-  // _mpDelete), and anywhere else the app needs a modal input/confirm
-  // that matches the rest of the UI. Same CSS tokens as the picker.
-  window.luDialog = function (opts) {
-    opts = opts || {};
-    return new Promise(function (resolve) {
-      var root = document.createElement('div');
-      root.className = 'lu-dlg-overlay';
-      var style = document.createElement('style');
-      style.textContent = _mpCss();
-      root.appendChild(style);
-
-      var isPrompt  = opts.type === 'prompt';
-      var isConfirm = opts.type === 'confirm';
-      var shell = document.createElement('div');
-      shell.className = 'lu-dlg';
-      shell.innerHTML =
-        (opts.title    ? '<div class="lu-dlg-head">' + _mpEsc(opts.title) + '</div>' : '') +
-        (opts.message  ? '<div class="lu-dlg-body">' + _mpEsc(opts.message) + '</div>' : '') +
-        (isPrompt ? '<div style="padding:0 20px 18px"><input class="lu-dlg-input" type="' + (opts.inputType || 'text') + '" placeholder="' + _mpEsc(opts.placeholder || '') + '" value="' + _mpEsc(opts.defaultValue || '') + '"></div>' : '') +
-        '<div class="lu-dlg-foot">' +
-          (isConfirm || isPrompt ? '<button class="lu-mp-btn-ghost" data-role="cancel">' + _mpEsc(opts.cancelLabel || 'Cancel') + '</button>' : '') +
-          '<button class="' + (opts.danger ? 'lu-mp-btn-danger' : 'lu-mp-btn-primary') + '" data-role="ok">' + _mpEsc(opts.okLabel || 'OK') + '</button>' +
-        '</div>';
-      root.appendChild(shell);
-      document.body.appendChild(root);
-
-      var inp = shell.querySelector('input');
-      if (inp) { inp.focus(); inp.select(); }
-
-      var done = function (val) {
-        try { root.remove(); } catch (e) {}
-        window.removeEventListener('keydown', onKey);
-        resolve(val);
-      };
-      var onKey = function (e) {
-        if (e.key === 'Escape') done(isConfirm ? false : null);
-        if (e.key === 'Enter')  { var okBtn = shell.querySelector('[data-role=ok]'); if (okBtn) okBtn.click(); }
-      };
-      window.addEventListener('keydown', onKey);
-
-      shell.querySelector('[data-role=ok]').onclick = function () {
-        if (isPrompt)  return done(inp ? inp.value : '');
-        if (isConfirm) return done(true);
-        done(true);
-      };
-      var cancelBtn = shell.querySelector('[data-role=cancel]');
-      if (cancelBtn) cancelBtn.onclick = function () { done(isConfirm ? false : null); };
-      root.addEventListener('click', function (e) { if (e.target === root) done(isConfirm ? false : null); });
-    });
-  };
-  window.luPrompt  = function (title, defaultValue, placeholder) { return window.luDialog({ type: 'prompt', title: title, defaultValue: defaultValue, placeholder: placeholder }); };
-  window.luConfirm = function (title, message, opts) { return window.luDialog(Object.assign({ type: 'confirm', title: title, message: message }, opts || {})); };
-  window.luAlert   = function (title, message) { return window.luDialog({ type: 'alert', title: title, message: message }); };
+  // P0-A (2026-08-30): the dialog layer lives in core.js (window.luDialog/luConfirm/luPrompt/luAlert).
+  // media-picker no longer overrides it — the three competing signatures mislabelled 20 confirms (REPORT-0023 UX-011).
 })();

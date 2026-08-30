@@ -356,7 +356,7 @@ window._seoPageSave = async function(id, field, value, inputEl) {
 // route's auth middleware accepts X-API-KEY or JWT, and the underlying
 // services respect Wave-9 context-aware agent routing for notifications.
 window._seoFixOrphan = async function(url) {
-  if (!confirm('Apply all queued link suggestions targeting this page? You only pay for ones that successfully insert.')) return;
+  if (!(await luConfirm('Apply queued link suggestions?', 'Up to 20 queued link suggestions targeting this page will be inserted. Each link that successfully inserts costs 1 credit — you only pay for links that actually go in.', { okLabel: 'Apply links (1 credit each)' }))) return;
   try {
     var d = await _seoApi('POST', '/links/apply-bulk', { target_url: url, mode: 'orphans_first', limit: 20 });
     if (d.success === false) {
@@ -2222,13 +2222,16 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // pages remain OR a chunk makes no progress (guards against a stuck page
   // looping forever). Generation only — does not push to WP.
   window.lgseAeoBulkEnrich = function (btn) {
-    if (!confirm('Enrich all unenriched, crawled pages? Each enriched page costs 1 credit. This generates the AEO data (TL;DR, FAQ, JSON-LD) — you can review and push to WordPress afterwards.')) return;
+    luConfirm('Enrich all pages?', 'Enrich all unenriched, crawled pages? Each enriched page costs 1 credit. This generates the AEO data (TL;DR, FAQ, JSON-LD) — you can review and push to WordPress afterwards.', { okLabel: 'Enrich all (1 credit per page)' })
+      .then(function (ok) { if (ok) _lgseAeoBulkEnrichRun(btn); });
+  };
+  function _lgseAeoBulkEnrichRun(btn) {
     var origLabel = btn ? btn.textContent : '';
     if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
     var totEnriched = 0, totSkipped = 0, totFailed = 0;
     function finish(msg) {
       if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.textContent = origLabel; }
-      if (msg) alert(msg);
+      if (msg) showToast(msg, /fail|error/i.test(msg) ? 'error' : 'info');
       if (typeof lgseLoadAeoArticles === 'function') lgseLoadAeoArticles();
     }
     function runChunk() {
@@ -2251,7 +2254,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       }).catch(function () { finish('Bulk enrich error — please try again.'); });
     }
     runChunk();
-  };
+  }
 
   function lgseLoadAeoSettings() {
     api('GET', '/aeo/settings').then(function (r) {
@@ -2413,12 +2416,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           btn.textContent = orig;
           var msg = (r && (r.message || r.error)) || 'Failed';
           btn.title = msg;
-          alert('Enrichment failed: ' + msg);
+          luAlert('Could not enrich this page', msg);
         }
       }).catch(function (e) {
         btn.disabled = false;
         btn.textContent = orig;
-        alert('Enrichment network error — please retry.');
+        luAlert('Could not enrich this page', 'Network error — please retry.');
       });
       return;
     }
@@ -2748,7 +2751,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
                 + '<div style="font-size:13px;color:var(--lgse-t3);max-width:320px;margin:0 auto 20px">'
                   + 'Set up your AI chatbot to handle visitor questions automatically.'
                 + '</div>'
-                + '<a href="/app/#chatbot" target="_parent" '
+                + '<a href="/app/chatbot" onclick="if(window.nav){window.nav(\'chatbot\');return false;}" '
                   + 'style="background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;display:inline-block">'
                   + 'Set Up Chatbot →'
                 + '</a>'
@@ -2764,16 +2767,16 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     el.innerHTML =
       '<div style="display:grid;grid-template-columns:190px 1fr;gap:14px;margin-bottom:14px">'
         + '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:14px;padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:center">'
-          + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Live Page Health</div>'
+          + '<div style="font-size:10px;font-weight:600;color:var(--lgse-t3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Average page score</div>'
           + '<div id="lgse-main-gauge">' + gauge(0, 120, true) + '</div>'
           + '<div id="lgse-tier" style="font-size:10px;font-weight:600;padding:3px 10px;border-radius:10px;background:rgba(59,130,246,.12);color:#3b82f6;margin-top:10px">Loading…</div>'
           + '<div style="font-size:9.5px;color:var(--lgse-t3);margin-top:6px;text-align:center;max-width:140px;line-height:1.4">Updates in real time as you edit meta tags and content</div>'
         + '</div>'
         + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
-          + dimCard('tech',  'Technical',     'HTTPS, speed, crawl',           '30%', '#EF4444')
-          + dimCard('con',   'Content',       'Quality, structure, meta',      '30%', '#3B82F6')
-          + dimCard('links', 'Internal links', 'Graph, equity, anchors',       '20%', '#F59E0B')
-          + dimCard('serp',  'SERP & CTR',     'Clicks, positions, CTR',       '20%', '#00E5A8')
+          + dimCard('tech',  'Technical',     'HTTPS, speed, crawl',           '#EF4444')
+          + dimCard('con',   'Content',       'Quality, structure, meta',      '#3B82F6')
+          + dimCard('links', 'Internal links', 'Graph, equity, anchors',       '#F59E0B')
+          + dimCard('serp',  'SERP & CTR',     'Clicks, positions, CTR',       '#00E5A8')
         + '</div>'
       + '</div>'
 
@@ -2820,7 +2823,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     }, 2000);
   }
 
-  function dimCard(id, label, hint, weight, color) {
+  function dimCard(id, label, hint, color) {
     return '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">'
       + '<div style="position:relative;width:48px;height:48px;flex-shrink:0">'
         + '<svg width="48" height="48" viewBox="0 0 48 48" style="transform:rotate(-90deg)">'
@@ -2831,8 +2834,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       + '</div>'
       + '<div>'
         + '<div style="font-size:11px;font-weight:600;color:var(--lgse-t1);margin-bottom:2px">' + esc(label) + '</div>'
-        + '<div style="font-size:9px;color:var(--lgse-t3);margin-bottom:4px">' + esc(hint) + '</div>'
-        + '<span style="font-size:9px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--lgse-bg3);color:var(--lgse-t3);font-family:var(--lgse-mono)">' + weight + '</span>'
+        + '<div style="font-size:9px;color:var(--lgse-t3)">' + esc(hint) + '</div>'
       + '</div></div>';
   }
 
@@ -2875,6 +2877,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var indexed = results[3]; var keywords = results[4]; var orphans = results[5];
 
       var auditsArr = (audits && (audits.audits || audits.data)) || (Array.isArray(audits) ? audits : []);
+      // UX-018: placeholder audits (url not an http(s) URL, e.g. "sourdough_pre_order_url")
+      // must never feed the gauge, issues strip or trend. First VALID audit is `latest`.
+      auditsArr = auditsArr.filter(function (a) {
+        var u = a && (a.url || a.target_url || a.site_url) || '';
+        return /^https?:\/\//i.test(String(u).trim());
+      });
       var latest = auditsArr[0] || {};
       // F11 (2026-05-17) — prefer LIVE health_score from /knowledge so the
       // gauge reflects current page state (updates immediately when meta
@@ -2903,7 +2911,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       // Tier label.
       var tier = document.getElementById('lgse-tier');
       if (tier) {
-        var tierName = __nothingScanned ? 'Not scanned yet' : score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Needs work' : 'Critical';
+        var tierName = __nothingScanned ? 'Not scanned yet' : 'Average ' + score + ' · ' + (score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Needs work' : 'Critical');
         tier.textContent = tierName;
         tier.style.color = __nothingScanned ? 'var(--lgse-t3)' : scoreColor(score);
       }
@@ -3207,9 +3215,13 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   window.lgseDoRunAudit = function (url) {
     var btn = document.querySelector('[onclick*="lgseRunAudit"]');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Running...'; }
-    api('POST', '/deep-audit', { url: url }).then(function () {
-      if (typeof window.showToast === 'function') window.showToast('Audit started.', 'success');
+    api('POST', '/deep-audit', { url: url }).then(function (r) {
       if (btn) { btn.disabled = false; btn.textContent = '+ Run new audit'; }
+      if (!(r && (r.success !== false) && !r.error)) {
+        showToast('Could not start the audit: ' + ((r && (r.error || r.message)) || 'unknown'), 'error');
+        return;
+      }
+      showToast('Audit started.', 'success');
       // Add new URL to known sites if absent.
       var sites = (window._lgseSiteList && window._lgseSiteList.length) ? window._lgseSiteList : (window._lgseSites || []);
       var seen = false;
@@ -3604,15 +3616,19 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var rows = (d && (d.keywords || d.data)) || (Array.isArray(d) ? d : []);
       if (!rows.length) return null;
       var totalCost = rows.length;  // 1 credit per check.
-      var msg = 'Check ' + rows.length + ' keyword position' + (rows.length === 1 ? '' : 's') + '?\n\nThis will use ' + totalCost + ' credit' + (totalCost === 1 ? '' : 's') + '.\n\nDaily auto-tracking runs free in the background — only press this for an on-demand refresh.';
-      if (!confirm(msg)) return null;
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking ' + rows.length + '…'; }
-      return Promise.all(rows.map(function (kw) {
-        return api('POST', '/keywords/' + (kw.id || 0) + '/check', { location_code: country }).catch(function () {});
-      }));
+      var msg = 'Check ' + rows.length + ' keyword position' + (rows.length === 1 ? '' : 's') + '? This will use ' + totalCost + ' credit' + (totalCost === 1 ? '' : 's') + '. Daily auto-tracking runs free in the background — only press this for an on-demand refresh.';
+      return luConfirm('Check all keyword positions?', msg, { okLabel: 'Check now (' + totalCost + ' credit' + (totalCost === 1 ? '' : 's') + ')' }).then(function (ok) {
+        if (!ok) return null;
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Checking ' + rows.length + '…'; }
+        return Promise.all(rows.map(function (kw) {
+          return api('POST', '/keywords/' + (kw.id || 0) + '/check', { location_code: country }).catch(function () { return { __failed: true }; });
+        }));
+      });
     }).then(function (r) {
       if (r === null) return;
       if (btn) { btn.disabled = false; btn.textContent = orig || 'Check all'; }
+      var failed = (r || []).filter(function (x) { return x && x.__failed; }).length;
+      if (failed) showToast(failed + ' keyword check' + (failed === 1 ? '' : 's') + " couldn't complete — try again.", 'error');
       if (typeof loadKeywords === 'function') loadKeywords();
     }).catch(function () {
       if (btn) { btn.disabled = false; btn.textContent = orig || 'Check all'; }
@@ -3695,7 +3711,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     api('POST', '/keywords', { keyword: kw, country: country }).then(function () {
       var firstTab = document.querySelector('.lgse-kw-subtab[data-subtab="tracked"]');
       if (firstTab) window.lgseKwSubTab('tracked', firstTab);
-    }).catch(function () {});
+    }).catch(function (e) { showToast("Couldn't add keyword — try again." + ((e && e.message) ? ' (' + e.message + ')' : ''), 'error'); });
   };
 
   // Wave 20c — Suggestions multi-select helpers.
@@ -4011,7 +4027,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   window.lgseDelKw = function (id) {
     if (!id) return;
-    api('DELETE', '/keywords/' + id).then(function () { loadKeywords(); }).catch(function () {});
+    api('DELETE', '/keywords/' + id).then(function () { loadKeywords(); }).catch(function () { showToast("Couldn't remove keyword — try again.", 'error'); });
   };
 
   // ── Tab 4 — Pages (sub-tabs) ───────────────────────────────────────────
@@ -6376,7 +6392,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     });
   };
 
-  // Inline-error helper for the open modal. Replaces native alert().
+  // Inline-error helper for the open modal. Replaces the native browser alert dialog.
   function lgseModalError(msg) {
     var el = document.getElementById('lgse-modal-error');
     if (!el) return;
@@ -7255,11 +7271,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var overlay = document.getElementById('lgse-sarah-overlay');
       if (overlay) overlay.remove();
 
-      var toast = document.createElement('div');
-      toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#13161e;border:1px solid #F59E0B;border-radius:10px;padding:14px 18px;font-size:12px;color:#f0f2ff;z-index:9999;max-width:300px;box-shadow:0 8px 24px rgba(0,0,0,.4)';
-      toast.innerHTML = '<div style="font-weight:600;color:#F59E0B;margin-bottom:4px">✓ Sarah is on it</div><div style="color:#8b90a7;font-size:11px">Content request sent. Check Strategy Room for updates.</div>';
-      document.body.appendChild(toast);
-      setTimeout(function () { toast.remove(); }, 5000);
+      showToast('Sarah is on it — content request sent. Check Strategy Room for updates.', 'info');
     }).catch(function () {
       btn.disabled = false;
       btn.textContent = '✓ Yes, create this content';
@@ -7327,7 +7339,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     api('POST', '/ga/select-property', { property_id: pid }).then(function () {
       var active = document.querySelector('#lgse-ins-subtabs .lgse-subtab.active');
       if (active) active.click();
-    }).catch(function () { alert('Could not switch property. Try again.'); });
+    }).catch(function () { showToast('Could not switch property. Try again.', 'error'); });
   };
 
   function _gaPropSelect(list, current, allowEmpty) {
@@ -7347,10 +7359,10 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   window._gaInstallTracking = function (id) {
     var mid = id || (document.getElementById('ga-mid') && document.getElementById('ga-mid').value) || '';
     mid = (mid || '').trim();
-    if (!mid) { alert('Enter your Measurement ID (G-XXXXXXXXXX).'); return; }
+    if (!mid) { showToast('Enter your Measurement ID (G-XXXXXXXXXX).', 'warning'); return; }
     api('POST', '/ga/tracking', { measurement_id: mid }).then(function () {
       var el = document.getElementById('ga-track'); if (el) _gaTrackingCard(el);
-    }).catch(function (e) { alert((e && e.body && e.body.message) || 'Could not save the tracking ID.'); });
+    }).catch(function (e) { luAlert('Could not save the tracking ID', (e && e.body && e.body.message) || 'Please try again.'); });
   };
 
   // "Website tracking" card — install status + auto-detected ID + manual
@@ -8543,10 +8555,10 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     function handle(d) {
       if (d && d.url) {
         if (popup && !popup.closed) { popup.location.href = d.url; }
-        else { alert('Please allow pop-ups for this site, then click Connect again.'); }
+        else { luAlert('Pop-up blocked', 'Please allow pop-ups for this site, then click Connect again.'); }
       } else {
         if (popup && !popup.closed) popup.close();
-        alert((d && d.message) || 'Google Search Console is not set up on the server yet. Please try again shortly.');
+        luAlert('Could not connect Search Console', (d && d.message) || 'Google Search Console is not set up on the server yet. Please try again shortly.');
       }
     }
     api('GET', '/gsc/auth-url')
@@ -8557,7 +8569,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         if (e && e.body) { handle(e.body); }
         else {
           if (popup && !popup.closed) popup.close();
-          alert('Could not reach the server. Please try again.');
+          luAlert('Could not connect Search Console', 'Could not reach the server. Please try again.');
         }
       });
     // Bulletproof refresh: poll for the popup to close (OAuth finished +
@@ -8671,31 +8683,31 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     fetch(window.location.origin + '/api/seo' + path, { headers: _authHeaders(), cache: 'no-store' })
       .then(function (r) { return r.text(); })
       .then(function (txt) {
-        if (!txt || txt.replace(/\s/g, '').length < 2 || txt.charAt(0) === '{') { alert('No data available for this export yet.'); if (btn) btn.innerHTML = orig; return; }
+        if (!txt || txt.replace(/\s/g, '').length < 2 || txt.charAt(0) === '{') { showToast('No data available for this export yet.', 'info'); if (btn) btn.innerHTML = orig; return; }
         var blob = new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8;' });
         var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = filename;
         document.body.appendChild(a); a.click(); setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 120);
         if (btn) btn.innerHTML = orig;
-      }).catch(function () { alert('Could not export — please try again.'); if (btn) btn.innerHTML = orig; });
+      }).catch(function () { luAlert('Could not export', 'Please try again.'); if (btn) btn.innerHTML = orig; });
   };
 
   window._exportGscCsv = function (btn) {
     var orig = btn ? btn.innerHTML : ''; if (btn) btn.innerHTML = 'Preparing…';
     api('GET', '/gsc/queries').then(function (r) {
       var q = (r && r.queries) || [];
-      if (!q.length) { alert('No Search Console data to export yet. Connect Search Console and run a sync first.'); if (btn) btn.innerHTML = orig; return; }
+      if (!q.length) { showToast('No Search Console data to export yet. Connect Search Console and run a sync first.', 'info'); if (btn) btn.innerHTML = orig; return; }
       var rows = [['Query', 'Clicks', 'Impressions', 'CTR (%)', 'Avg position']];
       q.forEach(function (x) { rows.push([x.query, x.clicks, x.impressions, ((x.ctr || 0) * 100).toFixed(2), x.position || 0]); });
       _dlCsv('search-console-' + _todayStr() + '.csv', rows);
       if (btn) btn.innerHTML = orig;
-    }).catch(function (e) { alert((e && e.body && e.body.message) || 'Could not export Search Console data.'); if (btn) btn.innerHTML = orig; });
+    }).catch(function (e) { luAlert('Could not export Search Console data', (e && e.body && e.body.message) || 'Please try again.'); if (btn) btn.innerHTML = orig; });
   };
 
   window._exportGaCsv = function (btn) {
     var orig = btn ? btn.innerHTML : ''; if (btn) btn.innerHTML = 'Preparing…';
     api('GET', '/ga/report?days=28').then(function (r) {
       var rep = r && r.report;
-      if (!rep) { alert((r && r.message) || 'No Analytics data to export yet.'); if (btn) btn.innerHTML = orig; return; }
+      if (!rep) { showToast((r && r.message) || 'No Analytics data to export yet.', 'info'); if (btn) btn.innerHTML = orig; return; }
       var t = rep.totals || {};
       var rows = [['Section', 'Item', 'Value']];
       rows.push(['Totals', 'Visitors', t.users], ['Totals', 'New visitors', t.new_users], ['Totals', 'Sessions', t.sessions],
@@ -8709,7 +8721,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       });
       _dlCsv('google-analytics-' + _todayStr() + '.csv', rows);
       if (btn) btn.innerHTML = orig;
-    }).catch(function (e) { alert((e && e.body && e.body.message) || 'Could not export Analytics data.'); if (btn) btn.innerHTML = orig; });
+    }).catch(function (e) { luAlert('Could not export Analytics data', (e && e.body && e.body.message) || 'Please try again.'); if (btn) btn.innerHTML = orig; });
   };
 
   // ── Charting (Chart.js, lazy-loaded, themed to the design system) ─────
@@ -9540,6 +9552,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
       // Fetch any missing months.
       var toFetch = Object.keys(monthsNeeded).filter(function (m) { return !window._lgsePipeCalCache.monthsLoaded[m]; });
+      var calLoadFailed = false;
       Promise.all(toFetch.map(function (m) {
         return pipFetch('/connector/content/calendar?month=' + m).then(function (r) {
           if (r && r.success && r.days) {
@@ -9548,8 +9561,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
             });
             window._lgsePipeCalCache.monthsLoaded[m] = true;
           }
-        }).catch(function () {});
+        }).catch(function () { calLoadFailed = true; });
       })).then(function () {
+        if (calLoadFailed) showToast("Couldn't load part of the calendar — try again.", 'error');
         var days = window._lgsePipeCalCache.days;
 
         // Shared chrome — view switcher + Today button + nav row.
@@ -9893,7 +9907,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   };
 
   // Global trampoline for the Pages-tab image regenerate cell.
-  // 2026-05-13 — UX normalization. Native confirm()/alert() dialogs replaced
+  // 2026-05-13 — UX normalization. Native browser confirm/alert dialogs replaced
   // with inline status injected as a small label inside the cell. Click is
   // immediate (no confirm). Loading + error states render in-cell.
   window._lgseRegenImage = function (pageId, pageUrl, pageTitle, el) {

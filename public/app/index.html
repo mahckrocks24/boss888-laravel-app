@@ -2677,7 +2677,6 @@ window.luSwipeToClose = luSwipeToClose;
             <div class="nav-item" onclick="nav('messages')" id="ni-messages"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H2v9a1 1 0 001 1h12l3 2V5z"/><path d="M6 9h8M6 11.5h5"/></svg></span>Messages</div>
       <div class="nav-section">Publishing</div>
       <div class="nav-item" onclick="_bldShowTemplatePicker()" id="ni-wizard"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><path d="M10 3c-2 2-3 4.5-3 7s1 5 3 7M10 3c2 2 3 4.5 3 7s-1 5-3 7"/><path d="M3 10h14"/></svg></span>Website Wizard</div>
-      <div class="nav-item" onclick="nav('builder')" id="ni-builder"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="16" height="16" rx="2"/><path d="M2 7h16"/><path d="M5 4.5h.01M7.5 4.5h.01M10 4.5h.01"/><path d="M5 11h10M5 14h7"/></svg></span>Landing Pages</div>
       <div class="nav-item" onclick="nav('websites')" id="ni-websites"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</div>
       <!-- REMOVED: Pending Actions (ni-governance) — v5.5.2 — duplicated Review Queue (same approvals data via /api/governance/pending alias). Router redirects nav('governance') → nav('approvals'). View panel kept for back-compat deep-links. -->
       <!-- REMOVED: Review Queue (ni-previews) — v5.5.2 — legacy "Action Previews" (Phase 6.5) reading /api/previews which references non-existent `previews` table. Canonical Review Queue is ni-approvals → /api/approvals. Router redirects nav('previews') → nav('approvals'). -->
@@ -2698,7 +2697,6 @@ window.luSwipeToClose = luSwipeToClose;
             <div class="nav-item" onclick="nav('calendar')" id="ni-calendar">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="16" height="14" rx="2"/><path d="M2 9h16M6 2v4M14 2v4"/></svg></span>Calendar</div>
             
-            <div class="nav-item" onclick="nav('blog')" id="ni-blog" data-feature="content_writing"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h12a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M6 7h8M6 10h8M6 13h5"/></svg></span>Blog</div>
             
             
       <div class="nav-section">Hosting</div>
@@ -3143,7 +3141,7 @@ window.luSwipeToClose = luSwipeToClose;
         <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap">
           <div>
             <h2 id="cmd-greeting" style="font-family:var(--fh);font-size:24px;font-weight:800;color:var(--t1);margin:0 0 6px;letter-spacing:-0.02em">Command Center</h2>
-            <p id="cmd-subhead" style="color:var(--t2);font-size:13px;margin:0">Loading your team\'s activity…</p>
+            <p id="cmd-subhead" style="color:var(--t2);font-size:13px;margin:0">Loading your team's activity…</p>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
             <div id="cmd-live-badge" style="display:flex;align-items:center;gap:6px;background:rgba(0,229,168,.1);border:1px solid rgba(0,229,168,.28);color:var(--ac);border-radius:100px;padding:4px 10px;font-size:11px;font-weight:600">
@@ -4383,7 +4381,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.0-mobile-scroll',marketing:'/app/js/marketing.js?v=4.12.0-decomposed',social:'/app/js/social.js?v=3.0.0-r0099',calendar:'/app/js/calendar.js?v=3.0.1-lead1',seo:'/app/js/seo.js?v=empty1-20260830',write:'/app/js/write.js?v=write2-20260829',creative:'/app/js/creative.js?v=ui1-20260829',blog:'/app/js/blog.js?v=1.0.7-btn-feedback',studio:'/app/js/studio.js?v=g1create-20260829b','studio-video':'/app/js/studio-video.js?v=video3-20260829',automation:'/app/js/automation.js?v=1.0.2-meeting-cta',projects:'/app/js/projects.js?v=1.0.1-mutations',mentions:'/app/js/mentions.js?v=1.0.4-progress-bar',infrastructure:'/app/js/infrastructure.js?v=1.9.1-restore1b-20260830'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',marketing:'/app/js/marketing.js?v=4.12.0-decomposed',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=p0c-20260830',write:'/app/js/write.js?v=p0c-20260830',creative:'/app/js/creative.js?v=ui1-20260829',blog:'/app/js/blog.js?v=p0c-20260830',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',automation:'/app/js/automation.js?v=1.0.2-meeting-cta',projects:'/app/js/projects.js?v=p0c-20260830',mentions:'/app/js/mentions.js?v=1.0.4-progress-bar',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4484,20 +4482,20 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <script src="/app/js/auth-refresh.js?v=1.0.1"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
-<script defer src="/app/js/lu-attach-composer.js?v=1.4.4-observe"></script>
-<script defer src="/app/js/core.js?v=2b5-res2-20260830"></script>
-<script defer src="/app/js/manualedit-aiedit.js?v=1.0.0-phaseO"></script>
-<script defer src="/app/js/studio-aiedit-entry.js?v=1.0.0-phaseP"></script>
+<script defer src="/app/js/lu-attach-composer.js?v=p0c-20260830"></script>
+<script defer src="/app/js/core.js?v=p0e-20260830"></script>
+<script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
+<script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=5.4.0">
 <script defer src="/app/js/onboarding.js?v=5.2.0"></script>
 <script defer src="/app/js/onboarding-interview.js?v=1.0.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
-<script defer src="/app/js/media-picker.js?v=4.5.0"></script>
+<script defer src="/app/js/media-picker.js?v=4.6.1-p0e"></script>
 <script defer src="/app/js/domains-commerce.js?v=1.0.0-domains"></script>
-<script defer src="/app/js/business-email.js?v=1.0.1-e4"></script>
+<script defer src="/app/js/business-email.js?v=p0d-20260830"></script>
 <!-- v5.0.1 swap 2026-04-10: old builder.js loads first to provide websites view + non-renderer logic; v5 loads second and overrides editor renderer chain via function declaration hoisting. -->
-<script defer src="/app/js/builder.js?v=7.9.2-wp1-connect"></script>
+<script defer src="/app/js/builder.js?v=7.9.3-p0e"></script>
 
 
 
@@ -4688,8 +4686,8 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <!-- JS in core.js -->
 
 <script defer src="/app/js/messages-ui.js?v=1.1.0-phase6"></script>
-<script defer src="/app/js/arthur-chat.js?v=5.10.0-d1-ws-switch"></script>
-<script defer src="/app/js/chatbot-spa.js?v=1.1.0-r0118"></script>
+<script defer src="/app/js/arthur-chat.js?v=p0c-20260830"></script>
+<script defer src="/app/js/chatbot-spa.js?v=p0d-20260830"></script>
 
 <script>
 /* Block left-edge swipe → browser back. Only the leftmost 20px catches it,
@@ -4961,7 +4959,7 @@ document.addEventListener('wheel', function(e) {
   }
 }, { passive: false });
 </script>
-  <script src="/app/js/workspace-v2.js?v=1.0.5-no-blank" defer></script>
+  <script src="/app/js/workspace-v2.js?v=p0c-20260830" defer></script>
   <script>
   // v1.4.4 — universal attach composer wiring on the four core chat surfaces.
   // The composer self-detects parent flex-direction and inserts a paperclip

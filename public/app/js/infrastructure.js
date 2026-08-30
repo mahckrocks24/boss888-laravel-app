@@ -556,7 +556,7 @@
     var facts = '<div style="display:flex;flex-wrap:wrap;gap:var(--sp-4);margin-top:9px;">' +
       (origin === 'external'
         ? factLine(externalScheme(s) === 'https', externalScheme(s) === 'https' ? 'SSL on your site' : 'No SSL (http)')
-        : factLine(live, live ? 'SSL secured' : 'SSL when live')) +
+        : factLine(live, live ? 'HTTPS included' : 'HTTPS when live')) +
       factLine(hasCustom, hasCustom ? ('Custom domain · ' + s.custom_domain) : 'No custom domain yet') +
       factLine(origin === 'native' || live, tier.label) +
       '</div>';
@@ -664,7 +664,7 @@
     var rows = [
       { k: 'Website', v: live ? 'Live' : (origin === 'external' ? 'Setup incomplete' : 'Draft'), ok: live },
       { k: 'Hosting', v: origin === 'native' || live ? 'Included Hosting' : 'Not set up yet', ok: origin === 'native' || live },
-      { k: 'SSL', v: live ? 'Secured' : 'Activates when live', ok: live },
+      { k: 'HTTPS', v: live ? 'Included with LevelUp hosting' : 'Activates when live', ok: live },
       { k: 'Domain', v: hasCustom ? site.custom_domain : (site.subdomain ? String(site.subdomain).replace(/^https?:\/\//, '') : 'None yet'), ok: !!(hasCustom || site.subdomain) },
       { k: 'Address', v: addr || 'None yet', ok: !!addr }
     ];
@@ -680,7 +680,7 @@
     var rec = null;
     if (origin === 'external' && !live) { rec = { t: 'Complete setup', d: 'Finish bringing this website into LevelUp.', cta: 'Continue setup', act: 'infra-rec-setup' }; }
     else if (!live) { rec = { t: 'Launch this website', d: 'Publish it in the Builder to take it live.', cta: 'Open in Builder', act: 'infra-rec-builder' }; }
-    else if (!hasCustom) { rec = { t: 'Custom domains \u2014 coming soon', d: 'Your site is live on its levelupgrowth.io address with SSL included. Connecting your own domain is not available yet.', cta: 'See details', act: 'infra-rec-domain' }; }
+    else if (!hasCustom) { rec = { t: 'Connect your own domain \u2014 coming soon', d: 'Your site is live on its levelupgrowth.io address with HTTPS included. Pointing a domain you own at this site is not available yet; you can already search for and buy domains under Domains.', cta: 'See details', act: 'infra-rec-domain' }; }
     else if (managedAvailable) { rec = { t: 'Managed Hosting \u2014 coming soon', d: 'A dedicated runtime with automated backups and priority deployment. Not available yet.', cta: 'See details', act: 'infra-rec-hosting' }; }
 
     var recCard = rec ? '<div style="background:var(--ps);border:1px solid var(--pg);border-radius:var(--rg);padding:var(--sp-5);margin-top:var(--sp-4);">' +
@@ -705,7 +705,7 @@
       '<div style="display:grid;grid-template-columns:auto 1fr;gap:10px var(--sp-6);font:400 13.5px var(--fb);">' +
         '<div style="color:var(--t3);">Tier</div><div style="color:var(--t1);">Included with your plan</div>' +
         '<div style="color:var(--t3);">Address</div><div style="color:var(--t1);">' + esc(addr || 'Not set yet') + '</div>' +
-        '<div style="color:var(--t3);">SSL</div><div style="color:var(--t1);">' + (live ? 'Active' : 'Activates when live') + '</div>' +
+        '<div style="color:var(--t3);">HTTPS</div><div style="color:var(--t1);">' + (live ? 'Included with LevelUp hosting' : 'Activates when live') + '</div>' +
         '<div style="color:var(--t3);">Environment</div><div style="color:var(--t1);">Production</div>' +
         '<div style="color:var(--t3);">Status</div><div style="color:var(--t1);">' + (live ? 'Live' : 'Draft') + '</div>' +
       '</div>' +
@@ -1076,8 +1076,7 @@
         Array.prototype.forEach.call(slot2.querySelectorAll('.infra-restore-version'), function (b) {
           b.addEventListener('click', function () {
             var file = b.getAttribute('data-file');
-            var ask = window.luConfirm ? window.luConfirm('Restore version', 'Put this saved version live now? Your current version stays in the list, so you can come back to it.', { okLabel: 'Restore', cancelLabel: 'Keep current' })
-                                       : Promise.resolve(window.confirm('Put this saved version live now?'));
+            var ask = window.luConfirm('Restore version', 'Put this saved version live now? Your current version stays in the list, so you can come back to it.', { okLabel: 'Restore', cancelLabel: 'Keep current' });
             Promise.resolve(ask).then(function (ok) {
               if (!ok) { return; }
               b.disabled = true; b.textContent = 'Restoring…';

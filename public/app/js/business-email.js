@@ -486,8 +486,8 @@
       on('be-suspend', 'click', function () { runAction(_view.domainId, 'suspend-mailbox', { id: id }, function () { go('mailbox', id); }); });
       on('be-restore', 'click', function () { runAction(_view.domainId, 'restore-mailbox', { id: id }, function () { go('mailbox', id); }); });
       on('be-delete', 'click', function () {
-        if (!window.confirm('Request removal of ' + m.address + '?\n\nThis cannot be undone once completed, and mail in the mailbox is lost.')) { return; }
-        runAction(_view.domainId, 'delete-mailbox', { id: id });
+        window.luConfirm('Remove ' + m.address + '?', 'This cannot be undone once completed, and mail in the mailbox is lost.', { okLabel: 'Request removal', cancelLabel: 'Keep mailbox', danger: true })
+          .then(function (ok) { if (!ok) { return; } runAction(_view.domainId, 'delete-mailbox', { id: id }); });
       });
     });
   }

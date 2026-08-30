@@ -448,9 +448,9 @@ window._arthurConfirmLogoChosen = function(arg) {
     if (!el) return;
     var file = el.files && el.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('Logo must be under 2MB.'); return; }
+    if (file.size > 2 * 1024 * 1024) { showToast('Logo must be under 2MB.', 'warning'); return; }
     var allowed = ['image/png','image/jpeg','image/svg+xml','image/webp'];
-    if (allowed.indexOf(file.type) === -1) { alert('Logo must be PNG, JPG, SVG, or WEBP.'); return; }
+    if (allowed.indexOf(file.type) === -1) { showToast('Logo must be PNG, JPG, SVG, or WEBP.', 'warning'); return; }
     var st = document.getElementById('arthur-logo-status');
     if (st) { st.textContent = 'Uploading logo…'; st.style.color = 'var(--t3,#888)'; }
     var fd = new FormData();
@@ -1378,9 +1378,9 @@ window._arthurSkipLogo = function() {
 function _arthurLogoFileChosen(ev) {
     var file = ev.target.files && ev.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { alert('Logo must be under 2MB.'); return; }
+    if (file.size > 2 * 1024 * 1024) { showToast('Logo must be under 2MB.', 'warning'); return; }
     var allowed = ['image/png','image/jpeg','image/svg+xml','image/webp'];
-    if (allowed.indexOf(file.type) === -1) { alert('Logo must be PNG, JPG, SVG, or WEBP.'); return; }
+    if (allowed.indexOf(file.type) === -1) { showToast('Logo must be PNG, JPG, SVG, or WEBP.', 'warning'); return; }
     var st = document.getElementById('arthur-logo-status');
     if (st) { st.textContent = 'Uploading logo…'; st.style.color = 'var(--t3)'; }
     var fd = new FormData();

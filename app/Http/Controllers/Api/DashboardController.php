@@ -209,6 +209,14 @@ class DashboardController
                     }
                 }
 
+                // P0-B (2026-08-30, REPORT-0023 UX-020): the card names the agent the task is assigned to,
+                // falling back to the engine's default only when there is no task.
+                $__cardAgent = $this->agentForEngine($engine);
+                if (!empty($row->task_id)) {
+                    $__assigned = DB::table('tasks')->where('id', $row->task_id)->value('assigned_agents_json');
+                    $__arr = is_string($__assigned) ? (json_decode($__assigned, true) ?: []) : ($__assigned ?: []);
+                    if (is_array($__arr) && !empty($__arr[0])) { $__cardAgent = $this->agentForSlug((string) $__arr[0]); }
+                }
                 return [
                     'id'                  => $row->id,
                     'task_id'             => $row->task_id,
@@ -218,8 +226,8 @@ class DashboardController
                     'sample_titles'       => array_values(array_unique($sampleTitles)),
                     'engine'              => $engine,
                     'action'              => $action,
-                    'label'               => $this->labelFor($engine, $action, $meta),
-                    'agent'               => $this->agentForEngine($engine),
+                    'label'               => $this->labelFor($engine, $action, $meta, $__cardAgent['name'] ?? null),
+                    'agent'               => $__cardAgent,
                     'credit_cost'         => $row->credit_cost ?? 0,
                     'created_at'          => $row->created_at,
                     'age_hours'           => (int) Carbon::parse($row->created_at)->diffInHours(now()),

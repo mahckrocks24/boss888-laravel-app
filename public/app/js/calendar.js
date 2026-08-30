@@ -27,11 +27,8 @@ function _calIsBooking(ev) { return /^(booking|callback)_/.test(_calCat(ev)); }
 function _calTime(ev) { var d = _calDate(_calStart(ev)); if (!d) return ''; if (ev.all_day) return 'All day'; return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
 function _calConfirm(title, message, okLabel, cancelLabel) {
-  try {
-    if (typeof window.luDialog === 'function') return Promise.resolve(window.luDialog({ type: 'confirm', title: title, message: message, okLabel: okLabel, cancelLabel: cancelLabel }));
-    if (typeof luConfirm === 'function') return luConfirm(message, title, okLabel, cancelLabel);
-  } catch (e) {}
-  return Promise.resolve(window.confirm(title + '\n\n' + message));
+  // P0-A (2026-08-30): one dialog layer (core.js luDialog) — no native fallback.
+  return luConfirm(title, message, { okLabel: okLabel, cancelLabel: cancelLabel });
 }
 
 async function _calApi(method, path, body) {

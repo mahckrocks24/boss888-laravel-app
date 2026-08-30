@@ -1336,7 +1336,7 @@
       // Inject after a tick so the modal layout is settled.
       setTimeout(injectV2ModalFields, 30);
     } else {
-      alert('Assign modal not loaded.');
+      showToast('Assign modal not loaded — please refresh the page.', 'error');
     }
   };
 

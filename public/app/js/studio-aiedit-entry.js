@@ -13,8 +13,7 @@
 
   window.studioAiEditPicker = function () {
     if (typeof window.meOpenAiEdit !== 'function') {
-      if (typeof showToast === 'function') showToast('AI editor is still loading — try again in a moment.', 'info');
-      else alert('AI editor is still loading — try again in a moment.');
+      showToast('AI editor is still loading — try again in a moment.', 'info');
       return;
     }
     var host = document.createElement('div');

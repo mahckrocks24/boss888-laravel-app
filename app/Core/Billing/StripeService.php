@@ -5,6 +5,7 @@ namespace App\Core\Billing;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Models\Credit;
+use App\Core\Billing\CreditService;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Core\Audit\AuditLogService;
@@ -667,7 +668,11 @@ class StripeService
             ->latest()
             ->first();
 
-        $credit = Credit::where('workspace_id', $workspaceId)->first();
+        // P0-B (2026-08-30, REPORT-0023 UX-002): read the POOLED balance the sidebar and every engine use
+        // (CreditService::getBalance resolves billing_workspace_id). The raw row of a pooled website
+        // workspace does not exist → the Billing page said "0 / 900" beside the sidebar's "788 / 900".
+        $pool = app(CreditService::class)->getBalance($workspaceId);
+        $credit = (object) ['balance' => (int) ($pool['balance'] ?? 0), 'reserved_balance' => (int) ($pool['reserved'] ?? 0)];
 
         // Best-effort live data from Stripe for trial + cancellation flags.
         $trialEndsAt = null; $cancelAtPeriodEnd = false; $currentPeriodEnd = $sub?->ends_at?->toISOString();

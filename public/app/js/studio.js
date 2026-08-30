@@ -919,7 +919,7 @@
       catch(e){ _toast(e.message, 'error'); } return;
     }
     if (act === 'delete'){
-      var ok = await (window.luConfirm ? window.luConfirm('Delete "' + name + '"?', 'Delete design', 'Delete', 'Cancel') : Promise.resolve(confirm('Delete "' + name + '"?')));
+      var ok = await window.luConfirm('Delete "' + name + '"?', 'Delete design', 'Delete', 'Cancel');
       if (!ok) return;
       try { await _fetchJson('/studio/designs/' + id, { method:'DELETE' }); _toast('Deleted'); _st2LoadDesigns(); }
       catch(e){ _toast(e.message, 'error'); } return;
@@ -2507,10 +2507,8 @@
 
   // Expose themed dialog helpers globally so sibling Studio modules
   // (studio-video.js, etc.) can use them instead of native confirm/prompt.
-  window.luDialog  = _dialog;
-  window.luConfirm = _stConfirm;
-  window.luPrompt  = _stPrompt;
-  window.luAlert   = _stAlert;
+  // P0-A (2026-08-30): no longer exported — core.js owns window.luDialog/luConfirm/luPrompt/luAlert, which
+  // accept Studio's (message, opts) order too. Studio-internal callers keep _dialog/_stConfirm/_stPrompt/_stAlert.
 
   function _getOrCreateHost() {
     var parent = _rootEl || document.getElementById('studio-root') || document.body;
@@ -2762,7 +2760,7 @@
               '<div data-fmt="jpg">JPG</div>' +
             '</div>' +
           '</div>' +
-          '<button class="st-btn-primary" id="st-publish-btn">Publish</button>' +
+          /* P0-B (2026-08-30, REPORT-0023 UX-005): the Publish button was a toast stub ("ships in Phase 5") — removed until it does something. Download is the real export. */
         '</div>' +
       '</div>'
     );
@@ -3368,9 +3366,7 @@
     document.getElementById('st-redo').onclick = _stRedo;
 
     document.getElementById('st-resize-btn').onclick = _stOpenResizeModal;
-    document.getElementById('st-publish-btn').onclick = function(){
-      _toast('Publish to Social ships in Phase 5.', 'info');
-    };
+    // P0-B: no stub Publish handler — the button is gone until Publish genuinely operates.
 
     // Download dropdown
     var dlBtn  = document.getElementById('st-download-btn');
@@ -3778,7 +3774,7 @@
         '</div>';
       h.querySelectorAll('.st-tpl-thumb').forEach(function(n){
         n.onclick = async function(){
-          var ok = await (window.luConfirm ? window.luConfirm('Apply this template? Your current design will be replaced.', 'Apply template', 'Apply', 'Cancel') : Promise.resolve(confirm('Apply template?')));
+          var ok = await window.luConfirm('Apply this template? Your current design will be replaced.', 'Apply template', 'Apply', 'Cancel');
           if (!ok) return;
           _stApplyTemplate(n.getAttribute('data-slug'), n.getAttribute('data-name'));
         };
@@ -4780,7 +4776,7 @@
   // ── Exit handling ─────────────────────────────────────────
   function _stRequestExit(){
     if (EDT.dirty) {
-      var ok = window.luConfirm ? window.luConfirm('Unsaved changes. Leave anyway?', 'Unsaved changes', 'Leave', 'Stay') : Promise.resolve(confirm('Unsaved changes. Leave anyway?'));
+      var ok = window.luConfirm('Unsaved changes. Leave anyway?', 'Unsaved changes', 'Leave', 'Stay');
       Promise.resolve(ok).then(function(confirmed){ if (confirmed) _stTeardownEditor(); });
     } else {
       _stTeardownEditor();

@@ -82,8 +82,11 @@ class ApprovalController
         $approvedWeek    = $base()->where('status', 'approved')->where('decided_at', '>=', $weekAgo)->count();
 
         // Avg response time (hours) on decided approvals in the last 30 days
+        // P0-B (2026-08-30, REPORT-0023 UX-022): only the customer's own decisions — system expiries
+        // carry a decided_at too and made "your average response" a fiction.
         $avgRow = $base()
             ->whereNotNull('decided_at')
+            ->whereIn('status', ['approved', 'rejected'])
             ->where('decided_at', '>=', now()->subDays(30))
             ->selectRaw('AVG(TIMESTAMPDIFF(MINUTE, created_at, decided_at)) as m')
             ->first();

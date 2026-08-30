@@ -214,7 +214,7 @@ function _socComposer(opts) {
   ta.addEventListener('input', refreshCount); bd.querySelector('#sp-pl').addEventListener('change', refreshCount); refreshCount();
 
   bd.querySelector('#sp-ai').onclick = async function(){
-    var topic = ta.value.trim() || await luPrompt('What should the post be about?', 'Draft with AI', '');
+    var topic = ta.value.trim() || await luPrompt('Draft with AI', '', 'What should the post be about?');
     if (!topic) return;
     var b = this; b.disabled = true; b.textContent = 'Drafting…';
     try {
@@ -290,7 +290,7 @@ function _socComposer(opts) {
 window.socialNewPost = function(opts) { _socComposer(opts || {}); };
 
 window.socialGenerateWithAI = async function() {
-  var topic = await luPrompt('What should the post be about?', 'Generate a post with AI', '');
+  var topic = await luPrompt('Generate a post with AI', '', 'What should the post be about?');
   if (!topic) return;
   var platform = 'instagram';
   showToast('Drafting with AI…', 'info');
@@ -453,7 +453,18 @@ window._svConnectPlatform = async function(platform){
 (function(){
   var params = new URLSearchParams(window.location.search);
   ['facebook','instagram','linkedin'].forEach(function(p){
-    if (params.get(p + '_connected') === '1') { showToast(_SOC_LABEL[p] + ' connected.', 'success'); history.replaceState({}, '', window.location.pathname); }
+    if (params.get(p + '_connected') === '1') {
+      history.replaceState({}, '', window.location.pathname);
+      // P0 (2026-08-30): a URL flag is not proof — confirm an active account for this platform exists before saying "connected".
+      (function (plat) {
+        _socApi('GET', '/social/accounts').then(function (res) {
+          var list = Array.isArray(res) ? res : (res && res.accounts) || [];
+          var hit = list.some(function (a) { return a && String(a.platform || '').toLowerCase() === plat && (a.status || 'active') === 'active'; });
+          if (hit) showToast(_SOC_LABEL[plat] + ' connected.', 'success');
+          else showToast(_SOC_LABEL[plat] + ' did not finish connecting — no active account was saved. Please try again.', 'warning');
+        }).catch(function (e) { showToast('Could not confirm the ' + _SOC_LABEL[plat] + ' connection: ' + (e && e.message ? e.message : 'unknown'), 'warning'); });
+      })(p);
+    }
     if (params.get(p + '_error')) { showToast(_SOC_LABEL[p] + ' error: ' + params.get(p + '_error'), 'error'); history.replaceState({}, '', window.location.pathname); }
   });
 })();
