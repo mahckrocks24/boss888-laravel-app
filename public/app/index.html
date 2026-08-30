@@ -194,6 +194,12 @@
 .form-input,.form-select,.cr-input,.cr-select,.ob-quiz-input,.st-dlg-input,.lgse-dialog-input,.arthur-input{min-height:44px;border-radius:var(--r);font-family:var(--fb)}
 .form-input:focus-visible,.form-select:focus-visible,.cr-input:focus-visible,.cr-select:focus-visible,.arthur-input:focus-visible{outline:2px solid var(--p);outline-offset:1px}
 
+/* P5 (2026-08-30): the nav drawer's OPEN state is authoritative at every width below the desktop layout -
+   a later rule was winning over the <=1023 block and the drawer never opened on tablets. */
+@media (max-width: 1023px) {
+  .sidebar.mob-open { transform: translateX(0) !important; }
+  .lu-mob-overlay.show { display: block !important; }
+}
 /* Light Theme */
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -4613,7 +4619,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 
 <script defer src="/app/js/messages-ui.js?v=1.2.0-p1u2"></script>
 <script defer src="/app/js/sarah.js?v=1.2.4-p5"></script>
-<script defer src="/app/js/basic.js?v=1.0.3-p3u2"></script>
+<script defer src="/app/js/basic.js?v=1.0.4-p5b"></script>
 <script defer src="/app/js/arthur-chat.js?v=p0c-20260830"></script>
 <script defer src="/app/js/chatbot-spa.js?v=p0d-20260830"></script>
 

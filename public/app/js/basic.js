@@ -78,6 +78,7 @@
     var body = root.querySelector('#bs-body'); skel(body, 2);
     Promise.all([api('GET', 'approvals?status=pending&per_page=20'), api('GET', 'calendar/events'), api('GET', 'social/accounts'), api('GET', 'seo/gsc/status'), api('GET', 'tasks')])
       .then(function (rs) {
+        if (!rs[0].ok) { throw new Error('approvals ' + rs[0].status); }
         body.innerHTML = '';
         var appr = (rs[0].json && rs[0].json.items) || [];
         var s1 = sec('Waiting for your OK', appr.length, appr.length ? 'Each of these was proposed by Sarah. Approve to let the team run it, or reject with a reason so she adjusts.' : null); body.appendChild(s1);
@@ -145,6 +146,7 @@
     var body = root.querySelector('#bs-body'); skel(body, 3);
     var acts = root.querySelector('.bs-acts'); acts.appendChild(btn('Ask Sarah how we did', 'primary', function () { askSarah('How did we do this week, and what should we do next?'); })); acts.appendChild(btn('Open in Advanced', 'quiet', function () { openAdvanced('command'); }));
     Promise.all([api('GET', 'dashboard/overview'), api('GET', 'seo/knowledge'), api('GET', 'seo/gsc/status'), api('GET', 'calendar/events')]).then(function (rs) {
+      if (!rs[0].ok) { throw new Error('overview ' + rs[0].status); }   // P5: a failed primary source is a failure, never zeros
       body.innerHTML = ''; var d = rs[0].json || {}; var s = d.stats || {}; var k = rs[1].json || {}; var gsc = !!(rs[2].json && rs[2].json.connected);
       var evs = Array.isArray(rs[3].json) ? rs[3].json : []; var confirmed = evs.filter(function (e) { return /_confirmed$/.test(String(e.category || '')); }).length; var pendingB = evs.filter(function (e) { return /_pending$/.test(String(e.category || '')); }).length;
       var m = '<span class="bs-tag measured">Measured</span>';
@@ -179,6 +181,7 @@
     var body = root.querySelector('#bs-body'); skel(body, 2);
     var acts = root.querySelector('.bs-acts'); acts.appendChild(btn('Ask Sarah to change something', 'primary', function () { askSarah('On my website, please change '); })); acts.appendChild(btn('Open in Advanced', 'quiet', function () { openAdvanced('websites'); }));
     api('GET', 'websites').then(function (r) {
+      if (!r.ok) { throw new Error('websites ' + r.status); }
       body.innerHTML = ''; var sites = (r.json && (r.json.websites || r.json.data)) || []; var usage = (r.json && r.json.usage) || {};
       if (!sites.length) { var e = empty('No website yet', 'Ask Sarah to build one — she\'ll ask a few questions and Arthur, her website specialist, does the rest.'); e.appendChild(btn('Ask Sarah to build my website', 'primary', function () { askSarah('Please build a website for my business.'); })); body.appendChild(e); return; }
       sites.forEach(function (sd) {
@@ -218,6 +221,7 @@
     var body = root.querySelector('#bs-body'); skel(body, 2);
     var acts = root.querySelector('.bs-acts'); acts.appendChild(btn('Ask Sarah about a customer', 'primary', function () { askSarah('Tell me about my newest enquiries and who I should follow up with.'); })); acts.appendChild(btn('Open in Advanced', 'quiet', function () { openAdvanced('crm'); }));
     Promise.all([api('GET', 'crm/leads?per_page=50'), api('GET', 'calendar/events')]).then(function (rs) {
+      if (!rs[0].ok) { throw new Error('leads ' + rs[0].status); }
       body.innerHTML = ''; var lj = rs[0].json || {}; var leads = Array.isArray(lj) ? lj : (lj.leads || lj.data || lj.items || []);
       var evs = Array.isArray(rs[1].json) ? rs[1].json : [];
       var newLeads = leads.filter(function (l) { return String(l.status || '') === 'new'; });
@@ -242,6 +246,7 @@
     var body = root.querySelector('#bs-body'); skel(body, 3);
     var acts = root.querySelector('.bs-acts'); acts.appendChild(btn('Advanced settings', 'quiet', function () { openAdvanced('settings'); }));
     Promise.all([api('GET', 'auth/me'), api('GET', 'workspace/status'), api('GET', 'workspace/brand'), api('GET', 'billing/status')]).then(function (rs) {
+      if (!rs[0].ok || !rs[1].ok) { throw new Error('account ' + rs[0].status + '/' + rs[1].status); }
       body.innerHTML = ''; var me = (rs[0].json && rs[0].json.user) || {}; var ws = rs[1].json || {}; var w = ws.workspace || {}; var brand = rs[2].json || {}; var bill = rs[3].json || {};
       // You
       var s1 = sec('You', null); body.appendChild(s1); var f1 = document.createElement('div'); f1.className = 'bs-2'; s1.appendChild(f1);
