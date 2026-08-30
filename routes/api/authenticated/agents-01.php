@@ -2749,6 +2749,33 @@ $withCorr = function (array $meta) use ($corr) {
                                         }
                                     }
                                 }
+                                // P2-U2c (2026-08-30): the owner wrote the title WITHOUT quotes. Same rule, no
+                                // quotes required: exactly one of this workspace's article titles contained in the
+                                // message (normalised) is the target, whatever id the model guessed.
+                                if ($__valid) {
+                                    $__normMsg = strtolower(trim(preg_replace('/\s+/', ' ', preg_replace('/[^\p{L}\p{N} ]+/u', ' ', (string) $content)) ?? ''));
+                                    if ($__normMsg !== '') {
+                                        $__hits = [];
+                                        foreach (\Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->whereNull('deleted_at')
+                                                     ->orderByDesc('id')->limit(300)->get(['id', 'title']) as $__row) {
+                                            $__nt = strtolower(trim(preg_replace('/\s+/', ' ', preg_replace('/[^\p{L}\p{N} ]+/u', ' ', (string) $__row->title)) ?? ''));
+                                            if ($__nt !== '' && mb_strlen($__nt) >= 8 && str_contains($__normMsg, $__nt)) $__hits[(int) $__row->id] = $__nt;
+                                        }
+                                        if (count($__hits) > 1) {   // a title that appears only inside a longer matched title is not a second candidate
+                                            foreach ($__hits as $__i => $__t) { foreach ($__hits as $__j => $__t2) {
+                                                if ($__i === $__j || $__t === $__t2 || !str_contains($__t2, $__t)) continue;
+                                                if (substr_count($__normMsg, $__t) <= substr_count($__normMsg, $__t2)) unset($__hits[$__i]);
+                                                break;
+                                            } }
+                                        }
+                                        if (count($__hits) === 1 && (int) array_key_first($__hits) !== $__aid) {
+                                            \Illuminate\Support\Facades\Log::info('[SarahChat] publish_article: the article the owner named outranks the model\'s article_id', [
+                                                'workspace_id' => $wsId, 'claimed_id' => $__aid, 'resolved_id' => (int) array_key_first($__hits),
+                                            ]);
+                                            $ctParams['article_id'] = $__aid = (int) array_key_first($__hits);
+                                        }
+                                    }
+                                }
                                 if (! $__valid) {
                                     // 2026-07-23 — the destructive two-turn flow puts the
                                     // title in turn 1 ("Publish the draft 'X'") and the

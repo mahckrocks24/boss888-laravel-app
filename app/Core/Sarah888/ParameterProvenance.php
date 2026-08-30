@@ -48,13 +48,50 @@ final class ParameterProvenance
      * @param  array<int,string> $required
      * @return array{provenance: array<string,string>, unsafe: array<int,string>}
      */
+    /**
+     * P2-U2 (2026-08-30): the owner's own words naming an article beat any id the model carried over.
+     * Returns ['article_id' => <id>] when the message contains exactly one article title of the workspace
+     * (normalised containment, unique), otherwise []. Deterministic: no ranking, no partial matches.
+     */
+    public function bindFromOwnerWords(ToolIntent $intent, array $required): array
+    {
+        $bound = [];
+        $msg = $this->norm((string) ($intent->ownerMessage ?? ''));
+        if ($msg === '' || !in_array('article_id', $required, true)) return $bound;
+        try {
+            $rows = DB::table('articles')->where('workspace_id', $intent->workspaceId)
+                ->whereNull('deleted_at')->orderByDesc('id')->limit(300)->get(['id', 'title']);
+            $hits = [];
+            foreach ($rows as $row) {
+                $t = $this->norm((string) $row->title);
+                if ($t !== '' && mb_strlen($t) >= 8 && str_contains($msg, $t)) $hits[(int) $row->id] = $t;
+            }
+            // A shorter title that appears ONLY as part of a longer matched title is not a second candidate;
+            // if the owner wrote the shorter one on its own as well, both were named → ambiguous → no binding.
+            if (count($hits) > 1) {
+                foreach ($hits as $id => $t) {
+                    foreach ($hits as $id2 => $t2) {
+                        if ($id === $id2 || $t === $t2 || !str_contains($t2, $t)) continue;
+                        $standalone = substr_count($msg, $t) > substr_count($msg, $t2);
+                        if (!$standalone) { unset($hits[$id]); }
+                        break;
+                    }
+                }
+            }
+            if (count($hits) === 1) $bound['article_id'] = (string) array_key_first($hits);
+        } catch (\Throwable $e) { /* never bind on a failed lookup */ }
+        return $bound;
+    }
+
     public function classify(ToolIntent $intent, array $required): array
     {
         $msg     = $this->norm((string) ($intent->ownerMessage ?? ''));
         $history = $this->norm($this->conversationText($intent));
+        $bound   = $this->bindFromOwnerWords($intent, $required);
 
         $prov = [];
         foreach ($required as $p) {
+            if (isset($bound[$p])) { $prov[$p] = self::EXPLICIT; continue; }   // P2-U2: named by the owner
             $v = $intent->parameters[$p] ?? null;
             if ($v === null || $v === '' || !is_scalar($v)) { $prov[$p] = self::MISSING; continue; }
 

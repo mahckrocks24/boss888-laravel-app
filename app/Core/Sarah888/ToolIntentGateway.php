@@ -126,6 +126,15 @@ final class ToolIntentGateway
         // everything would be insufferable and guessing a table costs nothing.
         if ($this->costsOrChanges($cap, $intent)) {
             $pp = app(ParameterProvenance::class);
+            // P2-U2 (2026-08-30): an article the owner named in this turn overrides a carried-over id.
+            $bound = $pp->bindFromOwnerWords($intent, $cap['required_parameters']);
+            foreach ($bound as $bp => $bv) {
+                if ((string) ($intent->parameters[$bp] ?? '') !== (string) $bv) {
+                    \Illuminate\Support\Facades\Log::info('sarah888.provenance.bound_from_owner_words', ['param' => $bp, 'model' => $intent->parameters[$bp] ?? null, 'bound' => $bv, 'ws' => $intent->workspaceId]);
+                    $intent = new ToolIntent($intent->capabilityId, $intent->workspaceId, array_merge($intent->parameters, [$bp => $bv]),
+                        $intent->objective, $intent->conversationId, $intent->executionId, $intent->entityType, $intent->entityId, $intent->requestedBy, $intent->ownerMessage);
+                }
+            }
             $seen = $pp->classify($intent, $cap['required_parameters']);
             if ($seen['unsafe'] !== []) {
                 return $sim(ToolResult::refused($intent->capabilityId,
