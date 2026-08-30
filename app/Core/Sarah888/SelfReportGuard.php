@@ -235,12 +235,14 @@ class SelfReportGuard
         }
         if (!$bits) return 'To be exact ' . $scope . ': the action ledger records no changes.';
 
-        $line = 'To be exact, ' . $scope . ' ' . implode('; ', $bits) . '.';
+        // One sentence: a later guard that rewrites this sentence takes the credit clause with it (P6-f, 2026-08-30 —
+        // before, "That consumed 5 credits on completed work." survived alone under "nothing has actually run").
+        $line = 'To be exact, ' . $scope . ' ' . implode('; ', $bits);
         if ($t['credits_spent'] > 0) {
-            $line .= ' That consumed ' . $t['credits_spent'] . ' credit'
-                   . ($t['credits_spent'] === 1 ? '' : 's') . ' on completed work.';
+            $line .= ', which consumed ' . $t['credits_spent'] . ' credit'
+                   . ($t['credits_spent'] === 1 ? '' : 's') . ' on completed work';
         }
-        return $line;
+        return $line . '.';
     }
 
     /** Up to three action names, so the count is checkable rather than asserted. */

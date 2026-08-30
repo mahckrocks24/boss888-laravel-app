@@ -366,7 +366,7 @@ $withCorr = function (array $meta) use ($corr) {
         $__spendTurn = ['authorized' => false, 'reason' => 'not assessed', 'classification' => 'unknown'];
         $__spendHeld = [];
         try {
-            $__spendTurn = app(\App\Core\Sarah888\SpendPolicy::class)->assessTurn((string) $content);
+            $__spendTurn = app(\App\Core\Sarah888\SpendPolicy::class)->assessTurnInConversation((string) $content, (int) $wsId);
             // Slice 1E.2 — publish the assessment to the request so EVERY paid
             // creation path sees it, including the router's WriteService calls
             // which never reach the create_tasks loop below.
@@ -1032,7 +1032,7 @@ $withCorr = function (array $meta) use ($corr) {
                 // came back ANALYSIS and the turn was composed WITHOUT tools ("you are NOT creating
                 // or queueing work on this turn"). Sarah then said "kicking off now" with nothing
                 // queued. A turn that commissions or authorises work is never analytical.
-                $__turnShape = app(\App\Core\Sarah888\SpendPolicy::class)->assessTurn((string) $__ownerMessage);
+                $__turnShape = $__spendTurn ?? app(\App\Core\Sarah888\SpendPolicy::class)->assessTurn((string) $__ownerMessage);
                 $__isWorkTurn = !empty($__turnShape['authorized'])
                     || in_array($__turnShape['classification'] ?? '', ['directive', 'directive-question', 'authorisation'], true);
                 if ($__isWorkTurn) {
@@ -2497,6 +2497,9 @@ $withCorr = function (array $meta) use ($corr) {
                     };
                     $humanizeTaskFail = function (\Throwable $e): string {
                         $m = strtolower($e->getMessage());
+                        if (str_contains($m, 'uncommissioned_turn')) {
+                            return "I need you to tell me to go ahead first";
+                        }
                         if (str_contains($m, 'no capability') || str_contains($m, 'not supported') || str_contains($m, 'no handler')) {
                             return "that action isn't available yet";
                         }
@@ -2576,8 +2579,8 @@ $withCorr = function (array $meta) use ($corr) {
                     if (!empty($__shapeIsExecutive) && !empty($createTasks)) {
                         $__turnClass = '';
                         try {
-                            $__turnClass = (string) (app(\App\Core\Sarah888\SpendPolicy::class)
-                                ->assessTurn($__ownerMessage)['classification'] ?? '');
+                            $__turnClass = (string) (($__spendTurn ?? app(\App\Core\Sarah888\SpendPolicy::class)
+                                ->assessTurn($__ownerMessage))['classification'] ?? '');
                         } catch (\Throwable $__tcErr) {
                             // Never silent again: a gate that cannot read the turn must say so.
                             \Illuminate\Support\Facades\Log::warning('[Sarah888] work gate could not classify the turn: '
@@ -2895,9 +2898,43 @@ $withCorr = function (array $meta) use ($corr) {
                                         $__pgWs = (int) \Illuminate\Support\Facades\DB::table('pages')->join('websites', 'websites.id', '=', 'pages.website_id')
                                             ->where('pages.id', (int) $payload['page_id'])->where('websites.workspace_id', $wsId)->whereNull('websites.deleted_at')->value('pages.website_id');
                                         if ($__pgWs <= 0) { unset($payload['page_id']); }
-                                        elseif (empty($payload['website_id'])) { $payload['website_id'] = $__pgWs; }
                                     }
                                     $__named = $__tss->websiteNamesMentioned((int) $wsId, (string) $content);
+                                    // P6-c (2026-08-30, RISK-0105): a page id the MODEL chose may pin the website only when there is
+                                    // nothing to choose (one site) or the owner named that site. Otherwise the id is a guess: drop it
+                                    // and let the resolver ask by website name. (Before: page 722 → website 452 was pinned silently
+                                    // while the reply asked "which homepage?", and the edit ran on the wrong site.)
+                                    if (!empty($payload['page_id']) && empty($payload['website_id'])) {
+                                        $__pgSite = (int) \Illuminate\Support\Facades\DB::table('pages')->where('id', (int) $payload['page_id'])->value('website_id');
+                                        $__namedIds = array_map(fn ($n) => (int) ($n['id'] ?? 0), $__named);
+                                        if (count($__wsSites) === 1 || (count($__named) === 1 && in_array($__pgSite, $__namedIds, true))) {
+                                            $payload['website_id'] = $__pgSite;
+                                        } else {
+                                            \Illuminate\Support\Facades\Log::info('[Sarah888] RISK-0105 P6-c: model-chosen page_id dropped — workspace has several websites and none was named', ['ws' => $wsId, 'page_id' => $payload['page_id'], 'page_site' => $__pgSite]);
+                                            unset($payload['page_id']);
+                                        }
+                                    }
+                                    // P6-d (2026-08-30, RISK-0105): a website_id the MODEL supplied is the owner's choice only when the
+                                    // owner named that website in this message, or the workspace has a single site. Otherwise it is a
+                                    // guess — strip it (and any page_id) so the deterministic resolver decides from the conversation's
+                                    // active target, or asks by website name. (Before: the model sent website_id 452 + page_id 722 on a
+                                    // two-site workspace, the edit ran on Cafe Two while the reply asked "which homepage?".)
+                                    if (!empty($payload['website_id']) && count($__wsSites) > 1) {
+                                        $__namedIds2 = array_map(fn ($n) => (int) ($n['id'] ?? 0), $__named);
+                                        if (!(count($__named) === 1 && in_array((int) $payload['website_id'], $__namedIds2, true))) {
+                                            \Illuminate\Support\Facades\Log::info('[Sarah888] RISK-0105 P6-d: model-supplied website_id stripped — several websites, none named by the owner', ['ws' => $wsId, 'website_id' => $payload['website_id'], 'page_id' => $payload['page_id'] ?? null]);
+                                            unset($payload['website_id'], $payload['page_id']);
+                                        }
+                                    }
+                                    // P6-h: this turn only ANSWERED Sarah's website question — the work is the owner's original request.
+                                    if (!empty($__spendTurn['clarify_answer']) && !empty($__spendTurn['original_text'])) {
+                                        $__orig = (string) $__spendTurn['original_text'];
+                                        $__siteNote = count($__named) === 1 ? ' (Website: ' . $__named[0]['name'] . ')' : '';
+                                        if (isset($payload['command']) || $taskAction === 'ai_builder_action') { $payload['command'] = $__orig . $__siteNote; }
+                                        if (isset($payload['user_request'])) { $payload['user_request'] = $__orig; }
+                                        if (isset($payload['title']) && count($__named) === 1 && trim((string) $payload['title']) === trim((string) $__named[0]['name'])) { $payload['title'] = mb_substr($__orig, 0, 80); }
+                                        \Illuminate\Support\Facades\Log::info('[Sarah888] P6-h: task built from the owner\'s original request after a website answer', ['ws' => $wsId, 'action' => $taskAction]);
+                                    }
                                     $__ctx = [];
                                     if (count($__named) === 1) { $__ctx['explicit_name'] = $__named[0]['name']; }
                                     $__toolId = 'builder.' . ($taskAction === 'ai_builder_action' ? 'edit_page_with_arthur' : $taskAction);
@@ -2907,6 +2944,8 @@ $withCorr = function (array $meta) use ($corr) {
                                         \Illuminate\Support\Facades\Log::warning('[Sarah888] RISK-0105 task-path CLARIFY — builder task not created', ['ws' => $wsId, 'action' => $taskAction, 'reason' => $__clar['reason'] ?? null]);
                                         $reply = (string) ($__clar['error'] ?? 'Which website would you like me to update?');
                                         $__clarifyAsked = true;
+                                        // P6-g: remember the question so the owner's one-line answer ("Cafe Two please") completes THIS request.
+                                        try { \Illuminate\Support\Facades\Cache::put(\App\Core\Sarah888\SpendPolicy::pendingClarifyKey((int) $wsId), ['action' => $taskAction, 'asked_at' => time(), 'owner_text' => (string) $content], now()->addMinutes(15)); } catch (\Throwable $__pce) {}
                                         continue;
                                     }
                                     // Pinned website: a page_id from another site of this workspace is still a guess.
@@ -3024,6 +3063,7 @@ $withCorr = function (array $meta) use ($corr) {
                             // free work is untouched. Autonomy on genuine work
                             // requests is preserved — this fires only when the
                             // turn asked for information rather than for work.
+                            $__heldThisTask = false;
                             try {
                                 $__sg = app(\App\Core\Sarah888\SpendPolicy::class)
                                     ->gate([
@@ -3035,6 +3075,7 @@ $withCorr = function (array $meta) use ($corr) {
                                     $createPayload['requires_approval'] = true;
                                     $createPayload['auto_approve']      = false;
                                     $__spendHeld[] = ['credit_cost' => $createPayload['credit_cost'] ?? 0];
+                                    $__heldThisTask = true;
                                 }
                             } catch (\Throwable $__sge) {
                                 // Fail CLOSED on a paid task: if the gate cannot
@@ -3166,12 +3207,15 @@ $withCorr = function (array $meta) use ($corr) {
                             $agentKey = ucfirst($taskAgent);
                             $taskSummaryByAgent[$agentKey] = ($taskSummaryByAgent[$agentKey] ?? 0) + 1;
 
+                            $__heldThisTask = false;
                             \Illuminate\Support\Facades\Log::info("[SarahChat] Task created", [
                                 'task_id' => $newTask->id, 'agent' => $taskAgent,
                                 'engine' => $taskEngine, 'action' => $taskAction,
                             ]);
                         } catch (\Throwable $taskErr) {
                             \Illuminate\Support\Facades\Log::warning("[SarahChat] Task creation failed: " . $taskErr->getMessage());
+                            // P6-g: nothing was held if nothing was created — withdraw the disclosure entry for this task.
+                            if (!empty($__heldThisTask)) { array_pop($__spendHeld); }
                             // 2026-06-10 — a unique-constraint collision means this
                             // exact task is already queued/running. Treat as a
                             // graceful dedupe, NOT a raw-SQL "failed to create".

@@ -139,6 +139,40 @@ class SpendPolicy
         }
         return false;
     }
+    /** Cache key of the target question Sarah is waiting on for this conversation. RISK-0105 / P6-g. */
+    public static function pendingClarifyKey(int $wsId, string $agentSlug = 'sarah'): string
+    {
+        return 'sarah:clarify:ws' . $wsId . ':' . $agentSlug;
+    }
+
+    /**
+     * assessTurn() plus one conversational rule (P6-g, 2026-08-30): when Sarah has just asked the owner WHICH
+     * WEBSITE to act on (task-path CLARIFY), an answer that names exactly one of the workspace's websites completes
+     * the work the owner already commissioned — it inherits that commission instead of reading as a bare statement.
+     * The pending question is consumed so it cannot authorise anything later.
+     */
+    public function assessTurnInConversation(string $userMessage, int $wsId, string $agentSlug = 'sarah'): array
+    {
+        $turn = $this->assessTurn($userMessage);
+        if ($wsId <= 0 || !empty($turn['authorized'])) return $turn;
+        try {
+            $key = self::pendingClarifyKey($wsId, $agentSlug);
+            $pending = \Illuminate\Support\Facades\Cache::get($key);
+            if (!is_array($pending)) return $turn;
+            $named = app(\App\Core\Orchestration\ToolSchemaService::class)->websiteNamesMentioned($wsId, $userMessage);
+            if (count($named) !== 1) return $turn;
+            \Illuminate\Support\Facades\Cache::forget($key);
+            \Illuminate\Support\Facades\Log::info('[Sarah888] P6-g: owner answered the website question — turn inherits the original commission', [
+                'ws' => $wsId, 'website' => $named[0]['name'] ?? null, 'original_action' => $pending['action'] ?? null, 'was' => $turn['classification'] ?? null]);
+            return ['specifies_action' => true, 'authorized' => true,
+                    'reason' => 'the owner answered which website — completing work they had already asked for',
+                    'classification' => 'directive', 'clarify_answer' => true,
+                    'original_text' => (string) ($pending['owner_text'] ?? '')];
+        } catch (\Throwable $e) {
+            return $turn;
+        }
+    }
+
     public function assessTurn(string $userMessage): array
     {
         $__specifies = $this->specifiesAction($userMessage);

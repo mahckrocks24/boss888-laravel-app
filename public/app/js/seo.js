@@ -4027,7 +4027,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   window.lgseDelKw = function (id) {
     if (!id) return;
-    api('DELETE', '/keywords/' + id).then(function () { loadKeywords(); }).catch(function () { showToast("Couldn't remove keyword — try again.", 'error'); });
+    // P6-c: removing a tracked phrase is destructive — confirm through the design system first.
+    var row = document.querySelector('[onclick*="lgseDelKw(' + id + ')"]'); var label = row && row.closest('tr') ? (row.closest('tr').querySelector('td') || {}).textContent : '';
+    window.luConfirm('Stop tracking this phrase?', (label ? '"' + String(label).trim() + '" ' : 'It ') + 'will be removed from your tracked list. You can add it again later.', { okLabel: 'Stop tracking', cancelLabel: 'Keep', danger: true }).then(function (ok) {
+      if (!ok) return;
+      api('DELETE', '/keywords/' + id).then(function () { showToast('Stopped tracking that phrase.', 'info'); loadKeywords(); }).catch(function () { showToast("Couldn't remove keyword — try again.", 'error'); });
+    });
   };
 
   // ── Tab 4 — Pages (sub-tabs) ───────────────────────────────────────────

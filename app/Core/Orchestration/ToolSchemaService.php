@@ -605,9 +605,15 @@ class ToolSchemaService
         // Resolved: pin the website_id as a hard scope for the tool, and remember it as this
         // conversation's active target for implicit continuation next turn. RISK-0105 S4b.
         $params['website_id'] = (int) $res['website_id'];
-        try {
-            \Illuminate\Support\Facades\Cache::put($convKey, (int) $res['website_id'], now()->addMinutes(30));
-        } catch (\Throwable $e) {
+        // P6-e (2026-08-30, RISK-0105 S4b): remember the target ONLY when the owner chose it (explicit id/name).
+        // A continuation from the cache or the UI's advisory site must not re-arm the cache — that is how a
+        // single wrong resolution became "the conversation's website" for 30 minutes.
+        $ownerChose = in_array((string) ($res['reason'] ?? ''), ['explicit website_id in request', 'explicit site name uniquely matched'], true);
+        if ($ownerChose) {
+            try {
+                \Illuminate\Support\Facades\Cache::put($convKey, (int) $res['website_id'], now()->addMinutes(30));
+            } catch (\Throwable $e) {
+            }
         }
         return null;
     }
@@ -1179,6 +1185,7 @@ class ToolSchemaService
                     // P6-a (2026-08-30): pages are always described by their WEBSITE'S NAME, never by page id — the owner
                     // asked "change the homepage headline" on a two-site workspace and was told "IDs 722 and 717".
                     $siteNames = $rows->pluck('website_name')->filter()->unique()->values();
+                    $wsSiteCount = (int) \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->count();
                     if (empty($params['website_id']) && $siteNames->count() > 1) {
                         // P6-b: the owner named no website and the pages span several — that is a CLARIFY, expressed
                         // in website names. Row data (ids) is withheld so the model cannot paraphrase them.
@@ -1194,7 +1201,9 @@ class ToolSchemaService
                     $summary = $rows->count() . ' page' . ($rows->count() === 1 ? '' : 's')
                              . ($status !== 'all' ? " in status '{$status}'" : '')
                              . ($siteNames->count() > 1 ? ' across ' . $siteNames->count() . ' websites (' . $siteNames->implode(', ') . ')' : '')
-                             . '. When more than one website has the page you need, ask the owner by WEBSITE NAME — never mention page ids.';
+                             . ($siteNames->count() === 1 ? ' on the website "' . $siteNames->first() . '"' : '')
+                             . '. This workspace has ' . $wsSiteCount . ' website' . ($wsSiteCount === 1 ? '' : 's') . '.'
+                             . ($wsSiteCount > 1 ? ' Page ids are internal: speak to the owner in WEBSITE NAMES only — never quote page ids, and when the request could apply to more than one website, ask which website by name before doing anything.' : '');
                     return [
                         'success' => true,
                         'tool'    => $toolId,
