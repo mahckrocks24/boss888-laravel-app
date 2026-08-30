@@ -123,6 +123,7 @@ use Illuminate\Support\Facades\Route;
                     'role'    => $m->role,
                     'content' => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $m->content),
                     'ts'      => $m->created_at,
+                    'attachments' => $meta['attachments'] ?? null, // ATTACH-2
                     'is_ack'  => !empty($meta['is_ack']) || (($meta['phase'] ?? '') === 'ack'),
                     'phase'   => $meta['phase'] ?? null,
                     // SARAH888 Phase 1A slice 1 — correlation surfaced so a client
@@ -221,6 +222,16 @@ use Illuminate\Support\Facades\Route;
         $from = $r->input('from', 'User');
         $quickAction = $r->input('quick_action'); // my_tasks, recent_completions, whats_next
         $image = $r->input('image'); // base64 image for vision
+        // ATTACH-2 (2026-08-30): uploaded attachments (documents + images) reach Sarah. Validated against this
+        // workspace's media rows; documents are read into context; images go through the vision path below.
+        $__att = ['meta' => [], 'context' => '', 'images' => []];
+        try {
+            $__attIn = $r->input('attachments');
+            if (is_array($__attIn) && $__attIn) { $__att = app(\App\Core\Sarah888\AttachmentReader::class)->read($__attIn, (int) $wsId); }
+        } catch (\Throwable $__attErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] attachments unreadable: ' . $__attErr->getMessage()); }
+        if (trim((string) $content) === '' && $__att['meta']) {
+            $content = 'I\'ve attached ' . (count($__att['meta']) === 1 ? '"' . $__att['meta'][0]['name'] . '"' : count($__att['meta']) . ' files') . '.';
+        }
         // 2026-06-08 — captured once so they're in scope for the push dispatch
         // and the user-requested timed follow-up at the end of this handler.
         $userId = (int) ($r->user()?->id ?? 0);
@@ -261,6 +272,7 @@ use Illuminate\Support\Facades\Route;
                 'sender'       => 'user',
                 'content'      => $content,
                 'role'         => 'user',
+                'metadata_json' => !empty($__att['meta']) ? json_encode(['attachments' => $__att['meta']]) : null, // ATTACH-2
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ]);
@@ -626,6 +638,20 @@ $withCorr = function (array $meta) use ($corr) {
                 \Illuminate\Support\Facades\Log::warning('[AgentChat] Vision failed: ' . $e->getMessage());
             }
         }
+
+        // ATTACH-2: an uploaded image (no base64 given) goes through the same vision path by URL; documents add their text.
+        if (!$image && !empty($__att['images'])) {
+            try {
+                $__img = $__att['images'][0];
+                $__imgUrl = (string) ($__img['url'] ?? '');
+                if ($__imgUrl !== '' && !preg_match('#^https?://#', $__imgUrl)) { $__imgUrl = rtrim((string) config('app.url'), '/') . '/' . ltrim($__imgUrl, '/'); }
+                if ($__imgUrl !== '') {
+                    $visionResult = app(\App\Connectors\RuntimeClient::class)->visionAnalyze("Analyze this image in the context of: {$content}", '', $__imgUrl);
+                    if ($visionResult['success'] ?? false) { $visionContext .= "\n\n[The user attached an image \"{$__img['name']}\". Vision analysis: " . ($visionResult['analysis'] ?? '') . "]"; }
+                }
+            } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[AgentChat] Vision (attachment) failed: ' . $e->getMessage()); }
+        }
+        if (!empty($__att['context'])) { $visionContext .= $__att['context']; }
 
         // ── Detect confirmation replies ("yes", "go ahead", etc.) ──
         $confirmPhrases = ['yes','proceed','go ahead','do it','confirm','ok','okay','sure','go','yes please','yep','yeah','approved','approve'];

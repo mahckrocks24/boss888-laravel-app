@@ -90,6 +90,9 @@
       '.sh-send[disabled]{opacity:.5;cursor:default}.sh-send:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.sh-attach{width:44px;height:44px;border-radius:12px;border:1px solid var(--bd2);background:transparent;color:var(--t2);cursor:pointer;flex:none;font-size:16px}',
       '.sh-attach:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
+      '.sh-atts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.sh-att{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:4px 10px 4px 6px;border-radius:10px;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.25);color:inherit;text-decoration:none;font-size:12.5px;max-width:100%}',
+      '.sh-att b{font-size:10px;letter-spacing:.06em;padding:3px 6px;border-radius:6px;background:rgba(127,127,127,.18)}.sh-att span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}',
+      '.sh-att-img{padding:0;border:0;background:none;border-radius:10px;overflow:hidden}.sh-att-img img{display:block;max-width:220px;max-height:160px;border-radius:10px}',
       '.sh-attach{display:inline-flex;align-items:center;justify-content:center}.sh-attach:hover{color:var(--t1);border-color:var(--p)}',
       /* ATTACH-1: the composer library inserts its own paperclip next to the textarea — Sarah has one attach control, the plus. */
       '.sh-compose .lu-att-paperclip{display:none !important}',
@@ -322,7 +325,17 @@
   function bubble(m) {
     var isUser = m.from === 'User' || m.from === 'user' || m.role === 'user';
     var row = document.createElement('div'); row.className = 'sh-row ' + (isUser ? 'me' : 'her');
-    row.innerHTML = '<div class="sh-bubble' + (m.error ? ' err' : '') + '">' + (isUser ? esc(m.content) : fmtBody(m.content)) + '</div>' +
+    /* ATTACH-2: attachments render under the text — image thumbnails, document pills (open in a new tab). */
+    var attHtml = '';
+    if (Array.isArray(m.attachments) && m.attachments.length) {
+      attHtml = '<div class="sh-atts">' + m.attachments.map(function (a) {
+        var url = String(a.url || ''); var name = esc(a.name || 'file'); var safe = /^(https?:\/\/|\/)/.test(url) ? esc(url) : '';
+        if (a.kind === 'image' && safe) return '<a class="sh-att sh-att-img" href="' + safe + '" target="_blank" rel="noopener"><img src="' + safe + '" alt="' + name + '" loading="lazy"></a>';
+        var ext = (name.split('.').pop() || '').toUpperCase().slice(0, 4);
+        return (safe ? '<a class="sh-att" href="' + safe + '" target="_blank" rel="noopener">' : '<span class="sh-att">') + '<b>' + esc(ext || 'FILE') + '</b><span>' + name + '</span>' + (safe ? '</a>' : '</span>');
+      }).join('') + '</div>';
+    }
+    row.innerHTML = '<div class="sh-bubble' + (m.error ? ' err' : '') + '">' + (isUser ? esc(m.content) : fmtBody(m.content)) + attHtml + '</div>' +
                     '<div class="sh-meta">' + (isUser ? 'You' : 'Sarah') + (m.ts ? ' · ' + esc(ago(m.ts)) : '') + '</div>';
     if (m.id) row.setAttribute('data-mid', String(m.id));
     return row;
@@ -348,10 +361,13 @@
   /* ── Send (two-phase: ack → final) ───────────────────────────────────────────────────────────── */
   function setBusy(b) { S.sendBtn.disabled = b; S.input.disabled = b; }
   function send() {
-    var text = (S.input.value || '').trim(); if (!text || S.sendBtn.disabled) return;
+    var text = (S.input.value || '').trim();
+    /* ATTACH-2: a file can be sent on its own; a file still uploading waits. */
+    var pendingAtts = []; try { if (window.LU_attachComposer) { if (window.LU_attachComposer.isBusy('sh-input')) { showToast('Still uploading — one moment.', 'info'); return; } pendingAtts = window.LU_attachComposer.getPending('sh-input') || []; } } catch (e) {}
+    if ((!text && !pendingAtts.length) || S.sendBtn.disabled) return;
     var empty = S.feed.querySelector('.sh-empty'); if (empty) empty.remove();
     S.input.value = ''; S.input.style.height = 'auto';
-    S.feed.appendChild(bubble({ from: 'User', content: text, ts: null })); S.feed.scrollTop = S.feed.scrollHeight;
+    S.feed.appendChild(bubble({ from: 'User', content: text || ('I\'ve attached ' + (pendingAtts.length === 1 ? '"' + pendingAtts[0].name + '"' : pendingAtts.length + ' files') + '.'), ts: null, attachments: pendingAtts })); S.feed.scrollTop = S.feed.scrollHeight;
     var typing = document.createElement('div'); typing.className = 'sh-orch'; typing.id = 'sh-typing'; typing.innerHTML = '<span class="dot"></span><span>Sarah is thinking…</span>'; S.feed.appendChild(typing); S.feed.scrollTop = S.feed.scrollHeight;
     var body = { content: text, from: 'User' };
     if (window._lgseActiveSiteUrl) body.site_url = window._lgseActiveSiteUrl;
