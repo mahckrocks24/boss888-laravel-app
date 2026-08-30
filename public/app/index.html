@@ -2329,7 +2329,7 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
   try {
     var _cur = (typeof currentView !== 'undefined') ? currentView : null;
     var _basicViews = ['sarah','attention','results','website','customers','account','approvals','command','websites','crm','settings','billing','calendar','reports'];
-    if (!opts.skipServer && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav('workspace'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link
+    if ((!opts.skipServer || opts.fromServer) && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav('workspace'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link
   } catch (e) {}
   if (mode === 'basic') document.body.classList.add('lu-mode-basic');
   else                  document.body.classList.remove('lu-mode-basic');
@@ -2389,7 +2389,7 @@ window._lgsc_reconcile_visibility_from_server = function () {
       var localMode;
       try { localMode = localStorage.getItem('lu_visibility_mode'); } catch (e) {}
       if (serverMode !== localMode) {
-        window._lgsc_set_visibility_mode(serverMode, { skipServer: true });
+        window._lgsc_set_visibility_mode(serverMode, { skipServer: true, skipNav: false, fromServer: true });
       }
     }).catch(function () { /* silent */ });
   } catch (e) {}
@@ -2428,8 +2428,10 @@ document.addEventListener('DOMContentLoaded', function () {
       mode = (mode === 'advanced') ? 'advanced' : 'basic';
       if (mode === 'basic' && view && BASIC_VISIBLE.indexOf(view) === -1) {
         var origArgs = arguments;
+        // P1-U2: never leave the screen empty behind the modal — Basic shows Sarah while the customer decides.
+        try { if (typeof currentView === 'undefined' || !currentView || !document.querySelector('.view.active')) { _origNav.call(window, 'sarah', { silent: true }); } } catch (e) {}
         window._lgsc_show_mode_switch_modal(view, function () {
-          window._lgsc_set_visibility_mode('advanced');
+          window._lgsc_set_visibility_mode('advanced', { skipNav: true });   // the requested view is the destination
           _origNav.apply(window, origArgs);
         });
         return;
@@ -4517,7 +4519,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=p0c-20260830"></script>
-<script defer src="/app/js/core.js?v=p1u2g-20260830"></script>
+<script defer src="/app/js/core.js?v=p1u2i-20260830"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
@@ -4994,7 +4996,7 @@ document.addEventListener('wheel', function(e) {
   }
 }, { passive: false });
 </script>
-  <script src="/app/js/workspace-v2.js?v=p0c-20260830" defer></script>
+  <script src="/app/js/workspace-v2.js?v=1.1.0-p1u2" defer></script>
   <script>
   // v1.4.4 — universal attach composer wiring on the four core chat surfaces.
   // The composer self-detects parent flex-direction and inserts a paperclip
