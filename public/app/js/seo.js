@@ -1690,7 +1690,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     }).join('');
     bar.innerHTML =
         '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Website</span>'
-      + '<select onchange="lgseSwitchWorkspace(this.value)" style="background:var(--lgse-bg,#0F1117);color:var(--lgse-t1,#E5E7EB);border:1px solid var(--lgse-border,#1f2937);border-radius:6px;padding:6px 10px;font-size:12px;min-width:240px;cursor:pointer">' + opts + '</select>'
+      + '<select onchange="lgseSwitchWorkspace(this.value)" style="background:var(--lgse-bg2);color:var(--lgse-t1,#E5E7EB);border:1px solid var(--lgse-border,#1f2937);border-radius:6px;padding:6px 10px;font-size:12px;min-width:240px;cursor:pointer">' + opts + '</select>'
       + '<span id="lgse-site-bar-meta" style="color:var(--lgse-t3,#9CA3AF);font-size:11px;margin-left:auto">'
       +    list.length + ' workspace' + (list.length === 1 ? '' : 's') + ' · each its own website + data'
       + '</span>';

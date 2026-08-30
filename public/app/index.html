@@ -114,6 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
+<script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
@@ -200,7 +201,36 @@
   .sidebar.mob-open { transform: translateX(0) !important; }
   .lu-mob-overlay.show { display: block !important; }
 }
-/* Light Theme */
+/* Light Theme — LT-1 (2026-08-30). Palette sampled from grok.com (light scheme): ground #F9F8F7, text #050505,
+   secondary #555, surfaces #FFF/#F5F3F2/#EEE, borders #DDD/#EEE/rgba(15,13,10,.08), primary black → #262626 on hover,
+   link #3860BE, success #32AE88. Only tokens change; components stay on var(--*). */
+html[data-theme="light"]{color-scheme:light;
+  --bg:#F9F8F7;--s1:#FFFFFF;--s2:#F5F3F2;--s3:#EEEEEE;
+  --bd:rgba(15,13,10,.08);--bd2:#DDDDDD;
+  --p:#050505;--pg:rgba(5,5,5,.14);--ps:rgba(5,5,5,.06);
+  --ac:#167A58;--ag:rgba(50,174,136,.18);--as:rgba(50,174,136,.10);
+  --bl:#3860BE;--am:#A16207;--rd:#C62828;--pu:#5B48C8;
+  --t1:#050505;--t2:#555555;--t3:#6B6B6B;
+  --blue-soft:rgba(56,96,190,.10);
+}
+html[data-theme="light"] .lu-btn--primary:hover{background:#262626;border-color:#262626}
+html[data-theme="light"] .nav-item.active{background:rgba(5,5,5,.07);color:#050505}
+html[data-theme="light"] .lu-badge--warn{background:rgba(161,98,7,.12)}
+html[data-theme="light"] .lu-badge--bad{background:rgba(198,40,40,.10)}
+html[data-theme="light"] ::-webkit-scrollbar-thumb{background:#D8D8D8}
+html[data-theme="light"] .sb-lm{background:#050505}
+html[data-theme="light"] .sidebar{box-shadow:none}
+html[data-theme="light"] .wsv2-viewport{background:#EFEDEB}
+html[data-theme="light"] .wsv2-canvas{background-color:#EFEDEB;background-image:radial-gradient(rgba(5,5,5,.12) 1px,transparent 1px)}
+html[data-theme="light"] .wsv2-toolbar,html[data-theme="light"] .wsv2-legend{background:rgba(255,255,255,.88)}
+html[data-theme="light"] .st-host{background:var(--bg);color:var(--t1)}
+html[data-theme="light"] .st-navbtn.active,html[data-theme="light"] .st-tile-n,html[data-theme="light"] .st-tpl-name,html[data-theme="light"] .st-img-name,html[data-theme="light"] .st-field-val,html[data-theme="light"] .st-layer-type,html[data-theme="light"] .st-prod-cap,html[data-theme="light"] .st-filter,html[data-theme="light"] .st-zoom,html[data-theme="light"] .st-chat-input{color:var(--t1)}
+html[data-theme="light"] .st-chip-plan{color:var(--p)}
+html[data-theme="light"] .st-tile-cta{background:linear-gradient(140deg,rgba(5,5,5,.06),rgba(5,5,5,.02));border-color:rgba(5,5,5,.18)}
+html[data-theme="light"] .st-tile-cta *{color:var(--t1)}
+html[data-theme="light"] .st-topbar{border-bottom-color:var(--bd)}
+#sb-theme{margin:4px 10px;padding:3px;background:var(--s3);border-radius:6px;display:flex;gap:2px}
+#sb-theme .lu-mode-btn,#sb-mode-toggle .lu-mode-btn{min-height:36px}
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;overflow:hidden;overflow-x:hidden;font-family:var(--fb);background:var(--bg);color:var(--t1);font-size:14px;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
@@ -245,9 +275,9 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .sb-nav .nav-sub{padding:12px 24px 4px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
 .sb-nav .nav-adv-link{margin-top:auto}
 #sb-mode-toggle{margin:8px 10px 4px;padding:3px;background:var(--s3);border-radius:6px;display:flex;gap:2px}
-#sb-mode-toggle .lu-mode-btn{flex:1;padding:5px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2);transition:background .15s,color .15s}
-#sb-mode-toggle .lu-mode-btn.active{background:var(--p);color:#fff}
-#sb-mode-toggle .lu-mode-btn:hover:not(.active){color:var(--t1);background:var(--s2)}
+#sb-mode-toggle .lu-mode-btn,#sb-theme .lu-mode-btn{flex:1;padding:5px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2);transition:background .15s,color .15s}
+#sb-mode-toggle .lu-mode-btn.active,#sb-theme .lu-mode-btn.active{background:var(--p);color:#fff}
+#sb-mode-toggle .lu-mode-btn:hover:not(.active),#sb-theme .lu-mode-btn:hover:not(.active){color:var(--t1);background:var(--s2)}
 .sb-bottom{padding:12px 8px;border-top:1px solid var(--bd)}
 .sb-status{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:11px;color:var(--t3)}
 .sb-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);animation:pulse 2s infinite;flex-shrink:0}
@@ -2425,6 +2455,8 @@ window._lgsc_reconcile_visibility_from_server = function () {
       credentials: 'omit'
     }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
       if (! d || ! d.preferences) return;
+      /* LT-1: appearance follows the account unless the user changed it in this session. */
+      try { var st = d.preferences.theme; if (st && ['dark','light','system'].indexOf(st) >= 0 && ! window._lu_theme_user_changed && st !== (localStorage.getItem('lu_theme') || 'dark')) window.luSetTheme(st, { skipServer: true }); } catch (e) {}
       var serverMode = d.preferences.visibility_mode;
       if (serverMode !== 'basic' && serverMode !== 'advanced') return;
       if (window._lgsc_mode_user_changed) return;
@@ -2792,6 +2824,12 @@ window.luSwipeToClose = luSwipeToClose;
     <div class="sb-bottom">
       <!-- Phase 4: Credit + plan widget -->
       
+      </div>
+      <!-- LT-1 (2026-08-30): appearance, visible in Basic and Advanced -->
+      <div id="sb-theme" role="radiogroup" aria-label="Appearance" title="Appearance: dark, light, or follow your device">
+        <button type="button" data-theme-opt="dark"   role="radio" aria-checked="true"  class="lu-mode-btn active" onclick="luSetTheme('dark')">Dark</button>
+        <button type="button" data-theme-opt="light"  role="radio" aria-checked="false" class="lu-mode-btn"        onclick="luSetTheme('light')">Light</button>
+        <button type="button" data-theme-opt="system" role="radio" aria-checked="false" class="lu-mode-btn"        onclick="luSetTheme('system')">Auto</button>
       </div>
       <div class="sb-status"><div class="sb-dot" id="sb-dot"></div><span id="sb-status-txt">Platform active</span></div>
       <div id="sb-cron-indicator" style="display:none;margin-left:8px;font-size:10px;font-weight:600;padding:2px 7px;border-radius:10px"></div>
@@ -4337,7 +4375,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=p6c-20260830',write:'/app/js/write.js?v=p0c-20260830',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=p0c-20260830',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=lt1-20260830',write:'/app/js/write.js?v=p0c-20260830',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=p0c-20260830',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4345,7 +4383,12 @@ window.LU_CFG = {
 // Theme disabled
 
 // Theme toggle
-window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';var nxt=cur==='dark'?'light':'dark';localStorage.setItem('lu_theme',nxt);if(nxt==='light')document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');var sw=document.getElementById('tm-switch');var kn=document.getElementById('tm-knob');if(sw&&kn){if(nxt==='dark'){kn.style.left='18px';sw.style.background='var(--p)';}else{kn.style.left='2px';sw.style.background='var(--t3)';}}};
+/* LT-1 (2026-08-30) — appearance: dark | light | system. Persisted locally and in users.preferences_json (theme). */
+window.luApplyTheme=function(t){var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',l?'#F9F8F7':'#0B0F19');document.querySelectorAll('#sb-theme .lu-mode-btn').forEach(function(b){var on=b.getAttribute('data-theme-opt')===t;b.classList.toggle('active',on);b.setAttribute('aria-checked',on?'true':'false');});};
+window.luSetTheme=function(t,o){o=o||{};if(['dark','light','system'].indexOf(t)<0)t='dark';try{localStorage.setItem('lu_theme',t);}catch(e){}window.luApplyTheme(t);if(!o.skipServer){window._lu_theme_user_changed=true;try{var tok=localStorage.getItem('lu_token');if(tok&&typeof fetch==='function')fetch('/api/user/preferences',{method:'PUT',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({theme:t})}).catch(function(){});}catch(e){}}};
+window.toggleTheme=function(){var c=localStorage.getItem('lu_theme')||'dark';window.luSetTheme(c==='light'?'dark':'light');};
+try{if(window.matchMedia){matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(){if((localStorage.getItem('lu_theme')||'dark')==='system')window.luApplyTheme('system');});}}catch(e){}
+document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(localStorage.getItem('lu_theme')||'dark');}catch(e){}});
 
 // This inline script runs immediately — before core.js is fetched.
 // Guarantees that onclick="nav('crm')" never throws ReferenceError

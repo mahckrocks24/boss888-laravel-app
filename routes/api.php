@@ -637,6 +637,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         }
         $data = $r->validate([
             'visibility_mode' => 'sometimes|string|in:basic,advanced',
+            'theme'           => 'sometimes|string|in:dark,light,system', // LT-1 (2026-08-30)
         ]);
 
         $row = \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->first(['id','preferences_json']);
@@ -646,7 +647,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $current = is_string($row->preferences_json) ? (json_decode($row->preferences_json, true) ?: []) : [];
         if (! is_array($current)) $current = [];
 
-        $allowed = ['visibility_mode'];
+        $allowed = ['visibility_mode', 'theme'];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $data)) {
                 $current[$k] = $data[$k];
