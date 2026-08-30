@@ -236,6 +236,30 @@
       var el = document.getElementById('sh-ctx-name'); if (el) el.textContent = name || 'your business';
       var c = document.getElementById('sh-ctx'); if (c && !c._wsp) { c._wsp = 1; c.addEventListener('click', pickWorkspace); }
     }).catch(function () {});
+    /* WS-PICK-2: if my newest message (any device) lives in ANOTHER workspace, say so — loudly, with one tap to follow it. */
+    api('GET', 'user/last-chat-workspace').then(function (r) {
+      var w = r.json && r.json.workspace; if (!w || !w.id) return;
+      var cur = 0; try { cur = parseInt(localStorage.getItem('lu_workspace_id') || (window.LU_CFG && window.LU_CFG.workspace_id) || 0, 10); } catch (e) {}
+      var old = document.getElementById('sh-ws-banner'); if (old) old.remove();
+      if (!cur || parseInt(w.id, 10) === cur) return;
+      var fresh = true; try { fresh = (Date.now() - new Date(String(w.last_at).replace(' ', 'T') + 'Z').getTime()) < 6 * 3600e3; } catch (e) {}
+      if (!fresh) return;
+      var top = document.querySelector('.sh-top'); if (!top) return;
+      var b = document.createElement('div'); b.id = 'sh-ws-banner'; b.setAttribute('role', 'status');
+      b.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:var(--ps);border-bottom:1px solid var(--bd);font-size:13px;color:var(--t1)';
+      b.innerHTML = '<span>Your latest conversation with Sarah is in <b>' + esc(w.name) + '</b> — this device is in a different business.</span>';
+      var go = document.createElement('button'); go.type = 'button'; go.className = 'sh-btn primary'; go.textContent = 'Switch to ' + w.name;
+      go.addEventListener('click', function () {
+        go.disabled = true; go.textContent = 'Switching…';
+        fetch('/api/auth/switch-workspace', { method: 'POST', headers: { Authorization: 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ workspace_id: parseInt(w.id, 10) }), cache: 'no-store' })
+          .then(function (x) { return x.json(); }).then(function (d) {
+            if (d && d.access_token) { localStorage.setItem('lu_token', d.access_token); if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token); try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || w.id)); } catch (e) {} location.reload(); }
+            else { showToast("Couldn't switch — try again.", 'error'); go.disabled = false; go.textContent = 'Switch to ' + w.name; }
+          }).catch(function () { showToast("Couldn't switch — try again.", 'error'); go.disabled = false; go.textContent = 'Switch to ' + w.name; });
+      });
+      b.appendChild(go);
+      top.parentElement.insertBefore(b, top.nextSibling);
+    }).catch(function () {});
   }
   function chip(label, value, cls, onclick) {
     var c = document.createElement(onclick ? 'button' : 'div'); c.className = 'sh-chip' + (cls ? ' ' + cls : '');

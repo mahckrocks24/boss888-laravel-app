@@ -625,6 +625,21 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         ]);
     })->middleware('throttle:3,60');
 
+    // WS-PICK-2 (2026-08-30) — where did I last talk to Sarah? User-level, across the user's own workspaces only.
+    // Two devices in different workspaces read as "chat not synced"; this powers the switch banner on Sarah's home.
+    Route::get('/user/last-chat-workspace', function (\Illuminate\Http\Request $r) {
+        $userId = (int) ($r->user()?->id ?? 0);
+        if (!$userId) return response()->json(['success' => false], 401);
+        $wsIds = \Illuminate\Support\Facades\DB::table('workspace_users')->where('user_id', $userId)->pluck('workspace_id')->map(fn ($i) => (int) $i)->all();
+        if (!$wsIds) return response()->json(['success' => true, 'workspace' => null]);
+        $row = \Illuminate\Support\Facades\DB::table('agent_messages')
+            ->whereIn('workspace_id', $wsIds)->where('role', 'user')
+            ->orderByDesc('id')->first(['workspace_id', 'created_at']);
+        if (!$row) return response()->json(['success' => true, 'workspace' => null]);
+        $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', (int) $row->workspace_id)->first(['id', 'name']);
+        return response()->json(['success' => true, 'workspace' => $ws ? ['id' => (int) $ws->id, 'name' => (string) $ws->name, 'last_at' => (string) $row->created_at] : null]);
+    });
+
     // 2026-05-28 — Per-user preferences (sidebar visibility mode, etc.).
     // Whitelisted keys only so users.preferences_json doesn't become a
     // junk drawer. Read happens via /auth/me which already returns the
