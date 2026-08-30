@@ -69,8 +69,11 @@
       '.sh-orch .who{display:inline-flex;align-items:center;gap:6px}.sh-orch .who b{color:var(--t1);font-weight:600}.sh-orch .arrow{color:var(--t3)}',
       '@keyframes shPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}',
       '@media (prefers-reduced-motion:reduce){.sh-orch .dot{animation:none}}',
-      '.sh-empty{margin:auto;max-width:520px;text-align:center;color:var(--t2);padding:24px}.sh-empty h2{font:700 22px var(--fh);color:var(--t1);margin:0 0 8px;text-wrap:balance}',
-      '.sh-sugg{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:14px}',
+      '.sh-empty{margin:auto;width:100%;max-width:520px;min-width:0;box-sizing:border-box;text-align:center;color:var(--t2);padding:24px}.sh-empty h2{font:700 22px var(--fh);color:var(--t1);margin:0 0 8px;text-wrap:balance}',
+      /* SUGG-1 (Owner): the quick picks are ONE row that scrolls sideways — no wrapping, snap per chip, hidden scrollbar, soft edge fade. */
+      '.sh-sugg{display:flex;flex-wrap:nowrap;gap:8px;margin:14px -24px 0;padding:2px 24px 6px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;scroll-padding:0 24px;-webkit-overflow-scrolling:touch;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}',
+      '.sh-sugg::-webkit-scrollbar{display:none}.sh-sugg button{flex:none;white-space:nowrap;scroll-snap-align:start}',
+      '@media (prefers-reduced-motion:no-preference){.sh-sugg{scroll-behavior:smooth}}',
       '.sh-sugg button{min-height:40px;padding:0 14px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);font:500 13px var(--fb);cursor:pointer}',
       '.sh-sugg button:hover{border-color:var(--p)}.sh-sugg button:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.sh-compose{flex:none;border-top:1px solid var(--bd);background:var(--s1);padding:10px 12px calc(10px + var(--safe-bottom,0px))}',
