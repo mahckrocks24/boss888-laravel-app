@@ -1179,6 +1179,18 @@ class ToolSchemaService
                     // P6-a (2026-08-30): pages are always described by their WEBSITE'S NAME, never by page id — the owner
                     // asked "change the homepage headline" on a two-site workspace and was told "IDs 722 and 717".
                     $siteNames = $rows->pluck('website_name')->filter()->unique()->values();
+                    if (empty($params['website_id']) && $siteNames->count() > 1) {
+                        // P6-b: the owner named no website and the pages span several — that is a CLARIFY, expressed
+                        // in website names. Row data (ids) is withheld so the model cannot paraphrase them.
+                        $cands = $rows->groupBy('website_id')->map(fn ($g) => ['id' => (int) $g->first()->website_id, 'name' => (string) $g->first()->website_name])->values()->all();
+                        return [
+                            'success'    => false,
+                            'code'       => 'CLARIFY_TARGET',
+                            'error'      => 'Which website would you like me to update — ' . $siteNames->implode(', ') . '?',
+                            'candidates' => $cands,
+                            'reason'     => 'pages span ' . $siteNames->count() . ' websites and no website was named',
+                        ];
+                    }
                     $summary = $rows->count() . ' page' . ($rows->count() === 1 ? '' : 's')
                              . ($status !== 'all' ? " in status '{$status}'" : '')
                              . ($siteNames->count() > 1 ? ' across ' . $siteNames->count() . ' websites (' . $siteNames->implode(', ') . ')' : '')
