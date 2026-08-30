@@ -822,7 +822,7 @@ window._luRouter = (function () {
   // they had no panel or were launch-scope removed); Basic surfaces added.
   var KNOWN_VIEWS = {
     sarah:1, attention:1, results:1, website:1, customers:1, account:1,
-    agents:1, approvals:1, billing:1, blog:1,
+    agents:1, approvals:1, billing:1,
     calendar:1, chatbot:1, command:1, crm:1,
     meeting:1, messages:1, projects:1, queue:1, reports:1, seo:1,
     settings:1, social:1, studio:1, websites:1, workspace:1,
@@ -836,7 +836,7 @@ window._luRouter = (function () {
   // path scheme.
   var URL_ALIASES = {
     strategy: 'command',  // proposals + Sarah's strategies surface here
-    builder: 'websites', manualedit: 'studio', marketing: 'workspace', automation: 'workspace', mentions: 'workspace', tools: 'workspace',
+    builder: 'websites', manualedit: 'studio', marketing: 'workspace', automation: 'workspace', mentions: 'workspace', tools: 'workspace', blog: 'write', creative: 'studio',
   };
 
   // v5.7.23 (2026-05-31) — per-view human titles for document.title.
@@ -1206,7 +1206,7 @@ async function nav(view, opts){
   if(view==='reports')    loadReports();
   if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); }
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
-  if(view==='mentions')   { await luLoadEngine('mentions'); var _el=document.getElementById('mentions-root'); if(_el && typeof mentionsLoad==='function') mentionsLoad(_el); }
+  // P4-U1: mentions view retired.
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
   if(view==='workspace')  {loadTasks();drawCanvas();drawZones(); if(typeof loadAgentStats==='function') loadAgentStats();}
   if(view==='agents')     { loadTasks(); loadAgentStats(); }
@@ -1264,7 +1264,7 @@ async function nav(view, opts){
       }
     }
   }
-  if(view==='marketing')  { await luLoadEngine('marketing'); var _el=document.getElementById('marketing-root'); if(_el && typeof mktLoad==='function') mktLoad(_el); }
+  // P4-U1: marketing view retired (DEC-0028).
   if(view==='social')     { await luLoadEngine('social'); var _el=document.getElementById('social-root'); if(_el && typeof socialLoad==='function') socialLoad(_el); }
   if(view==='calendar')   { await luLoadEngine('calendar'); var _el=document.getElementById('calendar-root'); if(_el && typeof calLoad==='function') calLoad(_el); }
   if(view==='write')      {
@@ -1281,15 +1281,15 @@ async function nav(view, opts){
       }
     }
   }
-  if(view==='creative')   { await luLoadEngine('creative'); var _el=document.getElementById('creative-root'); if(_el && typeof creativeLoad==='function') creativeLoad(_el); }
+  // P4-U1: creative view retired (Studio is the single image/video surface).
   // RETIRED 2026-08-13 — /app/manualedit rendered a SECOND Studio (its own
   // Image Design / Video Editor tabs and its own design store). Its nav entry
   // went in 2026-04-20 but this router line kept it alive for every bookmark,
   // history entry and deep link. Studio is the single editing surface, so old
   // URLs now land there instead of executing retired code.
   if(view==='manualedit') { try { nav('studio'); } catch(_e) {} return; }
-  if(view==='automation') { await luLoadEngine('automation'); var _el=document.getElementById('automation-root'); if(_el && typeof automationLoad==='function') automationLoad(_el); }
-  if(view==='blog')       { await luLoadEngine('blog'); var _el=document.getElementById('blog-root'); if(_el && typeof blogLoad==='function') blogLoad(_el); }
+  // P4-U1: automation view retired.
+  // P4-U1: blog view retired (Write covers articles).
   if(view==='studio')     {
     await luLoadEngine('studio');
     var _el=document.getElementById('studio-root');
@@ -5215,7 +5215,7 @@ var AI_QUICK_BY_VIEW = {
   ],
 };
 
-function toggleAssistant() {
+function toggleAssistant() { return; /* P4-U1: Aria retired */
   aiOpen = !aiOpen;
   document.getElementById('ai-panel').classList.toggle('open', aiOpen);
   document.getElementById('ai-fab').classList.toggle('open', aiOpen);
@@ -5316,7 +5316,7 @@ function aiShowTyping() {
 }
 function aiHideTyping() { document.getElementById('ai-typing')?.remove(); }
 
-async function sendAssistant() {
+async function sendAssistant() { return; /* P4-U1: Aria retired */
   var inp = document.getElementById('ai-input');
   var message = inp?.value?.trim();
   if (!message || aiBusy) return;

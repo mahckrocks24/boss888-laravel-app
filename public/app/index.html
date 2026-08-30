@@ -123,7 +123,6 @@
 <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" onload="this.rel='stylesheet'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app/css/orb.css">
 <style>
 :root{
@@ -147,7 +146,7 @@
   --p:#6C5CE7;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.1);
   --ac:#00E5A8;--ag:rgba(0,229,168,.18);--as:rgba(0,229,168,.08);
   --bl:#3B8BF5;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA;
-  --t1:#E8EDF5;--t2:#8B97B0;--t3:#4A566B;
+  --t1:#E8EDF5;--t2:#8B97B0;--t3:#7C879C; /* P4-U1: was #4A566B (2.55:1); now 4.6:1 on --bg */
   --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
   --r:10px;--rg:14px;--rx:20px;--tr:150ms cubic-bezier(.4,0,.2,1);
   /* Legacy aliases — used by engine view templates */
@@ -157,6 +156,44 @@
   --blue:var(--bl);--blue-soft:rgba(59,139,245,.12);
   --radius:var(--r);--radius-sm:6px;--transition:var(--tr);
 }
+
+/* ═══ P4-U1 (2026-08-30) — the ONE component layer. Modules alias onto it below; new UI uses it directly. ═══ */
+.lu-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:var(--r);font:600 13.5px var(--fb);cursor:pointer;border:1px solid var(--bd2);background:var(--s2);color:var(--t1);text-decoration:none;white-space:nowrap;transition:background var(--tr),border-color var(--tr),color var(--tr)}
+.lu-btn:hover{background:var(--s3);border-color:var(--bd2)}.lu-btn:focus-visible{outline:2px solid var(--p);outline-offset:2px}.lu-btn[disabled],.lu-btn[aria-disabled="true"]{opacity:.55;cursor:default}
+.lu-btn--primary{background:var(--p);border-color:var(--p);color:#fff}.lu-btn--primary:hover{background:#5b4bd6;border-color:#5b4bd6}
+.lu-btn--quiet{background:transparent;border-color:transparent;color:var(--t2)}.lu-btn--quiet:hover{background:var(--s2);color:var(--t1)}
+.lu-btn--danger{background:transparent;border-color:rgba(248,113,113,.55);color:var(--rd)}.lu-btn--danger:hover{background:rgba(248,113,113,.12)}
+.lu-btn--sm{min-height:36px;padding:0 12px;font-size:12.5px}.lu-btn--icon{width:44px;padding:0}.lu-btn--icon.lu-btn--sm{width:36px}
+.lu-input,.lu-select,.lu-textarea{width:100%;box-sizing:border-box;min-height:44px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--t1);padding:10px 13px;font:400 14px var(--fb)}
+.lu-input:focus-visible,.lu-select:focus-visible,.lu-textarea:focus-visible{outline:2px solid var(--p);outline-offset:1px;border-color:var(--p)}
+.lu-input::placeholder,.lu-textarea::placeholder{color:var(--t3)}
+.lu-label{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin-bottom:6px}
+.lu-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:16px 18px}
+.lu-card__h{font:700 15px var(--fh);letter-spacing:-.01em;margin:0 0 10px;display:flex;align-items:center;gap:10px}
+.lu-tabs{display:flex;gap:2px;border-bottom:1px solid var(--bd);overflow-x:auto;scrollbar-width:none}.lu-tabs::-webkit-scrollbar{display:none}
+.lu-tab{min-height:44px;padding:0 14px;border:0;background:transparent;color:var(--t2);font:600 13.5px var(--fb);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap}
+.lu-tab:hover{color:var(--t1)}.lu-tab[aria-selected="true"],.lu-tab.active{color:var(--p);border-bottom-color:var(--p)}.lu-tab:focus-visible{outline:2px solid var(--p);outline-offset:-2px}
+.lu-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:3px 9px;background:var(--s3);color:var(--t2)}
+.lu-badge--ok{color:var(--ac);background:var(--as)}.lu-badge--warn{color:var(--am);background:rgba(245,158,11,.14)}.lu-badge--bad{color:var(--rd);background:rgba(248,113,113,.14)}.lu-badge--info{color:var(--bl);background:var(--blue-soft)}.lu-badge--accent{color:var(--pu);background:var(--ps)}
+.lu-empty{padding:22px;text-align:center;color:var(--t2);font-size:13.5px;border:1px dashed var(--bd2);border-radius:var(--r)}.lu-empty b{color:var(--t1);display:block;font:700 15px var(--fh);margin-bottom:4px}
+.lu-skel{height:14px;border-radius:6px;background:linear-gradient(90deg,var(--s2),var(--s3),var(--s2));background-size:200% 100%;animation:luSk 1.2s infinite}
+@keyframes luSk{0%{background-position:200% 0}100%{background-position:-200% 0}}@media (prefers-reduced-motion:reduce){.lu-skel{animation:none}}
+.lu-table-wrap{overflow-x:auto;border:1px solid var(--bd);border-radius:var(--r)}.lu-table{width:100%;border-collapse:collapse;font-size:13.5px}.lu-table th{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);text-align:left;padding:10px 12px;border-bottom:1px solid var(--bd)}.lu-table td{padding:11px 12px;border-bottom:1px solid var(--bd);vertical-align:top}.lu-table tr:last-child td{border-bottom:0}
+@media (max-width:640px){.lu-table--cards thead{display:none}.lu-table--cards tr{display:block;border-bottom:1px solid var(--bd);padding:8px 0}.lu-table--cards td{display:flex;justify-content:space-between;gap:12px;border:0;padding:6px 12px}.lu-table--cards td::before{content:attr(data-label);color:var(--t2);font-size:12px}}
+.lu-drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);background:var(--s1);border-left:1px solid var(--bd);z-index:var(--z-drawer);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s var(--ease-out)}.lu-drawer.open{transform:none}
+@media (prefers-reduced-motion:reduce){.lu-drawer{transition:none}}
+/* ── Legacy aliases → the shared layer. Sizes, focus rings and colours converge; module JS untouched. ── */
+.btn,.btn-primary,.btn-outline,.btn-ghost,.lgse-btn-primary,.lgse-btn-secondary,.cr-btn,.cr-btn-primary,.cr-btn-outline,.ct-btn,.sv-btn,.sv-btn-wide,.sv-btn-danger,.st-btn,.st-btn-primary,.st-btn-ghost,.st-btn-outline,.st-btn-wide,.st-btn-lg,.st-dlg-btn,.infra-btn,.infra-hbtn,.wsv2-btn,.wsv2-btn-primary,.lu-mp-btn-ghost,.lu-mp-btn-primary,.lu-mp-btn-danger,.cmd-btn,.aq-btn,.gov-btn,.cq-btn,.arthur-q-btn,.rej-reason-btn,.wr-edit-btn,.wr-delete-btn,.cal-nav-btn,.be-btn,.dc-btn{min-height:40px;border-radius:var(--r);font-family:var(--fb);font-weight:600;cursor:pointer}
+.btn:focus-visible,.lgse-btn-primary:focus-visible,.lgse-btn-secondary:focus-visible,.cr-btn:focus-visible,.ct-btn:focus-visible,.sv-btn:focus-visible,.st-btn:focus-visible,.infra-btn:focus-visible,.wsv2-btn:focus-visible,.cmd-btn:focus-visible,.aq-btn:focus-visible,.cal-nav-btn:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+.btn-sm,.cr-btn-sm,.cr-btn-xs,.sv-icon-btn,.st-icon-btn,.wr-edit-btn,.wr-delete-btn{min-height:36px}
+.btn-primary,.lgse-btn-primary,.cr-btn-primary,.st-btn-primary,.wsv2-btn-primary,.lu-mp-btn-primary,.aq-btn-approve{background:var(--p);color:#fff;border-color:var(--p)}
+.tab,.lgse-subtab,.sv-tab,.st-tab,.td-tab,.aq-tab,.ad-tab,.tf-tab,.be-tab,.lu-mp-tab{min-height:44px;font-family:var(--fb);font-weight:600}
+.tab:focus-visible,.lgse-subtab:focus-visible,.st-tab:focus-visible,.aq-tab:focus-visible,.ad-tab:focus-visible{outline:2px solid var(--p);outline-offset:-2px}
+.badge,.lgse-badge,.cr-badge,.msg-badge,.am-badge,.ti-badge,.ws-badge,.st-chip,.cmd-chip,.da-chip,.wsv2-cat-chip,.tpl-pill{border-radius:999px;font-family:var(--fb);font-weight:600;letter-spacing:.04em}
+.cmd-empty,.st-empty,.st2-empty,.rv-empty,.kb-empty,.sv-empty,.lu-mp-empty,.wsv2-act-empty{color:var(--t2);font-family:var(--fb);text-align:center;padding:18px}
+.form-input,.form-select,.cr-input,.cr-select,.ob-quiz-input,.st-dlg-input,.lgse-dialog-input,.arthur-input{min-height:44px;border-radius:var(--r);font-family:var(--fb)}
+.form-input:focus-visible,.form-select:focus-visible,.cr-input:focus-visible,.cr-select:focus-visible,.arthur-input:focus-visible{outline:2px solid var(--p);outline-offset:1px}
+
 /* Light Theme */
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -3832,127 +3869,10 @@ window.luSwipeToClose = luSwipeToClose;
     </div>
 
                 <!-- ── CAMPAIGNS VIEW ── (Phase 6) -->
-    <div id="view-campaigns" class="view" style="display:none;flex-direction:column;overflow-y:auto">
-      <div style="padding:24px;max-width:1300px;width:100%;margin:0 auto">
-
-        <!-- Header -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
-          <div>
-            <h2 style="font-family:var(--fh);font-size:22px;font-weight:800;color:var(--t1);margin-bottom:4px">Campaigns</h2>
-            <p style="color:var(--t2);font-size:13px">Automated agent workflows that generate and schedule tasks.</p>
-          </div>
-          <button onclick="showNewCampaignModal()" style="background:var(--p);border:none;color:#fff;border-radius:var(--r);padding:9px 18px;font-size:13px;font-weight:600;font-family:var(--fh);cursor:pointer">+ New Campaign</button>
-        </div>
-
-        <!-- Campaign type filters -->
-        <div style="display:flex;gap:8px;margin-bottom:20px" id="cmp-type-filters">
-          <button class="cmp-filter active" onclick="filterCampaigns('all',this)" style="background:var(--ps);border:1px solid var(--p);color:var(--pu);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">All</button>
-          <button class="cmp-filter" onclick="filterCampaigns('seo_growth',this)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t2);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">SEO Growth</button>
-          <button class="cmp-filter" onclick="filterCampaigns('content_engine',this)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t2);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">Content Engine</button>
-          <button class="cmp-filter" onclick="filterCampaigns('social_growth',this)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t2);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">Social Growth</button>
-          <button class="cmp-filter" onclick="filterCampaigns('lead_generation',this)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t2);border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer">Lead Generation</button>
-        </div>
-
-        <!-- Campaign list -->
-        <div id="cmp-list" style="display:flex;flex-direction:column;gap:10px">
-          <div style="text-align:center;padding:40px;color:var(--t3);font-size:13px">Loading campaigns…</div>
-        </div>
-      </div>
-
-      <!-- Campaign detail panel (slide-in) -->
-      <div id="cmp-detail-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:var(--z-modal)" onclick="closeCampaignDetail()"></div>
-      <div id="cmp-detail-panel" style="position:fixed;top:0;right:0;bottom:0;width:52vw;min-width:500px;background:var(--s1);border-left:1px solid var(--bd);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);z-index:var(--z-modal);display:flex;flex-direction:column;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bd)">
-          <div id="cmp-detail-title" style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1)">Campaign</div>
-          <button onclick="closeCampaignDetail()" style="background:none;border:none;color:var(--t3);font-size:18px;cursor:pointer">✕</button>
-        </div>
-        <div style="flex:1;overflow-y:auto;padding:20px" id="cmp-detail-body">Loading…</div>
-      </div>
-
-      <!-- New campaign modal -->
-      <div id="cmp-new-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:var(--z-drawer);align-items:center;justify-content:center">
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);padding:28px;width:480px;max-width:95vw">
-          <div style="font-family:var(--fh);font-size:18px;font-weight:800;color:var(--t1);margin-bottom:20px">New Campaign</div>
-          <div style="margin-bottom:14px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Campaign Name</label>
-            <input id="cmp-new-name" type="text" placeholder="e.g. Q2 SEO Push" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px">
-          </div>
-          <div style="margin-bottom:14px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Campaign Type</label>
-            <select id="cmp-new-type" onchange="toggleCampaignSeoFields(this.value)" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px">
-              <option value="seo_growth">SEO Growth</option>
-              <option value="content_engine">Content Engine</option>
-              <option value="social_growth">Social Growth</option>
-              <option value="lead_generation">Lead Generation</option>
-            </select>
-          </div>
-          <!-- Phase 7: SEO context fields (shown for SEO campaign types) -->
-          <div id="cmp-seo-fields" style="margin-bottom:14px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Target Keyword <span style="color:var(--rd)">*</span></label>
-            <input id="cmp-new-keyword" type="text" placeholder="e.g. dubai interior design" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;margin-bottom:8px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Target URL <span style="color:var(--t3)">(optional)</span></label>
-            <input id="cmp-new-url" type="text" placeholder="https://example.com" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px">
-          </div>
-          <div style="display:flex;gap:10px;justify-content:flex-end">
-            <button onclick="closeCampaignModal()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t2);border-radius:var(--r);padding:9px 18px;font-size:13px;cursor:pointer">Cancel</button>
-            <button onclick="createCampaign()" style="background:var(--p);border:none;color:#fff;border-radius:var(--r);padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer">Create Campaign</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-                <!-- ── GOVERNANCE ── -->
-    <!-- ═══════════════════════════════════════════════════════════ BUILDER VIEW -->
-    <!-- #view-builder (dead canvas-editor shell) removed 2026-08-28 — BUILDER888 D0; page editing lives in builder.js _wsShowPageEditor -->
-
-    <div id="view-tools" class="view" style="display:none;flex-direction:column">
-      <div id="tools-root" style="flex:1;overflow-y:auto;padding:24px"></div>
-    </div>
-
-    <div id="view-governance" class="view" style="display:none">
-      <div style="padding:32px;max-width:860px;margin:0 auto">
-        <div style="margin-bottom:28px">
-          <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:6px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l6 2v6c0 4-3 7-6 8-3-1-6-4-6-8V4l6-2z"/></svg> Action Approvals</div>
-          <div style="font-size:13px;color:var(--muted)">AI-proposed actions that require your approval before executing. Review, then approve or reject.</div>
-        </div>
-
-        <!-- Pending Actions -->
-        <div id="gov-pending-wrap">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Pending Approval</div>
-          <div id="gov-pending-list">
-            <div style="color:var(--muted);font-size:13px;padding:24px;text-align:center;background:var(--s2);border-radius:10px">No pending actions.</div>
-          </div>
-        </div>
-
-        <!-- Action History -->
-        <div style="margin-top:36px">
-          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:12px">Recent History</div>
-          <div id="gov-history-list">
-            <div style="color:var(--muted);font-size:13px;padding:24px;text-align:center;background:var(--s2);border-radius:10px">No action history yet.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── PREVIEWS (Phase 6.5 — Manus Preview System) ── -->
-    <div id="view-previews" class="view" style="display:none">
-      <div style="padding:32px;max-width:900px;margin:0 auto">
-        <div style="margin-bottom:28px">
-          <div style="font-family:Syne,sans-serif;font-size:22px;font-weight:700;color:#fff;margin-bottom:6px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M2 10s3-6 8-6 8 6 8 6-3 6-8 6-8-6-8-6z"/><circle cx="10" cy="10" r="2.5"/></svg> Action Previews</div>
-          <div style="font-size:13px;color:var(--muted)">AI-prepared actions for your review. Edit fields, then approve or reject. Nothing executes without your approval.</div>
-        </div>
-        <div style="display:flex;gap:8px;margin-bottom:20px">
-          <button class="tab active" data-ptab="pending" onclick="previewSetTab('pending')">⏳ Pending</button>
-          <button class="tab" data-ptab="executed" onclick="previewSetTab('executed')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" class="lu-icon" style="vertical-align:-3px"><path d="M4 10l4 4 8-8"/></svg> Executed</button>
-          <button class="tab" data-ptab="rejected" onclick="previewSetTab('rejected')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" class="lu-icon" style="vertical-align:-3px"><path d="M15 5L5 15M5 5l10 10"/></svg> Rejected</button>
-        </div>
-        <div id="preview-list">
-          <div style="color:var(--muted);font-size:13px;padding:24px;text-align:center;background:var(--s2);border-radius:10px">Loading previews…</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── AGENTS ── -->
+<!-- P4-U1: retired view campaigns removed (was dead: no nav, no loader, or launch-scope blocked). -->
+<!-- P4-U1: retired view tools removed (was dead: no nav, no loader, or launch-scope blocked). -->
+<!-- P4-U1: retired view governance removed (was dead: no nav, no loader, or launch-scope blocked). -->
+<!-- P4-U1: retired view previews removed (was dead: no nav, no loader, or launch-scope blocked). -->
     <div id="view-agents" class="view" style="display:none">
       <div class="agents-view">
         <div class="av-hdr"><div class="av-title">Agent Profiles</div><div class="av-sub">Your AI marketing team. Click any agent to view their profile, tasks and messages.</div></div>
@@ -4152,9 +4072,7 @@ window.luSwipeToClose = luSwipeToClose;
         <div id="view-seo" class="view" style="display:none;flex-direction:column">
       <div id="pipeline-root" style="display:none"></div><div id="seo-root" style="flex:1;overflow-y:auto;padding:24px"></div>
     </div>
-        <div id="view-marketing" class="view" style="display:none;flex-direction:column">
-      <div id="marketing-root" style="flex:1;overflow-y:auto;padding:24px"></div>
-    </div>
+<!-- P4-U1: retired view marketing removed (was dead: no nav, no loader, or launch-scope blocked). -->
         <div id="view-social" class="view" style="display:none;flex-direction:column">
       <div id="social-root" style="flex:1;overflow-y:auto;padding:24px"></div>
     </div>
@@ -4162,9 +4080,7 @@ window.luSwipeToClose = luSwipeToClose;
       <div id="write-root" style="flex:1;overflow-y:auto;padding:24px"></div>
     </div>
     <!-- view-creative container removed 2026-04-20 — Studio (studio.js) is now the single image-creation engine surface. The /api/creative/* routes + creative.js remain intact for back-end use (Arthur quick-action fallback at line ~3036). -->
-        <div id="view-manualedit" class="view" style="display:none;flex-direction:column">
-      <div id="manualedit-root" style="flex:1;overflow:hidden"></div>
-    </div>
+<!-- P4-U1: retired view manualedit removed (was dead: no nav, no loader, or launch-scope blocked). -->
         <div id="view-studio" class="view" style="display:none;flex-direction:column">
       <div id="studio-root" style="flex:1;overflow:hidden"></div>
     </div>
@@ -4174,16 +4090,9 @@ window.luSwipeToClose = luSwipeToClose;
         <div id="view-calendar" class="view" style="display:none;flex-direction:column">
       <div id="calendar-root" style="flex:1;overflow-y:auto;padding:24px"></div>
     </div>
-        <div id="view-automation" class="view" style="display:none;flex-direction:column">
-      <div id="automation-root" style="flex:1;overflow-y:auto;padding:24px"></div>
-    </div>
-    
-        <div id="view-mentions" class="view" style="display:none;flex-direction:column">
-      <div id="mentions-root" style="flex:1;overflow-y:auto;padding:24px"></div>
-    </div>
-            <div id="view-blog" class="view" style="display:none;flex-direction:column">
-      <div id="blog-root" style="flex:1;overflow-y:auto;padding:24px"></div>
-    </div>
+<!-- P4-U1: retired view automation removed (was dead: no nav, no loader, or launch-scope blocked). -->
+<!-- P4-U1: retired view mentions removed (was dead: no nav, no loader, or launch-scope blocked). -->
+<!-- P4-U1: retired view blog removed (was dead: no nav, no loader, or launch-scope blocked). -->
         <div id="view-messages" class="view" style="display:none;flex-direction:column;height:100%">
       <div id="messages-root" style="flex:1;overflow-y:auto;height:100%"></div>
     </div>
@@ -4423,7 +4332,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',marketing:'/app/js/marketing.js?v=4.12.0-decomposed',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=p0c-20260830',write:'/app/js/write.js?v=p0c-20260830',creative:'/app/js/creative.js?v=ui1-20260829',blog:'/app/js/blog.js?v=p0c-20260830',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',automation:'/app/js/automation.js?v=1.0.2-meeting-cta',projects:'/app/js/projects.js?v=p0c-20260830',mentions:'/app/js/mentions.js?v=1.0.4-progress-bar',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=p0c-20260830',write:'/app/js/write.js?v=p0c-20260830',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=p0c-20260830',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4525,7 +4434,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=p0c-20260830"></script>
-<script defer src="/app/js/core.js?v=p3u1-20260830"></script>
+<script defer src="/app/js/core.js?v=p4u1-20260830"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
@@ -4542,31 +4451,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 
 
 <!-- ── GLOBAL AI ASSISTANT (mounted at root, persists across views) ── -->
-<button class="ai-fab" id="ai-fab" data-adv="1" onclick="toggleAssistant()" title="AI Assistant" aria-label="AI Assistant">✦<div class="ai-fab-badge" id="ai-fab-badge"></div></button>
-<div class="ai-panel" id="ai-panel" data-adv="1">
-  <div class="ai-panel-hdr">
-    <div class="ai-panel-av">✦</div>
-    <div style="flex:1;min-width:0">
-      <div class="ai-panel-title">Aria</div>
-      <div class="ai-panel-ctx" id="ai-ctx-label">Platform Intelligence</div>
-    </div>
-    <div class="ai-panel-close" onclick="toggleAssistant()">✕</div>
-  </div>
-  <div class="ai-feed" id="ai-feed">
-    <div class="ai-msg ai-msg-assistant">
-      <span class="ai-msg-label">✦ Assistant</span>
-      <div class="ai-msg-bubble">Hey! I'm your platform intelligence layer. Ask me anything about your agents, tasks, or meetings — or tell me to take action.</div>
-    </div>
-  </div>
-  <div class="ai-quick" id="ai-quick">
-    <button class="ai-q-btn" onclick="aiQuick('Which agents are overloaded?')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><circle cx="10" cy="10" r="7"/><path d="M10 9v5M10 7v.5"/></svg> Who's overloaded?</button>
-    <button class="ai-q-btn" onclick="aiQuick('What tasks are active right now?')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><circle cx="5" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg> Active tasks</button>
-    <button class="ai-q-btn" onclick="aiQuick('Give me a quick platform status summary')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M2 16l4-6 4 3 4-8 4 4"/></svg> Status</button>
-  </div>
-  <div class="ai-input-row">
-    <textarea class="ai-input" id="ai-input" rows="1" placeholder="Ask anything or give a command…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAssistant();}"></textarea>
-    <button class="ai-send" id="ai-send" onclick="sendAssistant()">↑</button>
-  </div>
+<!-- P4-U1 (2026-08-30): Aria assistant retired — Sarah is the one assistant (REPORT-0023 UX-033). -->
 </div>
 
 
