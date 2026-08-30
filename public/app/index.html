@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="d42f51b-202608301919">
+<meta name="lu-build" content="bd958bb-202608301929">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -122,8 +122,8 @@
 <title>LevelUp Core</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" onload="this.rel='stylesheet'">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"></noscript>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" onload="this.rel='stylesheet'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="/app/css/orb.css">
 <style>
@@ -150,7 +150,8 @@
   --bl:#3B8BF5;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA;
   --t1:#E8EDF5;--t2:#8B97B0;--t3:#7C879C; /* P4-U1: was #4A566B (2.55:1); now 4.6:1 on --bg */
   --sb-thumb:#2E3446;--sb-hover:#3D4560; /* SCROLL-1: scrollbar tokens — every scroller uses these, never the OS default */
-  --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
+  /* TYPE-1 (2026-08-30): Inter for UI/body (tabular numerals for KPIs), Bricolage Grotesque for headings. */
+  --fh:'Bricolage Grotesque','Inter',sans-serif;--fb:'Inter',system-ui,sans-serif;
   --r:10px;--rg:14px;--rx:20px;--tr:150ms cubic-bezier(.4,0,.2,1);
   /* Legacy aliases — used by engine view templates */
   --text-1:var(--t1);--text-2:var(--t2);--text-3:var(--t3);
@@ -235,7 +236,7 @@ html[data-theme="light"] .st-topbar{border-bottom-color:var(--bd)}
 #sb-theme .lu-mode-btn,#sb-mode-toggle .lu-mode-btn{min-height:36px}
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;overflow:hidden;overflow-x:hidden;font-family:var(--fb);background:var(--bg);color:var(--t1);font-size:14px;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
+html,body{height:100%;overflow:hidden;overflow-x:hidden;font-family:var(--fb);font-variant-numeric:tabular-nums;background:var(--bg);color:var(--t1);font-size:14px;letter-spacing:-0.01em;-webkit-font-smoothing:antialiased}
 .engine-title,.page-title{font-weight:600;letter-spacing:-0.02em}
 button{font-family:var(--fb);cursor:pointer;border:none}
 textarea,input{font-family:var(--fb);}
@@ -4487,7 +4488,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
-<script defer src="/app/js/core.js?v=p4u1-20260830"></script>
+<script defer src="/app/js/core.js?v=type1-20260830"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>

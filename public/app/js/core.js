@@ -1992,7 +1992,7 @@ function drawCanvas(){
     var lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
     lbl.setAttribute('x',cx);lbl.setAttribute('y',cy+1);lbl.setAttribute('text-anchor','middle');
     lbl.setAttribute('dominant-baseline','middle');lbl.setAttribute('font-size','9');
-    lbl.setAttribute('font-family','DM Sans,sans-serif');lbl.setAttribute('font-weight','700');
+    lbl.setAttribute('font-family','Inter,sans-serif');lbl.setAttribute('font-weight','700');
     lbl.setAttribute('fill',color);lbl.textContent=tasks.length+' task'+(tasks.length>1?'s':'');
     lbl.style.pointerEvents='none'; svg.appendChild(lbl);
     _drawnPairs.push({ pair: pair, tasks: tasks.length, active: hasActive, flash: isNewPair });
