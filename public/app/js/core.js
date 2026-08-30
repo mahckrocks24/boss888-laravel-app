@@ -1154,9 +1154,8 @@ async function nav(view, opts){
   // P1-U2 (2026-08-30): Basic surfaces are ALIASES of the authoritative views until P3 rebuilds their content —
   // attention→approvals, results→command, website→websites, customers→crm, account→settings. The URL keeps the
   // Basic name; the panel and its objects are the same ones Advanced shows.
-  var _BASIC_ALIAS = { attention:'approvals', results:'command', website:'websites', customers:'crm', account:'settings' };
+  // P3: the Basic surfaces are real views now (basic.js). _requested is kept for nav highlighting/URL.
   var _requested = view;
-  if (_BASIC_ALIAS[view]) { view = _BASIC_ALIAS[view]; }
   if (typeof window.sarahUnload === 'function' && view !== 'sarah') { try { window.sarahUnload(); } catch (_e) {} }
   document.querySelectorAll('.view').forEach(v=>{
     v.classList.remove('active');
@@ -1199,6 +1198,11 @@ async function nav(view, opts){
   var _wsAct=document.getElementById('ws-activity-panel');
   if(_wsAct){ _wsAct.style.display = (view==='meeting') ? 'none' : ''; }
   if(view==='sarah')      { var _sr=document.getElementById('sarah-root'); if(_sr && typeof window.sarahLoad==='function') window.sarahLoad(_sr); }
+  if(view==='attention')  { var _ar=document.getElementById('attention-root'); if(_ar && typeof window.basicAttentionLoad==='function') window.basicAttentionLoad(_ar); }
+  if(view==='results')    { var _rr=document.getElementById('results-root'); if(_rr && typeof window.basicResultsLoad==='function') window.basicResultsLoad(_rr); }
+  if(view==='website')    { var _wr=document.getElementById('website-root'); if(_wr && typeof window.basicWebsiteLoad==='function') window.basicWebsiteLoad(_wr); }
+  if(view==='customers')  { var _cr=document.getElementById('customers-root'); if(_cr && typeof window.basicCustomersLoad==='function') window.basicCustomersLoad(_cr); }
+  if(view==='account')    { var _acr=document.getElementById('account-root'); if(_acr && typeof window.basicAccountLoad==='function') window.basicAccountLoad(_acr); }
   if(view==='reports')    loadReports();
   if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); }
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
