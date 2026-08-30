@@ -162,7 +162,14 @@
       var feed = (d.activity_feed || []).slice(0, 8); var g3 = sec('Recently', feed.length || null); body.appendChild(g3);
       if (!feed.length) g3.appendChild(empty('Nothing has run yet', 'Tell Sarah what you want to achieve and the first results will appear here.'));
       var list = document.createElement('div'); list.className = 'bs-list'; g3.appendChild(list);
-      feed.forEach(function (f) { list.appendChild(row('', (f.agent && f.agent.name ? f.agent.name.charAt(0) : '•'), f.label || '', f.time_ago || '')); });
+      feed.forEach(function (f) { var lbl = String(f.label || '');
+        // The feed label comes from the Command Center map ("James completed add keyword") — swap the slug tail for business words.
+        var m = lbl.match(/^(\w+)\s(completed|delegated|failed at|cancelled)\s(.+?)(?:\sto\s(\w+))?$/);
+        if (m) { var act = humanAction(m[3].trim().replace(/\s+/g, '_'));
+          if (m[2] === 'delegated') lbl = m[1] + ' asked ' + (m[4] || 'the team') + ' to start ' + act;
+          else if (m[2] === 'completed') lbl = m[1] + ' finished ' + act;
+          else lbl = m[1] + ' ' + m[2] + ' ' + act; }
+        list.appendChild(row('', (f.agent && f.agent.name ? f.agent.name.charAt(0) : '•'), lbl, f.time_ago || '')); });
     }).catch(function () { fail(body, 'your results', function () { window.basicResultsLoad(root); }); });
   };
 
