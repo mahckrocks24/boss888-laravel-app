@@ -13,22 +13,22 @@
 
 :root,
 .lu-onboard {
-  --ob-bg:         #0B0F19;
-  --ob-card:       #121826;
-  --ob-card2:      #0F1520;
-  --ob-border:     #1F2937;
-  --ob-border2:    #2D3748;
+  --ob-bg:         var(--bg,#0F1117);
+  --ob-card:       var(--s1,#171A21);
+  --ob-card2:      var(--s2,#1E2230);
+  --ob-border:     var(--bd,rgba(255,255,255,.07));
+  --ob-border2:    var(--bd2,rgba(255,255,255,.13));
   --ob-border-act: rgba(124,58,237,0.45);
 
-  --ob-purple:     #7C3AED;
-  --ob-blue:       #3B82F6;
-  --ob-teal:       #00E5A8;
+  --ob-purple:     var(--p,#6C5CE7);
+  --ob-blue:       var(--bl,#3B8BF5);
+  --ob-teal:       var(--ac,#00E5A8);
   --ob-violet:     #A78BFA;
-  --ob-amber:      #F59E0B;   /* Sarah's color only — nowhere else */
+  --ob-amber:      var(--am,#F59E0B);   /* Sarah's color only — nowhere else */
 
-  --ob-text:       #FFFFFF;
-  --ob-muted:      #9CA3AF;
-  --ob-faint:      #6B7280;
+  --ob-text:       var(--t1,#E8EDF5);
+  --ob-muted:      var(--t2,#8B97B0);
+  --ob-faint:      var(--t3,#7C879C);
 
   --ob-grad:       linear-gradient(135deg, #7C3AED, #3B82F6);
   --ob-grad-text:  linear-gradient(135deg, #7C3AED, #00E5A8);

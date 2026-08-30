@@ -1413,7 +1413,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   'use strict';
 
   // ── Design system CSS (injected once) ───────────────────────────────────
-  var LGSE_CSS = ":root{--lgse-bg0:#0d0f14;--lgse-bg1:#13161e;--lgse-bg2:#1a1d27;--lgse-bg3:#222635;--lgse-border:#2a2f42;--lgse-border2:#343a52;--lgse-t1:#f0f2ff;--lgse-t2:#8b90a7;--lgse-t3:#555a72;--lgse-purple:#6C5CE7;--lgse-teal:#00E5A8;--lgse-blue:#3B82F6;--lgse-amber:#F59E0B;--lgse-red:#EF4444;--lgse-mono:'JetBrains Mono','Fira Code',ui-monospace,Menlo,monospace}\n"
+  var LGSE_CSS = ":root{--lgse-bg0:var(--bg,#0F1117);--lgse-bg1:var(--s1,#171A21);--lgse-bg2:var(--s2,#1E2230);--lgse-bg3:var(--s3,#252A3A);--lgse-border:var(--bd,rgba(255,255,255,.07));--lgse-border2:var(--bd2,rgba(255,255,255,.13));--lgse-t1:var(--t1,#E8EDF5);--lgse-t2:var(--t2,#8B97B0);--lgse-t3:var(--t3,#7C879C);--lgse-purple:var(--p,#6C5CE7);--lgse-teal:var(--ac,#00E5A8);--lgse-blue:var(--bl,#3B8BF5);--lgse-amber:var(--am,#F59E0B);--lgse-red:var(--rd,#F87171);--lgse-mono:'JetBrains Mono','Fira Code',ui-monospace,Menlo,monospace}\n"
     + ".lgse-shell{background:var(--lgse-bg1);border-radius:16px;overflow:hidden;border:1px solid var(--lgse-border);min-height:400px}\n"
     + ".lgse-topbar{background:var(--lgse-bg0);border-bottom:1px solid var(--lgse-border);padding:0 20px;display:flex;align-items:center;overflow-x:auto;scrollbar-width:none}\n"
     + ".lgse-topbar::-webkit-scrollbar{display:none}\n"
