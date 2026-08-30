@@ -1944,9 +1944,8 @@ html, body, .app, .lu-main {
 
 /* Tablet portrait (768-1023px) — sidebar visible, no hamburger */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .sidebar { width: 200px !important; }
-  .lu-main, .main { margin-left: 200px !important; }
-  .lu-topbar { display: none !important; }
+  /* P5 (2026-08-30): removed — at 768–1023 px the sidebar is an off-canvas drawer (rule above), so an offset main pushed the whole page 200 px off-screen. */
+  /* P5: the topbar carries the only way to open the drawer at this width — it stays. */
   .lu-card-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .lu-engine-panel { width: 260px !important; }
   #cmd-kpis { grid-template-columns: repeat(2, 1fr) !important; }
@@ -4613,7 +4612,7 @@ window.toggleTheme=function(){var cur=localStorage.getItem('lu_theme')||'dark';v
 <!-- JS in core.js -->
 
 <script defer src="/app/js/messages-ui.js?v=1.2.0-p1u2"></script>
-<script defer src="/app/js/sarah.js?v=1.2.3-p3u1c"></script>
+<script defer src="/app/js/sarah.js?v=1.2.4-p5"></script>
 <script defer src="/app/js/basic.js?v=1.0.3-p3u2"></script>
 <script defer src="/app/js/arthur-chat.js?v=p0c-20260830"></script>
 <script defer src="/app/js/chatbot-spa.js?v=p0d-20260830"></script>

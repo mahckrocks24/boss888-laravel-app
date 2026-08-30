@@ -46,7 +46,7 @@
       '.sh-ctx{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:6px 10px;max-width:100%}',
       '.sh-ctx b{color:var(--t1);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}',
       '.sh-brief{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--s1);flex:none}',
-      '.sh-chip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:4px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font-size:12.5px;color:var(--t2)}',
+      '.sh-chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font-size:12.5px;color:var(--t2)}',
       '.sh-chip b{color:var(--t1);font-weight:600}.sh-chip.att{border-color:rgba(245,158,11,.5);color:var(--am)}.sh-chip.att b{color:var(--am)}',
       '.sh-chip[role=button]{cursor:pointer}.sh-chip[role=button]:hover{border-color:var(--p)}.sh-chip:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.sh-feed{flex:1;min-height:0;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px;scroll-behavior:smooth}',
