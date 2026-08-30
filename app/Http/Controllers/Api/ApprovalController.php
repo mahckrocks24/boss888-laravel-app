@@ -558,6 +558,49 @@ class ApprovalController
         }
         $agentSlug = $d['agent'] ?? 'sarah';
         $ageHours  = (int) Carbon::parse($r->created_at)->diffInHours(now());
+        // P2-U1b (2026-08-30): a chat proposal carries the exact creation payload it will run. Surface the real
+        // engine/action/payload so the customer reads "Publish an article" (not "Recommended action") and can
+        // open the very article/post/lead the approval is about.
+        $cp = is_array($d['create_payload'] ?? null) ? $d['create_payload'] : [];
+        $cpEngine  = (string) ($cp['engine'] ?? '');
+        $cpAction  = (string) ($cp['action'] ?? '');
+        $cpPayload = is_array($cp['payload'] ?? null) ? $cp['payload'] : null;
+        if ($cpEngine !== '' && $cpAction !== '') {
+            $agents = is_array($cp['assigned_agents'] ?? null) && !empty($cp['assigned_agents']) ? $cp['assigned_agents'] : [$agentSlug];
+            $primary = $agents[0] ?? $agentSlug;
+            return [
+                'id'            => (int) $r->id,
+                'kind'          => 'proposal',
+                'status'        => $r->status,
+                'created_at'    => $r->created_at,
+                'decided_at'    => $r->decided_at,
+                'decision_note' => $r->decision_note,
+                'age_hours'     => $ageHours,
+                'time_ago'      => Carbon::parse($r->created_at)->diffForHumans(),
+                'is_overdue'    => $ageHours > 24 && $r->status === 'pending',
+                'is_orphan'     => false,
+                'task' => [
+                    'id'              => 0,
+                    'engine'          => $cpEngine,
+                    'action'          => $cpAction,
+                    'label'           => $this->labelFor($cpEngine, $cpAction, $cpPayload),
+                    'description'     => $this->descriptionFor($cpEngine, $cpAction, $cpPayload),
+                    'payload'         => $cpPayload,
+                    'payload_keys'    => is_array($cpPayload) ? array_slice(array_keys($cpPayload), 0, 8) : [],
+                    'credit_cost'     => (int) ($d['total_credits'] ?? ($cp['credit_cost'] ?? 0)),
+                    'priority'        => (string) ($cp['priority'] ?? 'normal'),
+                    'status'          => 'pending',
+                    'assigned_agents' => $agents,
+                    'primary_agent'   => $primary,
+                    'agent'           => $this->agentBadge($primary),
+                    'engine_badge'    => $this->engineBadge($cpEngine),
+                    'from_meeting'    => null,
+                    'category'        => 'proposal',
+                    'category_label'  => 'Sarah proposed',
+                    'category_color'  => '#F59E0B',
+                ],
+            ];
+        }
 
         return [
             'id'            => (int) $r->id,

@@ -82,7 +82,18 @@
       '.sh-attach{width:44px;height:44px;border-radius:12px;border:1px solid var(--bd2);background:transparent;color:var(--t2);cursor:pointer;flex:none;font-size:16px}',
       '.sh-attach:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.sh-hint{max-width:920px;margin:6px auto 0;font-size:11.5px;color:var(--t2);text-align:center}',
-      '@media (max-width:640px){.sh-top{padding:10px 12px}.sh-feed{padding:12px}.sh-row{max-width:94%}.sh-ctx b{max-width:40vw}}'
+      '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:38vh;overflow:auto}',
+      '.sh-item{display:flex;gap:12px;align-items:flex-start;background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--am);border-radius:var(--rg);padding:12px 14px}',
+      '.sh-item.gate{border-left-color:var(--bl)}.sh-item.book{border-left-color:var(--ac)}.sh-item.fail{border-left-color:var(--rd)}',
+      '.sh-item .ic{flex:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--s2);font-size:14px}',
+      '.sh-item .body{flex:1;min-width:0}.sh-item .t{font-weight:600;font-size:13.5px;color:var(--t1)}.sh-item .d{font-size:12.5px;color:var(--t2);margin-top:2px;line-height:1.45}',
+      '.sh-item .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}',
+      '.sh-item .who{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2);margin-top:6px}.sh-item .who b{color:var(--t1);font-weight:600}',
+      '.sh-btn.danger{border-color:rgba(248,113,113,.55);color:var(--rd)}',
+      '.sh-reason{width:100%;box-sizing:border-box;margin-top:8px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--t1);padding:9px 12px;font:400 13px var(--fb);min-height:44px}',
+      '.sh-reason:focus-visible{outline:2px solid var(--p);outline-offset:1px}',
+      '.sh-rail-h{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);padding:0 2px}',
+      '@media (max-width:640px){.sh-top{padding:10px 12px}.sh-feed{padding:12px}.sh-row{max-width:94%}.sh-ctx b{max-width:40vw}.sh-rail{padding:8px 12px 0;max-height:34vh}}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -101,6 +112,7 @@
             '<div class="sh-ctx" id="sh-ctx" title="The business Sarah is working for"><span aria-hidden="true">◎</span><b id="sh-ctx-name">…</b></div>' +
           '</div>' +
           '<div class="sh-brief" id="sh-brief" aria-label="Today at a glance"></div>' +
+          '<div class="sh-rail" id="sh-rail" aria-label="Needs your attention" hidden></div>' +
           '<div class="sh-feed" id="sh-feed" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with Sarah"></div>' +
           '<div class="sh-compose">' +
             '<div class="sh-compose-row">' +
@@ -124,7 +136,7 @@
       try { if (window.LU_attachComposer && typeof window.LU_attachComposer.observe === 'function') window.LU_attachComposer.observe(S.input); } catch (e) {}
       S.mounted = true;
     }
-    loadContext(); loadBriefing(); loadThread(); startEvents();
+    loadContext(); loadBriefing(); loadRail(); loadThread(); startEvents();
   };
   window.sarahUnload = function () { stopEvents(); };
 
@@ -156,6 +168,112 @@
         wrap.appendChild(chip('', w));
       }
     }).catch(function () { wrap.innerHTML = ''; });
+  }
+
+  /* ── Business language for internal slugs ─────────────────────────────────────────────────────── */
+  var ACTION_WORDS = { deep_audit: 'a technical check of your website', run_audit: 'a website health check', add_keyword: 'tracking a new search phrase',
+    track_keywords: 'checking your search rankings', serp_analysis: 'researching what people search for', generate_links: 'connecting related pages',
+    fix_orphans: 'linking pages nobody links to', generate_meta: 'writing page descriptions', meta_optimize: 'improving page descriptions',
+    create_article: 'writing an article', write_article: 'writing an article', publish_article: 'publishing an article', improve_draft: 'polishing a draft',
+    aeo_enrich: 'making an article easier for AI search to cite', generate_article: 'writing an article',
+    create_post: 'writing a social post', social_create_post: 'writing a social post', social_ai_post: 'writing a social post', publish_post: 'publishing a social post',
+    schedule_post: 'scheduling a social post', generate_hashtags: 'choosing hashtags',
+    create_lead: 'adding a new enquiry', update_lead: 'updating a customer record', log_activity: 'noting a customer conversation', score_lead: 'prioritising an enquiry',
+    generate_outreach: 'drafting a customer email', create_event: 'adding a calendar entry',
+    generate_image: 'creating an image', generate_video: 'creating a video', generate_design: 'designing a graphic', export_design: 'exporting a design',
+    wizard_generate: 'building your website', generate_page: 'building a page', publish_website: 'publishing your website', arthur_edit: 'editing your website',
+    start_meeting: 'planning with the team', end_meeting: 'wrapping up a planning session' };
+  function humanAction(a) { a = String(a || '').replace(/^[a-z]+\//, ''); if (ACTION_WORDS[a]) return ACTION_WORDS[a]; if (window.LU_humanize) { try { var h = window.LU_humanize(a); if (h && h !== a) return h; } catch (e) {} } return a.replace(/_/g, ' '); }
+  function humanTitle(t) { t = String(t || ''); var k = t.replace(/^[a-z]+\//, ''); return ACTION_WORDS[k] ? ACTION_WORDS[k].charAt(0).toUpperCase() + ACTION_WORDS[k].slice(1) : (t.replace(/_/g, ' ')); }
+  // The exact object in Advanced (same authoritative rows the specialist tools edit).
+  function deepLink(engine, payload, taskId) {
+    payload = payload || {};
+    if (payload.article_id) return { view: 'write', tail: payload.article_id, label: 'Open the article' };
+    if (payload.post_id) return { view: 'social', tail: payload.post_id, label: 'Open the post' };
+    if (payload.design_id) return { view: 'studio', tail: payload.design_id, label: 'Open the design' };
+    if (payload.lead_id) return { view: 'crm', tail: payload.lead_id, label: 'Open the enquiry' };
+    if (payload.website_id) return { view: 'websites', tail: payload.website_id, label: 'Open the website' };
+    var byEngine = { write: 'write', seo: 'seo', social: 'social', studio: 'studio', creative: 'studio', crm: 'crm', calendar: 'calendar', builder: 'websites', chatbot: 'chatbot' };
+    if (byEngine[engine]) return { view: byEngine[engine], tail: null, label: 'Open in Advanced' };
+    return null;
+  }
+  function openAdvanced(link) {
+    if (!link || !window.nav) return;
+    if (typeof window._lgsc_set_visibility_mode === 'function' && document.documentElement.getAttribute('data-mode') !== 'advanced') { window._lgsc_set_visibility_mode('advanced', { skipNav: true }); }
+    window.nav(link.view, link.tail ? { tail: link.tail } : undefined);
+  }
+
+  /* ── Attention rail: approvals · booking requests · provider gates (all real, all actionable) ── */
+  function railItem(cls, icon, title, desc, who, acts, id) {
+    var el = document.createElement('div'); el.className = 'sh-item ' + cls; if (id) el.setAttribute('data-item', id);
+    el.innerHTML = '<div class="ic" aria-hidden="true">' + icon + '</div><div class="body"><div class="t">' + esc(title) + '</div>' + (desc ? '<div class="d">' + esc(desc) + '</div>' : '') +
+      (who ? '<div class="who"><b>' + esc(who) + '</b><span>on your team</span></div>' : '') + (acts && acts.length ? '<div class="acts"></div>' : '') + '</div>';
+    var actsEl = el.querySelector('.acts');
+    (acts || []).forEach(function (a) { var b = document.createElement('button'); b.type = 'button'; b.className = 'sh-btn' + (a.kind ? ' ' + a.kind : ''); b.textContent = a.label; b.addEventListener('click', function () { a.run(b, el); }); actsEl.appendChild(b); });
+    return el;
+  }
+  function decide(approvalId, action, reason, btn, el) {
+    var buttons = el.querySelectorAll('button'); buttons.forEach(function (b) { b.disabled = true; }); btn.textContent = action === 'approve' ? 'Approving…' : 'Sending…';
+    api('POST', 'approvals/' + approvalId + '/' + action, reason ? { reason: reason } : {}).then(function (r) {
+      var d = r.json || {};
+      if (r.ok && (d.success !== false) && !d.error) {
+        el.classList.remove('appr'); el.classList.add(action === 'approve' ? 'book' : 'fail');
+        el.querySelector('.acts').innerHTML = '<span class="d">' + (action === 'approve' ? 'Approved — your team is on it.' : 'Rejected — nothing will run.') + '</span>';
+        showToast(action === 'approve' ? 'Approved — your team is on it.' : 'Rejected — the task was cancelled.', action === 'approve' ? 'success' : 'info');
+        setTimeout(function () { el.remove(); loadRail(); loadBriefing(); }, 2200);
+      } else {
+        buttons.forEach(function (b) { b.disabled = false; }); btn.textContent = action === 'approve' ? 'Approve' : 'Reject';
+        showToast((action === 'approve' ? 'Couldn\'t approve: ' : 'Couldn\'t reject: ') + (d.message || d.error || ('HTTP ' + r.status)), 'error');
+      }
+    }).catch(function () { buttons.forEach(function (b) { b.disabled = false; }); btn.textContent = action === 'approve' ? 'Approve' : 'Reject'; showToast('Couldn\'t reach the server — try again.', 'error'); });
+  }
+  function approvalItem(a) {
+    var t = a.task || {}; var eng = t.engine || 'system';
+    var title = t.label || humanTitle(t.action || a.title || 'Something needs your OK');
+    var cost = t.credit_cost ? (t.credit_cost + (t.credit_cost === 1 ? ' credit' : ' credits')) : 'no credits';
+    var desc = (t.description ? t.description + ' · ' : '') + 'Uses ' + cost + (a.time_ago ? ' · asked ' + a.time_ago : '');
+    var who = t.agent && t.agent.name ? t.agent.name : (t.primary_agent ? AGENT_NAMES[t.primary_agent] || t.primary_agent : null);
+    var link = deepLink(eng, t.payload || {}, t.id);
+    var acts = [
+      { label: 'Approve', kind: 'primary', run: function (b, el) { decide(a.id, 'approve', null, b, el); } },
+      { label: 'Reject', kind: 'danger', run: function (b, el) {
+          var box = el.querySelector('.sh-reason'); if (!box) {
+            box = document.createElement('textarea'); box.className = 'sh-reason'; box.rows = 2; box.placeholder = 'Why not? (Sarah learns from this)'; box.setAttribute('aria-label', 'Reason for rejecting'); el.querySelector('.body').insertBefore(box, el.querySelector('.acts')); box.focus(); b.textContent = 'Confirm reject'; return; }
+          var reason = box.value.trim(); if (!reason) { box.focus(); showToast('Add a short reason so Sarah knows what to change.', 'warning'); return; }
+          decide(a.id, 'reject', reason, b, el); } }
+    ];
+    if (link) acts.push({ label: link.label, run: function () { openAdvanced(link); } });
+    return railItem('appr', '✓', title, desc, who, acts, 'appr-' + a.id);
+  }
+  function loadRail() {
+    var rail = document.getElementById('sh-rail'); if (!rail) return;
+    Promise.all([
+      api('GET', 'approvals?status=pending&per_page=5').catch(function () { return { json: null }; }),
+      api('GET', 'calendar/events').catch(function () { return { json: null }; }),
+      api('GET', 'social/accounts').catch(function () { return { json: null }; }),
+      api('GET', 'seo/gsc/status').catch(function () { return { json: null }; })
+    ]).then(function (rs) {
+      var items = [];
+      var appr = (rs[0].json && rs[0].json.items) || [];
+      appr.forEach(function (a) { items.push(approvalItem(a)); });
+      var evs = Array.isArray(rs[1].json) ? rs[1].json : ((rs[1].json && (rs[1].json.events || rs[1].json.data)) || []);
+      evs.filter(function (e) { return e && /booking_pending|pending/.test(String(e.status || e.booking_status || '')) && !/cancel|declin/.test(String(e.status || '')); }).slice(0, 3).forEach(function (e) {
+        items.push(railItem('book', '📅', 'Booking request — ' + (e.title || e.name || 'a customer').replace(/^Booking request — /, ''), (e.starts_at ? 'Asked for ' + new Date(String(e.starts_at).replace(' ', 'T')).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '') , null,
+          [{ label: 'Reply in Customers', kind: 'primary', run: function () { if (window.nav) nav('customers'); } }], 'book-' + e.id));
+      });
+      var accs = Array.isArray(rs[2].json) ? rs[2].json : ((rs[2].json && (rs[2].json.accounts || rs[2].json.data)) || []);
+      var socialConnected = accs.some(function (x) { return x && (x.status === 'active' || x.connected || x.is_active); });
+      S.gates = { social: socialConnected, gsc: !!(rs[3].json && rs[3].json.connected) };
+      if (!socialConnected) items.push(railItem('gate', '🔗', 'Facebook / Instagram not connected', 'Sarah can write and schedule posts now; publishing them for real needs a connected account.', null,
+        [{ label: 'Connect an account', run: function () { openAdvanced({ view: 'social', tail: null }); } }], 'gate-social'));
+      if (!(rs[3].json && rs[3].json.connected)) items.push(railItem('gate', '📈', 'Google Search Console not connected', 'Until it is connected, Sarah can\'t see clicks or rankings — she\'ll say so instead of guessing.', null,
+        [{ label: 'Connect Google', run: function () { openAdvanced({ view: 'seo', tail: null }); } }], 'gate-gsc'));
+      rail.innerHTML = '';
+      if (!items.length) { rail.hidden = true; return; }
+      var h = document.createElement('div'); h.className = 'sh-rail-h'; h.textContent = appr.length ? 'Needs your OK' : 'Worth knowing'; rail.appendChild(h);
+      if (!appr.length && items.length) { /* gates only: keep them quiet, below the fold of the conversation */ rail.style.maxHeight = '22vh'; } else { rail.style.maxHeight = ''; }
+      items.forEach(function (i) { rail.appendChild(i); }); rail.hidden = false;
+    });
   }
 
   /* ── Thread ──────────────────────────────────────────────────────────────────────────────────── */
@@ -221,7 +339,7 @@
         for (var i = 0; i < arr.length; i++) { var m = arr[i];
           if (m && m.id && m.id > ackId && !m.is_ack && (m.role === 'agent' || (m.from !== 'User' && m.from !== 'user')) && !S.rendered[String(m.id)]) {
             clearInterval(S.activePoll); S.activePoll = null; hideOrch();
-            S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; S.feed.scrollTop = S.feed.scrollHeight; loadBriefing(); return;   // the reply to what you just asked always comes into view
+            S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; S.feed.scrollTop = S.feed.scrollHeight; loadBriefing(); loadRail(); return;   // the reply to what you just asked always comes into view
           } }
       }).catch(function () {});
     }, every);
@@ -249,10 +367,15 @@
     var acts = [];
     if (ev.type === 'approval_request') acts.push({ label: 'Review and approve', view: 'attention', primary: true });
     if (ev.type === 'output_preview' && d.view) acts.push({ label: 'Open', view: d.view, tail: d.id });
+    if (d.link && d.link.view) acts.push({ label: d.link.label || 'Open in Advanced', view: d.link.view, tail: d.link.tail, advanced: true });
+    if (d.retryText) acts.push({ label: 'Try again', primary: true, say: d.retryText });
     if (d.cta && d.cta.view) acts.push({ label: d.cta.label || 'Open', view: d.cta.view, primary: true });
     if (acts.length) html += '<div class="acts">' + acts.map(function (a, i) { return '<button type="button" class="sh-btn' + (a.primary ? ' primary' : '') + '" data-act="' + i + '">' + esc(a.label) + '</button>'; }).join('') + '</div>';
     el.innerHTML = html;
-    el.querySelectorAll('[data-act]').forEach(function (b) { b.addEventListener('click', function () { var a = acts[Number(b.getAttribute('data-act'))]; if (a && window.nav) nav(a.view, a.tail ? { tail: a.tail } : undefined); }); });
+    el.querySelectorAll('[data-act]').forEach(function (b) { b.addEventListener('click', function () { var a = acts[Number(b.getAttribute('data-act'))]; if (!a) return;
+      if (a.say) { S.input.value = a.say; S.input.focus(); return; }
+      if (a.advanced) { openAdvanced({ view: a.view, tail: a.tail }); return; }
+      if (window.nav) nav(a.view, a.tail ? { tail: a.tail } : undefined); }); });
     return el;
   }
   function handleEvents(events) {
@@ -268,11 +391,23 @@
         if (S.activePoll) { clearInterval(S.activePoll); S.activePoll = null; }
         hideOrch(); S.feed.appendChild(bubble({ from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) })); loadBriefing();
       } else if (ev.type === 'task_created' || ev.type === 'task_started' || ev.type === 'delegation') {
-        var d = ev.data || {}; showOrch((d.agent_slug || d.agent || '').toLowerCase(), d.action_label || d.label);
+        var d = ev.data || {}; var ag = String(ev.agent_id || d.agent_slug || d.agent || (d.assigned_agents && d.assigned_agents[0]) || '').toLowerCase();
+        showOrch(ag, humanAction(d.title || d.action_label || d.label));
       } else if (ev.type === 'progress_update') {
-        var dd = ev.data || {}; if (dd.agent_slug || dd.agent) showOrch(String(dd.agent_slug || dd.agent).toLowerCase(), dd.action_label);
-        S.feed.appendChild(card(ev));
-      } else if (ev.type === 'approval_request' || ev.type === 'output_preview' || ev.type === 'failure_notice' || ev.type === 'task_completed') {
+        var dd = ev.data || {}; var ag2 = String(ev.agent_id || dd.agent_slug || dd.agent || (dd.assigned_agents && dd.assigned_agents[0]) || '').toLowerCase();
+        if (ag2) showOrch(ag2, humanAction(dd.title || dd.action_label));
+        if (ev.content) S.feed.appendChild(card(Object.assign({}, ev, { content: ev.content })));
+      } else if (ev.type === 'task_completed') {
+        hideOrch(); var d3 = ev.data || {}; var ag3 = String(ev.agent_id || (d3.assigned_agents && d3.assigned_agents[0]) || '').toLowerCase();
+        S.feed.appendChild(card({ id: ev.id, type: 'output_preview', content: (AGENT_NAMES[ag3] || 'Your team') + ' finished ' + humanAction(d3.title) + (ev.content ? ' — ' + ev.content : ''), data: { link: deepLink((d3.title || '').split('/')[0], d3.payload || d3, ev.task_id) } }));
+        loadBriefing(); loadRail();
+      } else if (ev.type === 'task_failed') {
+        hideOrch(); var d4 = ev.data || {};
+        S.feed.appendChild(card({ id: ev.id, type: 'failure_notice', content: 'Something went wrong while ' + humanAction(d4.title) + (ev.content ? ': ' + ev.content : '.') + ' Sarah can try again — just say so.', data: { retryText: 'Please try ' + humanAction(d4.title) + ' again.' } }));
+        loadBriefing(); loadRail();
+      } else if (ev.type === 'approval_request') {
+        hideOrch(); S.feed.appendChild(card(ev)); loadBriefing(); loadRail();
+      } else if (ev.type === 'output_preview' || ev.type === 'failure_notice') {
         hideOrch(); S.feed.appendChild(card(ev)); loadBriefing();
       }
       stick(S.feed, was);
