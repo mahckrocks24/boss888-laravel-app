@@ -94,6 +94,8 @@
       '.sh-att b{font-size:10px;letter-spacing:.06em;padding:3px 6px;border-radius:6px;background:rgba(127,127,127,.18)}.sh-att span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}',
       '.sh-att-img{padding:0;border:0;background:none;border-radius:10px;overflow:hidden}.sh-att-img img{display:block;max-width:220px;max-height:160px;border-radius:10px}',
       '.sh-attach{display:inline-flex;align-items:center;justify-content:center}.sh-attach:hover{color:var(--t1);border-color:var(--p)}',
+      '.sh-attach-wrap{position:relative;flex:none;width:44px;height:44px}.sh-file{position:absolute;inset:0;width:44px;height:44px;opacity:0;cursor:pointer;font-size:0;border-radius:12px;z-index:1}.sh-file:focus{outline:none}',
+      '.sh-attach-wrap:has(.sh-file:hover) .sh-attach{color:var(--t1);border-color:var(--p)}',
       /* ATTACH-1: the composer library inserts its own paperclip next to the textarea — Sarah has one attach control, the plus. */
       '.sh-compose .lu-att-paperclip{display:none !important}',
       '.sh-hint{max-width:920px;margin:6px auto 0;font-size:11.5px;color:var(--t2);text-align:center}',
@@ -142,7 +144,9 @@
           '<div class="sh-feed" id="sh-feed" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with Sarah"></div>' +
           '<div class="sh-compose">' +
             '<div class="sh-compose-row">' +
-              '<button type="button" class="sh-attach" id="sh-attach" aria-label="Add a photo or file" title="Add a photo or file"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>' +
+              '<span class="sh-attach-wrap"><button type="button" class="sh-attach" id="sh-attach" aria-label="Add a photo or file" title="Add a photo or file"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>' +
+              /* ATTACH-3: a real file input over the plus — a tap opens the native chooser without any scripted click. */
+              '<input type="file" id="sh-file" class="sh-file" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.md,.json" aria-hidden="true" tabindex="-1" title="Add a photo or file"></span>' +
               '<label for="sh-input" style="position:absolute;left:-9999px">Message Sarah</label>' +
               '<textarea id="sh-input" class="sh-ta" rows="1" placeholder="Tell Sarah what you want to achieve…" autocomplete="off"></textarea>' +
               '<button type="button" class="sh-send" id="sh-send" aria-label="Send to Sarah" title="Send (Enter)">↑</button>' +
@@ -154,11 +158,21 @@
       S.sendBtn.addEventListener('click', send);
       S.input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
       S.input.addEventListener('input', function () { S.input.style.height = 'auto'; S.input.style.height = Math.min(160, S.input.scrollHeight) + 'px'; });
+      document.getElementById('sh-file').addEventListener('change', function (e) {
+        try {
+          var n = 0;
+          if (window.LU_attachComposer && typeof window.LU_attachComposer.addFiles === 'function') n = window.LU_attachComposer.addFiles('sh-input', e.target.files);
+          if (!n) showToast("Couldn't add that file — try again.", 'error');
+        } catch (err) { showToast("Couldn't add that file: " + (err && err.message ? err.message : 'unknown error'), 'error'); }
+        e.target.value = '';
+      });
       document.getElementById('sh-attach').addEventListener('click', function () {
         /* ATTACH-1: open the native chooser (camera / photos / files on a phone). Drag and paste still work on desktop. */
         var ok = false;
-        try { if (window.LU_attachComposer && typeof window.LU_attachComposer.pick === 'function') ok = window.LU_attachComposer.pick('sh-input'); } catch (e) { ok = false; }
-        if (!ok) showToast("Couldn't open the file chooser — try again in a moment.", 'error');
+        var why = '';
+        try { if (window.LU_attachComposer && typeof window.LU_attachComposer.pick === 'function') ok = window.LU_attachComposer.pick('sh-input'); else why = 'composer not loaded'; } catch (e) { ok = false; why = e && e.message ? e.message : 'error'; }
+        if (!ok) { try { document.getElementById('sh-file').click(); ok = true; } catch (e2) {} }
+        if (!ok) showToast("Couldn't open the file chooser" + (why ? ' (' + why + ')' : '') + ' — try again in a moment.', 'error');
         else { showToast('Attachments are not available right now.', 'info'); }
       });
       try { if (window.LU_attachComposer && typeof window.LU_attachComposer.observe === 'function') window.LU_attachComposer.observe('sh-input', {}); /* ATTACH-1: observe() takes the id — the element was passed before, so the composer never bound */ } catch (e) {}

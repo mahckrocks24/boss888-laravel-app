@@ -179,7 +179,9 @@
     fileEl.type = 'file';
     fileEl.accept = _opts[textareaId].accept;
     fileEl.multiple = true; // ATTACH-1: several at once
-    fileEl.style.display = 'none';
+    // ATTACH-3: visually hidden, not display:none — some mobile browsers ignore .click() on a display:none file input.
+    fileEl.setAttribute('aria-hidden', 'true'); fileEl.tabIndex = -1;
+    fileEl.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;left:0;bottom:0';
     _fileEl[textareaId] = fileEl;
 
     btn.onclick = function (e) { e.preventDefault(); fileEl.click(); };
@@ -197,7 +199,15 @@
   function pick(textareaId) {
     if (!_bound[textareaId] && document.getElementById(textareaId)) bind(textareaId, _observed[textareaId] || {});
     var el = _fileEl[textareaId];
-    if (!el) return false;
+    if (!el) {
+      // ATTACH-3: not bound yet (or the host never observed) — a throwaway input still opens the native chooser.
+      var ta = document.getElementById(textareaId); if (!ta) return false;
+      if (!_pending[textareaId]) { _pending[textareaId] = []; _opts[textareaId] = { uploadUrl: '/api/media/upload', headers: {}, accept: DEFAULT_ACCEPT, onChange: null }; }
+      el = document.createElement('input'); el.type = 'file'; el.multiple = true; el.accept = DEFAULT_ACCEPT;
+      el.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none;left:0;bottom:0';
+      el.onchange = function (e) { addFiles(textareaId, e.target.files); try { el.remove(); } catch (x) {} };
+      (ta.parentElement || document.body).appendChild(el);
+    }
     el.click();
     return true;
   }
