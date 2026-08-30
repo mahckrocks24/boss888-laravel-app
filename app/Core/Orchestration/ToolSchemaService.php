@@ -1175,12 +1175,18 @@ class ToolSchemaService
                     if ($status !== 'all') $q->where('p.status', $status);
                     $rows = $q->orderByDesc('p.updated_at')
                         ->limit(min(max($limit, 1), 100))
-                        ->get(['p.id', 'p.website_id', 'p.title', 'p.slug', 'p.type', 'p.status', 'p.is_homepage', 'p.updated_at']);
+                        ->get(['p.id', 'p.website_id', 'w.name as website_name', 'p.title', 'p.slug', 'p.type', 'p.status', 'p.is_homepage', 'p.updated_at']);
+                    // P6-a (2026-08-30): pages are always described by their WEBSITE'S NAME, never by page id — the owner
+                    // asked "change the homepage headline" on a two-site workspace and was told "IDs 722 and 717".
+                    $siteNames = $rows->pluck('website_name')->filter()->unique()->values();
+                    $summary = $rows->count() . ' page' . ($rows->count() === 1 ? '' : 's')
+                             . ($status !== 'all' ? " in status '{$status}'" : '')
+                             . ($siteNames->count() > 1 ? ' across ' . $siteNames->count() . ' websites (' . $siteNames->implode(', ') . ')' : '')
+                             . '. When more than one website has the page you need, ask the owner by WEBSITE NAME — never mention page ids.';
                     return [
                         'success' => true,
                         'tool'    => $toolId,
-                        'result'  => $rows->count() . ' page' . ($rows->count() === 1 ? '' : 's')
-                                     . ($status !== 'all' ? " in status '{$status}'" : '') . '.',
+                        'result'  => $summary,
                         'data'    => $rows->toArray(),
                     ];
                 }
