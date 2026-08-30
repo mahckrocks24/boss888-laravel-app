@@ -376,7 +376,7 @@
       var arr = Array.isArray(r.json) ? r.json : [];
       S.feed.innerHTML = ''; S.rendered = {};
       if (!arr.length) { S.feed.appendChild(renderEmpty()); return; }
-      arr.forEach(function (m) { if (m.is_ack) return; S.feed.appendChild(bubble(m)); if (m.id) S.rendered[String(m.id)] = 1; });
+      arr.forEach(function (m) { if (m.is_ack) return; S.feed.appendChild(bubble(m)); if (m.id) { S.rendered[String(m.id)] = 1; if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; } });
       S.feed.scrollTop = S.feed.scrollHeight;
     }).catch(function () { S.feed.innerHTML = '<div class="sh-card fail">Couldn\'t load the conversation — <button type="button" class="sh-btn" onclick="sarahLoad(document.getElementById(\'sarah-root\'))">try again</button></div>'; });
   }
@@ -407,7 +407,7 @@
         S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null })); S.feed.scrollTop = S.feed.scrollHeight;
         showOrch(null); pollFinal(d.ack_message_id || 0, d.poll_interval_ms || POLL_MS); return;
       }
-      if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); if (d.id) S.rendered[String(d.id)] = 1; }
+      if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); if (d.id) { S.rendered[String(d.id)] = 1; if (+d.id > (S.lastMid || 0)) S.lastMid = +d.id; } }
       S.feed.scrollTop = S.feed.scrollHeight;
     }).catch(function (e) { setBusy(false); var t = document.getElementById('sh-typing'); if (t) t.remove(); S.feed.appendChild(card({ type: 'failure_notice', content: 'Couldn\'t reach Sarah — check your connection and try again.' })); });
   }
@@ -420,7 +420,7 @@
         for (var i = 0; i < arr.length; i++) { var m = arr[i];
           if (m && m.id && m.id > ackId && !m.is_ack && (m.role === 'agent' || (m.from !== 'User' && m.from !== 'user')) && !S.rendered[String(m.id)]) {
             clearInterval(S.activePoll); S.activePoll = null; hideOrch();
-            S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; S.feed.scrollTop = S.feed.scrollHeight; loadBriefing(); loadRail(); return;   // the reply to what you just asked always comes into view
+            S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; S.feed.scrollTop = S.feed.scrollHeight; loadBriefing(); loadRail(); return;   // the reply to what you just asked always comes into view
           } }
       }).catch(function () {});
     }, every);
@@ -502,6 +502,25 @@
       stick(S.feed, was);
     });
   }
+  /* SYNC-1: pull messages this tab has not seen — the owner's own texts from another device included. */
+  function syncThread() {
+    if (S.syncBusy || !document.getElementById('sarah-home')) return;
+    S.syncBusy = true;
+    api('GET', 'agents/' + SLUG + '/messages' + (S.lastMid ? '?after_id=' + S.lastMid : '')).then(function (r) {
+      S.syncBusy = false;
+      var arr = Array.isArray(r.json) ? r.json : []; if (!arr.length) return;
+      var was = nearBottom(S.feed), added = 0;
+      arr.forEach(function (m) {
+        if (!m || !m.id) return;
+        if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id;
+        if (m.is_ack || S.rendered[String(m.id)]) return;
+        var empty = S.feed.querySelector('.sh-empty'); if (empty) empty.remove();
+        S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; added++;
+      });
+      if (added) { hideOrch(); stick(S.feed, was); loadBriefing(); loadRail(); }
+    }).catch(function () { S.syncBusy = false; });
+  }
+
   function startEvents() {
     stopEvents(); S.evFails = 0;
     var tick = function () {
@@ -513,8 +532,14 @@
         if (!r.ok) { if (++S.evFails >= 5) stopEvents(); return; }
         S.evFails = 0; var j = r.json || {}; if (j.cursor) S.cursor = j.cursor; handleEvents(j.events || []);
       }).catch(function () { if (++S.evFails >= 5) stopEvents(); });
+      if ((S.tickN % 4) === 0) syncThread(); // SYNC-1: cross-device thread sync every ~4 ticks
     };
     tick(); S.evTimer = setInterval(tick, POLL_MS);
+    if (!S.syncHooked) {
+      S.syncHooked = true;
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(syncThread, 300); });
+      window.addEventListener('focus', function () { setTimeout(syncThread, 300); });
+    }
   }
   function stopEvents() { if (S.evTimer) { clearInterval(S.evTimer); S.evTimer = null; } if (S.activePoll) { clearInterval(S.activePoll); S.activePoll = null; } }
 })();
