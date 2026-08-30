@@ -270,6 +270,14 @@ MAP;
                         'Currently blocking: ' . implode('; ', $bl)
                       . '. Nothing downstream of these moves until they are cleared, so they sit on the critical path.';
                 }
+                // PUBLISH-1 (2026-08-30): failed or cancelled tasks are NOT blockers. Chef Red 2026-08-29: "publish them" was
+                // refused "until the blocked tasks are resolved" and a retry of 56 dead tasks was queued instead.
+                $out['how work is ordered, and what finishes it'][] =
+                    'Failed or cancelled tasks never block publishing: any draft that already has a featured image can be '
+                  . 'published right now, whatever else is in the queue. If the owner asks to publish, publish — do not '
+                  . 'make it conditional on clearing old failures.';
+                if (false) {
+                }
 
                 if ($done7 > 0 && $open > 0) {
                     $weeks = round($open / $done7, 1);

@@ -693,6 +693,18 @@ $withCorr = function (array $meta) use ($corr) {
                 } elseif ($__qcPending0 && \App\Core\Sarah888\QueueCancellation::declines((string) $__ownerMessage)) {
                     $__qc0->forget((int) $wsId);
                     $__qcReply0 = "Understood — I've left " . (count($__qcPending0['ids'] ?? []) === 1 ? 'it' : 'them') . " waiting. Nothing was cancelled.";
+                } else {
+                    // PUBLISH-1: the owner's yes/no to Sarah's "publish the drafts" offer.
+                    $__dp0 = app(\App\Core\Sarah888\DraftPublishing::class);
+                    $__dpPending0 = $__dp0->pending((int) $wsId);
+                    if ($__dpPending0 && \App\Core\Sarah888\DraftPublishing::confirms((string) $__ownerMessage)) {
+                        $__dpRes0 = $__dp0->execute((int) $wsId, $__dpPending0, $userId > 0 ? $userId : null, (string) ($__dpPending0['owner_text'] ?? $__ownerMessage));
+                        $__dp0->forget((int) $wsId);
+                        $__qcReply0 = $__dp0->report($__dpRes0, count($__dpPending0['missing'] ?? []));
+                    } elseif ($__dpPending0 && \App\Core\Sarah888\DraftPublishing::declines((string) $__ownerMessage)) {
+                        $__dp0->forget((int) $wsId);
+                        $__qcReply0 = "Understood — they stay as drafts. Nothing was published.";
+                    }
                 }
                 if ($__qcReply0 !== null) {
                     DB::table('agent_messages')->insert([
@@ -719,6 +731,12 @@ $withCorr = function (array $meta) use ($corr) {
                     $__qcScope = $__qc->scope((int) $wsId, (string) $content);
                     $__qcReply = $__qc->describe($__qcScope);
                     if ($__qcScope['tasks']->count() > 0) { $__qc->remember((int) $wsId, $__qcScope, (string) $content); } else { $__qc->forget((int) $wsId); }
+                } elseif (\App\Core\Sarah888\DraftPublishing::asks($content)) {
+                    // PUBLISH-1: "publish the drafts" — what goes live, what it means, then a yes. Failed tasks never block this.
+                    $__dp = app(\App\Core\Sarah888\DraftPublishing::class);
+                    $__dpScope = $__dp->scope((int) $wsId);
+                    $__qcReply = $__dp->describe((int) $wsId, $__dpScope);
+                    if ($__dpScope['ready']->count() + $__dpScope['missing']->count() > 0) { $__dp->remember((int) $wsId, $__dpScope, (string) $content); } else { $__dp->forget((int) $wsId); }
                 }
                 if ($__qcReply !== null) {
                     DB::table('agent_messages')->insert([
