@@ -83,6 +83,17 @@
       '.sh-attach:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.sh-hint{max-width:920px;margin:6px auto 0;font-size:11.5px;color:var(--t2);text-align:center}',
       '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:38vh;overflow:auto}',
+      '.sh-rail-track{display:flex;flex-direction:column;gap:8px}',
+      '.sh-rail-h{display:flex;align-items:center;justify-content:space-between;gap:8px}.sh-rail-h .pos{letter-spacing:0;text-transform:none;font-variant-numeric:tabular-nums;color:var(--t3)}',
+      /* RAIL-2: minimise. The whole header is the button; the chevron shows the state. */
+      '.sh-rail-h .tog{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 6px 0 2px;margin:-8px 0 -8px -2px;border:0;background:transparent;color:var(--t3);font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;border-radius:6px}',
+      '.sh-rail-h .tog:hover{color:var(--t1)}.sh-rail-h .tog:focus-visible{outline:2px solid var(--p);outline-offset:1px}',
+      '.sh-rail-h .tog .chev{width:16px;height:16px;transition:transform var(--dur-fast,150ms)}.sh-rail.min .sh-rail-h .tog .chev{transform:rotate(-90deg)}',
+      '.sh-rail.min .sh-rail-track{display:none}.sh-rail.min{padding-bottom:6px}.sh-rail.min .sh-rail-h .pos .swipe{display:none}',
+      '@media (prefers-reduced-motion:reduce){.sh-rail-h .tog .chev{transition:none}}',
+      /* RAIL-1: on small screens the rail is a horizontal snap strip — one card tall, swipe for the rest. */
+      '@media (max-width:767px){.sh-rail{max-height:none !important;overflow:visible;padding-bottom:0}.sh-rail-track{flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;margin:0 -12px;padding:0 12px 6px;scroll-padding:0 12px}.sh-rail-track::-webkit-scrollbar{display:none}.sh-rail-track>.sh-item{flex:0 0 86%;max-width:340px;scroll-snap-align:start;scroll-snap-stop:always;box-sizing:border-box}.sh-rail-track>.sh-item .d{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.sh-rail-track>.sh-item .acts{margin-top:8px}}',
+      '@media (max-width:767px) and (prefers-reduced-motion:no-preference){.sh-rail-track{scroll-behavior:smooth}}',
       '.sh-item{display:flex;gap:12px;align-items:flex-start;background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--am);border-radius:var(--rg);padding:12px 14px}',
       '.sh-item.gate{border-left-color:var(--bl)}.sh-item.book{border-left-color:var(--ac)}.sh-item.fail{border-left-color:var(--rd)}',
       '.sh-item .ic{flex:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--s2);font-size:14px}',
@@ -270,9 +281,26 @@
         [{ label: 'Connect Google', run: function () { openAdvanced({ view: 'seo', tail: null }); } }], 'gate-gsc'));
       rail.innerHTML = '';
       if (!items.length) { rail.hidden = true; return; }
-      var h = document.createElement('div'); h.className = 'sh-rail-h'; h.textContent = appr.length ? 'Needs your OK' : 'Worth knowing'; rail.appendChild(h);
+      var title = appr.length ? 'Needs your OK' : 'Worth knowing';
+      var h = document.createElement('div'); h.className = 'sh-rail-h';
+      h.innerHTML = '<button type="button" class="tog" aria-expanded="true" aria-controls="sh-rail-track" title="Minimise"><svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ttl">' + title + '</span></button><span class="pos" aria-live="polite"></span>';
+      rail.appendChild(h);
+      /* RAIL-2: minimised state is remembered per device; a NEW approval reopens it. */
+      var seenKey = 'lu_rail_seen', minKey = 'lu_rail_min', seen = [], isMin = false;
+      try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); isMin = localStorage.getItem(minKey) === '1'; } catch (e) {}
+      var apprIds = appr.map(function (a) { return String(a.id); });
+      var fresh = apprIds.filter(function (id) { return seen.indexOf(id) < 0; });
+      if (fresh.length) { isMin = false; try { localStorage.setItem(minKey, '0'); localStorage.setItem(seenKey, JSON.stringify(seen.concat(fresh).slice(-50))); } catch (e) {} }
+      function setMin(v) { isMin = !!v; rail.classList.toggle('min', isMin); var b = h.querySelector('.tog'); b.setAttribute('aria-expanded', isMin ? 'false' : 'true'); b.title = isMin ? 'Show' : 'Minimise'; try { localStorage.setItem(minKey, isMin ? '1' : '0'); } catch (e) {} if (typeof updPos === 'function') updPos(); }
+      h.querySelector('.tog').addEventListener('click', function () { setMin(!isMin); });
       if (!appr.length && items.length) { /* gates only: keep them quiet, below the fold of the conversation */ rail.style.maxHeight = '22vh'; } else { rail.style.maxHeight = ''; }
-      items.forEach(function (i) { rail.appendChild(i); }); rail.hidden = false;
+      /* RAIL-1: items live in a track — vertical list on desktop, horizontal snap strip on small screens. */
+      var track = document.createElement('div'); track.className = 'sh-rail-track'; track.id = 'sh-rail-track'; track.setAttribute('role', 'list');
+      items.forEach(function (i) { i.setAttribute('role', 'listitem'); track.appendChild(i); }); rail.appendChild(track); rail.hidden = false;
+      var pos = h.querySelector('.pos');
+      function updPos() { if (!pos) return; var n = items.length; if (isMin) { pos.textContent = n + (n === 1 ? ' item' : ' items'); return; } var mobile = window.matchMedia && matchMedia('(max-width:767px)').matches; if (!mobile || n < 2) { pos.textContent = n > 1 ? n + ' items' : ''; return; } var w = (items[0].getBoundingClientRect().width || 1) + 10; var idx = Math.min(n, Math.round(track.scrollLeft / w) + 1); pos.innerHTML = idx + ' of ' + n + '<span class="swipe"> · swipe</span>'; }
+      track.addEventListener('scroll', function () { if (track._t) return; track._t = setTimeout(function () { track._t = null; updPos(); }, 80); }, { passive: true });
+      window.addEventListener('resize', updPos); setMin(isMin);
     });
   }
 
