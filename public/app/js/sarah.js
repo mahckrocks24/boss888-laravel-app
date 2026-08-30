@@ -102,7 +102,7 @@
       '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:none;overflow:visible}',
       /* RAIL-3: one horizontal snap strip at every width — fixed-width cards, swipe/scroll for the rest. */
       '.sh-rail-track{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;margin:0 -16px;padding:0 16px 8px;scroll-padding:0 16px}',
-      '.sh-rail-track::-webkit-scrollbar{height:6px}.sh-rail-track::-webkit-scrollbar-thumb{background:var(--bd2);border-radius:99px}',
+      '.sh-rail-track::-webkit-scrollbar{height:6px}.sh-rail-track::-webkit-scrollbar-thumb{background:var(--sb-thumb,var(--bd2));border-radius:99px}',
       '.sh-rail-track>.sh-item{flex:0 0 calc((100% - 10px) / 1.5);min-width:380px;max-width:none;scroll-snap-align:start;box-sizing:border-box}',
       '.sh-rail-track>.sh-item .d{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
       '.sh-rail-track>.sh-item .acts{margin-top:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}.sh-rail-track>.sh-item .acts::-webkit-scrollbar{display:none}',

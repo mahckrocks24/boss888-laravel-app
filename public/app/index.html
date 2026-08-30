@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="5eef6be-202608301914">
+<meta name="lu-build" content="d42f51b-202608301919">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -149,6 +149,7 @@
   --ac:#00E5A8;--ag:rgba(0,229,168,.18);--as:rgba(0,229,168,.08);
   --bl:#3B8BF5;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA;
   --t1:#E8EDF5;--t2:#8B97B0;--t3:#7C879C; /* P4-U1: was #4A566B (2.55:1); now 4.6:1 on --bg */
+  --sb-thumb:#2E3446;--sb-hover:#3D4560; /* SCROLL-1: scrollbar tokens — every scroller uses these, never the OS default */
   --fh:'Syne',sans-serif;--fb:'DM Sans',sans-serif;
   --r:10px;--rg:14px;--rx:20px;--tr:150ms cubic-bezier(.4,0,.2,1);
   /* Legacy aliases — used by engine view templates */
@@ -218,7 +219,7 @@ html[data-theme="light"] .lu-btn--primary:hover{background:#262626;border-color:
 html[data-theme="light"] .nav-item.active{background:rgba(5,5,5,.07);color:#050505}
 html[data-theme="light"] .lu-badge--warn{background:rgba(161,98,7,.12)}
 html[data-theme="light"] .lu-badge--bad{background:rgba(198,40,40,.10)}
-html[data-theme="light"] ::-webkit-scrollbar-thumb{background:#D8D8D8}
+html[data-theme="light"]{--sb-thumb:#D8D8D8;--sb-hover:#BDBDBD}
 html[data-theme="light"] .sb-lm{background:#050505}
 html[data-theme="light"] .sidebar{box-shadow:none}
 html[data-theme="light"] .wsv2-viewport{background:#EFEDEB}
@@ -239,8 +240,14 @@ html,body{height:100%;overflow:hidden;overflow-x:hidden;font-family:var(--fb);ba
 button{font-family:var(--fb);cursor:pointer;border:none}
 textarea,input{font-family:var(--fb);}
 /* P1-U2 (2026-08-30): keyboard focus is always visible; mouse focus stays quiet (was a global outline:none). */button:focus:not(:focus-visible),input:focus:not(:focus-visible),textarea:focus:not(:focus-visible),select:focus:not(:focus-visible),[tabindex]:focus:not(:focus-visible){outline:none}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--p);outline-offset:2px}
-::-webkit-scrollbar{width:4px;height:4px}
-::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
+/* SCROLL-1 (2026-08-30): design-system scrollbars everywhere — never the OS default. Both engines:
+   the standard properties (Firefox, Chrome 121+) and the WebKit pseudo-elements, from the same tokens. */
+*{scrollbar-width:thin;scrollbar-color:var(--sb-thumb) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-corner{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:99px;border:2px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--sb-hover);border:2px solid transparent;background-clip:content-box}
 
 /* ── App layout ── */
 .app{display:flex;height:100vh;height:100dvh;overflow:hidden;overflow-x:hidden;padding-bottom:var(--safe-bottom);padding-left:var(--safe-left);padding-right:var(--safe-right)}
@@ -418,7 +425,7 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .ai-panel-close:hover{border-color:var(--bd2);color:var(--t1)}
 
 .ai-feed{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-height:0}
-.ai-feed::-webkit-scrollbar{width:3px}
+/* SCROLL-1: inherits the global scrollbar */
 
 .ai-msg{display:flex;flex-direction:column;gap:2px;animation:fadeUp .2s ease}
 .ai-msg-user{align-items:flex-end}
@@ -633,10 +640,7 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .ma-title{font-family:var(--fh);font-size:11px;font-weight:700;color:var(--t2);letter-spacing:.08em;text-transform:uppercase}
 .ma-sub{font-size:9px;color:var(--t3);margin-top:2px}
 .ma-list{padding:7px;overflow-y:scroll;flex:1;display:flex;flex-direction:column;gap:4px;padding-bottom:16px}
-.ma-list::-webkit-scrollbar{width:5px}
-.ma-list::-webkit-scrollbar-track{background:var(--s2);border-radius:99px}
-.ma-list::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
-.ma-list::-webkit-scrollbar-thumb:hover{background:var(--t3)}
+/* SCROLL-1: inherits the global scrollbar */
 .mac{background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:10px 11px;cursor:pointer;transition:all var(--tr);position:relative;overflow:hidden}
 .mac::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:transparent;border-radius:2px 0 0 2px;transition:background .2s}
 .mac:hover{border-color:var(--bd2);background:var(--s3);transform:translateX(2px)}
@@ -658,7 +662,7 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .th-lbl{font-size:9px;color:var(--t2);margin-left:3px}
 .mtg-discussion{display:flex;flex-direction:column;overflow:hidden;background:var(--bg)}
 .disc-feed{flex:1;overflow-y:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:7px;min-height:0}
-.disc-feed::-webkit-scrollbar{width:3px}
+/* SCROLL-1: inherits the global scrollbar */
 .phase-div{display:flex;align-items:center;gap:9px;padding:7px 0;animation:fadeUp .3s ease}
 .pd-line{flex:1;height:1px;background:var(--bd)}
 .pd-pill{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 12px;border-radius:99px;white-space:nowrap;border:1px solid}
@@ -753,16 +757,14 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .proj-refresh-btn:hover{color:var(--t1);border-color:var(--p)}
 /* Kanban */
 .proj-kanban{display:flex;gap:12px;padding:16px 20px;overflow-x:auto;flex:1;align-items:flex-start}
-.proj-kanban::-webkit-scrollbar{height:5px}
-.proj-kanban::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
+/* SCROLL-1: inherits the global scrollbar */
 .kb-col{width:220px;flex-shrink:0;background:var(--s1);border:1px solid var(--bd);border-radius:10px;display:flex;flex-direction:column;max-height:calc(100vh - 160px);max-height:calc(100dvh - 160px)}
 .kb-col-hdr{padding:11px 12px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:7px;flex-shrink:0}
 .kb-col-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
 .kb-col-lbl{font-family:var(--fh);font-size:11px;font-weight:700;color:var(--t1);flex:1}
 .kb-col-count{font-size:10px;background:var(--s3);color:var(--t2);padding:1px 6px;border-radius:99px}
 .kb-cards{padding:8px;display:flex;flex-direction:column;gap:6px;overflow-y:auto;flex:1}
-.kb-cards::-webkit-scrollbar{width:3px}
-.kb-cards::-webkit-scrollbar-thumb{background:var(--s3);border-radius:99px}
+/* SCROLL-1: inherits the global scrollbar */
 .kb-empty{font-size:10px;color:var(--t3);text-align:center;padding:20px 8px}
 .kb-card{background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:10px 11px;cursor:grab;transition:all .2s;position:relative;user-select:none}
 .kb-card:hover{border-color:rgba(108,92,231,.3);box-shadow:0 2px 8px rgba(0,0,0,.2)}
@@ -4664,7 +4666,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <!-- JS in core.js -->
 
 <script defer src="/app/js/messages-ui.js?v=1.2.0-p1u2"></script>
-<script defer src="/app/js/sarah.js?v=1.3.3-sync"></script>
+<script defer src="/app/js/sarah.js?v=1.3.4-scroll"></script>
 <script defer src="/app/js/basic.js?v=1.0.4-p5b"></script>
 <script defer src="/app/js/arthur-chat.js?v=p0c-20260830"></script>
 <script defer src="/app/js/chatbot-spa.js?v=p0d-20260830"></script>
