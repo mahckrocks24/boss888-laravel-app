@@ -30,6 +30,12 @@ use Illuminate\Support\Facades\Log;
  */
 class PlanCompletion
 {
+    /** CHEF-RED-1: the completion pass is for plans the owner ASKED for, not for every long answer. */
+    public function ownerAskedForAPlan(string $question): bool
+    {
+        return (bool) preg_match('/\b(plan|roadmap|steps?|playbook|strategy|how (do|should|can|would) (we|i|you)|what should (we|i) do|what(\'s| is) the (best )?way|recover(y)?|get (us|this) back|turn (this|it) around|fix this)\b/i', $question);
+    }
+
     /** A reply is a plan if it enumerates steps. Cheap structural test. */
     public function looksLikeAPlan(string $reply): bool
     {
@@ -158,7 +164,7 @@ class PlanCompletion
      *
      * @return array<int,string>
      */
-    public function missingIncident(string $reply): array
+    public function missingIncident(string $reply, bool $customerChat = false): array
     {
         $r = mb_strtolower($reply);
         $gaps = [];
@@ -173,11 +179,11 @@ class PlanCompletion
             $gaps[] = 'how normal operation is restored, not just how the immediate fire is out';
 
         if (!preg_match('/\b(tell|inform|notify|escalate|let .{0,20} know|the board|the owner|no escalation owner)\b/', $r))
-            $gaps[] = 'who has to be told, or that no escalation owner is configured';
+            if (!$customerChat) $gaps[] = 'who has to be told, or that no escalation owner is configured'; // boardroom probe — not for a business owner's chat (CHEF-RED-1)
 
         // A response with no rejected alternative is an instruction, not a decision.
         if (!preg_match('/\b(rather than|instead of|as opposed to|the alternative|we could .{0,40} but|considered .{0,30} (?:but|however)|not worth|in preference to|over (?:retrying|publishing|commissioning))\b/', $r))
-            $gaps[] = 'what was considered and rejected, and why this response beats it';
+            if (!$customerChat) $gaps[] = 'what was considered and rejected, and why this response beats it'; // CHEF-RED-1
 
         return $gaps;
     }
@@ -198,6 +204,9 @@ class PlanCompletion
                 . "  - " . implode("\n  - ", $gaps) . "\n"
                 . "Add them into the existing steps in plain prose. If the material genuinely does not support "
                 . "one of them, say so in a short clause rather than inventing it.\n"
+                . "NEVER introduce a person, team, role or committee that is not named in the MATERIAL. The only people "
+                . "are the owner and Sarah's own team (James, Priya, Arthur, Marcus, Elena); if the material names nobody, "
+                . "Sarah handles it herself. Keep the revision under 180 words.\n"
                 . "Reply with JSON only: {\"reply\":\"<the revised plan>\"}\n\n"
                 . "MATERIAL:\n" . $material;
 

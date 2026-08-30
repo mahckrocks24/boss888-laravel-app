@@ -222,6 +222,9 @@ use Illuminate\Support\Facades\Route;
         $from = $r->input('from', 'User');
         $quickAction = $r->input('quick_action'); // my_tasks, recent_completions, whats_next
         $image = $r->input('image'); // base64 image for vision
+        // CHEF-RED-1: request values read ONCE here — $r is shadowed further down (fill result, row loops).
+        $__siteUrlIn = trim((string) ($r->input('site_url') ?: $r->header('X-Lgse-Active-Site') ?: ''));
+        $__reqUser   = $r->user();
         // ATTACH-2 (2026-08-30): uploaded attachments (documents + images) reach Sarah. Validated against this
         // workspace's media rows; documents are read into context; images go through the vision path below.
         $__att = ['meta' => [], 'context' => '', 'images' => []];
@@ -676,9 +679,59 @@ $withCorr = function (array $meta) use ($corr) {
         // reply directly, then end. High-precision matching ONLY — anything
         // ambiguous falls through to the full LLM pipeline. Two-phase only (the
         // ack response is already shipped, so we just persist the final row).
+        // ── QUEUE-CANCEL yes/no (CHEF-RED-1): a "yes" is a confirmation turn, and confirmation turns skip the router
+        //    block below — so the owner's yes to Sarah's cancel offer is answered HERE, before that gate.
+        if ($isSarah && $useTwoPhase) {
+            try {
+                $__qc0 = app(\App\Core\Sarah888\QueueCancellation::class);
+                $__qcPending0 = $__qc0->pending((int) $wsId);
+                $__qcReply0 = null;
+                if ($__qcPending0 && \App\Core\Sarah888\QueueCancellation::confirms((string) $__ownerMessage)) { // the owner's own words — $content was rewritten for confirmation turns above
+                    $__qcRes0 = $__qc0->execute((int) $wsId, (array) ($__qcPending0['ids'] ?? []), $userId > 0 ? $userId : null);
+                    $__qc0->forget((int) $wsId);
+                    $__qcReply0 = $__qc0->report($__qcRes0);
+                } elseif ($__qcPending0 && \App\Core\Sarah888\QueueCancellation::declines((string) $__ownerMessage)) {
+                    $__qc0->forget((int) $wsId);
+                    $__qcReply0 = "Understood — I've left " . (count($__qcPending0['ids'] ?? []) === 1 ? 'it' : 'them') . " waiting. Nothing was cancelled.";
+                }
+                if ($__qcReply0 !== null) {
+                    DB::table('agent_messages')->insert([
+                        'workspace_id'  => $wsId, 'agent_slug' => $slug, 'sender' => $agent->name,
+                        'content'       => $__qcReply0, 'role' => 'agent',
+                        'metadata_json' => $withCorr(['phase' => 'final', 'router' => true, 'router_intent' => 'status', 'queue_cancel' => true]),
+                        'created_at'    => now(), 'updated_at' => now(),
+                    ]);
+                    return;
+                }
+            } catch (\Throwable $__qcErr0) {
+                \Illuminate\Support\Facades\Log::warning('[Sarah888] QUEUE-CANCEL (confirm) failed: ' . $__qcErr0->getMessage(), ['ws' => $wsId]);
+            }
+        }
         if ($isSarah && $useTwoPhase && ! $isConfirmation && ! $isTaskBrief) {
             $routerReply = null;
             $c = strtolower(trim($content));
+            // ── QUEUE-CANCEL (CHEF-RED-1, 2026-08-30) — the owner cancels what is waiting for their OK. Deterministic,
+            //    two turns: describe + consequences → yes/no. Runs before the LLM; the final row is written here.
+            try {
+                $__qc = app(\App\Core\Sarah888\QueueCancellation::class);
+                $__qcReply = null;
+                if (\App\Core\Sarah888\QueueCancellation::asks($content)) {
+                    $__qcScope = $__qc->scope((int) $wsId, (string) $content);
+                    $__qcReply = $__qc->describe($__qcScope);
+                    if ($__qcScope['tasks']->count() > 0) { $__qc->remember((int) $wsId, $__qcScope, (string) $content); } else { $__qc->forget((int) $wsId); }
+                }
+                if ($__qcReply !== null) {
+                    DB::table('agent_messages')->insert([
+                        'workspace_id'  => $wsId, 'agent_slug' => $slug, 'sender' => $agent->name,
+                        'content'       => $__qcReply, 'role' => 'agent',
+                        'metadata_json' => $withCorr(['phase' => 'final', 'router' => true, 'router_intent' => 'status', 'queue_cancel' => true]),
+                        'created_at'    => now(), 'updated_at' => now(),
+                    ]);
+                    return;
+                }
+            } catch (\Throwable $__qcErr) {
+                \Illuminate\Support\Facades\Log::warning('[Sarah888] QUEUE-CANCEL failed: ' . $__qcErr->getMessage(), ['ws' => $wsId]);
+            }
             try {
                 $countMissingImgs = (int) DB::table('articles')->where('workspace_id', $wsId)
                     ->whereIn('status', ['published', 'draft'])
@@ -725,10 +778,10 @@ $withCorr = function (array $meta) use ($corr) {
                 elseif (preg_match('/\b(add|generate|create|fill|fix|make|give|put)\b/', $c)
                         && preg_match('/\bfeatured image|\bimages?\b/', $c)
                         && preg_match('/\b(missing|all|every|without|the ones|that (are|need)|need|dont have|do not have|no image)\b/', $c)) {
-                    $r = app(\App\Engines\Write\Services\WriteService::class)->fillMissingImages($wsId, ['limit' => 15]);
-                    $routerReply = ((int) ($r['created'] ?? 0) > 0)
-                        ? "On it — I'm generating featured images for the {$r['created']} article" . (((int) $r['created']) === 1 ? '' : 's') . " that were missing one. They'll attach to each article as they finish."
-                        : ($r['message'] ?? 'Every article already has a featured image — nothing to do.');
+                    $__fill = app(\App\Engines\Write\Services\WriteService::class)->fillMissingImages($wsId, ['limit' => 15]); // CHEF-RED-1: was $r (shadowed the Request → crash at the site_url read)
+                    $routerReply = ((int) ($__fill['created'] ?? 0) > 0)
+                        ? "On it — I'm generating featured images for the {$__fill['created']} article" . (((int) $__fill['created']) === 1 ? '' : 's') . " that were missing one. They'll attach to each article as they finish."
+                        : ($__fill['message'] ?? 'Every article already has a featured image — nothing to do.');
                 }
                 // (4) FIX ORPHAN pages
                 elseif (preg_match('/\bfix|\blink|\bresolve|\bsort/', $c) && preg_match('/\borphan/', $c)) {
@@ -891,7 +944,7 @@ $withCorr = function (array $meta) use ($corr) {
             $__abC = \App\Core\Sarah888\AuthorizationBinder::class;
             // The owner's own words, before the legacy confirmation shim
             // above rewrites $content into a directive sentence.
-            $__ownerSaid = trim((string) $r->input('content', ''));
+            $__ownerSaid = trim((string) $__ownerMessage); // CHEF-RED-1: $r may be shadowed here
             $__ab  = app($__abC)->bind((int) $wsId, $corr['conversation_id'] ?? null, $__ownerSaid, $userId > 0 ? $userId : null);
 
             $__terminal = null;
@@ -970,7 +1023,7 @@ $withCorr = function (array $meta) use ($corr) {
         // Wave 16b (2026-05-19) — inject the user's currently-selected
         // website so Sarah (and every agent) tailors strategy + delegations
         // to that one site instead of the entire workspace.
-        $activeSiteUrl = trim((string) ($r->input('site_url') ?: $r->header('X-Lgse-Active-Site') ?: ''));
+        $activeSiteUrl = $__siteUrlIn; // CHEF-RED-1: captured at the top; $r is shadowed by then
         if ($activeSiteUrl !== '') {
             $brandFactsBlock .= "- Currently active website (user's selected SEO scope): {$activeSiteUrl}\n";
             $brandFactsBlock .= "  → Anchor your strategy, audits, and delegations to THIS site. Do not reference the user's other workspace sites unless the user asks.\n";
@@ -1277,7 +1330,7 @@ $withCorr = function (array $meta) use ($corr) {
             // Resolve who she is actually talking to.
             $__ownerName = '';
             try {
-                $__u = $r->user();
+                $__u = $__reqUser; // CHEF-RED-1
                 $__ownerName = trim((string) ($__u->name ?? ''));
                 if ($__ownerName === '' && $workspace) {
                     $__ownerName = trim((string) (DB::table('users')->where('id', $workspace->created_by)->value('name') ?? ''));
@@ -1662,7 +1715,7 @@ $withCorr = function (array $meta) use ($corr) {
             // their own role.
             $__aOwner = '';
             try {
-                $__au = $r->user();
+                $__au = $__reqUser; // CHEF-RED-1
                 $__aOwner = trim((string) ($__au->name ?? ''));
                 if ($__aOwner === '' && $workspace) {
                     $__aOwner = trim((string) (DB::table('users')->where('id', $workspace->created_by)->value('name') ?? ''));
@@ -3358,7 +3411,7 @@ $withCorr = function (array $meta) use ($corr) {
                             try {
                                 $id = \Illuminate\Support\Facades\DB::table('workspace_goals')->insertGetId([
                                     'workspace_id'        => $wsId,
-                                    'created_by_user_id'  => optional($r->user())->id,
+                                    'created_by_user_id'  => optional($__reqUser)->id, // CHEF-RED-1
                                     'goal_type'           => $type,
                                     'title'               => mb_substr($title, 0, 255),
                                     'description'         => mb_substr((string) ($g['description'] ?? ''), 0, 65535),
@@ -3512,12 +3565,16 @@ $withCorr = function (array $meta) use ($corr) {
                                         ->domains((string) $__ownerMessage, (int) $wsId);
                     } catch (\Throwable) { $__domains = []; }
 
-                    if (in_array('incident', $__domains, true) && $__pc->looksLikeAnIncidentResponse($reply)) {
+                    // CHEF-RED-1: the completion pass runs only when the owner ASKED for a plan. On an ordinary
+                    // question it padded replies to 1,700 characters with invented people and boardroom items.
+                    if (!$__pc->ownerAskedForAPlan((string) $__ownerMessage)) {
+                        // leave the reply as written
+                    } elseif (in_array('incident', $__domains, true) && $__pc->looksLikeAnIncidentResponse($reply)) {
                         // An incident answer needs someone on it, a fallback, a
                         // route back to normal, and who is told.
                         $reply = $__pc->complete($reply, (string) $__ownerMessage,
                                                  (string) ($__execFrame ?? ''), (int) $wsId,
-                                                 $__pc->missingIncident($reply));
+                                                 $__pc->missingIncident($reply, true));
                     } elseif ($__pc->looksLikeAPlan($reply)) {
                         $reply = $__pc->complete($reply, (string) $__ownerMessage,
                                                  (string) ($__execFrame ?? ''), (int) $wsId);
