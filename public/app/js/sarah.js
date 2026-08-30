@@ -383,8 +383,12 @@
     events.forEach(function (ev) {
       if (!ev || !ev.id) return;
       var conv = String(ev.conversation_id || '').replace(/^ws\d+:/, '');
-      if (conv && conv !== CONV && conv !== SLUG) return;
+      // Sarah's own replies stay Sarah-only; her TEAM's task lifecycle (conversation_id = the assigned agent) is
+      // exactly what the customer should see happening — that is the visible orchestration.
+      var isTeamWork = /^task_|^progress_update$/.test(String(ev.type || ''));
+      if (!isTeamWork && conv && conv !== CONV && conv !== SLUG) return;
       var key = String(ev.id); if (S.rendered[key]) return; S.rendered[key] = 1;
+      if (ev.task_id && (ev.type === 'task_completed' || ev.type === 'task_failed')) { var tk = 'task:' + ev.task_id + ':' + ev.type; if (S.rendered[tk]) return; S.rendered[tk] = 1; }
       var was = nearBottom(S.feed);
       if (ev.type === 'message' || ev.type === 'agent_reply') {
         var rowId = key.indexOf('am_') === 0 ? key.slice(3) : key; if (S.rendered[rowId]) return; S.rendered[rowId] = 1;
@@ -396,10 +400,14 @@
       } else if (ev.type === 'progress_update') {
         var dd = ev.data || {}; var ag2 = String(ev.agent_id || dd.agent_slug || dd.agent || (dd.assigned_agents && dd.assigned_agents[0]) || '').toLowerCase();
         if (ag2) showOrch(ag2, humanAction(dd.title || dd.action_label));
-        if (ev.content) S.feed.appendChild(card(Object.assign({}, ev, { content: ev.content })));
+        // "Step executed"/"Step verified" are engine bookkeeping — the strip already shows the work; only a step
+        // that says something in plain language (or carries progress) earns a card.
+        var plain = String(ev.content || '').trim();
+        if (plain && !/^step (executed|verified)\.?$/i.test(plain)) S.feed.appendChild(card(Object.assign({}, ev, { content: (AGENT_NAMES[ag2] ? AGENT_NAMES[ag2] + ': ' : '') + plain })));
       } else if (ev.type === 'task_completed') {
         hideOrch(); var d3 = ev.data || {}; var ag3 = String(ev.agent_id || (d3.assigned_agents && d3.assigned_agents[0]) || '').toLowerCase();
-        S.feed.appendChild(card({ id: ev.id, type: 'output_preview', content: (AGENT_NAMES[ag3] || 'Your team') + ' finished ' + humanAction(d3.title) + (ev.content ? ' — ' + ev.content : ''), data: { link: deepLink((d3.title || '').split('/')[0], d3.payload || d3, ev.task_id) } }));
+        var doneMsg = String(ev.content || '').trim(); if (/^task completed successfully\.?$/i.test(doneMsg)) doneMsg = '';
+        S.feed.appendChild(card({ id: ev.id, type: 'output_preview', content: (AGENT_NAMES[ag3] || 'Your team') + ' finished ' + humanAction(d3.title) + (doneMsg ? ' — ' + doneMsg : '.'), data: { link: deepLink((d3.title || '').split('/')[0], d3.payload || d3, ev.task_id) } }));
         loadBriefing(); loadRail();
       } else if (ev.type === 'task_failed') {
         hideOrch(); var d4 = ev.data || {};
@@ -416,8 +424,11 @@
   function startEvents() {
     stopEvents(); S.evFails = 0;
     var tick = function () {
-      if (!document.getElementById('sarah-home') || document.hidden) return;
-      api('GET', 'agent/events?conversation_id=' + encodeURIComponent(CONV) + (S.cursor ? '&cursor=' + encodeURIComponent(S.cursor) : '')).then(function (r) {
+      if (!document.getElementById('sarah-home')) return;
+      // A hidden tab still receives its team's events (a customer switches tabs while work runs); it just polls
+      // less often — every 4th tick — so the stream never goes silent and the cursor never falls behind.
+      S.tickN = (S.tickN || 0) + 1; if (document.hidden && (S.tickN % 4) !== 0) return;
+      api('GET', 'agent/events' + (S.cursor ? '?cursor=' + encodeURIComponent(S.cursor) : '')).then(function (r) {
         if (!r.ok) { if (++S.evFails >= 5) stopEvents(); return; }
         S.evFails = 0; var j = r.json || {}; if (j.cursor) S.cursor = j.cursor; handleEvents(j.events || []);
       }).catch(function () { if (++S.evFails >= 5) stopEvents(); });
