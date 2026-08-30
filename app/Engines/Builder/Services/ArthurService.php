@@ -1996,15 +1996,37 @@ PROMPT;
         $base = \Illuminate\Support\Str::slug($name) ?: 'site';
         $slug = $base . '-' . substr(md5($name . microtime(true)), 0, 6);
 
+        // P1-U1 (2026-08-30, UX-001): a new website-workspace may share a credit pool ONLY with a pool the same
+        // user created and that is not a house account. Scratch/QA sites built while acting inside the Owner's
+        // house workspace inherited ws 2's wallet and spent 68 credits of it (EV-0887). Anything else gets its own
+        // wallet (seeded 0 through the ledger's own row creation) and is logged — never silently pooled.
+        $poolRow = $billingWs > 0
+            ? DB::table('workspaces')->where('id', $billingWs)->first(['id', 'created_by', 'is_house_account'])
+            : null;
+        $poolAllowed = $poolRow
+            && (int) $poolRow->created_by === (int) $ownerUserId
+            && ! (bool) ($poolRow->is_house_account ?? false);
+        if (! $poolAllowed) {
+            \Illuminate\Support\Facades\Log::warning('provisionWebsiteWorkspace: refusing to pool into house/foreign workspace — new workspace gets its own wallet', [
+                'requested_pool' => $billingWs, 'owner_user_id' => $ownerUserId,
+                'pool_created_by' => $poolRow->created_by ?? null, 'pool_is_house' => $poolRow->is_house_account ?? null,
+            ]);
+        }
+
         $newWsId = (int) DB::table('workspaces')->insertGetId([
             'name'                 => $name,
             'slug'                 => $slug,
             'created_by'           => $ownerUserId,
-            'billing_workspace_id' => $billingWs,   // shares the user's credit pool
+            'billing_workspace_id' => $poolAllowed ? $billingWs : null,   // shares the user's credit pool only when allowed
             'onboarded'            => 1,            // built site → skip onboarding
             'created_at'           => now(),
             'updated_at'           => now(),
         ]);
+        if (! $poolAllowed) {
+            DB::table('workspaces')->where('id', $newWsId)->update(['billing_workspace_id' => $newWsId]);
+            // Own wallet, created the way every wallet is created (no raw balance writes anywhere else).
+            DB::table('credits')->insert(['workspace_id' => $newWsId, 'balance' => 0, 'reserved_balance' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        }
 
         // Owner membership so the user can switch to / access it.
         DB::table('workspace_users')->insert([

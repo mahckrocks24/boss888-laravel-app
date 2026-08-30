@@ -154,6 +154,8 @@ class CreditService
                 'reference_id' => $refId,
                 'reservation_status' => 'pending',
                 'reservation_reference' => $ref,
+                // P1-U1 (2026-08-30): authoritative pool provenance — which wallet this reserve hit.
+                'metadata_json' => ['pool_workspace_id' => $poolWs],
             ]);
         });
     }
@@ -302,7 +304,7 @@ class CreditService
                 'amount' => $amount,
                 'reference_type' => $refType,
                 'reference_id' => $refId,
-                'metadata_json' => $meta,
+                'metadata_json' => array_merge(is_array($meta) ? $meta : [], ['pool_workspace_id' => $poolWs]),
             ]);
         });
     }
