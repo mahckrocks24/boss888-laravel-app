@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="899a9e3-202608310745">
+<meta name="lu-build" content="61d4424-202608310820">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -3563,7 +3563,9 @@ window.luSwipeToClose = luSwipeToClose;
             <textarea id="st-biz-desc" rows="2" placeholder="Short description of what your business does and who you serve…" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;resize:vertical;box-sizing:border-box"></textarea>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <!-- P1R-6 (2026-08-31): retired from the customer UI — PUT /workspace/settings discards these fields; the
+     platform reads brand voice / audience from workspace_memory instead. Preserved for the product decision. -->
+          <div data-internal="profile-unpersisted" style="display:none;grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
             <div>
               <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Target Audience</label>
               <input id="st-audience" type="text" placeholder="e.g. High-net-worth homeowners, architects in UAE" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
@@ -3574,7 +3576,9 @@ window.luSwipeToClose = luSwipeToClose;
             </div>
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+          <!-- P1R-6 (2026-08-31): retired from the customer UI — PUT /workspace/settings discards these fields; the
+     platform reads brand voice / audience from workspace_memory instead. Preserved for the product decision. -->
+          <div data-internal="profile-unpersisted" style="display:none;grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
             <div>
               <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Business Goals</label>
               <input id="st-goals" type="text" placeholder="e.g. increase online leads, grow UAE market share" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
@@ -4454,12 +4458,24 @@ window.toggleTheme=function(){var c=localStorage.getItem('lu_theme')||'dark';win
 })();
 window._policyViewAdvanced=false;
 window.togglePolicyView=function(){window._policyViewAdvanced=!window._policyViewAdvanced;var s=document.getElementById('policy-simple'),g=document.getElementById('policy-grid'),b=document.getElementById('policy-view-toggle');if(s)s.style.display=window._policyViewAdvanced?'none':'flex';if(g)g.style.display=window._policyViewAdvanced?'flex':'none';if(b)b.textContent=window._policyViewAdvanced?'\u2190 Simple':'Advanced \u2192';};
+window.luLoadWorkspaceProfile=async function(){
+ try{
+  var r=await fetch('/api/workspace/status',{headers:{Authorization:'Bearer '+(localStorage.getItem('lu_token')||''),Accept:'application/json'},cache:'no-store'});
+  if(!r.ok) return; var j=await r.json(); var w=(j&&j.workspace)||{};
+  var svc=w.services_json; if(typeof svc==='string'){try{svc=JSON.parse(svc);}catch(e){}}
+  if(Array.isArray(svc)) svc=svc.join(', ');
+  var set=function(id,v){var el=document.getElementById(id); if(el&&!el.value&&v!=null&&v!=='') el.value=String(v);};
+  set('st-industry',w.industry); set('st-location',w.location); set('st-biz-desc',w.goal); set('st-services',svc);
+ }catch(e){}
+};
 window.saveWorkspaceProfile=async function(){var get=function(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';};
  var services=get('st-services').split(',').map(function(x){return x.trim();}).filter(Boolean);
+ /* P1R-6b: restore the original required-field guard — an empty Industry used to submit and report success while the endpoint silently dropped the blank. */
+ if(!get('st-industry')||!services.length){showToast('Industry and services are required \u2014 nothing was saved.','error');var m0=document.getElementById('st-profile-save-msg');if(m0){m0.textContent='Not saved';m0.style.color='var(--rd)';}return;}
  var msg=document.getElementById('st-profile-save-msg');if(msg){msg.textContent='Saving\u2026';msg.style.color='var(--t3)';}
  try{var res=await fetch('/api/workspace/settings',{method:'PUT',headers:{Authorization:'Bearer '+(localStorage.getItem('lu_token')||''),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({industry:get('st-industry'),location:get('st-location'),business_desc:get('st-biz-desc'),target_audience:get('st-audience'),brand_voice:get('st-brand-voice'),goals:get('st-goals'),competitors:get('st-competitors'),services:services})});
   if(!res.ok)throw new Error('HTTP '+res.status);
-  showToast('Intelligence profile saved \u2014 your team uses this context from now on.','success');if(msg){msg.textContent='\u2713 Saved';msg.style.color='var(--ac)';}
+  showToast('Business profile saved \u2014 Sarah and her team use this from now on.','success');if(msg){msg.textContent='\u2713 Saved';msg.style.color='var(--ac)';}
  }catch(e){showToast("Couldn't save the profile \u2014 "+e.message,'error');if(msg){msg.textContent='Save failed';msg.style.color='var(--rd)';}}};
 window.savePolicies=async function(){var cbs=document.querySelectorAll('.pol-cb');var msg=document.getElementById('policy-save-msg');
  if(!cbs.length){showToast('There are no execution policies to change here yet.','info');return;}
@@ -4565,7 +4581,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
-<script defer src="/app/js/core.js?v=type1-20260830"></script>
+<script defer src="/app/js/core.js?v=p1r6-20260831"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>

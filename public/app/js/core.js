@@ -1212,7 +1212,7 @@ async function nav(view, opts){
   if(view==='agents')     { loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
-  if(view==='settings')   loadSettings();
+  if(view==='settings') { loadSettings(); try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); }catch(e){} } /* P1R-6: the profile form was write-only */
   if(view==='builder') {
     // Builder engine loaded via builder-spa.js (injected by builder plugin)
     if (typeof _bldPrefetchDynamic === 'function') _bldPrefetchDynamic();
