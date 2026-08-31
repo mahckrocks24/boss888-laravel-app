@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="0005472-202608311141">
+<meta name="lu-build" content="ed23ea6-202608311152">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -222,6 +222,25 @@ html[data-theme="light"] .lu-badge--warn{background:rgba(161,98,7,.12)}
 html[data-theme="light"] .lu-badge--bad{background:rgba(198,40,40,.10)}
 html[data-theme="light"]{--sb-thumb:#D8D8D8;--sb-hover:#BDBDBD}
 html[data-theme="light"] .sb-lm{background:#050505}
+/* P1R-11 (2026-08-31) — WCAG 1.4.11 non-text contrast. In light mode a text field was near-white on white with a
+   near-white border: measured border 1.19:1 and fill 1.11:1 on 14 of 14 visible inputs, i.e. the control boundary
+   carried no information at all. Form controls get a boundary that clears 3:1; decorative dividers keep --bd/--bd2. */
+html[data-theme="light"] input[type=color]{border:1px solid #8A8A8A !important}   /* the swatch is drawn by the browser; without a boundary a pale colour is invisible on a white card */
+html[data-theme="light"] input[type=color],
+html[data-theme="light"] input:not([type=checkbox]):not([type=radio]),
+html[data-theme="light"] textarea,
+html[data-theme="light"] select,
+html[data-theme="light"] .lu-input,
+html[data-theme="light"] .lu-select,
+html[data-theme="light"] .lu-textarea,
+html[data-theme="light"] .form-input,
+/* The Sarah composer keeps its designed hairline + soft glow (Owner request); in light mode the GLOW carries the
+   boundary instead of a grey border — the 6% ring measured ~1.1:1, so the inner ring is deepened to clear 3:1. */
+html[data-theme="light"] .sh-ta{box-shadow:0 0 0 1px rgba(5,5,5,.45), 0 0 18px var(--pg) !important}
+html[data-theme="light"] .sh-ta:focus{box-shadow:0 0 0 1px var(--p), 0 0 28px var(--pg), 0 0 6px var(--ps) !important}
+html[data-theme="light"] input:hover:not([type=checkbox]):not([type=radio]),
+html[data-theme="light"] textarea:hover,
+html[data-theme="light"] select:hover{border-color:#6B6B6B !important}
 /* P1R-9: identity and status hues stay themselves as dots/borders, but label TEXT gets a light-mode-legible shade. */
 /* P1R-9b: agent identity hues stay on avatars and dots; the NAME text darkens in light mode so it clears AA. */
 /* P1R-9c: explicit darker hues rather than a filter — a filter changes pixels but leaves the computed colour
