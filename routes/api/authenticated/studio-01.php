@@ -136,7 +136,13 @@ use Illuminate\Support\Facades\Route;
         })->middleware('throttle:20,1');
 
         // STUDIO888 Phase O — version tree for an asset (original + all edits).
-        Route::get('/assets/{id}/versions', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getAssetVersions($r->attributes->get('workspace_id'), (int) $id)));
+        // P1R-8 (2026-08-31): an id outside this workspace is 404, like DELETE — not 200 with an empty tree.
+        Route::get('/assets/{id}/versions', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $owner = (int) \Illuminate\Support\Facades\DB::table('assets')->where('id', (int) $id)->value('workspace_id');
+            if ($owner !== $wsId) { return response()->json(['error' => 'not_found'], 404); }
+            return response()->json(app($s)->getAssetVersions($wsId, (int) $id));
+        });
 
         // STUDIO888 Phase P — resolve a Studio image URL → its creative asset,
         // so "AI Edit" can open on a selected Studio image (tenancy-scoped).
@@ -144,7 +150,13 @@ use Illuminate\Support\Facades\Route;
 
         // Asset CRUD
         Route::get('/assets', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAssets($r->attributes->get('workspace_id'), $r->all())));
-        Route::get('/assets/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getAsset($r->attributes->get('workspace_id'), (int) $id)));
+        // P1R-8: 404 for an asset that is not this workspace's, instead of 200 {}.
+        Route::get('/assets/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $owner = (int) \Illuminate\Support\Facades\DB::table('assets')->where('id', (int) $id)->value('workspace_id');
+            if ($owner !== $wsId) { return response()->json(['error' => 'not_found'], 404); }
+            return response()->json(app($s)->getAsset($wsId, (int) $id));
+        });
         Route::delete('/assets/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
             if ((int) \Illuminate\Support\Facades\DB::table('assets')->where('id', (int) $id)->value('workspace_id') !== (int) $r->attributes->get('workspace_id')) {
                 return response()->json(['deleted' => false, 'error' => 'not_found'], 404);
