@@ -25,9 +25,18 @@ class ApprovalService
             ->get();
     }
 
+    /** Decisions already made are never silently re-made. P1R-5 (2026-08-31). */
+    private const TERMINAL = ['approved', 'rejected', 'expired', 'cancelled'];
+
     public function approve(int $approvalId, int $userId, ?string $note = null): Approval
     {
         $approval = Approval::findOrFail($approvalId);
+        if (in_array((string) $approval->status, self::TERMINAL, true)) {
+            if ((string) $approval->status === 'approved') {
+                return $approval;   // idempotent: no re-dispatch, original decision kept
+            }
+            throw new \DomainException("This request was already {$approval->status} and cannot be approved. Ask for it again to run it.");
+        }
         $approval->update([
             'status' => 'approved',
             'decision_by' => $userId,
@@ -48,6 +57,12 @@ class ApprovalService
     public function reject(int $approvalId, int $userId, ?string $note = null): Approval
     {
         $approval = Approval::findOrFail($approvalId);
+        if (in_array((string) $approval->status, self::TERMINAL, true)) {
+            if ((string) $approval->status === 'rejected') {
+                return $approval;   // idempotent: the first reason and timestamp stand
+            }
+            throw new \DomainException("This request was already {$approval->status} and cannot be rejected now.");
+        }
         $approval->update([
             'status' => 'rejected',
             'decision_by' => $userId,
