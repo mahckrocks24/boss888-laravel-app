@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="50514a3-202608310846">
+<meta name="lu-build" content="7c9f2e1-202608311130">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -211,8 +211,8 @@ html[data-theme="light"]{color-scheme:light;
   --bg:#F9F8F7;--s1:#FFFFFF;--s2:#F5F3F2;--s3:#EEEEEE;
   --bd:rgba(15,13,10,.08);--bd2:#DDDDDD;
   --p:#050505;--pg:rgba(5,5,5,.14);--ps:rgba(5,5,5,.06);
-  --ac:#167A58;--ag:rgba(50,174,136,.18);--as:rgba(50,174,136,.10);
-  --bl:#3860BE;--am:#A16207;--rd:#C62828;--pu:#5B48C8;
+  --ac:#12664A;--ag:rgba(50,174,136,.18);--as:rgba(50,174,136,.10); /* P1R-9: was #167A58 = 4.47:1 on a white card, just under AA */
+  --bl:#3860BE;--am:#8A5406;--rd:#C62828;--pu:#5B48C8; /* P1R-9: --am was #A16207 = 4.45:1, just under AA */
   --t1:#050505;--t2:#555555;--t3:#6B6B6B;
   --blue-soft:rgba(56,96,190,.10);
 }
@@ -222,6 +222,19 @@ html[data-theme="light"] .lu-badge--warn{background:rgba(161,98,7,.12)}
 html[data-theme="light"] .lu-badge--bad{background:rgba(198,40,40,.10)}
 html[data-theme="light"]{--sb-thumb:#D8D8D8;--sb-hover:#BDBDBD}
 html[data-theme="light"] .sb-lm{background:#050505}
+/* P1R-9: identity and status hues stay themselves as dots/borders, but label TEXT gets a light-mode-legible shade. */
+/* P1R-9b: agent identity hues stay on avatars and dots; the NAME text darkens in light mode so it clears AA. */
+/* P1R-9c: explicit darker hues rather than a filter — a filter changes pixels but leaves the computed colour
+   unchanged, so neither a contrast audit nor this probe can verify it. Same hue family, AA-legible on a light card. */
+html[data-theme="light"] .av-card-name[style*="#3B8BF5"],html[data-theme="light"] [style*="color:#3B8BF5"]{color:#1D4FA8 !important}
+html[data-theme="light"] .av-card-name[style*="#A78BFA"],html[data-theme="light"] [style*="color:#A78BFA"]{color:#5B3FBF !important}
+html[data-theme="light"] .av-card-name[style*="#F87171"],html[data-theme="light"] [style*="color:#F87171"]{color:#B23B3B !important}
+html[data-theme="light"] .av-card-name[style*="#00E5A8"]{color:var(--ac) !important}
+/* P1R-9b: project status chips are inline-coloured by the module; darken just the text in light mode. */
+html[data-theme="light"] [style*="color:#64748B"],html[data-theme="light"] [style*="color:#64748b"]{color:#475569 !important}
+html[data-theme="light"] [style*="color:#16A34A"],html[data-theme="light"] [style*="color:#16a34a"]{color:var(--ac) !important}
+html[data-theme="light"] [style*="color:#00E5A8"],html[data-theme="light"] [style*="color: rgb(0, 229, 168)"]{color:var(--ac) !important}
+html[data-theme="light"] [style*="color:#16A34A"]{color:var(--ac) !important}
 html[data-theme="light"] .sidebar{box-shadow:none}
 html[data-theme="light"] .wsv2-viewport{background:#EFEDEB}
 html[data-theme="light"] .wsv2-canvas{background-color:#EFEDEB;background-image:radial-gradient(rgba(5,5,5,.12) 1px,transparent 1px)}
@@ -331,8 +344,8 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .ws-card:hover{border-color:var(--p);transform:translateY(-1px)}
 .ws-thumb{background:linear-gradient(135deg,var(--s2),var(--s3));aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;font-size:36px;position:relative}
 .ws-badge{position:absolute;top:10px;right:10px;padding:3px 8px;border-radius:8px;font-size:10px;font-weight:700}
-.ws-badge.published{background:rgba(0,229,168,.15);color:#00E5A8}
-.ws-badge.draft{background:rgba(245,158,11,.15);color:#F59E0B}
+.ws-badge.published{background:var(--as,rgba(0,229,168,.15));color:var(--ac,#00E5A8)} /* P1R-9: literal was 1.49:1 in light mode */
+.ws-badge.draft{background:rgba(245,158,11,.15);color:var(--am,#F59E0B)} /* P1R-9 */
 .ws-badge.unpublished{background:rgba(107,114,128,.15);color:var(--t3)}
 .ws-info{padding:14px 16px}
 .ws-title{font-family:var(--fh);font-size:14px;font-weight:700;color:var(--t1);margin-bottom:3px}
@@ -1033,7 +1046,8 @@ table tbody tr:hover{background:var(--s2)}
 .cal-event-dot{font-size:10px;background:rgba(59,139,245,.15);color:var(--bl);border-radius:3px;padding:1px 4px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* ── Shared Dashboard System (Social + Marketing) ─────────────────────── */
-    :root{--da:#00b4a6;--da-bg:rgba(0,180,166,.10);--da-border:rgba(0,180,166,.28)}
+    /* P1R-9: --da was a fixed teal (#00b4a6) that fell to 2.3-2.6:1 on light surfaces; it now follows the accent token. */
+    :root{--da:var(--ac,#00b4a6);--da-bg:var(--as,rgba(0,180,166,.10));--da-border:var(--ag,rgba(0,180,166,.28))}
     .dash-grid{display:grid;gap:16px}
     .dash-stats{grid-template-columns:repeat(4,1fr)}
     .dash-body{grid-template-columns:220px 1fr 260px;align-items:start}
@@ -1057,7 +1071,7 @@ table tbody tr:hover{background:var(--s2)}
     .dash-badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px}
     .db-pub{background:rgba(0,184,148,.12);color:#00b894}
     .db-sched{background:var(--da-bg);color:var(--da)}
-    .db-draft{background:rgba(253,203,110,.15);color:#e0a600}
+    .db-draft{background:rgba(253,203,110,.15);color:var(--am,#e0a600)} /* P1R-9: literal amber was 2.05:1 in light mode */
     .db-fail{background:rgba(231,76,60,.12);color:#e74c3c}
     .dash-cal{padding:12px 16px}
     .cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
