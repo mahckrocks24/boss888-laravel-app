@@ -1117,6 +1117,12 @@ class Orchestrator
                                         ->createLead($wsId, $params)->toArray(),
             'crm/update_lead'      => fn() => app(\App\Engines\CRM\Services\CrmService::class)
                                         ->updateLead($params['lead_id'], $params, $params['user_id'] ?? null, $wsId)->toArray(),
+            // ADV-FORENSIC F2 (2026-08-31) — capability-mapped since day one, never dispatchable: approving a
+            // delete_lead task returned "This action isn't supported yet" (6 live pending tasks on Chef Red).
+            'crm/delete_lead'      => function () use ($params, $wsId) {
+                app(\App\Engines\CRM\Services\CrmService::class)->deleteLead((int) ($params['lead_id'] ?? 0), $wsId);
+                return ['success' => true, 'data' => ['lead_id' => (int) ($params['lead_id'] ?? 0)], 'message' => 'Lead deleted.'];
+            },
             // 2026-07-14 — move_lead was capability-mapped but had NO dispatch
             // executor (capability<->dispatch drift) -> died 'not supported'. It is a
             // pipeline-status move, so route it to updateLead like update_lead.

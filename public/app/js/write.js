@@ -1578,14 +1578,14 @@ function _wrRenderBlocks(blocks, container) {
     };
 
     container.innerHTML = '';
-    container.style.cssText = 'padding:20px;line-height:1.7;color:var(--t1,#fff);font-family:DM Sans,sans-serif;';
+    container.style.cssText = 'padding:20px;line-height:1.7;color:var(--t1,#fff);font-family:var(--fb,sans-serif);';
 
     blocks.forEach(function(block) {
         var t   = block.type;
         var el  = null;
 
         if (t === 'h1') {
-            el = E('h1', {style:'font-size:26px;font-weight:700;margin:0 0 16px;color:var(--t1,#fff);font-family:Syne,sans-serif;'}, block.text);
+            el = E('h1', {style:'font-size:26px;font-weight:700;margin:0 0 16px;color:var(--t1,#fff);font-family:var(--fh,sans-serif);'}, block.text);
         } else if (t === 'h2') {
             el = E('h2', {style:'font-size:20px;font-weight:600;margin:24px 0 10px;color:var(--ac,#00E5A8);'}, block.text);
         } else if (t === 'h3') {

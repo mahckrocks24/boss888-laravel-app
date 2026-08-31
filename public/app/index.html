@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="b8234e3-202608301959">
+<meta name="lu-build" content="5291dd2-202608310453">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4379,7 +4379,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=lt1-20260830',write:'/app/js/write.js?v=p0c-20260830',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=p0c-20260830',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=lt1-20260830',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=p0c-20260830',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4391,6 +4391,24 @@ window.LU_CFG = {
 window.luApplyTheme=function(t){var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');else document.documentElement.removeAttribute('data-theme');var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',l?'#F9F8F7':'#0B0F19');document.querySelectorAll('#sb-theme .lu-mode-btn').forEach(function(b){var on=b.getAttribute('data-theme-opt')===t;b.classList.toggle('active',on);b.setAttribute('aria-checked',on?'true':'false');});};
 window.luSetTheme=function(t,o){o=o||{};if(['dark','light','system'].indexOf(t)<0)t='dark';try{localStorage.setItem('lu_theme',t);}catch(e){}window.luApplyTheme(t);if(!o.skipServer){window._lu_theme_user_changed=true;try{var tok=localStorage.getItem('lu_token');if(tok&&typeof fetch==='function')fetch('/api/user/preferences',{method:'PUT',headers:{'Authorization':'Bearer '+tok,'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({theme:t})}).catch(function(){});}catch(e){}}};
 window.toggleTheme=function(){var c=localStorage.getItem('lu_theme')||'dark';window.luSetTheme(c==='light'?'dark':'light');};
+/* ADV-FORENSIC F1 (2026-08-31): these three Settings handlers were removed with builder.js.removed-* (308d654) while
+   their buttons stayed. Restored self-contained. */
+window._policyViewAdvanced=false;
+window.togglePolicyView=function(){window._policyViewAdvanced=!window._policyViewAdvanced;var s=document.getElementById('policy-simple'),g=document.getElementById('policy-grid'),b=document.getElementById('policy-view-toggle');if(s)s.style.display=window._policyViewAdvanced?'none':'flex';if(g)g.style.display=window._policyViewAdvanced?'flex':'none';if(b)b.textContent=window._policyViewAdvanced?'\u2190 Simple':'Advanced \u2192';};
+window.saveWorkspaceProfile=async function(){var get=function(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';};
+ var services=get('st-services').split(',').map(function(x){return x.trim();}).filter(Boolean);
+ var msg=document.getElementById('st-profile-save-msg');if(msg){msg.textContent='Saving\u2026';msg.style.color='var(--t3)';}
+ try{var res=await fetch('/api/workspace/settings',{method:'PUT',headers:{Authorization:'Bearer '+(localStorage.getItem('lu_token')||''),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({industry:get('st-industry'),location:get('st-location'),business_desc:get('st-biz-desc'),target_audience:get('st-audience'),brand_voice:get('st-brand-voice'),goals:get('st-goals'),competitors:get('st-competitors'),services:services})});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  showToast('Intelligence profile saved \u2014 your team uses this context from now on.','success');if(msg){msg.textContent='\u2713 Saved';msg.style.color='var(--ac)';}
+ }catch(e){showToast("Couldn't save the profile \u2014 "+e.message,'error');if(msg){msg.textContent='Save failed';msg.style.color='var(--rd)';}}};
+window.savePolicies=async function(){var cbs=document.querySelectorAll('.pol-cb');var msg=document.getElementById('policy-save-msg');
+ if(!cbs.length){showToast('There are no execution policies to change here yet.','info');return;}
+ var updates=[];cbs.forEach(function(cb){updates.push({tool_id:cb.dataset.tool,auto_execute:cb.checked?1:0});});
+ try{var res=await fetch('/api/policy',{method:'POST',headers:{Authorization:'Bearer '+(localStorage.getItem('lu_token')||''),'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({updates:updates})});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  showToast('Execution policies saved.','success');if(msg){msg.textContent='Saved';msg.style.color='var(--ac)';}
+ }catch(e){showToast("Couldn't save policies \u2014 "+e.message,'error');if(msg){msg.textContent='Save failed';msg.style.color='var(--rd)';}}};
 try{if(window.matchMedia){matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(){if((localStorage.getItem('lu_theme')||'dark')==='system')window.luApplyTheme('system');});}}catch(e){}
 document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(localStorage.getItem('lu_theme')||'dark');}catch(e){}});
 /* BUILD-CHECK (2026-08-30): a long-lived tab (phones) reloads itself once when a newer build is live. */
