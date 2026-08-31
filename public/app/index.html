@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="87c644f-202608310734">
+<meta name="lu-build" content="899a9e3-202608310745">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4182,8 +4182,10 @@ window.luSwipeToClose = luSwipeToClose;
       </div>
     </div>
 
-<div class="agent-drawer-bg" id="drawer-bg" onclick="closeAgentDrawer()"></div>
-<div class="agent-drawer" id="agent-drawer">
+<!-- P1R-4b (2026-08-31): the specialist drawer is an Advanced-only surface (data-adv) and is inert while closed —
+     it used to keep its backdrop, close button and tabs in the keyboard tab order off-screen, in both modes. -->
+<div class="agent-drawer-bg" id="drawer-bg" data-adv="1" onclick="closeAgentDrawer()"></div>
+<div class="agent-drawer" id="agent-drawer" data-adv="1">
   <div class="ad-hdr">
     <div class="ad-top">
       <div class="ad-av" id="ad-av"></div>
@@ -4407,6 +4409,49 @@ window.luSetTheme=function(t,o){o=o||{};if(['dark','light','system'].indexOf(t)<
 window.toggleTheme=function(){var c=localStorage.getItem('lu_theme')||'dark';window.luSetTheme(c==='light'?'dark':'light');};
 /* ADV-FORENSIC F1 (2026-08-31): these three Settings handlers were removed with builder.js.removed-* (308d654) while
    their buttons stayed. Restored self-contained. */
+/* P1R-4 (2026-08-31) — keyboard + screen-reader access for module-built clickable cards. Runs at the shell so every
+   module inherits it; leaf-only so we never nest interactive elements inside one another. */
+(function(){
+  var NATIVE = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|SUMMARY|LABEL|OPTION)$/;
+  function promote(el){
+    try{
+      if(!el||el.__luA11y) return;
+      if(NATIVE.test(el.tagName)) return;
+      if(el.closest('[data-internal]')) return;                       // retired/internal markup stays out of the tab order
+      if(el.querySelector('[onclick],button,a[href],input,select,textarea')) return; // not a leaf clickable
+      if(el.getAttribute('aria-hidden')==='true'||el.isContentEditable) return;
+      el.__luA11y = 1;
+      if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0');
+      if(!el.hasAttribute('role')) el.setAttribute('role','button');
+      if(!el.getAttribute('aria-label')&&!el.textContent.trim()){
+        var t=el.getAttribute('title')||el.getAttribute('data-label'); if(t) el.setAttribute('aria-label',t);
+      }
+      el.addEventListener('keydown',function(e){
+        if(e.key==='Enter'||e.key===' '||e.key==='Spacebar'){
+          if(e.target!==el) return;                                    // let inner controls keep their own keys
+          e.preventDefault(); el.click();
+        }
+      });
+    }catch(err){}
+  }
+  function sweep(root){
+    try{ (root||document).querySelectorAll('[onclick]').forEach(promote); }catch(e){}
+    // P1R-4b: a closed drawer must not hold focus. inert removes it and everything inside from the tab order.
+    try{
+      ['agent-drawer','drawer-bg'].forEach(function(id){
+        var el=document.getElementById(id); if(!el) return;
+        var open=(document.getElementById('agent-drawer')||{className:''}).className.indexOf('open')>=0;
+        if(open){ el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+        else { el.setAttribute('inert',''); el.setAttribute('aria-hidden','true'); }
+      });
+    }catch(e){}
+  }
+  window.luA11ySweep = sweep;
+  var t=null;
+  function schedule(){ if(t) return; t=setTimeout(function(){ t=null; sweep(document); }, 300); }
+  if(document.readyState!=='loading') schedule(); else document.addEventListener('DOMContentLoaded',schedule);
+  try{ new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:["class"]}); }catch(e){} /* class watched too: the drawer opens by class alone, and an inert-while-open drawer would be unusable */
+})();
 window._policyViewAdvanced=false;
 window.togglePolicyView=function(){window._policyViewAdvanced=!window._policyViewAdvanced;var s=document.getElementById('policy-simple'),g=document.getElementById('policy-grid'),b=document.getElementById('policy-view-toggle');if(s)s.style.display=window._policyViewAdvanced?'none':'flex';if(g)g.style.display=window._policyViewAdvanced?'flex':'none';if(b)b.textContent=window._policyViewAdvanced?'\u2190 Simple':'Advanced \u2192';};
 window.saveWorkspaceProfile=async function(){var get=function(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';};
