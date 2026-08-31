@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="7871683-202608311157">
+<meta name="lu-build" content="6191076-202608311209">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -147,7 +147,7 @@
   --bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
   --p:#6C5CE7;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.1);
   --ac:#00E5A8;--ag:rgba(0,229,168,.18);--as:rgba(0,229,168,.08);
-  --bl:#3B8BF5;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA;
+  --bl:#6FA8FF;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA; /* P1R-12: --bl was #3B8BF5 = 3.86:1 on a dark card, under AA for normal text */
   --t1:#E8EDF5;--t2:#8B97B0;--t3:#7C879C; /* P4-U1: was #4A566B (2.55:1); now 4.6:1 on --bg */
   --sb-thumb:#2E3446;--sb-hover:#3D4560; /* SCROLL-1: scrollbar tokens — every scroller uses these, never the OS default */
   /* TYPE-1 (2026-08-30): Inter for UI/body (tabular numerals for KPIs), Bricolage Grotesque for headings. */
@@ -225,6 +225,22 @@ html[data-theme="light"] .sb-lm{background:#050505}
 /* P1R-11 (2026-08-31) — WCAG 1.4.11 non-text contrast. In light mode a text field was near-white on white with a
    near-white border: measured border 1.19:1 and fill 1.11:1 on 14 of 14 visible inputs, i.e. the control boundary
    carried no information at all. Form controls get a boundary that clears 3:1; decorative dividers keep --bd/--bd2. */
+/* P1R-12: dark is the DEFAULT theme and had the same invisible-control problem — inputs sat at 1.10-1.48:1.
+   Scoped with :not([data-theme="light"]) so it applies exactly when the light block does not. */
+html:not([data-theme="light"]) input:not([type=checkbox]):not([type=radio]),
+html:not([data-theme="light"]) textarea,
+html:not([data-theme="light"]) select,
+html:not([data-theme="light"]) .lu-input,
+html:not([data-theme="light"]) .lu-select,
+html:not([data-theme="light"]) .lu-textarea,
+html:not([data-theme="light"]) .form-input{border-color:rgba(255,255,255,.40) !important}
+html:not([data-theme="light"]) input:hover:not([type=checkbox]):not([type=radio]),
+html:not([data-theme="light"]) textarea:hover,
+html:not([data-theme="light"]) select:hover{border-color:rgba(255,255,255,.55) !important}
+html:not([data-theme="light"]) input[type=color]{border:1px solid rgba(255,255,255,.40) !important}
+/* The composer keeps its glow; in dark the inner ring carries the boundary, deepened from ~1.2:1 to clear 3:1. */
+html:not([data-theme="light"]) .sh-ta{border-color:rgba(255,255,255,.10) !important;box-shadow:0 0 0 1px rgba(255,255,255,.34), 0 0 18px var(--pg) !important}
+html:not([data-theme="light"]) .sh-ta:focus{border-color:var(--p) !important;box-shadow:0 0 0 1px var(--p), 0 0 28px var(--pg), 0 0 6px var(--ps) !important}
 html[data-theme="light"] input[type=color]{border:1px solid #8A8A8A !important}   /* the swatch is drawn by the browser: without a boundary a pale colour is invisible on a white card */
 html[data-theme="light"] input:not([type=checkbox]):not([type=radio]),
 html[data-theme="light"] textarea,
