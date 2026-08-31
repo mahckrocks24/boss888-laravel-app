@@ -917,7 +917,7 @@ function _wsShowTemplateEditor(site) {
   var siteName = bld_escH(site.title || site.name || 'Website');
 
   var html =
-    '<div id="template-editor-view" style="position:fixed;inset:0;z-index:9000;background:#0F1117;display:flex;flex-direction:column">' +
+    '<div id="template-editor-view" style="position:fixed;inset:0;z-index:9000;background:var(--bg,#0F1117);display:flex;flex-direction:column">' +
     // Toolbar
     '<div style="height:52px;background:var(--s1,#161927);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">' +
       '<button onclick="wsCloseTemplateEditor()" style="background:none;border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">\u2190 Back</button>' +
@@ -929,6 +929,7 @@ function _wsShowTemplateEditor(site) {
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
       '<span style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it</span>' +
+      '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
@@ -1670,6 +1671,7 @@ async function wsOpenSite(siteId){
   document.getElementById('ws-site-list').style.display = 'none';
   document.getElementById('ws-site-pages').style.display = 'block';
   document.getElementById('ws-site-title').textContent = site.title + ' — Pages';
+  wsRenderVersions(siteId); // P1R-2: version history + restore, the capability Advanced was missing
 
   try {
     var r = await fetch(API + 'builder/pages?website_id=' + siteId, {headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'}});
@@ -1684,6 +1686,114 @@ async function wsOpenSite(siteId){
   }
 }
 
+/* P1R-2b — versions dialog for the full-screen template editor (template sites are exactly the ones with history). */
+async function wsShowVersions(siteId) {
+  var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
+  var ov = document.createElement('div');
+  ov.id = 'ws-ver-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Earlier versions');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:20px';
+  var box = document.createElement('div');
+  box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:18px;width:min(520px,100%);max-height:76vh;overflow:auto;font-family:var(--fb)';
+  box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:4px">Earlier versions</div>'
+                + '<div style="font-size:12.5px;color:var(--t2);margin-bottom:12px">Every publish keeps the version it replaced. Restoring puts that version live; the current one stays in this list.</div>'
+                + '<div id="ws-ver-list"><div class="lu-skel" style="width:70%"></div></div>';
+  ov.appendChild(box); document.body.appendChild(ov);
+  var close = function () { ov.remove(); document.removeEventListener('keydown', esc); };
+  var esc = function (e) { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', esc);
+  ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+  var closeBtn = document.createElement('button'); closeBtn.type = 'button'; closeBtn.className = 'lu-btn lu-btn--sm'; closeBtn.textContent = 'Close';
+  closeBtn.style.marginTop = '14px'; closeBtn.addEventListener('click', close); box.appendChild(closeBtn);
+  var list = box.querySelector('#ws-ver-list');
+  var items = [];
+  try {
+    var r = await fetch(API + 'builder/websites/' + siteId + '/history', { headers: auth, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var j = await r.json(); items = (j && (j.history || (j.data && j.data.history))) || [];
+  } catch (e) { list.innerHTML = '<div class="lu-empty"><b>Couldn\'t load versions</b>Try again in a moment.</div>'; return; }
+  if (!items.length) { list.innerHTML = '<div class="lu-empty"><b>No earlier versions yet</b>Every publish keeps the version it replaced.</div>'; return; }
+  list.innerHTML = ''; list.style.cssText = 'display:flex;flex-direction:column;gap:6px';
+  items.slice(0, 12).forEach(function (v, i) {
+    var when = ''; try { when = new Date(v.saved_at).toLocaleString(); } catch (e) { when = String(v.saved_at || ''); }
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:44px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s2)';
+    row.innerHTML = '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">' + (i === 0 ? 'Most recent saved version' : 'Version ' + (i + 1)) + '</div><div style="font-size:11.5px;color:var(--t3)">' + bld_esc(when) + ' \u00B7 ' + Math.round((v.size || 0) / 1024) + ' KB</div></div>';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'lu-btn lu-btn--sm'; b.textContent = 'Restore';
+    b.addEventListener('click', function () {
+      window.luConfirm('Restore this version?', 'This puts the saved version from ' + when + ' live straight away. Your current version is kept in this list, so you can put it back.', { okLabel: 'Restore it', cancelLabel: 'Keep current', danger: true }).then(function (ok) {
+        if (!ok) return;
+        b.disabled = true; b.textContent = 'Restoring\u2026';
+        fetch(API + 'builder/websites/' + siteId + '/restore', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ file: v.file }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (o) {
+            if (!o.ok || !(o.j && (o.j.restored || o.j.success))) throw new Error((o.j && (o.j.error || o.j.message)) || 'restore failed');
+            if (typeof showToast === 'function') showToast('That version is live again.', 'success');
+            var pv = document.getElementById('t3-preview'); if (pv) pv.src = pv.src.split('#')[0] + '#r' + Date.now();
+            close(); wsShowVersions(siteId);
+          })
+          .catch(function (e) { b.disabled = false; b.textContent = 'Restore'; if (typeof showToast === 'function') showToast("Couldn't restore that version \u2014 " + e.message, 'error'); });
+      });
+    });
+    row.appendChild(b); list.appendChild(row);
+  });
+}
+
+/* ── P1R-2 (2026-08-31) — VERSION HISTORY + RESTORE in Advanced ───────────────────────────────────────────────
+   Basic's Website surface could restore a published version; Advanced could not. Same endpoints
+   (GET builder/websites/{id}/history, POST .../restore), same authoritative object, design-system components,
+   luConfirm before a destructive restore. */
+async function wsRenderVersions(siteId) {
+  var host = document.getElementById('ws-versions');
+  var pagesWrap = document.getElementById('ws-site-pages');
+  if (!host) {
+    host = document.createElement('div'); host.id = 'ws-versions'; host.className = 'lu-card'; host.style.margin = '0 0 16px';
+    var grid = document.getElementById('ws-pages-grid');
+    if (grid && grid.parentElement) grid.parentElement.insertBefore(host, grid); else if (pagesWrap) pagesWrap.appendChild(host);
+  }
+  host.innerHTML = '<div class="lu-card__h">Earlier versions</div><div class="lu-skel" style="width:60%"></div>';
+  var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
+  var items = [];
+  try {
+    var r = await fetch(API + 'builder/websites/' + siteId + '/history', { headers: auth, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    var j = await r.json();
+    items = (j && (j.history || (j.data && j.data.history))) || [];
+  } catch (e) {
+    host.innerHTML = '<div class="lu-card__h">Earlier versions</div><div class="lu-empty"><b>Couldn\'t load versions</b>Try again in a moment.</div>';
+    return;
+  }
+  if (!items.length) {
+    host.innerHTML = '<div class="lu-card__h">Earlier versions</div><div class="lu-empty"><b>No earlier versions yet</b>Every publish keeps the version it replaced.</div>';
+    return;
+  }
+  host.innerHTML = '<div class="lu-card__h">Earlier versions <span style="font-weight:400;font-size:12px;color:var(--t3)">' + items.length + ' saved · restoring puts that version live; the current one is kept</span></div>';
+  var list = document.createElement('div'); list.style.cssText = 'display:flex;flex-direction:column;gap:6px'; host.appendChild(list);
+  items.slice(0, 10).forEach(function (v, i) {
+    var when = ''; try { when = new Date(v.saved_at).toLocaleString(); } catch (e) { when = String(v.saved_at || ''); }
+    var row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;gap:12px;min-height:44px;padding:6px 10px;border:1px solid var(--bd);border-radius:var(--r);background:var(--s2)';
+    row.innerHTML = '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">' + (i === 0 ? 'Most recent saved version' : 'Version ' + (i + 1)) + '</div>'
+                  + '<div style="font-size:11.5px;color:var(--t3)">' + bld_esc(when) + ' · ' + Math.round((v.size || 0) / 1024) + ' KB</div></div>';
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'lu-btn lu-btn--sm'; b.textContent = 'Restore';
+    b.addEventListener('click', function () {
+      window.luConfirm('Restore this version?', 'This puts the saved version from ' + when + ' live straight away. Your current version is kept in this list, so you can put it back.', { okLabel: 'Restore it', cancelLabel: 'Keep current', danger: true })
+        .then(function (ok) {
+          if (!ok) return;
+          b.disabled = true; b.textContent = 'Restoring…';
+          fetch(API + 'builder/websites/' + siteId + '/restore', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ file: v.file }) })
+            .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+            .then(function (o) {
+              if (!o.ok || !(o.j && (o.j.restored || o.j.success))) throw new Error((o.j && (o.j.error || o.j.message)) || 'restore failed');
+              if (typeof showToast === 'function') showToast('That version is live again.', 'success');
+              wsRenderVersions(siteId);
+            })
+            .catch(function (e) { b.disabled = false; b.textContent = 'Restore'; if (typeof showToast === 'function') showToast("Couldn't restore that version — " + e.message, 'error'); });
+        });
+    });
+    row.appendChild(b); list.appendChild(row);
+  });
+}
+
 // Live-resolve polling REMOVED 2026-04-10: backend now writes pages synchronously
 // inside wizardGenerate(), so there is nothing to wait for. Polling was firing
 // ~75 requests in 30s and causing the editor to feel hung. See changelog.
@@ -1691,6 +1801,7 @@ var _wsLiveResolveTimer = null;
 function _wsLiveResolve(pages, siteId) { return; }
 
 function wsCloseSite() {
+  var _v = document.getElementById('ws-versions'); if (_v) _v.remove(); // P1R-2
   clearInterval(_wsLiveResolveTimer); // stop any active thumbnail polling
   wsCurrentSite = null;
   document.getElementById('ws-site-pages').style.display = 'none';
@@ -1735,7 +1846,7 @@ function wsRenderSitePages(pages, siteId) {
       '<div id="ws-card-' + pg.id + '" style="background:var(--s1);border:1px solid var(--bd);border-radius:12px;overflow:hidden;transition:border-color .2s,box-shadow .2s" ' +
       'onmouseenter="this.style.borderColor=\'var(--pu)\';this.style.boxShadow=\'0 4px 20px rgba(108,92,231,.15)\'" ' +
       'onmouseleave="this.style.borderColor=\'var(--bd)\';this.style.boxShadow=\'none\'">' +
-      '<div class="ws-thumb-area" onclick="wsEditSitePage(' + pg.id + ')" style="position:relative;height:160px;overflow:hidden;background:#0F1117;cursor:pointer">' +
+      '<div class="ws-thumb-area" onclick="wsEditSitePage(' + pg.id + ')" style="position:relative;height:160px;overflow:hidden;background:var(--bg,#0F1117);cursor:pointer">' +
       thumb +
       '<div class="ws-thumb-overlay" style="position:absolute;inset:0;background:rgba(108,92,231,0);display:flex;align-items:center;justify-content:center;opacity:0;transition:all .2s" ' +
       'onmouseenter="this.style.opacity=\'1\';this.style.background=\'rgba(108,92,231,.5)\'" ' +
@@ -1824,26 +1935,26 @@ function _wsPageThumbnail(pg, primaryColor, hasContent) {
       '<div style="width:40px;height:10px;border-radius:4px;background:' + c + '"></div>' +
       '<div style="width:40px;height:10px;border-radius:4px;border:1px solid ' + c + ';opacity:.6"></div>' +
       '</div></div>',
-    features: '<div style="flex:1;display:flex;align-items:stretch;gap:3px;padding:4px 6px;background:#0F1117">' +
+    features: '<div style="flex:1;display:flex;align-items:stretch;gap:3px;padding:4px 6px;background:var(--bg,#0F1117)">' +
       [c40,'rgba(255,255,255,.06)','rgba(255,255,255,.04)'].map(function(bg){
         return '<div style="flex:1;border-radius:3px;background:' + bg + ';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px">' +
           '<div style="width:10px;height:10px;border-radius:50%;background:' + c + ';opacity:.7"></div>' +
           '<div style="width:80%;height:3px;border-radius:1px;background:rgba(255,255,255,.2)"></div>' +
           '<div style="width:60%;height:2px;border-radius:1px;background:rgba(255,255,255,.1)"></div></div>';
       }).join('') + '</div>',
-    grid: '<div style="flex:1;display:flex;flex-wrap:wrap;gap:2px;padding:4px 6px;background:#0F1117;align-content:flex-start">' +
+    grid: '<div style="flex:1;display:flex;flex-wrap:wrap;gap:2px;padding:4px 6px;background:var(--bg,#0F1117);align-content:flex-start">' +
       [c40,'rgba(255,255,255,.07)','rgba(255,255,255,.05)','rgba(255,255,255,.08)'].map(function(bg){
         return '<div style="width:calc(50% - 1px);height:20px;border-radius:3px;background:' + bg + '"></div>';
       }).join('') + '</div>',
     cta: '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:6px;background:' + c20 + ';border-top:1px solid ' + c40 + '">' +
       '<div style="width:50%;height:5px;border-radius:2px;background:rgba(255,255,255,.3)"></div>' +
       '<div style="width:36px;height:11px;border-radius:3px;background:' + c + '"></div></div>',
-    form: '<div style="flex:1.2;display:flex;flex-direction:column;gap:3px;padding:5px 8px;background:#0F1117">' +
+    form: '<div style="flex:1.2;display:flex;flex-direction:column;gap:3px;padding:5px 8px;background:var(--bg,#0F1117)">' +
       ['rgba(255,255,255,.08)','rgba(255,255,255,.08)','rgba(255,255,255,.06)'].map(function(bg){
         return '<div style="height:9px;border-radius:3px;background:' + bg + ';border:1px solid rgba(255,255,255,.07)"></div>';
       }).join('') +
       '<div style="height:11px;border-radius:3px;background:' + c + ';margin-top:2px"></div></div>',
-    pricing: '<div style="flex:1.5;display:flex;align-items:stretch;gap:3px;padding:4px 6px;background:#0F1117">' +
+    pricing: '<div style="flex:1.5;display:flex;align-items:stretch;gap:3px;padding:4px 6px;background:var(--bg,#0F1117)">' +
       ['rgba(255,255,255,.05)',c20,'rgba(255,255,255,.04)'].map(function(bg,idx){
         var f = idx===1;
         return '<div style="flex:1;border-radius:4px;background:' + bg + ';border:1px solid ' + (f?c:'rgba(255,255,255,.06)') + ';display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px">' +
@@ -1851,26 +1962,26 @@ function _wsPageThumbnail(pg, primaryColor, hasContent) {
           '<div style="width:50%;height:7px;border-radius:2px;background:' + (f?c:'rgba(255,255,255,.15)') + '"></div>' +
           '<div style="width:80%;height:8px;border-radius:3px;background:' + (f?c:'rgba(255,255,255,.07)') + ';margin-top:2px"></div></div>';
       }).join('') + '</div>',
-    list: '<div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 6px;background:#0F1117">' +
+    list: '<div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 6px;background:var(--bg,#0F1117)">' +
       [1,2,3].map(function(){
         return '<div style="height:16px;border-radius:3px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.05);display:flex;align-items:center;gap:4px;padding:0 5px">' +
           '<div style="width:8px;height:8px;border-radius:2px;background:' + c40 + '"></div>' +
           '<div style="flex:1;height:3px;border-radius:1px;background:rgba(255,255,255,.2)"></div>' +
           '<div style="width:25%;height:3px;border-radius:1px;background:rgba(255,255,255,.1)"></div></div>';
       }).join('') + '</div>',
-    story: '<div style="flex:1;display:flex;gap:4px;padding:4px 6px;background:#0F1117;align-items:center">' +
+    story: '<div style="flex:1;display:flex;gap:4px;padding:4px 6px;background:var(--bg,#0F1117);align-items:center">' +
       '<div style="flex:1;display:flex;flex-direction:column;gap:2px">' +
       '<div style="height:4px;border-radius:1px;background:rgba(255,255,255,.2)"></div>' +
       '<div style="height:3px;border-radius:1px;background:rgba(255,255,255,.12)"></div>' +
       '<div style="height:3px;border-radius:1px;background:rgba(255,255,255,.1)"></div></div>' +
       '<div style="flex:1;height:40px;border-radius:4px;background:' + c20 + ';border:1px solid ' + c40 + '"></div></div>',
-    faq: '<div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 6px;background:#0F1117">' +
+    faq: '<div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:4px 6px;background:var(--bg,#0F1117)">' +
       [1,2,3].map(function(_,idx){
         return '<div style="height:12px;border-radius:3px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;padding:0 5px">' +
           '<div style="width:65%;height:3px;border-radius:1px;background:rgba(255,255,255,.2)"></div>' +
           '<div style="width:8px;height:8px;border-radius:50%;background:' + (idx===0?c:'rgba(255,255,255,.1)') + ';display:flex;align-items:center;justify-content:center;font-size:6px;color:#fff">' + (idx===0?'−':'+') + '</div></div>';
       }).join('') + '</div>',
-    content: '<div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:#0F1117">' +
+    content: '<div style="flex:1;display:flex;flex-direction:column;gap:2px;padding:6px 8px;background:var(--bg,#0F1117)">' +
       '<div style="width:50%;height:5px;border-radius:2px;background:' + c40 + '"></div>' +
       '<div style="height:3px;border-radius:1px;background:rgba(255,255,255,.15)"></div>' +
       '<div style="height:3px;border-radius:1px;background:rgba(255,255,255,.1)"></div>' +
@@ -1923,7 +2034,7 @@ function _wsShowPageEditor(site, pageId) {
       'style="padding:5px 10px;border:none;background:' + (on ? 'var(--pu)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--t2)') + ';cursor:pointer;font-size:13px">' + glyph + '</button>';
   };
   var html =
-    '<div id="page-editor-view" role="dialog" aria-modal="true" aria-label="Page editor" style="position:fixed;inset:0;z-index:9000;background:#0F1117;display:flex;flex-direction:column">' +
+    '<div id="page-editor-view" role="dialog" aria-modal="true" aria-label="Page editor" style="position:fixed;inset:0;z-index:9000;background:var(--bg,#0F1117);display:flex;flex-direction:column">' +
       '<div style="height:52px;background:var(--s1,#161927);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">' +
         '<button type="button" id="pe-back" onclick="_wsClosePageEditor()" style="background:none;border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">← Pages</button>' +
         '<span style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
@@ -2047,7 +2158,7 @@ async function _wsPageEditorReload() {
     if (loading) loading.style.display = 'none';
     if (wrap) {
       wrap.insertAdjacentHTML('beforeend',
-        '<div id="pe-error" role="alert" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0F1117;color:var(--t2);font-size:13px">' +
+        '<div id="pe-error" role="alert" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg,#0F1117);color:var(--t2);font-size:13px">' +
           '<div style="color:#F87171">' + bld_escH(e.message || 'Preview failed') + '</div>' +
           '<button type="button" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:6px 14px;border-radius:6px;cursor:pointer;font-size:13px">Try again</button>' +
         '</div>');
