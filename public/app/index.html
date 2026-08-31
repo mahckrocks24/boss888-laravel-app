@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="61d4424-202608310820">
+<meta name="lu-build" content="50514a3-202608310846">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4458,6 +4458,36 @@ window.toggleTheme=function(){var c=localStorage.getItem('lu_theme')||'dark';win
 })();
 window._policyViewAdvanced=false;
 window.togglePolicyView=function(){window._policyViewAdvanced=!window._policyViewAdvanced;var s=document.getElementById('policy-simple'),g=document.getElementById('policy-grid'),b=document.getElementById('policy-view-toggle');if(s)s.style.display=window._policyViewAdvanced?'none':'flex';if(g)g.style.display=window._policyViewAdvanced?'flex':'none';if(b)b.textContent=window._policyViewAdvanced?'\u2190 Simple':'Advanced \u2192';};
+/* P1R-7: name the groups in Advanced Settings. CSS order only — no DOM surgery, no handler risk. */
+window.luGroupSettings=function(){
+ try{
+  var wrap=document.querySelector('#view-settings > div'); if(!wrap||wrap.__luGrouped) return;
+  var kids=[].slice.call(wrap.children); if(kids.length<6) return;
+  wrap.__luGrouped=1; wrap.style.display='flex'; wrap.style.flexDirection='column';
+  var headOf=function(c){var h=c.querySelector('div[style*="font-weight:700"],h2,h3');return (h?h.textContent:'').replace(/\s+/g,' ').trim().toLowerCase();};
+  var GROUPS=[
+   {order:10,label:'Your account',   match:function(c,t){return /^your profile/.test(t)||/^workspace$/.test(t);}},
+   {order:20,label:'Your business',  match:function(c,t){return /intelligence profile/.test(t)||/brand identity/.test(t);}},
+   {order:30,label:'Your plan',      match:function(c,t){return /billing/.test(t);}},
+   {order:40,label:'Your team',      match:function(c){return c.id==='agent-team-section';}},
+   {order:50,label:'Connections and keys', match:function(c){return c.id==='wps-section'||c.id==='apk-section';}},
+   {order:90,label:'Careful — these cannot be undone', match:function(c,t){return /danger zone/.test(t);}}
+  ];
+  kids.forEach(function(c,i){
+   if(i===0){c.style.order=0;return;}                       // the page title stays first
+   if(c.getAttribute('data-internal')){c.style.order=99;return;}
+   var t=headOf(c), g=null;
+   for(var k=0;k<GROUPS.length;k++){ if(GROUPS[k].match(c,t)){g=GROUPS[k];break;} }
+   c.style.order = g ? g.order+1 : 60;                       // anything unrecognised sits before the danger zone
+  });
+  GROUPS.forEach(function(g){
+   if(!kids.some(function(c){return c.style.order==String(g.order+1);})) return;   // no cards in this group
+   var h=document.createElement('div'); h.className='lu-settings-group'; h.textContent=g.label;
+   h.style.cssText='order:'+g.order+';font:600 11.5px var(--fb);letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:18px 2px 2px';
+   wrap.appendChild(h);
+  });
+ }catch(e){}
+};
 window.luLoadWorkspaceProfile=async function(){
  try{
   var r=await fetch('/api/workspace/status',{headers:{Authorization:'Bearer '+(localStorage.getItem('lu_token')||''),Accept:'application/json'},cache:'no-store'});
@@ -4581,7 +4611,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
-<script defer src="/app/js/core.js?v=p1r6-20260831"></script>
+<script defer src="/app/js/core.js?v=p1r7-20260831"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
