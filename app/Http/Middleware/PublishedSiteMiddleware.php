@@ -1294,7 +1294,7 @@ class PublishedSiteMiddleware
     var hint = n + ' ' + ph + ' ' + lab;
     if (n === 'email' || t === 'email' || /e-?mail/.test(hint)) return 'email';
     if (n === 'phone' || t === 'tel' || /phone|mobile|tel/.test(hint)) return 'phone';
-    if (n === 'name' || /name|full name|your name/.test(hint) && !/company|business/.test(hint)) return 'name';
+    if (n === 'name' || /\bname\b|full name|your name/.test(hint) && !/company|business/.test(hint)) return 'name';
     if (t === 'date' || /date/.test(hint)) return 'preferred_date';
     if (t === 'time' || /time/.test(hint)) return 'preferred_time';
     if (/party|guests|people|size/.test(hint)) return 'party_size';
@@ -1356,8 +1356,10 @@ JS;
 
         // Cheap workspace-scoped lookup, cached 60s so we don't hit the DB
         // on every page render.
-        $key = "chatbot_enabled_ws_{$workspaceId}";
-        $enabled = Cache::remember($key, 60, function () use ($workspaceId) {
+        // INC-0006: keyed per WEBSITE. One business holds several sites, each with its own chatbot
+        // row and its own opt-out; a workspace-only key served site A the answer cached for site B.
+        $key = "chatbot_enabled_ws_{$workspaceId}_w{$websiteId}";
+        $enabled = Cache::remember($key, 60, function () use ($workspaceId, $websiteId) {
             // CHATBOT888 entitlement-first (DEC-0027 / Owner): the chatbot is included
             // on the $49+ tier, so an entitled workspace gets it BY DEFAULT — including
             // fresh sites with no chatbot_settings row yet. A workspace can opt out with
@@ -1366,7 +1368,7 @@ JS;
             if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessChatbot($workspaceId)) {
                 return false;
             }
-            $row = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->first();
+            $row = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $workspaceId, $websiteId);
             return $row === null ? true : (bool) $row->enabled;
         });
         if (! $enabled) return $html;
@@ -1378,7 +1380,11 @@ JS;
         $origin = (str_contains($appHost, 'levelupgrowth.io'))
             ? 'https://' . ($appHost ?: 'staging.levelupgrowth.io')
             : 'https://staging.levelupgrowth.io';
-        $tag = '<script src="' . $origin . '/chatbot.js?ws=' . $workspaceId . '" async></script>';
+        // INC-0006: carry the website id too. A business can run several sites from one workspace,
+        // and the bootstrap has to know which one it is being embedded on to serve that site
+        // its own greeting and colour rather than a sibling's.
+        $tag = '<script src="' . $origin . '/chatbot.js?ws=' . $workspaceId
+             . '&w=' . $websiteId . '" async></script>';
 
         $needle = '</body>';
         $pos = strripos($html, $needle);
@@ -1501,14 +1507,16 @@ HTML;
         $website = DB::table('websites')
             ->where('subdomain', $fullSub)
             ->where('status', 'published')
-            ->first(['workspace_id']);
+            ->first(['id', 'workspace_id']);
         if (!$website) {
             return response('Not Found', 404)->header('Content-Type', 'text/plain');
         }
-        $storedKey = DB::table('seo_settings')
-            ->where('workspace_id', $website->workspace_id)
-            ->where('key', 'indexnow_key')
-            ->value('value');
+        // INC-0006: an IndexNow key proves ownership of ONE host, so it is this website's key.
+        // Reading the workspace-wide row made a business's second site serve the first site's
+        // key at its own /{key}.txt, which fails verification for both.
+        $storedKey = \App\Core\Tenancy\WebsiteScope::seo(
+            (int) $website->workspace_id, (int) $website->id, 'indexnow_key'
+        );
         if (!$storedKey || !hash_equals((string) $storedKey, $requestedKey)) {
             return response('Not Found', 404)->header('Content-Type', 'text/plain');
         }

@@ -63,14 +63,28 @@ class GscClient
      | Connection state
      *------------------------------------------------------------*/
 
-    public function getConnection(int $workspaceId): ?GscConnection
+    /**
+     * INC-0006 - the connection for one website, falling back to the business-wide row.
+     *
+     * A business authorises Google once; each of its websites then points at its own Search Console
+     * property. Passing no website returns the business row, which is what every caller written
+     * before websites were separable still wants.
+     */
+    public function getConnection(int $workspaceId, ?int $websiteId = null): ?GscConnection
     {
-        return GscConnection::where('workspace_id', $workspaceId)->first();
+        if ($websiteId !== null && $websiteId > 0) {
+            $row = GscConnection::where('workspace_id', $workspaceId)->where('website_id', $websiteId)->first();
+            if ($row !== null) {
+                return $row;
+            }
+        }
+
+        return GscConnection::business($workspaceId);
     }
 
-    public function isConnected(int $workspaceId): bool
+    public function isConnected(int $workspaceId, ?int $websiteId = null): bool
     {
-        $c = $this->getConnection($workspaceId);
+        $c = $this->getConnection($workspaceId, $websiteId);
         return $c !== null && (bool) $c->connected && ! empty($c->refresh_token_enc);
     }
 
@@ -164,20 +178,39 @@ class GscClient
             $attrs['connected_email'] = $email;
         }
 
-        GscConnection::updateOrCreate(['workspace_id' => $workspaceId], $attrs);
+        // The grant is the business's one Google account, so it is always written to the business row.
+        GscConnection::updateOrCreate(
+            ['workspace_id' => $workspaceId, 'website_id' => \App\Core\Tenancy\WebsiteScope::BUSINESS_DEFAULT],
+            $attrs,
+        );
     }
 
-    public function setSite(int $workspaceId, string $siteUrl): void
+    /**
+     * Choose the Search Console property for a website.
+     *
+     * INC-0006 - this used to update every row for the workspace, so a business with two sites had the
+     * second choice silently replace the first. The choice now lands on that one website, inheriting
+     * the business's tokens; with no website named it sets the business-wide default.
+     */
+    public function setSite(int $workspaceId, string $siteUrl, ?int $websiteId = null): void
     {
-        GscConnection::where('workspace_id', $workspaceId)->update([
-            'site_url'  => $siteUrl,
-            'connected' => true,
-        ]);
+        $target = ($websiteId !== null && $websiteId > 0)
+            ? $websiteId
+            : \App\Core\Tenancy\WebsiteScope::BUSINESS_DEFAULT;
+
+        GscConnection::updateOrCreate(
+            ['workspace_id' => $workspaceId, 'website_id' => $target],
+            ['site_url' => $siteUrl, 'connected' => true, 'provider' => 'google'],
+        );
     }
 
-    public function markSynced(int $workspaceId): void
+    public function markSynced(int $workspaceId, ?int $websiteId = null): void
     {
-        GscConnection::where('workspace_id', $workspaceId)->update(['last_sync_at' => now()]);
+        $q = GscConnection::where('workspace_id', $workspaceId);
+        if ($websiteId !== null && $websiteId > 0) {
+            $q->where('website_id', $websiteId);
+        }
+        $q->update(['last_sync_at' => now()]);
     }
 
     public function disconnect(int $workspaceId): void
@@ -240,10 +273,12 @@ class GscClient
             throw new RuntimeException((string) ($body['error_description'] ?? $body['error'] ?? 'Token refresh failed'));
         }
 
-        GscConnection::where('workspace_id', $workspaceId)->update([
-            'access_token_enc' => Crypt::encryptString((string) $body['access_token']),
-            'token_expires_at' => Carbon::now()->addSeconds((int) ($body['expires_in'] ?? 3600)),
-        ]);
+        GscConnection::where('workspace_id', $workspaceId)
+            ->where('website_id', \App\Core\Tenancy\WebsiteScope::BUSINESS_DEFAULT)
+            ->update([
+                'access_token_enc' => Crypt::encryptString((string) $body['access_token']),
+                'token_expires_at' => Carbon::now()->addSeconds((int) ($body['expires_in'] ?? 3600)),
+            ]);
 
         return (string) $body['access_token'];
     }

@@ -34,10 +34,17 @@ class AdminChatbotController
         $wsId = $this->wsId($r);
         if ($denial = $this->planDeny($wsId)) return $denial;
 
-        $row = DB::table('chatbot_settings')->where('workspace_id', $wsId)->first();
+        // INC-0006: settings belong to a website. An explicit website_id edits that site; without one
+        // the caller is editing the business-wide default that every site inherits.
+        [$websiteId, $wsErr] = \App\Core\Tenancy\WebsiteScope::resolve($wsId, (int) $r->input('website_id', 0));
+        if ($wsErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+            return response()->json(['success' => false, 'error' => $wsErr], 422);
+        }
+        $row = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $wsId, $websiteId);
         if (! $row) {
             $row = (object) [
                 'workspace_id' => $wsId,
+                'website_id'   => $websiteId ?? 0,
                 'enabled'      => false,
                 'greeting'     => 'Hi! How can I help you today?',
                 'fallback_email' => null,
@@ -65,6 +72,7 @@ class AdminChatbotController
             'business_hours'         => 'sometimes|nullable|array',
             'timezone'               => 'sometimes|nullable|string|max:64',
             'business_context_text'  => 'sometimes|nullable|string|max:8000',
+            'website_id'             => 'sometimes|nullable|integer',
         ]);
 
         $update = [];
@@ -76,21 +84,24 @@ class AdminChatbotController
         }
         $update['updated_at'] = now();
 
-        $existing = DB::table('chatbot_settings')->where('workspace_id', $wsId)->first();
-        if ($existing) {
-            DB::table('chatbot_settings')->where('workspace_id', $wsId)->update($update);
-        } else {
-            $update['workspace_id'] = $wsId;
-            $update['created_at']   = now();
-            DB::table('chatbot_settings')->insert($update);
+        // INC-0006: target exactly ONE row. The previous update() matched on workspace_id alone, which
+        // now that the table has a website dimension would rewrite every website's settings at once.
+        [$websiteId, $wsErr] = \App\Core\Tenancy\WebsiteScope::resolve($wsId, (int) $r->input('website_id', 0));
+        if ($wsErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+            return response()->json(['success' => false, 'error' => $wsErr], 422);
         }
+        $target = (int) ($websiteId ?? \App\Core\Tenancy\WebsiteScope::BUSINESS_DEFAULT);
+        DB::table('chatbot_settings')->updateOrInsert(
+            ['workspace_id' => $wsId, 'website_id' => $target],
+            $update + ['created_at' => now()],
+        );
 
         // T2.3 — settings change affects every published page in the workspace
         $this->bustPublishedSiteCache($wsId);
 
         return response()->json([
             'success' => true,
-            'data'    => DB::table('chatbot_settings')->where('workspace_id', $wsId)->first(),
+            'data'    => \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $wsId, $target),
         ]);
     }
 
@@ -339,20 +350,32 @@ class AdminChatbotController
         if ($denial = $this->planDeny($wsId)) return $denial;
 
         $data = $r->validate([
-            'max_pages' => 'nullable|integer|min:1|max:200',
+            'max_pages'  => 'nullable|integer|min:1|max:200',
+            'website_id' => 'nullable|integer',
         ]);
         $maxPages = (int) ($data['max_pages'] ?? \App\Engines\Chatbot\Services\ChatbotWebsiteCrawler::DEFAULT_MAX_PAGES);
 
-        if (\App\Jobs\CrawlChatbotKnowledgeJob::isRunning($wsId)) {
+        // INC-0006: a crawl targets one website. Its progress, and the ALREADY_RUNNING guard,
+        // are keyed to that website so a business can crawl a second site while the first runs.
+        [$__crawlWid, $__crawlErr] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->input('website_id', 0));
+        if ($__crawlErr !== null) {
+            return response()->json([
+                'success' => false,
+                'error'   => $__crawlErr,
+                'message' => 'Choose which website to crawl.',
+            ], 422);
+        }
+
+        if (\App\Jobs\CrawlChatbotKnowledgeJob::isRunning($wsId, $__crawlWid)) {
             return response()->json([
                 'success' => false,
                 'error'   => 'ALREADY_RUNNING',
-                'message' => 'A crawl is already in progress for this workspace.',
-                'status'  => Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId)),
+                'message' => 'A crawl is already in progress for this website.',
+                'status'  => Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId, $__crawlWid)),
             ], 409);
         }
 
-        \App\Jobs\CrawlChatbotKnowledgeJob::dispatch($wsId, $maxPages);
+        \App\Jobs\CrawlChatbotKnowledgeJob::dispatch($wsId, $maxPages, $__crawlWid);
 
         return response()->json([
             'success'   => true,
@@ -365,7 +388,8 @@ class AdminChatbotController
     {
         $wsId = $this->wsId($r);
         if ($denial = $this->planDeny($wsId)) return $denial;
-        $status = Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId));
+        [$__crawlWid] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->query('website_id', 0));
+        $status = Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId, $__crawlWid));
         return response()->json(['success' => true, 'status' => $status]);
     }
 

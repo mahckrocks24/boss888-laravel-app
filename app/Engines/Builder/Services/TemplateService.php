@@ -408,7 +408,8 @@ class TemplateService
             if (!$gate->canAccessChatbot($wsId)) return '';
         } catch (\Throwable $e) { return ''; }
 
-        $cs = DB::table('chatbot_settings')->where('workspace_id', $wsId)->first();
+        // INC-0006: this website's own chatbot row, falling back to the business-wide default.
+        $cs = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $wsId, $websiteId);
         if (!$cs || !$cs->enabled) return '';
 
         $settings = $website->settings_json ?? '{}';

@@ -61,8 +61,14 @@ class DraftPublishing
     {
         $r = $scope['ready']->count(); $m = $scope['missing']->count();
         if ($r + $m === 0) return "There are no drafts to publish — everything you've written is already live.";
-        $site = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->orderBy('id')->value('name');
-        $where = $site ? "on {$site}" : 'on your website';
+        // INC-0006: only name a site when the business has exactly one. Taking the oldest row made
+        // Sarah tell a multi-site owner their drafts were going live on a site that was not the one
+        // she was about to publish to.
+        $__siteIds = \App\Core\Tenancy\WebsiteScope::idsIn($wsId);
+        $site = count($__siteIds) === 1
+            ? DB::table('websites')->where('id', $__siteIds[0])->value('name')
+            : null;
+        $where = $site ? "on {$site}" : (count($__siteIds) > 1 ? 'on the site each one belongs to' : 'on your website');
         $s = "You have " . ($r + $m) . " draft" . ($r + $m === 1 ? '' : 's') . ". ";
         if ($r > 0) $s .= "{$r} " . ($r === 1 ? 'is' : 'are') . " ready to go live now" . ($m > 0 ? "; {$m} still " . ($m === 1 ? 'needs' : 'need') . " a featured image, which I'll generate first and publish as soon as it's attached." : ".");
         else $s .= "None can go live yet — all {$m} still need a featured image. I'll generate " . ($m === 1 ? 'it' : 'them') . " first and then publish.";

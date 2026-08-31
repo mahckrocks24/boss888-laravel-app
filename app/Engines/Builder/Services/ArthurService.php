@@ -2952,8 +2952,10 @@ PROMPT;
         // Law 11: Arthur performs no Builder-owned persistence.
 
         // PATCH (FIX 2, 2026-05-09) — Auto-enable the chatbot widget on
-        // every build. chatbot_settings is workspace-UNIQUE (one row per
-        // workspace), so we updateOrInsert keyed on workspace_id and
+        // every build. INC-0006: the row is keyed on the WEBSITE just built, not the
+        // workspace, so building a second site for the same business gives that site its
+        // own chatbot and its own business context instead of overwriting the first's.
+        // We updateOrInsert keyed on (workspace_id, website_id) and
         // FORCE enabled=1 (per owner directive — auto-enable should
         // override any prior user toggle).
         // Once the row is enabled, PublishedSiteMiddleware injects
@@ -2961,7 +2963,7 @@ PROMPT;
         // on every served page automatically.
         try {
             DB::table('chatbot_settings')->updateOrInsert(
-                ['workspace_id' => $wsId],
+                ['workspace_id' => $wsId, 'website_id' => (int) $websiteId],
                 [
                     'enabled'               => 1,
                     // PATCH (per-website greeting, 2026-05-09) — {{business}}
@@ -2974,7 +2976,7 @@ PROMPT;
                     'created_at'            => now(),
                 ]
             );
-            Log::info('[Arthur] chatbot auto-enabled for ws=' . $wsId);
+            Log::info('[Arthur] chatbot auto-enabled', ['workspace_id' => $wsId, 'website_id' => (int) $websiteId]);
         } catch (\Throwable $e) {
             Log::warning('[Arthur] chatbot auto-enable failed: ' . $e->getMessage(), ['workspace_id' => $wsId]);
         }

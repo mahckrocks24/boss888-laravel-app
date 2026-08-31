@@ -60,7 +60,13 @@ class ChatbotWebsiteCrawler
      *   sources_new:int, sources_updated:int, sources_unchanged:int
      * }
      */
-    public function crawlWorkspace(int $workspaceId, int $maxPages = self::DEFAULT_MAX_PAGES): array
+    /**
+     * INC-0006 - when a website is named, only that website's pages are crawled. seo_content_index
+     * carries no website column, so the restriction is by host, which is how a page is attributed to
+     * a site everywhere else in the codebase. Without it, crawling one site of a business re-ingested
+     * every sibling site's pages into the same knowledge base.
+     */
+    public function crawlWorkspace(int $workspaceId, int $maxPages = self::DEFAULT_MAX_PAGES, ?int $websiteId = null): array
     {
         $report = [
             'total_urls' => 0, 'processed' => 0, 'skipped' => 0,
@@ -80,6 +86,26 @@ class ChatbotWebsiteCrawler
             ->unique()
             ->values()
             ->all();
+
+        if ($websiteId !== null && $websiteId > 0) {
+            $site = DB::table('websites')->where('id', $websiteId)
+                ->where('workspace_id', $workspaceId)->first(['subdomain', 'custom_domain', 'external_url']);
+            $hosts = [];
+            foreach ([$site->subdomain ?? null, $site->custom_domain ?? null] as $h) {
+                if ($h) { $hosts[] = strtolower(preg_replace('/^www[.]/', '', (string) $h)); }
+            }
+            if (! empty($site->external_url)) {
+                $h = strtolower((string) parse_url((string) $site->external_url, PHP_URL_HOST));
+                if ($h) { $hosts[] = preg_replace('/^www[.]/', '', $h); }
+            }
+            if ($hosts) {
+                $urls = array_values(array_filter($urls, function ($u) use ($hosts) {
+                    $h = strtolower((string) parse_url((string) $u, PHP_URL_HOST));
+                    $h = preg_replace('/^www[.]/', '', $h);
+                    return in_array($h, $hosts, true);
+                }));
+            }
+        }
 
         $report['total_urls'] = count($urls);
 

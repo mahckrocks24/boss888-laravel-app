@@ -296,6 +296,9 @@ Route::get('/invite/{token}', function (string $token) {
 // page never sees a JS error in console.
 Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     $wsId = (int) $r->query('ws', 0);
+    // INC-0006: which website this widget is being embedded on. Older embeds predate the
+    // parameter and resolve to the business-wide default row, exactly as they did before.
+    $cbWebsiteId = (int) $r->query('w', 0);
     $reject = function (string $reason) {
         $body = "/* LevelUp chatbot — disabled: {$reason} */";
         return response($body, 200)
@@ -309,7 +312,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     $gate = app(\App\Core\Billing\FeatureGateService::class);
     if (! $gate->canAccessChatbot($wsId)) return $reject('plan_required');
 
-    $settings = \Illuminate\Support\Facades\DB::table('chatbot_settings')->where('workspace_id', $wsId)->first();
+    $settings = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $wsId, $cbWebsiteId);
     if (! $settings || ! $settings->enabled) return $reject('chatbot_disabled');
 
     // Discover the embed host from Origin (cross-origin) or Referer.

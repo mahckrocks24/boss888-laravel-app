@@ -1790,10 +1790,9 @@ HTML;
             return '';
         }
 
-        // T2.5 — respect the per-workspace enabled toggle from chatbot_settings
-        $chatbotSettings = DB::table('chatbot_settings')
-            ->where('workspace_id', $wsId)
-            ->first();
+        // T2.5 — respect the enabled toggle. INC-0006: resolved per WEBSITE, since one business
+        // may run a chatbot on one site and deliberately not on another.
+        $chatbotSettings = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $wsId, (int) ($website['id'] ?? 0));
         if (!$chatbotSettings || !$chatbotSettings->enabled) {
             return '';
         }

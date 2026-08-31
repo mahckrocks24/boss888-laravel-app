@@ -10,6 +10,30 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Workspace extends Model
 {
+    /**
+     * INC-0006 — the states a workspace can be in, and which of them a customer is shown.
+     *
+     * `active` is a real business. `archived_failed_build` is a workspace the builder created for a website
+     * that never got built; its rows stay untouched and readable through admin, but it is not a business and
+     * must not appear as one. `qa` is a deliberate test fixture, preserved and reachable through authorised
+     * QA and admin paths, never shown as somebody's business.
+     */
+    public const STATE_ACTIVE   = 'active';
+    public const STATE_ARCHIVED = 'archived_failed_build';
+    public const STATE_QA       = 'qa';
+
+    /** Only real businesses. Every customer-facing list and every workspace switch goes through this. */
+    public function scopeCustomerVisible($query)
+    {
+        return $query->where('workspaces.lifecycle_state', self::STATE_ACTIVE);
+    }
+
+    /** True when this workspace has been retired and must not accept new work. */
+    public function isRetired(): bool
+    {
+        return $this->lifecycle_state !== self::STATE_ACTIVE;
+    }
+
     protected $fillable = [
         'name', 'slug', 'settings_json', 'created_by',
         // Onboarding (migration 200003)

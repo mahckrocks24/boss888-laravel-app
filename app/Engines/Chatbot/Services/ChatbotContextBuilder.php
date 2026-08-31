@@ -40,7 +40,12 @@ class ChatbotContextBuilder
         $workspaceId = (int) $session->workspace_id;
 
         $ws = DB::table('workspaces')->where('id', $workspaceId)->first();
-        $settings = DB::table('chatbot_settings')->where('workspace_id', $workspaceId)->first();
+        // INC-0006: the visitor is on one website, and its chatbot row - greeting, business context,
+        // timezone - is the one that applies. The session binds that website when it starts; the
+        // business-wide default row still covers workspaces that never set a per-site override.
+        $settings = \App\Core\Tenancy\WebsiteScope::settingsRow(
+            'chatbot_settings', $workspaceId, (int) ($session->website_id ?? 0)
+        );
         // /* h2-chatbot */ brand kit via single resolver (was direct creative_brand_identities read)
         $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($workspaceId);
 

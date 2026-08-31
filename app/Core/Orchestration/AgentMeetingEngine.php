@@ -713,8 +713,13 @@ class AgentMeetingEngine
                 }
                 $__missing = [];
                 if (array_key_exists('url', $planTask['params'] ?? []) && empty($extractedParams['url'])) {
-                    $__site = DB::table('websites')->where('workspace_id', $meeting->workspace_id)->where('status', 'published')->whereNull('deleted_at')
-                        ->orderByDesc('id')->first(['custom_domain', 'domain', 'subdomain', 'external_url']);
+                    // INC-0006: resolve only when unambiguous. With several published sites the URL is
+                    // genuinely unknown, and 'website URL' is added to the missing list below so the
+                    // meeting asks instead of silently auditing the most recently built site.
+                    $__pub = DB::table('websites')->where('workspace_id', $meeting->workspace_id)
+                        ->where('status', 'published')->whereNull('deleted_at')
+                        ->limit(2)->get(['custom_domain', 'domain', 'subdomain', 'external_url']);
+                    $__site = $__pub->count() === 1 ? $__pub->first() : null;
                     $__host = $__site ? ($__site->custom_domain ?: ($__site->domain ?: ($__site->subdomain ?: null))) : null;
                     if ($__host) $extractedParams['url'] = 'https://' . preg_replace('#^https?://#', '', rtrim($__host, '/'));
                     elseif ($__site && $__site->external_url) $extractedParams['url'] = $__site->external_url;

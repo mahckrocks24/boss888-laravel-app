@@ -888,19 +888,37 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 'updated_at' => now(),
             ])
         );
-        // Update all workspace websites settings_json
-        \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->update([
-            'settings_json' => json_encode([
-                'primary_color' => $r->input('primary_color', '#6C5CE7'),
-                'secondary_color' => $r->input('secondary_color', '#00E5A8'),
-                'accent_color' => $r->input('accent_color', '#F4F7FB'),
-                'font_heading' => $r->input('font_heading', 'Syne'),
-                'font_body' => $r->input('font_body', 'DM Sans'),
-                'theme' => 'modern',
-            ]),
-            'updated_at' => now(),
+        // INC-0006: a business brand is not the same thing as a website's theme. This used to write
+        // the brand into EVERY website's settings_json, so saving brand once silently discarded the
+        // colours and fonts each individual site had been given. The brand identity above is
+        // business-wide and always saved; the per-site theme is only touched for a website the
+        // caller names, or for the single site of a one-site business, where there is no ambiguity.
+        [$__brandWid, $__brandErr] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->input('website_id', 0));
+        $__applied = [];
+        if ($__brandErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+            return response()->json(['success' => false, 'error' => $__brandErr], 422);
+        }
+        if ($__brandWid) {
+            \Illuminate\Support\Facades\DB::table('websites')->where('id', $__brandWid)->where('workspace_id', $wsId)->update([
+                'settings_json' => json_encode([
+                    'primary_color' => $r->input('primary_color', '#6C5CE7'),
+                    'secondary_color' => $r->input('secondary_color', '#00E5A8'),
+                    'accent_color' => $r->input('accent_color', '#F4F7FB'),
+                    'font_heading' => $r->input('font_heading', 'Syne'),
+                    'font_body' => $r->input('font_body', 'DM Sans'),
+                    'theme' => 'modern',
+                ]),
+                'updated_at' => now(),
+            ]);
+            $__applied[] = $__brandWid;
+        }
+        return response()->json([
+            'success'           => true,
+            'websites_restyled' => $__applied,
+            'note'              => $__brandErr === \App\Core\Tenancy\WebsiteScope::REQUIRED
+                ? 'Brand saved. Name a website_id to restyle one of your sites.'
+                : null,
         ]);
-        return response()->json(['success' => true]);
     });
 
         Route::put('/workspace/agents/positions', function (\Illuminate\Http\Request $r) {
@@ -7016,13 +7034,20 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         $siteUrl = $r->header('X-Site-URL') ?: $r->query('site_url');
         if ($siteUrl) {
             $clean = rtrim((string) $siteUrl, '/');
-            $existing = \Illuminate\Support\Facades\DB::table('seo_settings')
-                ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value');
+            // INC-0006: which of this business's websites is calling. The seo_settings rows below
+            // used to be keyed on the workspace alone, so two WordPress sites in one business
+            // overwrote each other's site_url and webhook_secret on every heartbeat.
+            $__wpHost = strtolower((string) parse_url($clean, PHP_URL_HOST));
+            $__wpWid  = (int) (\Illuminate\Support\Facades\DB::table('websites')
+                ->where('workspace_id', $wsId)->whereNull('deleted_at')
+                ->where(function ($q) use ($__wpHost) {
+                    $q->where('custom_domain', $__wpHost)
+                      ->orWhere('custom_domain', 'www.' . $__wpHost)
+                      ->orWhere('external_url', 'like', '%' . $__wpHost . '%');
+                })->value('id') ?: 0);
+            $existing = \App\Core\Tenancy\WebsiteScope::seo((int) $wsId, $__wpWid, 'site_url');
             if ($existing !== $clean) {
-                \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
-                    ['workspace_id' => $wsId, 'key' => 'site_url'],
-                    ['value' => $clean, 'updated_at' => now(), 'created_at' => now()]
-                );
+                \App\Core\Tenancy\WebsiteScope::putSeo((int) $wsId, $__wpWid, 'site_url', $clean);
             }
         }
 
@@ -7313,19 +7338,21 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             'site_name'      => 'nullable|string|max:255',
         ]);
         $now = now();
-        \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
-            ['workspace_id' => $wsId, 'key' => 'site_url'],
-            ['value' => rtrim($data['site_url'], '/'), 'updated_at' => $now, 'created_at' => $now]
-        );
-        \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
-            ['workspace_id' => $wsId, 'key' => 'webhook_secret'],
-            ['value' => $data['webhook_secret'], 'updated_at' => $now, 'created_at' => $now]
-        );
+        // INC-0006: bind this registration to the website whose URL it carries. Keyed on the
+        // workspace alone, a second WordPress site in the same business replaced the first's
+        // endpoint and webhook secret, silently breaking publishing to it.
+        $__regHost = strtolower((string) parse_url($data['site_url'], PHP_URL_HOST));
+        $__regWid  = (int) (\Illuminate\Support\Facades\DB::table('websites')
+            ->where('workspace_id', $wsId)->whereNull('deleted_at')
+            ->where(function ($q) use ($__regHost) {
+                $q->where('custom_domain', $__regHost)
+                  ->orWhere('custom_domain', 'www.' . $__regHost)
+                  ->orWhere('external_url', 'like', '%' . $__regHost . '%');
+            })->value('id') ?: 0);
+        \App\Core\Tenancy\WebsiteScope::putSeo((int) $wsId, $__regWid, 'site_url', rtrim($data['site_url'], '/'));
+        \App\Core\Tenancy\WebsiteScope::putSeo((int) $wsId, $__regWid, 'webhook_secret', $data['webhook_secret']);
         if (!empty($data['site_name'])) {
-            \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
-                ['workspace_id' => $wsId, 'key' => 'site_name'],
-                ['value' => $data['site_name'], 'updated_at' => $now, 'created_at' => $now]
-            );
+            \App\Core\Tenancy\WebsiteScope::putSeo((int) $wsId, $__regWid, 'site_name', $data['site_name']);
         }
         // WP-1 (2026-08-29, EV-0872): the connection is a first-class row now (wp_site_connections),
         // bound to the api key that made this call and to the workspace's WordPress website row
@@ -7715,8 +7742,14 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
 
     Route::get('/chatbot/status', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
-        $settings = \Illuminate\Support\Facades\DB::table('chatbot_settings')
-            ->where('workspace_id', $wsId)->first();
+        // INC-0006: the api key that made this call is bound to one WordPress site, and that
+        // connection names the website row. Use it so a business running several WordPress
+        // sites does not have one site's brand colour overwrite the others.
+        $__cbWid = (int) (\Illuminate\Support\Facades\DB::table('wp_site_connections')
+            ->where('workspace_id', $wsId)
+            ->where('api_key_id', (int) $r->attributes->get('api_key_id'))
+            ->value('website_id') ?: 0);
+        $settings = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', (int) $wsId, $__cbWid);
         $latestToken = \Illuminate\Support\Facades\DB::table('chatbot_widget_tokens')
             ->where('workspace_id', $wsId)
             ->where('status', 'active')
@@ -7744,28 +7777,21 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         $data = $r->validate([
             'primary_color' => ['required', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
-        $existing = \Illuminate\Support\Facades\DB::table('chatbot_settings')
-            ->where('workspace_id', $wsId)->first();
-        if ($existing) {
-            \Illuminate\Support\Facades\DB::table('chatbot_settings')
-                ->where('workspace_id', $wsId)
-                ->update(['primary_color' => $data['primary_color'], 'updated_at' => now()]);
-        } else {
-            \Illuminate\Support\Facades\DB::table('chatbot_settings')->insert([
-                'workspace_id'  => $wsId,
-                'primary_color' => $data['primary_color'],
-                'enabled'       => false,
-                'theme'         => 'auto',
-                'timezone'      => 'UTC',
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-        }
+        // INC-0006: the api key that made this call is bound to one WordPress site, and that
+        // connection names the website row. Use it so a business running several WordPress
+        // sites does not have one site's brand colour overwrite the others.
+        $__cbWid = (int) (\Illuminate\Support\Facades\DB::table('wp_site_connections')
+            ->where('workspace_id', $wsId)
+            ->where('api_key_id', (int) $r->attributes->get('api_key_id'))
+            ->value('website_id') ?: 0);
+        \Illuminate\Support\Facades\DB::table('chatbot_settings')->updateOrInsert(
+            ['workspace_id' => $wsId, 'website_id' => $__cbWid],
+            ['primary_color' => $data['primary_color'], 'enabled' => false, 'theme' => 'auto',
+             'timezone' => 'UTC', 'created_at' => now(), 'updated_at' => now()],
+        );
         return response()->json([
             'success' => true,
-            'data'    => \Illuminate\Support\Facades\DB::table('chatbot_settings')
-                ->where('workspace_id', $wsId)
-                ->first(['enabled', 'greeting', 'primary_color', 'theme']),
+            'data'    => \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', (int) $wsId, $__cbWid),
         ]);
     });
 
@@ -7908,19 +7934,31 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             return response()->json(['success' => false, 'error' => 'NO_WORKSPACE'], 400);
         }
         $data = $r->validate([
-            'max_pages' => 'nullable|integer|min:1|max:200',
+            'max_pages'  => 'nullable|integer|min:1|max:200',
+            'website_id' => 'nullable|integer',
         ]);
         $maxPages = (int) ($data['max_pages'] ?? \App\Engines\Chatbot\Services\ChatbotWebsiteCrawler::DEFAULT_MAX_PAGES);
 
-        if (\App\Jobs\CrawlChatbotKnowledgeJob::isRunning($wsId)) {
+        // INC-0006: a crawl targets one website. Its progress, and the ALREADY_RUNNING guard,
+        // are keyed to that website so a business can crawl a second site while the first runs.
+        [$__crawlWid, $__crawlErr] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->input('website_id', 0));
+        if ($__crawlErr !== null) {
+            return response()->json([
+                'success' => false,
+                'error'   => $__crawlErr,
+                'message' => 'Choose which website to crawl.',
+            ], 422);
+        }
+
+        if (\App\Jobs\CrawlChatbotKnowledgeJob::isRunning($wsId, $__crawlWid)) {
             return response()->json([
                 'success' => false,
                 'error'   => 'ALREADY_RUNNING',
-                'message' => 'A crawl is already in progress for this workspace.',
-                'status'  => \Illuminate\Support\Facades\Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId)),
+                'message' => 'A crawl is already in progress for this website.',
+                'status'  => \Illuminate\Support\Facades\Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId, $__crawlWid)),
             ], 409);
         }
-        \App\Jobs\CrawlChatbotKnowledgeJob::dispatch($wsId, $maxPages);
+        \App\Jobs\CrawlChatbotKnowledgeJob::dispatch($wsId, $maxPages, $__crawlWid);
         return response()->json([
             'success'   => true,
             'message'   => 'Crawl queued — pages will appear in the knowledge base shortly.',
@@ -7930,7 +7968,8 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
 
     Route::get('/chatbot/knowledge/crawl-status', function (\Illuminate\Http\Request $r) {
         $wsId = (int) $r->attributes->get('workspace_id');
-        $status = \Illuminate\Support\Facades\Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId));
+        [$__crawlWid] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->query('website_id', 0));
+        $status = \Illuminate\Support\Facades\Cache::get(\App\Jobs\CrawlChatbotKnowledgeJob::statusKey($wsId, $__crawlWid));
         return response()->json(['success' => true, 'status' => $status]);
     });
 });

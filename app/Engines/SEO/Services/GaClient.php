@@ -165,13 +165,22 @@ class GaClient
         return null;
     }
 
-    public function setProperty(int $workspaceId, string $propertyId, ?string $name = null): void
+    /**
+     * INC-0006 - an Analytics property measures ONE website. This used to update every row for the
+     * workspace, so a business with two sites had the second choice overwrite the first. The choice
+     * now lands on the named website, or on the business-wide default when none is named.
+     */
+    public function setProperty(int $workspaceId, string $propertyId, ?string $name = null, ?int $websiteId = null): void
     {
         $id = str_replace('properties/', '', $propertyId);
-        GscConnection::where('workspace_id', $workspaceId)->update([
-            'ga_property_id'   => $id,
-            'ga_property_name' => $name,
-        ]);
+        $target = ($websiteId !== null && $websiteId > 0)
+            ? $websiteId
+            : \App\Core\Tenancy\WebsiteScope::BUSINESS_DEFAULT;
+
+        GscConnection::updateOrCreate(
+            ['workspace_id' => $workspaceId, 'website_id' => $target],
+            ['ga_property_id' => $id, 'ga_property_name' => $name],
+        );
     }
 
     /**

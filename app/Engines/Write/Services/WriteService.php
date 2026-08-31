@@ -252,11 +252,15 @@ class WriteService
             if (empty($article->website_id)) {
                 $__wid = isset($data['website_id']) ? (int) $data['website_id'] : 0;
                 if ($__wid <= 0) {
+                    // INC-0006: bind only when there is exactly one candidate. Taking the newest
+                    // published site attached a business's article to whichever site was built last,
+                    // which is a guess. Leaving it unbound is honest and reversible.
                     try {
-                        $__wid = (int) (DB::table('websites')->where('workspace_id', (int) $article->workspace_id)
+                        $__cand = DB::table('websites')->where('workspace_id', (int) $article->workspace_id)
                             ->where('status', 'published')->whereNull('deleted_at')
                             ->where(fn($q) => $q->whereNull('platform')->orWhere('platform', '!=', 'wordpress'))
-                            ->orderByDesc('id')->value('id') ?? 0);
+                            ->limit(2)->pluck('id');
+                        $__wid = $__cand->count() === 1 ? (int) $__cand->first() : 0;
                     } catch (\Throwable) { $__wid = 0; }
                 }
                 if ($__wid > 0) $update['website_id'] = $__wid;

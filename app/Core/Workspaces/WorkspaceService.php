@@ -20,7 +20,11 @@ class WorkspaceService
 
     public function listForUser(User $user): array
     {
+        // INC-0006: a retired workspace is not one of the customer's businesses. Archived failed
+        // builds and QA fixtures keep all their rows and stay reachable through admin, but they never
+        // appear here — a dead workspace in this list is what made one business look like many.
         return $user->workspaces()
+            ->customerVisible()
             ->with('subscription.plan')
             ->get()
             ->map(fn ($ws) => [

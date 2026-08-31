@@ -148,16 +148,17 @@ use Illuminate\Support\Facades\Route;
                         \Illuminate\Support\Facades\Log::info('[SearchSubmit] Bing ping failed (non-fatal): ' . $eBing->getMessage());
                     }
                     // IndexNow submission.
-                    $key = \Illuminate\Support\Facades\DB::table('seo_settings')
-                        ->where('workspace_id', $submitWsId)
-                        ->where('key', 'indexnow_key')
-                        ->value('value');
+                    // INC-0006: the key belongs to the host being submitted, so it is per-website.
+                    $__inWid = (int) (\Illuminate\Support\Facades\DB::table('websites')
+                        ->where('workspace_id', $submitWsId)->whereNull('deleted_at')
+                        ->where(function ($q) use ($host) {
+                            $q->where('subdomain', $host)->orWhere('custom_domain', $host)
+                              ->orWhere('custom_domain', 'www.' . $host);
+                        })->value('id') ?: 0);
+                    $key = \App\Core\Tenancy\WebsiteScope::seo((int) $submitWsId, $__inWid, 'indexnow_key');
                     if (!$key) {
                         $key = bin2hex(random_bytes(16));
-                        \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
-                            ['workspace_id' => $submitWsId, 'key' => 'indexnow_key'],
-                            ['value' => $key, 'updated_at' => now(), 'created_at' => now()]
-                        );
+                        \App\Core\Tenancy\WebsiteScope::putSeo((int) $submitWsId, $__inWid, 'indexnow_key', $key);
                     }
                     $body = [
                         'host'        => $host,

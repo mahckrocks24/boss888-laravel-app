@@ -34,14 +34,20 @@ class CrawlChatbotKnowledgeJob implements ShouldQueue
     /** Don't auto-retry — a crawl failure is usually fatal (DNS, paywall, etc.). */
     public int $tries = 1;
 
+    /**
+     * INC-0006 - a crawl belongs to ONE website. The status key used to name only the workspace, so
+     * crawling a business's second site clobbered the first's progress and isRunning() refused to
+     * start it at all. Null means the whole business, which is what a single-site workspace wants.
+     */
     public function __construct(
         public int $workspaceId,
         public int $maxPages = ChatbotWebsiteCrawler::DEFAULT_MAX_PAGES,
+        public ?int $websiteId = null,
     ) {}
 
     public function handle(ChatbotWebsiteCrawler $crawler): void
     {
-        $key = self::statusKey($this->workspaceId);
+        $key = self::statusKey($this->workspaceId, $this->websiteId);
 
         Cache::put($key, [
             'status'     => 'running',
@@ -55,7 +61,7 @@ class CrawlChatbotKnowledgeJob implements ShouldQueue
         ]);
 
         try {
-            $report = $crawler->crawlWorkspace($this->workspaceId, $this->maxPages);
+            $report = $crawler->crawlWorkspace($this->workspaceId, $this->maxPages, $this->websiteId);
 
             Cache::put($key, [
                 'status'      => 'done',
@@ -85,15 +91,16 @@ class CrawlChatbotKnowledgeJob implements ShouldQueue
         }
     }
 
-    public static function statusKey(int $workspaceId): string
+    public static function statusKey(int $workspaceId, ?int $websiteId = null): string
     {
-        return "chatbot_crawl:ws:{$workspaceId}";
+        return "chatbot_crawl:ws:{$workspaceId}"
+            . \App\Core\Tenancy\WebsiteScope::cacheSuffix($websiteId);
     }
 
     /** Dispatcher-side guard so the SPA/WP endpoints can refuse overlap. */
-    public static function isRunning(int $workspaceId): bool
+    public static function isRunning(int $workspaceId, ?int $websiteId = null): bool
     {
-        $s = Cache::get(self::statusKey($workspaceId));
+        $s = Cache::get(self::statusKey($workspaceId, $websiteId));
         return is_array($s) && ($s['status'] ?? null) === 'running';
     }
 }

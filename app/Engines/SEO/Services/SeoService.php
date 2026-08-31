@@ -407,9 +407,12 @@ class SeoService
             $url = (string) (DB::table('seo_settings')->where('workspace_id', $wsId)
                         ->where('key', 'site_url')->value('value') ?: '');
             if ($url === '') {
-                $__site = DB::table('websites')->where('workspace_id', $wsId)
+                // INC-0006: only when the business has ONE published site. Picking the newest meant a
+                // multi-site business got an audit of whichever site happened to be built last.
+                $__pub = DB::table('websites')->where('workspace_id', $wsId)
                     ->where('status', 'published')->whereNull('deleted_at')
-                    ->orderByDesc('id')->first(['custom_domain', 'domain', 'subdomain']);
+                    ->limit(2)->get(['custom_domain', 'domain', 'subdomain']);
+                $__site = $__pub->count() === 1 ? $__pub->first() : null;
                 if ($__site) {
                     $__host = $__site->custom_domain ?: $__site->domain ?: $__site->subdomain ?: '';
                     if ($__host) $url = 'https://' . ltrim(preg_replace('#^https?://#', '', $__host), '/');
@@ -2204,35 +2207,24 @@ class SeoService
     }
 
     /**
-     * Save SEO settings for a workspace (upsert key-value pairs).
+     * Save SEO settings (upsert key-value pairs).
+     *
+     * INC-0006 - settings are saved against ONE website. Passing no website targets the
+     * business-wide default that every site inherits; the previous workspace-only write meant a
+     * business with two sites had each save silently overwrite the other's configuration.
      */
-    public function saveSettings(int $wsId, array $data): array
+    public function saveSettings(int $wsId, array $data, ?int $websiteId = null): array
     {
         $saved = [];
+        $target = ($websiteId !== null && $websiteId > 0)
+            ? $websiteId
+            : \App\Core\Tenancy\WebsiteScope::BUSINESS_DEFAULT;
         try {
             foreach ($data as $key => $value) {
-                $exists = DB::table('seo_settings')
-                    ->where('workspace_id', $wsId)
-                    ->where('key', $key)
-                    ->exists();
-
-                if ($exists) {
-                    DB::table('seo_settings')
-                        ->where('workspace_id', $wsId)
-                        ->where('key', $key)
-                        ->update([
-                            'value' => (string) $value,
-                            'updated_at' => now(),
-                        ]);
-                } else {
-                    DB::table('seo_settings')->insert([
-                        'workspace_id' => $wsId,
-                        'key' => $key,
-                        'value' => (string) $value,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
+                DB::table('seo_settings')->updateOrInsert(
+                    ['workspace_id' => $wsId, 'website_id' => $target, 'key' => $key],
+                    ['value' => (string) $value, 'updated_at' => now(), 'created_at' => now()],
+                );
                 $saved[$key] = $value;
             }
         } catch (\Throwable $e) {
@@ -4604,7 +4596,11 @@ class SeoService
 
         $own = '';
         try {
-            $w = DB::table('websites')->where('workspace_id', $wsId)->where('status', 'published')->value('custom_domain');
+            // INC-0006: "our own domain" is only unambiguous for a one-site business; otherwise fall
+            // through to the recorded workspace domain rather than adopting a sibling site's.
+            $__own = DB::table('websites')->where('workspace_id', $wsId)->where('status', 'published')
+                ->whereNull('deleted_at')->whereNotNull('custom_domain')->limit(2)->pluck('custom_domain');
+            $w = $__own->count() === 1 ? (string) $__own->first() : '';
             if ($w) $own = strtolower(parse_url('https://' . $w, PHP_URL_HOST) ?? $w);
             if ($own === '') {
                 $mem = DB::table('workspace_memory')->where('workspace_id', $wsId)->where('key', 'domain')->value('value_json');

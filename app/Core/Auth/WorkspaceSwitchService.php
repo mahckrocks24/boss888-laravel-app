@@ -18,9 +18,16 @@ class WorkspaceSwitchService
             abort(403, 'Not a member of this workspace');
         }
 
+        // INC-0006: membership is not enough. A retired workspace — an archived failed build, or a QA
+        // fixture — must not become somebody's working context, or the product starts operating
+        // inside a workspace that is not a business.
+        if ($workspace->isRetired()) {
+            abort(403, 'This workspace has been retired and can no longer be opened.');
+        }
+
         $tokens = $this->refreshTokenService->issueTokenPair($user, $workspace);
 
-        $workspaces = $user->workspaces()->with('subscription.plan')->get();
+        $workspaces = $user->workspaces()->customerVisible()->with('subscription.plan')->get();
 
         return [
             'access_token' => $tokens['access_token'],

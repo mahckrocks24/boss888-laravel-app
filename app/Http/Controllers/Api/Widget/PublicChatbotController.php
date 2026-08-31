@@ -50,7 +50,13 @@ class PublicChatbotController
             return response()->json(['success' => false, 'error' => 'PLAN_REQUIRED'], 403);
         }
 
-        $settings = DB::table('chatbot_settings')->where('workspace_id', $wsId)->first();
+        // INC-0006: the website decides. Its own chatbot row carries the greeting, the business
+        // context and the enabled flag; reading the workspace row made every site in a business
+        // share one configuration. The widget token binds a website canonically, so prefer it and
+        // fall back to the Origin host only when the token predates that binding.
+        $resolved   = $this->resolveWebsiteAndBusiness($r, $wsId);
+        $websiteId  = (int) ($tokenRow->website_id ?? 0) ?: (int) ($resolved['website_id'] ?? 0);
+        $settings   = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $wsId, $websiteId);
         if (! $settings || ! $settings->enabled) {
             return response()->json(['success' => false, 'error' => 'CHATBOT_DISABLED'], 403);
         }
@@ -61,7 +67,6 @@ class PublicChatbotController
         //   (b) primary_color reads from website's template_variables
         //       (the brand color the user actually picked when building
         //       the site), not chatbot_settings' shared workspace value.
-        $resolved      = $this->resolveWebsiteAndBusiness($r, $wsId);
         $businessName  = $resolved['business_name'];
         $primaryColor  = $resolved['primary_color'] ?: ($settings->primary_color ?: '#6C5CE7');
 
@@ -102,7 +107,7 @@ class PublicChatbotController
                       ->orWhere('custom_domain', $host);
                 })
                 ->whereNull('deleted_at')
-                ->first(['name', 'template_variables']);
+                ->first(['id', 'name', 'template_variables']);
             if ($row) {
                 $color = null;
                 if (! empty($row->template_variables)) {
@@ -111,7 +116,7 @@ class PublicChatbotController
                         $color = (string) $tv['primary_color'];
                     }
                 }
-                return ['business_name' => (string) $row->name, 'primary_color' => $color];
+                return ['business_name' => (string) $row->name, 'primary_color' => $color, 'website_id' => (int) $row->id];
             }
         }
 
@@ -120,6 +125,7 @@ class PublicChatbotController
         return [
             'business_name' => (string) ($ws->business_name ?? $ws->name ?? 'this business'),
             'primary_color' => null,
+            'website_id'    => 0,
         ];
     }
 

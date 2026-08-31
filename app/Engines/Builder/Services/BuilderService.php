@@ -641,13 +641,18 @@ class BuilderService
             if ($page && $website && !empty($website->workspace_id)) {
                 $wsId = (int) $website->workspace_id;
                 // First-page seed of seo_settings — only when no site_url exists.
+                // INC-0006: scoped to THIS website. The check used to be workspace-wide, so the
+                // second site a business built never got seeded and the SEO engine kept pointing
+                // at the first site's URL.
                 $hasSiteUrl = DB::table('seo_settings')
-                    ->where('workspace_id', $wsId)->where('key', 'site_url')->exists();
+                    ->where('workspace_id', $wsId)->where('website_id', (int) $websiteId)
+                    ->where('key', 'site_url')->exists();
                 if (!$hasSiteUrl) {
                     $sub  = $website->subdomain ?? $website->slug ?? null;
                     if ($sub) {
                         DB::table('seo_settings')->insert([
                             'workspace_id' => $wsId,
+                            'website_id'   => (int) $websiteId,
                             'key'          => 'site_url',
                             'value'        => 'https://' . $sub . '.levelupgrowth.io',
                             'created_at'   => now(),
@@ -655,12 +660,13 @@ class BuilderService
                         ]);
                         DB::table('seo_settings')->insert([
                             'workspace_id' => $wsId,
+                            'website_id'   => (int) $websiteId,
                             'key'          => 'site_name',
                             'value'        => $website->name ?? 'My Site',
                             'created_at'   => now(),
                             'updated_at'   => now(),
                         ]);
-                        Log::info("[SEO] Auto-seeded seo_settings for ws={$wsId} on first Builder page");
+                        Log::info("[SEO] Auto-seeded seo_settings for ws={$wsId} website={$websiteId} on first Builder page");
                     }
                 }
                 app(\App\Engines\SEO\Services\SeoService::class)

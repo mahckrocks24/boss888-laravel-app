@@ -3580,8 +3580,17 @@ use Illuminate\Support\Facades\Route;
         // SEO Settings (DB-backed)
         Route::get("/settings", function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
+            // INC-0006: the SEO engine works one website at a time. Read that website's rows on top
+            // of the business-wide defaults, so a second site sees its own URL rather than its
+            // sibling's. Ordering matters: the website's own row must win.
+            [$__stWid, $__stErr] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->query('website_id', 0));
+            if ($__stErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+                return response()->json(['success' => false, 'error' => $__stErr], 422);
+            }
             $rows = \Illuminate\Support\Facades\DB::table('seo_settings')
                 ->where('workspace_id', $wsId)
+                ->whereIn('website_id', array_unique([\App\Core\Tenancy\WebsiteScope::BUSINESS_DEFAULT, (int) ($__stWid ?? 0)]))
+                ->orderBy('website_id')
                 ->get();
             $settings = [];
             foreach ($rows as $row) {
@@ -3600,11 +3609,18 @@ use Illuminate\Support\Facades\Route;
             $wsId = $r->attributes->get('workspace_id');
             $settings = $r->except(['_token']);
             $group = $r->input('_group', 'general');
-            unset($settings['_group']);
+            unset($settings['_group'], $settings['website_id']);
+            // INC-0006: write to the named website, or to the business-wide default when none is
+            // named. The previous write matched on workspace + key, so saving settings for one site
+            // rewrote them for every other site the business owned.
+            [$__stWid, $__stErr] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->input('website_id', 0));
+            if ($__stErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+                return response()->json(['success' => false, 'error' => $__stErr], 422);
+            }
             foreach ($settings as $key => $value) {
-                \Illuminate\Support\Facades\DB::table('seo_settings')->updateOrInsert(
-                    ['workspace_id' => $wsId, 'key' => $key],
-                    ['value' => is_array($value) ? json_encode($value) : (string) $value, 'group' => $group, 'updated_at' => now(), 'created_at' => now()]
+                \App\Core\Tenancy\WebsiteScope::putSeo(
+                    (int) $wsId, (int) ($__stWid ?? 0), $key,
+                    is_array($value) ? json_encode($value) : (string) $value, $group,
                 );
             }
             return response()->json(["saved" => true]);
@@ -3896,9 +3912,13 @@ use Illuminate\Support\Facades\Route;
             $wsId = (int) $r->attributes->get('workspace_id');
             $type = (string) $r->query('type', 'pages');
             if (! in_array($type, ['pages', 'images'], true)) { $type = 'pages'; }
+            // INC-0006: poll the progress of the scan for THIS website. Keyed on the workspace
+            // alone, a business's two sites shared one progress record and overwrote each other.
+            [$__scanWid] = \App\Core\Tenancy\WebsiteScope::resolve($wsId, (int) $r->query('website_id', 0));
+            $__scanSuffix = \App\Core\Tenancy\WebsiteScope::cacheSuffix($__scanWid);
             return response()->json([
                 'success' => true,
-                'state'   => \App\Engines\SEO\Services\ScanProgressService::get($wsId, $type),
+                'state'   => \App\Engines\SEO\Services\ScanProgressService::get($wsId, $type . $__scanSuffix),
             ]);
         });
 
@@ -3968,13 +3988,16 @@ use Illuminate\Support\Facades\Route;
 
             $siteUrl = rtrim((string) $siteUrl, '/');
             $maxPages = min(50, (int) $r->input('max_pages', 50));
+            // INC-0006: this scan belongs to one website; its progress key must say which.
+            [$__scanWid] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->input('website_id', 0));
+            $__scanSuffix = \App\Core\Tenancy\WebsiteScope::cacheSuffix($__scanWid);
 
             // Telemetry start (cache key visible to /scan-status polling)
-            \App\Engines\SEO\Services\ScanProgressService::start($wsId, 'pages', [
+            \App\Engines\SEO\Services\ScanProgressService::start($wsId, 'pages' . $__scanSuffix, [
                 'site_url'  => $siteUrl,
                 'max_pages' => $maxPages,
             ]);
-            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages' . $__scanSuffix, [
                 'stage' => 'discovering',
             ]);
 
@@ -4132,7 +4155,7 @@ use Illuminate\Support\Facades\Route;
             }
             $pageUrls = array_slice($pageUrls, 0, $maxPages);
 
-            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages' . $__scanSuffix, [
                 'stage' => 'fetching',
                 'total' => count($pageUrls),
             ]);
@@ -4142,7 +4165,7 @@ use Illuminate\Support\Facades\Route;
             $indexed = 0;
             $failed  = [];
             foreach ($pageUrls as $i => $u) {
-                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages' . $__scanSuffix, [
                     'processed'   => $i,
                     'current_url' => $u,
                 ]);
@@ -4150,27 +4173,27 @@ use Illuminate\Support\Facades\Route;
                     $res = $svc->fetchAndIndexUrl($wsId, $u);
                     if (!empty($res['success']) || isset($res['page_id'])) {
                         $indexed++;
-                        \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+                        \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages' . $__scanSuffix, [
                             'tier1_done' => $indexed,
                         ]);
                     } else {
                         $failed[] = ['url' => $u, 'error' => $res['error'] ?? 'unknown'];
                         \App\Engines\SEO\Services\ScanProgressService::recordError(
-                            $wsId, 'pages', $u, (string) ($res['error'] ?? 'unknown')
+                            $wsId, 'pages' . $__scanSuffix, $u, (string) ($res['error'] ?? 'unknown')
                         );
                     }
                 } catch (\Throwable $e) {
                     $failed[] = ['url' => $u, 'error' => $e->getMessage()];
                     \App\Engines\SEO\Services\ScanProgressService::recordError(
-                        $wsId, 'pages', $u, $e->getMessage()
+                        $wsId, 'pages' . $__scanSuffix, $u, $e->getMessage()
                     );
                 }
             }
-            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages', [
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'pages' . $__scanSuffix, [
                 'processed' => count($pageUrls),
             ]);
 
-            \App\Engines\SEO\Services\ScanProgressService::finish($wsId, 'pages', [
+            \App\Engines\SEO\Services\ScanProgressService::finish($wsId, 'pages' . $__scanSuffix, [
                 'pages_indexed'  => $indexed,
                 'urls_found'     => count($pageUrls),
                 'sitemaps_tried' => $sitemapsTried,
@@ -4339,8 +4362,11 @@ use Illuminate\Support\Facades\Route;
             $pages = \Illuminate\Support\Facades\DB::table('seo_content_index')
                 ->where('workspace_id', $wsId)
                 ->pluck('url')->toArray();
+            // INC-0006: keep this bulk analysis distinct from a sibling site's.
+            [$__scanWid] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->input('website_id', 0));
+            $__scanSuffix = \App\Core\Tenancy\WebsiteScope::cacheSuffix($__scanWid);
 
-            \App\Engines\SEO\Services\ScanProgressService::start($wsId, 'images', [
+            \App\Engines\SEO\Services\ScanProgressService::start($wsId, 'images' . $__scanSuffix, [
                 'pool' => count($pages),
             ]);
             $svc = app(\App\Engines\SEO\Services\SeoService::class);
@@ -4354,12 +4380,12 @@ use Illuminate\Support\Facades\Route;
             // case where only a few pages need Tier 2.
             $tier2Cap = 10;
             $imgPool = array_slice($pages, 0, 30);
-            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+            \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images' . $__scanSuffix, [
                 'stage' => 'fetching',
                 'total' => count($imgPool),
             ]);
             foreach ($imgPool as $i => $u) {
-                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images' . $__scanSuffix, [
                     'stage'       => 'fetching',
                     'processed'   => $i,
                     'current_url' => $u,
@@ -4369,7 +4395,7 @@ use Illuminate\Support\Facades\Route;
                     ->where('page_url', $u)
                     ->count();
                 try { $svc->fetchAndIndexUrl($wsId, $u); $scanned++; } catch (\Throwable $e) {
-                    \App\Engines\SEO\Services\ScanProgressService::recordError($wsId, 'images', $u, $e->getMessage());
+                    \App\Engines\SEO\Services\ScanProgressService::recordError($wsId, 'images' . $__scanSuffix, $u, $e->getMessage());
                 }
                 $postCount = (int) \Illuminate\Support\Facades\DB::table('seo_images')
                     ->where('workspace_id', $wsId)
@@ -4377,7 +4403,7 @@ use Illuminate\Support\Facades\Route;
                     ->count();
                 $tier1Delta = max(0, $postCount - $preCount);
                 $tier1Imgs += $tier1Delta;
-                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images' . $__scanSuffix, [
                     'tier1_done' => $tier1Imgs,
                 ]);
                 // Tier 2 fallback ONLY when the page has ZERO images after
@@ -4388,14 +4414,14 @@ use Illuminate\Support\Facades\Route;
                 // pages already covered by laravel_http or wp_sync).
                 if ($postCount === 0 && $tier2Attempts < $tier2Cap) {
                     $tier2Attempts++;
-                    \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                    \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images' . $__scanSuffix, [
                         'stage'         => 'rendering',
                         'tier2_attempts'=> $tier2Attempts,
                         'current_url'   => $u,
                     ]);
                     try {
                         $tier2Imgs += $svc->tier2ExtractRendered($wsId, $u);
-                        \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images', [
+                        \App\Engines\SEO\Services\ScanProgressService::update($wsId, 'images' . $__scanSuffix, [
                             'tier2_done' => $tier2Imgs,
                         ]);
                     } catch (\Throwable $e) {
@@ -4404,11 +4430,11 @@ use Illuminate\Support\Facades\Route;
                             'page_url'     => $u,
                             'err'          => $e->getMessage(),
                         ]);
-                        \App\Engines\SEO\Services\ScanProgressService::recordError($wsId, 'images', $u, 'tier2: ' . $e->getMessage());
+                        \App\Engines\SEO\Services\ScanProgressService::recordError($wsId, 'images' . $__scanSuffix, $u, 'tier2: ' . $e->getMessage());
                     }
                 }
             }
-            \App\Engines\SEO\Services\ScanProgressService::finish($wsId, 'images', [
+            \App\Engines\SEO\Services\ScanProgressService::finish($wsId, 'images' . $__scanSuffix, [
                 'pages_scanned'  => $scanned,
                 'tier1_images'   => $tier1Imgs,
                 'tier2_attempts' => $tier2Attempts,
@@ -5173,10 +5199,13 @@ use Illuminate\Support\Facades\Route;
         // earlier draft referred to a non-existent `chatbots` table).
         Route::get('/chatbot/status', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
-            $chatbot = \Illuminate\Support\Facades\DB::table('chatbot_settings')
-                ->where('workspace_id', $wsId)
-                ->first(['id', 'enabled', 'greeting', 'theme', 'timezone',
-                         'primary_color', 'fallback_email', 'created_at', 'updated_at']);
+            // INC-0006: the SEO engine works one website at a time, so report that
+            // website's chatbot. Without an explicit website the business-wide default applies.
+            [$__cbWid, $__cbErr] = \App\Core\Tenancy\WebsiteScope::resolve((int) $wsId, (int) $r->query('website_id', 0));
+            if ($__cbErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+                return response()->json(['success' => false, 'error' => $__cbErr], 422);
+            }
+            $chatbot = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', (int) $wsId, $__cbWid);
             return response()->json([
                 'success' => true,
                 'chatbot' => $chatbot,
