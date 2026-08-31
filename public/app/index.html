@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="12f85b3-202608310719">
+<meta name="lu-build" content="87c644f-202608310734">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -2497,13 +2497,22 @@ document.addEventListener('DOMContentLoaded', function () {
   // product function, not an Advanced-only tool. Revert = remove the two entries.
   // P1-U2: Basic surfaces (Sarah + supporting views). Their aliases map onto the authoritative views, so a deep link
   // to an object still opens the same object in either mode. Write/Blog stay reachable for object deep links.
-  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','command','websites','crm','calendar','settings','billing','reports','write','blog'];
+  // P1R-3 (2026-08-31): 'command' removed — the Command Center exposes specialist agent cards that open the
+  // specialist drawer, and Basic must not offer direct specialist interaction. 'settings' removed — in Basic it is
+  // rewritten to 'account' below (customer settings), so nobody deep-links into the internal Advanced settings.
+  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog'];
   var _origNav = window.nav;
   if (typeof _origNav === 'function') {
     window.nav = function (view) {
       var mode;
       try { mode = localStorage.getItem('lu_visibility_mode'); } catch (e) {}
       mode = (mode === 'advanced') ? 'advanced' : 'basic';
+      // P1R-3: customer/internal settings split at the router — Basic's settings ARE the Account surface.
+      if (mode === 'basic' && view === 'settings') {
+        view = 'account';
+        try { if (window._luRouter && window._luRouter.enabled()) window._luRouter.pushView('account'); } catch (e) {}
+        return _origNav.call(window, 'account');
+      }
       if (mode === 'basic' && view && BASIC_VISIBLE.indexOf(view) === -1) {
         var origArgs = arguments;
         // P1-U2: never leave the screen empty behind the modal — Basic shows Sarah while the customer decides.
