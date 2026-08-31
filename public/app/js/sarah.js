@@ -43,7 +43,7 @@
       '.sh-top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--s1);flex:none;flex-wrap:wrap}',
       '.sh-avatar{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD27A,#F59E0B 55%,#B7700A);box-shadow:0 0 0 3px rgba(245,158,11,.18);flex:none}',
       '.sh-who{min-width:0;flex:1}.sh-name{font:700 15px var(--fh);letter-spacing:-.01em}.sh-role{font-size:12px;color:var(--t2)}',
-      '.sh-ctx{cursor:pointer;border:0;font-family:inherit}.sh-ctx:hover{color:var(--t1)}.sh-ctx:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
+      '.sh-ctx{cursor:pointer;border:0;font-family:inherit;min-height:36px}.sh-ctx:hover{color:var(--t1)}.sh-ctx:focus-visible{outline:2px solid var(--p);outline-offset:2px}', /* P1R-10: was 29px once it became a button (WS-PICK-1) */
       '.sh-wsp-ov{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:var(--z-modal,400);display:flex;align-items:center;justify-content:center;padding:20px}',
       '.sh-wsp{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:18px;width:min(420px,100%);max-height:70vh;overflow:auto}',
       '.sh-wsp h3{font:700 15px var(--fh);margin:0 0 4px}.sh-wsp p{font-size:12.5px;color:var(--t2);margin:0 0 12px}',
