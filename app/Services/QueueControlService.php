@@ -51,29 +51,37 @@ class QueueControlService
     /**
      * Find stale tasks (stuck in running beyond threshold).
      */
-    public function findStaleTasks(): \Illuminate\Database\Eloquent\Collection
+    public function findStaleTasks(?int $wsId = null): \Illuminate\Database\Eloquent\Collection
     {
         $timeout = (int) config('queue_control.stale_task_timeout', 600); // 10 min
 
         return Task::where('status', 'running')
             ->where('started_at', '<', now()->subSeconds($timeout))
+            ->when($wsId !== null, fn ($q) => $q->where('workspace_id', $wsId))   // SEC-2
             ->get();
     }
 
     /**
      * Get queue pressure metrics.
      */
-    public function getMetrics(): array
+    /**
+     * SEC-2: $wsId scopes the metrics to one workspace. Operator surfaces (the CLI report, system health,
+     * the validation report) pass nothing and keep the platform view; anything a CUSTOMER can reach must pass
+     * their workspace, or it reports other tenants' volume as if it were theirs.
+     */
+    public function getMetrics(?int $wsId = null): array
     {
+        $scope = fn ($q) => $wsId === null ? $q : $q->where('workspace_id', $wsId);
+
         return [
-            'pending' => Task::where('status', 'pending')->count(),
-            'awaiting_approval' => Task::where('status', 'awaiting_approval')->count(),
-            'queued' => Task::where('status', 'queued')->count(),
-            'running' => Task::where('status', 'running')->count(),
-            'stale' => $this->findStaleTasks()->count(),
-            'failed_24h' => Task::where('status', 'failed')
+            'pending' => $scope(Task::where('status', 'pending'))->count(),
+            'awaiting_approval' => $scope(Task::where('status', 'awaiting_approval'))->count(),
+            'queued' => $scope(Task::where('status', 'queued'))->count(),
+            'running' => $scope(Task::where('status', 'running'))->count(),
+            'stale' => $this->findStaleTasks($wsId)->count(),
+            'failed_24h' => $scope(Task::where('status', 'failed'))
                 ->where('created_at', '>=', now()->subDay())->count(),
-            'completed_24h' => Task::where('status', 'completed')
+            'completed_24h' => $scope(Task::where('status', 'completed'))
                 ->where('completed_at', '>=', now()->subDay())->count(),
         ];
     }

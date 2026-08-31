@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="6191076-202608311209">
+<meta name="lu-build" content="e4f8d19-202608311744">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -148,7 +148,7 @@
   --p:#6C5CE7;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.1);
   --ac:#00E5A8;--ag:rgba(0,229,168,.18);--as:rgba(0,229,168,.08);
   --bl:#6FA8FF;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA; /* P1R-12: --bl was #3B8BF5 = 3.86:1 on a dark card, under AA for normal text */
-  --t1:#E8EDF5;--t2:#8B97B0;--t3:#7C879C; /* P4-U1: was #4A566B (2.55:1); now 4.6:1 on --bg */
+  --t1:#E8EDF5;--t2:#8B97B0;--t3:#8B94A8; /* P1R-13: #7C879C cleared 4.5 on --bg but only 4.37 on a CARD; now 4.5+ on both */
   --sb-thumb:#2E3446;--sb-hover:#3D4560; /* SCROLL-1: scrollbar tokens — every scroller uses these, never the OS default */
   /* TYPE-1 (2026-08-30): Inter for UI/body (tabular numerals for KPIs), Bricolage Grotesque for headings. */
   --fh:'Bricolage Grotesque','Inter',sans-serif;--fb:'Inter',system-ui,sans-serif;
@@ -225,6 +225,25 @@ html[data-theme="light"] .sb-lm{background:#050505}
 /* P1R-11 (2026-08-31) — WCAG 1.4.11 non-text contrast. In light mode a text field was near-white on white with a
    near-white border: measured border 1.19:1 and fill 1.11:1 on 14 of 14 visible inputs, i.e. the control boundary
    carried no information at all. Form controls get a boundary that clears 3:1; decorative dividers keep --bd/--bd2. */
+/* P1R-13: dark-mode text colours that modules set inline. --p stays the brand violet for BUTTON BACKGROUNDS (white
+   text depends on it); as TEXT on a dark card it reads 3.58:1, so text usages get a lighter violet. */
+html:not([data-theme="light"]) [style*="color:var(--p)"],
+html:not([data-theme="light"]) [style*="color:#6C5CE7"],
+html:not([data-theme="light"]) [style*="color:#6c5ce7"],
+html:not([data-theme="light"]) [style*="color:var(--p,"]{color:#9C8FFF !important}   /* var WITH A FALLBACK - `color:var(--p,#6C5CE7)` is the form the Articles list emits, and it matches neither of the two selectors above */   /* the same violet also appears as a literal (agent identity hue on .av-card-name) */
+html:not([data-theme="light"]) [style*="color:#6B7280"]{color:#9AA3B2 !important}
+html:not([data-theme="light"]) [style*="color:var(--rd)"]{color:#FCA5A5 !important}   /* --rd is also a destructive BACKGROUND under white text, so only text usages move */
+html:not([data-theme="light"]) [style*="color:#64748B"],html:not([data-theme="light"]) [style*="color:#64748b"]{color:#9AA3B2 !important}
+html:not([data-theme="light"]) [style*="color:#16A34A"],html:not([data-theme="light"]) [style*="color:#16a34a"]{color:#4ADE80 !important}
+/* P1R-15: a light FILL needs dark ink. Lightening dark --bl fixed link text and left white-on-blue fills at
+   2.41:1 (the calendar's today pill). Light mode keeps white ink, where --bl is a deep blue. */
+html:not([data-theme="light"]) .cal-day-num.active,
+html:not([data-theme="light"]) [style*="background:var(--bl)"],
+html:not([data-theme="light"]) [style*="background: var(--bl)"]{color:#0F1117 !important}
+/* In DARK, --am is a bright amber (#F59E0B): white ink on it measured 2.15:1 ("Change Password"). Dark ink instead.
+   In LIGHT, --am is a dark brown (#8A5406) where white ink is already correct, so this must NOT apply there. */
+html:not([data-theme="light"]) [style*="background:var(--am)"],
+html:not([data-theme="light"]) [style*="background: var(--am)"]{color:#0F1117 !important}
 /* P1R-12: dark is the DEFAULT theme and had the same invisible-control problem — inputs sat at 1.10-1.48:1.
    Scoped with :not([data-theme="light"]) so it applies exactly when the light block does not. */
 html:not([data-theme="light"]) input:not([type=checkbox]):not([type=radio]),
@@ -269,6 +288,11 @@ html[data-theme="light"] [style*="color:#64748B"],html[data-theme="light"] [styl
 html[data-theme="light"] [style*="color:#16A34A"],html[data-theme="light"] [style*="color:#16a34a"]{color:var(--ac) !important}
 html[data-theme="light"] [style*="color:#00E5A8"],html[data-theme="light"] [style*="color: rgb(0, 229, 168)"]{color:var(--ac) !important}
 html[data-theme="light"] [style*="color:#16A34A"]{color:var(--ac) !important}
+/* P1R-17b: identity hues written as dark-theme literals, mapped onto the light theme's AA-tuned tokens. */
+html[data-theme="light"] [style*="color:#F59E0B"],html[data-theme="light"] [style*="color:#f59e0b"]{color:var(--am) !important}
+html[data-theme="light"] [style*="color:#F87171"],html[data-theme="light"] [style*="color:#f87171"]{color:var(--rd) !important}
+html[data-theme="light"] [style*="color:#A78BFA"],html[data-theme="light"] [style*="color:#a78bfa"]{color:var(--pu) !important}
+html[data-theme="light"] [style*="color:#3B8BF5"],html[data-theme="light"] [style*="color:#3b8bf5"]{color:var(--bl) !important}
 html[data-theme="light"] .sidebar{box-shadow:none}
 html[data-theme="light"] .wsv2-viewport{background:#EFEDEB}
 html[data-theme="light"] .wsv2-canvas{background-color:#EFEDEB;background-image:radial-gradient(rgba(5,5,5,.12) 1px,transparent 1px)}
@@ -287,6 +311,14 @@ html,body{height:100%;overflow:hidden;overflow-x:hidden;font-family:var(--fb);fo
 .engine-title,.page-title{font-weight:600;letter-spacing:-0.02em}
 button{font-family:var(--fb);cursor:pointer;border:none}
 textarea,input{font-family:var(--fb);}
+/* A11Y-3 (2026-08-31): these controls suppress the outline in a way that outranks the global rule below — three
+   via an inline style, one via .header-search. The ring is restored with the weight needed to win. */
+.header-search input:focus-visible,
+#ws-create-title:focus-visible,
+#ws-create-desc:focus-visible,
+#ws-pub-domain:focus-visible,
+.pub-field:focus-visible,
+.dm-ta:focus-visible{outline:2px solid var(--p) !important;outline-offset:1px}
 /* P1-U2 (2026-08-30): keyboard focus is always visible; mouse focus stays quiet (was a global outline:none). */button:focus:not(:focus-visible),input:focus:not(:focus-visible),textarea:focus:not(:focus-visible),select:focus:not(:focus-visible),[tabindex]:focus:not(:focus-visible){outline:none}button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--p);outline-offset:2px}
 /* SCROLL-1 (2026-08-30): design-system scrollbars everywhere — never the OS default. Both engines:
    the standard properties (Firefox, Chrome 121+) and the WebKit pseudo-elements, from the same tokens. */
@@ -562,8 +594,8 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 
 /* ══════════════ DIRECT ASSIGN MODAL ══════════════ */
 .da-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:var(--z-topbar);
-  display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
-.da-backdrop.visible{opacity:1;pointer-events:all}
+  display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;visibility:hidden;transition:opacity .25s,visibility 0s linear .25s}   /* A11Y-2: closed dialogs leave the tab order */
+.da-backdrop.visible{opacity:1;pointer-events:all;visibility:visible;transition:opacity .25s,visibility 0s}
 .da-modal{width:500px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);
   box-shadow:0 24px 80px rgba(0,0,0,.5);display:flex;flex-direction:column}
 .da-hdr{padding:20px 22px 14px;border-bottom:1px solid var(--bd)}
@@ -631,8 +663,8 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .ct-add-note:hover{background:var(--p);color:#fff}
 
 /* Task approval modal */
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:var(--z-sidebar);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
-.modal-backdrop.visible{opacity:1;pointer-events:all}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:var(--z-sidebar);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;visibility:hidden;transition:opacity .3s,visibility 0s linear .3s}   /* A11Y-1c/d: without visibility:hidden the dialog's controls stay in the tab order while invisible. visibility is discrete, so it is switched at the END of the fade-out rather than interpolated. */
+.modal-backdrop.visible{opacity:1;pointer-events:all;visibility:visible;transition:opacity .3s,visibility 0s}   /* A11Y-1d: visible immediately on open, so focus can enter as the dialog appears */
 .approval-modal{width:680px;max-height:80vh;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,.5)}
 .am-hdr{padding:22px 24px 16px;border-bottom:1px solid var(--bd);flex-shrink:0}
 .am-title{font-family:var(--fh);font-size:18px;font-weight:800;color:var(--t1);margin-bottom:4px}
@@ -784,7 +816,7 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .dm-close{margin-left:auto;background:none;border:none;color:var(--t3);font-size:16px;cursor:pointer;padding:0;line-height:1}
 .dm-body{padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .dm-ta{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:9px 11px;font-size:11px;resize:none;font-family:var(--fb);line-height:1.5;min-height:70px;max-height:120px;transition:border-color var(--tr);box-sizing:border-box}
-.dm-ta:focus{outline:none;border-color:var(--p)}
+.dm-ta:focus:not(:focus-visible){outline:none;border-color:var(--p)}   /* A11Y-3: quiet for the mouse only — keyboard keeps the ring */
 .dm-footer{display:flex;align-items:center;justify-content:space-between}
 .dm-hint{font-size:9px;color:var(--t3)}
 .dm-send{background:linear-gradient(135deg,var(--p),#9B8DF8);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all var(--tr)}
@@ -1114,7 +1146,7 @@ table tbody tr:hover{background:var(--s2)}
     .cal-month{font-size:13px;font-weight:600;color:var(--t1)}
     .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
     .cal-dow{font-size:10px;color:var(--t3);text-align:center;padding:3px 0;text-transform:uppercase;letter-spacing:.04em}
-    .cal-day{aspect-ratio:1;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-size:12px;color:var(--t2);position:relative;transition:all .15s;gap:2px}
+    .cal-day{aspect-ratio:1;background:none;border:0;padding:0;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;font-size:12px;color:var(--t2);position:relative;transition:all .15s;gap:2px}
     .cal-day:hover{background:var(--da-bg);color:var(--da)}
     .cal-day.today{background:var(--da-bg);color:var(--da);font-weight:700;border:1px solid var(--da-border)}
     .cal-day.has-post::after{content:"";display:block;width:5px;height:5px;border-radius:50%;background:var(--da);flex-shrink:0}
@@ -1513,6 +1545,20 @@ img:not([loading]) {
 }
 
 /* Desktop-only gate (Builder, Studio, etc.) */
+/* MOBILE-5 (2026-08-31): the page editor is a flex row with a fixed 300px Arthur sidebar, which left the preview
+   90px wide on a phone — the editing surface was effectively invisible. Below 820px the two stack, preview first. */
+@media (max-width: 820px) {
+  .pe-main { flex-direction: column !important; }
+  .pe-stage { order: 1; flex: 1 1 auto !important; min-height: 55vh; }
+  .pe-side {
+    order: 2;
+    width: 100% !important;
+    flex-shrink: 1 !important;
+    max-height: 40vh;
+    border-right: none !important;
+    border-top: 1px solid var(--bd);
+  }
+}
 .lu-desktop-gate { display: none; }
 @media (max-width: 1023px) {
   .lu-desktop-only { display: none !important; }
@@ -1712,6 +1758,7 @@ img:not([loading]) {
 
   /* Outer 3-col container → single column (overrides inline style) */
   #cmd-row2,
+  .cmd-row,            /* MOBILE-1: ROW 4 had no id or class, so it never stacked */
   #cmd-kpis,
   .cmd-agents-grid,
   #view-command-center,
@@ -1725,6 +1772,10 @@ img:not([loading]) {
     gap: 12px !important;
     overflow-x: hidden !important;
   }
+
+  /* MOBILE-1: a grid item's default min-width:auto lets long content push the column wider than the row. */
+  #cmd-row2 > *, .cmd-row > *, #cmd-kpis > *, .cmd-agents-grid > * { min-width: 0; }
+  #view-command .cmd-panel { overflow-wrap: anywhere; }
 
   /* Each column / panel → full width */
   [class*="cc-col"],
@@ -2305,6 +2356,12 @@ html.lgsc-embed-mode #view-seo > #seo-root {
 /* CMD-CTR-5.5.0 */
 /* REVIEW-QUEUE-5.5.1 */
 .aq-stat{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:14px 16px}
+/* MOBILE-3: four 1fr columns cannot hold their own content at 390px — 2x2 instead, and let the cards shrink. */
+@media (max-width:700px){
+  #aq-stats{grid-template-columns:repeat(2,1fr) !important}
+  #aq-stats > *{min-width:0}
+  .aq-stat{padding:12px}
+}
 .aq-stat-label{font-size:11px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px}
 .aq-stat-value{font-family:var(--fh);font-size:26px;font-weight:800;color:var(--t1);line-height:1.1;letter-spacing:-0.02em}
 .aq-stat-meta{font-size:11px;color:var(--t3);margin-top:4px;min-height:14px}
@@ -2324,10 +2381,16 @@ html.lgsc-embed-mode #view-seo > #seo-root {
 .aq-card-title{font-family:var(--fh);font-size:15px;font-weight:700;color:var(--t1);letter-spacing:-0.01em;line-height:1.3}
 .aq-card-sub{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}
 .aq-engine-badge{display:inline-flex;align-items:center;font-size:10px;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;color:#fff}
+/* P1R-16: in dark the category colour as TEXT on its own 13% tint measured 2.77-3.20:1. The category is still
+   carried by the dot, the border and the tint, so only the label goes neutral. */
+html:not([data-theme="light"]) .aq-category-chip{color:var(--t1) !important}
+html[data-theme="light"] .aq-category-chip{color:var(--t1) !important}   /* P1R-17: same defect, other theme - the chip colour is still the dot, the border and the tint */
+html:not([data-theme="light"]) .aq-tab.active .aq-tab-count{color:#9C8FFF}
 .aq-agent-line{font-size:12px;color:var(--t2);display:inline-flex;align-items:center;gap:6px}
 .aq-card-desc{font-size:13px;color:var(--t2);margin:6px 0 10px;line-height:1.45;padding-left:28px}
 .aq-card-payload{font-size:11.5px;color:var(--t3);margin:8px 0 10px;padding-left:28px}
-.aq-card-payload code{background:var(--s2);color:var(--t2);padding:1px 6px;border-radius:4px;margin-right:4px;font-size:11px}
+.aq-card-payload code{background:var(--s2);color:var(--t2);padding:1px 6px;border-radius:4px;margin-right:4px;font-size:11px;display:inline-block;max-width:100%;overflow-wrap:anywhere}   /* MOBILE-2: long payload keys pushed 46 chips past a 390px viewport */
+.aq-card-payload{overflow-wrap:anywhere}
 .aq-card-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-left:28px}
 .aq-age{font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600}
 .aq-age-fresh{background:rgba(0,229,168,.12);color:var(--ac)}
@@ -3251,7 +3314,7 @@ window.luSwipeToClose = luSwipeToClose;
     <!-- Task detail drawer -->
     <div id="task-drawer" class="task-drawer" style="display:none">
       <div class="td-overlay" onclick="closeTaskDrawer()"></div>
-      <div class="td-panel">
+      <div class="td-panel" role="dialog" aria-modal="true" aria-labelledby="td-title">
         <div class="td-hdr">
           <div class="td-hdr-left">
             <span id="td-agent-em" style="font-size:20px"></span>
@@ -3290,7 +3353,7 @@ window.luSwipeToClose = luSwipeToClose;
           <div id="tdp-notes" class="td-pane" style="display:none">
             <div id="td-notes-feed"></div>
             <div class="td-note-input">
-              <textarea id="td-note-ta" placeholder="Add a note…" rows="2"></textarea>
+              <textarea id="td-note-ta" aria-label="Add a note to this task" placeholder="Add a note…" rows="2"></textarea>
               <button onclick="submitTaskNote()" class="td-note-submit">Send</button>
             </div>
           </div>
@@ -3402,7 +3465,7 @@ window.luSwipeToClose = luSwipeToClose;
         </div>
 
         <!-- ROW 4 — Websites + Recent meetings (2 col) -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px">
+        <div class="cmd-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px">
           <div class="cmd-panel">
             <div class="cmd-panel-head"><span>Websites</span></div>
             <div id="cmd-websites">
@@ -3523,11 +3586,11 @@ window.luSwipeToClose = luSwipeToClose;
           <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Your Profile</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Name</label>
+              <label for="prof-name" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Name</label>
               <input id="prof-name" type="text" placeholder="Your name" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Email</label>
+              <label for="prof-email" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Email</label>
               <input id="prof-email" type="email" placeholder="your@email.com" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
           </div>
@@ -3539,15 +3602,15 @@ window.luSwipeToClose = luSwipeToClose;
             <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Change Password</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
               <div>
-                <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Current Password</label>
+                <label for="prof-cur-pw" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Current Password</label>
                 <input id="prof-cur-pw" type="password" placeholder="Current password" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
               </div>
               <div>
-                <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">New Password</label>
+                <label for="prof-new-pw" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">New Password</label>
                 <input id="prof-new-pw" type="password" placeholder="New password (min 8 chars)" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
               </div>
               <div>
-                <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Confirm Password</label>
+                <label for="prof-conf-pw" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Confirm Password</label>
                 <input id="prof-conf-pw" type="password" placeholder="Confirm new password" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
               </div>
             </div>
@@ -3592,22 +3655,22 @@ window.luSwipeToClose = luSwipeToClose;
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Industry <span style="color:var(--rd)">*</span></label>
+              <label for="st-industry" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Industry <span style="color:var(--rd)">*</span></label>
               <input id="st-industry" type="text" placeholder="e.g. Furniture & Interior Design" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Location / Target Market <span style="color:var(--rd)">*</span></label>
+              <label for="st-location" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Location / Target Market <span style="color:var(--rd)">*</span></label>
               <input id="st-location" type="text" placeholder="e.g. UAE, Dubai" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
           </div>
 
           <div style="margin-bottom:14px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Core Services <span style="color:var(--rd)">*</span> <span style="font-weight:400;color:var(--t3);font-size:10px">(comma-separated)</span></label>
+            <label for="st-services" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Core Services <span style="color:var(--rd)">*</span> <span style="font-weight:400;color:var(--t3);font-size:10px">(comma-separated)</span></label>
             <input id="st-services" type="text" placeholder="e.g. custom furniture, luxury furniture, interior design, office fit-out" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
           </div>
 
           <div style="margin-bottom:14px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Business Description</label>
+            <label for="st-biz-desc" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Business Description</label>
             <textarea id="st-biz-desc" rows="2" placeholder="Short description of what your business does and who you serve…" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;resize:vertical;box-sizing:border-box"></textarea>
           </div>
 
@@ -3615,11 +3678,11 @@ window.luSwipeToClose = luSwipeToClose;
      platform reads brand voice / audience from workspace_memory instead. Preserved for the product decision. -->
           <div data-internal="profile-unpersisted" style="display:none;grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Target Audience</label>
+              <label for="st-audience" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Target Audience</label>
               <input id="st-audience" type="text" placeholder="e.g. High-net-worth homeowners, architects in UAE" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Brand Voice</label>
+              <label for="st-brand-voice" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Brand Voice</label>
               <input id="st-brand-voice" type="text" placeholder="e.g. Premium, sophisticated, craftsmanship-led" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
           </div>
@@ -3628,11 +3691,11 @@ window.luSwipeToClose = luSwipeToClose;
      platform reads brand voice / audience from workspace_memory instead. Preserved for the product decision. -->
           <div data-internal="profile-unpersisted" style="display:none;grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Business Goals</label>
+              <label for="st-goals" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Business Goals</label>
               <input id="st-goals" type="text" placeholder="e.g. increase online leads, grow UAE market share" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Key Competitors <span style="font-weight:400;font-size:10px">(optional)</span></label>
+              <label for="st-competitors" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Key Competitors <span style="font-weight:400;font-size:10px">(optional)</span></label>
               <input id="st-competitors" type="text" placeholder="e.g. IKEA UAE, Pan Emirates, Home Centre" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
             </div>
           </div>
@@ -3732,15 +3795,15 @@ window.luSwipeToClose = luSwipeToClose;
           <div style="font-size:11px;font-weight:700;color:var(--pu);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Social OAuth</div>
           
           <div style="margin-bottom:12px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Facebook App ID</label>
+            <label for="st-fb-app-id" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Facebook App ID</label>
             <input class="form-input" id="st-fb-app-id" placeholder="From developers.facebook.com" style="background:var(--s2)">
           </div>
           <div style="margin-bottom:12px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Facebook App Secret</label>
+            <label for="st-fb-app-secret" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Facebook App Secret</label>
             <input type="password" class="form-input" id="st-fb-app-secret" placeholder="Keep this secret" style="background:var(--s2)">
           </div>
           <div style="margin-bottom:4px">
-            <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">OAuth Redirect URI (paste into FB app settings)</label>
+            <label for="st-fb-callback" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">OAuth Redirect URI (paste into FB app settings)</label>
             <input class="form-input" id="st-fb-callback" readonly value="" style="background:var(--s1);font-family:monospace;font-size:11px;color:var(--t3)">
           </div>
           <div style="display:flex;gap:10px">
@@ -3759,21 +3822,21 @@ window.luSwipeToClose = luSwipeToClose;
           <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Brand Identity</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Primary Color</label>
+              <label for="brand-primary" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Primary Color</label>
               <div style="display:flex;align-items:center;gap:8px"><input type="color" id="brand-primary" value="#6C5CE7" style="width:40px;height:32px;border:none;cursor:pointer;background:none"><span id="brand-primary-hex" style="font-size:11px;color:var(--t2);font-family:monospace">#6C5CE7</span></div>
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Secondary Color</label>
+              <label for="brand-secondary" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Secondary Color</label>
               <div style="display:flex;align-items:center;gap:8px"><input type="color" id="brand-secondary" value="#00E5A8" style="width:40px;height:32px;border:none;cursor:pointer;background:none"><span id="brand-secondary-hex" style="font-size:11px;color:var(--t2);font-family:monospace">#00E5A8</span></div>
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Accent Color</label>
+              <label for="brand-accent" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Accent Color</label>
               <div style="display:flex;align-items:center;gap:8px"><input type="color" id="brand-accent" value="#F4F7FB" style="width:40px;height:32px;border:none;cursor:pointer;background:none"><span id="brand-accent-hex" style="font-size:11px;color:var(--t2);font-family:monospace">#F4F7FB</span></div>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Heading Font</label>
+              <label for="brand-font-heading" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Heading Font</label>
               <select id="brand-font-heading" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px">
                 <option value="Syne">Syne (Default)</option>
                 <option value="Playfair Display">Playfair Display (Elegant)</option>
@@ -3781,7 +3844,7 @@ window.luSwipeToClose = luSwipeToClose;
               </select>
             </div>
             <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Body Font</label>
+              <label for="brand-font-body" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;display:block;margin-bottom:6px">Body Font</label>
               <select id="brand-font-body" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px">
                 <option value="DM Sans">DM Sans (Default)</option>
                 <option value="Inter">Inter (Clean)</option>
@@ -3816,7 +3879,12 @@ window.luSwipeToClose = luSwipeToClose;
             pv.style.background=a;
             pv.querySelector('div:first-child').style.color=p;
             pv.querySelector('div:first-child').style.fontFamily=fh;
-            pv.querySelector('div:nth-child(2)').style.color='#6B7280';
+            // P1R-14: a fixed grey cannot be legible against an arbitrary customer accent. Derive ink from it.
+            var _h=String(a).replace('#','');
+            var _rgb=[parseInt(_h.substr(0,2),16),parseInt(_h.substr(2,2),16),parseInt(_h.substr(4,2),16)];
+            var _lin=_rgb.map(function(v){v=v/255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});
+            var _lum=0.2126*_lin[0]+0.7152*_lin[1]+0.0722*_lin[2];
+            pv.querySelector('div:nth-child(2)').style.color=_lum>0.4?'rgba(15,17,23,.78)':'rgba(255,255,255,.82)';
             var btn=pv.querySelector('div:last-child');
             btn.style.background=p;btn.style.color=a;
           }
@@ -3902,6 +3970,11 @@ window.luSwipeToClose = luSwipeToClose;
               }
               sec.style.display='block';
               _teamData=d;
+              window._renderAgentTeam();
+            }catch(e){console.warn('[agent-team]',e);}
+          };
+          window._renderAgentTeam=function(){
+            var d=_teamData; if(!d)return;
               var sub=document.getElementById('agent-team-sub');
               sub.textContent=d.plan_name+' plan — '+d.selected_ids.length+' of '+(d.max_agents+1)+' agents selected (Sarah + '+d.max_agents+' '+d.agent_level+'-level specialists)';
               var grid=document.getElementById('agent-team-grid');
@@ -3915,11 +3988,10 @@ window.luSwipeToClose = luSwipeToClose;
                 var cat=CATS[a.category]||CATS.crm;
                 var slug=(a.slug||a.name||'').toLowerCase();
                 var av=(typeof buildAgentOrb==='function')?buildAgentOrb(slug,'sm','idle'):'<span style="font-size:18px">'+cat.emoji+'</span>';
-                return '<div id="at-card-'+a.id+'" onclick="window._toggleAgent('+a.id+')" style="background:'+(sel?cat.color+'12':'var(--s2)')+';border:2px solid '+(sel?cat.color:'var(--bd)')+';border-radius:10px;padding:12px;cursor:pointer;transition:all .2s"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="flex-shrink:0">'+av+'</div><div><div style="font-size:12px;font-weight:700;color:'+(sel?cat.color:'var(--t1)')+'">'+a.name+'</div><div style="font-size:10px;color:var(--t3)">'+a.title+'</div></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">'+a.level+'</span><span style="font-size:10px;font-weight:600;color:'+(sel?'var(--ac)':'var(--t3)')+'">'+(sel?'\u2713 Active':'Click to add')+'</span></div></div>';
+                return '<button type="button" id="at-card-'+a.id+'" onclick="window._toggleAgent('+a.id+')" aria-pressed="'+(sel?'true':'false')+'" style="text-align:left;width:100%;font:inherit;background:'+(sel?cat.color+'12':'var(--s2)')+';border:2px solid '+(sel?cat.color:'var(--bd)')+';border-radius:10px;padding:12px;cursor:pointer;transition:all .2s"><div style="display:flex;align-items:center;gap:10px;margin-bottom:6px"><div style="flex-shrink:0">'+av+'</div><div><div style="font-size:12px;font-weight:700;color:'+(sel?cat.color:'var(--t1)')+'">'+a.name+'</div><div style="font-size:10px;color:var(--t3)">'+a.title+'</div></div></div><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:9px;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">'+a.level+'</span><span style="font-size:10px;font-weight:600;color:'+(sel?'var(--ac)':'var(--t3)')+'">'+(sel?'\u2713 Active':'Click to add')+'</span></div></button>';
               }).join('');
               grid.innerHTML=sarahHtml+agentHtml;
               saveBtn.style.display='inline-block';
-            }catch(e){console.warn('[agent-team]',e);}
           };
           window._toggleAgent=function(agentId){
             if(!_teamData)return;
@@ -3936,7 +4008,7 @@ window.luSwipeToClose = luSwipeToClose;
               }
               _teamData.selected_ids.push(agentId);
             }
-            window._loadAgentTeam();
+            window._renderAgentTeam();   /* TEAM-1: re-fetching here discarded the click */
           };
           window._saveAgentTeam=async function(){
             if(!_teamData)return;
@@ -3964,6 +4036,9 @@ window.luSwipeToClose = luSwipeToClose;
           if(sv)obs2.observe(sv,{attributes:true,attributeFilter:['style']});
         })();
         </script>
+
+        <!-- Businesses section (BIZ-1) — populated by window._renderBusinesses(); hides itself when there is only one -->
+        <div id="biz-section" data-adv="1" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
         <!-- API Keys section — populated by window._renderApiKeys() -->
         <div id="apk-section" data-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
@@ -4126,11 +4201,11 @@ window.luSwipeToClose = luSwipeToClose;
           <h3 style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">New Website</h3>
           <p style="color:var(--t3);font-size:12px;margin-bottom:20px">Create a multi-page website managed by LevelUp</p>
           <div style="margin-bottom:14px">
-            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:5px">Website Name</label>
+            <label for="ws-create-title" style="font-size:11px;color:var(--t2);display:block;margin-bottom:5px">Website Name</label>
             <input id="ws-create-title" type="text" placeholder="e.g. VisionHaus Interior Design" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;color:var(--t1);font-size:13px;outline:none;box-sizing:border-box">
           </div>
           <div style="margin-bottom:14px">
-            <label style="font-size:11px;color:var(--t2);display:block;margin-bottom:5px">Description <span style="color:var(--t3)">(optional)</span></label>
+            <label for="ws-create-desc" style="font-size:11px;color:var(--t2);display:block;margin-bottom:5px">Description <span style="color:var(--t3)">(optional)</span></label>
             <textarea id="ws-create-desc" placeholder="Brief description of this website" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;color:var(--t1);font-size:13px;outline:none;resize:vertical;min-height:60px;box-sizing:border-box;font-family:var(--fb)"></textarea>
           </div>
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
@@ -4286,9 +4361,9 @@ window.luSwipeToClose = luSwipeToClose;
 
 <!-- Direct Assign Modal (Workspace) -->
   <div class="da-backdrop" id="da-backdrop" data-adv="1">
-    <div class="da-modal">
+    <div class="da-modal" role="dialog" aria-modal="true" aria-labelledby="da-dialog-title">
       <div class="da-hdr">
-        <div class="da-title">Assign Task</div>
+        <div class="da-title" id="da-dialog-title">Assign Task</div>
         <div class="da-sub" id="da-sub">Direct assignment — task created immediately.</div>
       </div>
       <div class="da-body">
@@ -4297,16 +4372,16 @@ window.luSwipeToClose = luSwipeToClose;
           <div class="da-assignee-chips" id="da-chips"></div>
         </div>
         <div class="da-field">
-          <label>Task Title</label>
+          <label for="da-title">Task Title</label>
           <input type="text" id="da-title" placeholder="e.g. Keyword research for Q3 campaign">
         </div>
         <div class="da-field">
-          <label>Description</label>
+          <label for="da-desc">Description</label>
           <textarea id="da-desc" placeholder="What needs to be done? What's the deliverable?"></textarea>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="da-field">
-            <label>Priority</label>
+            <label for="da-priority">Priority</label>
             <select id="da-priority">
               <option value="urgent">Urgent</option>
               <option value="high">High</option>
@@ -4315,12 +4390,12 @@ window.luSwipeToClose = luSwipeToClose;
             </select>
           </div>
           <div class="da-field">
-            <label>Est. Time (minutes)</label>
+            <label for="da-time">Est. Time (minutes)</label>
             <input type="number" id="da-time" value="60" min="15" max="480">
           </div>
         </div>
         <div class="da-field">
-          <label>Success Metric</label>
+          <label for="da-metric">Success Metric</label>
           <input type="text" id="da-metric" placeholder="e.g. 3 target keywords with KD &lt;40 identified">
         </div>
       </div>
@@ -4333,9 +4408,9 @@ window.luSwipeToClose = luSwipeToClose;
 
 <!-- Task approval modal -->
 <div class="modal-backdrop" id="approval-backdrop">
-  <div class="approval-modal">
+  <div class="approval-modal" role="dialog" aria-modal="true" aria-labelledby="am-title">
     <div class="am-hdr">
-      <div class="am-title">Sarah has created tasks ✦</div>
+      <div class="am-title" id="am-title">Sarah has created tasks ✦</div>
       <div class="am-sub" id="am-sub">Review and approve the tasks you want assigned to your team.</div>
     </div>
     <div class="am-tasks" id="am-tasks-list"></div>
@@ -4351,7 +4426,7 @@ window.luSwipeToClose = luSwipeToClose;
 
 <!-- Summary modal -->
 <div class="modal-backdrop" id="summary-backdrop" onclick="closeSummaryModal()">
-  <div class="summary-modal" onclick="event.stopPropagation()">
+  <div class="summary-modal" role="dialog" aria-modal="true" aria-labelledby="sm-title" onclick="event.stopPropagation()">
     <div class="sm-hdr">
       <div><div class="sm-title" id="sm-title"></div><div class="sm-date" id="sm-date"></div></div>
       <div class="sm-close" onclick="closeSummaryModal()">✕</div>
@@ -4369,10 +4444,10 @@ window.luSwipeToClose = luSwipeToClose;
 
 <!-- Note modal -->
 <div class="modal-backdrop" id="note-backdrop" onclick="closeNoteModal()">
-  <div class="note-modal" onclick="event.stopPropagation()">
-    <div class="nm-title">Add Note</div>
+  <div class="note-modal" role="dialog" aria-modal="true" aria-labelledby="nm-title" onclick="event.stopPropagation()">
+    <div class="nm-title" id="nm-title">Add Note</div>
     <div class="nm-sub" id="nm-sub">Add a reference note to this task collaboration.</div>
-    <textarea class="nm-ta" id="note-ta" placeholder="Add context, references, or instructions…"></textarea>
+    <textarea class="nm-ta" id="note-ta" aria-labelledby="nm-title nm-sub" placeholder="Add context, references, or instructions…"></textarea>
     <div class="nm-btns">
       <button class="nm-cancel" onclick="closeNoteModal()">Cancel</button>
       <button class="nm-save" onclick="saveNote()">Save Note</button>
@@ -4447,7 +4522,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.0.1-p0e',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=lt1-20260830',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=p0c-20260830',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.0.2-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=sec3-20260831',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=p0e-20260830','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4659,7 +4734,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
-<script defer src="/app/js/core.js?v=p1r7-20260831"></script>
+<script defer src="/app/js/core.js?v=mobile2-20260831"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
@@ -4671,7 +4746,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/domains-commerce.js?v=1.0.0-domains"></script>
 <script defer src="/app/js/business-email.js?v=p0d-20260830"></script>
 <!-- v5.0.1 swap 2026-04-10: old builder.js loads first to provide websites view + non-renderer logic; v5 loads second and overrides editor renderer chain via function declaration hoisting. -->
-<script defer src="/app/js/builder.js?v=p1r2b-20260831"></script>
+<script defer src="/app/js/builder.js?v=mobile5b-20260831"></script>
 
 
 
@@ -4837,9 +4912,9 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 
 <!-- JS in core.js -->
 
-<script defer src="/app/js/messages-ui.js?v=1.2.0-p1u2"></script>
-<script defer src="/app/js/sarah.js?v=1.4.0-p1r10"></script>
-<script defer src="/app/js/basic.js?v=1.0.4-p5b"></script>
+<script defer src="/app/js/messages-ui.js?v=1.2.1-badge"></script>
+<script defer src="/app/js/sarah.js?v=1.4.4-ackdupe"></script>
+<script defer src="/app/js/basic.js?v=1.0.5-biz2"></script>
 <script defer src="/app/js/arthur-chat.js?v=p0c-20260830"></script>
 <script defer src="/app/js/chatbot-spa.js?v=p0d-20260830"></script>
 
@@ -5134,4 +5209,46 @@ document.addEventListener('wheel', function(e) {
     });
   });
   </script>
+<script>
+/* A11Y-1e: mirror `.visible` onto `inert` so a closed dialog leaves the tab order immediately, without waiting for
+   a transition that a background tab never finishes. Applies however the dialog was opened or closed. */
+(function () {
+  var ids = ['note-backdrop', 'summary-backdrop', 'approval-backdrop', 'da-backdrop'];
+  function sync(el) {
+    if (!el) return;
+    var open = el.classList.contains('visible');
+    var isInert = el.hasAttribute('inert');
+    if (open === !isInert) return;   // already correct — writing again would retrigger this observer
+    if (open) { el.removeAttribute('inert'); el.removeAttribute('aria-hidden'); }
+    else { el.setAttribute('inert', ''); el.setAttribute('aria-hidden', 'true'); }
+  }
+  function wire() {
+    ids.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el || el._inertWired) return;
+      el._inertWired = 1;
+      sync(el);
+      new MutationObserver(function () { sync(el); })
+        .observe(el, { attributes: true, attributeFilter: ['class', 'inert'] });   /* A11Y-1f: also restore inert if something strips it */
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
+/* A11Y-1: Escape closes any open shell modal. They toggle a `visible` class; the approval modal has no close
+   function of its own, so the class is removed directly and a real close function is preferred where one exists. */
+document.addEventListener('keydown', function (e) {
+  if (e.key !== 'Escape') return;
+  var ids = ['note-backdrop', 'summary-backdrop', 'approval-backdrop', 'da-backdrop'];
+  var open = ids.filter(function (id) {
+    var el = document.getElementById(id);
+    return el && el.classList.contains('visible');
+  }).pop();
+  if (!open) return;
+  e.preventDefault();
+  var fn = { 'note-backdrop': 'closeNoteModal', 'summary-backdrop': 'closeSummaryModal', 'da-backdrop': 'closeDirectAssign' }[open];
+  if (typeof window[fn] === 'function') { window[fn](); return; }
+  document.getElementById(open).classList.remove('visible');
+});
+</script>
 </body></html>

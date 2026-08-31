@@ -357,8 +357,8 @@ function _socialBuildCalendar(posts) {
     var mn = ['January','February','March','April','May','June','July','August','September','October','November','December'];
     var html = '<div class="cal-nav"><button class="cal-nav-btn" onclick="window._socialCalPrev()">‹</button><div class="cal-month">' + mn[m] + ' ' + y + '</div><button class="cal-nav-btn" onclick="window._socialCalNext()">›</button></div><div class="cal-grid">';
     ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(function(d){ html += '<div class="cal-dow">' + d + '</div>'; });
-    for (var i = 0; i < fd; i++) html += '<div class="cal-day empty other-month"></div>';
-    for (var d = 1; d <= dim; d++) { var iT = today.getFullYear()===y && today.getMonth()===m && today.getDate()===d; html += '<div class="cal-day' + (iT?' today':'') + (pd[d]?' has-post':'') + '" onclick="window._socialCalDay(' + y + ',' + m + ',' + d + ')" title="' + (pd[d] ? pd[d].length + ' post(s)' : '') + '">' + d + '</div>'; }
+    for (var i = 0; i < fd; i++) html += '<div class="cal-day empty other-month" aria-hidden="true"></div>';
+    for (var d = 1; d <= dim; d++) { var iT = today.getFullYear()===y && today.getMonth()===m && today.getDate()===d; var lbl = new Date(y, m, d).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) + (pd[d] ? ', ' + pd[d].length + ' post' + (pd[d].length === 1 ? '' : 's') : ', no posts'); html += '<button type="button" class="cal-day' + (iT?' today':'') + (pd[d]?' has-post':'') + '" onclick="window._socialCalDay(' + y + ',' + m + ',' + d + ')" aria-label="' + lbl + '" title="' + (pd[d] ? pd[d].length + ' post(s)' : '') + '">' + d + '</button>'; }
     calEl.innerHTML = html + '</div>'; calEl._y = y; calEl._m = m;
   }
   var now = new Date(); render(now.getFullYear(), now.getMonth());

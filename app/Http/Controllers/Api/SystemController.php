@@ -19,9 +19,12 @@ class SystemController
         return response()->json(['engines' => $this->service->engines()]);
     }
 
-    public function queue(): JsonResponse
+    public function queue(\Illuminate\Http\Request $request): JsonResponse
     {
-        return response()->json($this->service->queueStatus());
+        // SEC-2: this route is authenticated but NOT admin, so it must answer for the caller's workspace only.
+        $wsId = (int) $request->attributes->get('workspace_id');
+
+        return response()->json($this->service->queueStatus($wsId > 0 ? $wsId : null));
     }
 
     public function connectors(): JsonResponse

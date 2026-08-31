@@ -456,17 +456,24 @@ final class ToolIntentGateway
     /** Content inventory, straight from the articles table. */
     private function executeContentState(ToolIntent $intent, callable $ms): ToolResult
     {
+        // PUBLISH-2: soft-deleted articles are not inventory.
         $q = fn () => \Illuminate\Support\Facades\DB::table('articles')
-            ->where('workspace_id', $intent->workspaceId);
+            ->where('workspace_id', $intent->workspaceId)
+            ->whereNull('deleted_at');
 
         $byStatus = [];
         foreach ((clone $q())->selectRaw('status, COUNT(*) c')->groupBy('status')->get() as $r) {
             $byStatus[(string) $r->status] = (int) $r->c;
         }
-        $missingImages = (clone $q())->whereIn('status', ['published', 'draft'])
-            ->where(function ($w) {
-                $w->whereNull('featured_image_url')->orWhere('featured_image_url', '');
-            })->count();
+        $noImage = function ($w) {
+            $w->whereNull('featured_image_url')->orWhere('featured_image_url', '');
+        };
+        // PUBLISH-2: split by status. Counting published and draft together produced "the 13 drafts missing
+        // featured images" when only one DRAFT was missing one — a blocker that did not exist, reported to the
+        // owner as the reason 37 publishable drafts were still sitting there.
+        $draftsMissingImage    = (clone $q())->where('status', 'draft')->where($noImage)->count();
+        $publishedMissingImage = (clone $q())->where('status', 'published')->where($noImage)->count();
+        $draftsReady           = (int) ($byStatus['draft'] ?? 0) - $draftsMissingImage;
 
         return ToolResult::succeeded($intent->capabilityId, [
             'by_status'      => $byStatus,
@@ -474,7 +481,13 @@ final class ToolIntentGateway
             'drafts'         => $byStatus['draft'] ?? 0,
             'scheduled'      => $byStatus['scheduled'] ?? 0,
             'total'          => array_sum($byStatus),
-            'missing_featured_image' => $missingImages,
+            // The number that decides publishing: a draft with an image can go live now, whatever else is queued.
+            'drafts_ready_to_publish'          => max(0, $draftsReady),
+            'drafts_missing_featured_image'    => $draftsMissingImage,
+            'published_missing_featured_image' => $publishedMissingImage,
+            // Kept for callers that already read it, but it is DRAFTS-only now — the old value mixed in published
+            // articles, which are already live and cannot block anything.
+            'missing_featured_image'           => $draftsMissingImage,
         ], 'articles table', $ms());
     }
 

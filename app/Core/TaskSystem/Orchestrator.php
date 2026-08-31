@@ -1327,6 +1327,19 @@ class Orchestrator
                 }
                 return app(\App\Engines\Builder\Services\BuilderService::class)->publishWebsite($params['website_id']);
             },
+            // CAP-GAP-1 (2026-08-31): capability-mapped, approval-gated and given a success message since day one,
+            // but never dispatchable — an approved page edit answered "This action isn't supported yet".
+            'builder/update_page'       => function () use ($wsId, $params) {
+                $pageId = (int) ($params['page_id'] ?? $params['id'] ?? 0);
+                if ($pageId <= 0) {
+                    throw new \RuntimeException('update_page needs a page_id.');
+                }
+                $data = $params;
+                unset($data['page_id'], $data['id'], $data['website_id'], $data['user_id']);
+                app(\App\Engines\Builder\Services\BuilderService::class)->updatePage($pageId, $data, $wsId);
+                return ['success' => true, 'page_id' => $pageId];
+            },
+
             'builder/publish_builder_page' => function () use ($wsId, $params) {
                 return app(\App\Engines\Builder\Services\BuilderService::class)
                     ->publishPage((int) ($params['page_id'] ?? 0), $wsId);
@@ -1382,7 +1395,7 @@ class Orchestrator
             'marketing/create_campaign'   => fn() => app(\App\Engines\Marketing\Services\MarketingService::class)
                                               ->createCampaign($wsId, $params),
             'marketing/schedule_campaign' => fn() => app(\App\Engines\Marketing\Services\MarketingService::class)
-                                              ->scheduleCampaign($params['campaign_id'] ?? 0, $params['scheduled_at'] ?? ''),
+                                              ->scheduleCampaign($params['campaign_id'] ?? 0, $params['scheduled_at'] ?? '', $wsId),   // SEC-1: scope to the caller's workspace
             'marketing/create_automation' => fn() => ['entity_id' => app(\App\Engines\Marketing\Services\MarketingService::class)
                                               ->createAutomation($wsId, $params)],
 
@@ -1391,13 +1404,13 @@ class Orchestrator
                                               ->createPost($wsId, $params),
             'social/create_post'          => fn() => app(\App\Engines\Social\Services\SocialService::class)
                                               ->createPost($wsId, $params),
-            'social/social_schedule_post' => fn() => (function() use ($params) {
+            'social/social_schedule_post' => fn() => (function() use ($params, $wsId) {
                                                 app(\App\Engines\Social\Services\SocialService::class)
-                                                    ->schedulePost($params['post_id'], $params['scheduled_at']);
+                                                    ->schedulePost($params['post_id'], $params['scheduled_at'], $wsId);   // SEC-1
                                                 return ['scheduled' => true, 'post_id' => $params['post_id']];
                                               })(),
             'social/social_publish_post'  => fn() => app(\App\Engines\Social\Services\SocialService::class)
-                                              ->publishPost($params['post_id']),
+                                              ->publishPost($params['post_id'], $wsId),   // SEC-1
 
             // 2026-05-25 — publish + delete dispatches. Both ALWAYS require
             // approval (enforced at the chat-handler payload-build step so
@@ -1406,15 +1419,15 @@ class Orchestrator
             'write/publish_article'       => fn() => app(\App\Engines\Write\Services\WriteService::class)
                                               ->updateArticle((int) $params['article_id'], [
                                                   'status' => 'published',
-                                              ]),
-            'write/delete_article'        => fn() => (function () use ($params) {
+                                              ], $wsId),   // SEC-1
+            'write/delete_article'        => fn() => (function () use ($params, $wsId) {
                                                 app(\App\Engines\Write\Services\WriteService::class)
-                                                    ->deleteArticle((int) $params['article_id']);
+                                                    ->deleteArticle((int) $params['article_id'], $wsId);   // SEC-1
                                                 return ['deleted' => true, 'article_id' => (int) $params['article_id']];
                                               })(),
-            'social/delete_post'          => fn() => (function () use ($params) {
+            'social/delete_post'          => fn() => (function () use ($params, $wsId) {
                                                 app(\App\Engines\Social\Services\SocialService::class)
-                                                    ->deletePost((int) $params['post_id']);
+                                                    ->deletePost((int) $params['post_id'], $wsId);   // SEC-1
                                                 return ['deleted' => true, 'post_id' => (int) $params['post_id']];
                                               })(),
 

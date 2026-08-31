@@ -79,9 +79,10 @@ class SystemHealthService
         ])->toArray();
     }
 
-    public function queueStatus(): array
+    /** SEC-2: the customer-facing endpoint passes its workspace; operator callers use getMetrics() directly. */
+    public function queueStatus(?int $wsId = null): array
     {
-        return $this->queueControl->getMetrics();
+        return $this->queueControl->getMetrics($wsId);
     }
 
     public function checkConnectors(): array

@@ -43,7 +43,7 @@
       '.sh-top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--s1);flex:none;flex-wrap:wrap}',
       '.sh-avatar{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD27A,#F59E0B 55%,#B7700A);box-shadow:0 0 0 3px rgba(245,158,11,.18);flex:none}',
       '.sh-who{min-width:0;flex:1}.sh-name{font:700 15px var(--fh);letter-spacing:-.01em}.sh-role{font-size:12px;color:var(--t2)}',
-      '.sh-ctx{cursor:pointer;border:0;font-family:inherit;min-height:36px}.sh-ctx:hover{color:var(--t1)}.sh-ctx:focus-visible{outline:2px solid var(--p);outline-offset:2px}', /* P1R-10: was 29px once it became a button (WS-PICK-1) */
+      '.sh-ctx{border:0;font-family:inherit;min-height:36px}', /* WS-PICK-REMOVE: no longer a control, so no pointer, hover or focus ring */
       '.sh-wsp-ov{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:var(--z-modal,400);display:flex;align-items:center;justify-content:center;padding:20px}',
       '.sh-wsp{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:18px;width:min(420px,100%);max-height:70vh;overflow:auto}',
       '.sh-wsp h3{font:700 15px var(--fh);margin:0 0 4px}.sh-wsp p{font-size:12.5px;color:var(--t2);margin:0 0 12px}',
@@ -152,7 +152,8 @@
           '<div class="sh-top">' +
             '<div class="sh-avatar" aria-hidden="true"></div>' +
             '<div class="sh-who"><div class="sh-name">Sarah</div><div class="sh-role">Your digital marketing manager</div></div>' +
-            '<button type="button" class="sh-ctx" id="sh-ctx" title="The business Sarah is working for — tap to switch"><span aria-hidden="true">◎</span><b id="sh-ctx-name">…</b><svg width="10" height="10" viewBox="0 0 16 16" aria-hidden="true" style="flex:none"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>' +
+            /* WS-PICK-REMOVE (2026-08-31): a label, not a switch. Sarah works across everything the user owns. */
+            '<div class="sh-ctx" id="sh-ctx" title="The business Sarah is working for"><span aria-hidden="true">◎</span><b id="sh-ctx-name">…</b></div>' +
           '</div>' +
           '<div class="sh-brief" id="sh-brief" aria-label="Today at a glance"></div>' +
           '<div class="sh-rail" id="sh-rail" aria-label="Needs your attention" hidden></div>' +
@@ -198,44 +199,13 @@
   window.sarahUnload = function () { stopEvents(); };
 
   /* ── Context + briefing (grounded, never invented) ─────────────────────────────────────────── */
-  /* WS-PICK-1: which business you're talking in, switchable — two devices in different workspaces LOOK "out of sync". */
-  function pickWorkspace() {
-    api('GET', 'workspaces').then(function (r) {
-      var j = r.json || {}; var list = j.workspaces || j.data || (Array.isArray(j) ? j : []);
-      if (!Array.isArray(list) || list.length < 1) { showToast("Couldn't load your workspaces — try again.", 'error'); return; }
-      var cur = S.wsId || 0; /* WS-PICK-3 */
-      var ov = document.createElement('div'); ov.className = 'sh-wsp-ov'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Switch business');
-      var box = document.createElement('div'); box.className = 'sh-wsp';
-      box.innerHTML = '<h3>Which business?</h3><p>Each business has its own conversation with Sarah. Your other devices follow their own choice — pick the same one everywhere to see the same chat.</p>';
-      list.forEach(function (w) {
-        var id = parseInt(w.id || w.workspace_id, 10); if (!id) return;
-        var b = document.createElement('button'); b.type = 'button'; b.className = 'ws' + (id === cur ? ' cur' : '');
-        b.innerHTML = '<span>' + esc(w.business_name || w.name || ('Workspace ' + id)) + '</span>' + (id === cur ? '<span class="tag">you\'re here</span>' : '');
-        if (id !== cur) b.addEventListener('click', function () {
-          b.disabled = true; b.innerHTML = '<span>Switching…</span>';
-          fetch('/api/auth/switch-workspace', { method: 'POST', headers: { Authorization: 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ workspace_id: id }), cache: 'no-store' })
-            .then(function (x) { return x.json(); }).then(function (d) {
-              if (d && d.access_token) { localStorage.setItem('lu_token', d.access_token); if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token); try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || id)); } catch (e) {} location.reload(); }
-              else { showToast("Couldn't switch — try again.", 'error'); ov.remove(); }
-            }).catch(function () { showToast("Couldn't switch — try again.", 'error'); ov.remove(); });
-        });
-        box.appendChild(b);
-      });
-      var close = function () { ov.remove(); document.removeEventListener('keydown', esc1); var c = document.getElementById('sh-ctx'); if (c) c.focus(); };
-      var esc1 = function (e) { if (e.key === 'Escape') close(); };
-      ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
-      document.addEventListener('keydown', esc1);
-      ov.appendChild(box); document.body.appendChild(ov);
-      var first = box.querySelector('button.ws:not(.cur)') || box.querySelector('button.ws'); if (first) first.focus();
-    }).catch(function () { showToast("Couldn't load your workspaces — try again.", 'error'); });
-  }
+  /* WS-PICK-REMOVE (2026-08-31): the workspace picker that lived here is gone — the Owner never asked for it. */
 
   function loadContext() {
     api('GET', 'workspace/status').then(function (r) {
       var w = r.json && (r.json.workspace || {}); var name = w.business_name || w.name || (window.LU_CFG && window.LU_CFG.bn) || '';
       S.wsId = parseInt(w.id || 0, 10) || S.wsId || 0; /* WS-PICK-3: the server says which workspace this device is in */
       var el = document.getElementById('sh-ctx-name'); if (el) el.textContent = name || 'your business';
-      var c = document.getElementById('sh-ctx'); if (c && !c._wsp) { c._wsp = 1; c.addEventListener('click', pickWorkspace); }
       checkOtherDevice();
     }).catch(function () {});
   }
@@ -249,22 +219,10 @@
       if (!cur || parseInt(w.id, 10) === cur) return;
       var fresh = true; try { fresh = (Date.now() - new Date(String(w.last_at).replace(' ', 'T') + 'Z').getTime()) < 6 * 3600e3; } catch (e) {}
       if (!fresh) return;
-      /* WS-FOLLOW: your conversation moved forward somewhere else and this device's thread is older — follow it.
-         Forward-only (other.last_at strictly newer than anything sent from THIS workspace) so two idle devices
-         cannot ping-pong; one attempt per target+timestamp per session so a failure cannot loop. */
-      var devLast = String((r.json && r.json.device_last_at) || '');
-      var ahead = true; try { ahead = !devLast || (new Date(String(w.last_at).replace(' ', 'T') + 'Z') > new Date(devLast.replace(' ', 'T') + 'Z')); } catch (e) {}
-      var guard = 'lu_follow_' + w.id + '_' + String(w.last_at).replace(/\D/g, '');
-      var guarded = false; try { guarded = sessionStorage.getItem(guard) === '1'; } catch (e) {}
-      if (ahead && !guarded) {
-        try { sessionStorage.setItem(guard, '1'); } catch (e) {}
-        showToast('Following your conversation to ' + w.name + '…', 'info');
-        fetch('/api/auth/switch-workspace', { method: 'POST', headers: { Authorization: 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ workspace_id: parseInt(w.id, 10) }), cache: 'no-store' })
-          .then(function (x) { return x.json(); }).then(function (d) {
-            if (d && d.access_token) { localStorage.setItem('lu_token', d.access_token); if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token); try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || w.id)); } catch (e) {} location.reload(); }
-          }).catch(function () {});
-        return;
-      }
+      /* WS-FOLLOW-REVERT (2026-08-31): this used to switch the workspace AUTOMATICALLY. It must not.
+         Switching the workspace changes the business context for the WHOLE app, so a user who opened one
+         business found themselves looking at another one's websites in Sarah and in the SEO engine.
+         The offer below now requires an explicit click, which is the only thing allowed to change business. */
       var top = document.querySelector('.sh-top'); if (!top) return;
       var b = document.createElement('div'); b.id = 'sh-ws-banner'; b.setAttribute('role', 'status');
       b.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 16px;background:var(--ps);border-bottom:1px solid var(--bd);font-size:13px;color:var(--t1)';
@@ -489,10 +447,15 @@
       if (r.status === 402) { S.feed.appendChild(card({ type: 'failure_notice', content: (d.message || d.error || 'You are out of credits.'), data: { cta: { label: 'See plans', view: 'account' } } })); return; }
       if (!r.ok) { S.feed.appendChild(card({ type: 'failure_notice', content: 'Sarah couldn\'t take that right now' + (d.message || d.error ? ': ' + (d.message || d.error) : '.') })); return; }
       if (d.pending && d.ack) {
-        S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null })); S.feed.scrollTop = S.feed.scrollHeight;
-        showOrch(null); pollFinal(d.ack_message_id || 0, d.poll_interval_ms || POLL_MS); return;
+        /* SYNC-1d: the ack is a real agent_messages row and comes back down the event stream. Register its id (and
+           arm the content guard) or it is rendered a second time the moment that event arrives. */
+        var ackId = parseInt(d.ack_message_id || 0, 10) || 0;
+        S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null, id: ackId || undefined })); S.feed.scrollTop = S.feed.scrollHeight;
+        if (ackId) { S.rendered[String(ackId)] = 1; if (ackId > (S.lastMid || 0)) S.lastMid = ackId; }
+        S.lastAgentText = String(d.ack).trim(); S.lastAgentAt = Date.now();
+        showOrch(null); pollFinal(ackId, d.poll_interval_ms || POLL_MS); return;
       }
-      if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); if (d.id) { S.rendered[String(d.id)] = 1; if (+d.id > (S.lastMid || 0)) S.lastMid = +d.id; } }
+      if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); S.lastAgentText = String(d.reply).trim(); S.lastAgentAt = Date.now(); if (d.id) { S.rendered[String(d.id)] = 1; if (+d.id > (S.lastMid || 0)) S.lastMid = +d.id; } }
       S.feed.scrollTop = S.feed.scrollHeight;
     }).catch(function (e) { setBusy(false); var t = document.getElementById('sh-typing'); if (t) t.remove(); S.feed.appendChild(card({ type: 'failure_notice', content: 'Couldn\'t reach Sarah — check your connection and try again.' })); });
   }
@@ -505,7 +468,7 @@
         for (var i = 0; i < arr.length; i++) { var m = arr[i];
           if (m && m.id && m.id > ackId && !m.is_ack && (m.role === 'agent' || (m.from !== 'User' && m.from !== 'user')) && !S.rendered[String(m.id)]) {
             clearInterval(S.activePoll); S.activePoll = null; hideOrch();
-            S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; S.feed.scrollTop = S.feed.scrollHeight; loadBriefing(); loadRail(); return;   // the reply to what you just asked always comes into view
+            S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; S.feed.scrollTop = S.feed.scrollHeight; loadBriefing(); loadRail(); return;   // the reply to what you just asked always comes into view
           } }
       }).catch(function () {});
     }, every);
@@ -559,7 +522,7 @@
       if (ev.type === 'message' || ev.type === 'agent_reply') {
         var rowId = key.indexOf('am_') === 0 ? key.slice(3) : key; if (S.rendered[rowId]) return; S.rendered[rowId] = 1;
         if (S.activePoll) { clearInterval(S.activePoll); S.activePoll = null; }
-        hideOrch(); S.feed.appendChild(bubble({ from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) })); loadBriefing();
+        hideOrch(); S.feed.appendChild(bubble({ from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) })); S.lastAgentText = String(ev.content || '').trim(); S.lastAgentAt = Date.now(); loadBriefing();
       } else if (ev.type === 'task_created' || ev.type === 'task_started' || ev.type === 'delegation') {
         var d = ev.data || {}; var ag = String(ev.agent_id || d.agent_slug || d.agent || (d.assigned_agents && d.assigned_agents[0]) || '').toLowerCase();
         showOrch(ag, humanAction(d.title || d.action_label || d.label));
@@ -599,8 +562,15 @@
         if (!m || !m.id) return;
         if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id;
         if (m.is_ack || S.rendered[String(m.id)]) return;
+        /* SYNC-1c: the same reply arriving again without an id we recognise. */
+        var isAgent = (m.role === 'agent') || (m.from && m.from !== 'User' && m.from !== 'user');
+        if (isAgent) {
+          var body = String(m.content || '').trim();
+          if (body && S.lastAgentText === body && (Date.now() - (S.lastAgentAt || 0)) < 120000) { S.rendered[String(m.id)] = 1; return; }
+        }
         var empty = S.feed.querySelector('.sh-empty'); if (empty) empty.remove();
         S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; added++;
+        if (isAgent) { S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); }
       });
       if (added) { hideOrch(); stick(S.feed, was); loadBriefing(); loadRail(); }
     }).catch(function () { S.syncBusy = false; });

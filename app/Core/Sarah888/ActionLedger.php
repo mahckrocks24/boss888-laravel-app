@@ -66,7 +66,7 @@ class ActionLedger
             ->orderByDesc('id')
             ->limit(120)
             ->get(['id', 'action', 'status', 'source', 'approval_status', 'requires_approval',
-                   'credit_cost', 'payload_json', 'created_at', 'error_text']);
+                   'credit_cost', 'payload_json', 'created_at', 'error_text', 'progress_message']);   // REASON-1: the reason is often only here
 
         $scope = $onlyExecutionIds === null ? null : array_flip($onlyExecutionIds);
 
@@ -90,7 +90,12 @@ class ActionLedger
                 'credits' => $cost,
                 'via'     => $via,
                 'at'      => (string) $row->created_at,
-                'error'   => $row->status === 'failed' ? mb_substr((string) $row->error_text, 0, 120) : null,
+                // REASON-1: 36% of failed rows carry an empty error_text while the actual reason sits in
+                // progress_message (entitlement refusals, the RISK-0041 parent sweep). Reading only error_text
+                // showed Sarah a failure with no cause, which she then explained by inventing one.
+                'error'   => $row->status === 'failed'
+                    ? (mb_substr((string) ($row->error_text ?: $row->progress_message ?: 'no reason was recorded'), 0, 120))
+                    : null,
                 'this_turn' => $executionId !== null && ($p['execution_id'] ?? null) === $executionId,
             ];
 

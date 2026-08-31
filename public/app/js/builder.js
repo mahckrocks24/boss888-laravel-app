@@ -934,9 +934,9 @@ function _wsShowTemplateEditor(site) {
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
     // Main
-    '<div style="flex:1;display:flex;overflow:hidden">' +
+    '<div class="pe-main" style="flex:1;display:flex;overflow:hidden">' +
       // Arthur sidebar
-      '<div style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
+      '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
           '<div style="color:var(--t3);font-size:11px">Edit text and images directly in the preview. Arthur restyling for templates is coming.</div>' +
@@ -950,7 +950,7 @@ function _wsShowTemplateEditor(site) {
         '</div>' +
       '</div>' +
       // Preview iframe
-      '<div style="flex:1;position:relative">' +
+      '<div class="pe-stage" style="flex:1;position:relative">' +
         '<iframe id="t3-preview" src="' + previewUrl + '" style="width:100%;height:100%;border:none" onload="_t3InitEditing(this)"></iframe>' +
         '<div id="t3-saved" style="display:none;position:absolute;top:10px;right:10px;background:var(--ac,#00E5A8);color:#000;padding:5px 12px;border-radius:16px;font-size:11px;font-weight:600">\u2713 Saved</div>' +
       '</div>' +
@@ -2047,8 +2047,8 @@ function _wsShowPageEditor(site, pageId) {
         '<button type="button" id="pe-refresh" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">Refresh preview</button>' +
         '<button type="button" id="pe-publish" onclick="wsPublishFromEditor(' + (site.id || 0) + ', ' + pubName + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Publish</button>' +
       '</div>' +
-      '<div style="flex:1;display:flex;overflow:hidden">' +
-        '<div style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
+      '<div class="pe-main" style="flex:1;display:flex;overflow:hidden">' +
+        '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
           '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
             '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">' + window.icon('ai', 18) + '</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
             '<div style="color:var(--t3);font-size:11px">Describe the change you want on this page</div>' +
@@ -2064,7 +2064,7 @@ function _wsShowPageEditor(site, pageId) {
             '<button type="button" id="pe-send" aria-label="Send to Arthur" onclick="_t3ArthurSend(' + (site.id || 0) + ')" style="background:var(--p);border:none;color:#fff;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px">→</button>' +
           '</div>' +
         '</div>' +
-        '<div id="pe-frame-wrap" style="flex:1;position:relative;display:flex;justify-content:center;background:#0B0D13;overflow:auto">' +
+        '<div id="pe-frame-wrap" class="pe-stage" style="flex:1;position:relative;display:flex;justify-content:center;background:#0B0D13;overflow:auto">' +
           // sandbox WITHOUT allow-same-origin: the page's own scripts run in an opaque
           // origin and cannot read the app's localStorage token (RISK-0095 class).
           '<iframe id="t3-preview" title="Page preview" sandbox="allow-scripts allow-forms allow-popups" style="width:100%;height:100%;border:none;background:#fff;transition:width .2s"></iframe>' +
@@ -2353,7 +2353,7 @@ async function wsDoPublish(){
       var liveUrl = d.url || ('https://' + site.subdomain.replace('.levelupgrowth.io','') + '.levelupgrowth.io');
       showToast('Website republished! Changes are live.','success');
       const pubStatus = document.getElementById('ws-pub-domain-status');
-      if(pubStatus){ pubStatus.style.display='flex'; pubStatus.innerHTML='<span>✓</span><a href="'+liveUrl+'" target="_blank" style="color:var(--ac);text-decoration:underline">View Live Site →</a>'; }
+      if(pubStatus){ pubStatus.style.display='flex'; pubStatus.innerHTML='<span>✓</span><a href="'+encodeURI(String(liveUrl||''))+'" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:underline">View Live Site →</a>'; }   /* SEC-3 */
       btn.textContent='Published ✓';
       setTimeout(function(){ btn.innerHTML = ''+window.icon("rocket",14)+' Publish Now'; btn.disabled=false; },3000);
       if(typeof wsUpdateStats==='function')wsUpdateStats();

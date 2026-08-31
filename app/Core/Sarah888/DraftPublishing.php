@@ -25,9 +25,16 @@ class DraftPublishing
     public static function asks(string $text): bool
     {
         $t = mb_strtolower($text);
-        if (!preg_match('/\b(publish|push\b.{0,30}\blive|make\b.{0,30}\blive|go live with)\b/', $t)) return false;
+        if (!preg_match('/\b(publish|push\b.{0,30}\blive|make\b.{0,30}\blive|go live with|go live)\b/', $t)) return false;
         if (preg_match('/["“”]/', $t)) return false;                       // a quoted title → the single-article path
-        return (bool) preg_match('/\b(drafts?|articles?|posts?|them|them all|all of them|everything|the rest|the lot|pending ones|ready ones)\b/', $t);
+        // PUBLISH-3: a negation before the verb is the opposite request — "don't publish yet", "hold off publishing".
+        if (preg_match('/\b(don\'?t|do not|never|stop|hold off|not)\b[^.?!]{0,24}\b(publish|live)\b/', $t)) return false;
+        if (preg_match('/\b(drafts?|articles?|posts?|them|them all|all of them|everything|the rest|the lot|pending ones|ready ones)\b/', $t)) return true;
+        // PUBLISH-3: in real speech the object is usually implied — "check if you can publish now", "can you publish?".
+        if (preg_match('/\bpublish(ing)?\b[^a-z0-9]{0,4}(now|yet|already|it)?\s*[?.!]*$/', $t)) return true;
+        // ...or it is a count: "publish the 37".
+        if (preg_match('/\bpublish\b[^.?!]{0,24}\b\d{1,4}\b/', $t)) return true;
+        return false;
     }
 
     public static function confirms(string $text): bool

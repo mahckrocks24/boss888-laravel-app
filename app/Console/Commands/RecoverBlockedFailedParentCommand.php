@@ -60,6 +60,8 @@ class RecoverBlockedFailedParentCommand extends Command
             ->update([
                 'status' => 'failed',
                 'progress_message' => 'Recovered by RISK-0041 sweep: parent task did not complete; this step could not run.',
+                // REASON-1: also record it where every consumer looks, or the task reads as failed for no reason.
+                'error_text' => 'Parent task did not complete, so this step could not run (RISK-0041 sweep).',
                 'updated_at' => now(),
             ]);
 

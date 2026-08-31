@@ -1643,7 +1643,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     return '<div class="lgse-page-title">' + esc(title) + '</div><div class="lgse-page-desc">' + esc(descText) + '</div>';
   }
 
-  // Wave 16 (2026-05-19). Site-list fetch + dropdown render + switcher.
+  // Wave 16 (2026-05-19), restored 2026-08-31 (SEO-SITEBAR-1). Site-list fetch + dropdown render + switcher.
+  // This bar picks a WEBSITE inside the current business. It must never list or switch workspaces: a workspace is
+  // the business boundary, and offering other businesses here showed customers websites that were not theirs.
   function lgseLoadSites() {
     var bar = document.getElementById('lgse-site-bar');
     if (!bar) return;
@@ -1652,47 +1654,55 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
     // Direct fetch — bypass the api() wrapper since _withSiteScope is a chicken-and-egg here.
     var token = localStorage.getItem('lu_token') || '';
-    // 2026-06-24 — website=workspace: this bar is now a WORKSPACE SWITCHER.
-    // Each website is its own workspace (isolated SEO/CRM/blog/data); switching
-    // mints a new token for that workspace and reloads the app.
-    fetch(window.location.origin + '/api/workspaces', {
+    fetch(window.location.origin + '/api/seo/sites', {
       method: 'GET',
       headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' },
       cache: 'no-store',
     }).then(function (r) { return r.json(); }).then(function (d) {
-      var list = (d && d.workspaces) || [];
-      window._lgseWorkspaceList = list;
+      var list = (d && (d.sites || d.data)) || [];
+      window._lgseSiteList = list;
       if (list.length === 0) {
-        bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No workspaces.</span>';
+        bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No website connected yet — build or connect one to see SEO data.</span>';
         return;
+      }
+      // Scope to a real site before any tab renders, so no request goes out unscoped.
+      var cur = (window._lgseActiveSiteUrl || '').trim();
+      var known = list.some(function (w) { return String(w.url) === cur; });
+      if (!cur || !known) {
+        window._lgseActiveSiteUrl = String(list[0].url || '');
+        try { _persistActiveSite(window._lgseActiveSiteUrl); } catch (e) {}
       }
       lgseRenderSiteBar();
     }).catch(function () {
-      bar.innerHTML = '<span style="color:#F87171;font-size:11px">Workspace picker failed to load</span>';
+      bar.innerHTML = '<span style="color:#F87171;font-size:11px">Site picker failed to load</span>';
     });
   }
 
   window.lgseRenderSiteBar = function () {
     var bar = document.getElementById('lgse-site-bar');
     if (!bar) return;
-    var list = window._lgseWorkspaceList || [];
+    var list = window._lgseSiteList || [];
     if (list.length === 0) {
-      bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No workspaces yet — build a website to get started.</span>';
+      bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">No website connected yet — build or connect one to see SEO data.</span>';
       return;
     }
-    var current = (window.LU_CFG && window.LU_CFG.workspace_id)
-      || (function(){ try { return localStorage.getItem('lu_workspace_id'); } catch(_) { return 0; } })()
-      || 0;
+    var current = (window._lgseActiveSiteUrl || String(list[0].url || '')).trim();
+    var label = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Website</span>';
+    // One website is the normal case: show it, do not offer a choice that does not exist.
+    if (list.length === 1) {
+      bar.innerHTML = label
+        + '<span style="color:var(--lgse-t1,#E5E7EB);font-size:12px;font-weight:600">' + esc(list[0].name || list[0].host || current) + '</span>'
+        + '<span id="lgse-site-bar-meta" style="color:var(--lgse-t3,#9CA3AF);font-size:11px;margin-left:auto">' + esc(list[0].host || '') + '</span>';
+      return;
+    }
     var opts = list.map(function (w) {
-      var sel = (String(w.id) === String(current)) ? ' selected' : '';
-      var label = (w.name || ('Workspace ' + w.id)) + (w.plan ? ' · ' + w.plan : '');
-      return '<option value="' + w.id + '"' + sel + '>' + esc(label) + '</option>';
+      var sel = (String(w.url) === current) ? ' selected' : '';
+      return '<option value="' + esc(String(w.url)) + '"' + sel + '>' + esc((w.name || w.host) + (w.host && w.name ? ' · ' + w.host : '')) + '</option>';
     }).join('');
-    bar.innerHTML =
-        '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">Website</span>'
-      + '<select onchange="lgseSwitchWorkspace(this.value)" style="background:var(--lgse-bg2);color:var(--lgse-t1,#E5E7EB);border:1px solid var(--lgse-border,#1f2937);border-radius:6px;padding:6px 10px;font-size:12px;min-width:240px;cursor:pointer">' + opts + '</select>'
+    bar.innerHTML = label
+      + '<select onchange="lgseSwitchSite(this.value)" style="background:var(--lgse-bg2);color:var(--lgse-t1,#E5E7EB);border:1px solid var(--lgse-border,#1f2937);border-radius:6px;padding:6px 10px;font-size:12px;min-width:240px;cursor:pointer">' + opts + '</select>'
       + '<span id="lgse-site-bar-meta" style="color:var(--lgse-t3,#9CA3AF);font-size:11px;margin-left:auto">'
-      +    list.length + ' workspace' + (list.length === 1 ? '' : 's') + ' · each its own website + data'
+      +    list.length + ' websites in this business'
       + '</span>';
   };
 
@@ -1710,37 +1720,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     setTimeout(function () { lgseRenderSiteBar(); }, 50);
   };
 
-  // 2026-06-24 — WORKSPACE SWITCHER. Switches the whole app to another website-
-  // workspace: mints a fresh token for it and reloads so every engine rebinds.
-  window.lgseSwitchWorkspace = function (wsId) {
-    wsId = parseInt(wsId, 10);
-    if (!wsId) return;
-    var cur = (window.LU_CFG && window.LU_CFG.workspace_id) || 0;
-    if (String(wsId) === String(cur)) return;
-    var meta = document.getElementById('lgse-site-bar-meta');
-    if (meta) meta.textContent = 'Switching workspace…';
-    var token = localStorage.getItem('lu_token') || '';
-    fetch(window.location.origin + '/api/auth/switch-workspace', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ workspace_id: wsId }),
-      cache: 'no-store',
-    }).then(function (r) { return r.json(); }).then(function (d) {
-      if (d && d.access_token) {
-        localStorage.setItem('lu_token', d.access_token);
-        if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token);
-        try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || wsId)); } catch (_e) {}
-        window.location.reload();
-      } else if (meta) {
-        meta.textContent = 'Switch failed — please retry.';
-      }
-    }).catch(function () {
-      if (meta) meta.textContent = 'Switch failed — please retry.';
-    });
-  };
+  // SEO-SITEBAR-1 (2026-08-31): lgseSwitchWorkspace lived here and is deliberately gone. Changing the business is
+  // not an SEO-engine concern, and doing it from a control labelled "Website" is what made this a defect.
 
-  // Wave 16 (2026-05-19). Global site filter — propagated to every api()
-  // call so all tabs render data for ONE selected website at a time.
   // Source-of-truth: `window._lgseActiveSiteUrl`. Persisted to
   // localStorage per workspace. Hidden + bypassed in WP-embed mode
   // (single site is locked there by the iframe context).
@@ -9963,7 +9945,8 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var safeUrl = encodeURIComponent(pageUrl || '');
       var safeTitle = encodeURIComponent(pageTitle || '');
       cell.style.opacity = '1';
-      cell.innerHTML = '<img src="' + d.image_url + '" '
+      // SEC-3: encode the provider URL before it becomes an attribute; pageUrl/pageTitle below are already encoded.
+      cell.innerHTML = '<img src="' + encodeURI(String(d.image_url || '')) + '" '
         + 'style="width:44px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" '
         + 'title="Regenerate featured image (1 credit)" '
         + 'onclick="window._lgseRegenImage(' + pageId + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)">';

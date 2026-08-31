@@ -573,6 +573,9 @@ class TemplateService
         }
 
         $path = $dir . '/index.html';
+        // MOBILE-4: the static export is served straight off disk by nginx, so PublishedSiteMiddleware never sees
+        // it. Without this the nav overflows a phone in every draft and preview.
+        $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
         file_put_contents($path, $html);
 
         // Also deploy a static /blog index that reuses THIS page's chrome + theme

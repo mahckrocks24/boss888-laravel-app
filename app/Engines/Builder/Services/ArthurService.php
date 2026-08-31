@@ -491,7 +491,10 @@ class ArthurService
         if (empty($colors) || !is_array($colors)) return;
         $primary   = $this->normalizeHex($colors['primary']   ?? null);
         $secondary = $this->normalizeHex($colors['secondary'] ?? null);
-        $accent    = $this->normalizeHex($colors['accent']    ?? null) ?? $secondary ?? $primary;
+        // COLOR-1: fall back to the PRIMARY, not the secondary. The accent drives every industry accent variable,
+        // which is what the templates paint most surfaces with — defaulting it to the secondary made the secondary
+        // the dominant colour of the whole site and buried the owner's primary.
+        $accent    = $this->normalizeHex($colors['accent']    ?? null) ?? $primary ?? $secondary;
         if (!$primary && !$secondary && !$accent) return;
         $primaryDeep = $primary ? $this->darkenHex($primary, 12) : null;
         $accentDeep  = $accent  ? $this->darkenHex($accent,  12) : null;
@@ -506,6 +509,10 @@ class ArthurService
 
             if (in_array($name, ['primary_color','primary'], true)) {
                 $variables[$name] = $isDeep ? ($primaryDeep ?? $primary) : $primary;
+            } elseif (in_array($name, ['secondary_color','secondary'], true)) {
+                // COLOR-1: a variable literally named "secondary" must hold the owner's secondary colour; it was
+                // being swept up with the accent variables and overwritten.
+                $variables[$name] = $secondary ?? $accent;
             } else {
                 // Every industry-specific accent var (gold, rose, orange,
                 // terracotta, cyan, bronze, brass, forest, medical_blue,
@@ -1993,6 +2000,17 @@ PROMPT;
      */
     public function provisionWebsiteWorkspace(int $sourceWsId, int $ownerUserId, int $billingWs, string $name): int
     {
+        // ARCH-1 (2026-08-31) — the Owner's architecture is ONE workspace per owner, with the Websites page listing
+        // every site they own; a website is not its own environment. Every caller treats 0 as "use the current
+        // workspace", so this single gate turns the old website-per-workspace behaviour off everywhere. Kept behind
+        // a config flag rather than deleted, so it can be restored deliberately rather than by accident.
+        if (! (bool) config('builder.website_workspaces', false)) {
+            \Illuminate\Support\Facades\Log::info('[Builder] ARCH-1: building into the current workspace instead of provisioning a new one', [
+                'workspace_id' => $sourceWsId, 'website_name' => $name,
+            ]);
+            return 0;
+        }
+
         $base = \Illuminate\Support\Str::slug($name) ?: 'site';
         $slug = $base . '-' . substr(md5($name . microtime(true)), 0, 6);
 
@@ -3523,6 +3541,70 @@ PROMPT;
     // generic 3-card "services" block on templates that lack one. Returns section
     // HTML (reusing the template's own classes so it themes automatically) or ''
     // to keep the original block. Slug-gated to the clones that need it.
+
+    /**
+     * CUR-1 (2026-08-31): the price hints are authored with AED examples. Rewrite them for the business's own
+     * market so a location of "Manila, Philippines" is priced in pesos, not Dirhams.
+     *
+     * An unrecognised location is NOT left as AED — the model is told to use the local currency of that place,
+     * which is the honest instruction when we cannot name it.
+     */
+    private function localisePriceHints(array $cfg, string $location): array
+    {
+        $cur = $this->currencyForLocation($location);
+        foreach (['price', 'meta'] as $k) {
+            if (empty($cfg[$k]) || !is_string($cfg[$k])) continue;
+            $hint = $cfg[$k];
+            if (stripos($hint, 'AED') === false) continue;
+            if ($cur === null) {
+                $where = trim($location) !== '' ? trim($location) : 'the business location';
+                $cfg[$k] = str_ireplace('AED ', '', $hint)
+                    . " — priced in the local currency of {$where}, written the way locals write it";
+            } else {
+                $cfg[$k] = str_ireplace('AED', $cur['code'], $hint)
+                    . " — use realistic {$cur['name']} amounts for this market, not a converted figure";
+            }
+        }
+        return $cfg;
+    }
+
+    /** @return array{code:string,name:string}|null null when the market is not recognised. */
+    private function currencyForLocation(string $location): ?array
+    {
+        $l = mb_strtolower($location);
+        if ($l === '') return null;
+        $map = [
+            'philippin' => ['PHP', 'Philippine peso'], 'manila' => ['PHP', 'Philippine peso'],
+            'cebu' => ['PHP', 'Philippine peso'], 'davao' => ['PHP', 'Philippine peso'],
+            'uae' => ['AED', 'UAE dirham'], 'dubai' => ['AED', 'UAE dirham'], 'abu dhabi' => ['AED', 'UAE dirham'],
+            'emirates' => ['AED', 'UAE dirham'], 'sharjah' => ['AED', 'UAE dirham'],
+            'saudi' => ['SAR', 'Saudi riyal'], 'riyadh' => ['SAR', 'Saudi riyal'], 'jeddah' => ['SAR', 'Saudi riyal'],
+            'qatar' => ['QAR', 'Qatari riyal'], 'doha' => ['QAR', 'Qatari riyal'],
+            'kuwait' => ['KWD', 'Kuwaiti dinar'], 'bahrain' => ['BHD', 'Bahraini dinar'], 'oman' => ['OMR', 'Omani rial'],
+            'united kingdom' => ['GBP', 'pound sterling'], 'england' => ['GBP', 'pound sterling'],
+            'london' => ['GBP', 'pound sterling'], 'scotland' => ['GBP', 'pound sterling'], 'britain' => ['GBP', 'pound sterling'],
+            'united states' => ['USD', 'US dollar'], 'usa' => ['USD', 'US dollar'], 'new york' => ['USD', 'US dollar'],
+            'california' => ['USD', 'US dollar'], 'texas' => ['USD', 'US dollar'], 'florida' => ['USD', 'US dollar'],
+            'canada' => ['CAD', 'Canadian dollar'], 'toronto' => ['CAD', 'Canadian dollar'],
+            'australia' => ['AUD', 'Australian dollar'], 'sydney' => ['AUD', 'Australian dollar'],
+            'melbourne' => ['AUD', 'Australian dollar'], 'new zealand' => ['NZD', 'New Zealand dollar'],
+            'singapore' => ['SGD', 'Singapore dollar'], 'malaysia' => ['MYR', 'Malaysian ringgit'],
+            'kuala lumpur' => ['MYR', 'Malaysian ringgit'], 'indonesia' => ['IDR', 'Indonesian rupiah'],
+            'jakarta' => ['IDR', 'Indonesian rupiah'], 'thailand' => ['THB', 'Thai baht'], 'bangkok' => ['THB', 'Thai baht'],
+            'vietnam' => ['VND', 'Vietnamese dong'], 'india' => ['INR', 'Indian rupee'], 'mumbai' => ['INR', 'Indian rupee'],
+            'delhi' => ['INR', 'Indian rupee'], 'bangalore' => ['INR', 'Indian rupee'],
+            'japan' => ['JPY', 'Japanese yen'], 'tokyo' => ['JPY', 'Japanese yen'],
+            'south africa' => ['ZAR', 'South African rand'], 'nigeria' => ['NGN', 'Nigerian naira'],
+            'kenya' => ['KES', 'Kenyan shilling'], 'ireland' => ['EUR', 'euro'], 'germany' => ['EUR', 'euro'],
+            'france' => ['EUR', 'euro'], 'spain' => ['EUR', 'euro'], 'italy' => ['EUR', 'euro'],
+            'netherlands' => ['EUR', 'euro'], 'portugal' => ['EUR', 'euro'],
+        ];
+        foreach ($map as $needle => $cur) {
+            if (str_contains($l, $needle)) return ['code' => $cur[0], 'name' => $cur[1]];
+        }
+        return null;
+    }
+
     private function bespokeSectionFor(string $slug, array $data, int $wsId = 0): string
     {
         // 'images' mode: false = text cards; 'pool' = generic industry photos are
@@ -3540,6 +3622,9 @@ PROMPT;
             'short_term_rental' => ['kind' => 'units', 'images' => 'pool', 'count' => 6, 'noun' => 'rental unit / apartment types', 'price' => "a per-night rate like 'From AED 600 / night'",  'meta' => "a short capacity line like 'Sleeps 3 · 1 bed · City view'", 'labels' => ['eyebrow' => 'Your Stay', 'title' => 'Our Spaces']],
         ][$slug] ?? null;
         if (!$cfg) return '';
+        // CUR-1: those examples are written in AED. Re-point them at the currency of THIS business's location, or
+        // the model prices a Philippine bakery in Dirhams because that is the example it was shown.
+        $cfg = $this->localisePriceHints($cfg, (string) ($data['location'] ?? ''));
         $items = $this->generateBespokeItems($data, $cfg);
         if (empty($items)) return '';
         $labels = $cfg['labels'] + ['intro' => ''];

@@ -46,7 +46,7 @@ function _msgCreateFloater(){
 
   // Inject styles
   var style=document.createElement('style');
-  style.textContent='#lu-messages-floater{position:fixed;bottom:24px;left:228px;width:48px;height:48px;border-radius:50%;background:var(--s2,#1e2030);border:2px solid var(--bd,#2a2d3e);cursor:pointer;z-index:999;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:all .2s}#lu-messages-floater:hover{border-color:var(--p,#6C5CE7);transform:scale(1.05)}#lu-messages-badge{position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center}#lu-messages-badge.visible{display:flex}'
+  style.textContent='#lu-messages-floater{position:fixed;bottom:24px;left:228px;width:48px;height:48px;border-radius:50%;background:var(--s2,#1e2030);border:2px solid var(--bd,#2a2d3e);cursor:pointer;z-index:999;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:all .2s}#lu-messages-floater:hover{border-color:var(--p,#6C5CE7);transform:scale(1.05)}#lu-messages-badge{position:absolute;top:-4px;right:-4px;background:#C0392B;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center}#lu-messages-badge.visible{display:flex}'
     +'#lu-msg-modal{position:fixed;bottom:80px;left:228px;width:560px;height:480px;background:var(--s1,#161927);border:1px solid var(--bd,#2a2d3e);border-radius:16px;z-index:1000;display:none;flex-direction:column;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.5);animation:msgSlideUp .2s ease}'
     +'@keyframes msgSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}'
     +'@media(max-width:768px){#lu-messages-floater{left:16px;bottom:80px}#lu-msg-modal{left:8px;right:8px;width:auto;bottom:136px;height:60vh}}';
@@ -109,7 +109,7 @@ function _msgRenderAgentList(){
     var active=c.slug===_msg.agent;
     var color=AGENT_COLORS[c.slug]||'var(--t3)';
     var uiSlug=c.slug==='sarah'?'dmm':c.slug;
-    var unreadBadge=c.unread>0?'<span style="background:#e74c3c;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+c.unread+'</span>':'';
+    var unreadBadge=c.unread>0?'<span style="background:#C0392B;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+c.unread+'</span>':'';
     var lastMsg=c.last_message?'<div style="font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">'+_msgE(c.last_message.content).substring(0,30)+'</div>':'';
     return'<div onclick="_msgSelectAgent(\''+c.slug+'\')" style="padding:10px 12px;cursor:pointer;border-left:3px solid '+(active?color:'transparent')+';background:'+(active?'var(--s2)':'transparent')+';transition:all .15s" onmouseover="this.style.background=\'var(--s2)\'" onmouseout="this.style.background=\''+(active?'var(--s2)':'transparent')+'\'">'
       +'<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:'+color+';font-weight:700">'+c.name.charAt(0)+'</div>'
@@ -382,7 +382,7 @@ function _msgRenderPageAgents(){
     +_msg.conversations.map(function(c){
       var active=c.slug===_msg.agent;
       var color=AGENT_COLORS[c.slug]||'var(--t3)';
-      var unread=c.unread>0?'<span style="background:#e74c3c;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700">'+c.unread+'</span>':'';
+      var unread=c.unread>0?'<span style="background:#C0392B;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700">'+c.unread+'</span>':'';
       var lastLine=c.last_message?_msgE(c.last_message.content).substring(0,40):'No messages yet';
       return'<div onclick="_msgPageSelect(\''+c.slug+'\')" style="padding:12px 16px;cursor:pointer;background:'+(active?'var(--s2)':'transparent')+';border-left:3px solid '+(active?color:'transparent')+';transition:all .15s">'
         +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><div style="width:32px;height:32px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:14px;color:'+color+';font-weight:700">'+c.name.charAt(0)+'</div>'

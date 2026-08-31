@@ -351,19 +351,8 @@ class PublishedSiteMiddleware
      */
     private function injectMobileNav(string $html): string
     {
-        try {
-            if (stripos($html, 'nav-links') === false) {
-                return $html;
-            }
-            if (stripos($html, 'lu-mobile-nav') !== false) {
-                return $html; // already injected
-            }
-            $css = '<style id="lu-mobile-nav">@media(max-width:820px){nav .inner,.nav .inner{flex-wrap:wrap!important}.nav-links{flex-wrap:wrap!important;justify-content:center;row-gap:10px;column-gap:14px;max-width:100%}}</style>';
-            $out = preg_replace('#</head>#i', $css . '</head>', $html, 1, $n);
-            return ($n && $out !== null) ? $out : $html;
-        } catch (\Throwable $e) {
-            return $html;
-        }
+        // MOBILE-4: one source of truth, shared with the static-export writer so both paths emit the same rule.
+        return \App\Engines\Builder\Support\ResponsiveNav::inject($html);
     }
 
     private function injectAccentContrast(string $html): string

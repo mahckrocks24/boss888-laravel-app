@@ -515,6 +515,10 @@ function loadSettings() {
   if (wpsEl && typeof window._renderWpSites === 'function') {
     try { window._renderWpSites(wpsEl); } catch (_) {}
   }
+  var bizEl = document.getElementById('biz-section');
+  if (bizEl && typeof window._renderBusinesses === 'function') {
+    try { window._renderBusinesses(bizEl); } catch (_) {}
+  }
 }
 
 async function _settingsFillCredits() {
@@ -650,13 +654,16 @@ async function loadWorkerQueue() {
     if (tasks.length === 0) {
       h += '<div style="text-align:center;padding:40px;color:var(--t3);background:var(--s1);border:1px solid var(--bd);border-radius:10px"><div style="font-size:32px;margin-bottom:8px">'+window.icon('ai',18)+'</div><p>No tasks recorded yet.</p></div>';
     } else {
-      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+      // MOBILE-2: overflow:hidden CLIPPED the table on a phone; it must scroll instead, and the table needs a
+      // min-width or the columns collapse into unreadable slivers.
+      h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow-x:auto;-webkit-overflow-scrolling:touch"><table style="width:100%;min-width:640px;border-collapse:collapse;font-size:12px">';
       h += '<thead><tr style="border-bottom:1px solid var(--bd)">';
       h += '<th style="text-align:left;padding:10px 14px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">Status</th>';
       h += '<th style="text-align:left;padding:10px 14px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">Engine</th>';
       h += '<th style="text-align:left;padding:10px 14px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">Action</th>';
       h += '<th style="text-align:left;padding:10px 14px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">Credits</th>';
       h += '<th style="text-align:left;padding:10px 14px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">Created</th>';
+      h += '<th style="text-align:left;padding:10px 14px;font-size:10px;font-weight:600;color:var(--t3);text-transform:uppercase">Why</th>';   /* REASON-2 */
       h += '<th style="padding:10px 14px"></th>';
       h += '</tr></thead><tbody>';
       tasks.forEach(function(t) {
@@ -673,6 +680,14 @@ async function loadWorkerQueue() {
         h += '<td style="padding:9px 14px;color:var(--t1);font-family:monospace;font-size:11px">' + (t.action||'—') + '</td>';
         h += '<td style="padding:9px 14px;color:var(--t2)">' + (t.credit_cost||0) + '</td>';
         h += '<td style="padding:9px 14px;color:var(--t3)">' + (t.created_at ? window._luParseTs(t.created_at).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '—') + '</td>';
+        // REASON-2: a failed row must say why. The cause is in error_text OR progress_message; a blank invites guessing.
+        var whyCell = '<span style="color:var(--t3)">—</span>';
+        if (t.status === 'failed') {
+          var why = String(t.error_text || t.progress_message || '').trim();
+          if (why === '') why = 'no reason recorded';
+          whyCell = '<span title="' + _cmdcEsc(why) + '" style="color:var(--t2)">' + _cmdcEsc(why.length > 60 ? why.slice(0, 60) + '…' : why) + '</span>';
+        }
+        h += '<td style="padding:9px 14px;max-width:280px">' + whyCell + '</td>';
         h += '<td style="padding:9px 14px;text-align:right">' + retryBtn + '</td>';
         h += '</tr>';
       });
@@ -6738,7 +6753,39 @@ function _aqCardHtml(it) {
   var ageCls = it.age_hours < 1 ? 'aq-age-fresh' : (it.age_hours < 24 ? 'aq-age-warn' : 'aq-age-old');
   var ageTxt = _cmdcEsc(it.time_ago) + (it.is_overdue ? ' · overdue' : '');
   var orphanChip = it.is_orphan ? '<span class="aq-orphan-chip">Stale</span>' : '';
-  var engineChip = '<span class="aq-engine-badge" style="background:' + engineBadge.color + '">' + _cmdcEsc(engineBadge.name) + '</span>';
+  // P1R-16: white ink is only legible on a DARK engine colour. Derive it from the colour the server sent.
+  var _badgeInk = (function (hex) {
+    try {
+      var h = String(hex || '').replace('#', '');
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      if (h.length !== 6) return '#fff';
+      var lin = [0, 2, 4].map(function (i) {
+        var v = parseInt(h.substr(i, 2), 16) / 255;
+        return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+      });
+      var lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2];
+      var vsWhite = 1.05 / (lum + 0.05);            // white ink on this fill
+      var vsInk   = (lum + 0.05) / 0.0555;          // #0F1117 on this fill
+      if (vsInk >= 4.5 || vsWhite >= 4.5) return vsInk > vsWhite ? '#0F1117' : '#fff';
+      return 'band';                                 // neither clears — caller darkens the fill
+    } catch (e) { return '#fff'; }
+  })(engineBadge.color);
+  // The mid-tone band is narrow; darkening the fill 25% puts white ink safely over 4.5:1.
+  var _badgeBg = engineBadge.color;
+  if (_badgeInk === 'band') {
+    _badgeInk = '#fff';
+    try {
+      var _bh = String(engineBadge.color || '').replace('#', '');
+      if (_bh.length === 3) _bh = _bh[0] + _bh[0] + _bh[1] + _bh[1] + _bh[2] + _bh[2];
+      if (_bh.length === 6) {
+        _badgeBg = '#' + [0, 2, 4].map(function (i) {
+          var v = Math.round(parseInt(_bh.substr(i, 2), 16) * 0.75);
+          return ('0' + v.toString(16)).slice(-2);
+        }).join('');
+      }
+    } catch (e) {}
+  }
+  var engineChip = '<span class="aq-engine-badge" style="background:' + _badgeBg + ';color:' + _badgeInk + '">' + _cmdcEsc(engineBadge.name) + '</span>';
   var agentLine  = '<span class="aq-agent-line"><span style="width:6px;height:6px;border-radius:50%;background:' + agent.color + '"></span>' + _cmdcEsc(agent.name) + '</span>';
   var creditLine = task && task.credit_cost ? '<span style="font-size:11px;color:var(--t3)">· ' + task.credit_cost + ' credits</span>' : '';
   // 2026-05-27 — meeting-origin chip: surface Strategy Room source so the user
@@ -7829,6 +7876,68 @@ function _billCheckReturnFlags() {
 // new tabs in the settings view is a separate UI task — these globals
 // stand on their own and can be invoked programmatically.
 // ═══════════════════════════════════════════════════════════════════════════
+// BIZ-1 (2026-08-31): the businesses this account belongs to, and the one it is currently working in.
+// Switching changes the workspace for the WHOLE app, so it is stated plainly and never happens on its own.
+window._renderBusinesses = async function _renderBusinesses(el) {
+  if (!el) return;
+  try {
+    var r = await _luFetch('GET', '/workspaces');
+    var d = await r.json();
+    var list = (d && (d.workspaces || d.data)) || [];
+    if (!Array.isArray(list) || list.length < 2) { el.style.display = 'none'; return; }   // one business needs no switcher
+    var cur = 0;
+    try {
+      var rs = await _luFetch('GET', '/workspace/status');
+      var ds = await rs.json();
+      cur = parseInt((ds && ds.workspace && ds.workspace.id) || 0, 10) || 0;
+    } catch (_) {}
+    var rows = list.map(function (w) {
+      var id = parseInt(w.id || w.workspace_id, 10) || 0;
+      var name = w.business_name || w.name || ('Business ' + id);
+      var here = (id === cur);
+      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--bd)">'
+        + '<div style="flex:1;min-width:0">'
+        +   '<div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _cmdcEsc(name) + '</div>'
+        +   (w.plan ? '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + _cmdcEsc(String(w.plan)) + ' plan</div>' : '')
+        + '</div>'
+        + (here
+            ? '<span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">You are here</span>'
+            : '<button type="button" class="btn btn-outline" style="font-size:12px;padding:6px 14px;white-space:nowrap" onclick="_switchBusiness(' + id + ',this)">Switch</button>')
+        + '</div>';
+    }).join('');
+    el.style.display = '';
+    el.innerHTML = '<div style="padding:24px">'
+      + '<h3 style="font:700 18px Manrope,sans-serif;color:var(--t1);margin:0 0 6px">Your businesses</h3>'
+      + '<p style="font:400 13px Inter,sans-serif;color:var(--t3);margin:0 0 4px">'
+      +   'Switching changes the business you are working in everywhere — Sarah, your websites, SEO and all your data.'
+      + '</p>' + rows + '</div>';
+  } catch (e) { el.style.display = 'none'; }
+};
+
+window._switchBusiness = async function _switchBusiness(wsId, btn) {
+  wsId = parseInt(wsId, 10); if (!wsId) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Switching…'; }
+  try {
+    var r = await fetch(window.location.origin + '/api/auth/switch-workspace', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ workspace_id: wsId }), cache: 'no-store',
+    });
+    var d = await r.json();
+    if (d && d.access_token) {
+      localStorage.setItem('lu_token', d.access_token);
+      if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token);
+      try { localStorage.setItem('lu_workspace_id', String(d.current_workspace_id || wsId)); } catch (_) {}
+      location.reload();
+      return;
+    }
+    throw new Error('no token');
+  } catch (e) {
+    if (typeof showToast === 'function') showToast("Couldn't switch business — try again.", 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Switch'; }
+  }
+};
+
 window._renderApiKeys = async function _renderApiKeys(el) {
   if (!el) return;
   el.innerHTML = '<div style="padding:24px"><div id="apk-wrap"><div class="lu-loading">Loading…</div></div></div>';
@@ -7840,10 +7949,10 @@ window._renderApiKeys = async function _renderApiKeys(el) {
     var keys = d.keys || [];
     var html =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-        '<h3 style="font:700 18px Manrope,sans-serif;color:#fff;margin:0">API Keys</h3>' +
+        '<h3 style="font:700 18px Manrope,sans-serif;color:var(--t1);margin:0">API Keys</h3>' +
         '<button onclick="_generateApiKey()" class="btn btn-primary" style="font-size:13px;padding:8px 16px">+ Generate Key</button>' +
       '</div>' +
-      '<p style="font:400 13px Inter,sans-serif;color:#9CA3AF;margin-bottom:20px">' +
+      '<p style="font:400 13px Inter,sans-serif;color:var(--t3);margin-bottom:20px">' +
         'Use these keys to connect your WordPress site with the LevelUp Growth SEO Connector plugin.' +
       '</p>';
     if (keys.length === 0) {
@@ -7852,11 +7961,11 @@ window._renderApiKeys = async function _renderApiKeys(el) {
       html += '<div style="border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden">';
       keys.forEach(function (k) {
         html +=
-          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.05)">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--s2)">' +
             '<div>' +
-              '<div style="font:600 14px Inter,sans-serif;color:#fff">' + (k.name || 'API Key') + '</div>' +
+              '<div style="font:600 14px Inter,sans-serif;color:var(--t1)">' + (k.name || 'API Key') + '</div>' +
               '<div style="font:400 12px Inter,sans-serif;color:#6B7280;margin-top:2px">' +
-                '<code style="background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;font-size:11px">' + k.key_preview + '</code>' +
+                '<code style="background:var(--s2);padding:2px 6px;border-radius:4px;font-size:11px">' + k.key_preview + '</code>' +
                 ' · Created ' + (k.created_at ? String(k.created_at).split(' ')[0] : '—') +
                 (k.last_used_at ? ' · Last used ' + String(k.last_used_at).split(' ')[0] : ' · Never used') +
               '</div>' +
@@ -7884,13 +7993,13 @@ window._generateApiKey = async function _generateApiKey() {
     var modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px';
     modal.innerHTML =
-      '<div style="background:#121826;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:32px;max-width:520px;width:100%">' +
-        '<h3 style="font:700 18px Manrope,sans-serif;color:#fff;margin:0 0 8px">API Key Generated</h3>' +
+      '<div style="background:#121826;border:1px solid var(--bd);border-radius:16px;padding:32px;max-width:520px;width:100%">' +
+        '<h3 style="font:700 18px Manrope,sans-serif;color:var(--t1);margin:0 0 8px">API Key Generated</h3>' +
         '<p style="font:400 13px Inter,sans-serif;color:#F59E0B;margin:0 0 16px">⚠ Copy this key now — it will not be shown again.</p>' +
-        '<div id="apk-new-value" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:12px 16px;font:500 13px/1.5 monospace;color:#fff;word-break:break-all;margin-bottom:16px">' + d.key + '</div>' +
+        '<div id="apk-new-value" style="background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 16px;font:500 13px/1.5 monospace;color:var(--t1);word-break:break-all;margin-bottom:16px">' + d.key + '</div>' +
         '<div style="display:flex;gap:8px">' +
           '<button id="apk-copy" class="btn btn-primary" style="flex:1">Copy Key</button>' +
-          '<button id="apk-done" style="background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:10px 16px;cursor:pointer;flex:1">Done</button>' +
+          '<button id="apk-done" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:10px 16px;cursor:pointer;flex:1">Done</button>' +
         '</div>' +
       '</div>';
     document.body.appendChild(modal);
@@ -7935,16 +8044,16 @@ window._renderWpSites = async function _renderWpSites(el) {
     var sites = d.sites || [];
     var html =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">' +
-        '<h3 style="font:700 18px Manrope,sans-serif;color:#fff;margin:0">WordPress Sites</h3>' +
+        '<h3 style="font:700 18px Manrope,sans-serif;color:var(--t1);margin:0">WordPress Sites</h3>' +
       '</div>' +
-      '<p style="font:400 13px Inter,sans-serif;color:#9CA3AF;margin-bottom:20px">' +
+      '<p style="font:400 13px Inter,sans-serif;color:var(--t3);margin-bottom:20px">' +
         'Connect your WordPress site by installing the LevelUp SEO Connector plugin and entering your API key + webhook secret.' +
       '</p>';
     if (sites.length === 0) {
       html +=
         '<div style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.12);border-radius:12px;padding:32px;text-align:center">' +
           '<div style="font-size:32px;margin-bottom:12px">🔗</div>' +
-          '<div style="font:600 15px Manrope,sans-serif;color:#fff;margin-bottom:8px">No WordPress site connected</div>' +
+          '<div style="font:600 15px Manrope,sans-serif;color:var(--t1);margin-bottom:8px">No WordPress site connected</div>' +
           '<div style="font:400 13px Inter,sans-serif;color:#6B7280;max-width:340px;margin:0 auto;line-height:1.6">' +
             '1. Install the LevelUp SEO Connector plugin on your WP site<br>' +
             '2. Generate an API key above<br>' +
@@ -7957,21 +8066,21 @@ window._renderWpSites = async function _renderWpSites(el) {
           '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;margin-bottom:12px">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
               '<div>' +
-                '<div style="font:600 15px Manrope,sans-serif;color:#fff">' + (s.name || s.url) + '</div>' +
+                '<div style="font:600 15px Manrope,sans-serif;color:var(--t1)">' + (s.name || s.url) + '</div>' +
                 '<div style="font:400 12px Inter,sans-serif;color:#6B7280;margin-top:4px">' + s.url + '</div>' +
                 '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">' +
                   '<span style="background:rgba(0,229,168,0.1);color:#00E5A8;border:1px solid rgba(0,229,168,0.2);border-radius:6px;padding:3px 8px;font:500 11px Inter,sans-serif">✓ Connected</span>' +
-                  '<span style="background:rgba(255,255,255,0.05);color:#9CA3AF;border-radius:6px;padding:3px 8px;font:500 11px Inter,sans-serif">' + s.pages_indexed + ' pages indexed</span>' +
+                  '<span style="background:var(--s2);color:var(--t3);border-radius:6px;padding:3px 8px;font:500 11px Inter,sans-serif">' + s.pages_indexed + ' pages indexed</span>' +
                 '</div>' +
               '</div>' +
               '<button onclick="_disconnectWpSite()" style="background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:6px 12px;font:500 12px Inter,sans-serif;cursor:pointer;flex-shrink:0">Disconnect</button>' +
             '</div>' +
-            '<div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.05)">' +
+            '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--s2)">' +
               '<div style="font:500 12px Inter,sans-serif;color:#6B7280;margin-bottom:6px">Webhook Secret</div>' +
               '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
-                '<code style="background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:6px;font-size:11px;color:#9CA3AF;flex:1;min-width:200px;word-break:break-all">' + (s.webhook_secret || '—') + '</code>' +
-                '<button onclick="navigator.clipboard.writeText(\'' + (s.webhook_secret || '') + '\');if(typeof showToast===\'function\')showToast(\'Copied\',\'info\')" style="background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;font:500 11px Inter,sans-serif;cursor:pointer">Copy</button>' +
-                '<button onclick="_rotateWebhookSecret()" style="background:rgba(255,255,255,0.06);color:#9CA3AF;border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:6px 10px;font:500 11px Inter,sans-serif;cursor:pointer">Rotate</button>' +
+                '<code style="background:var(--s2);padding:6px 10px;border-radius:6px;font-size:11px;color:var(--t3);flex:1;min-width:200px;word-break:break-all">' + (s.webhook_secret || '—') + '</code>' +
+                '<button onclick="navigator.clipboard.writeText(\'' + (s.webhook_secret || '') + '\');if(typeof showToast===\'function\')showToast(\'Copied\',\'info\')" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font:500 11px Inter,sans-serif;cursor:pointer">Copy</button>' +
+                '<button onclick="_rotateWebhookSecret()" style="background:var(--s2);color:var(--t3);border:1px solid var(--bd);border-radius:6px;padding:6px 10px;font:500 11px Inter,sans-serif;cursor:pointer">Rotate</button>' +
               '</div>' +
             '</div>' +
           '</div>';

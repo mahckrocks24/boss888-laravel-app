@@ -272,10 +272,19 @@ MAP;
                 }
                 // PUBLISH-1 (2026-08-30): failed or cancelled tasks are NOT blockers. Chef Red 2026-08-29: "publish them" was
                 // refused "until the blocked tasks are resolved" and a retry of 56 dead tasks was queued instead.
+                // PUBLISH-2b: the counts themselves, so the publishable number is never inferred or invented.
+                $dReady = (int) DB::table('articles')->where('workspace_id', $wsId)->where('status', 'draft')
+                    ->whereNull('deleted_at')->whereNotNull('featured_image_url')->where('featured_image_url', '<>', '')->count();
+                $dNoImg = (int) DB::table('articles')->where('workspace_id', $wsId)->where('status', 'draft')
+                    ->whereNull('deleted_at')->where(function ($w) {
+                        $w->whereNull('featured_image_url')->orWhere('featured_image_url', '');
+                    })->count();
                 $out['how work is ordered, and what finishes it'][] =
                     'Failed or cancelled tasks never block publishing: any draft that already has a featured image can be '
                   . 'published right now, whatever else is in the queue. If the owner asks to publish, publish — do not '
-                  . 'make it conditional on clearing old failures.';
+                  . 'make it conditional on clearing old failures. Right now ' . $dReady . ' draft(s) have a featured '
+                  . 'image and can go live immediately, and ' . $dNoImg . ' still need one. Those are the only two '
+                  . 'numbers that describe publishing readiness — do not state any other figure as a blocker.';
                 if (false) {
                 }
 

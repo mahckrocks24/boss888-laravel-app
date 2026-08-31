@@ -134,7 +134,7 @@ function _pjFiltersHtml() {
   const f = _pj.filters;
   return `
     <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:12px;margin-bottom:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      <input id="pj-q" type="text" value="${_pjEsc(f.q)}" placeholder="Search by name or goal…"
+      <input id="pj-q" type="text" aria-label="Search projects by name or goal" value="${_pjEsc(f.q)}" placeholder="Search by name or goal…"
         style="flex:1;min-width:200px;padding:8px 12px;background:var(--s1);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font-size:13px"
         oninput="_pjFilterDebounce()">
       <select id="pj-status" onchange="_pjFilterApply('status', this.value)"

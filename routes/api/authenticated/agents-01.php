@@ -866,7 +866,7 @@ $withCorr = function (array $meta) use ($corr) {
                         'link_suggestions' => 'finding internal links', 'improve_draft' => 'improving a draft',
                     ];
                     $__fails = DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'failed')
-                        ->where('created_at', '>', now()->subDays(7))->orderByDesc('id')->limit(5)->get(['action', 'error_text']);
+                        ->where('created_at', '>', now()->subDays(7))->orderByDesc('id')->limit(5)->get(['action', 'error_text', 'progress_message']);   // REASON-1b: the cause is often only in progress_message
                     // The list above is a SAMPLE (limit 5). Count the failures
                     // separately: reporting the page size as the failure count
                     // understated 28 failures as 5 on 2026-08-09.
@@ -878,7 +878,9 @@ $withCorr = function (array $meta) use ($corr) {
                         $__lines = [];
                         foreach ($__fails as $__f) {
                             $__h = $__actMap[$__f->action] ?? str_replace('_', ' ', (string) $__f->action);
+                            // REASON-1b: fall back to progress_message before claiming nothing was recorded.
                             $__reason = trim((string) ($__f->error_text ?? ''));
+                            if ($__reason === '') $__reason = trim((string) ($__f->progress_message ?? ''));
                             $__reason = preg_replace('/\b(Step \d+ \([a-z_]+\) failed:|Failed after \d+ attempts?:)\s*/i', '', $__reason);
                             $__reason = trim(preg_replace('/\s+/', ' ', preg_replace('/\([a-z_]+\)/', '', (string) $__reason)));
                             if ($__reason === '') $__reason = 'no error detail was recorded';
@@ -3877,8 +3879,9 @@ $withCorr = function (array $meta) use ($corr) {
         // v1.4.4 (2026-05-30) — two-phase mode tags this row as the FINAL phase
         // so the SPA's poll loop can distinguish it from the earlier ack row
         // (which has metadata_json.phase = 'ack'). Same row shape otherwise.
+        $finalMessageId = 0;   // SYNC-1b: the client needs this id or syncThread re-renders the same reply.
         try {
-            \Illuminate\Support\Facades\DB::table('agent_messages')->insert([
+            $finalMessageId = (int) \Illuminate\Support\Facades\DB::table('agent_messages')->insertGetId([
                 'workspace_id'  => $wsId,
                 'agent_slug'    => $slug,
                 'sender'        => $agent->name,
@@ -3978,6 +3981,9 @@ $withCorr = function (array $meta) use ($corr) {
         return response()->json([
             'sent' => true,
             'reply' => $reply,
+            // SYNC-1b: the id of the row just written, so the SPA can mark it rendered and the cross-device
+            // pull does not append this same reply a second time.
+            'id' => $finalMessageId ?: null,
             'agent_name' => $agent->name,
             'requires_sarah' => $requiresSarah,
             'sarah_context' => $sarahContext,
