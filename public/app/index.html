@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="5291dd2-202608310453">
+<meta name="lu-build" content="3409eb1-202608310522">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -3582,8 +3582,10 @@ window.luSwipeToClose = luSwipeToClose;
           </div>
         </div>
 
-        <!-- Execution Policy -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
+        <!-- Execution Policy — RETIRED FROM CUSTOMER UI (P1R-1, 2026-08-31): no real backend (GET /api/policy is an
+             empty stub, no write route). Markup + handlers preserved for future per-tool auto-execution product work;
+             flip data-internal off only when the capability exists. -->
+        <div data-internal="execution-policy" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:3px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Execution Policy</div>
@@ -3660,8 +3662,11 @@ window.luSwipeToClose = luSwipeToClose;
         };
         </script>
 
-        <!-- API Keys -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
+        <!-- API Keys / Connected Accounts (Facebook App ID + Secret) — RETIRED FROM CUSTOMER UI (P1R-1, 2026-08-31):
+             its save path died with builder.js.removed-* and the restored profile save deliberately never submits
+             secrets. A secret-collecting form with no working save must not be visible. Preserved for future work;
+             the functional apk-section / WordPress sections below are separate and untouched. -->
+        <div data-internal="fb-app-credentials" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
           <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Connected Accounts</div>
           <div style="font-size:11px;font-weight:700;color:var(--pu);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Social OAuth</div>
           
