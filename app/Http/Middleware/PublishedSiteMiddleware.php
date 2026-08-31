@@ -1352,7 +1352,17 @@ JS;
         // Already has a chatbot widget? Don't add a second. Covers BOTH the
         // dynamic loader (chatbot.js?ws=) and the static/baked widget
         // (chatbot-widget.js) so static-served sites don't double up.
-        if (str_contains($html, 'chatbot.js?ws=') || str_contains($html, 'chatbot-widget.js')) return $html;
+        //
+        // INC-0006: a site exported before websites were separable carries a tag naming only the
+        // workspace. Returning here left those pages permanently on the old behaviour — the widget
+        // could not tell which of the business's sites it was on, and a per-site opt-out was ignored
+        // because the injection path that reads it never ran. So upgrade the tag in place instead.
+        if (str_contains($html, 'chatbot-widget.js')) return $html;
+        if (str_contains($html, 'chatbot.js?ws=')) {
+            return $websiteId > 0
+                ? $this->bindBakedChatbotTagToWebsite($html, $workspaceId, $websiteId)
+                : $html;
+        }
 
         // Cheap workspace-scoped lookup, cached 60s so we don't hit the DB
         // on every page render.
@@ -1390,6 +1400,47 @@ JS;
         $pos = strripos($html, $needle);
         if ($pos === false) return $html . "\n" . $tag;
         return substr($html, 0, $pos) . $tag . substr($html, $pos);
+    }
+
+    /**
+     * INC-0006 — bring a legacy baked bootstrap tag up to the per-website contract.
+     *
+     * Exported pages carry `chatbot.js?ws=N` with no website. Two things follow: the widget cannot
+     * identify the site it is on, and this website's own opt-out is never consulted, because the check
+     * lives on the injection path that a baked tag skips. Both are fixed here — the tag gains the
+     * website, and a site that has switched its chatbot off has the tag removed entirely.
+     */
+    private function bindBakedChatbotTagToWebsite(string $html, int $workspaceId, int $websiteId): string
+    {
+        $key = "chatbot_enabled_ws_{$workspaceId}_w{$websiteId}";
+        $enabled = Cache::remember($key, 60, function () use ($workspaceId, $websiteId) {
+            if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessChatbot($workspaceId)) {
+                return false;
+            }
+            $row = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $workspaceId, $websiteId);
+
+            return $row === null ? true : (bool) $row->enabled;
+        });
+
+        // Matches the baked tag whether or not it already carries a website, so this is idempotent.
+        $pattern = '#<script[^>]+chatbot\.js\?ws=' . $workspaceId . '(?:&(?:amp;)?w=\d+)?"[^>]*></script>#i';
+
+        if (! $enabled) {
+            return (string) preg_replace($pattern, '', $html);
+        }
+
+        if (str_contains($html, 'chatbot.js?ws=' . $workspaceId . '&w=' . $websiteId)) {
+            return $html;
+        }
+
+        $appHost = parse_url((string) config('app.url'), PHP_URL_HOST) ?: '';
+        $origin = (str_contains($appHost, 'levelupgrowth.io'))
+            ? 'https://' . ($appHost ?: 'staging.levelupgrowth.io')
+            : 'https://staging.levelupgrowth.io';
+        $tag = '<script src="' . $origin . '/chatbot.js?ws=' . $workspaceId
+             . '&w=' . $websiteId . '" async></script>';
+
+        return (string) preg_replace($pattern, $tag, $html, 1);
     }
 
     private function render404()

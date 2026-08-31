@@ -2995,7 +2995,11 @@ PROMPT;
                     $origin = (str_contains($appHost, 'levelupgrowth.io'))
                         ? 'https://' . ($appHost ?: 'staging.levelupgrowth.io')
                         : 'https://staging.levelupgrowth.io';
-                    $tag = '<script src="' . $origin . '/chatbot.js?ws=' . $wsId . '" async></script>';
+                    // INC-0006: the exported file is served straight from disk, so the website id has to
+                    // be baked in — without it the widget cannot tell which of the business's sites it
+                    // is running on, and every site would answer with the same greeting and context.
+                    $tag = '<script src="' . $origin . '/chatbot.js?ws=' . $wsId
+                         . '&w=' . $websiteId . '" async></script>';
                     $pos = strripos($html, '</body>');
                     if ($pos !== false) {
                         $html = substr($html, 0, $pos) . $tag . substr($html, $pos);

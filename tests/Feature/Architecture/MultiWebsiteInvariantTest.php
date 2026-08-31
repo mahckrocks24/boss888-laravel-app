@@ -229,6 +229,34 @@ class MultiWebsiteInvariantTest extends TestCase
             'a QA fixture is preserved, never deleted — its evidence stays readable through admin');
     }
 
+    /** Archived is closed to everyone; a QA fixture stays open to the people who maintain it. */
+    public function test_archived_is_unopenable_while_a_qa_fixture_remains_reachable_by_its_members(): void
+    {
+        [$archived, $uid] = $this->businessWithTwoSites();
+        [$fixture] = $this->businessWithTwoSites();
+
+        DB::table('workspaces')->where('id', $archived)->update(['lifecycle_state' => 'archived_failed_build']);
+        DB::table('workspaces')->where('id', $fixture)->update(['lifecycle_state' => 'qa']);
+        DB::table('workspace_users')->insert([
+            'workspace_id' => $fixture, 'user_id' => $uid, 'role' => 'owner',
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+
+        $user = \App\Models\User::find($uid);
+        $svc  = app(\App\Core\Auth\WorkspaceSwitchService::class);
+
+        $this->assertSame($fixture, $svc->switchWorkspace($user, $fixture)['current_workspace_id'],
+            'a QA fixture must stay reachable for the people who maintain it');
+
+        try {
+            $svc->switchWorkspace($user, $archived);
+            $this->fail('opening an archived failed build should be refused');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode(),
+                'an archived failed build is not a business and must never become a working context');
+        }
+    }
+
     /*----------------------------------------------------------------- negative controls */
 
     /** The whole point of the boundary: same owner, two businesses, still two tenants. */

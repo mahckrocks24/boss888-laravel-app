@@ -18,11 +18,12 @@ class WorkspaceSwitchService
             abort(403, 'Not a member of this workspace');
         }
 
-        // INC-0006: membership is not enough. A retired workspace — an archived failed build, or a QA
-        // fixture — must not become somebody's working context, or the product starts operating
-        // inside a workspace that is not a business.
-        if ($workspace->isRetired()) {
-            abort(403, 'This workspace has been retired and can no longer be opened.');
+        // INC-0006: an archived failed build is dead — it produced no website and is not a business, so
+        // nothing may open it as a working context. A QA fixture is different: it is hidden from the
+        // customer list but must stay reachable for the people who maintain it, and membership is that
+        // authorisation. Deleting neither, hiding both, opening only the one that still has a purpose.
+        if ($workspace->lifecycle_state === \App\Models\Workspace::STATE_ARCHIVED) {
+            abort(403, 'This workspace was archived as a failed build and can no longer be opened.');
         }
 
         $tokens = $this->refreshTokenService->issueTokenPair($user, $workspace);
