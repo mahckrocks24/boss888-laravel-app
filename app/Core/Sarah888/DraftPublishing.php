@@ -42,6 +42,97 @@ class DraftPublishing
         return (bool) preg_match('/^\s*(yes|yeah|yep|yup|ok|okay|sure|go ahead|do it|confirm(ed)?|please do|publish (them|it)|proceed|approved?|go live)\b/i', trim($text));
     }
 
+    /**
+     * A REFINEMENT of an offer already on the table is still an instruction.
+     *
+     * Chef Red, 2026-09-01: the owner said "okay. publish 5 right now", Sarah described the 38 drafts and asked
+     * for a yes. He then said "only 5 as i said" and "the earlist ones written". Neither begins with a yes-word,
+     * so confirms() answered false both times and she described the same thing again. Three clear instructions,
+     * zero articles published, and by the third reply she was inventing article numbers to fill the silence.
+     *
+     * A person narrowing an offer has plainly accepted it — the narrowing IS the consent, and it carries the
+     * constraint with it. This only ever applies when an offer is actually pending; with nothing on the table
+     * "the earliest ones" means nothing and is left to the normal path.
+     *
+     * @return array{limit:?int, order:?string}|null null when the text is not a refinement
+     */
+    public static function refines(string $text): ?array
+    {
+        $t = mb_strtolower(trim($text));
+        if ($t === '') {
+            return null;
+        }
+
+        // A decline is never a refinement, however it is phrased.
+        if (self::declines($t)) {
+            return null;
+        }
+
+        $limit = null;
+        $order = null;
+
+        // "only 5", "just 5", "publish 5", and also "just the oldest 3" where two words sit between the
+        // cue and the number. Bounded to a short span and never across a sentence end, so a count in one
+        // sentence cannot bind to a number in the next.
+        if (preg_match('/(?:only|just|first|publish|do|start with)[^.?!]{0,20}?(\d{1,4})/u', $t, $m)) {
+            $limit = (int) $m[1];
+        } elseif (preg_match('/(\d{1,4})\s+(?:only|of them|of those|for now|to start)/u', $t, $m)) {
+            $limit = (int) $m[1];
+        }
+
+        // "the earlist ones written" — the owner's own spelling is matched deliberately.
+        if (preg_match('/(earliest|earlist|oldest|first (?:ones|written|few)|from the start)/u', $t)) {
+            $order = 'earliest';
+        } elseif (preg_match('/(latest|newest|most recent|last (?:ones|few))/u', $t)) {
+            $order = 'latest';
+        }
+
+        if ($limit === null && $order === null) {
+            return null;
+        }
+
+        return ['limit' => $limit, 'order' => $order];
+    }
+
+    /**
+     * Apply a refinement to the offer already described, so the owner gets what they narrowed it to.
+     *
+     * The pending set is the authority on WHICH articles are eligible — the refinement may only reorder it and
+     * cut it short. Nothing new can enter here, so a narrowing can never widen what was offered.
+     */
+    public function narrow(int $wsId, array $pending, array $refine): array
+    {
+        $ids = array_values(array_map('intval', (array) ($pending['ready'] ?? [])));
+        if (! $ids) {
+            return $pending;
+        }
+
+        if (($refine['order'] ?? null) !== null) {
+            $rows = DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->whereIn('id', $ids)
+                ->orderBy('created_at', $refine['order'] === 'latest' ? 'desc' : 'asc')
+                ->pluck('id')->all();
+
+            if ($rows) {
+                $ids = array_map('intval', $rows);
+            }
+        }
+
+        if (($refine['limit'] ?? null) !== null && $refine['limit'] > 0) {
+            $ids = array_slice($ids, 0, $refine['limit']);
+        }
+
+        $pending['ready'] = $ids;
+
+        // Images are only started for what is actually going live now.
+        if (($refine['limit'] ?? null) !== null) {
+            $pending['missing'] = [];
+        }
+
+        return $pending;
+    }
+
     public static function declines(string $text): bool
     {
         return (bool) preg_match('/^\s*(no|nope|don\'?t|do not|stop|not yet|hold|wait|leave (it|them)|never ?mind|cancel that)\b/i', trim($text));

@@ -704,6 +704,15 @@ $withCorr = function (array $meta) use ($corr) {
                     } elseif ($__dpPending0 && \App\Core\Sarah888\DraftPublishing::declines((string) $__ownerMessage)) {
                         $__dp0->forget((int) $wsId);
                         $__qcReply0 = "Understood — they stay as drafts. Nothing was published.";
+                    } elseif ($__dpPending0 && ($__dpRef0 = \App\Core\Sarah888\DraftPublishing::refines((string) $__ownerMessage)) !== null) {
+                        // A refinement of an offer already on the table is still an instruction. The owner said
+                        // "only 5 as i said" and then "the earlist ones written"; neither starts with a yes-word,
+                        // so confirms() said no both times and Sarah described the same drafts again instead of
+                        // publishing anything. Narrowing an offer is accepting it, with a constraint attached.
+                        $__dpNarrow0 = $__dp0->narrow((int) $wsId, $__dpPending0, $__dpRef0);
+                        $__dpRes0 = $__dp0->execute((int) $wsId, $__dpNarrow0, $userId > 0 ? $userId : null, (string) $__ownerMessage);
+                        $__dp0->forget((int) $wsId);
+                        $__qcReply0 = $__dp0->report($__dpRes0, count($__dpNarrow0['missing'] ?? []));
                     }
                 }
                 if ($__qcReply0 !== null) {
@@ -3783,6 +3792,20 @@ $withCorr = function (array $meta) use ($corr) {
                 //
                 // Runs after ForbiddenOfferGuard for the same reason that one runs late: a false claim must
                 // not survive because it was introduced by a guard above.
+                // An article number she states must be a number this workspace actually has. She offered to
+                // publish articles 183-187 to Chef Red; his drafts start at 300 and four of those ids belong to
+                // the platform's own workspace. Nothing crossed the tenancy boundary in the query layer - she
+                // invented consecutive numbers - but the owner was still shown another tenant's ids as fact.
+                try {
+                    $__aig = app(\App\Core\Sarah888\ArticleIdClaimGuard::class)
+                        ->validate((string) $reply, (int) $wsId);
+                    $reply = $__aig['reply'];
+                } catch (\Throwable $__aigErr) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        '[Sarah888] ArticleIdClaimGuard failed: ' . $__aigErr->getMessage(), ['ws' => $wsId]
+                    );
+                }
+
                 try {
                     $__bcg = app(\App\Core\Sarah888\BlockageClaimGuard::class)
                         ->validate((string) $reply, (int) $wsId);
