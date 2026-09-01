@@ -3923,6 +3923,20 @@ $withCorr = function (array $meta) use ($corr) {
         // so the SPA's poll loop can distinguish it from the earlier ack row
         // (which has metadata_json.phase = 'ack'). Same row shape otherwise.
         $finalMessageId = 0;   // SYNC-1b: the client needs this id or syncThread re-renders the same reply.
+
+        // SUPERSEDED TURN (2026-09-01) — a slow reply must not land after the owner has moved on.
+        // The rule and the reasoning live in SupersededTurnGuard, where they can be tested; a route closure
+        // cannot be. See Chef Red's thread of 2026-09-01, where two late replies landed under an answer the
+        // publish router had already given and repeated the same list of drafts three times.
+        if (app(\App\Core\Sarah888\SupersededTurnGuard::class)
+                ->isSuperseded((int) $wsId, (int) ($userMessageId ?? 0))) {
+            return response()->json([
+                'success' => true,
+                'superseded' => true,
+                'message' => 'A newer message was already answered; this reply was not shown.',
+            ]);
+        }
+
         try {
             $finalMessageId = (int) \Illuminate\Support\Facades\DB::table('agent_messages')->insertGetId([
                 'workspace_id'  => $wsId,

@@ -3,6 +3,7 @@
 namespace App\Core\Sarah888;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * SARAH888 — ASK_FIRST proposals for chat-originated work.
@@ -72,6 +73,22 @@ class ChatActionProposal
         $action = (string) ($payload['action'] ?? 'unknown');
         $engine = (string) ($payload['engine'] ?? '');
         $cost   = (int) ($payload['credit_cost'] ?? 0);
+
+        // Chef Red, 2026-09-01: 37 articles published successfully; the owner said "perfect.." and Sarah
+        // came back with "6 things are waiting for your OK" listing articles 186, 300, 352, 354, 661 and
+        // 662 — every one of them already live. Nothing validated that the work still needed doing, so a
+        // proposal could be raised against a finished job and then sit there asking for approval forever.
+        //
+        // A proposal for work already done is not a smaller problem than a wrong one: the owner cannot tell
+        // the difference, and the only way to find out is to approve it and see.
+        if (! $this->stillNeedsDoing($wsId, $action, $payload)) {
+            Log::info('[Sarah888] refused to propose work the record shows is already done', [
+                'workspace_id' => $wsId, 'action' => $action,
+                'entity' => $this->entityOf($payload),
+            ]);
+
+            return ['proposal_id' => 0, 'approval_id' => 0, 'skipped' => 'already_done'];
+        }
 
         $entity     = $this->entityOf($payload);
         $capability = $engine !== '' ? "{$engine}.{$action}" : $action;
@@ -151,7 +168,10 @@ class ChatActionProposal
     /** Pending proposals in this conversation, for disclosure when ambiguous. */
     public function pending(int $wsId, ?string $conversationId = null): array
     {
-        return $this->pendingQuery($wsId, $conversationId)->orderByDesc('id')->get()->all();
+        return $this->dropCompleted(
+            $wsId,
+            $this->pendingQuery($wsId, $conversationId)->orderByDesc('id')->get()->all()
+        );
     }
 
     /**
@@ -275,6 +295,96 @@ class ChatActionProposal
         return "\n\n" . count($pending) . " things are waiting for your OK"
              . ($total > 0 ? " ({$total} credits in total)" : '') . ':' . $lines
              . "\n\nNothing runs until you say which — tell me here, or use Needs attention.";
+    }
+
+    /**
+     * Does the record still show this work as outstanding?
+     *
+     * Deliberately narrow: only actions whose completion can be READ are checked, and anything unknown is
+     * allowed through. A proposal wrongly blocked is worse than one wrongly raised, so the default is to
+     * permit — this refuses only what can be proven finished.
+     */
+    private function stillNeedsDoing(int $wsId, string $action, array $payload): bool
+    {
+        $inner = (array) ($payload['payload'] ?? []);
+        $articleId = (int) ($inner['article_id'] ?? $payload['article_id'] ?? 0);
+
+        if ($action === 'publish_article' && $articleId > 0) {
+            return DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->where('id', $articleId)
+                ->whereNull('deleted_at')
+                ->where('status', 'draft')
+                ->exists();
+        }
+
+        return true;
+    }
+
+    /**
+     * Drop pending rows whose work has since been done.
+     *
+     * The creation check above stops new ones, but rows raised before it existed — and rows whose work was
+     * completed by another route while they waited — would otherwise keep appearing in "waiting for your
+     * OK". Filtering at read time as well means the owner is never shown a decision that no longer exists.
+     *
+     * @param  array<int,object>  $rows
+     * @return array<int,object>
+     */
+    private function dropCompleted(int $wsId, array $rows): array
+    {
+        if (! $rows) {
+            return $rows;
+        }
+
+        $articleIds = [];
+        foreach ($rows as $r) {
+            if ((string) ($r->capability ?? '') !== '' && str_contains((string) $r->capability, 'publish_article')
+                && (string) ($r->entity_type ?? '') === 'article' && (int) ($r->entity_id ?? 0) > 0) {
+                $articleIds[] = (int) $r->entity_id;
+            }
+        }
+
+        if (! $articleIds) {
+            return $rows;
+        }
+
+        $stillDraft = DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->whereIn('id', array_unique($articleIds))
+            ->whereNull('deleted_at')
+            ->where('status', 'draft')
+            ->pluck('id')->map(fn ($i) => (int) $i)->all();
+
+        $done = [];
+        $kept = [];
+
+        foreach ($rows as $r) {
+            $isPublish = str_contains((string) ($r->capability ?? ''), 'publish_article')
+                && (string) ($r->entity_type ?? '') === 'article';
+
+            if ($isPublish && ! in_array((int) $r->entity_id, $stillDraft, true)) {
+                $done[] = (int) $r->id;
+                continue;
+            }
+
+            $kept[] = $r;
+        }
+
+        if ($done) {
+            // Closed rather than left pending: a decision the owner can no longer make should not sit in
+            // their queue, and the reason belongs on the row.
+            DB::table('strategy_proposals')->whereIn('id', $done)->update([
+                'status' => 'superseded',
+                'updated_at' => now(),
+            ]);
+
+            Log::info('[Sarah888] closed approval requests whose work was already done', [
+                'workspace_id' => $wsId, 'proposals' => $done,
+            ]);
+        }
+
+        return $kept;
     }
 
     /** The exact payload a proposal authorises. Never reconstructed from prose. */
