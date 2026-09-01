@@ -3773,6 +3773,26 @@ $withCorr = function (array $meta) use ($corr) {
                     ->validate((string) $reply, (int) $wsId);
                 $reply = $__fog['reply'];
 
+                // Sarah may not tell the owner work is BLOCKED when the record says nothing is.
+                //
+                // Observed on Chef Red's workspace: the owner said "Hi Sarah" and her next line was "we need
+                // to clear the blockages"; asked twice if she was sure she doubled down and offered to retry
+                // the blocked tasks. Zero tasks were blocked and nothing had failed in seven days. She was
+                // reading a backlog of commitments that could never close and calling it a blockage — then
+                // prescribing a remedy for a fault the owner did not have.
+                //
+                // Runs after ForbiddenOfferGuard for the same reason that one runs late: a false claim must
+                // not survive because it was introduced by a guard above.
+                try {
+                    $__bcg = app(\App\Core\Sarah888\BlockageClaimGuard::class)
+                        ->validate((string) $reply, (int) $wsId);
+                    $reply = $__bcg['reply'];
+                } catch (\Throwable $__bcgErr) {
+                    \Illuminate\Support\Facades\Log::warning(
+                        '[Sarah888] BlockageClaimGuard failed: ' . $__bcgErr->getMessage(), ['ws' => $wsId]
+                    );
+                }
+
                 // Phase 1E — the owner must see cost BEFORE it is spent, not
                 // discover it in a balance later. If anything was held, say so
                 // in the same reply and offer the one-word path to release it.
