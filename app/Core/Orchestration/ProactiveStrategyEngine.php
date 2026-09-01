@@ -36,6 +36,9 @@ use Illuminate\Support\Facades\Schema;
  */
 class ProactiveStrategyEngine
 {
+    /** A website exists and has no content. Raised once per website. */
+    public const TYPE_WEBSITE_LAUNCH = 'website_launch_plan';
+
     // Credit costs per action (matches CREDIT888 capability map)
     private const CREDIT_COSTS = [
         'strategy_meeting' => 8,
@@ -750,12 +753,140 @@ class ProactiveStrategyEngine
         }
     }
 
+    /**
+     * A website that exists with nothing on it is a launch waiting to happen.
+     *
+     * When Chef Red's FIRST site went up in May, Sarah raised first_content and seo_audit proposals the next
+     * day — that generator has since been deleted, and every trigger that replaced it works on content that
+     * already exists: generate_meta, insert_link, fix_orphans, improve_draft, refresh_stale, expand_thin_pages.
+     * Every one of them needs something to act ON. So when a second website was built on 2026-09-01 — a
+     * graphic design business with two pages and no articles — nothing could fire, and the owner watched a
+     * brand-new site sit there while Sarah said nothing about it.
+     *
+     * This is the missing case: not "improve what is there" but "there is nothing there yet". One proposal
+     * per website, raised once. It is a proposal rather than work because a launch plan spends credits, and
+     * the owner decides that — the same contract every other proposal honours.
+     *
+     * @return array<int,array{website_id:int,proposal_id:int,name:string}>
+     */
+    public function newWebsiteCheck(int $wsId): array
+    {
+        $raised = [];
+
+        try {
+            $sites = DB::table('websites')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->whereIn('status', ['published', 'draft'])
+                ->get(['id', 'name', 'template_industry', 'subdomain', 'custom_domain', 'created_at']);
+
+            foreach ($sites as $site) {
+                $hasContent = DB::table('articles')
+                    ->where('workspace_id', $wsId)
+                    ->where('website_id', $site->id)
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if ($hasContent) {
+                    continue;   // this site is already being worked on
+                }
+
+                // Raised once per website, whatever the owner decided last time. A launch plan they declined
+                // is an answer, not an invitation to ask again tomorrow.
+                $already = DB::table('strategy_proposals')
+                    ->where('workspace_id', $wsId)
+                    ->where('type', self::TYPE_WEBSITE_LAUNCH)
+                    ->where('entity_id', $site->id)
+                    ->exists();
+
+                if ($already) {
+                    continue;
+                }
+
+                $name = trim((string) ($site->name ?? '')) ?: 'the new website';
+                $host = (string) ($site->custom_domain ?: $site->subdomain ?: '');
+                // The column holds a template slug like marketing_agency; a person should never be
+                // shown that. 'in marketing_agency' is the sort of detail that tells an owner the
+                // message was assembled by a machine that was not paying attention.
+                $industry = trim(str_replace('_', ' ', (string) ($site->template_industry ?? '')));
+
+                $estimate = $this->estimateLaunchCost();
+
+                $proposalId = (int) DB::table('strategy_proposals')->insertGetId([
+                    'workspace_id' => $wsId,
+                    'type'         => self::TYPE_WEBSITE_LAUNCH,
+                    'entity_type'  => 'website',
+                    'entity_id'    => (int) $site->id,
+                    'title'        => 'Launch plan for ' . $name,
+                    'description'  => $name . ' is live' . ($host !== '' ? " at {$host}" : '')
+                                    . ' with no content yet. A launch plan gives it the first articles, the '
+                                    . 'keywords worth ranking for, and page titles and descriptions that read '
+                                    . 'like a real business'
+                                    . ($industry !== '' ? " in {$industry}." : '.'),
+                    'status'              => 'pending_approval',
+                    'cost_breakdown_json' => json_encode($estimate['breakdown']),
+                    'total_credits'       => $estimate['total'],
+                    'created_at'          => now(),
+                    'updated_at'          => now(),
+                ]);
+
+                $msg = "You've built {$name}" . ($host !== '' ? " at {$host}" : '') . ', and there is nothing '
+                     . "on it yet. I can start it properly: keyword research for what people actually search "
+                     . "in " . ($industry !== '' ? $industry : 'your market') . ", the first articles written "
+                     . "for those terms, and titles and descriptions on every page. That is "
+                     . "{$estimate['total']} credits. Say the word and I will set it up.";
+
+                try {
+                    $this->notifications->send($wsId, 'in_app', 'sarah_proposal', ['message' => $msg]);
+                } catch (\Throwable $e) { /* the chat post below is the one that matters */ }
+
+                $this->agentMessages->postAsAgent($wsId, 'sarah', $msg, [
+                    'notification_type' => 'sarah_proposal',
+                    'proposal_id'       => $proposalId,
+                    'website_id'        => (int) $site->id,
+                    'action_link'       => '/app/strategy/' . $proposalId,
+                ]);
+
+                Log::info('[ProactiveStrategy] proposed a launch plan for a website with no content', [
+                    'workspace_id' => $wsId, 'website_id' => (int) $site->id, 'proposal_id' => $proposalId,
+                ]);
+
+                $raised[] = ['website_id' => (int) $site->id, 'proposal_id' => $proposalId, 'name' => $name];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[ProactiveStrategy] newWebsiteCheck failed', [
+                'workspace_id' => $wsId, 'error' => $e->getMessage(),
+            ]);
+        }
+
+        return $raised;
+    }
+
+    /** What a first launch costs. Deliberately modest: enough to start, not a full campaign. */
+    private function estimateLaunchCost(): array
+    {
+        $breakdown = [
+            ['item' => 'Keyword research for the site\'s market', 'credits' => 2],
+            ['item' => 'First 3 articles written for those keywords', 'credits' => 9],
+            ['item' => 'Titles and descriptions across the pages', 'credits' => 1],
+        ];
+
+        return ['breakdown' => $breakdown, 'total' => array_sum(array_column($breakdown, 'credits'))];
+    }
+
     public function dailyCheck(int $wsId): array
     {
         $workspace = Workspace::find($wsId);
         if (!$workspace || !$workspace->onboarded) return ['skipped' => true];
 
         $actions = [];
+
+        // A website with nothing on it cannot be picked up by any of the content triggers below — they all
+        // act on work that already exists. This is the one that notices a site nobody has started.
+        foreach ($this->newWebsiteCheck($wsId) as $launch) {
+            $actions[] = ['type' => 'website_launch_proposed', 'website_id' => $launch['website_id'],
+                          'proposal_id' => $launch['proposal_id']];
+        }
 
         // Check for pending approvals (template notification, free)
         $pendingApprovals = DB::table('execution_plans')

@@ -577,23 +577,68 @@ class WorkspaceStateGatherer
 
     // ── BUILDER ───────────────────────────────────────────────────────
 
+    /**
+     * The business's websites, not just a tally of them.
+     *
+     * Chef Red, 2026-09-01: a second website was built — a graphic design business in Dubai — and Sarah never
+     * mentioned it. This method was the reason. It returned two integers, so the most she could know was that
+     * "2 published websites" existed. She could not name the site, did not know its industry, and had no way
+     * to see it had been created that morning with nothing on it.
+     *
+     * A workspace holds many websites (INC-0006), so a count is not a portfolio. She gets the sites
+     * themselves: what they are, how old they are, and whether anything has been written for them — which is
+     * what makes a launch worth proposing rather than a number worth reciting.
+     */
     private function readBuilderState(int $wsId): array
     {
         try {
+            $sites = DB::table('websites')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->orderBy('id')
+                ->get(['id', 'name', 'status', 'template_industry', 'subdomain', 'custom_domain', 'created_at']);
+
+            // One grouped query rather than one per site: a portfolio read runs on every turn.
+            $articles = DB::table('articles')
+                ->where('workspace_id', $wsId)
+                ->whereNull('deleted_at')
+                ->whereNotNull('website_id')
+                ->selectRaw('website_id, COUNT(*) c')
+                ->groupBy('website_id')
+                ->pluck('c', 'website_id');
+
+            $pages = DB::table('pages')
+                ->whereIn('website_id', $sites->pluck('id'))
+                ->selectRaw('website_id, COUNT(*) c')
+                ->groupBy('website_id')
+                ->pluck('c', 'website_id');
+
+            $list = $sites->map(function ($s) use ($articles, $pages) {
+                $articleCount = (int) ($articles[$s->id] ?? 0);
+
+                return [
+                    'website_id'   => (int) $s->id,
+                    'name'         => (string) ($s->name ?? ''),
+                    'status'       => (string) ($s->status ?? ''),
+                    'industry'     => (string) ($s->template_industry ?? ''),
+                    'host'         => (string) ($s->custom_domain ?: $s->subdomain ?: ''),
+                    'days_old'     => $s->created_at ? (int) \Carbon\Carbon::parse($s->created_at)->diffInDays(now()) : null,
+                    'pages'        => (int) ($pages[$s->id] ?? 0),
+                    'articles'     => $articleCount,
+                    // The fact that makes a launch plan worth proposing.
+                    'has_content'  => $articleCount > 0,
+                ];
+            })->values()->all();
+
             return [
-                'published_websites' => (int) DB::table('websites')
-                    ->where('workspace_id', $wsId)
-                    ->where('status', 'published')
-                    ->whereNull('deleted_at')
-                    ->count(),
-                'draft_websites' => (int) DB::table('websites')
-                    ->where('workspace_id', $wsId)
-                    ->where('status', 'draft')
-                    ->whereNull('deleted_at')
-                    ->count(),
+                'published_websites' => $sites->where('status', 'published')->count(),
+                'draft_websites'     => $sites->where('status', 'draft')->count(),
+                'websites'           => $list,
+                'websites_without_content' => array_values(array_filter($list, fn ($w) => ! $w['has_content'])),
             ];
         } catch (\Throwable $e) {
-            return ['published_websites' => 0, 'draft_websites' => 0];
+            return ['published_websites' => 0, 'draft_websites' => 0, 'websites' => [],
+                    'websites_without_content' => []];
         }
     }
 
