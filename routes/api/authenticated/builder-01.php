@@ -44,7 +44,17 @@ use Illuminate\Support\Facades\Route;
         $exec = \App\Core\EngineKernel\EngineExecutionService::class;
         // Reads
         Route::get('/websites', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listWebsites($r->attributes->get('workspace_id'))));
-        Route::get('/websites/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getWebsite($r->attributes->get('workspace_id'), $id)));
+        // INC-0006: getWebsite() is workspace-scoped and returns null for a website this business does
+        // not own — but response()->json(null) renders that as 200 {}, which claims the website exists
+        // and is empty. Match the denial the rest of the Builder already uses two lines below and
+        // throughout routes/api.php: an undifferentiated 404 for missing, foreign and inaccessible
+        // alike, so the response never distinguishes 'not yours' from 'not real'.
+        Route::get('/websites/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $website = app($s)->getWebsite($r->attributes->get('workspace_id'), $id);
+            return $website
+                ? response()->json($website)
+                : response()->json(['error' => 'Website not found'], 404);
+        });
         Route::get('/websites/{id}/pages', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->listPages((int) $id, (int) $r->attributes->get('workspace_id'))));
         Route::get('/pages/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
             $page = app($s)->getPage((int) $id, (int) $r->attributes->get('workspace_id'));

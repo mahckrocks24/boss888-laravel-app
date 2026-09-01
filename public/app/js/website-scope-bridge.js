@@ -122,6 +122,106 @@
    * event handle it themselves; this covers the rest by re-entering the current view, which is how the app
    * refreshes everywhere else. It is deliberately a re-render, never a workspace change.
    */
+  /*
+   * The SEO engine shipped its own site picker long before there was a shared context, and it keys its
+   * choice on a URL in localStorage rather than a website id. Left alone, the two controls disagree in
+   * front of the user: the shell says one website, the engine's own dropdown says another, and only the
+   * data underneath reveals which one actually won.
+   *
+   * Rather than reach into 600KB of engine code, the two are kept in step at their edges: the engine's
+   * select follows the shared context, and a change made in the engine is reflected back. Matching is by
+   * HOST, because that is the only identity the engine's options carry.
+   */
+  function seoSiteSelect() {
+    var view = document.getElementById('view-seo');
+    if (!view) { return null; }
+    var selects = view.querySelectorAll('select');
+    for (var i = 0; i < selects.length; i++) {
+      var s = selects[i];
+      // The site picker is the one whose options are URLs.
+      if (s.options.length && /^https?:\/\//.test(s.options[0].value || '')) { return s; }
+    }
+    return null;
+  }
+
+  function hostOf(value) {
+    try {
+      var h = new URL(String(value), window.location.origin).hostname;
+      return h.toLowerCase().replace(/^www\./, '');
+    } catch (e) { return ''; }
+  }
+
+  /* Point the engine's own picker at whatever the shell context currently says. */
+  function pushContextIntoSeo() {
+    var sel = seoSiteSelect();
+    var W = window.LU_Website;
+    if (!sel || !W) { return; }
+
+    var site = W.currentSite();
+    if (!site || !site.host) { return; }
+
+    var want = String(site.host).toLowerCase().replace(/^www\./, '');
+    for (var i = 0; i < sel.options.length; i++) {
+      if (hostOf(sel.options[i].value) === want) {
+        if (sel.value !== sel.options[i].value) {
+          sel.value = sel.options[i].value;
+          // Fire the real event so the engine reloads exactly as it would for a human choosing it.
+          try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+        }
+        return;
+      }
+    }
+  }
+
+  /* And when someone uses the engine's picker, the shell must not be left showing the old site. */
+  function pullSeoIntoContext(e) {
+    var sel = e.target;
+    var W = window.LU_Website;
+    if (!W || !sel || sel.tagName !== 'SELECT') { return; }
+    if (!/^https?:\/\//.test(String(sel.value || ''))) { return; }
+    if (!document.getElementById('view-seo') || !document.getElementById('view-seo').contains(sel)) { return; }
+
+    var host = hostOf(sel.value);
+    var hit = W.list().filter(function (w) {
+      return String(w.host || '').toLowerCase().replace(/^www\./, '') === host;
+    });
+    if (hit.length && hit[0].id !== W.current()) { W.set(hit[0].id); }
+  }
+
+  document.addEventListener('change', pullSeoIntoContext, true);
+
+  /*
+   * The engine builds its picker lazily, only once the SEO view is opened, and it restores its own last
+   * choice from localStorage while doing so. Reconciling only on context CHANGE therefore left the two
+   * controls disagreeing on arrival — the shell naming one website, the engine's dropdown another, which
+   * is precisely the ambiguity this work exists to remove. So watch for the picker appearing (or being
+   * rebuilt) and bring it into line the moment it does.
+   */
+  function watchForSeoPicker() {
+    var view = document.getElementById('view-seo');
+    if (!view || !window.MutationObserver) { return; }
+
+    var settle = null;
+    var obs = new MutationObserver(function () {
+      clearTimeout(settle);
+      // Debounced: the engine mutates this subtree heavily while rendering.
+      settle = setTimeout(function () { try { pushContextIntoSeo(); } catch (e) {} }, 250);
+    });
+    obs.observe(view, { childList: true, subtree: true });
+  }
+
+  if (window.LU_Website) {
+    window.LU_Website.ready().then(function () {
+      try { pushContextIntoSeo(); } catch (e) {}
+      watchForSeoPicker();
+      // The view may still be rendering on a cold load; a couple of bounded retries cover it without
+      // turning into a polling loop.
+      [700, 1800, 3500].forEach(function (ms) {
+        setTimeout(function () { try { pushContextIntoSeo(); } catch (e) {} }, ms);
+      });
+    });
+  }
+
   if (window.LU_Website) {
     window.LU_Website.onChange(function () {
       try {
@@ -129,6 +229,10 @@
           window.nav(window.currentView, { silent: true });
         }
       } catch (e) { /* a view that cannot re-enter simply keeps what it has until the user moves */ }
+
+      // The engine renders its picker asynchronously, so try immediately and once more after it settles.
+      try { pushContextIntoSeo(); } catch (e) {}
+      setTimeout(function () { try { pushContextIntoSeo(); } catch (e) {} }, 900);
     });
   }
 })();
