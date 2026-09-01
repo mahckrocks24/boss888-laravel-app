@@ -825,6 +825,50 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::get('/workspaces', [WorkspaceController::class, 'index']);
     Route::post('/workspaces', [WorkspaceController::class, 'store']);
 
+    // ── INC-0006: the website context a business operates in ────────────────────────────────────────
+    // One workspace, many websites. Direct tools — SEO, chatbot, WordPress, the builder, publishing —
+    // each act on ONE of them, and until now the SPA had no shared idea of which. This is the single
+    // authoritative list the selector and every one of those tools resolve against, so a website id can
+    // be validated in exactly one place rather than trusted from a query string.
+    //
+    // Deliberately NOT the /api/seo/sites picker: that one skips drafts with no domain and prefixes ids
+    // for its own dropdown. A context has to name every website the business owns, domain or not.
+    Route::get('/website-context', function (\Illuminate\Http\Request $r) {
+        $wsId = (int) $r->attributes->get('workspace_id');
+
+        $sites = \Illuminate\Support\Facades\DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->get(['id', 'name', 'subdomain', 'custom_domain', 'domain', 'external_url',
+                   'platform', 'type', 'status']);
+
+        $host = static function ($s): string {
+            foreach ([$s->custom_domain, $s->domain, $s->subdomain] as $h) {
+                if (! empty($h)) {
+                    return strtolower(trim((string) $h, " /\t\n\r"));
+                }
+            }
+            if (! empty($s->external_url)) {
+                return strtolower((string) (parse_url((string) $s->external_url, PHP_URL_HOST) ?? ''));
+            }
+            return '';
+        };
+
+        return response()->json([
+            'success'      => true,
+            'workspace_id' => $wsId,
+            'websites'     => $sites->map(fn ($s) => [
+                'id'       => (int) $s->id,
+                'name'     => (string) ($s->name ?: ($host($s) ?: 'Untitled site')),
+                'host'     => $host($s),
+                'platform' => (string) ($s->platform ?: 'levelup'),
+                'type'     => (string) ($s->type ?: 'levelup'),
+                'status'   => (string) ($s->status ?: 'draft'),
+            ])->values(),
+        ]);
+    });
+
     // CR-22B: projects-01 extracted to routes/api/authenticated/projects-01.php (was lines 753-932); position, scope and order preserved.
     require __DIR__ . '/api/authenticated/projects-01.php';
 

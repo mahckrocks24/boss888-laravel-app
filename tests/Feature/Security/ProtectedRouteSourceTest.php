@@ -37,7 +37,10 @@ class ProtectedRouteSourceTest extends TestCase
         'routes/web.php',                   // withRouting(web:)
         'routes/api.php',                   // withRouting(api:)
         'routes/exec-api.php',              // withRouting(then:) closure
-        'app/Engines/CRM/Http/Routes.php',  // loadRoutesFrom() in a booted provider
+        // app/Engines/CRM/Http/Routes.php was DELETED on 2026-08-24 (MISSION-018 WS-1, RISK-0005):
+        // its two registrations were fully shadowed by crm-01.php and could never serve, which the
+        // registration census proved before removal. No engine loads routes from disk any more, so
+        // this list is complete. The dynamic check below is what keeps it complete.
     ];
 
     private SourceOwnershipLock $lock;
@@ -102,7 +105,9 @@ class ProtectedRouteSourceTest extends TestCase
             'grep -rn "loadRoutesFrom" ' . escapeshellarg(self::ROOT . '/app') . ' --include=*.php 2>/dev/null | grep -v "\.bak"'
         );
         preg_match_all("#loadRoutesFrom\(__DIR__ \. '([^']+)'#", (string) $providers, $m);
-        $this->assertNotEmpty($m[0], 'expected at least the CRM engine loadRoutesFrom to be found');
+        // Deliberately NOT assertNotEmpty. An engine loading routes from disk is a route source that
+        // has to be governed; zero of them is the safer state, not a broken test. What must hold is
+        // that every one that DOES exist is protected, which is what $unprotected below carries.
 
         $this->assertSame([], $unprotected,
             'active route files found outside the protected set: ' . implode(', ', $unprotected));
@@ -184,7 +189,6 @@ class ProtectedRouteSourceTest extends TestCase
         return [
             'web.php'      => ['routes/web.php'],
             'exec-api.php' => ['routes/exec-api.php'],
-            'crm engine'   => ['app/Engines/CRM/Http/Routes.php'],
         ];
     }
 

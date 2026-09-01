@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="e4f8d19-202608311744">
+<meta name="lu-build" content="inc0006-20260901">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4734,6 +4734,11 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
 <script defer src="/app/js/orb.js?v=4.5.0"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
+<!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
+     rely on window.LU_Website existing; the picker renders itself into the shell sidebar. -->
+<script src="/app/js/website-context.js?v=inc0006-20260901"></script>
+<script defer src="/app/js/website-picker.js?v=inc0006-20260901"></script>
+<script src="/app/js/website-scope-bridge.js?v=inc0006-20260901"></script>
 <script defer src="/app/js/core.js?v=mobile2-20260831"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
