@@ -721,18 +721,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 // (b) Primary empty → use it; else provision a dedicated workspace.
                 $primaryHasSite = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $primaryWs)->whereNull('deleted_at')->exists();
                 if ($primaryHasSite) {
+                    // INC-0006: the plan limit still applies, but a second WordPress site joins the
+                    // business workspace it belongs to. It is not given a workspace of its own.
                     $planRow = \App\Models\Plan::find(\App\Models\Subscription::where('workspace_id', $billingWs)->whereIn('status', ['active', 'trialing'])->latest()->value('plan_id')) ?? \App\Models\Plan::where('slug', 'free')->first();
                     $maxW  = (int) ($planRow->max_websites ?? 1);
                     $total = (int) \Illuminate\Support\Facades\DB::table('websites')->whereIn('workspace_id', $userWsIds)->whereNull('deleted_at')->count();
                     if ($total >= $maxW) {
                         return response()->json(['success' => false, 'error' => 'limit_reached', 'message' => "Website limit reached ({$maxW} on the " . ($planRow->name ?? 'Free') . " plan).", 'limit_reached' => true], 402);
-                    }
-                    try {
-                        $wsId = app(\App\Engines\Builder\Services\ArthurService::class)
-                            ->provisionWebsiteWorkspace($primaryWs, (int) $user->id, $billingWs, $siteHost);
-                    } catch (\Throwable $e) {
-                        \Illuminate\Support\Facades\Log::warning('[plugin/connect] provisioning failed: ' . $e->getMessage());
-                        $wsId = $primaryWs;
                     }
                 }
                 // First-class websites row for the WP site in the target workspace.
@@ -3445,15 +3440,7 @@ Route::post('/builder/websites/connect-existing', function (\Illuminate\Http\Req
     if ($currentCount >= $max) {
         return response()->json(['success' => false, 'error' => "Website limit reached ({$max}). Upgrade to add more.", 'limit_reached' => true]);
     }
-    // Dedicated workspace if the current one already has a site.
-    try {
-        $curHasSite = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->exists();
-        if ($curHasSite && $ownerUserId > 0) {
-            $newWs = app(\App\Engines\Builder\Services\ArthurService::class)
-                ->provisionWebsiteWorkspace($wsId, $ownerUserId, $billingWs, (parse_url($url, PHP_URL_HOST) ?: 'Connected Site'));
-            if ($newWs > 0) { $wsId = $newWs; }
-        }
-    } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[connect-existing] provisioning failed: ' . $e->getMessage()); }
+    // INC-0006: a connected site joins the current business workspace. No workspace is created.
 
     // Fetch URL
     try {
@@ -7463,12 +7450,15 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
         $__pushNote('ok');
         // Track in seo_content_index
         if (!empty(($wpResult['url'] ?? $wpResult['view'] ?? null))) {
+            $__ciUrl = (string) ($wpResult['url'] ?? $wpResult['view'] ?? '');
             \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
-                ['workspace_id' => $wsId, 'url_hash' => hash('sha256', ($wpResult['url'] ?? $wpResult['view'] ?? null))],
+                ['workspace_id' => $wsId, 'url_hash' => hash('sha256', $__ciUrl)],
                 [
-                    'url'        => ($wpResult['url'] ?? $wpResult['view'] ?? null),
+                    'url'        => $__ciUrl,
                     'title'      => $data['title'],
                     'updated_at' => now(),
+                    // INC-0006: deterministic provenance for newly indexed content.
+                    'website_id' => \App\Core\Tenancy\WebsiteScope::websiteForUrl((int) $wsId, $__ciUrl),
                 ]
             );
         }

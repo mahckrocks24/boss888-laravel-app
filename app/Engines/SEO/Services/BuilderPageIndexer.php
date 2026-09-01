@@ -127,6 +127,9 @@ class BuilderPageIndexer
 
         $payload = [
             'workspace_id' => $workspaceId,
+            // INC-0006: explicit provenance — this page was built for this website, which is stronger
+            // evidence than deriving it back out of the URL we just assembled from that same website.
+            'website_id'   => (int) ($website->id ?? 0),
             'title' => $page->title ?? '',
             'meta_title' => $metaTitle,
             'meta_description' => $metaDesc,

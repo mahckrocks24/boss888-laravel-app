@@ -104,6 +104,70 @@ final class WebsiteScope
     }
 
     /**
+     * Which website in this workspace owns a URL? Deterministic, and derived only from the URL itself.
+     *
+     * A page's host IS its website's identity — the same rule the chatbot, the crawler and the WordPress
+     * connector already use to attribute a request. Matching on it is derivation, not invention: nothing is
+     * guessed from ordering, recency or how a workspace happens to be arranged.
+     *
+     * Returns BUSINESS_DEFAULT (0) when the host matches no website here, which is the honest answer for a
+     * page indexed from a host the workspace no longer owns, or never did. Callers must treat 0 as
+     * "unattributed" and never as "the first site".
+     */
+    public static function websiteForUrl(int $wsId, ?string $url): int
+    {
+        $host = self::hostOf($url);
+        if ($host === '') {
+            return self::BUSINESS_DEFAULT;
+        }
+
+        $sites = DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->get(['id', 'subdomain', 'custom_domain', 'domain', 'external_url']);
+
+        foreach ($sites as $s) {
+            foreach ([$s->subdomain, $s->custom_domain, $s->domain] as $candidate) {
+                if ($candidate && self::normaliseHost((string) $candidate) === $host) {
+                    return (int) $s->id;
+                }
+            }
+
+            if ($s->external_url && self::hostOf((string) $s->external_url) === $host) {
+                return (int) $s->id;
+            }
+        }
+
+        return self::BUSINESS_DEFAULT;
+    }
+
+    /** Host of a URL, lowercased and without a www prefix. Empty when there is no host to speak of. */
+    public static function hostOf(?string $url): string
+    {
+        $url = trim((string) $url);
+        if ($url === '') {
+            return '';
+        }
+
+        // A bare host (no scheme) is common in the websites table, so give parse_url something to work with.
+        if (! str_contains($url, '://')) {
+            $url = 'https://' . ltrim($url, '/');
+        }
+
+        return self::normaliseHost((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+    }
+
+    private static function normaliseHost(string $host): string
+    {
+        $host = strtolower(trim($host));
+        if (str_contains($host, '/')) {
+            $host = self::hostOf($host);
+        }
+
+        return preg_replace('/^www\./', '', $host) ?? $host;
+    }
+
+    /**
      * Suffix for a cache key or a job lock so that two websites in one workspace never collide. Crawls, scans
      * and progress state were all keyed on the workspace alone, which meant starting a crawl of site B
      * overwrote — and reported as its own — the progress of a crawl already running on site A.

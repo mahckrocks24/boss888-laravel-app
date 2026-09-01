@@ -218,12 +218,21 @@ class AdminChatbotController
         $wsId = $this->wsId($r);
         if ($denial = $this->planDeny($wsId)) return $denial;
 
+        // INC-0006: a conversation happened on ONE website. Listing by workspace alone put every
+        // site's visitors in every site's inbox — the sibling contamination this incident is about.
+        [$websiteId, $wsErr] = \App\Core\Tenancy\WebsiteScope::resolve($wsId, (int) $r->input('website_id', 0));
+        if ($wsErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+            return response()->json(['success' => false, 'error' => $wsErr], 422);
+        }
+
         $sessions = DB::table('chatbot_sessions')
             ->where('workspace_id', $wsId)
+            ->when($websiteId, fn ($q) => $q->where('website_id', $websiteId))
             ->orderByDesc('created_at')
             ->limit((int) $r->input('limit', 100))
-            ->get(['id','page_url','visitor_name','visitor_email','visitor_phone','message_count','lead_id','created_at','ended_at']);
-        return response()->json(['success' => true, 'data' => $sessions]);
+            ->get(['id','website_id','page_url','visitor_name','visitor_email','visitor_phone','message_count','lead_id','created_at','ended_at']);
+
+        return response()->json(['success' => true, 'website_id' => $websiteId, 'data' => $sessions]);
     }
 
     public function getConversation(Request $r, int $id): JsonResponse
@@ -273,12 +282,24 @@ class AdminChatbotController
         $wsId = $this->wsId($r);
         if ($denial = $this->planDeny($wsId)) return $denial;
 
-        $items = DB::table('chatbot_escalations')
-            ->where('workspace_id', $wsId)
-            ->orderByDesc('created_at')
+        // INC-0006: an escalation inherits its website from the session it came out of. The join is
+        // deliberate — the website is NOT copied onto the escalation, because the session already owns
+        // that fact and duplicating it would create a second version of the truth that can drift.
+        [$websiteId, $wsErr] = \App\Core\Tenancy\WebsiteScope::resolve($wsId, (int) $r->input('website_id', 0));
+        if ($wsErr === \App\Core\Tenancy\WebsiteScope::NOT_IN_WORKSPACE) {
+            return response()->json(['success' => false, 'error' => $wsErr], 422);
+        }
+
+        $items = DB::table('chatbot_escalations as e')
+            ->leftJoin('chatbot_sessions as s', 's.id', '=', 'e.session_id')
+            ->where('e.workspace_id', $wsId)
+            ->when($websiteId, fn ($q) => $q->where('s.website_id', $websiteId))
+            ->orderByDesc('e.created_at')
             ->limit((int) $r->input('limit', 100))
-            ->get();
-        return response()->json(['success' => true, 'data' => $items]);
+            ->get(['e.id','e.session_id','e.question','e.reason','e.status','e.created_at','e.updated_at',
+                   's.website_id as website_id', 's.page_url as page_url']);
+
+        return response()->json(['success' => true, 'website_id' => $websiteId, 'data' => $items]);
     }
 
     public function listWidgetTokens(Request $r): JsonResponse

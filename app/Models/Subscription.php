@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -100,6 +101,18 @@ class Subscription extends Model
 
     public static function entitledFor(int $wsId): ?self
     {
+        // INC-0006: entitlement follows the BILLING POOL, so cancelling the subscription row on an
+        // archived failed-build workspace achieved nothing on its own — the workspace simply inherited
+        // its parent's plan and kept every feature. A workspace that was archived because its build
+        // never produced a website is not a business, and no pool may lend it entitlement.
+        //
+        // Deliberately archived-only: a QA fixture is also non-active, but fixtures exist to be
+        // exercised and must keep the plan they were set up with.
+        $state = DB::table('workspaces')->where('id', $wsId)->value('lifecycle_state');
+        if ($state === \App\Models\Workspace::STATE_ARCHIVED) {
+            return null;
+        }
+
         return static::where('workspace_id', self::billingWorkspaceIdFor($wsId))->entitled()->orderByDesc('id')->first();
     }
 
@@ -108,6 +121,9 @@ class Subscription extends Model
     {
         $sub  = self::entitledFor($wsId);
         $plan = $sub ? Plan::find($sub->plan_id) : null;
+
+        // An archived failed build falls through to the free plan like any unsubscribed workspace;
+        // what it must never do is inherit the paid plan of the pool it was created under.
         return $plan ?: Plan::where('slug', 'free')->first();
     }
 

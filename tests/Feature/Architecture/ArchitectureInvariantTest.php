@@ -143,17 +143,35 @@ class ArchitectureInvariantTest extends TestCase
             'every website of this business is reachable without switching workspace');
     }
 
-    /** The gate itself: the provisioner is off, and returns "use the current workspace". */
-    public function test_the_website_workspace_provisioner_is_disabled(): void
+    /**
+     * INC-0006 final closure — the capability is GONE, not switched off.
+     *
+     * ARCH-1 gated the provisioner behind a config flag. A flag is a defect waiting to be switched
+     * back on, so the method and the flag were both removed. This asserts the absence structurally:
+     * there is no supported configuration in which creating a website creates a workspace, because
+     * no code path can.
+     */
+    public function test_no_code_path_can_provision_a_workspace_for_a_website(): void
     {
-        $this->assertFalse((bool) config('builder.website_workspaces'),
-            'ARCH-1: website-per-workspace must stay off');
+        $this->assertFalse(
+            method_exists(\App\Engines\Builder\Services\ArthurService::class, 'provisionWebsiteWorkspace'),
+            'the website-workspace provisioner must not exist at all'
+        );
+        $this->assertNull(config('builder.website_workspaces'),
+            'the flag that used to resurrect it must be gone too');
 
-        $before = (int) DB::table('workspaces')->count();
-        $result = app(\App\Engines\Builder\Services\ArthurService::class)
-            ->provisionWebsiteWorkspace(1, 1, 1, 'should not be created');
-
-        $this->assertSame(0, $result, '0 means "use the current workspace"');
-        $this->assertSame($before, (int) DB::table('workspaces')->count(), 'no workspace was created');
+        // and no caller anywhere still reaches for it
+        $roots = [base_path('app'), base_path('routes')];
+        $hits  = [];
+        foreach ($roots as $root) {
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root));
+            foreach ($it as $f) {
+                if ($f->isFile() && $f->getExtension() === 'php'
+                    && str_contains((string) file_get_contents($f->getPathname()), '->provisionWebsiteWorkspace(')) {
+                    $hits[] = str_replace(base_path() . '/', '', $f->getPathname());
+                }
+            }
+        }
+        $this->assertSame([], $hits, 'no production code may call the removed provisioner');
     }
 }

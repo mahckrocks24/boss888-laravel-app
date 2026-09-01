@@ -71,21 +71,9 @@ class BuilderService
                 'max' => $maxWebsites,
             ];
         }
-        // Target workspace: current if it has no website yet (no regression);
-        // else provision a dedicated workspace for this site.
-        try {
-            $currentHasSite = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->exists();
-            if ($currentHasSite && $ownerUserId > 0) {
-                $newWs = app(\App\Engines\Builder\Services\ArthurService::class)
-                    ->provisionWebsiteWorkspace($wsId, $ownerUserId, $billingWs, (string) ($data['name'] ?? 'New Website'));
-                if ($newWs > 0) {
-                    \Illuminate\Support\Facades\Log::info('[Builder] provisioned dedicated workspace for new website', ['source_ws' => $wsId, 'new_ws' => $newWs]);
-                    $wsId = $newWs;
-                }
-            }
-        } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::warning('[Builder] workspace provisioning failed; building in current workspace: ' . $e->getMessage());
-        }
+        // INC-0006: a website is a child of the business workspace, never a tenant of its own. The
+        // block that used to spin up a dedicated workspace here is gone — not disabled behind a
+        // flag that could resurrect it, but removed, along with the method it called.
         // ────────────────────────────────────────────────────────────
         $id = DB::table('websites')->insertGetId([
             'workspace_id'  => $wsId,

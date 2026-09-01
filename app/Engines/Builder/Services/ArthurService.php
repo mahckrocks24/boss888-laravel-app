@@ -1990,98 +1990,18 @@ PROMPT;
             ['field' => 'services', 'label' => 'Services', 'done' => !empty($state['services'])],
         ];
     }
-
-    /**
-     * P1 (2026-06-24) — provision a NEW dedicated workspace for an additional
-     * website (website = workspace architecture). Seeds: owner membership, the
-     * inherited plan (subscription pointing at the billing workspace's plan),
-     * the same agent team, and billing_workspace_id = the user's pool. NO own
-     * credit row — credits resolve to the shared pool. Returns new workspace id.
+    /*
+     * INC-0006 (2026-09-01) — provisionWebsiteWorkspace() was REMOVED, not disabled.
+     *
+     * It created a workspace for every website after the first, which turned one business into many
+     * tenants: separate CRM, separate SEO estate, separate Sarah memory, separate wallet. ARCH-1 first
+     * gated it behind config('builder.website_workspaces'), but a flag is a defect waiting to be
+     * switched back on. There is now no supported configuration in which creating website #2..N
+     * creates a workspace, because the code that could do it no longer exists.
+     *
+     * A website belongs to the business workspace that already exists. MultiWebsiteInvariantTest and
+     * ArchitectureInvariantTest hold this permanently.
      */
-    public function provisionWebsiteWorkspace(int $sourceWsId, int $ownerUserId, int $billingWs, string $name): int
-    {
-        // ARCH-1 (2026-08-31) — the Owner's architecture is ONE workspace per owner, with the Websites page listing
-        // every site they own; a website is not its own environment. Every caller treats 0 as "use the current
-        // workspace", so this single gate turns the old website-per-workspace behaviour off everywhere. Kept behind
-        // a config flag rather than deleted, so it can be restored deliberately rather than by accident.
-        if (! (bool) config('builder.website_workspaces', false)) {
-            \Illuminate\Support\Facades\Log::info('[Builder] ARCH-1: building into the current workspace instead of provisioning a new one', [
-                'workspace_id' => $sourceWsId, 'website_name' => $name,
-            ]);
-            return 0;
-        }
-
-        $base = \Illuminate\Support\Str::slug($name) ?: 'site';
-        $slug = $base . '-' . substr(md5($name . microtime(true)), 0, 6);
-
-        // P1-U1 (2026-08-30, UX-001): a new website-workspace may share a credit pool ONLY with a pool the same
-        // user created and that is not a house account. Scratch/QA sites built while acting inside the Owner's
-        // house workspace inherited ws 2's wallet and spent 68 credits of it (EV-0887). Anything else gets its own
-        // wallet (seeded 0 through the ledger's own row creation) and is logged — never silently pooled.
-        $poolRow = $billingWs > 0
-            ? DB::table('workspaces')->where('id', $billingWs)->first(['id', 'created_by', 'is_house_account'])
-            : null;
-        $poolAllowed = $poolRow
-            && (int) $poolRow->created_by === (int) $ownerUserId
-            && ! (bool) ($poolRow->is_house_account ?? false);
-        if (! $poolAllowed) {
-            \Illuminate\Support\Facades\Log::warning('provisionWebsiteWorkspace: refusing to pool into house/foreign workspace — new workspace gets its own wallet', [
-                'requested_pool' => $billingWs, 'owner_user_id' => $ownerUserId,
-                'pool_created_by' => $poolRow->created_by ?? null, 'pool_is_house' => $poolRow->is_house_account ?? null,
-            ]);
-        }
-
-        $newWsId = (int) DB::table('workspaces')->insertGetId([
-            'name'                 => $name,
-            'slug'                 => $slug,
-            'created_by'           => $ownerUserId,
-            'billing_workspace_id' => $poolAllowed ? $billingWs : null,   // shares the user's credit pool only when allowed
-            'onboarded'            => 1,            // built site → skip onboarding
-            'created_at'           => now(),
-            'updated_at'           => now(),
-        ]);
-        if (! $poolAllowed) {
-            DB::table('workspaces')->where('id', $newWsId)->update(['billing_workspace_id' => $newWsId]);
-            // Own wallet, created the way every wallet is created (no raw balance writes anywhere else).
-            DB::table('credits')->insert(['workspace_id' => $newWsId, 'balance' => 0, 'reserved_balance' => 0, 'created_at' => now(), 'updated_at' => now()]);
-        }
-
-        // Owner membership so the user can switch to / access it.
-        DB::table('workspace_users')->insert([
-            'workspace_id' => $newWsId,
-            'user_id'      => $ownerUserId,
-            'role'         => 'owner',
-            'created_at'   => now(),
-            'updated_at'   => now(),
-        ]);
-
-        // Inherit the plan from the billing/primary workspace (seed subscription).
-        $srcSub = DB::table('subscriptions')->where('workspace_id', $billingWs)
-            ->whereIn('status', ['active', 'trialing'])->latest()->first();
-        if ($srcSub) {
-            DB::table('subscriptions')->insert([
-                'workspace_id'         => $newWsId,
-                'plan_id'              => $srcSub->plan_id,
-                'status'               => $srcSub->status,
-                'provider'             => 'inherited',
-                'chatbot_addon_active' => $srcSub->chatbot_addon_active ?? 0,
-                'created_at'           => now(),
-                'updated_at'           => now(),
-            ]);
-        }
-
-        // Attach the same agent team (copy pivot rows → no NOT NULL surprises).
-        foreach (DB::table('workspace_agents')->where('workspace_id', $sourceWsId)->get() as $row) {
-            $r = (array) $row;
-            unset($r['id']);
-            $r['workspace_id'] = $newWsId;
-            $r['created_at']   = now();
-            $r['updated_at']   = now();
-            DB::table('workspace_agents')->insert($r);
-        }
-
-        return $newWsId;
-    }
 
     private function generateWebsite(int $wsId, array $data, ?int $actorId = null): array
     {
@@ -2129,20 +2049,9 @@ PROMPT;
             Log::warning('[Arthur] plan-limit check failed: ' . $e->getMessage(), ['workspace_id' => $wsId]);
         }
 
-        // Target workspace: current if it has no website yet (#1 / single-site
-        // users → no change); otherwise spin up a dedicated workspace for this site.
-        try {
-            $currentHasSite = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->exists();
-            if ($currentHasSite && $ownerUserId > 0) {
-                $newWs = $this->provisionWebsiteWorkspace($wsId, $ownerUserId, $billingWs, (string) $name);
-                if ($newWs > 0) {
-                    Log::info('[Arthur] provisioned dedicated workspace for new website', ['source_ws' => $wsId, 'new_ws' => $newWs, 'name' => $name]);
-                    $wsId = $newWs; // build into the new workspace from here on
-                }
-            }
-        } catch (\Throwable $e) {
-            Log::warning('[Arthur] workspace provisioning failed; building in current workspace: ' . $e->getMessage());
-        }
+        // INC-0006: a website is a child of the business workspace, never a tenant of its own. The
+        // block that used to spin up a dedicated workspace here is gone — not disabled behind a
+        // flag that could resurrect it, but removed, along with the method it called.
 
         $rawIndustry = (string) ($data['industry'] ?? '');
 

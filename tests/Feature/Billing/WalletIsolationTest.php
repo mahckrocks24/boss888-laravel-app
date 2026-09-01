@@ -27,28 +27,27 @@ class WalletIsolationTest extends TestCase
         return $id;
     }
 
-    public function test_provisioning_refuses_house_pool_and_gives_own_wallet(): void
+    /**
+     * INC-0006 (2026-09-01) — the two cases that used to live here tested how a website-workspace
+     * chose its wallet. That question no longer exists: building a website creates no workspace, so
+     * there is no second wallet to pool or isolate. What replaces them is the invariant that made
+     * them obsolete — a business keeps ONE wallet however many websites it runs.
+     */
+    public function test_building_more_websites_never_creates_a_second_wallet(): void
     {
-        $owner = $this->mkUser('house-' . uniqid() . '@example.test');
-        $house = $this->mkWorkspace('House', $owner, true);
-        $qaUser = $this->mkUser('qa-' . uniqid() . '@example.test');
-
-        $newWs = app(ArthurService::class)->provisionWebsiteWorkspace($house, $qaUser, $house, 'Scratch Site');
-
-        $this->assertSame($newWs, (int) DB::table('workspaces')->where('id', $newWs)->value('billing_workspace_id'));
-        $this->assertTrue(DB::table('credits')->where('workspace_id', $newWs)->exists());
-        $this->assertSame(0, (int) DB::table('credits')->where('workspace_id', $newWs)->value('balance'));
-    }
-
-    public function test_provisioning_pools_into_own_non_house_workspace(): void
-    {
-        $owner = $this->mkUser('own-' . uniqid() . '@example.test');
+        $owner   = $this->mkUser('sites-' . uniqid() . '@example.test');
         $primary = $this->mkWorkspace('Primary', $owner, false);
 
-        $newWs = app(ArthurService::class)->provisionWebsiteWorkspace($primary, $owner, $primary, 'Second Site');
+        $builder = app(\App\Engines\Builder\Services\BuilderService::class);
+        foreach (['Site A', 'Site B', 'Site C'] as $name) {
+            $builder->createWebsite($primary, ['name' => $name]);
+        }
 
-        $this->assertSame($primary, (int) DB::table('workspaces')->where('id', $newWs)->value('billing_workspace_id'));
-        $this->assertFalse(DB::table('credits')->where('workspace_id', $newWs)->exists());
+        $this->assertSame(1, DB::table('credits')->where('workspace_id', $primary)->count(),
+            'one business, one wallet, regardless of how many websites it runs');
+        $this->assertSame(1, DB::table('websites')->where('workspace_id', $primary)
+            ->whereNull('deleted_at')->distinct()->count('workspace_id'),
+            'every website resolves to the same workspace');
     }
 
     public function test_ledger_rows_carry_pool_provenance_and_isolate_command_reparents(): void

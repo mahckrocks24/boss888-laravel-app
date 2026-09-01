@@ -4364,6 +4364,16 @@ class SeoService
             $data['indexed_at'] = now();
             $data['updated_at'] = now();
 
+            // INC-0006: every newly indexed page carries deterministic website provenance. A caller that
+            // already knows the website (the Builder indexer does) says so and wins; otherwise it is
+            // derived from the page's own host. A host belonging to no website here stays unattributed
+            // rather than being assigned to a sibling.
+            if (! array_key_exists('website_id', $data)) {
+                $data['website_id'] = \App\Core\Tenancy\WebsiteScope::websiteForUrl(
+                    (int) ($data['workspace_id'] ?? 0), $url
+                );
+            }
+
             $existing = DB::table('seo_content_index')->where('url_hash', $urlHash)->first();
             if ($existing) {
                 DB::table('seo_content_index')->where('id', $existing->id)->update($data);

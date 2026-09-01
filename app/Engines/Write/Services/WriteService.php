@@ -1778,9 +1778,11 @@ class WriteService
             $url = isset($body['url']) ? (string) $body['url'] : null;
             if ($url) {
                 try {
+                    // INC-0006: the published page belongs to the WordPress site it went to.
                     \Illuminate\Support\Facades\DB::table('seo_content_index')->updateOrInsert(
                         ['workspace_id' => $wsId, 'url_hash' => hash('sha256', $url)],
-                        ['url' => $url, 'title' => $a->title, 'updated_at' => now()]
+                        ['url' => $url, 'title' => $a->title, 'updated_at' => now(),
+                         'website_id' => (int) ($conn->website_id ?? \App\Core\Tenancy\WebsiteScope::websiteForUrl((int) $wsId, $url))]
                     );
                 } catch (\Throwable) {}
             }
