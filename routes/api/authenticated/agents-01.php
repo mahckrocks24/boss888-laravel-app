@@ -2805,7 +2805,13 @@ $withCorr = function (array $meta) use ($corr) {
                                     $__rtCtx = [];
                                     try {
                                         $__named = $toolSchemaSvc->websiteNamesMentioned((int) $wsId, (string) $__ownerMessage);
-                                        if (count($__named) === 1) $__rtCtx['explicit_name'] = $__named[0]['name'];
+                                        if (count($__named) === 1) {
+                                            $__rtCtx['explicit_name'] = $__named[0]['name'];
+                                            // pass 3 (2026-09-02): the gate is flag-gated per workspace, so name the target on the params too —
+                                            // "List the pages on Fable QA Cafe Two" ran site-less and returned "0 pages … 3 websites".
+                                            if (!is_array($createTask['params'] ?? null)) $createTask['params'] = [];
+                                            if (empty($createTask['params']['website_id'])) $createTask['params']['website_id'] = (int) $__named[0]['id'];
+                                        }
                                         if ($__siteUrlIn !== '') $__rtCtx['ui_site_url'] = $__siteUrlIn;
                                     } catch (\Throwable) { $__rtCtx = []; }
                                     $__rt = $toolSchemaSvc->executeToolCall($__readTool, is_array($createTask['params'] ?? null) ? $createTask['params'] : [], (int) $wsId, $slug, $__rtCtx);
@@ -3555,14 +3561,15 @@ $withCorr = function (array $meta) use ($corr) {
 
                     // SF-05: render the promoted lookups — the owner sees the data, not a promise.
                     if (!empty($__promotedReads)) {
+                        // pass 3 (2026-09-02): the read has been done, so "I'll proceed with listing its pages. Shall I go ahead?"
+                        // is stale — strip promises when nothing else was queued, then show what the lookup returned.
+                        if ((int) $taskSummaryCreated === 0) {
+                            try { $reply = app(\App\Core\Sarah888\UnfulfilledPromiseGuard::class)->validate((string) $reply, false)['reply']; } catch (\Throwable) {}
+                            if ($reply === \App\Core\Sarah888\UnfulfilledPromiseGuard::NOTHING_RAN) $reply = '';
+                        }
                         foreach ($__promotedReads as $__pr) {
-                            $__res = $__pr['result'];
-                            if (!empty($__res['success'])) {
-                                $__txt = is_string($__res['result'] ?? null) ? $__res['result'] : json_encode($__res['data'] ?? $__res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-                                $reply .= "\n\n" . trim((string) $__txt);
-                            } else {
-                                $reply .= "\n\nI tried to look that up but couldn't: " . (string) ($__res['error'] ?? 'the lookup failed') . '.';
-                            }
+                            $__txt = \App\Core\Sarah888\ReadToolPromotion::render(is_array($__pr['result']) ? $__pr['result'] : []);
+                            $reply = trim($reply . "\n\n" . $__txt);
                         }
                     }
 

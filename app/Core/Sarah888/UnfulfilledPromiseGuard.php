@@ -21,9 +21,9 @@ final class UnfulfilledPromiseGuard
 {
     public const NOTHING_RAN = "I can't do that from here right now — nothing was run for it.";
 
-    private const WORK_VERBS = 'fetch|check|pull|get|grab|look|gather|retrieve|run|start|queue|kick|publish|generate|write|build|create|schedule|update|review|analy[sz]e|audit|dig|find|search|compile|prepare|process|verify|confirm|proceed|begin|initiate|handle|dive|move forward|go ahead|take care';
+    private const WORK_VERBS = 'fetch|check|pull|get|grab|look|gather|retrieve|run|start|queue|kick|publish|generate|write|build|create|schedule|update|review|analy[sz]e|audit|dig|find|search|compile|prepare|process|verify|confirm|proceed|begin|initiate|handle|dive|move forward|go ahead|take care|list|show|display|summari[sz]e|report|read|outline|draft|send|post|share|put together|set up|reach out|follow up';
 
-    private const WORK_VERBS_ING = 'fetching|checking|pulling|getting|grabbing|looking|gathering|retrieving|running|starting|queuing|publishing|generating|writing|building|creating|scheduling|updating|reviewing|analy[sz]ing|auditing|searching|compiling|preparing|processing|verifying|confirming|proceeding|beginning|initiating|handling|diving|moving forward|going ahead|taking care';
+    private const WORK_VERBS_ING = 'fetching|checking|pulling|getting|grabbing|looking|gathering|retrieving|running|starting|queuing|publishing|generating|writing|building|creating|scheduling|updating|reviewing|analy[sz]ing|auditing|searching|compiling|preparing|processing|verifying|confirming|proceeding|beginning|initiating|handling|diving|moving forward|going ahead|taking care|listing|showing|displaying|summari[sz]ing|reporting|reading|outlining|drafting|sending|posting|sharing|putting together|setting up|reaching out|following up';
 
     /**
      * @return array{reply:string, corrected:bool, removed:string[]}

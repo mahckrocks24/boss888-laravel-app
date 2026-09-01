@@ -171,6 +171,37 @@ class ForensicRemediationTest extends TestCase
         $this->assertSame('web.fetch', ReadToolPromotion::toolIdFor('platform', 'fetch', $ids));
     }
 
+    /** 2026-09-02: the Runtime emitted engine "platform.list_pages", action "list pages" — spaces, capitals. */
+    public function test_action_names_are_normalised_before_matching(): void
+    {
+        $ids = ['platform.list_pages', 'platform.read_page'];
+        $this->assertSame('platform.list_pages', ReadToolPromotion::toolIdFor('platform.list_pages', 'list pages', $ids));
+        $this->assertSame('platform.list_pages', ReadToolPromotion::toolIdFor('platform', 'List Pages', $ids));
+        $this->assertSame('platform.list_pages', ReadToolPromotion::toolIdFor('', 'platform.list-pages', $ids));
+    }
+
+    /** 2026-09-02 20:21: the tool's "Page ids are internal: speak to the owner in WEBSITE NAMES only…" reached the customer reply. */
+    public function test_render_shows_data_and_never_model_guidance(): void
+    {
+        $result = ['success' => true, 'tool' => 'platform.list_pages',
+            'result' => '2 pages on the website "Fable QA Cafe Two". This workspace has 3 websites. Page ids are internal: speak to the owner in WEBSITE NAMES only — never quote page ids.',
+            'data' => ['pages' => [['id' => 1, 'title' => 'Home', 'status' => 'published', 'website_name' => 'Fable QA Cafe Two'], ['id' => 2, 'title' => 'Menu', 'status' => 'draft', 'website_name' => 'Fable QA Cafe Two']]]];
+        $out = ReadToolPromotion::render($result);
+        $this->assertStringContainsString('2 pages on the website "Fable QA Cafe Two"', $out);
+        $this->assertStringContainsString('• Home (Fable QA Cafe Two, published)', $out);
+        $this->assertStringContainsString('• Menu', $out);
+        $this->assertStringNotContainsString('Page ids are internal', $out);
+        $this->assertStringNotContainsString('speak to the owner', $out);
+    }
+
+    public function test_render_passes_a_clarify_question_through_and_states_failures_plainly(): void
+    {
+        $this->assertSame('Which website would you like me to update — Fable QA Bakery, Fable QA Cafe Two?',
+            ReadToolPromotion::render(['success' => false, 'code' => 'CLARIFY_TARGET', 'error' => 'Which website would you like me to update — Fable QA Bakery, Fable QA Cafe Two?']));
+        $this->assertSame("I tried to look that up but couldn't: Website 9 not found in this workspace.",
+            ReadToolPromotion::render(['success' => false, 'error' => 'Website 9 not found in this workspace']));
+    }
+
     public function test_work_actions_are_never_promoted(): void
     {
         $ids = ['platform.list_pages', 'write.write_article', 'builder.update_page', 'platform.generate_funnel_blueprint'];
