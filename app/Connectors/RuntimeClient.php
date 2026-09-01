@@ -43,6 +43,16 @@ class RuntimeClient
     private string $secret;
     private int    $timeout;
 
+    /**
+     * SF-03 (REPORT-0024 / RISK-0131, 2026-09-01). A /ai/run call with no declared workload runs on the
+     * Runtime's 30s interactive lane, where the primary provider gets ~12s (30s − 3s − 15s fallback reserve).
+     * Sarah's reasoning/extraction prompts are ~8k tokens and DeepSeek V4 needs 7-11s for them, so 58-81%
+     * of them timed out and were re-answered by gpt-4o-mini after a fixed ~12s wait. Above this size the
+     * call declares workload=synthesis (70s lane) — exactly what writeDraft() already does. Small calls
+     * (classifiers, read-backs, guards) keep the interactive lane, so simple chat stays fast.
+     */
+    public const LARGE_PROMPT_CHARS = 8000; // 2026-09-02: was 16000 — a 3,086-token PlanCompletion call (12.3k chars) still hit the 12s cut and fell back (run 2, turn 8); the 500-2k-token bucket fell back 47% in the 7-day baseline
+
     public function __construct()
     {
         $this->baseUrl = rtrim((string) env('RUNTIME_URL', ''), '/');
@@ -332,13 +342,15 @@ class RuntimeClient
         }
 
         try {
+            // SF-03: large prompts declare the synthesis workload (see LARGE_PROMPT_CHARS).
+            $__lane = (strlen($system) + strlen($userPrompt)) > self::LARGE_PROMPT_CHARS ? ['workload' => 'synthesis'] : [];
             $resp = $this->post('/ai/run', [
                 'task'       => 'chat_json',
                 'system'     => $system,
                 'prompt'     => $userPrompt,
                 'context'    => $context,
                 'max_tokens' => $maxTokens,
-            ], 90);
+            ] + $__lane, 90);
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::chatJson connection failed', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => 'connection_failed: ' . $e->getMessage()];
@@ -445,6 +457,8 @@ class RuntimeClient
                 'context'         => $context,
                 'conversation_id' => $conversationId,
                 'agent_id'        => $agentId,
+                // SF-01 (RISK-0129): the Runtime reads workspace context/memory by THIS id, never a default.
+                'workspace_id'    => isset($context['workspace_id']) ? (int) $context['workspace_id'] : null,
             ]);
 
             if (! $resp->successful()) {
@@ -1476,3 +1490,5 @@ class RuntimeClient
         return $context;
     }
 }
+
+// SARAH-REMEDIATION-APPLIED-2026-09-01 (REPORT-0024)

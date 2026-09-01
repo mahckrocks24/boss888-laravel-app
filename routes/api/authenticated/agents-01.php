@@ -1119,7 +1119,7 @@ $withCorr = function (array $meta) use ($corr) {
         if ($isSarah) {
             try {
                 $readBack = app(\App\Core\Orchestration\SarahReadBackService::class);
-                $insightsBlock = $readBack->renderInsightsBlock($wsId, 5);
+                $insightsBlock = $readBack->renderInsightsBlock($wsId, 5, false); // SF-04: no model calls on the chat critical path
             } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('[SarahChat] read-back failed: ' . $e->getMessage());
             }
@@ -1983,13 +1983,13 @@ $withCorr = function (array $meta) use ($corr) {
                 // v2.37.10 (package staged, un-gates social), social turns take the raw-model
                 // (chat_json) path, which the router does not touch. Sarah's own prompt already
                 // carries the DEC-0028 truth.
-                $__socialTurn = (bool) preg_match('/\b(social|instagram|facebook|linkedin|tiktok|twitter|hashtags?|marcus)\b/i', (string) $userPrompt);
+                $__socialTurn = (bool) preg_match('/\b(social|instagram|facebook|linkedin|tiktok|twitter|hashtags?|marcus)\b/i', (string) $__ownerMessage); // SF-02 (Laravel half, 2026-09-01): the OWNER'S line, never the folded history — the history mentioned Marcus, so every turn took the 20k-token reasoning path
                 if (!empty($__shapeIsExecutive) || $__socialTurn) {
                     try {
                         $__cjr = $runtime->chatJson($systemPrompt, $userPrompt, [
                             'workspace_id' => $wsId,
                             'agent_slug'   => $slug,
-                        ], 1800);
+                        ], 3000); // SF-03 (2026-09-01): was 1800 — DeepSeek V4 reasoning is counted inside max_tokens and the reply truncated (finish_reason=length); 3000 never truncated in RISK-0058's measurement
 
                         if ($__cjr['success'] ?? false) {
                             $__p = is_array($__cjr['parsed'] ?? null) ? $__cjr['parsed'] : null;
@@ -2329,6 +2329,14 @@ $withCorr = function (array $meta) use ($corr) {
                         ]);
                     }
                 }
+                // SF-04 (REPORT-0024 / RISK-0131): the reasoning path's contract says "You are NOT creating or
+                // queueing work on this turn", and SpendPolicy refuses tasks on question turns anyway. The
+                // extraction pass (and its forced second pass) was two more 8k-token calls per analytical turn
+                // that could never produce executable work. Claims in the prose are still corrected by the guards.
+                if ($needTaskExtract && !empty($assist['reasoning_path'])) {
+                    $needTaskExtract = false;
+                    \Illuminate\Support\Facades\Log::info('[Sarah888] extraction skipped on analytical turn (SF-04)', ['ws' => $wsId]);
+                }
                 if ($needTaskExtract) {
                     // 2026-05-22 FIX 15 — bumped 600 -> 4000. 600 truncated
                     // Sarah's JSON mid-string on 11-article chains, leaking
@@ -2621,6 +2629,7 @@ $withCorr = function (array $meta) use ($corr) {
                     // instead of appending a chat line per task. Replaces 30+ near-identical
                     // "Task #N created and assigned to Priya." lines with a single summary.
                     $taskSummaryCreated = 0;
+                    $__promotedReads = [];      // SF-05: read tools promoted out of create_tasks and executed
                     $taskSummaryByAgent = [];   // agentSlug => count
                     $taskSummaryFailed  = 0;
                     $taskSummaryFailReasons = []; // dedupe failure reasons for transparency
@@ -2787,6 +2796,24 @@ $withCorr = function (array $meta) use ($corr) {
                                     }
                                 }
                             } catch (\Throwable) { /* leave as-is; TaskService reports unmapped actions truthfully */ }
+                            // SF-05 (REPORT-0024 / RISK-0130): the Runtime asks for `platform.list_pages` as a task; Laravel has
+                            // it as a READ TOOL. A lookup is not work — run it through the tool path now and render the
+                            // result, instead of refusing it as "unmapped" under a reply that promised to fetch it.
+                            $__readTool = \App\Core\Sarah888\ReadToolPromotion::toolIdFor((string) ($createTask['engine'] ?? ''), (string) $taskAction, $toolSchemaSvc->getAllToolIds());
+                            if ($__readTool !== null) {
+                                try {
+                                    $__rtCtx = [];
+                                    try {
+                                        $__named = $toolSchemaSvc->websiteNamesMentioned((int) $wsId, (string) $__ownerMessage);
+                                        if (count($__named) === 1) $__rtCtx['explicit_name'] = $__named[0]['name'];
+                                        if ($__siteUrlIn !== '') $__rtCtx['ui_site_url'] = $__siteUrlIn;
+                                    } catch (\Throwable) { $__rtCtx = []; }
+                                    $__rt = $toolSchemaSvc->executeToolCall($__readTool, is_array($createTask['params'] ?? null) ? $createTask['params'] : [], (int) $wsId, $slug, $__rtCtx);
+                                } catch (\Throwable $__rtErr) { $__rt = ['success' => false, 'error' => $__rtErr->getMessage()]; }
+                                $__promotedReads[] = ['tool' => $__readTool, 'result' => $__rt];
+                                \Illuminate\Support\Facades\Log::info('[Sarah888] read tool promoted from create_tasks (SF-05)', ['ws' => $wsId, 'tool' => $__readTool, 'success' => $__rt['success'] ?? false]);
+                                continue;
+                            }
                             $taskDesc = $createTask['description']
                                 ?? ($createTask['params']['title'] ?? $createTask['params']['topic'] ?? null)
                                 ?? ucfirst(str_replace('_', ' ', $taskAction));
@@ -3526,6 +3553,19 @@ $withCorr = function (array $meta) use ($corr) {
                         }
                     }
 
+                    // SF-05: render the promoted lookups — the owner sees the data, not a promise.
+                    if (!empty($__promotedReads)) {
+                        foreach ($__promotedReads as $__pr) {
+                            $__res = $__pr['result'];
+                            if (!empty($__res['success'])) {
+                                $__txt = is_string($__res['result'] ?? null) ? $__res['result'] : json_encode($__res['data'] ?? $__res, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                                $reply .= "\n\n" . trim((string) $__txt);
+                            } else {
+                                $reply .= "\n\nI tried to look that up but couldn't: " . (string) ($__res['error'] ?? 'the lookup failed') . '.';
+                            }
+                        }
+                    }
+
                     // 2026-05-22 FIX 7 (Bug B) — emit ONE summary line per batch.
                     if ($taskSummaryCreated > 0 || $taskSummaryFailed > 0 || $taskSummaryDeduped > 0) {
                         $byAgentParts = [];
@@ -3632,16 +3672,20 @@ $withCorr = function (array $meta) use ($corr) {
                 try {
                     $__pc = app(\App\Core\Sarah888\PlanCompletion::class);
                     $__domains = [];
-                    try {
-                        $__domains = app(\App\Core\Sarah888\RouterIntent::class)
-                                        ->domains((string) $__ownerMessage, (int) $wsId);
-                    } catch (\Throwable) { $__domains = []; }
+                    // SF-09 (REPORT-0024): domains() is a model call. It used to run on every analytical turn and
+                    // its result was discarded unless the owner had asked for a plan. Resolve it lazily instead.
+                    $__pcDomainsResolve = function () use (&$__domains, $__ownerMessage, $wsId): bool {
+                        try {
+                            $__domains = app(\App\Core\Sarah888\RouterIntent::class)->domains((string) $__ownerMessage, (int) $wsId);
+                        } catch (\Throwable) { $__domains = []; }
+                        return true;
+                    };
 
                     // CHEF-RED-1: the completion pass runs only when the owner ASKED for a plan. On an ordinary
                     // question it padded replies to 1,700 characters with invented people and boardroom items.
                     if (!$__pc->ownerAskedForAPlan((string) $__ownerMessage)) {
                         // leave the reply as written
-                    } elseif (in_array('incident', $__domains, true) && $__pc->looksLikeAnIncidentResponse($reply)) {
+                    } elseif ($__pcDomainsResolve() && in_array('incident', $__domains, true) && $__pc->looksLikeAnIncidentResponse($reply)) {
                         // An incident answer needs someone on it, a fallback, a
                         // route back to normal, and who is told.
                         $reply = $__pc->complete($reply, (string) $__ownerMessage,
@@ -3769,6 +3813,17 @@ $withCorr = function (array $meta) use ($corr) {
                         }
                     }
                 } catch (\Throwable $__ve) { /* no verified actions => strictest gate */ }
+
+                // SF-05 (REPORT-0024 / RISK-0130): "I'll fetch the list of pages now. Please hold on" with nothing run
+                // is a claim about the future the record cannot back. Remove the promise; keep whatever else was said.
+                try {
+                    $__anyExec = ((int) ($taskSummaryCreated ?? 0) > 0) || !empty($toolResults ?? []) || !empty($__promotedReads ?? []);
+                    $__upg = app(\App\Core\Sarah888\UnfulfilledPromiseGuard::class)->validate((string) $reply, $__anyExec);
+                    if (!empty($__upg['corrected'])) {
+                        $reply = $__upg['reply'];
+                        \Illuminate\Support\Facades\Log::info('[Sarah888] UnfulfilledPromiseGuard removed a promise nothing backed (SF-05)', ['ws' => $wsId, 'removed' => $__upg['removed'] ?? []]);
+                    }
+                } catch (\Throwable $__upgErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] UnfulfilledPromiseGuard failed: ' . $__upgErr->getMessage()); }
 
                 $__cg = app(\App\Core\Sarah888\CompletionGuard::class)
                     ->validate((string) $reply, (int) $wsId, $__verified);
@@ -4138,3 +4193,5 @@ $withCorr = function (array $meta) use ($corr) {
             'addon_price' => $rules['agent_addon_price'],
         ]);
     });
+
+// SARAH-REMEDIATION-APPLIED-2026-09-01 (REPORT-0024)

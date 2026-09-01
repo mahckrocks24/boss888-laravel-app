@@ -84,6 +84,10 @@ class RouterIntent
         $key = md5($m);
         if (isset(self::$memo[$key])) return ['source' => 'memo'] + self::$memo[$key];
 
+        // SF-04 (REPORT-0024, 2026-09-01): "Hi Sarah." was a model call. A greeting or a bare acknowledgement
+        // asks for nothing that has to be derived, so it is STATUS by construction.
+        if (self::isTrivialTurn($m)) return ['mode' => self::STATUS, 'why' => 'greeting or acknowledgement', 'source' => 'deterministic'];
+
         $system = <<<'SYS'
 You decide what a business owner wants from one message to their marketing director.
 
@@ -168,6 +172,15 @@ SYS;
     }
 
     /** Convenience for callers that only need the branch. */
+    /** A greeting/acknowledgement of at most four words with no question in it. */
+    public static function isTrivialTurn(string $m): bool
+    {
+        $m = trim($m);
+        if ($m === '' || str_contains($m, '?')) return false;
+        if (str_word_count(preg_replace('/[^\p{L}\p{N}\s\']/u', ' ', $m)) > 4) return false;
+        return (bool) preg_match('/^(hi|hiya|hello|hey|yo|good (morning|afternoon|evening|night)|morning|evening|thanks|thank you|cheers|ta|ok|okay|great|cool|nice|perfect|got it|understood|noted)\b/iu', $m);
+    }
+
     public function isAnalysis(string $message, int $wsId = 0): bool
     {
         return $this->classify($message, $wsId)['mode'] === self::ANALYSIS;
@@ -247,3 +260,5 @@ SYS;
         return self::$domainMemo[$key] = $clean;
     }
 }
+
+// SARAH-REMEDIATION-APPLIED-2026-09-01 (REPORT-0024)

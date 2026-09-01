@@ -27,7 +27,7 @@ class SarahReadBackService
      * each with an LLM-generated interpretation. Marks them as read by
      * stamping `sarah_read_at = NOW()` so the same task is not re-processed.
      */
-    public function checkCompletedTasks(int $wsId, int $limit = 5): array
+    public function checkCompletedTasks(int $wsId, int $limit = 5, bool $interpret = true): array
     {
         $rows = DB::table('tasks')
             ->where('workspace_id', $wsId)
@@ -58,12 +58,12 @@ class SarahReadBackService
                 || (array_key_exists('changed', $data) && $data['changed'] === false)
                 || (array_key_exists('changed', $result) && $result['changed'] === false);
 
-            $interpretation = $this->interpretResult(
-                $row->engine . '/' . $row->action,
-                $result,
-                $agentName,
-                $noChange
-            );
+            // SF-04 (REPORT-0024 / RISK-0131, 2026-09-01): on the chat path this ran a model call per task —
+            // five serial ~2s calls before every turn on a busy workspace. Chat asks for $interpret=false and
+            // gets a templated, truthful line; the proactive run keeps the model interpretation.
+            $interpretation = $interpret
+                ? $this->interpretResult($row->engine . '/' . $row->action, $result, $agentName, $noChange)
+                : $this->templatedInterpretation($row->engine . '/' . $row->action, $result, $agentName, $noChange);
 
             $insights[] = [
                 'task_id'        => $row->id,
@@ -109,9 +109,9 @@ class SarahReadBackService
      * Renders insights as a system-prompt block. Empty string when no
      * unread tasks — caller can concatenate unconditionally.
      */
-    public function renderInsightsBlock(int $wsId, int $limit = 5): string
+    public function renderInsightsBlock(int $wsId, int $limit = 5, bool $interpret = true): string
     {
-        $insights = $this->checkCompletedTasks($wsId, $limit);
+        $insights = $this->checkCompletedTasks($wsId, $limit, $interpret);
         if (empty($insights)) {
             return '';
         }
@@ -125,6 +125,21 @@ class SarahReadBackService
         }
         $lines[] = '';
         return implode("\n", $lines);
+    }
+
+    /** No model call: what the ledger says, in one line. */
+    public function templatedInterpretation(string $taskKey, array $result, string $agentName, bool $noChange = false): string
+    {
+        if ($noChange) return "{$agentName} ran {$taskKey} but it changed nothing — it needs a different approach.";
+        $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+        $facts = [];
+        foreach ($data as $k => $v) {
+            if (is_int($v) || is_float($v)) $facts[] = str_replace('_', ' ', (string) $k) . ' ' . $v;
+            if (count($facts) >= 3) break;
+        }
+        $summary = is_string($result['summary'] ?? null) ? trim($result['summary']) : '';
+        $tail = $summary !== '' ? ' ' . mb_substr($summary, 0, 160) : ($facts ? ' (' . implode(', ', $facts) . ')' : '');
+        return "{$agentName} completed {$taskKey}.{$tail}";
     }
 
     private function resolveAgentName(string $slug): string
@@ -172,3 +187,5 @@ class SarahReadBackService
             : "{$agentName} completed {$taskKey}.";
     }
 }
+
+// SARAH-REMEDIATION-APPLIED-2026-09-01 (REPORT-0024)
