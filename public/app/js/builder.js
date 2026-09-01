@@ -939,14 +939,23 @@ function _wsShowTemplateEditor(site) {
       '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
-          '<div style="color:var(--t3);font-size:11px">Edit text and images directly in the preview. Arthur restyling for templates is coming.</div>' +
+          '<div style="color:var(--t3);font-size:11px;line-height:1.5">This site is a template layout. Edit it straight in the preview \u2014 double-click any text, or click an image to swap it. Arthur can\u2019t rewrite a template layout yet.</div>' +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
-          '<div style="background:var(--s2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t2)">Tip: double-click a heading to rewrite it \u00B7 click the hero to swap its photo \u00B7 changes save automatically</div>' +
+          '<div style="background:var(--s2);border-radius:8px;padding:9px 11px;font-size:11px;color:var(--t2);line-height:1.55"><b style="color:var(--t1)">How to edit this site</b><br>Double-click a heading or paragraph to rewrite it.<br>Click the hero or any photo to swap the image.<br>Changes save on their own \u2014 hit Publish when it looks right.</div>' +
         '</div>' +
-        '<div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">' +
-          '<input id="t3-arthur-input" type="text" placeholder="Ask Arthur..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:7px 10px;font-size:12px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')_t3ArthurSend(' + wsId + ')">' +
-          '<button onclick="_t3ArthurSend(' + wsId + ')" style="background:var(--p);border:none;color:#fff;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px">\u2192</button>' +
+        // BUILDER888 (2026-09-01): the prompt box that used to sit here could only ever fail. Arthur's
+        // edit path keys off bldCurrentPageId, which this editor never sets, so every message came
+        // back as "Arthur can't restyle this template yet" — an input offering something the product
+        // cannot do. Pointing it at the page path instead would be worse than useless: this editor
+        // previews and publishes the polished export on disk, while that path edits
+        // pages.sections_json, so Arthur would confirm edits the customer never sees.
+        //
+        // Until Arthur can regenerate a template export, the editor offers what actually works.
+        '<div style="padding:12px;border-top:1px solid var(--bd);color:var(--t3);font-size:11px;line-height:1.55">' +
+          'Need a different layout or new sections? Ask Arthur to build it from ' +
+          '<button type="button" onclick="wsCloseTemplateEditor();nav(\'websites\')" style="background:none;border:none;padding:0;color:var(--p);cursor:pointer;font:inherit;text-decoration:underline">Websites</button>' +
+          ' \u2014 he can\u2019t restyle a template from here yet.' +
         '</div>' +
       '</div>' +
       // Preview iframe
