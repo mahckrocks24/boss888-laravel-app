@@ -939,23 +939,19 @@ function _wsShowTemplateEditor(site) {
       '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
-          '<div style="color:var(--t3);font-size:11px;line-height:1.5">This site is a template layout. Edit it straight in the preview \u2014 double-click any text, or click an image to swap it. Arthur can\u2019t rewrite a template layout yet.</div>' +
+          '<div style="color:var(--t3);font-size:11px;line-height:1.5">Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. He can\u2019t change colours or layout from here yet.</div>' +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
-          '<div style="background:var(--s2);border-radius:8px;padding:9px 11px;font-size:11px;color:var(--t2);line-height:1.55"><b style="color:var(--t1)">How to edit this site</b><br>Double-click a heading or paragraph to rewrite it.<br>Click the hero or any photo to swap the image.<br>Changes save on their own \u2014 hit Publish when it looks right.</div>' +
+          '<div style="background:var(--s2);border-radius:8px;padding:9px 11px;font-size:11px;color:var(--t2);line-height:1.55">Try: \u201cChange the hero heading to \u2026\u201d or \u201cMake the call-to-action say \u2026\u201d<br>You can also double-click text in the preview, or click an image to swap it.</div>' +
         '</div>' +
-        // BUILDER888 (2026-09-01): the prompt box that used to sit here could only ever fail. Arthur's
-        // edit path keys off bldCurrentPageId, which this editor never sets, so every message came
-        // back as "Arthur can't restyle this template yet" — an input offering something the product
-        // cannot do. Pointing it at the page path instead would be worse than useless: this editor
-        // previews and publishes the polished export on disk, while that path edits
-        // pages.sections_json, so Arthur would confirm edits the customer never sees.
-        //
-        // Until Arthur can regenerate a template export, the editor offers what actually works.
-        '<div style="padding:12px;border-top:1px solid var(--bd);color:var(--t3);font-size:11px;line-height:1.55">' +
-          'Need a different layout or new sections? Ask Arthur to build it from ' +
-          '<button type="button" onclick="wsCloseTemplateEditor();nav(\'websites\')" style="background:none;border:none;padding:0;color:var(--p);cursor:pointer;font:inherit;text-decoration:underline">Websites</button>' +
-          ' \u2014 he can\u2019t restyle a template from here yet.' +
+        // BUILDER888 (2026-09-01): Arthur edits template sites correctly. ArthurEditService writes each
+        // change through to storage/app/public/sites/{id}/index.html - the very export this editor
+        // previews and the published site serves - and reports whether it landed via visible_on_site.
+        // The only thing missing here was the page context _t3ArthurSend keys on, which the page editor
+        // sets and this one never did; _wsTplBindPage() resolves it once the view is up.
+        '<div class="pe-composer" style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">' +
+          '<input id="t3-arthur-input" type="text" aria-label="Message Arthur" placeholder="Ask Arthur..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:9px 10px;font-size:13px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')_t3ArthurSend(' + wsId + ')">' +
+          '<button type="button" id="pe-send" aria-label="Send to Arthur" onclick="_t3ArthurSend(' + wsId + ')" style="background:var(--p);border:none;color:#fff;padding:9px 12px;border-radius:6px;cursor:pointer;font-size:13px">\u2192</button>' +
         '</div>' +
       '</div>' +
       // Preview iframe
@@ -967,10 +963,36 @@ function _wsShowTemplateEditor(site) {
     '</div>';
 
   document.body.insertAdjacentHTML('beforeend', html);
+  _wsTplBindPage(wsId);
+}
+
+/**
+ * Give the template editor the page context Arthur needs.
+ *
+ * _t3ArthurSend keys entirely off bldCurrentPageId. The page editor sets it; this one never did, so every
+ * message here came back refused. The preview shows the home page, so that is the page Arthur edits, and
+ * because the edit is written through to the static export the change appears in this very preview.
+ */
+async function _wsTplBindPage(websiteId) {
+  try {
+    var tok = localStorage.getItem('lu_token') || '';
+    var res = await fetch('/api/builder/websites/' + websiteId + '/pages', {
+      headers: { 'Authorization': 'Bearer ' + tok, 'Accept': 'application/json' }
+    });
+    if (!res.ok) { return; }
+    var body = await res.json();
+    var pages = Array.isArray(body) ? body : (body.pages || body.data || []);
+    if (!pages.length) { return; }
+    var home = pages.filter(function (pg) { return /^(home|index)$/i.test(String(pg.slug || '')); })[0];
+    bldCurrentPageId = (home || pages[0]).id;
+  } catch (e) {
+    // Unbound is the safe state: Arthur declines rather than editing the wrong page.
+  }
 }
 
 function wsCloseTemplateEditor() {
   try { if (Object.keys(_t3PendingFields).length) { clearTimeout(_t3SaveTimer); _t3FlushSaves(); } } catch (_e) {}
+  bldCurrentPageId = null;
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
 }
@@ -2068,7 +2090,7 @@ function _wsShowPageEditor(site, pageId) {
           '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
             '<div style="background:var(--s2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t2)">Try: "Change the hero heading to …" or "Make the call-to-action say …"</div>' +
           '</div>' +
-          '<div style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">' +
+          '<div class=\"pe-composer\" style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">' +
             '<input id="t3-arthur-input" type="text" aria-label="Message Arthur" placeholder="Ask Arthur..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:7px 10px;font-size:12px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\'){_t3ArthurSend(' + (site.id || 0) + ')}">' +
             '<button type="button" id="pe-send" aria-label="Send to Arthur" onclick="_t3ArthurSend(' + (site.id || 0) + ')" style="background:var(--p);border:none;color:#fff;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:12px">→</button>' +
           '</div>' +
