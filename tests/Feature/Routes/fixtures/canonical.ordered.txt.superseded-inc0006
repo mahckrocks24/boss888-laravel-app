@@ -101,7 +101,6 @@ GET,HEAD|api/seo/gsc/oauth/callback||Closure||api
 POST|api/auth/logout||App\Http\Controllers\Api\AuthController@logout||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/auth/me||App\Http\Controllers\Api\AuthController@me||api,auth.jwt,connector.brand,traffic.defense
 POST|api/auth/resend-verification||Closure||api,auth.jwt,connector.brand,throttle:3,60,traffic.defense
-GET,HEAD|api/user/last-chat-workspace||Closure||api,auth.jwt,connector.brand,traffic.defense
 PUT|api/user/preferences||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/plugin/connect||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/auth/switch-workspace||App\Http\Controllers\Api\AuthController@switchWorkspace||api,auth.jwt,connector.brand,traffic.defense
@@ -120,7 +119,6 @@ PUT|api/auth/profile||App\Http\Controllers\Api\AuthController@updateProfile||api
 PUT|api/auth/password||App\Http\Controllers\Api\AuthController@updatePassword||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/workspaces||App\Http\Controllers\Api\WorkspaceController@index||api,auth.jwt,connector.brand,traffic.defense
 POST|api/workspaces||App\Http\Controllers\Api\WorkspaceController@store||api,auth.jwt,connector.brand,traffic.defense
-GET,HEAD|api/website-context||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/tasks||App\Http\Controllers\Api\TaskController@store||api,auth.jwt,connector.brand,traffic.defense
 POST|api/tasks/create||App\Http\Controllers\Api\TaskController@store||api,auth.jwt,connector.brand,traffic.defense
 POST|api/tasks/assign||Closure||api,auth.jwt,connector.brand,traffic.defense

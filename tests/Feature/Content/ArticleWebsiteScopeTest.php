@@ -51,19 +51,43 @@ class ArticleWebsiteScopeTest extends TestCase
         ], $extra));
     }
 
+    /**
+     * INC-0006 (2026-09-01) — this used to assert that the NEWEST published site wins when the caller names
+     * none. That is a guess: in a business with two sites it attached an article to whichever happened to be
+     * built last, and the owner had no way to know it had been decided for them.
+     *
+     * The rule now is the same one used everywhere else in the incident — bind when there is exactly one
+     * candidate, and otherwise leave it unbound rather than pick. Unbound is honest and reversible; a wrong
+     * binding publishes someone's article on the wrong website.
+     */
     /** @test */
-    public function test_first_time_publish_binds_the_article_to_the_newest_published_site(): void
+    public function test_publish_binds_only_when_the_website_is_unambiguous(): void
     {
+        // Two published sites, none named: nothing is guessed.
         $id = $this->article();
         app(WriteService::class)->updateArticle($id, ['status' => 'published'], self::WS);
         $row = DB::table('articles')->where('id', $id)->first();
-        $this->assertSame('published', $row->status);
-        $this->assertSame($this->siteB, (int) $row->website_id, 'newest published LevelUp site wins when none is given');
+        $this->assertSame('published', $row->status, 'publishing still happens');
+        $this->assertSame(0, (int) $row->website_id,
+            'with two candidate sites and none named, the article must not be attached to either');
 
         // An explicit website_id in the publish payload is honoured.
         $id2 = $this->article(['slug' => 'scoped-post-2']);
         app(WriteService::class)->updateArticle($id2, ['status' => 'published', 'website_id' => $this->siteA], self::WS);
         $this->assertSame($this->siteA, (int) DB::table('articles')->where('id', $id2)->value('website_id'));
+    }
+
+    /** With only one candidate there is nothing to guess, so binding stays automatic. */
+    /** @test */
+    public function test_a_single_site_business_still_binds_without_being_asked(): void
+    {
+        DB::table('websites')->where('id', $this->siteB)->update(['deleted_at' => now()]);
+
+        $id = $this->article(['slug' => 'scoped-post-solo']);
+        app(WriteService::class)->updateArticle($id, ['status' => 'published'], self::WS);
+
+        $this->assertSame($this->siteA, (int) DB::table('articles')->where('id', $id)->value('website_id'),
+            'one eligible site is not a guess');
     }
 
     /** @test */
