@@ -919,16 +919,16 @@ function _wsShowTemplateEditor(site) {
   var html =
     '<div id="template-editor-view" style="position:fixed;inset:0;z-index:9000;background:var(--bg,#0F1117);display:flex;flex-direction:column">' +
     // Toolbar
-    '<div style="height:52px;background:var(--s1,#161927);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">' +
+    '<div class="pe-bar" style="height:52px;background:var(--s1,#161927);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">' +
       '<button onclick="wsCloseTemplateEditor()" style="background:none;border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">\u2190 Back</button>' +
-      '<span style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
-      '<span style="flex:1"></span>' +
+      '<span class="pe-bar-title" style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
+      '<span class="pe-bar-spacer" style="flex:1"></span>' +
       '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
         '<button type="button" id="t3-dev-desktop" onclick="_wsTplSetDevice(\'desktop\')" aria-label="Desktop preview" aria-pressed="true" title="Desktop" style="padding:5px 10px;border:none;background:var(--pu);color:#fff;cursor:pointer;font-size:13px">\uD83D\uDDA5</button>' +
         '<button type="button" id="t3-dev-tablet" onclick="_wsTplSetDevice(\'tablet\')" aria-label="Tablet preview" aria-pressed="false" title="Tablet" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\u25AD</button>' +
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
-      '<span style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it</span>' +
+      '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it</span>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
@@ -2044,15 +2044,15 @@ function _wsShowPageEditor(site, pageId) {
   };
   var html =
     '<div id="page-editor-view" role="dialog" aria-modal="true" aria-label="Page editor" style="position:fixed;inset:0;z-index:9000;background:var(--bg,#0F1117);display:flex;flex-direction:column">' +
-      '<div style="height:52px;background:var(--s1,#161927);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">' +
+      '<div class="pe-bar" style="height:52px;background:var(--s1,#161927);border-bottom:1px solid var(--bd);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0">' +
         '<button type="button" id="pe-back" onclick="_wsClosePageEditor()" style="background:none;border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">← Pages</button>' +
-        '<span style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
+        '<span class="pe-bar-title" style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
         '<span id="pe-page-title" style="color:var(--t3);font-size:12px"></span>' +
-        '<span style="flex:1"></span>' +
+        '<span class="pe-bar-spacer" style="flex:1"></span>' +
         '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
           devBtn('desktop', 'Desktop', '🖥', true) + devBtn('tablet', 'Tablet', '▭', false) + devBtn('mobile', 'Mobile', '📱', false) +
         '</div>' +
-        '<span id="pe-status" style="color:var(--t3);font-size:11px">Changes made by Arthur save automatically</span>' +
+        '<span id="pe-status" class="pe-bar-hint" style="color:var(--t3);font-size:11px">Changes made by Arthur save automatically</span>' +
         '<button type="button" id="pe-refresh" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">Refresh preview</button>' +
         '<button type="button" id="pe-publish" onclick="wsPublishFromEditor(' + (site.id || 0) + ', ' + pubName + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Publish</button>' +
       '</div>' +

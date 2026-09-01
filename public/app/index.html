@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="tplarthur-20260901">
+<meta name="lu-build" content="mobile6-20260901">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -1547,6 +1547,37 @@ img:not([loading]) {
 /* Desktop-only gate (Builder, Studio, etc.) */
 /* MOBILE-5 (2026-08-31): the page editor is a flex row with a fixed 300px Arthur sidebar, which left the preview
    90px wide on a phone — the editing surface was effectively invisible. Below 820px the two stack, preview first. */
+/* MOBILE-6 (2026-09-01): MOBILE-5 stacked the editor body, but the toolbar above it was still a fixed
+   52px non-wrapping flex row carrying a Back button, the site name, a device switcher, a sentence of help
+   text and three actions. On a phone the name wrapped out of the bar and Versions, Save and Publish were
+   clipped mid-word — the two buttons that finish the job were the ones you could not read. The bar now
+   grows and wraps, the name truncates instead of wrapping, and the prose hints step aside; they are already
+   said in the Arthur panel underneath. */
+@media (max-width: 820px) {
+  .pe-bar {
+    height: auto !important;
+    min-height: 52px;
+    flex-wrap: wrap !important;
+    padding: 8px 10px !important;
+    gap: 8px !important;
+    align-content: center;
+  }
+  /* The name takes what is left of the first row and truncates; it must never push a button off the bar. */
+  .pe-bar-title {
+    flex: 1 1 90px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* A flex:1 spacer is invisible until the bar wraps, at which point it claims a whole empty row. */
+  .pe-bar-spacer { display: none !important; }
+  /* Sentences of help have no room here, and both are repeated in the panel below the preview. */
+  .pe-bar-hint { display: none !important; }
+  /* Comfortable targets, and no button may be clipped mid-word. */
+  .pe-bar button { min-height: 36px; white-space: nowrap; }
+}
+
 @media (max-width: 820px) {
   .pe-main { flex-direction: column !important; }
   .pe-stage { order: 1; flex: 1 1 auto !important; min-height: 55vh; }
@@ -4751,7 +4782,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/domains-commerce.js?v=1.0.0-domains"></script>
 <script defer src="/app/js/business-email.js?v=p0d-20260830"></script>
 <!-- v5.0.1 swap 2026-04-10: old builder.js loads first to provide websites view + non-renderer logic; v5 loads second and overrides editor renderer chain via function declaration hoisting. -->
-<script defer src="/app/js/builder.js?v=tplarthur-20260901"></script>
+<script defer src="/app/js/builder.js?v=mobile6-20260901"></script>
 
 
 
