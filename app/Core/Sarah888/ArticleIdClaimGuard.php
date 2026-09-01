@@ -30,10 +30,22 @@ class ArticleIdClaimGuard
      *
      * The connector matters: the sentence that started this was "The available drafts ARE 183, 184, 185,
      * 186, and 187", and a pattern demanding the numbers sit directly against the noun walked straight
-     * past it. A few words of ordinary English are allowed in between, but not a full stop — that would
+     * past it. Up to 60 characters of ordinary English are allowed in between, but never a full stop — that would
      * let a count in one sentence bind to numbers in the next.
      */
-    private const REFERENCE = '/\b(?:article|draft|post)s?\b[^.!?\n]{0,24}?#?\s*\d{1,6}(?:\s*(?:,|,?\s*and|&|\/|\s)\s*#?\d{1,6})*/i';
+    private const REFERENCE = '/\b(?:article|draft|post)s?\b[^.!?\n]{0,60}?#?\s*\d{1,6}(?:\s*(?:,|,?\s*and|&|\/|\s)\s*#?\d{1,6})*/i';
+
+    /**
+     * A sentence that OFFERS to publish, as opposed to one that REPORTS having published.
+     *
+     * The distinction is the whole point of the second check below. "I published 300 and 352" names
+     * live articles and is true; "I recommend we publish 300 and 352" names the same live articles and
+     * is false. Only the forward-looking form is corrected, so a truthful completion report is never
+     * rewritten into a denial of work that really happened.
+     */
+    private const PUBLISH_OFFER = '/\b(?:recommend|suggest|propose|shall i|should i|can publish|could publish|'
+                                . 'will publish|going to publish|plan to publish|ready to publish|let\'?s publish|'
+                                . 'i\'?ll publish|we publish|publish the following|publish these|publish now)\b/i';
 
     /**
      * @return array{reply:string, corrected:bool, foreign:list<int>}
@@ -52,14 +64,29 @@ class ArticleIdClaimGuard
                 return $out;
             }
 
-            $ours = DB::table('articles')
+            $rows = DB::table('articles')
                 ->where('workspace_id', $wsId)
                 ->whereNull('deleted_at')
                 ->whereIn('id', $claimed)
-                ->pluck('id')->map(fn ($i) => (int) $i)->all();
+                ->get(['id', 'status']);
 
+            $ours = $rows->map(fn ($r) => (int) $r->id)->all();
             $foreign = array_values(array_diff($claimed, $ours));
-            if (! $foreign) {
+
+            // ALREADY DONE IS ALSO WRONG. Chef Red, 2026-09-01 17:53 — she offered to publish articles
+            // 300, 352, 354, 661, 662 and 186. All six belong to this workspace, and five of them had gone
+            // live at 14:59 that same afternoon; the owner had already told her so, twice. This guard let
+            // it through because it only ever asked whether the numbers were OURS. They were. The question
+            // it failed to ask is whether the work still needed doing.
+            //
+            // A number that is real but describes finished work is not a smaller error than an invented
+            // one — it is the error the owner actually saw, and it reads as not listening.
+            $alreadyLive = $rows->filter(fn ($r) => (string) $r->status !== 'draft')
+                ->map(fn ($r) => (int) $r->id)->values()->all();
+
+            $offering = (bool) preg_match(self::PUBLISH_OFFER, $reply);
+
+            if (! $foreign && ! ($offering && $alreadyLive)) {
                 return $out;
             }
         } catch (\Throwable $e) {
@@ -71,7 +98,7 @@ class ArticleIdClaimGuard
             return $out;
         }
 
-        $rewritten = $this->rewrite($reply, $wsId);
+        $rewritten = $this->rewrite($reply, $wsId, $foreign, $offering ? $alreadyLive : []);
         if ($rewritten === $reply) {
             return $out;
         }
@@ -109,7 +136,11 @@ class ArticleIdClaimGuard
      * Deliberately states the real candidates rather than simply deleting the claim: the owner asked which
      * drafts would go live, and an answer with the numbers cut out is not an answer.
      */
-    private function rewrite(string $reply, int $wsId): string
+    /**
+     * @param list<int> $foreign     numbers this workspace does not have at all
+     * @param list<int> $alreadyLive numbers it has, but which are already published while being offered
+     */
+    private function rewrite(string $reply, int $wsId, array $foreign = [], array $alreadyLive = []): string
     {
         $ready = DB::table('articles')
             ->where('workspace_id', $wsId)->where('status', 'draft')->whereNull('deleted_at')
@@ -118,12 +149,20 @@ class ArticleIdClaimGuard
             ->limit(5)
             ->get(['id', 'title']);
 
+        $done = '';
+        if ($alreadyLive) {
+            sort($alreadyLive);
+            $n = count($alreadyLive);
+            $done = ($n === 1 ? 'Article #' . $alreadyLive[0] . ' is' : 'Articles #' . implode(', #', $alreadyLive) . ' are')
+                  . ' already published — that work is done. ';
+        }
+
         if ($ready->isEmpty()) {
-            $truth = 'I do not have draft articles ready to publish in this workspace.';
+            $truth = $done . 'There are no drafts left ready to publish in this workspace.';
         } else {
             $list = $ready->map(fn ($a) => '#' . $a->id . ' "' . mb_strimwidth((string) $a->title, 0, 48, '…') . '"')
                 ->implode(', ');
-            $truth = 'The earliest drafts ready to publish are ' . $list . '.';
+            $truth = $done . 'The earliest drafts ready to publish are ' . $list . '.';
         }
 
         $parts = preg_split('/(?<=[.!?])\s+/', $reply, -1, PREG_SPLIT_NO_EMPTY);
@@ -136,6 +175,21 @@ class ArticleIdClaimGuard
 
         foreach ($parts as $sentence) {
             if (! preg_match(self::REFERENCE, $sentence)) {
+                $kept[] = $sentence;
+                continue;
+            }
+
+            // Which numbers does THIS sentence name, and is it wrong to name them here? A sentence that
+            // reports finished work truthfully keeps its numbers; only an invented number, or an offer to
+            // redo something already done, is replaced.
+            preg_match_all('/\d{1,6}/', $sentence, $sn);
+            $here = array_map('intval', $sn[0]);
+            $namesForeign = (bool) array_intersect($here, $foreign);
+            $reoffers = $alreadyLive
+                && preg_match(self::PUBLISH_OFFER, $sentence)
+                && array_intersect($here, $alreadyLive);
+
+            if (! $namesForeign && ! $reoffers) {
                 $kept[] = $sentence;
                 continue;
             }

@@ -60,6 +60,8 @@ class DerivedState
         'failed_tasks',
         'blocked_tasks',
         'current_risks',
+    
+        'websites',
     ];
 
     /** Within this many days a deadline counts as "due soon". */
@@ -94,6 +96,7 @@ class DerivedState
             'failed_tasks'                => $this->taskCount($wsId, ['failed'], 'failed_tasks'),
             'blocked_tasks'               => $this->taskCount($wsId, ['blocked'], 'blocked_tasks'),
             'current_risks'               => $this->risks($wsId),
+            'websites'                    => $this->websites($wsId),
         };
     }
 
@@ -346,6 +349,50 @@ class DerivedState
      * numbers, not the records. The commitment block carries the records, and
      * duplicating them here would spend the budget twice to say one thing.
      */
+    /**
+     * The websites this business owns — by NAME.
+     *
+     * Chef Red, 2026-09-01. The owner asked "how many websites do we have now?" and got back
+     * "You have 2 websites in this workspace." He then asked "Aren't you across all things happening in
+     * this account?" and she answered, accurately, "I don't have visibility into the full context."
+     *
+     * She was right. Until now this class had no concept of a website at all — not one mention in 414
+     * lines. Every fact she could state about the customer's estate was a count someone else had already
+     * reduced to a number, so she could never say WHICH site, how old it was, or whether anyone had
+     * written anything for it. A portfolio was added to WorkspaceStateGatherer earlier the same day, but
+     * that feeds the proactive engine and the meeting engine; the CHAT reads this class, and this class
+     * was never told. Half a fix reaches half the product.
+     *
+     * A workspace holds many websites (INC-0006), so the answer is a list, not a tally.
+     */
+    private function websites(int $wsId): array
+    {
+        $sites = DB::table('websites')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->orderBy('id')
+            ->get(['id', 'name', 'status', 'template_industry', 'subdomain', 'custom_domain']);
+
+        // One grouped query, not one per site: this renders on every turn.
+        $articles = DB::table('articles')
+            ->where('workspace_id', $wsId)
+            ->whereNull('deleted_at')
+            ->whereNotNull('website_id')
+            ->selectRaw('website_id, COUNT(*) c')
+            ->groupBy('website_id')
+            ->pluck('c', 'website_id');
+
+        $items = $sites->map(fn ($s) => [
+            'id'       => (int) $s->id,
+            'name'     => trim((string) ($s->name ?? '')) ?: ('website #' . $s->id),
+            'status'   => (string) ($s->status ?? ''),
+            'host'     => (string) ($s->custom_domain ?: $s->subdomain ?: ''),
+            'articles' => (int) ($articles[$s->id] ?? 0),
+        ])->values()->all();
+
+        return ['key' => 'websites', 'value' => count($items), 'items' => $items];
+    }
+
     public function render(int $wsId): string
     {
         try {
@@ -359,6 +406,7 @@ class DerivedState
             $approv   = $this->query('pending_approvals', $wsId);
             $open     = $this->query('open_tasks', $wsId);
             $blocked  = $this->query('blocked_tasks', $wsId);
+            $sites    = $this->query('websites', $wsId);
         } catch (\Throwable) {
             return '';
         }
@@ -406,8 +454,25 @@ class DerivedState
         $s .= "  Pending approvals  : {$approv['value']}\n";
         $s .= "  Open tasks         : {$open['value']}\n";
         $s .= "  Blocked tasks      : {$blocked['value']}\n";
+        // The estate, by name. A business that owns two websites is owed their names, and a site with
+        // nothing written for it is the single most actionable fact she can hold about it.
+        if ($sites['value'] > 0) {
+            $s .= "  Websites (" . $sites['value'] . ")     :\n";
+            foreach ($sites['items'] as $w) {
+                $s .= "      • \"{$w['name']}\""
+                    . ($w['host'] !== '' ? " ({$w['host']})" : '')
+                    . " — {$w['status']}, "
+                    . ($w['articles'] > 0 ? "{$w['articles']} article" . ($w['articles'] === 1 ? '' : 's')
+                                          : 'NO content written yet')
+                    . "\n";
+            }
+        } else {
+            $s .= "  Websites           : none built yet\n";
+        }
         $s .= "  These numbers are computed. Use them exactly as given; do not\n"
-            . "  recount them from the lists below, which may be abridged.\n\n";
+            . "  recount them from the lists below, which may be abridged.\n"
+            . "  Name a website when you talk about it. Never answer a question\n"
+            . "  about the customer's websites with only a count.\n\n";
 
         return $s;
     }

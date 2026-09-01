@@ -794,6 +794,49 @@ $withCorr = function (array $meta) use ($corr) {
                         ? "You're tracking {$__kw} keyword" . ($__kw === 1 ? '' : 's') . ". Say \"show my keywords\" to see them with volume and rank."
                         : "You're not tracking any keywords yet. Tell me which ones and I'll add them.";
                 }
+                // (1c) WEBSITES — the estate, by NAME, without a language model.
+                // Chef Red, 2026-09-01: "how many websites do we have now?" took 25 SECONDS and came back
+                // "You have 2 websites in this workspace." Two faults in one answer. It is a COUNT query, so
+                // no model needed to be woken to run it — but nothing in the router matched the word
+                // "website", so it fell through to the full LLM pipeline, which on a workspace this size
+                // means gathering the whole state and a round trip. And a business that owns two websites is
+                // owed their names; a tally is what you say when you cannot see them.
+                // Deliberately excluded: build/create/delete/publish (those are ACTIONS, not questions) and
+                // traffic/visitors (a different subject that happens to mention a site).
+                elseif (preg_match('/\b(websites?|sites?)\b/', $c)
+                        && preg_match('/\b(how many|number of|count of|which|what|list|show|do i have|do we have|have i got)\b/', $c)
+                        && ! preg_match('/\b(build|create|make|new|add|delete|remove|publish|connect|domain|traffic|visitors?|sessions?|revenue|rank|ranking)\b/', $c)) {
+                    $__sites = DB::table('websites')
+                        ->where('workspace_id', $wsId)->whereNull('deleted_at')
+                        ->orderBy('id')->get(['id', 'name', 'status', 'subdomain', 'custom_domain']);
+                    $__arts = DB::table('articles')
+                        ->where('workspace_id', $wsId)->whereNull('deleted_at')->whereNotNull('website_id')
+                        ->selectRaw('website_id, COUNT(*) c')->groupBy('website_id')->pluck('c', 'website_id');
+
+                    if ($__sites->isEmpty()) {
+                        $routerReply = "You haven't built a website yet. Tell me about the business and I'll get Arthur to build one.";
+                    } else {
+                        $__n = $__sites->count();
+                        $__lines = [];
+                        $__empty = [];
+                        foreach ($__sites as $__s) {
+                            $__nm = trim((string) ($__s->name ?? '')) ?: ('website #' . $__s->id);
+                            $__host = (string) ($__s->custom_domain ?: $__s->subdomain ?: '');
+                            $__ct = (int) ($__arts[$__s->id] ?? 0);
+                            $__lines[] = '  • ' . $__nm . ($__host !== '' ? ' — ' . $__host : '')
+                                . ' (' . (string) $__s->status . ', '
+                                . ($__ct > 0 ? $__ct . ' article' . ($__ct === 1 ? '' : 's') : 'nothing written yet') . ')';
+                            if ($__ct === 0) { $__empty[] = $__nm; }
+                        }
+                        $routerReply = "You have {$__n} website" . ($__n === 1 ? '' : 's') . ":\n" . implode("\n", $__lines);
+                        if ($__empty) {
+                            $routerReply .= "\n\n" . (count($__empty) === 1
+                                ? '"' . $__empty[0] . '" has no content yet — say the word and I\'ll put a launch plan in front of you with the cost.'
+                                : implode(' and ', array_map(fn ($x) => '"' . $x . '"', $__empty))
+                                  . ' have no content yet — say the word and I\'ll put launch plans in front of you with the cost.');
+                        }
+                    }
+                }
                 // (2) "how many / which are missing featured images"
                 elseif (preg_match('/\b(missing|without|no|need|needs)\b/', $c) && preg_match('/\bfeatured image|\bimages?\b/', $c)
                         && preg_match('/\b(how many|which|list|count|any)\b/', $c)) {

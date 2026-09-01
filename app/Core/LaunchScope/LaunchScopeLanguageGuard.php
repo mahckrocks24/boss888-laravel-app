@@ -152,8 +152,18 @@ final class LaunchScopeLanguageGuard
         ) ?? $out;
         // A leading vocative followed only by the replacement reads oddly too.
         $out = preg_replace('/^([A-Z][a-z]+,\s+)this capability/u', '$1this capability', $out) ?? $out;
-        $out = preg_replace('/\s{2,}/u', ' ', $out) ?? $out;
-        $out = preg_replace('/\s+([.,!?;:])/u', '$1', $out) ?? $out;
+        // TIDY WITHOUT FLATTENING. This collapsed \s{2,} — every run of two or more whitespace characters,
+        // newlines included — into a single space. It runs over EVERY deterministic router reply, so any
+        // answer built as a list arrived as a wall of text: the keyword-ranking table at line 902 and the
+        // website list both implode on "\n" and both were flattened here. Chef Red, 2026-09-01: "Sarah is
+        // terribly slow and I fucking hate talking to her." Unreadable is part of that.
+        //
+        // Runs of spaces and tabs still collapse; newlines survive, and three or more become a paragraph
+        // break rather than an accident.
+        $out = preg_replace('/[^\S\n]{2,}/u', ' ', $out) ?? $out;
+        $out = preg_replace('/[^\S\n]*\n[^\S\n]*/u', "\n", $out) ?? $out;
+        $out = preg_replace('/\n{3,}/u', "\n\n", $out) ?? $out;
+        $out = preg_replace('/[^\S\n]+([.,!?;:])/u', '$1', $out) ?? $out;
         $out = preg_replace('/(' . preg_quote(self::TRUTH, '/') . ')(\s*\1)+/u', '$1', $out) ?? $out;
         $out = trim($out);
 
