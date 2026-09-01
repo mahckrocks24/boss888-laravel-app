@@ -56,21 +56,69 @@ class ChatbotContextBuilder
         // the business identity. Without this, every tenant chatbot
         // greeted as "LevelUp Growth" (the workspace) instead of the
         // actual business the visitor is on.
-        $website = $this->resolveWebsiteFromPageUrl($workspaceId, (string) ($session->page_url ?? ''));
+        // The session binds the website when the visitor opens the widget, which is stronger evidence than
+        // re-deriving it from the page URL; fall back to the URL for sessions that predate that binding.
+        $website = null;
+        if (! empty($session->website_id)) {
+            $website = DB::table('websites')->where('id', (int) $session->website_id)
+                ->where('workspace_id', $workspaceId)->first();
+        }
+        if (! $website) {
+            $website = $this->resolveWebsiteFromPageUrl($workspaceId, (string) ($session->page_url ?? ''));
+        }
 
-        // Workspace facts (resilient to NULLs) — used as fallback
+        // Workspace facts. These describe the BUSINESS, and a workspace may hold several websites that are
+        // not the same business at all.
         $business = (string) ($ws->business_name ?? $ws->name ?? 'this business');
         $industry = (string) ($ws->industry ?? 'general');
         $location = (string) ($ws->location ?? 'unspecified');
+        $servicesFromWorkspace = true;
 
-        // Website-level overrides (when tenant-subdomain match found)
+        // INC-0006 (2026-09-01): a graphic design site in Chef Red's workspace answered visitors with private
+        // chef services, New Jersey and cooking classes. The knowledge base was scoped correctly; these
+        // FACTS were not. business_name and industry had website overrides, but location and services were
+        // read straight off the workspace and handed to whichever site the visitor was on.
+        //
+        // So when the visitor is on a known website, the website answers for itself. Where it has nothing to
+        // say, the field is left EMPTY rather than filled in from the workspace: an empty location is a small
+        // gap in one reply, while a sibling's location is a false statement about a different business.
+        // Workspace facts are only inherited when the site has not declared an identity of its own.
         if ($website) {
-            if (! empty($website->name))               $business = (string) $website->name;
-            if (! empty($website->template_industry))  $industry = (string) $website->template_industry;
+            if (! empty($website->name)) {
+                $business = (string) $website->name;
+            }
+
+            $siteIndustry = (string) ($website->template_industry ?? '');
+            $siteVars = $this->decodeJson($website->template_variables ?? null);
+            if ($siteIndustry === '') {
+                $siteIndustry = (string) ($this->decodeJson($website->settings_json ?? null)['industry'] ?? '');
+            }
+
+            // A site that names its own industry is its own business, so nothing may be inherited.
+            $ownIdentity = $siteIndustry !== ''
+                && strcasecmp($siteIndustry, (string) ($ws->industry ?? '')) !== 0;
+
+            if ($siteIndustry !== '') {
+                $industry = $siteIndustry;
+            }
+
+            $siteCity = trim((string) ($siteVars['city'] ?? ''));
+            $siteCountry = trim((string) ($siteVars['country'] ?? ''));
+            $siteLocation = trim($siteCity . ($siteCity !== '' && $siteCountry !== '' ? ', ' : '') . $siteCountry);
+
+            if ($siteLocation !== '') {
+                $location = $siteLocation;
+            } elseif ($ownIdentity) {
+                $location = '';   // better silent than somewhere else's address
+            }
+
+            if ($ownIdentity) {
+                $servicesFromWorkspace = false;
+            }
         }
 
         $servicesCsv = '';
-        if ($ws && ! empty($ws->services_json)) {
+        if ($servicesFromWorkspace && $ws && ! empty($ws->services_json)) {
             $services = is_string($ws->services_json) ? json_decode($ws->services_json, true) : $ws->services_json;
             if (is_array($services)) {
                 $servicesCsv = implode(', ', array_slice($services, 0, 12));
@@ -282,6 +330,21 @@ PROMPT;
      * page_url hostname. Falls through to null on any failure (caller
      * keeps the workspace-level identity as fallback).
      */
+    /** Decode a JSON column that may arrive as a string, an array, or null. */
+    private function decodeJson($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+        if (! is_string($value) || $value === '') {
+            return [];
+        }
+
+        $out = json_decode($value, true);
+
+        return is_array($out) ? $out : [];
+    }
+
     private function resolveWebsiteFromPageUrl(int $workspaceId, string $pageUrl): ?object
     {
         if ($pageUrl === '') return null;
