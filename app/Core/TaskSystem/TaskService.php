@@ -482,8 +482,24 @@ class TaskService
         $payload = $data['payload'] ?? [];
         $payloadForHash = $payload;
         if (is_array($payloadForHash)) ksort($payloadForHash);
-        $idemKey = $data['idempotency_key'] ?? hash('sha256',
-            "{$workspaceId}:{$action}:" . json_encode($payloadForHash));
+        // F-U12-DUPE (2026-09-03): a credit-spending task's payload carries the
+        // model-generated title, which differs on every generation — so two
+        // IDENTICAL user requests fired concurrently never collided and each
+        // billed. For a billable task that carries its originating user_request,
+        // key idempotency on the REQUEST (workspace + action + normalized message
+        // + a coarse 5-min bucket) so a double-submit dedupes on the UNIQUE
+        // constraint, while genuinely different requests (or a later re-ask in a
+        // new bucket) still create their own task. Non-billable / no-user_request
+        // tasks keep the payload-based key unchanged.
+        $__req = is_array($payload) ? trim((string) ($payload['user_request'] ?? '')) : '';
+        if (($data['idempotency_key'] ?? null)) {
+            $idemKey = $data['idempotency_key'];
+        } elseif ((int) $creditCost > 0 && $__req !== '') {
+            $__norm = mb_strtolower(trim(preg_replace('/\s+/', ' ', $__req)));
+            $idemKey = hash('sha256', "{$workspaceId}:{$action}:req:{$__norm}:" . intdiv(time(), 300));
+        } else {
+            $idemKey = hash('sha256', "{$workspaceId}:{$action}:" . json_encode($payloadForHash));
+        }
 
         // v1.4.4 (2026-05-30) — batched approvals. Caller (Sarah's chat loop
         // in routes/api.php) generates one batch_id per (action) group when
@@ -506,21 +522,31 @@ class TaskService
             return $existingIdemTask;
         }
 
-        $task = Task::create([
-            'workspace_id' => $workspaceId,
-            'parent_task_id' => $data['parent_task_id'] ?? null,
-            'batch_id' => $batchId,
-            'engine' => $engine,
-            'action' => $action,
-            'category' => $category,
-            'payload_json' => $payload ?: null,
-            'source' => $data['source'] ?? 'manual',
-            'assigned_agents_json' => $data['assigned_agents'] ?? null,
-            'priority' => $data['priority'] ?? 'normal',
-            'requires_approval' => $requiresApproval,
-            'credit_cost' => $creditCost,
-            'idempotency_key' => $idemKey,
-        ]);
+        try {
+            $task = Task::create([
+                'workspace_id' => $workspaceId,
+                'parent_task_id' => $data['parent_task_id'] ?? null,
+                'batch_id' => $batchId,
+                'engine' => $engine,
+                'action' => $action,
+                'category' => $category,
+                'payload_json' => $payload ?: null,
+                'source' => $data['source'] ?? 'manual',
+                'assigned_agents_json' => $data['assigned_agents'] ?? null,
+                'priority' => $data['priority'] ?? 'normal',
+                'requires_approval' => $requiresApproval,
+                'credit_cost' => $creditCost,
+                'idempotency_key' => $idemKey,
+            ]);
+        } catch (\Illuminate\Database\QueryException $__qe) {
+            // F-U12-DUPE race: a concurrent create won the UNIQUE(idempotency_key).
+            // Return the winner rather than throwing (and rather than billing twice).
+            if ((int) ($__qe->errorInfo[1] ?? 0) === 1062) {
+                $__won = Task::where('idempotency_key', $idemKey)->first();
+                if ($__won) return $__won;
+            }
+            throw $__qe;
+        }
 
         if ($requiresApproval) {
             $task->update(['approval_status' => 'pending']);
