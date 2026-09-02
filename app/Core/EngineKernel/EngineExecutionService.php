@@ -913,7 +913,7 @@ class EngineExecutionService
                     (int) ($params['page_id'] ?? 0),
                     (string) ($params['command'] ?? ''),
                     isset($params['section_index']) ? (int) $params['section_index'] : null,
-                    array_merge(['workspace_id' => $wsId, 'agent_slug' => $ctx['agent_slug'] ?? 'sarah'], $params['context'] ?? [])
+                    array_merge($params['context'] ?? [], ['workspace_id' => $wsId, 'agent_slug' => $ctx['agent_slug'] ?? 'sarah']) /* TN-1: trusted keys LAST so a model-supplied context cannot override the authenticated workspace_id */
                 ),
             // v1.4.4 Phase D-1 (2026-05-30) — add new page from universal template.
             'add_page_from_template' => $svc->addPageFromTemplate($wsId, $params),
