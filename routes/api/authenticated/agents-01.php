@@ -4009,6 +4009,18 @@ $withCorr = function (array $meta) use ($corr) {
                     \Illuminate\Support\Facades\Log::warning('[Sarah888] MeasurementGuard failed: ' . $__mgErr->getMessage(), ['ws' => $wsId]);
                 }
 
+                // TR-2 (REPORT-0027): a claim of having researched something EXTERNAL (competitors, market,
+                // backlinks, the web) on a turn where NOTHING executed is invented. Gated on $__anyExec.
+                try {
+                    $__rcg = app(\App\Core\Sarah888\ResearchClaimGuard::class)->sanitize((string) $reply, (int) $wsId, (bool) ($__anyExec ?? false));
+                    if (!empty($__rcg['stripped'])) {
+                        \Illuminate\Support\Facades\Log::info('[Sarah888] ResearchClaimGuard stripped ungrounded research (TR-2)', ['ws' => $wsId, 'n' => count($__rcg['stripped'])]);
+                    }
+                    $reply = $__rcg['reply'];
+                } catch (\Throwable $__rcgErr) {
+                    \Illuminate\Support\Facades\Log::warning('[Sarah888] ResearchClaimGuard failed: ' . $__rcgErr->getMessage(), ['ws' => $wsId]);
+                }
+
                 // Phase 1E — the owner must see cost BEFORE it is spent, not
                 // discover it in a balance later. If anything was held, say so
                 // in the same reply and offer the one-word path to release it.
