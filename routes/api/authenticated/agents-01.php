@@ -3997,6 +3997,18 @@ $withCorr = function (array $meta) use ($corr) {
                     );
                 }
 
+                // TR-1 (REPORT-0027): a search/analytics number invented when NO source is connected is
+                // fabrication by definition. MeasurementGuard strips it (and only that case); fails open.
+                try {
+                    $__mg = app(\App\Core\Sarah888\MeasurementGuard::class)->sanitize((string) $reply, (int) $wsId);
+                    if (!empty($__mg['stripped'])) {
+                        \Illuminate\Support\Facades\Log::info('[Sarah888] MeasurementGuard stripped ungrounded metrics (TR-1)', ['ws' => $wsId, 'n' => count($__mg['stripped'])]);
+                    }
+                    $reply = $__mg['reply'];
+                } catch (\Throwable $__mgErr) {
+                    \Illuminate\Support\Facades\Log::warning('[Sarah888] MeasurementGuard failed: ' . $__mgErr->getMessage(), ['ws' => $wsId]);
+                }
+
                 // Phase 1E — the owner must see cost BEFORE it is spent, not
                 // discover it in a balance later. If anything was held, say so
                 // in the same reply and offer the one-word path to release it.
