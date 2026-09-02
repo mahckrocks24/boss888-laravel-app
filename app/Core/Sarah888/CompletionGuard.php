@@ -39,6 +39,9 @@ final class CompletionGuard
     public const NOT_DONE = "I haven't done that yet — nothing in this turn recorded it, so I won't say it's done. Say the word and I'll queue it now";
     public const NO_RECORD = "I don't have a record of that in what I can see. If you did, give me the details and I'll log it now";
 
+    /** High-stakes claims that MUST name the entity exactly — never spared by a topic-token match. */
+    private const HARD_CLAIM = '/\b(?:published|went\s+live|sent|removed|deleted|cancelled|canceled)\b/i';
+
     /** First-person or implied-agent claims that something was accomplished. */
     private const COMPLETION_PATTERNS = [
         // Adverbs between the pronoun and the verb are common, and only
@@ -136,12 +139,43 @@ final class CompletionGuard
         // entity is named in the sentence. Matching on the entity, not just the
         // fact that SOMETHING ran, stops one real action licensing a paragraph
         // of invented ones.
+        //
+        // OPEN/U4 (2026-09-02): the exact-title match alone rewrote GENUINE
+        // delegations to NOT_DONE whenever the reply named the work by topic
+        // rather than by its full task title (task "Weekend Sourdough: How to
+        // Bake a Rustic Loaf at Home" vs reply "I've started your sourdough
+        // article"). A distinctive-topic token from the real entity also spares
+        // the sentence — EXCEPT for hard publish/destructive claims, which keep
+        // the strict exact-entity requirement so a draft can never be reported
+        // as published/sent/removed on a topic-word coincidence.
+        $hard = (bool) preg_match(self::HARD_CLAIM, $s);
         foreach ($verified as $a) {
             $entity = trim((string) ($a['entity'] ?? ''));
-            if ($entity !== '' && mb_stripos($s, $entity) !== false) return false;
+            if ($entity === '') continue;
+            if (mb_stripos($s, $entity) !== false) return false;
+            if (!$hard) {
+                foreach ($this->distinctiveTokens($entity) as $tok) {
+                    if (mb_stripos($s, $tok) !== false) return false;
+                }
+            }
         }
         // A turn that executed nothing can never make a completion claim.
         return true;
+    }
+
+    /**
+     * Distinctive content words from a real entity title (>= 5 chars, minus
+     * generic filler). Used to spare a completion sentence that references a
+     * genuine this-turn action by topic rather than by its verbatim title.
+     */
+    private function distinctiveTokens(string $entity): array
+    {
+        static $stop = ['about','with','from','your','their','this','that','into','over','under','after','before','using','make','made','perfect','article','draft','post','page','content','guide','story','piece','blog'];
+        $out = [];
+        foreach (preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($entity)) as $w) {
+            if (mb_strlen($w) >= 5 && !in_array($w, $stop, true)) $out[] = $w;
+        }
+        return array_values(array_unique($out));
     }
 
     private function isCapitulation(string $s): bool
