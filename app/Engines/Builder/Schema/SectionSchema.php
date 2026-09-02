@@ -259,6 +259,7 @@ class SectionSchema
             'add_section',     // append or insert a new section
             'remove_section',  // remove section by index
             'reorder_section', // move section from index A to index B
+            'update_style',    // change site colours (:root vars / settings_json)
         ];
     }
 

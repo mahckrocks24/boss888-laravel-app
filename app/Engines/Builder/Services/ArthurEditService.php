@@ -79,6 +79,7 @@ class ArthurEditService
         $sections = $wrapped ? $raw['sections'] : (is_array($raw) ? $raw : []);
         $currentJson = json_encode($sections, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $websiteId = (int) ($page->website_id ?? 0);
+        $styleVarsHint = $this->availableStyleVars($websiteId);
 
         // 2. Build runtime prompt.
         $allowedTypes = implode(', ', SectionSchema::allowedTypes());
@@ -112,6 +113,7 @@ Rules:
 - For add_section: provide type and (optional) flat fields plus optional insert_at index.
 - For remove_section: provide section_index.
 - For reorder_section: provide from_index and to_index.
+- For update_style: provide a "colors" object mapping colour names to #hex values.{$styleVarsHint}
 - Never invent new top-level keys other than the response schema below.
 
 Response schema (return ONLY this JSON object):
@@ -141,6 +143,20 @@ PROMPT;
                 'kept'       => self::MAX_ACTIONS,
             ]);
         }
+
+        // OPEN-1 (2026-09-02): site-level colour changes are not per-section edits. Split them
+        // out so the transaction/section loop and syncStaticHtml stay untouched; apply them to
+        // the served output (static :root vars, or renderer settings_json) after the sync.
+        $styleColors    = [];
+        $sectionActions = [];
+        foreach ($actions as $__a) {
+            if ((string) ($__a['op'] ?? '') === 'update_style' && is_array($__a['colors'] ?? null)) {
+                foreach ($__a['colors'] as $__k => $__v) { $styleColors[(string) $__k] = $__v; }
+            } else {
+                $sectionActions[] = $__a;
+            }
+        }
+        $actions = $sectionActions;
 
         // 4. Snapshot before.
         $this->snapshots->snapshot($pageId, 'arthur_edit_before');
@@ -208,6 +224,19 @@ PROMPT;
             }
         }
 
+        // OPEN-1: apply colour changes to the served page (static :root vars or renderer settings).
+        $style = ['applied' => 0, 'missed' => [], 'is_static' => false, 'files' => []];
+        if ($styleColors !== []) {
+            $style = $this->applyStyleColors($websiteId, $styleColors);
+            if ($style['applied'] > 0) {
+                $reply .= ' I updated ' . $style['applied'] . ' site colour'
+                        . ($style['applied'] === 1 ? '' : 's') . ' on your published page.';
+            }
+            if (! empty($style['missed'])) {
+                $reply .= ' I could not change: ' . implode('; ', $style['missed']) . '.';
+            }
+        }
+
         // 7. Bust published cache.
         $this->bustPublishedCache($pageId);
 
@@ -220,6 +249,8 @@ PROMPT;
             'static_applied'  => $sync['applied'],
             'static_missed'   => $sync['missed'],
             'visible_on_site' => $sync['is_static'] ? ($sync['applied'] > 0) : true,
+            'style_applied'   => $style['applied'],
+            'style_missed'    => $style['missed'],
         ];
     }
 
@@ -433,6 +464,193 @@ PROMPT;
             return ['is_static' => false, 'applied' => 0, 'missed' => []];
         }
         return $this->syncStaticHtml($websiteId, $newSections, $actions);
+    }
+
+    /**
+     * OPEN-1: a prompt hint telling Arthur which colour keys THIS site accepts. Static-template
+     * sites expose named CSS custom properties (read from the export's :root block, with current
+     * values); renderer/section sites accept the semantic roles.
+     */
+    private function availableStyleVars(int $websiteId): string
+    {
+        if ($websiteId <= 0) {
+            return '';
+        }
+        $index = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (is_file($index)) {
+            $html = (string) @file_get_contents($index);
+            $vars = [];
+            if (preg_match('/:root\s*\{([^}]*)\}/', $html, $m)
+                && preg_match_all('/(--[a-z0-9-]+)\s*:\s*([^;]+)/i', $m[1], $mm, PREG_SET_ORDER)) {
+                foreach ($mm as $pair) {
+                    $vars[] = trim($pair[1]) . ' (now ' . trim($pair[2]) . ')';
+                    if (count($vars) >= 16) {
+                        break;
+                    }
+                }
+            }
+            if ($vars !== []) {
+                return ' Available colour variables for this site: ' . implode(', ', $vars)
+                     . '. Use ONLY these variable names as the keys.';
+            }
+        }
+        return ' Use the roles "primary", "secondary" or "accent" as the keys (e.g. {"primary":"#1E5CFF"}).';
+    }
+
+    /**
+     * OPEN-1 (2026-09-02): change site colours so the visitor actually sees them.
+     * Static-template sites (a baked index.html is served in preference to the renderer) are
+     * recoloured by rewriting the values in the export's :root custom-property block — every
+     * var(--x) reference then follows. Renderer/section sites read colours live from settings_json,
+     * so we merge there. Deterministic, hex-validated, reversible (a timestamped .bak per file).
+     *
+     * @param array<string,mixed> $colors  key => hex; key is a --css-var (static) or a role (renderer)
+     * @return array{is_static:bool,applied:int,missed:array<int,string>,files:array<int,string>}
+     */
+    public function applyStyleColors(int $websiteId, array $colors): array
+    {
+        $out = ['is_static' => false, 'applied' => 0, 'missed' => [], 'files' => []];
+        if ($websiteId <= 0 || $colors === []) {
+            return $out;
+        }
+
+        // Validate: only #RGB / #RRGGBB survive. Anything else is reported, never written.
+        $clean = [];
+        foreach ($colors as $key => $val) {
+            $k = trim((string) $key);
+            $v = trim((string) $val);
+            if ($k === '') {
+                continue;
+            }
+            if (! preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', $v)) {
+                $out['missed'][] = "{$k} (\"{$v}\" is not a hex colour)";
+                continue;
+            }
+            $clean[$k] = $v;
+        }
+        if ($clean === []) {
+            return $out;
+        }
+
+        $siteRoot = storage_path("app/public/sites/{$websiteId}");
+
+        if (is_file("{$siteRoot}/index.html")) {
+            // STATIC: rewrite :root variable values across every exported HTML file.
+            $out['is_static'] = true;
+
+            $files = glob("{$siteRoot}/*.html") ?: [];
+            foreach ((glob("{$siteRoot}/*/index.html") ?: []) as $nested) {
+                $files[] = $nested;
+            }
+            $files = array_values(array_unique($files));
+
+            $appliedVars = [];
+            $stamp = date('YmdHis');
+            foreach ($files as $file) {
+                $html = @file_get_contents($file);
+                if ($html === false || stripos($html, ':root') === false) {
+                    continue;
+                }
+                $orig = $html;
+                $html = preg_replace_callback('/:root\s*\{([^}]*)\}/', function (array $m) use ($clean, &$appliedVars) {
+                    $body = $m[1];
+                    foreach ($clean as $k => $v) {
+                        if (strncmp($k, '--', 2) !== 0) {
+                            continue; // role keys are for renderer sites, not a baked :root
+                        }
+                        $n = 0;
+                        $body = preg_replace(
+                            '/(' . preg_quote($k, '/') . '\s*:\s*)[^;}]+/',
+                            '${1}' . $v,
+                            $body,
+                            -1,
+                            $n
+                        );
+                        if ($n > 0) {
+                            $appliedVars[$k] = true;
+                        }
+                    }
+                    return ':root{' . $body . '}';
+                }, $html);
+
+                if (is_string($html) && $html !== $orig) {
+                    @copy($file, "{$file}.bak-{$stamp}");
+                    file_put_contents($file, $html);
+                    $out['files'][] = ltrim(str_replace($siteRoot, '', $file), '/\\');
+                }
+            }
+
+            $out['applied'] = count($appliedVars);
+            foreach ($clean as $k => $v) {
+                if (strncmp($k, '--', 2) !== 0) {
+                    $out['missed'][] = "{$k} (this template needs a --css-variable name, not a role)";
+                } elseif (empty($appliedVars[$k])) {
+                    $out['missed'][] = "{$k} (no such colour variable in this template)";
+                }
+            }
+
+            $this->rememberStyleColors($websiteId, $clean);
+
+            return $out;
+        }
+
+        // RENDERER/SECTION: BuilderRenderer reads primary/secondary/accent from settings_json live.
+        $ws = DB::table('websites')->where('id', $websiteId)->first();
+        if (! $ws) {
+            return $out;
+        }
+        $settings = json_decode($ws->settings_json ?? '{}', true);
+        if (! is_array($settings)) {
+            $settings = [];
+        }
+        $roleMap = ['primary' => 'primary_color', 'secondary' => 'secondary_color', 'accent' => 'accent_color'];
+        foreach ($clean as $k => $v) {
+            $role = str_replace('_color', '', strtolower(ltrim($k, '-')));
+            if (isset($roleMap[$role])) {
+                $settings[$roleMap[$role]] = $v;
+                $out['applied']++;
+            } else {
+                $out['missed'][] = "{$k} (use primary, secondary or accent for this site)";
+            }
+        }
+        if ($out['applied'] > 0) {
+            DB::table('websites')->where('id', $websiteId)->update([
+                'settings_json' => json_encode($settings),
+                'updated_at'    => now(),
+            ]);
+        }
+
+        return $out;
+    }
+
+    /**
+     * OPEN-1: mirror a static site's chosen colours into template_variables so a later rebuild
+     * (TemplateService::render) starts from them. Presentation store only — never touches
+     * sections_json or any workspace/billing state.
+     */
+    private function rememberStyleColors(int $websiteId, array $vars): void
+    {
+        try {
+            $ws = DB::table('websites')->where('id', $websiteId)->first();
+            if (! $ws) {
+                return;
+            }
+            $tv = json_decode($ws->template_variables ?? '{}', true);
+            if (! is_array($tv)) {
+                $tv = [];
+            }
+            foreach ($vars as $k => $v) {
+                $tv[ltrim($k, '-')] = $v; // bare var name matches the manifest colour keys
+            }
+            DB::table('websites')->where('id', $websiteId)->update([
+                'template_variables' => json_encode($tv),
+                'updated_at'         => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('ArthurEditService: rememberStyleColors failed', [
+                'website_id' => $websiteId, 'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function syncStaticHtml(int $websiteId, array $sections, array $actions): array
