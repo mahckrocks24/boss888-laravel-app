@@ -501,29 +501,50 @@
     var was = nearBottom(S.feed); S.feed.appendChild(el); stick(S.feed, was);
   }
 
-  /* revealBubble: render a received, ALREADY-VALIDATED answer progressively, block by block, at reading pace.
-     This is not streaming and not fake typing of fabricated text — the whole answer has arrived and passed the
-     guard chain; we only pace how its blocks appear. The final DOM is byte-identical to bubble(m) (lossless),
-     nothing reflows mid-render (each block is fully formatted before it is shown), and it never delays arrival:
-     short answers and reduced-motion render whole immediately, and the paced reveal is capped at ~1.2s total. */
+  /* revealBoundaries: safe cut points in the markdown SOURCE — after each sentence (. ! ?) and each line, plus
+     the end of any fenced ``` block (never a cut inside one). Used to grow the answer as valid prefixes. */
+  function revealBoundaries(text) {
+    var fences = [], re = /```[\s\S]*?```/g, mm;
+    while ((mm = re.exec(text))) fences.push([mm.index, mm.index + mm[0].length]);
+    function inFence(i) { for (var f = 0; f < fences.length; f++) if (i > fences[f][0] && i < fences[f][1]) return true; return false; }
+    var b = [], r2 = /([.!?])[\)"']?(\s)|(\n)/g, x;
+    while ((x = r2.exec(text))) { var pos = x.index + x[0].length; if (!inFence(pos)) b.push(pos); }
+    fences.forEach(function (f) { b.push(f[1]); });
+    b = b.filter(function (v, i, a) { return v > 0 && v < text.length && a.indexOf(v) === i; }).sort(function (p, q) { return p - q; });
+    return b;
+  }
+
+  /* revealBubble: render a received, ALREADY-GUARD-VALIDATED answer so it unfolds at a natural reading pace,
+     like ChatGPT rendering a finished message. Not token streaming and not fake typing of fabricated text — the
+     whole answer has arrived and passed the guard chain; we pace how much of it is shown by re-rendering
+     fmt(source-prefix) at sentence/line boundaries, so the bubble genuinely grows. The final render is
+     fmt(full) === bubble(m) (lossless). Short answers and prefers-reduced-motion render whole immediately.
+     Cuts land only on sentence/line/fence boundaries so markdown never reflows from a half-open construct. */
   function revealBubble(m) {
-    var el = bubble(m);                          // the full, correct final row
-    var body = el.querySelector('.sh-bubble');
+    var el = bubble(m);                                   // the full, correct final row (fmt + attachments + meta)
+    var bub = el.querySelector('.sh-bubble');
     var content = String(m && m.content != null ? m.content : '');
-    var blocks = body ? Array.prototype.filter.call(body.childNodes, function (n) { return n.nodeType === 1; }) : [];
-    if (!body || reducedMotion() || content.length < 220 || blocks.length < 2) {
-      S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el;   // simple/short → appear at once
+    var finalHtml = bub ? bub.innerHTML : '';             // exact final innerHTML — restored verbatim at the end
+    var sentences = (content.match(/[.!?](\s|$)/g) || []).length;
+    if (!bub || reducedMotion() || content.length < 160 || sentences < 2) {
+      S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el;   // short/simple → at once
     }
-    blocks.forEach(function (n) { n.style.opacity = '0'; });
+    var bounds = revealBoundaries(content);
+    if (bounds.length < 2) { S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el; }
+    bub.innerHTML = '';
     S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight;
-    var per = Math.max(40, Math.min(90, Math.round(1200 / blocks.length)));   // total <= ~1.2s
-    var i = 0;
+    /* pace: perceptible reading-scan, total roughly 2.5-9s, per-step clamped 90-320ms — no dead waiting, the
+       text is moving the whole time; a very long answer reveals faster per step but never instant. */
+    var per = Math.max(90, Math.min(320, Math.round(9000 / bounds.length)));
+    var k = 0;
     (function step() {
-      if (i >= blocks.length) return;
-      var n = blocks[i++]; var was = nearBottom(S.feed);
-      n.style.transition = 'opacity .18s ease'; n.style.opacity = '1';
+      var end = (k < bounds.length) ? bounds[k] : content.length;
+      var was = nearBottom(S.feed);
+      bub.innerHTML = fmtBody(content.slice(0, end));
       stick(S.feed, was);
-      if (i < blocks.length) setTimeout(step, per);
+      k++;
+      if (k <= bounds.length) { setTimeout(step, per); }
+      else { bub.innerHTML = finalHtml; stick(S.feed, nearBottom(S.feed)); }   // lossless final DOM
     })();
     return el;
   }
@@ -563,7 +584,7 @@
       if (ev.type === 'message' || ev.type === 'agent_reply') {
         var rowId = key.indexOf('am_') === 0 ? key.slice(3) : key; if (S.rendered[rowId]) return; S.rendered[rowId] = 1;
         if (S.activePoll) { clearInterval(S.activePoll); S.activePoll = null; }
-        hideOrch(); S.feed.appendChild(bubble({ from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) })); S.lastAgentText = String(ev.content || '').trim(); S.lastAgentAt = Date.now(); loadBriefing();
+        hideOrch(); revealBubble({ from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) }); S.lastAgentText = String(ev.content || '').trim(); S.lastAgentAt = Date.now(); loadBriefing();   /* DEC-0030: the sync/event final unfolds too */
       } else if (ev.type === 'task_created' || ev.type === 'task_started' || ev.type === 'delegation') {
         var d = ev.data || {}; var ag = String(ev.agent_id || d.agent_slug || d.agent || (d.assigned_agents && d.assigned_agents[0]) || '').toLowerCase();
         showOrch(ag, humanAction(d.title || d.action_label || d.label));
