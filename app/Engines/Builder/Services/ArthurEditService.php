@@ -240,8 +240,16 @@ PROMPT;
         // 7. Bust published cache.
         $this->bustPublishedCache($pageId);
 
+        // TRUTHFUL BILLING (REPORT-0027, 2026-09-02): an edit that changed nothing the visitor can see is
+        // NOT a success. success:true here let the task layer mark a no-op completed and charge a credit
+        // (Chef Red phone-in-footer, and scratch task 31972). Success = something actually changed.
+        $__changed = ($sync['is_static'] ? ($sync['applied'] > 0) : ($applied > 0)) || ((int) ($style['applied'] ?? 0) > 0);
+        if (! $__changed) {
+            $reply = 'I could not find anything to change for that, so nothing on your site was updated (and you were not charged). Tell me exactly what to change and where, and I will do it.';
+        }
+
         return [
-            'success'         => true,
+            'success'         => $__changed,
             'sections'        => $newSections,
             'reply'           => $reply,
             'actions_applied' => $applied,

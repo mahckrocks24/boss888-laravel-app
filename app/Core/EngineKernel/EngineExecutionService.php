@@ -428,6 +428,29 @@ class EngineExecutionService
             return $this->creativeFailureResponse($engine, $action, $result);
         }
 
+        // ─── Step 5c (REPORT-0027, 2026-09-02): a builder edit that changed nothing must not be billed ──
+        // editPage now returns success:false for a no-op (no field matched / 0 actions). Without this it
+        // was committed here and the task marked completed (Chef Red phone-in-footer). Release, fail, be honest.
+        if ($engine === 'builder' && is_array($result) && array_key_exists('success', $result) && $result['success'] === false) {
+            if (isset($reservationId) && $creditCost > 0) {
+                $this->creditService->release($wsId, $reservationId);
+            }
+            if ($source === 'agent') {
+                $this->notifyTaskEvent($wsId, \App\Core\Notifications\NotificationTypes::AGENT_TASK_FAILED,
+                    'Agent task made no change',
+                    "{$engine}/{$action} did not change anything: " . (string) ($result['reply'] ?? $result['error'] ?? 'nothing was applied'),
+                    'error', '/agents');
+            }
+            $this->cjSafe(fn () => $__cjs->fail($__cjob, (string) ($result['error'] ?? $result['reply'] ?? 'no_effect')));
+            return [
+                'success'      => false,
+                'error'        => (string) ($result['reply'] ?? $result['error'] ?? 'No change was made.'),
+                'code'         => 'NO_EFFECT',
+                'data'         => $result,
+                'credits_used' => 0,
+            ];
+        }
+
         // ─── Step 6: Commit credits ──────────────────────────
         if (isset($reservationId) && $creditCost > 0) {
             $this->creditService->commit($wsId, $reservationId, $creditCost);
