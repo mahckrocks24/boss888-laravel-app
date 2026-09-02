@@ -1369,15 +1369,19 @@ class Orchestrator
                         ->value('id') ?? 0);
                 }
                 if ($pageId <= 0) {
-                    $pageId = (int) (\Illuminate\Support\Facades\DB::table('pages')
-                        ->join('websites', 'websites.id', '=', 'pages.website_id')
-                        ->where('websites.workspace_id', $wsId)
-                        ->whereNull('websites.deleted_at')
-                        ->orderByDesc('pages.is_homepage')
-                        ->orderByDesc('websites.id')->orderBy('pages.position')
-                        ->value('pages.id') ?? 0);
-                    if ($pageId > 0) {
-                        \Illuminate\Support\Facades\Log::warning('[Orchestrator] ai_builder_action: no page_id/website_id in payload — resolved to workspace home page', ['workspace_id' => $wsId, 'resolved_page_id' => $pageId]);
+                    // WT-2: never guess a site when the target is ambiguous. A workspace with exactly ONE
+                    // website is unambiguous; more than one MUST name the target (Chef Red ws2: sites 3+462
+                    // used to resolve to the highest id -> edited Miyguel instead of Chef Red).
+                    $__wsSites = \Illuminate\Support\Facades\DB::table('websites')
+                        ->where('workspace_id', $wsId)->whereNull('deleted_at')
+                        ->orderBy('id')->pluck('id');
+                    if ($__wsSites->count() === 1) {
+                        $pageId = (int) (\Illuminate\Support\Facades\DB::table('pages')
+                            ->where('website_id', (int) $__wsSites->first())
+                            ->orderByDesc('is_homepage')->orderBy('position')->orderBy('id')
+                            ->value('id') ?? 0);
+                    } elseif ($__wsSites->count() > 1) {
+                        throw new \RuntimeException('This workspace has ' . $__wsSites->count() . ' websites, so I will not guess which one to edit. Tell me the specific site (or pass website_id) and I will make the change there.');
                     }
                 }
                 if ($pageId <= 0) {
