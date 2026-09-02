@@ -194,6 +194,15 @@ class ForensicRemediationTest extends TestCase
         $this->assertStringNotContainsString('speak to the owner', $out);
     }
 
+    /** Run 6 turn 5: the live tool returned stdClass rows and the titles were dropped — "2 pages on the website … " with no list. */
+    public function test_render_lists_titles_from_object_rows_too(): void
+    {
+        $rows = [(object) ['id' => 1, 'title' => 'Home', 'status' => 'published', 'website_name' => 'Fable QA Cafe Two'], (object) ['id' => 2, 'title' => 'Blog', 'status' => 'published', 'website_name' => 'Fable QA Cafe Two']];
+        $out = ReadToolPromotion::render(['success' => true, 'result' => '2 pages on the website "Fable QA Cafe Two". This workspace has 3 websites.', 'data' => $rows]);
+        $this->assertStringContainsString('• Home (Fable QA Cafe Two, published)', $out);
+        $this->assertStringContainsString('• Blog', $out);
+    }
+
     public function test_render_passes_a_clarify_question_through_and_states_failures_plainly(): void
     {
         $this->assertSame('Which website would you like me to update — Fable QA Bakery, Fable QA Cafe Two?',

@@ -89,6 +89,8 @@ final class ReadToolPromotion
         }
 
         $data = is_array($result['data'] ?? null) ? $result['data'] : [];
+        // 2026-09-02 (run 6, turn 5): list_pages returns Collection->toArray() — a list of stdClass rows. Objects become arrays here.
+        $data = json_decode(json_encode($data), true) ?: [];
         $rows = null;
         foreach (['pages', 'articles', 'items', 'rows', 'results', 'websites', 'keywords', 'leads', 'tasks'] as $k) {
             if (isset($data[$k]) && is_array($data[$k])) { $rows = $data[$k]; break; }

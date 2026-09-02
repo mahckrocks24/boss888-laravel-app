@@ -437,9 +437,20 @@ class ToolSchemaService
      * Render the schema as a system-prompt block. Sarah / agents see this
      * INSTEAD of the loose prose roster they had before.
      */
-    public function getToolSchemaPrompt(string $agentSlug): string
+    public function getToolSchemaPrompt(string $agentSlug, ?array $domains = null, string $turn = ''): string
     {
         $tools = $this->getAgentTools($agentSlug);
+        // DEC-0029 §6 (2026-09-02): "Do not inject the complete tool catalog into every turn." The block was 28k
+        // characters (35% of the prompt) on every turn. With domains known, engine tools outside the turn's
+        // families are omitted; platform and web READS always travel (they are small and the model's honest
+        // answer to "what is there?").
+        if ($domains !== null) {
+            $engines = \App\Core\Sarah888\MinimumPath::toolEngines($domains, $turn);
+            $tools = array_filter($tools, function ($def, $id) use ($engines) {
+                if (str_starts_with($id, 'platform.') || str_starts_with($id, 'web.')) return true;
+                return in_array((string) ($def['engine'] ?? ''), $engines, true);
+            }, ARRAY_FILTER_USE_BOTH);
+        }
         $lines = ['AVAILABLE TOOLS — you may ONLY call these exact tool IDs:'];
         foreach ($tools as $toolId => $def) {
             $params = empty($def['parameters'])

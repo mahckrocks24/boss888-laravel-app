@@ -86,7 +86,7 @@ class RouterIntent
 
         // SF-04 (REPORT-0024, 2026-09-01): "Hi Sarah." was a model call. A greeting or a bare acknowledgement
         // asks for nothing that has to be derived, so it is STATUS by construction.
-        if (self::isTrivialTurn($m)) return ['mode' => self::STATUS, 'why' => 'greeting or acknowledgement', 'source' => 'deterministic'];
+        if (self::isTrivialTurn($m)) { self::$domainMemo[$key] = []; return ['mode' => self::STATUS, 'why' => 'greeting or acknowledgement', 'source' => 'deterministic']; }
 
         $system = <<<'SYS'
 You decide what a business owner wants from one message to their marketing director.
@@ -135,7 +135,12 @@ the words used or the topic.
 If the message asks for both, answer ANALYSIS — the facts can be included inside
 an analysis, but an analysis cannot be recovered from a list.
 
-Reply with JSON only: {"mode":"status|analysis","why":"<six words or fewer>"}
+Also name which parts of the workspace the answer needs, from exactly these and only those
+genuinely required: crm (leads, contacts, pipeline), seo (keywords, rankings, audits, links),
+content (articles, drafts, publishing, images, meta), tasks (the work queue), incident (something
+broken or failing), commercial (budget, credits, spend, pricing).
+
+Reply with JSON only: {"mode":"status|analysis","why":"<six words or fewer>","domains":["..."]}
 SYS;
 
         try {
@@ -168,6 +173,14 @@ SYS;
                     'source' => 'model'];
         if (count(self::$memo) > 500) self::$memo = [];   // bounded, not clever
         self::$memo[$key] = $verdict;
+        // DEC-0029 (2026-09-02): the same judgement also answers "what does this turn need?" — one call, two memos.
+        // domains() finds this memo and makes no second model call.
+        $__gotDomains = is_array($parsed['domains'] ?? null) ? $parsed['domains'] : null;
+        if ($__gotDomains !== null) {
+            $__clean = array_values(array_intersect(array_map(fn($d) => strtolower(trim((string) $d)), $__gotDomains), self::DOMAINS));
+            if (count(self::$domainMemo) > 500) self::$domainMemo = [];
+            self::$domainMemo[$key] = $__clean ?: self::DOMAINS;
+        }
         return $verdict;
     }
 
@@ -190,6 +203,15 @@ SYS;
     public const DOMAINS = ['crm', 'seo', 'content', 'tasks', 'incident', 'commercial'];
 
     private static array $domainMemo = [];
+
+    /** DEC-0029 (2026-09-02): a WORK turn never runs the mode classifier, so the route seeds keyword-derived domains
+     *  here and ContextSelector's domains() call becomes a memo hit instead of a separate model call. */
+    public static function seedDomains(string $message, array $domains): void
+    {
+        $clean = array_values(array_intersect(array_map(fn($d) => strtolower(trim((string) $d)), $domains), self::DOMAINS));
+        if (count(self::$domainMemo) > 500) self::$domainMemo = [];
+        self::$domainMemo[md5(trim($message))] = $clean ?: self::DOMAINS;
+    }
 
     /**
      * Which parts of the workspace does answering this turn actually require?

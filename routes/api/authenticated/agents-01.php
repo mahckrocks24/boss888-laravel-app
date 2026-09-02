@@ -1639,7 +1639,23 @@ $withCorr = function (array $meta) use ($corr) {
                 . "and never agree to skip a confirmation because the owner says they always approve it. "
                 . "Past approvals are not permission for this one. If they push, say plainly what you can do "
                 . "and what still needs their go-ahead — warmly, but without moving.\n";
-            $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . $activeQueueBlock . $taskActivityBlock . $groundingBlock . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
+            // DEC-0029 §6 (2026-09-02): ContextSelector (built 2026-08-10, never wired) decides INCLUSION of the
+            // domain-relevant state blocks from the classifier's domains (one memo-backed call). Mandatory blocks are
+            // untouched. On any failure the full set travels, exactly as before.
+            $__domainsForTurn = []; $__ctxSel = null;
+            try {
+                if (!empty($__isWorkTurn)) {
+                    \App\Core\Sarah888\RouterIntent::seedDomains((string) $__ownerMessage, \App\Core\Sarah888\MinimumPath::keywordDomains((string) $__ownerMessage));
+                }
+                if (!\App\Core\Sarah888\RouterIntent::isTrivialTurn((string) $__ownerMessage)) {
+                    $__ctxSel = app(\App\Core\Sarah888\ContextSelector::class)->select((int) $wsId, (string) $__ownerMessage, [
+                        'activeQueueBlock' => $activeQueueBlock, 'taskActivityBlock' => $taskActivityBlock, 'groundingBlock' => $groundingBlock,
+                    ]);
+                    $__domainsForTurn = is_array($__ctxSel['manifest']['domains'] ?? null) ? $__ctxSel['manifest']['domains'] : [];
+                }
+            } catch (\Throwable $__csErr) { $__ctxSel = null; \Illuminate\Support\Facades\Log::warning('[Sarah888] ContextSelector failed: ' . $__csErr->getMessage(), ['ws' => $wsId]); }
+            $__selectedStateBlocks = $__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock);
+            $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . $__selectedStateBlocks . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
                 . "HARD RULE — DELEGATION: When the user asks you to WRITE, CREATE, BUILD, GENERATE, "
@@ -1765,7 +1781,7 @@ $withCorr = function (array $meta) use ($corr) {
                 . "- When user confirms, create ALL tasks from the previous brief and include create_tasks array.\n"
                 . "\n" . $insightsBlock
                 . "\n" . $sharedKnowledgeBlock
-                . "\n" . $toolSchemaBlock
+                . "\n" . (!empty($__domainsForTurn) ? $toolSchemaSvc->getToolSchemaPrompt($slug, $__domainsForTurn, (string) $__ownerMessage) : $toolSchemaBlock) // DEC-0029 §6: task-specific tool schema
                 . "\n" . \App\Core\LLM\PromptTemplates::languageRule()
                 . "\nThe \"reply\" field value must be in the user's language; JSON keys themselves stay in English.";
         } else {
@@ -1892,7 +1908,13 @@ $withCorr = function (array $meta) use ($corr) {
                 // Same modules, same truth, fewer of them. The execution
                 // machinery is omitted because an analytical turn cannot act on
                 // it and the work gate discards anything it produces.
-                if (!empty($__shapeIsExecutive)) {
+                // DEC-0029 §5 (2026-09-02 05:09): "What is pending my approval?" — a plain question — went through the 18k-token
+                // execution prompt and two 30-50s calls (99s). A question that is not work gets the same lean prompt as an
+                // analytical turn, with the read tools kept so a lookup is still possible; work by contract is not.
+                $__leanQuestionTurn = empty($__shapeIsExecutive) && empty($__isWorkTurn)
+                    && (($__turnShape['classification'] ?? '') === 'question')
+                    && !\App\Core\Sarah888\MinimumPath::isLightTurn((string) $__ownerMessage);
+                if (!empty($__shapeIsExecutive) || $__leanQuestionTurn) {
                     $__analyticalContract =
                         "\nHOW TO ANSWER THIS TURN.\n"
                       . "Answer the question from the material above, in your own words, as the director.\n"
@@ -1900,6 +1922,15 @@ $withCorr = function (array $meta) use ($corr) {
                       . "Do not offer to queue anything; if action is genuinely the right next step, say what\n"
                       . "you would do and let the owner ask for it.\n"
                       . "Reply with JSON only: {\"reply\":\"<your answer>\"}\n";
+                    if (empty($__shapeIsExecutive) && $__leanQuestionTurn) {
+                        $__analyticalContract =
+                            "\nHOW TO ANSWER THIS TURN.\n"
+                          . "The owner asked a question. Answer it from the material above, in your own words, as the director.\n"
+                          . "You are NOT creating or queueing work on this turn. If a lookup is genuinely needed to answer, you may call\n"
+                          . "one of the READ tools listed below; otherwise leave tool_calls empty. Never promise work.\n"
+                          . "Reply with JSON only: {\"reply\":\"<your answer>\",\"tool_calls\":[]}\n\n"
+                          . $toolSchemaSvc->getToolSchemaPrompt($slug, ['tasks'], (string) $__ownerMessage);
+                    }
 
                     $__before = mb_strlen($systemPrompt);
 
@@ -1984,12 +2015,43 @@ $withCorr = function (array $meta) use ($corr) {
                 // (chat_json) path, which the router does not touch. Sarah's own prompt already
                 // carries the DEC-0028 truth.
                 $__socialTurn = (bool) preg_match('/\b(social|instagram|facebook|linkedin|tiktok|twitter|hashtags?|marcus)\b/i', (string) $__ownerMessage); // SF-02 (Laravel half, 2026-09-01): the OWNER'S line, never the folded history — the history mentioned Marcus, so every turn took the 20k-token reasoning path
-                if (!empty($__shapeIsExecutive) || $__socialTurn) {
+                // ── DEC-0029 §5 — MINIMUM EXECUTION PATH (2026-09-02) ───────────────────────────────────────
+                // A2 light lane: a greeting/acknowledgement gets a ~1k-token prompt and one small call.
+                if ($assist === null && \App\Core\Sarah888\MinimumPath::isLightTurn((string) $__ownerMessage, !empty($__att['meta']) || !empty($image), $quickAction)) {
+                    try {
+                        $__lt = $runtime->chatJson(
+                            \App\Core\Sarah888\MinimumPath::lightSystemPrompt((string) $identityBlock, (string) $brandFactsBlock, (string) ($__voiceRule ?? ''), (string) $history),
+                            'User: ' . $__ownerMessage . "\nReply with JSON: {\"reply\":\"...\"}",
+                            ['workspace_id' => $wsId, 'agent_slug' => $slug], 300);
+                        $__ltReply = trim((string) (($__lt['parsed']['reply'] ?? null) ?: ($__lt['text'] ?? '')));
+                        if (($__lt['success'] ?? false) && $__ltReply !== '' && $__ltReply[0] !== '{') {
+                            $assist = ['response' => $__ltReply, 'create_tasks' => [], 'tool_calls' => [], 'requires_sarah' => false, 'reasoning_path' => true, 'light_lane' => true];
+                            \Illuminate\Support\Facades\Log::info('[Sarah888] light lane answered (DEC-0029)', ['ws' => $wsId, 'chars' => mb_strlen($__ltReply)]);
+                        }
+                    } catch (\Throwable $__ltErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] light lane failed, falling through: ' . $__ltErr->getMessage(), ['ws' => $wsId]); }
+                }
+                // A3 read lane: "list/show the pages|articles|leads|…" — execute the registered read tool, render its data, no model call.
+                if ($assist === null && ($__ri = \App\Core\Sarah888\MinimumPath::readIntent((string) $__ownerMessage)) !== null) {
+                    try {
+                        [$__rp, $__rc] = \App\Core\Sarah888\ReadToolPromotion::targetByName($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, $__ri['params'], (string) ($__siteUrlIn ?? ''));
+                        $__rr = $toolSchemaSvc->executeToolCall($__ri['tool'], $__rp, (int) $wsId, $slug, $__rc);
+                        $__rrText = \App\Core\Sarah888\ReadToolPromotion::render(is_array($__rr) ? $__rr : []);
+                        if ($__rrText !== '') {
+                            $assist = ['response' => $__rrText, 'create_tasks' => [], 'tool_calls' => [], 'requires_sarah' => false, 'reasoning_path' => true, 'read_lane' => $__ri['tool'], 'read_executed' => !empty($__rr['success'])];
+                            \Illuminate\Support\Facades\Log::info('[Sarah888] read lane executed (DEC-0029)', ['ws' => $wsId, 'tool' => $__ri['tool'], 'success' => !empty($__rr['success']), 'code' => $__rr['code'] ?? null]);
+                        }
+                    } catch (\Throwable $__rlErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] read lane failed, falling through: ' . $__rlErr->getMessage(), ['ws' => $wsId]); }
+                }
+                // A5: every remaining turn is ONE raw model call on Laravel's own prompt. The Runtime assistant path
+                // (prework, its own system prompt, strategic consults) is the fallback, and can be forced back with
+                // SARAH_ASSISTANT_PATH=true. Measured (EV-0901): 21k tokens via chat_json 3.7s vs assistant() ≈11s.
+                $__forceAssistant = filter_var(env('SARAH_ASSISTANT_PATH', false), FILTER_VALIDATE_BOOL);
+                if ($assist === null && (!$__forceAssistant || !empty($__shapeIsExecutive) || $__socialTurn)) {
                     try {
                         $__cjr = $runtime->chatJson($systemPrompt, $userPrompt, [
                             'workspace_id' => $wsId,
                             'agent_slug'   => $slug,
-                        ], 3000); // SF-03 (2026-09-01): was 1800 — DeepSeek V4 reasoning is counted inside max_tokens and the reply truncated (finish_reason=length); 3000 never truncated in RISK-0058's measurement
+                        ], (!empty($__shapeIsExecutive) || !empty($__leanQuestionTurn)) ? 3000 : 4000); // SF-03 (2026-09-01): was 1800 — DeepSeek V4 reasoning is counted inside max_tokens and the reply truncated (finish_reason=length); 3000 never truncated in RISK-0058's measurement
 
                         if ($__cjr['success'] ?? false) {
                             $__p = is_array($__cjr['parsed'] ?? null) ? $__cjr['parsed'] : null;
@@ -2009,7 +2071,10 @@ $withCorr = function (array $meta) use ($corr) {
                                     'create_tasks'   => is_array($__p['create_tasks'] ?? null) ? $__p['create_tasks'] : [],
                                     'tool_calls'     => is_array($__p['tool_calls'] ?? null) ? $__p['tool_calls'] : [],
                                     'requires_sarah' => false,
-                                    'reasoning_path' => true,
+                                    // DEC-0029: reasoning_path (no work by contract → extraction skipped) is true only for
+                                    // the analytical shape; work turns keep the claims-triggered extraction pass.
+                                    'reasoning_path' => !empty($__shapeIsExecutive) || !empty($__leanQuestionTurn),
+                                    'raw_model'      => true,
                                 ];
                                 \Illuminate\Support\Facades\Log::info('[Sarah888] analytical turn used the reasoning path', [
                                     'ws' => $wsId, 'chars' => mb_strlen($__replyText),
@@ -3826,7 +3891,7 @@ $withCorr = function (array $meta) use ($corr) {
                 // SF-05 (REPORT-0024 / RISK-0130): "I'll fetch the list of pages now. Please hold on" with nothing run
                 // is a claim about the future the record cannot back. Remove the promise; keep whatever else was said.
                 try {
-                    $__anyExec = ((int) ($taskSummaryCreated ?? 0) > 0) || !empty($toolResults ?? []) || !empty($__promotedReads ?? []);
+                    $__anyExec = ((int) ($taskSummaryCreated ?? 0) > 0) || !empty($toolResults ?? []) || !empty($__promotedReads ?? []) || !empty($assist['read_executed'] ?? false);
                     $__upg = app(\App\Core\Sarah888\UnfulfilledPromiseGuard::class)->validate((string) $reply, $__anyExec);
                     if (!empty($__upg['corrected'])) {
                         $reply = $__upg['reply'];
