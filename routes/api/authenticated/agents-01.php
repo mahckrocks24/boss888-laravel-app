@@ -3754,6 +3754,19 @@ $withCorr = function (array $meta) use ($corr) {
                     ->where('created_at', '>=', now()->subSeconds(25))
                     ->exists();
             }
+            // P2 delegation precision (2026-09-02): the specialists genuinely engaged THIS turn, from the
+            // tasks just created (assigned_agents_json). Lets AgentClaimValidator verify a named attribution
+            // per-specialist instead of 'any task exists' licensing every name. Empty => no evidence => no over-strip.
+            $__engagedAgents = [];
+            if ($__didQueue) {
+                try {
+                    foreach (DB::table('tasks')->where('workspace_id', $wsId)->where('created_at', '>=', now()->subSeconds(25))->pluck('assigned_agents_json') as $__aj) {
+                        $__a = json_decode((string) $__aj, true);
+                        if (is_array($__a)) { foreach ($__a as $__one) { $__engagedAgents[] = strtolower(trim((string) $__one)); } }
+                    }
+                    $__engagedAgents = array_values(array_unique(array_filter($__engagedAgents)));
+                } catch (\Throwable) { $__engagedAgents = []; }
+            }
             // ── SARAH888 — FINISH A PLAN THAT IS ONLY A LIST ───────────────
             // Executive Planning: dependencies / critical_path / contingency /
             // completion_criteria all 0/4 while the material for every one of
@@ -3800,7 +3813,7 @@ $withCorr = function (array $meta) use ($corr) {
                 }
             }
 
-            $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue);
+            $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents);
             $reply = $__cv['reply'];
             // W6 — truthfulness guard on the agent bubble. The launch-scope rule lives in
             // Sarah's prompt, but a prompt is probabilistic: she still told a user

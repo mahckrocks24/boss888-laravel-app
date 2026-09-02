@@ -59,6 +59,9 @@ class AgentClaimValidator
         // the grammatical subject is.
         '/\b(is|are|was|were|has been|have been|got|gets)\s+(already\s+|now\s+)?(queued|in the queue|scheduled|awaiting execution|in progress|underway|in flight|being handled|being processed|lined up)\b/i',
         '/\balready (queued|scheduled|in progress|underway|in flight|being handled)\b/i',
+        // Named-specialist attribution: "queued/assigned/handed/asked/tasked <Specialist>" — a claim that a
+        // named specialist is on the job. Verified per-specialist against who was actually engaged this turn.
+        '/\b(queued|assigned|handed|asked|told|briefed|tasked|delegated|looped in|brought in|pulled in)\b[^.!?\n]{0,20}\b(james|priya|elena|marcus|max|nora|alex|diana|ryan|sofia|leo|maya|chris|zara|tyler|zoe|jordan|kai|vera)\b/i',
         // delegation-ENGAGEMENT: Sarah says she engaged a helper — "I've asked/told/had/got X to get
         // started/handle/work on it", "handed this off to James". A claim a specialist is on the job.
         '/\bI(\'?ve|\s+have|\s+already)?\s+(asked|told|had|got|looped in|brought in|pulled in|handed (this|that|it)?\s*(to|off)|assigned (this|that|it)?\s*to)\b[^.!?\n]*\b(get started|start(ed|ing)?|begin|handle|handling|take (it|this|that|care|over)|work(ing)? on|look (at|into)|jump on|pick (it|this|that) up|run with|sort|fix(ing)?|writ(e|ing)|draft(ing)?|creat(e|ing)|generat(e|ing)|build(ing)?|insert(ing)?|add(ing)?)\b/i',
@@ -74,7 +77,20 @@ class AgentClaimValidator
      * @param  bool    $didQueue  did THIS turn actually create tasks?
      * @return array{reply:string, stripped:array}
      */
-    public function validate(string $reply, int $wsId, string $slug, bool $didQueue = false): array
+    /** Specialist first-names that may be attributed work in a delegation claim (excludes Sarah, the DMM). */
+    private const SPECIALIST_NAMES = ['james','priya','elena','marcus','max','nora','alex','diana','ryan','sofia','leo','maya','chris','zara','tyler','zoe','jordan','kai','vera'];
+
+    /** Lowercased specialist names a sentence attributes work to. */
+    private function namedSpecialists(string $sentence): array
+    {
+        $found = [];
+        foreach (self::SPECIALIST_NAMES as $n) {
+            if (preg_match('/\\b' . $n . '\\b/i', $sentence)) { $found[] = $n; }
+        }
+        return array_values(array_unique($found));
+    }
+
+    public function validate(string $reply, int $wsId, string $slug, bool $didQueue = false, array $engagedAgents = []): array
     {
         if (trim($reply) === '') {
             return ['reply' => $reply, 'stripped' => []];
@@ -83,16 +99,9 @@ class AgentClaimValidator
         $slug     = strtolower(trim($slug));
         $isDmm    = $this->isDelegator($slug);
         $stripped = [];
+        $engaged  = array_values(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $engagedAgents)));
 
-        // Sarah may legitimately report delegation — but ONLY when this turn
-        // really produced tasks. A specialist may never claim it at all.
-        if ($isDmm && $didQueue) {
-            return ['reply' => $reply, 'stripped' => []];
-        }
-
-        // Split into sentences, keep only those that are NOT a claim. Operating
-        // whole-sentence avoids the mid-sentence debris a fragment-excision left
-        // ("...for myself —.") and catches compound claims.
+        // Split into sentences; decide keep vs strip per claim.
         $sentences = preg_split('/(?<=[.!?])\s+|\n+/', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $kept = [];
         foreach ($sentences as $sentence) {
@@ -100,11 +109,24 @@ class AgentClaimValidator
             foreach (self::CLAIM_PATTERNS as $rx) {
                 if (preg_match($rx, $sentence)) { $isClaim = true; break; }
             }
-            if ($isClaim) {
-                $stripped[] = trim($sentence);
-            } else {
-                $kept[] = trim($sentence);
+            if (! $isClaim) { $kept[] = trim($sentence); continue; }
+
+            // A delegation/completion claim. Sarah may report it ONLY with real backing this turn; a specialist
+            // may never claim delegation at all. P2 precision: a claim that NAMES a specialist is kept only if
+            // that specialist was actually engaged this turn; a generic queue claim (no name) is backed by
+            // $didQueue; and with no engaged-agent evidence we do not over-strip.
+            $keep = false;
+            if ($isDmm && $didQueue) {
+                $named = $this->namedSpecialists($sentence);
+                if ($named === []) {
+                    $keep = true;
+                } elseif ($engaged !== [] && array_diff($named, $engaged) !== []) {
+                    $keep = false;
+                } else {
+                    $keep = true;
+                }
             }
+            if ($keep) { $kept[] = trim($sentence); } else { $stripped[] = trim($sentence); }
         }
 
         if (empty($stripped)) {
