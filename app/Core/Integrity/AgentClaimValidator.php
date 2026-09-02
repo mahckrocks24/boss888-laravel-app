@@ -59,6 +59,12 @@ class AgentClaimValidator
         // the grammatical subject is.
         '/\b(is|are|was|were|has been|have been|got|gets)\s+(already\s+|now\s+)?(queued|in the queue|scheduled|awaiting execution|in progress|underway|in flight|being handled|being processed|lined up)\b/i',
         '/\balready (queued|scheduled|in progress|underway|in flight|being handled)\b/i',
+        // delegation-ENGAGEMENT: Sarah says she engaged a helper — "I've asked/told/had/got X to get
+        // started/handle/work on it", "handed this off to James". A claim a specialist is on the job.
+        '/\bI(\'?ve|\s+have|\s+already)?\s+(asked|told|had|got|looped in|brought in|pulled in|handed (this|that|it)?\s*(to|off)|assigned (this|that|it)?\s*to)\b[^.!?\n]*\b(get started|start(ed|ing)?|begin|handle|handling|take (it|this|that|care|over)|work(ing)? on|look (at|into)|jump on|pick (it|this|that) up|run with|sort|fix(ing)?|writ(e|ing)|draft(ing)?|creat(e|ing)|generat(e|ing)|build(ing)?|insert(ing)?|add(ing)?)\b/i',
+        // third-person specialist-progress: "James is inserting the links now", "Priya will handle the
+        // metas", "the team is on it" — a named specialist/team claimed to be working, whoever the subject.
+        '/\b(james|priya|elena|marcus|alex|the team|my team|the (specialist|specialists|content team|seo team|design team|social team))\b[^.!?\n]*\b(is|are|will|\'ll|\'s|has|have|\'ve|getting|now|currently|already)\b[^.!?\n]*\b(get started|getting started|start(ed|ing)?|handle|handling|work(ing)? on|take|taking|on it|draft(ing)?|writ(e|ing)|generat(e|ing)|insert(ing)?|build(ing)?|fix(ing)?|begin)\b/i',
     ];
 
     /**
