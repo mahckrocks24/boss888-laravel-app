@@ -22,7 +22,7 @@ namespace App\Core\Sarah888;
  */
 final class ReadToolPromotion
 {
-    private const READ_FAMILY = '/^(platform\.(get_[a-z_]+|list_[a-z_]+|read_[a-z_]+|seo_health|search_performance)|web\.(fetch|search))$/';
+    private const READ_FAMILY = '/^(platform\.(get_[a-z_]+|list_[a-z_]+|read_[a-z_]+|seo_health|search_performance)|web\.(fetch|search)|crm\.(list_leads|get_lead)|seo\.list_keywords|calendar\.(list_events|check_availability)|builder\.(list_builder_pages|get_builder_page))$/';
 
     /**
      * RFC-0007 Phase 3 (REPORT-0026 §3): the Runtime emits its own bare read ids; these map to the canonical
