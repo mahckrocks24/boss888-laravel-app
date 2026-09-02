@@ -141,7 +141,7 @@ class ExecutiveFacts
         // ---- backlog, capacity ----------------------------------------------------
         $open = (int) (clone $tasks())->whereIn('status', ['pending', 'awaiting_approval'])->count();
         $add('open_backlog',   $open, 'count', self::P_NOW);
-        $add('credit_balance', DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0,
+        $add('credit_balance', (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['balance'] ?? 0), // CR-1: pool-resolved, not the raw per-workspace row
              'credits', self::P_NOW);
         if ($doneWk > 0)
             $add('backlog_clearance', ceil($open / max(1, $doneWk / 7)), 'days', self::P_NOW);
