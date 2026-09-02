@@ -38,6 +38,7 @@ class ExecutiveFacts
     public const P_MONTH = 'this_month';
     public const P_LMON  = 'last_month';
     public const P_NOW   = 'now';
+    public const P_TODAY = 'today';
 
     /**
      * @return array<int, array{name:string, value:int, unit:string, period:string}>
@@ -94,6 +95,12 @@ class ExecutiveFacts
         $failM = $win('failed', $mFrom);
         $add('tasks_completed', $doneM, 'count', self::P_MONTH);
         $add('tasks_failed',    $failM, 'count', self::P_MONTH);
+
+        // ---- today view (F-U8-COUNT 2026-09-02) — the model was inventing a today/per-site
+        //      completion count for a scope it was never given; ground it. -----------
+        $todayFrom = (clone $now)->startOfDay();
+        $add('tasks_completed', $win('completed', $todayFrom), 'count', self::P_TODAY);
+        $add('tasks_failed',    $win('failed', $todayFrom), 'count', self::P_TODAY);
         if ($doneM + $failM > 0)
             $add('failure_rate', round(100 * $failM / ($doneM + $failM)), 'percent', self::P_MONTH);
 
