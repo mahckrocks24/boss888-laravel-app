@@ -89,24 +89,24 @@ final class CompletionGuard
         if (trim($reply) === '') return ['reply' => $reply, 'rewritten' => []];
 
         $rewritten = [];
-        $sentences = preg_split('/(?<=[.!?])\s+|\n+/', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        $out = [];
-
-        foreach ($sentences as $sentence) {
-            $s = $sentence;
-
+        // DEC-0030 (2026-09-02): split CAPTURING the delimiters so the model's paragraph and list line breaks
+        // survive. The old code split on /(?<=[.!?])\s+|\n+/ and implode(' ')'d — flattening every reply into
+        // one wall-of-text paragraph even when nothing was rewritten. Even indices are sentences, odd are the
+        // original whitespace; only offending sentences are swapped; the whitespace is preserved verbatim.
+        $parts = preg_split('/((?<=[.!?])\s+|\n+)/u', $reply, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$reply];
+        for ($__i = 0; $__i < count($parts); $__i += 2) {
+            $s = $parts[$__i];
+            if (trim($s) === '') continue;
             if ($this->isCapitulation($s)) {
                 $rewritten[] = ['type' => 'capitulation', 'was' => mb_substr(trim($s), 0, 160)];
-                $s = self::NO_RECORD . $this->trailing($s);
+                $parts[$__i] = self::NO_RECORD . $this->trailing($s);
             } elseif ($this->isUnverifiedCompletion($s, $verifiedActions)) {
                 $rewritten[] = ['type' => 'completion', 'was' => mb_substr(trim($s), 0, 160)];
-                $s = self::NOT_DONE . $this->trailing($s);
+                $parts[$__i] = self::NOT_DONE . $this->trailing($s);
             }
-
-            if (trim($s) !== '') $out[] = trim($s);
         }
 
-        $final = trim(implode(' ', $out));
+        $final = trim(implode('', $parts));
         if ($final === '') $final = self::NOT_DONE . '.';
 
         if ($rewritten) {

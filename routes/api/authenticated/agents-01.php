@@ -4099,6 +4099,11 @@ $withCorr = function (array $meta) use ($corr) {
         } catch (\Throwable $__tseErr) {
             \Illuminate\Support\Facades\Log::warning('[Sarah888] TurnStatusEmitter failed: ' . $__tseErr->getMessage(), ['ws' => $wsId]);
         }
+
+        // DEC-0030 (2026-09-02): last step before persist — give the reply a person's line breaks. Presentation
+        // only (no word changes); DeepSeek emits the whole answer on one line, which read as a robotic wall.
+        try { $reply = \App\Core\Sarah888\ChatFormat::humanize((string) $reply); }
+        catch (\Throwable $__cfErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] ChatFormat failed: ' . $__cfErr->getMessage(), ['ws' => $wsId]); }
         // Store agent response in agent_messages for the unified messaging UI.
         // v1.4.4 (2026-05-30) — two-phase mode tags this row as the FINAL phase
         // so the SPA's poll loop can distinguish it from the earlier ack row

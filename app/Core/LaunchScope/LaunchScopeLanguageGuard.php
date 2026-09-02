@@ -101,26 +101,19 @@ final class LaunchScopeLanguageGuard
         $probe = self::normalise($text);
 
         // ── 1. Sentences that frame a removed capability as connectable.
-        $sentences = preg_split('/(?<=[.!?])\s+/u', $out) ?: [$out];
-        foreach ($sentences as $i => $sentence) {
+        // DEC-0030 (2026-09-02): split CAPTURING the whitespace so newlines/paragraphs survive; implode(' ')
+        // here flattened every reply into one paragraph. Even indices are sentences, odd are the delimiters.
+        $parts = preg_split('/((?<=[.!?])\s+)/u', $out, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [$out];
+        for ($__i = 0; $__i < count($parts); $__i += 2) {
+            $sentence = $parts[$__i];
             $l = mb_strtolower(self::normalise($sentence));
-
-            if (self::mentionsAny($l, self::PROTECTED_SUBJECTS)) continue;   // retained integration
-
-            // Conclusive on its own - no retained flow speaks this way.
-            if (self::mentionsAny($l, self::SELF_SUFFICIENT_FRAMING)) {
-                $sentences[$i] = self::TRUTH;
-                $reasons[] = 'reframed_removed_capability';
-                continue;
-            }
-
-            if (!self::mentionsAny($l, self::REMOVED_SUBJECTS))  continue;   // not about removed work
-            if (!self::mentionsAny($l, self::BANNED_FRAMING))    continue;   // framing is fine
-
-            $sentences[$i] = self::TRUTH;
-            $reasons[] = 'reframed_removed_capability';
+            if (self::mentionsAny($l, self::PROTECTED_SUBJECTS)) continue;
+            if (self::mentionsAny($l, self::SELF_SUFFICIENT_FRAMING)) { $parts[$__i] = self::TRUTH; $reasons[] = 'reframed_removed_capability'; continue; }
+            if (!self::mentionsAny($l, self::REMOVED_SUBJECTS)) continue;
+            if (!self::mentionsAny($l, self::BANNED_FRAMING))   continue;
+            $parts[$__i] = self::TRUTH; $reasons[] = 'reframed_removed_capability';
         }
-        $out = implode(' ', $sentences);
+        $out = implode('', $parts);
 
         // ── 2. Any clause presenting a removed specialist as available.
         foreach (self::REMOVED_AGENTS as $agent) {

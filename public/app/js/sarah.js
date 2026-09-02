@@ -501,50 +501,47 @@
     var was = nearBottom(S.feed); S.feed.appendChild(el); stick(S.feed, was);
   }
 
-  /* revealBoundaries: safe cut points in the markdown SOURCE — after each sentence (. ! ?) and each line, plus
-     the end of any fenced ``` block (never a cut inside one). Used to grow the answer as valid prefixes. */
-  function revealBoundaries(text) {
-    var fences = [], re = /```[\s\S]*?```/g, mm;
-    while ((mm = re.exec(text))) fences.push([mm.index, mm.index + mm[0].length]);
-    function inFence(i) { for (var f = 0; f < fences.length; f++) if (i > fences[f][0] && i < fences[f][1]) return true; return false; }
-    var b = [], r2 = /([.!?])[\)"']?(\s)|(\n)/g, x;
-    while ((x = r2.exec(text))) { var pos = x.index + x[0].length; if (!inFence(pos)) b.push(pos); }
-    fences.forEach(function (f) { b.push(f[1]); });
-    b = b.filter(function (v, i, a) { return v > 0 && v < text.length && a.indexOf(v) === i; }).sort(function (p, q) { return p - q; });
-    return b;
-  }
-
   /* revealBubble: render a received, ALREADY-GUARD-VALIDATED answer so it unfolds at a natural reading pace,
-     like ChatGPT rendering a finished message. Not token streaming and not fake typing of fabricated text — the
-     whole answer has arrived and passed the guard chain; we pace how much of it is shown by re-rendering
-     fmt(source-prefix) at sentence/line boundaries, so the bubble genuinely grows. The final render is
-     fmt(full) === bubble(m) (lossless). Short answers and prefers-reduced-motion render whole immediately.
-     Cuts land only on sentence/line/fence boundaries so markdown never reflows from a half-open construct. */
+     like ChatGPT rendering a finished message. NOT token streaming and NOT fake typing of fabricated text — the
+     whole answer has arrived and passed the guard chain.
+
+     No fragmenting: we render the FINAL markdown ONCE, then MOVE its already-rendered nodes into the visible
+     bubble one at a time. Because nothing is re-parsed and each node only ever appends at the end, prior content
+     never reflows (the earlier re-render-the-prefix approach re-wrapped lists and flashed partial markdown — that
+     was the fragmenting). The final DOM is the exact same nodes in the same order, so it is byte-identical to a
+     whole render (lossless). Short answers and prefers-reduced-motion render whole immediately. */
   function revealBubble(m) {
     var el = bubble(m);                                   // the full, correct final row (fmt + attachments + meta)
     var bub = el.querySelector('.sh-bubble');
     var content = String(m && m.content != null ? m.content : '');
-    var finalHtml = bub ? bub.innerHTML : '';             // exact final innerHTML — restored verbatim at the end
     var sentences = (content.match(/[.!?](\s|$)/g) || []).length;
     if (!bub || reducedMotion() || content.length < 160 || sentences < 2) {
       S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el;   // short/simple → at once
     }
-    var bounds = revealBoundaries(content);
-    if (bounds.length < 2) { S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el; }
-    bub.innerHTML = '';
+    // Take the exact final nodes out of the bubble; we will move them back progressively.
+    var nodes = Array.prototype.slice.call(bub.childNodes);
+    if (nodes.length < 2) { S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el; }
+    nodes.forEach(function (n) { bub.removeChild(n); });
     S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight;
-    /* pace: perceptible reading-scan, total roughly 2.5-9s, per-step clamped 90-320ms — no dead waiting, the
-       text is moving the whole time; a very long answer reveals faster per step but never instant. */
-    var per = Math.max(90, Math.min(320, Math.round(9000 / bounds.length)));
-    var k = 0;
+    // A "meaningful" node (visible text or a block) earns a pause; separators (<br>, spacer divs, whitespace-only
+    // text) ride along with the node before them so the reveal moves line by line, not tick-by-<br>.
+    function meaningful(n) {
+      if (n.nodeType === 3) return (n.textContent || '').trim() !== '';
+      if (n.nodeType === 1) { var tag = n.tagName.toLowerCase(); if (tag === 'br') return false; if ((n.textContent || '').trim() === '' && !/img|hr/.test(tag)) return false; return true; }
+      return false;
+    }
+    var meaningfulCount = nodes.filter(meaningful).length || 1;
+    var per = Math.max(120, Math.min(360, Math.round(6500 / meaningfulCount)));   // reading-scan; total ~2.5-7s
+    var i = 0;
     (function step() {
-      var end = (k < bounds.length) ? bounds[k] : content.length;
+      if (i >= nodes.length) return;
       var was = nearBottom(S.feed);
-      bub.innerHTML = fmtBody(content.slice(0, end));
+      // move this node, then greedily pull any following separators with it
+      bub.appendChild(nodes[i]); var placed = meaningful(nodes[i]); i++;
+      while (i < nodes.length && !meaningful(nodes[i])) { bub.appendChild(nodes[i]); i++; }
       stick(S.feed, was);
-      k++;
-      if (k <= bounds.length) { setTimeout(step, per); }
-      else { bub.innerHTML = finalHtml; stick(S.feed, nearBottom(S.feed)); }   // lossless final DOM
+      if (i < nodes.length) setTimeout(step, placed ? per : 0);
+      else stick(S.feed, was);
     })();
     return el;
   }
