@@ -159,20 +159,28 @@ class SelfReportGuard
         // single answer. The first denial carries the correction; any later one
         // is simply dropped, because it is the same false claim and the truth
         // has already been stated.
-        $sentences = preg_split('/(?<=[.!?])\s+/', $reply) ?: [];
-        $changed = false;
-        foreach ($sentences as $i => $s) {
-            if (!preg_match(self::DENIAL, $s)) continue;
-            $sentences[$i] = $changed ? '' : $this->truth($l, $scope);
-            $changed = true;
-        }
-        if ($changed) {
-            $out['reply'] = trim(preg_replace('/\s+/', ' ',
-                implode(' ', array_filter($sentences, static fn ($s) => trim($s) !== ''))));
-            $out['rewritten'] = true;
-            Log::info('[Sarah888] SelfReportGuard corrected a false no-change claim', [
-                'ws' => $wsId, 'conversation' => $conversationId, 'totals' => $t,
-            ]);
+        // P2 #3 (2026-09-02): the denial-rewrite REPLACES the reply with the ledger summary. Per the owner
+        // rule 'a task summary may supplement but never REPLACE the answer unless the user asked for task
+        // status', only rewrite a denial when the user actually asked what changed. On a non-status request
+        // (e.g. 'change my headline') a degraded 'nothing changed' reply must NOT be replaced by unrelated
+        // workspace stats — that turned the answer itself into a task summary.
+        $isStatusQuestion = $userText !== null && preg_match(self::SELF_REPORT_QUESTION, $userText);
+        if ($isStatusQuestion) {
+            $sentences = preg_split('/(?<=[.!?])\s+/', $reply) ?: [];
+            $changed = false;
+            foreach ($sentences as $i => $s) {
+                if (!preg_match(self::DENIAL, $s)) continue;
+                $sentences[$i] = $changed ? '' : $this->truth($l, $scope);
+                $changed = true;
+            }
+            if ($changed) {
+                $out['reply'] = trim(preg_replace('/\s+/', ' ',
+                    implode(' ', array_filter($sentences, static fn ($s) => trim($s) !== ''))));
+                $out['rewritten'] = true;
+                Log::info('[Sarah888] SelfReportGuard corrected a false no-change claim', [
+                    'ws' => $wsId, 'conversation' => $conversationId, 'totals' => $t,
+                ]);
+            }
         }
 
         // ── 2. A direct question that went unanswered gets the facts ───────
