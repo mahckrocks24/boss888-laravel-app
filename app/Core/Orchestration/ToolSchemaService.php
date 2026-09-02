@@ -101,8 +101,8 @@ class ToolSchemaService
         // Sarah was telling users "I can't read draft blog posts" despite
         // the DB having full article content. Read-only, auto-approve.
         'platform.list_articles' => [
-            'description' => 'List articles (blog posts, marketing content) in the workspace. Filter by status. Use this BEFORE answering questions about content, drafts, or "what blog posts do we have". Returns id, title, status, type, focus_keyword, excerpt, featured_image_url (NULL = missing), featured_image_alt, word_count, updated_at. Response also includes summary: {total, with_featured_image, missing_featured_image} — read it before saying "no images". When the user asks about featured images, use featured_image_url as ground truth.',
-            'parameters'  => ['status' => 'string? (draft|published|all, default all)', 'limit' => 'int? (default 50)'],
+            'description' => 'List articles (blog posts, marketing content) in the workspace. Filter by status. Use this BEFORE answering questions about content, drafts, or "what blog posts do we have". Returns id, title, status, type, focus_keyword, excerpt, featured_image_url (NULL = missing), featured_image_alt, word_count, updated_at. Response also includes summary: {total, with_featured_image, missing_featured_image} — read it before saying "no images". When the user asks about ONE named website, pass its website_id so the counts are for that site only. When the user asks about featured images, use featured_image_url as ground truth.',
+            'parameters'  => ['status' => 'string? (draft|published|all, default all)', 'website_id' => 'int? (scope to one website when the user names a specific site)', 'limit' => 'int? (default 50)'],
             'engine'      => 'platform',
             'action'      => 'list_articles',
             'approval'    => 'auto',
@@ -1122,6 +1122,7 @@ class ToolSchemaService
                 case 'platform.list_articles': {
                     $status = strtolower((string)($params['status'] ?? 'all'));
                     $limit  = (int)($params['limit'] ?? 50);
+                    $wid = (int)($params['website_id'] ?? 0); // LANE1-WT1 list_articles site scope: honor a resolved/explicit website target
 
                     // 2026-07-07 — REAL totals across the WHOLE workspace, not the
                     // returned sample. The old code reported $rows->count() (capped
@@ -1129,6 +1130,7 @@ class ToolSchemaService
                     // for a 154-article workspace. Counts are now authoritative;
                     // the sample rows (real ids) are still returned in `data`.
                     $countBase = DB::table('articles')->where('workspace_id', $wsId);
+                    if ($wid > 0) $countBase->where('website_id', $wid);
                     if ($status !== 'all') $countBase->where('status', $status);
                     $totalCount   = (clone $countBase)->count();
                     $missingCount = (clone $countBase)->where(function ($w) {
@@ -1142,6 +1144,7 @@ class ToolSchemaService
                     $missBreak = ''; $mDraft = null; $mPub = null;
                     if ($status === 'all' && $missingCount > 0) {
                         $mDraft = (int) DB::table('articles')->where('workspace_id', $wsId)
+                            ->when($wid > 0, fn ($qq) => $qq->where('website_id', $wid))
                             ->where('status', 'draft')->where(function ($w) {
                                 $w->whereNull('featured_image_url')->orWhere('featured_image_url', '');
                             })->count();
@@ -1150,6 +1153,7 @@ class ToolSchemaService
                     }
 
                     $q = DB::table('articles')->where('workspace_id', $wsId);
+                    if ($wid > 0) $q->where('website_id', $wid);
                     if ($status !== 'all') $q->where('status', $status);
                     $rows = $q->orderByDesc('updated_at')
                         ->limit(min(max($limit, 1), 100))
