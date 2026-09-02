@@ -243,7 +243,8 @@ PROMPT;
         // TRUTHFUL BILLING (REPORT-0027, 2026-09-02): an edit that changed nothing the visitor can see is
         // NOT a success. success:true here let the task layer mark a no-op completed and charge a credit
         // (Chef Red phone-in-footer, and scratch task 31972). Success = something actually changed.
-        $__changed = ($sync['is_static'] ? ($sync['applied'] > 0) : ($applied > 0)) || ((int) ($style['applied'] ?? 0) > 0);
+        $contactSync = $this->syncFooterContactToStatic($websiteId, $newSections);
+        $__changed = ($sync['is_static'] ? ($sync['applied'] > 0) : ($applied > 0)) || ((int) ($style['applied'] ?? 0) > 0) || ((int) ($contactSync['applied'] ?? 0) > 0);
         if (! $__changed) {
             $reply = 'I could not find anything to change for that, so nothing on your site was updated (and you were not charged). Tell me exactly what to change and where, and I will do it.';
         }
@@ -258,6 +259,7 @@ PROMPT;
             'static_missed'   => $sync['missed'],
             'visible_on_site' => $sync['is_static'] ? ($sync['applied'] > 0) : true,
             'style_applied'   => $style['applied'],
+            'contact_static_applied' => $contactSync['applied'] ?? 0,
             'style_missed'    => $style['missed'],
         ];
     }
@@ -659,6 +661,86 @@ PROMPT;
                 'website_id' => $websiteId, 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Mirror the footer contact fields (phone/email/address) into a site's STATIC exports so an Arthur edit is
+     * visible even when a baked index.html/home.html is served in preference to the renderer. Idempotent: a
+     * prior <div data-lu-contact> block is replaced, so repeated edits update in place. Targeted injection near
+     * </footer> (or </body>) — no full re-render, so no design regression.
+     *
+     * @return array{applied:int,files:array<int,string>}
+     */
+    private function syncFooterContactToStatic(int $websiteId, array $sections): array
+    {
+        $out = ['applied' => 0, 'files' => []];
+        if ($websiteId <= 0) {
+            return $out;
+        }
+        $phone = $email = $address = '';
+        foreach ($sections as $sec) {
+            if (($sec['type'] ?? '') === 'footer') {
+                $phone   = trim((string) ($sec['phone']   ?? ''));
+                $email   = trim((string) ($sec['email']   ?? ''));
+                $address = trim((string) ($sec['address'] ?? ''));
+                break;
+            }
+        }
+        if ($phone === '' && $email === '' && $address === '') {
+            return $out;
+        }
+        $siteRoot = storage_path("app/public/sites/{$websiteId}");
+        if (! is_dir($siteRoot)) {
+            return $out; // renderer-served site — the renderer already shows the contact block
+        }
+        $files = glob("{$siteRoot}/*.html") ?: [];
+        foreach ((glob("{$siteRoot}/*/index.html") ?: []) as $nested) {
+            $files[] = $nested;
+        }
+        $files = array_values(array_unique($files));
+
+        $block = $this->contactBlockHtml($phone, $email, $address);
+        $stamp = date('YmdHis');
+        foreach ($files as $file) {
+            $html = @file_get_contents($file);
+            if ($html === false) {
+                continue;
+            }
+            $orig = $html;
+            // idempotent: drop any block we previously injected
+            $html = preg_replace('/<div data-lu-contact\b[^>]*>.*?<\/div>/is', '', (string) $html);
+            if (stripos($html, '</footer>') !== false) {
+                $html = preg_replace('/<\/footer>/i', $block . '</footer>', $html, 1);
+            } elseif (stripos($html, '</body>') !== false) {
+                $html = preg_replace('/<\/body>/i', $block . '</body>', $html, 1);
+            } else {
+                continue;
+            }
+            if (is_string($html) && $html !== $orig) {
+                @copy($file, "{$file}.bak-{$stamp}");
+                file_put_contents($file, $html);
+                $out['applied']++;
+                $out['files'][] = ltrim(str_replace($siteRoot, '', $file), '/\\');
+            }
+        }
+        return $out;
+    }
+
+    /** The clickable contact block injected into static footers (matches the renderer's output). */
+    private function contactBlockHtml(string $phone, string $email, string $address): string
+    {
+        $parts = [];
+        if ($phone !== '') {
+            $tel = preg_replace('/[^0-9+]/', '', $phone);
+            $parts[] = '<a href="tel:' . htmlspecialchars((string) $tel, ENT_QUOTES) . '" style="color:inherit">' . htmlspecialchars($phone, ENT_QUOTES) . '</a>';
+        }
+        if ($email !== '') {
+            $parts[] = '<a href="mailto:' . htmlspecialchars($email, ENT_QUOTES) . '" style="color:inherit">' . htmlspecialchars($email, ENT_QUOTES) . '</a>';
+        }
+        if ($address !== '') {
+            $parts[] = '<span>' . htmlspecialchars($address, ENT_QUOTES) . '</span>';
+        }
+        return '<div data-lu-contact style="text-align:center;font-size:13px;margin:12px 0">' . implode(' &nbsp;&middot;&nbsp; ', $parts) . '</div>';
     }
 
     private function syncStaticHtml(int $websiteId, array $sections, array $actions): array
