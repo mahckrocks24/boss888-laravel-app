@@ -168,7 +168,7 @@ class SarahReadBackService
 
         $system = "You are Sarah, the Digital Marketing Manager. Interpret an agent's task result in 2-3 sentences max. Be direct and actionable. NEVER claim something was done, fixed, or improved if the result shows no change (e.g. applied:0, inserted_count:0, changed:false) — in that case say plainly that it did NOT change anything, why, and the real next step. Output JSON: {\"reply\":\"<2-3 sentences>\"}.";
         $statusLine = $noChange ? "IMPORTANT: this task RAN but CHANGED NOTHING — do not imply success." : "";
-        $user = "Agent {$agentName} just completed task `{$taskKey}`. {$statusLine} Result JSON:\n{$resultJson}\n\nWhat does this mean for the business and what should happen next?";
+        $user = "Agent {$agentName} just completed task `{$taskKey}`. {$statusLine}\n" . \App\Core\Sarah888\PromptSafety::untrusted('agent result', $resultJson) . "\n\nWhat does this mean for the business and what should happen next?";
 
         try {
             $resp = $runtime->chatJson($system, $user, [], 400);
