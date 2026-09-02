@@ -726,15 +726,15 @@ final class ToolIntentGateway
         return ToolResult::succeeded($intent->capabilityId, [
             'found'      => true,
             'lead_id'    => (int) $lead->id,
-            'name'       => (string) $lead->name,
-            'company'    => (string) ($lead->company ?? ''),
+            'name'       => \App\Core\Sarah888\PromptSafety::neutralize((string) $lead->name),
+            'company'    => \App\Core\Sarah888\PromptSafety::neutralize((string) ($lead->company ?? '')),
             'status'     => (string) $lead->status,
             'source'     => (string) ($lead->source ?? ''),
             'score'      => $lead->score === null ? null : (int) $lead->score,
             'deal_value' => $lead->deal_value === null ? null : (float) $lead->deal_value,
-            'city'       => (string) ($lead->city ?? ''),
-            'country'    => (string) ($lead->country ?? ''),
-            'tags'       => is_array($tags) ? $tags : [],
+            'city'       => \App\Core\Sarah888\PromptSafety::neutralize((string) ($lead->city ?? '')),
+            'country'    => \App\Core\Sarah888\PromptSafety::neutralize((string) ($lead->country ?? '')),
+            'tags'       => is_array($tags) ? array_map(static fn ($x) => \App\Core\Sarah888\PromptSafety::neutralize((string) $x), $tags) : [],
             'created_at' => (string) $lead->created_at,
             'last_contacted_at' => $lead->last_contacted_at,
             'converted_at'      => $lead->converted_at,
@@ -872,7 +872,7 @@ final class ToolIntentGateway
         $recent = (clone $q())->orderByDesc('id')->limit($limit)
             ->get(['id', 'name', 'email', 'status', 'source', 'created_at'])
             ->map(fn ($r) => [
-                'id' => (int) $r->id, 'name' => (string) $r->name,
+                'id' => (int) $r->id, 'name' => \App\Core\Sarah888\PromptSafety::neutralize((string) $r->name),
                 'status' => (string) $r->status, 'source' => (string) $r->source,
                 'created_at' => (string) $r->created_at,
             ])->all();

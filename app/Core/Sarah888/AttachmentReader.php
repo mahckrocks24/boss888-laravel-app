@@ -55,7 +55,7 @@ class AttachmentReader
             $room = max(0, min(self::MAX_PER_DOC, self::MAX_TOTAL - $total));
             $clip = mb_substr($text, 0, $room);
             $total += mb_strlen($clip);
-            $context .= "\n\n[The owner attached the document \"{$item['name']}\". Its contents" . (mb_strlen($text) > mb_strlen($clip) ? ' (first part)' : '') . ":]\n<<<\n{$clip}\n>>>";
+            $context .= "\n\n[The owner attached the document \"{$item['name']}\"" . (mb_strlen($text) > mb_strlen($clip) ? ' (first part)' : '') . ":]\n" . \App\Core\Sarah888\PromptSafety::untrusted('attached document', $clip);
         }
         return ['meta' => $meta, 'context' => $context, 'images' => $images];
     }

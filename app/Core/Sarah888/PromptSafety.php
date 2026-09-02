@@ -18,6 +18,26 @@ final class PromptSafety
     private const FENCE = '<<<UNTRUSTED_DATA>>>';
     private const END   = '<<<END_UNTRUSTED_DATA>>>';
 
+    /**
+     * Defang the clearest prompt-injection directives inside a single free-text field (a lead name,
+     * company, note, ...) that reaches the model. Deliberately tight so it never mangles real names — it
+     * removes only unambiguous directives and the fence tokens, leaving ordinary business text intact.
+     */
+    public static function neutralize(string $text): string
+    {
+        if ($text === '') return $text;
+        $text = str_ireplace([self::FENCE, self::END], '[removed]', $text);
+        $patterns = [
+            '/\\bignore\\s+(?:all\\s+|any\\s+)?(?:previous|prior|above|earlier)\\s+instructions?\\b/i',
+            '/\\bdisregard\\s+(?:all\\s+|any\\s+)?(?:previous|prior|above|earlier)\\s+(?:instructions?|prompts?)\\b/i',
+            '/\\b(?:reveal|print|show|repeat|output|dump)\\s+(?:your\\s+|the\\s+)?(?:full\\s+)?(?:system\\s+)?(?:prompt|instructions)\\b/i',
+            '/\\byou\\s+are\\s+now\\s+(?:a|an|the)\\b/i',
+            '/\\bnew\\s+instructions?\\s*:/i',
+            '/<\\/?\\s*(?:system|assistant|user)\\s*>/i',
+        ];
+        return trim((string) preg_replace($patterns, '[removed]', $text));
+    }
+
     public static function untrusted(string $label, string $content): string
     {
         // Prevent break-out: strip any attempt to reproduce the fence markers inside the payload.
