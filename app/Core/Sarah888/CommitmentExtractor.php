@@ -521,7 +521,7 @@ class CommitmentExtractor
         if ($this->isComputationRequest($c)) return null;
 
         $deadline = null; $deadlineText = null;
-        if (preg_match('/\bby\s+((?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\s+\w+|\w+\s+\d{1,2}(?:st|nd|rd|th)?|monday|tuesday|wednesday|thursday|friday|saturday|sunday|next\s+\w+|end\s+of\s+\w+)/i', $c, $dm)) {
+        if (preg_match('/\bby\s+((?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\s+\w+|\w+\s+\d{1,2}(?:st|nd|rd|th)?|(?:this|next|coming)\s+\w+|monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|end\s+of\s+\w+)/i', $c, $dm)) {
             $deadlineText = $this->clean($dm[1]);
             $deadline = $this->parseDate($deadlineText);
         }
@@ -728,6 +728,22 @@ class CommitmentExtractor
             if ($ts === false) return null;
             // A date already past this year almost always means next year.
             if ($ts < strtotime('-1 month')) $ts = strtotime("$day $month " . ($year + 1));
+            return $ts ? date('Y-m-d', $ts) : null;
+        }
+        // Relative expressions the platform can resolve deterministically:
+        // today / tomorrow / "in N days|weeks" / a weekday (coming, or "next").
+        // parseDate's contract is unchanged — anything it cannot resolve is null.
+        $l = mb_strtolower($s);
+        if (preg_match('/\btoday\b/', $l))    return date('Y-m-d');
+        if (preg_match('/\btomorrow\b/', $l)) return date('Y-m-d', strtotime('+1 day'));
+        if (preg_match('/\bin\s+(\d{1,3})\s+(day|days|week|weeks)\b/', $l, $mm)) {
+            $unit = strncmp($mm[2], 'week', 4) === 0 ? 'week' : 'day';
+            $ts = strtotime('+' . (int) $mm[1] . ' ' . $unit);
+            return $ts ? date('Y-m-d', $ts) : null;
+        }
+        foreach (['sunday','monday','tuesday','wednesday','thursday','friday','saturday'] as $wd) {
+            if (strpos($l, $wd) === false) continue;
+            $ts = strtotime((strpos($l, 'next') !== false ? 'next ' : '') . $wd);
             return $ts ? date('Y-m-d', $ts) : null;
         }
         return null;
