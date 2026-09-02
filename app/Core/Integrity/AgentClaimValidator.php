@@ -90,7 +90,7 @@ class AgentClaimValidator
         return array_values(array_unique($found));
     }
 
-    public function validate(string $reply, int $wsId, string $slug, bool $didQueue = false, array $engagedAgents = []): array
+    public function validate(string $reply, int $wsId, string $slug, bool $didQueue = false, array $engagedAgents = [], array $recentActions = [], array $recentSpecialists = []): array
     {
         if (trim($reply) === '') {
             return ['reply' => $reply, 'stripped' => []];
@@ -100,6 +100,7 @@ class AgentClaimValidator
         $isDmm    = $this->isDelegator($slug);
         $stripped = [];
         $engaged  = array_values(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $engagedAgents)));
+        $recentSpec = array_values(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $recentSpecialists)));
 
         // Split into sentences; decide keep vs strip per claim.
         $sentences = preg_split('/(?<=[.!?])\s+|\n+/', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -115,15 +116,25 @@ class AgentClaimValidator
             // may never claim delegation at all. P2 precision: a claim that NAMES a specialist is kept only if
             // that specialist was actually engaged this turn; a generic queue claim (no name) is backed by
             // $didQueue; and with no engaged-agent evidence we do not over-strip.
+            // F-U8-REVIEW (2026-09-02): a review turn reports work done EARLIER in the
+            // conversation, so $didQueue (this turn) is false and a TRUE accomplishment was
+            // being stripped. Back a claim with genuine THIS-CONVERSATION evidence too:
+            //  - a named specialist is kept only if actually engaged (this turn OR this conversation);
+            //  - a generic queue/completion claim is kept if this turn queued OR it references a real
+            //    this-conversation task by topic (recentActions are conversation-scoped at the call site,
+            //    so a fabricated claim with no matching real task is still stripped — RISK-0123 preserved).
             $keep = false;
-            if ($isDmm && $didQueue) {
-                $named = $this->namedSpecialists($sentence);
-                if ($named === []) {
-                    $keep = true;
-                } elseif ($engaged !== [] && array_diff($named, $engaged) !== []) {
-                    $keep = false;
+            if ($isDmm) {
+                $named   = $this->namedSpecialists($sentence);
+                $backers = array_values(array_unique(array_merge($engaged, $recentSpec)));
+                if ($named !== []) {
+                    if ($backers !== []) {
+                        $keep = (array_diff($named, $backers) === []);
+                    } else {
+                        $keep = $didQueue; // no engagement evidence at all: old no-over-strip only when queued
+                    }
                 } else {
-                    $keep = true;
+                    $keep = $didQueue || $this->matchesRecentAction($sentence, $recentActions);
                 }
             }
             if ($keep) { $kept[] = trim($sentence); } else { $stripped[] = trim($sentence); }
@@ -156,6 +167,30 @@ class AgentClaimValidator
         ]);
 
         return ['reply' => $out, 'stripped' => $stripped];
+    }
+
+    /** True if the sentence references a real THIS-CONVERSATION task by a distinctive topic word. */
+    private function matchesRecentAction(string $sentence, array $recentActions): bool
+    {
+        if ($recentActions === []) return false;
+        $s = mb_strtolower($sentence);
+        foreach ($recentActions as $title) {
+            foreach ($this->distinctiveTokens((string) $title) as $tok) {
+                if (mb_strpos($s, $tok) !== false) return true;
+            }
+        }
+        return false;
+    }
+
+    /** Distinctive content words (>=5 chars, minus generic filler) from a real task title. */
+    private function distinctiveTokens(string $t): array
+    {
+        static $stop = ['about','with','from','your','their','this','that','into','over','pages','page','tasks','currently','missing','address','generate','insert','create','update','them','none','have','been','which','start','using','article','draft','content'];
+        $out = [];
+        foreach (preg_split('/[^\p{L}\p{N}]+/u', mb_strtolower($t)) as $w) {
+            if (mb_strlen($w) >= 5 && !in_array($w, $stop, true)) $out[] = $w;
+        }
+        return array_values(array_unique($out));
     }
 
     /** Only the DMM may speak about delegating. Read from the agents table. */

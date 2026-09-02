@@ -3813,7 +3813,31 @@ $withCorr = function (array $meta) use ($corr) {
                 }
             }
 
-            $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents);
+            // F-U8-REVIEW (2026-09-02): a review turn reports work done earlier in the SAME conversation.
+            // Give the validator conversation-scoped real actions (task titles) + the specialists engaged
+            // across this conversation, so a TRUE accomplishment summary is not stripped as unverified —
+            // while a fabricated claim with no matching real task is still stripped (scope = this conversation).
+            $__recentActions = [];
+            $__recentSpecialists = [];
+            try {
+                $__convId = $corr['conversation_id'] ?? null;
+                if (in_array($slug, ['sarah', 'dmm'], true) && $__convId) {
+                    foreach (DB::table('tasks')->where('workspace_id', $wsId)
+                                 ->where('created_at', '>=', now()->startOfDay())
+                                 ->orderByDesc('id')->limit(100)
+                                 ->get(['payload_json', 'assigned_agents_json']) as $__rt) {
+                        $__pp = json_decode((string) $__rt->payload_json, true);
+                        if (!is_array($__pp) || (string) ($__pp['conversation_id'] ?? '') !== (string) $__convId) continue;
+                        if (!empty($__pp['title'])) { $__recentActions[] = (string) $__pp['title']; }
+                        $__ra = json_decode((string) $__rt->assigned_agents_json, true);
+                        if (is_array($__ra)) { foreach ($__ra as $__one) { $__recentSpecialists[] = strtolower(trim((string) $__one)); } }
+                    }
+                    $__recentActions = array_values(array_unique($__recentActions));
+                    $__recentSpecialists = array_values(array_unique(array_filter($__recentSpecialists)));
+                }
+            } catch (\Throwable) { $__recentActions = []; $__recentSpecialists = []; }
+
+            $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents, $__recentActions, $__recentSpecialists);
             $reply = $__cv['reply'];
             // W6 — truthfulness guard on the agent bubble. The launch-scope rule lives in
             // Sarah's prompt, but a prompt is probabilistic: she still told a user
