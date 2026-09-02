@@ -32,7 +32,7 @@ class BeforeAfterService
 
     public function generateDesign(int $wsId, int $designId): array
     {
-        $design = DB::table('ba_designs')->where('id', $designId)->first();
+        $design = DB::table('ba_designs')->where('id', $designId)->where('workspace_id', $wsId)->first();
         if (!$design) throw new \RuntimeException("Design not found");
 
         $prompt = "Interior design transformation. Room: {$design->room_type}. Style: {$design->style}. " .
@@ -48,7 +48,7 @@ class BeforeAfterService
         if (($result['status'] ?? '') === 'completed' && !empty($result['url'])) {
             $this->completeDesign($designId, ['after_image_url' => $result['url']]);
             // Auto-generate design report
-            $this->generateReport($designId, $design);
+            $this->generateReport($designId, $wsId, $design);
             return ['status' => 'completed', 'after_image_url' => $result['url']];
         }
 
@@ -83,10 +83,16 @@ class BeforeAfterService
      * DeepSeekConnector. The 7-section structure is enforced via the user
      * prompt + JSON output instruction.
      */
-    public function generateReport(int $designId, ?object $design = null): void
+    public function generateReport(int $designId, ?int $wsId = null, ?object $design = null): void
     {
-        $design = $design ?? DB::table('ba_designs')->where('id', $designId)->first();
+        $design = $design ?? DB::table('ba_designs')->where('id', $designId)
+            ->when($wsId !== null, fn ($q) => $q->where('workspace_id', $wsId))
+            ->first();
         if (!$design) return;
+        // TN-2: bind the report write to the design's real owner; a foreign design_id (or a wsId that does
+        // not own it) is refused — this method used to read and overwrite ba_designs by id with no scoping.
+        $ownerWs = (int) ($design->workspace_id ?? 0);
+        if ($ownerWs <= 0 || ($wsId !== null && $ownerWs !== (int) $wsId)) return;
 
         $context = [
             'task'      => 'interior_design_report',
@@ -116,7 +122,7 @@ class BeforeAfterService
                 $maybe = json_decode($result['text'], true);
                 if (is_array($maybe)) $parsed = $maybe;
             }
-            DB::table('ba_designs')->where('id', $designId)->update([
+            DB::table('ba_designs')->where('id', $designId)->where('workspace_id', $ownerWs)->update([
                 'report_json' => json_encode($parsed ?? ['raw' => $result['text'] ?? '']),
                 'updated_at'  => now(),
             ]);

@@ -999,7 +999,7 @@ class EngineExecutionService
         $svc = app(\App\Engines\BeforeAfter\Services\BeforeAfterService::class);
         return match ($action) {
             'ba_transform', 'create_design' => $svc->createDesign($wsId, $params),
-            'ba_design_report' => (function() use ($svc, $params) { $svc->generateReport($params['design_id'] ?? 0); return ['status' => 'generated']; })(),  // Phase 3: was missing
+            'ba_design_report' => (function() use ($svc, $params, $wsId) { $svc->generateReport((int) ($params['design_id'] ?? 0), $wsId); return ['status' => 'generated']; })(),  // Phase 3: was missing
             default => throw new \RuntimeException("Unknown BeforeAfter action: {$action}"),
         };
     }
