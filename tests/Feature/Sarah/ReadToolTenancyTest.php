@@ -101,6 +101,25 @@ class ReadToolTenancyTest extends TestCase
         $this->assertNotContains('Alpha Bakery Home', $titles);
     }
 
+    /** Run 5 turn 5 (2.37.11 live): the tool_calls path had no website id for a site the owner named. */
+    public function test_target_by_name_sets_the_named_website_and_never_a_foreign_one(): void
+    {
+        $a = $this->business('Alpha Bakery');
+        $b = $this->business('Beta Dental');
+        $svc = app(ToolSchemaService::class);
+
+        [$params, $ctx] = ReadToolPromotion::targetByName($svc, $a['ws'], 'List the pages on Alpha Bakery.', []);
+        $this->assertSame($a['site'], $params['website_id'] ?? null);
+        $this->assertSame('Alpha Bakery', $ctx['explicit_name'] ?? null);
+
+        [$params, $ctx] = ReadToolPromotion::targetByName($svc, $a['ws'], 'List the pages on Beta Dental.', []);
+        $this->assertArrayNotHasKey('website_id', $params, "another workspace's site name resolves to nothing");
+        $this->assertArrayNotHasKey('explicit_name', $ctx);
+
+        [$params] = ReadToolPromotion::targetByName($svc, $a['ws'], 'List the pages on Alpha Bakery.', ['website_id' => 4242]);
+        $this->assertSame(4242, $params['website_id'], 'an explicit id from the caller is kept');
+    }
+
     public function test_only_read_tools_are_ever_promoted_out_of_create_tasks(): void
     {
         $ids = app(ToolSchemaService::class)->getAllToolIds();

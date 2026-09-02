@@ -2416,12 +2416,14 @@ $withCorr = function (array $meta) use ($corr) {
                     foreach ($toolCalls as $tc) {
                         if (!is_array($tc) || empty($tc['tool'])) continue;
                         try {
-                            $tr = $toolSchemaSvc->executeToolCall(
-                                (string)$tc['tool'],
-                                is_array($tc['params'] ?? null) ? $tc['params'] : [],
-                                $wsId,
-                                $slug
-                            );
+                            // pass 4 (2026-09-02, run 5 turn 5): a read tool on this path arrived with no website_id and no context, so a
+                            // site the owner had NAMED came back as CLARIFY. Resolve the named website exactly as the promotion path does.
+                            $__tcParams = is_array($tc['params'] ?? null) ? $tc['params'] : [];
+                            $__tcCtx = [];
+                            if (\App\Core\Sarah888\ReadToolPromotion::isReadTool((string) $tc['tool'])) {
+                                [$__tcParams, $__tcCtx] = \App\Core\Sarah888\ReadToolPromotion::targetByName($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, $__tcParams, (string) ($__siteUrlIn ?? ''));
+                            }
+                            $tr = $toolSchemaSvc->executeToolCall((string) $tc['tool'], $__tcParams, $wsId, $slug, $__tcCtx);
                             $toolResults[] = ['tool' => $tc['tool'], 'result' => $tr];
                             \Illuminate\Support\Facades\Log::info('[AgentChat] tool_call executed', [
                                 'agent' => $slug, 'tool' => $tc['tool'],

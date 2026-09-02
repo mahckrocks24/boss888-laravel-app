@@ -119,6 +119,28 @@ final class ReadToolPromotion
         return 'Done — nothing to show for that.';
     }
 
+    /**
+     * Resolve the website the owner NAMED onto a read tool call (2026-09-02, run 5 turn 5): the Runtime's own
+     * tool_calls path reached executeToolCall with no website_id and no context, so "List the pages on Fable QA
+     * Cafe Two" was answered with a CLARIFY for a site the owner had just named. Workspace-scoped by construction:
+     * websiteNamesMentioned() only sees this workspace's websites (ReadToolTenancyTest).
+     *
+     * @return array{0: array, 1: array}  [params, context]
+     */
+    public static function targetByName(\App\Core\Orchestration\ToolSchemaService $svc, int $wsId, string $ownerMessage, array $params, string $siteUrl = ''): array
+    {
+        $ctx = [];
+        try {
+            $named = $svc->websiteNamesMentioned($wsId, $ownerMessage);
+            if (count($named) === 1) {
+                $ctx['explicit_name'] = (string) $named[0]['name'];
+                if (empty($params['website_id'])) $params['website_id'] = (int) $named[0]['id'];
+            }
+            if ($siteUrl !== '') $ctx['ui_site_url'] = $siteUrl;
+        } catch (\Throwable) { $ctx = []; }
+        return [$params, $ctx];
+    }
+
     public static function stripGuidance(string $s): string
     {
         $s = trim($s);
