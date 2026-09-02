@@ -24,6 +24,16 @@ final class ReadToolPromotion
 {
     private const READ_FAMILY = '/^(platform\.(get_[a-z_]+|list_[a-z_]+|read_[a-z_]+|seo_health|search_performance)|web\.(fetch|search))$/';
 
+    /**
+     * RFC-0007 Phase 3 (REPORT-0026 §3): the Runtime emits its own bare read ids; these map to the canonical
+     * Laravel read tool. Only reads whose canonical target is already tenancy-proven belong here.
+     */
+    private const ALIAS = [
+        'get_site_pages'      => 'platform.list_pages',
+        'get_site_page'       => 'platform.read_page',
+        'search_site_content' => 'platform.list_pages',
+    ];
+
     /** Model-directed guidance that must never reach the owner. Everything from the first match onward is dropped. */
     private const MODEL_GUIDANCE = '/\s*(Page ids are internal|Article ids are internal|speak to the owner in|never quote|do NOT tell the user|IMPORTANT:|Use this|Call platform\.)/i';
 
@@ -45,6 +55,14 @@ final class ReadToolPromotion
         if (str_contains($engine, '.')) {
             [$e, $a] = explode('.', $engine, 2);
             if ($a === $action || $action === '') { $engine = $e; $action = $a; }
+        }
+
+        // RFC-0007 Phase 3: a Runtime read id maps to its canonical Laravel read tool, if that target is
+        // registered and in the read family (so an alias can never smuggle a write past the guard).
+        $registeredFlip = array_flip(array_map('strtolower', $registeredToolIds));
+        $aliasTarget = self::ALIAS[$action] ?? null;
+        if ($aliasTarget !== null && isset($registeredFlip[$aliasTarget]) && preg_match(self::READ_FAMILY, $aliasTarget)) {
+            return $aliasTarget;
         }
 
         $candidates = array_values(array_unique(array_filter([

@@ -129,4 +129,25 @@ class ReadToolTenancyTest extends TestCase
         }
         $this->assertSame('platform.list_pages', ReadToolPromotion::toolIdFor('platform', 'list_pages', $ids));
     }
+    public function test_the_runtime_site_read_ids_alias_to_the_canonical_platform_reads(): void
+    {
+        $ids = app(ToolSchemaService::class)->getAllToolIds();
+        // RFC-0007 Phase 3 unit 2: the Runtime's own read ids resolve to the tenancy-proven platform reads.
+        $this->assertSame('platform.list_pages', ReadToolPromotion::toolIdFor('site', 'get_site_pages', $ids));
+        $this->assertSame('platform.read_page', ReadToolPromotion::toolIdFor('site', 'get_site_page', $ids));
+        $this->assertSame('platform.list_pages', ReadToolPromotion::toolIdFor('', 'search_site_content', $ids));
+        // a write id is never aliased into a read
+        $this->assertNull(ReadToolPromotion::toolIdFor('builder', 'update_page', $ids));
+        $this->assertNull(ReadToolPromotion::toolIdFor('write', 'write_article', $ids));
+    }
+
+    public function test_aliased_site_read_is_still_workspace_scoped(): void
+    {
+        $a = $this->business('Alpha Bakery');
+        $b = $this->business('Beta Dental');
+        $svc = app(ToolSchemaService::class);
+        $tool = ReadToolPromotion::toolIdFor('site', 'get_site_pages', $svc->getAllToolIds());
+        $r = $svc->executeToolCall($tool, ['website_id' => $b['site']], $a['ws'], 'sarah');
+        $this->assertStringNotContainsString('Beta Dental', json_encode($r));
+    }
 }
