@@ -975,6 +975,16 @@ HTML;
         $tagline   = e($tagline);
         $copyright = e($copyright);
 
+        // Contact provision (email / phone / address) — basic contact-us elements, settable by Arthur.
+        $__phone   = trim((string) ($sec['phone']   ?? ''));
+        $__email   = trim((string) ($sec['email']   ?? ''));
+        $__address = trim((string) ($sec['address'] ?? ''));
+        $__cparts = [];
+        if ($__phone !== '')   { $__tel = preg_replace('/[^0-9+]/', '', $__phone); $__cparts[] = '<a href="tel:' . e($__tel) . '" style="color:#9AA4B2;text-decoration:none">' . e($__phone) . '</a>'; }
+        if ($__email !== '')   { $__cparts[] = '<a href="mailto:' . e($__email) . '" style="color:#9AA4B2;text-decoration:none">' . e($__email) . '</a>'; }
+        if ($__address !== '') { $__cparts[] = '<span style="color:#9AA4B2">' . e($__address) . '</span>'; }
+        $contactHtml = $__cparts ? '<div style="text-align:center;font-size:13px;color:#9AA4B2;margin-bottom:14px">' . implode(' &nbsp;&middot;&nbsp; ', $__cparts) . '</div>' : '';
+
         return <<<HTML
 <footer style="background:#0B0E14;padding:60px 24px 40px">
   <div style="max-width:1100px;margin:0 auto">
@@ -985,7 +995,7 @@ HTML;
       </div>
       <nav>{$navHtml}</nav>
     </div>
-    <div style="border-top:1px solid #1E2230;padding-top:16px;font-size:12px;color:#4A566B;text-align:center">{$copyright}</div>
+    {$contactHtml}<div style="border-top:1px solid #1E2230;padding-top:16px;font-size:12px;color:#4A566B;text-align:center">{$copyright}</div>
   </div>
 </footer>
 HTML;

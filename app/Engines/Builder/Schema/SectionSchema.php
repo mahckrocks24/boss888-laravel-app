@@ -43,13 +43,13 @@ class SectionSchema
             'optional' => ['body', 'cta_text', 'cta_url', 'background_color', 'subheading'],
         ],
         'contact_form' => [
-            'optional' => ['heading', 'body', 'submit_label', 'fields', 'subheading'],
+            'optional' => ['heading', 'body', 'submit_label', 'fields', 'subheading', 'phone', 'email', 'address'],
         ],
         'blog_list' => [
             'optional' => ['heading', 'max_posts', 'subheading', 'body'],
         ],
         'footer' => [
-            'optional' => ['columns', 'copyright', 'social_links', 'links'],
+            'optional' => ['columns', 'copyright', 'social_links', 'links', 'phone', 'email', 'address'],
         ],
         'gallery' => [
             'optional' => ['heading', 'images', 'columns', 'style', 'body'],
