@@ -437,6 +437,26 @@ class ToolSchemaService
      * Render the schema as a system-prompt block. Sarah / agents see this
      * INSTEAD of the loose prose roster they had before.
      */
+    /**
+     * DEC-0029 A7 (2026-09-02): the read-only tool list for a QUESTION turn — ids and one-line descriptions, the call
+     * format, nothing else. Measured: the domain-filtered schema still carried ~9k chars of fixed guidance written for
+     * work turns, so a plain question's prompt GREW to 38.7k chars after the executive frame was removed.
+     */
+    public function getReadToolSchemaCompact(string $agentSlug): string
+    {
+        $lines = ['READ TOOLS (lookups only — none of these creates work):'];
+        foreach ($this->getAgentTools($agentSlug) as $toolId => $def) {
+            if (!str_starts_with($toolId, 'platform.') && !str_starts_with($toolId, 'web.')) continue;
+            $desc = trim((string) ($def['description'] ?? ''));
+            $desc = preg_replace('/\s+/', ' ', $desc) ?? $desc;
+            if (mb_strlen($desc) > 110) $desc = mb_substr($desc, 0, 107) . '…';
+            $params = empty($def['parameters']) ? '' : ' | params: ' . implode(', ', array_keys($def['parameters']));
+            $lines[] = "- {$toolId}: {$desc}{$params}";
+        }
+        $lines[] = 'To look something up, include "tool_calls": [{"tool": "<exact id>", "params": {...}, "reason": "why"}] in your JSON; otherwise leave tool_calls empty.';
+        return implode("\n", $lines) . "\n";
+    }
+
     public function getToolSchemaPrompt(string $agentSlug, ?array $domains = null, string $turn = ''): string
     {
         $tools = $this->getAgentTools($agentSlug);

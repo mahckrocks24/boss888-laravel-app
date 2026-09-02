@@ -4,6 +4,7 @@ namespace Tests\Feature\Sarah;
 
 use App\Connectors\RuntimeClient;
 use App\Core\Orchestration\SarahReadBackService;
+use App\Core\Sarah888\ArticleIdClaimGuard;
 use App\Core\Sarah888\ReadToolPromotion;
 use App\Core\Sarah888\RouterIntent;
 use App\Core\Sarah888\UnfulfilledPromiseGuard;
@@ -220,6 +221,33 @@ class ForensicRemediationTest extends TestCase
         $this->assertNull(ReadToolPromotion::toolIdFor('platform', 'list_unicorns', $ids), 'unknown ids stay unmapped');
     }
 
+    /*──────────────────────────── SF-07: the guard drops a stray number, it does not inject the drafts list */
+
+    /** 20+ live turns: "What do you know about my business?" came back prefixed with "The earliest drafts ready to publish are #960 …". */
+    public function test_a_foreign_number_in_a_non_publishing_sentence_is_dropped_without_the_drafts_list(): void
+    {
+        $ws = $this->workspace();
+        $draft = $this->article($ws, 'draft');
+        $reply = "You're Fable QA Bakery, an artisan sourdough bakery. I also track 12 active commitments, the most recent being article #3 for the cafe. Ask me anything.";
+        $r = app(ArticleIdClaimGuard::class)->validate($reply, $ws);
+        $this->assertTrue($r['corrected']);
+        $this->assertStringNotContainsString('earliest drafts ready to publish', $r['reply']);
+        $this->assertStringNotContainsString('#' . $draft, $r['reply']);
+        $this->assertStringContainsString("You're Fable QA Bakery", $r['reply']);
+        $this->assertStringContainsString('Ask me anything.', $r['reply']);
+        $this->assertStringNotContainsString('article #3', $r['reply']);
+    }
+
+    public function test_a_publishing_offer_with_a_foreign_number_still_gets_the_truth_line(): void
+    {
+        $ws = $this->workspace();
+        $draft = $this->article($ws, 'draft');
+        $reply = "I recommend we publish article #999999 next.";
+        $r = app(ArticleIdClaimGuard::class)->validate($reply, $ws);
+        $this->assertTrue($r['corrected']);
+        $this->assertStringContainsString('#' . $draft, $r['reply'], 'a publishing sentence is replaced by what is actually ready');
+    }
+
     /*──────────────────────────── fixtures */
 
     private function workspace(): int
@@ -230,6 +258,15 @@ class ForensicRemediationTest extends TestCase
         ]);
         return (int) DB::table('workspaces')->insertGetId([
             'name' => 'Business', 'slug' => 'remed-' . uniqid(), 'created_by' => $uid,
+            'created_at' => now(), 'updated_at' => now(),
+        ]);
+    }
+
+    private function article(int $ws, string $status): int
+    {
+        return (int) DB::table('articles')->insertGetId([
+            'workspace_id' => $ws, 'title' => 'Piece ' . uniqid(), 'slug' => 'a-' . uniqid(), 'content' => '<p>body</p>',
+            'status' => $status, 'featured_image_url' => 'https://e.test/i.jpg', 'published_at' => $status === 'published' ? now() : null,
             'created_at' => now(), 'updated_at' => now(),
         ]);
     }

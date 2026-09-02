@@ -49,6 +49,21 @@ class MinimumPathTest extends TestCase
         Http::assertNothingSent();
     }
 
+    /** A8: shapes that cannot be read two ways skip the classifier call; ambiguous ones still go to the model. */
+    public function test_deterministic_mode_for_unambiguous_shapes(): void
+    {
+        Http::fake();
+        $ri = app(RouterIntent::class);
+        $this->assertSame(RouterIntent::STATUS, $ri->classify('What is pending my approval?', 1)['mode']);
+        $this->assertSame('deterministic', $ri->classify('How many articles do we have?', 1)['source']);
+        $this->assertSame(RouterIntent::ANALYSIS, $ri->classify('Why did the audit fail?', 1)['mode']);
+        $this->assertSame(RouterIntent::ANALYSIS, $ri->classify('What should I focus on this week?', 1)['mode']);
+        $this->assertContains('tasks', $ri->domains('What is pending my approval?', 1));
+        Http::assertNothingSent();
+        $this->assertNull(RouterIntent::deterministicMode('Which website has the most articles?'), 'a comparison can be a lookup or a judgement — the model decides');
+        $this->assertNull(RouterIntent::deterministicMode('What is the best keyword to target?'), 'a lookup opener with a judgement word is not a lookup');
+    }
+
     /*──────────────────────────── A2: the light lane */
 
     public function test_light_turn_detection(): void

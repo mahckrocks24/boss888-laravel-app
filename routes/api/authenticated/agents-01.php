@@ -1918,6 +1918,7 @@ $withCorr = function (array $meta) use ($corr) {
                     $__analyticalContract =
                         "\nHOW TO ANSWER THIS TURN.\n"
                       . "Answer the question from the material above, in your own words, as the director.\n"
+                      . "Be decisive: reason briefly, then answer. Do not re-derive facts the material already states.\n"
                       . "You are NOT creating or queueing work on this turn and you have no tools to do so.\n"
                       . "Do not offer to queue anything; if action is genuinely the right next step, say what\n"
                       . "you would do and let the owner ask for it.\n"
@@ -1926,10 +1927,11 @@ $withCorr = function (array $meta) use ($corr) {
                         $__analyticalContract =
                             "\nHOW TO ANSWER THIS TURN.\n"
                           . "The owner asked a question. Answer it from the material above, in your own words, as the director.\n"
+                          . "Be decisive: reason briefly, then answer. Do not re-derive facts the material already states.\n"
                           . "You are NOT creating or queueing work on this turn. If a lookup is genuinely needed to answer, you may call\n"
                           . "one of the READ tools listed below; otherwise leave tool_calls empty. Never promise work.\n"
                           . "Reply with JSON only: {\"reply\":\"<your answer>\",\"tool_calls\":[]}\n\n"
-                          . $toolSchemaSvc->getToolSchemaPrompt($slug, ['tasks'], (string) $__ownerMessage);
+                          . $toolSchemaSvc->getReadToolSchemaCompact($slug); // A7: compact read list, not the catalog guidance
                     }
 
                     $__before = mb_strlen($systemPrompt);
@@ -1942,7 +1944,7 @@ $withCorr = function (array $meta) use ($corr) {
                                   . $taskActivityBlock      // live workspace state
                                   . $groundingBlock         // what may and may not be claimed (GSC/no-data)
                                   . $__evidenceBlock        // deterministic router facts for this turn
-                                  . $__execFrame            // ExecutiveFrame + capability/system map
+                                  . (!empty($__shapeIsExecutive) ? $__execFrame : '') // ExecutiveFrame + capability/system map — analytical turns only (DEC-0029 A6: 10.6k chars a status question never needs)
                                   . $__expFrame             // Experience888: evidenced history, this workspace only
                                   . $__analyticalContract
                                   . ($__closingVoice ?? '');   // register, read last

@@ -172,6 +172,7 @@ class ArticleIdClaimGuard
 
         $kept = [];
         $replaced = false;
+        $truthAdded = false;
 
         foreach ($parts as $sentence) {
             if (! preg_match(self::REFERENCE, $sentence)) {
@@ -194,12 +195,27 @@ class ArticleIdClaimGuard
                 continue;
             }
 
-            if (! $replaced) {
+            // SF-07 (REPORT-0024 / DEC-0029, 2026-09-02): measured on 20+ turns — "What do you know about my business?"
+            // answered with "The earliest drafts ready to publish are #960 …" because the model's answer carried a number
+            // the workspace does not own ("#3", "0") in a sentence that had nothing to do with publishing. A foreign
+            // number in a NON-publishing sentence is dropped with its sentence; only a publishing/drafts sentence, or a
+            // re-offer of finished work, is replaced by the truth line — and that line is added once.
+            $replaced = true;
+            $aboutPublishing = $reoffers
+                || preg_match('/\b(publish|publishing|published|draft|drafts|ready to|go live|goes live|live)\b/i', $sentence);
+            if (! $aboutPublishing) {
+                continue; // dropped, nothing injected
+            }
+            if (! $truthAdded) {
                 $kept[] = $truth;
-                $replaced = true;
+                $truthAdded = true;
             }
         }
 
-        return $replaced ? implode(' ', $kept) : $reply;
+        if (! $replaced) {
+            return $reply;
+        }
+        $out = trim(implode(' ', $kept));
+        return $out !== '' ? $out : $truth;
     }
 }

@@ -88,6 +88,19 @@ class RouterIntent
         // asks for nothing that has to be derived, so it is STATUS by construction.
         if (self::isTrivialTurn($m)) { self::$domainMemo[$key] = []; return ['mode' => self::STATUS, 'why' => 'greeting or acknowledgement', 'source' => 'deterministic']; }
 
+        // DEC-0029 A8 (2026-09-02): the classifier call measured 1.5-13s per turn (DeepSeek reasoning on a 800-token
+        // prompt; one 707-token call timed out at 12s). Shapes that cannot be read two ways are decided here, with the
+        // domains from keywords; anything ambiguous still goes to the model.
+        $__det = self::deterministicMode($m);
+        if ($__det !== null) {
+            $__verdict = ['mode' => $__det, 'why' => 'unambiguous shape', 'source' => 'deterministic'];
+            if (count(self::$memo) > 500) self::$memo = [];
+            self::$memo[$key] = $__verdict;
+            if (count(self::$domainMemo) > 500) self::$domainMemo = [];
+            self::$domainMemo[$key] = MinimumPath::keywordDomains($m);
+            return $__verdict;
+        }
+
         $system = <<<'SYS'
 You decide what a business owner wants from one message to their marketing director.
 
@@ -185,6 +198,25 @@ SYS;
     }
 
     /** Convenience for callers that only need the branch. */
+    /**
+     * STATUS when the sentence opens as a lookup and asks for no judgement; ANALYSIS when it opens as a request for
+     * cause, judgement or a plan. Null when the shape could be read either way ("Which website has the most
+     * articles?" stays with the model — it was a lookup last time and a comparison the time before).
+     */
+    public static function deterministicMode(string $m): ?string
+    {
+        $m = trim($m);
+        $judgement = '/\b(why|should|recommend|best|worst|improve|plan|strategy|explain|walk me|assess|priorit|compare|better|risk|worth|matter|mean)\b/iu';
+        if (preg_match('/^(how many|how much|what is|what\'s|whats|what are|list|show( me)?|any |are there|is there|do we have|have we|did we|when (is|was|did)|who (is|are))\b/iu', $m)
+            && !preg_match($judgement, $m)) {
+            return self::STATUS;
+        }
+        if (preg_match('/^(why|how (do|can|could|should) (we|i)|what should|should (we|i)|explain|walk me through|assess|prioriti[sz]e|plan (for|how|out)|give me (a|the) (plan|strategy|breakdown|assessment))\b/iu', $m)) {
+            return self::ANALYSIS;
+        }
+        return null;
+    }
+
     /** A greeting/acknowledgement of at most four words with no question in it. */
     public static function isTrivialTurn(string $m): bool
     {
