@@ -22,6 +22,43 @@ class MinimumPathTest extends TestCase
         }
     }
 
+    /*──────────────────────────── DEC-0030: truthful work state for the ack of a complex turn */
+
+    public function test_simple_turns_get_no_work_state(): void
+    {
+        // The ack wiring gates on isSimpleTurn: simple => work_state is null (no progress theatre).
+        foreach (['Hi Sarah.', 'Thanks!', 'How many articles do I have?', 'List the pages on the bakery site', 'What is my business name?'] as $msg) {
+            $this->assertTrue(MinimumPath::isSimpleTurn($msg), "simple: {$msg}");
+            $ackWorkState = MinimumPath::isSimpleTurn($msg) ? null : MinimumPath::workState($msg, MinimumPath::keywordDomains($msg));
+            $this->assertNull($ackWorkState, "no work state on a simple turn: {$msg}");
+        }
+    }
+
+    public function test_complex_turns_get_a_truthful_present_continuous_label(): void
+    {
+        $seo = MinimumPath::workState('Why are my rankings dropping and what should I fix?', MinimumPath::keywordDomains('Why are my rankings dropping and what should I fix?'));
+        $this->assertNotNull($seo);
+        $this->assertStringContainsString('search visibility', $seo);
+        $this->assertMatchesRegularExpression('/^(Looking at|Working)/', $seo, 'present continuous, not a completed claim');
+        $this->assertStringNotContainsString('I checked', $seo);
+        $this->assertStringNotContainsString('I reviewed', $seo);
+
+        $plan = MinimumPath::workState('Create a growth strategy for the next 30 days', ['content', 'crm']);
+        $this->assertSame('Working through your growth plan', $plan);
+    }
+
+    public function test_work_state_is_generic_when_no_domain_is_specific(): void
+    {
+        // nothing matched → keywordDomains returns the full set → do not claim to be looking at any one thing
+        $this->assertSame('Working on that', MinimumPath::workState('Give me your honest read on where things stand', RouterIntent::DOMAINS));
+    }
+
+    public function test_is_simple_turn_treats_ambiguous_as_complex(): void
+    {
+        $this->assertFalse(MinimumPath::isSimpleTurn('Which of my websites needs SEO work most, and why?'));
+        $this->assertFalse(MinimumPath::isSimpleTurn('What should I focus on this week?'));
+    }
+
     /*──────────────────────────── A1: one classifier call, two answers */
 
     public function test_classify_returns_mode_and_domains_from_a_single_call(): void

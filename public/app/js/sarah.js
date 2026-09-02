@@ -453,7 +453,9 @@
         S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null, id: ackId || undefined })); S.feed.scrollTop = S.feed.scrollHeight;
         if (ackId) { S.rendered[String(ackId)] = 1; if (ackId > (S.lastMid || 0)) S.lastMid = ackId; }
         S.lastAgentText = String(d.ack).trim(); S.lastAgentAt = Date.now();
-        showOrch(null); pollFinal(ackId, d.poll_interval_ms || POLL_MS); return;
+        /* DEC-0030: a complex turn shows ONE truthful working strip (from the ack's work_state); a simple turn keeps the bare dot. */
+        if (d.work_state) { showWorking(d.work_state); } else { showOrch(null); }
+        pollFinal(ackId, d.poll_interval_ms || POLL_MS); return;
       }
       if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); S.lastAgentText = String(d.reply).trim(); S.lastAgentAt = Date.now(); if (d.id) { S.rendered[String(d.id)] = 1; if (+d.id > (S.lastMid || 0)) S.lastMid = +d.id; } }
       S.feed.scrollTop = S.feed.scrollHeight;
@@ -468,7 +470,7 @@
         for (var i = 0; i < arr.length; i++) { var m = arr[i];
           if (m && m.id && m.id > ackId && !m.is_ack && (m.role === 'agent' || (m.from !== 'User' && m.from !== 'user')) && !S.rendered[String(m.id)]) {
             clearInterval(S.activePoll); S.activePoll = null; hideOrch();
-            S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; S.feed.scrollTop = S.feed.scrollHeight; loadBriefing(); loadRail(); return;   // the reply to what you just asked always comes into view
+            revealBubble(m); S.rendered[String(m.id)] = 1; S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; loadBriefing(); loadRail(); return;   // DEC-0030: the reply to what you just asked reveals progressively and comes into view
           } }
       }).catch(function () {});
     }, every);
@@ -486,6 +488,45 @@
     var was = nearBottom(S.feed); S.feed.appendChild(el); stick(S.feed, was);
   }
   function hideOrch() { var el = document.getElementById('sh-orch'); if (el) el.remove(); }
+
+  /* ── DEC-0030 progressive work experience ───────────────────────────────────────────────
+     showWorking: one calm, truthful strip while Sarah reasons on a complex turn. The label is the ack's
+     server-computed work_state (e.g. "Looking at your search visibility and content", "Working through your
+     growth plan"). It is a single state, not a stream, and never claims completed work. */
+  function reducedMotion() { try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } }
+  function showWorking(label) {
+    var el = document.getElementById('sh-orch');
+    if (!el) { el = document.createElement('div'); el.className = 'sh-orch'; el.id = 'sh-orch'; el.setAttribute('aria-live', 'polite'); }
+    el.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="who"><b>Sarah</b><span>' + esc(String(label).replace(/[.…\s]+$/, '')) + '…</span></span>';
+    var was = nearBottom(S.feed); S.feed.appendChild(el); stick(S.feed, was);
+  }
+
+  /* revealBubble: render a received, ALREADY-VALIDATED answer progressively, block by block, at reading pace.
+     This is not streaming and not fake typing of fabricated text — the whole answer has arrived and passed the
+     guard chain; we only pace how its blocks appear. The final DOM is byte-identical to bubble(m) (lossless),
+     nothing reflows mid-render (each block is fully formatted before it is shown), and it never delays arrival:
+     short answers and reduced-motion render whole immediately, and the paced reveal is capped at ~1.2s total. */
+  function revealBubble(m) {
+    var el = bubble(m);                          // the full, correct final row
+    var body = el.querySelector('.sh-bubble');
+    var content = String(m && m.content != null ? m.content : '');
+    var blocks = body ? Array.prototype.filter.call(body.childNodes, function (n) { return n.nodeType === 1; }) : [];
+    if (!body || reducedMotion() || content.length < 220 || blocks.length < 2) {
+      S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el;   // simple/short → appear at once
+    }
+    blocks.forEach(function (n) { n.style.opacity = '0'; });
+    S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight;
+    var per = Math.max(40, Math.min(90, Math.round(1200 / blocks.length)));   // total <= ~1.2s
+    var i = 0;
+    (function step() {
+      if (i >= blocks.length) return;
+      var n = blocks[i++]; var was = nearBottom(S.feed);
+      n.style.transition = 'opacity .18s ease'; n.style.opacity = '1';
+      stick(S.feed, was);
+      if (i < blocks.length) setTimeout(step, per);
+    })();
+    return el;
+  }
 
   /* ── Activity cards from /agent/events ───────────────────────────────────────────────────────── */
   function card(ev) {

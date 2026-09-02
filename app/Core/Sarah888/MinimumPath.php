@@ -94,6 +94,62 @@ final class MinimumPath
     }
 
     /**
+     * DEC-0030 (2026-09-02): a TRUTHFUL, deterministic "work state" label for the ack response of a COMPLEX turn.
+     * Returns null for a simple/deterministic turn (no progress theatre — the light/read lanes answer in 2-6s).
+     * For a complex turn it names, in the present continuous, the category of workspace data the turn is about
+     * to assemble into its reasoning frame — never a completed action ("I checked X"), never chain-of-thought.
+     * When no domain is specific (keywordDomains returned the full set = nothing matched), it is the honest
+     * generic "Working on that..." rather than a claim about data.
+     *
+     * @param string[] $domains  the deterministic domains for this turn (MinimumPath::keywordDomains)
+     */
+    public static function workState(string $message, array $domains): ?string
+    {
+        $m = mb_strtolower(trim($message));
+        if ($m === '') return null;
+
+        // A plan/strategy request: name the deliverable, not the data.
+        if (preg_match('/\b(plan|strategy|roadmap|30[- ]?day|60[- ]?day|90[- ]?day|next (month|quarter|week)|grow|scale)\b/u', $m)) {
+            return 'Working through your growth plan';
+        }
+
+        // Nothing specific was matched (over-inclusion default) → do not claim to be looking at any one thing.
+        sort($domains);
+        $full = RouterIntent::DOMAINS; sort($full);
+        if ($domains === $full || count($domains) >= 5 || count($domains) === 0) {
+            return 'Working on that';
+        }
+
+        $phrase = [
+            'seo'        => 'your search visibility',
+            'content'    => 'your content',
+            'crm'        => 'your leads and pipeline',
+            'tasks'      => 'your work queue',
+            'incident'   => 'what is failing',
+            'commercial' => 'your budget and spend',
+        ];
+        $parts = [];
+        foreach ($domains as $d) { if (isset($phrase[$d])) $parts[] = $phrase[$d]; }
+        if (!$parts) return 'Working on that';
+
+        $last = array_pop($parts);
+        $joined = $parts ? implode(', ', $parts) . ' and ' . $last : $last;
+        return 'Looking at ' . $joined;
+    }
+
+    /**
+     * DEC-0030: is this turn SIMPLE enough that it needs no progress state at all? Deterministic, no model call —
+     * a greeting/acknowledgement, a read request, or an unambiguous STATUS lookup. Everything else is treated as
+     * possibly-complex and gets a truthful work state.
+     */
+    public static function isSimpleTurn(string $message, bool $hasAttachments = false, ?string $quickAction = null): bool
+    {
+        if (self::isLightTurn($message, $hasAttachments, $quickAction)) return true;
+        if (self::readIntent($message) !== null) return true;
+        return RouterIntent::deterministicMode($message) === RouterIntent::STATUS;
+    }
+
+    /**
      * Deterministic domains for a WORK turn (directive/authorisation), where the mode classifier does not run.
      * Measured 2026-09-02 05:08: without this, ContextSelector paid a separate 333-token domains() call (7.0s)
      * on every work turn. Keyword-derived; returns every domain when nothing matches (over-inclusion is the safe

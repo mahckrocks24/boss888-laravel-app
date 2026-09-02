@@ -491,6 +491,13 @@ $withCorr = function (array $meta) use ($corr) {
                         'effective_cost' => '0.1 cr',
                     ],
                     'expected_seconds' => 15,
+                    // DEC-0030 (2026-09-02): a truthful, deterministic progress label for COMPLEX turns; null for simple
+                    // (greeting/read/status) so those stay plain and fast. No model call — derived from the turn shape
+                    // and keyword domains. The SPA shows ONE calm working strip while Sarah reasons; it never claims a
+                    // completed action and never exposes chain-of-thought.
+                    'work_state'       => \App\Core\Sarah888\MinimumPath::isSimpleTurn((string) $content, !empty($__att['meta']) || !empty($image), $quickAction)
+                        ? null
+                        : \App\Core\Sarah888\MinimumPath::workState((string) $content, \App\Core\Sarah888\MinimumPath::keywordDomains((string) $content)),
                     'poll_url'         => "/agents/{$slug}/messages",
                     'poll_interval_ms' => (int) config('chat.poll_interval_ms', 2500), // RISK-0050: single source (config/chat.php); the event lookback is derived from this value
                     'poll_after_id'    => $earlyAckMessageId,
