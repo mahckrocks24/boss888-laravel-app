@@ -174,6 +174,16 @@ class CommitmentExtractor
         // between two digits is never punctuation between list items, so it is
         // masked before the split and restored after. Purely structural: no
         // vocabulary, no false positives available to it.
+        // P2 #4: a structured entity-add is one record, not a comma-list of commitments. Do not expand
+        // "Add a lead: <name>, <email>, <note>" (or create/log a contact/customer/deal/event/appointment/
+        // booking) into a commitment per attribute; the CRM/calendar tool creates the record. Contact data
+        // (an email or phone number in the body) is the same signal. Genuine work lists still expand below.
+        if (preg_match('/\b(add|create|new|log|record|enter|save|set up)\b[^:]{0,40}\b(lead|contact|customer|client|deal|prospect|subscriber|event|appointment|booking|meeting|reservation)\b/i', $clause)
+            || preg_match('/[\w.+-]+@[\w-]+\.[\w.-]+/', $body)
+            || preg_match('/\+?\d[\d\s().-]{7,}\d/', $body)) {
+            return null;
+        }
+
         $body = preg_replace('/(?<=\d),(?=\d{3}(?!\d))/', "\x01", $body);
         $raw = preg_split('/\s*,\s*(?:and\s+|&\s*)?|\s+and\s+|\s*&\s*/i', $body) ?: [];
         $raw = array_map(static fn ($p) => str_replace("\x01", ',', $p), $raw);
