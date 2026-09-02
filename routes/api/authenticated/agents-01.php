@@ -2849,7 +2849,17 @@ $withCorr = function (array $meta) use ($corr) {
                     $ctIndex = 0;
                     foreach ($createTasks as $createTask) {
                     $ctIndex++;
-                    if ($createTask && is_array($createTask) && !empty($createTask['agent'])) {
+                    // TM-1 (REPORT-0027): a READ emitted without an `agent` was dropped by the agent gate
+                    // (neither promoted, created, nor failed) — the prose promise then survived with no data.
+                    // Reads need no agent; let a read entry into the block so read-promotion runs.
+                    $__ctIsRead = false;
+                    if (is_array($createTask ?? null)) {
+                        $__ctRA = (string) ($createTask['action'] ?? '');
+                        if (str_contains($__ctRA, '.')) { $__ctRA = explode('.', $__ctRA, 2)[1] ?? $__ctRA; }
+                        try { $__ctIsRead = \App\Core\Sarah888\ReadToolPromotion::toolIdFor((string) ($createTask['engine'] ?? ''), $__ctRA, $toolSchemaSvc->getAllToolIds()) !== null; }
+                        catch (\Throwable) { $__ctIsRead = false; }
+                    }
+                    if ($createTask && is_array($createTask) && (!empty($createTask['agent']) || $__ctIsRead)) {
                         try {
                             $taskAgent = $createTask['agent'];
                             $taskEngine = $createTask['engine'] ?? 'marketing';
