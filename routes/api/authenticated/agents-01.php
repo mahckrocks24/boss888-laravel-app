@@ -2051,6 +2051,18 @@ $withCorr = function (array $meta) use ($corr) {
                         }
                     } catch (\Throwable $__rlErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] read lane failed, falling through: ' . $__rlErr->getMessage(), ['ws' => $wsId]); }
                 }
+                // A4 builder-edit lane (ARTHUR888 F-ARTHUR-B-COORD): a concrete page edit / page-add request is
+                // executed DETERMINISTICALLY via Arthur — the chat LLM won't chain list_builder_pages ->
+                // edit_page_with_arthur (2-step, needs page_id), so it fell back to a phantom "I'll do it".
+                if ($assist === null && ($__bei = \App\Core\Sarah888\BuilderEditPromotion::detect((string) $__ownerMessage)) !== null) {
+                    try {
+                        $__ber = \App\Core\Sarah888\BuilderEditPromotion::promote($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, $slug, $__bei);
+                        if (!empty($__ber['handled']) && !empty($__ber['reply'])) {
+                            $assist = ['response' => $__ber['reply'], 'create_tasks' => [], 'tool_calls' => [], 'requires_sarah' => false, 'reasoning_path' => true, 'builder_lane' => $__bei['type'], 'builder_executed' => !empty($__ber['executed'])];
+                            \Illuminate\Support\Facades\Log::info('[Arthur888] builder-edit lane', ['ws' => $wsId, 'type' => $__bei['type'], 'executed' => !empty($__ber['executed']), 'ambiguous' => !empty($__ber['ambiguous'])]);
+                        }
+                    } catch (\Throwable $__beErr) { \Illuminate\Support\Facades\Log::warning('[Arthur888] builder-edit lane failed, falling through: ' . $__beErr->getMessage(), ['ws' => $wsId]); }
+                }
                 // A5: every remaining turn is ONE raw model call on Laravel's own prompt. The Runtime assistant path
                 // (prework, its own system prompt, strategic consults) is the fallback, and can be forced back with
                 // SARAH_ASSISTANT_PATH=true. Measured (EV-0901): 21k tokens via chat_json 3.7s vs assistant() ≈11s.
