@@ -71,6 +71,12 @@
       '.ps-swatch{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.2)}',
       '.ps-tags{display:flex;gap:6px;flex-wrap:wrap}',
       '.ps-tag{font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:3px 8px;color:rgba(255,255,255,.75)}',
+      // version chips
+      '.ps-versions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
+      '.ps-versions-lbl{font-size:12px;color:rgba(255,255,255,.5);margin-right:2px}',
+      '.ps-versions-hint{font-size:11px;color:rgba(255,255,255,.35)}',
+      '.ps-vchip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.8);font:600 12px/1 inherit;padding:7px 11px;border-radius:10px;cursor:pointer;min-width:38px}',
+      '.ps-vchip[aria-pressed="true"]{background:rgba(108,92,231,.25);border-color:#6C5CE7;color:#fff}',
       // composer
       '.ps-composer{flex-shrink:0;border-top:1px solid rgba(255,255,255,.08);padding:12px 16px;background:#0E0F14;display:flex;flex-direction:column;gap:10px}',
       '.ps-composer-inner{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:10px}',
@@ -105,7 +111,19 @@
 
   function render() {
     var host = S.host;
-    var cost = COST.generate_image;
+    var editing = !!S.currentAssetId;
+    var cost = editing ? COST.edit_image : COST.generate_image;
+    var placeholder = editing
+      ? 'Describe a change — e.g. “make the background warmer”, “remove the person”…'
+      : 'A cozy coffee shop latte on a wooden table, morning light…';
+    var actions = editing
+      ? '<button type="button" class="ps-btn ps-btn-ghost" id="ps-new" ' + (S.busy ? 'disabled' : '') + '>＋ New</button>' +
+        '<button type="button" class="ps-btn ps-btn-primary" id="ps-edit" ' + (S.busy ? 'disabled' : '') + '>✎ Apply edit</button>'
+      : '<button type="button" class="ps-btn ps-btn-ghost" id="ps-enhance" ' + (S.busy ? 'disabled' : '') + '>✦ Enhance</button>' +
+        '<button type="button" class="ps-btn ps-btn-primary" id="ps-generate" ' + (S.busy ? 'disabled' : '') + '>Generate</button>';
+    var costLine = editing
+      ? 'Each edit costs <b>' + cost + ' credit' + (cost === 1 ? '' : 's') + '</b> · non-destructive — earlier versions are kept'
+      : 'Generation costs <b>' + cost + ' credit' + (cost === 1 ? '' : 's') + '</b> · Enhance is free';
     host.innerHTML =
       '<div class="ps-root">' +
         '<div class="ps-head">' +
@@ -114,23 +132,33 @@
         '</div>' +
         '<div class="ps-scroll"><div class="ps-stage">' +
           '<div class="' + resultClass() + '" id="ps-result">' + resultInner() + '</div>' +
-          (S.enh ? enhancedPanel(S.enh) : '') +
+          versionChips() +
+          (S.enh && !editing ? enhancedPanel(S.enh) : '') +
           (S.error ? '<div class="ps-err">' + esc(S.error) + '</div>' : '') +
         '</div></div>' +
         '<div class="ps-composer"><div class="ps-composer-inner">' +
-          '<div class="ps-chips" role="group" aria-label="Aspect ratio">' + chips() + '</div>' +
+          (editing ? '' : '<div class="ps-chips" role="group" aria-label="Aspect ratio">' + chips() + '</div>') +
           '<div class="ps-box" id="ps-box">' +
-            '<textarea class="ps-input" id="ps-input" rows="1" placeholder="A cozy coffee shop latte on a wooden table, morning light…" ' +
-              'aria-label="Describe the image">' + esc(S.prompt || '') + '</textarea>' +
+            '<textarea class="ps-input" id="ps-input" rows="1" placeholder="' + esc(placeholder) + '" ' +
+              'aria-label="' + (editing ? 'Describe a change' : 'Describe the image') + '">' + esc(S.prompt || '') + '</textarea>' +
           '</div>' +
-          '<div class="ps-actions">' +
-            '<button type="button" class="ps-btn ps-btn-ghost" id="ps-enhance" ' + (S.busy ? 'disabled' : '') + '>✦ Enhance</button>' +
-            '<button type="button" class="ps-btn ps-btn-primary" id="ps-generate" ' + (S.busy ? 'disabled' : '') + '>Generate</button>' +
-          '</div>' +
-          '<div class="ps-cost">Generation costs <b>' + cost + ' credit' + (cost === 1 ? '' : 's') + '</b> · Enhance is free</div>' +
+          '<div class="ps-actions">' + actions + '</div>' +
+          '<div class="ps-cost">' + costLine + '</div>' +
         '</div></div>' +
       '</div>';
     wire();
+  }
+
+  function versionChips() {
+    var v = S.versions || [];
+    if (v.length < 2) return '';
+    var chips = v.map(function (row) {
+      var on = String(row.id) === String(S.currentAssetId);
+      return '<button type="button" class="ps-vchip" data-vid="' + esc(row.id) + '" aria-pressed="' + (on ? 'true' : 'false') + '" ' +
+        'title="Version ' + esc(row.version) + '">v' + esc(row.version) + '</button>';
+    }).join('');
+    return '<div class="ps-versions"><span class="ps-versions-lbl">Versions</span>' + chips +
+      '<span class="ps-versions-hint">tap to go back</span></div>';
   }
 
   function resultInner() {
@@ -208,6 +236,13 @@
     if (eb) eb.addEventListener('click', doEnhance);
     var gb = document.getElementById('ps-generate');
     if (gb) gb.addEventListener('click', doGenerate);
+    var edb = document.getElementById('ps-edit');
+    if (edb) edb.addEventListener('click', doEdit);
+    var nb = document.getElementById('ps-new');
+    if (nb) nb.addEventListener('click', startNew);
+    Array.prototype.forEach.call(document.querySelectorAll('.ps-vchip'), function (c) {
+      c.addEventListener('click', function () { selectVersion(c.getAttribute('data-vid')); });
+    });
   }
 
   function doEnhance() {
@@ -254,7 +289,7 @@
       var d = unwrap(r);
       if (d && d.success === false) { S.busy = false; S.error = friendlyErr(d) || 'Generation failed.'; render(); return; }
       var url = pickUrl(d), assetId = pickId(d);
-      if (url) { S.busy = false; S.imageUrl = url; S.lastAssetId = assetId; render(); return; }
+      if (url) { onImage(url, assetId); return; }
       if (assetId) { pollAsset(assetId, 0); return; }
       S.busy = false; S.error = 'Generation returned no image.'; render();
     }).catch(function (err) {
@@ -265,18 +300,74 @@
     });
   }
 
+  // Shared success handler for a produced image (generate OR edit): show it, make it the
+  // current asset (so the next prompt edits THIS image), and refresh the version lineage.
+  function onImage(url, assetId) {
+    S.busy = false; S.imageUrl = url;
+    if (assetId) { S.currentAssetId = assetId; S.lastAssetId = assetId; }
+    render();
+    if (assetId) fetchVersions(assetId);
+  }
+
   function pollAsset(id, tries) {
     if (tries > 60) { S.busy = false; S.error = 'Generation timed out.'; render(); return; }
     jfetch('/creative/assets/' + id + '/poll', { method: 'GET' }).then(function (r) {
       var d = unwrap(r);
       var url = pickUrl(d);
       var status = d && (d.status || (d.asset && d.asset.status));
-      if (url && (status === 'completed' || status === 'success' || !status)) {
-        S.busy = false; S.imageUrl = url; S.lastAssetId = id; render(); return;
-      }
+      if (url && (status === 'completed' || status === 'success' || !status)) { onImage(url, id); return; }
       if (status === 'failed' || status === 'error') { S.busy = false; S.error = 'Generation failed.'; render(); return; }
       setTimeout(function () { pollAsset(id, tries + 1); }, 2000);
     }).catch(function () { setTimeout(function () { pollAsset(id, tries + 1); }, 2500); });
+  }
+
+  // Edit-via-prompt (Builder model): apply a natural-language change to the current image.
+  // Non-destructive — creates a new version child; earlier versions are kept.
+  function doEdit() {
+    var p = (S.prompt || '').trim();
+    if (!p) { S.error = 'Describe the change you want.'; render(); return; }
+    if (!S.currentAssetId) { S.error = 'Generate an image first.'; render(); return; }
+    S.busy = true; S.busyKind = 'generate'; S.error = null; render();
+    var idem = 'ps-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+    jfetch('/creative/edit', {
+      method: 'POST',
+      body: JSON.stringify({ source_asset_id: S.currentAssetId, prompt: p, idempotency_key: idem })
+    }).then(function (r) {
+      if (r && r.success === false) { S.busy = false; S.error = friendlyErr(r) || 'Edit was blocked.'; render(); return; }
+      var d = unwrap(r);
+      if (d && d.success === false) { S.busy = false; S.error = friendlyErr(d) || 'Edit failed.'; render(); return; }
+      var url = pickUrl(d), assetId = pickId(d);
+      if (url) { S.prompt = ''; onImage(url, assetId); return; }
+      if (assetId) { S.prompt = ''; pollAsset(assetId, 0); return; }
+      S.busy = false; S.error = 'Edit returned no image.'; render();
+    }).catch(function (err) {
+      S.busy = false;
+      var pl = err.payload && (err.payload.data || err.payload);
+      S.error = friendlyErr(pl) || ('Edit failed (' + (err.status || 'network') + ').');
+      render();
+    });
+  }
+
+  // Refresh the non-destructive version lineage for the chips (server is source of truth).
+  function fetchVersions(assetId) {
+    jfetch('/creative/assets/' + assetId + '/versions', { method: 'GET' }).then(function (r) {
+      var d = unwrap(r);
+      S.versions = (d && d.versions) ? d.versions : [];
+      S.rootAssetId = d && d.root_asset_id;
+      render();
+    }).catch(function () { /* chips are a nicety — never block on them */ });
+  }
+
+  // Undo / go back: select an earlier (or later) version; further edits branch from it.
+  function selectVersion(id) {
+    var row = (S.versions || []).filter(function (v) { return String(v.id) === String(id); })[0];
+    if (!row) return;
+    S.currentAssetId = row.id; S.imageUrl = row.url; S.error = null; render();
+  }
+
+  function startNew() {
+    S.currentAssetId = null; S.versions = []; S.rootAssetId = null;
+    S.imageUrl = null; S.enh = null; S.prompt = ''; S.error = null; render();
   }
 
   window._mountPromptStudio = function (rootEl, caps) {
@@ -287,7 +378,7 @@
     // height. If the host would collapse (no height from its container — e.g. a bare
     // mount), fall back to the viewport so the surface never squashes into a sliver.
     try { if (host.getBoundingClientRect().height < 80) { host.style.height = '100dvh'; host.style.minHeight = '100vh'; } } catch (_) {}
-    S = { host: host, caps: caps || {}, prompt: '', aspectId: 'square', enh: null, imageUrl: null, busy: false, error: null };
+    S = { host: host, caps: caps || {}, prompt: '', aspectId: 'square', enh: null, imageUrl: null, busy: false, error: null, currentAssetId: null, versions: [], rootAssetId: null };
     render();
     return true;
   };
