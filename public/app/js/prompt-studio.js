@@ -47,14 +47,14 @@
   function injectCss() {
     if (document.getElementById('ps-css')) return;
     var css = [
-      '.ps-root{position:absolute;inset:0;display:flex;flex-direction:column;background:#0E0F14;color:#fff;font:400 15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
+      '.ps-root{position:absolute;inset:0;height:100%;min-height:100%;display:flex;flex-direction:column;background:#0E0F14;color:#fff;font:400 15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
       '.ps-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}',
       '.ps-head h2{font:600 17px/1 inherit;margin:0}',
       '.ps-head .ps-sub{color:rgba(255,255,255,.5);font-size:12px}',
       '.ps-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;flex-direction:column;gap:16px}',
       '.ps-stage{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}',
       // result
-      '.ps-result{width:100%;aspect-ratio:1/1;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;position:relative}',
+      '.ps-result{width:100%;aspect-ratio:1/1;flex-shrink:0;min-height:220px;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;position:relative}',
       '.ps-result.wide{aspect-ratio:16/9}.ps-result.tall{aspect-ratio:9/16;max-height:70vh}',
       '.ps-result img{width:100%;height:100%;object-fit:contain;display:block}',
       '.ps-empty{color:rgba(255,255,255,.4);text-align:center;padding:24px;font-size:14px}',
@@ -153,21 +153,28 @@
     }).join('');
   }
 
+  // Guard against null-ish values arriving as strings ("null"/"undefined") or empties,
+  // so the enhanced panel never renders a stray "null" chip/row.
+  function clean(v) {
+    if (v == null) return '';
+    var s = String(v).trim();
+    if (s === '' || s.toLowerCase() === 'null' || s.toLowerCase() === 'undefined') return '';
+    return s;
+  }
+
   function enhancedPanel(e) {
     var sum = e.summary || {};
-    var palette = (sum.color_palette || []).slice(0, 6).map(function (c) {
+    var palette = (sum.color_palette || []).filter(function (c) { return clean(c); }).slice(0, 6).map(function (c) {
       return '<span class="ps-swatch" style="background:' + esc(c) + '" title="' + esc(c) + '"></span>';
     }).join('');
-    var tags = [];
-    if (sum.mood) tags.push(sum.mood);
-    if (sum.lighting) tags.push(sum.lighting);
-    if (sum.platform) tags.push(sum.platform);
+    var tags = [sum.mood, sum.lighting, sum.platform].map(clean).filter(Boolean);
     var tagsHtml = tags.map(function (t) { return '<span class="ps-tag">' + esc(t) + '</span>'; }).join('');
+    var subject = clean(sum.subject), audience = clean(sum.audience), aspect = clean(sum.aspect_ratio), size = clean(e.size);
     return '<div class="ps-enh">' +
       '<div class="ps-enh-title">✦ Enhanced your prompt</div>' +
-      (sum.subject ? '<div class="ps-enh-row"><b>Subject</b>' + esc(sum.subject) + '</div>' : '') +
-      (sum.audience ? '<div class="ps-enh-row"><b>For</b>' + esc(sum.audience) + '</div>' : '') +
-      (sum.aspect_ratio ? '<div class="ps-enh-row"><b>Aspect</b>' + esc(sum.aspect_ratio) + ' · ' + esc(e.size || '') + '</div>' : '') +
+      (subject ? '<div class="ps-enh-row"><b>Subject</b>' + esc(subject) + '</div>' : '') +
+      (audience ? '<div class="ps-enh-row"><b>For</b>' + esc(audience) + '</div>' : '') +
+      (aspect ? '<div class="ps-enh-row"><b>Aspect</b>' + esc(aspect) + (size ? ' · ' + esc(size) : '') + '</div>' : '') +
       (tagsHtml ? '<div class="ps-tags">' + tagsHtml + '</div>' : '') +
       (palette ? '<div class="ps-swatches">' + palette + '</div>' : '') +
       '</div>';
@@ -222,6 +229,18 @@
     });
   }
 
+  // The EngineKernel wraps every service result in an envelope
+  // { success, data:<service result>, credits_used }. Errors may sit at the top
+  // level (gate rejections like NO_CREDITS) or nested under data (service errors).
+  function unwrap(r) { return (r && typeof r === 'object' && r.data && typeof r.data === 'object') ? r.data : r; }
+  function pickUrl(d) { return d && (d.url || d.image_url || (d.asset && d.asset.url)); }
+  function pickId(d) { return d && (d.asset_id || d.id || (d.asset && d.asset.id)); }
+  function friendlyErr(o) {
+    if (!o) return null;
+    if (o.code === 'NO_CREDITS') return o.error || 'Not enough credits to generate.';
+    return o.error || o.message || null;
+  }
+
   function doGenerate() {
     var p = (S.prompt || '').trim();
     if (!p) { S.error = 'Type a description first.'; render(); return; }
@@ -230,17 +249,18 @@
       method: 'POST',
       body: JSON.stringify({ prompt: p, aspect_ratio: currentAspect().ar })
     }).then(function (r) {
-      // The kernel returns the completed asset synchronously (url/asset_id) or an
-      // async job to poll. Handle both.
-      var url = r && (r.url || (r.asset && r.asset.url) || r.image_url);
-      var assetId = r && (r.asset_id || r.id || (r.asset && r.asset.id));
+      // Gate rejection (NO_CREDITS / PLAN_GATED) — surface the real message.
+      if (r && r.success === false) { S.busy = false; S.error = friendlyErr(r) || 'Generation was blocked.'; render(); return; }
+      var d = unwrap(r);
+      if (d && d.success === false) { S.busy = false; S.error = friendlyErr(d) || 'Generation failed.'; render(); return; }
+      var url = pickUrl(d), assetId = pickId(d);
       if (url) { S.busy = false; S.imageUrl = url; S.lastAssetId = assetId; render(); return; }
       if (assetId) { pollAsset(assetId, 0); return; }
       S.busy = false; S.error = 'Generation returned no image.'; render();
     }).catch(function (err) {
       S.busy = false;
-      var msg = (err.payload && (err.payload.error || err.payload.message)) || ('Generation failed (' + (err.status || 'network') + ').');
-      S.error = String(msg);
+      var pl = err.payload && (err.payload.data || err.payload);
+      S.error = friendlyErr(pl) || ('Generation failed (' + (err.status || 'network') + ').');
       render();
     });
   }
@@ -248,8 +268,9 @@
   function pollAsset(id, tries) {
     if (tries > 60) { S.busy = false; S.error = 'Generation timed out.'; render(); return; }
     jfetch('/creative/assets/' + id + '/poll', { method: 'GET' }).then(function (r) {
-      var url = r && (r.url || (r.asset && r.asset.url));
-      var status = r && (r.status || (r.asset && r.asset.status));
+      var d = unwrap(r);
+      var url = pickUrl(d);
+      var status = d && (d.status || (d.asset && d.asset.status));
       if (url && (status === 'completed' || status === 'success' || !status)) {
         S.busy = false; S.imageUrl = url; S.lastAssetId = id; render(); return;
       }
@@ -262,6 +283,10 @@
     injectCss();
     var host = rootEl || document.getElementById('studio-root') || document.body;
     try { host.style.position = 'relative'; } catch (_) {}
+    // Robustness: .ps-root fills the host via absolute inset:0, so the host MUST have
+    // height. If the host would collapse (no height from its container — e.g. a bare
+    // mount), fall back to the viewport so the surface never squashes into a sliver.
+    try { if (host.getBoundingClientRect().height < 80) { host.style.height = '100dvh'; host.style.minHeight = '100vh'; } } catch (_) {}
     S = { host: host, caps: caps || {}, prompt: '', aspectId: 'square', enh: null, imageUrl: null, busy: false, error: null };
     render();
     return true;
