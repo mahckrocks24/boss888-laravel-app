@@ -44,8 +44,14 @@ body.kb-no-scroll{overflow:hidden}
 .kb-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 /* ─── header (compact, sticky) ─────────────────────────────────────────── */
-.kb-header{position:sticky;top:0;z-index:60;background:var(--kb-bg);border-bottom:1px solid var(--kb-line);transition:box-shadow .2s}
+.kb-header{position:sticky;top:0;z-index:60;background:var(--kb-bg);border-bottom:1px solid var(--kb-line);transition:box-shadow .2s,transform .3s ease}
 .kb-header.is-stuck{box-shadow:var(--kb-shadow)}
+.kb-header.is-hidden{transform:translateY(-100%);box-shadow:none}
+@media (min-width:900px){.kb-header.is-hidden{transform:none}}
+@media (prefers-reduced-motion:reduce){.kb-header{transition:box-shadow .2s}.kb-header.is-hidden{transform:none}}
+/* reader text size (Aa control, persisted in localStorage) */
+body.kb-text-lg .kb-prose{font-size:1.2rem;line-height:1.75}
+body.kb-text-xl .kb-prose{font-size:1.34rem;line-height:1.78}
 .kb-bar{height:var(--kb-nav-h);display:grid;grid-template-columns:44px 1fr 44px;align-items:center;gap:6px}
 .kb-plate-link{text-decoration:none;color:inherit;display:flex;align-items:center;justify-content:center;min-width:0}
 .kb-plate-text{font-size:1.45rem;font-weight:900;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

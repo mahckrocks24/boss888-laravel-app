@@ -100,6 +100,7 @@ class KabayanNewsTheme
              . '<meta name="color-scheme" content="light dark">' . "\n"
              . '<meta name="apple-mobile-web-app-title" content="' . $this->e((string) ($website['name'] ?? 'Kabayan')) . '">' . "\n"
              . '<meta name="format-detection" content="telephone=no">' . "\n"
+             . '<meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1">' . "\n"
              . '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
         if ($article) {
             $site = 'https://' . $this->sub() . '.levelupgrowth.io';
@@ -199,8 +200,10 @@ class KabayanNewsTheme
         if ($caption === '' && $credit === '' && !empty($brief['ai_illustration'])) $credit = 'AI-generated illustration';
         $capHtml = ($caption !== '' || $credit !== '') ? "<figcaption>" . $this->e($caption) . ($credit !== '' ? ($caption !== '' ? ' · ' : '') . "<span class=\"kb-credit\">" . $this->e($credit) . "</span>" : '') . "</figcaption>" : '';
         $hero = $imgUrl !== '' ? "<figure class=\"kb-art-hero\">" . $this->img($imgUrl, $alt, 'hero') . $capHtml . "</figure>" : '';
-        $dateHtml = $when ? "<span><time datetime=\"" . $this->e($when->toIso8601String()) . "\">" . $this->e($when->format('j F Y, g:i a')) . "</time></span>" : '';
-        if ($upd && $when && $upd->gt($when->copy()->addHour())) $dateHtml .= "<span>Updated " . $this->e($upd->format('j M, g:i a')) . "</span>";
+        // Labelled, timezone-stamped dates (Google publication-date guidance; Reuters/ST pattern). One <time> per date.
+        $tz = 'Asia/Dubai';
+        $dateHtml = $when ? "<span>Published <time datetime=\"" . $this->e($when->toIso8601String()) . "\">" . $this->e($when->copy()->setTimezone($tz)->format('j M Y, g:i a')) . " GST</time></span>" : '';
+        if ($upd && $when && $upd->gt($when->copy()->addHour())) $dateHtml .= "<span>Updated <time datetime=\"" . $this->e($upd->toIso8601String()) . "\">" . $this->e($upd->copy()->setTimezone($tz)->format('j M, g:i a')) . " GST</time></span>";
         $share = $this->shareRow($pageUrl, (string) ($article['title'] ?? ''));
         $related = $this->newsFeed(['eyebrow' => 'Read next', 'heading' => 'More in ' . $catLabel, 'layout' => 'list', 'category' => $catSlug !== '' ? $cat : '', 'limit' => 4, 'show_excerpt' => false], $website, (int) ($article['id'] ?? 0));
         if ($related === '') $related = $this->newsFeed(['eyebrow' => 'Read next', 'heading' => 'Latest stories', 'layout' => 'list', 'limit' => 4, 'show_excerpt' => false], $website, (int) ($article['id'] ?? 0));
@@ -618,6 +621,7 @@ HTML;
             . "<a href=\"https://www.facebook.com/sharer/sharer.php?u={$u}\" rel=\"noopener\" target=\"_blank\">{$this->icon('facebook')}Share</a>"
             . "<a href=\"https://t.me/share/url?url={$u}&text={$t}\" rel=\"noopener\" target=\"_blank\">{$this->icon('telegram')}Telegram</a>"
             . "<button type=\"button\" data-kb=\"copy\">{$this->icon('link')}Copy link</button>"
+            . "<button type=\"button\" data-kb=\"textsize\" aria-label=\"Change text size\" title=\"Text size\"><span style=\"font-family:var(--kb-fb);font-weight:800\">Aa</span>Text size</button>"
             . "</div>";
     }
 
@@ -664,9 +668,15 @@ function close(){[drawer,search].forEach(function(el){if(!el)return;el.setAttrib
 d.addEventListener('click',function(e){var t=e.target.closest('[data-kb]');if(!t)return;var k=t.getAttribute('data-kb');
  if(k==='menu'){open(drawer,t)}else if(k==='search'){open(search,t)}else if(k==='close'){close()}
  else if(k==='copy'){var s=t.closest('[data-kb-share]'),u=s?s.getAttribute('data-url'):location.href,ti=s?s.getAttribute('data-title'):d.title;if(navigator.share){navigator.share({title:ti,url:u}).catch(function(){})}else if(navigator.clipboard){navigator.clipboard.writeText(u).then(function(){var o=t.innerHTML;t.textContent='Copied';setTimeout(function(){t.innerHTML=o},1500)})}}
- else if(k==='more'){more(t)}});
+ else if(k==='more'){more(t)}
+ else if(k==='textsize'){var sizes=['','kb-text-lg','kb-text-xl'],cur=sizes.indexOf(d.body.getAttribute('data-kb-text')||''),next=sizes[(cur+1)%sizes.length];applyText(next);try{localStorage.setItem('kb-text',next)}catch(e){}}});
+function applyText(v){d.body.classList.remove('kb-text-lg','kb-text-xl');if(v)d.body.classList.add(v);d.body.setAttribute('data-kb-text',v||'')}
+try{applyText(localStorage.getItem('kb-text')||'')}catch(e){}
 d.addEventListener('keydown',function(e){if(e.key==='Escape')close()});
-var stuck=false;function onScroll(){var y=window.scrollY||0;var s=y>8;if(s!==stuck){stuck=s;if(h)h.classList.toggle('is-stuck',s)}var p=d.getElementById('kb-progress');if(p){var a=d.querySelector('[data-kb-article]');if(a){var r=a.getBoundingClientRect(),total=a.offsetHeight-window.innerHeight,done=Math.min(1,Math.max(0,-r.top/(total||1)));p.style.width=(done*100).toFixed(1)+'%'}}}
+var stuck=false,lastY=0,hidden=false,rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function onScroll(){var y=window.scrollY||0;var s=y>8;if(s!==stuck){stuck=s;if(h)h.classList.toggle('is-stuck',s)}
+ if(h&&!rm){var dy=y-lastY;if(y>140&&dy>6&&!hidden){hidden=true;h.classList.add('is-hidden')}else if((dy<-6||y<140)&&hidden){hidden=false;h.classList.remove('is-hidden')}lastY=y}
+ var p=d.getElementById('kb-progress');if(p){var a=d.querySelector('[data-kb-article]');if(a){var r=a.getBoundingClientRect(),total=a.offsetHeight-window.innerHeight,done=Math.min(1,Math.max(0,-r.top/(total||1)));p.style.width=(done*100).toFixed(1)+'%'}}}
 window.addEventListener('scroll',onScroll,{passive:true});onScroll();
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function variant(u,w){var m=/^(https?:\/\/[^\/]+)?\/storage\/((?:ai-images|uploads|media|builder-heroes|sites|logos|creative)\/[A-Za-z0-9_\-.\/]+)$/.exec(u||'');return m?((m[1]||'')+'/api/public/img/'+w+'/'+m[2]):u}
