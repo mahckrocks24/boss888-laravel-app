@@ -183,7 +183,7 @@ final class MinimumPath
         $m = mb_strtolower($message);
         if (preg_match('/\b(website|websites|site|sites|page|pages|homepage|headline|hero|layout|template|builder|arthur)\b/u', $m)) $engines['builder'] = true;
         if (preg_match('/\b(social|instagram|facebook|linkedin|tiktok|twitter|hashtags?|marcus|post it)\b/u', $m)) $engines['social'] = true;
-        if (preg_match('/\b(image|images|picture|photo|design|banner|visual|video)\b/u', $m)) $engines['creative'] = true;
+        if (preg_match('/\b(image|images|picture|photo|design|banner|visual|video|creative|creatives|artwork|graphic|graphics|mockup|poster|flyer|illustration)\b/u', $m)) $engines['creative'] = true;
         if (preg_match('/\b(calendar|meeting|booking|bookings|event|events|appointment)\b/u', $m)) $engines['calendar'] = true;
         if (preg_match('/\b(article|articles|blog|draft|drafts|content|write|meta|headline)\b/u', $m)) $engines['write'] = true;
         if (preg_match('/\b(lead|leads|crm|pipeline|contact|contacts|follow.?up)\b/u', $m)) $engines['crm'] = true;
