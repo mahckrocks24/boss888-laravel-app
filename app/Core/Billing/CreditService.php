@@ -106,6 +106,22 @@ class CreditService
      * Reserve credits BEFORE execution. Atomic with lockForUpdate.
      * Returns reservation reference for later commit/release.
      */
+    /**
+     * ARTHUR888 Unit N (2026-09-03): run a credit transaction with automatic
+     * retry on transient concurrency errors. Under concurrent billable ops on
+     * ONE workspace pool, the `SELECT ... FOR UPDATE` on `credits` can deadlock
+     * (MySQL 1213); previously a deadlock on RELEASE rolled the whole tx back and
+     * left the reservation `pending` forever, permanently inflating
+     * reserved_balance (a credit LEAK). Laravel retries only on
+     * causedByConcurrencyError (deadlock / serialization / lock-wait); these
+     * closures are self-contained so a full rollback + re-run is safe and
+     * idempotent (no partial row survives to duplicate a reservation ref).
+     */
+    private function txRetry(\Closure $fn)
+    {
+        return DB::transaction($fn, 5);
+    }
+
     public function reserveCredits(
         int $workspaceId,
         int $amount,
@@ -130,7 +146,7 @@ class CreditService
             ]);
         }
 
-        return DB::transaction(function () use ($origWs, $poolWs, $amount, $refType, $refId, $reservationRef) {
+        return $this->txRetry(function () use ($origWs, $poolWs, $amount, $refType, $refId, $reservationRef) {
             $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->firstOrFail();
 
             if ($credit->available() < $amount) {
@@ -166,7 +182,7 @@ class CreditService
      */
     public function commitReservedCredits(string $reservationRef): ?CreditTransaction
     {
-        return DB::transaction(function () use ($reservationRef) {
+        return $this->txRetry(function () use ($reservationRef) {
             $reservation = CreditTransaction::where('reservation_reference', $reservationRef)
                 ->where('type', 'reserve')
                 ->where('reservation_status', 'pending')
@@ -209,7 +225,7 @@ class CreditService
      */
     public function releaseReservedCredits(string $reservationRef): ?CreditTransaction
     {
-        return DB::transaction(function () use ($reservationRef) {
+        return $this->txRetry(function () use ($reservationRef) {
             $reservation = CreditTransaction::where('reservation_reference', $reservationRef)
                 ->where('type', 'reserve')
                 ->where('reservation_status', 'pending')
@@ -282,7 +298,7 @@ class CreditService
     ): CreditTransaction {
         $origWs = $workspaceId;
         $poolWs = $this->poolWorkspaceId($workspaceId);
-        return DB::transaction(function () use ($origWs, $poolWs, $amount, $refType, $refId, $meta) {
+        return $this->txRetry(function () use ($origWs, $poolWs, $amount, $refType, $refId, $meta) {
             // Crediting must not fail when the wallet does not exist yet (e.g. a
             // brand-new workspace's first-website trial activation). Create it, then
             // lock+increment. Debit/reserve/commit/release keep firstOrFail: you cannot
@@ -366,7 +382,7 @@ class CreditService
      */
     public function meterChat(int $workspaceId, string $reason = 'chat'): array
     {
-        return DB::transaction(function () use ($workspaceId, $reason) {
+        return $this->txRetry(function () use ($workspaceId, $reason) {
             $current = (int) (DB::table('workspaces')
                 ->where('id', $workspaceId)
                 ->lockForUpdate()
