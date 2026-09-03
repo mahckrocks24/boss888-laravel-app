@@ -59,6 +59,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Prompt Studio surface (redesign 2026-09-03)
+    |--------------------------------------------------------------------------
+    | Default OFF. When ON, the Studio SPA presents the mobile-first prompt-first
+    | surface (generate + edit-via-prompt) as PRIMARY and does not mount the
+    | visual canvas editor for users. Purely a frontend surface switch — the
+    | certified backend (generate_image/edit_image/plan) is unchanged. Exposed to
+    | the SPA via GET /api/workspace/capabilities -> features.prompt_studio.
+    | Reversible: flip OFF to restore the canvas editor.
+    */
+    'prompt_studio' => env('STUDIO_PROMPT_STUDIO', false),
+
+    /*
+    |--------------------------------------------------------------------------
     | Image Intelligence canonical-reasoning gate (CRP-001 WP2 Phase 2.1)
     |--------------------------------------------------------------------------
     | Added 2026-07-30 for the D3 image-reasoning migration (CRP-001 WP2).

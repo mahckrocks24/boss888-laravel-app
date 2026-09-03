@@ -157,6 +157,10 @@ class FeatureGateService
                 // via data-feature="infrastructure". Read from features_json so the
                 // commercial gate is a data decision, not a code deploy.
                 'infrastructure'   => $this->featureFlag($wsId, 'infrastructure', false),
+
+                // Prompt Studio surface (redesign 2026-09-03) — global rollout flag,
+                // OFF by default; drives the SPA prompt-first Studio vs canvas editor.
+                'prompt_studio'    => (bool) config('studio.prompt_studio', false),
             ],
 
             // SEO-only product mode 2026-05-01: surface workspace mode + raw
@@ -593,7 +597,7 @@ class FeatureGateService
             'agents' => ['dispatch' => false, 'sarah_included' => false, 'quota_total' => 0, 'quota_used' => 0, 'quota_remaining' => 0, 'quota_reached' => true, 'addon_available' => false, 'addon_price' => null, 'level' => null],
             'sites'  => array_merge($siteQuota, ['quota' => 1]),
             'team'   => ['quota' => 1, 'used' => 1, 'remaining' => 0, 'reached' => true, 'unlimited' => false],
-            'features'=> ['app888' => false, 'white_label' => false, 'priority_queue' => false, 'custom_domain' => false, 'api_access' => false, 'team_management' => false, 'advanced_analytics' => false],
+            'features'=> ['app888' => false, 'white_label' => false, 'priority_queue' => false, 'custom_domain' => false, 'api_access' => false, 'team_management' => false, 'advanced_analytics' => false, 'prompt_studio' => (bool) config('studio.prompt_studio', false)],
             'upgrade_to' => 'starter',
         ];
     }
