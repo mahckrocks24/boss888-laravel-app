@@ -24,7 +24,39 @@ class ImagePromptCompiler
      */
     public function compile(array $bp): array
     {
-        $prompt = trim((string) ($bp['provider_prompt'] ?? ''));
+        // F-STUDIO-PS-PROMPT-ASSEMBLY (2026-09-03): the LLM reasoner is instructed
+        // (system prompt) to make provider_prompt a typography/NO-TEXT note for mode
+        // none/separate_overlay, so it frequently returns ONLY "…NO text… reserve
+        // negative space" and DROPS the actual scene. Trusting that verbatim sent an
+        // essentially subject-less brief to the image model — the rich reasoning
+        // (subject/composition/scene/lighting/mood/colour/brand) was computed then
+        // discarded, gutting the "one prompt → professional result" promise. Fix:
+        // assemble the provider prompt DETERMINISTICALLY from the structured blueprint
+        // fields (parity with compileFromBrief), independent of whether the LLM put a
+        // rich string in provider_prompt. The LLM's own provider_prompt is folded in
+        // ONLY when it adds scene detail beyond a NO-TEXT note (avoids duplication).
+        $llmPrompt = trim((string) ($bp['provider_prompt'] ?? ''));
+        $llmIsThin = $llmPrompt === ''
+            || (stripos($llmPrompt, 'no text') !== false || stripos($llmPrompt, 'no words') !== false || stripos($llmPrompt, 'no letters') !== false)
+            && stripos($llmPrompt, 'composition') === false && stripos($llmPrompt, 'lighting') === false;
+        $parts = [];
+        if (! $llmIsThin) { $parts[] = $llmPrompt; }
+        if (($v = trim((string) ($bp['subject'] ?? ''))) !== '')          { $parts[] = $v; }
+        if (($v = trim((string) ($bp['composition'] ?? ''))) !== '')      { $parts[] = 'Composition: ' . $v; }
+        if (($v = trim((string) ($bp['scene'] ?? ''))) !== '')            { $parts[] = 'Scene: ' . $v; }
+        if (($v = trim((string) ($bp['visual_hierarchy'] ?? ''))) !== '') { $parts[] = 'Visual hierarchy: ' . $v; }
+        if (($v = trim((string) ($bp['lighting'] ?? ''))) !== '')         { $parts[] = 'Lighting: ' . $v; }
+        if (($v = trim((string) ($bp['mood'] ?? ''))) !== '')             { $parts[] = 'Mood: ' . $v; }
+        $__colors = array_values(array_filter(array_map('strval', (array) ($bp['color_palette'] ?? []))));
+        if ($__colors) { $parts[] = 'Colour palette: ' . implode(', ', array_slice($__colors, 0, 5)); }
+        if (($v = trim((string) ($bp['brand_application'] ?? ''))) !== '') { $parts[] = $v; }
+        $prompt = implode('. ', array_filter($parts));
+        if ($prompt === '') { $prompt = $llmPrompt; } // absolute fallback — never send empty
+        // Fold blueprint negative_constraints into the sent prompt (compile() previously
+        // dropped them; only compileFromBrief surfaced them). These genuinely steer the model.
+        $__neg = array_values(array_filter(array_map('strval', (array) ($bp['negative_constraints'] ?? []))));
+        if ($__neg) { $prompt = rtrim($prompt, '. ') . '. Avoid: ' . implode('; ', $__neg) . '.'; }
+
         $ts     = $bp['typography_strategy'] ?? ['mode' => 'none'];
         $mode   = $ts['mode'] ?? 'none';
 
