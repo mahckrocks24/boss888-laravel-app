@@ -25,6 +25,8 @@
   var _pendingSerialize = null;
   var _stEditDirty = false;   // I1: true while unsaved edits exist; gates server-verified text edits
   var _rootEl     = null;   // #studio-root — passed by core.js nav dispatcher
+  var _stPromptStudioOn = false; // decision 1: when true, the canvas editor is hidden via every entry point
+  var _stCapsCache = null;
 
   // ── Public entry points ───────────────────────────────────────
   // core.js calls studioLoad(el) via its engine-dispatch pattern.
@@ -62,7 +64,9 @@
   }
   function _stMaybePromptStudio(rootEl) {
     return _stGetCaps().then(function (caps) {
+      _stCapsCache = caps;
       var on = !!(caps && caps.features && caps.features.prompt_studio);
+      _stPromptStudioOn = on;
       if (on && typeof window._mountPromptStudio === 'function') {
         try { return window._mountPromptStudio(rootEl, caps) === true; } catch (e) { return false; }
       }
@@ -1264,6 +1268,13 @@
   // SCREEN 2 — EDITOR
   // ═══════════════════════════════════════════════════════════════
   function _mountEditor() {
+    // Decision 1 (2026-09-03): Prompt Studio is the ONLY user surface when its flag/canary is on.
+    // _mountEditor is the single choke point for the canvas editor (studioOpenDesign, gallery,
+    // deep links all reach it), so redirect to Prompt Studio here — the editor is then hidden on
+    // ALL viewports via EVERY path, not just the studioLoad entry.
+    if (_stPromptStudioOn && typeof window._mountPromptStudio === 'function') {
+      try { window._mountPromptStudio(_rootEl || _getOrCreateHost(), _stCapsCache); return; } catch (e) {}
+    }
     // 2026-07-03 — CONSOLIDATION REVERTED for image: visual testing proved the
     // element editor (IIFE2) is broken — it references _fetchJson which is only
     // defined in IIFE1, so it throws "ReferenceError: _fetchJson is not defined"
