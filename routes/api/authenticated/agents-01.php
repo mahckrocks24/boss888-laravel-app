@@ -4227,18 +4227,22 @@ $withCorr = function (array $meta) use ($corr) {
         }
 
         try {
+            // NANOBANANA (2026-09-03): render any generated-image URL in the reply as an inline, downloadable image.
+            $__ia = \App\Core\Sarah888\ChatImageAttach::extract((string) $reply);
+            $__finalMeta = [
+                'phase'             => 'final',
+                'requires_sarah'    => $requiresSarah,
+                'sarah_context'     => $sarahContext,
+                'ack_message_id'    => $earlyAckMessageId,
+            ];
+            if (! empty($__ia['attachments'])) { $reply = $__ia['text']; $__finalMeta['attachments'] = $__ia['attachments']; }
             $finalMessageId = (int) \Illuminate\Support\Facades\DB::table('agent_messages')->insertGetId([
                 'workspace_id'  => $wsId,
                 'agent_slug'    => $slug,
                 'sender'        => $agent->name,
                 'content'       => $reply,
                 'role'          => 'agent',
-                'metadata_json' => $withCorr([
-                    'phase'             => 'final',
-                    'requires_sarah'    => $requiresSarah,
-                    'sarah_context'     => $sarahContext,
-                    'ack_message_id'    => $earlyAckMessageId,
-                ]),
+                'metadata_json' => $withCorr($__finalMeta),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
