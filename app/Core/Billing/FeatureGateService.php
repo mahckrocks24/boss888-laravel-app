@@ -51,6 +51,18 @@ class FeatureGateService
      * Return the full capability map for a workspace.
      * Used by GET /workspace/capabilities and PlanMiddleware.
      */
+    /**
+     * Prompt Studio surface gate (staged rollout): the global config flag OR a per-workspace
+     * canary list (config studio.prompt_studio_workspaces). Lets a canary be enabled without
+     * flipping Prompt Studio on for every workspace.
+     */
+    public function promptStudioEnabled(int $wsId): bool
+    {
+        if ((bool) config('studio.prompt_studio', false)) return true;
+        $canary = array_map('intval', (array) config('studio.prompt_studio_workspaces', []));
+        return in_array($wsId, $canary, true);
+    }
+
     public function getCapabilities(int $wsId): array
     {
         $plan = $this->getActivePlan($wsId);
@@ -160,7 +172,7 @@ class FeatureGateService
 
                 // Prompt Studio surface (redesign 2026-09-03) — global rollout flag,
                 // OFF by default; drives the SPA prompt-first Studio vs canvas editor.
-                'prompt_studio'    => (bool) config('studio.prompt_studio', false),
+                'prompt_studio'    => $this->promptStudioEnabled($wsId),
             ],
 
             // SEO-only product mode 2026-05-01: surface workspace mode + raw
@@ -597,7 +609,7 @@ class FeatureGateService
             'agents' => ['dispatch' => false, 'sarah_included' => false, 'quota_total' => 0, 'quota_used' => 0, 'quota_remaining' => 0, 'quota_reached' => true, 'addon_available' => false, 'addon_price' => null, 'level' => null],
             'sites'  => array_merge($siteQuota, ['quota' => 1]),
             'team'   => ['quota' => 1, 'used' => 1, 'remaining' => 0, 'reached' => true, 'unlimited' => false],
-            'features'=> ['app888' => false, 'white_label' => false, 'priority_queue' => false, 'custom_domain' => false, 'api_access' => false, 'team_management' => false, 'advanced_analytics' => false, 'prompt_studio' => (bool) config('studio.prompt_studio', false)],
+            'features'=> ['app888' => false, 'white_label' => false, 'priority_queue' => false, 'custom_domain' => false, 'api_access' => false, 'team_management' => false, 'advanced_analytics' => false, 'prompt_studio' => $this->promptStudioEnabled($wsId)],
             'upgrade_to' => 'starter',
         ];
     }

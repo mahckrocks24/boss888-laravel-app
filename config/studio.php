@@ -71,6 +71,13 @@ return [
     'prompt_studio' => env('STUDIO_PROMPT_STUDIO', false),
 
     /*
+    | Per-workspace canary list for staged rollout of Prompt Studio. Comma-separated
+    | workspace ids. A workspace sees Prompt Studio if the global flag is on OR it is
+    | in this list — so a canary can be enabled without flipping the global surface.
+    */
+    'prompt_studio_workspaces' => array_values(array_filter(array_map('intval', explode(',', (string) env('STUDIO_PROMPT_STUDIO_WORKSPACES', ''))))),
+
+    /*
     |--------------------------------------------------------------------------
     | Image Intelligence canonical-reasoning gate (CRP-001 WP2 Phase 2.1)
     |--------------------------------------------------------------------------
