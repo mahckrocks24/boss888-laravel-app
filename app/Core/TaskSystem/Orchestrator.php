@@ -496,6 +496,23 @@ class Orchestrator
                         // the image simply appears on its article.
                         $isStandaloneImage = in_array(($root->action ?? ''), ['generate_image_mini', 'generate_image', 'generate_image_high'], true)
                                              && empty($root->parent_task_id);
+                        // IMAGE-1 (2026-09-03): a standalone image the OWNER asked for in chat is posted
+                        // back INTO the conversation with a thumbnail (bulk/featured images stay suppressed).
+                        if ($isStandaloneImage && ($rp['created_via'] ?? '') === 'sarah_image_request' && ($root->source ?? '') !== 'system') {
+                            $__rr = json_decode($root->result_json ?? '{}', true) ?: [];
+                            $__imgUrl = (string) ($__rr['data']['url'] ?? $__rr['url'] ?? '');
+                            if ($__imgUrl !== '') {
+                                app(\App\Core\Agents\AgentMessageService::class)->postAsAgent(
+                                    (int) $root->workspace_id, 'sarah',
+                                    "Here's your image — it's also saved under Results.",
+                                    ['completion_report' => true, 'root_task_id' => $rootId,
+                                     'attachments' => [['kind' => 'image', 'url' => $__imgUrl, 'name' => 'Generated image']]]
+                                );
+                                \Illuminate\Support\Facades\DB::table('tasks')
+                                    ->where(function ($q) use ($rootId) { $q->where('id', $rootId)->orWhere('parent_task_id', $rootId); })
+                                    ->whereNull('sarah_read_at')->update(['sarah_read_at' => now()]);
+                            }
+                        }
                         if ($root && ! $isStandaloneImage && ! in_array(($rp['created_via'] ?? ''), $skipVia, true)
                             && ($root->source ?? '') !== 'system') {
                             $rr  = json_decode($root->result_json ?? '{}', true) ?: [];

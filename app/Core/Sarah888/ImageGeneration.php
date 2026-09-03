@@ -140,7 +140,9 @@ class ImageGeneration
                 'payload' => [
                     'prompt'       => $prompt,
                     'title'        => 'Image: ' . mb_substr($prompt, 0, 80),
-                    'created_via'  => 'sarah_router',
+                    // Distinct marker (NOT 'sarah_router') so the Orchestrator posts THIS finished
+                    // image back into the chat with a thumbnail — bulk/featured images stay suppressed.
+                    'created_via'  => 'sarah_image_request',
                     'user_request' => $ownerText,
                 ],
             ]);
