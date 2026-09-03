@@ -109,6 +109,11 @@ async function main() {
     await page.evaluate(() => document.fonts && document.fonts.ready);
     await new Promise(r => setTimeout(r, 400));
 
+    // F-STUDIO-M-DIMS (2026-09-03): zero body margin + hide overflow so no scrollbar or
+    // default body margin shrinks the canvas below the requested export size (a 1080
+    // request was yielding 1064). Makes the .canvas fill the full viewport.
+    await page.addStyleTag({ content: 'html,body{margin:0 !important;padding:0 !important;overflow:hidden !important}' }).catch(() => {});
+
     // Locate the canvas element and its box; fall back to the viewport if
     // the template doesn't follow the .canvas / .post convention.
     const rect = await page.evaluate(() => {
@@ -128,8 +133,8 @@ async function main() {
       clip: {
         x: Math.max(0, rect.x),
         y: Math.max(0, rect.y),
-        width:  Math.min(width,  Math.round(rect.width)  || width),
-        height: Math.min(height, Math.round(rect.height) || height)
+        width:  width,
+        height: height
       },
       omitBackground: false
     });
