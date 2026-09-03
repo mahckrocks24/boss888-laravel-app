@@ -34,6 +34,14 @@
 
   // Display-only credit costs (authoritative gate is server-side CapabilityMapService).
   var COST = { generate_image: 2, generate_image_mini: 1, generate_image_high: 4, edit_image: 2 };
+  var VIDEO_COST = 8;
+
+  // Video is entitlement-gated (Pro+ / companion_app). The one interface offers a Video mode
+  // only when the workspace is entitled — nano-banana chat-first, consolidated (Owner decision 2).
+  function videoEnabled() {
+    try { return !!(S.caps && S.caps.engines && S.caps.engines.creative && S.caps.engines.creative.video); }
+    catch (e) { return false; }
+  }
 
   // Aspect chips -> the aspect_ratio the certified F-STUDIO-B-ASPECT snap understands.
   var ASPECTS = [
@@ -84,6 +92,10 @@
       // composer
       '.ps-composer{flex-shrink:0;border-top:1px solid rgba(255,255,255,.08);padding:12px 16px;background:#0E0F14;display:flex;flex-direction:column;gap:10px}',
       '.ps-composer-inner{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:10px}',
+      '.ps-mode{display:inline-flex;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:3px;gap:2px;align-self:flex-start}',
+      '.ps-modebtn{background:transparent;border:0;color:rgba(255,255,255,.7);font:600 13px/1 inherit;padding:8px 16px;border-radius:9px;cursor:pointer;transition:.12s}',
+      '.ps-modebtn[aria-pressed="true"]{background:rgba(108,92,231,.35);color:#fff}',
+      '.ps-result video{width:100%;height:100%;object-fit:contain;display:block;background:#000}',
       '.ps-chips{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}',
       '.ps-chip{flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.8);font:500 13px/1 inherit;padding:9px 14px;border-radius:20px;cursor:pointer;transition:.12s}',
       '.ps-chip[aria-pressed="true"]{background:rgba(108,92,231,.25);border-color:#6C5CE7;color:#fff}',
@@ -108,6 +120,7 @@
   }
 
   function resultClass() {
+    if (S.mode === 'video') return 'ps-result wide';
     if (S.aspectId === 'landscape') return 'ps-result wide';
     if (S.aspectId === 'story') return 'ps-result tall';
     return 'ps-result';
@@ -115,19 +128,32 @@
 
   function render() {
     var host = S.host;
-    var editing = !!S.currentAssetId;
-    var cost = editing ? COST.edit_image : COST.generate_image;
-    var placeholder = editing
-      ? 'Describe a change — e.g. “make the background warmer”, “remove the person”…'
-      : 'A cozy coffee shop latte on a wooden table, morning light…';
-    var actions = editing
-      ? '<button type="button" class="ps-btn ps-btn-ghost" id="ps-new" ' + (S.busy ? 'disabled' : '') + '>＋ New</button>' +
-        '<button type="button" class="ps-btn ps-btn-primary" id="ps-edit" ' + (S.busy ? 'disabled' : '') + '>✎ Apply edit</button>'
-      : '<button type="button" class="ps-btn ps-btn-ghost" id="ps-enhance" ' + (S.busy ? 'disabled' : '') + '>✦ Enhance</button>' +
-        '<button type="button" class="ps-btn ps-btn-primary" id="ps-generate" ' + (S.busy ? 'disabled' : '') + '>Generate</button>';
-    var costLine = editing
-      ? 'Each edit costs <b>' + cost + ' credit' + (cost === 1 ? '' : 's') + '</b> · non-destructive — earlier versions are kept'
-      : 'Generation costs <b>' + cost + ' credit' + (cost === 1 ? '' : 's') + '</b> · Enhance is free';
+    var video = S.mode === 'video';
+    var editing = !video && !!S.currentAssetId;
+    var cost = video ? VIDEO_COST : (editing ? COST.edit_image : COST.generate_image);
+    var placeholder = video
+      ? 'Describe a short video — e.g. “a 5-second clip of waves rolling onto a beach at sunset”…'
+      : (editing ? 'Describe a change — e.g. “make the background warmer”, “remove the person”…'
+                 : 'A cozy coffee shop latte on a wooden table, morning light…');
+    var actions = video
+      ? '<button type="button" class="ps-btn ps-btn-primary" id="ps-genvideo" ' + (S.busy ? 'disabled' : '') + '>Generate video</button>'
+      : (editing
+        ? '<button type="button" class="ps-btn ps-btn-ghost" id="ps-new" ' + (S.busy ? 'disabled' : '') + '>＋ New</button>' +
+          '<button type="button" class="ps-btn ps-btn-primary" id="ps-edit" ' + (S.busy ? 'disabled' : '') + '>✎ Apply edit</button>'
+        : '<button type="button" class="ps-btn ps-btn-ghost" id="ps-enhance" ' + (S.busy ? 'disabled' : '') + '>✦ Enhance</button>' +
+          '<button type="button" class="ps-btn ps-btn-primary" id="ps-generate" ' + (S.busy ? 'disabled' : '') + '>Generate</button>');
+    var costLine = video
+      ? 'Video costs <b>' + VIDEO_COST + ' credits</b> · takes a minute or two'
+      : (editing
+        ? 'Each edit costs <b>' + cost + ' credit' + (cost === 1 ? '' : 's') + '</b> · non-destructive — earlier versions are kept'
+        : 'Generation costs <b>' + cost + ' credit' + (cost === 1 ? '' : 's') + '</b> · Enhance is free');
+    // Consolidated one-interface mode toggle — only when the workspace is video-entitled (Owner decision 2).
+    var modeToggle = videoEnabled()
+      ? '<div class="ps-mode" role="group" aria-label="Output type">' +
+          '<button type="button" class="ps-modebtn" data-mode="image" aria-pressed="' + (!video ? 'true' : 'false') + '">Image</button>' +
+          '<button type="button" class="ps-modebtn" data-mode="video" aria-pressed="' + (video ? 'true' : 'false') + '">Video</button>' +
+        '</div>'
+      : '';
     host.innerHTML =
       '<div class="ps-root">' +
         '<div class="ps-head">' +
@@ -136,16 +162,15 @@
         '</div>' +
         '<div class="ps-scroll"><div class="ps-stage">' +
           '<div class="' + resultClass() + '" id="ps-result">' + resultInner() + '</div>' +
-          resultActions() +
-          versionChips() +
-          (S.enh && !editing ? enhancedPanel(S.enh) : '') +
+          (video ? '' : resultActions() + versionChips() + (S.enh && !editing ? enhancedPanel(S.enh) : '')) +
           (S.error ? '<div class="ps-err">' + esc(S.error) + '</div>' : '') +
         '</div></div>' +
         '<div class="ps-composer"><div class="ps-composer-inner">' +
-          (editing ? '' : '<div class="ps-chips" role="group" aria-label="Aspect ratio">' + chips() + '</div>') +
+          modeToggle +
+          (video || editing ? '' : '<div class="ps-chips" role="group" aria-label="Aspect ratio">' + chips() + '</div>') +
           '<div class="ps-box" id="ps-box">' +
             '<textarea class="ps-input" id="ps-input" rows="1" placeholder="' + esc(placeholder) + '" ' +
-              'aria-label="' + (editing ? 'Describe a change' : 'Describe the image') + '">' + esc(S.prompt || '') + '</textarea>' +
+              'aria-label="' + (video ? 'Describe the video' : (editing ? 'Describe a change' : 'Describe the image')) + '">' + esc(S.prompt || '') + '</textarea>' +
           '</div>' +
           '<div class="ps-actions">' + actions + '</div>' +
           '<div class="ps-cost">' + costLine + '</div>' +
@@ -176,11 +201,22 @@
   }
 
   function resultInner() {
+    if (S.busy && S.busyKind === 'video') {
+      return '<div class="ps-busy"><div class="ps-spin"></div><div style="color:rgba(255,255,255,.7);font-size:13px">Creating your video… this can take a minute or two</div></div>';
+    }
     if (S.busy && S.busyKind === 'generate') {
       return '<div class="ps-busy"><div class="ps-spin"></div><div style="color:rgba(255,255,255,.7);font-size:13px">Creating your image…</div></div>';
     }
-    if (S.imageUrl) {
+    if (S.mode === 'video' && S.videoUrl) {
+      return '<video src="' + esc(S.videoUrl) + '" controls playsinline style="width:100%;height:100%;object-fit:contain;background:#000"></video>';
+    }
+    if (S.mode !== 'video' && S.imageUrl) {
       return '<img src="' + esc(S.imageUrl) + '" alt="' + esc(S.prompt || 'Generated image') + '">';
+    }
+    if (S.mode === 'video') {
+      return '<div class="ps-empty">' +
+        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>' +
+        '<div>Describe a short video below, then Generate video.</div></div>';
     }
     return '<div class="ps-empty">' +
       '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' +
@@ -261,6 +297,11 @@
     if (db) db.addEventListener('click', doDownload);
     var vb = document.getElementById('ps-vary');
     if (vb) vb.addEventListener('click', doVariation);
+    Array.prototype.forEach.call(document.querySelectorAll('.ps-modebtn'), function (b) {
+      b.addEventListener('click', function () { switchMode(b.getAttribute('data-mode')); });
+    });
+    var gv = document.getElementById('ps-genvideo');
+    if (gv) gv.addEventListener('click', doGenerateVideo);
   }
 
   function doEnhance() {
@@ -415,6 +456,50 @@
     });
   }
 
+  // Consolidated one-interface: switch between Image and Video output (Owner decision 2).
+  function switchMode(m) {
+    if (S.mode === m || (m === 'video' && !videoEnabled())) return;
+    S.mode = m; S.error = null; S.enh = null;
+    render();
+  }
+
+  function pickVideoUrl(d) { return d && (d.video_url || d.url || (d.asset && d.asset.url)); }
+
+  // Video-by-prompt (async): prompt → generate_video → poll until the clip is ready → play inline.
+  function doGenerateVideo() {
+    var p = (S.prompt || '').trim();
+    if (!p) { S.error = 'Describe the video you want.'; render(); return; }
+    S.busy = true; S.busyKind = 'video'; S.error = null; S.videoUrl = null; render();
+    jfetch('/creative/generate/video', { method: 'POST', body: JSON.stringify({ prompt: p }) })
+      .then(function (r) {
+        if (r && r.success === false) { S.busy = false; S.error = friendlyErr(r) || 'Video was blocked.'; render(); return; }
+        var d = unwrap(r);
+        if (d && d.success === false) { S.busy = false; S.error = friendlyErr(d) || 'Video failed.'; render(); return; }
+        var url = pickVideoUrl(d), assetId = pickId(d);
+        if (url) { S.busy = false; S.videoUrl = url; render(); return; }
+        if (assetId) { pollVideo(assetId, 0); return; }
+        S.busy = false; S.error = 'Video did not start.'; render();
+      })
+      .catch(function (err) {
+        S.busy = false;
+        var pl = err.payload && (err.payload.data || err.payload);
+        S.error = friendlyErr(pl) || ('Video failed (' + (err.status || 'network') + ').');
+        render();
+      });
+  }
+
+  function pollVideo(id, tries) {
+    if (tries > 90) { S.busy = false; S.error = 'Video is taking a while — it will appear in Results when ready.'; render(); return; }
+    jfetch('/creative/assets/' + id + '/poll', { method: 'GET' }).then(function (r) {
+      var d = unwrap(r);
+      var url = pickVideoUrl(d);
+      var status = d && (d.status || (d.asset && d.asset.status));
+      if (url && (status === 'completed' || status === 'success' || !status)) { S.busy = false; S.videoUrl = url; render(); return; }
+      if (status === 'failed' || status === 'error') { S.busy = false; S.error = 'Video generation failed.'; render(); return; }
+      setTimeout(function () { pollVideo(id, tries + 1); }, 3000);
+    }).catch(function () { setTimeout(function () { pollVideo(id, tries + 1); }, 3500); });
+  }
+
   window._mountPromptStudio = function (rootEl, caps) {
     injectCss();
     var host = rootEl || document.getElementById('studio-root') || document.body;
@@ -423,7 +508,7 @@
     // height. If the host would collapse (no height from its container — e.g. a bare
     // mount), fall back to the viewport so the surface never squashes into a sliver.
     try { if (host.getBoundingClientRect().height < 80) { host.style.height = '100dvh'; host.style.minHeight = '100vh'; } } catch (_) {}
-    S = { host: host, caps: caps || {}, prompt: '', aspectId: 'square', enh: null, imageUrl: null, busy: false, error: null, currentAssetId: null, versions: [], rootAssetId: null, genPrompt: null };
+    S = { host: host, caps: caps || {}, mode: 'image', prompt: '', aspectId: 'square', enh: null, imageUrl: null, videoUrl: null, busy: false, error: null, currentAssetId: null, versions: [], rootAssetId: null, genPrompt: null };
     render();
     return true;
   };
