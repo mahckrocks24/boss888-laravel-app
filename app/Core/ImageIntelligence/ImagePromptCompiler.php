@@ -14,7 +14,7 @@ namespace App\Core\ImageIntelligence;
  */
 class ImagePromptCompiler
 {
-    private const NO_TEXT = ' Strict rule: NO text, NO words, NO letters, NO numbers, NO logos, NO watermarks, NO captions, NO typography of any kind — pure visual composition only, with clean deliberate negative space reserved for text to be added later.';
+    private const NO_TEXT = ' Strict rule: NO text, NO words, NO letters, NO numbers, NO logos, NO watermarks, NO captions, NO typography of any kind — pure visual composition only, with clean deliberate negative space reserved for text to be added later. This overrides the description: render any packaging, bags, cups, signs, screens or products as PLAIN and UNBRANDED with completely blank surfaces — do NOT draw any brand name, logo or lettering, even a brand named earlier in this prompt; show it as a generic unbranded object instead.';
 
     /**
      * @return array{
