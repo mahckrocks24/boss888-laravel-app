@@ -242,7 +242,7 @@ final class RuntimeNativeTurn
             // NANOBANANA (2026-09-03, Owner): when Sarah's reply carries a generated-image URL, attach it as an
             // INLINE image (clickable, downloadable) and strip the bare link — the chat shows the actual image.
             if (empty($meta['attachments'])) {
-                $__att = $this->extractImageAttachments($text);
+                $__att = AppCoreSarah888ChatImageAttach::extract($text);
                 if (! empty($__att['attachments'])) { $meta['attachments'] = $__att['attachments']; $text = $__att['text']; }
             }
             DB::table('agent_messages')->insert([
