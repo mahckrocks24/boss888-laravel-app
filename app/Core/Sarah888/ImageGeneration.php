@@ -74,8 +74,17 @@ class ImageGeneration
 
     public static function lastPrompt(int $wsId): ?string
     {
-        try { $v = \Illuminate\Support\Facades\Cache::get(self::lastKey($wsId)); return is_string($v) && trim($v) !== '' ? $v : null; }
-        catch (\Throwable $e) { return null; }
+        try { $v = \Illuminate\Support\Facades\Cache::get(self::lastKey($wsId)); if (is_string($v) && trim($v) !== '') { return $v; } }
+        catch (\Throwable $e) { /* fall through */ }
+        // Fall back to the most recent generated image in this workspace (ANY path), so a refinement
+        // works even when the image was not created through IMAGE-1's own flow (e.g. the LLM/legacy path).
+        try {
+            $p = \Illuminate\Support\Facades\DB::table('assets')
+                ->where('workspace_id', $wsId)->where('type', 'image')->where('status', 'completed')
+                ->whereNull('deleted_at')->whereNotNull('prompt')->where('prompt', '!=', '')
+                ->orderByDesc('id')->value('prompt');
+            return (is_string($p) && trim($p) !== '') ? $p : null;
+        } catch (\Throwable $e) { return null; }
     }
 
     /** A follow-up that changes a just-generated image ("make it hyperrealistic", "a X version of it"). */
