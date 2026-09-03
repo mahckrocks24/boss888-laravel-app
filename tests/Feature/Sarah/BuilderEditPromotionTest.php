@@ -49,6 +49,24 @@ class BuilderEditPromotionTest extends TestCase
         $this->assertNull(BuilderEditPromotion::detect('Draft a newsletter for my subscribers.'));
     }
 
+    public function test_image_and_logo_not_promoted_to_builder(): void
+    {
+        // Creative888 owns pixel generation — must NOT be caught by the builder lane.
+        $this->assertNull(BuilderEditPromotion::detect('Generate a hero image for my homepage.'));
+        $this->assertNull(BuilderEditPromotion::detect('Create a logo for Fable QA Bakery.'));
+    }
+
+    public function test_colour_and_typography_are_style_not_section_edit(): void
+    {
+        // F-ARTHUR-C-COLOR: colour/typography must NOT route to the section editor (no-op).
+        $c = BuilderEditPromotion::detect('Change the homepage colours to navy and gold.');
+        $this->assertNotNull($c);
+        $this->assertSame('style', $c['type']);
+        $t = BuilderEditPromotion::detect('Update the font/typography on my site.');
+        $this->assertNotNull($t);
+        $this->assertSame('style', $t['type']);
+    }
+
     public function test_vague_nonbuilder_not_promoted(): void
     {
         $this->assertNull(BuilderEditPromotion::detect('Update me on progress.'));

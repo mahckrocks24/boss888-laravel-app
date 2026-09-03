@@ -24,8 +24,13 @@ final class BuilderEditPromotion
     private const EDIT = '/\b(change|update|edit|rewrite|revise|reword|replace|set|tweak|improve|shorten|lengthen|fix|make)\b[^.!?]*\b(headline|hero|sub-?title|tagline|title|heading|cta|call to action|button|copy|wording|text|section|paragraph|homepage|home page|landing page|about page|services page|contact page|pricing page|the page)\b/i';
     // Adding a new page: add/create + "page".
     private const ADD = '/\b(add|create|build|set up|make)\b[^.!?]*\bpage\b/i';
-    // Exclusions — blog/article content is the WRITE engine, not a builder page edit.
-    private const NOT_BUILDER = '/\b(blog|article|draft|newsletter|campaign|email|social|post)\b/i';
+    // Colour / typography / theme — Arthur's applyStyleColors path, NOT the section editor.
+    // edit_page_with_arthur only edits sections_json (copy/structure); routing a palette
+    // change there silently no-ops (F-ARTHUR-C-COLOR). No chat colour tool exists yet
+    // (Unit I builds the enterprise colour capability), so we decline honestly here.
+    private const STYLE = '/\b(colou?rs?|palette|theme|brand colou?r|font|fonts|typography|typeface)\b/i';
+    // Exclusions — blog/article content is the WRITE engine; images are Creative888.
+    private const NOT_BUILDER = '/\b(blog|article|draft|newsletter|campaign|email|social|post|image|images|photo|picture|logo|banner|graphic)\b/i';
 
     /** @return array{type:string,command:string,page_hint:?string,page_template:?string}|null */
     public static function detect(string $message): ?array
@@ -34,6 +39,10 @@ final class BuilderEditPromotion
         if ($m === '') return null;
         if (preg_match(self::NOT_BUILDER, $m)) return null;
 
+        // Colour/typography FIRST — never route a palette change to the section editor.
+        if (preg_match(self::STYLE, $m)) {
+            return ['type' => 'style', 'command' => $m, 'page_hint' => null, 'page_template' => null];
+        }
         if (preg_match(self::ADD, $m)) {
             return ['type' => 'add', 'command' => $m, 'page_hint' => null, 'page_template' => self::matchTemplate($m)];
         }
@@ -94,12 +103,19 @@ final class BuilderEditPromotion
             }
         }
 
-        // 2. ADD a page.
+        // 2. STYLE (colour/typography) — no working chat tool yet; decline honestly
+        // rather than route to the section editor (which no-ops). Unit I builds this.
+        if ($intent['type'] === 'style') {
+            return ['handled' => true, 'executed' => false, 'ambiguous' => false,
+                    'reply' => "Colour and typography changes for {$siteName} are made through the site's design settings — I can't apply those from chat yet, so I won't pretend I did. I can edit any page copy, hero, CTA or section through Arthur right now."];
+        }
+
+        // 2b. ADD a page.
         if ($intent['type'] === 'add') {
             $tpl = $intent['page_template'] ?: 'about';
             $r = $svc->executeToolCall('builder.add_page_from_template',
                     ['website_id' => $siteId, 'page_template' => $tpl], $wsId, $slug, ['workspace_id' => $wsId]);
-            return self::replyFrom(is_array($r) ? $r : [], "add the {$tpl} page to {$siteName}");
+            return self::replyFrom(is_array($r) ? $r : [], "add the {$tpl} page to {$siteName}", $wsId);
         }
 
         // 3. EDIT an existing page — resolve page_id.
@@ -120,16 +136,20 @@ final class BuilderEditPromotion
 
         $r = $svc->executeToolCall('builder.edit_page_with_arthur',
                 ['page_id' => (int) $page->id, 'command' => $intent['command']], $wsId, $slug, ['workspace_id' => $wsId]);
-        return self::replyFrom(is_array($r) ? $r : [], "update the {$page->title} page on {$siteName}");
+        return self::replyFrom(is_array($r) ? $r : [], "update the {$page->title} page on {$siteName}", $wsId);
     }
 
-    private static function replyFrom(array $r, string $what): array
+    private static function replyFrom(array $r, string $what, int $wsId = 0): array
     {
         $ok = ($r['success'] ?? false) === true;
         $pending = !empty($r['pending_approval']) || ($r['code'] ?? '') === 'AWAITING_APPROVAL';
         if ($ok && $pending) {
+            // Only cite an approval id that actually persisted (F-ARTHUR-C-DUP-APPROVAL:
+            // a blocked/duplicate approval still returned an id that was never written).
             $aid = $r['approval_id'] ?? null;
-            $reply = "I've prepared Arthur to {$what}. It's ready for your approval" . ($aid ? " (request #{$aid})" : '')
+            $aidReal = $aid !== null && DB::table('approvals')->where('id', (int) $aid)
+                ->when($wsId > 0, fn ($q) => $q->where('workspace_id', $wsId))->exists();
+            $reply = "I've prepared Arthur to {$what}. It's ready for your approval" . ($aidReal ? " (request #{$aid})" : '')
                    . " — approve it in your review queue and Arthur will apply the change with a before/after snapshot for undo.";
             return ['handled' => true, 'executed' => false, 'ambiguous' => false, 'reply' => $reply];
         }
