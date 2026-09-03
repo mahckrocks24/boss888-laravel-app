@@ -71,6 +71,10 @@
       '.ps-swatch{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.2)}',
       '.ps-tags{display:flex;gap:6px;flex-wrap:wrap}',
       '.ps-tag{font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:3px 8px;color:rgba(255,255,255,.75)}',
+      // result actions
+      '.ps-ractions{display:flex;gap:8px;flex-wrap:wrap}',
+      '.ps-raction{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.9);font:600 13px/1 inherit;padding:10px 14px;border-radius:10px;cursor:pointer}',
+      '.ps-raction:hover{background:rgba(255,255,255,.12)}',
       // version chips
       '.ps-versions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
       '.ps-versions-lbl{font-size:12px;color:rgba(255,255,255,.5);margin-right:2px}',
@@ -132,6 +136,7 @@
         '</div>' +
         '<div class="ps-scroll"><div class="ps-stage">' +
           '<div class="' + resultClass() + '" id="ps-result">' + resultInner() + '</div>' +
+          resultActions() +
           versionChips() +
           (S.enh && !editing ? enhancedPanel(S.enh) : '') +
           (S.error ? '<div class="ps-err">' + esc(S.error) + '</div>' : '') +
@@ -147,6 +152,15 @@
         '</div></div>' +
       '</div>';
     wire();
+  }
+
+  function resultActions() {
+    if (!S.imageUrl || S.busy) return '';
+    var canVary = !!S.genPrompt;
+    return '<div class="ps-ractions">' +
+      '<button type="button" class="ps-raction" id="ps-download">⬇ Save</button>' +
+      (canVary ? '<button type="button" class="ps-raction" id="ps-vary">⎘ Make another</button>' : '') +
+      '</div>';
   }
 
   function versionChips() {
@@ -243,6 +257,10 @@
     Array.prototype.forEach.call(document.querySelectorAll('.ps-vchip'), function (c) {
       c.addEventListener('click', function () { selectVersion(c.getAttribute('data-vid')); });
     });
+    var db = document.getElementById('ps-download');
+    if (db) db.addEventListener('click', doDownload);
+    var vb = document.getElementById('ps-vary');
+    if (vb) vb.addEventListener('click', doVariation);
   }
 
   function doEnhance() {
@@ -279,6 +297,7 @@
   function doGenerate() {
     var p = (S.prompt || '').trim();
     if (!p) { S.error = 'Type a description first.'; render(); return; }
+    S.genPrompt = p; // remembered so "Make another" can produce a fresh variation
     S.busy = true; S.busyKind = 'generate'; S.error = null; S.imageUrl = null; render();
     jfetch('/creative/generate/image', {
       method: 'POST',
@@ -367,7 +386,33 @@
 
   function startNew() {
     S.currentAssetId = null; S.versions = []; S.rootAssetId = null;
-    S.imageUrl = null; S.enh = null; S.prompt = ''; S.error = null; render();
+    S.imageUrl = null; S.enh = null; S.prompt = ''; S.error = null; S.genPrompt = null; render();
+  }
+
+  // Make another: a fresh variation from the SAME generation prompt (new image, not an edit).
+  function doVariation() {
+    if (!S.genPrompt) return;
+    S.currentAssetId = null; S.versions = []; S.rootAssetId = null;
+    S.prompt = S.genPrompt;
+    doGenerate();
+  }
+
+  // Save the current image. Fetch as a blob so the browser downloads rather than navigates
+  // (cross-path same-origin), with a filename derived from the prompt.
+  function doDownload() {
+    if (!S.imageUrl) return;
+    var name = (S.genPrompt || S.prompt || 'prompt-studio').toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'image';
+    fetch(S.imageUrl).then(function (r) { return r.blob(); }).then(function (b) {
+      var u = URL.createObjectURL(b);
+      var a = document.createElement('a');
+      a.href = u; a.download = name + '.png';
+      document.body.appendChild(a); a.click();
+      setTimeout(function () { URL.revokeObjectURL(u); a.remove(); }, 1500);
+    }).catch(function () {
+      // Fallback: open in a new tab so the user can long-press / right-click save.
+      window.open(S.imageUrl, '_blank');
+    });
   }
 
   window._mountPromptStudio = function (rootEl, caps) {
@@ -378,7 +423,7 @@
     // height. If the host would collapse (no height from its container — e.g. a bare
     // mount), fall back to the viewport so the surface never squashes into a sliver.
     try { if (host.getBoundingClientRect().height < 80) { host.style.height = '100dvh'; host.style.minHeight = '100vh'; } } catch (_) {}
-    S = { host: host, caps: caps || {}, prompt: '', aspectId: 'square', enh: null, imageUrl: null, busy: false, error: null, currentAssetId: null, versions: [], rootAssetId: null };
+    S = { host: host, caps: caps || {}, prompt: '', aspectId: 'square', enh: null, imageUrl: null, busy: false, error: null, currentAssetId: null, versions: [], rootAssetId: null, genPrompt: null };
     render();
     return true;
   };
