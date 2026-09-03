@@ -804,6 +804,44 @@ class CreativeService
      */
     public function editImage(int $wsId, array $params): array
     {
+        // F-STUDIO-R-DEDUP-RACE (2026-09-03): the interactive /creative/edit route GET_LOCKs
+        // concurrent identical edits, but the sync KERNEL path (agent/Sarah-driven) called
+        // editImage directly with NO lock — a TOCTOU race between the idempotency SELECT and the
+        // child INSERT created DUPLICATE children + DUPLICATE charges under rapid/concurrent
+        // retries. Serialize at the service layer so BOTH paths are protected (MySQL GET_LOCK is
+        // cross-session; re-entrant per session so the route's outer lock stays harmless).
+        $__idem = isset($params['idempotency_key']) ? (string) $params['idempotency_key'] : '';
+        $__src  = (int) ($params['source_asset_id'] ?? 0);
+        if ($__idem === '' || $__src <= 0) {
+            return $this->editImageInner($wsId, $params);
+        }
+        $__lock = 'studio_edit:' . $wsId . ':' . $__src . ':' . md5($__idem);
+        $__db = DB::connection();
+        $__held = false;
+        try { $__held = ((int) ($__db->selectOne('SELECT GET_LOCK(?, 180) AS l', [$__lock])->l ?? 0)) === 1; } catch (\Throwable) {}
+        try {
+            if (! $__held) {
+                // Extreme contention — could not serialize within the window. Do NOT create a
+                // duplicate: re-check for a sibling result and replay it if present, else fail safe.
+                $__dupe = DB::table('assets')->where('workspace_id', $wsId)
+                    ->where('parent_asset_id', $__src)->whereNull('deleted_at')
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.idempotency_key')) = ?", [$__idem])->first();
+                if ($__dupe) {
+                    return $this->sanitize(['success'=>true,'status'=>'completed','idempotent_replay'=>true,
+                        'id'=>(int)$__dupe->id,'asset_id'=>(int)$__dupe->id,'url'=>$__dupe->url,'type'=>'image',
+                        'parent_asset_id'=>(int)$__dupe->parent_asset_id,'root_asset_id'=>(int)$__dupe->root_asset_id,
+                        'version'=>(int)$__dupe->version,'edit_mode'=>$__dupe->edit_mode]);
+                }
+                return ['success'=>false,'error'=>'This edit is already being processed — please try again in a moment.','code'=>'EDIT_BUSY'];
+            }
+            return $this->editImageInner($wsId, $params);
+        } finally {
+            if ($__held) { try { $__db->selectOne('SELECT RELEASE_LOCK(?) AS r', [$__lock]); } catch (\Throwable) {} }
+        }
+    }
+
+    private function editImageInner(int $wsId, array $params): array
+    {
         $sourceId = (int) ($params['source_asset_id'] ?? 0);
         $prompt   = trim((string) ($params['prompt'] ?? ''));
         if ($sourceId <= 0) return ['success' => false, 'error' => 'A source image is required.'];
