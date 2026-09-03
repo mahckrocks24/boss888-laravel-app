@@ -217,7 +217,7 @@ class SectionSchema
                 'eyebrow', 'heading', 'subheading',
                 'layout',                // 'hero_grid' | 'list' | 'cards' | 'strip'
                 'category', 'tag', 'limit', 'columns', 'offset', 'exclude_featured',
-                'show_excerpt', 'show_byline', 'show_category',
+                'show_excerpt', 'show_byline', 'show_category', 'hide_when_empty',
                 'cta_text', 'cta_url',
             ],
         ],

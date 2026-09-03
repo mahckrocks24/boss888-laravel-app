@@ -174,6 +174,8 @@ trait EditorialSections
     private function renderVideoEmbed(array $sec, array $brand): string
     {
         $url = trim((string) ($sec['video_url'] ?? ''));
+        // Nothing to show yet → render nothing (an empty "coming soon" box reads as unfinished on a live site).
+        if ($url === '' && trim((string) ($sec['thumbnail'] ?? '')) === '') return '';
         $embed = $this->editorialVideoEmbedUrl($url);
         $heading = e((string) ($sec['heading'] ?? ''));
         $eyebrow = e((string) ($sec['eyebrow'] ?? ''));

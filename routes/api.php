@@ -8644,3 +8644,10 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\DenyApiKeyAuth::class])
 // unauthenticated by design; the controller verifies a path secret and refuses
 // everything while that secret is unset.
 require __DIR__ . '/api/webhooks/email888.php';
+
+// ── KABAYAN888 UX-1 image variants (2026-09-03) ──────────────────────────
+// GET /api/public/img/{w}/{path} → resized WebP of a platform-hosted image, cached
+// under storage/app/public/img-cache. No auth (images are already public). See
+// App\Http\Controllers\Api\Widget\ImageVariantController for the allow-lists.
+Route::get('/public/img/{w}/{path}', [\App\Http\Controllers\Api\Widget\ImageVariantController::class, 'show'])
+    ->where(['w' => '[0-9]{2,4}', 'path' => '[A-Za-z0-9_\-./]+']);

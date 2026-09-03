@@ -33,25 +33,42 @@ class PublicNewsController
 
         $limit    = max(1, min(50, (int) $r->query('limit', 12)));
         $category = trim((string) $r->query('category', ''));
+        // KABAYAN888 UX-1 (2026-09-03): offset + q (search) power "Load more" and site search;
+        // website scoping mirrors BuilderRenderer (site-bound OR unbound articles of the workspace).
+        $offset   = max(0, min(5000, (int) $r->query('offset', 0)));
+        $search   = mb_substr(trim((string) $r->query('q', '')), 0, 80);
+        $wid      = (int) ($website->id ?? 0);
 
         $q = DB::table('articles')
             ->where('workspace_id', $website->workspace_id)
             ->where('status', 'published')
             ->whereNull('deleted_at')
             ->whereIn('type', ['news', 'blog_post', 'article']);
+        if ($wid > 0) { $q->where(function ($w) use ($wid) { $w->where('website_id', $wid)->orWhereNull('website_id'); }); }
         if ($category !== '' && $category !== 'all') {
-            $q->where('blog_category', $category);
+            $q->where(function ($w) use ($category) {
+                $w->where('blog_category', $category)->orWhereRaw('LOWER(REPLACE(blog_category, " ", "-")) = ?', [strtolower($category)]);
+            });
         }
+        if ($search !== '') {
+            $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $search) . '%';
+            $q->where(function ($w) use ($like) { $w->where('title', 'like', $like)->orWhere('excerpt', 'like', $like); });
+        }
+        $total = (clone $q)->count();
 
         $rows = $q->orderByDesc('published_at')
             ->orderByDesc('id')
+            ->offset($offset)
             ->limit($limit)
             ->get([
                 'id', 'title', 'slug', 'excerpt', 'blog_category',
                 'featured_image_url', 'read_time', 'brief_json', 'published_at',
             ]);
 
-        $posts = $rows->map(function ($a) {
+        // KABAYAN888 UX-1 — display names for category slugs (blog_categories), used by search/load-more rows.
+        $catNames = [];
+        try { foreach (DB::table('blog_categories')->where('workspace_id', $website->workspace_id)->get(['name', 'slug']) as $c) { $catNames[strtolower((string) $c->slug)] = (string) $c->name; $catNames[strtolower((string) $c->name)] = (string) $c->name; } } catch (\Throwable) {}
+        $posts = $rows->map(function ($a) use ($catNames) {
             $brief = is_string($a->brief_json) ? json_decode($a->brief_json, true) : null;
             $brief = is_array($brief) ? $brief : [];
             $publishedTs = $a->published_at ? strtotime($a->published_at) : null;
@@ -61,6 +78,7 @@ class PublicNewsController
                 'slug'               => (string) ($a->slug ?? ''),
                 'excerpt'            => (string) ($a->excerpt ?? ''),
                 'category'           => (string) ($a->blog_category ?? 'News'),
+                'category_name'      => $catNames[strtolower((string) ($a->blog_category ?? ''))] ?? ucwords(str_replace('-', ' ', (string) ($a->blog_category ?? 'News'))),
                 'featured_image_url' => (string) ($a->featured_image_url ?? ''),
                 'read_time'          => $this->formatReadTime($a->read_time, $brief),
                 'author'             => (string) ($brief['author'] ?? 'Staff Reporter'),
@@ -69,7 +87,8 @@ class PublicNewsController
             ];
         })->values()->all();
 
-        return response()->json(['posts' => $posts, 'total' => count($posts)]);
+        return response()->json(['posts' => $posts, 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => ($offset + count($posts)) < $total]) // KABAYAN888 UX-1
+            ->header('Cache-Control', 'public, max-age=60, s-maxage=60');
     }
 
     /**

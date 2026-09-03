@@ -139,7 +139,10 @@ class BuilderRenderer
             // emitted alongside the existing LocalBusiness schema.
             'jsonld_json'      => $page['jsonld_json'] ?? null,
         ];
-
+        // KABAYAN888 UX-1 — a theme may add <head> tags (theme-color, manifest, preconnect, og:locale).
+        if (isset($__theme) && $__theme !== null && method_exists($__theme, 'headExtras')) {
+            try { $seoContext['head_extra'] = (string) $__theme->headExtras($website, $page); } catch (\Throwable $e) { $seoContext['head_extra'] = ''; }
+        }
         return $this->getFullHtml($content, $tokens, $website['name'] ?? 'Website', $page['title'] ?? 'Home', $seoContext, $website);
     }
 
@@ -203,7 +206,9 @@ class BuilderRenderer
             'hero_image'       => $article->featured_image_url ?? '',
             'jsonld_json'      => $article->jsonld_json ?? null,
         ];
-
+        if ($__theme !== null && method_exists($__theme, 'headExtras')) { // KABAYAN888 UX-1
+            try { $seoContext['head_extra'] = (string) $__theme->headExtras((array) $website, null, (array) $article); } catch (\Throwable $e) { $seoContext['head_extra'] = ''; }
+        }
         return $this->getFullHtml($content, $tokens, $website->name ?? 'Website', $article->title ?? 'Article', $seoContext, (array) $website);
     }
 
@@ -1768,6 +1773,7 @@ HTML;
         // name + brand color). getFullHtml must NOT also inject the static
         // chatbot-widget.js or token sites render TWO overlapping widgets.
         $chatbotScript = '';
+        $headExtra = (string) ($seo['head_extra'] ?? ''); // KABAYAN888 UX-1
 
         return <<<HTML
 <!DOCTYPE html>
@@ -1777,6 +1783,7 @@ HTML;
 <meta name="viewport" content="width=device-width,initial-scale=1">
     {$metaHtml}
     {$analyticsHtml}
+    {$headExtra}
 <link href="https://fonts.googleapis.com/css2?family={$gfonts}&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
