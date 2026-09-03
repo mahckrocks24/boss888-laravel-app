@@ -481,6 +481,7 @@ class CreativeService
         }
 
         if ($jobStatus['status'] === 'failed') {
+            $this->refundFailedVideo($assetId); // MONEY-PATH FIX (2026-09-03): refund the committed charge for a failed async video
             $this->failAsset($assetId, 'Scene generation failed');
             return $this->sanitize(['status' => 'failed', 'asset_id' => $assetId]);
         }
@@ -833,6 +834,33 @@ class CreativeService
         }
     }
 
+    /**
+     * MONEY-PATH FIX (2026-09-03): the kernel COMMITS the generate_video charge (8cr) at kickoff —
+     * an async job that returns in_progress counts as success. If the provider then fails, failAsset
+     * marked the asset failed but NEVER refunded, so the customer paid for a video they never received.
+     * Refund the committed cost ONCE, idempotently (a metadata flag stops repeated polls double-refunding).
+     */
+    private function refundFailedVideo(int $assetId): void
+    {
+        try {
+            $a = DB::table('assets')->where('id', $assetId)->first(['workspace_id', 'metadata_json', 'type']);
+            if (! $a || ($a->type ?? '') !== 'video') return;
+            $meta = json_decode($a->metadata_json ?? '{}', true) ?: [];
+            if (! empty($meta['video_refunded_at'])) return; // already refunded — idempotent
+            $cost = 8; // generate_video credit_cost (App\Core\EngineKernel\CapabilityMapService)
+            app(\App\Core\Billing\CreditService::class)->credit(
+                (int) $a->workspace_id, $cost, 'refund/generate_video', $assetId,
+                ['reason' => 'video generation failed — automatic refund']
+            );
+            DB::table('assets')->where('id', $assetId)->update([
+                'metadata_json' => DB::raw("JSON_SET(COALESCE(metadata_json,'{}'), '$.video_refunded_at', " . DB::getPdo()->quote(now()->toIso8601String()) . ", '$.video_refunded_credits', " . (int) $cost . ")"),
+                'updated_at' => now(),
+            ]);
+            \Illuminate\Support\Facades\Log::info('[Video billing] refunded failed video', ['asset' => $assetId, 'ws' => $a->workspace_id, 'credits' => $cost]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Video billing] refund failed', ['asset' => $assetId, 'error' => $e->getMessage()]);
+        }
+    }
     public function failAsset(int $assetId, string $reason): void
     {
         DB::table('assets')->where('id', $assetId)->update([
