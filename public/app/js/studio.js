@@ -46,10 +46,29 @@
     }
     _rootEl = rootEl || document.getElementById('studio-root') || document.body;
     try { _rootEl.style.position = 'relative'; } catch(_){}
-    // Wave 1B — Studio opens on its shell Home. The gallery is one destination
-    // (Designs), not the whole application.
-    _stGo('home');
+    // Prompt Studio surface (redesign 2026-09-03) — gated on capabilities.features.prompt_studio
+    // (OFF by default). When ON and the isolated module is present, mount the mobile-first
+    // prompt-first surface instead of the canvas shell. ANY failure falls back to the certified
+    // shell, so an absent/broken module or a caps fetch error never breaks Studio.
+    _stMaybePromptStudio(_rootEl).then(function (mounted) { if (!mounted) { _stGo('home'); } });
   };
+
+  // Capabilities (cached) — the SPA feature-gating channel.
+  var _stCapsPromise = null;
+  function _stGetCaps() {
+    if (_stCapsPromise) return _stCapsPromise;
+    _stCapsPromise = _fetchJson('/workspace/capabilities').catch(function () { return {}; });
+    return _stCapsPromise;
+  }
+  function _stMaybePromptStudio(rootEl) {
+    return _stGetCaps().then(function (caps) {
+      var on = !!(caps && caps.features && caps.features.prompt_studio);
+      if (on && typeof window._mountPromptStudio === 'function') {
+        try { return window._mountPromptStudio(rootEl, caps) === true; } catch (e) { return false; }
+      }
+      return false;
+    });
+  }
   // Manual invocation fallback — same as studioLoad with auto-resolved root.
   window.openStudio = function () { window.studioLoad(null); };
 
