@@ -57,7 +57,7 @@ class BuilderRenderer
         $tokens = [
             'primary'      => $settings['primary_color']   ?? ($brand['primary_color']   ?? '#1F2937'),
             'secondary'    => $settings['secondary_color'] ?? ($brand['secondary_color'] ?? '#94A3B8'),
-            'accent'       => $settings['accent_color']    ?? ($brand['accent_color']    ?? '#475569'),
+            'accent'       => $settings['accent_color']    ?? ($brand['accent_color']    ?? $settings['primary_color'] ?? ($brand['primary_color'] ?? '#1F2937')),
             'font_heading' => $settings['font_heading']    ?? ($brand['heading_font']    ?? 'Syne'),
             'font_body'    => $settings['font_body']       ?? ($brand['body_font']       ?? 'DM Sans'),
         ];
@@ -162,7 +162,7 @@ class BuilderRenderer
         $tokens = [
             'primary'      => $settings['primary_color']   ?? ($brand->primary_color   ?? '#1F2937'),
             'secondary'    => $settings['secondary_color'] ?? ($brand->secondary_color ?? '#94A3B8'),
-            'accent'       => $settings['accent_color']    ?? '#475569',
+            'accent'       => $settings['accent_color']    ?? ($settings['primary_color'] ?? ($brand->primary_color ?? '#1F2937')),
             'font_heading' => $settings['font_heading']    ?? 'Syne',
             'font_body'    => $settings['font_body']        ?? 'DM Sans',
         ];
@@ -286,8 +286,8 @@ class BuilderRenderer
         $primary = $this->sanitizeCssColor($primary, '#6C5CE7'); // B7: block style-attr breakout via brand colors
         $secondary = $b['secondary']    ?? $b['secondary_color'] ?? '#00E5A8';
         $secondary = $this->sanitizeCssColor($secondary, '#00E5A8'); // B7: block style-attr breakout via brand colors
-        $accent    = $b['accent_color'] ?? $b['accent']          ?? '#F4F7FB';
-        $accent = $this->sanitizeCssColor($accent, '#F4F7FB'); // B7: block style-attr breakout via brand colors
+        $accent    = $b['accent_color'] ?? $b['accent']          ?? $primary;
+        $accent = $this->sanitizeCssColor($accent, $primary); // B7: block style-attr breakout via brand colors
         $fh        = $b['font_heading'] ?? $b['heading_font']    ?? 'Syne';
         $fh = $this->sanitizeFontName($fh, 'Syne'); // B7: block style-attr breakout via font names
         $fb        = $b['font_body']    ?? $b['body_font']       ?? 'DM Sans';
@@ -319,7 +319,7 @@ class BuilderRenderer
             $title = e($it['title'] ?? $it['heading'] ?? $it['name'] ?? '');
             $desc  = e($it['description'] ?? $it['text'] ?? $it['body'] ?? '');
             $icon  = e($it['icon'] ?? '•');
-            $cards .= "<div style=\"background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:16px;padding:32px;border-top:3px solid {$brand['primary']}\"><span style=\"font-size:32px;display:block;margin-bottom:12px\">{$icon}</span><h3 style=\"color:#1a1a2e;font-size:20px;margin-bottom:8px\">{$title}</h3><p style=\"color:#5a5f72;font-size:14px;line-height:1.6;margin:0\">{$desc}</p></div>";
+            $cards .= "<div style=\"background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:16px;padding:32px;border-top:3px solid {$brand['accent']}\"><span style=\"font-size:32px;display:block;margin-bottom:12px\">{$icon}</span><h3 style=\"color:#1a1a2e;font-size:20px;margin-bottom:8px\">{$title}</h3><p style=\"color:#5a5f72;font-size:14px;line-height:1.6;margin:0\">{$desc}</p></div>";
         }
         $grid = "<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px\">{$cards}</div>";
         return $this->sectionShell($sec['heading'] ?? 'Services', $grid, $brand);
@@ -373,7 +373,7 @@ class BuilderRenderer
         foreach (($sec['tiers'] ?? $sec['items'] ?? []) as $t) {
             $name  = e($t['name'] ?? $t['title'] ?? '');
             $price = e($t['price'] ?? '');
-            $border = !empty($t['highlight']) ? "2px solid {$brand['primary']}" : "1px solid rgba(0,0,0,.1)";
+            $border = !empty($t['highlight']) ? "2px solid {$brand['accent']}" : "1px solid rgba(0,0,0,.1)";
             $feats = '';
             foreach (($t['features'] ?? []) as $ft) {
                 $feats .= "<li style=\"color:#5a5f72;font-size:14px;padding:6px 0\">&#10003; " . e($ft) . "</li>";
@@ -650,7 +650,7 @@ class BuilderRenderer
             $active = $slug === $currentSlug;
             $color  = $active ? $brand['primary'] : 'rgba(255,255,255,.8)';
             $weight = $active ? '700' : '500';
-            $border = $active ? "border-bottom:2px solid {$brand['primary']}" : 'border-bottom:2px solid transparent';
+            $border = $active ? "border-bottom:2px solid {$brand['accent']}" : 'border-bottom:2px solid transparent';
             $navHtml .= "<a href=\"" . $this->safeUrl((string) $url) . "\" style=\"color:{$color};text-decoration:none;font-size:14px;font-weight:{$weight};{$border};padding-bottom:4px;transition:all .2s\">" . e($lbl) . "</a>";
         }
 
@@ -798,7 +798,7 @@ HTML;
             $icon = $item['icon'] ?? '⭐';
             $title = e($item['heading'] ?? $item['title'] ?? '');
             $text = e($item['text'] ?? $item['description'] ?? '');
-            $cardsHtml .= "<div style=\"background:{$cardBg};border:{$cardBorder};border-radius:16px;padding:32px;border-top:3px solid {$brand['primary']}\"><span style=\"font-size:36px;display:block;margin-bottom:16px\">{$icon}</span><h3 style=\"color:{$headColor};font-size:20px;margin-bottom:8px\">{$title}</h3><p style=\"color:{$textColor};font-size:14px;line-height:1.6;margin:0\">{$text}</p></div>";
+            $cardsHtml .= "<div style=\"background:{$cardBg};border:{$cardBorder};border-radius:16px;padding:32px;border-top:3px solid {$brand['accent']}\"><span style=\"font-size:36px;display:block;margin-bottom:16px\">{$icon}</span><h3 style=\"color:{$headColor};font-size:20px;margin-bottom:8px\">{$title}</h3><p style=\"color:{$textColor};font-size:14px;line-height:1.6;margin:0\">{$text}</p></div>";
         }
 
         return <<<HTML

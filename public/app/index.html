@@ -110,7 +110,7 @@
   try { console.log('[LGSC] Global fetch interceptor active, ws=' + lgscWs); } catch (_) {}
 })();
 </script>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
@@ -2373,7 +2373,7 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
 
 /* ═════════════════════════════════════════════════════════════════════════
    Desktop only: disable pinch zoom (touchpad pinch) on the document.
-   Mobile already has user-scalable=no on the viewport meta.
+   Mobile allows pinch-zoom (WCAG 1.4.4); the SV/slider drag areas use touch-action:none so their gestures are unaffected.
    ═════════════════════════════════════════════════════════════════════════ */
 @media (min-width: 1024px) {
   html {
