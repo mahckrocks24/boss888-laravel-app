@@ -30,21 +30,31 @@ class ImageGeneration
     {
         $t = mb_strtolower(trim($text));
         if ($t === '') return false;
-        // must express creation intent
-        $verb = (bool) preg_match('/\b(generate|create|make|design|draw|produce|render|whip up|cook up)\b/', $t)
-             || (bool) preg_match('/\b(i want|i need|i\x27d like|can you (make|create|generate|do)|give me|could you (make|create|generate))\b/', $t);
-        // must name an image artefact
+        // A DRAWING verb (draw/sketch/paint/illustrate/doodle) implies an image on its own —
+        // "draw me a cat" needs no explicit "image/picture" noun. A GENERAL creation verb does.
+        $drawVerb = (bool) preg_match('/\b(draw|sketch|paint|illustrate|doodle)\b/', $t);
+        // "draw" idioms are NOT image requests: draw up a plan, draw on, draw attention, draw the line,
+        // draw a comparison/conclusion, paint the town. Strip the waiver so they need an explicit image noun.
+        if ($drawVerb && preg_match('/\b(draw\s+(up|on|from|out|attention|the line|a (comparison|conclusion|distinction|parallel|blank))|paint\s+the\s+town)\b/', $t)) {
+            $drawVerb = false;
+        }
+        $genVerb  = (bool) preg_match('/\b(generate|create|make|design|produce|render|whip up|cook up)\b/', $t)
+                 || (bool) preg_match('/\b(i want|i need|i\x27d like|can you (make|create|generate|design|do)|give me|could you (make|create|generate|design))\b/', $t);
+        if (! $drawVerb && ! $genVerb) return false;
+        // must name an image artefact (waived when a drawing verb is present)
         $noun = (bool) preg_match('/\b(image|images|picture|pictures|photo|photos|photograph|graphic|graphics|visual|visuals|artwork|illustration|drawing|logo|poster|banner|mockup|wallpaper|avatar|icon)\b/', $t);
-        if (! $verb || ! $noun) return false;
+        if (! $noun && ! $drawVerb) return false;
         // exclude the FEATURED / MISSING / bulk-article image flows (handled elsewhere)
         if (preg_match('/\bfeatured image|\bmissing\b|\ball (my |the )?articles?\b|\bevery article\b|\beach article\b|\bthe ones (that|missing)\b|\bblog post\b/', $t)) return false;
         // exclude questions / lookups
         if (preg_match('/\b(how many|which|list|show me my|where is|where are|do i have|status of|count of)\b/', $t)) return false;
         // exclude publish / cancel (their own handlers)
         if (preg_match('/\bpublish|\bcancel\b|\bstop\b/', $t)) return false;
-        // must have a subject: an "of/showing/with/about" clause, OR enough descriptive words to be a brief
+        // must have a subject: an "of/showing/with/about" clause …
         if (preg_match('/\b(of|showing|with|about|depicting|featuring|for)\b\s+\S+/', $t)) return true;
-        // a short bare "make me an image" with no subject is NOT actionable — ask normally
+        // … OR a drawing verb directly followed by a subject ("draw [me] a cat", "paint a sunset") …
+        if ($drawVerb && preg_match('/\b(draw|sketch|paint|illustrate|doodle)\b\s+(me\s+|us\s+|a\s+|an\s+|the\s+|some\s+|my\s+)?\S+/', $t)) return true;
+        // … OR enough descriptive words to be a real brief. A bare "make me an image" is not actionable.
         return str_word_count($t) >= 6;
     }
 
