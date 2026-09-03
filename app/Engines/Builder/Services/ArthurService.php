@@ -855,7 +855,27 @@ class ArthurService
     // then longest-keyword-wins lookup, then coarse-sector keyword fallback,
     // and finally falls through to 'consulting' (more generic than the old
     // 'restaurant' default for unknown businesses).
+    /**
+     * F-ARTHUR-D-TEMPLATES (2026-09-03): these on-disk manifests are un-customised DENTAL
+     * clones (96 dental words vs ~15 industry words) — e.g. a 'restaurant' site would render
+     * 'Doctors & Team' / 'Book a Consultation'. Route each to a genuinely appropriate EXISTING
+     * template until dedicated manifests are authored. retail_shop/ecommerce have no commerce
+     * template yet — consulting is the least-wrong NON-MEDICAL interim (tracked for authoring).
+     */
+    private const CLONE_OVERRIDE = [
+        'restaurant' => 'cafe', 'catering' => 'cafe',
+        'resort' => 'hotel', 'short_term_rental' => 'hotel', 'travel_agency' => 'hotel',
+        'tutoring' => 'training_center', 'online_courses' => 'training_center',
+        'retail_shop' => 'consulting', 'ecommerce' => 'consulting',
+    ];
+
     private function resolveTemplateSlug(string $industry): string
+    {
+        $slug = $this->resolveTemplateSlugInner($industry);
+        return self::CLONE_OVERRIDE[$slug] ?? $slug;
+    }
+
+    private function resolveTemplateSlugInner(string $industry): string
     {
         $industry = strtolower(trim($industry));
         if ($industry === '') return 'consulting';
