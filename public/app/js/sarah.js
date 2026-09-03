@@ -102,6 +102,16 @@
       '.sh-att-img{padding:0;border:0;background:none;border-radius:10px;overflow:hidden}.sh-att-img img{display:block;max-width:220px;max-height:160px;border-radius:10px}',
       '.sh-att-imgwrap{display:inline-flex;flex-direction:column;gap:4px;align-items:flex-start}',
       '.sh-att-dl{font:600 12px/1 inherit;color:var(--p,#6C5CE7);text-decoration:none;padding:4px 2px;align-self:flex-start}.sh-att-dl:hover{text-decoration:underline}',
+      '.sh-att-img{cursor:zoom-in;border:0;background:none;padding:0}',
+      '.sh-lightbox{position:fixed;inset:0;z-index:var(--z-modal,9999);display:none;align-items:center;justify-content:center;padding:24px}',
+      '.sh-lightbox.open{display:flex}',
+      '.sh-lb-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(4px)}',
+      '.sh-lb-body{position:relative;z-index:1;max-width:min(92vw,1100px);max-height:90vh;display:flex;flex-direction:column;gap:12px;align-items:center}',
+      '.sh-lb-img{max-width:100%;max-height:78vh;object-fit:contain;border-radius:10px;box-shadow:0 12px 48px rgba(0,0,0,.5);background:#000}',
+      '.sh-lb-bar{display:flex;gap:10px;align-items:center}',
+      '.sh-lb-dl,.sh-lb-close{font:600 13px/1 inherit;padding:10px 16px;border-radius:10px;cursor:pointer;border:1px solid rgba(255,255,255,.25);text-decoration:none}',
+      '.sh-lb-dl{background:#6C5CE7;color:#fff;border-color:#6C5CE7}.sh-lb-dl:hover{background:#5A4BD1}',
+      '.sh-lb-close{background:rgba(255,255,255,.12);color:#fff}.sh-lb-close:hover{background:rgba(255,255,255,.22)}',
       '.sh-attach{display:inline-flex;align-items:center;justify-content:center}.sh-attach:hover{color:var(--t1);border-color:var(--p)}',
       '.sh-attach-wrap{position:relative;flex:none;width:44px;height:44px}.sh-file{position:absolute;inset:0;width:44px;height:44px;opacity:0;cursor:pointer;font-size:0;border-radius:12px;z-index:1}.sh-file:focus{outline:none}',
       '.sh-attach-wrap:has(.sh-file:hover) .sh-attach{color:var(--t1);border-color:var(--p)}',
@@ -389,6 +399,27 @@
     });
   }
 
+  /* Enterprise image viewer — a site-styled lightbox, never the raw browser image view. */
+  function shOpenLightbox(url) {
+    if (!url) return;
+    var ov = document.getElementById('sh-lightbox');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'sh-lightbox'; ov.className = 'sh-lightbox'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); document.body.appendChild(ov); }
+    ov.innerHTML = '<div class="sh-lb-backdrop"></div><div class="sh-lb-body"><img class="sh-lb-img" src="' + esc(url) + '" alt="Image"><div class="sh-lb-bar"><a class="sh-lb-dl" href="' + esc(url) + '" download>\u2193 Download</a><button type="button" class="sh-lb-close">\u2715 Close</button></div></div>';
+    ov.classList.add('open');
+    function close() { ov.classList.remove('open'); ov.innerHTML = ''; document.removeEventListener('keydown', onKey); }
+    function onKey(e) { if (e.key === 'Escape') close(); }
+    ov.querySelector('.sh-lb-backdrop').addEventListener('click', close);
+    ov.querySelector('.sh-lb-close').addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+  }
+  if (!window.__shLightboxInit) {
+    window.__shLightboxInit = 1;
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('.sh-att-img');
+      if (b && b.getAttribute('data-full')) { e.preventDefault(); shOpenLightbox(b.getAttribute('data-full')); }
+    });
+  }
+
   /* ── Thread ──────────────────────────────────────────────────────────────────────────────────── */
   function bubble(m) {
     var isUser = m.from === 'User' || m.from === 'user' || m.role === 'user';
@@ -398,7 +429,7 @@
     if (Array.isArray(m.attachments) && m.attachments.length) {
       attHtml = '<div class="sh-atts">' + m.attachments.map(function (a) {
         var url = String(a.url || ''); var name = esc(a.name || 'file'); var safe = /^(https?:\/\/|\/)/.test(url) ? esc(url) : '';
-        if (a.kind === 'image' && safe) return '<div class="sh-att-imgwrap"><a class="sh-att sh-att-img" href="' + safe + '" target="_blank" rel="noopener"><img src="' + safe + '" alt="' + name + '" loading="lazy"></a><a class="sh-att-dl" href="' + safe + '" download>\u2193 Download</a></div>';
+        if (a.kind === 'image' && safe) return '<div class="sh-att-imgwrap"><button type="button" class="sh-att sh-att-img" data-full="' + safe + '" aria-label="View image"><img src="' + safe + '" alt="' + name + '" loading="lazy"></button><a class="sh-att-dl" href="' + safe + '" download>\u2193 Download</a></div>';
         var ext = (name.split('.').pop() || '').toUpperCase().slice(0, 4);
         return (safe ? '<a class="sh-att" href="' + safe + '" target="_blank" rel="noopener">' : '<span class="sh-att">') + '<b>' + esc(ext || 'FILE') + '</b><span>' + name + '</span>' + (safe ? '</a>' : '</span>');
       }).join('') + '</div>';
@@ -583,7 +614,9 @@
       if (ev.type === 'message' || ev.type === 'agent_reply') {
         var rowId = key.indexOf('am_') === 0 ? key.slice(3) : key; if (S.rendered[rowId]) return; S.rendered[rowId] = 1;
         if (S.activePoll) { clearInterval(S.activePoll); S.activePoll = null; }
-        hideOrch(); revealBubble({ from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) }); S.lastAgentText = String(ev.content || '').trim(); S.lastAgentAt = Date.now(); loadBriefing();   /* DEC-0030: the sync/event final unfolds too */
+        // NANOBANANA (2026-09-03): fetch the full row so image attachments render LIVE (the event carries
+        // only text); fall back to the event content if the row can't be found. No refresh needed.
+        hideOrch(); (function () { var _fb = { from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) }; api('GET', 'agents/' + SLUG + '/messages').then(function (r) { var arr = Array.isArray(r.json) ? r.json : [], full = null; for (var i = 0; i < arr.length; i++) { if (String(arr[i].id) === String(rowId)) { full = arr[i]; break; } } revealBubble(full || _fb); }).catch(function () { revealBubble(_fb); }); })(); S.lastAgentText = String(ev.content || '').trim(); S.lastAgentAt = Date.now(); loadBriefing();   /* DEC-0030: the sync/event final unfolds too */
       } else if (ev.type === 'task_created' || ev.type === 'task_started' || ev.type === 'delegation') {
         var d = ev.data || {}; var ag = String(ev.agent_id || d.agent_slug || d.agent || (d.assigned_agents && d.assigned_agents[0]) || '').toLowerCase();
         showOrch(ag, humanAction(d.title || d.action_label || d.label));
