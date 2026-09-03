@@ -721,6 +721,19 @@ $withCorr = function (array $meta) use ($corr) {
                         $__dp0->forget((int) $wsId);
                         $__qcReply0 = $__dp0->report($__dpRes0, count($__dpNarrow0['missing'] ?? []));
                     }
+                    // IMAGE-1 (2026-09-03): the owner's yes/no to Sarah's image offer — deterministic, no LLM drop.
+                    if ($__qcReply0 === null) {
+                        $__ig0 = app(\App\Core\Sarah888\ImageGeneration::class);
+                        $__igPending0 = $__ig0->pending((int) $wsId);
+                        if ($__igPending0 && \App\Core\Sarah888\ImageGeneration::confirms((string) $__ownerMessage)) {
+                            $__igRes0 = $__ig0->execute((int) $wsId, $__igPending0, $userId > 0 ? $userId : null, (string) ($__igPending0['owner_text'] ?? $__ownerMessage));
+                            $__ig0->forget((int) $wsId);
+                            $__qcReply0 = $__ig0->report($__igRes0);
+                        } elseif ($__igPending0 && \App\Core\Sarah888\ImageGeneration::declines((string) $__ownerMessage)) {
+                            $__ig0->forget((int) $wsId);
+                            $__qcReply0 = "No problem — I won't generate that image.";
+                        }
+                    }
                 }
                 if ($__qcReply0 !== null) {
                     DB::table('agent_messages')->insert([
@@ -753,6 +766,13 @@ $withCorr = function (array $meta) use ($corr) {
                     $__dpScope = $__dp->scope((int) $wsId);
                     $__qcReply = $__dp->describe((int) $wsId, $__dpScope);
                     if ($__dpScope['ready']->count() + $__dpScope['missing']->count() > 0) { $__dp->remember((int) $wsId, $__dpScope, (string) $content); } else { $__dp->forget((int) $wsId); }
+                } elseif (\App\Core\Sarah888\ImageGeneration::asks($content)) {
+                    // IMAGE-1 (2026-09-03): "generate an image of X" — state it + the cost, then a yes.
+                    // Deterministic: turn 2's yes runs it without a second approval, so no repeat-confirmation.
+                    $__ig = app(\App\Core\Sarah888\ImageGeneration::class);
+                    $__igAction = \App\Core\Sarah888\ImageGeneration::actionFor($content);
+                    $__igSpec = ['prompt' => \App\Core\Sarah888\ImageGeneration::extractPrompt($content), 'action' => $__igAction, 'cost' => \App\Core\Sarah888\ImageGeneration::costFor($__igAction)];
+                    if (trim((string) $__igSpec['prompt']) !== '') { $__qcReply = $__ig->describe($__igSpec); $__ig->remember((int) $wsId, $__igSpec, (string) $content); }
                 }
                 if ($__qcReply !== null) {
                     DB::table('agent_messages')->insert([
