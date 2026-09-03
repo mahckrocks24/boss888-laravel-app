@@ -771,7 +771,8 @@ $withCorr = function (array $meta) use ($corr) {
                     // Deterministic: turn 2's yes runs it without a second approval, so no repeat-confirmation.
                     $__ig = app(\App\Core\Sarah888\ImageGeneration::class);
                     $__igAction = \App\Core\Sarah888\ImageGeneration::actionFor($content);
-                    $__igSpec = ['prompt' => \App\Core\Sarah888\ImageGeneration::resolvePrompt((int) $wsId, $content), 'action' => $__igAction, 'cost' => \App\Core\Sarah888\ImageGeneration::costFor($__igAction)];
+                    $__igRefine = \App\Core\Sarah888\ImageGeneration::isRefinement((int) $wsId, $content);
+                    $__igSpec = ['prompt' => \App\Core\Sarah888\ImageGeneration::resolvePrompt((int) $wsId, $content), 'action' => $__igAction, 'cost' => \App\Core\Sarah888\ImageGeneration::costFor($__igAction), 'is_refine' => $__igRefine, 'change' => $__igRefine ? \App\Core\Sarah888\ImageGeneration::changeSummary($content) : ''];
                     if (trim((string) $__igSpec['prompt']) !== '') { $__qcReply = $__ig->describe($__igSpec); $__ig->remember((int) $wsId, $__igSpec, (string) $content); }
                 }
                 if ($__qcReply !== null) {

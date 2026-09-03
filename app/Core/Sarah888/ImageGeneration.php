@@ -95,8 +95,9 @@ class ImageGeneration
         if ($t === '') { return false; }
         // A concrete change request ("hyperrealistic", "more X", "brighter", "instead") — a refinement even
         // if it opens with "make it" (which the confirm-detector would otherwise swallow).
+        if (self::asks($text)) { return false; } // a clear NEW-image request is not a refinement
         $hasChange = self::changeFrom($text) !== ''
-            || (bool) preg_match('/\b(more|less|brighter|darker|bigger|smaller|change|turn it|instead|but make|but with|without)\b/', $t);
+            || (bool) preg_match('/\b(more|less|brighter|darker|bigger|smaller|change|turn it|instead|but make|but with|without|hyper\w*|realist\w*|photoreal\w*|cartoon|anime|render|style|version)\b/', $t);
         $refers = (bool) preg_match('/\b(it|that|this one|the image|the picture|the photo|the one|same|version|again|you (sent|made|generated|created))\b/', $t);
         if (! $hasChange && ! $refers) { return false; }
         // A BARE confirm/decline (no change, no reference-with-instruction) is not a refinement.
@@ -104,14 +105,22 @@ class ImageGeneration
         return true;
     }
 
+    /** A short human phrase for the requested change (a recognised style, else the owner's own words). */
+    public static function changeSummary(string $text): string
+    {
+        $ch = self::changeFrom($text);
+        if ($ch !== '') { return $ch; }
+        $t = ' ' . mb_strtolower($text) . ' ';
+        $t = preg_replace('/\b(no,?\s*i mean|i (don\x27?t|do not) like (the|this) (image|picture|photo)|i want|i\x27?d like|make it|please|can you|could you|generate|create|the same( image)?( prompt)?|the image you sent|version of it|of it|the (image|picture|photo)|but this time|but|instead|is what i want|a|an|the|it|that|this one|you sent|same)\b/i', ' ', $t);
+        return trim((string) preg_replace('/\s{2,}/', ' ', $t), " ,.-");
+    }
+
     /** Build this turn's prompt: a refinement reuses the last image's prompt + the requested change. */
     public static function resolvePrompt(int $wsId, string $text): string
     {
         $last = self::lastPrompt($wsId);
         if ($last !== null && self::isRefinement($wsId, $text)) {
-            $mod = self::changeFrom($text);
-            if ($mod === '') { $mod = trim((string) preg_replace('/\b(no,?\s*i mean|the image you sent|of it|version|make it)\b/i', ' ', $text)); }
-            $mod = trim((string) $mod, " ,.-");
+            $mod = self::changeSummary($text);
             return $mod === '' ? $last : (rtrim($last, '. ') . '. ' . $mod . '.');
         }
         return self::extractPrompt($text);
@@ -121,6 +130,8 @@ class ImageGeneration
     private static function changeFrom(string $text): string
     {
         $t = mb_strtolower($text);
+        // normalise a couple of very common misspellings so "hyperealistic" still lands on "hyperrealistic".
+        $t = str_replace(['hyperealistic', 'hyper realisitic', 'photorealisic', 'realisitic'], ['hyperrealistic', 'hyperrealistic', 'photorealistic', 'realistic'], $t);
         $styles = ['hyperrealistic', 'hyper realistic', 'photorealistic', 'photo realistic', 'realistic', 'cinematic', 'cartoon', 'anime', '3d render', '3d', 'watercolour', 'watercolor', 'oil painting', 'pencil sketch', 'sketch', 'minimalist', 'vintage', 'retro', 'neon', 'black and white', 'monochrome', 'pixel art', 'pop art', 'vibrant', 'more colourful', 'more colorful', 'more detailed', 'high detail', 'brighter', 'darker', 'warmer', 'cooler', 'professional'];
         $found = [];
         foreach ($styles as $s) { if (strpos($t, $s) !== false) { $found[] = $s; } }
@@ -182,6 +193,14 @@ class ImageGeneration
     {
         $prompt = trim((string) ($spec['prompt'] ?? ''));
         $cost   = (int) ($spec['cost'] ?? 2);
+        // A REFINEMENT of the previous image: say plainly what will change (never dump the giant prompt,
+        // which truncated the change off the end and read as "nothing changed").
+        if (! empty($spec['is_refine'])) {
+            $change = trim((string) ($spec['change'] ?? ''));
+            $as = $change !== '' ? "with this change: **{$change}**" : "again";
+            return "Got it — I'll regenerate your last image {$as}. That's {$cost} credit" . ($cost === 1 ? '' : 's')
+                . ". Say **yes** to go ahead, or **no** to skip.";
+        }
         $kind   = ($spec['action'] ?? '') === 'generate_image_mini' ? 'quick '
                 : (($spec['action'] ?? '') === 'generate_image_high' ? 'high-detail ' : '');
         $article = $kind === '' ? 'an ' : 'a ';
