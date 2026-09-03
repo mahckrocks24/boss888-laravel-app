@@ -189,24 +189,48 @@ class ImageGeneration
     public function forget(int $wsId): void { Cache::forget(self::key($wsId)); }
 
     /** Turn 1 — state exactly what will be generated and the cost, and ask for a yes. */
+    /**
+     * Honest heads-up when the prompt names a specific brand, logo or exact text the image model CANNOT
+     * render faithfully (it garbles logos + spelling). Sarah flags it like a human designer would, rather
+     * than silently producing garbage — the "if you know the model will fail, say so" behaviour.
+     */
+    public static function fidelityWarning(string $text): string
+    {
+        $t = mb_strtolower($text);
+        $hits = [];
+        if (preg_match('/\b((that )?(says|reads|reading|saying|spelling)|labell?ed|with the words?|the words?|written)\b\s*[:\x27"]?\s*([a-z0-9][a-z0-9 &\x27.-]{1,30})/i', $text)) {
+            $hits[] = 'the exact wording';
+        }
+        if (preg_match('/\b(logos?|wordmark|trademark|brand(ed| name)?|signage)\b/', $t)) { $hits[] = 'a specific logo or brand'; }
+        // Known brands — word-boundary match, ambiguous everyday words (apple, grab, coke, bench...) excluded.
+        if (preg_match('/\b(jollibee|mcdonald\x27?s?|mcdo|starbucks|nike|adidas|coca[ -]?cola|pepsi|kfc|burger king|jollibee|shopee|lazada|samsung|disney|netflix|chowking|mang inasal|penshoppe|nescafe)\b/i', $text, $bm)) {
+            $hits[] = ucwords(trim($bm[1])) . ' branding';
+        }
+        if (! $hits) { return ''; }
+        $what = implode(' and ', array_values(array_unique($hits)));
+        return "⚠️ Heads up — AI image generation can't reproduce {$what} accurately; logos and exact text come out garbled, not the real thing. I'll create the scene as asked, but that part will be an approximation — for an exact logo/text we'd overlay the real one on top.";
+    }
+
     public function describe(array $spec): string
     {
         $prompt = trim((string) ($spec['prompt'] ?? ''));
         $cost   = (int) ($spec['cost'] ?? 2);
+        $warn   = self::fidelityWarning($prompt);
+        $tail   = $warn !== '' ? "\n\n" . $warn : '';
         // A REFINEMENT of the previous image: say plainly what will change (never dump the giant prompt,
         // which truncated the change off the end and read as "nothing changed").
         if (! empty($spec['is_refine'])) {
             $change = trim((string) ($spec['change'] ?? ''));
             $as = $change !== '' ? "with this change: **{$change}**" : "again";
             return "Got it — I'll regenerate your last image {$as}. That's {$cost} credit" . ($cost === 1 ? '' : 's')
-                . ". Say **yes** to go ahead, or **no** to skip.";
+                . ". Say **yes** to go ahead, or **no** to skip." . $tail;
         }
         $kind   = ($spec['action'] ?? '') === 'generate_image_mini' ? 'quick '
                 : (($spec['action'] ?? '') === 'generate_image_high' ? 'high-detail ' : '');
         $article = $kind === '' ? 'an ' : 'a ';
         $short  = mb_strlen($prompt) > 140 ? mb_substr($prompt, 0, 140) . '…' : $prompt;
         return "I'll create {$article}{$kind}image: \"{$short}\". That's {$cost} credit" . ($cost === 1 ? '' : 's')
-            . ". Say **yes** and I'll generate it now, or **no** to skip.";
+            . ". Say **yes** and I'll generate it now, or **no** to skip." . $tail;
     }
 
     /** Turn 2 — the owner's yes creates AND runs the task deterministically (owner-confirmed). */
