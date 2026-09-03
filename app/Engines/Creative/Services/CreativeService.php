@@ -95,6 +95,74 @@ class CreativeService
     // DIRECT GENERATION
     // ═══════════════════════════════════════════════════════
 
+    /**
+     * F-STUDIO-PS-PLAN-PREVIEW (2026-09-03): FREE, side-effect-free enhancement
+     * preview for the Prompt Studio surface. Runs the certified ImageIntelligence
+     * plan() (0 credits, no asset, no provider call, no persistence) and returns a
+     * UI-safe summary of what the engine understood + the EXACT prompt generation
+     * will send, so the user can confirm/adjust before spending a credit. wsId comes
+     * from the caller (JWT/middleware), NEVER from params (tenancy invariant, Unit T).
+     */
+    public function planPreview(int $wsId, array $params): array
+    {
+        $prompt = trim((string) ($params['prompt'] ?? ''));
+        if ($prompt === '') {
+            return ['success' => false, 'error' => 'prompt_required'];
+        }
+        $plan = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->plan([
+            'source'                  => 'studio',
+            'platform'                => $params['platform'] ?? null,
+            'asset_type'              => $params['asset_type'] ?? 'social_post',
+            'workspace_id'            => $wsId,
+            'user_prompt'             => $prompt,
+            'requested_dimensions'    => $params['dimensions'] ?? null,
+            'requested_quality'       => $params['quality'] ?? 'auto',
+            'include_text_preference' => $params['include_text_preference'] ?? 'auto',
+            'style'                   => $params['style'] ?? 'natural',
+        ]);
+        $bp       = $plan['blueprint'] ?? [];
+        $compiled = $plan['compiled'] ?? [];
+
+        // Mirror generateImage's F-STUDIO-B-ASPECT snap so the preview's size/aspect
+        // match exactly what generation will produce for an explicit aspect request.
+        $__explicitAr = strtolower(trim((string) ($params['aspect_ratio'] ?? '')));
+        $__arToSize = ['1:1'=>'1024x1024','square'=>'1024x1024','1x1'=>'1024x1024',
+            '16:9'=>'1536x1024','3:2'=>'1536x1024','4:3'=>'1536x1024','landscape'=>'1536x1024','wide'=>'1536x1024',
+            '9:16'=>'1024x1536','2:3'=>'1024x1536','3:4'=>'1024x1536','portrait'=>'1024x1536','story'=>'1024x1536','vertical'=>'1024x1536','reel'=>'1024x1536'];
+        $size   = (string) ($compiled['size'] ?? '1024x1024');
+        $aspect = (string) ($bp['aspect_ratio'] ?? '');
+        if ($__explicitAr !== '' && isset($__arToSize[$__explicitAr])) {
+            $size = $__arToSize[$__explicitAr];
+            $__sizeToAr = ['1024x1024'=>'1:1','1536x1024'=>'16:9','1024x1536'=>'9:16'];
+            $aspect = $__sizeToAr[$size];
+        }
+
+        return [
+            'success'         => true,
+            'billable'        => false,
+            'credits'         => 0,
+            'enhanced_prompt' => (string) ($compiled['provider_prompt'] ?? ''),
+            'size'            => $size,
+            'quality'         => (string) ($compiled['quality'] ?? 'medium'),
+            'summary'         => [
+                'intent'               => (string) ($bp['intent'] ?? ''),
+                'subject'              => (string) ($bp['subject'] ?? ''),
+                'audience'             => (string) ($bp['audience'] ?? ''),
+                'platform'             => (string) ($bp['platform'] ?? ''),
+                'aspect_ratio'         => $aspect,
+                'style'                => (string) ($params['style'] ?? 'natural'),
+                'mood'                 => (string) ($bp['mood'] ?? ''),
+                'lighting'             => (string) ($bp['lighting'] ?? ''),
+                'composition'          => (string) ($bp['composition'] ?? ''),
+                'color_palette'        => array_values(array_filter(array_map('strval', (array) ($bp['color_palette'] ?? [])))),
+                'brand_application'    => (string) ($bp['brand_application'] ?? ''),
+                'negative_constraints' => array_values(array_filter(array_map('strval', (array) ($bp['negative_constraints'] ?? [])))),
+                'typography_mode'      => (string) ($bp['typography_strategy']['mode'] ?? 'none'),
+                'reasoning_summary'    => (string) ($bp['reasoning_summary'] ?? ''),
+            ],
+        ];
+    }
+
     public function generateImage(int $wsId, array $params): array
     {
         $prompt    = $params['prompt'] ?? '';

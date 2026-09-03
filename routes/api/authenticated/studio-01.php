@@ -46,6 +46,13 @@ use Illuminate\Support\Facades\Route;
         // Dashboard
         Route::get('/dashboard', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getDashboard($r->attributes->get('workspace_id'))));
 
+        // Prompt Studio — FREE enhancement preview (no credits, no asset, no provider call).
+        // Surfaces "what the engine understood" + the exact prompt generation will send,
+        // so the user confirms before spending a credit. wsId from JWT, never from params.
+        Route::post('/plan-preview', fn(\Illuminate\Http\Request $r) => response()->json(
+            app($s)->planPreview((int) $r->attributes->get('workspace_id'), $r->all())
+        ));
+
         // Brand identity (CIMS)
         Route::get('/brand', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getBrandIdentity($r->attributes->get('workspace_id'))));
         Route::put('/brand', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->updateBrandIdentity($r->attributes->get('workspace_id'), $r->all())));
