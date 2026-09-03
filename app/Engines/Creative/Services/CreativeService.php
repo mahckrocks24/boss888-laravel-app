@@ -142,6 +142,24 @@ class CreativeService
         $compiled       = $plan['compiled'];
         $enhancedPrompt = $compiled['provider_prompt'];
 
+        // F-STUDIO-B-ASPECT (2026-09-03): an EXPLICIT caller aspect_ratio must WIN over
+        // the AI blueprint's inferred size. Previously the requested aspect only landed in
+        // metadata while $compiled['size'] (blueprint asset_type/platform inference) drove
+        // generation, so "make it 1:1 / 16:9 / portrait / Instagram" was silently ignored.
+        // Snap an explicit request to the provider-supported set and let it flow to both the
+        // stored aspect and the connector size. A vague request (no explicit ratio) is
+        // untouched — the blueprint still chooses.
+        $__explicitAr = strtolower(trim((string) ($params['aspect_ratio'] ?? '')));
+        $__arToSize = ['1:1'=>'1024x1024','square'=>'1024x1024','1x1'=>'1024x1024',
+            '16:9'=>'1536x1024','3:2'=>'1536x1024','4:3'=>'1536x1024','landscape'=>'1536x1024','wide'=>'1536x1024',
+            '9:16'=>'1024x1536','2:3'=>'1024x1536','3:4'=>'1024x1536','portrait'=>'1024x1536','story'=>'1024x1536','vertical'=>'1024x1536','reel'=>'1024x1536'];
+        if ($__explicitAr !== '' && isset($__arToSize[$__explicitAr])) {
+            $compiled['size'] = $__arToSize[$__explicitAr];
+            $__sizeToAr = ['1024x1024'=>'1:1','1536x1024'=>'16:9','1024x1536'=>'9:16'];
+            $blueprint['aspect_ratio'] = $__sizeToAr[$compiled['size']];
+        }
+
+
         $asset   = $this->createAsset($wsId, array_merge($params, [
             'type'         => 'image',
             'prompt'       => $enhancedPrompt,
