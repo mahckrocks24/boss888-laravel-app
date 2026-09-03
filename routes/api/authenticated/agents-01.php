@@ -766,12 +766,12 @@ $withCorr = function (array $meta) use ($corr) {
                     $__dpScope = $__dp->scope((int) $wsId);
                     $__qcReply = $__dp->describe((int) $wsId, $__dpScope);
                     if ($__dpScope['ready']->count() + $__dpScope['missing']->count() > 0) { $__dp->remember((int) $wsId, $__dpScope, (string) $content); } else { $__dp->forget((int) $wsId); }
-                } elseif (\App\Core\Sarah888\ImageGeneration::asks($content)) {
+                } elseif (\App\Core\Sarah888\ImageGeneration::asks($content) || \App\Core\Sarah888\ImageGeneration::isRefinement((int) $wsId, $content)) {
                     // IMAGE-1 (2026-09-03): "generate an image of X" — state it + the cost, then a yes.
                     // Deterministic: turn 2's yes runs it without a second approval, so no repeat-confirmation.
                     $__ig = app(\App\Core\Sarah888\ImageGeneration::class);
                     $__igAction = \App\Core\Sarah888\ImageGeneration::actionFor($content);
-                    $__igSpec = ['prompt' => \App\Core\Sarah888\ImageGeneration::extractPrompt($content), 'action' => $__igAction, 'cost' => \App\Core\Sarah888\ImageGeneration::costFor($__igAction)];
+                    $__igSpec = ['prompt' => \App\Core\Sarah888\ImageGeneration::resolvePrompt((int) $wsId, $content), 'action' => $__igAction, 'cost' => \App\Core\Sarah888\ImageGeneration::costFor($__igAction)];
                     if (trim((string) $__igSpec['prompt']) !== '') { $__qcReply = $__ig->describe($__igSpec); $__ig->remember((int) $wsId, $__igSpec, (string) $content); }
                 }
                 if ($__qcReply !== null) {
