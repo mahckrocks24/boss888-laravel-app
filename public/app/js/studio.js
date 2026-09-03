@@ -30,7 +30,7 @@
   // core.js calls studioLoad(el) via its engine-dispatch pattern.
   window.studioLoad = function (rootEl) {
     // M5 Batch 2: desktop-only gate
-    if (window.innerWidth < 1024) {
+    if (false) { // MOBILE-FIRST (2026-09-03): desktop-gate DISABLED per Owner directive — Studio is mobile-first platform-wide; loads on all viewports (dead block retained for history)
       var el = rootEl || document.querySelector("[id*=\"studio-root\"]") || document.getElementById("std-root");
       if (el) {
         el.innerHTML =
@@ -1477,6 +1477,30 @@
       var ws = document.getElementById('st-workspace');
       if (ws) ws.classList.remove('panning');
     });
+
+    // MOBILE-FIRST (2026-09-03): touch pan (1 finger) + pinch zoom (2 fingers), mirroring the
+    // mouse pan + _zoomAtPoint; plus touch-action + touch-sized controls on small screens.
+    if (!document.getElementById('st-mobile-css')) {
+      var _msc=document.createElement('style'); _msc.id='st-mobile-css';
+      _msc.textContent='#st-workspace{touch-action:none}'
+        +'@media(max-width:820px){.st-zoom{bottom:12px;right:12px}.st-zoom button{width:40px;height:40px}.st-canvas-toolbar{flex-wrap:wrap;gap:4px}.st-panel-tabs{overflow-x:auto;-webkit-overflow-scrolling:touch}.st-left,.st-right{max-width:100%}}';
+      document.head.appendChild(_msc);
+    }
+    (function(){
+      var _tp=null,_pin=null;
+      w.addEventListener('touchstart', function(e){
+        var inCanvas=e.target.closest&&e.target.closest('#st-canvas-transform');
+        var inChat=e.target.closest&&e.target.closest('.st-chat');
+        var inZoom=e.target.closest&&e.target.closest('.st-zoom');
+        if (e.touches.length===2){ var a=e.touches[0],b=e.touches[1]; _pin={d:Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY),z:_zoom}; _tp=null; e.preventDefault(); return; }
+        if (e.touches.length===1 && !inCanvas && !inChat && !inZoom){ var t=e.touches[0]; _tp={x:t.clientX,y:t.clientY,px:_panX,py:_panY}; }
+      }, {passive:false});
+      w.addEventListener('touchmove', function(e){
+        if (_pin && e.touches.length===2){ var a=e.touches[0],b=e.touches[1]; var d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY); var rect=w.getBoundingClientRect(); var mx=((a.clientX+b.clientX)/2)-rect.left, my=((a.clientY+b.clientY)/2)-rect.top; var target=_pin.z*(d/(_pin.d||1)); _zoomAtPoint(mx,my,target-_zoom); e.preventDefault(); return; }
+        if (_tp && e.touches.length===1){ var t=e.touches[0]; _panX=_tp.px+(t.clientX-_tp.x); _panY=_tp.py+(t.clientY-_tp.y); _applyTransform(); e.preventDefault(); }
+      }, {passive:false});
+      w.addEventListener('touchend', function(e){ if(e.touches.length===0){_tp=null;_pin=null;} });
+    })();
   }
 
   window._studioZoomBy = function(delta) {
