@@ -182,6 +182,20 @@ function _bldSanitizeSections(sections) {
 function bld_fmt(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^### (.+)$/gm,'<h3 style="font-size:11px;color:var(--bl);margin:10px 0 4px;font-weight:700">$1</h3>').replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');}
 async function bld_post(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw new Error(d.message||d.error||'Request failed');return d;}
 async function bld_get(url){const r=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')}});return r.json();}
+async function bld_openColors(wsId){
+  if(!window.LUColorPicker){ if(window.toast)window.toast('Colour picker still loading…'); return; }
+  var cur={primary:'#6C5CE7',secondary:'#00E5A8',accent:'#F4F7FB'};
+  try{ var d=await bld_get(API+'workspace/brand'); if(d){cur={primary:d.primary_color||cur.primary,secondary:d.secondary_color||cur.secondary,accent:d.accent_color||cur.accent};} }catch(e){}
+  window.LUColorPicker.open({colors:cur,onSave:async function(colors){
+    try{
+      var r=await fetch(API+'workspace/brand',{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')},body:JSON.stringify({primary_color:colors.primary,secondary_color:colors.secondary,accent_color:colors.accent,website_id:wsId})});
+      var jd=await r.json();
+      if(jd&&jd.success){ if(window.toast)window.toast('Brand colours saved'); var fr=document.querySelector('iframe#pe-frame,.pe-frame,iframe'); if(fr){try{fr.src=fr.src;}catch(_){}} }
+      else { if(window.toast)window.toast((jd&&jd.error)||'Could not save colours'); }
+    }catch(e){ if(window.toast)window.toast('Could not save colours'); }
+  }});
+}
+
 
 // ── File upload ────────────────────────────────────────────────────────────
 let bld_pendingAttachments = [];
@@ -931,6 +945,7 @@ function _wsShowTemplateEditor(site) {
       '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it</span>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
+      '<button type="button" onclick="bld_openColors(' + wsId + ')" title="Brand colours" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
     // Main
@@ -939,7 +954,7 @@ function _wsShowTemplateEditor(site) {
       '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
-          '<div style="color:var(--t3);font-size:11px;line-height:1.5">Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. He can\u2019t change colours or layout from here yet.</div>' +
+          '<div style="color:var(--t3);font-size:11px;line-height:1.5">Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. Use the Colours button to change your brand palette.</div>' +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
           '<div style="background:var(--s2);border-radius:8px;padding:9px 11px;font-size:11px;color:var(--t2);line-height:1.55">Try: \u201cChange the hero heading to \u2026\u201d or \u201cMake the call-to-action say \u2026\u201d<br>You can also double-click text in the preview, or click an image to swap it.</div>' +
@@ -2076,6 +2091,7 @@ function _wsShowPageEditor(site, pageId) {
         '</div>' +
         '<span id="pe-status" class="pe-bar-hint" style="color:var(--t3);font-size:11px">Changes made by Arthur save automatically</span>' +
         '<button type="button" id="pe-refresh" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">Refresh preview</button>' +
+        '<button type="button" onclick="bld_openColors(' + (site.id || 0) + ')" title="Brand colours" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Colours</button>' +
         '<button type="button" id="pe-publish" onclick="wsPublishFromEditor(' + (site.id || 0) + ', ' + pubName + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Publish</button>' +
       '</div>' +
       '<div class="pe-main" style="flex:1;display:flex;overflow:hidden">' +
