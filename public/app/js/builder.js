@@ -183,16 +183,16 @@ function bld_fmt(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&
 async function bld_post(url,data){const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')},body:JSON.stringify(data)});const d=await r.json();if(!r.ok)throw new Error(d.message||d.error||'Request failed');return d;}
 async function bld_get(url){const r=await fetch(url,{cache:'no-store',headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')}});return r.json();}
 async function bld_openColors(wsId){
-  if(!window.LUColorPicker){ if(window.toast)window.toast('Colour picker still loading…'); return; }
+  if(!window.LUColorPicker){ showToast('Colour picker is still loading — try again in a moment.','info'); return; }
   var cur={primary:'#6C5CE7',secondary:'#00E5A8',accent:'#F4F7FB'};
   try{ var d=await bld_get(API+'workspace/brand'); if(d){cur={primary:d.primary_color||cur.primary,secondary:d.secondary_color||cur.secondary,accent:d.accent_color||cur.accent};} }catch(e){}
   window.LUColorPicker.open({colors:cur,onSave:async function(colors){
     try{
       var r=await fetch(API+'workspace/brand',{method:'PUT',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||'')},body:JSON.stringify({primary_color:colors.primary,secondary_color:colors.secondary,accent_color:colors.accent,website_id:wsId})});
       var jd=await r.json();
-      if(jd&&jd.success){ if(window.toast)window.toast('Brand colours saved'); var fr=document.querySelector('iframe#pe-frame,.pe-frame,iframe'); if(fr){try{fr.src=fr.src;}catch(_){}} }
-      else { if(window.toast)window.toast((jd&&jd.error)||'Could not save colours'); }
-    }catch(e){ if(window.toast)window.toast('Could not save colours'); }
+      if(jd&&jd.success){ showToast('Brand colours saved','success'); var fr=document.querySelector('iframe#pe-frame,.pe-frame,iframe'); if(fr){try{fr.src=fr.src;}catch(_){}} }
+      else { showToast((jd&&jd.error)||'Could not save colours','error'); }
+    }catch(e){ showToast('Could not save colours','error'); }
   }});
 }
 
@@ -214,7 +214,7 @@ async function bld_handleFileUpload(e){
     if(!r.ok) throw new Error(d.error||'Upload failed');
     bld_pendingAttachments.push(d.file);
     const isImg = d.file.type?.startsWith('image/');
-    prev.innerHTML=`${isImg?''+window.icon("image",14)+'':''+window.icon("attach",14)+''} <strong>${bld_esc(d.file.name)}</strong> ready — ${isImg?'team will analyse this image':'file attached'} <span onclick="bld_clearUpload()" style="cursor:pointer;opacity:.6;margin-left:8px">✕</span>`;
+    prev.innerHTML=`${isImg?''+window.icon("image",14)+'':''+window.icon("attach",14)+''} <strong>${bld_esc(d.file.name)}</strong> ready — ${isImg?'team will analyse this image':'file attached'} <button type="button" aria-label="Remove attachment" onclick="bld_clearUpload()" style="background:none;border:none;color:inherit;font:inherit;cursor:pointer;opacity:.6;margin-left:8px">✕</button>`;
     // Show preview if image
     if(isImg){
       const img = document.createElement('img');
@@ -791,7 +791,7 @@ function wsRenderGrid(){
       actions=`<a href="${extUrl}" target="_blank" rel="noopener" class="ct-btn" style="font-size:11px;padding:4px 10px;text-decoration:none" onclick="event.stopPropagation()">Visit ↗</a>`
         +`<button class="ct-btn" onclick="event.stopPropagation();_wsExtSeoAudit(${s.id},'${extUrl.replace(/'/g,"\\'")}')" style="font-size:11px;padding:4px 10px">SEO Audit</button>`
         +(platform==='wordpress'?`<button class="ct-btn" onclick="event.stopPropagation();_wsExtPluginInfo()" style="font-size:11px;padding:4px 10px;color:var(--bl)">Install Plugin</button>`:'')
-        +`<button onclick="event.stopPropagation();wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
+        +`<button aria-label="Delete website" title="Delete website" onclick="event.stopPropagation();wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
     }else{
       // PATCH (FIX 1, 2026-05-09) — published sites get View↗ instead of
       // Publish. Live URL precedence: custom_domain > subdomain > /storage
@@ -808,7 +808,7 @@ function wsRenderGrid(){
 
       actions=`<button class="ct-btn" onclick="wsOpenSite(${s.id})" style="font-size:11px;padding:4px 10px">Edit</button>`
         + _publishOrView
-        +`<button onclick="wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
+        +`<button aria-label="Delete website" title="Delete website" onclick="wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
     }
 
     // PATCH (clickable site names, 2026-05-09) — title links to the live
@@ -1578,7 +1578,7 @@ function wsShowConnectModal() {
   modal.innerHTML = '<div style="padding:20px 24px;border-bottom:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between">'
     + '<div><div style="font-family:var(--fh);font-size:18px;font-weight:700;color:var(--t1)">'+window.icon("link",14)+' Connect Your Existing Website</div>'
     + '<div style="font-size:12px;color:var(--t3)">Your website stays as-is. We just connect it so you can manage it from here.</div></div>'
-    + '<button onclick="document.getElementById(\'ws-connect-modal\').remove()" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer">✕</button></div>'
+    + '<button onclick="document.getElementById(\'ws-connect-modal\').remove()" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer" aria-label="Close" title="Close">✕</button></div>'
     + '<div style="padding:24px">'
     + '<label style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:6px">Website URL</label>'
     + '<div style="display:flex;gap:8px"><input id="ws-connect-url" type="url" placeholder="https://yourwebsite.com" style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:12px 14px;color:var(--t1);font-size:14px;outline:none;box-sizing:border-box" />'
