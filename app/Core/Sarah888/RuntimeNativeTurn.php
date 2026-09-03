@@ -207,10 +207,44 @@ final class RuntimeNativeTurn
         ];
     }
 
+    /**
+     * Pull app-hosted generated-image URLs out of a reply so they render as inline, downloadable images
+     * (never attaches arbitrary external URLs). Returns the cleaned text + the attachments.
+     */
+    private function extractImageAttachments(string $text): array
+    {
+        $atts = [];
+        if (preg_match_all('#https?://\S+#i', $text, $m)) {
+            $seen = [];
+            foreach ($m[0] as $raw) {
+                $url = rtrim($raw, ".,);]>\"'");
+                if (strpos($url, '/storage/') === false) { continue; }
+                if (! preg_match('#\.(png|jpe?g|webp|gif)$#i', $url)) { continue; }
+                if (isset($seen[$url])) { continue; }
+                $seen[$url] = true;
+                $atts[] = ['kind' => 'image', 'url' => $url, 'name' => 'Generated image'];
+                $text = str_replace($raw, '', $text);
+                if (count($atts) >= 4) { break; }
+            }
+            if ($atts) {
+                $text = preg_replace('/[:\-\x{2014}]\s*(?=\n|$)/u', '', $text);
+                $text = trim((string) preg_replace('/[ \t]{2,}/', ' ', $text));
+                if ($text === '') { $text = "Here's your image:"; }
+            }
+        }
+        return ['text' => $text, 'attachments' => $atts];
+    }
+
     /** The phase=final row the SPA polls for. Returns false if it could not be written. */
     private function persist(int $wsId, string $slug, string $name, string $text, array $meta): bool
     {
         try {
+            // NANOBANANA (2026-09-03, Owner): when Sarah's reply carries a generated-image URL, attach it as an
+            // INLINE image (clickable, downloadable) and strip the bare link — the chat shows the actual image.
+            if (empty($meta['attachments'])) {
+                $__att = $this->extractImageAttachments($text);
+                if (! empty($__att['attachments'])) { $meta['attachments'] = $__att['attachments']; $text = $__att['text']; }
+            }
             DB::table('agent_messages')->insert([
                 'workspace_id'  => $wsId,
                 'agent_slug'    => $slug,     // the OWNER-visible slug: this is her real reply

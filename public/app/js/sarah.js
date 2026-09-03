@@ -100,6 +100,8 @@
       '.sh-atts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.sh-att{display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:4px 10px 4px 6px;border-radius:10px;background:rgba(127,127,127,.12);border:1px solid rgba(127,127,127,.25);color:inherit;text-decoration:none;font-size:12.5px;max-width:100%}',
       '.sh-att b{font-size:10px;letter-spacing:.06em;padding:3px 6px;border-radius:6px;background:rgba(127,127,127,.18)}.sh-att span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px}',
       '.sh-att-img{padding:0;border:0;background:none;border-radius:10px;overflow:hidden}.sh-att-img img{display:block;max-width:220px;max-height:160px;border-radius:10px}',
+      '.sh-att-imgwrap{display:inline-flex;flex-direction:column;gap:4px;align-items:flex-start}',
+      '.sh-att-dl{font:600 12px/1 inherit;color:var(--p,#6C5CE7);text-decoration:none;padding:4px 2px;align-self:flex-start}.sh-att-dl:hover{text-decoration:underline}',
       '.sh-attach{display:inline-flex;align-items:center;justify-content:center}.sh-attach:hover{color:var(--t1);border-color:var(--p)}',
       '.sh-attach-wrap{position:relative;flex:none;width:44px;height:44px}.sh-file{position:absolute;inset:0;width:44px;height:44px;opacity:0;cursor:pointer;font-size:0;border-radius:12px;z-index:1}.sh-file:focus{outline:none}',
       '.sh-attach-wrap:has(.sh-file:hover) .sh-attach{color:var(--t1);border-color:var(--p)}',
@@ -396,7 +398,7 @@
     if (Array.isArray(m.attachments) && m.attachments.length) {
       attHtml = '<div class="sh-atts">' + m.attachments.map(function (a) {
         var url = String(a.url || ''); var name = esc(a.name || 'file'); var safe = /^(https?:\/\/|\/)/.test(url) ? esc(url) : '';
-        if (a.kind === 'image' && safe) return '<a class="sh-att sh-att-img" href="' + safe + '" target="_blank" rel="noopener"><img src="' + safe + '" alt="' + name + '" loading="lazy"></a>';
+        if (a.kind === 'image' && safe) return '<div class="sh-att-imgwrap"><a class="sh-att sh-att-img" href="' + safe + '" target="_blank" rel="noopener"><img src="' + safe + '" alt="' + name + '" loading="lazy"></a><a class="sh-att-dl" href="' + safe + '" download>\u2193 Download</a></div>';
         var ext = (name.split('.').pop() || '').toUpperCase().slice(0, 4);
         return (safe ? '<a class="sh-att" href="' + safe + '" target="_blank" rel="noopener">' : '<span class="sh-att">') + '<b>' + esc(ext || 'FILE') + '</b><span>' + name + '</span>' + (safe ? '</a>' : '</span>');
       }).join('') + '</div>';
