@@ -244,7 +244,9 @@ class PublishedSiteMiddleware
             // and the slug corresponds to a published article in DB, render
             // it dynamically using an existing article static file as the
             // theme template (substituting title, image, body, meta).
-            if (preg_match('#^blog/([a-z0-9\-]+)/?$#i', $path, $bm)) {
+            // KABAYAN888 G7a (2026-09-03) — /news/{slug} is an article path too (magazine
+            // sites set settings_json.article_base = 'news'); /blog/{slug} keeps working.
+            if (preg_match('#^(?:blog|news)/([a-z0-9\-]+)/?$#i', $path, $bm)) {
                 $articleSlug = $bm[1];
                 $dynHtml = $this->renderDynamicArticlePage(
                     (int) ($website->workspace_id ?? 0),

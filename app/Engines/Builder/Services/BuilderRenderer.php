@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\DB;
 
 class BuilderRenderer
 {
+    use EditorialSections; // KABAYAN888 G2 — editorial section renderers (generic fallbacks)
+
     public function renderWebsite(string $subdomain, string $slug = 'home'): ?string
     {
         $website = DB::table('websites')
@@ -70,10 +72,16 @@ class BuilderRenderer
             ->toArray();
 
         $content = '';
-        if (($settings['theme'] ?? null) === 'amg-travel') {
-            // AMG Travel theme — 1:1 prototype render, hydrated from sections_json.
-            $content = (new \App\Engines\Builder\Services\AmgTravelTheme())
-                ->renderBody($secs, $tokens, $website, $page);
+        // KABAYAN888 G1 (2026-09-03) — theme dispatch via ThemeRegistry (was a hard-coded
+        // 'amg-travel' check). Themes get a $fallback so they only own the types they style.
+        $__theme = ThemeRegistry::resolve($settings['theme'] ?? null);
+        if ($__theme !== null) {
+            $__slug = $page['slug'] ?? 'home';
+            $__fallback = function (array $sec) use ($tokens, $website, $allPages, $__slug): string {
+                try { return $this->renderSection($sec, $tokens, $website, $allPages, $__slug); }
+                catch (\Throwable $e) { return ''; }
+            };
+            $content = $__theme->renderBody($secs, $tokens, $website, $page, $__fallback);
         } else {
             // Semantic landmarks (a11y/SEO): nav/header -> <header>, content -> <main>,
             // footer section already emits <footer>. Split the flat section list by role.
@@ -167,9 +175,9 @@ class BuilderRenderer
             'font_body'    => $settings['font_body']        ?? 'DM Sans',
         ];
 
-        if (($settings['theme'] ?? null) === 'amg-travel') {
-            $content = (new \App\Engines\Builder\Services\AmgTravelTheme())
-                ->renderArticle((array) $article, (array) $website);
+        $__theme = ThemeRegistry::resolve($settings['theme'] ?? null); // KABAYAN888 G1
+        if ($__theme !== null) {
+            $content = $__theme->renderArticle((array) $article, (array) $website);
         } else {
             // CONTENT-2: the page renders the title once; drop the body's own leading <h1>; show the hero.
             $body = preg_replace('#^\s*<h1\b[^>]*>.*?</h1>\s*#is', '', (string) ($article->content ?? ''), 1) ?? (string) ($article->content ?? '');
@@ -187,7 +195,7 @@ class BuilderRenderer
 
         $sub = str_replace('.levelupgrowth.io', '', (string) ($website->subdomain ?? ''));
         $seoContext = [
-            'page_url'         => "https://{$sub}.levelupgrowth.io/blog/{$slug}",
+            'page_url'         => "https://{$sub}.levelupgrowth.io/" . $this->editorialArticleBase((array) $website) . "/{$slug}", // KABAYAN888 G7a
             'site_url'         => "https://{$sub}.levelupgrowth.io",
             'subdomain'        => $sub,
             'meta_description' => $article->meta_description ?? '',
@@ -242,6 +250,14 @@ class BuilderRenderer
             'checkout_form'    => $this->renderCheckoutForm($sec, $brand),
             'account_nav'      => $this->renderAccountNav($sec, $brand),
             'account_panel'    => $this->renderAccountPanel($sec, $brand),
+            // KABAYAN888 G2 (2026-09-03) — editorial / magazine types (EditorialSections trait)
+            'ticker'            => $this->renderTicker($sec, $brand, $website),
+            'news_feed'         => $this->renderNewsFeed($sec, $brand, $website),
+            'category_strips'   => $this->renderCategoryStrips($sec, $brand, $website),
+            'video_embed'       => $this->renderVideoEmbed($sec, $brand),
+            'directory'         => $this->renderDirectory($sec, $brand, $website),
+            'newsletter_signup' => $this->renderNewsletterSignup($sec, $brand, $website),
+            'ad_slot'           => $this->renderAdSlot($sec, $brand, $website),
             default            => $this->renderGeneric($sec, $brand),
         };
     }

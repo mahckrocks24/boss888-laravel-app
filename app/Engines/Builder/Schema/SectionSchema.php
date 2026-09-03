@@ -203,6 +203,44 @@ class SectionSchema
                 'cta_text', 'cta_url',
             ],
         ],
+        // ─── KABAYAN888 G2 (2026-09-03) — editorial / magazine types ──────
+        // Data-backed types (ticker, news_feed, category_strips, directory) read
+        // articles / directory_listings at RENDER time; sections_json carries only
+        // presentation. Renderers: BuilderRenderer (EditorialSections trait,
+        // generic) + KabayanNewsTheme (magazine). Adding them here makes Arthur
+        // able to add/edit/remove them via ArthurEditService with no Arthur change.
+        'ticker' => [
+            'optional' => ['label', 'mode', 'items', 'limit', 'category', 'speed'],
+        ],
+        'news_feed' => [
+            'optional' => [
+                'eyebrow', 'heading', 'subheading',
+                'layout',                // 'hero_grid' | 'list' | 'cards' | 'strip'
+                'category', 'tag', 'limit', 'columns', 'offset', 'exclude_featured',
+                'show_excerpt', 'show_byline', 'show_category',
+                'cta_text', 'cta_url',
+            ],
+        ],
+        'category_strips' => [
+            'optional' => ['heading', 'categories', 'per_category', 'show_taglines'],
+        ],
+        'video_embed' => [
+            'optional' => ['eyebrow', 'heading', 'subheading', 'video_url', 'thumbnail', 'caption', 'autoplay'],
+        ],
+        'directory' => [
+            'optional' => [
+                'eyebrow', 'heading', 'subheading', 'grid_id',
+                'category', 'city', 'region', 'country', 'tag', 'limit',
+                'layout',                // 'cards' | 'list'
+                'show_filters', 'show_map', 'cta_text', 'cta_url',
+            ],
+        ],
+        'newsletter_signup' => [
+            'optional' => ['eyebrow', 'heading', 'subheading', 'cta_text', 'placeholder', 'consent_text', 'source_tag', 'success_text'],
+        ],
+        'ad_slot' => [
+            'optional' => ['slot_code', 'label', 'device'],
+        ],
     ];
 
     public static function allowedTypes(): array
