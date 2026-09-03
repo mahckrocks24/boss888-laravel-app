@@ -451,6 +451,20 @@ class EngineExecutionService
             ];
         }
 
+        // ─── Step 5d (F-STUDIO-G-EDIT-DUPCHARGE, 2026-09-03): a duplicate submit that
+        // REPLAYED a cached result (same idempotency_key) did NO new work and must NOT be
+        // charged again. The interactive creative/edit route has a GET_LOCK guard, but the
+        // sync kernel path (Sarah/agent-driven) did not — a same-key edit_image returned the
+        // SAME child asset yet the reservation was committed a second time (double-charge).
+        // Release the reservation and report zero credits for a replay.
+        if (is_array($result) && ($result['idempotent_replay'] ?? false) === true) {
+            if (isset($reservationId) && $creditCost > 0) {
+                $this->creditService->release($wsId, $reservationId);
+            }
+            $this->cjSafe(fn () => $__cjs->complete($__cjob, ['status' => 'completed', 'asset_id' => (isset($result['asset_id']) && is_numeric($result['asset_id'])) ? (int) $result['asset_id'] : null]));
+            return array_merge($result, ['success' => true, 'credits_used' => 0]);
+        }
+
         // ─── Step 6: Commit credits ──────────────────────────
         if (isset($reservationId) && $creditCost > 0) {
             $this->creditService->commit($wsId, $reservationId, $creditCost);
