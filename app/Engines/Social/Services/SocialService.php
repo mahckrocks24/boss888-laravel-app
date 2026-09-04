@@ -74,6 +74,9 @@ class SocialService
     {
         $id = DB::table('social_posts')->insertGetId([
             'workspace_id' => $wsId,
+            // SOCIAL-888 provenance: capture the website when the caller states one; else
+            // NULL = workspace-level (no blind guessing). article/studio callers may pass it.
+            'website_id' => $data['website_id'] ?? null,
             'social_account_id' => $data['account_id'] ?? null,
             'platform' => $data['platform'] ?? 'instagram',
             'content' => $data['content'] ?? '',
