@@ -18,6 +18,14 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
 
+        // SOCIAL-888 (2026-09-04) — canonical social scheduled-publish worker.
+        // Dry-run (MockTransport) until config('publisher.live_transport'); approval-gated,
+        // idempotent (terminal-state suppression), so a per-minute re-run never double-posts.
+        $schedule->command('social:publish-due')
+            ->name('social:publish-due')
+            ->everyMinute()
+            ->withoutOverlapping();
+
         // PUBLISHER888 Unit 1 (2026-09-04) — desk-scheduled stories go live on time.
         $schedule->command('publisher:publish-scheduled')
             ->name('publisher:publish-scheduled')
