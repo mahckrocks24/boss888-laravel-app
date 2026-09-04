@@ -314,6 +314,58 @@ HTML;
         return $eyebrowEscaped !== '' ? "<div style=\"font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:{$color};margin-bottom:8px\">{$eyebrowEscaped}</div>" : '';
     }
 
+    // ─── jobs_board (KABAYAN888 JOBS-1) ────────────────────────────────────
+    /** Published, unexpired listings for the site, or [] when the jobs table is absent. */
+    protected function editorialJobs(array $website, array $sec): array
+    {
+        try {
+            if (!Schema::hasTable('job_listings')) return [];
+            $q = app(\App\Engines\Jobs\Services\JobsService::class)->publicQuery((int) ($website['id'] ?? 0));
+            foreach (['category_slug' => 'category', 'city' => 'city', 'country' => 'country', 'employment_type' => 'employment_type'] as $col => $key) {
+                $v = trim((string) ($sec[$key] ?? '')); if ($v !== '' && strtolower($v) !== 'all') $q->where($col, $v);
+            }
+            return $q->orderByDesc('is_featured')->orderByDesc('posted_at')->orderByDesc('id')->limit(max(1, min(60, (int) ($sec['limit'] ?? 20))))->get()->all();
+        } catch (\Throwable) { return []; }
+    }
+
+    private function renderJobsBoard(array $sec, array $brand, array $website = []): string
+    {
+        $primary = $brand['primary_color'] ?? $brand['primary'] ?? '#1F2937';
+        $fh = $brand['font_heading'] ?? 'Syne';
+        $heading = e((string) ($sec['heading'] ?? 'Jobs'));
+        $eyebrow = e((string) ($sec['eyebrow'] ?? ''));
+        $sub = e((string) ($sec['subheading'] ?? ''));
+        $head = $this->editorialEyebrow($eyebrow, $primary)
+              . "<h2 style=\"font-family:'{$fh}',sans-serif;font-size:clamp(24px,3vw,36px);margin:0 0 6px\">{$heading}</h2>"
+              . ($sub !== '' ? "<p style=\"color:#5a5f72;margin:0 0 20px\">{$sub}</p>" : '<div style="height:12px"></div>');
+        $rows = $this->editorialJobs($website, $sec);
+        if ($rows === []) {
+            if (!empty($sec['hide_when_empty'])) return '';
+            return "<section style=\"padding:60px 24px;background:#f8f9fc\"><div style=\"max-width:1100px;margin:0 auto\">{$head}<p style=\"color:#5a5f72\">No open positions right now. Check back soon.</p></div></section>";
+        }
+        $cats = \App\Engines\Jobs\Services\JobsService::CATEGORIES; $types = \App\Engines\Jobs\Services\JobsService::TYPES;
+        $items = '';
+        foreach ($rows as $j) {
+            $t = e($j->title); $c = e($j->company); $loc = e(trim(((string) ($j->city ?? '')) . (!empty($j->region) ? ', ' . $j->region : '')) ?: ($j->is_remote ? 'Remote' : ''));
+            $meta = implode(' · ', array_filter([e($types[$j->employment_type] ?? ''), $loc, e((string) ($j->salary_text ?? ''))]));
+            $items .= "<a href=\"/jobs/" . e($j->slug) . "\" style=\"display:block;padding:14px 0;border-top:1px solid #e5e7ef;text-decoration:none;color:inherit\"><div style=\"font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:{$primary}\">" . e($cats[$j->category_slug ?? ''] ?? 'Jobs') . "</div><h3 style=\"font-family:'{$fh}',sans-serif;font-size:1.1rem;margin:4px 0\">{$t}</h3><div style=\"color:#1f2937;font-weight:600\">{$c}</div><div style=\"color:#6b7280;font-size:.88rem;margin-top:4px\">{$meta}</div></a>";
+        }
+        $cta = !empty($sec['cta_text']) ? "<div style=\"margin-top:20px\"><a href=\"" . $this->safeUrl((string) ($sec['cta_url'] ?? '#'), '#') . "\" style=\"color:{$primary};font-weight:700;text-decoration:none\">" . e((string) $sec['cta_text']) . " →</a></div>" : '';
+        return "<section style=\"padding:60px 24px\"><div style=\"max-width:900px;margin:0 auto\">{$head}<div>{$items}</div>{$cta}</div></section>";
+    }
+
+    /** Plain job page body for un-themed sites. */
+    protected function renderJobGeneric(array $job, array $brand): string
+    {
+        $primary = $brand['primary_color'] ?? $brand['primary'] ?? '#1F2937';
+        $fh = $brand['font_heading'] ?? 'Syne';
+        $types = \App\Engines\Jobs\Services\JobsService::TYPES;
+        $apply = !empty($job['apply_url']) ? "<a href=\"" . e($job['apply_url']) . "\" rel=\"nofollow noopener\" target=\"_blank\" style=\"display:inline-block;background:{$primary};color:#fff;padding:12px 20px;border-radius:6px;font-weight:700;text-decoration:none\">Apply now</a>"
+               : (!empty($job['apply_email']) ? "<a href=\"mailto:" . e($job['apply_email']) . "\" style=\"display:inline-block;background:{$primary};color:#fff;padding:12px 20px;border-radius:6px;font-weight:700;text-decoration:none\">Apply by email</a>" : '');
+        $loc = e(trim(((string) ($job['city'] ?? '')) . (!empty($job['region']) ? ', ' . $job['region'] : '')));
+        return "<a href=\"/jobs\" style=\"color:{$primary};text-decoration:none;font-weight:700\">← All jobs</a><h1 style=\"font-family:'{$fh}',sans-serif;font-size:2rem;margin:12px 0 6px\">" . e($job['title']) . "</h1><p style=\"font-weight:600;margin:0\">" . e($job['company']) . " · {$loc} · " . e($types[$job['employment_type'] ?? ''] ?? '') . (!empty($job['salary_text']) ? ' · ' . e($job['salary_text']) : '') . "</p><div style=\"margin:20px 0;line-height:1.7\">" . (string) ($job['description'] ?? '') . "</div>{$apply}";
+    }
+
     // ─── ad_slot ───────────────────────────────────────────────────────────
     /**
      * Inline ad position. Emits a RESERVED, hidden placeholder that the ADS888

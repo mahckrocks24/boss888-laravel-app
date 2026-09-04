@@ -96,6 +96,35 @@ class PublicNewsController
      * Returns the list of distinct blog_category values for this tenant's
      * published articles (used by the category strip section).
      */
+    /**
+     * GET /api/public/news/{subdomain}/jobs?q=&category=&city=&type=&limit=&offset=
+     * KABAYAN888 JOBS-1 — published, unexpired job listings for the site (search, filters, load-more).
+     */
+    public function jobs(Request $r, string $subdomain): JsonResponse
+    {
+        $website = $this->resolveWebsite($subdomain);
+        if (!$website) return response()->json(['jobs' => [], 'total' => 0]);
+        $limit = max(1, min(50, (int) $r->query('limit', 20))); $offset = max(0, min(5000, (int) $r->query('offset', 0)));
+        $q = app(\App\Engines\Jobs\Services\JobsService::class)->publicQuery((int) $website->id);
+        foreach (['category' => 'category_slug', 'city' => 'city', 'type' => 'employment_type', 'country' => 'country'] as $param => $col) {
+            $v = trim((string) $r->query($param, '')); if ($v !== '' && $v !== 'all') $q->where($col, $v);
+        }
+        $search = mb_substr(trim((string) $r->query('q', '')), 0, 80);
+        if ($search !== '') { $like = '%' . str_replace(['%', '_'], ['\\%', '\\_'], $search) . '%'; $q->where(function ($w) use ($like) { $w->where('title', 'like', $like)->orWhere('company', 'like', $like)->orWhere('city', 'like', $like)->orWhere('summary', 'like', $like); }); }
+        $total = (clone $q)->count();
+        $rows = $q->orderByDesc('is_featured')->orderByDesc('posted_at')->orderByDesc('id')->offset($offset)->limit($limit)
+            ->get(['id', 'slug', 'title', 'company', 'company_logo_url', 'category_slug', 'employment_type', 'city', 'region', 'country', 'is_remote', 'salary_text', 'summary', 'is_featured', 'posted_at', 'expires_at']);
+        $cats = \App\Engines\Jobs\Services\JobsService::CATEGORIES; $types = \App\Engines\Jobs\Services\JobsService::TYPES;
+        $jobs = $rows->map(fn ($j) => [
+            'id' => (int) $j->id, 'slug' => (string) $j->slug, 'title' => (string) $j->title, 'company' => (string) $j->company, 'logo' => (string) ($j->company_logo_url ?? ''),
+            'category' => (string) ($j->category_slug ?? ''), 'category_name' => $cats[$j->category_slug ?? ''] ?? '', 'type' => (string) $j->employment_type, 'type_name' => $types[$j->employment_type] ?? '',
+            'city' => (string) ($j->city ?? ''), 'region' => (string) ($j->region ?? ''), 'country' => (string) $j->country, 'remote' => (bool) $j->is_remote, 'salary' => (string) ($j->salary_text ?? ''),
+            'summary' => (string) ($j->summary ?? ''), 'featured' => (bool) $j->is_featured, 'posted_at' => $j->posted_at, 'posted_iso' => $j->posted_at ? gmdate('c', strtotime($j->posted_at)) : null, 'expires_at' => $j->expires_at,
+        ])->values()->all();
+        return response()->json(['jobs' => $jobs, 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => ($offset + count($jobs)) < $total])
+            ->header('Cache-Control', 'public, max-age=60, s-maxage=60');
+    }
+
     public function categories(string $subdomain): JsonResponse
     {
         $website = $this->resolveWebsite($subdomain);

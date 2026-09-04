@@ -316,6 +316,50 @@ section.kb-newsletter{background:var(--kb-secondary);color:#fff}
 .kb-fbottom{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:14px;padding-bottom:20px;border-top:1px solid rgba(255,255,255,.15);font-size:.78rem;opacity:.7}
 @media (min-width:900px){.kb-fgrid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;padding-top:44px;padding-bottom:30px}.kb-fcol ul{grid-template-columns:1fr}}
 
+/* jobs board (KABAYAN888 JOBS-1) */
+.kb-jobs{display:flex;flex-direction:column}
+.kb-job{display:grid;grid-template-columns:52px 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--kb-line);text-decoration:none;color:inherit;align-items:flex-start}
+.kb-job:last-child{border-bottom:0}
+.kb-job-logo{width:52px;height:52px;border-radius:10px;background:var(--kb-bg-2);display:flex;align-items:center;justify-content:center;font-family:var(--kb-fh);font-weight:800;font-size:1.2rem;color:var(--kb-primary);overflow:hidden;flex:none}
+.kb-job-logo img{width:100%;height:100%;object-fit:contain;display:block}
+.kb-job h3{margin:0 0 2px;font-size:1.05rem;line-height:1.3}
+.kb-job h3:hover{color:var(--kb-primary)}
+.kb-job-co{font-weight:600;color:var(--kb-ink-2);font-size:.95rem}
+.kb-job-meta{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:6px}
+.kb-job-meta span{font-size:.76rem;font-weight:600;color:var(--kb-ink-2);background:var(--kb-bg-2);border-radius:999px;padding:3px 9px}
+.kb-job-meta span.is-salary{color:var(--kb-ok,#1E7F4F);background:color-mix(in srgb,#1E7F4F 12%,transparent)}
+.kb-job-meta span.is-featured{color:#7a5d00;background:var(--kb-accent)}
+.kb-job-when{font-size:.76rem;color:var(--kb-muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.kb-jobs-filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 0 12px}
+.kb-jobs-filters::-webkit-scrollbar{display:none}
+.kb-jobs-filters select,.kb-jobs-filters input{flex:none;min-height:40px;border:1.5px solid var(--kb-line-2);border-radius:999px;padding:0 14px;background:var(--kb-card);color:var(--kb-ink);font-family:var(--kb-fb);font-size:.9rem}
+.kb-jobs-filters input{flex:1 1 180px;min-width:160px}
+.kb-jobs-empty{background:var(--kb-card);border:1px dashed var(--kb-line-2);border-radius:8px;padding:18px;color:var(--kb-ink-2);font-size:.95rem}
+/* job page */
+.kb-jobpage{padding:16px 0 8px}
+.kb-job-head{display:grid;grid-template-columns:64px 1fr;gap:16px;align-items:start;margin-top:6px}
+.kb-job-head .kb-job-logo{width:64px;height:64px}
+.kb-job-head h1{font-size:clamp(1.5rem,6vw,2rem);margin:0 0 4px;line-height:1.15}
+.kb-job-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:18px 0}
+.kb-job-facts div{background:var(--kb-bg-2);border-radius:8px;padding:10px 12px}
+.kb-job-facts .kb-eyebrow{font-size:.62rem;margin-bottom:2px}
+.kb-job-facts b{font-size:.98rem;font-weight:700;color:var(--kb-ink)}
+.kb-job-apply{position:sticky;bottom:calc(var(--kb-bnav-h) + env(safe-area-inset-bottom,0px) + 8px);display:flex;gap:8px;background:var(--kb-bg);padding:10px 0;z-index:5}
+.kb-job-apply .kb-btn{flex:1}
+@media (min-width:900px){.kb-job-apply{position:static;padding:14px 0 0}.kb-job-apply .kb-btn{flex:none}.kb-job-facts{grid-template-columns:repeat(4,1fr)}.kb-job-head h1{font-size:clamp(2rem,3.4vw,2.6rem)}}
+.kb-job-list{padding-left:1.2em;margin:.4em 0 1em}
+.kb-job-verify{font-size:.82rem;color:var(--kb-muted);margin-top:16px;padding-top:12px;border-top:1px solid var(--kb-line)}
+.kb-job-verify a{color:var(--kb-primary)}
+/* post a job form */
+.kb-postjob{background:var(--kb-card);border:1px solid var(--kb-line);border-radius:10px;padding:18px 16px;margin-top:18px}
+.kb-postjob h3{margin:0 0 4px;font-size:1.2rem}
+.kb-postjob p{margin:0 0 12px;color:var(--kb-ink-2);font-size:.92rem}
+.kb-postjob form{display:grid;grid-template-columns:1fr;gap:10px}
+.kb-postjob input,.kb-postjob select,.kb-postjob textarea{min-height:46px;border:1.5px solid var(--kb-line-2);border-radius:8px;padding:10px 12px;font-family:var(--kb-fb);font-size:.98rem;background:var(--kb-bg);color:var(--kb-ink)}
+.kb-postjob textarea{min-height:110px;resize:vertical}
+.kb-postjob .kb-nl-msg{margin:0;font-weight:600;min-height:1.2em}
+@media (min-width:600px){.kb-postjob form{grid-template-columns:1fr 1fr}.kb-postjob form textarea,.kb-postjob form .kb-btn,.kb-postjob form .kb-nl-msg,.kb-postjob form .kb-full{grid-column:1/-1}}
+
 /* ad slots (reserved, inert until ADS888 publisher mode) */
 .lu-ad-inline[hidden]{display:none}
 .kb-ad-label{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--kb-muted);text-align:center;margin-bottom:4px}

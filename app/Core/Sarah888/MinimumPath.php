@@ -189,6 +189,7 @@ final class MinimumPath
         if (preg_match('/\b(lead|leads|crm|pipeline|contact|contacts|follow.?up)\b/u', $m)) $engines['crm'] = true;
         if (preg_match('/\b(seo|keyword|keywords|rank|ranking|audit|backlink|links?)\b/u', $m)) $engines['seo'] = true;
         if (preg_match('/\b(email|newsletter|campaign)\b/u', $m)) $engines['marketing'] = true;
+        if (preg_match('/\b(job|jobs|vacancy|vacancies|hiring|recruit|recruitment|employer|job portal|job board)\b/u', $m)) $engines['jobs'] = true; // KABAYAN888 JOBS-1
         return array_keys($engines);
     }
 }

@@ -216,6 +216,27 @@ class ToolSchemaService
             'engine'      => 'write', 'action' => 'generate_outline', 'approval' => 'auto',
         ],
 
+        // ─── JOBS (KABAYAN888 JOBS-1, 2026-09-04) — job portal listings ───
+        'jobs.create_job' => [
+            'description' => 'Create a job listing (draft) on the job portal. Requires a real vacancy: title, company, city, description, apply_url or apply_email, and verification_source (the official posting URL). Never invent employers or salaries. Pass website_id when the workspace has more than one site.',
+            'parameters'  => ['title' => 'string', 'company' => 'string', 'city' => 'string', 'country' => 'string?', 'category' => 'string? (hospitality|healthcare|construction|office|retail|domestic|logistics|education|it|finance|beauty|security|seafaring|other)', 'employment_type' => 'string? (full_time|part_time|contract|temporary|internship)', 'salary_text' => 'string?', 'summary' => 'string?', 'description' => 'string', 'requirements' => 'array?', 'benefits' => 'array?', 'apply_url' => 'string?', 'apply_email' => 'string?', 'source_url' => 'string?', 'verification_source' => 'string', 'expires_at' => 'string?', 'website_id' => 'int?', 'publish' => 'bool?'],
+            'engine'      => 'jobs', 'action' => 'create_job', 'approval' => 'review',
+        ],
+        'jobs.update_job' => [
+            'description' => 'Update fields on an existing job listing (by job_id).',
+            'parameters'  => ['job_id' => 'int', 'title' => 'string?', 'company' => 'string?', 'city' => 'string?', 'description' => 'string?', 'salary_text' => 'string?', 'apply_url' => 'string?', 'apply_email' => 'string?', 'verification_source' => 'string?', 'expires_at' => 'string?', 'status' => 'string? (draft|published|expired|archived)'],
+            'engine'      => 'jobs', 'action' => 'update_job', 'approval' => 'review',
+        ],
+        'jobs.publish_job' => [
+            'description' => 'Publish a job listing to the live job portal (requires apply path + verification_source).',
+            'parameters'  => ['job_id' => 'int'],
+            'engine'      => 'jobs', 'action' => 'publish_job', 'approval' => 'protected',
+        ],
+        'jobs.list_jobs' => [
+            'description' => 'List job listings in this workspace (filter by status/category/city).',
+            'parameters'  => ['status' => 'string?', 'category' => 'string?', 'city' => 'string?', 'limit' => 'int?'],
+            'engine'      => 'jobs', 'action' => 'list_jobs', 'approval' => 'auto',
+        ],
         // ─── SOCIAL ──────────────────────────────────────────────────
         'social.create_post' => [
             'description' => 'Create a social media post draft.',

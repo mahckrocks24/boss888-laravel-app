@@ -98,7 +98,7 @@ class KabayanNewsTheme
     }
 
     // ─── head extras (BuilderRenderer UX-1 hook) ───────────────────────────
-    public function headExtras(array $website, ?array $page = null, ?array $article = null): string
+    public function headExtras(array $website, ?array $page = null, ?array $article = null, ?array $job = null): string
     {
         $this->boot([], $website);
         $s = $this->settings;
@@ -130,6 +130,31 @@ class KabayanNewsTheme
             ];
             if ($img !== '') $ld['image'] = [$img];
             $ld = array_filter($ld, fn($v) => $v !== null && $v !== '' && $v !== []);
+            $out .= '<script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . '</script>' . "\n";
+        }
+        if ($job) {
+            // Google Jobs eligibility: JobPosting with title, description, datePosted, validThrough, hiringOrganization, jobLocation, employmentType.
+            $types = ['full_time' => 'FULL_TIME', 'part_time' => 'PART_TIME', 'contract' => 'CONTRACTOR', 'temporary' => 'TEMPORARY', 'internship' => 'INTERN'];
+            $site = $this->siteUrl();
+            $ld = [
+                '@context' => 'https://schema.org', '@type' => 'JobPosting',
+                'title' => (string) ($job['title'] ?? ''),
+                'description' => (string) ($job['description'] ?: '<p>' . e((string) ($job['summary'] ?? '')) . '</p>'),
+                'datePosted' => !empty($job['posted_at']) ? \Carbon\Carbon::parse($job['posted_at'])->toDateString() : null,
+                'validThrough' => !empty($job['expires_at']) ? \Carbon\Carbon::parse($job['expires_at'])->toIso8601String() : null,
+                'employmentType' => $types[$job['employment_type'] ?? ''] ?? 'FULL_TIME',
+                'hiringOrganization' => array_filter(['@type' => 'Organization', 'name' => (string) ($job['company'] ?? ''), 'sameAs' => $job['company_url'] ?? null, 'logo' => $job['company_logo_url'] ?? null]),
+                'jobLocation' => ['@type' => 'Place', 'address' => array_filter(['@type' => 'PostalAddress', 'addressLocality' => $job['city'] ?? null, 'addressRegion' => $job['region'] ?? null, 'addressCountry' => $job['country'] ?? 'AE'])],
+                'directApply' => !empty($job['apply_url']) || !empty($job['apply_email']),
+                'url' => $site . '/jobs/' . (string) ($job['slug'] ?? ''),
+                'identifier' => ['@type' => 'PropertyValue', 'name' => (string) ($website['name'] ?? 'Kabayan'), 'value' => 'job-' . (int) ($job['id'] ?? 0)],
+            ];
+            if (!empty($job['is_remote'])) $ld['jobLocationType'] = 'TELECOMMUTE';
+            if (!empty($job['salary_min']) || !empty($job['salary_max'])) {
+                $unit = ['month' => 'MONTH', 'year' => 'YEAR', 'hour' => 'HOUR', 'day' => 'DAY'][$job['salary_period'] ?? 'month'] ?? 'MONTH';
+                $ld['baseSalary'] = ['@type' => 'MonetaryAmount', 'currency' => (string) ($job['salary_currency'] ?? 'AED'), 'value' => array_filter(['@type' => 'QuantitativeValue', 'minValue' => $job['salary_min'] ?? null, 'maxValue' => $job['salary_max'] ?? null, 'unitText' => $unit])];
+            }
+            $ld = array_filter($ld, fn ($v) => $v !== null && $v !== '' && $v !== []);
             $out .= '<script type="application/ld+json">' . json_encode($ld, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . '</script>' . "\n";
         }
         return $out;
@@ -254,6 +279,7 @@ HTML;
             case 'directory':         return $this->directory($sec, $website);
             case 'newsletter_signup': return $this->newsletter($sec, $website);
             case 'ad_slot':           return $this->adSlot($sec, $website);
+            case 'jobs_board':        return $this->jobsBoard($sec, $website);
             default:
                 if ($fallback === null) return '';
                 $html = (string) $fallback($sec);
@@ -432,7 +458,7 @@ HTML;
         $items = [
             ['Home', '/', 'home', 'home'],
             ['Latest', "/{$base}", $this->base, 'news'],
-            ['Guides', '/government', 'government', 'guide'],
+            ['Jobs', '/jobs', 'jobs', 'briefcase'],
             ['Spots', '/spots', 'spots', 'pin'],
         ];
         $li = '';
@@ -611,6 +637,156 @@ HTML;
 HTML;
     }
 
+    // ─── jobs (KABAYAN888 JOBS-1) ────────────────────────────────────────────
+
+    private function jobRows(array $website, array $sec): array
+    {
+        try {
+            if (!Schema::hasTable('job_listings')) return [];
+            $q = app(\App\Engines\Jobs\Services\JobsService::class)->publicQuery((int) ($website['id'] ?? 0));
+            foreach (['category_slug' => 'category', 'city' => 'city', 'country' => 'country', 'employment_type' => 'employment_type'] as $col => $key) {
+                $v = trim((string) ($sec[$key] ?? '')); if ($v !== '' && strtolower($v) !== 'all') $q->where($col, $v);
+            }
+            return $q->orderByDesc('is_featured')->orderByDesc('posted_at')->orderByDesc('id')->limit(max(1, min(60, (int) ($sec['limit'] ?? 20))))->get()->all();
+        } catch (\Throwable) { return []; }
+    }
+
+    private function jobCard(object $j): string
+    {
+        $cats = \App\Engines\Jobs\Services\JobsService::CATEGORIES; $types = \App\Engines\Jobs\Services\JobsService::TYPES;
+        $logo = $this->url((string) ($j->company_logo_url ?? ''), '');
+        $initial = $this->e(mb_strtoupper(mb_substr((string) $j->company, 0, 1)));
+        $logoHtml = $logo !== '' ? "<div class=\"kb-job-logo\"><img src=\"{$logo}\" alt=\"\" loading=\"lazy\"></div>" : "<div class=\"kb-job-logo\" aria-hidden=\"true\">{$initial}</div>";
+        $loc = trim(((string) ($j->city ?? '')) . (!empty($j->region) && $j->region !== $j->city ? ', ' . $j->region : ''));
+        if ($loc === '' && !empty($j->is_remote)) $loc = 'Remote';
+        $chips = '';
+        if (!empty($j->is_featured)) $chips .= '<span class="is-featured">Featured</span>';
+        if (!empty($types[$j->employment_type])) $chips .= '<span>' . $this->e($types[$j->employment_type]) . '</span>';
+        if ($loc !== '') $chips .= '<span>' . $this->e($loc) . '</span>';
+        if (!empty($j->salary_text)) $chips .= '<span class="is-salary">' . $this->e($j->salary_text) . '</span>';
+        $when = !empty($j->posted_at) ? \Carbon\Carbon::parse($j->posted_at) : null;
+        $whenTxt = $when ? ($when->isToday() ? 'Posted today' : 'Posted ' . $when->diffForHumans()) : '';
+        $cat = $this->e($cats[$j->category_slug ?? ''] ?? '');
+        return "<a class=\"kb-job\" href=\"/jobs/" . $this->e($j->slug) . "\">{$logoHtml}<div>" . ($cat !== '' ? "<span class=\"kb-cat\">{$cat}</span>" : '') . "<h3>" . $this->e($j->title) . "</h3><div class=\"kb-job-co\">" . $this->e($j->company) . "</div><div class=\"kb-job-meta\">{$chips}</div>" . ($whenTxt !== '' ? "<div class=\"kb-job-when\">" . $this->e($whenTxt) . "</div>" : '') . "</div></a>";
+    }
+
+    private function jobsBoard(array $sec, array $website): string
+    {
+        $head = $this->sectionHead($sec);
+        $rows = $this->jobRows($website, $sec);
+        $cats = \App\Engines\Jobs\Services\JobsService::CATEGORIES; $types = \App\Engines\Jobs\Services\JobsService::TYPES;
+        $filters = '';
+        if (!empty($sec['show_filters'])) {
+            $catOpts = '<option value="">All categories</option>'; foreach ($cats as $k => $v) $catOpts .= '<option value="' . $this->e($k) . '">' . $this->e($v) . '</option>';
+            $typeOpts = '<option value="">Any type</option>'; foreach ($types as $k => $v) $typeOpts .= '<option value="' . $this->e($k) . '">' . $this->e($v) . '</option>';
+            $filters = "<form class=\"kb-jobs-filters\" data-kb-jobs-filters onsubmit=\"return false\" data-sub=\"" . $this->e($this->sub()) . "\"><input type=\"search\" name=\"q\" placeholder=\"Job title, company or city\" aria-label=\"Search jobs\"><select name=\"category\" aria-label=\"Category\">{$catOpts}</select><select name=\"type\" aria-label=\"Employment type\">{$typeOpts}</select></form>";
+        }
+        $cta = !empty($sec['cta_text']) ? "<div class=\"kb-more\"><a href=\"" . $this->url((string) ($sec['cta_url'] ?? '#'), '#') . "\">" . $this->e((string) $sec['cta_text']) . " →</a></div>" : '';
+        $form = !empty($sec['show_post_form']) ? $this->postJobForm($website) : '';
+        if ($rows === []) {
+            if (!empty($sec['hide_when_empty']) && $form === '') return '';
+            return "<section class=\"kb-sec kb-jobsec\" id=\"jobs\"><div class=\"kb-wrap\">{$head}{$filters}<div class=\"kb-jobs\" data-kb-jobs><div class=\"kb-jobs-empty\"><strong>No open positions listed yet.</strong> Verified vacancies for kabayans in the UAE appear here as the desk confirms them. Employers can post below.</div></div>{$cta}{$form}</div></section>";
+        }
+        $cards = ''; foreach ($rows as $j) $cards .= $this->jobCard($j);
+        $limit = max(1, min(60, (int) ($sec['limit'] ?? 20)));
+        $more = count($rows) >= $limit ? "<div class=\"kb-more\"><button type=\"button\" data-kb=\"morejobs\" data-offset=\"" . count($rows) . "\" data-limit=\"{$limit}\" data-sub=\"" . $this->e($this->sub()) . "\">Load more jobs</button></div>" : '';
+        return "<section class=\"kb-sec kb-jobsec\" id=\"jobs\"><div class=\"kb-wrap\">{$head}{$filters}<div class=\"kb-jobs\" data-kb-jobs>{$cards}</div>{$more}{$cta}{$form}</div></section>";
+    }
+
+    private function postJobForm(array $website): string
+    {
+        $sub = $this->e($this->sub()); $wid = (int) ($website['id'] ?? 0);
+        $cats = \App\Engines\Jobs\Services\JobsService::CATEGORIES; $opts = ''; foreach ($cats as $k => $v) $opts .= '<option value="' . $this->e($v) . '">' . $this->e($v) . '</option>';
+        return <<<HTML
+<div class="kb-postjob" id="post-a-job">
+  <h3>Post a job</h3>
+  <p>Hiring kabayans in the UAE? Send the vacancy and the desk will verify it with you before it goes live. Free during launch.</p>
+  <form id="kb-postjob" onsubmit="return false">
+    <input name="company" placeholder="Company" required aria-label="Company">
+    <input name="contact" placeholder="Your name" required aria-label="Your name">
+    <input name="email" type="email" placeholder="Work email" required aria-label="Work email" inputmode="email">
+    <input name="phone" placeholder="Phone or WhatsApp" aria-label="Phone">
+    <input name="title" placeholder="Job title" required aria-label="Job title" class="kb-full">
+    <input name="city" placeholder="City (e.g. Dubai)" required aria-label="City">
+    <select name="category" aria-label="Category">{$opts}</select>
+    <input name="salary" placeholder="Salary (e.g. AED 4,000–5,000)" aria-label="Salary">
+    <input name="apply" placeholder="Application link or email" required aria-label="How to apply">
+    <textarea name="details" placeholder="Duties, requirements, benefits (visa, accommodation, flights)…" required aria-label="Job details"></textarea>
+    <button type="submit" class="kb-btn kb-btn--primary">Submit for verification</button>
+    <p class="kb-nl-msg" id="kb-postjob-msg" role="status"></p>
+  </form>
+</div>
+<script>(function(){var f=document.getElementById('kb-postjob');if(!f)return;var m=document.getElementById('kb-postjob-msg');f.addEventListener('submit',function(){var d=new FormData(f),g=function(k){return (d.get(k)||'').toString().trim()};if(!g('company')||!g('email')||!g('title')||!g('apply')||!g('details'))return;var b=f.querySelector('button');b.disabled=true;var msg='JOB POST\\nCompany: '+g('company')+'\\nTitle: '+g('title')+'\\nCity: '+g('city')+'\\nCategory: '+g('category')+'\\nSalary: '+g('salary')+'\\nApply: '+g('apply')+'\\nPhone: '+g('phone')+'\\nDetails: '+g('details');fetch('/api/public/contact/'+encodeURIComponent('{$sub}'),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({firstname:g('contact'),name:g('contact'),email:g('email'),phone:g('phone'),message:msg.slice(0,1900),source:'job_post',website_id:{$wid},company:g('company')})}).then(function(r){if(!r.ok)throw 0;m.textContent='Salamat! We received the vacancy and will confirm it with you before publishing.';f.reset();}).catch(function(){m.textContent='Something went wrong. Please email the desk instead.';}).finally(function(){b.disabled=false;});});})();</script>
+HTML;
+    }
+
+    /** A job listing page (called by BuilderRenderer::renderJob). */
+    public function renderJob(array $job, array $website): string
+    {
+        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) ($website['workspace_id'] ?? 0));
+        $s = $website['settings_json'] ?? []; if (is_string($s)) $s = json_decode($s, true) ?: [];
+        $tokens = ['primary' => $s['primary_color'] ?? ($brand['primary_color'] ?? null), 'secondary' => $s['secondary_color'] ?? ($brand['secondary_color'] ?? null),
+            'accent' => $s['accent_color'] ?? ($brand['accent_color'] ?? null), 'font_heading' => $s['font_heading'] ?? ($brand['heading_font'] ?? null), 'font_body' => $s['font_body'] ?? ($brand['body_font'] ?? null)];
+        $this->boot($tokens, $website);
+        $home = DB::table('pages')->where('website_id', (int) ($website['id'] ?? 0))->where('is_homepage', 1)->first(['sections_json']);
+        $homeSecs = [];
+        if ($home) { $hs = is_string($home->sections_json) ? json_decode($home->sections_json, true) : (array) $home->sections_json; $homeSecs = $hs['sections'] ?? (is_array($hs) ? $hs : []); }
+        $h = $this->find($homeSecs, 'header'); $f = $this->find($homeSecs, 'footer');
+        $cats = \App\Engines\Jobs\Services\JobsService::CATEGORIES; $types = \App\Engines\Jobs\Services\JobsService::TYPES;
+        $title = $this->e($job['title']); $company = $this->e($job['company']);
+        $logo = $this->url((string) ($job['company_logo_url'] ?? ''), '');
+        $logoHtml = $logo !== '' ? "<div class=\"kb-job-logo\"><img src=\"{$logo}\" alt=\"{$company}\"></div>" : "<div class=\"kb-job-logo\" aria-hidden=\"true\">" . $this->e(mb_strtoupper(mb_substr((string) $job['company'], 0, 1))) . "</div>";
+        $loc = trim(((string) ($job['city'] ?? '')) . (!empty($job['region']) && $job['region'] !== $job['city'] ? ', ' . $job['region'] : ''));
+        if ($loc === '' && !empty($job['is_remote'])) $loc = 'Remote';
+        $posted = !empty($job['posted_at']) ? \Carbon\Carbon::parse($job['posted_at']) : null;
+        $expires = !empty($job['expires_at']) ? \Carbon\Carbon::parse($job['expires_at']) : null;
+        $facts = '';
+        foreach ([['Location', $loc], ['Type', $types[$job['employment_type'] ?? ''] ?? ''], ['Salary', (string) ($job['salary_text'] ?? '')], ['Category', $cats[$job['category_slug'] ?? ''] ?? '']] as [$k, $v]) {
+            if ($v === '') continue; $facts .= "<div><div class=\"kb-eyebrow\">{$k}</div><b>" . $this->e($v) . "</b></div>";
+        }
+        $req = '';
+        if (!empty($job['requirements'])) { $li = ''; foreach (preg_split('/\r?\n/', (string) $job['requirements']) as $r) { $r = trim($r, " -•\t"); if ($r !== '') $li .= '<li>' . $this->e($r) . '</li>'; } if ($li !== '') $req = "<h2>Requirements</h2><ul class=\"kb-job-list\">{$li}</ul>"; }
+        $ben = '';
+        $benefits = $job['benefits_json'] ?? null; if (is_string($benefits)) $benefits = json_decode($benefits, true);
+        if (is_array($benefits) && $benefits !== []) { $li = ''; foreach ($benefits as $b) { $b = trim((string) $b); if ($b !== '') $li .= '<li>' . $this->e($b) . '</li>'; } if ($li !== '') $ben = "<h2>Benefits</h2><ul class=\"kb-job-list\">{$li}</ul>"; }
+        $applyUrl = $this->url((string) ($job['apply_url'] ?? ''), ''); $applyEmail = trim((string) ($job['apply_email'] ?? ''));
+        $apply = '';
+        if ($applyUrl !== '') $apply .= "<a class=\"kb-btn kb-btn--primary\" href=\"{$applyUrl}\" rel=\"nofollow noopener\" target=\"_blank\">Apply now</a>";
+        if ($applyEmail !== '') $apply .= "<a class=\"kb-btn " . ($applyUrl !== '' ? 'kb-btn--ghost' : 'kb-btn--primary') . "\" href=\"mailto:" . $this->e($applyEmail) . "?subject=" . rawurlencode('Application: ' . $job['title']) . "\">Apply by email</a>";
+        $instr = !empty($job['apply_instructions']) ? '<p class="kb-art-dek" style="font-size:.95rem">' . $this->e($job['apply_instructions']) . '</p>' : '';
+        $verify = '<div class="kb-job-verify">Verified vacancy' . ($posted ? ' · posted ' . $this->e($posted->format('j M Y')) : '') . ($expires ? ' · closes ' . $this->e($expires->format('j M Y')) : '') . (!empty($job['source_url']) ? ' · <a href="' . $this->url((string) $job['source_url'], '#') . '" rel="nofollow noopener" target="_blank">original posting</a>' : '') . '. LevelUp Kabayan never charges applicants; report a listing that asks for fees.</div>';
+        $pageUrl = $this->siteUrl() . '/jobs/' . (string) ($job['slug'] ?? '');
+        $share = $this->shareRow($pageUrl, (string) $job['title'] . ' — ' . (string) $job['company']);
+        $desc = $this->contentToHtml((string) ($job['description'] ?? ''));
+        $summary = !empty($job['summary']) ? '<p class="kb-art-dek">' . $this->e($job['summary']) . '</p>' : '';
+        $related = '';
+        $others = $this->jobRows($website, ['category' => $job['category_slug'] ?? '', 'limit' => 5]);
+        $rc = ''; foreach ($others as $o) { if ((int) $o->id === (int) ($job['id'] ?? 0)) continue; $rc .= $this->jobCard($o); }
+        if ($rc !== '') $related = "<section class=\"kb-sec\"><div class=\"kb-wrap\"><div class=\"kb-sec-head\"><div class=\"kb-eyebrow\">More jobs</div><h2 class=\"kb-sec-title\">Similar openings</h2></div><div class=\"kb-jobs\">{$rc}</div><div class=\"kb-more\"><a href=\"/jobs\">All jobs →</a></div></div></section>";
+        $main = <<<HTML
+<article class="kb-jobpage" data-kb-article="1">
+  <div class="kb-wrap kb-art-head">
+    <nav class="kb-crumbs" aria-label="Breadcrumb"><a href="/">Home</a> <span>›</span> <a href="/jobs">Jobs</a></nav>
+    <div class="kb-job-head">{$logoHtml}<div><h1>{$title}</h1><div class="kb-job-co">{$company}</div></div></div>
+    <div class="kb-job-facts">{$facts}</div>
+    {$share}
+  </div>
+  <div class="kb-wrap kb-art-body">
+    {$summary}
+    <div class="kb-prose">{$desc}{$req}{$ben}</div>
+    {$instr}
+    <div class="kb-job-apply">{$apply}</div>
+    {$verify}
+    <a class="kb-back" href="/jobs">← All jobs</a>
+  </div>
+</article>
+{$related}
+HTML;
+        return $this->head() . $this->chrome($h, $f, $website, 'jobs', true)
+            . "\n<main id=\"kb-main\" class=\"kb-main\" tabindex=\"-1\">\n" . $main . "\n</main>\n"
+            . $this->footer($f, $website) . $this->bottomNav('jobs') . $this->overlays($h, $website, 'jobs') . $this->js(true);
+    }
+
     private function eyebrowHtml(string $escaped): string { return $escaped !== '' ? "<div class=\"kb-eyebrow\">{$escaped}</div>" : ''; }
 
     private function adSlot(array $sec, array $website): string
@@ -652,6 +828,7 @@ HTML;
             'news' => '<path d="M4 5h13v14H4zM17 8h3v9a2 2 0 0 1-2 2M7 9h7M7 13h7M7 16h4"/>',
             'guide' => '<path d="M9 3h6l4 4v12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 12l2 2 4-4"/>',
             'pin' => '<path d="M12 21s7-6.5 7-11a7 7 0 1 0-14 0c0 4.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+            'briefcase' => '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/>',
             'link' => '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
             'whatsapp' => '<path fill="currentColor" stroke="none" d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.6.8-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.3-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.1.6a2.7 2.7 0 0 0 1.8-1.2 2.2 2.2 0 0 0 .1-1.2c0-.1-.2-.2-.4-.3z"/>',
             'telegram' => '<path fill="currentColor" stroke="none" d="M21.9 4.4 18.7 19.5c-.2 1-.9 1.3-1.7.8l-4.8-3.5-2.3 2.2c-.3.3-.5.5-1 .5l.4-4.9 8.9-8c.4-.3-.1-.5-.6-.2L6.6 13.3 1.9 11.8c-1-.3-1-1 .2-1.5L20.5 3c.9-.3 1.6.2 1.4 1.4z"/>',
@@ -692,6 +869,14 @@ function row(p,base){var img=p.featured_image_url?'<img src="'+esc(variant(p.fea
 function api(sub){return '/api/public/news/'+encodeURIComponent(sub)+'/stories'}
 function more(btn){var sub=btn.getAttribute('data-sub'),base=btn.getAttribute('data-base'),off=parseInt(btn.getAttribute('data-offset')||'0',10),lim=parseInt(btn.getAttribute('data-limit')||'12',10),cat=btn.getAttribute('data-cat')||'';btn.disabled=true;btn.textContent='Loading…';
  fetch(api(sub)+'?limit='+lim+'&offset='+off+(cat?'&category='+encodeURIComponent(cat):''),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){var list=btn.closest('section').querySelector('[data-kb-list]');(j.posts||[]).forEach(function(p){list.insertAdjacentHTML('beforeend',row(p,base))});if(j.has_more){btn.disabled=false;btn.textContent='Load more stories';btn.setAttribute('data-offset',String(off+(j.posts||[]).length))}else{btn.remove()}}).catch(function(){btn.disabled=false;btn.textContent='Load more stories'})}
+/* jobs board: filters + load more (KABAYAN888 JOBS-1) */
+function jobRow(j){var chips='';if(j.featured)chips+='<span class="is-featured">Featured</span>';if(j.type_name)chips+='<span>'+esc(j.type_name)+'</span>';var loc=j.city+(j.region&&j.region!==j.city?', '+j.region:'');if(!loc&&j.remote)loc='Remote';if(loc)chips+='<span>'+esc(loc)+'</span>';if(j.salary)chips+='<span class="is-salary">'+esc(j.salary)+'</span>';var logo=j.logo?'<div class="kb-job-logo"><img src="'+esc(j.logo)+'" alt="" loading="lazy"></div>':'<div class="kb-job-logo" aria-hidden="true">'+esc((j.company||'?').charAt(0).toUpperCase())+'</div>';return '<a class="kb-job" href="/jobs/'+encodeURIComponent(j.slug)+'">'+logo+'<div>'+(j.category_name?'<span class="kb-cat">'+esc(j.category_name)+'</span>':'')+'<h3>'+esc(j.title)+'</h3><div class="kb-job-co">'+esc(j.company)+'</div><div class="kb-job-meta">'+chips+'</div></div></a>'}
+function jobsApi(sub){return '/api/public/news/'+encodeURIComponent(sub)+'/jobs'}
+var jf=d.querySelector('[data-kb-jobs-filters]'),jl=d.querySelector('[data-kb-jobs]'),jt=null;
+function jobsQuery(sub,off,lim){var p=new URLSearchParams();if(jf){var q=(jf.q.value||'').trim(),c=jf.category.value,t=jf.type.value;if(q)p.set('q',q);if(c)p.set('category',c);if(t)p.set('type',t)}p.set('offset',String(off));p.set('limit',String(lim));return jobsApi(sub)+'?'+p.toString()}
+function jobsReload(){if(!jf||!jl)return;var sub=jf.getAttribute('data-sub');fetch(jobsQuery(sub,0,20),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){jl.innerHTML=(j.jobs&&j.jobs.length)?j.jobs.map(jobRow).join(''):'<div class="kb-jobs-empty">No jobs match those filters yet.</div>';var mb=d.querySelector('[data-kb="morejobs"]');if(mb){mb.hidden=!j.has_more;mb.setAttribute('data-offset',String((j.jobs||[]).length))}}).catch(function(){})}
+if(jf){jf.addEventListener('input',function(){clearTimeout(jt);jt=setTimeout(jobsReload,250)});jf.addEventListener('change',jobsReload)}
+d.addEventListener('click',function(e){var b=e.target.closest('[data-kb="morejobs"]');if(!b)return;var sub=b.getAttribute('data-sub'),off=parseInt(b.getAttribute('data-offset')||'0',10),lim=parseInt(b.getAttribute('data-limit')||'20',10);b.disabled=true;fetch(jobsQuery(sub,off,lim),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){(j.jobs||[]).forEach(function(x){jl.insertAdjacentHTML('beforeend',jobRow(x))});if(j.has_more){b.disabled=false;b.setAttribute('data-offset',String(off+(j.jobs||[]).length))}else{b.remove()}}).catch(function(){b.disabled=false})});
 var si=d.getElementById('kb-search-input'),sr=d.getElementById('kb-search-results'),timer=null;
 if(si&&sr){si.addEventListener('input',function(){clearTimeout(timer);var q=si.value.trim();if(q.length<2){sr.innerHTML='';return}timer=setTimeout(function(){fetch(api(search.getAttribute('data-sub'))+'?limit=20&q='+encodeURIComponent(q),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){var base=d.body.getAttribute('data-kb-base')||'news';sr.innerHTML=(j.posts&&j.posts.length)?j.posts.map(function(p){return row(p,base)}).join(''):'<p class="kb-empty">No stories found for “'+esc(q)+'”.</p>'}).catch(function(){sr.innerHTML='<p class="kb-empty">Search is unavailable right now.</p>'})},220)})}
 })();</script>

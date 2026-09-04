@@ -38,6 +38,13 @@ class CapabilityMapService
         // but resolved null here -> "No capability mapped" (ws2 task 2164 failed).
         // Retries ALREADY-blocked (already-approved) tasks, so approval_mode=auto.
         'retry_blocked'       => ['engine'=>'tasks',     'connector'=>null,       'action'=>'retry_blocked',       'approval_mode'=>'auto',      'credit_cost'=>0],
+
+        // ── Jobs Engine (KABAYAN888 JOBS-1, 2026-09-04) — job portal on Kabayan-type sites ──
+        'create_job'          => ['engine'=>'jobs',      'connector'=>null,       'action'=>'create_job',          'approval_mode'=>'review',    'credit_cost'=>0],
+        'update_job'          => ['engine'=>'jobs',      'connector'=>null,       'action'=>'update_job',          'approval_mode'=>'review',    'credit_cost'=>0],
+        'publish_job'         => ['engine'=>'jobs',      'connector'=>null,       'action'=>'publish_job',         'approval_mode'=>'protected', 'credit_cost'=>0],
+        'expire_job'          => ['engine'=>'jobs',      'connector'=>null,       'action'=>'expire_job',          'approval_mode'=>'review',    'credit_cost'=>0],
+        'list_jobs'           => ['engine'=>'jobs',      'connector'=>null,       'action'=>'list_jobs',           'approval_mode'=>'auto',      'credit_cost'=>0],
         'ai_status'           => ['engine'=>'seo',       'connector'=>null,       'action'=>'ai_status',           'approval_mode'=>'auto',      'credit_cost'=>0],
         'link_suggestions'    => ['engine'=>'seo',       'connector'=>null,       'action'=>'link_suggestions',    'approval_mode'=>'auto',      'credit_cost'=>1],
         'insert_link'         => ['engine'=>'seo',       'connector'=>null,       'action'=>'insert_link',         'approval_mode'=>'review',    'credit_cost'=>2],

@@ -88,6 +88,10 @@ class PublicContactController
         }
 
         // ─── 2. Validate input ────────────────────────────────────────
+        // KABAYAN888 JOBS-1 — theme forms send `name` and a `source` tag (newsletter, job_post, spot_submission…).
+        if (!$request->filled('firstname') && $request->filled('name')) { $request->merge(['firstname' => mb_substr(trim((string) $request->input('name')), 0, 100)]); }
+        $__source = preg_replace('/[^a-z0-9_\-]/', '', strtolower((string) $request->input('source', ''))); $__source = $__source !== '' ? mb_substr($__source, 0, 40) : 'website_form';
+        $__websiteId = (int) ($website->id ?? 0) ?: null; // KABAYAN888 JOBS-1 — the site row loaded above, never the request
         $validated = $request->validate([
             'firstname' => 'required|string|max:100',
             'email'     => 'required|email|max:255',
@@ -123,7 +127,7 @@ class PublicContactController
                 'subject'          => 'Contact form re-submission',
                 'description'      => $validated['message'],
                 'metadata_json'    => json_encode([
-                    'source'    => 'website_form',
+                    'source'    => $__source,
                     'subdomain' => $subdomain,
                     'phone'     => $validated['phone'] ?? null,
                 ]),
@@ -140,7 +144,7 @@ class PublicContactController
                 'first_name'    => $validated['firstname'],
                 'email'         => $validated['email'],
                 'phone'         => $validated['phone'] ?? null,
-                'source'        => 'website_form',
+                'source'        => $__source, // KABAYAN888 JOBS-1
                 'status'        => 'new',
                 'metadata_json' => json_encode([
                     'first_message' => $validated['message'],
@@ -168,7 +172,8 @@ class PublicContactController
                         'name'          => $validated['firstname'],
                         'email'         => $validated['email'],
                         'phone'         => $validated['phone'] ?? null,
-                        'source'        => 'website_form',
+                        'website_id'    => $__websiteId, // KABAYAN888 JOBS-1
+                        'source'        => $__source,    // KABAYAN888 JOBS-1
                         'status'        => 'new',
                         'score'         => 0,
                         'deal_value'    => 0,
@@ -219,7 +224,7 @@ class PublicContactController
                     'email'        => $validated['email'],
                     'phone'        => $validated['phone'] ?? null,
                     'message'      => $validated['message'],
-                    'source'       => 'website_form',
+                    'source'       => $__source, // KABAYAN888 JOBS-1
                     'subdomain'    => $subdomain,
                     'is_duplicate' => $isDuplicate,
                 ],

@@ -244,6 +244,16 @@ class PublishedSiteMiddleware
             // and the slug corresponds to a published article in DB, render
             // it dynamically using an existing article static file as the
             // theme template (substituting title, image, body, meta).
+            // KABAYAN888 JOBS-1 (2026-09-04) — /jobs/{slug} → a job listing page (renderer sites).
+            if (preg_match('#^jobs/([a-z0-9\-]+)/?$#i', $path, $jm)) {
+                $jobHtml = app(\App\Engines\Builder\Services\BuilderRenderer::class)->renderJob($subdomain, $jm[1]);
+                if ($jobHtml !== null) {
+                    $jobHtml = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($jobHtml, (int) $website->id);
+                    return response($jobHtml, 200)->header('Content-Type', 'text/html; charset=utf-8')
+                        ->header('Cache-Control', 'public, max-age=60, s-maxage=60')->header('X-Served-By', 'dynamic-job');
+                }
+                return redirect('/jobs', 302)->header('X-Served-By', 'job-not-found');
+            }
             // KABAYAN888 G7a (2026-09-03) — /news/{slug} is an article path too (magazine
             // sites set settings_json.article_base = 'news'); /blog/{slug} keeps working.
             if (preg_match('#^(?:blog|news)/([a-z0-9\-]+)/?$#i', $path, $bm)) {
@@ -1532,10 +1542,19 @@ HTML;
             $xml .= "  <url>\n    <loc>{$loc}</loc>\n    <lastmod>{$lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>{$priority}</priority>\n  </url>\n";
         }
 
+        // KABAYAN888 G7b/JOBS-1 — article base from settings_json.article_base; job listings after articles.
+        $__set = $website->settings_json ?? '{}'; if (is_string($__set)) $__set = json_decode($__set, true) ?: [];
+        $__base = preg_match('/^[a-z0-9\-]{1,40}$/', (string) ($__set['article_base'] ?? '')) ? $__set['article_base'] : 'blog';
+        try {
+            foreach (app(\App\Engines\Jobs\Services\JobsService::class)->publicQuery((int) $website->id)->orderByDesc('posted_at')->limit(500)->get(['slug', 'updated_at', 'posted_at']) as $__job) {
+                $__ref = $__job->updated_at ?: $__job->posted_at; $__lm = $__ref ? date('Y-m-d', strtotime($__ref)) : date('Y-m-d');
+                $xml .= "  <url>\n    <loc>https://{$canonHost}/jobs/" . e($__job->slug) . "</loc>\n    <lastmod>{$__lm}</lastmod>\n    <changefreq>daily</changefreq>\n    <priority>0.6</priority>\n  </url>\n";
+            }
+        } catch (\Throwable) {}
         foreach ($articles as $article) {
             $slug = trim((string) $article->slug, '/');
             if ($slug === '') continue;
-            $loc = "https://{$canonHost}/blog/" . $slug;
+            $loc = "https://{$canonHost}/{$__base}/" . $slug;
             $ref = $article->published_at ?: $article->updated_at;
             $lastmod = $ref ? date('Y-m-d', strtotime($ref)) : date('Y-m-d');
             $xml .= "  <url>\n    <loc>{$loc}</loc>\n    <lastmod>{$lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n";

@@ -241,6 +241,10 @@ class SectionSchema
         'ad_slot' => [
             'optional' => ['slot_code', 'label', 'device'],
         ],
+        // KABAYAN888 JOBS-1 (2026-09-04) — job portal board, data-backed (job_listings at render time)
+        'jobs_board' => [
+            'optional' => ['eyebrow', 'heading', 'subheading', 'category', 'city', 'country', 'employment_type', 'limit', 'layout', 'show_filters', 'show_post_form', 'cta_text', 'cta_url', 'hide_when_empty'],
+        ],
     ];
 
     public static function allowedTypes(): array

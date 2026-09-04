@@ -710,6 +710,7 @@ class EngineExecutionService
             'content' => $this->executeContentAction($wsId, $action, $params, $context), /* h1-batch3-arm */
             'sarah'   => $this->executeSarahAction($wsId, $action, $params, $context), /* b4-sarah-arm */
             'infrastructure' => $this->executeInfrastructureAction($wsId, $action, $params, $context), /* INFRA888 */
+            'jobs' => $this->executeJobsAction($wsId, $action, $params, $context), /* KABAYAN888 JOBS-1 */
             default => throw new \RuntimeException("Unknown engine: {$engine}"),
         };
 
@@ -870,6 +871,20 @@ class EngineExecutionService
                 $wsId
             ),
             default => throw new \RuntimeException("Unknown Write action: {$action}"),
+        };
+    }
+
+    /** KABAYAN888 JOBS-1 (2026-09-04) — job portal engine (App\Engines\Jobs). */
+    private function executeJobsAction(int $wsId, string $action, array $params, array $ctx): array
+    {
+        $svc = app(\App\Engines\Jobs\Services\JobsService::class);
+        return match ($action) {
+            'create_job'  => $svc->create($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null, 'source' => $params['source'] ?? 'sarah'])),
+            'update_job'  => $svc->update($wsId, (int) ($params['job_id'] ?? 0), $params),
+            'publish_job' => $svc->publish($wsId, (int) ($params['job_id'] ?? 0)),
+            'expire_job'  => $svc->update($wsId, (int) ($params['job_id'] ?? 0), ['status' => 'expired']),
+            'list_jobs'   => $svc->list($wsId, $params),
+            default => throw new \RuntimeException("Unknown Jobs action: {$action}"),
         };
     }
 

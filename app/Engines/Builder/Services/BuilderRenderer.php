@@ -213,6 +213,45 @@ class BuilderRenderer
         return $this->getFullHtml($content, $tokens, $website->name ?? 'Website', $article->title ?? 'Article', $seoContext, (array) $website);
     }
 
+    /**
+     * KABAYAN888 JOBS-1 — a job listing page for a builder site (/jobs/{slug}). Themed when the
+     * site has a theme with renderJob(); otherwise a plain generic page.
+     */
+    public function renderJob(string $subdomain, string $slug): ?string
+    {
+        $website = DB::table('websites')->where('subdomain', $subdomain . '.levelupgrowth.io')->where('status', 'published')->first();
+        if (!$website) return null;
+        $job = app(\App\Engines\Jobs\Services\JobsService::class)->publicQuery((int) $website->id)->where('slug', $slug)->first();
+        if (!$job) return null;
+        try { DB::table('job_listings')->where('id', $job->id)->increment('view_count'); } catch (\Throwable) {}
+        $settings = $website->settings_json ?? '{}';
+        if (is_string($settings)) $settings = json_decode($settings, true) ?: [];
+        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) $website->workspace_id);
+        $tokens = [
+            'primary'      => $settings['primary_color']   ?? ($brand['primary_color']   ?? '#1F2937'),
+            'secondary'    => $settings['secondary_color'] ?? ($brand['secondary_color'] ?? '#94A3B8'),
+            'accent'       => $settings['accent_color']    ?? ($settings['primary_color'] ?? ($brand['primary_color'] ?? '#1F2937')),
+            'font_heading' => $settings['font_heading']    ?? ($brand['heading_font'] ?? 'Syne'),
+            'font_body'    => $settings['font_body']       ?? ($brand['body_font'] ?? 'DM Sans'),
+        ];
+        $__theme = ThemeRegistry::resolve($settings['theme'] ?? null);
+        if ($__theme !== null && method_exists($__theme, 'renderJob')) {
+            $content = $__theme->renderJob((array) $job, (array) $website);
+        } else {
+            $content = '<section style="padding:60px 24px"><div style="max-width:820px;margin:0 auto">' . $this->renderJobGeneric((array) $job, $this->normaliseBrand($tokens)) . '</div></section>';
+        }
+        $origin = $this->siteOrigin((array) $website);
+        $seoContext = [
+            'page_url' => $origin . '/jobs/' . $slug, 'site_url' => $origin, 'subdomain' => $subdomain,
+            'meta_title' => $job->title . ' — ' . $job->company, 'meta_description' => mb_substr(trim(strip_tags((string) ($job->summary ?: $job->description))), 0, 160),
+            'hero_image' => $job->company_logo_url ?? '',
+        ];
+        if ($__theme !== null && method_exists($__theme, 'headExtras')) {
+            try { $seoContext['head_extra'] = (string) $__theme->headExtras((array) $website, null, null, (array) $job); } catch (\Throwable $e) { $seoContext['head_extra'] = ''; }
+        }
+        return $this->getFullHtml($content, $tokens, $website->name ?? 'Website', $job->title, $seoContext, (array) $website);
+    }
+
     public function renderSection(array $sec, array $brand, array $website = [], array $allPages = [], string $currentSlug = 'home'): string
     {
         $type = $sec['type'] ?? 'text';
@@ -264,6 +303,7 @@ class BuilderRenderer
             'directory'         => $this->renderDirectory($sec, $brand, $website),
             'newsletter_signup' => $this->renderNewsletterSignup($sec, $brand, $website),
             'ad_slot'           => $this->renderAdSlot($sec, $brand, $website),
+            'jobs_board'        => $this->renderJobsBoard($sec, $brand, $website), // KABAYAN888 JOBS-1
             default            => $this->renderGeneric($sec, $brand),
         };
     }

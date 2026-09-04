@@ -5755,6 +5755,7 @@ Route::prefix('public/chatbot')->group(function () {
 Route::prefix('public/news')->group(function () {
     Route::get('/{subdomain}/stories',    [\App\Http\Controllers\Api\Widget\PublicNewsController::class, 'stories'])->where('subdomain', '[a-z0-9\-]+');
     Route::get('/{subdomain}/categories', [\App\Http\Controllers\Api\Widget\PublicNewsController::class, 'categories'])->where('subdomain', '[a-z0-9\-]+');
+    Route::get('/{subdomain}/jobs',       [\App\Http\Controllers\Api\Widget\PublicNewsController::class, 'jobs'])->where('subdomain', '[a-z0-9\-]+'); // KABAYAN888 JOBS-1
 });
 
 
