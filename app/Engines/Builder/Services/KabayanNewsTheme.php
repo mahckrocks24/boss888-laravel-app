@@ -900,10 +900,11 @@ HTML;
     /** Small, dependency-free behaviour: header shadow, drawer/search, share, load-more, progress. */
     private function js(bool $article): string
     {
+        $regJson = json_encode($this->multiRegion() ? array_map(fn ($r) => (string) $r['short'], $this->regions()) : new \stdClass(), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS); // QATAR-1: edition names for client-rendered cards
         $base = $this->e($this->base);
         return <<<'JS'
 <script>(function(){
-var d=document,h=d.getElementById('kb-header'),drawer=d.getElementById('kb-drawer'),search=d.getElementById('kb-search'),lastFocus=null;
+var REG={$regJson};var d=document,h=d.getElementById('kb-header'),drawer=d.getElementById('kb-drawer'),search=d.getElementById('kb-search'),lastFocus=null;
 function open(el,btn){if(!el)return;el.hidden=false;el.setAttribute('data-open','1');d.body.style.overflow='hidden';lastFocus=d.activeElement;if(btn)btn.setAttribute('aria-expanded','true');var f=el.querySelector('input,button,a');if(f)setTimeout(function(){f.focus()},30)}
 function close(){[drawer,search].forEach(function(el){if(!el)return;el.setAttribute('data-open','0');el.hidden=true});d.body.style.overflow='';d.querySelectorAll('[data-kb="menu"],[data-kb="search"]').forEach(function(b){b.setAttribute('aria-expanded','false')});if(lastFocus&&lastFocus.focus)lastFocus.focus()}
 d.addEventListener('click',function(e){var t=e.target.closest('[data-kb]');if(!t)return;var k=t.getAttribute('data-kb');
@@ -921,7 +922,7 @@ function onScroll(){var y=window.scrollY||0;var s=y>8;if(s!==stuck){stuck=s;if(h
 window.addEventListener('scroll',onScroll,{passive:true});onScroll();
 function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
 function variant(u,w){var m=/^(https?:\/\/[^\/]+)?\/storage\/((?:ai-images|uploads|media|builder-heroes|sites|logos|creative)\/[A-Za-z0-9_\-.\/]+)$/.exec(u||'');return m?((m[1]||'')+'/api/public/img/'+w+'/'+m[2]):u}
-function row(p,base){var img=p.featured_image_url?'<img src="'+esc(variant(p.featured_image_url,480))+'" alt="'+esc(p.title)+'" loading="lazy" decoding="async" width="480" height="480">':'<div class="kb-ph"></div>';return '<a class="kb-card kb-card--row" href="/'+base+'/'+encodeURIComponent(p.slug)+'"><div class="kb-card-img">'+img+'</div><div class="kb-card-body"><span class="kb-cat">'+esc(p.category_name||p.category)+'</span><h3>'+esc(p.title)+'</h3><div class="kb-meta"><span>'+esc(p.author||'')+'</span><span>'+esc(p.read_time||'')+'</span></div></div></a>'}
+function row(p,base){var img=p.featured_image_url?'<img src="'+esc(variant(p.featured_image_url,480))+'" alt="'+esc(p.title)+'" loading="lazy" decoding="async" width="480" height="480">':'<div class="kb-ph"></div>';return '<a class="kb-card kb-card--row" href="/'+base+'/'+encodeURIComponent(p.slug)+'"><div class="kb-card-img">'+img+'</div><div class="kb-card-body"><span class="kb-cat">'+(REG[p.region]?esc(REG[p.region])+' · ':'')+esc(p.category_name||p.category)+'</span><h3>'+esc(p.title)+'</h3><div class="kb-meta"><span>'+esc(p.author||'')+'</span><span>'+esc(p.read_time||'')+'</span></div></div></a>'}
 function api(sub){return '/api/public/news/'+encodeURIComponent(sub)+'/stories'}
 function more(btn){var sub=btn.getAttribute('data-sub'),base=btn.getAttribute('data-base'),off=parseInt(btn.getAttribute('data-offset')||'0',10),lim=parseInt(btn.getAttribute('data-limit')||'12',10),cat=btn.getAttribute('data-cat')||'',reg=btn.getAttribute('data-region')||'';btn.disabled=true;btn.textContent='Loading…';
  fetch(api(sub)+'?limit='+lim+'&offset='+off+(cat?'&category='+encodeURIComponent(cat):'')+(reg?'&region='+encodeURIComponent(reg):''),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){var list=btn.closest('section').querySelector('[data-kb-list]');(j.posts||[]).forEach(function(p){list.insertAdjacentHTML('beforeend',row(p,base))});if(j.has_more){btn.disabled=false;btn.textContent='Load more stories';btn.setAttribute('data-offset',String(off+(j.posts||[]).length))}else{btn.remove()}}).catch(function(){btn.disabled=false;btn.textContent='Load more stories'})}
