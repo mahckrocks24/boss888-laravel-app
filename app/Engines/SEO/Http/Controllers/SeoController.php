@@ -95,7 +95,40 @@ class SeoController extends BaseEngineController
     public function deepAudit(Request $r): JsonResponse
     {
         $r->validate(['url' => 'required|string']);
+        // SEO-P1-3 (2026-09-04): SSRF guard — the audit crawler fetches this URL, so a private/
+        // internal/loopback target (127.0.0.1, 169.254.x, 10/172.16/192.168, ::1) must be refused
+        // BEFORE any crawl or credit charge. Uses PHP's public-range filter on every resolved IP.
+        if ($block = $this->ssrfGuard($r->input('url'))) { return $block; }
         return $this->executeAction($r, 'deep_audit', $r->all());
+    }
+
+    /** Refuse a crawl target that is not a public http(s) address. Returns a 422 JsonResponse to block, or null to allow. */
+    private function ssrfGuard(?string $url): ?JsonResponse
+    {
+        $host   = strtolower((string) parse_url((string) $url, PHP_URL_HOST));
+        $scheme = strtolower((string) parse_url((string) $url, PHP_URL_SCHEME));
+        if ($host === '' || ! in_array($scheme, ['http', 'https'], true)) {
+            return response()->json(['success' => false, 'error' => 'A valid public http(s) URL is required.'], 422);
+        }
+        $ips = [];
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            $ips = [$host];
+        } else {
+            foreach ((array) @dns_get_record($host, DNS_A + DNS_AAAA) as $rec) {
+                if (! empty($rec['ip']))   { $ips[] = $rec['ip']; }
+                if (! empty($rec['ipv6'])) { $ips[] = $rec['ipv6']; }
+            }
+            if ($ips === []) { $r = @gethostbyname($host); if ($r && $r !== $host) { $ips[] = $r; } }
+        }
+        if ($ips === []) {
+            return response()->json(['success' => false, 'error' => 'The URL host could not be resolved.'], 422);
+        }
+        foreach ($ips as $ip) {
+            if (! filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+                return response()->json(['success' => false, 'error' => 'That URL points to a private or internal address and cannot be audited.'], 422);
+            }
+        }
+        return null;
     }
 
     // ── Content Delegation (cross-engine, costs credits) ──
