@@ -115,8 +115,21 @@ class SocialService
 
     public function schedulePost(int $postId, string $scheduledAt, ?int $wsId = null): void
     {
+        // CERT SOC-P1-3 (2026-09-04): normalise any standard datetime (ISO-8601 with T/Z,
+        // RFC, etc. — a JS frontend sends toISOString()) to MySQL format. Previously the raw
+        // string was written straight to the column, so "2026-09-06T09:00:00Z" produced a raw
+        // SQLSTATE[22007] error leaked to the client. Parse, require future, store UTC.
+        try {
+            $when = \Carbon\Carbon::parse($scheduledAt);
+        } catch (\Throwable $e) {
+            throw new \RuntimeException('Invalid schedule time — provide a valid date and time.');
+        }
+        if ($when->isPast()) {
+            throw new \RuntimeException('Schedule time must be in the future.');
+        }
+        $normalized = $when->utc()->format('Y-m-d H:i:s');
         $n = DB::table('social_posts')->where('id', $postId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update([
-            'status' => 'scheduled', 'scheduled_at' => $scheduledAt, 'updated_at' => now(),
+            'status' => 'scheduled', 'scheduled_at' => $normalized, 'updated_at' => now(),
         ]);
         if ($wsId !== null && $n === 0) throw new \RuntimeException('Post not found');
     }
