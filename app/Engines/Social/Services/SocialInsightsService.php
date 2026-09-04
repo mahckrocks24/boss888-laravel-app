@@ -103,14 +103,8 @@ class SocialInsightsService
             'metrics'     => null,   // never fabricated
         ];
 
-        // ── SAMPLE-SIZE GUARDS ───────────────────────────────────────────────
-        $sample = [
-            'n'                 => $n,
-            'enough_for_trends'   => $n >= self::MIN_FOR_TRENDS,
-            'enough_for_patterns' => $n >= self::MIN_FOR_PATTERN,
-            'enough_for_platform' => count($ownData['by_platform']) >= 2 && $n >= self::MIN_FOR_PLATFORM,
-            'thresholds'          => ['trends' => self::MIN_FOR_TRENDS, 'patterns' => self::MIN_FOR_PATTERN, 'platform' => self::MIN_FOR_PLATFORM],
-        ];
+        // ── SAMPLE-SIZE GUARDS (pure, see evaluateSample) ────────────────────
+        $sample = self::evaluateSample($n, count($ownData['by_platform']));
 
         return [
             'scope' => [
@@ -126,9 +120,22 @@ class SocialInsightsService
         ];
     }
 
+    /** Pure sample-size evaluation (no DB) — the documented thresholds, testable in isolation. */
+    public static function evaluateSample(int $n, int $platformCount): array
+    {
+        return [
+            'n'                   => $n,
+            'enough_for_trends'   => $n >= self::MIN_FOR_TRENDS,
+            'enough_for_patterns' => $n >= self::MIN_FOR_PATTERN,
+            'enough_for_platform' => $platformCount >= 2 && $n >= self::MIN_FOR_PLATFORM,
+            'thresholds'          => ['trends' => self::MIN_FOR_TRENDS, 'patterns' => self::MIN_FOR_PATTERN, 'platform' => self::MIN_FOR_PLATFORM],
+        ];
+    }
+
     /** Own-data, evidence-based recommendations (activity only — no provider metrics involved).
-     *  Every recommendation carries its evidence and a canonical action; guarded by sample size. */
-    private function recommendations(array $own, array $sample): array
+     *  Pure given its inputs. Every recommendation carries its evidence and a canonical action;
+     *  guarded by sample size. */
+    public function recommendations(array $own, array $sample): array
     {
         $recs = [];
         if (!$sample['enough_for_patterns']) {
