@@ -116,8 +116,9 @@ class BuilderRenderer
         // Build SEO context
         $subdomain = str_replace('.levelupgrowth.io', '', $website['subdomain'] ?? '');
         $slug = $page['slug'] ?? 'home';
-        $pageUrl = "https://{$subdomain}.levelupgrowth.io" . ($slug === 'home' ? '/' : "/{$slug}");
-        $siteUrl = "https://{$subdomain}.levelupgrowth.io";
+        // KABAYAN888 DOM-1 (2026-09-04): a verified custom domain is the canonical origin.
+        $siteUrl = $this->siteOrigin($website);
+        $pageUrl = $siteUrl . ($slug === 'home' ? '/' : "/{$slug}");
 
         $metaDescription = $page['meta_description']
             ?? $seoJson['description']
@@ -198,8 +199,8 @@ class BuilderRenderer
 
         $sub = str_replace('.levelupgrowth.io', '', (string) ($website->subdomain ?? ''));
         $seoContext = [
-            'page_url'         => "https://{$sub}.levelupgrowth.io/" . $this->editorialArticleBase((array) $website) . "/{$slug}", // KABAYAN888 G7a
-            'site_url'         => "https://{$sub}.levelupgrowth.io",
+            'page_url'         => $this->siteOrigin((array) $website) . "/" . $this->editorialArticleBase((array) $website) . "/{$slug}", // KABAYAN888 G7a + DOM-1
+            'site_url'         => $this->siteOrigin((array) $website),
             'subdomain'        => $sub,
             'meta_description' => $article->meta_description ?? '',
             'meta_title'       => $article->meta_title ?: $article->title,
@@ -697,6 +698,15 @@ HTML;
      * contains no escapable character, so an escaped value still executes.
      * Anything not plainly navigable collapses to '#'.
      */
+    /** KABAYAN888 DOM-1 — https origin of a site: verified custom domain first, else the platform subdomain. */
+    public function siteOrigin(array $website): string
+    {
+        $cd = strtolower(trim((string) ($website['custom_domain'] ?? ''), " /"));
+        if ($cd !== '' && !empty($website['domain_verified']) && preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', $cd)) return 'https://' . $cd;
+        $sub = str_replace('.levelupgrowth.io', '', (string) ($website['subdomain'] ?? ''));
+        return "https://{$sub}.levelupgrowth.io";
+    }
+
     private function safeUrl(?string $url, string $fallback = '#'): string
     {
         $url = trim((string) $url);

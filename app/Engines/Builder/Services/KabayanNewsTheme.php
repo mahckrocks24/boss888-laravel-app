@@ -80,6 +80,14 @@ class KabayanNewsTheme
 
     private function sub(): string { return str_replace('.levelupgrowth.io', '', (string) ($this->site['subdomain'] ?? '')); }
 
+    /** https origin: the verified custom domain when present (DOM-1), else the platform subdomain. */
+    private function siteUrl(): string
+    {
+        $cd = strtolower(trim((string) ($this->site['custom_domain'] ?? ''), " /"));
+        if ($cd !== '' && !empty($this->site['domain_verified']) && preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', $cd)) return 'https://' . $cd;
+        return 'https://' . $this->sub() . '.levelupgrowth.io';
+    }
+
     private function head(): string
     {
         $css = @file_get_contents(storage_path('app/kabayan/kabayan-theme.css')) ?: '';
@@ -103,7 +111,7 @@ class KabayanNewsTheme
              . '<meta name="robots" content="max-image-preview:large, max-snippet:-1, max-video-preview:-1">' . "\n"
              . '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' . "\n";
         if ($article) {
-            $site = 'https://' . $this->sub() . '.levelupgrowth.io';
+            $site = $this->siteUrl();
             $url = $site . '/' . $this->base . '/' . (string) ($article['slug'] ?? '');
             $brief = $article['brief_json'] ?? null; if (is_string($brief)) $brief = json_decode($brief, true); $brief = is_array($brief) ? $brief : [];
             $img = (string) ($article['featured_image_url'] ?? '');
@@ -178,7 +186,7 @@ class KabayanNewsTheme
         $sponsored = in_array('sponsored', array_map('strtolower', $tags), true);
         $kicker = $sponsored ? $this->e((string) ($this->settings['disclosure_label'] ?? 'Sponsored')) : $this->e($catLabel);
         $kickerCls = $sponsored ? ' kb-kicker--sponsored' : '';
-        $pageUrl = 'https://' . $this->sub() . '.levelupgrowth.io/' . $this->base . '/' . (string) ($article['slug'] ?? '');
+        $pageUrl = $this->siteUrl() . '/' . $this->base . '/' . (string) ($article['slug'] ?? '');
 
         $sources = '';
         if (!empty($brief['sources']) && is_array($brief['sources'])) {
