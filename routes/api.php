@@ -1256,6 +1256,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::get('/posts/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getPost($r->attributes->get('workspace_id'), $id)));
         Route::get('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAccounts($r->attributes->get('workspace_id'))));
         Route::get('/calendar', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getCalendarPosts($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'))));
+        // SOCIAL INSIGHTS (SOC-P1-5): deterministic, credit-free. Workspace from the token (server-side
+        // authz); website_id scopes to one site | 'all' | 'unattributed'. No exec chain -> no AI credit.
+        Route::get('/insights', fn(\Illuminate\Http\Request $r) => response()->json(
+            app(\App\Engines\Social\Services\SocialInsightsService::class)->overview(
+                (int) $r->attributes->get('workspace_id'),
+                ['website_id' => $r->input('website_id', 'all'), 'period_days' => (int) $r->input('period_days', 30)]
+            )));
         // Writes through pipeline
         Route::post('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'create_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         // Sarah × Social Phase 1 — AI surface routes
