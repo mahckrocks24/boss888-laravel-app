@@ -322,6 +322,11 @@ final class ShadowTurn
 
         return [
             'workspace_id'  => $wsId,
+            // LUG-KB (2026-09-04): platform sitemap + how-tos + FAQs, included ONLY for platform/how-to/
+            // where-is/FAQ turns (null otherwise, so normal turns are not bloated). Authoritative source
+            // for the app layout — the runtime should answer such questions from this, not its own guess.
+            'platform_guide' => \App\Core\Sarah888\PlatformKnowledge::isPlatformQuestion($message)
+                ? \App\Core\Sarah888\PlatformKnowledge::guide() : null,
             'facts'         => $facts,
             'capabilities'  => $caps,
             'not_configured_here' => $unavailable,
