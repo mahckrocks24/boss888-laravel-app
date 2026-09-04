@@ -65,7 +65,7 @@ class PublishedSiteMiddleware
             $deskSite = $website ?? DB::table('websites')->where('subdomain', $subdomain . '.levelupgrowth.io')->where('status', 'published')->first();
             if ($deskSite && \App\Engines\Publisher\Services\DeskService::themeHasDesk($deskSite)) {
                 $request->attributes->set('published_website_id', (int) $deskSite->id);
-                if (!str_starts_with($deskPath, 'api') && $request->isMethod('GET')) {
+                if (!str_starts_with($deskPath, 'api') && in_array($request->method(), ['GET', 'HEAD'], true)) {
                     return app(\App\Engines\Publisher\Services\DeskService::class)->shell($deskSite, $request);
                 }
             }

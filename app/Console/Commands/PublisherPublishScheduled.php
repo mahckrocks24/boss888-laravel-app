@@ -18,6 +18,8 @@ class PublisherPublishScheduled extends Command
     public function handle(DeskService $desk): int
     {
         $r = $desk->publishDue((int) $this->option('grace'));
+        \Illuminate\Support\Facades\Cache::put('desk:publish-scheduled:last_run', now()->toIso8601String(), 86400); // Unit 2 heartbeat, read by /api/desk/health
+        if ($r['published']) \Illuminate\Support\Facades\Log::info('desk.publish_scheduled', $r);
         $this->line(json_encode(['published' => $r['published'], 'stale_skipped' => $r['stale_skipped']]));
         return self::SUCCESS;
     }

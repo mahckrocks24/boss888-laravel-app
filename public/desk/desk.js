@@ -19,9 +19,17 @@
       if (r.status === 401 && !opts._retried && S.refresh && !/^auth\//.test(path)) {
         return doRefresh().then(function (ok) { if (!ok) { logout('Session expired. Sign in again.'); throw new Error('unauthenticated'); } return api(path, method, body, { _retried: true }); });
       }
-      return r.json().catch(function () { return { success: false, error: 'BAD_JSON', message: 'Unexpected response (' + r.status + ')' }; }).then(function (j) { j.__status = r.status; return j; });
+      if (r.status === 429) { dui.toast('Slow down — too many requests. Try again in a minute.', 'warning'); }
+      return r.json().catch(function () { return { success: false, error: 'BAD_JSON', message: 'Unexpected response (' + r.status + ')' }; }).then(function (j) { j.__status = r.status; if (r.status >= 500 && j.request_id) j.message = (j.message || 'Server error') + ' (ref ' + j.request_id.slice(0, 8) + ')'; return j; });
     });
   }
+  /* Unit 2 — idempotency keys for creates (safe retries on flaky networks) */
+  function idem(prefix) { return prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
+  function apiCreate(path, body, key) { var h = { 'Accept': 'application/json', 'X-Desk-Website': String(D.website_id), 'Content-Type': 'application/json', 'Idempotency-Key': key }; if (S.token) h['Authorization'] = 'Bearer ' + S.token; return fetch(D.api + path, { method: 'POST', headers: h, body: JSON.stringify(body) }).then(function (r) { return r.json().catch(function () { return { success: false, error: 'BAD_JSON' }; }).then(function (j) { j.__status = r.status; return j; }); }); }
+  /* Unit 2 — idle sign-out (default 30 min; configurable in More) */
+  var idleMs = 30 * 60000; try { var im = parseInt(localStorage.getItem('desk_idle_min') || '30', 10); idleMs = im > 0 ? im * 60000 : 0; } catch (e) {}
+  var idleTimer = null; function touchIdle() { if (!idleMs) return; clearTimeout(idleTimer); idleTimer = setTimeout(function () { if (S.token) { api('auth/logout', 'POST', { refresh_token: S.refresh }).catch(function () {}); logout('Signed out after ' + Math.round(idleMs / 60000) + ' minutes of inactivity.'); } }, idleMs); }
+  ['click', 'keydown', 'touchstart', 'mousemove', 'scroll'].forEach(function (ev) { document.addEventListener(ev, dui.debounce(touchIdle, 1000), { passive: true }); }); touchIdle();
   function doRefresh() {
     if (refreshing) return refreshing;
     refreshing = fetch(D.api + 'auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ refresh_token: S.refresh }) })
@@ -81,7 +89,7 @@
   /* ---------- shell ---------- */
   var NAV = [
     { r: '', label: 'Dashboard', ic: 'home' }, { group: 'Newsroom' }, { r: 'stories', label: 'Stories', ic: 'stories', ab: 'stories.read' }, { r: 'commission', label: 'Commission Sarah', ic: 'spark', ab: 'commission', badge: 'commissions_open' }, { r: 'sections', label: 'Sections', ic: 'sections', ab: 'stories.read' },
-    { group: 'Site' }, { r: 'jobs', label: 'Jobs', ic: 'jobs', ab: 'jobs.read', badge: 'jobs_draft' }, { r: 'inbox', label: 'Inbox', ic: 'inbox', ab: 'inbox.read', badge: 'inbox_new' }, { group: 'Desk' }, { r: 'members', label: 'Members', ic: 'members', ab: 'members.read' }, { r: 'settings', label: 'Settings', ic: 'more' }
+    { group: 'Site' }, { r: 'jobs', label: 'Jobs', ic: 'jobs', ab: 'jobs.read', badge: 'jobs_draft' }, { r: 'inbox', label: 'Inbox', ic: 'inbox', ab: 'inbox.read', badge: 'inbox_new' }, { group: 'Desk' }, { r: 'members', label: 'Members', ic: 'members', ab: 'members.read' }, { r: 'activity', label: 'Activity', ic: 'stories', ab: 'audit.read' }, { r: 'settings', label: 'Settings', ic: 'more' }
   ];
   function can(ab) { return !ab || (S.ctx && S.ctx.abilities.indexOf(ab) >= 0); }
   function badge(k) { var c = S.ctx && S.ctx.counts; if (!c) return 0; if (k === 'inbox_new') return c.inbox_new.total; if (k === 'jobs_draft') return c.jobs.draft; if (k === 'commissions_open') return c.commissions_open; return 0; }
@@ -117,8 +125,15 @@
   function go(hash) { location.hash = '#/' + hash; }
   function parse() { var h = location.hash.replace(/^#\/?/, ''); var q = {}; var qi = h.indexOf('?'); if (qi >= 0) { h.slice(qi + 1).split('&').forEach(function (p) { var kv = p.split('='); q[decodeURIComponent(kv[0])] = decodeURIComponent(kv[1] || ''); }); h = h.slice(0, qi); } var parts = h.split('/').filter(Boolean); return { name: parts[0] || '', id: parts[1] || null, sub: parts[2] || null, q: q }; }
   var VIEWS = {};
+  var lastHash = location.hash;
   function route() {
-    if (S.dirtyGuard && S.dirtyGuard()) { /* editor handles its own guard via confirm */ }
+    /* Unit 2 — unsaved-changes guard on in-app navigation (beforeunload only covers tab close) */
+    if (S.dirtyGuard && S.dirtyGuard() && location.hash !== lastHash && !S.__leaving) {
+      var target = location.hash; history.replaceState(null, '', lastHash);
+      dui.confirm('Leave without saving?', 'You have unsaved changes on this page.', { okLabel: 'Leave', danger: true }).then(function (ok) { if (ok) { S.dirtyGuard = null; S.__leaving = true; location.hash = target; } });
+      return;
+    }
+    S.__leaving = false; lastHash = location.hash; S.dirtyGuard = null;
     var r = parse(); S.route = r; renderNav(); window.scrollTo(0, 0);
     var v = VIEWS[r.name] || VIEWS['']; var m = main(); if (!m) return; m.innerHTML = '';
     try { v(r); } catch (e) { console.error(e); m.innerHTML = '<div class="desk-empty"><b>Could not render this page</b>' + esc(e.message) + '</div>'; }
@@ -190,7 +205,8 @@
     var list = el('div', 'desk-list'); m.appendChild(list); var more = el('div', 'desk-more'); m.appendChild(more);
     var c = S.ctx.counts.stories;
     function nav() { var q = []; if (f.status !== 'all') q.push('status=' + f.status); if (f.section) q.push('section=' + encodeURIComponent(f.section)); if (f.region) q.push('region=' + encodeURIComponent(f.region)); if (f.q) q.push('q=' + encodeURIComponent(f.q)); history.replaceState(null, '', '#/stories' + (q.length ? '?' + q.join('&') : '')); }
-    dui.chips(chipsHost, [{ value: 'all', label: 'All' }, { value: 'draft', label: 'Drafts', count: c.draft }, { value: 'scheduled', label: 'Scheduled', count: c.scheduled }, { value: 'published', label: 'Published', count: c.published }], f.status, function (v) { f.status = v; f.offset = 0; nav(); dui.chips(chipsHost, [{ value: 'all', label: 'All' }, { value: 'draft', label: 'Drafts', count: c.draft }, { value: 'scheduled', label: 'Scheduled', count: c.scheduled }, { value: 'published', label: 'Published', count: c.published }], v, arguments.callee); load(true); });
+    var chipItems = [{ value: 'all', label: 'All' }, { value: 'draft', label: 'Drafts', count: c.draft }, { value: 'scheduled', label: 'Scheduled', count: c.scheduled }, { value: 'published', label: 'Published', count: c.published }, { value: 'trash', label: 'Bin' }];
+    function chipRender() { dui.chips(chipsHost, chipItems, f.status, function (v) { f.status = v; f.offset = 0; nav(); chipRender(); load(true); }); } chipRender();
     dui.listbox(lbHost, { options: sectionOpts('All sections'), value: f.section, placeholder: 'Section', onChange: function (v) { f.section = v; f.offset = 0; nav(); load(true); } });
     search.oninput = dui.debounce(function () { f.q = search.value.trim(); f.offset = 0; nav(); load(true); }, 350);
     function load(reset) {
@@ -200,7 +216,9 @@
         progress(false); if (!j.success) return fail(j);
         if (reset) list.innerHTML = '';
         if (!j.stories.length && reset) { list.appendChild(empty(f.q || f.section || f.status !== 'all' ? 'Nothing matches' : 'No stories yet', f.q ? 'Try another search.' : 'Write one or commission Sarah.', can('stories.write') ? btn('New story', 'dui-btn--primary', function () { go('stories/new'); }) : null)); return; }
-        list.insertAdjacentHTML('beforeend', j.stories.map(storyItem).join(''));
+        if (f.status === 'trash') {
+          j.stories.forEach(function (s) { var row = el('div', 'desk-item', '<div class="desk-thumb">bin</div><div class="desk-item-b"><b>' + esc(s.title || '(untitled)') + '</b><small>Deleted ' + esc(dui.rel(s.deleted_at)) + ' · ' + esc(s.section_name || 'No section') + '</small></div><div class="desk-item-r"></div>'); if (can('stories.write')) row.lastElementChild.appendChild(btn('Restore', 'dui-btn--sm', function () { api('desk/stories/' + s.id + '/restore', 'POST').then(function (r) { if (!r.success) return fail(r); dui.toast('Restored as a draft', 'success'); refreshCounts(); load(true); }); })); list.appendChild(row); });
+        } else list.insertAdjacentHTML('beforeend', j.stories.map(storyItem).join(''));
         more.innerHTML = ''; if (j.has_more) more.appendChild(btn('Load more', '', function () { f.offset += j.limit; load(false); }));
       });
     }
@@ -229,7 +247,9 @@
         '<div class="desk-inline" style="margin-bottom:10px"><button type="button" class="dui-btn dui-btn--sm" id="st-upimg">Upload</button><button type="button" class="dui-btn dui-btn--sm" id="st-urlimg">Use URL</button>' + (isNew ? '' : '<button type="button" class="dui-btn dui-btn--sm" id="st-genimg" title="1 credit">Generate with AI</button>') + (s.featured_image_url ? '<button type="button" class="dui-btn dui-btn--sm dui-btn--quiet" id="st-rmimg">Remove</button>' : '') + '</div>' +
         '<input type="hidden" name="featured_image_url" value="' + esc(s.featured_image_url || '') + '">' + field('Alt text', inp('featured_image_alt', s.featured_image_alt, 'Describe the image')) + field('Caption', inp('image_caption', s.image_caption, '')) + field('Credit', inp('image_credit', s.image_credit, 'Photo: …')) + '</div>' +
         (isNew ? '' : '<div class="desk-card small muted">Created ' + esc(dui.fmt(s.created_at)) + '<br>Updated ' + esc(dui.rel(s.updated_at)) + (s.published_at ? '<br>Published ' + esc(dui.fmt(s.published_at)) : '') + '<br>Slug <span class="mono">' + esc(s.slug || '—') + '</span></div>') +
+        (isNew ? '' : '<div class="desk-card"><h3>History <button type="button" class="dui-btn dui-btn--sm dui-btn--quiet" id="st-hist">Show</button></h3><div id="st-versions" class="small muted">Every save keeps a version. Restore any of them.</div></div>') +
         '</aside></div>';
+      var hb = document.getElementById('st-hist'); if (hb) hb.onclick = function () { hb.disabled = true; api('desk/stories/' + id + '/versions').then(function (j) { hb.disabled = false; var h = document.getElementById('st-versions'); if (!j.success) return fail(j); if (!j.versions.length) { h.textContent = 'No earlier versions yet.'; return; } h.innerHTML = ''; j.versions.forEach(function (v) { var row = el('div', 'desk-inline', '<span>v' + v.version + ' · ' + esc(dui.fmt(v.created_at)) + ' · ' + v.words + ' words' + (v.by ? ' · ' + esc(v.by) : '') + '</span>'); row.style.justifyContent = 'space-between'; row.style.marginBottom = '6px'; if (can('stories.write')) row.appendChild(btn('Restore', 'dui-btn--sm', function () { dui.confirm('Restore version ' + v.version + '?', 'The current text becomes a new version first, so nothing is lost.', { okLabel: 'Restore' }).then(function (ok) { if (!ok) return; api('desk/stories/' + id + '/versions/' + v.id + '/restore', 'POST').then(function (r) { if (!r.success) return fail(r); story = r.story; dirty = false; clearAutosave(); dui.toast('Version restored', 'success'); render(); }); }); })); h.appendChild(row); }); }); };
       var secApi = dui.listbox(document.getElementById('st-section'), { options: sectionOpts('No section'), value: s.section || '', placeholder: 'Section', onChange: markDirty });
       var typeApi = dui.listbox(document.getElementById('st-type'), { options: S.ctx.enums.story_types.map(function (t) { return { value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }; }), value: s.type || 'article', onChange: markDirty });
       var regionApi = multiEdition() ? dui.listbox(document.getElementById('st-region'), { options: regionOpts('All editions'), value: s.region && s.region !== 'ALL' ? s.region : '', onChange: markDirty }) : null;
@@ -252,11 +272,25 @@
       // actions
       var acts = document.getElementById('st-actions');
       function collect() { var v = vals(m); v.title = document.getElementById('st-title').value.trim(); v.content = ed.getHTML(); v.section = secApi.get(); v.type = typeApi.get(); if (regionApi) v.region = regionApi.get() || 'ALL'; v.sources = getSources(); v.tags = (v.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean); return v; }
-      function save(then) {
+      var createKey = idem('story');
+      function save(then, overwrite) {
         var v = collect(); if (!v.title) { dui.toast('Add a headline first', 'warning'); document.getElementById('st-title').focus(); return Promise.resolve(false); }
+        if (!isNew && story && story.updated_at && !overwrite) v.expected_updated_at = story.updated_at; // Unit 2 optimistic lock
         progress(true);
-        return api(isNew ? 'desk/stories' : 'desk/stories/' + id, isNew ? 'POST' : 'PUT', v).then(function (j) { progress(false); if (!j.success) { fail(j, 'Could not save'); return false; } dirty = false; document.getElementById('st-dirty').textContent = 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); if (isNew) { id = j.id; isNew = false; history.replaceState(null, '', '#/stories/' + id); } story = j.story; if (then) then(); else { render(); } refreshCounts(); return true; });
+        var req = isNew ? apiCreate('desk/stories', v, createKey) : api('desk/stories/' + id, 'PUT', v);
+        return req.then(function (j) {
+          progress(false);
+          if (j.__status === 409 && j.error === 'STALE') { return dui.dialog({ title: 'Someone else saved this story', body: '<p class="dui-p">' + esc(j.message) + '</p>', okLabel: 'Overwrite with mine', cancelLabel: 'Reload theirs', danger: true }).then(function (ok) { if (ok) return save(then, true); dirty = false; story = j.story; clearAutosave(); render(); return false; }); }
+          if (!j.success) { if (j.errors) { var first = Object.keys(j.errors)[0]; var fld = m.querySelector('[name="' + first + '"]'); if (fld) fld.focus(); } fail(j, 'Could not save'); return false; }
+          dirty = false; clearAutosave(); document.getElementById('st-dirty').textContent = 'Saved ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); if (isNew) { id = j.id; isNew = false; history.replaceState(null, '', '#/stories/' + id); } story = j.story; if (then) then(); else { render(); } refreshCounts(); return true;
+        });
       }
+      /* Unit 2 — local autosave every few seconds while dirty; offered back after a crash or lost session */
+      var asKey = 'desk_autosave_' + D.website_id + '_' + (isNew ? 'new' : id);
+      var autosave = dui.debounce(function () { if (!dirty) return; try { localStorage.setItem(asKey, JSON.stringify({ at: Date.now(), v: collect() })); } catch (e) {} }, 3000);
+      function clearAutosave() { try { localStorage.removeItem(asKey); } catch (e) {} }
+      m.addEventListener('input', autosave); ed.el.addEventListener('input', autosave);
+      try { var saved = JSON.parse(localStorage.getItem(asKey) || 'null'); if (saved && saved.v && (!story || !story.updated_at || saved.at > new Date(story.updated_at.replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(story.updated_at) ? '' : 'Z')).getTime())) { dui.confirm('Recover unsaved work?', 'A local draft from ' + dui.rel(new Date(saved.at).toISOString()) + ' was found on this device.', { okLabel: 'Recover' }).then(function (ok) { if (!ok) { clearAutosave(); return; } var sv = saved.v; document.getElementById('st-title').value = sv.title || ''; ed.setHTML(sv.content || ''); if (sv.excerpt != null) m.querySelector('[name=excerpt]').value = sv.excerpt; if (sv.section) secApi.set(sv.section); if (regionApi && sv.region) regionApi.set(sv.region === 'ALL' ? '' : sv.region); markDirty(); growTitle(); }); } } catch (e) {}
       if (canW) acts.appendChild(btn('Save', 'dui-btn--primary', function () { save(); }));
       if (canPub && s.status !== 'published') acts.appendChild(btn('Publish', 'dui-btn--accent', function () { save(function () { api('desk/stories/' + id + '/publish', 'POST').then(function (j) { if (!j.success) { fail(j, 'Not publishable'); render(); return; } story = j.story; dui.toast('Published', 'success'); render(); refreshCounts(); }); }); }));
       if (canPub && s.status !== 'published') acts.appendChild(btn('Schedule', '', function () { save(function () { scheduleDialog(); }); }));
@@ -293,7 +327,7 @@
     var len = dui.listbox(document.getElementById('cm-len'), { options: [{ value: 500, label: 'Short (~500 words)' }, { value: 800, label: 'Standard (~800 words)' }, { value: 1200, label: 'Long read (~1,200 words)' }], value: 800 });
     var cmRegion = multiEdition() ? dui.listbox(document.getElementById('cm-region'), { options: regionOpts('All editions'), value: '' }) : null;
     var f = document.getElementById('cm-form');
-    f.onsubmit = function (e) { e.preventDefault(); var v = vals(f); v.section = sec.get(); v.type = typ.get(); v.length = Number(len.get()); if (cmRegion) v.region = cmRegion.get() || 'ALL'; if (!v.title && !v.brief) return dui.toast('Give Sarah a title or a brief', 'warning'); var b = f.querySelector('button'); b.disabled = true; api('desk/commissions', 'POST', v).then(function (j) { b.disabled = false; if (!j.success) return fail(j, 'Could not commission'); dui.toast(j.status === 'awaiting_approval' ? 'Sent — waiting for approval in LevelUp' : 'Sent to Sarah', 'success'); f.reset(); f.querySelector('[name=tone]').value = 'clear, warm, factual, kabayan-to-kabayan'; loadList(); refreshCounts(); }); };
+    f.onsubmit = function (e) { e.preventDefault(); var v = vals(f); v.section = sec.get(); v.type = typ.get(); v.length = Number(len.get()); if (cmRegion) v.region = cmRegion.get() || 'ALL'; if (!v.title && !v.brief) return dui.toast('Give Sarah a title or a brief', 'warning'); var b = f.querySelector('button'); b.disabled = true; apiCreate('desk/commissions', v, idem('cm')).then(function (j) { b.disabled = false; if (!j.success) return fail(j, 'Could not commission'); dui.toast(j.status === 'awaiting_approval' ? 'Sent — waiting for approval in LevelUp' : 'Sent to Sarah', 'success'); f.reset(); f.querySelector('[name=tone]').value = 'clear, warm, factual, kabayan-to-kabayan'; loadList(); refreshCounts(); }); };
     function loadList() {
       api('desk/commissions').then(function (j) { var h = document.getElementById('cm-list'); if (!h) return; if (!j.success) return fail(j); if (!j.commissions.length) { h.innerHTML = ''; h.appendChild(empty('Nothing commissioned yet', 'Your briefs and their progress show here.')); return; }
         h.innerHTML = j.commissions.map(function (c) { var st = c.status === 'queued' && c.task_status ? c.task_status : c.status; return '<div class="desk-item" style="grid-template-columns:1fr auto"><div class="desk-item-b"><b>' + esc(c.title) + '</b><small>' + (multiEdition() ? esc(regionLabel(c.region)) + ' · ' : '') + esc(c.section || 'no section') + ' · ' + esc(c.type) + ' · ' + esc(dui.rel(c.created_at)) + (c.progress ? ' · ' + esc(c.progress) : '') + (c.error ? ' · <span style="color:var(--rd)">' + esc(c.error) + '</span>' : '') + '</small></div><div class="desk-item-r">' + pill(c.status, st.replace('_', ' ')) + (c.article_id ? '<a href="#/stories/' + c.article_id + '">Open draft</a>' : '') + '</div></div>'; }).join('');
@@ -359,7 +393,8 @@
       var ed = dui.editor(document.getElementById('jb-desc'), j.description || '', { placeholder: 'Duties, hours, who it suits…', pickImage: pickImage });
       var f = document.getElementById('jb-form'); if (!canW) f.querySelectorAll('input,textarea').forEach(function (i) { i.readOnly = true; });
       function collect() { var v = vals(f); v.category = cat.get(); v.category_slug = cat.get(); v.employment_type = typ.get(); v.country = country.get(); v.description = ed.getHTML(); v.requirements = v.requirements.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); v.benefits = v.benefits.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return v; }
-      function save(then) { var v = collect(); if (!v.title || !v.company) { dui.toast('Title and company are required', 'warning'); return; } progress(true); api(isNew ? 'desk/jobs' : 'desk/jobs/' + id, isNew ? 'POST' : 'PUT', v).then(function (r) { progress(false); if (!r.success) return fail(r, 'Could not save'); if (isNew) { id = r.job_id; isNew = false; history.replaceState(null, '', '#/jobs/' + id); } job = r.job; refreshCounts(); if (then) then(); else { dui.toast('Saved', 'success'); render(); } }); }
+      var jobKey = idem('job');
+      function save(then, overwrite) { var v = collect(); if (!v.title || !v.company) { dui.toast('Title and company are required', 'warning'); return; } if (!isNew && job && job.updated_at && !overwrite) v.expected_updated_at = job.updated_at; progress(true); (isNew ? apiCreate('desk/jobs', v, jobKey) : api('desk/jobs/' + id, 'PUT', v)).then(function (r) { progress(false); if (r.__status === 409) { return dui.dialog({ title: 'Someone else saved this listing', body: '<p class="dui-p">' + esc(r.message) + '</p>', okLabel: 'Overwrite with mine', cancelLabel: 'Reload theirs', danger: true }).then(function (ok) { if (ok) return save(then, true); job = r.job; render(); }); } if (!r.success) return fail(r, 'Could not save'); if (isNew) { id = r.job_id; isNew = false; history.replaceState(null, '', '#/jobs/' + id); } job = r.job; refreshCounts(); if (then) then(); else { dui.toast('Saved', 'success'); render(); } }); }
       var acts = document.getElementById('jb-actions');
       if (canW) acts.appendChild(btn('Save', 'dui-btn--primary', function () { save(); }));
       if (canP && j.status !== 'published') acts.appendChild(btn('Publish', 'dui-btn--accent', function () { save(function () { api('desk/jobs/' + id + '/publish', 'POST').then(function (r) { if (!r.success) { fail(r, 'Not publishable'); render(); return; } job = r.job; dui.toast('Job is live (45 days)', 'success'); render(); refreshCounts(); }); }); }));
@@ -411,16 +446,33 @@
   };
   var ROLE_OPTS = [{ value: 'owner', label: 'Owner' }, { value: 'editor', label: 'Editor' }, { value: 'moderator', label: 'Jobs moderator' }, { value: 'viewer', label: 'Viewer' }];
 
+  /* ---------- activity (audit trail) ---------- */
+  VIEWS.activity = function () {
+    setTitle('Activity'); var m = main();
+    if (!can('audit.read')) { m.appendChild(empty('Owners and editors only', 'The activity log is restricted.')); return; }
+    var f = { entity_type: '', offset: 0 }; var tb = el('div', 'desk-toolbar'); var lb = el('div'); lb.style.minWidth = '180px'; tb.appendChild(lb); m.appendChild(tb); var list = el('div', 'desk-list'); m.appendChild(list); var more = el('div', 'desk-more'); m.appendChild(more);
+    dui.listbox(lb, { options: [{ value: '', label: 'Everything' }, { value: 'story', label: 'Stories' }, { value: 'job', label: 'Jobs' }, { value: 'lead', label: 'Inbox' }, { value: 'section', label: 'Sections' }, { value: 'user', label: 'Members & sessions' }, { value: 'commission', label: 'Commissions' }], value: '', onChange: function (v) { f.entity_type = v; f.offset = 0; load(true); } });
+    function load(reset) { if (reset) list.innerHTML = '<div class="muted small">Loading…</div>'; api('desk/audit?entity_type=' + f.entity_type + '&offset=' + f.offset + '&limit=50').then(function (j) { if (!j.success) return fail(j); if (reset) list.innerHTML = ''; if (!j.items.length && reset) { list.appendChild(empty('Nothing yet', 'Every change made in the desk is recorded here.')); return; } list.insertAdjacentHTML('beforeend', j.items.map(function (a) { var link = a.entity_type === 'story' && a.entity_id ? '#/stories/' + a.entity_id : a.entity_type === 'job' && a.entity_id ? '#/jobs/' + a.entity_id : a.entity_type === 'lead' && a.entity_id ? '#/inbox/' + a.entity_id : null; var diff = ''; if (a.before || a.after) diff = '<small class="mono">' + esc(JSON.stringify(a.before || {})) + ' → ' + esc(JSON.stringify(a.after || {})) + '</small>'; return '<div class="desk-item" style="grid-template-columns:1fr auto"><div class="desk-item-b"><b>' + esc(a.action.replace('.', ' · ')) + (a.summary ? ' — ' + esc(a.summary) : '') + '</b><small>' + esc((a.user && (a.user.name || a.user.email)) || 'system') + ' (' + esc(a.role || '') + ') · ' + esc(a.ip || '') + ' · ref ' + esc((a.request_id || '').slice(0, 8)) + '</small>' + diff + '</div><div class="desk-item-r"><span>' + esc(dui.fmt(a.created_at)) + '</span>' + (link ? '<a href="' + link + '">Open</a>' : '') + '</div></div>'; }).join('')); more.innerHTML = ''; if (j.has_more) more.appendChild(btn('Load more', '', function () { f.offset += j.limit; load(false); })); }); }
+    load(true);
+  };
+
   /* ---------- settings / more ---------- */
   VIEWS.settings = function () {
     setTitle('More'); var m = main();
     var theme = document.documentElement.getAttribute('data-theme') || 'dark';
-    m.innerHTML = '<div class="desk-list" style="margin-bottom:16px">' + [['commission', 'Commission Sarah', 'commission'], ['sections', 'Sections', 'stories.read'], ['members', 'Members', 'members.read']].filter(function (x) { return can(x[2]); }).map(function (x) { return '<a class="desk-item" href="#/' + x[0] + '" style="grid-template-columns:1fr auto;min-height:52px"><div class="desk-item-b"><b>' + x[1] + '</b></div><div class="desk-item-r">›</div></a>'; }).join('') + '</div>' +
+    m.innerHTML = '<div class="desk-list" style="margin-bottom:16px">' + [['commission', 'Commission Sarah', 'commission'], ['sections', 'Sections', 'stories.read'], ['members', 'Members', 'members.read'], ['activity', 'Activity log', 'audit.read']].filter(function (x) { return can(x[2]); }).map(function (x) { return '<a class="desk-item" href="#/' + x[0] + '" style="grid-template-columns:1fr auto;min-height:52px"><div class="desk-item-b"><b>' + x[1] + '</b></div><div class="desk-item-r">›</div></a>'; }).join('') + '</div>' +
+      '<div class="desk-card" style="margin-bottom:14px"><h3>Security</h3><div class="dui-row"><div>' + field('Sign out automatically after', '<div id="set-idle"></div>') + '</div></div><div id="set-sessions" class="small muted">Loading sessions…</div><button class="dui-btn dui-btn--sm" type="button" id="set-revoke" style="margin-top:8px">Sign out all other devices</button></div>' +
+      (S.ctx.role === 'owner' ? '<div class="desk-card" style="margin-bottom:14px"><h3>System health <button type="button" class="dui-btn dui-btn--sm dui-btn--quiet" id="set-health">Check</button></h3><div id="set-health-out" class="small muted">Database, scheduler, queue and overdue stories.</div></div>' : '') +
       '<div class="desk-card" style="margin-bottom:14px"><h3>Appearance</h3><div id="set-theme" style="max-width:220px"></div></div>' +
       '<div class="desk-card" style="margin-bottom:14px"><h3>Site</h3><dl class="desk-kv"><dt>Public URL</dt><dd><a href="' + esc(D.origin) + '" target="_blank" rel="noopener">' + esc(D.origin) + '</a></dd><dt>Stories base</dt><dd class="mono">/' + esc(D.article_base) + '/</dd><dt>Theme</dt><dd class="mono">' + esc(D.theme) + '</dd><dt>Workspace</dt><dd class="mono">#' + D.workspace_id + '</dd></dl><p class="small muted" style="margin:10px 0 0">Layout, navigation and section pages are edited by Arthur in LevelUp Growth. Ads and the Spots directory arrive in later desk releases.</p></div>' +
       '<div class="desk-card"><h3>Account</h3><p class="small">' + esc(S.ctx.user.email) + ' · ' + esc(S.ctx.role) + '</p><button class="dui-btn" type="button" id="set-out">Sign out</button></div>';
     dui.listbox(document.getElementById('set-theme'), { options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], value: theme, onChange: function (v) { document.documentElement.setAttribute('data-theme', v); try { localStorage.setItem('desk_theme', v); } catch (e) {} } });
     document.getElementById('set-out').onclick = function () { api('auth/logout', 'POST', { refresh_token: S.refresh }).catch(function () {}); logout(); };
+    var curIdle = '30'; try { curIdle = localStorage.getItem('desk_idle_min') || '30'; } catch (e) {}
+    dui.listbox(document.getElementById('set-idle'), { options: [{ value: '15', label: '15 minutes' }, { value: '30', label: '30 minutes' }, { value: '60', label: '1 hour' }, { value: '0', label: 'Never (not recommended)' }], value: curIdle, onChange: function (v) { try { localStorage.setItem('desk_idle_min', v); } catch (e) {} idleMs = parseInt(v, 10) > 0 ? parseInt(v, 10) * 60000 : 0; touchIdle(); dui.toast('Saved', 'success'); } });
+    api('desk/sessions').then(function (j) { var h = document.getElementById('set-sessions'); if (!h || !j.success) return; h.innerHTML = '<b style="color:var(--t1)">' + j.sessions.length + ' active session' + (j.sessions.length === 1 ? '' : 's') + '</b><br>' + j.sessions.slice(0, 8).map(function (s) { return (s.current ? '● This device · ' : '○ ') + esc(s.ip || '') + ' · ' + esc((s.user_agent || '').slice(0, 60)) + ' · ' + esc(dui.rel(s.created_at)); }).join('<br>'); });
+    document.getElementById('set-revoke').onclick = function () { dui.confirm('Sign out other devices?', 'Every other browser or phone signed in as you will need to sign in again.', { okLabel: 'Sign them out' }).then(function (ok) { if (!ok) return; api('desk/sessions/revoke-others', 'POST').then(function (j) { if (!j.success) return fail(j); dui.toast(j.revoked + ' session(s) signed out', 'success'); route(); }); }); };
+    var hb = document.getElementById('set-health'); if (hb) hb.onclick = function () { hb.disabled = true; api('desk/health').then(function (j) { hb.disabled = false; var o = document.getElementById('set-health-out'); if (!j.success) return fail(j); var c = j.checks; o.innerHTML = '<span class="pill pill--' + (j.status === 'ok' ? 'published' : j.status === 'degraded' ? 'scheduled' : 'failed') + '">' + esc(j.status) + '</span> <span class="mono">' + esc(j.checked_at) + '</span><dl class="desk-kv" style="margin-top:8px"><dt>Database</dt><dd>' + esc(c.database) + '</dd><dt>Scheduler</dt><dd>' + esc(c.scheduler.state) + (c.scheduler.age_seconds != null ? ' (' + c.scheduler.age_seconds + 's ago)' : '') + '</dd><dt>Overdue stories</dt><dd>' + c.stories_overdue + '</dd><dt>Open commissions</dt><dd>' + c.commissions.open + (c.commissions.oldest_open_minutes ? ' · oldest ' + c.commissions.oldest_open_minutes + ' min' : '') + '</dd><dt>Queue</dt><dd>' + c.queue.pending_tasks + ' pending · ' + c.queue.running_tasks + ' running · ' + c.queue.failed_24h + ' failed (24h)</dd><dt>Audit rows (24h)</dt><dd>' + c.audit.rows_24h + '</dd></dl>'; }); };
   };
 
   /* ---------- boot ---------- */

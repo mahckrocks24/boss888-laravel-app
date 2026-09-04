@@ -11,7 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/desk/desk.css?v={{ $v }}">
-<script>
+<script nonce="{{ $nonce }}">
 window.DESK = @json($desk);
 document.documentElement.style.setProperty('--site', window.DESK.primary || '#0038A8');
 document.documentElement.style.setProperty('--site-accent', window.DESK.accent || '#FCD116');
@@ -23,7 +23,7 @@ try { var t = localStorage.getItem('desk_theme'); if (t === 'light' || t === 'da
 <div id="desk" class="desk" data-state="boot">
   <noscript><p style="padding:24px;font-family:system-ui">The Publisher Desk needs JavaScript.</p></noscript>
 </div>
-<script src="/desk/desk-ui.js?v={{ $v }}"></script>
-<script src="/desk/desk.js?v={{ $v }}"></script>
+<script src="/desk/desk-ui.js?v={{ $v }}" nonce="{{ $nonce }}"></script>
+<script src="/desk/desk.js?v={{ $v }}" nonce="{{ $nonce }}"></script>
 </body>
 </html>

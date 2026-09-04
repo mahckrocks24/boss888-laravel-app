@@ -45,6 +45,7 @@ class DeskService
         'inbox.write'     => ['owner', 'editor', 'moderator'],
         'members.read'    => ['owner', 'editor', 'moderator', 'viewer'],
         'members.write'   => ['owner'],
+        'audit.read'      => ['owner', 'editor'],
     ];
 
     public const STORY_TYPES = ['news', 'article', 'feature', 'opinion', 'guide'];
@@ -54,6 +55,7 @@ class DeskService
         private JobsService $jobs,
         private TeamService $team,
         private EngineExecutionService $kernel,
+        private DeskAudit $audit,
     ) {}
 
     // ─── theme / host / role ────────────────────────────────────────────────
@@ -158,10 +160,22 @@ class DeskService
             'api'          => '/api/',
         ];
         $v = @filemtime(public_path('desk/desk.js')) ?: time();
-        return response()->view('desk.shell', ['desk' => $desk, 'v' => $v])
-            ->header('Cache-Control', 'no-cache, must-revalidate')
+        $nonce = rtrim(strtr(base64_encode(random_bytes(18)), '+/', '-_'), '=');
+        // Unit 2 — strict CSP: only our own scripts (nonce-bound) and Google Fonts; no framing, no plugins, no form posts elsewhere.
+        $csp = implode('; ', [
+            "default-src 'self'", "script-src 'self' 'nonce-{$nonce}'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", "font-src 'self' https://fonts.gstatic.com data:",
+            "img-src 'self' data: blob: https:", "connect-src 'self'", "frame-ancestors 'none'", "frame-src 'none'", "object-src 'none'", "base-uri 'self'", "form-action 'self'", "upgrade-insecure-requests",
+        ]);
+        return response()->view('desk.shell', ['desk' => $desk, 'v' => $v, 'nonce' => $nonce])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate')
             ->header('X-Robots-Tag', 'noindex, nofollow')
-            ->header('X-Served-By', 'publisher-desk');
+            ->header('X-Served-By', 'publisher-desk')
+            ->header('Content-Security-Policy', $csp)
+            ->header('X-Frame-Options', 'DENY')
+            ->header('X-Content-Type-Options', 'nosniff')
+            ->header('Referrer-Policy', 'no-referrer')
+            ->header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()')
+            ->header('Cross-Origin-Opener-Policy', 'same-origin');
     }
 
     // ─── context / dashboard ────────────────────────────────────────────────
@@ -243,6 +257,7 @@ class DeskService
         $slug = Str::slug((string) ($d['slug'] ?? $name)); if ($slug === '') return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Slug is required.'];
         if (DB::table('blog_categories')->where('workspace_id', $wsId)->where('slug', $slug)->exists()) return ['success' => false, 'error' => 'DUPLICATE', 'message' => "A section with slug '{$slug}' already exists."];
         $id = DB::table('blog_categories')->insertGetId(['workspace_id' => $wsId, 'name' => mb_substr($name, 0, 100), 'slug' => mb_substr($slug, 0, 100), 'created_at' => now(), 'updated_at' => now()]);
+        $this->audit->record('section.create', 'section', $id, $name, null, ['slug' => $slug]);
         return ['success' => true, 'id' => $id, 'slug' => $slug];
     }
 
@@ -260,7 +275,7 @@ class DeskService
                 DB::table('articles')->where('workspace_id', $wsId)->where('blog_category', $c->slug)->update(['blog_category' => $slug]);
             }
         }
-        if ($up) { $up['updated_at'] = now(); DB::table('blog_categories')->where('id', $id)->update($up); }
+        if ($up) { $up['updated_at'] = now(); DB::table('blog_categories')->where('id', $id)->update($up); $this->audit->record('section.update', 'section', $id, $c->name, ['name' => $c->name, 'slug' => $c->slug], $up); }
         return ['success' => true];
     }
 
@@ -271,6 +286,7 @@ class DeskService
         $n = DB::table('articles')->where('workspace_id', $wsId)->where('blog_category', $c->slug)->whereNull('deleted_at')->count();
         if ($n > 0) return ['success' => false, 'error' => 'IN_USE', 'message' => "{$n} stories still use this section. Move them first."];
         DB::table('blog_categories')->where('id', $id)->delete();
+        $this->audit->record('section.delete', 'section', $id, $c->name, ['slug' => $c->slug], null);
         return ['success' => true];
     }
 
@@ -278,8 +294,9 @@ class DeskService
 
     public function listStories(int $wsId, int $wid, array $f = []): array
     {
-        $q = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->whereNull('deleted_at');
-        if (!empty($f['status']) && $f['status'] !== 'all') $q->where('status', $f['status']);
+        $q = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid);
+        if (($f['status'] ?? '') === 'trash') $q->whereNotNull('deleted_at'); // Unit 2: recoverable bin (soft-deleted)
+        else { $q->whereNull('deleted_at'); if (!empty($f['status']) && $f['status'] !== 'all') $q->where('status', $f['status']); }
         if (!empty($f['section'])) $q->where('blog_category', $f['section']);
         $regionF = strtoupper(trim((string) ($f['region'] ?? ''))); // QATAR-1: exact edition (ALL = stories marked for every edition)
         if ($regionF === 'ALL') $q->where(fn ($w) => $w->whereRaw("JSON_EXTRACT(brief_json, '$.region') IS NULL")->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.region'))) IN ('', 'ALL')"));
@@ -288,10 +305,37 @@ class DeskService
         $total = (clone $q)->count();
         $limit = max(1, min(100, (int) ($f['limit'] ?? 30))); $offset = max(0, (int) ($f['offset'] ?? 0));
         $rows = $q->orderByRaw("FIELD(status,'scheduled','draft','published')")->orderByDesc('updated_at')->offset($offset)->limit($limit)
-            ->get(['id', 'title', 'slug', 'status', 'type', 'blog_category', 'excerpt', 'featured_image_url', 'word_count', 'read_time', 'brief_json', 'published_at', 'scheduled_at', 'updated_at', 'created_at']);
+            ->get(['id', 'title', 'slug', 'status', 'type', 'blog_category', 'excerpt', 'featured_image_url', 'word_count', 'read_time', 'brief_json', 'published_at', 'scheduled_at', 'updated_at', 'created_at', 'deleted_at']);
         $website = DB::table('websites')->where('id', $wid)->first();
         $names = DB::table('blog_categories')->where('workspace_id', $wsId)->pluck('name', 'slug')->all();
-        return ['success' => true, 'stories' => $rows->map(fn ($a) => $this->storyRow($a, $website, $names))->all(), 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => $offset + $rows->count() < $total];
+        return ['success' => true, 'stories' => $rows->map(fn ($a) => $this->storyRow($a, $website, $names) + ['deleted_at' => $a->deleted_at])->all(), 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => $offset + $rows->count() < $total];
+    }
+
+    public function restoreStory(int $wsId, int $wid, int $userId, int $id): array
+    {
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNotNull('deleted_at')->first(['id', 'title', 'deleted_at']);
+        if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        DB::table('articles')->where('id', $id)->update(['deleted_at' => null, 'status' => 'draft', 'updated_at' => now()]);
+        $this->audit->record('story.restore', 'story', $id, $a->title, ['deleted_at' => $a->deleted_at], ['status' => 'draft']);
+        return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
+    }
+
+    public function storyVersions(int $wsId, int $wid, int $id): array
+    {
+        if (!DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->exists()) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $names = DB::table('users')->whereIn('id', DB::table('article_versions')->where('article_id', $id)->whereNotNull('changed_by')->pluck('changed_by'))->pluck('name', 'id')->all();
+        $rows = array_map(fn ($v) => ['id' => (int) $v->id, 'version' => (int) $v->version_number, 'summary' => $v->change_summary, 'by' => $names[$v->changed_by] ?? null, 'words' => str_word_count(strip_tags((string) $v->content)), 'created_at' => $v->created_at], $this->write->getVersions($id, $wsId));
+        return ['success' => true, 'versions' => $rows];
+    }
+
+    public function restoreStoryVersion(int $wsId, int $wid, int $userId, int $id, int $vid): array
+    {
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'title', 'status']);
+        if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        try { $this->write->restoreVersion($id, $vid, $wsId); } catch (\Throwable $e) { return ['success' => false, 'error' => 'NOT_FOUND', 'message' => 'That version no longer exists.']; }
+        $this->audit->record('story.restore_version', 'story', $id, $a->title, null, ['version_id' => $vid]);
+        if ($a->status === 'published') $this->invalidate($wid, $id);
+        return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
     }
 
     private function storyRow(object $a, object $website, array $names, bool $full = false): array
@@ -338,13 +382,15 @@ class DeskService
         $site = DB::table('websites')->where('id', $wid)->first();
         $this->mergeBrief($id, ['author' => $d['author'] ?? $this->deskAuthor($wid), 'sources' => $this->cleanSources($d['sources'] ?? []), 'image_caption' => $d['image_caption'] ?? null, 'image_credit' => $d['image_credit'] ?? null, 'region' => $this->regionCode($site, $d['region'] ?? null), 'desk' => ['created_by' => $userId]]);
         if (!empty($d['featured_image_url'])) DB::table('articles')->where('id', $id)->update(['featured_image_url' => $this->cleanUrl($d['featured_image_url']), 'featured_image_alt' => mb_substr((string) ($d['featured_image_alt'] ?? ''), 0, 255)]);
+        $this->audit->record('story.create', 'story', $id, $title, null, ['section' => $section, 'type' => $d['type'] ?? 'article']);
         return ['success' => true, 'id' => $id, 'story' => $this->getStory($wsId, $wid, $id)];
     }
 
     public function updateStory(int $wsId, int $wid, int $userId, int $id, array $d): array
     {
-        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'status']);
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'status', 'title', 'blog_category', 'updated_at']);
         if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        if ($this->stale($a, $d)) return ['success' => false, 'error' => 'STALE', 'message' => 'Someone saved this story after you opened it. Reload to see their changes, or save again to overwrite.', 'story' => $this->getStory($wsId, $wid, $id)];
         $data = [];
         if (array_key_exists('title', $d)) { $t = trim((string) $d['title']); if ($t === '') return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Title is required.']; $data['title'] = mb_substr($t, 0, 255); }
         if (array_key_exists('content', $d)) $data['content'] = $this->cleanHtml((string) $d['content']);
@@ -366,6 +412,7 @@ class DeskService
         if (array_key_exists('region', $d)) $brief['region'] = $this->regionCode(DB::table('websites')->where('id', $wid)->first(), $d['region']); // null = every edition
         if ($brief) $this->mergeBrief($id, $brief + ['desk' => ['updated_by' => $userId]]);
         if ($a->status === 'published') $this->invalidate($wid, $id);
+        $this->audit->record('story.update', 'story', $id, $data['title'] ?? $a->title, ['title' => $a->title, 'section' => $a->blog_category], ['fields' => array_keys($data + $direct + $brief)]);
         return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
     }
 
@@ -382,6 +429,7 @@ class DeskService
         DB::table('articles')->where('id', $id)->update($up);
         $this->mergeBrief($id, ['desk' => ['published_by' => $userId, 'published_via' => 'desk']]);
         $this->invalidate($wid, $id);
+        $this->audit->record('story.publish', 'story', $id, $a->title, ['status' => $a->status], ['status' => 'published']);
         return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
     }
 
@@ -396,25 +444,28 @@ class DeskService
         DB::table('articles')->where('id', $id)->update(['status' => 'scheduled', 'scheduled_at' => date('Y-m-d H:i:s', $ts), 'is_marketing_blog' => 1, 'updated_at' => now()]);
         $this->mergeBrief($id, ['desk' => ['scheduled_by' => $userId]]);
         $this->invalidate($wid, $id);
+        $this->audit->record('story.schedule', 'story', $id, $a->title, ['status' => $a->status], ['status' => 'scheduled', 'at' => date('c', $ts)]);
         return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
     }
 
     public function unpublishStory(int $wsId, int $wid, int $userId, int $id): array
     {
-        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id']);
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'title', 'status']);
         if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
         DB::table('articles')->where('id', $id)->update(['status' => 'draft', 'scheduled_at' => null, 'updated_at' => now()]);
         $this->mergeBrief($id, ['desk' => ['unpublished_by' => $userId]]);
         $this->invalidate($wid, $id);
+        $this->audit->record('story.unpublish', 'story', $id, $a->title, ['status' => $a->status], ['status' => 'draft']);
         return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
     }
 
     public function deleteStory(int $wsId, int $wid, int $userId, int $id): array
     {
-        $n = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')
-            ->update(['deleted_at' => now(), 'status' => 'draft', 'updated_at' => now()]); // soft delete; WriteService::deleteArticle is a hard delete
-        if (!$n) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'title', 'status']);
+        if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        DB::table('articles')->where('id', $id)->update(['deleted_at' => now(), 'status' => 'draft', 'updated_at' => now()]); // soft delete (recoverable from the bin); WriteService::deleteArticle is a hard delete
         $this->invalidate($wid, $id);
+        $this->audit->record('story.delete', 'story', $id, $a->title, ['status' => $a->status], ['deleted' => true]);
         return ['success' => true];
     }
 
@@ -494,16 +545,21 @@ class DeskService
         return preg_match('#^https?://#i', $u) ? mb_substr($u, 0, 2048) : '';
     }
 
-    /** Allow-list HTML for story bodies (editor output). Strips scripts, handlers, javascript: URLs and unknown tags. */
+    /** Allow-list HTML for story/job bodies (editor output). Unit 2: DOM-based sanitiser (DeskHtmlSanitizer). */
     public function cleanHtml(string $html): string
     {
-        $html = preg_replace('#<\s*(script|style|iframe|object|embed|form|input|textarea|button|meta|link)\b[^>]*>.*?<\s*/\s*\1\s*>#is', '', $html) ?? '';
-        $html = preg_replace('#<\s*(script|style|iframe|object|embed|form|input|meta|link)\b[^>]*/?>#i', '', $html) ?? '';
-        $html = strip_tags($html, '<p><br><h2><h3><h4><strong><b><em><i><u><s><a><ul><ol><li><blockquote><figure><figcaption><img><hr><table><thead><tbody><tr><th><td><code><pre><span><sub><sup>');
-        $html = preg_replace('/\s+on[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? '';
-        $html = preg_replace('/\s+(href|src)\s*=\s*("|\')\s*javascript:[^"\']*\2/i', ' $1=$2#$2', $html) ?? '';
-        $html = preg_replace('/\s+style\s*=\s*("[^"]*"|\'[^\']*\')/i', '', $html) ?? '';
-        return trim($html);
+        return DeskHtmlSanitizer::clean($html);
+    }
+
+    /** Optimistic lock: the client sends the updated_at it loaded; a different value means someone else saved first. */
+    private function stale(object $row, array $d): bool
+    {
+        $exp = trim((string) ($d['expected_updated_at'] ?? ''));
+        if ($exp === '') return false;
+        $cur = (string) ($row->updated_at ?? '');
+        if ($cur === '') return false;
+        $a = strtotime($exp); $b = strtotime($cur);
+        return $a === false || $b === false ? $exp !== $cur : $a !== $b;
     }
 
     /** Bust the published-site cache for every page slug and the story's own path. */
@@ -548,6 +604,7 @@ class DeskService
             'brief' => $brief ?: null, 'section_slug' => $section, 'region' => $region, 'type' => $type, 'status' => $status, 'error_text' => $status === 'failed' ? mb_substr((string) ($res['error'] ?? $res['message'] ?? 'Kernel refused the task.'), 0, 1000) : null,
             'requested_by' => $userId, 'created_at' => now(), 'updated_at' => now(),
         ]);
+        $this->audit->record('commission.create', 'commission', $id, $title !== '' ? $title : Str::limit($brief, 80), null, ['status' => $status, 'task_id' => $taskId ?: null, 'section' => $section, 'region' => $region]);
         return ['success' => $status !== 'failed', 'id' => $id, 'status' => $status, 'task_id' => $taskId ?: null, 'approval_id' => $approvalId ?: null, 'message' => $status === 'failed' ? ($res['error'] ?? $res['message'] ?? null) : null, 'kernel' => array_intersect_key($res, array_flip(['success', 'code', 'credits_reserved', 'pending_approval']))];
     }
 
@@ -637,35 +694,38 @@ class DeskService
         $d['website_id'] = $wid; $d['source'] = $d['source'] ?? 'desk'; $d['created_by'] = $userId;
         $site = DB::table('websites')->where('id', $wid)->first(); // QATAR-1: country must be one of the site's editions
         $regs = $this->regions($site); if ($regs) { $d['country'] = $this->regionCode($site, $d['country'] ?? '') ?: $this->regionFromText($site, (string) ($d['country'] ?? '')) ?: $regs[0]['code']; }
+        if (isset($d['description'])) $d['description'] = $this->cleanHtml((string) $d['description']);
         $res = $this->jobs->create($wsId, $d);
-        if (!empty($res['success']) && !empty($res['job_id'])) { DB::table('job_listings')->where('id', $res['job_id'])->update(['created_by' => $userId]); $res['job'] = $this->getJob($wsId, $wid, (int) $res['job_id']); }
+        if (!empty($res['success']) && !empty($res['job_id'])) { DB::table('job_listings')->where('id', $res['job_id'])->update(['created_by' => $userId]); $res['job'] = $this->getJob($wsId, $wid, (int) $res['job_id']); $this->audit->record('job.create', 'job', (int) $res['job_id'], (string) ($d['title'] ?? ''), null, ['company' => $d['company'] ?? null, 'country' => $d['country'] ?? null, 'source' => $d['source']]); }
         return $res;
     }
 
     public function updateJob(int $wsId, int $wid, int $userId, int $id, array $d): array
     {
-        if (!$this->getJob($wsId, $wid, $id)) return ['success' => false, 'error' => 'NOT_FOUND'];
-        unset($d['website_id'], $d['workspace_id'], $d['status'], $d['publish']);
+        $cur = $this->getJob($wsId, $wid, $id); if (!$cur) return ['success' => false, 'error' => 'NOT_FOUND'];
+        if ($this->stale((object) $cur, $d)) return ['success' => false, 'error' => 'STALE', 'message' => 'Someone saved this listing after you opened it. Reload to see their changes, or save again to overwrite.', 'job' => $cur];
+        unset($d['website_id'], $d['workspace_id'], $d['status'], $d['publish'], $d['expected_updated_at']);
         if (array_key_exists('country', $d)) { $site = DB::table('websites')->where('id', $wid)->first(); $c = $this->regionCode($site, $d['country']) ?: $this->regionFromText($site, (string) $d['country']); if ($c) $d['country'] = $c; else unset($d['country']); }
+        if (isset($d['description'])) $d['description'] = $this->cleanHtml((string) $d['description']);
         $res = $this->jobs->update($wsId, $id, $d);
-        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); }
+        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); $this->audit->record('job.update', 'job', $id, (string) $cur['title'], ['title' => $cur['title'], 'status' => $cur['status']], ['fields' => array_keys($d)]); }
         return $res;
     }
 
     public function publishJob(int $wsId, int $wid, int $userId, int $id): array
     {
-        if (!$this->getJob($wsId, $wid, $id)) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $cur = $this->getJob($wsId, $wid, $id); if (!$cur) return ['success' => false, 'error' => 'NOT_FOUND'];
         $res = $this->jobs->publish($wsId, $id);
-        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); }
+        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); $this->audit->record('job.publish', 'job', $id, (string) $cur['title'], ['status' => $cur['status']], ['status' => 'published']); }
         return $res;
     }
 
     public function setJobStatus(int $wsId, int $wid, int $userId, int $id, string $status): array
     {
         if (!in_array($status, ['draft', 'expired', 'archived'], true)) return ['success' => false, 'error' => 'VALIDATION'];
-        if (!$this->getJob($wsId, $wid, $id)) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $cur = $this->getJob($wsId, $wid, $id); if (!$cur) return ['success' => false, 'error' => 'NOT_FOUND'];
         $res = $this->jobs->update($wsId, $id, ['status' => $status]);
-        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); }
+        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); $this->audit->record('job.status', 'job', $id, (string) $cur['title'], ['status' => $cur['status']], ['status' => $status]); }
         return $res;
     }
 
@@ -720,6 +780,7 @@ class DeskService
                 'subject' => isset($up['status']) ? "Status → {$up['status']}" : 'Desk note', 'description' => $note !== '' ? mb_substr($note, 0, 2000) : null,
                 'metadata_json' => json_encode(['via' => 'publisher_desk']), 'completed' => 1, 'completed_at' => now(), 'performed_by' => $userId, 'created_at' => now(), 'updated_at' => now()]);
         }
+        if ($up || $note !== '') $this->audit->record('inbox.update', 'lead', $id, null, ['status' => $l->status], ['status' => $up['status'] ?? $l->status, 'note' => $note !== '']);
         return ['success' => true, 'item' => $this->getInboxItem($wsId, $wid, $id)];
     }
 
@@ -737,7 +798,7 @@ class DeskService
               'city' => $grab('city|location') ?: ($country === 'QA' ? 'Doha' : 'Dubai'), 'country' => $country, 'apply_email' => filter_var($l->email, FILTER_VALIDATE_EMAIL) ? $l->email : null, 'description' => nl2br(e($msg)),
               'salary_text' => $grab('salary|pay'), 'employment_type' => 'full_time', 'source' => 'employer', 'lead_id' => $leadId, 'verification_source' => 'Submitted via post-a-job form by ' . $l->email];
         $res = $this->createJob($wsId, $wid, $userId, $d);
-        if (!empty($res['success'])) DB::table('activities')->insert(['workspace_id' => $wsId, 'activitable_type' => 'lead', 'activitable_id' => $leadId, 'type' => 'note', 'subject' => 'Draft job created #' . $res['job_id'], 'completed' => 1, 'completed_at' => now(), 'performed_by' => $userId, 'created_at' => now(), 'updated_at' => now()]);
+        if (!empty($res['success'])) { DB::table('activities')->insert(['workspace_id' => $wsId, 'activitable_type' => 'lead', 'activitable_id' => $leadId, 'type' => 'note', 'subject' => 'Draft job created #' . $res['job_id'], 'completed' => 1, 'completed_at' => now(), 'performed_by' => $userId, 'created_at' => now(), 'updated_at' => now()]); $this->audit->record('inbox.to_job', 'lead', $leadId, (string) $l->email, null, ['job_id' => $res['job_id']]); }
         return $res;
     }
 
@@ -766,7 +827,9 @@ class DeskService
         if (!DB::table('workspace_users')->where('workspace_id', $wsId)->where('user_id', $userId)->exists()) return ['success' => false, 'error' => 'NOT_A_MEMBER', 'message' => 'Invite this person to the workspace first.'];
         $ownerId = (int) DB::table('workspaces')->where('id', $wsId)->value('created_by');
         if ($userId === $ownerId && $role !== 'owner') return ['success' => false, 'error' => 'OWNER_LOCKED', 'message' => 'The workspace owner is always a desk owner.'];
+        $before = DB::table('desk_members')->where('website_id', $wid)->where('user_id', $userId)->value('role');
         DB::table('desk_members')->updateOrInsert(['website_id' => $wid, 'user_id' => $userId], ['workspace_id' => $wsId, 'role' => $role, 'created_by' => $byUserId, 'updated_at' => now(), 'created_at' => now()]);
+        $this->audit->record('member.role', 'user', $userId, (string) DB::table('users')->where('id', $userId)->value('email'), ['role' => $before], ['role' => $role]);
         return ['success' => true, 'user_id' => $userId, 'role' => $role];
     }
 
@@ -781,8 +844,46 @@ class DeskService
             // pre-assign the desk role by email; claimed on the invitee's first desk login (claimPreassignedRole)
             DB::table('desk_members')->where('website_id', $wid)->whereNull('user_id')->where('email', $email)->delete();
             DB::table('desk_members')->insert(['workspace_id' => $wsId, 'website_id' => $wid, 'user_id' => null, 'email' => $email, 'role' => $role, 'created_by' => $byUserId, 'created_at' => now(), 'updated_at' => now()]);
+            $this->audit->record('member.invite', 'user', null, $email, null, ['role' => $role]);
         }
         return $res + ['desk_role' => $role];
+    }
+
+    // ─── Unit 2: health, sessions ───────────────────────────────────────────
+
+    public function health(int $wsId, int $wid): array
+    {
+        $checks = []; $status = 'ok';
+        try { DB::select('SELECT 1'); $checks['database'] = 'ok'; } catch (\Throwable $e) { $checks['database'] = 'down'; $status = 'down'; }
+        $last = Cache::get('desk:publish-scheduled:last_run');
+        $age = $last ? (time() - strtotime($last)) : null;
+        $checks['scheduler'] = ['last_run' => $last, 'age_seconds' => $age, 'state' => $age === null ? 'unknown' : ($age > 300 ? 'stale' : 'ok')];
+        if ($age !== null && $age > 300) $status = $status === 'down' ? $status : 'degraded';
+        $dueScheduled = DB::table('articles')->where('website_id', $wid)->where('status', 'scheduled')->whereNull('deleted_at')->where('scheduled_at', '<=', now()->subMinutes(5))->where('scheduled_at', '>=', now()->subHours(24))->count();
+        $checks['stories_overdue'] = $dueScheduled; if ($dueScheduled > 0) $status = $status === 'down' ? $status : 'degraded';
+        $oldestQueued = DB::table('desk_commissions')->where('website_id', $wid)->whereIn('status', ['queued', 'awaiting_approval'])->min('created_at');
+        $checks['commissions'] = ['open' => DB::table('desk_commissions')->where('website_id', $wid)->whereIn('status', ['queued', 'awaiting_approval'])->count(), 'oldest_open_minutes' => $oldestQueued ? (int) floor((time() - strtotime($oldestQueued)) / 60) : 0];
+        if ($checks['commissions']['oldest_open_minutes'] > 60) $status = $status === 'down' ? $status : 'degraded';
+        $checks['queue'] = ['pending_tasks' => DB::table('tasks')->where('workspace_id', $wsId)->whereIn('status', ['pending', 'queued'])->count(), 'running_tasks' => DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'running')->count(), 'failed_24h' => DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'failed')->where('updated_at', '>=', now()->subDay())->count()];
+        $checks['audit'] = ['rows_24h' => DB::table('desk_audit_log')->where('website_id', $wid)->where('created_at', '>=', now()->subDay())->count()];
+        $checks['site'] = ['cache_driver' => config('cache.default'), 'app_env' => config('app.env')];
+        return ['success' => true, 'status' => $status, 'checks' => $checks, 'checked_at' => now()->toIso8601String()];
+    }
+
+    public function sessions(int $userId, int $currentSid): array
+    {
+        $rows = DB::table('sessions')->where('user_id', $userId)->whereNull('revoked_at')->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))->orderByDesc('created_at')->limit(50)
+            ->get(['id', 'workspace_id', 'auth_via', 'ip_address', 'user_agent', 'created_at', 'expires_at']);
+        return ['success' => true, 'current_session_id' => $currentSid ?: null, 'sessions' => $rows->map(fn ($s) => ['id' => (int) $s->id, 'current' => (int) $s->id === $currentSid, 'via' => $s->auth_via, 'ip' => $s->ip_address, 'user_agent' => mb_substr((string) $s->user_agent, 0, 140), 'created_at' => $s->created_at, 'expires_at' => $s->expires_at])->all()];
+    }
+
+    public function revokeOtherSessions(int $userId, int $currentSid): array
+    {
+        $q = DB::table('sessions')->where('user_id', $userId)->whereNull('revoked_at');
+        if ($currentSid > 0) $q->where('id', '!=', $currentSid);
+        $n = $q->update(['revoked_at' => now()]);
+        $this->audit->record('session.revoke_others', 'user', $userId, null, null, ['revoked' => $n]);
+        return ['success' => true, 'revoked' => $n];
     }
 
     /** Called on context load: if this user was pre-assigned a desk role by email before they existed, claim it. */
