@@ -83,6 +83,14 @@ class AeoAuditService
     {
         $started = microtime(true);
 
+        // SEO-P2-4 (2026-09-04): SSRF guard at the AEO crawl source — refuse private/internal targets.
+        if (! \App\Engines\SEO\Support\UrlGuard::isPublicHttp($url)) {
+            return $this->persist($wsId, $url, [
+                'score' => 0, 'checks' => [], 'http_status' => null, 'html_bytes' => 0,
+                'error_text' => 'Refused: the URL points to a private or internal address.',
+            ]);
+        }
+
         try {
             $resp = Http::timeout(15)
                 ->withUserAgent('LevelUpGrowth-AEO-Audit/1.0 (+https://levelupgrowth.io)')
