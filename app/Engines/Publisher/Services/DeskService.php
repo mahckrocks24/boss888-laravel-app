@@ -1,0 +1,746 @@
+<?php
+
+namespace App\Engines\Publisher\Services;
+
+use App\Core\EngineKernel\EngineExecutionService;
+use App\Core\Workspaces\TeamService;
+use App\Engines\Jobs\Services\JobsService;
+use App\Engines\Write\Services\WriteService;
+use App\Models\Task;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+/**
+ * PUBLISHER888 Unit 1 (2026-09-04) — the Publisher Desk.
+ *
+ * A backend for websites built on a publishing theme (today: `kabayan-news`), served at
+ * `{site-host}/admin` by PublishedSiteMiddleware and driven by `/api/desk/*` (JWT auth,
+ * workspace-scoped, website resolved from the host or `X-Desk-Website`).
+ *
+ * The desk owns NO content logic of its own: stories are `articles` (WriteService), jobs are
+ * `job_listings` (JobsService), the inbox is `leads`/`activities`, commissioning is a
+ * `write/write_article` task through the engine kernel. The desk adds role resolution,
+ * website binding, publish gates, and cache invalidation.
+ */
+class DeskService
+{
+    /** Themes that ship a desk. Extend when another publishing theme lands. */
+    public const THEMES = ['kabayan-news'];
+
+    public const ROLES = ['owner', 'editor', 'moderator', 'viewer'];
+
+    /** ability => roles allowed */
+    public const ABILITIES = [
+        'stories.read'    => ['owner', 'editor', 'moderator', 'viewer'],
+        'stories.write'   => ['owner', 'editor'],
+        'stories.publish' => ['owner', 'editor'],
+        'sections.write'  => ['owner', 'editor'],
+        'commission'      => ['owner', 'editor'],
+        'jobs.read'       => ['owner', 'editor', 'moderator', 'viewer'],
+        'jobs.write'      => ['owner', 'moderator', 'editor'],
+        'jobs.publish'    => ['owner', 'moderator'],
+        'inbox.read'      => ['owner', 'editor', 'moderator', 'viewer'],
+        'inbox.write'     => ['owner', 'editor', 'moderator'],
+        'members.read'    => ['owner', 'editor', 'moderator', 'viewer'],
+        'members.write'   => ['owner'],
+    ];
+
+    public const STORY_TYPES = ['news', 'article', 'feature', 'opinion', 'guide'];
+
+    public function __construct(
+        private WriteService $write,
+        private JobsService $jobs,
+        private TeamService $team,
+        private EngineExecutionService $kernel,
+    ) {}
+
+    // ─── theme / host / role ────────────────────────────────────────────────
+
+    public static function themeHasDesk(object|array $website): bool
+    {
+        $w = (array) $website;
+        $s = is_string($w['settings_json'] ?? null) ? (json_decode($w['settings_json'], true) ?: []) : (array) ($w['settings_json'] ?? []);
+        return in_array((string) ($s['theme'] ?? ''), self::THEMES, true);
+    }
+
+    public static function can(?string $role, string $ability): bool
+    {
+        return $role !== null && in_array($role, self::ABILITIES[$ability] ?? [], true);
+    }
+
+    /** Effective desk role: explicit desk_members row, else mapped from the workspace role. */
+    public function resolveRole(int $wsId, int $websiteId, int $userId, ?string $wsRole): ?string
+    {
+        $explicit = $userId > 0 ? DB::table('desk_members')->where('website_id', $websiteId)->where('user_id', $userId)->value('role') : null;
+        if ($explicit && in_array($explicit, self::ROLES, true)) return $explicit;
+        $wsRole = $wsRole ?: $this->team->getUserRole($wsId, $userId);
+        return match ($wsRole) {
+            'owner', 'admin' => 'owner',
+            'member'         => 'editor',
+            'viewer'         => 'viewer',
+            default          => null,
+        };
+    }
+
+    public function settings(object $website): array
+    {
+        return is_string($website->settings_json ?? null) ? (json_decode($website->settings_json, true) ?: []) : [];
+    }
+
+    public function siteOrigin(object $website): string
+    {
+        $cd = strtolower(trim((string) ($website->custom_domain ?? ''), " /"));
+        if ($cd !== '' && !empty($website->domain_verified) && preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/', $cd)) return 'https://' . $cd;
+        $sub = str_replace('.levelupgrowth.io', '', (string) ($website->subdomain ?? ''));
+        return "https://{$sub}.levelupgrowth.io";
+    }
+
+    public function articleBase(object $website): string
+    {
+        $b = preg_replace('/[^a-z0-9\-]/', '', strtolower((string) ($this->settings($website)['article_base'] ?? 'news')));
+        return $b !== '' ? $b : 'news';
+    }
+
+    /** The desk shell (HTML). Served by PublishedSiteMiddleware for GET /admin[/…] on a desk-enabled site. */
+    public function shell(object $website, Request $request)
+    {
+        $s = $this->settings($website);
+        $brand = is_string($website->template_variables ?? null) ? (json_decode($website->template_variables, true) ?: []) : [];
+        $desk = [
+            'website_id'   => (int) $website->id,
+            'workspace_id' => (int) $website->workspace_id,
+            'site_name'    => (string) ($website->name ?? 'Site'),
+            'origin'       => $this->siteOrigin($website),
+            'article_base' => $this->articleBase($website),
+            'theme'        => (string) ($s['theme'] ?? ''),
+            'primary'      => (string) ($brand['brand']['primary'] ?? $s['colours']['primary'] ?? $s['primary'] ?? '#0038A8'),
+            'accent'       => (string) ($brand['brand']['accent'] ?? $s['colours']['accent'] ?? $s['accent'] ?? '#FCD116'),
+            'api'          => '/api/',
+        ];
+        $v = @filemtime(public_path('desk/desk.js')) ?: time();
+        return response()->view('desk.shell', ['desk' => $desk, 'v' => $v])
+            ->header('Cache-Control', 'no-cache, must-revalidate')
+            ->header('X-Robots-Tag', 'noindex, nofollow')
+            ->header('X-Served-By', 'publisher-desk');
+    }
+
+    // ─── context / dashboard ────────────────────────────────────────────────
+
+    public function context(object $website, object $user, string $role): array
+    {
+        $wsId = (int) $website->workspace_id; $wid = (int) $website->id;
+        $abilities = [];
+        foreach (self::ABILITIES as $k => $roles) if (in_array($role, $roles, true)) $abilities[] = $k;
+        return [
+            'success'  => true,
+            'site'     => [
+                'id' => $wid, 'workspace_id' => $wsId, 'name' => $website->name, 'origin' => $this->siteOrigin($website),
+                'article_base' => $this->articleBase($website), 'theme' => $this->settings($website)['theme'] ?? null,
+                'subdomain' => $website->subdomain, 'custom_domain' => $website->custom_domain,
+            ],
+            'user'     => ['id' => (int) $user->id, 'name' => $user->name ?? '', 'email' => $user->email ?? ''],
+            'role'     => $role,
+            'abilities'=> $abilities,
+            'sections' => $this->listSections($wsId, $wid),
+            'counts'   => $this->counts($wsId, $wid),
+            'enums'    => ['story_types' => self::STORY_TYPES, 'job_categories' => self::enumList(JobsService::CATEGORIES), 'job_types' => self::enumList(JobsService::TYPES),
+                           'lead_statuses' => ['new', 'contacted', 'qualified', 'converted', 'lost'], 'roles' => self::ROLES],
+        ];
+    }
+
+    /** Normalise a constant list (either ['a','b'] or ['a' => 'Label']) to [{value,label}] for the UI. */
+    public static function enumList(array $c): array
+    {
+        $out = [];
+        foreach ($c as $k => $v) {
+            $isAssoc = is_string($k);
+            $value = $isAssoc ? $k : (is_array($v) ? ($v['slug'] ?? $v['value'] ?? '') : $v);
+            $label = $isAssoc ? (is_array($v) ? ($v['label'] ?? $v['name'] ?? $k) : $v) : (is_array($v) ? ($v['label'] ?? $v['name'] ?? $value) : ucwords(str_replace(['_', '-'], ' ', (string) $v)));
+            $out[] = ['value' => (string) $value, 'label' => (string) $label];
+        }
+        return $out;
+    }
+
+    public function counts(int $wsId, int $wid): array
+    {
+        $st = DB::table('articles')->where('website_id', $wid)->whereNull('deleted_at')
+            ->select('status', DB::raw('count(*) c'))->groupBy('status')->pluck('c', 'status')->all();
+        $jobs = DB::table('job_listings')->where('website_id', $wid)->whereNull('deleted_at')
+            ->select('status', DB::raw('count(*) c'))->groupBy('status')->pluck('c', 'status')->all();
+        $expiring = DB::table('job_listings')->where('website_id', $wid)->whereNull('deleted_at')->where('status', 'published')
+            ->whereNotNull('expires_at')->where('expires_at', '<=', now()->addDays(7))->count();
+        $inbox = DB::table('leads')->where('website_id', $wid)->whereNull('deleted_at')->where('status', 'new')
+            ->select('source', DB::raw('count(*) c'))->groupBy('source')->pluck('c', 'source')->all();
+        $commissions = DB::table('desk_commissions')->where('website_id', $wid)->whereIn('status', ['queued', 'awaiting_approval'])->count();
+        $lastPublished = DB::table('articles')->where('website_id', $wid)->whereNull('deleted_at')->where('status', 'published')->max('published_at');
+        return [
+            'stories' => ['published' => (int) ($st['published'] ?? 0), 'draft' => (int) ($st['draft'] ?? 0), 'scheduled' => (int) ($st['scheduled'] ?? 0)],
+            'commissions_open' => $commissions,
+            'jobs' => ['published' => (int) ($jobs['published'] ?? 0), 'draft' => (int) ($jobs['draft'] ?? 0), 'expired' => (int) ($jobs['expired'] ?? 0), 'expiring_7d' => $expiring],
+            'inbox_new' => ['total' => array_sum($inbox), 'by_source' => $inbox],
+            'last_published_at' => $lastPublished,
+        ];
+    }
+
+    // ─── sections (blog_categories) ─────────────────────────────────────────
+
+    public function listSections(int $wsId, int $wid): array
+    {
+        $counts = DB::table('articles')->where('website_id', $wid)->whereNull('deleted_at')
+            ->select('blog_category', DB::raw('count(*) c'), DB::raw("sum(status='published') p"))->groupBy('blog_category')->get()->keyBy('blog_category');
+        $pages = DB::table('pages')->where('website_id', $wid)->pluck('slug')->flip();
+        return DB::table('blog_categories')->where('workspace_id', $wsId)->orderBy('id')->get()->map(fn ($c) => [
+            'id' => (int) $c->id, 'name' => $c->name, 'slug' => $c->slug,
+            'stories' => (int) ($counts[$c->slug]->c ?? 0), 'published' => (int) ($counts[$c->slug]->p ?? 0),
+            'has_page' => isset($pages[$c->slug]),
+        ])->all();
+    }
+
+    public function createSection(int $wsId, array $d): array
+    {
+        $name = trim((string) ($d['name'] ?? '')); if ($name === '') return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Name is required.'];
+        $slug = Str::slug((string) ($d['slug'] ?? $name)); if ($slug === '') return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Slug is required.'];
+        if (DB::table('blog_categories')->where('workspace_id', $wsId)->where('slug', $slug)->exists()) return ['success' => false, 'error' => 'DUPLICATE', 'message' => "A section with slug '{$slug}' already exists."];
+        $id = DB::table('blog_categories')->insertGetId(['workspace_id' => $wsId, 'name' => mb_substr($name, 0, 100), 'slug' => mb_substr($slug, 0, 100), 'created_at' => now(), 'updated_at' => now()]);
+        return ['success' => true, 'id' => $id, 'slug' => $slug];
+    }
+
+    public function updateSection(int $wsId, int $wid, int $id, array $d): array
+    {
+        $c = DB::table('blog_categories')->where('workspace_id', $wsId)->where('id', $id)->first();
+        if (!$c) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $up = [];
+        if (isset($d['name']) && trim($d['name']) !== '') $up['name'] = mb_substr(trim($d['name']), 0, 100);
+        if (isset($d['slug'])) {
+            $slug = Str::slug((string) $d['slug']);
+            if ($slug !== '' && $slug !== $c->slug) {
+                if (DB::table('blog_categories')->where('workspace_id', $wsId)->where('slug', $slug)->exists()) return ['success' => false, 'error' => 'DUPLICATE'];
+                $up['slug'] = $slug;
+                DB::table('articles')->where('workspace_id', $wsId)->where('blog_category', $c->slug)->update(['blog_category' => $slug]);
+            }
+        }
+        if ($up) { $up['updated_at'] = now(); DB::table('blog_categories')->where('id', $id)->update($up); }
+        return ['success' => true];
+    }
+
+    public function deleteSection(int $wsId, int $wid, int $id): array
+    {
+        $c = DB::table('blog_categories')->where('workspace_id', $wsId)->where('id', $id)->first();
+        if (!$c) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $n = DB::table('articles')->where('workspace_id', $wsId)->where('blog_category', $c->slug)->whereNull('deleted_at')->count();
+        if ($n > 0) return ['success' => false, 'error' => 'IN_USE', 'message' => "{$n} stories still use this section. Move them first."];
+        DB::table('blog_categories')->where('id', $id)->delete();
+        return ['success' => true];
+    }
+
+    // ─── stories (articles) ─────────────────────────────────────────────────
+
+    public function listStories(int $wsId, int $wid, array $f = []): array
+    {
+        $q = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->whereNull('deleted_at');
+        if (!empty($f['status']) && $f['status'] !== 'all') $q->where('status', $f['status']);
+        if (!empty($f['section'])) $q->where('blog_category', $f['section']);
+        if (!empty($f['q'])) { $s = '%' . str_replace(['%', '_'], ['\%', '\_'], trim($f['q'])) . '%'; $q->where(fn ($w) => $w->where('title', 'like', $s)->orWhere('slug', 'like', $s)); }
+        $total = (clone $q)->count();
+        $limit = max(1, min(100, (int) ($f['limit'] ?? 30))); $offset = max(0, (int) ($f['offset'] ?? 0));
+        $rows = $q->orderByRaw("FIELD(status,'scheduled','draft','published')")->orderByDesc('updated_at')->offset($offset)->limit($limit)
+            ->get(['id', 'title', 'slug', 'status', 'type', 'blog_category', 'excerpt', 'featured_image_url', 'word_count', 'read_time', 'brief_json', 'published_at', 'scheduled_at', 'updated_at', 'created_at']);
+        $website = DB::table('websites')->where('id', $wid)->first();
+        $names = DB::table('blog_categories')->where('workspace_id', $wsId)->pluck('name', 'slug')->all();
+        return ['success' => true, 'stories' => $rows->map(fn ($a) => $this->storyRow($a, $website, $names))->all(), 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => $offset + $rows->count() < $total];
+    }
+
+    private function storyRow(object $a, object $website, array $names, bool $full = false): array
+    {
+        $brief = is_string($a->brief_json ?? null) ? (json_decode($a->brief_json, true) ?: []) : [];
+        $row = [
+            'id' => (int) $a->id, 'title' => $a->title, 'slug' => $a->slug, 'status' => $a->status, 'type' => $a->type,
+            'section' => $a->blog_category, 'section_name' => $names[$a->blog_category] ?? $a->blog_category,
+            'excerpt' => $a->excerpt, 'featured_image_url' => $a->featured_image_url, 'word_count' => (int) $a->word_count, 'read_time' => $a->read_time,
+            'author' => $brief['author'] ?? null, 'published_at' => $a->published_at, 'scheduled_at' => $a->scheduled_at, 'updated_at' => $a->updated_at, 'created_at' => $a->created_at,
+            'url' => $a->status === 'published' ? $this->siteOrigin($website) . '/' . $this->articleBase($website) . '/' . $a->slug : null,
+        ];
+        if ($full) {
+            $row += [
+                'content' => $a->content, 'featured_image_alt' => $a->featured_image_alt ?? null, 'meta_title' => $a->meta_title ?? null, 'meta_description' => $a->meta_description ?? null,
+                'tags' => is_string($a->tags_json ?? null) ? (json_decode($a->tags_json, true) ?: []) : [],
+                'sources' => $brief['sources'] ?? [], 'image_caption' => $brief['image_caption'] ?? null, 'image_credit' => $brief['image_credit'] ?? ($brief['credit'] ?? null),
+                'brief' => $brief,
+            ];
+        }
+        return $row;
+    }
+
+    public function getStory(int $wsId, int $wid, int $id): ?array
+    {
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first();
+        if (!$a) return null;
+        $website = DB::table('websites')->where('id', $wid)->first();
+        $names = DB::table('blog_categories')->where('workspace_id', $wsId)->pluck('name', 'slug')->all();
+        return $this->storyRow($a, $website, $names, true);
+    }
+
+    public function createStory(int $wsId, int $wid, int $userId, array $d): array
+    {
+        $title = trim((string) ($d['title'] ?? '')); if ($title === '') return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Title is required.'];
+        $section = $this->sectionSlug($wsId, $d['section'] ?? null);
+        $res = $this->write->createArticle($wsId, [
+            'title' => $title, 'content' => $this->cleanHtml((string) ($d['content'] ?? '')), 'excerpt' => mb_substr(trim((string) ($d['excerpt'] ?? '')), 0, 500),
+            'type' => in_array($d['type'] ?? '', self::STORY_TYPES, true) ? $d['type'] : 'article', 'blog_category' => $section, 'is_marketing_blog' => 1, 'user_id' => $userId,
+        ]);
+        $id = (int) ($res['article_id'] ?? $res['id'] ?? 0);
+        if ($id <= 0) return ['success' => false, 'error' => 'CREATE_FAILED', 'message' => $res['error'] ?? 'Could not create the story.'];
+        DB::table('articles')->where('id', $id)->update(['website_id' => $wid, 'is_marketing_blog' => 1, 'updated_at' => now()]);
+        $this->mergeBrief($id, ['author' => $d['author'] ?? $this->deskAuthor($wid), 'sources' => $this->cleanSources($d['sources'] ?? []), 'image_caption' => $d['image_caption'] ?? null, 'image_credit' => $d['image_credit'] ?? null, 'desk' => ['created_by' => $userId]]);
+        if (!empty($d['featured_image_url'])) DB::table('articles')->where('id', $id)->update(['featured_image_url' => $this->cleanUrl($d['featured_image_url']), 'featured_image_alt' => mb_substr((string) ($d['featured_image_alt'] ?? ''), 0, 255)]);
+        return ['success' => true, 'id' => $id, 'story' => $this->getStory($wsId, $wid, $id)];
+    }
+
+    public function updateStory(int $wsId, int $wid, int $userId, int $id, array $d): array
+    {
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'status']);
+        if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $data = [];
+        if (array_key_exists('title', $d)) { $t = trim((string) $d['title']); if ($t === '') return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Title is required.']; $data['title'] = mb_substr($t, 0, 255); }
+        if (array_key_exists('content', $d)) $data['content'] = $this->cleanHtml((string) $d['content']);
+        if (array_key_exists('excerpt', $d)) $data['excerpt'] = mb_substr(trim((string) $d['excerpt']), 0, 500);
+        if (array_key_exists('type', $d) && in_array($d['type'], self::STORY_TYPES, true)) $data['type'] = $d['type'];
+        if (array_key_exists('section', $d)) $data['blog_category'] = $this->sectionSlug($wsId, $d['section']);
+        if (array_key_exists('meta_title', $d)) $data['meta_title'] = mb_substr(trim((string) $d['meta_title']), 0, 255);
+        if (array_key_exists('meta_description', $d)) $data['meta_description'] = mb_substr(trim((string) $d['meta_description']), 0, 320);
+        if (array_key_exists('featured_image_url', $d)) $data['featured_image_url'] = $this->cleanUrl((string) $d['featured_image_url']);
+        if ($data) $this->write->updateArticle($id, $data, $wsId); // keeps article_versions
+        $direct = [];
+        if (array_key_exists('featured_image_alt', $d)) $direct['featured_image_alt'] = mb_substr((string) $d['featured_image_alt'], 0, 255);
+        if (array_key_exists('tags', $d)) $direct['tags_json'] = json_encode(array_values(array_filter(array_map(fn ($t) => mb_substr(Str::slug((string) $t), 0, 40), (array) $d['tags']))));
+        if (array_key_exists('slug', $d) && $a->status !== 'published') { $s = Str::slug((string) $d['slug']); if ($s !== '' && !DB::table('articles')->where('workspace_id', $wsId)->where('slug', $s)->where('id', '!=', $id)->exists()) $direct['slug'] = $s; }
+        if ($direct) { $direct['updated_at'] = now(); DB::table('articles')->where('id', $id)->update($direct); }
+        $brief = [];
+        foreach (['author', 'image_caption', 'image_credit'] as $k) if (array_key_exists($k, $d)) $brief[$k] = $d[$k] === null ? null : mb_substr(trim((string) $d[$k]), 0, 200);
+        if (array_key_exists('sources', $d)) $brief['sources'] = $this->cleanSources($d['sources']);
+        if ($brief) $this->mergeBrief($id, $brief + ['desk' => ['updated_by' => $userId]]);
+        if ($a->status === 'published') $this->invalidate($wid, $id);
+        return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
+    }
+
+    /** Publish gate + flip. Human action from the desk: no kernel approval, but the same blockers a wire editor would apply. */
+    public function publishStory(int $wsId, int $wid, int $userId, int $id): array
+    {
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first();
+        if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $blockers = $this->publishBlockers($wsId, $a);
+        if ($blockers) return ['success' => false, 'error' => 'NOT_PUBLISHABLE', 'blockers' => $blockers, 'message' => implode(' ', $blockers)];
+        $up = ['status' => 'published', 'is_marketing_blog' => 1, 'scheduled_at' => null, 'updated_at' => now()];
+        if (empty($a->published_at)) $up['published_at'] = now();
+        if (trim((string) $a->excerpt) === '') $up['excerpt'] = $this->autoExcerpt((string) $a->content);
+        DB::table('articles')->where('id', $id)->update($up);
+        $this->mergeBrief($id, ['desk' => ['published_by' => $userId, 'published_via' => 'desk']]);
+        $this->invalidate($wid, $id);
+        return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
+    }
+
+    public function scheduleStory(int $wsId, int $wid, int $userId, int $id, ?string $at): array
+    {
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first();
+        if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $ts = $at ? strtotime($at) : false;
+        if ($ts === false || $ts < time() + 60) return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Pick a time at least a minute in the future.'];
+        $blockers = $this->publishBlockers($wsId, $a);
+        if ($blockers) return ['success' => false, 'error' => 'NOT_PUBLISHABLE', 'blockers' => $blockers, 'message' => implode(' ', $blockers)];
+        DB::table('articles')->where('id', $id)->update(['status' => 'scheduled', 'scheduled_at' => date('Y-m-d H:i:s', $ts), 'is_marketing_blog' => 1, 'updated_at' => now()]);
+        $this->mergeBrief($id, ['desk' => ['scheduled_by' => $userId]]);
+        $this->invalidate($wid, $id);
+        return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
+    }
+
+    public function unpublishStory(int $wsId, int $wid, int $userId, int $id): array
+    {
+        $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id']);
+        if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
+        DB::table('articles')->where('id', $id)->update(['status' => 'draft', 'scheduled_at' => null, 'updated_at' => now()]);
+        $this->mergeBrief($id, ['desk' => ['unpublished_by' => $userId]]);
+        $this->invalidate($wid, $id);
+        return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
+    }
+
+    public function deleteStory(int $wsId, int $wid, int $userId, int $id): array
+    {
+        $n = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')
+            ->update(['deleted_at' => now(), 'status' => 'draft', 'updated_at' => now()]); // soft delete; WriteService::deleteArticle is a hard delete
+        if (!$n) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $this->invalidate($wid, $id);
+        return ['success' => true];
+    }
+
+    /** Scheduled → published sweep (publisher:publish-scheduled). Only recent, site-bound articles; stale rows are reported, never auto-published. */
+    public function publishDue(int $graceHours = 24): array
+    {
+        $due = DB::table('articles')->where('status', 'scheduled')->whereNotNull('website_id')->whereNull('deleted_at')
+            ->whereNotNull('scheduled_at')->where('scheduled_at', '<=', now())->where('scheduled_at', '>=', now()->subHours($graceHours))->get(['id', 'website_id', 'published_at', 'excerpt', 'content']);
+        $published = [];
+        foreach ($due as $a) {
+            $up = ['status' => 'published', 'is_marketing_blog' => 1, 'updated_at' => now()];
+            if (empty($a->published_at)) $up['published_at'] = now();
+            if (trim((string) $a->excerpt) === '') $up['excerpt'] = $this->autoExcerpt((string) $a->content);
+            DB::table('articles')->where('id', $a->id)->update($up);
+            $this->invalidate((int) $a->website_id, (int) $a->id);
+            $published[] = (int) $a->id;
+        }
+        $stale = DB::table('articles')->where('status', 'scheduled')->whereNull('deleted_at')->whereNotNull('scheduled_at')->where('scheduled_at', '<', now()->subHours($graceHours))->count();
+        return ['published' => $published, 'stale_skipped' => $stale];
+    }
+
+    private function publishBlockers(int $wsId, object $a): array
+    {
+        $b = [];
+        if (trim((string) $a->title) === '') $b[] = 'Title is missing.';
+        if (trim((string) $a->blog_category) === '' || !DB::table('blog_categories')->where('workspace_id', $wsId)->where('slug', $a->blog_category)->exists()) $b[] = 'Pick a section.';
+        $words = str_word_count(strip_tags((string) $a->content));
+        if ($words < 80) $b[] = "Story is too short ({$words} words; at least 80).";
+        return $b;
+    }
+
+    private function sectionSlug(int $wsId, $v): ?string
+    {
+        $slug = Str::slug((string) $v); if ($slug === '') return null;
+        return DB::table('blog_categories')->where('workspace_id', $wsId)->where('slug', $slug)->exists() ? $slug : null;
+    }
+
+    private function deskAuthor(int $wid): string
+    {
+        $name = (string) (DB::table('websites')->where('id', $wid)->value('name') ?: 'Editorial');
+        return $name . ' Desk';
+    }
+
+    private function mergeBrief(int $id, array $patch): void
+    {
+        $raw = DB::table('articles')->where('id', $id)->value('brief_json');
+        $brief = is_string($raw) ? (json_decode($raw, true) ?: []) : [];
+        foreach ($patch as $k => $v) {
+            if ($k === 'desk') { $brief['desk'] = array_merge((array) ($brief['desk'] ?? []), $v); continue; }
+            if ($v === null) unset($brief[$k]); else $brief[$k] = $v;
+        }
+        DB::table('articles')->where('id', $id)->update(['brief_json' => json_encode($brief), 'updated_at' => now()]);
+    }
+
+    private function autoExcerpt(string $html): string
+    {
+        $t = trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($html))));
+        return mb_strlen($t) > 180 ? rtrim(mb_substr($t, 0, 177)) . '…' : $t;
+    }
+
+    private function cleanSources($sources): array
+    {
+        $out = [];
+        foreach ((array) $sources as $s) {
+            if (is_string($s)) $s = ['url' => $s];
+            $url = $this->cleanUrl((string) ($s['url'] ?? '')); $label = mb_substr(trim((string) ($s['label'] ?? $s['title'] ?? '')), 0, 160);
+            if ($url === '' && $label === '') continue;
+            $out[] = array_filter(['label' => $label ?: null, 'url' => $url ?: null]);
+        }
+        return array_slice($out, 0, 20);
+    }
+
+    public function cleanUrl(string $u): string
+    {
+        $u = trim($u); if ($u === '') return '';
+        if (str_starts_with($u, '/')) return mb_substr($u, 0, 2048);
+        return preg_match('#^https?://#i', $u) ? mb_substr($u, 0, 2048) : '';
+    }
+
+    /** Allow-list HTML for story bodies (editor output). Strips scripts, handlers, javascript: URLs and unknown tags. */
+    public function cleanHtml(string $html): string
+    {
+        $html = preg_replace('#<\s*(script|style|iframe|object|embed|form|input|textarea|button|meta|link)\b[^>]*>.*?<\s*/\s*\1\s*>#is', '', $html) ?? '';
+        $html = preg_replace('#<\s*(script|style|iframe|object|embed|form|input|meta|link)\b[^>]*/?>#i', '', $html) ?? '';
+        $html = strip_tags($html, '<p><br><h2><h3><h4><strong><b><em><i><u><s><a><ul><ol><li><blockquote><figure><figcaption><img><hr><table><thead><tbody><tr><th><td><code><pre><span><sub><sup>');
+        $html = preg_replace('/\s+on[a-z]+\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html) ?? '';
+        $html = preg_replace('/\s+(href|src)\s*=\s*("|\')\s*javascript:[^"\']*\2/i', ' $1=$2#$2', $html) ?? '';
+        $html = preg_replace('/\s+style\s*=\s*("[^"]*"|\'[^\']*\')/i', '', $html) ?? '';
+        return trim($html);
+    }
+
+    /** Bust the published-site cache for every page slug and the story's own path. */
+    public function invalidate(int $wid, ?int $articleId = null): void
+    {
+        $website = DB::table('websites')->where('id', $wid)->first(['subdomain', 'settings_json']);
+        if (!$website) return;
+        $sub = str_replace('.levelupgrowth.io', '', (string) $website->subdomain);
+        $slugs = DB::table('pages')->where('website_id', $wid)->pluck('slug')->all();
+        $slugs[] = 'home';
+        if ($articleId) {
+            $slug = (string) DB::table('articles')->where('id', $articleId)->value('slug');
+            if ($slug !== '') { $base = $this->articleBase($website); $slugs[] = "{$base}/{$slug}"; $slugs[] = "news/{$slug}"; $slugs[] = "blog/{$slug}"; }
+        }
+        foreach (array_unique($slugs) as $s) Cache::forget("published_site:{$sub}:{$s}");
+    }
+
+    // ─── commissions (Sarah / Priya write the story) ────────────────────────
+
+    public function commission(int $wsId, int $wid, int $userId, array $d): array
+    {
+        $title = trim((string) ($d['title'] ?? '')); $brief = trim((string) ($d['brief'] ?? ''));
+        if ($title === '' && $brief === '') return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Give the story a working title or a brief.'];
+        $section = $this->sectionSlug($wsId, $d['section'] ?? null);
+        $type = in_array($d['type'] ?? '', self::STORY_TYPES, true) ? $d['type'] : 'article';
+        $len = max(300, min(2500, (int) ($d['length'] ?? 800)));
+        $site = DB::table('websites')->where('id', $wid)->first(['name']);
+        $params = [
+            'topic' => $brief !== '' ? $brief : $title, 'title' => $title !== '' ? $title : null, 'type' => $type,
+            'audience' => (string) ($d['audience'] ?? 'Readers of ' . ($site->name ?? 'the site')),
+            'tone' => (string) ($d['tone'] ?? 'clear, warm, factual'), 'brief' => $brief, 'min_words' => (int) ($len * 0.8), 'max_words' => $len,
+            'target_keyword' => (string) ($d['keyword'] ?? ''), 'desk' => ['website_id' => $wid, 'section' => $section],
+        ];
+        $res = $this->kernel->executeAsync($wsId, 'write', 'write_article', array_filter($params, fn ($v) => $v !== null && $v !== ''), ['user_id' => $userId, 'source' => 'manual', 'agent_id' => 'priya', 'priority' => 'normal']);
+        $taskId = (int) ($res['task_id'] ?? $res['task']['id'] ?? 0); $approvalId = (int) ($res['approval_id'] ?? 0);
+        $status = $taskId ? 'queued' : ($approvalId ? 'awaiting_approval' : 'failed');
+        $id = DB::table('desk_commissions')->insertGetId([
+            'workspace_id' => $wsId, 'website_id' => $wid, 'task_id' => $taskId ?: null, 'approval_id' => $approvalId ?: null, 'title' => mb_substr($title !== '' ? $title : Str::limit($brief, 120), 0, 255),
+            'brief' => $brief ?: null, 'section_slug' => $section, 'type' => $type, 'status' => $status, 'error_text' => $status === 'failed' ? mb_substr((string) ($res['error'] ?? $res['message'] ?? 'Kernel refused the task.'), 0, 1000) : null,
+            'requested_by' => $userId, 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        return ['success' => $status !== 'failed', 'id' => $id, 'status' => $status, 'task_id' => $taskId ?: null, 'approval_id' => $approvalId ?: null, 'message' => $status === 'failed' ? ($res['error'] ?? $res['message'] ?? null) : null, 'kernel' => array_intersect_key($res, array_flip(['success', 'code', 'credits_reserved', 'pending_approval']))];
+    }
+
+    public function listCommissions(int $wsId, int $wid): array
+    {
+        $this->reconcileCommissions($wsId, $wid);
+        $rows = DB::table('desk_commissions')->where('website_id', $wid)->orderByDesc('id')->limit(50)->get();
+        $taskIds = $rows->pluck('task_id')->filter()->all();
+        $tasks = $taskIds ? DB::table('tasks')->whereIn('id', $taskIds)->get(['id', 'status', 'progress_message', 'error_text'])->keyBy('id') : collect();
+        return ['success' => true, 'commissions' => $rows->map(fn ($c) => [
+            'id' => (int) $c->id, 'title' => $c->title, 'brief' => $c->brief, 'section' => $c->section_slug, 'type' => $c->type, 'status' => $c->status,
+            'task_id' => $c->task_id, 'task_status' => $tasks[$c->task_id]->status ?? null, 'progress' => $tasks[$c->task_id]->progress_message ?? null,
+            'article_id' => $c->article_id, 'error' => $c->error_text ?: ($tasks[$c->task_id]->error_text ?? null), 'created_at' => $c->created_at, 'updated_at' => $c->updated_at,
+        ])->all()];
+    }
+
+    /** Bind finished write tasks to the site: website_id, section, desk author; mark failures. Idempotent. */
+    public function reconcileCommissions(int $wsId, int $wid): int
+    {
+        $open = DB::table('desk_commissions')->where('website_id', $wid)->whereIn('status', ['queued', 'awaiting_approval'])->get();
+        $n = 0;
+        foreach ($open as $c) {
+            if (!$c->task_id && $c->approval_id) {
+                $ap = DB::table('approvals')->where('id', $c->approval_id)->first(['status', 'task_id']);
+                if ($ap && $ap->task_id) DB::table('desk_commissions')->where('id', $c->id)->update(['task_id' => $ap->task_id, 'status' => 'queued', 'updated_at' => now()]);
+                elseif ($ap && in_array($ap->status, ['rejected', 'expired'], true)) DB::table('desk_commissions')->where('id', $c->id)->update(['status' => 'failed', 'error_text' => "Approval {$ap->status}.", 'updated_at' => now()]);
+                continue;
+            }
+            $task = $c->task_id ? Task::find($c->task_id) : null;
+            if (!$task) continue;
+            if (in_array($task->status, ['failed', 'cancelled'], true)) {
+                DB::table('desk_commissions')->where('id', $c->id)->update(['status' => 'failed', 'error_text' => mb_substr((string) ($task->error_text ?: 'Task ' . $task->status), 0, 1000), 'updated_at' => now()]);
+                continue;
+            }
+            if ($task->status !== 'completed') continue;
+            $r = is_array($task->result_json) ? $task->result_json : (json_decode((string) $task->result_json, true) ?: []);
+            $aid = (int) ($r['article_id'] ?? $r['id'] ?? $r['data']['article_id'] ?? $r['result']['article_id'] ?? 0);
+            if ($aid <= 0) {
+                $aid = (int) (DB::table('articles')->where('workspace_id', $wsId)->whereNull('website_id')->where('created_at', '>=', $c->created_at)->where('title', 'like', mb_substr($c->title, 0, 40) . '%')->orderBy('id')->value('id') ?: 0);
+            }
+            if ($aid <= 0) { DB::table('desk_commissions')->where('id', $c->id)->update(['status' => 'failed', 'error_text' => 'Task finished without an article.', 'updated_at' => now()]); continue; }
+            $a = DB::table('articles')->where('id', $aid)->where('workspace_id', $wsId)->first(['id', 'website_id', 'blog_category']);
+            if (!$a) continue;
+            $up = ['is_marketing_blog' => 1, 'updated_at' => now()];
+            if (empty($a->website_id)) $up['website_id'] = $wid;
+            if ($c->section_slug && empty($a->blog_category)) $up['blog_category'] = $c->section_slug;
+            DB::table('articles')->where('id', $aid)->update($up);
+            $this->mergeBrief($aid, ['author' => $this->deskAuthor($wid), 'desk' => ['commission_id' => (int) $c->id, 'requested_by' => $c->requested_by]]);
+            DB::table('desk_commissions')->where('id', $c->id)->update(['status' => 'ready', 'article_id' => $aid, 'updated_at' => now()]);
+            $n++;
+        }
+        return $n;
+    }
+
+    // ─── jobs ───────────────────────────────────────────────────────────────
+
+    public function listJobs(int $wsId, int $wid, array $f = []): array
+    {
+        $q = DB::table('job_listings')->where('workspace_id', $wsId)->where('website_id', $wid)->whereNull('deleted_at');
+        if (!empty($f['status']) && $f['status'] !== 'all') $q->where('status', $f['status']);
+        if (!empty($f['q'])) { $s = '%' . trim($f['q']) . '%'; $q->where(fn ($w) => $w->where('title', 'like', $s)->orWhere('company', 'like', $s)->orWhere('city', 'like', $s)); }
+        $total = (clone $q)->count(); $limit = max(1, min(100, (int) ($f['limit'] ?? 50))); $offset = max(0, (int) ($f['offset'] ?? 0));
+        $rows = $q->orderByRaw("FIELD(status,'draft','published','expired','archived')")->orderByDesc('updated_at')->offset($offset)->limit($limit)->get();
+        $website = DB::table('websites')->where('id', $wid)->first();
+        return ['success' => true, 'jobs' => $rows->map(fn ($j) => $this->jobRow($j, $website))->all(), 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => $offset + $rows->count() < $total];
+    }
+
+    private function jobRow(object $j, object $website): array
+    {
+        $r = (array) $j;
+        $r['benefits'] = is_string($j->benefits_json ?? null) ? (json_decode($j->benefits_json, true) ?: []) : []; unset($r['benefits_json']);
+        $r['requirements'] = is_string($j->requirements ?? null) && str_starts_with(trim($j->requirements), '[') ? (json_decode($j->requirements, true) ?: []) : $j->requirements;
+        $r['url'] = $j->status === 'published' ? $this->siteOrigin($website) . '/jobs/' . $j->slug : null;
+        $r['days_left'] = $j->expires_at ? (int) ceil((strtotime($j->expires_at) - time()) / 86400) : null;
+        return $r;
+    }
+
+    public function getJob(int $wsId, int $wid, int $id): ?array
+    {
+        $j = DB::table('job_listings')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first();
+        return $j ? $this->jobRow($j, DB::table('websites')->where('id', $wid)->first()) : null;
+    }
+
+    public function createJob(int $wsId, int $wid, int $userId, array $d): array
+    {
+        unset($d['publish']);
+        $d['website_id'] = $wid; $d['source'] = $d['source'] ?? 'desk'; $d['created_by'] = $userId;
+        $res = $this->jobs->create($wsId, $d);
+        if (!empty($res['success']) && !empty($res['job_id'])) { DB::table('job_listings')->where('id', $res['job_id'])->update(['created_by' => $userId]); $res['job'] = $this->getJob($wsId, $wid, (int) $res['job_id']); }
+        return $res;
+    }
+
+    public function updateJob(int $wsId, int $wid, int $userId, int $id, array $d): array
+    {
+        if (!$this->getJob($wsId, $wid, $id)) return ['success' => false, 'error' => 'NOT_FOUND'];
+        unset($d['website_id'], $d['workspace_id'], $d['status'], $d['publish']);
+        $res = $this->jobs->update($wsId, $id, $d);
+        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); }
+        return $res;
+    }
+
+    public function publishJob(int $wsId, int $wid, int $userId, int $id): array
+    {
+        if (!$this->getJob($wsId, $wid, $id)) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $res = $this->jobs->publish($wsId, $id);
+        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); }
+        return $res;
+    }
+
+    public function setJobStatus(int $wsId, int $wid, int $userId, int $id, string $status): array
+    {
+        if (!in_array($status, ['draft', 'expired', 'archived'], true)) return ['success' => false, 'error' => 'VALIDATION'];
+        if (!$this->getJob($wsId, $wid, $id)) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $res = $this->jobs->update($wsId, $id, ['status' => $status]);
+        if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); }
+        return $res;
+    }
+
+    // ─── inbox (leads from the site's forms) ────────────────────────────────
+
+    public function listInbox(int $wsId, int $wid, array $f = []): array
+    {
+        $q = DB::table('leads')->where('workspace_id', $wsId)->where('website_id', $wid)->whereNull('deleted_at');
+        if (!empty($f['source']) && $f['source'] !== 'all') $q->where('source', $f['source']);
+        if (!empty($f['status']) && $f['status'] !== 'all') $q->where('status', $f['status']);
+        if (!empty($f['q'])) { $s = '%' . trim($f['q']) . '%'; $q->where(fn ($w) => $w->where('name', 'like', $s)->orWhere('email', 'like', $s)->orWhere('company', 'like', $s)); }
+        $total = (clone $q)->count(); $limit = max(1, min(100, (int) ($f['limit'] ?? 50))); $offset = max(0, (int) ($f['offset'] ?? 0));
+        $rows = $q->orderByRaw("FIELD(status,'new','contacted','qualified','converted','lost')")->orderByDesc('created_at')->offset($offset)->limit($limit)->get();
+        $ids = $rows->pluck('id')->all();
+        $acts = $ids ? DB::table('activities')->where('workspace_id', $wsId)->where('activitable_type', 'lead')->whereIn('activitable_id', $ids)->select('activitable_id', DB::raw('count(*) c'))->groupBy('activitable_id')->pluck('c', 'activitable_id')->all() : [];
+        $sources = DB::table('leads')->where('workspace_id', $wsId)->where('website_id', $wid)->whereNull('deleted_at')->select('source', DB::raw('count(*) c'))->groupBy('source')->pluck('c', 'source')->all();
+        return ['success' => true, 'items' => $rows->map(fn ($l) => $this->leadRow($l, (int) ($acts[$l->id] ?? 0)))->all(), 'total' => $total, 'offset' => $offset, 'limit' => $limit, 'has_more' => $offset + $rows->count() < $total, 'sources' => $sources];
+    }
+
+    private function leadRow(object $l, int $activities = 0): array
+    {
+        $m = is_string($l->metadata_json ?? null) ? (json_decode($l->metadata_json, true) ?: []) : [];
+        return ['id' => (int) $l->id, 'name' => $l->name, 'email' => $l->email, 'phone' => $l->phone, 'company' => $l->company, 'source' => $l->source, 'status' => $l->status,
+            'message' => $m['first_message'] ?? null, 'submitted_at' => $m['submitted_at'] ?? $l->created_at, 'created_at' => $l->created_at, 'last_contacted_at' => $l->last_contacted_at,
+            'activities' => $activities, 'tags' => is_string($l->tags_json ?? null) ? (json_decode($l->tags_json, true) ?: []) : []];
+    }
+
+    public function getInboxItem(int $wsId, int $wid, int $id): ?array
+    {
+        $l = DB::table('leads')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first();
+        if (!$l) return null;
+        $row = $this->leadRow($l);
+        $row['timeline'] = DB::table('activities')->where('workspace_id', $wsId)->where('activitable_type', 'lead')->where('activitable_id', $id)->orderByDesc('created_at')->limit(50)
+            ->get(['id', 'type', 'subject', 'description', 'performed_by', 'created_at'])->all();
+        return $row;
+    }
+
+    public function updateInboxItem(int $wsId, int $wid, int $userId, int $id, array $d): array
+    {
+        $l = DB::table('leads')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'status']);
+        if (!$l) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $up = [];
+        if (!empty($d['status']) && in_array($d['status'], ['new', 'contacted', 'qualified', 'converted', 'lost'], true) && $d['status'] !== $l->status) {
+            $up['status'] = $d['status'];
+            if ($d['status'] === 'contacted') $up['last_contacted_at'] = now();
+            if ($d['status'] === 'converted') $up['converted_at'] = now();
+        }
+        if ($up) { $up['updated_at'] = now(); DB::table('leads')->where('id', $id)->update($up); }
+        $note = trim((string) ($d['note'] ?? ''));
+        if ($note !== '' || isset($up['status'])) {
+            DB::table('activities')->insert(['workspace_id' => $wsId, 'activitable_type' => 'lead', 'activitable_id' => $id, 'type' => $note !== '' ? 'note' : 'status_change',
+                'subject' => isset($up['status']) ? "Status → {$up['status']}" : 'Desk note', 'description' => $note !== '' ? mb_substr($note, 0, 2000) : null,
+                'metadata_json' => json_encode(['via' => 'publisher_desk']), 'completed' => 1, 'completed_at' => now(), 'performed_by' => $userId, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        return ['success' => true, 'item' => $this->getInboxItem($wsId, $wid, $id)];
+    }
+
+    /** Turn a job_post submission into a draft listing (title/company parsed from the message when possible). */
+    public function jobFromInbox(int $wsId, int $wid, int $userId, int $leadId): array
+    {
+        $l = DB::table('leads')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $leadId)->whereNull('deleted_at')->first();
+        if (!$l) return ['success' => false, 'error' => 'NOT_FOUND'];
+        $m = is_string($l->metadata_json ?? null) ? (json_decode($l->metadata_json, true) ?: []) : [];
+        $msg = (string) ($m['first_message'] ?? '');
+        $grab = fn (string $k) => preg_match('/^\s*(?:' . $k . ')\s*:\s*(.+)$/im', $msg, $mm) ? trim($mm[1]) : '';
+        $d = ['title' => $grab('(?:job )?title|role|position') ?: 'Vacancy from ' . ($l->company ?: $l->name), 'company' => $grab('company|employer') ?: ($l->company ?: (string) $l->name),
+              'city' => $grab('city|location') ?: 'Dubai', 'apply_email' => filter_var($l->email, FILTER_VALIDATE_EMAIL) ? $l->email : null, 'description' => nl2br(e($msg)),
+              'salary_text' => $grab('salary|pay'), 'employment_type' => 'full_time', 'source' => 'employer', 'lead_id' => $leadId, 'verification_source' => 'Submitted via post-a-job form by ' . $l->email];
+        $res = $this->createJob($wsId, $wid, $userId, $d);
+        if (!empty($res['success'])) DB::table('activities')->insert(['workspace_id' => $wsId, 'activitable_type' => 'lead', 'activitable_id' => $leadId, 'type' => 'note', 'subject' => 'Draft job created #' . $res['job_id'], 'completed' => 1, 'completed_at' => now(), 'performed_by' => $userId, 'created_at' => now(), 'updated_at' => now()]);
+        return $res;
+    }
+
+    // ─── members ────────────────────────────────────────────────────────────
+
+    public function listMembers(int $wsId, int $wid): array
+    {
+        $ws = DB::table('workspaces')->where('id', $wsId)->first(['created_by']);
+        $rows = DB::table('workspace_users as wu')->join('users as u', 'u.id', '=', 'wu.user_id')->where('wu.workspace_id', $wsId)
+            ->get(['u.id', 'u.name', 'u.email', 'wu.role as workspace_role', 'wu.created_at']);
+        $explicit = DB::table('desk_members')->where('website_id', $wid)->whereNotNull('user_id')->pluck('role', 'user_id')->all();
+        $preassigned = DB::table('desk_members')->where('website_id', $wid)->whereNull('user_id')->get(['email', 'role', 'created_at'])->all();
+        $members = $rows->map(fn ($u) => [
+            'user_id' => (int) $u->id, 'name' => $u->name, 'email' => $u->email, 'workspace_role' => $u->workspace_role,
+            'desk_role' => $explicit[$u->id] ?? $this->resolveRole($wsId, $wid, (int) $u->id, $u->workspace_role), 'explicit' => isset($explicit[$u->id]),
+            'is_workspace_owner' => (int) $u->id === (int) ($ws->created_by ?? 0), 'since' => $u->created_at,
+        ])->all();
+        $invites = [];
+        try { $invites = $this->team->listPendingInvites($wsId); } catch (\Throwable) {}
+        return ['success' => true, 'members' => $members, 'pending_invites' => $invites, 'preassigned' => $preassigned];
+    }
+
+    public function setMemberRole(int $wsId, int $wid, int $byUserId, int $userId, string $role): array
+    {
+        if (!in_array($role, self::ROLES, true)) return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Unknown role.'];
+        if (!DB::table('workspace_users')->where('workspace_id', $wsId)->where('user_id', $userId)->exists()) return ['success' => false, 'error' => 'NOT_A_MEMBER', 'message' => 'Invite this person to the workspace first.'];
+        $ownerId = (int) DB::table('workspaces')->where('id', $wsId)->value('created_by');
+        if ($userId === $ownerId && $role !== 'owner') return ['success' => false, 'error' => 'OWNER_LOCKED', 'message' => 'The workspace owner is always a desk owner.'];
+        DB::table('desk_members')->updateOrInsert(['website_id' => $wid, 'user_id' => $userId], ['workspace_id' => $wsId, 'role' => $role, 'created_by' => $byUserId, 'updated_at' => now(), 'created_at' => now()]);
+        return ['success' => true, 'user_id' => $userId, 'role' => $role];
+    }
+
+    public function invite(int $wsId, int $wid, int $byUserId, string $email, string $role): array
+    {
+        $email = strtolower(trim($email));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return ['success' => false, 'error' => 'VALIDATION', 'message' => 'Enter a valid email.'];
+        if (!in_array($role, self::ROLES, true)) $role = 'editor';
+        try { $res = $this->team->inviteMember($wsId, $byUserId, $email, 'member'); }
+        catch (\Throwable $e) { return ['success' => false, 'error' => 'INVITE_FAILED', 'message' => $e->getMessage()]; }
+        if (!empty($res['success']) || !empty($res['invite'])) {
+            // pre-assign the desk role by email; claimed on the invitee's first desk login (claimPreassignedRole)
+            DB::table('desk_members')->where('website_id', $wid)->whereNull('user_id')->where('email', $email)->delete();
+            DB::table('desk_members')->insert(['workspace_id' => $wsId, 'website_id' => $wid, 'user_id' => null, 'email' => $email, 'role' => $role, 'created_by' => $byUserId, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        return $res + ['desk_role' => $role];
+    }
+
+    /** Called on context load: if this user was pre-assigned a desk role by email before they existed, claim it. */
+    public function claimPreassignedRole(int $wsId, int $wid, int $userId, string $email): void
+    {
+        $row = DB::table('desk_members')->where('website_id', $wid)->whereNull('user_id')->where('email', strtolower(trim($email)))->first();
+        if (!$row) return;
+        if (!DB::table('desk_members')->where('website_id', $wid)->where('user_id', $userId)->exists()) {
+            DB::table('desk_members')->insert(['workspace_id' => $wsId, 'website_id' => $wid, 'user_id' => $userId, 'email' => $row->email, 'role' => $row->role, 'created_by' => $row->created_by, 'created_at' => now(), 'updated_at' => now()]);
+        }
+        DB::table('desk_members')->where('id', $row->id)->delete();
+    }
+}

@@ -55,6 +55,22 @@ class PublishedSiteMiddleware
             return $next($request);
         }
 
+        // PUBLISHER888 Unit 1 (2026-09-04) — the Publisher Desk lives at /admin on the site's OWN host
+        // (custom domain or tenant subdomain) for themes that ship a desk (DeskService::THEMES).
+        // GET /admin[/…] returns the desk shell here, BEFORE Laravel routing, so the platform admin
+        // panel (routes/web.php `admin` prefix) is never reached on such hosts. /api/* requests on the
+        // same host get `published_website_id` stamped so DeskContext can resolve the site from the host.
+        $deskPath = trim($request->getPathInfo(), '/');
+        if ($deskPath === 'admin' || str_starts_with($deskPath, 'admin/') || $deskPath === 'api' || str_starts_with($deskPath, 'api/')) {
+            $deskSite = $website ?? DB::table('websites')->where('subdomain', $subdomain . '.levelupgrowth.io')->where('status', 'published')->first();
+            if ($deskSite && \App\Engines\Publisher\Services\DeskService::themeHasDesk($deskSite)) {
+                $request->attributes->set('published_website_id', (int) $deskSite->id);
+                if (!str_starts_with($deskPath, 'api') && $request->isMethod('GET')) {
+                    return app(\App\Engines\Publisher\Services\DeskService::class)->shell($deskSite, $request);
+                }
+            }
+        }
+
         // 2026-05-23 FIX 40 — auto-redirect tenant subdomain requests
         // to the verified custom_domain so search engines see exactly
         // ONE canonical URL per page. Without this we ran two public

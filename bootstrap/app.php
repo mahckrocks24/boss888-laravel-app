@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withSchedule(function (Schedule $schedule) {
 
+        // PUBLISHER888 Unit 1 (2026-09-04) — desk-scheduled stories go live on time.
+        $schedule->command('publisher:publish-scheduled')
+            ->name('publisher:publish-scheduled')
+            ->everyMinute()
+            ->withoutOverlapping();
+
         // EXPERIENCE888 (2026-08-13) - the learning loop must sustain itself.
         // Ingestion turns authoritative task/approval/commitment rows into typed
         // experience; it is idempotent via dedupe_key, so an hourly re-read of
@@ -593,6 +599,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'auth.jwt'        => \App\Http\Middleware\JwtAuthMiddleware::class,
+            'desk.context'    => \App\Http\Middleware\DeskContext::class, // PUBLISHER888 Unit 1
             // Phase 2B-R2 — MFA step-up for privileged control-plane ops. Self-
             // disables below the two-MFA-admin governance bar (fail-safe, not fail-open).
             'mfa.stepup'      => \App\Http\Middleware\RequireMfaStepUp::class,

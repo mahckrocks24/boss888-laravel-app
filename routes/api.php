@@ -871,6 +871,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
     // CR-22B: projects-01 extracted to routes/api/authenticated/projects-01.php (was lines 753-932); position, scope and order preserved.
     require __DIR__ . '/api/authenticated/projects-01.php';
+    require __DIR__ . '/api/authenticated/desk-01.php'; // PUBLISHER888 Unit 1 — Publisher Desk (/api/desk/*)
 
     // Approvals (v5.5.1)
     Route::get('/approvals',                 [ApprovalController::class, 'index']);
