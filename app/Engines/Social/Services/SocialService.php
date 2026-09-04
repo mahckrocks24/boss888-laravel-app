@@ -142,36 +142,133 @@ class SocialService
         $post = DB::table('social_posts')->where('id', $postId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->first();
         if (!$post) throw new \RuntimeException("Post not found");
 
-        try {
-            $result = $this->connector->publish($post->platform, [
-                'content' => $post->content,
-                'media' => json_decode($post->media_json ?? '[]', true),
-                'account_id' => $post->social_account_id,
+        // SOCIAL-888 PUBLISH-HARDENING (2026-09-04): the Social-nav publish now runs through the
+        // CANONICAL Graph publishers (App\Core\Publisher\*) using the stored Page token — the same
+        // real connectors + honesty guard + truthful states as PublisherService::callProvider —
+        // instead of the retired external SocialConnector. Transport is dry-run (MockTransport)
+        // until config('publisher.live_transport') is enabled after Meta App Review, so nothing
+        // reaches a platform yet and no row is ever marked 'published' on a non-live transport.
+
+        // ── Idempotency: a row that already went out is never published twice.
+        if (($post->execution_status ?? null) === 'published' || !empty($post->external_post_id)) {
+            return ['published' => true, 'duplicate' => true, 'external_id' => $post->external_post_id];
+        }
+
+        // ── Execution lock (compare-and-swap): claim the row so concurrent/duplicate
+        //    publish requests cannot both transmit.
+        $claimed = DB::table('social_posts')->where('id', $postId)
+            ->whereNotIn('status', ['publishing', 'published'])
+            ->update([
+                'status' => 'publishing', 'execution_status' => 'executing',
+                'attempt_count' => DB::raw('COALESCE(attempt_count,0) + 1'), 'updated_at' => now(),
             ]);
-        } catch (\Throwable $e) {
-            DB::table('social_posts')->where('id', $postId)->update(['status' => 'failed', 'updated_at' => now()]);
-            \Illuminate\Support\Facades\Log::warning("Social publish exception for post {$postId} ({$post->platform})", ['error' => $e->getMessage()]);
-            throw new \RuntimeException("The post wasn't published to {$post->platform} — social publishing isn't connected for this workspace yet. Connect your {$post->platform} account in Settings to publish for real.");
+        if ($claimed === 0) {
+            return ['published' => false, 'in_progress' => true,
+                    'message' => "A publish is already in progress for this post."];
         }
 
-        // HONESTY GUARD (2026-07-15): only mark published on a REAL provider success.
-        // A mock result, a false success flag, or a missing external id means it did
-        // NOT actually reach the platform — never report those as published.
-        $reallyPublished = ($result['success'] ?? false) && !empty($result['external_id']) && empty($result['mock']);
-        if (!$reallyPublished) {
-            DB::table('social_posts')->where('id', $postId)->update(['status' => 'failed', 'updated_at' => now()]);
-            \Illuminate\Support\Facades\Log::warning("Social publish not confirmed for post {$postId} ({$post->platform})", ['error' => $result['error'] ?? 'unknown', 'mock' => $result['mock'] ?? false]);
-            throw new \RuntimeException("The post wasn't published to {$post->platform} — social publishing isn't connected for this workspace yet. Connect your {$post->platform} account in Settings to publish for real.");
+        $fail = function (string $execStatus, string $failClass, string $userMsg) use ($postId) {
+            DB::table('social_posts')->where('id', $postId)->update([
+                'status' => 'draft', 'execution_status' => $execStatus,
+                'failure_class' => $failClass, 'updated_at' => now(),
+            ]);
+            throw new \RuntimeException($userMsg);
+        };
+
+        // ── Resolve the connection for this workspace + platform.
+        $account = $post->social_account_id
+            ? DB::table('social_accounts')->where('id', $post->social_account_id)->where('workspace_id', $post->workspace_id)->first()
+            : DB::table('social_accounts')->where('workspace_id', $post->workspace_id)->where('platform', $post->platform)->orderByDesc('id')->first();
+        if (!$account) {
+            $fail('failed', 'permanent:NOT_CONNECTED',
+                "The post wasn't published to {$post->platform} — no {$post->platform} account is connected for this workspace yet. Connect it in Settings to publish for real.");
         }
 
+        $health = \App\Core\Publisher\ConnectionHealth::assess($account);
+        if (!($health['ok'] ?? false)) {
+            $fail('failed', 'permanent:' . ($health['state'] ?? 'CONNECTION_UNUSABLE'),
+                $health['message'] ?? "The {$post->platform} connection needs attention before publishing.");
+        }
+
+        $creds = \App\Core\Publisher\ConnectionHealth::readCredentials($account);
+        $conn  = [
+            'page_id'      => $account->linked_page_id ?: $account->account_id,
+            'ig_user_id'   => $account->account_id,
+            'access_token' => $creds['page_access_token'] ?? $creds['access_token'] ?? '',
+        ];
+        $payload = [
+            'content'         => $post->content,
+            'media'           => json_decode($post->media_json ?? '[]', true) ?: [],
+            'canonical_url'   => $post->canonical_url ?? '',
+            'idempotency_key' => $post->idempotency_key,
+            'correlation_id'  => $post->correlation_id ?? ('sp_' . $post->id),
+        ];
+
+        $transport = config('publisher.live_transport', false)
+            ? new \App\Core\Publisher\HttpTransport()
+            : new \App\Core\Publisher\MockTransport();
+        $live = $transport->isLive();
+
+        $connector = match (\App\Core\Distribution\PlatformPolicy::normalise((string) $post->platform)) {
+            'facebook'  => new \App\Core\Publisher\FacebookPublisherConnector($transport),
+            'instagram' => new \App\Core\Publisher\InstagramPublisherConnector($transport),
+            default     => null,
+        };
+        if ($connector === null) {
+            $fail('failed', 'permanent:NO_CONNECTOR', "Publishing to {$post->platform} isn't supported yet.");
+        }
+
+        $r = $connector->publish($payload, $conn);
+
+        // ── SUCCESS. HONESTY GUARD: a success over a non-live transport reached only a mock —
+        //    it is NEVER 'published' and NEVER stores a provider id.
+        if ($r['success'] ?? false) {
+            DB::table('social_posts')->where('id', $postId)->update([
+                'execution_status'      => $live ? 'published' : 'dry_run_ok',
+                'status'                => $live ? 'published' : 'draft',
+                'external_post_id'      => $live ? ($r['provider_post_id'] ?? null) : null,
+                'provider_status_class' => $r['status_class'] ?? null,
+                'provider_error_code'   => null,
+                'failure_class'         => null,
+                'published_at'          => $live ? now() : null,
+                'updated_at'            => now(),
+            ]);
+            if (!$live) {
+                throw new \RuntimeException(
+                    "Your {$post->platform} post passed every check, but real publishing isn't enabled yet "
+                    . "(the platform connection is pending review). Nothing was posted.");
+            }
+            $this->engineIntel->recordToolUsage('social', 'social_publish_post', 0.9);
+            return ['published' => true, 'external_id' => $r['provider_post_id']];
+        }
+
+        // ── UNCERTAIN: the provider may have created the post. Never blind-retry; reconcile.
+        if (($r['status_class'] ?? '') === \App\Core\Publisher\MetaErrorMap::UNCERTAIN) {
+            DB::table('social_posts')->where('id', $postId)->update([
+                'execution_status'      => 'publishing_unknown',
+                'provider_status_class' => \App\Core\Publisher\MetaErrorMap::UNCERTAIN,
+                'provider_error_code'   => $r['error_code'] ?? null,
+                'failure_class'         => 'uncertain:' . ($r['error_code'] ?? 'UNKNOWN'),
+                'updated_at'            => now(),
+            ]);
+            throw new \RuntimeException(
+                "We couldn't confirm whether your {$post->platform} post went out. We'll verify before any retry so nothing is posted twice.");
+        }
+
+        // ── FAILED / RETRYABLE.
+        if (!empty($r['needs_reconnect'])) {
+            \App\Core\Publisher\ConnectionHealth::mark((int) $account->id,
+                \App\Core\Publisher\ConnectionHealth::REVOKED, $r['error_code'] ?? null);
+        }
         DB::table('social_posts')->where('id', $postId)->update([
-            'status' => 'published', 'published_at' => now(),
-            'external_post_id' => $result['external_id'],
-            'updated_at' => now(),
+            'status'                => 'draft',
+            'execution_status'      => ($r['retryable'] ?? false) ? 'retry_pending' : 'failed',
+            'provider_status_class' => $r['status_class'] ?? null,
+            'provider_error_code'   => $r['error_code'] ?? null,
+            'failure_class'         => (($r['retryable'] ?? false) ? 'transient:' : 'permanent:') . ($r['error_code'] ?? 'UNKNOWN'),
+            'updated_at'            => now(),
         ]);
-
-        $this->engineIntel->recordToolUsage('social', 'social_publish_post', 0.9);
-        return ['published' => true, 'external_id' => $result['external_id']];
+        throw new \RuntimeException($r['message'] ?? "Publishing to {$post->platform} failed.");
     }
 
     public function deletePost(int $id, ?int $wsId = null): void
