@@ -902,9 +902,10 @@ HTML;
     {
         $regJson = json_encode($this->multiRegion() ? array_map(fn ($r) => (string) $r['short'], $this->regions()) : new \stdClass(), JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_APOS); // QATAR-1: edition names for client-rendered cards
         $base = $this->e($this->base);
-        return <<<'JS'
+        return "<script>window.__KB_REG={$regJson};</script>
+" . <<<'JS'
 <script>(function(){
-var REG={$regJson};var d=document,h=d.getElementById('kb-header'),drawer=d.getElementById('kb-drawer'),search=d.getElementById('kb-search'),lastFocus=null;
+var REG=window.__KB_REG||{};var d=document,h=d.getElementById('kb-header'),drawer=d.getElementById('kb-drawer'),search=d.getElementById('kb-search'),lastFocus=null;
 function open(el,btn){if(!el)return;el.hidden=false;el.setAttribute('data-open','1');d.body.style.overflow='hidden';lastFocus=d.activeElement;if(btn)btn.setAttribute('aria-expanded','true');var f=el.querySelector('input,button,a');if(f)setTimeout(function(){f.focus()},30)}
 function close(){[drawer,search].forEach(function(el){if(!el)return;el.setAttribute('data-open','0');el.hidden=true});d.body.style.overflow='';d.querySelectorAll('[data-kb="menu"],[data-kb="search"]').forEach(function(b){b.setAttribute('aria-expanded','false')});if(lastFocus&&lastFocus.focus)lastFocus.focus()}
 d.addEventListener('click',function(e){var t=e.target.closest('[data-kb]');if(!t)return;var k=t.getAttribute('data-kb');
