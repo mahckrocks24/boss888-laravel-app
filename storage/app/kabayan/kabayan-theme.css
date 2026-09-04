@@ -62,7 +62,7 @@ body.kb-text-xl .kb-prose{font-size:1.34rem;line-height:1.78}
 /* section chips */
 .kb-chips{border-top:1px solid var(--kb-line);position:relative}
 .kb-chips::after{content:"";position:absolute;right:0;top:0;bottom:0;width:36px;background:linear-gradient(90deg,transparent,var(--kb-bg));pointer-events:none}
-.kb-chips ul{list-style:none;margin:0;padding:0 16px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;height:var(--kb-chips-h);align-items:center;scroll-snap-type:x proximity}
+.kb-chips ul{list-style:none;margin:0;padding:0 16px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;height:var(--kb-chips-h);align-items:center;scroll-snap-type:x proximity;scroll-padding-inline:16px}
 .kb-chips ul::-webkit-scrollbar{display:none}
 .kb-chips li{flex:none;scroll-snap-align:start}
 .kb-chips a{display:inline-flex;align-items:center;height:40px;padding:0 14px;border-radius:999px;font-size:.84rem;font-weight:700;letter-spacing:.02em;text-decoration:none;color:var(--kb-ink-2);background:var(--kb-bg-2);white-space:nowrap}
@@ -78,7 +78,7 @@ body.kb-text-xl .kb-prose{font-size:1.34rem;line-height:1.78}
   .kb-tag{display:block;justify-self:center;font-family:var(--kb-fh);font-style:italic;color:var(--kb-muted);font-size:.95rem}
   .kb-bar-right{justify-self:end;display:flex;align-items:center;gap:10px}
   .kb-chips{border-top:3px double var(--kb-ink)}
-  .kb-chips ul{padding:0 24px;max-width:1180px;margin:0 auto;gap:2px}
+  .kb-chips ul{padding:0 24px;max-width:1180px;margin:0 auto;gap:2px;scroll-padding-inline:24px}
   .kb-chips a{background:transparent;border-radius:0;height:44px;padding:0 14px;text-transform:uppercase;letter-spacing:.06em;font-size:.8rem;border-bottom:3px solid transparent}
   .kb-chips a.is-active{background:transparent;color:var(--kb-primary);border-bottom-color:var(--kb-primary)}
   .kb-chips::after{display:none}
