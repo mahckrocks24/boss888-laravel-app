@@ -4812,16 +4812,27 @@ use Illuminate\Support\Facades\Route;
             }
 
             // 2. If this URL belongs to a Builder page, push back into pages.seo_json.
-            //    We match by slug derived from URL path against websites in this workspace.
+            //    SEO-P1-2 fix (2026-09-04): resolve the WEBSITE from the URL HOST first, then match
+            //    the page by website_id + slug. Before this, it matched workspace_id + slug with
+            //    ->first(), so in a multi-website workspace every save wrote the FIRST 'home' page
+            //    (wrong website), and a URL whose host is not a website in this workspace still wrote
+            //    an arbitrary page. Now: no host match in this workspace => no page write.
             try {
+                $host = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
                 $path = parse_url($url, PHP_URL_PATH) ?? '/';
                 $slug = trim($path, '/') ?: 'home';
-                $page = \Illuminate\Support\Facades\DB::table('pages')
-                    ->join('websites', 'pages.website_id', '=', 'websites.id')
-                    ->where('websites.workspace_id', $wsId)
-                    ->where('pages.slug', $slug)
-                    ->select('pages.*')
-                    ->first();
+                $writebackWebsiteId = $host === '' ? null : \Illuminate\Support\Facades\DB::table('websites')
+                    ->where('workspace_id', $wsId)
+                    ->where(function ($q) use ($host) {
+                        $q->whereRaw('LOWER(subdomain) = ?', [$host])
+                          ->orWhereRaw('LOWER(domain) = ?', [$host])
+                          ->orWhereRaw('LOWER(custom_domain) = ?', [$host]);
+                    })
+                    ->value('id');
+                $page = $writebackWebsiteId ? \Illuminate\Support\Facades\DB::table('pages')
+                    ->where('website_id', $writebackWebsiteId)
+                    ->where('slug', $slug)
+                    ->first() : null;
                 if ($page) {
                     $seo = json_decode($page->seo_json ?? '{}', true) ?: [];
                     if ($title !== null) { $seo['meta_title']       = $title; }
