@@ -93,7 +93,7 @@ function _socRender(el) {
     '</div>' +
     connectedNote +
     '<div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--bd)">' +
-      ['dashboard','posts','queue','accounts'].map(function(v){ return '<button class="dash-view-tab" data-sv="' + v + '" onclick="socialSetView(\'' + v + '\',this)" style="color:' + (v==='dashboard'?'var(--da)':'var(--t3)') + ';font-weight:' + (v==='dashboard'?'600':'400') + ';border-bottom:2px solid ' + (v==='dashboard'?'var(--da)':'transparent') + ';padding:7px 14px;border-top:none;border-left:none;border-right:none;background:none;font-size:13px;cursor:pointer">' + ({dashboard:'Dashboard',posts:'All Posts',queue:'Queue',accounts:'Accounts'})[v] + '</button>'; }).join('') +
+      ['dashboard','posts','insights','queue','accounts'].map(function(v){ return '<button class="dash-view-tab" data-sv="' + v + '" onclick="socialSetView(\'' + v + '\',this)" style="color:' + (v==='dashboard'?'var(--da)':'var(--t3)') + ';font-weight:' + (v==='dashboard'?'600':'400') + ';border-bottom:2px solid ' + (v==='dashboard'?'var(--da)':'transparent') + ';padding:7px 14px;border-top:none;border-left:none;border-right:none;background:none;font-size:13px;cursor:pointer">' + ({dashboard:'Dashboard',posts:'All Posts',insights:'Insights',queue:'Queue',accounts:'Accounts'})[v] + '</button>'; }).join('') +
     '</div>' +
 
     '<div id="social-view-dashboard">' +
@@ -154,6 +154,7 @@ function _socRender(el) {
           '</tbody></table></div></div>') +
     '</div>' +
 
+    '<div id="social-view-insights" style="display:none"><div id="social-insights-body" style="padding:24px 0;text-align:center;color:var(--t3);font-size:13px">Loading insights…</div></div>' +
     '<div id="social-view-queue" style="display:none">' +
       (scheduled === 0 ? '<div class="card card-body" style="text-align:center;padding:60px 20px"><h3>Queue is empty</h3><p style="color:var(--t3);font-size:13px;margin:0 0 16px">Schedule posts to fill your queue.</p><button class="btn btn-primary btn-sm" onclick="socialNewPost()">+ Schedule a Post</button></div>'
         : '<div class="card"><div class="card-header"><h3>Scheduled Queue</h3></div><div class="table-wrap"><table><thead><tr><th>Content</th><th>Platform</th><th>Scheduled for</th><th></th></tr></thead><tbody>' +
@@ -177,8 +178,9 @@ function _socRender(el) {
     document.querySelectorAll('#social-tbl tbody tr').forEach(function(r){ r.style.display = (tab==='all' || r.dataset.status===tab) ? '' : 'none'; });
   };
   window.socialSetView = function(view) {
-    ['dashboard','posts','queue','accounts'].forEach(function(v){ var e = document.getElementById('social-view-' + v); if (e) e.style.display = v===view ? '' : 'none'; });
+    ['dashboard','posts','insights','queue','accounts'].forEach(function(v){ var e = document.getElementById('social-view-' + v); if (e) e.style.display = v===view ? '' : 'none'; });
     document.querySelectorAll('[data-sv]').forEach(function(b){ var active = b.dataset.sv===view; b.style.borderBottomColor = active ? 'var(--da)' : 'transparent'; b.style.color = active ? 'var(--da)' : 'var(--t3)'; b.style.fontWeight = active ? '600' : '400'; });
+    if (view === 'insights') window.socialLoadInsights();
   };
 }
 
@@ -470,3 +472,31 @@ window._svConnectPlatform = async function(platform){
 })();
 
 console.log('[LevelUp] social engine v3.0.0 loaded');
+
+// ── SOCIAL INSIGHTS (SOC-P1-5) — mobile-first, real own-data, honest provider states ──
+window._socInsScope = window._socInsScope || 'all';
+window.socialLoadInsights = async function(){
+  var el = document.getElementById('social-insights-body'); if(!el) return;
+  el.innerHTML = '<div style="padding:24px 0;text-align:center;color:var(--t3);font-size:13px">Loading insights…</div>';
+  var d;
+  try { d = await _socApi('GET','/social/insights?website_id='+encodeURIComponent(window._socInsScope||'all')+'&period_days=30'); }
+  catch(e){ el.innerHTML = '<div style="padding:24px;text-align:center;color:var(--t3);font-size:13px">Insights unavailable — '+_socEsc(friendlyError(e))+'</div>'; return; }
+  var od=d.own_data||{}, t=(od.totals||{}), fm=(od.format_mix||{}), pm=(od.by_platform||{}), sm=(d.sample||{}), pe=(d.provider_engagement||{});
+  var card=function(label,val){ return '<div style="flex:1;min-width:88px;background:var(--bg2,#fff);border:1px solid var(--bd,#e5e7eb);border-radius:10px;padding:12px 10px;text-align:center"><div style="font-size:22px;font-weight:700;color:var(--t1)">'+val+'</div><div style="font-size:11px;color:var(--t3);margin-top:2px">'+_socEsc(label)+'</div></div>'; };
+  var chip=function(k,v){ return '<span style="display:inline-block;background:rgba(0,0,0,.05);border-radius:20px;padding:3px 10px;font-size:12px;margin:2px">'+_socEsc(k)+': <strong>'+v+'</strong></span>'; };
+  var html='';
+  html+='<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:14px"><div style="font-size:13px;font-weight:600">'+_socEsc((d.scope&&d.scope.label)||'Insights')+'</div><div style="font-size:11px;color:var(--t3)">Last '+((d.period&&d.period.days)||30)+' days · your records · live</div></div>';
+  html+='<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">'+card('Total posts',t.lifetime_posts||0)+card('Published',t.published||0)+card('Scheduled',t.scheduled||0)+card('Drafts',t.draft||0)+((t.failed)?card('Failed',t.failed):'')+'</div>';
+  html+='<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">Where you post</div><div>'+(Object.keys(pm).length?Object.keys(pm).map(function(k){return chip(_socPlat(k),pm[k]);}).join(''):'<span style="color:var(--t3);font-size:12px">No posts yet</span>')+'</div></div>';
+  html+='<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:600;margin-bottom:6px">Format mix</div><div>'+chip('With image',fm.with_media||0)+chip('Text only',fm.text_only||0)+'</div></div>';
+  html+='<div style="margin-bottom:14px;padding:12px 14px;border:1px dashed var(--bd,#e5e7eb);border-radius:10px;background:rgba(0,0,0,.02)"><div style="font-size:12px;font-weight:600;margin-bottom:4px">Engagement — impressions, reach, likes, clicks</div>';
+  if(pe.available){ html+='<div style="font-size:12px;color:var(--t2)">Live engagement is available.</div>'; }
+  else { html+='<div style="font-size:12px;color:var(--t3)">'+_socEsc(pe.message||'Not available yet.')+'</div>'+((pe.reason==='no_social_account_connected')?'<button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="socialSetView(\'accounts\')">Connect an account →</button>':''); }
+  html+='</div>';
+  html+='<div style="font-size:12px;font-weight:600;margin-bottom:6px">What to do next</div>';
+  var recs=d.recommendations||[];
+  if(!sm.enough_for_patterns && recs.length===0){ html+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Not enough data yet — create a few more posts and check back.</div>'; }
+  else if(recs.length===0){ html+='<div style="font-size:12px;color:var(--t3);padding:8px 0">Nothing urgent — your recent posting looks balanced.</div>'; }
+  else { html+=recs.map(function(r){ var act=r.action||{}; var oc = (act.type==='social_image') ? 'socialGenerateWithAI()' : 'socialNewPost()'; return '<div style="border:1px solid var(--bd,#e5e7eb);border-radius:10px;padding:12px 14px;margin-bottom:8px"><div style="font-size:13px;font-weight:600">'+_socEsc(r.insight)+'</div>'+(r.evidence?'<div style="font-size:11px;color:var(--t3);margin:4px 0">'+_socEsc(r.evidence)+'</div>':'')+(act.label?'<button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="'+oc+'">'+_socEsc(act.label)+'</button>':'')+'</div>'; }).join(''); }
+  el.innerHTML=html;
+};
