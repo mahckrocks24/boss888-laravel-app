@@ -97,6 +97,44 @@ class DeskService
         return "https://{$sub}.levelupgrowth.io";
     }
 
+    /** KABAYAN888 QATAR-1 — editions from settings_json.regions ([{code,name,short,tz,tz_label}] or legacy ["ae"]). */
+    public const REGION_DEFAULTS = [
+        'AE' => ['name' => 'United Arab Emirates', 'short' => 'UAE', 'tz' => 'Asia/Dubai', 'tz_label' => 'GST', 'currency' => 'AED'],
+        'QA' => ['name' => 'Qatar', 'short' => 'Qatar', 'tz' => 'Asia/Qatar', 'tz_label' => 'AST', 'currency' => 'QAR'],
+        'SA' => ['name' => 'Saudi Arabia', 'short' => 'KSA', 'tz' => 'Asia/Riyadh', 'tz_label' => 'AST', 'currency' => 'SAR'],
+        'KW' => ['name' => 'Kuwait', 'short' => 'Kuwait', 'tz' => 'Asia/Kuwait', 'tz_label' => 'AST', 'currency' => 'KWD'],
+        'BH' => ['name' => 'Bahrain', 'short' => 'Bahrain', 'tz' => 'Asia/Bahrain', 'tz_label' => 'AST', 'currency' => 'BHD'],
+        'OM' => ['name' => 'Oman', 'short' => 'Oman', 'tz' => 'Asia/Muscat', 'tz_label' => 'GST', 'currency' => 'OMR'],
+    ];
+    public function regions(object $website): array
+    {
+        $out = [];
+        foreach ((array) ($this->settings($website)['regions'] ?? []) as $r) {
+            if (is_string($r)) $r = ['code' => $r];
+            if (!is_array($r) || empty($r['code'])) continue;
+            $code = strtoupper((string) $r['code']);
+            $out[] = array_merge(self::REGION_DEFAULTS[$code] ?? ['name' => $code, 'short' => $code, 'tz' => 'Asia/Dubai', 'tz_label' => 'GST', 'currency' => ''], array_filter($r, fn ($v) => $v !== null && $v !== ''), ['code' => $code]);
+        }
+        return $out;
+    }
+    private function regionCode(object $website, $v): ?string
+    {
+        $v = strtoupper(trim((string) $v));
+        if ($v === '' || $v === 'ALL') return null;
+        foreach ($this->regions($website) as $r) if ($r['code'] === $v) return $v;
+        return null;
+    }
+    /** "Qatar" / "UAE" / "United Arab Emirates" / "QA" → code (for parsing form submissions). */
+    private function regionFromText(object $website, string $text): ?string
+    {
+        $t = strtolower(trim($text)); if ($t === '') return null;
+        foreach ($this->regions($website) as $r) {
+            if (in_array($t, array_map('strtolower', [$r['code'], $r['name'], $r['short']]), true)) return $r['code'];
+            if (str_contains($t, strtolower($r['name'])) || str_contains($t, strtolower($r['short']))) return $r['code'];
+        }
+        return null;
+    }
+
     public function articleBase(object $website): string
     {
         $b = preg_replace('/[^a-z0-9\-]/', '', strtolower((string) ($this->settings($website)['article_base'] ?? 'news')));
@@ -144,6 +182,7 @@ class DeskService
             'role'     => $role,
             'abilities'=> $abilities,
             'sections' => $this->listSections($wsId, $wid),
+            'regions'  => $this->regions($website), // QATAR-1 editions
             'counts'   => $this->counts($wsId, $wid),
             'enums'    => ['story_types' => self::STORY_TYPES, 'job_categories' => self::enumList(JobsService::CATEGORIES), 'job_types' => self::enumList(JobsService::TYPES),
                            'lead_statuses' => ['new', 'contacted', 'qualified', 'converted', 'lost'], 'roles' => self::ROLES],
@@ -242,6 +281,9 @@ class DeskService
         $q = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->whereNull('deleted_at');
         if (!empty($f['status']) && $f['status'] !== 'all') $q->where('status', $f['status']);
         if (!empty($f['section'])) $q->where('blog_category', $f['section']);
+        $regionF = strtoupper(trim((string) ($f['region'] ?? ''))); // QATAR-1: exact edition (ALL = stories marked for every edition)
+        if ($regionF === 'ALL') $q->where(fn ($w) => $w->whereRaw("JSON_EXTRACT(brief_json, '$.region') IS NULL")->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.region'))) IN ('', 'ALL')"));
+        elseif ($regionF !== '') $q->whereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.region'))) = ?", [$regionF]);
         if (!empty($f['q'])) { $s = '%' . str_replace(['%', '_'], ['\%', '\_'], trim($f['q'])) . '%'; $q->where(fn ($w) => $w->where('title', 'like', $s)->orWhere('slug', 'like', $s)); }
         $total = (clone $q)->count();
         $limit = max(1, min(100, (int) ($f['limit'] ?? 30))); $offset = max(0, (int) ($f['offset'] ?? 0));
@@ -259,7 +301,7 @@ class DeskService
             'id' => (int) $a->id, 'title' => $a->title, 'slug' => $a->slug, 'status' => $a->status, 'type' => $a->type,
             'section' => $a->blog_category, 'section_name' => $names[$a->blog_category] ?? $a->blog_category,
             'excerpt' => $a->excerpt, 'featured_image_url' => $a->featured_image_url, 'word_count' => (int) $a->word_count, 'read_time' => $a->read_time,
-            'author' => $brief['author'] ?? null, 'published_at' => $a->published_at, 'scheduled_at' => $a->scheduled_at, 'updated_at' => $a->updated_at, 'created_at' => $a->created_at,
+            'author' => $brief['author'] ?? null, 'region' => strtoupper((string) ($brief['region'] ?? '')) ?: 'ALL', 'published_at' => $a->published_at, 'scheduled_at' => $a->scheduled_at, 'updated_at' => $a->updated_at, 'created_at' => $a->created_at,
             'url' => $a->status === 'published' ? $this->siteOrigin($website) . '/' . $this->articleBase($website) . '/' . $a->slug : null,
         ];
         if ($full) {
@@ -293,7 +335,8 @@ class DeskService
         $id = (int) ($res['article_id'] ?? $res['id'] ?? 0);
         if ($id <= 0) return ['success' => false, 'error' => 'CREATE_FAILED', 'message' => $res['error'] ?? 'Could not create the story.'];
         DB::table('articles')->where('id', $id)->update(['website_id' => $wid, 'is_marketing_blog' => 1, 'updated_at' => now()]);
-        $this->mergeBrief($id, ['author' => $d['author'] ?? $this->deskAuthor($wid), 'sources' => $this->cleanSources($d['sources'] ?? []), 'image_caption' => $d['image_caption'] ?? null, 'image_credit' => $d['image_credit'] ?? null, 'desk' => ['created_by' => $userId]]);
+        $site = DB::table('websites')->where('id', $wid)->first();
+        $this->mergeBrief($id, ['author' => $d['author'] ?? $this->deskAuthor($wid), 'sources' => $this->cleanSources($d['sources'] ?? []), 'image_caption' => $d['image_caption'] ?? null, 'image_credit' => $d['image_credit'] ?? null, 'region' => $this->regionCode($site, $d['region'] ?? null), 'desk' => ['created_by' => $userId]]);
         if (!empty($d['featured_image_url'])) DB::table('articles')->where('id', $id)->update(['featured_image_url' => $this->cleanUrl($d['featured_image_url']), 'featured_image_alt' => mb_substr((string) ($d['featured_image_alt'] ?? ''), 0, 255)]);
         return ['success' => true, 'id' => $id, 'story' => $this->getStory($wsId, $wid, $id)];
     }
@@ -320,6 +363,7 @@ class DeskService
         $brief = [];
         foreach (['author', 'image_caption', 'image_credit'] as $k) if (array_key_exists($k, $d)) $brief[$k] = $d[$k] === null ? null : mb_substr(trim((string) $d[$k]), 0, 200);
         if (array_key_exists('sources', $d)) $brief['sources'] = $this->cleanSources($d['sources']);
+        if (array_key_exists('region', $d)) $brief['region'] = $this->regionCode(DB::table('websites')->where('id', $wid)->first(), $d['region']); // null = every edition
         if ($brief) $this->mergeBrief($id, $brief + ['desk' => ['updated_by' => $userId]]);
         if ($a->status === 'published') $this->invalidate($wid, $id);
         return ['success' => true, 'story' => $this->getStory($wsId, $wid, $id)];
@@ -486,19 +530,22 @@ class DeskService
         $section = $this->sectionSlug($wsId, $d['section'] ?? null);
         $type = in_array($d['type'] ?? '', self::STORY_TYPES, true) ? $d['type'] : 'article';
         $len = max(300, min(2500, (int) ($d['length'] ?? 800)));
-        $site = DB::table('websites')->where('id', $wid)->first(['name']);
+        $site = DB::table('websites')->where('id', $wid)->first();
+        $region = $this->regionCode($site, $d['region'] ?? null); // QATAR-1
+        $regionRow = null; foreach ($this->regions($site) as $r) if ($r['code'] === $region) $regionRow = $r;
+        $editionNote = $regionRow ? " Edition: {$regionRow['name']} — write for Filipinos living there (cities, agencies, currency {$regionRow['currency']}); do not mix in other countries' rules." : ' Edition: all countries the site covers; keep country-specific facts clearly labelled.';
         $params = [
             'topic' => $brief !== '' ? $brief : $title, 'title' => $title !== '' ? $title : null, 'type' => $type,
-            'audience' => (string) ($d['audience'] ?? 'Readers of ' . ($site->name ?? 'the site')),
-            'tone' => (string) ($d['tone'] ?? 'clear, warm, factual'), 'brief' => $brief, 'min_words' => (int) ($len * 0.8), 'max_words' => $len,
-            'target_keyword' => (string) ($d['keyword'] ?? ''), 'desk' => ['website_id' => $wid, 'section' => $section],
+            'audience' => (string) ($d['audience'] ?? ('Readers of ' . ($site->name ?? 'the site') . ($regionRow ? ' in ' . $regionRow['name'] : ''))),
+            'tone' => (string) ($d['tone'] ?? 'clear, warm, factual'), 'brief' => trim($brief . $editionNote), 'min_words' => (int) ($len * 0.8), 'max_words' => $len,
+            'target_keyword' => (string) ($d['keyword'] ?? ''), 'desk' => ['website_id' => $wid, 'section' => $section, 'region' => $region],
         ];
         $res = $this->kernel->executeAsync($wsId, 'write', 'write_article', array_filter($params, fn ($v) => $v !== null && $v !== ''), ['user_id' => $userId, 'source' => 'manual', 'agent_id' => 'priya', 'priority' => 'normal']);
         $taskId = (int) ($res['task_id'] ?? $res['task']['id'] ?? 0); $approvalId = (int) ($res['approval_id'] ?? 0);
         $status = $taskId ? 'queued' : ($approvalId ? 'awaiting_approval' : 'failed');
         $id = DB::table('desk_commissions')->insertGetId([
             'workspace_id' => $wsId, 'website_id' => $wid, 'task_id' => $taskId ?: null, 'approval_id' => $approvalId ?: null, 'title' => mb_substr($title !== '' ? $title : Str::limit($brief, 120), 0, 255),
-            'brief' => $brief ?: null, 'section_slug' => $section, 'type' => $type, 'status' => $status, 'error_text' => $status === 'failed' ? mb_substr((string) ($res['error'] ?? $res['message'] ?? 'Kernel refused the task.'), 0, 1000) : null,
+            'brief' => $brief ?: null, 'section_slug' => $section, 'region' => $region, 'type' => $type, 'status' => $status, 'error_text' => $status === 'failed' ? mb_substr((string) ($res['error'] ?? $res['message'] ?? 'Kernel refused the task.'), 0, 1000) : null,
             'requested_by' => $userId, 'created_at' => now(), 'updated_at' => now(),
         ]);
         return ['success' => $status !== 'failed', 'id' => $id, 'status' => $status, 'task_id' => $taskId ?: null, 'approval_id' => $approvalId ?: null, 'message' => $status === 'failed' ? ($res['error'] ?? $res['message'] ?? null) : null, 'kernel' => array_intersect_key($res, array_flip(['success', 'code', 'credits_reserved', 'pending_approval']))];
@@ -511,7 +558,7 @@ class DeskService
         $taskIds = $rows->pluck('task_id')->filter()->all();
         $tasks = $taskIds ? DB::table('tasks')->whereIn('id', $taskIds)->get(['id', 'status', 'progress_message', 'error_text'])->keyBy('id') : collect();
         return ['success' => true, 'commissions' => $rows->map(fn ($c) => [
-            'id' => (int) $c->id, 'title' => $c->title, 'brief' => $c->brief, 'section' => $c->section_slug, 'type' => $c->type, 'status' => $c->status,
+            'id' => (int) $c->id, 'title' => $c->title, 'brief' => $c->brief, 'section' => $c->section_slug, 'region' => $c->region ?? null, 'type' => $c->type, 'status' => $c->status,
             'task_id' => $c->task_id, 'task_status' => $tasks[$c->task_id]->status ?? null, 'progress' => $tasks[$c->task_id]->progress_message ?? null,
             'article_id' => $c->article_id, 'error' => $c->error_text ?: ($tasks[$c->task_id]->error_text ?? null), 'created_at' => $c->created_at, 'updated_at' => $c->updated_at,
         ])->all()];
@@ -548,7 +595,7 @@ class DeskService
             if (empty($a->website_id)) $up['website_id'] = $wid;
             if ($c->section_slug && empty($a->blog_category)) $up['blog_category'] = $c->section_slug;
             DB::table('articles')->where('id', $aid)->update($up);
-            $this->mergeBrief($aid, ['author' => $this->deskAuthor($wid), 'desk' => ['commission_id' => (int) $c->id, 'requested_by' => $c->requested_by]]);
+            $this->mergeBrief($aid, ['author' => $this->deskAuthor($wid), 'region' => $c->region ?? null, 'desk' => ['commission_id' => (int) $c->id, 'requested_by' => $c->requested_by]]);
             DB::table('desk_commissions')->where('id', $c->id)->update(['status' => 'ready', 'article_id' => $aid, 'updated_at' => now()]);
             $n++;
         }
@@ -588,6 +635,8 @@ class DeskService
     {
         unset($d['publish']);
         $d['website_id'] = $wid; $d['source'] = $d['source'] ?? 'desk'; $d['created_by'] = $userId;
+        $site = DB::table('websites')->where('id', $wid)->first(); // QATAR-1: country must be one of the site's editions
+        $regs = $this->regions($site); if ($regs) { $d['country'] = $this->regionCode($site, $d['country'] ?? '') ?: $this->regionFromText($site, (string) ($d['country'] ?? '')) ?: $regs[0]['code']; }
         $res = $this->jobs->create($wsId, $d);
         if (!empty($res['success']) && !empty($res['job_id'])) { DB::table('job_listings')->where('id', $res['job_id'])->update(['created_by' => $userId]); $res['job'] = $this->getJob($wsId, $wid, (int) $res['job_id']); }
         return $res;
@@ -597,6 +646,7 @@ class DeskService
     {
         if (!$this->getJob($wsId, $wid, $id)) return ['success' => false, 'error' => 'NOT_FOUND'];
         unset($d['website_id'], $d['workspace_id'], $d['status'], $d['publish']);
+        if (array_key_exists('country', $d)) { $site = DB::table('websites')->where('id', $wid)->first(); $c = $this->regionCode($site, $d['country']) ?: $this->regionFromText($site, (string) $d['country']); if ($c) $d['country'] = $c; else unset($d['country']); }
         $res = $this->jobs->update($wsId, $id, $d);
         if (!empty($res['success'])) { $res['job'] = $this->getJob($wsId, $wid, $id); $this->invalidate($wid); }
         return $res;
@@ -681,8 +731,10 @@ class DeskService
         $m = is_string($l->metadata_json ?? null) ? (json_decode($l->metadata_json, true) ?: []) : [];
         $msg = (string) ($m['first_message'] ?? '');
         $grab = fn (string $k) => preg_match('/^\s*(?:' . $k . ')\s*:\s*(.+)$/im', $msg, $mm) ? trim($mm[1]) : '';
+        $site = DB::table('websites')->where('id', $wid)->first();
+        $country = $this->regionFromText($site, $grab('country')) ?: $this->regionFromText($site, $grab('city|location')) ?: null; // "Country: Qatar" or a city line naming the country
         $d = ['title' => $grab('(?:job )?title|role|position') ?: 'Vacancy from ' . ($l->company ?: $l->name), 'company' => $grab('company|employer') ?: ($l->company ?: (string) $l->name),
-              'city' => $grab('city|location') ?: 'Dubai', 'apply_email' => filter_var($l->email, FILTER_VALIDATE_EMAIL) ? $l->email : null, 'description' => nl2br(e($msg)),
+              'city' => $grab('city|location') ?: ($country === 'QA' ? 'Doha' : 'Dubai'), 'country' => $country, 'apply_email' => filter_var($l->email, FILTER_VALIDATE_EMAIL) ? $l->email : null, 'description' => nl2br(e($msg)),
               'salary_text' => $grab('salary|pay'), 'employment_type' => 'full_time', 'source' => 'employer', 'lead_id' => $leadId, 'verification_source' => 'Submitted via post-a-job form by ' . $l->email];
         $res = $this->createJob($wsId, $wid, $userId, $d);
         if (!empty($res['success'])) DB::table('activities')->insert(['workspace_id' => $wsId, 'activitable_type' => 'lead', 'activitable_id' => $leadId, 'type' => 'note', 'subject' => 'Draft job created #' . $res['job_id'], 'completed' => 1, 'completed_at' => now(), 'performed_by' => $userId, 'created_at' => now(), 'updated_at' => now()]);

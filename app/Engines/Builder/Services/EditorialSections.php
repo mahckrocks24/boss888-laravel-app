@@ -45,6 +45,14 @@ trait EditorialSections
         if ($tag !== '') {
             $q->whereRaw('JSON_SEARCH(tags_json, "one", ?) IS NOT NULL', [$tag]);
         }
+        // KABAYAN888 QATAR-1 — edition filter: a story belongs to its brief_json.region, or to every edition when unset/ALL.
+        $region = strtoupper(trim((string) ($opts['region'] ?? '')));
+        if ($region !== '' && $region !== 'ALL') {
+            $q->where(function ($w) use ($region) {
+                $w->whereRaw("JSON_EXTRACT(brief_json, '$.region') IS NULL")
+                  ->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.region'))) IN ('', 'ALL', ?)", [$region]);
+            });
+        }
         $offset = max(0, (int) ($opts['offset'] ?? 0)) + (!empty($opts['exclude_featured']) ? 1 : 0);
         return $q->orderByDesc('published_at')->orderByDesc('id')
             ->offset($offset)->limit($limit)

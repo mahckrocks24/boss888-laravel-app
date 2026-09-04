@@ -54,6 +54,14 @@ class PublicNewsController
             $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $search) . '%';
             $q->where(function ($w) use ($like) { $w->where('title', 'like', $like)->orWhere('excerpt', 'like', $like); });
         }
+        // KABAYAN888 QATAR-1 — ?region=QA|AE|ALL (a story with no region belongs to every edition)
+        $region = strtoupper(mb_substr(trim((string) $r->query('region', '')), 0, 8));
+        if ($region !== '' && $region !== 'ALL') {
+            $q->where(function ($w) use ($region) {
+                $w->whereRaw("JSON_EXTRACT(brief_json, '$.region') IS NULL")
+                  ->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.region'))) IN ('', 'ALL', ?)", [$region]);
+            });
+        }
         $total = (clone $q)->count();
 
         $rows = $q->orderByDesc('published_at')
@@ -82,6 +90,7 @@ class PublicNewsController
                 'featured_image_url' => (string) ($a->featured_image_url ?? ''),
                 'read_time'          => $this->formatReadTime($a->read_time, $brief),
                 'author'             => (string) ($brief['author'] ?? 'Staff Reporter'),
+                'region'             => strtoupper((string) ($brief['region'] ?? '')) ?: 'ALL', // QATAR-1
                 'published_at'       => $a->published_at,
                 'published_iso'      => $publishedTs ? gmdate('c', $publishedTs) : null,
             ];

@@ -234,9 +234,11 @@ class KabayanNewsTheme
         $capHtml = ($caption !== '' || $credit !== '') ? "<figcaption>" . $this->e($caption) . ($credit !== '' ? ($caption !== '' ? ' · ' : '') . "<span class=\"kb-credit\">" . $this->e($credit) . "</span>" : '') . "</figcaption>" : '';
         $hero = $imgUrl !== '' ? "<figure class=\"kb-art-hero\">" . $this->img($imgUrl, $alt, 'hero') . $capHtml . "</figure>" : '';
         // Labelled, timezone-stamped dates (Google publication-date guidance; Reuters/ST pattern). One <time> per date.
-        $tz = 'Asia/Dubai';
-        $dateHtml = $when ? "<span>Published <time datetime=\"" . $this->e($when->toIso8601String()) . "\">" . $this->e($when->copy()->setTimezone($tz)->format('j M Y, g:i a')) . " GST</time></span>" : '';
-        if ($upd && $when && $upd->gt($when->copy()->addHour())) $dateHtml .= "<span>Updated <time datetime=\"" . $this->e($upd->toIso8601String()) . "\">" . $this->e($upd->copy()->setTimezone($tz)->format('j M, g:i a')) . " GST</time></span>";
+        $reg = $this->regionOf($brief) ?? (array_values($this->regions())[0] ?? null); // QATAR-1 — the story's edition sets the clock
+        $tz = (string) ($reg['tz'] ?? 'Asia/Dubai'); $tzl = $this->e((string) ($reg['tz_label'] ?? 'GST'));
+        $dateHtml = $when ? "<span>Published <time datetime=\"" . $this->e($when->toIso8601String()) . "\">" . $this->e($when->copy()->setTimezone($tz)->format('j M Y, g:i a')) . " {$tzl}</time></span>" : '';
+        if ($upd && $when && $upd->gt($when->copy()->addHour())) $dateHtml .= "<span>Updated <time datetime=\"" . $this->e($upd->toIso8601String()) . "\">" . $this->e($upd->copy()->setTimezone($tz)->format('j M, g:i a')) . " {$tzl}</time></span>";
+        if ($reg && $this->multiRegion()) $dateHtml .= "<span class=\"kb-edition-tag\">" . $this->e($reg['short']) . " edition</span>";
         $share = $this->shareRow($pageUrl, (string) ($article['title'] ?? ''));
         $related = $this->newsFeed(['eyebrow' => 'Read next', 'heading' => 'More in ' . $catLabel, 'layout' => 'list', 'category' => $catSlug !== '' ? $cat : '', 'limit' => 4, 'show_excerpt' => false], $website, (int) ($article['id'] ?? 0));
         if ($related === '') $related = $this->newsFeed(['eyebrow' => 'Read next', 'heading' => 'Latest stories', 'layout' => 'list', 'limit' => 4, 'show_excerpt' => false], $website, (int) ($article['id'] ?? 0));
@@ -289,6 +291,46 @@ HTML;
 
     // ─── data ───────────────────────────────────────────────────────────────
 
+    /** KABAYAN888 QATAR-1 — editions. settings_json.regions = [{code,name,short,tz,tz_label,cities}] (legacy ["ae"] tolerated). */
+    private function regions(): array
+    {
+        $raw = $this->settings['regions'] ?? [];
+        $out = [];
+        foreach ((array) $raw as $r) {
+            if (is_string($r)) $r = ['code' => strtoupper($r)];
+            if (!is_array($r) || empty($r['code'])) continue;
+            $code = strtoupper((string) $r['code']);
+            $def = self::REGION_DEFAULTS[$code] ?? ['name' => $code, 'short' => $code, 'tz' => 'Asia/Dubai', 'tz_label' => 'GST'];
+            $out[$code] = array_merge($def, array_filter($r, fn ($v) => $v !== null && $v !== ''), ['code' => $code]);
+        }
+        return $out;
+    }
+    private const REGION_DEFAULTS = [
+        'AE' => ['name' => 'United Arab Emirates', 'short' => 'UAE', 'tz' => 'Asia/Dubai', 'tz_label' => 'GST'],
+        'QA' => ['name' => 'Qatar', 'short' => 'Qatar', 'tz' => 'Asia/Qatar', 'tz_label' => 'AST'],
+        'SA' => ['name' => 'Saudi Arabia', 'short' => 'KSA', 'tz' => 'Asia/Riyadh', 'tz_label' => 'AST'],
+        'KW' => ['name' => 'Kuwait', 'short' => 'Kuwait', 'tz' => 'Asia/Kuwait', 'tz_label' => 'AST'],
+        'BH' => ['name' => 'Bahrain', 'short' => 'Bahrain', 'tz' => 'Asia/Bahrain', 'tz_label' => 'AST'],
+        'OM' => ['name' => 'Oman', 'short' => 'Oman', 'tz' => 'Asia/Muscat', 'tz_label' => 'GST'],
+    ];
+    private function multiRegion(): bool { return count($this->regions()) > 1; }
+    private function regionOf(array $brief): ?array
+    {
+        $code = strtoupper(trim((string) ($brief['region'] ?? '')));
+        if ($code === '' || $code === 'ALL') return null;
+        return $this->regions()[$code] ?? null;
+    }
+    /** SQL: story belongs to the edition (its region, or ALL/unset = every edition). */
+    private function applyRegion($q, string $region): void
+    {
+        $region = strtoupper(trim($region));
+        if ($region === '' || $region === 'ALL') return;
+        $q->where(function ($w) use ($region) {
+            $w->whereRaw("JSON_EXTRACT(brief_json, '$.region') IS NULL")
+              ->orWhereRaw("UPPER(JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.region'))) IN ('', 'ALL', ?)", [$region]);
+        });
+    }
+
     private function articles(array $website, array $o = [], int $excludeId = 0)
     {
         $wsId = (int) ($website['workspace_id'] ?? 0); $wid = (int) ($website['id'] ?? 0);
@@ -304,6 +346,7 @@ HTML;
         }
         $tag = trim((string) ($o['tag'] ?? ''));
         if ($tag !== '') $q->whereRaw('JSON_SEARCH(tags_json, "one", ?) IS NOT NULL', [$tag]);
+        $this->applyRegion($q, (string) ($o['region'] ?? '')); // QATAR-1
         if ($excludeId > 0) $q->where('id', '!=', $excludeId);
         $offset = max(0, (int) ($o['offset'] ?? 0)) + (!empty($o['exclude_featured']) ? 1 : 0);
         return $q->orderByDesc('published_at')->orderByDesc('id')->offset($offset)->limit(max(1, min(48, (int) ($o['limit'] ?? 12))))
@@ -353,7 +396,8 @@ HTML;
         $t = $this->e($a->title);
         $u = '/' . $this->e($this->base) . '/' . $this->e($a->slug);
         $cat = (string) ($a->blog_category ?? '');
-        $catHtml = $cat !== '' ? "<span class=\"kb-cat\">" . $this->e($this->catName($cat, $this->site)) . "</span>" : '';
+        $cardBrief = is_string($a->brief_json ?? null) ? (json_decode($a->brief_json, true) ?: []) : []; $cardReg = $this->multiRegion() ? $this->regionOf($cardBrief) : null; // QATAR-1
+        $catHtml = $cat !== '' ? "<span class=\"kb-cat\">" . ($cardReg ? $this->e($cardReg['short']) . ' · ' : '') . $this->e($this->catName($cat, $this->site)) . "</span>" : ($cardReg ? "<span class=\"kb-cat\">" . $this->e($cardReg['short']) . "</span>" : '');
         $kind = $variant === 'lead' ? 'lead' : (in_array($variant, ['row', 'mini'], true) ? 'thumb' : 'card');
         $imgHtml = $this->img((string) ($a->featured_image_url ?? ''), (string) ($a->featured_image_alt ?? $a->title), $kind);
         $ex = $excerpt && !empty($a->excerpt) ? '<p class="kb-ex">' . $this->e(mb_substr((string) $a->excerpt, 0, 200)) . '</p>' : '';
@@ -524,7 +568,7 @@ HTML;
         if (($sec['mode'] ?? 'latest') === 'manual' && is_array($sec['items'] ?? null)) {
             foreach ($sec['items'] as $it) { if (!is_array($it) || trim((string) ($it['text'] ?? '')) === '') continue; $items[] = "<a href=\"" . $this->url((string) ($it['url'] ?? ''), '#') . "\">" . $this->e($it['text']) . "</a>"; }
         } else {
-            foreach ($this->articles($website, ['limit' => (int) ($sec['limit'] ?? 6), 'category' => $sec['category'] ?? '']) as $a) $items[] = "<a href=\"/" . $this->e($this->base) . "/" . $this->e($a->slug) . "\">" . $this->e($a->title) . "</a>";
+            foreach ($this->articles($website, ['limit' => (int) ($sec['limit'] ?? 6), 'category' => $sec['category'] ?? '', 'region' => $sec['region'] ?? '']) as $a) $items[] = "<a href=\"/" . $this->e($this->base) . "/" . $this->e($a->slug) . "\">" . $this->e($a->title) . "</a>";
         }
         if ($items === []) return '';
         $run = implode('', $items); $speed = max(15, min(120, (int) ($sec['speed'] ?? 45)));
@@ -535,14 +579,21 @@ HTML;
     {
         $layout = (string) ($sec['layout'] ?? 'cards');
         $limit = (int) ($sec['limit'] ?? 12);
-        $rows = $this->articles($website, ['limit' => $limit, 'category' => $sec['category'] ?? '', 'tag' => $sec['tag'] ?? '', 'offset' => (int) ($sec['offset'] ?? 0), 'exclude_featured' => !empty($sec['exclude_featured'])], $excludeId);
+        $rows = $this->articles($website, ['limit' => $limit, 'category' => $sec['category'] ?? '', 'tag' => $sec['tag'] ?? '', 'region' => $sec['region'] ?? '', 'offset' => (int) ($sec['offset'] ?? 0), 'exclude_featured' => !empty($sec['exclude_featured'])], $excludeId);
+        // QATAR-1 — edition chips on open (un-fixed) list feeds of multi-edition sites: All · UAE · Qatar (client-side reload via the stories API)
+        $editionChips = '';
+        if ($layout === 'list' && $excludeId === 0 && $this->multiRegion() && trim((string) ($sec['region'] ?? '')) === '' && ($sec['show_edition_chips'] ?? true)) {
+            $editionChips = '<nav class="kb-edition" aria-label="Edition" data-kb-edition data-cat="' . $this->e((string) ($sec['category'] ?? '')) . '" data-sub="' . $this->e($this->sub()) . '" data-base="' . $this->e($this->base) . '" data-limit="' . $limit . '"><button type="button" class="is-on" data-region="">All editions</button>';
+            foreach ($this->regions() as $r) $editionChips .= '<button type="button" data-region="' . $this->e($r['code']) . '">' . $this->e($r['short']) . '</button>';
+            $editionChips .= '</nav>';
+        }
         $head = $this->sectionHead($sec);
         $showEx = !array_key_exists('show_excerpt', $sec) || !empty($sec['show_excerpt']);
         $showBy = !array_key_exists('show_byline', $sec) || !empty($sec['show_byline']);
         $cta = !empty($sec['cta_text']) ? "<div class=\"kb-more\"><a href=\"" . $this->url((string) ($sec['cta_url'] ?? '#'), '#') . "\">" . $this->e((string) $sec['cta_text']) . " →</a></div>" : '';
         if ($rows->isEmpty()) {
             if ($excludeId > 0 || !empty($sec['hide_when_empty'])) return '';
-            return "<section class=\"kb-sec\"><div class=\"kb-wrap\">{$head}<p class=\"kb-empty\">No stories published in this section yet.</p></div></section>";
+            return "<section class=\"kb-sec\"><div class=\"kb-wrap\">{$head}{$editionChips}<div class=\"kb-list\" data-kb-list=\"1\"></div><p class=\"kb-empty\">No stories published in this section yet.</p></div></section>";
         }
         $rows = $rows->all();
         if ($layout === 'hero_grid') {
@@ -558,9 +609,10 @@ HTML;
         $more = '';
         if ($layout === 'list' && $excludeId === 0 && count($rows) >= $limit && $limit >= 8) {
             $cat = $this->e((string) ($sec['category'] ?? ''));
-            $more = "<div class=\"kb-more\"><button type=\"button\" data-kb=\"more\" data-cat=\"{$cat}\" data-offset=\"" . ((int) ($sec['offset'] ?? 0) + count($rows)) . "\" data-limit=\"{$limit}\" data-sub=\"{$this->e($this->sub())}\" data-base=\"{$this->e($this->base)}\">Load more stories</button></div>";
+            $regionAttr = ' data-region="' . $this->e(strtoupper((string) ($sec['region'] ?? ''))) . '"'; // QATAR-1
+            $more = "<div class=\"kb-more\"><button type=\"button\" data-kb=\"more\"{$regionAttr} data-cat=\"{$cat}\" data-offset=\"" . ((int) ($sec['offset'] ?? 0) + count($rows)) . "\" data-limit=\"{$limit}\" data-sub=\"{$this->e($this->sub())}\" data-base=\"{$this->e($this->base)}\">Load more stories</button></div>";
         }
-        return "<section class=\"kb-sec\"><div class=\"kb-wrap\">{$head}<div class=\"{$gridCls}\" data-kb-list=\"1\">{$cards}</div>{$more}{$cta}</div></section>";
+        return "<section class=\"kb-sec\"><div class=\"kb-wrap\">{$head}{$editionChips}<div class=\"{$gridCls}\" data-kb-list=\"1\">{$cards}</div>{$more}{$cta}</div></section>";
     }
 
     private function categoryStrips(array $sec, array $website): string
@@ -679,7 +731,9 @@ HTML;
         if (!empty($sec['show_filters'])) {
             $catOpts = '<option value="">All categories</option>'; foreach ($cats as $k => $v) $catOpts .= '<option value="' . $this->e($k) . '">' . $this->e($v) . '</option>';
             $typeOpts = '<option value="">Any type</option>'; foreach ($types as $k => $v) $typeOpts .= '<option value="' . $this->e($k) . '">' . $this->e($v) . '</option>';
-            $filters = "<form class=\"kb-jobs-filters\" data-kb-jobs-filters onsubmit=\"return false\" data-sub=\"" . $this->e($this->sub()) . "\"><input type=\"search\" name=\"q\" placeholder=\"Job title, company or city\" aria-label=\"Search jobs\"><select name=\"category\" aria-label=\"Category\">{$catOpts}</select><select name=\"type\" aria-label=\"Employment type\">{$typeOpts}</select></form>";
+            $countrySel = ''; // QATAR-1
+            if ($this->multiRegion()) { $co = '<option value="">All countries</option>'; foreach ($this->regions() as $r) $co .= '<option value="' . $this->e($r['code']) . '"' . (strtoupper((string) ($sec['country'] ?? '')) === $r['code'] ? ' selected' : '') . '>' . $this->e($r['short']) . '</option>'; $countrySel = "<select name=\"country\" aria-label=\"Country\">{$co}</select>"; }
+            $filters = "<form class=\"kb-jobs-filters\" data-kb-jobs-filters onsubmit=\"return false\" data-sub=\"" . $this->e($this->sub()) . "\"><input type=\"search\" name=\"q\" placeholder=\"Job title, company or city\" aria-label=\"Search jobs\">{$countrySel}<select name=\"category\" aria-label=\"Category\">{$catOpts}</select><select name=\"type\" aria-label=\"Employment type\">{$typeOpts}</select></form>";
         }
         $cta = !empty($sec['cta_text']) ? "<div class=\"kb-more\"><a href=\"" . $this->url((string) ($sec['cta_url'] ?? '#'), '#') . "\">" . $this->e((string) $sec['cta_text']) . " →</a></div>" : '';
         $form = !empty($sec['show_post_form']) ? $this->postJobForm($website) : '';
@@ -697,26 +751,28 @@ HTML;
     {
         $sub = $this->e($this->sub()); $wid = (int) ($website['id'] ?? 0);
         $cats = \App\Engines\Jobs\Services\JobsService::CATEGORIES; $opts = ''; foreach ($cats as $k => $v) $opts .= '<option value="' . $this->e($v) . '">' . $this->e($v) . '</option>';
+        $countryOpts = ''; foreach ($this->regions() ?: ['AE' => self::REGION_DEFAULTS['AE'] + ['code' => 'AE']] as $r) $countryOpts .= '<option value="' . $this->e($r['name']) . '">' . $this->e($r['name']) . '</option>'; // QATAR-1
         return <<<HTML
 <div class="kb-postjob" id="post-a-job">
   <h3>Post a job</h3>
-  <p>Hiring kabayans in the UAE? Send the vacancy and the desk will verify it with you before it goes live. Free during launch.</p>
+  <p>Hiring kabayans in the UAE or Qatar? Send the vacancy and the desk will verify it with you before it goes live. Free during launch.</p>
   <form id="kb-postjob" onsubmit="return false">
     <input name="company" placeholder="Company" required aria-label="Company">
     <input name="contact" placeholder="Your name" required aria-label="Your name">
     <input name="email" type="email" placeholder="Work email" required aria-label="Work email" inputmode="email">
     <input name="phone" placeholder="Phone or WhatsApp" aria-label="Phone">
     <input name="title" placeholder="Job title" required aria-label="Job title" class="kb-full">
-    <input name="city" placeholder="City (e.g. Dubai)" required aria-label="City">
+    <select name="country" aria-label="Country">{$countryOpts}</select>
+    <input name="city" placeholder="City (e.g. Dubai or Doha)" required aria-label="City">
     <select name="category" aria-label="Category">{$opts}</select>
-    <input name="salary" placeholder="Salary (e.g. AED 4,000–5,000)" aria-label="Salary">
+    <input name="salary" placeholder="Salary (e.g. AED or QAR 4,000–5,000)" aria-label="Salary">
     <input name="apply" placeholder="Application link or email" required aria-label="How to apply">
     <textarea name="details" placeholder="Duties, requirements, benefits (visa, accommodation, flights)…" required aria-label="Job details"></textarea>
     <button type="submit" class="kb-btn kb-btn--primary">Submit for verification</button>
     <p class="kb-nl-msg" id="kb-postjob-msg" role="status"></p>
   </form>
 </div>
-<script>(function(){var f=document.getElementById('kb-postjob');if(!f)return;var m=document.getElementById('kb-postjob-msg');f.addEventListener('submit',function(){var d=new FormData(f),g=function(k){return (d.get(k)||'').toString().trim()};if(!g('company')||!g('email')||!g('title')||!g('apply')||!g('details'))return;var b=f.querySelector('button');b.disabled=true;var msg='JOB POST\\nCompany: '+g('company')+'\\nTitle: '+g('title')+'\\nCity: '+g('city')+'\\nCategory: '+g('category')+'\\nSalary: '+g('salary')+'\\nApply: '+g('apply')+'\\nPhone: '+g('phone')+'\\nDetails: '+g('details');fetch('/api/public/contact/'+encodeURIComponent('{$sub}'),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({firstname:g('contact'),name:g('contact'),email:g('email'),phone:g('phone'),message:msg.slice(0,1900),source:'job_post',website_id:{$wid},company:g('company')})}).then(function(r){if(!r.ok)throw 0;m.textContent='Salamat! We received the vacancy and will confirm it with you before publishing.';f.reset();}).catch(function(){m.textContent='Something went wrong. Please email the desk instead.';}).finally(function(){b.disabled=false;});});})();</script>
+<script>(function(){var f=document.getElementById('kb-postjob');if(!f)return;var m=document.getElementById('kb-postjob-msg');f.addEventListener('submit',function(){var d=new FormData(f),g=function(k){return (d.get(k)||'').toString().trim()};if(!g('company')||!g('email')||!g('title')||!g('apply')||!g('details'))return;var b=f.querySelector('button');b.disabled=true;var msg='JOB POST\\nCompany: '+g('company')+'\\nTitle: '+g('title')+'\\nCountry: '+g('country')+'\\nCity: '+g('city')+'\\nCategory: '+g('category')+'\\nSalary: '+g('salary')+'\\nApply: '+g('apply')+'\\nPhone: '+g('phone')+'\\nDetails: '+g('details');fetch('/api/public/contact/'+encodeURIComponent('{$sub}'),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({firstname:g('contact'),name:g('contact'),email:g('email'),phone:g('phone'),message:msg.slice(0,1900),source:'job_post',website_id:{$wid},company:g('company')})}).then(function(r){if(!r.ok)throw 0;m.textContent='Salamat! We received the vacancy and will confirm it with you before publishing.';f.reset();}).catch(function(){m.textContent='Something went wrong. Please email the desk instead.';}).finally(function(){b.disabled=false;});});})();</script>
 HTML;
     }
 
@@ -867,15 +923,20 @@ function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp
 function variant(u,w){var m=/^(https?:\/\/[^\/]+)?\/storage\/((?:ai-images|uploads|media|builder-heroes|sites|logos|creative)\/[A-Za-z0-9_\-.\/]+)$/.exec(u||'');return m?((m[1]||'')+'/api/public/img/'+w+'/'+m[2]):u}
 function row(p,base){var img=p.featured_image_url?'<img src="'+esc(variant(p.featured_image_url,480))+'" alt="'+esc(p.title)+'" loading="lazy" decoding="async" width="480" height="480">':'<div class="kb-ph"></div>';return '<a class="kb-card kb-card--row" href="/'+base+'/'+encodeURIComponent(p.slug)+'"><div class="kb-card-img">'+img+'</div><div class="kb-card-body"><span class="kb-cat">'+esc(p.category_name||p.category)+'</span><h3>'+esc(p.title)+'</h3><div class="kb-meta"><span>'+esc(p.author||'')+'</span><span>'+esc(p.read_time||'')+'</span></div></div></a>'}
 function api(sub){return '/api/public/news/'+encodeURIComponent(sub)+'/stories'}
-function more(btn){var sub=btn.getAttribute('data-sub'),base=btn.getAttribute('data-base'),off=parseInt(btn.getAttribute('data-offset')||'0',10),lim=parseInt(btn.getAttribute('data-limit')||'12',10),cat=btn.getAttribute('data-cat')||'';btn.disabled=true;btn.textContent='Loading…';
- fetch(api(sub)+'?limit='+lim+'&offset='+off+(cat?'&category='+encodeURIComponent(cat):''),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){var list=btn.closest('section').querySelector('[data-kb-list]');(j.posts||[]).forEach(function(p){list.insertAdjacentHTML('beforeend',row(p,base))});if(j.has_more){btn.disabled=false;btn.textContent='Load more stories';btn.setAttribute('data-offset',String(off+(j.posts||[]).length))}else{btn.remove()}}).catch(function(){btn.disabled=false;btn.textContent='Load more stories'})}
+function more(btn){var sub=btn.getAttribute('data-sub'),base=btn.getAttribute('data-base'),off=parseInt(btn.getAttribute('data-offset')||'0',10),lim=parseInt(btn.getAttribute('data-limit')||'12',10),cat=btn.getAttribute('data-cat')||'',reg=btn.getAttribute('data-region')||'';btn.disabled=true;btn.textContent='Loading…';
+ fetch(api(sub)+'?limit='+lim+'&offset='+off+(cat?'&category='+encodeURIComponent(cat):'')+(reg?'&region='+encodeURIComponent(reg):''),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){var list=btn.closest('section').querySelector('[data-kb-list]');(j.posts||[]).forEach(function(p){list.insertAdjacentHTML('beforeend',row(p,base))});if(j.has_more){btn.disabled=false;btn.textContent='Load more stories';btn.setAttribute('data-offset',String(off+(j.posts||[]).length))}else{btn.remove()}}).catch(function(){btn.disabled=false;btn.textContent='Load more stories'})}
+/* QATAR-1 — edition chips: reload an open list feed for one edition via the stories API */
+d.addEventListener('click',function(e){var b=e.target.closest('[data-kb-edition] button');if(!b)return;var nav=b.closest('[data-kb-edition]'),sec=nav.closest('section'),list=sec.querySelector('[data-kb-list]'),moreBtn=sec.querySelector('[data-kb="more"]'),reg=b.getAttribute('data-region')||'',cat=nav.getAttribute('data-cat')||'',sub=nav.getAttribute('data-sub'),base=nav.getAttribute('data-base'),lim=parseInt(nav.getAttribute('data-limit')||'12',10);
+ nav.querySelectorAll('button').forEach(function(x){x.classList.toggle('is-on',x===b)});list.setAttribute('aria-busy','true');
+ fetch(api(sub)+'?limit='+lim+'&offset=0'+(cat?'&category='+encodeURIComponent(cat):'')+(reg?'&region='+encodeURIComponent(reg):''),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){var ps=j.posts||[];list.innerHTML=ps.map(function(p){return row(p,base)}).join('');var em=sec.querySelector('.kb-empty');if(!ps.length){if(!em){em=d.createElement('p');em.className='kb-empty';list.after(em)}em.textContent='No stories in this edition yet.'}else if(em)em.remove();
+  if(moreBtn){moreBtn.setAttribute('data-region',reg);moreBtn.setAttribute('data-offset',String(ps.length));moreBtn.disabled=false;moreBtn.textContent='Load more';moreBtn.closest('.kb-more').style.display=j.has_more?'':'none'}list.removeAttribute('aria-busy')}).catch(function(){list.removeAttribute('aria-busy')})});
 /* jobs board: filters + load more (KABAYAN888 JOBS-1) */
 function jobRow(j){var chips='';if(j.featured)chips+='<span class="is-featured">Featured</span>';if(j.type_name)chips+='<span>'+esc(j.type_name)+'</span>';var loc=j.city+(j.region&&j.region!==j.city?', '+j.region:'');if(!loc&&j.remote)loc='Remote';if(loc)chips+='<span>'+esc(loc)+'</span>';if(j.salary)chips+='<span class="is-salary">'+esc(j.salary)+'</span>';var logo=j.logo?'<div class="kb-job-logo"><img src="'+esc(j.logo)+'" alt="" loading="lazy"></div>':'<div class="kb-job-logo" aria-hidden="true">'+esc((j.company||'?').charAt(0).toUpperCase())+'</div>';return '<a class="kb-job" href="/jobs/'+encodeURIComponent(j.slug)+'">'+logo+'<div>'+(j.category_name?'<span class="kb-cat">'+esc(j.category_name)+'</span>':'')+'<h3>'+esc(j.title)+'</h3><div class="kb-job-co">'+esc(j.company)+'</div><div class="kb-job-meta">'+chips+'</div></div></a>'}
 function jobsApi(sub){return '/api/public/news/'+encodeURIComponent(sub)+'/jobs'}
 var jf=d.querySelector('[data-kb-jobs-filters]'),jl=d.querySelector('[data-kb-jobs]'),jt=null;
-function jobsQuery(sub,off,lim){var p=new URLSearchParams();if(jf){var q=(jf.q.value||'').trim(),c=jf.category.value,t=jf.type.value;if(q)p.set('q',q);if(c)p.set('category',c);if(t)p.set('type',t)}p.set('offset',String(off));p.set('limit',String(lim));return jobsApi(sub)+'?'+p.toString()}
+function jobsQuery(sub,off,lim){var p=new URLSearchParams();if(jf){var q=(jf.q.value||'').trim(),c=jf.category.value,t=jf.type.value,co=jf.country?jf.country.value:'';if(q)p.set('q',q);if(c)p.set('category',c);if(t)p.set('type',t);if(co)p.set('country',co)}p.set('offset',String(off));p.set('limit',String(lim));return jobsApi(sub)+'?'+p.toString()}
 function jobsReload(){if(!jf||!jl)return;var sub=jf.getAttribute('data-sub');fetch(jobsQuery(sub,0,20),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){jl.innerHTML=(j.jobs&&j.jobs.length)?j.jobs.map(jobRow).join(''):'<div class="kb-jobs-empty">No jobs match those filters yet.</div>';var mb=d.querySelector('[data-kb="morejobs"]');if(mb){mb.hidden=!j.has_more;mb.setAttribute('data-offset',String((j.jobs||[]).length))}}).catch(function(){})}
-if(jf){jf.addEventListener('input',function(){clearTimeout(jt);jt=setTimeout(jobsReload,250)});jf.addEventListener('change',jobsReload)}
+if(jf){jf.addEventListener('input',function(){clearTimeout(jt);jt=setTimeout(jobsReload,250)});jf.addEventListener('change',jobsReload);try{var qc=new URLSearchParams(location.search).get('country');if(qc&&jf.country){jf.country.value=qc.toUpperCase();if(jf.country.value)jobsReload()}}catch(e){}}
 d.addEventListener('click',function(e){var b=e.target.closest('[data-kb="morejobs"]');if(!b)return;var sub=b.getAttribute('data-sub'),off=parseInt(b.getAttribute('data-offset')||'0',10),lim=parseInt(b.getAttribute('data-limit')||'20',10);b.disabled=true;fetch(jobsQuery(sub,off,lim),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){(j.jobs||[]).forEach(function(x){jl.insertAdjacentHTML('beforeend',jobRow(x))});if(j.has_more){b.disabled=false;b.setAttribute('data-offset',String(off+(j.jobs||[]).length))}else{b.remove()}}).catch(function(){b.disabled=false})});
 var si=d.getElementById('kb-search-input'),sr=d.getElementById('kb-search-results'),timer=null;
 if(si&&sr){si.addEventListener('input',function(){clearTimeout(timer);var q=si.value.trim();if(q.length<2){sr.innerHTML='';return}timer=setTimeout(function(){fetch(api(search.getAttribute('data-sub'))+'?limit=20&q='+encodeURIComponent(q),{headers:{Accept:'application/json'}}).then(function(r){return r.json()}).then(function(j){var base=d.body.getAttribute('data-kb-base')||'news';sr.innerHTML=(j.posts&&j.posts.length)?j.posts.map(function(p){return row(p,base)}).join(''):'<p class="kb-empty">No stories found for “'+esc(q)+'”.</p>'}).catch(function(){sr.innerHTML='<p class="kb-empty">Search is unavailable right now.</p>'})},220)})}

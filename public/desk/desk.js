@@ -128,6 +128,10 @@
   /* ---------- helpers ---------- */
   function pill(s, label) { return '<span class="pill pill--' + esc(s) + '">' + esc(label || String(s || '').replace('_', ' ')) + '</span>'; }
   function sectionOpts(withAll) { var o = (S.ctx.sections || []).map(function (s) { return { value: s.slug, label: s.name, hint: s.stories + ' stories' }; }); if (withAll) o.unshift({ value: '', label: withAll }); return o; }
+  /* QATAR-1 — editions (site regions) */
+  function multiEdition() { return (S.ctx.regions || []).length > 1; }
+  function regionOpts(withAll) { var o = (S.ctx.regions || []).map(function (r) { return { value: r.code, label: r.short || r.code, hint: r.name }; }); if (withAll) o.unshift({ value: '', label: withAll }); return o; }
+  function regionLabel(code) { if (!code || code === 'ALL') return multiEdition() ? 'All editions' : ''; var r = (S.ctx.regions || []).filter(function (x) { return x.code === code; })[0]; return r ? r.short : code; }
   function empty(title, body, action) { var d = el('div', 'desk-empty', '<b>' + esc(title) + '</b>' + esc(body || '')); if (action) { d.appendChild(document.createElement('br')); action.style.marginTop = '12px'; d.appendChild(action); } return d; }
   function field(label, inner, help) { return '<div class="dui-field"><label class="dui-label">' + esc(label) + '</label>' + inner + (help ? '<div class="dui-help">' + esc(help) + '</div>' : '') + '</div>'; }
   function inp(name, val, ph, type) { return '<input class="dui-input" name="' + name + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '" placeholder="' + esc(ph || '') + '">'; }
@@ -172,26 +176,27 @@
   /* ---------- stories ---------- */
   function storyItem(s) {
     return '<a class="desk-item" href="#/stories/' + s.id + '">' + (s.featured_image_url ? '<img class="desk-thumb" src="' + esc(s.featured_image_url) + '" alt="" loading="lazy">' : '<div class="desk-thumb">no image</div>') +
-      '<div class="desk-item-b"><b>' + esc(s.title || '(untitled)') + '</b><small>' + esc(s.section_name || 'No section') + ' · ' + esc(s.author || '') + (s.word_count ? ' · ' + s.word_count + ' words' : '') + '</small></div>' +
+      '<div class="desk-item-b"><b>' + esc(s.title || '(untitled)') + '</b><small>' + (multiEdition() ? esc(regionLabel(s.region)) + ' · ' : '') + esc(s.section_name || 'No section') + ' · ' + esc(s.author || '') + (s.word_count ? ' · ' + s.word_count + ' words' : '') + '</small></div>' +
       '<div class="desk-item-r">' + pill(s.status) + '<span>' + (s.status === 'scheduled' && s.scheduled_at ? 'goes live ' + dui.fmt(s.scheduled_at) : dui.rel(s.updated_at)) + '</span></div></a>';
   }
   VIEWS.stories = function (r) {
     if (r.id === 'new') return VIEWS.storyEditor(null);
     if (r.id) return VIEWS.storyEditor(Number(r.id));
     setTitle('Stories', [can('stories.write') ? btn('New story', 'dui-btn--primary', function () { go('stories/new'); }) : null].filter(Boolean));
-    var m = main(); var f = { status: r.q.status || 'all', section: r.q.section || '', q: r.q.q || '', offset: 0 };
+    var m = main(); var f = { status: r.q.status || 'all', section: r.q.section || '', region: r.q.region || '', q: r.q.q || '', offset: 0 };
     var chipsHost = el('div'); var tb = el('div', 'desk-toolbar'); var lbHost = el('div', '', ''); lbHost.style.minWidth = '200px'; var search = el('input', 'dui-input'); search.placeholder = 'Search titles…'; search.value = f.q; search.type = 'search';
-    tb.appendChild(lbHost); tb.appendChild(search); m.appendChild(chipsHost); m.appendChild(tb);
+    tb.appendChild(lbHost); var regHost = null; if (multiEdition()) { regHost = el('div'); regHost.style.minWidth = '150px'; tb.appendChild(regHost); } tb.appendChild(search); m.appendChild(chipsHost); m.appendChild(tb);
+    if (regHost) dui.listbox(regHost, { options: [{ value: '', label: 'Every edition' }, { value: 'ALL', label: 'Marked "all editions"' }].concat(regionOpts()), value: f.region, placeholder: 'Edition', onChange: function (v) { f.region = v; f.offset = 0; nav(); load(true); } });
     var list = el('div', 'desk-list'); m.appendChild(list); var more = el('div', 'desk-more'); m.appendChild(more);
     var c = S.ctx.counts.stories;
-    function nav() { var q = []; if (f.status !== 'all') q.push('status=' + f.status); if (f.section) q.push('section=' + encodeURIComponent(f.section)); if (f.q) q.push('q=' + encodeURIComponent(f.q)); history.replaceState(null, '', '#/stories' + (q.length ? '?' + q.join('&') : '')); }
+    function nav() { var q = []; if (f.status !== 'all') q.push('status=' + f.status); if (f.section) q.push('section=' + encodeURIComponent(f.section)); if (f.region) q.push('region=' + encodeURIComponent(f.region)); if (f.q) q.push('q=' + encodeURIComponent(f.q)); history.replaceState(null, '', '#/stories' + (q.length ? '?' + q.join('&') : '')); }
     dui.chips(chipsHost, [{ value: 'all', label: 'All' }, { value: 'draft', label: 'Drafts', count: c.draft }, { value: 'scheduled', label: 'Scheduled', count: c.scheduled }, { value: 'published', label: 'Published', count: c.published }], f.status, function (v) { f.status = v; f.offset = 0; nav(); dui.chips(chipsHost, [{ value: 'all', label: 'All' }, { value: 'draft', label: 'Drafts', count: c.draft }, { value: 'scheduled', label: 'Scheduled', count: c.scheduled }, { value: 'published', label: 'Published', count: c.published }], v, arguments.callee); load(true); });
     dui.listbox(lbHost, { options: sectionOpts('All sections'), value: f.section, placeholder: 'Section', onChange: function (v) { f.section = v; f.offset = 0; nav(); load(true); } });
     search.oninput = dui.debounce(function () { f.q = search.value.trim(); f.offset = 0; nav(); load(true); }, 350);
     function load(reset) {
       if (reset) { list.innerHTML = '<div class="muted small">Loading…</div>'; more.innerHTML = ''; }
       progress(true);
-      api('desk/stories?status=' + f.status + '&section=' + encodeURIComponent(f.section) + '&q=' + encodeURIComponent(f.q) + '&offset=' + f.offset + '&limit=30').then(function (j) {
+      api('desk/stories?status=' + f.status + '&section=' + encodeURIComponent(f.section) + '&region=' + encodeURIComponent(f.region) + '&q=' + encodeURIComponent(f.q) + '&offset=' + f.offset + '&limit=30').then(function (j) {
         progress(false); if (!j.success) return fail(j);
         if (reset) list.innerHTML = '';
         if (!j.stories.length && reset) { list.appendChild(empty(f.q || f.section || f.status !== 'all' ? 'Nothing matches' : 'No stories yet', f.q ? 'Try another search.' : 'Write one or commission Sarah.', can('stories.write') ? btn('New story', 'dui-btn--primary', function () { go('stories/new'); }) : null)); return; }
@@ -212,7 +217,7 @@
       var canPub = can('stories.publish'), canW = can('stories.write');
       m.innerHTML = '<div class="desk-editor"><div class="desk-editor-main">' +
         '<textarea class="dui-input dui-input--title" id="st-title" rows="1" placeholder="Headline"' + (canW ? '' : ' readonly') + '>' + esc(s.title || '') + '</textarea>' +
-        '<div class="dui-row" style="margin:6px 0 14px"><div>' + field('Section', '<div id="st-section"></div>') + '</div><div>' + field('Type', '<div id="st-type"></div>') + '</div><div>' + field('Byline', inp('author', s.author, 'Author name')) + '</div></div>' +
+        '<div class="dui-row" style="margin:6px 0 14px"><div>' + field('Section', '<div id="st-section"></div>') + '</div>' + (multiEdition() ? '<div>' + field('Edition', '<div id="st-region"></div>') + '</div>' : '') + '<div>' + field('Type', '<div id="st-type"></div>') + '</div><div>' + field('Byline', inp('author', s.author, 'Author name')) + '</div></div>' +
         '<div class="dui-field"><label class="dui-label">Story</label><div id="st-body"></div><div class="dui-help"><span id="st-words">0</span> words · at least 80 to publish</div></div>' +
         field('Excerpt', ta('excerpt', s.excerpt, 'One or two sentences shown in lists and search (auto-filled from the story if empty).', 3)) +
         '<div class="desk-card" style="margin-bottom:14px"><h3>Sources</h3><div class="desk-srcs" id="st-sources"></div><button type="button" class="dui-btn dui-btn--sm" id="st-addsrc" style="margin-top:8px">Add source</button></div>' +
@@ -227,6 +232,7 @@
         '</aside></div>';
       var secApi = dui.listbox(document.getElementById('st-section'), { options: sectionOpts('No section'), value: s.section || '', placeholder: 'Section', onChange: markDirty });
       var typeApi = dui.listbox(document.getElementById('st-type'), { options: S.ctx.enums.story_types.map(function (t) { return { value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }; }), value: s.type || 'article', onChange: markDirty });
+      var regionApi = multiEdition() ? dui.listbox(document.getElementById('st-region'), { options: regionOpts('All editions'), value: s.region && s.region !== 'ALL' ? s.region : '', onChange: markDirty }) : null;
       ed = dui.editor(document.getElementById('st-body'), s.content || '', { pickImage: pickImage, onChange: function () { markDirty(); document.getElementById('st-words').textContent = ed.words(); } });
       document.getElementById('st-words').textContent = ed.words();
       if (!canW) ed.el.contentEditable = 'false';
@@ -245,7 +251,7 @@
       var gen = document.getElementById('st-genimg'); if (gen) gen.onclick = function () { dui.confirm('Generate a featured image', 'Sarah\'s studio will create an image for this headline. Costs 1 credit.', { okLabel: 'Generate' }).then(function (ok) { if (!ok) return; gen.disabled = true; dui.toast('Generating image…'); api('write/articles/' + id + '/generate-featured-image', 'POST', {}).then(function (j) { gen.disabled = false; if (j.success === false || j.__status >= 400) return fail(j, 'Could not generate'); var u = j.featured_image_url || (j.article && j.article.featured_image_url) || j.url || (j.data && (j.data.url || j.data.featured_image_url)); if (u) { setImg(u); dirty = false; document.getElementById('st-dirty').textContent = ''; dui.toast('Image ready', 'success'); } else { dui.toast('Image is being generated; reload in a moment.', 'warning'); } }); }); };
       // actions
       var acts = document.getElementById('st-actions');
-      function collect() { var v = vals(m); v.title = document.getElementById('st-title').value.trim(); v.content = ed.getHTML(); v.section = secApi.get(); v.type = typeApi.get(); v.sources = getSources(); v.tags = (v.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean); return v; }
+      function collect() { var v = vals(m); v.title = document.getElementById('st-title').value.trim(); v.content = ed.getHTML(); v.section = secApi.get(); v.type = typeApi.get(); if (regionApi) v.region = regionApi.get() || 'ALL'; v.sources = getSources(); v.tags = (v.tags || '').split(',').map(function (t) { return t.trim(); }).filter(Boolean); return v; }
       function save(then) {
         var v = collect(); if (!v.title) { dui.toast('Add a headline first', 'warning'); document.getElementById('st-title').focus(); return Promise.resolve(false); }
         progress(true);
@@ -278,18 +284,19 @@
     m.innerHTML = '<div class="desk-grid2"><div class="desk-card"><h3>Brief a story</h3><form id="cm-form" novalidate>' +
       field('Working title', inp('title', '', 'e.g. How to renew an OWWA membership from Dubai')) +
       field('Brief for the writer', ta('brief', '', 'What the story must cover, the angle, what to avoid, who it is for. Facts you want checked. Sarah will not invent names, prices or dates.', 6)) +
-      '<div class="dui-row"><div>' + field('Section', '<div id="cm-section"></div>') + '</div><div>' + field('Type', '<div id="cm-type"></div>') + '</div><div>' + field('Length', '<div id="cm-len"></div>') + '</div></div>' +
+      '<div class="dui-row"><div>' + field('Section', '<div id="cm-section"></div>') + '</div>' + (multiEdition() ? '<div>' + field('Edition', '<div id="cm-region"></div>') + '</div>' : '') + '<div>' + field('Type', '<div id="cm-type"></div>') + '</div><div>' + field('Length', '<div id="cm-len"></div>') + '</div></div>' +
       field('Tone', inp('tone', 'clear, warm, factual, kabayan-to-kabayan', '')) +
       '<button class="dui-btn dui-btn--accent" type="submit" style="min-height:46px">Send to Sarah</button><div class="dui-help" style="margin-top:8px">Uses the workspace\'s writing credits. The draft lands in Stories when it is ready; nothing publishes without you.</div></form></div>' +
       '<div class="desk-card"><h3>Commissions</h3><div class="desk-list" id="cm-list"><div class="muted small">Loading…</div></div></div></div>';
     var sec = dui.listbox(document.getElementById('cm-section'), { options: sectionOpts('Pick a section'), value: '', placeholder: 'Section' });
     var typ = dui.listbox(document.getElementById('cm-type'), { options: S.ctx.enums.story_types.map(function (t) { return { value: t, label: t.charAt(0).toUpperCase() + t.slice(1) }; }), value: 'article' });
     var len = dui.listbox(document.getElementById('cm-len'), { options: [{ value: 500, label: 'Short (~500 words)' }, { value: 800, label: 'Standard (~800 words)' }, { value: 1200, label: 'Long read (~1,200 words)' }], value: 800 });
+    var cmRegion = multiEdition() ? dui.listbox(document.getElementById('cm-region'), { options: regionOpts('All editions'), value: '' }) : null;
     var f = document.getElementById('cm-form');
-    f.onsubmit = function (e) { e.preventDefault(); var v = vals(f); v.section = sec.get(); v.type = typ.get(); v.length = Number(len.get()); if (!v.title && !v.brief) return dui.toast('Give Sarah a title or a brief', 'warning'); var b = f.querySelector('button'); b.disabled = true; api('desk/commissions', 'POST', v).then(function (j) { b.disabled = false; if (!j.success) return fail(j, 'Could not commission'); dui.toast(j.status === 'awaiting_approval' ? 'Sent — waiting for approval in LevelUp' : 'Sent to Sarah', 'success'); f.reset(); f.querySelector('[name=tone]').value = 'clear, warm, factual, kabayan-to-kabayan'; loadList(); refreshCounts(); }); };
+    f.onsubmit = function (e) { e.preventDefault(); var v = vals(f); v.section = sec.get(); v.type = typ.get(); v.length = Number(len.get()); if (cmRegion) v.region = cmRegion.get() || 'ALL'; if (!v.title && !v.brief) return dui.toast('Give Sarah a title or a brief', 'warning'); var b = f.querySelector('button'); b.disabled = true; api('desk/commissions', 'POST', v).then(function (j) { b.disabled = false; if (!j.success) return fail(j, 'Could not commission'); dui.toast(j.status === 'awaiting_approval' ? 'Sent — waiting for approval in LevelUp' : 'Sent to Sarah', 'success'); f.reset(); f.querySelector('[name=tone]').value = 'clear, warm, factual, kabayan-to-kabayan'; loadList(); refreshCounts(); }); };
     function loadList() {
       api('desk/commissions').then(function (j) { var h = document.getElementById('cm-list'); if (!h) return; if (!j.success) return fail(j); if (!j.commissions.length) { h.innerHTML = ''; h.appendChild(empty('Nothing commissioned yet', 'Your briefs and their progress show here.')); return; }
-        h.innerHTML = j.commissions.map(function (c) { var st = c.status === 'queued' && c.task_status ? c.task_status : c.status; return '<div class="desk-item" style="grid-template-columns:1fr auto"><div class="desk-item-b"><b>' + esc(c.title) + '</b><small>' + esc(c.section || 'no section') + ' · ' + esc(c.type) + ' · ' + esc(dui.rel(c.created_at)) + (c.progress ? ' · ' + esc(c.progress) : '') + (c.error ? ' · <span style="color:var(--rd)">' + esc(c.error) + '</span>' : '') + '</small></div><div class="desk-item-r">' + pill(c.status, st.replace('_', ' ')) + (c.article_id ? '<a href="#/stories/' + c.article_id + '">Open draft</a>' : '') + '</div></div>'; }).join('');
+        h.innerHTML = j.commissions.map(function (c) { var st = c.status === 'queued' && c.task_status ? c.task_status : c.status; return '<div class="desk-item" style="grid-template-columns:1fr auto"><div class="desk-item-b"><b>' + esc(c.title) + '</b><small>' + (multiEdition() ? esc(regionLabel(c.region)) + ' · ' : '') + esc(c.section || 'no section') + ' · ' + esc(c.type) + ' · ' + esc(dui.rel(c.created_at)) + (c.progress ? ' · ' + esc(c.progress) : '') + (c.error ? ' · <span style="color:var(--rd)">' + esc(c.error) + '</span>' : '') + '</small></div><div class="desk-item-r">' + pill(c.status, st.replace('_', ' ')) + (c.article_id ? '<a href="#/stories/' + c.article_id + '">Open draft</a>' : '') + '</div></div>'; }).join('');
         var open = j.commissions.some(function (c) { return c.status === 'queued' || c.status === 'awaiting_approval'; });
         clearTimeout(S.pollTimer); if (open && S.route && S.route.name === 'commission') S.pollTimer = setTimeout(loadList, 15000);
       });
@@ -311,7 +318,7 @@
   /* ---------- jobs ---------- */
   function jobItem(j) {
     return '<a class="desk-item" href="#/jobs/' + j.id + '">' + (j.company_logo_url ? '<img class="desk-thumb" src="' + esc(j.company_logo_url) + '" alt="" style="width:42px;object-fit:contain">' : '<div class="desk-thumb" style="width:42px;font-size:16px;font-weight:700;color:var(--t2)">' + esc((j.company || '?').charAt(0).toUpperCase()) + '</div>') +
-      '<div class="desk-item-b"><b>' + esc(j.title) + '</b><small>' + esc(j.company) + ' · ' + esc(j.city || (j.is_remote ? 'Remote' : '')) + ' · ' + esc((j.employment_type || '').replace('_', ' ')) + (j.source === 'employer' ? ' · from form' : '') + '</small></div>' +
+      '<div class="desk-item-b"><b>' + esc(j.title) + '</b><small>' + esc(j.company) + ' · ' + esc(j.city || (j.is_remote ? 'Remote' : '')) + (multiEdition() && j.country ? ', ' + esc(regionLabel(j.country)) : '') + ' · ' + esc((j.employment_type || '').replace('_', ' ')) + (j.source === 'employer' ? ' · from form' : '') + '</small></div>' +
       '<div class="desk-item-r">' + pill(j.status) + '<span>' + (j.status === 'published' && j.days_left != null ? (j.days_left <= 0 ? 'expires today' : j.days_left + ' days left') : dui.rel(j.updated_at)) + '</span></div></a>';
   }
   VIEWS.jobs = function (r) {
@@ -335,7 +342,7 @@
       m.innerHTML = '<div class="desk-editor"><div><form id="jb-form" novalidate>' +
         '<div class="dui-row">' + field('Job title', inp('title', j.title, 'e.g. Barista')) + field('Company', inp('company', j.company, 'Employer name')) + '</div>' +
         '<div class="dui-row"><div>' + field('Category', '<div id="jb-cat"></div>') + '</div><div>' + field('Type', '<div id="jb-type"></div>') + '</div></div>' +
-        '<div class="dui-row">' + field('City', inp('city', j.city, 'Dubai')) + field('Region / Emirate', inp('region', j.region, 'Dubai')) + field('Country (2 letters)', inp('country', j.country || 'AE', 'AE')) + '</div>' +
+        '<div class="dui-row"><div>' + field('Country', '<div id="jb-country"></div>') + '</div>' + field('City', inp('city', j.city, 'Dubai or Doha')) + field('Region / Emirate / Municipality', inp('region', j.region, 'Dubai')) + '</div>' +
         '<div class="dui-row">' + field('Salary (text shown on the site)', inp('salary_text', j.salary_text, 'AED 3,500–4,500 + accommodation')) + field('Company website', inp('company_url', j.company_url, 'https://')) + '</div>' +
         field('Summary (one line)', inp('summary', j.summary, 'Shown in lists')) +
         '<div class="dui-field"><label class="dui-label">Description</label><div id="jb-desc"></div></div>' +
@@ -347,9 +354,11 @@
         '</form></div><aside class="desk-editor-side"><div class="desk-card"><h3>Status ' + pill(j.status) + '</h3>' + (j.url ? '<p class="small" style="margin:0 0 10px"><a href="' + esc(j.url) + '" target="_blank" rel="noopener">View live ↗</a></p>' : '') + (j.expires_at ? '<p class="small muted">Expires ' + esc(dui.fmt(j.expires_at)) + '</p>' : '') + '<div class="desk-status" id="jb-actions"></div></div>' + (j.source === 'employer' && j.lead_id ? '<div class="desk-card small">Submitted through the site form. <a href="#/inbox/' + j.lead_id + '">Open the submission</a></div>' : '') + '</aside></div>';
       var cat = dui.listbox(document.getElementById('jb-cat'), { options: S.ctx.enums.job_categories, value: j.category_slug || 'other' });
       var typ = dui.listbox(document.getElementById('jb-type'), { options: S.ctx.enums.job_types, value: j.employment_type || 'full_time' });
+      var regs = (S.ctx.regions && S.ctx.regions.length) ? S.ctx.regions : [{ code: 'AE', short: 'UAE', name: 'United Arab Emirates' }];
+      var country = dui.listbox(document.getElementById('jb-country'), { options: regs.map(function (r) { return { value: r.code, label: r.short, hint: r.name }; }), value: j.country || regs[0].code });
       var ed = dui.editor(document.getElementById('jb-desc'), j.description || '', { placeholder: 'Duties, hours, who it suits…', pickImage: pickImage });
       var f = document.getElementById('jb-form'); if (!canW) f.querySelectorAll('input,textarea').forEach(function (i) { i.readOnly = true; });
-      function collect() { var v = vals(f); v.category = cat.get(); v.category_slug = cat.get(); v.employment_type = typ.get(); v.description = ed.getHTML(); v.requirements = v.requirements.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); v.benefits = v.benefits.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return v; }
+      function collect() { var v = vals(f); v.category = cat.get(); v.category_slug = cat.get(); v.employment_type = typ.get(); v.country = country.get(); v.description = ed.getHTML(); v.requirements = v.requirements.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); v.benefits = v.benefits.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); return v; }
       function save(then) { var v = collect(); if (!v.title || !v.company) { dui.toast('Title and company are required', 'warning'); return; } progress(true); api(isNew ? 'desk/jobs' : 'desk/jobs/' + id, isNew ? 'POST' : 'PUT', v).then(function (r) { progress(false); if (!r.success) return fail(r, 'Could not save'); if (isNew) { id = r.job_id; isNew = false; history.replaceState(null, '', '#/jobs/' + id); } job = r.job; refreshCounts(); if (then) then(); else { dui.toast('Saved', 'success'); render(); } }); }
       var acts = document.getElementById('jb-actions');
       if (canW) acts.appendChild(btn('Save', 'dui-btn--primary', function () { save(); }));

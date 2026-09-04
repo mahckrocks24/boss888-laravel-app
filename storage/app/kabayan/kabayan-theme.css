@@ -363,3 +363,10 @@ section.kb-newsletter{background:var(--kb-secondary);color:#fff}
 /* ad slots (reserved, inert until ADS888 publisher mode) */
 .lu-ad-inline[hidden]{display:none}
 .kb-ad-label{font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:var(--kb-muted);text-align:center;margin-bottom:4px}
+
+/* KABAYAN888 QATAR-1 — editions */
+.kb-edition{display:flex;gap:6px;flex-wrap:wrap;margin:-4px 0 14px}
+.kb-edition button{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--kb-line-2);background:var(--kb-bg-2);color:var(--kb-ink-2);font:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.kb-edition button.is-on{background:var(--kb-primary);border-color:var(--kb-primary);color:var(--kb-on-primary)}
+.kb-edition-tag{display:inline-block;padding:2px 8px;border-radius:999px;background:var(--kb-bg-2);color:var(--kb-ink-2);font-size:12px;font-weight:600}
+[data-kb-list][aria-busy="true"]{opacity:.5}

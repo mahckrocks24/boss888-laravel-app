@@ -210,7 +210,7 @@ class SectionSchema
         // generic) + KabayanNewsTheme (magazine). Adding them here makes Arthur
         // able to add/edit/remove them via ArthurEditService with no Arthur change.
         'ticker' => [
-            'optional' => ['label', 'mode', 'items', 'limit', 'category', 'speed'],
+            'optional' => ['label', 'mode', 'items', 'limit', 'category', 'speed', 'region'], // QATAR-1: region
         ],
         'news_feed' => [
             'optional' => [
@@ -219,6 +219,7 @@ class SectionSchema
                 'category', 'tag', 'limit', 'columns', 'offset', 'exclude_featured',
                 'show_excerpt', 'show_byline', 'show_category', 'hide_when_empty',
                 'cta_text', 'cta_url',
+                'region', 'show_edition_chips', // KABAYAN888 QATAR-1 — editions (AE/QA/ALL)
             ],
         ],
         'category_strips' => [
