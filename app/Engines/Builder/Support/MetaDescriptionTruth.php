@@ -78,6 +78,21 @@ final class MetaDescriptionTruth
         return count($parts) >= 2 ? $parts[count($parts) - 1] : '';
     }
 
+    /** A brief field as prose: strings as-is; lists joined with ", " (items may be strings or {title|name} rows). Never throws. */
+    public static function text(mixed $v): string
+    {
+        if (is_array($v)) {
+            $parts = [];
+            foreach ($v as $item) {
+                if (is_array($item)) $item = $item['title'] ?? $item['name'] ?? $item['label'] ?? '';
+                $item = trim((string) (is_scalar($item) ? $item : ''));
+                if ($item !== '') $parts[] = $item;
+            }
+            return implode(', ', $parts);
+        }
+        return is_scalar($v) ? trim((string) $v) : '';
+    }
+
     private static function humanIndustry(string $industry): string
     {
         $h = trim(str_replace(['_', '-'], ' ', $industry));

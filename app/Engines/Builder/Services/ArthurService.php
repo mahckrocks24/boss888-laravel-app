@@ -2726,7 +2726,9 @@ PROMPT;
         $variables['meta_description'] = \App\Engines\Builder\Support\MetaDescriptionTruth::resolve(
             (string) ($variables['meta_description'] ?? ''),
             (string) (is_array($manifest['variables']['meta_description'] ?? null) ? ($manifest['variables']['meta_description']['default'] ?? '') : ''),
-            (string) $name, (string) $industry, (string) ($data['services'] ?? ''), (string) ($data['location'] ?? '')
+            (string) $name, (string) $industry,
+            \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['services'] ?? ''),   // services may be a list here (build_data), not a sentence
+            \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['location'] ?? '')
         );
 
         try {
