@@ -1574,6 +1574,12 @@ $withCorr = function (array $meta) use ($corr) {
                     . "explain cause, name the systems and dependencies involved, state what follows, and say plainly\n"
                     . "where the record does not show you something. Never invent a figure that is not above.\n";
             }
+            // RISK-0143 (2026-09-07, DEC-0042): the session/ledger facts are the ONLY permitted source for "did the session run
+            // and what did it cost" — ledger → meeting/proposal → tasks; the plan tasks a session produced are not evidence (EV-0923).
+            try {
+                $__slf = \App\Core\Sarah888\SessionLedgerFacts::render((int) $wsId, (string) $content);
+                if ($__slf !== '') $__evidenceBlock .= "\n" . $__slf . "\n";
+            } catch (\Throwable $__slfErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] SessionLedgerFacts failed: ' . $__slfErr->getMessage(), ['ws' => $wsId]); }
             // SARAH888 - the material an executive answer is made of. Computed,
             // never canned: a reply that names a dimension without using the
             // material still fails the measurement instrument's WORDING_TRAP.
@@ -3882,6 +3888,9 @@ $withCorr = function (array $meta) use ($corr) {
             // This corrects that deterministically. Retained integrations (Search Console,
             // Google Analytics, WordPress) keep their genuine "not connected" wording.
             $reply = \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $reply);
+            // RISK-0143 (2026-09-07, DEC-0042): a completed, charged session is never denied; a running one is never called done or
+            // charged; a RECONCILING record is never resolved by the model — the correction is appended in full view (EV-0923).
+            if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\SessionLedgerFacts::guard((string) $reply, (int) $wsId); } catch (\Throwable) {} }
 
             // ── SARAH888 PHASE 1C SLICE 1C.3 — DENIAL GUARD ──────────────
             // Third guard in this chain, and here for the same reason as the
