@@ -114,6 +114,24 @@ class ArticleIdClaimGuard
         return $out;
     }
 
+    /**
+     * RISK-0143 (2026-09-07, DEC-0042): the numbers in a phrase that could be ARTICLE ids. A task/meeting/proposal id, a
+     * credit amount, a balance, a clock time or a date is not an article number — on the first live run "1 credit for the
+     * article task", "write_article (task #32255)" and "balance 41" were all read as foreign article ids and cut.
+     * @return list<int>
+     */
+    private static function articleNumbers(string $text): array
+    {
+        $t = preg_replace([
+            '/\b(?:task|meeting|proposal|workspace|website|site|lead|campaign)s?\s*#?\s*\d{1,9}/i',
+            '/\b\d[\d,\.]*\s*credits?\b/i',
+            '/\b(?:balance|reserved|charged|deducted|spend|spent|cost|costs|total|worth)\b[^.!?\n]{0,25}?\d[\d,\.]*/i',
+            '/\b\d{1,2}:\d{2}\b/', '/\b\d{4}-\d{2}-\d{2}\b/',
+        ], ' ', $text);
+        preg_match_all('/\d{1,6}/', (string) $t, $n);
+        return array_values(array_unique(array_map('intval', $n[0])));
+    }
+
     /** @return list<int> */
     private function claimedIds(string $reply): array
     {
@@ -121,9 +139,8 @@ class ArticleIdClaimGuard
         $ids = [];
 
         foreach ($m[0] as $phrase) {
-            preg_match_all('/\d{1,6}/', $phrase, $n);
-            foreach ($n[0] as $d) {
-                $ids[] = (int) $d;
+            foreach (self::articleNumbers($phrase) as $d) {
+                $ids[] = $d;
             }
         }
 
@@ -183,8 +200,7 @@ class ArticleIdClaimGuard
             // Which numbers does THIS sentence name, and is it wrong to name them here? A sentence that
             // reports finished work truthfully keeps its numbers; only an invented number, or an offer to
             // redo something already done, is replaced.
-            preg_match_all('/\d{1,6}/', $sentence, $sn);
-            $here = array_map('intval', $sn[0]);
+            $here = self::articleNumbers($sentence);   // RISK-0143: ids/credits/balances/times are not article numbers
             $namesForeign = (bool) array_intersect($here, $foreign);
             $reoffers = $alreadyLive
                 && preg_match(self::PUBLISH_OFFER, $sentence)

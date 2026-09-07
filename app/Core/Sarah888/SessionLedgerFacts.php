@@ -186,14 +186,14 @@ final class SessionLedgerFacts
         foreach ($sessions as $s) {
             $lines[] = '- ' . self::sentence($s);
         }
-        $lines[] = sprintf('Spend: balance %d credits, %d reserved (held, not charged); charged so far %d credits in total, %d today.',
+        $lines[] = sprintf('Spend: balance %d credits, %d reserved (held, not deducted); deducted so far %d credits in total, %d today.',
             $spend['balance'], $spend['held'], $spend['charged_total'], $spend['charged_today']);
         if ($spend['charges'] !== []) {
-            $lines[] = 'Charges (newest first): ' . implode('; ', array_map(
+            $lines[] = 'Deductions (newest first): ' . implode('; ', array_map(
                 fn ($c) => "{$c['amount']} credit" . ($c['amount'] === 1 ? '' : 's') . " - {$c['label']} at " . self::hm($c['at']), $spend['charges'])) . '.';
         }
         if ($spend['open_reservations'] !== []) {
-            $lines[] = 'Open reservations (held, not charged): ' . implode('; ', array_map(
+            $lines[] = 'Open reservations (held, not deducted): ' . implode('; ', array_map(
                 fn ($c) => "{$c['amount']} credit" . ($c['amount'] === 1 ? '' : 's') . " - {$c['label']}", $spend['open_reservations'])) . '.';
         }
         return implode("\n", $lines);
@@ -206,30 +206,30 @@ final class SessionLedgerFacts
               . ($s['approved_at'] ? ', approved ' . self::hm($s['approved_at']) : ', not approved') . '): ';
         $plan = $s['plan_tasks'] > 0
             ? " It produced {$s['plan_tasks']} plan task" . ($s['plan_tasks'] === 1 ? '' : 's') . " ({$s['plan_pending']} still pending, worth {$s['plan_pending_credits']} credit"
-              . ($s['plan_pending_credits'] === 1 ? '' : 's') . ' NOT yet charged - separate items, not part of the session charge).'
+              . ($s['plan_pending_credits'] === 1 ? '' : 's') . ' NOT yet deducted - separate items, not part of the session cost).'
             : '';
         switch ($s['state']) {
             case 'COMPLETED_CHARGED':
-                return $head . "COMPLETED - meeting #{$s['meeting_id']} closed " . self::hm($s['closed_at']) . "; CHARGED {$s['committed']} credit" . ($s['committed'] === 1 ? '' : 's')
-                    . ' exactly once (ledger commit ' . self::hm($s['charged_at']) . '); nothing further is owed for it.' . $plan;
+                return $head . "COMPLETED - meeting #{$s['meeting_id']} closed " . self::hm($s['closed_at']) . "; {$s['committed']} credit" . ($s['committed'] === 1 ? '' : 's')
+                    . ' deducted exactly once (ledger commit ' . self::hm($s['charged_at']) . '); nothing further is owed for it.' . $plan;
             case 'COMPLETED_NOT_CHARGED':
-                return $head . "COMPLETED - meeting #{$s['meeting_id']} closed " . self::hm($s['closed_at']) . "; NOT charged (the {$s['released']}-credit reservation was released " . self::hm($s['released_at']) . ').' . $plan;
+                return $head . "COMPLETED - meeting #{$s['meeting_id']} closed " . self::hm($s['closed_at']) . "; nothing deducted (the {$s['released']}-credit reservation was released " . self::hm($s['released_at']) . ').' . $plan;
             case 'COMPLETED_FREE':
                 return $head . "COMPLETED - meeting #{$s['meeting_id']} closed " . self::hm($s['closed_at']) . '; no credits were involved.' . $plan;
             case 'IN_PROGRESS':
                 return $head . "IN PROGRESS, not completed - meeting #{$s['meeting_id']}" . ($s['phase'] !== '' ? " at phase '{$s['phase']}'" : '')
-                    . "; {$s['outstanding']} credit" . ($s['outstanding'] === 1 ? '' : 's') . ' reserved (held), NOTHING charged for it yet; it is charged once when the meeting completes.';
+                    . "; {$s['outstanding']} credit" . ($s['outstanding'] === 1 ? '' : 's') . ' reserved (held), nothing deducted for it yet; the held credits are deducted once, automatically, when the meeting completes.';
             case 'RECONCILING':
                 return $head . 'RECONCILING - the meeting record says ' . ($s['meeting_status'] ?? 'no meeting') . ($s['phase'] !== '' ? " (phase '{$s['phase']}')" : '')
-                    . " while the ledger shows reserved {$s['reserved']}, charged {$s['committed']}, released {$s['released']}. Say the record is being reconciled; do not state it as completed or as not charged.";
+                    . " while the ledger shows reserved {$s['reserved']}, deducted {$s['committed']}, released {$s['released']}. Say the record is being reconciled; do not state it as completed or as not deducted.";
             case 'AWAITING_APPROVAL':
-                return $head . "AWAITING YOUR APPROVAL - not started, nothing reserved or charged (quoted {$s['quoted_credits']} credits).";
+                return $head . "AWAITING YOUR APPROVAL - not started, nothing reserved or deducted (quoted {$s['quoted_credits']} credits).";
             case 'APPROVED_NOT_STARTED':
-                return $head . 'APPROVED, meeting not started yet' . ($s['outstanding'] > 0 ? "; {$s['outstanding']} credits reserved (held), nothing charged" : '; nothing charged') . '.';
+                return $head . 'APPROVED, meeting not started yet' . ($s['outstanding'] > 0 ? "; {$s['outstanding']} credits reserved (held), nothing deducted" : '; nothing deducted') . '.';
             case 'FAILED':
-                return $head . 'FAILED to start' . ($s['released'] > 0 ? "; the {$s['released']}-credit reservation was released" : '') . '; nothing charged.';
+                return $head . 'FAILED to start' . ($s['released'] > 0 ? "; the {$s['released']}-credit reservation was released" : '') . '; nothing deducted.';
             default:
-                return $head . 'NOT STARTED; nothing reserved or charged.';
+                return $head . 'NOT STARTED; nothing reserved or deducted.';
         }
     }
 
@@ -251,15 +251,18 @@ final class SessionLedgerFacts
         $deniesCharge = (bool) preg_match('/\b(won\'?t|will not|wouldn\'?t|not going to)\s+be\s+charged\b/iu', $reply)
             || (bool) preg_match('/\b(has ?n\'?t|hasn\'?t|has not|have not|haven\'?t|not|nothing)\s+(yet\s+)?(been\s+)?(charged|deducted|billed|taken)\b/iu', $reply)
             || (bool) preg_match('/\b(until|once|when)\s+(the\s+)?(tasks?|work|items?)\s+(actually\s+)?(run|runs|execute|executes|complete|completes)\b/iu', $reply);
-        $claimsDone = (bool) preg_match('/\b(session|meeting)\b[^.!?\n]{0,60}\b(is complete|has completed|completed|finished|concluded|is done|wrapped up)\b/iu', $reply)
-            || (bool) preg_match('/\b(completed|finished|concluded)\s+(the\s+|your\s+)?(strategy\s+)?(session|meeting)\b/iu', $reply);
-        $claimsCharged = (bool) preg_match('/\b(charged|deducted|billed)\s+(you\s+)?\d+\s+credits?\b/iu', $reply)
-            || (bool) preg_match('/\b\d+\s+credits?\s+(were|was|has been|have been|got)\s+(charged|deducted|billed)\b/iu', $reply);
+        // A negated phrase ("hasn't completed", "not yet been charged") is not a claim of completion or charge: blank those
+        // before looking for positive claims, otherwise a truthful "still running" answer would be "corrected".
+        $pos = preg_replace('/\b(?:has ?n\'?t|hasn\'?t|has not|have not|haven\'?t|is ?n\'?t|isn\'?t|is not|was not|wasn\'?t|not yet|not|never|nor|yet to be|still to be|before it has|until it has|until it is|until it)\s+(?:yet\s+|been\s+|actually\s+|fully\s+){0,2}(?:completed?|finished|concluded|done|run|ran|charged|deducted|billed|taken)\b/iu', ' ', $reply) ?? $reply;
+        $claimsDone = (bool) preg_match('/\b(session|meeting)\b[^.!?\n]{0,60}\b(is complete|has completed|completed|finished|concluded|is done|wrapped up)\b/iu', $pos)
+            || (bool) preg_match('/\b(completed|finished|concluded)\s+(the\s+|your\s+)?(strategy\s+)?(session|meeting)\b/iu', $pos);
+        $claimsCharged = (bool) preg_match('/\b(charged|deducted|billed)\s+(you\s+)?(exactly\s+)?\d+\s+credits?\b/iu', $pos)
+            || (bool) preg_match('/\b\d+\s+credits?\s+(were|was|has been|have been|got)\s+(charged|deducted|billed)\b/iu', $pos);
         $spendClaim = null;
-        if (preg_match('/\b(spend|spent|cost|charged)[^.!?\n]{0,40}?\bis\s+(\d+)\s+credits?\b/iu', $reply, $m)) $spendClaim = (int) $m[2];
-        elseif (preg_match('/\b(spent|charged)\s+(a\s+total\s+of\s+)?(\d+)\s+credits?\b/iu', $reply, $m)) $spendClaim = (int) $m[3];
+        if (preg_match('/\b(spend|spent|cost|charged|deducted)[^.!?\n]{0,40}?\bis\s+(exactly\s+)?(\d+)\s+credits?\b/iu', $reply, $m)) $spendClaim = (int) $m[3];
+        elseif (preg_match('/\b(spent|charged|deducted)\s+(a\s+total\s+of\s+)?(\d+)\s+credits?\s+(in total|so far|to date)\b/iu', $reply, $m)) $spendClaim = (int) $m[3];
 
-        $tail = sprintf(' Charged spend so far: %d credit%s; balance %d credit%s, %d reserved.', $spend['charged_total'], $spend['charged_total'] === 1 ? '' : 's',
+        $tail = sprintf(' Spend to date (ledger): %d credit%s; balance %d credit%s, %d reserved.', $spend['charged_total'], $spend['charged_total'] === 1 ? '' : 's',
             $spend['balance'], $spend['balance'] === 1 ? '' : 's', $spend['held']);
 
         switch ($s['state']) {

@@ -66,8 +66,8 @@ class SessionLedgerFactsTest extends TestCase
         $this->assertSame(8, $s['committed']); $this->assertSame(1, $s['commit_count']); $this->assertSame(0, $s['outstanding']); $this->assertNotNull($s['closed_at']); $this->assertNotNull($s['charged_at']);
         $block = F::render($ws, 'Did the strategy session complete, and what has it cost me so far?');
         $this->assertStringContainsString('COMPLETED - meeting #' . $mid, $block);
-        $this->assertStringContainsString('CHARGED 8 credits exactly once', $block);
-        $this->assertStringContainsString('charged so far 8 credits in total', $block);
+        $this->assertStringContainsString('8 credits deducted exactly once', $block);
+        $this->assertStringContainsString('deducted so far 8 credits in total', $block);
         $this->assertStringContainsString('balance 42 credits, 0 reserved', $block);
         $this->assertSame('', F::render($ws, 'hello there'), 'nothing rendered for a turn that is not about sessions or money');
     }
@@ -80,9 +80,9 @@ class SessionLedgerFactsTest extends TestCase
         $this->assertSame('IN_PROGRESS', $s['state']); $this->assertSame(8, $s['reserved']); $this->assertSame(0, $s['committed']); $this->assertSame(8, $s['outstanding']);
         $block = F::render($ws, 'has the session finished and what did it cost?');
         $this->assertStringContainsString('IN PROGRESS, not completed', $block);
-        $this->assertStringContainsString('8 credits reserved (held), NOTHING charged for it yet', $block);
-        $this->assertStringContainsString('charged so far 0 credits', $block);
-        $this->assertStringContainsString('8 reserved (held, not charged)', $block);
+        $this->assertStringContainsString('8 credits reserved (held), nothing deducted for it yet', $block);
+        $this->assertStringContainsString('deducted so far 0 credits', $block);
+        $this->assertStringContainsString('8 reserved (held, not deducted)', $block);
     }
 
     // C. duplicate completion: a second completion does not charge again; the record still says one charge
@@ -123,7 +123,7 @@ class SessionLedgerFactsTest extends TestCase
         $this->assertSame(5, $s['plan_tasks']); $this->assertSame(5, $s['plan_pending']); $this->assertSame(10, $s['plan_pending_credits']);
         $line = F::sentence($s);
         $this->assertStringContainsString('COMPLETED', $line);
-        $this->assertStringContainsString('5 plan tasks (5 still pending, worth 10 credits NOT yet charged - separate items', $line);
+        $this->assertStringContainsString('5 plan tasks (5 still pending, worth 10 credits NOT yet deducted - separate items', $line);
         $this->assertSame(8, F::spend($ws)['charged_total'], 'pending task costs are not spend');
     }
 
@@ -135,8 +135,8 @@ class SessionLedgerFactsTest extends TestCase
         $out = F::guard($bad, $ws);
         $this->assertStringContainsString(F::NOTE, $out);
         $this->assertStringContainsString("COMPLETED - meeting #{$mid}", $out);
-        $this->assertStringContainsString('CHARGED 8 credits exactly once', $out);
-        $this->assertStringContainsString('Charged spend so far: 8 credits; balance 42 credits, 0 reserved.', $out);
+        $this->assertStringContainsString('8 credits deducted exactly once', $out);
+        $this->assertStringContainsString('Spend to date (ledger): 8 credits; balance 42 credits, 0 reserved.', $out);
         $good = "Yes — the strategy session completed and 8 credits were charged for it, once. Your balance is 42 credits.";
         $this->assertSame($good, F::guard($good, $ws), 'a truthful reply is left alone');
         $this->assertSame('Morning! What shall we work on?', F::guard('Morning! What shall we work on?', $ws), 'a reply that is not about sessions or money is left alone');
@@ -150,7 +150,7 @@ class SessionLedgerFactsTest extends TestCase
         $out = F::guard($bad, $ws);
         $this->assertStringContainsString(F::NOTE, $out);
         $this->assertStringContainsString('IN PROGRESS, not completed', $out);
-        $this->assertStringContainsString('NOTHING charged for it yet', $out);
+        $this->assertStringContainsString('nothing deducted for it yet', $out);
         $good = "The session is still running — 8 credits are reserved for it and nothing has been charged yet.";
         $this->assertSame($good, F::guard($good, $ws));
     }
@@ -177,5 +177,36 @@ class SessionLedgerFactsTest extends TestCase
         $this->assertTrue(F::relevant('What did the team decide in the strategy session, and exactly what has it cost me so far?'));
         $this->assertTrue(F::relevant('what is pending right now?'));
         $this->assertFalse(F::relevant('change the hero headline to Fresh Every Morning'));
+    }
+
+    // the guard must not read a negated phrase as a claim: "hasn't completed" on a running session is the truth
+    public function test_guard_leaves_a_truthful_negated_answer_about_a_running_session_alone(): void
+    {
+        [$u, $ws] = $this->tenant(50); [$pid, $mid] = $this->strategySession($ws, $u, false);
+        $truth = "The strategy session is still in progress and hasn't completed yet. It's currently reserved at 8 credits, but nothing has been charged to you yet. So far, you've spent 1 credit for the article task.";
+        $this->assertSame($truth, F::guard($truth, $ws));
+    }
+
+    // downstream guards (first live run, EV-0923): MeasurementGuard read "session" as a GA metric and cut every sentence
+    // carrying a credit figure, a meeting id or a time; ArticleIdClaimGuard read "task #32255", "1 credit" and "balance 41"
+    // as foreign article ids. Ledger facts are not analytics metrics and not article numbers.
+    public function test_measurement_guard_keeps_ledger_and_session_sentences(): void
+    {
+        [$u, $ws] = $this->tenant(50);
+        $reply = "Yes — the session completed. Meeting #24 closed at 16:42 UTC today and you were charged exactly 8 credits, once. Current balance is 41 credits with 0 reserved. Your organic traffic is up 23% this month.";
+        $out = app(\App\Core\Sarah888\MeasurementGuard::class)->sanitize($reply, $ws);
+        $this->assertStringContainsString('Meeting #24 closed at 16:42 UTC today and you were charged exactly 8 credits, once.', $out['reply']);
+        $this->assertStringContainsString('Current balance is 41 credits with 0 reserved.', $out['reply']);
+        $this->assertStringNotContainsString('organic traffic is up 23%', $out['reply'], 'a real analytics fabrication is still stripped');
+    }
+
+    public function test_article_id_guard_ignores_task_ids_credit_amounts_and_balances(): void
+    {
+        [$u, $ws] = $this->tenant(50);
+        $reply = "Credit charges (newest first): 1 credit — write_article (task #32255), 16:40 UTC. So far, you've spent 1 credit for the article task. Total charged: 9 credits; balance 41 credits, 0 reserved.";
+        $out = app(\App\Core\Sarah888\ArticleIdClaimGuard::class)->validate($reply, $ws);
+        $this->assertFalse($out['corrected']); $this->assertSame($reply, $out['reply']);
+        $bad = "The available drafts are articles 183, 184 and 185.";
+        $this->assertTrue(app(\App\Core\Sarah888\ArticleIdClaimGuard::class)->validate($bad, $ws)['corrected'], 'an invented article number is still corrected');
     }
 }

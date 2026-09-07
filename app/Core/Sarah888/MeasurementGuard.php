@@ -22,6 +22,13 @@ class MeasurementGuard
     /** GSC/GA-sourced performance nouns. A specific number for these needs Search Console or Analytics. */
     private const METRIC = '(?:organic\s+)?(?:traffic|visitors?|sessions?|pageviews?|page\s+views?|clicks?|impressions?|click-?throughs?(?:\s+rate)?|ctr|bounce(?:\s+rate)?|(?:average\s+)?(?:search\s+)?positions?|rankings?|ranked|serps?|engagement(?:\s+rate)?|dwell\s+time)';
 
+    /**
+     * RISK-0143 (2026-09-07, DEC-0042): "session" is also the customer's STRATEGY session, and its figures — credits,
+     * balance, meeting/proposal/task ids, clock times — are ledger facts, never a Search Console/Analytics metric. On the
+     * first live run every sentence that said "meeting #24 closed at 16:42 UTC … 8 credits" was cut as fabricated traffic.
+     */
+    private const LEDGER_FACT = '/\b(?:credits?|balance|reserved|charged|deducted|strategy\s+session|meeting\s*#?\s*\d|proposal\s*#?\s*\d|task\s*#?\s*\d|\d{1,2}:\d{2}\s*UTC)\b/i';
+
     public function sanitize(string $reply, int $wsId): array
     {
         $out = ['reply' => $reply, 'stripped' => []];
@@ -52,6 +59,7 @@ class MeasurementGuard
         $stripped = [];
         foreach ($sentences as $s) {
             $isClaim = false;
+            if (preg_match(self::LEDGER_FACT, $s)) { $kept[] = trim($s); continue; }   // RISK-0143: a ledger/session fact is not a metric
             if (preg_match($metric, $s)) {
                 foreach ($numbered as $rx) {
                     if (preg_match($rx, $s)) { $isClaim = true; break; }
