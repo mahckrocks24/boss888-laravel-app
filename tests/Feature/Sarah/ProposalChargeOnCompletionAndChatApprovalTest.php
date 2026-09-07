@@ -117,6 +117,11 @@ class ProposalChargeOnCompletionAndChatApprovalTest extends TestCase
         $b = app(AuthorizationBinder::class);
         $bare = $b->bind($ws, "ws{$ws}:sarah", 'ok', $u);
         $this->assertNotSame(AuthorizationBinder::AUTHORIZED, $bare['outcome'], 'a bare "ok" must not spend 8 credits');
+        $work = $b->bind($ws, "ws{$ws}:sarah", 'Please write a blog article for our website about sourdough, around 800 words, and save it as a draft. Go ahead now, you have my go-ahead.', $u);
+        $this->assertNotSame(AuthorizationBinder::AUTHORIZED, $work['outcome'], 'a go-ahead inside a NEW work request must not approve the proposal (regression R4)');
+        $this->assertSame('pending_approval', DB::table('strategy_proposals')->where('id', $pid)->value('status'));
+        $auth = $b->bind($ws, "ws{$ws}:sarah", 'I authorise it, go ahead and run it.', $u);
+        $this->assertNotSame(AuthorizationBinder::AUTHORIZED, $auth['outcome'], 'an authorisation that does not name the session does not bind it');
         $yes = $b->bind($ws, "ws{$ws}:sarah", 'Yes, please go ahead with the strategy session. I approve the 8 credits.', $u);
         $this->assertSame(AuthorizationBinder::AUTHORIZED, $yes['outcome'], json_encode($yes));
         $this->assertSame($pid, (int) $yes['proposal']->id);

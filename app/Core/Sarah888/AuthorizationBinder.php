@@ -156,6 +156,12 @@ class AuthorizationBinder
         }
 
         if (!$pending && $proactive) {
+            // P1b (2026-09-07, regression R4): an explicit go-ahead inside a NEW work request ("write an article ... you have
+            // my go-ahead") must not be read as consent to the proposal — only a turn that NAMES the session and asks for
+            // no other work binds it. Everything else falls through to the ordinary pipeline, proposal untouched.
+            if (!$this->namesProactive($msg) || $this->asksForOtherWork($msg)) {
+                return $out(self::NOT_AUTHORIZATION, '', null, 'proactive proposal pending but the turn is not a consent to it', count($proactive));
+            }
             if (count($proactive) > 1) {
                 return $out(self::AMBIGUOUS, 'There is more than one proposal waiting — tell me which one you mean.',
                     null, 'more than one proactive proposal pending', count($proactive));
@@ -237,6 +243,12 @@ class AuthorizationBinder
     }
 
     /** The turn refers to the proposal Sarah made, not to something else the owner may be saying yes to. */
+    /** A turn that commissions something else (write/build/publish/...) is a request, not a consent to the proposal. */
+    private function asksForOtherWork(string $msg): bool
+    {
+        return (bool) preg_match('/(?:write|draft|create|build|publish|post|schedule|generate|design|send|email|audit|fix|update|add|make)/i', $msg);
+    }
+
     private function namesProactive(string $msg): bool
     {
         return (bool) preg_match('/\b(?:strategy|session|meeting|plan|proposal|team|credits?)\b/i', $msg);
