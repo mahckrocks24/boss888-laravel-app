@@ -387,11 +387,7 @@ class PublishedSiteMiddleware
     private function injectMobileNav(string $html): string
     {
         // MOBILE-4: one source of truth, shared with the static-export writer so both paths emit the same rule.
-        // MOBILE SAFETY (2026-09-07): injected at serve time so every ALREADY-published
-        // site gets it without rewriting its files. Idempotent by <style id>.
-        return \App\Engines\Builder\Services\TemplateService::injectMobileSafety(
-            \App\Engines\Builder\Support\ResponsiveNav::inject($html)
-        );
+        return \App\Engines\Builder\Support\ResponsiveNav::inject($html);
     }
 
     private function injectAccentContrast(string $html): string

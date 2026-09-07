@@ -329,13 +329,6 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
         $embedHost = strtolower($parsed['host'] ?? '');
     }
     if ($embedHost === '') return $reject('no_origin');
-    // F-CB-B1 (2026-09-06): only the workspace's own sites (and platform previews) may embed its widget. A stranger's
-    // page gets nothing and the allow-list is never touched — the Origin allow-list is the boundary, so it must not be
-    // self-service. Proven live: a foreign origin got itself allow-listed on ws 999993 and opened sessions.
-    if (! app(\App\Engines\Chatbot\Services\ChatbotWidgetTokenService::class)->hostBelongsToWorkspace($wsId, $embedHost)) {
-        \Illuminate\Support\Facades\Log::info('[chatbot] loader refused a foreign embed host', ['ws' => $wsId, 'host' => $embedHost, 'ip' => $r->ip()]);
-        return $reject('host_not_allowed');
-    }
 
     // Token policy: the chatbot widget token is PUBLIC by design (it ships
     // in the script tag). Domain allowlist + revocation are the security

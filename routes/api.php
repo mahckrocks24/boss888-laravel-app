@@ -1079,8 +1079,6 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     // Media Upload + unified media picker (added 2026-04-19, Phase 3)
     // Workspace-scoped. Picker uses /library + /access + /use.
     Route::post('/media/upload', [\App\Http\Controllers\Api\MediaController::class, 'upload']);
-    Route::post('/media/crop', [\App\Http\Controllers\Api\MediaCropController::class, 'crop']); // CROP TOOL 2026-09-06
-    Route::get('/builder/image-policy', [\App\Http\Controllers\Api\MediaCropController::class, 'policy']);
     Route::get('/media/library',  [\App\Http\Controllers\Api\MediaController::class, 'library']);
     Route::get('/media/access',   [\App\Http\Controllers\Api\MediaController::class, 'access']);
     Route::post('/media/use',     [\App\Http\Controllers\Api\MediaController::class, 'use_']);
@@ -1255,14 +1253,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $exec = \App\Core\EngineKernel\EngineExecutionService::class;
         // Reads
         Route::get('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listPosts($r->attributes->get('workspace_id'), $r->all())));
-        // SOCIAL888 U-B (2026-09-06): kernel envelope → HTTP status (was always 200), like BaseEngineController
-        $__socialJson = function (array $res, int $okStatus = 200) {
-            if ($res['success'] ?? false) return response()->json($res, ($res['pending_approval'] ?? false) ? 202 : $okStatus);
-            $code = match ($res['code'] ?? 'UNKNOWN') { 'PLAN_GATED' => 403, 'NO_CREDITS' => 402, 'NOT_FOUND' => 404, 'AWAITING_APPROVAL' => 202, 'INVALID_ACTION' => 400, 'INVALID_INPUT' => 422, 'EXECUTION_FAILED' => (str_contains(strtolower((string) ($res['error'] ?? '')), 'not found') ? 404 : 422), default => 400 };
-            return response()->json($res, $code);
-        };
-        $__ownPost = fn(\Illuminate\Http\Request $r, $id) => (bool) app($s)->getPost((int) $r->attributes->get('workspace_id'), (int) $id);
-        Route::get('/posts/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) { $p = app($s)->getPost((int) $r->attributes->get('workspace_id'), (int) $id); return $p ? response()->json($p) : response()->json(['success' => false, 'error' => 'Post not found'], 404); });
+        Route::get('/posts/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getPost($r->attributes->get('workspace_id'), $id)));
         Route::get('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAccounts($r->attributes->get('workspace_id'))));
         Route::get('/calendar', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getCalendarPosts($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'))));
         // SOCIAL INSIGHTS (SOC-P1-5): deterministic, credit-free. Workspace from the token (server-side
@@ -1273,13 +1264,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 ['website_id' => $r->input('website_id', 'all'), 'period_days' => (int) $r->input('period_days', 30)]
             )));
         // Writes through pipeline
-        Route::post('/posts', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'create_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'create_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         // Sarah × Social Phase 1 — AI surface routes
-        Route::post('/ai/generate', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_ai_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
-        Route::post('/ai/hashtags', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'hashtag_suggestions', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
-        Route::post('/ai/image', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_image', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
-        Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => (int) $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
-        Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => (int) $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
+        Route::post('/ai/generate', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_ai_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/ai/hashtags', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'hashtag_suggestions', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/ai/image', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_image', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(['account_id' => app($s)->addAccount($r->attributes->get('workspace_id'), $r->all())], 201));
         // RISK-0099 (2026-08-29): the Social UI edits a post (content / platform / hashtags / schedule);
         // this route never existed — every edit was a 404. Workspace-scoped; a schedule change
@@ -4358,10 +4349,6 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     // artefact (which feeds the Admin draft link only — public serving and
     // preview both render from template_variables).
     $exportPatched = $ts->updateField((int)$id, $field, $value);
-    if (preg_match('/^service_\d+_title$/', (string) $field)) { // STRESS C02 (2026-09-06): booking <select> follows the rename
-        try { $__sv = json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('template_variables'), true) ?: []; $__sv[$field] = $value; $ts->refreshServiceSelects((int) $id, $__sv); } catch (\Throwable $e) {}
-    }
-    try { $ts->patchFieldInSubPages((int) $id, (string) $field, (string) $value); } catch (\Throwable $e) {}
 
     $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->first();
     if (! $website) {
@@ -4459,8 +4446,6 @@ Route::post('/builder/websites/{id}/logo', function (\Illuminate\Http\Request $r
             }
             file_put_contents($dir . '/logo.svg', $clean);
         }
-        \App\Engines\Builder\Support\ImagePolicy::normaliseInPlace($dir . '/logo.' . $ext, 'logo'); // IMAGE POLICY 2026-09-06
-        if ($ext !== 'svg') { $__fit = \App\Engines\Builder\Support\ImageCrop::autoSafe($dir . '/logo.' . $ext, 'logo', $dir . '/logo.' . $ext); if ($__fit && $__fit['path'] !== $dir . '/logo.' . $ext) { @unlink($dir . '/logo.' . $ext); $ext = 'png'; } } // CROP TOOL: fixed 800×260 canvas
         $logoUrl = '/storage/sites/' . $id . '/logo.' . $ext . '?v=' . time();
     }
 
@@ -8676,6 +8661,3 @@ require __DIR__ . '/api/webhooks/email888.php';
 // App\Http\Controllers\Api\Widget\ImageVariantController for the allow-lists.
 Route::get('/public/img/{w}/{path}', [\App\Http\Controllers\Api\Widget\ImageVariantController::class, 'show'])
     ->where(['w' => '[0-9]{2,4}', 'path' => '[A-Za-z0-9_\-./]+']);
-
-// Public site API (rebuild U2, 2026-09-07): read-only, cached, unauthenticated.
-if (file_exists(__DIR__ . '/api/public/plans.php')) { require __DIR__ . '/api/public/plans.php'; }
