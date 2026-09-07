@@ -255,6 +255,9 @@ final class SessionLedgerFacts
         $notCharged = '(have|has|are|is|were|was)\s+not\s+(yet\s+)?(been\s+)?(deducted|charged|billed|taken)\b';
         foreach (preg_split('/(?<=[.!?])\s+|\n+/u', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $sent) {
             if (!preg_match('/\b(session|meeting)\b/iu', $sent) && !preg_match('/\b' . $amt . '\s+credits?\b/iu', $sent)) continue;
+            // a negated charge on a DIFFERENT amount is about other items ("their 6 credits won't be deducted until you approve", run d)
+            if (preg_match('/\b(\d+)\s+credits?\s+(?:won\'?t|will not|wouldn\'?t|have not|has not|haven\'?t|hasn\'?t|are not|is not|aren\'?t|isn\'?t)\s+(?:yet\s+)?(?:be\s+|been\s+)?(?:deducted|charged|billed|taken)\b/iu', $sent, $mm)
+                && (int) $mm[1] !== $amt && !preg_match('/\b(session|meeting)\b[^.!?\n]{0,40}\b' . $notCharged . '/iu', $sent)) continue;
             // the negated charge is about the tasks/items, and nothing in the sentence says the session itself is unpaid
             if (preg_match('/\b(plan\s+tasks?|tasks?|follow-?ups?|items?)\b[^.!?\n]{0,40}\b' . $notCharged . '/iu', $sent)
                 && !preg_match('/\b(session|meeting)\b[^.!?\n]{0,40}\b' . $notCharged . '/iu', $sent)
@@ -267,7 +270,8 @@ final class SessionLedgerFacts
         }
         // A negated phrase ("hasn't completed", "not yet been charged") is not a claim of completion or charge: blank those
         // before looking for positive claims, otherwise a truthful "still running" answer would be "corrected".
-        $pos = preg_replace('/\b(?:has ?n\'?t|hasn\'?t|has not|have not|haven\'?t|is ?n\'?t|isn\'?t|is not|was not|wasn\'?t|not yet|not|never|nor|yet to be|still to be|before it has|until it has|until it is|until it)\s+(?:yet\s+|been\s+|actually\s+|fully\s+){0,2}(?:completed?|finished|concluded|done|run|ran|charged|deducted|billed|taken)\b/iu', ' ', $reply) ?? $reply;
+        $pos = preg_replace('/\bnone of (?:its|the|those|these|your|my)?\s*\d*\s*credits?\s+(?:have|has)\s+(?:yet\s+)?been\s+(?:deducted|charged|billed|taken)\b/iu', ' ', $reply) ?? $reply;   // "none of its 8 credits have been deducted" (run d)
+        $pos = preg_replace('/\b(?:has ?n\'?t|hasn\'?t|has not|have not|haven\'?t|is ?n\'?t|isn\'?t|is not|was not|wasn\'?t|not yet|not|never|nor|yet to be|still to be|before it has|until it has|until it is|until it)\s+(?:yet\s+|been\s+|actually\s+|fully\s+){0,2}(?:completed?|finished|concluded|done|run|ran|charged|deducted|billed|taken)\b/iu', ' ', $pos) ?? $pos;
         $claimsDone = (bool) preg_match('/\b(session|meeting)\b[^.!?\n]{0,60}\b(is complete|has completed|completed|finished|concluded|is done|wrapped up)\b/iu', $pos)
             || (bool) preg_match('/\b(completed|finished|concluded)\s+(the\s+|your\s+)?(strategy\s+)?(session|meeting)\b/iu', $pos);
         $claimsCharged = (bool) preg_match('/\b(charged|deducted|billed)\s+(you\s+)?(exactly\s+)?\d+\s+credits?\b/iu', $pos)

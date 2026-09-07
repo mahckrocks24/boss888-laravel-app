@@ -198,6 +198,21 @@ class SessionLedgerFactsTest extends TestCase
         $this->assertStringContainsString(F::NOTE, F::guard($bad, $ws), 'a denial about the SESSION charge is still corrected');
     }
 
+    // fourth live run (EV-0923): two truthful replies drew a redundant correction — "none of its 8 credits have been deducted"
+    // on a running session, and "their 6 credits won't be deducted until you approve" about the plan tasks of a completed one
+    public function test_guard_leaves_the_fourth_run_phrasings_alone(): void
+    {
+        [$u, $ws] = $this->tenant(50); [$pid, $mid] = $this->strategySession($ws, $u, false);
+        $b = "Not yet — the strategy session is still in progress (meeting at the opening phase), so none of its 8 credits have been deducted; they're held and will be charged automatically once the meeting completes. You have spent nothing so far. Balance is 50 credits with 8 of those held.";
+        $this->assertSame($b, F::guard($b, $ws));
+        [$u2, $ws2] = $this->tenant(50); [$pid2, $mid2] = $this->strategySession($ws2, $u2, true);
+        $this->planTasks($ws2, $mid2, 5, 1);
+        $e = "The strategy session has definitely run and been charged — meeting #{$mid2} closed at 17:26 UTC and its 8 credits were deducted exactly once, so it is not waiting on anything. What's pending in your queue is separate: 5 items awaiting your approval (create lead, schedule social post, build website, write article, deep audit), which came out of that session and their 5 credits won't be deducted until you approve and they run.";
+        $this->assertSame($e, F::guard($e, $ws2));
+        $stillBad = "The session ran but its 8 credits won't be deducted until the tasks run.";
+        $this->assertStringContainsString(F::NOTE, F::guard($stillBad, $ws2));
+    }
+
     // downstream guards (first live run, EV-0923): MeasurementGuard read "session" as a GA metric and cut every sentence
     // carrying a credit figure, a meeting id or a time; ArticleIdClaimGuard read "task #32255", "1 credit" and "balance 41"
     // as foreign article ids. Ledger facts are not analytics metrics and not article numbers.
