@@ -96,6 +96,10 @@ class SectionSchema
         // events_calendar: upcoming events / classes / shows. Industries:
         // event_venue, training_center, online_courses, hotel, resort,
         // cafe, restaurant, gym (class schedule), news_channel.
+        // TRIP PLANNER QUIZ (2026-09-06) — four-step trip inquiry (what / details / stay & budget / contact) → public contact lead
+        'travel_quiz' => [
+            'optional' => ['heading', 'subheading', 'business_name', 'options', 'occasions', 'budget_options', 'currency', 'contact_methods', 'submit_label', 'success_title', 'success_body', 'reference_prefix', 'note'],
+        ],
         'events_calendar' => [
             'optional' => [
                 'heading', 'subheading', 'body',
@@ -241,6 +245,10 @@ class SectionSchema
         ],
         'ad_slot' => [
             'optional' => ['slot_code', 'label', 'device'],
+        ],
+        // RESUME888 (2026-09-07) — the free CV builder entry card / full tool (resume_builder). `mode`: card | full
+        'resume_builder' => [
+            'optional' => ['eyebrow', 'heading', 'subheading', 'mode', 'cta_text', 'cta_url', 'bullets'],
         ],
         // KABAYAN888 JOBS-1 (2026-09-04) — job portal board, data-backed (job_listings at render time)
         'jobs_board' => [

@@ -89,7 +89,7 @@
   /* ---------- shell ---------- */
   var NAV = [
     { r: '', label: 'Dashboard', ic: 'home' }, { group: 'Newsroom' }, { r: 'stories', label: 'Stories', ic: 'stories', ab: 'stories.read' }, { r: 'commission', label: 'Commission Sarah', ic: 'spark', ab: 'commission', badge: 'commissions_open' }, { r: 'sections', label: 'Sections', ic: 'sections', ab: 'stories.read' },
-    { group: 'Site' }, { r: 'jobs', label: 'Jobs', ic: 'jobs', ab: 'jobs.read', badge: 'jobs_draft' }, { r: 'inbox', label: 'Inbox', ic: 'inbox', ab: 'inbox.read', badge: 'inbox_new' }, { group: 'Desk' }, { r: 'members', label: 'Members', ic: 'members', ab: 'members.read' }, { r: 'activity', label: 'Activity', ic: 'stories', ab: 'audit.read' }, { r: 'settings', label: 'Settings', ic: 'more' }
+    { group: 'Site' }, { r: 'jobs', label: 'Jobs', ic: 'jobs', ab: 'jobs.read', badge: 'jobs_draft' }, { r: 'resume', label: 'CV builder', ic: 'spark', ab: 'jobs.read' }, { r: 'inbox', label: 'Inbox', ic: 'inbox', ab: 'inbox.read', badge: 'inbox_new' }, { group: 'Desk' }, { r: 'members', label: 'Members', ic: 'members', ab: 'members.read' }, { r: 'activity', label: 'Activity', ic: 'stories', ab: 'audit.read' }, { r: 'settings', label: 'Settings', ic: 'more' }
   ];
   function can(ab) { return !ab || (S.ctx && S.ctx.abilities.indexOf(ab) >= 0); }
   function badge(k) { var c = S.ctx && S.ctx.counts; if (!c) return 0; if (k === 'inbox_new') return c.inbox_new.total; if (k === 'jobs_draft') return c.jobs.draft; if (k === 'commissions_open') return c.commissions_open; return 0; }
@@ -445,6 +445,23 @@
     });
   };
   var ROLE_OPTS = [{ value: 'owner', label: 'Owner' }, { value: 'editor', label: 'Editor' }, { value: 'moderator', label: 'Jobs moderator' }, { value: 'viewer', label: 'Viewer' }];
+
+  /* ---------- resume builder (RESUME888) ---------- */
+  VIEWS.resume = function () {
+    setTitle('CV builder'); var m = main(); m.innerHTML = '<div class="muted small">Loading…</div>';
+    api('desk/resume/stats').then(function (j) {
+      if (!j.success) { m.innerHTML = ''; m.appendChild(empty('CV builder not available', j.message || j.error || '')); return; }
+      var s = j.stats, p = j.policy;
+      m.innerHTML = '<div class="desk-stats">' +
+        '<div class="desk-stat"><b>' + s.started_30d + '</b><span>Started (30 days)</span></div><div class="desk-stat"><b>' + s.completed_30d + '</b><span>CVs completed · ' + s.completion_rate + '% completion</span></div>' +
+        '<div class="desk-stat"><b>' + s.downloads_30d + '</b><span>Downloads</span></div><div class="desk-stat"><b>' + s.emails_30d + '</b><span>Emailed</span></div>' +
+        '<div class="desk-stat' + (j.mode !== 'full' ? ' is-warn' : '') + '"><b>$' + s.cost_today_usd.toFixed(3) + '</b><span>Spend today · mode ' + esc(j.mode) + '</span></div><div class="desk-stat"><b>$' + s.cost_month_usd.toFixed(2) + '</b><span>Spend this month · $' + s.cost_per_cv_usd.toFixed(4) + ' per CV</span></div></div>' +
+        '<div class="desk-grid2"><div class="desk-card"><h3>Uploads (30 days)</h3><dl class="desk-kv"><dt>Read OK</dt><dd>' + s.uploads_ok_30d + '</dd><dt>Unreadable</dt><dd>' + s.uploads_failed_30d + '</dd><dt>Active sessions (24h)</dt><dd>' + s.active_sessions + '</dd></dl><p class="desk-note" style="margin-top:10px">Free service sponsored by LevelUp Growth. Model calls are batched (bullets per job, one summary) and switch off automatically when the budget is reached; readers still get a CV.</p></div>' +
+        '<div class="desk-card"><h3>Budget &amp; switch</h3>' + (can('members.write') ? field('Tool enabled', '<label class="desk-inline" style="min-height:42px"><input type="checkbox" id="rs-en"' + (p.enabled ? ' checked' : '') + '> Readers can use the CV builder</label>') + '<div class="dui-row">' + field('Daily budget (USD)', '<input class="dui-input" id="rs-day" type="number" step="0.5" min="0" value="' + p.daily_usd + '">') + field('Monthly budget (USD)', '<input class="dui-input" id="rs-mon" type="number" step="1" min="0" value="' + p.monthly_usd + '">') + '</div><div class="dui-help">At 80% the builder drops to economy mode (summary only); at 100% to form mode (no model calls). Set 0 to run form mode always.</div><button type="button" class="dui-btn dui-btn--primary" id="rs-save" style="margin-top:10px">Save</button>' : '<p class="small muted">Owners can change budgets.</p><dl class="desk-kv"><dt>Enabled</dt><dd>' + (p.enabled ? 'Yes' : 'No') + '</dd><dt>Daily</dt><dd>$' + p.daily_usd + '</dd><dt>Monthly</dt><dd>$' + p.monthly_usd + '</dd></dl>') + '</div></div>' +
+        '<div class="desk-card" style="margin-top:14px"><h3>Last 30 days</h3><div class="desk-tblwrap"><table class="desk-tbl"><thead><tr><th>Day</th><th>Started</th><th>Completed</th><th>Rendered</th></tr></thead><tbody>' + Object.keys(s.series || {}).sort().reverse().map(function (d) { var x = s.series[d]; return '<tr><td>' + esc(d) + '</td><td>' + (x.started || 0) + '</td><td>' + (x.completed || 0) + '</td><td>' + (x.render || 0) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+      var sv = document.getElementById('rs-save'); if (sv) sv.onclick = function () { api('desk/resume/settings', 'PUT', { enabled: document.getElementById('rs-en').checked, daily_budget_usd: document.getElementById('rs-day').value, monthly_budget_usd: document.getElementById('rs-mon').value }).then(function (r) { if (!r.success) return fail(r); dui.toast('Saved', 'success'); route(); }); };
+    });
+  };
 
   /* ---------- activity (audit trail) ---------- */
   VIEWS.activity = function () {

@@ -282,6 +282,7 @@ HTML;
             case 'newsletter_signup': return $this->newsletter($sec, $website);
             case 'ad_slot':           return $this->adSlot($sec, $website);
             case 'jobs_board':        return $this->jobsBoard($sec, $website);
+            case 'resume_builder':    return $this->resumeBuilder($sec, $website); // RESUME888
             default:
                 if ($fallback === null) return '';
                 $html = (string) $fallback($sec);
@@ -745,6 +746,28 @@ HTML;
         $limit = max(1, min(60, (int) ($sec['limit'] ?? 20)));
         $more = count($rows) >= $limit ? "<div class=\"kb-more\"><button type=\"button\" data-kb=\"morejobs\" data-offset=\"" . count($rows) . "\" data-limit=\"{$limit}\" data-sub=\"" . $this->e($this->sub()) . "\">Load more jobs</button></div>" : '';
         return "<section class=\"kb-sec kb-jobsec\" id=\"jobs\"><div class=\"kb-wrap\">{$head}{$filters}<div class=\"kb-jobs\" data-kb-jobs>{$cards}</div>{$more}{$cta}{$form}</div></section>";
+    }
+
+    /** RESUME888 — the CV builder. mode=card renders the entry card (jobs page); mode=full mounts the tool (/jobs/resume). */
+    private function resumeBuilder(array $sec, array $website): string
+    {
+        $mode = ($sec['mode'] ?? 'card') === 'full' ? 'full' : 'card';
+        $wid = (int) ($website['id'] ?? 0);
+        // the public widget token (a browser-visible credential, like the chatbot's) lives in settings_json.resume.public_token
+        $tok = (string) ($this->settings['resume']['public_token'] ?? '');
+        $v = @filemtime(public_path('resume/resume.js')) ?: time();
+        $eyebrow = $this->e((string) ($sec['eyebrow'] ?? 'LIBRENG CV BUILDER'));
+        $heading = $this->e((string) ($sec['heading'] ?? 'Gawin ang CV mo sa ilang minuto — libre'));
+        $sub = $this->e((string) ($sec['subheading'] ?? 'Sagutin ang ilang tanong sa Taglish, o i-upload ang luma mong CV. Ibibigay namin ang malinis na PDF na handa para sa employers sa UAE at Qatar.'));
+        if ($mode === 'card') {
+            $cta = $this->e((string) ($sec['cta_text'] ?? 'Simulan ang CV ko'));
+            $url = $this->url((string) ($sec['cta_url'] ?? '/jobs/resume'), '/jobs/resume');
+            $bul = ''; foreach ((array) ($sec['bullets'] ?? ['Taglish, English o Filipino', 'PDF, Word o litrato ng CV mo', 'Walang account, walang bayad']) as $b) $bul .= '<li>' . $this->e((string) $b) . '</li>';
+            return "<section class=\"kb-sec kb-resume-card\"><div class=\"kb-wrap\"><div class=\"kb-rc\"><div class=\"kb-rc-txt\"><div class=\"kb-eyebrow\">{$eyebrow}</div><h2>{$heading}</h2><p>{$sub}</p><ul class=\"kb-rc-list\">{$bul}</ul><a class=\"kb-btn kb-btn--primary\" href=\"{$url}\">{$cta} →</a></div><div class=\"kb-rc-art\" aria-hidden=\"true\"><div class=\"kb-rc-doc\"><span></span><span></span><span></span><span class=\"short\"></span></div></div></div></div></section>";
+        }
+        return "<section class=\"kb-sec kb-resume-full\" id=\"cv\"><div class=\"kb-wrap\"><div class=\"kb-eyebrow\">{$eyebrow}</div><h1 class=\"kb-resume-h\">{$heading}</h1><p class=\"kb-resume-sub\">{$sub}</p>"
+            . "<div id=\"kb-resume\" class=\"kb-resume\" data-website=\"{$wid}\" data-token=\"" . $this->e($tok) . "\" data-api=\"/api/public/resume\"><noscript>This tool needs JavaScript.</noscript></div></div></section>"
+            . "<link rel=\"stylesheet\" href=\"/resume/resume.css?v={$v}\"><script src=\"/resume/resume.js?v={$v}\" defer></script>";
     }
 
     private function postJobForm(array $website): string

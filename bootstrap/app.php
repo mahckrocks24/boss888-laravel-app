@@ -27,6 +27,9 @@ return Application::configure(basePath: dirname(__DIR__))
             ->withoutOverlapping();
 
         // PUBLISHER888 Unit 1 (2026-09-04) — desk-scheduled stories go live on time.
+        // RESUME888 — retention sweep for the resume builder.
+        $schedule->command('resume:purge')->name('resume:purge')->dailyAt('03:20')->withoutOverlapping();
+
         $schedule->command('publisher:publish-scheduled')
             ->name('publisher:publish-scheduled')
             ->everyMinute()

@@ -849,6 +849,30 @@ class DeskService
         return $res + ['desk_role' => $role];
     }
 
+    // ─── RESUME888: desk view of the CV builder ─────────────────────────────
+
+    public function resumeStats(object $website): array
+    {
+        if (!class_exists(\App\Engines\Resume\Services\ResumeService::class)) return ['success' => false, 'error' => 'NOT_INSTALLED'];
+        $svc = app(\App\Engines\Resume\Services\ResumeService::class);
+        $policy = $svc->policy($website);
+        return ['success' => true, 'policy' => $policy, 'mode' => $svc->mode((int) $website->id, $policy), 'stats' => $svc->stats((int) $website->id)];
+    }
+
+    /** Owner-only: budgets + on/off switch, stored in websites.settings_json.resume (token untouched). */
+    public function resumeSettings(object $website, int $userId, array $d): array
+    {
+        $s = $this->settings($website); $r = (array) ($s['resume'] ?? []);
+        $before = ['enabled' => $r['enabled'] ?? true, 'daily_budget_usd' => $r['daily_budget_usd'] ?? null, 'monthly_budget_usd' => $r['monthly_budget_usd'] ?? null];
+        if (array_key_exists('enabled', $d)) $r['enabled'] = (bool) $d['enabled'];
+        if (isset($d['daily_budget_usd']) && is_numeric($d['daily_budget_usd'])) $r['daily_budget_usd'] = max(0, min(1000, (float) $d['daily_budget_usd']));
+        if (isset($d['monthly_budget_usd']) && is_numeric($d['monthly_budget_usd'])) $r['monthly_budget_usd'] = max(0, min(10000, (float) $d['monthly_budget_usd']));
+        $s['resume'] = $r;
+        DB::table('websites')->where('id', $website->id)->update(['settings_json' => json_encode($s), 'updated_at' => now()]);
+        $this->audit->record('resume.settings', 'website', (int) $website->id, null, $before, ['enabled' => $r['enabled'] ?? true, 'daily_budget_usd' => $r['daily_budget_usd'] ?? null, 'monthly_budget_usd' => $r['monthly_budget_usd'] ?? null]);
+        return ['success' => true, 'policy' => app(\App\Engines\Resume\Services\ResumeService::class)->policy((object) ['settings_json' => json_encode($s)])];
+    }
+
     // ─── Unit 2: health, sessions ───────────────────────────────────────────
 
     public function health(int $wsId, int $wid): array

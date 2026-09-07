@@ -260,6 +260,13 @@ class PublishedSiteMiddleware
             // and the slug corresponds to a published article in DB, render
             // it dynamically using an existing article static file as the
             // theme template (substituting title, image, body, meta).
+            // RESUME888 — reserved slugs under /jobs are pages, not listings: /jobs/resume → pages.slug 'resume'.
+            if (preg_match('#^jobs/(resume|post|saved)/?$#i', $path, $rm)) {
+                $rHtml = app(\App\Engines\Builder\Services\BuilderRenderer::class)->renderWebsite($subdomain, strtolower($rm[1]));
+                if ($rHtml !== null && $rHtml !== '') return response($rHtml, 200)->header('Content-Type', 'text/html; charset=utf-8')->header('Cache-Control', 'no-store')->header('X-Served-By', 'reserved-page');
+            }
+            // RESUME888 — signed download + magic link live in routes/web.php; let them through on the site host.
+            if (str_starts_with($path, 'resume-download/') || str_starts_with($path, 'resume/continue/')) return $next($request);
             // KABAYAN888 JOBS-1 (2026-09-04) — /jobs/{slug} → a job listing page (renderer sites).
             if (preg_match('#^jobs/([a-z0-9\-]+)/?$#i', $path, $jm)) {
                 $jobHtml = app(\App\Engines\Builder\Services\BuilderRenderer::class)->renderJob($subdomain, $jm[1]);
@@ -380,7 +387,11 @@ class PublishedSiteMiddleware
     private function injectMobileNav(string $html): string
     {
         // MOBILE-4: one source of truth, shared with the static-export writer so both paths emit the same rule.
-        return \App\Engines\Builder\Support\ResponsiveNav::inject($html);
+        // MOBILE SAFETY (2026-09-07): injected at serve time so every ALREADY-published
+        // site gets it without rewriting its files. Idempotent by <style id>.
+        return \App\Engines\Builder\Services\TemplateService::injectMobileSafety(
+            \App\Engines\Builder\Support\ResponsiveNav::inject($html)
+        );
     }
 
     private function injectAccentContrast(string $html): string

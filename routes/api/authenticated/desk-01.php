@@ -23,6 +23,7 @@ Route::prefix('desk')->middleware(['desk.context'])->group(function () {
         Route::get('/inbox', [DeskController::class, 'inbox']);
         Route::get('/inbox/{id}', [DeskController::class, 'inboxItem'])->whereNumber('id');
         Route::get('/members', [DeskController::class, 'members']);
+        Route::get('/resume/stats', [DeskController::class, 'resumeStats']);
     });
     Route::middleware('throttle:60,1')->group(function () {
         Route::post('/sessions/revoke-others', [DeskController::class, 'revokeOtherSessions']);
@@ -45,6 +46,7 @@ Route::prefix('desk')->middleware(['desk.context'])->group(function () {
         Route::post('/inbox/{id}/job', [DeskController::class, 'jobFromInbox'])->whereNumber('id');
         Route::put('/members/{userId}', [DeskController::class, 'setMemberRole'])->whereNumber('userId');
         Route::post('/members/invite', [DeskController::class, 'invite']);
+        Route::put('/resume/settings', [DeskController::class, 'resumeSettings']);
     });
     Route::middleware('throttle:10,1')->post('/commissions', [DeskController::class, 'commission']);
 });

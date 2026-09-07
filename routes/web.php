@@ -19,6 +19,10 @@ Route::get('/storage/thumbnails/{path}', [\App\Http\Controllers\ThumbnailControl
     ->where('path', '.*');
 
 // ── Admin Panel ──────────────────────────────────────────────────────────────
+// RESUME888 — signed PDF download + magic "continue" link (site host). Names are referenced by PublicResumeController.
+Route::get('/resume-download/{resume}', [\App\Http\Controllers\Api\Widget\PublicResumeController::class, 'download'])->whereNumber('resume')->name('resume.download');
+Route::get('/resume/continue/{session}', [\App\Http\Controllers\Api\Widget\PublicResumeController::class, 'continueLink'])->whereNumber('session')->name('resume.resume');
+
 Route::prefix('admin')->group(function () {
     Route::get('/login', function () {
         return view('admin.login');
@@ -325,6 +329,13 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
         $embedHost = strtolower($parsed['host'] ?? '');
     }
     if ($embedHost === '') return $reject('no_origin');
+    // F-CB-B1 (2026-09-06): only the workspace's own sites (and platform previews) may embed its widget. A stranger's
+    // page gets nothing and the allow-list is never touched — the Origin allow-list is the boundary, so it must not be
+    // self-service. Proven live: a foreign origin got itself allow-listed on ws 999993 and opened sessions.
+    if (! app(\App\Engines\Chatbot\Services\ChatbotWidgetTokenService::class)->hostBelongsToWorkspace($wsId, $embedHost)) {
+        \Illuminate\Support\Facades\Log::info('[chatbot] loader refused a foreign embed host', ['ws' => $wsId, 'host' => $embedHost, 'ip' => $r->ip()]);
+        return $reject('host_not_allowed');
+    }
 
     // Token policy: the chatbot widget token is PUBLIC by design (it ships
     // in the script tag). Domain allowlist + revocation are the security

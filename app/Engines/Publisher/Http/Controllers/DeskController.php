@@ -115,6 +115,10 @@ class DeskController
     public function updateInbox(Request $r, int $id): JsonResponse { return $this->run($r, 'inbox.write', 'inbox.update', fn () => $this->desk->updateInboxItem($this->ws($r), $this->wid($r), $this->uid($r), $id, $r->all())); }
     public function jobFromInbox(Request $r, int $id): JsonResponse { return $this->run($r, 'jobs.write', null, fn () => $this->desk->jobFromInbox($this->ws($r), $this->wid($r), $this->uid($r), $id), true); }
 
+    // resume builder (RESUME888)
+    public function resumeStats(Request $r): JsonResponse { return $this->run($r, 'jobs.read', null, fn () => $this->desk->resumeStats($this->site($r))); }
+    public function resumeSettings(Request $r): JsonResponse { return $this->run($r, 'members.write', null, fn () => $this->desk->resumeSettings($this->site($r), $this->uid($r), $r->all())); }
+
     // members
     public function members(Request $r): JsonResponse { return $this->run($r, 'members.read', null, fn () => $this->desk->listMembers($this->ws($r), $this->wid($r))); }
     public function setMemberRole(Request $r, int $userId): JsonResponse { return $this->run($r, 'members.write', 'member.role', fn () => $this->desk->setMemberRole($this->ws($r), $this->wid($r), $this->uid($r), $userId, (string) $r->input('role'))); }
