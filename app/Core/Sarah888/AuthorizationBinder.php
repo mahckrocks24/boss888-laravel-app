@@ -115,13 +115,28 @@ class AuthorizationBinder
         if ($msg === '') return $out(self::NOT_AUTHORIZATION, '');
 
         $pending = $this->proposals->pending($wsId, $conversationId);
+        // RISK-0142 (c) (2026-09-07, DEC-0040): a PROACTIVE proposal Sarah herself put in front of the owner in chat
+        // (the onboarding "Initial Marketing Strategy Session") is bindable here too, so the owner is not sent to the
+        // Strategy Room merely to say yes. Considered only when no chat_action offer is pending, only while it is
+        // still pending_approval, and only for an explicit authorisation or an affirmation that NAMES it
+        // (session/strategy/meeting/plan/proposal/team/credits) — a bare "ok" days later does not spend 8 credits.
+        $proactive = $pending ? [] : $this->pendingProactive($wsId);
 
         // Withdrawal is checked BEFORE authorisation. "No, don't publish it"
         // contains "publish" and would otherwise read as a directive, and a
         // withdrawal misread as consent is the worst failure this class can
         // have.
         if (preg_match(self::CANCELLATION, $this->withdrawalText($msg))) {
-            if (!$pending) return $out(self::NOT_AUTHORIZATION, '');
+            if (!$pending) {
+                if ($proactive && $this->namesProactive($msg)) {
+                    foreach ($proactive as $pp) {
+                        app(\App\Core\Orchestration\ProactiveStrategyEngine::class)->declineProposal($wsId, (int) $pp->id);
+                    }
+                    return $out(self::CANCELLED, "Cancelled — the strategy session won't run, and nothing was charged.",
+                        null, 'owner declined the proactive proposal', count($proactive));
+                }
+                return $out(self::NOT_AUTHORIZATION, '');
+            }
             $ids = array_map(fn($p) => (int) $p->id, $pending);
             $this->withdraw($wsId, $ids, $userId);
             $n = count($ids);
@@ -133,10 +148,21 @@ class AuthorizationBinder
 
         $turn   = $this->policy->assessTurn($msg);
         $isAuth = ($turn['classification'] ?? '') === 'authorisation'
-               || ($pending && preg_match(self::AFFIRMATIVE, $msg));
+               || ($pending && preg_match(self::AFFIRMATIVE, $msg))
+               || ($proactive && preg_match(self::AFFIRMATIVE, $msg) && $this->namesProactive($msg));
 
         if (!$isAuth) {
             return $out(self::NOT_AUTHORIZATION, '', null, '', count($pending));
+        }
+
+        if (!$pending && $proactive) {
+            if (count($proactive) > 1) {
+                return $out(self::AMBIGUOUS, 'There is more than one proposal waiting — tell me which one you mean.',
+                    null, 'more than one proactive proposal pending', count($proactive));
+            }
+            // Bound: the existing AUTHORIZED branch in the chat route calls ProactiveStrategyEngine::approveProposal,
+            // which re-checks workspace, pending status and balance before anything is reserved or started.
+            return $out(self::AUTHORIZED, '', $proactive[0], ChatActionProposal::AUTH_OK, 1);
         }
 
         if (!$pending) {
@@ -201,6 +227,21 @@ class AuthorizationBinder
      * not said which one, and the correct response to that is to ask, not to
      * choose.
      */
+    /** RISK-0142 (c): Sarah-initiated proposals still waiting in this workspace (the types approveProposal runs as a strategy meeting). */
+    private function pendingProactive(int $wsId): array
+    {
+        return \Illuminate\Support\Facades\DB::table('strategy_proposals')
+            ->where('workspace_id', $wsId)->where('status', 'pending_approval')
+            ->whereIn('type', ['initial_strategy', 'discovery_strategy_meeting', 'monthly_30_day_plan'])
+            ->orderByDesc('id')->limit(5)->get()->all();
+    }
+
+    /** The turn refers to the proposal Sarah made, not to something else the owner may be saying yes to. */
+    private function namesProactive(string $msg): bool
+    {
+        return (bool) preg_match('/\b(?:strategy|session|meeting|plan|proposal|team|credits?)\b/i', $msg);
+    }
+
     private function matchNamed(array $pending, string $msg): ?object
     {
         $norm = mb_strtolower($msg);

@@ -1056,8 +1056,9 @@ $withCorr = function (array $meta) use ($corr) {
 
                 if ($__res['success'] ?? false) {
                     $__cost = (int) $__p->total_credits;
-                    $__terminal = "Approved — " . $__p->description . " is queued now"
-                                . ($__cost > 0 ? ", {$__cost} credit" . ($__cost === 1 ? '' : 's') . " charged." : ".");
+                    // RISK-0142 (a) (2026-09-07, DEC-0040): credits are RESERVED at approval and charged once the work completes.
+                    $__terminal = "Approved — " . $__p->description . " is running now"
+                                . ($__cost > 0 ? ", {$__cost} credit" . ($__cost === 1 ? '' : 's') . " reserved, charged once it completes." : ".");
                 } elseif (($__res['code'] ?? '') === 'NO_CREDITS') {
                     $__terminal = "I couldn't run that — there aren't enough credits for it. "
                                 . "Nothing has been created or charged.";
@@ -3720,6 +3721,8 @@ $withCorr = function (array $meta) use ($corr) {
                                 $__costLine = $__sum > 0 ? " This uses {$__sum} credit" . ($__sum === 1 ? '' : 's') . "." : " This doesn't use any credits.";
                             }
                         } catch (\Throwable) { $__costLine = ''; }
+                        // RISK-0141 (2026-09-07, DEC-0040): never claim website scope the created tasks do not carry (EV-0918).
+                        try { $reply = \App\Core\Sarah888\WebsiteScopeClaimGuard::apply((string) $reply, (int) $wsId, array_values(array_filter(array_map('intval', $createdTaskIds ?? [])))); } catch (\Throwable) {}
                         if ($taskSummaryCreated === 0 && $taskSummaryFailed > 0) {
                             // MONEY-1: nothing was queued — the reply must not read as "On it!"
                             $reply .= "\n\nI couldn't start this:";

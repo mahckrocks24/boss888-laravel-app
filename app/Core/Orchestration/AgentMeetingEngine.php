@@ -57,7 +57,7 @@ class AgentMeetingEngine
      * Start a strategy meeting. Returns meeting ID.
      * Frontend polls for new messages as they come in.
      */
-    public function startMeeting(int $wsId, int $userId, string $goal, array $agentSlugs = []): array
+    public function startMeeting(int $wsId, int $userId, string $goal, array $agentSlugs = [], ?string $reservationRef = null, int $reservedCredits = 0): array
     {
         $workspace = Workspace::findOrFail($wsId);
 
@@ -96,9 +96,16 @@ class AgentMeetingEngine
         // failure/cancellation. Without this, every meeting was a free ride.
         $estimate = $this->estimateMeetingCost($agentSlugs);
         $creditCost = (int) ($estimate['total_credits'] ?? 0);
-        $reservationRef = null;
+        // RISK-0142 (a) (2026-09-07, DEC-0040): a meeting started FROM AN APPROVED PROPOSAL arrives with the
+        // proposal's own reservation. Reusing it means ONE hold, committed once by completeMeeting() — the
+        // second "meeting_strategy" reservation that used to sit beside the proposal's charge is gone.
+        if ($reservationRef !== null && $reservedCredits > 0) {
+            $creditCost = $reservedCredits;
+        } else {
+            $reservationRef = null;
+        }
 
-        if ($creditCost > 0) {
+        if ($creditCost > 0 && $reservationRef === null) {
             if (! $this->creditService->hasBalance($wsId, $creditCost)) {
                 return [
                     'error' => "Insufficient credits. Meeting requires {$creditCost} credits.",

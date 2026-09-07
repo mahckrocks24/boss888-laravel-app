@@ -133,7 +133,12 @@ class ProactiveStrategyEngine
     {
         $proposal = DB::table('strategy_proposals')->where('id', $proposalId)->where('workspace_id', $wsId)->first();
         if (!$proposal) throw new \RuntimeException('Proposal not found');
-        if ($proposal->status !== 'pending_approval') throw new \RuntimeException('Proposal already processed');
+        if ($proposal->status !== 'pending_approval') {
+            // RISK-0142 (2026-09-07, DEC-0040): a second approval (double click, a chat "yes" after the route, a
+            // retry) used to throw and surface as a 500. It is a no-op with a name: nothing is created or charged again.
+            return ['success' => false, 'code' => 'ALREADY_PROCESSED', 'status' => (string) $proposal->status,
+                    'error' => 'This proposal has already been processed. Nothing was created or charged again.'];
+        }
 
         $type = (string) $proposal->type;
 
@@ -307,10 +312,11 @@ class ProactiveStrategyEngine
             // still trigger an agent meeting).
             $workspace = Workspace::find($wsId);
             $goal = $this->buildOnboardingGoal($workspace);
-            $meeting = $this->meetings->startMeeting($wsId, $userId, $goal);
-            if ($reservationRef !== null) {
-                $this->credits->commit($wsId, $reservationRef, $totalCredits);
-            }
+            // RISK-0142 (a) (2026-09-07, DEC-0040): the proposal's reservation travels INTO the meeting and is
+            // committed ONCE, by completeMeeting(), when the session finishes (or the customer ends it). It used to
+            // be committed here — before a single agent had spoken — and the meeting then reserved a further 4 on
+            // its own: 12 held for an "8 credit" session that had not run (EV-0917, RISK-0142).
+            $meeting = $this->meetings->startMeeting($wsId, $userId, $goal, [], $reservationRef, $reservationRef !== null ? $totalCredits : 0);
             DB::table('strategy_proposals')->where('id', $proposalId)->update([
                 'status'     => 'executing',
                 'meeting_id' => $meeting['meeting_id'] ?? null,
@@ -542,8 +548,16 @@ class ProactiveStrategyEngine
      */
     public function declineProposal(int $wsId, int $proposalId): array
     {
-        DB::table('strategy_proposals')->where('id', $proposalId)->where('workspace_id', $wsId)
+        // RISK-0142 (2026-09-07, DEC-0040): only a proposal still waiting can be declined; declining one that is
+        // already approved/executing/declined is a no-op with a name, never a silent status overwrite.
+        $n = DB::table('strategy_proposals')->where('id', $proposalId)->where('workspace_id', $wsId)
+            ->where('status', 'pending_approval')
             ->update(['status' => 'declined', 'updated_at' => now()]);
+        if ($n === 0) {
+            $st = (string) (DB::table('strategy_proposals')->where('id', $proposalId)->where('workspace_id', $wsId)->value('status') ?? 'missing');
+            return ['success' => false, 'code' => 'ALREADY_PROCESSED', 'status' => $st, 'credits_used' => 0,
+                    'message' => 'This proposal is not waiting for a decision.'];
+        }
 
         return ['success' => true, 'credits_used' => 0, 'message' => 'Proposal declined. No credits were used.'];
     }
