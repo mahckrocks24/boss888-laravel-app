@@ -2185,9 +2185,12 @@ PROMPT;
             $variables[$logoKey] = $name;
         }
         $variables['footer_text'] = '© ' . date('Y') . ' ' . $name . '. All rights reserved.';
-        $variables['contact_address'] = $data['location'] ?? 'Dubai, UAE';
-        $variables['city'] = $data['location'] ?? 'Dubai';
-        $variables['country'] = 'AE';
+        // RISK-0128 (2026-09-07, DEC-0041): never invent a place. Address and city come from the brief or stay empty; the
+        // country is the last comma-separated part of the brief's location when there is one — never a hardcoded code.
+        $__briefLoc = trim((string) ($data['location'] ?? ''));
+        $variables['contact_address'] = $__briefLoc;
+        $variables['city'] = \App\Engines\Builder\Support\MetaDescriptionTruth::cityOf($__briefLoc);
+        $variables['country'] = \App\Engines\Builder\Support\MetaDescriptionTruth::countryOf($__briefLoc);
 
         // BUG 2 FIX — guaranteed hero image floor from builder_default_assets.
         // This runs BEFORE any DALL-E attempt so that generation failures
@@ -2718,6 +2721,14 @@ PROMPT;
             'sections'    => $this->buildDefaultSectionsForPage('blog', $data),
         ];
 
+        // RISK-0128 (2026-09-07, DEC-0041): the description that feeds the meta tag, og:description and the JSON-LD must be
+        // truthful to the brief's geography — never a template default, never a place the brief did not name (EV-0921).
+        $variables['meta_description'] = \App\Engines\Builder\Support\MetaDescriptionTruth::resolve(
+            (string) ($variables['meta_description'] ?? ''),
+            (string) (is_array($manifest['variables']['meta_description'] ?? null) ? ($manifest['variables']['meta_description']['default'] ?? '') : ''),
+            (string) $name, (string) $industry, (string) ($data['services'] ?? ''), (string) ($data['location'] ?? '')
+        );
+
         try {
             $generation = \App\Engines\Builder\Support\BuilderGenerationDTO::fromArray([
                 'workspace_id'       => $wsId,
@@ -3150,7 +3161,7 @@ PROMPT;
         if (!$templateFits) {
             // Novel/unlisted business on a borrowed layout — force the copy to
             // the real business identity, not the template's industry.
-            $hint = "This business is a {$rawIndustry} — NOT a {$industry}. Write EVERY field authentically for a {$rawIndustry}, using its real services ({$services}). Professional, premium Dubai/UAE tone. Do NOT describe it as a {$industry}, a consultancy, or an agency, and never invent services from another industry.";
+            $hint = "This business is a {$rawIndustry} — NOT a {$industry}. Write EVERY field authentically for a {$rawIndustry}, using its real services ({$services}). Professional, premium tone. Do NOT describe it as a {$industry}, a consultancy, or an agency, and never invent services from another industry.";
         }
 
         // PATCH (FIX 4, 2026-05-09) — Add blog_section_title to the prompt
@@ -3187,12 +3198,15 @@ PROMPT;
                 . "blog_2_title, blog_2_excerpt, blog_2_category,\n"
                 . "blog_3_title, blog_3_excerpt, blog_3_category,\n"
                 . "meta_description (under 160 chars for SEO).\n\n"
-                . "IMPORTANT: No HTML tags. No markdown. Plain text. Dubai/UAE tone. Premium quality. "
+                . "IMPORTANT: No HTML tags. No markdown. Plain text. Premium quality. "
+                // RISK-0128 (2026-09-07, DEC-0041): the geography comes from the brief, never from the prompt. Any place the copy
+                // names must be the customer's own; with no location known, no place is named at all.
+                . ($location !== '' ? "The business is in {$location}: every city, region or country you mention MUST be {$location} and nothing else. " : "Do not mention any city, region or country anywhere. ")
                 . "Do NOT use content appropriate for any industry OTHER than {$copyIndustry}. "
                 . ($isFoodIndustry ? '' : "Do NOT mention cuisine, menus, dishes, kitchen, dining, or chefs anywhere — this is NOT a food business.");
 
             $result = $this->runtime->chatJson(
-                "You are a professional website copywriter for a {$copyIndustry} business in Dubai/UAE. "
+                "You are a professional website copywriter for a {$copyIndustry} business" . ($location !== '' ? " in {$location}" : '') . ". "
                 . "Never generate content from a different industry. Return only valid JSON with the word json.",
                 $prompt,
                 ['task' => 'arthur_copywrite'],
