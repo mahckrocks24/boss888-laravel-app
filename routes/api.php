@@ -1558,7 +1558,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         return response()->json(['tasks' => $tasks]);
     });
     Route::get("/projects/tasks/{id}", function (\Illuminate\Http\Request $r, $id) {
-        $t = \App\Models\Task::findOrFail($id);
+        // LAUNCH-P0-1 (2026-09-07, DEC-0039 / EV-0916): resolved by bare id — any customer could read any workspace's task. Scoped to the caller's workspace; foreign ids 404 exactly like nonexistent ones.
+        $t = \App\Models\Task::where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first();
+        if (! $t) return response()->json(['error' => 'Task not found'], 404);
         $agents = $t->assigned_agents_json;
         if (is_string($agents)) { try { $agents = json_decode($agents, true); } catch (\Throwable $e) { $agents = []; } }
         $payload = $t->payload_json;
@@ -1624,7 +1626,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     });
     Route::post("/projects/tasks/{id}/note", function (\Illuminate\Http\Request $r, $id) {
         // Stub for task notes — stores in result_json for now
-        $task = \App\Models\Task::findOrFail($id);
+        // LAUNCH-P0-1 (2026-09-07): note-write on a bare id — scoped to the caller's workspace.
+        $task = \App\Models\Task::where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first();
+        if (! $task) return response()->json(['error' => 'Task not found'], 404);
         $result = $task->result_json ?? [];
         $result['notes'] = $result['notes'] ?? [];
         $result['notes'][] = ['content' => $r->input('content'), 'at' => now()->toISOString()];

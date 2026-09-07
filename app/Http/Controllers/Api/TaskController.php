@@ -57,17 +57,35 @@ class TaskController
         return response()->json(['tasks' => $tasks]);
     }
 
-    public function show(int $id): JsonResponse
+    /**
+     * LAUNCH-P0-1 (2026-09-07, DEC-0039 / EV-0916). show(), status() and events() resolved a task by bare id:
+     * any authenticated customer could read ANY workspace's task — payload, user_request, result — proven live
+     * against a QA tenant during the launch pass (GET /api/tasks/32082 from workspace 1000001 returned
+     * workspace 999995's task). Every read is now confined to the caller's workspace, and a foreign id
+     * answers 404 exactly like a nonexistent one so existence is not leaked either (same contract as
+     * PUT /tasks/{id}/status, POST /tasks/{id}/retry and POST /tasks/{id}/cancel in projects-01.php).
+     */
+    private function ownTask(Request $request, int $id): ?\App\Models\Task
     {
-        $task = $this->service->find($id);
+        $ws = (int) $request->attributes->get('workspace_id');
+        if ($ws <= 0) return null;
+        return \App\Models\Task::where('id', $id)->where('workspace_id', $ws)->first();
+    }
+
+    public function show(Request $request, int $id): JsonResponse
+    {
+        $task = $this->ownTask($request, $id);
         if (! $task) {
             return response()->json(['error' => 'Task not found'], 404);
         }
         return response()->json(['task' => $task->load('approval')]);
     }
 
-    public function status(int $id): JsonResponse
+    public function status(Request $request, int $id): JsonResponse
     {
+        if (! $this->ownTask($request, $id)) {
+            return response()->json(['error' => 'Task not found'], 404);
+        }
         $status = $this->progressService->getStatus($id);
         if (! $status) {
             return response()->json(['error' => 'Task not found'], 404);
@@ -75,8 +93,11 @@ class TaskController
         return response()->json($status);
     }
 
-    public function events(int $id): JsonResponse
+    public function events(Request $request, int $id): JsonResponse
     {
+        if (! $this->ownTask($request, $id)) {
+            return response()->json(['error' => 'Task not found'], 404);
+        }
         $events = $this->progressService->getEvents($id);
         return response()->json(['events' => $events]);
     }
