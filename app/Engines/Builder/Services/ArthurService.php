@@ -2730,6 +2730,14 @@ PROMPT;
             \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['services'] ?? ''),   // services may be a list here (build_data), not a sentence
             \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['location'] ?? '')
         );
+        // RISK-0128 residual (2026-09-07, DEC-0041): a manifest default the copy pass never overwrote must not carry the
+        // template's origin place onto the customer's page (site 629: venue_7 "Dubai Opera" on a Manchester brief).
+        try {
+            [$variables, $__blankedDefaults] = \App\Engines\Builder\Support\MetaDescriptionTruth::neutraliseSurvivingDefaults(
+                $variables, is_array($manifest['variables'] ?? null) ? $manifest['variables'] : [],
+                \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['location'] ?? ''), (string) $name);
+            if ($__blankedDefaults !== []) Log::info('[Arthur] origin-place defaults blanked', ['workspace_id' => $wsId, 'keys' => $__blankedDefaults]);
+        } catch (\Throwable $__e) { Log::warning('[Arthur] origin-place default check failed: ' . $__e->getMessage()); }
 
         try {
             $generation = \App\Engines\Builder\Support\BuilderGenerationDTO::fromArray([

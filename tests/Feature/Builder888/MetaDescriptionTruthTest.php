@@ -77,4 +77,48 @@ class MetaDescriptionTruthTest extends TestCase
         $this->assertLessThanOrEqual(160, mb_strlen($out));
         $this->assertStringEndsWith('in Toronto, Canada.', $out);
     }
+    private function venueManifest(): array
+    {
+        return [
+            'business_name'   => ['default' => 'Aurora Event Studio'],
+            'contact_address' => ['default' => 'Unit 22, Alserkal Avenue, Al Quoz 1, Dubai'],
+            'meta_description'=> ['default' => 'Aurora Event Studio — a Dubai-based luxury event production and wedding planning studio.'],
+            'footer_tagline'  => ['default' => 'Aurora Event Studio — luxury events, fully produced, in Dubai.'],
+            'venue_1'         => ['default' => 'The Lowry Hotel'],
+            'venue_7'         => ['default' => 'Dubai Opera'],
+            'blog_1_title'    => ['default' => 'What a Three-Day Wedding Actually Costs in Dubai'],
+            'service_1_title' => ['default' => 'Bespoke Weddings'],
+        ];
+    }
+
+    public function test_a_surviving_default_that_names_the_template_origin_is_blanked_for_another_geography(): void
+    {
+        $vars = ['venue_1' => 'The Lowry Hotel', 'venue_7' => 'Dubai Opera', 'blog_1_title' => 'What a Three-Day Wedding Actually Costs in Dubai', 'service_1_title' => 'Bespoke Weddings', 'footer_tagline' => 'Regress QA Cakes — custom cakes, Manchester.'];
+        [$out, $blanked] = M::neutraliseSurvivingDefaults($vars, $this->venueManifest(), 'Manchester, United Kingdom', 'Regress QA Cakes');
+        $this->assertSame('', $out['venue_7']);
+        $this->assertSame('', $out['blog_1_title']);
+        $this->assertSame('The Lowry Hotel', $out['venue_1'], 'a default with no origin place survives');
+        $this->assertSame('Bespoke Weddings', $out['service_1_title']);
+        $this->assertSame('Regress QA Cakes — custom cakes, Manchester.', $out['footer_tagline'], 'overwritten copy is never touched');
+        $this->assertEqualsCanonicalizing(['venue_7', 'blog_1_title'], $blanked);
+    }
+
+    public function test_a_brief_in_the_template_origin_keeps_its_defaults(): void
+    {
+        $vars = ['venue_7' => 'Dubai Opera', 'blog_1_title' => 'What a Three-Day Wedding Actually Costs in Dubai'];
+        [$out, $blanked] = M::neutraliseSurvivingDefaults($vars, $this->venueManifest(), 'Dubai, United Arab Emirates', 'Palm Events');
+        $this->assertSame('Dubai Opera', $out['venue_7']);
+        $this->assertSame([], $blanked);
+    }
+
+    public function test_origin_tokens_come_from_the_template_itself_not_from_a_list(): void
+    {
+        $tokens = M::originPlaceTokens($this->venueManifest());
+        $this->assertContains('dubai', $tokens);
+        $this->assertContains('alserkal', $tokens);
+        $this->assertNotContains('aurora', $tokens, 'the sample business name is not a place');
+        $this->assertNotContains('avenue', $tokens, 'generic address words are not places');
+        $this->assertSame([], M::originPlaceTokens(['business_name' => ['default' => 'X']]), 'a manifest with no located defaults yields no origin');
+    }
 }
+

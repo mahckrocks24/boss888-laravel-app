@@ -93,6 +93,61 @@ final class MetaDescriptionTruth
         return is_scalar($v) ? trim((string) $v) : '';
     }
 
+    /**
+     * RISK-0128 residual (2026-09-07, DEC-0041): a manifest default that the copy pass never overwrote is template
+     * SAMPLE text, and when it names the template's own origin place ("Dubai Opera" as venue_7 on a Manchester site) it
+     * becomes a false claim on the customer's page. The origin place is derived from the template itself — the proper
+     * nouns of its default contact_address and the places its default description/tagline/footer/hero name — so the rule
+     * is the same for every template and every geography: a surviving default that carries an origin-place token the
+     * brief does not allow is blanked. A brief located in that same place keeps its defaults.
+     *
+     * @return array{0: array, 1: list<string>} the variables and the keys that were blanked
+     */
+    public static function neutraliseSurvivingDefaults(array $variables, array $manifestVars, string $location, string $name): array
+    {
+        $origin = self::originPlaceTokens($manifestVars);
+        if ($origin === []) return [$variables, []];
+        $allowed = self::tokens($location . ' ' . $name);
+        $blanked = [];
+        foreach ($manifestVars as $k => $spec) {
+            if (!is_array($spec)) continue;
+            $d = trim((string) ($spec['default'] ?? ''));
+            if ($d === '' || $k === 'meta_description') continue;               // meta_description is resolved separately
+            $cur = $variables[$k] ?? null;
+            if (!is_string($cur) || trim($cur) !== $d) continue;                // overwritten by the copy pass: the customer's own
+            $hit = false;
+            foreach (self::tokens($d) as $t) {
+                if (in_array($t, $origin, true) && !in_array($t, $allowed, true)) { $hit = true; break; }
+            }
+            if ($hit) { $variables[$k] = ''; $blanked[] = (string) $k; }
+        }
+        return [$variables, $blanked];
+    }
+
+    /** Lower-cased tokens of the template's origin place, taken from its own defaults; generic words removed. */
+    public static function originPlaceTokens(array $manifestVars): array
+    {
+        $generic = ['unit', 'suite', 'floor', 'level', 'street', 'st', 'road', 'rd', 'avenue', 'ave', 'lane', 'drive', 'way', 'building', 'tower', 'block', 'office', 'plaza', 'centre', 'center', 'mall', 'the', 'and', 'of', 'in', 'at', 'po', 'box'];
+        $sample = self::tokens((string) (is_array($manifestVars['business_name'] ?? null) ? ($manifestVars['business_name']['default'] ?? '') : ''));
+        $out = [];
+        $d = (string) (is_array($manifestVars['contact_address'] ?? null) ? ($manifestVars['contact_address']['default'] ?? '') : '');
+        foreach (self::tokens($d) as $t) if (mb_strlen($t) >= 3 && !is_numeric($t)) $out[$t] = true;   // an address is place words
+        foreach (['city', 'country', 'location', 'service_area', 'contact_service_area', 'meta_description', 'business_tagline', 'hero_subtitle', 'hero_subheading', 'footer_tagline', 'footer_text'] as $k) {
+            $v = (string) (is_array($manifestVars[$k] ?? null) ? ($manifestVars[$k]['default'] ?? '') : '');
+            if ($v === '') continue;
+            if (in_array($k, ['city', 'country', 'location', 'service_area', 'contact_service_area'], true)) {
+                foreach (self::tokens($v) as $t) if (mb_strlen($t) >= 3) $out[$t] = true;
+            } elseif (preg_match_all(self::PLACE_PHRASE, $v, $m)) {
+                foreach ($m[1] as $phrase) foreach (self::tokens($phrase) as $t) if (mb_strlen($t) >= 3) $out[$t] = true;
+            }
+            // "Dubai-based", "Dubai's": the place as a modifier
+            if (preg_match_all('/\b([A-Z][\p{L}]{2,})(?:-based|’s|\'s)\b/u', $v, $mm)) foreach ($mm[1] as $t) $out[mb_strtolower($t)] = true;
+        }
+        foreach ($sample as $t) unset($out[$t]);
+        foreach ($generic as $t) unset($out[$t]);
+        return array_keys($out);
+    }
+
     private static function humanIndustry(string $industry): string
     {
         $h = trim(str_replace(['_', '-'], ' ', $industry));
