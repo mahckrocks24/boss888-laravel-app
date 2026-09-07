@@ -248,9 +248,23 @@ final class SessionLedgerFacts
         $deniesCompletion = (bool) preg_match('/\b(no|not a|isn\'?t a|there\'?s no|there is no|hasn\'?t been a|has not been a|never had a|without a)\s+(completed|finished|concluded)\s+(strategy\s+)?(session|meeting)\b/iu', $reply)
             || (bool) preg_match('/\b(session|meeting)\b[^.!?\n]{0,90}\b(has ?n\'?t|has not|hasn\'?t|have not|haven\'?t|not yet|never|didn\'?t|did not)\s+(been\s+)?(run|ran|completed|complete|finished|happened|taken place|started|concluded|wrapped)\b/iu', $reply)
             || (bool) preg_match('/\b(no|nothing)\s+(completed|finished)\b[^.!?\n]{0,40}\b(session|meeting)\b/iu', $reply);
-        $deniesCharge = (bool) preg_match('/\b(won\'?t|will not|wouldn\'?t|not going to)\s+be\s+charged\b/iu', $reply)
-            || (bool) preg_match('/\b(has ?n\'?t|hasn\'?t|has not|have not|haven\'?t|not|nothing)\s+(yet\s+)?(been\s+)?(charged|deducted|billed|taken)\b/iu', $reply)
-            || (bool) preg_match('/\b(until|once|when)\s+(the\s+)?(tasks?|work|items?)\s+(actually\s+)?(run|runs|execute|executes|complete|completes)\b/iu', $reply);
+        // A denial of the CHARGE counts only in a sentence about the session itself. "The plan tasks have not been deducted
+        // yet" is true and is about separate items (second live run, EV-0923: a correct answer got a needless correction).
+        $deniesCharge = false;
+        $amt = (int) ($s['committed'] ?: ($s['reserved'] ?: $s['quoted_credits']));
+        $notCharged = '(have|has|are|is|were|was)\s+not\s+(yet\s+)?(been\s+)?(deducted|charged|billed|taken)\b';
+        foreach (preg_split('/(?<=[.!?])\s+|\n+/u', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $sent) {
+            if (!preg_match('/\b(session|meeting)\b/iu', $sent) && !preg_match('/\b' . $amt . '\s+credits?\b/iu', $sent)) continue;
+            // the negated charge is about the tasks/items, and nothing in the sentence says the session itself is unpaid
+            if (preg_match('/\b(plan\s+tasks?|tasks?|follow-?ups?|items?)\b[^.!?\n]{0,40}\b' . $notCharged . '/iu', $sent)
+                && !preg_match('/\b(session|meeting)\b[^.!?\n]{0,40}\b' . $notCharged . '/iu', $sent)
+                && !preg_match('/\b' . $amt . '\s+credits?\b[^.!?\n]{0,30}\b' . $notCharged . '/iu', $sent)) continue;
+            if (preg_match('/\b(won\'?t|will not|wouldn\'?t|not going to)\s+be\s+(charged|deducted)\b/iu', $sent)
+                || preg_match('/\b(has ?n\'?t|hasn\'?t|has not|have not|haven\'?t|not|nothing)\s+(yet\s+)?(been\s+)?(charged|deducted|billed|taken)\b/iu', $sent)
+                || preg_match('/\b(until|once|when)\s+(the\s+)?(tasks?|work|items?)\s+(actually\s+)?(run|runs|execute|executes|complete|completes)\b/iu', $sent)) {
+                $deniesCharge = true; break;
+            }
+        }
         // A negated phrase ("hasn't completed", "not yet been charged") is not a claim of completion or charge: blank those
         // before looking for positive claims, otherwise a truthful "still running" answer would be "corrected".
         $pos = preg_replace('/\b(?:has ?n\'?t|hasn\'?t|has not|have not|haven\'?t|is ?n\'?t|isn\'?t|is not|was not|wasn\'?t|not yet|not|never|nor|yet to be|still to be|before it has|until it has|until it is|until it)\s+(?:yet\s+|been\s+|actually\s+|fully\s+){0,2}(?:completed?|finished|concluded|done|run|ran|charged|deducted|billed|taken)\b/iu', ' ', $reply) ?? $reply;

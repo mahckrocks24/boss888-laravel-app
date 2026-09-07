@@ -187,6 +187,17 @@ class SessionLedgerFactsTest extends TestCase
         $this->assertSame($truth, F::guard($truth, $ws));
     }
 
+    // second live run (EV-0923): a correct answer that says the PLAN TASKS are not deducted yet must not be "corrected"
+    public function test_guard_does_not_correct_a_true_statement_that_plan_tasks_are_not_yet_deducted(): void
+    {
+        [$u, $ws] = $this->tenant(50); [$pid, $mid] = $this->strategySession($ws, $u, true);
+        $this->planTasks($ws, $mid, 2, 2);
+        $good = "Yes — the strategy session completed. The meeting closed at 17:03 UTC today and the 8 credits were deducted exactly once; nothing further is owed for it. The 4 credits for the two plan tasks it produced are separate and have not been deducted yet. Your total spend is 8 credits.";
+        $this->assertSame($good, F::guard($good, $ws));
+        $bad = "The session ran, but the 8 credits have not been deducted yet — they only get charged once the tasks run.";
+        $this->assertStringContainsString(F::NOTE, F::guard($bad, $ws), 'a denial about the SESSION charge is still corrected');
+    }
+
     // downstream guards (first live run, EV-0923): MeasurementGuard read "session" as a GA metric and cut every sentence
     // carrying a credit figure, a meeting id or a time; ArticleIdClaimGuard read "task #32255", "1 credit" and "balance 41"
     // as foreign article ids. Ledger facts are not analytics metrics and not article numbers.
