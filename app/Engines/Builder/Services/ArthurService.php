@@ -2632,6 +2632,25 @@ PROMPT;
             }
         } catch (\Throwable $e) { /* non-fatal */ }
 
+        // RISK-0128 (2026-09-07, DEC-0041; moved before render() in RISK-0128e — the served HTML is rendered from these
+        // variables HERE, so a guard placed after the render only corrected the stored row): the description that feeds the meta tag, og:description and the JSON-LD must be
+        // truthful to the brief's geography — never a template default, never a place the brief did not name (EV-0921).
+        $variables['meta_description'] = \App\Engines\Builder\Support\MetaDescriptionTruth::resolve(
+            (string) ($variables['meta_description'] ?? ''),
+            (string) (is_array($manifest['variables']['meta_description'] ?? null) ? ($manifest['variables']['meta_description']['default'] ?? '') : ''),
+            (string) $name, (string) $industry,
+            \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['services'] ?? ''),   // services may be a list here (build_data), not a sentence
+            \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['location'] ?? '')
+        );
+        // RISK-0128 residual (2026-09-07, DEC-0041): a manifest default the copy pass never overwrote must not carry the
+        // template's origin place onto the customer's page (site 629: venue_7 "Dubai Opera" on a Manchester brief).
+        try {
+            [$variables, $__blankedDefaults] = \App\Engines\Builder\Support\MetaDescriptionTruth::neutraliseSurvivingDefaults(
+                $variables, is_array($manifest['variables'] ?? null) ? $manifest['variables'] : [],
+                \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['location'] ?? ''), (string) $name);
+            if ($__blankedDefaults !== []) Log::info('[Arthur] origin-place defaults blanked', ['workspace_id' => $wsId, 'keys' => $__blankedDefaults]);
+        } catch (\Throwable $__e) { Log::warning('[Arthur] origin-place default check failed: ' . $__e->getMessage()); }
+
         // Render template — TemplateService also carries industry-scoped
         // image defaults so even variables unknown to the manifest won't
         // render as hollow sections.
@@ -2720,24 +2739,6 @@ PROMPT;
             'is_homepage' => false,
             'sections'    => $this->buildDefaultSectionsForPage('blog', $data),
         ];
-
-        // RISK-0128 (2026-09-07, DEC-0041): the description that feeds the meta tag, og:description and the JSON-LD must be
-        // truthful to the brief's geography — never a template default, never a place the brief did not name (EV-0921).
-        $variables['meta_description'] = \App\Engines\Builder\Support\MetaDescriptionTruth::resolve(
-            (string) ($variables['meta_description'] ?? ''),
-            (string) (is_array($manifest['variables']['meta_description'] ?? null) ? ($manifest['variables']['meta_description']['default'] ?? '') : ''),
-            (string) $name, (string) $industry,
-            \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['services'] ?? ''),   // services may be a list here (build_data), not a sentence
-            \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['location'] ?? '')
-        );
-        // RISK-0128 residual (2026-09-07, DEC-0041): a manifest default the copy pass never overwrote must not carry the
-        // template's origin place onto the customer's page (site 629: venue_7 "Dubai Opera" on a Manchester brief).
-        try {
-            [$variables, $__blankedDefaults] = \App\Engines\Builder\Support\MetaDescriptionTruth::neutraliseSurvivingDefaults(
-                $variables, is_array($manifest['variables'] ?? null) ? $manifest['variables'] : [],
-                \App\Engines\Builder\Support\MetaDescriptionTruth::text($data['location'] ?? ''), (string) $name);
-            if ($__blankedDefaults !== []) Log::info('[Arthur] origin-place defaults blanked', ['workspace_id' => $wsId, 'keys' => $__blankedDefaults]);
-        } catch (\Throwable $__e) { Log::warning('[Arthur] origin-place default check failed: ' . $__e->getMessage()); }
 
         try {
             $generation = \App\Engines\Builder\Support\BuilderGenerationDTO::fromArray([
