@@ -1,3 +1,11 @@
+// ARTHUR EDITOR FIX (2026-09-10) — wsSites and wsCurrentSite were never declared anywhere; they only
+// became globals when wsLoadSites() assigned them. wsOpenSite()'s FIRST statement reads wsSites, so for
+// anyone who had not already opened the Websites grid — which is every new signup coming straight out of
+// the Arthur wizard — it threw "wsSites is not defined" before doing anything. _arthurOpenBuiltSite()
+// called it un-awaited and uncaught, so the throw was silent: the modal closed and the customer was left
+// looking at Sarah. Same class as the bld_ensureArray note below. Declared, so the read is always safe.
+var wsSites = [];
+var wsCurrentSite = null;
 function _bldSafeText(v){
   if(typeof v==='string') return v;
   if(v===null||v===undefined) return '';
@@ -7,6 +15,36 @@ function _bldSafeText(v){
 }
 function bld_esc(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function bld_escH(t){return _bldSafeText(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+// Owner 2026-09-10: the standing guidance above the Arthur chat field is useful exactly once.
+// It now carries a close button and remembers being closed, so a first-time customer still gets the
+// hint and everybody else gets the space back. Dismissal is per-browser (localStorage) — it is a
+// convenience, not state anyone needs on the server.
+function _bldHintDismissed(id) {
+  try { return localStorage.getItem('lu_hint_' + id) === '1'; } catch (e) { return false; }
+}
+function _bldHint(id, innerHtml, extraStyle) {
+  if (_bldHintDismissed(id)) { return ''; }
+  return '<div data-bld-hint="' + id + '" style="position:relative;background:var(--s2);border-radius:8px;' +
+    'padding:9px 30px 9px 11px;font-size:11px;color:var(--t2);line-height:1.55;' + (extraStyle || '') + '">' +
+    innerHtml +
+    '<button type="button" data-bld-hint-close="' + id + '" aria-label="Dismiss this tip" ' +
+      'style="position:absolute;top:5px;right:6px;width:18px;height:18px;line-height:1;padding:0;' +
+      'background:none;border:none;color:var(--t3);font-size:14px;cursor:pointer;border-radius:4px">\u00d7</button>' +
+  '</div>';
+}
+if (!window.__bldHintsWired) {
+  window.__bldHintsWired = true;
+  document.addEventListener('click', function (e) {
+    var btn = e.target && e.target.closest ? e.target.closest('[data-bld-hint-close]') : null;
+    if (!btn) { return; }
+    e.preventDefault(); e.stopPropagation();
+    var id = btn.getAttribute('data-bld-hint-close');
+    try { localStorage.setItem('lu_hint_' + id, '1'); } catch (_e) {}
+    var box = document.querySelector('[data-bld-hint="' + id + '"]');
+    if (box && box.parentNode) { box.parentNode.removeChild(box); }
+  });
+}
+
 // BUILDER888 P1 (2026-08-09) — was called by wsOpenSite() but never defined,
 // so opening any website's page list threw ReferenceError and every site
 // showed "Failed to load pages.". Mirrors core.js::ensureArray, but kept
@@ -294,7 +332,7 @@ function bld_openDmModal(agentId, name, role, emoji, color, cardEl) {
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();bld_sendDm();}"></textarea>
         <div class="dm-footer">
           <span class="dm-hint">Shift+Enter new line</span>
-          <button class="dm-send" id="dm-send" onclick="bld_sendDm()">Send →</button>
+          <button class="dm-send" id="dm-send" onclick="bld_sendDm()" aria-label="Send" title="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>
         </div>`;
 
     // Position anchored to the card, to its right
@@ -337,7 +375,7 @@ async function bld_sendDm() {
         if (body) body.innerHTML = `<div class="dm-sent">✓ Message sent to ${document.getElementById('dm-name')?.textContent || 'agent'}.<br><span style="color:var(--t3);font-size:9px">Reply will appear in the main feed.</span></div>`;
         setTimeout(bld_closeDmModal, 1800);
     } catch(e) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Send →'; }
+        if (btn) { btn.disabled = false; /* icon button: nothing to re-label */ }
         console.error('DM failed:', e);
     }
 }
@@ -880,8 +918,8 @@ function _wsExtPluginInfo(siteId){
     +'<div id="wsp-status" style="font-size:12px;color:var(--t3);margin-bottom:14px">Checking connection…</div>'
     +'<div style="display:grid;gap:12px">'
     +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">1. Download the plugin</div><div style="font-size:12px;color:var(--t3);margin-bottom:10px" id="wsp-plugin-meta">…</div><button class="ct-btn primary" id="wsp-dl" style="padding:8px 16px">⬇ Download plugin (.zip)</button></div>'
-    +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">2. Create your connector key</div><div style="font-size:12px;color:var(--t3);margin-bottom:10px">Shown once. Paste it into WordPress → Settings → LevelUp Growth SEO → API Key, with Workspace ID <strong style="color:var(--t1)">'+bld_escH(String(localStorage.getItem('lu_workspace_id')||''))+'</strong>.</div><div style="display:flex;gap:8px;align-items:center"><button class="ct-btn" id="wsp-key" style="padding:8px 16px">Create key</button><code id="wsp-key-out" style="font-size:12px;color:var(--t1);word-break:break-all"></code></div></div>'
-    +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">3. Install and test</div><div style="font-size:12px;color:var(--t3)">WordPress Admin → Plugins → Add New → Upload Plugin → Activate → Settings → LevelUp Growth SEO → paste the key → <strong style="color:var(--t1)">Test connection</strong>. The site appears below as connected the moment the test passes.</div></div>'
+    +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">2. Create your connector key</div><div style="font-size:12px;color:var(--t3);margin-bottom:10px">Shown once. Paste it into WordPress → Settings → LevelUpGrowth SEO → API Key, with Workspace ID <strong style="color:var(--t1)">'+bld_escH(String(localStorage.getItem('lu_workspace_id')||''))+'</strong>.</div><div style="display:flex;gap:8px;align-items:center"><button class="ct-btn" id="wsp-key" style="padding:8px 16px">Create key</button><code id="wsp-key-out" style="font-size:12px;color:var(--t1);word-break:break-all"></code></div></div>'
+    +'<div style="background:var(--s2);border-radius:10px;padding:14px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:6px">3. Install and test</div><div style="font-size:12px;color:var(--t3)">WordPress Admin → Plugins → Add New → Upload Plugin → Activate → Settings → LevelUpGrowth SEO → paste the key → <strong style="color:var(--t1)">Test connection</strong>. The site appears below as connected the moment the test passes.</div></div>'
     +'</div>'
     +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="ct-btn" id="wsp-refresh" style="padding:8px 16px">↺ Refresh status</button><button class="ct-btn" style="padding:8px 16px" onclick="document.getElementById(\'ws-plugin-modal\').remove()">Close</button></div></div>';
   ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
@@ -943,9 +981,10 @@ function _wsShowTemplateEditor(site) {
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
       '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it</span>' +
+      '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
-      '<button type="button" onclick="bld_openColors(' + wsId + ')" title="Brand colours" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
+      '<button type="button" onclick="wsOpenPalettes(' + wsId + ')" title="Colour palettes — hover to preview, click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
     // Main
@@ -954,10 +993,10 @@ function _wsShowTemplateEditor(site) {
       '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
           '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
-          '<div style="color:var(--t3);font-size:11px;line-height:1.5">Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. Use the Colours button to change your brand palette.</div>' +
+          _bldHint('ax-editor-intro', 'Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. Colours switches the whole palette instantly; Undo puts anything back.', 'margin-top:2px') +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
-          '<div style="background:var(--s2);border-radius:8px;padding:9px 11px;font-size:11px;color:var(--t2);line-height:1.55">Try: \u201cChange the hero heading to \u2026\u201d or \u201cMake the call-to-action say \u2026\u201d<br>You can also double-click text in the preview, or click an image to swap it.</div>' +
+          _bldHint('ax-editor-try', 'Try: \u201cChange the hero heading to \u2026\u201d, \u201cMake the buttons a gradient from navy to teal\u201d, \u201cMake it more luxurious\u201d or \u201cAdd a testimonials section\u201d.<br>You can also double-click text in the preview, or click an image to swap it.') +
         '</div>' +
         // BUILDER888 (2026-09-01): Arthur edits template sites correctly. ArthurEditService writes each
         // change through to storage/app/public/sites/{id}/index.html - the very export this editor
@@ -994,19 +1033,42 @@ async function _wsTplBindPage(websiteId) {
     var res = await fetch('/api/builder/websites/' + websiteId + '/pages', {
       headers: { 'Authorization': 'Bearer ' + tok, 'Accept': 'application/json' }
     });
-    if (!res.ok) { return; }
+    if (!res.ok) { window._t3BindError = 'HTTP ' + res.status; return false; }
     var body = await res.json();
     var pages = Array.isArray(body) ? body : (body.pages || body.data || []);
-    if (!pages.length) { return; }
+    if (!pages.length) { window._t3BindError = 'no pages in this workspace'; return false; }
     var home = pages.filter(function (pg) { return /^(home|index)$/i.test(String(pg.slug || '')); })[0];
     bldCurrentPageId = (home || pages[0]).id;
+    window._t3BindError = null;
+    return true;
   } catch (e) {
     // Unbound is the safe state: Arthur declines rather than editing the wrong page.
+    window._t3BindError = (e && e.message) || 'bind failed';
+    return false;
   }
 }
 
-function wsCloseTemplateEditor() {
-  try { if (Object.keys(_t3PendingFields).length) { clearTimeout(_t3SaveTimer); _t3FlushSaves(); } } catch (_e) {}
+async function wsCloseTemplateEditor() {
+  // DEC-0046: the ONE confirmation in this editor. Arthur, palette and undo changes are already on the site
+  // (Undo and Versions put them back); only inline text edits can still be pending, and those are what the
+  // customer is asked about. Nothing pending: leave silently.
+  var pending = 0;
+  try { pending = Object.keys(_t3PendingFields).length; } catch (_e) {}
+  if (pending > 0) {
+    var choice = await _t3ExitChoice(pending);
+    if (choice === 'stay') return;
+    if (choice === 'save') {
+      try {
+        clearTimeout(_t3SaveTimer);
+        var r = await _t3FlushSaves();
+        if (r && r.conflicts) return;
+        if (r && !r.ok) { if (typeof showToast === 'function') showToast("Some changes couldn\u2019t be saved \u2014 they\u2019re still here.", 'error'); return; }
+      } catch (_e) {}
+    } else {
+      try { _t3PendingFields = {}; clearTimeout(_t3SaveTimer); } catch (_e) {}
+    }
+  }
+  var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
   bldCurrentPageId = null;
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
@@ -1149,8 +1211,9 @@ function _t3ImgChoose() {
     if (!file) return;
     var url = file.file_url || file.url || file.src || '';
     if (!url) return;
-    _t3CheckImageDims(url, info.recommended, function() {
-      _t3ReplaceImage(info.websiteId, info.field, url);
+    // CROP TOOL 2026-09-06: every placement has a fixed size — the crop frame is locked to it
+    _t3CropForField(info, { url: url, media_id: file.id || null }, function (finalUrl) {
+      _t3ReplaceImage(info.websiteId, info.field, finalUrl);
     });
   });
 }
@@ -1167,8 +1230,18 @@ async function _t3ImgPasteUrl() {
     return;
   }
   _t3HideImagePanel();
-  _t3CheckImageDims(url, info.recommended, function() {
-    _t3ReplaceImage(info.websiteId, info.field, url);
+  _t3CropForField(info, { url: url, media_id: null }, function (finalUrl) {
+    _t3ReplaceImage(info.websiteId, info.field, finalUrl);
+  });
+}
+
+// CROP TOOL 2026-09-06: open the fixed-frame crop for the field's placement; falls back to the plain URL when the
+// placement has no fixed size (or the tool is unavailable) so a replace never silently stops.
+function _t3CropForField(info, pick, proceed) {
+  if (!window.luCrop || typeof window.luCrop.open !== 'function') { proceed(pick.url); return; }
+  window.luCrop.open({ url: pick.url, media_id: pick.media_id, field: info.field }, function (res) {
+    if (res === null) return; // cancelled
+    proceed(res && res.url ? res.url : pick.url);
   });
 }
 
@@ -1439,6 +1512,11 @@ async function _t3ArthurSend(websiteId) {
     console.log('[Arthur send]', { block_id: window._t3SelectedBlock || null, element_key: window._t3SelectedElement || null, message: msg, pageId: (typeof bldCurrentPageId !== 'undefined' ? bldCurrentPageId : null) });
     var r, d;
     var pid = (typeof bldCurrentPageId !== 'undefined' && bldCurrentPageId) ? bldCurrentPageId : null;
+    if (!pid && typeof _wsTplBindPage === 'function') {
+      // DEC-0046: a bind that failed at open (slow network, grid not loaded) gets one more chance before Arthur declines.
+      try { await _wsTplBindPage(websiteId); } catch (_e) {}
+      pid = (typeof bldCurrentPageId !== 'undefined' && bldCurrentPageId) ? bldCurrentPageId : null;
+    }
     var triedCanonical = false;
     if (pid) {
       // PATCH 10 Fix 2 — Try canonical Patch 8.5 endpoint first.
@@ -1466,11 +1544,24 @@ async function _t3ArthurSend(websiteId) {
             method: 'action',
             message: d.reply || (d.actions_applied ? (d.actions_applied + ' edit' + (d.actions_applied === 1 ? '' : 's') + ' applied') : 'Done.'),
             reload_preview: true,
-            credits_used: 0,
+            credits_used: (typeof d.credits_used === 'number') ? d.credits_used : (typeof d.credits === 'number' ? d.credits : 0),
             _canonical: true
           };
         } else if (d && d.error) {
-          // d.error already in the shape the legacy branch handles
+          // STRESS 2026-09-06: show the human message, never the error code ("insufficient_credits")
+          var _human = d.message || (d.error === 'insufficient_credits' ? 'Not enough credits for this change (1 credit per edit).' : d.error);
+          if (d.error === 'insufficient_credits' || d.error === 'INSUFFICIENT_CREDITS') _human += ' Add credits under Billing to continue.';
+          d = { error: _human, conflict: !!d.conflict, legacy: !!d.legacy };
+        } else if (d && d.success === false) {
+          // ARTHUR EDITOR FIX (2026-09-10) — the endpoint answers HTTP 200 with
+          // {success:false, reply:"…"} when nothing on the site actually changed:
+          // ArthurEditService returns success = $__changed, and the static-site
+          // delegation returns the same shape. There was no branch for it, so the
+          // render chain below fell through every method test to the literal
+          // "Done." — the editor claimed an edit it had not made, which is the
+          // one thing this surface must never do. The service already writes a
+          // truthful customer-facing sentence; show that.
+          d = { method: 'noop', message: d.reply || d.message || 'Nothing on your site was changed.' };
         }
       }
     }
@@ -1481,7 +1572,7 @@ async function _t3ArthurSend(websiteId) {
       // (POST /builder/websites/{id}/arthur-edit was removed 2026-07-02); the structured
       // page path would edit the 2-section skeleton behind the polished export (RISK-0097).
       // Say what works instead of pretending.
-      d = { error: "Arthur can\u2019t restyle this template yet. Double-click any text in the preview to change it, or click an image to replace it." };
+      d = { error: "I couldn\u2019t load this site\u2019s page list" + (window._t3BindError ? " (" + window._t3BindError + ")" : "") + ", so I can\u2019t edit it from here. Go back to Websites and open it again \u2014 if it keeps happening, the site belongs to another workspace." };
     } else if (!triedCanonical || (r && r.status === 422 && d && d.legacy === true)) {
       // Legacy static-HTML edit path REMOVED 2026-07-02 — manual/legacy editing is
       // dead; only structured Arthur vibe editing is supported. A static-HTML page
@@ -1506,15 +1597,18 @@ async function _t3ArthurSend(websiteId) {
       if (d.reload_preview) {
         var iframe = document.getElementById('t3-preview');
         if (typeof window._luPageEditorReloadHook === 'function') { window._luPageEditorReloadHook(); }
-        else if (iframe) iframe.src = iframe.src;
+        else if (iframe) _t3ReloadPreview();
       }
       if (typeof wsLoadSites === 'function' && (d.action === 'page_added' || d.action === 'page_deleted' || d.action === 'page_duplicated')) {
         wsLoadSites();
       }
+    } else if (d.method === 'noop') {
+      // Not an error — Arthur understood, but nothing on the site changed and nothing was charged.
+      if (feed) feed.innerHTML += '<div style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid #F59E0B"><div style="color:var(--t1);font-size:13px;line-height:1.5">' + bld_escH(d.message) + '</div><div style="color:var(--t3);font-size:10px;margin-top:4px">no change applied \u00b7 0 credits</div></div>';
     } else if (d.method === 'chat') {
       if (feed) feed.innerHTML += '<div style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0"><div style="color:var(--t1);font-size:13px;line-height:1.5">' + bld_escH(d.message) + '</div><div style="color:rgba(255,255,255,0.3);font-size:10px;margin-top:4px">arthur \u00b7 ' + (d.credits_used||0) + ' credit</div></div>';
     } else {
-      if (feed) feed.innerHTML += '<div style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0"><div style="color:var(--t1);font-size:13px">Done.</div><div style="margin-top:4px"><span onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'" style="color:rgba(255,255,255,0.3);font-size:10px;cursor:pointer;user-select:none">details</span><div style="display:none;margin-top:4px;color:rgba(255,255,255,0.3);font-size:10px;line-height:1.6">' + (d.method==="instant"?"'+window.icon('ai',18)+' instant":"\ud83e\udd16 deepseek") + " \u00b7 " + (d.credits_used||0) + " credit" + ((d.credits_used||0)>1?"s":"") + " \u00b7 block: " + (window._t3SelectedBlock||"page") + '</div></div></div>';
+      if (feed) feed.innerHTML += '<div style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0"><div style="color:var(--t1);font-size:13px">' + bld_escH(d.reply || d.message || 'Done.') + '</div><div style="margin-top:4px"><span onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\'" style="color:rgba(255,255,255,0.3);font-size:10px;cursor:pointer;user-select:none">details</span><div style="display:none;margin-top:4px;color:rgba(255,255,255,0.3);font-size:10px;line-height:1.6">' + (d.method==="instant"?"'+window.icon('ai',18)+' instant":"\ud83e\udd16 deepseek") + " \u00b7 " + (d.credits_used||0) + " credit" + ((d.credits_used||0)>1?"s":"") + " \u00b7 block: " + (window._t3SelectedBlock||"page") + '</div></div></div>';
       // Reload iframe
       if (d.reload_preview) {
         var iframe = document.getElementById('t3-preview');
@@ -1741,7 +1835,7 @@ async function wsShowVersions(siteId) {
   var box = document.createElement('div');
   box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:18px;width:min(520px,100%);max-height:76vh;overflow:auto;font-family:var(--fb)';
   box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:4px">Earlier versions</div>'
-                + '<div style="font-size:12.5px;color:var(--t2);margin-bottom:12px">Every publish keeps the version it replaced. Restoring puts that version live; the current one stays in this list.</div>'
+                + '<div style="font-size:12.5px;color:var(--t2);margin-bottom:12px">Every change keeps the version it replaced. Restoring puts that version live; the current one stays in this list.</div>'
                 + '<div id="ws-ver-list"><div class="lu-skel" style="width:70%"></div></div>';
   ov.appendChild(box); document.body.appendChild(ov);
   var close = function () { ov.remove(); document.removeEventListener('keydown', esc); };
@@ -1757,7 +1851,7 @@ async function wsShowVersions(siteId) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
     var j = await r.json(); items = (j && (j.history || (j.data && j.data.history))) || [];
   } catch (e) { list.innerHTML = '<div class="lu-empty"><b>Couldn\'t load versions</b>Try again in a moment.</div>'; return; }
-  if (!items.length) { list.innerHTML = '<div class="lu-empty"><b>No earlier versions yet</b>Every publish keeps the version it replaced.</div>'; return; }
+  if (!items.length) { list.innerHTML = '<div class="lu-empty"><b>No earlier versions yet</b>Every change keeps the version it replaced.</div>'; return; }
   list.innerHTML = ''; list.style.cssText = 'display:flex;flex-direction:column;gap:6px';
   items.slice(0, 12).forEach(function (v, i) {
     var when = ''; try { when = new Date(v.saved_at).toLocaleString(); } catch (e) { when = String(v.saved_at || ''); }
@@ -1809,7 +1903,7 @@ async function wsRenderVersions(siteId) {
     return;
   }
   if (!items.length) {
-    host.innerHTML = '<div class="lu-card__h">Earlier versions</div><div class="lu-empty"><b>No earlier versions yet</b>Every publish keeps the version it replaced.</div>';
+    host.innerHTML = '<div class="lu-card__h">Earlier versions</div><div class="lu-empty"><b>No earlier versions yet</b>Every change keeps the version it replaced.</div>';
     return;
   }
   host.innerHTML = '<div class="lu-card__h">Earlier versions <span style="font-weight:400;font-size:12px;color:var(--t3)">' + items.length + ' saved · restoring puts that version live; the current one is kept</span></div>';
@@ -2104,7 +2198,7 @@ function _wsShowPageEditor(site, pageId) {
             'This page is a legacy static layout, so Arthur can’t edit it here. Rebuild it with the Website Wizard to unlock editing. Your live site is unaffected.' +
           '</div>' +
           '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
-            '<div style="background:var(--s2);border-radius:8px;padding:8px 10px;font-size:11px;color:var(--t2)">Try: "Change the hero heading to …" or "Make the call-to-action say …"</div>' +
+            _bldHint('ax-page-try', 'Try: \u201cChange the hero heading to \u2026\u201d or \u201cMake the call-to-action say \u2026\u201d') +
           '</div>' +
           '<div class=\"pe-composer\" style="padding:10px;border-top:1px solid var(--bd);display:flex;gap:6px">' +
             '<input id="t3-arthur-input" type="text" aria-label="Message Arthur" placeholder="Ask Arthur..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:7px 10px;font-size:12px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\'){_t3ArthurSend(' + (site.id || 0) + ')}">' +
@@ -2214,22 +2308,50 @@ async function _wsPageEditorReload() {
   }
 }
 
+// ADD PAGE PICKER (2026-09-06): the page templates Arthur can add for THIS site, with previews and prices, in site CSS.
+// Arthur adds the page from the template in the site's palette (builder/create → ask_arthur). No free-text page names.
 async function wsAddPageToSite() {
   if (!wsCurrentSite) return;
-  var title = await luPrompt('Page title:', '', 'Add Page to ' + wsCurrentSite.title);
-  if (!title) return;
-  try {
-    var r = await fetch(API + 'builder/create', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json'},
-      body: JSON.stringify({title: title, type: 'page', website_id: wsCurrentSite.id})
+  var hdr = {'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json'};
+  var lib = null;
+  try { var lr = await fetch(API + 'builder/library?website_id=' + wsCurrentSite.id, { headers: hdr }); lib = await lr.json(); } catch (e) { lib = null; }
+  var pages = (lib && Array.isArray(lib.pages)) ? lib.pages : [];
+  if (!pages.length) { showToast('No page templates available for this site', 'warning'); return; }
+  var price = (lib && lib.pricing && lib.pricing.page) ? lib.pricing.page : 5;
+  var old = document.getElementById('ws-page-picker'); if (old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'ws-page-picker';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:var(--z-critical,9999);background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px';
+  var cards = pages.map(function (p) {
+    var dis = p.exists ? ' disabled' : '';
+    return '<button type="button" class="ws-pp-card"' + dis + ' data-slug="' + bld_escH(p.slug) + '" style="text-align:left;border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--s1);color:var(--t1);cursor:' + (p.exists ? 'not-allowed;opacity:.5' : 'pointer') + ';display:flex;flex-direction:column;gap:6px">' +
+      '<div style="font-weight:700;font-size:14px">' + bld_escH(p.label || p.slug) + (p.exists ? ' <span style="font-size:11px;color:var(--t3)">· already added</span>' : '') + '</div>' +
+      '<div style="font-size:12px;color:var(--t3);line-height:1.4">' + bld_escH(p.description || '') + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--t2)">' + (p.universal ? 'All industries' : 'Industry page') + ' · ' + price + ' credits</span>' +
+      '<a href="' + bld_escH(p.preview_url || '#') + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--p)">Preview ↗</a></div></button>';
+  }).join('');
+  ov.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;width:min(880px,100%);max-height:86vh;display:flex;flex-direction:column;overflow:hidden">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--bd)"><div><div style="font-weight:700;color:var(--t1)">Add a page to ' + bld_escH(wsCurrentSite.title || 'your site') + '</div><div style="font-size:12px;color:var(--t3)">Arthur builds it from the template, in your palette, with copy written for your business.</div></div>' +
+    '<button type="button" id="ws-pp-close" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer">\u2715</button></div>' +
+    '<div style="overflow:auto;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + cards + '</div>' +
+    '<div id="ws-pp-status" style="padding:10px 20px;border-top:1px solid var(--bd);font-size:12px;color:var(--t3);min-height:18px"></div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click', function (e) { if (e.target === ov || e.target.id === 'ws-pp-close') ov.remove(); });
+  ov.querySelectorAll('.ws-pp-card:not([disabled])').forEach(function (b) {
+    b.addEventListener('click', async function () {
+      var slug = b.getAttribute('data-slug'); var st = document.getElementById('ws-pp-status');
+      ov.querySelectorAll('.ws-pp-card').forEach(function (x) { x.disabled = true; });
+      if (st) st.textContent = 'Asking Arthur to add the ' + slug.replace(/_/g, ' ') + ' page\u2026';
+      try {
+        var r = await fetch(API + 'builder/create', { method: 'POST', headers: Object.assign({'Content-Type': 'application/json'}, hdr),
+          body: JSON.stringify({ website_id: wsCurrentSite.id, type: 'page', page_template: slug, title: slug.replace(/_/g, ' '), request: 'add a ' + slug.replace(/_/g, ' ') + ' page' }) });
+        var d = await r.json();
+        var ok = d && (d.success === true || (d.result && d.result.success === true));
+        var msg = (d && (d.message || (d.result && d.result.message))) || (ok ? 'Page added' : 'Arthur could not add that page');
+        if (ok) { showToast(msg, 'success'); ov.remove(); wsOpenSite(wsCurrentSite.id); }
+        else { if (st) st.textContent = msg; ov.querySelectorAll('.ws-pp-card').forEach(function (x) { if (!x.dataset.exists) x.disabled = false; }); }
+      } catch (e) { if (st) st.textContent = 'Failed: ' + e.message; }
     });
-    var d = await r.json();
-    if (d.success) {
-      showToast('Page "' + title + '" added', 'success');
-      wsOpenSite(wsCurrentSite.id);
-    }
-  } catch(e) { showToast('Failed: ' + e.message, 'error'); }
+  });
 }
 
 async function wsDeleteSitePage(pageId, siteId) {
@@ -2385,7 +2507,8 @@ async function wsDoPublish(){
   var alreadyPublished = site && (site.status === 'published' || site.publish_state === 'published');
 
   if (!hasSub || !alreadyPublished) {
-    // First publish — show subdomain picker
+    // First publish — show subdomain picker (DEC-0046: and only that; the publish sheet steps aside)
+    var _pm = document.getElementById('ws-pub-modal'); if (_pm) _pm.style.display = 'none';
     _luShowSubdomainPicker(wsPubTarget.id, site ? (site.title || site.name) : '');
     return;
   }
@@ -2729,8 +2852,7 @@ async function bldPublish() {
   }
 
   // Already published — save + republish
-  var ok = await luConfirm('Republish this page with your latest changes?', 'Republish', 'Republish', 'Cancel');
-  if (!ok) return;
+  // DEC-0046: no confirmation on republish — Versions keeps what it replaced.
   const btn = document.getElementById('bld-publish-btn');
   btn.textContent='Publishing…'; btn.disabled=true;
   try {
@@ -2889,11 +3011,11 @@ var _bldBuildPreviewHtml = function() {
 // BUILDER AI — TYPE REGISTRIES + COMPONENT SCHEMAS
 // ═══════════════════════════════════════════════════════════════════════════
 // W6 product decision: a signup section on the CUSTOMER'S OWN website is a
-// retained lead-capture feature, not LevelUp Growth Email Marketing. The
+// retained lead-capture feature, not LevelUpGrowth Email Marketing. The
 // legacy 'newsletter' key is kept so existing sections_json keeps rendering;
 // 'email_signup' and 'lead_capture' are the unambiguous names to use going
 // forward. Nothing here sends mail, broadcasts, or manages campaigns.
-var _BLD_ALLOWED_SECTION_TYPES = ['header','navigation','footer','banner','sidebar','hero','features','cta','text_block','testimonials','service_grid','faq','contact_form','pricing','custom','about','team','gallery','stats','logos','newsletter','email_signup','lead_capture'];
+var _BLD_ALLOWED_SECTION_TYPES = ['header','hero','features','cta','contact_form','blog_list','footer','gallery','services','team','testimonials','faq','pricing','stats','generic','booking_form','travel_quiz','events_calendar','grid','filter_bar','map','related_listings','trust_signals','cart_summary','checkout_form','account_nav','account_panel','ticker','news_feed','category_strips','video_embed','directory','newsletter_signup','ad_slot','jobs_board']; // 2026-09-06: generated from SectionSchema::allowedTypes() — no phantom names // 2026-09-06: generated from SectionSchema::allowedTypes() — no phantom names // 2026-09-06: generated from SectionSchema::allowedTypes() — no phantom names
 var _BLD_ALLOWED_COMPONENT_TYPES = ['heading','text','button','cards','form','image','divider','spacer','list'];
 var _BLD_ALLOWED_ACTIONS = ['create_section','update_section','update_page','create_page','update_component','update_header','update_footer','update_navigation','create_website'];
 
@@ -3531,4 +3653,149 @@ async function _t3ConfirmTier4(websiteId, btn, confirmAction, confirmData) {
     console.error('[Tier4 confirm]', err);
     btn.disabled = false; btn.textContent = 'Confirm';
   }
+}
+
+
+/* ══════════════ DEC-0046 (2026-09-13) — palettes, undo, exit choice, preview reload ══════════════ */
+function _t3ReloadPreview() {
+  var f = document.getElementById('t3-preview');
+  if (!f) return;
+  var base = String(f.src || '').split('#')[0].split('?')[0];
+  f.src = base + '?v=' + Date.now();
+}
+
+window.wsUndoLast = async function (siteId) {
+  var btn = document.getElementById('t3-undo');
+  if (btn) btn.disabled = true;
+  var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  try {
+    var r = await fetch(API + 'builder/websites/' + siteId + '/undo', { method: 'POST', headers: auth, body: '{}' });
+    var j = null; try { j = await r.json(); } catch (_e) {}
+    if (r.ok && j && j.undone) {
+      if (typeof showToast === 'function') showToast(j.remaining > 0 ? 'Undone. ' + j.remaining + ' more step' + (j.remaining === 1 ? '' : 's') + ' can be undone.' : 'Undone — that was the earliest saved step.', 'success');
+      _t3ReloadPreview();
+      var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
+    } else if (j && j.error === 'nothing_to_undo') {
+      if (typeof showToast === 'function') showToast('Nothing to undo yet.', 'info');
+    } else {
+      if (typeof showToast === 'function') showToast("Couldn’t undo that — " + ((j && (j.message || j.error)) || ('HTTP ' + r.status)), 'error');
+    }
+  } catch (e) {
+    if (typeof showToast === 'function') showToast("Couldn’t undo — " + e.message, 'error');
+  } finally { if (btn) btn.disabled = false; }
+};
+
+/* Palette panel: hover previews by writing the site's own :root variables into the iframe, click applies and
+   persists. The server computes the variable map per site (the same painter every build uses), so what is
+   previewed is byte-for-byte what is written. */
+var _t3PalLive = null;
+function _t3PaletteVars(vars) {
+  var f = document.getElementById('t3-preview');
+  var doc = null; try { doc = f && f.contentDocument; } catch (_e) {}
+  if (!doc || !doc.documentElement) return false;
+  Object.keys(vars || {}).forEach(function (k) { try { doc.documentElement.style.setProperty(k, vars[k]); } catch (_e) {} });
+  return true;
+}
+function _t3PaletteRestore() {
+  var f = document.getElementById('t3-preview');
+  var doc = null; try { doc = f && f.contentDocument; } catch (_e) {}
+  if (!doc || !doc.documentElement) return;
+  Object.keys(_t3PalLive || {}).forEach(function (k) { try { doc.documentElement.style.removeProperty(k); } catch (_e) {} });
+}
+window.wsOpenPalettes = async function (siteId) {
+  var old = document.getElementById('t3-pal');
+  if (old) { old.remove(); _t3PaletteRestore(); return; }
+  var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
+  var panel = document.createElement('div');
+  panel.id = 't3-pal'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Colour palettes');
+  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(360px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:30;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.45);padding:14px;font-family:var(--fb)';
+  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Colour palettes</div><button type="button" id="t3-pal-x" aria-label="Close" style="background:none;border:1px solid var(--bd);color:var(--t2);width:28px;height:28px;border-radius:6px;cursor:pointer">×</button></div>'
+    + '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Hover to preview, click to apply. Every palette is contrast-checked. Undo puts the old colours back.</div>'
+    + '<div id="t3-pal-list"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
+  stage.appendChild(panel);
+  panel.querySelector('#t3-pal-x').addEventListener('click', function () { panel.remove(); _t3PaletteRestore(); });
+  var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
+  var list = panel.querySelector('#t3-pal-list');
+  var data = null;
+  try {
+    var r = await fetch(API + 'builder/websites/' + siteId + '/palettes', { headers: auth, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    data = await r.json();
+  } catch (e) {
+    list.innerHTML = '<div class="lu-empty"><b>Couldn’t load palettes</b>' + bld_escH(e.message) + '</div>';
+    return;
+  }
+  var pals = (data && data.palettes) || [];
+  _t3PalLive = (data && data.live) || {};
+  var current = (data && data.current) || null;
+  if (!pals.length) { list.innerHTML = '<div class="lu-empty"><b>No palettes for this design</b></div>'; return; }
+  var canPreview = pals.some(function (p) { return p.vars && Object.keys(p.vars).length; });
+  list.innerHTML = '';
+  list.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px';
+  var applying = false;
+  pals.forEach(function (p) {
+    var card = document.createElement('button');
+    card.type = 'button';
+    card.setAttribute('data-pal', p.id);
+    var isCur = current === p.id;
+    card.style.cssText = 'text-align:left;padding:0;background:var(--s2);border:1px solid ' + (isCur ? 'var(--p)' : 'var(--bd)') + ';border-radius:10px;overflow:hidden;cursor:pointer;color:var(--t1);font-family:var(--fb)';
+    card.innerHTML = '<div style="display:flex;height:34px"><span style="flex:1.4;background:' + p.primary + '"></span><span style="flex:1;background:' + p.secondary + '"></span><span style="flex:1;background:' + p.accent + '"></span></div>'
+      + '<div style="padding:7px 9px 8px"><div style="font-size:12.5px;font-weight:600;line-height:1.2">' + bld_escH(p.label) + '</div>'
+      + '<div style="font-size:10.5px;color:var(--t3);margin-top:3px;min-height:13px">' + (isCur ? '✓ Current' : (p.recommended ? 'Recommended for you' : '')) + '</div></div>';
+    if (canPreview && p.vars && Object.keys(p.vars).length) {
+      card.addEventListener('mouseenter', function () { if (!applying) _t3PaletteVars(p.vars); });
+      card.addEventListener('mouseleave', function () { if (!applying) _t3PaletteRestore(); });
+    }
+    card.addEventListener('click', async function () {
+      if (applying) return;
+      applying = true;
+      _t3PaletteVars(p.vars || {});
+      var tag = card.querySelector('div > div:last-child'); if (tag) tag.textContent = 'Applying…';
+      try {
+        var rr = await fetch(API + 'builder/websites/' + siteId + '/palette', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ theme: p.id }) });
+        var jj = null; try { jj = await rr.json(); } catch (_e) {}
+        if (!rr.ok || !jj || !jj.success) throw new Error((jj && (jj.message || jj.error)) || ('HTTP ' + rr.status));
+        current = p.id;
+        _t3PalLive = Object.assign({}, _t3PalLive, p.vars || {});
+        list.querySelectorAll('button[data-pal]').forEach(function (b) {
+          var mine = b.getAttribute('data-pal') === p.id;
+          b.style.borderColor = mine ? 'var(--p)' : 'var(--bd)';
+          var t = b.querySelector('div > div:last-child');
+          if (t) t.textContent = mine ? '✓ Current' : (pals.filter(function (q) { return q.id === b.getAttribute('data-pal'); })[0] || {}).recommended ? 'Recommended for you' : '';
+        });
+        if (typeof showToast === 'function') showToast(jj.message || ('Switched to ' + p.label), 'success');
+        _t3ReloadPreview();
+      } catch (e) {
+        _t3PaletteRestore();
+        if (tag) tag.textContent = isCur ? '✓ Current' : (p.recommended ? 'Recommended for you' : '');
+        if (typeof showToast === 'function') showToast("Couldn’t switch palette — " + e.message, 'error');
+      } finally { applying = false; }
+    });
+    list.appendChild(card);
+  });
+};
+
+/* Three-way exit choice, in site CSS (never a native dialog). Resolves 'save' | 'discard' | 'stay'. */
+function _t3ExitChoice(n) {
+  return new Promise(function (resolve) {
+    var ov = document.createElement('div');
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Unsaved changes');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:20px';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);padding:20px;width:min(440px,100%);font-family:var(--fb)';
+    box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:6px">Save your edits as a draft?</div>'
+      + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save them as a draft on this website, or leave without them.</div>'
+      + '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
+      + '<button type="button" class="lu-btn lu-btn--sm" data-c="stay">Keep editing</button>'
+      + '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Leave without saving</button>'
+      + '<button type="button" class="lu-btn lu-btn--sm lu-btn--primary" data-c="save" style="background:var(--p);color:#fff;border-color:var(--p)">Save draft</button>'
+      + '</div>';
+    ov.appendChild(box); document.body.appendChild(ov);
+    function done(v) { try { ov.remove(); } catch (_e) {} document.removeEventListener('keydown', onKey, true); resolve(v); }
+    function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); done('stay'); } }
+    document.addEventListener('keydown', onKey, true);
+    box.querySelectorAll('button[data-c]').forEach(function (b) { b.addEventListener('click', function () { done(b.getAttribute('data-c')); }); });
+    ov.addEventListener('click', function (e) { if (e.target === ov) done('stay'); });
+    var s = box.querySelector('button[data-c=save]'); if (s) s.focus();
+  });
 }

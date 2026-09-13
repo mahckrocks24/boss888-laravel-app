@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head><script>/*MW1A-GATE*/(function(){try{var P=["levelupgrowth.io","www.levelupgrowth.io"];var LAUNCHED=false;if(!LAUNCHED&&P.indexOf(location.hostname)!==-1){location.replace("/");}}catch(e){}})();</script>
+<!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head><script>/*BOOT-VEIL 2026-09-11*/document.documentElement.classList.add("lu-booting");setTimeout(function(){document.documentElement.classList.remove("lu-booting")},6000);</script><style id="lu-boot-veil">html.lu-booting .app,html.lu-booting #lu-auth-root{visibility:hidden!important}html.lu-booting body::after{content:"";position:fixed;inset:0;z-index:2147483000;background:#0A0D14 url(/img/logo-icon-48.png) center/36px 36px no-repeat;animation:luBootPulse 1.2s ease-in-out infinite}html.lu-booting.lu-light body::after,html.lu-booting[data-theme="light"] body::after{background-color:#F6F7FB}@keyframes luBootPulse{0%,100%{opacity:1}50%{opacity:.82}}</style><script>/*MW1A-GATE*/(function(){try{var P=["levelupgrowth.io","www.levelupgrowth.io"];var LAUNCHED=false;if(!LAUNCHED&&P.indexOf(location.hostname)!==-1){location.replace("/");}}catch(e){}})();</script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // LGSC global fetch + XHR interceptor — MUST be first script in <head>.
-// When the SPA is embedded inside WP via the Level-Up Growth Connector
+// When the SPA is embedded inside WP via the LevelUpGrowth Connector
 // plugin, the iframe URL carries ?lgsc_key=...&lgsc_ws=...&embed=1.
 // In that mode every API call (from core.js or any engine bundle) is
 // rewritten on the fly to strip JWT Authorization and inject X-API-KEY.
@@ -819,7 +819,7 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .dm-ta:focus:not(:focus-visible){outline:none;border-color:var(--p)}   /* A11Y-3: quiet for the mouse only — keyboard keeps the ring */
 .dm-footer{display:flex;align-items:center;justify-content:space-between}
 .dm-hint{font-size:9px;color:var(--t3)}
-.dm-send{background:linear-gradient(135deg,var(--p),#9B8DF8);color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all var(--tr)}
+.dm-send{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:10px;cursor:pointer;transition:all var(--tr)}
 .dm-send:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(108,92,231,.4)}
 .dm-send:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .dm-sent{text-align:center;padding:14px;font-size:11px;color:var(--ac)}
@@ -2768,7 +2768,7 @@ window._lgsc_show_mode_switch_modal = function (view, onSwitch) {
   </button>
   <div class="lu-topbar-logo">
     <img src="/img/logo-icon-40.png" onerror="this.style.display='none'" style="width:28px;height:28px;object-fit:contain" alt="">
-    <span>LevelUp Growth</span>
+    <span>LevelUpGrowth</span>
   </div>
   <div class="lu-topbar-actions"></div>
 </div>
@@ -2936,7 +2936,7 @@ window.luSwipeToClose = luSwipeToClose;
   <div class="sidebar">
     <div class="sb-brand">
       <img src="/img/logo-icon-40.png" class="sb-lm-img" alt="" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">
-      <div class="sb-brand-text"><strong>LevelUp Growth</strong><span>AI OS Platform</span></div>
+      <div class="sb-brand-text"><strong>LevelUpGrowth</strong><span>AI OS Platform</span></div>
     </div>
     <div id="sb-credit-widget" style="padding:8px 10px;border-bottom:1px solid var(--bd);display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
@@ -4378,7 +4378,7 @@ window.luSwipeToClose = luSwipeToClose;
           onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDm();}"></textarea>
         <div class="dm-footer">
           <span class="dm-hint">Shift+Enter new line</span>
-          <button class="dm-send" id="dm-send" onclick="sendDm()">Send →</button>
+          <button class="dm-send" id="dm-send" onclick="sendDm()" aria-label="Send" title="Send"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>
         </div>
       </div>
     </div>
@@ -4585,7 +4585,7 @@ window.icon._paths = {
 window.LU_CFG = {
   api:     '/api/',
   nonce:   '',
-  bn:      'LevelUp Growth',
+  bn:      'LevelUpGrowth',
   bu:      'https://staging.levelupgrowth.io',
   restUrl: '/api/',
   pluginUrl: '/app/assets/',
@@ -4596,7 +4596,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=sec3-20260831',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=1.9.3-p0d-20260830'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=brand-20260911',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=brand-20260911'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4806,28 +4806,35 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=1.0.1"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<script defer src="/app/js/orb.js?v=4.5.0"></script>
+<script defer src="/app/js/orb.js?v=brand-20260911"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
-     rely on window.LU_Website existing; the picker renders itself into the shell sidebar. -->
-<script src="/app/js/website-context.js?v=inc0006-20260901"></script>
-<script defer src="/app/js/website-picker.js?v=inc0006-20260901"></script>
+     rely on window.LU_Website existing.
+     2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
+     INC-0006 remediation - and picking a website from a list is not how the Owner wants this answered.
+     Sarah determines the website from what the customer actually says and confirms it back; she was always
+     excluded from the scope bridge for exactly that reason. website-context.js stays because it still
+     resolves ?w= deep links and auto-selects the single site of a one-site business, which is every
+     workspace bar fourteen. Do not reintroduce a selector here. -->
+<script src="/app/js/website-context.js?v=noauthcache-20260910"></script>
+<script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=mobile2-20260831"></script>
+<script defer src="/app/js/core.js?v=session-20260911"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
 <script defer src="/app/js/prompt-studio.js?v=ps7-20260903"></script>
-<link rel="stylesheet" href="/app/css/onboarding.css?v=p4u2-20260830">
-<script defer src="/app/js/onboarding.js?v=5.2.0"></script>
+<link rel="stylesheet" href="/app/css/onboarding.css?v=contrast2-20260908">
+<script defer src="/app/js/onboarding.js?v=login-20260911"></script>
 <script defer src="/app/js/onboarding-interview.js?v=1.0.0"></script>
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
-<script defer src="/app/js/media-picker.js?v=4.6.1-p0e"></script>
-<script defer src="/app/js/domains-commerce.js?v=1.0.0-domains"></script>
-<script defer src="/app/js/business-email.js?v=p0d-20260830"></script>
+<script defer src="/app/js/media-picker.js?v=brand-20260911"></script>
+<script defer src="/app/js/lu-crop.js?v=crop2-20260906"></script>
+<script defer src="/app/js/domains-commerce.js?v=brand-20260911"></script>
+<script defer src="/app/js/business-email.js?v=brand-20260911"></script>
 <!-- v5.0.1 swap 2026-04-10: old builder.js loads first to provide websites view + non-renderer logic; v5 loads second and overrides editor renderer chain via function declaration hoisting. -->
-<script defer src="/app/js/builder.js?v=arthur-k-20260903"></script>
+<script defer src="/app/js/builder.js?v=power-20260913"></script>
 
 
 
@@ -4993,11 +5000,11 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 
 <!-- JS in core.js -->
 
-<script defer src="/app/js/messages-ui.js?v=1.2.1-badge"></script>
-<script defer src="/app/js/sarah.js?v=1.7.0-viewer"></script>
+<script defer src="/app/js/messages-ui.js?v=lugmark-20260910"></script>
+<script defer src="/app/js/sarah.js?v=idem1-20260906"></script>
 <script defer src="/app/js/basic.js?v=1.0.5-biz2"></script>
-<script defer src="/app/js/arthur-chat.js?v=p0c-20260830"></script>
-<script defer src="/app/js/chatbot-spa.js?v=p0d-20260830"></script>
+<script defer src="/app/js/arthur-chat.js?v=nofocus-20260912"></script>
+<script defer src="/app/js/chatbot-spa.js?v=kblib-20260910"></script>
 
 <script>
 /* Block left-edge swipe → browser back. Only the leftmost 20px catches it,
@@ -5332,4 +5339,102 @@ document.addEventListener('keydown', function (e) {
   document.getElementById(open).classList.remove('visible');
 });
 </script>
+<script id="lu-cart-adopt">
+/* A domain cart filled before the account existed. Moved into this workspace's cart once, then cleared. */
+(function () {
+  var PENDING = 'lu.domains.cart.pending';
+  var pending;
+  try {
+    var raw = localStorage.getItem(PENDING);
+    if (!raw) return;
+    pending = JSON.parse(raw);
+  } catch (e) { return; }
+  if (!Array.isArray(pending) || !pending.length) {
+    try { localStorage.removeItem(PENDING); } catch (e) {}
+    return;
+  }
+
+  var tries = 0;
+  var t = setInterval(function () {
+    tries++;
+    var ws = window.LU_WORKSPACE_ID || window.currentWorkspaceId
+          || (function () { try { return localStorage.getItem('lu_workspace_id'); } catch (e) { return null; } })();
+    if (!ws) { if (tries > 60) { clearInterval(t); } return; }   // 15s, then leave the pending cart alone
+    clearInterval(t);
+    try {
+      var key = 'lu.domains.cart.' + ws;
+      var mine = JSON.parse(localStorage.getItem(key) || '[]');
+      if (!Array.isArray(mine)) { mine = []; }
+      pending.forEach(function (item) {
+        if (!item || !item.domain) return;
+        var already = mine.some(function (x) { return x && x.domain === item.domain; });
+        if (!already) { mine.push(item); }
+      });
+      localStorage.setItem(key, JSON.stringify(mine));
+      localStorage.removeItem(PENDING);
+    } catch (e) { /* private mode: leave it, nothing is lost */ }
+  }, 250);
+})();
+</script>
+<script id="lu-boot-action">
+/* One-shot landing target set by the marketing hero. Cleared before use so a refresh never repeats it. */
+(function () {
+  var action, brief = null;
+  try {
+    action = localStorage.getItem('lu_boot_action');
+    localStorage.removeItem('lu_boot_action');
+    var raw = localStorage.getItem('lu_arthur_handoff');
+    if (raw) { brief = JSON.parse(raw); localStorage.removeItem('lu_arthur_handoff'); }
+  } catch (e) { return; }
+  /* 2026-09-10 — publish the intent BEFORE the early return and before anything else reads it.
+     This inline script is not deferred, so it runs while the document is still parsing and clears
+     lu_boot_action long before core.js (which IS deferred) starts. core.js therefore had no way to
+     know the visitor arrived mid-conversation with Arthur, and ran its brand-new-account onboarding
+     — putting "Meet Sarah" at z-index 9999 directly on top of the Arthur wizard this script had just
+     opened. The flag is on window, not localStorage, so it cannot survive a reload and re-suppress
+     onboarding for someone who genuinely needs it. */
+  try { window.__luArthurHandoff = (action === 'wizard'); } catch (_e) {}
+  if (action !== 'wizard') return;
+
+  var tries = 0;
+  var t = setInterval(function () {
+    tries++;
+    var ready = typeof window.wsShowArthurWizard === 'function'
+             && typeof window._arthurShowConfirmActions === 'function'
+             && typeof window._arthurAddMsg === 'function';
+    if (!ready && typeof window._bldShowTemplatePicker !== 'function') {
+      if (tries > 60) { clearInterval(t); }   // 15s: the app is up but the builder never registered
+      return;
+    }
+    clearInterval(t);
+    try {
+      if (typeof window._lgsc_set_visibility_mode === 'function'
+          && document.documentElement.getAttribute('data-mode') !== 'advanced') {
+        window._lgsc_set_visibility_mode('advanced', { skipNav: true });
+      }
+
+      /* No brief attached: this is a plain "open the wizard" landing. */
+      if (!brief || !brief.build_data || !brief.build_data.business_name || !ready) {
+        if (typeof window._bldShowTemplatePicker === 'function') { window._bldShowTemplatePicker(); }
+        return;
+      }
+
+      /* Resume. Open the wizard, replay what was already said, restore the palettes Arthur picked for THIS
+         business, then open the finishing touches at the step they were about to reach. */
+      window.wsShowArthurWizard();
+      var hist = Array.isArray(brief.history) ? brief.history : [];
+      hist.forEach(function (m) {
+        if (!m || !m.content) return;
+        window._arthurAddMsg(m.role === 'user' ? 'user' : 'arthur', m.content);
+      });
+      if (window._arthur) { window._arthur.history = hist; }
+      window._arthurBuildData = brief.build_data;
+      if (brief.themes)     { window._arthurThemes = brief.themes; window._arthurTheme = brief.themes[0]; }
+      if (brief.themes_all) { window._arthurThemesAll = brief.themes_all; }
+      setTimeout(function () { window._arthurShowConfirmActions(brief.build_data); }, 150);
+    } catch (e) {
+      if (typeof window._bldShowTemplatePicker === 'function') { try { window._bldShowTemplatePicker(); } catch (_e) {} }
+    }
+  }, 250);
+})();</script>
 </body></html>

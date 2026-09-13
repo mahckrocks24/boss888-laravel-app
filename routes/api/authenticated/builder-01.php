@@ -56,6 +56,20 @@ use Illuminate\Support\Facades\Route;
                 : response()->json(['error' => 'Website not found'], 404);
         });
         Route::get('/websites/{id}/pages', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->listPages((int) $id, (int) $r->attributes->get('workspace_id'))));
+        // DEC-0046 (2026-09-13) — template editor: curated palettes (instant), palette apply (free, verified), undo.
+        Route::get('/websites/{id}/palettes', fn(\Illuminate\Http\Request $r, $id) => response()->json(
+            app(\App\Engines\Builder\Services\ArthurService::class)->palettesFor((int) $r->attributes->get('workspace_id'), (int) $id)
+        ));
+        Route::post('/websites/{id}/palette', function (\Illuminate\Http\Request $r, $id) {
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyPalette((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('theme', ''));
+            return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
+        Route::post('/websites/{id}/undo', function (\Illuminate\Http\Request $r, $id) {
+            $owned = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->whereNull('deleted_at')->exists();
+            if (! $owned) { return response()->json(['undone' => false, 'error' => 'not_found'], 404); }
+            $res = app(\App\Engines\Builder\Services\TemplateService::class)->undoLatest((int) $id);
+            return response()->json($res, ! empty($res['undone']) ? 200 : 422);
+        });
         Route::get('/pages/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
             $page = app($s)->getPage((int) $id, (int) $r->attributes->get('workspace_id'));
             return $page ? response()->json($page) : response()->json(['error' => 'Page not found'], 404);
@@ -154,10 +168,18 @@ use Illuminate\Support\Facades\Route;
             return response()->json(["updated" => true, "page_id" => (int)$pid]);
         });
         Route::post("/delete/{id}", function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $__pg = \Illuminate\Support\Facades\DB::table('pages')->where('id', (int) $id)->first(['slug', 'website_id']);
             try {
                 app($s)->deletePage((int) $id, (int) $r->attributes->get("workspace_id"));
             } catch (\RuntimeException $e) {
                 return response()->json(["error" => "Page not found"], 404);
+            }
+            // STRESS C31 (2026-09-06): on a template site the page's export folder and menu link go with the row
+            if ($__pg && !in_array((string) $__pg->slug, ['home', 'blog', 'news', ''], true) && preg_match('/^[a-z0-9\-]+$/', (string) $__pg->slug)) {
+                $__dir = storage_path('app/public/sites/' . (int) $__pg->website_id . '/' . $__pg->slug);
+                if (is_dir($__dir)) { try { \Illuminate\Support\Facades\File::deleteDirectory($__dir); } catch (\Throwable $e) {} }
+                try { (new \App\Engines\Builder\Services\TemplateService())->removeNavLink((int) $__pg->website_id, (string) $__pg->slug); } catch (\Throwable $e) {}
+                try { \App\Http\Controllers\PublishedSiteController::invalidateCache((int) $__pg->website_id); } catch (\Throwable $e) {}
             }
             return response()->json(["deleted" => true, "page_id" => (int) $id]);
         });
@@ -190,6 +212,14 @@ use Illuminate\Support\Facades\Route;
             if (! $page) { return response()->json(["error" => "Page not found"], 404); }
             $website = \Illuminate\Support\Facades\DB::table("websites")->where("id", $page->website_id)->first();
             if (! $website) { return response()->json(["error" => "Website not found"], 404); }
+            // SINGLE TRUTH (2026-09-06): a template site's page IS its static export. Preview that, never the generic
+            // sections stack that generateWebsite also wrote (REPORT-0044 P0: editor showed a page nobody had seen).
+            $slug = strtolower((string) ($page->slug ?? 'home'));
+            $staticPath = storage_path('app/public/sites/' . (int) $website->id . '/' . ($slug === 'home' || $slug === '' ? 'index.html' : $slug . '/index.html'));
+            if (is_file($staticPath)) {
+                $staticHtml = (string) file_get_contents($staticPath);
+                return response()->json(['preview_html' => $staticHtml, 'page_id' => (int) $id, 'source' => 'static_export']);
+            }
             try {
                 $html = app(\App\Engines\Builder\Services\BuilderRenderer::class)
                     ->renderPage((array) $website, (array) $page, []);
@@ -199,7 +229,29 @@ use Illuminate\Support\Facades\Route;
             }
             return response()->json(["preview_html" => $html, "page_id" => (int) $id]);
         });
-        Route::get("/library", fn() => response()->json(["blocks" => [], "templates" => []]));
+        // LIBRARY (2026-09-06): the ONE capability manifest for the editor — pages (with preview URLs), sections, prices, limits.
+        // ?website_id= scopes pages/sections to that site's industry. Was a stub returning empty lists.
+        Route::get("/library", function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $industry = null; $existing = [];
+            $wid = (int) $r->query('website_id', 0);
+            if ($wid > 0) {
+                $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $wid)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+                if ($w) { $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: []; $industry = (string) ($s['template'] ?? $s['industry'] ?? $w->template_industry ?? '') ?: null;
+                    $existing = \Illuminate\Support\Facades\DB::table('pages')->where('website_id', $wid)->pluck('slug')->toArray(); }
+            }
+            $isStatic = $wid > 0 && is_file(storage_path('app/public/sites/' . $wid . '/index.html'));
+            $pages = array_values(array_map(function ($p) use ($existing) { $p['preview_url'] = '/page-templates/' . $p['slug'] . '/preview'; $p['exists'] = in_array(str_replace('_', '-', $p['slug']), $existing, true); return $p; },
+                array_filter(\App\Engines\Builder\Support\BuilderCapabilities::pages($industry), fn($p) => !($isStatic && in_array($p['slug'], ['cart', 'checkout', 'account'], true)))));
+            return response()->json([
+                'industry'    => $industry,
+                'pages'       => $pages,
+                'sections'    => array_values(\App\Engines\Builder\Support\BuilderCapabilities::sections($industry)),
+                'pricing'     => \App\Engines\Builder\Support\BuilderCapabilities::pricing(),
+                'limitations' => \App\Engines\Builder\Support\BuilderCapabilities::limitations(),
+                'blocks'      => [], 'templates' => [], // legacy keys kept for older callers
+            ]);
+        });
         Route::get("/sections/{id}", fn($r, $id) => response()->json(["section" => null]));
         Route::get("/components/{id}", fn($r, $id) => response()->json(["component" => null]));
         Route::get("/containers/{id}", fn($r, $id) => response()->json(["container" => null]));
@@ -265,6 +317,11 @@ use Illuminate\Support\Facades\Route;
                 $colors = [];
                 if ($primary   !== '' && preg_match($hex, $primary))   $colors['primary']   = $primary;
                 if ($secondary !== '' && preg_match($hex, $secondary)) $colors['secondary'] = $secondary;
+                // COLOUR THEMES (2026-09-05): a chosen theme arrives as `palette` {id,primary,secondary,accent,bg,text} or
+                // just its id; generateWebsite promotes it into the brand colours (then harmonises them).
+                $paletteIn = $r->input('palette');
+                if (is_string($paletteIn) && $paletteIn !== '') $paletteIn = \App\Engines\Builder\Support\ColorTheme::find($paletteIn);
+                if (is_array($paletteIn) && !empty($paletteIn['primary'])) $buildData['palette'] = $paletteIn;
 
                 if (empty($buildData['business_name'])) {
                     return response()->json([
@@ -322,6 +379,11 @@ use Illuminate\Support\Facades\Route;
 
             // Conversation turn — pure chat() dialogue, no build trigger.
             $result = $arthur->chat($wsId, $msg, $history);
+            // COLOUR THEMES (2026-09-05): the confirm panel shows curated themes for THIS business instead of a bare picker.
+            if (is_array($result) && !empty($result['build_data']['business_name'])) {
+                $result['themes'] = $arthur->themesFor((array) $result['build_data'], 4);
+                $result['themes_all'] = array_map(fn($t) => array_diff_key($t, ['moods' => 1, 'industries' => 1]), \App\Engines\Builder\Support\ColorTheme::all());
+            }
             return response()->json($result);
         });
 
@@ -369,6 +431,8 @@ use Illuminate\Support\Facades\Route;
             $name = 'up_' . bin2hex(random_bytes(8)) . '.' . $ext;
             try {
                 $file->move($dir, $name);
+                \App\Engines\Builder\Support\ImagePolicy::normaliseInPlace($dir . '/' . $name, 'logo'); // IMAGE POLICY 2026-09-06 (chat logo)
+                if (!str_ends_with(strtolower($name), '.svg')) { $__fit = \App\Engines\Builder\Support\ImageCrop::autoSafe($dir . '/' . $name, 'logo', $dir . '/' . $name); if ($__fit && $__fit['path'] !== $dir . '/' . $name) { @unlink($dir . '/' . $name); $name = basename($__fit['path']); } } // CROP TOOL: fixed 800×260 canvas
             } catch (\Throwable $e) {
                 return response()->json(['error' => 'Upload failed: ' . $e->getMessage()], 500);
             }

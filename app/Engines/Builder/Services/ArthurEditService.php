@@ -69,6 +69,57 @@ class ArthurEditService
                 ->exists()) {
             throw new \RuntimeException("Page {$pageId} not found");
         }
+        // SMALL TALK (2026-09-13): a greeting, a thank-you or "what can you do?" is answered as conversation,
+        // before any classification, any delegation and any charge. It used to fall through to the capability
+        // classifier and come back as an error, so saying hello to Arthur looked like a failure.
+        $smalltalk = \App\Engines\Builder\Support\BuilderCapabilities::smalltalk($userMessage);
+        if ($smalltalk !== null) {
+            $rawNow = json_decode((string) ($page->sections_json ?: '[]'), true) ?: [];
+            $sectionsNow = (is_array($rawNow) && isset($rawNow['sections']) && is_array($rawNow['sections'])) ? $rawNow['sections'] : (is_array($rawNow) ? $rawNow : []);
+            return [
+                'success' => true, 'sections' => $sectionsNow, 'reply' => $smalltalk,
+                'applied' => 0, 'actions_applied' => 0, 'errors' => [], 'credits' => 0, 'conversation' => true,
+            ];
+        }
+
+        // EDITOR → ARTHUR DELEGATION (2026-09-06): on a template (static-export) site, additions are Arthur's job —
+        // pages and sections come from the templates, in the site's palette, priced. Only copy edits continue below.
+        $websiteIdEarly = (int) ($page->website_id ?? 0);
+        $siteRow = $websiteIdEarly > 0 ? DB::table('websites')->where('id', $websiteIdEarly)->first() : null;
+        if ($siteRow && is_file(storage_path("app/public/sites/{$websiteIdEarly}/index.html"))) {
+            $settingsEarly = json_decode((string) ($siteRow->settings_json ?: '{}'), true) ?: [];
+            // VARIANTS (2026-09-11): resolve a design directory to its declared industry before classifying.
+            $industryEarly = app(\App\Engines\Builder\Services\TemplateService::class)->industryOf((string) ($settingsEarly['template'] ?? $settingsEarly['industry'] ?? ''));
+            $planEarly = \App\Engines\Builder\Support\BuilderCapabilities::classify($userMessage, $industryEarly ?: null);
+            // STRESS C12/C15/C17 (2026-09-06): every kind goes through handleSiteRequest — copy edits reach the real text
+            // fields, removals remove what Arthur added, unsupported requests get the honest capability message. The
+            // 6-section stub below is for renderer (sections) sites only.
+            // DEC-0046 (2026-09-13): 'style' was missing here, so every colour, gradient, font and mood request bypassed
+            // Arthur's design brain (applySiteStyle) and fell to the JSON path, which can only recolour variables.
+            if (in_array($planEarly['kind'], ['page', 'section', 'edit', 'remove', 'unsupported', 'style'], true)) {
+                $r = app(ArthurService::class)->handleSiteRequest((int) $siteRow->workspace_id, $websiteIdEarly, $userMessage, [
+                    'agent_slug' => $context['agent_slug'] ?? 'editor', 'user_id' => $context['user_id'] ?? null,
+                ]);
+                $freshRaw = json_decode((string) (DB::table('pages')->where('id', $pageId)->value('sections_json') ?: '[]'), true) ?: [];
+                $freshSections = is_array($freshRaw) && isset($freshRaw['sections']) ? $freshRaw['sections'] : (is_array($freshRaw) ? $freshRaw : []);
+                return [
+                    'success'  => (bool) ($r['success'] ?? false),
+                    'sections' => $freshSections,
+                    'reply'    => (string) ($r['message'] ?? $r['error'] ?? 'Arthur could not do that.'),
+                    'applied'  => (int) ($r['applied'] ?? (($r['success'] ?? false) ? 1 : 0)),
+                    'actions_applied' => (int) ($r['actions_applied'] ?? $r['applied'] ?? (($r['success'] ?? false) ? 1 : 0)),
+                    'errors'   => ($r['success'] ?? false) ? [] : [(string) ($r['error'] ?? $r['message'] ?? 'unsupported')],
+                    'delegated' => true,
+                    'credits'  => (int) ($r['credits'] ?? 0),
+                    'url'      => $r['url'] ?? null,
+                    'static_sync' => ['is_static' => true, 'applied' => ($r['success'] ?? false) ? 1 : 0, 'missed' => []],
+                ];
+            }
+        }
+        // DEC-0046: one history snapshot per Arthur request on a static site, so Versions and Undo cover it.
+        if ($siteRow && is_file(storage_path("app/public/sites/{$websiteIdEarly}/index.html"))) {
+            try { app(TemplateService::class)->snapshotToHistory($websiteIdEarly, 'arthur_edit'); } catch (\Throwable $e) {}
+        }
         $raw = json_decode($page->sections_json ?? '[]', true) ?: [];
         // BUILDER888: sections_json may be stored wrapped ({schemaVersion,sections}) by
         // createPage/updatePage, or as a flat list. Edit the flat list and re-wrap on
@@ -489,13 +540,19 @@ PROMPT;
         $index = storage_path("app/public/sites/{$websiteId}/index.html");
         if (is_file($index)) {
             $html = (string) @file_get_contents($index);
+            // ALL :root blocks (2026-09-11): the design-style layer declares its own ahead of the
+            // template's palette, so reading only the first showed fonts and no colours at all.
             $vars = [];
-            if (preg_match('/:root\s*\{([^}]*)\}/', $html, $m)
-                && preg_match_all('/(--[a-z0-9-]+)\s*:\s*([^;]+)/i', $m[1], $mm, PREG_SET_ORDER)) {
-                foreach ($mm as $pair) {
-                    $vars[] = trim($pair[1]) . ' (now ' . trim($pair[2]) . ')';
-                    if (count($vars) >= 16) {
-                        break;
+            if (preg_match_all('/:root\s*\{([^}]*)\}/', $html, $blocks)) {
+                $seen = [];
+                foreach ($blocks[1] as $body) {
+                    if (! preg_match_all('/(--[a-z0-9-]+)\s*:\s*([^;]+)/i', $body, $mm, PREG_SET_ORDER)) { continue; }
+                    foreach ($mm as $pair) {
+                        $name = trim($pair[1]);
+                        if (isset($seen[$name])) { continue; }
+                        $seen[$name] = true;
+                        $vars[] = $name . ' (now ' . trim($pair[2]) . ')';
+                        if (count($vars) >= 16) { break 2; }
                     }
                 }
             }

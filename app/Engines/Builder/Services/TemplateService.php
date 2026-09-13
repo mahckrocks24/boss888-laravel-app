@@ -15,6 +15,63 @@ class TemplateService
      * @return string Rendered HTML
      * @throws \Exception If template not found
      */
+    /**
+     * Builder safety net markup (LUG-REVEAL-FAILSAFE, 2026-09-05).
+     * Scroll-reveal content (`.reveal{opacity:0}` toggled by an IntersectionObserver)
+     * must NEVER stay hidden if page JS fails — a single broken <script>, a CSP block,
+     * or JS disabled would otherwise blank the whole site. Two independent layers:
+     *   (a) a pure-CSS animation that fades `.reveal` in after 4s (works with ZERO JS);
+     *   (b) a separate <script> block (survives a syntax error in any other block) that
+     *       also adds the reveal classes so sliders/transitions settle.
+     */
+    public static function revealFailsafeHtml(): string
+    {
+        return "\n<style id=\"lug-reveal-failsafe\">@keyframes lugRevealFailsafe{to{opacity:1;transform:none}}.reveal{animation:lugRevealFailsafe .35s ease 4s forwards}</style>\n"
+             . "<script>(function(){function s(){try{var n=document.querySelectorAll('.reveal'),i;for(i=0;i<n.length;i++){n[i].classList.add('visible');n[i].classList.add('in');}}catch(e){}}try{window.addEventListener('load',function(){setTimeout(s,4200);});setTimeout(s,6000);if(document.readyState!=='loading'){setTimeout(s,4200);}}catch(e){}})();</script>\n";
+    }
+
+    /**
+     * MOBILE SAFETY (2026-09-07). Boss Mac Gym's "TRANSFORMATIONS" heading — one
+     * uppercase word at the template's 2.6rem minimum — was wider than a phone
+     * column, and body{overflow-x:hidden} (which iOS Safari ignores) let the
+     * whole page scroll sideways. Every template shares these two facts, so the
+     * guard is injected once here rather than edited into 31 files:
+     *   - html/body overflow-x: clip — never widens the viewport, and unlike
+     *     `hidden` it does not create a scroll container (sticky navs keep working);
+     *   - on phones, headings may hyphenate / break inside a word before they
+     *     overflow, and media can never exceed its column.
+     */
+    public static function mobileSafetyHtml(): string
+    {
+        return "\n<style id=\"lug-mobile-safe\">html,body{overflow-x:clip}@supports not (overflow:clip){html,body{overflow-x:hidden}}"
+             . "@media (max-width:640px){h1,h2,h3{max-width:100%;overflow-wrap:anywhere;-webkit-hyphens:auto;hyphens:auto}"
+             . "img,video,iframe,svg,table{max-width:100%}}</style>\n";
+    }
+
+    /** Insert the mobile-safety stylesheet once, before </head> (or before </body>, or append). Idempotent. */
+    public static function injectMobileSafety(string $html): string
+    {
+        if (strpos($html, 'lug-mobile-safe') !== false) return $html;
+        $ms = self::mobileSafetyHtml();
+        if (stripos($html, '</head>') !== false) {
+            return preg_replace('#</head>#i', $ms . '</head>', $html, 1);
+        }
+        if (stripos($html, '</body>') !== false) {
+            return preg_replace('#</body>#i', $ms . '</body>', $html, 1);
+        }
+        return $html . $ms;
+    }
+
+    /** Insert the reveal failsafe once, just before </body> (or append if none). Idempotent. */
+    public static function injectRevealFailsafe(string $html): string
+    {
+        if (strpos($html, 'lug-reveal-failsafe') !== false) return $html;
+        $fs = self::revealFailsafeHtml();
+        if (stripos($html, '</body>') !== false) {
+            return preg_replace('#</body>#i', $fs . '</body>', $html, 1);
+        }
+        return $html . $fs;
+    }
     public function render(string $industry, array $variables, ?int $websiteId = null): string
     {
         $industry = preg_replace('/[^a-z0-9_]/', '', strtolower($industry)); // slug-guard (path traversal)
@@ -25,6 +82,20 @@ class TemplateService
 
         $html = file_get_contents($path);
 
+        // DESIGN VARIANTS (2026-09-10): a template directory is no longer always an industry name.
+        // A variant such as restaurant_larder declares its industry as "restaurant" in the manifest,
+        // and the default-asset lookup must follow THAT. Keyed on the directory name instead, every
+        // variant falls back to a hero path that does not exist and renders a broken image. The
+        // directory name stays the fallback, so the 31 original templates behave exactly as before.
+        $assetIndustry = $industry;
+        $mfPath = storage_path("templates/{$industry}/manifest.json");
+        if (is_file($mfPath)) {
+            $mf = json_decode((string) file_get_contents($mfPath), true);
+            $declared = is_array($mf) ? (string) ($mf['industry'] ?? '') : '';
+            $declared = preg_replace('/[^a-z0-9_]/', '', strtolower($declared));
+            if ($declared !== '') { $assetIndustry = $declared; }
+        }
+
         // BUG 2 FIX — resolve the industry's default hero image URL so empty
         // image variables can fall back to it instead of rendering as hollow
         // <img src=""> tags or `background-image:url()`. We try the requested
@@ -32,7 +103,7 @@ class TemplateService
         $industryDefaultImg = null;
         try {
             $row = DB::table('builder_default_assets')
-                ->where('asset_type', 'hero')->where('industry', $industry)->first();
+                ->where('asset_type', 'hero')->where('industry', $assetIndustry)->first();
             if (!$row) {
                 $row = DB::table('builder_default_assets')
                     ->where('asset_type', 'hero')->where('industry', 'default')->first();
@@ -40,20 +111,41 @@ class TemplateService
             if ($row && !empty($row->url)) $industryDefaultImg = $row->url;
         } catch (\Throwable $e) { /* table may not exist in some envs */ }
         if (!$industryDefaultImg) {
-            $industryDefaultImg = '/storage/builder-heroes/' . $industry . '.jpg';
+            $industryDefaultImg = '/storage/builder-heroes/' . $assetIndustry . '.jpg';
         }
 
         // Walk the manifest so image-typed variables that arrived empty get
         // the industry default before substitution. This way CSS like
         // `background-image:url({{hero_image}})` never lands as url().
         $manifestPath = storage_path("templates/{$industry}/manifest.json");
+        $varTypes = []; // HTML-TYPED VARIABLES (2026-09-05): key => declared type, consulted at substitution
         if (is_file($manifestPath)) {
             $manifest = json_decode(file_get_contents($manifestPath), true) ?: [];
+            $variables = $this->scrubSampleAuthors($variables, is_array($manifest['variables'] ?? null) ? $manifest['variables'] : []);
             foreach (($manifest['variables'] ?? []) as $mKey => $mSpec) {
                 $type = is_array($mSpec) ? ($mSpec['type'] ?? 'text') : 'text';
+                $varTypes[$mKey] = $type;
                 if ($type !== 'image') continue;
                 if ($mKey === 'logo_url') continue; // logo stays empty → text fallback
                 $supplied = $variables[$mKey] ?? null;
+                // DEFAULT TEAM AVATARS (2026-09-06): a person slot (team/member/staff/doctor/trainer/… _N_image or
+                // testimonial_N_avatar) never shows a room, a hero or a gallery photo as a face. An empty or generic-pool
+                // photo becomes a platform avatar; a customer upload stays. A person with no name is labelled
+                // "Team Member" — an obvious placeholder to edit, never an invented person.
+                $personSlot = self::personSlotFor((string) $mKey);
+                if ($personSlot !== null) {
+                    $cur = trim((string) $supplied);
+                    if ($cur === '' || self::isGenericPoolImage($cur)) {
+                        $variables[$mKey] = self::defaultAvatar($industry, (int) $personSlot['n']) ?? $cur;
+                    }
+                    if ($personSlot['prefix'] !== 'testimonial' && $personSlot['prefix'] !== 'review') {
+                        $nameVar = $personSlot['prefix'] . '_' . $personSlot['n'] . '_name';
+                        if (array_key_exists($nameVar, $variables) && trim((string) $variables[$nameVar]) === '') {
+                            $variables[$nameVar] = 'Team Member';
+                        }
+                    }
+                    continue;
+                }
                 if ($supplied === null || $supplied === '') {
                     $variables[$mKey] = $industryDefaultImg;
                 }
@@ -64,6 +156,8 @@ class TemplateService
         if (!isset($variables['logo_url'])) {
             $variables['logo_url'] = '';
         }
+        // Brand-agnostic dark fallback so hero overlays never render a broken rgba().
+        if (empty($variables['hero_overlay_rgb'])) { $variables['hero_overlay_rgb'] = '17,20,28'; }
         $variables['logo_text_display'] = !empty($variables['logo_url'])
             ? 'display:none'
             : 'display:block';
@@ -89,9 +183,17 @@ class TemplateService
             }
 
             // G-SEC2 (2026-08-25): escape/scheme-guard every substituted value (stored XSS defence).
-            $safe = \App\Engines\Builder\Support\TemplateVariableNormalizer::forHtml((string) $key, $n['value']);
+            // HTML-TYPED VARIABLES (2026-09-05): curated `type:"html"` headings keep their inline markup (sanitised);
+            // every other variable is escaped exactly as before.
+            $safe = \App\Engines\Builder\Support\TemplateVariableNormalizer::forHtmlTyped((string) $key, $n['value'], (string) ($varTypes[$key] ?? 'text'));
             $html = str_replace('{{' . $key . '}}', $safe, $html);
         }
+
+        // SERVICE SELECTS (2026-09-06): booking/contact forms list the customer's real services, never the template's demo
+        // specialties (13 templates shipped "Family Medicine / Cardiology / Paediatrics").
+        $html = $this->fillServiceSelects($html, $variables);
+        $html = $this->scrubPlaceholderNames($html);
+        if (!empty($variables['logo_url'])) $html = self::applyLogoImage($html, (string) $variables['logo_url'], (string) ($variables['business_name'] ?? ''), (string) ($variables['logo'] ?? ''));
 
         if ($deferred !== []) {
             // Structured content was omitted rather than guessed at. Recorded
@@ -160,6 +262,9 @@ class TemplateService
         // a dead link that reloads the page. Drop them (social handles are never
         // fabricated), and any social container left with no links.
         $html = $this->stripEmptySocialLinks($html);
+        // EV-1000: a fact the customer has not supplied (phone, email, WhatsApp, price …) renders as nothing — and the
+        // label that introduced it ("Call", "Email") goes with it instead of standing over a blank line.
+        $html = $this->stripEmptyFactRows($html);
         $html = $this->stripDanglingNavAnchors($html);
         // Decode HTML entities (fixes &RARR; showing as literal text)
         $html = str_replace(['&RARR;', '&rarr;', '&amp;rarr;'], '→', $html);
@@ -225,6 +330,19 @@ class TemplateService
             if ($add !== '') { $html = str_ireplace('</head>', $add . "\n</head>", $html); }
         }
 
+        $html = self::injectRevealFailsafe($html);
+        $html = self::injectMobileSafety($html);
+
+        // DESIGN-STYLE LAYER (2026-09-05): apply the customer's chosen style/fonts (Arthur used
+        // to collect `style` and silently discard it). No direction => no layer => template design stands.
+        $dsLayer = \App\Engines\Builder\Support\DesignStyle::layer(
+            $variables['design_style'] ?? null, $variables['font_display'] ?? null, $variables['font_body'] ?? null,
+            ['accent' => $variables['accent_color'] ?? null, 'secondary' => $variables['secondary_color'] ?? null, 'primary' => $variables['primary_color'] ?? null]
+        );
+        if ($dsLayer !== '' && stripos($html, 'lug-design-style') === false) {
+            $html = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', $dsLayer . '</head>', $html) : $dsLayer . $html;
+        }
+
         return $html;
     }
 
@@ -271,9 +389,41 @@ class TemplateService
         return is_string($out) ? $out : $html;
     }
 
+    /**
+     * EV-1000 (2026-09-12). An element whose data-field is a business FACT (contact_phone, contact_email, *_price …)
+     * and whose content is empty is removed. When its nearest enclosing <div> holds nothing else but a short label
+     * ("Call", "Email", a <dt>, a .contact-item-label span, an icon), that whole row is removed, so the label does not
+     * stand over a blank line. A row with other content keeps its content and loses only the empty element.
+     */
+    private function stripEmptyFactRows(string $html): string
+    {
+        $re = '/<(a|span|div|dd|p|b|strong|em)\b[^>]*\bdata-field="(?![^"]*_label")[a-z0-9_]*(?:price|fee|cost|rate|phone|whatsapp|fax|website|email)(?:_[a-z0-9_]*)?"[^>]*>\s*<\/\1>/i';
+        if (!preg_match_all($re, $html, $m, PREG_OFFSET_CAPTURE)) { return $html; }
+        for ($i = count($m[0]) - 1; $i >= 0; $i--) {
+            $elStart = $m[0][$i][1]; $elLen = strlen($m[0][$i][0]);
+            $removed = false;
+            $open = strrpos(substr($html, 0, $elStart), '<div');
+            if ($open !== false) {
+                $close = $this->matchDivClose($html, $open);
+                if ($close !== null && $close > $elStart + $elLen) {
+                    $row   = substr($html, $open, $close - $open);
+                    $rest  = str_replace($m[0][$i][0], '', $row);
+                    $text  = trim(preg_replace('/\s+/u', ' ', (string) strip_tags($rest)));
+                    $other = preg_match('/data-field=|<(?:img|input|textarea|select|button|a)\b/i', $rest);
+                    if (!$other && mb_strlen($text) <= 40) {
+                        $html = substr($html, 0, $open) . substr($html, $close);
+                        $removed = true;
+                    }
+                }
+            }
+            if (!$removed) { $html = substr($html, 0, $elStart) . substr($html, $elStart + $elLen); }
+        }
+        return $html;
+    }
+
     private function stripEmptyPhantomCards(string $html): string
     {
-        if (!preg_match_all('/data-field="([a-z0-9_]+)_name"[^>]*>\s*<\/div>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
+        if (!preg_match_all('/data-field="([a-z0-9_]+)_name"[^>]*>\s*<\/(?:div|h[1-6]|span|p|strong)>/i', $html, $m, PREG_OFFSET_CAPTURE)) {
             return $html;
         }
         for ($i = count($m[0]) - 1; $i >= 0; $i--) {
@@ -442,6 +592,53 @@ class TemplateService
         return (($L+0.05)/0.05) >= (1.05/($L+0.05)) ? '#111111' : '#ffffff';
     }
 
+    /** @return array{prefix:string,n:int}|null  e.g. doctor_2_image → ['doctor',2]; testimonial_1_avatar → ['testimonial',1] */
+    public static function personSlotFor(string $key): ?array
+    {
+        if (preg_match('/^(team|member|staff|doctor|trainer|agent|broker|instructor|tutor|barber|stylist|chef|coach|host|planner|therapist|dentist|consultant|designer|advisor|teacher|founder|partner|expert|specialist|testimonial|review)_(\d+)_(image|photo|avatar|img)$/i', strtolower($key), $m)) {
+            return ['prefix' => $m[1], 'n' => (int) $m[2]];
+        }
+        return null;
+    }
+
+    /** A generic library/pool photo (never a customer upload) that must not stand in for a person. */
+    public static function isGenericPoolImage(string $url): bool
+    {
+        return (bool) preg_match('#/storage/(template-images|builder-heroes|sites/heroes|ai-generated|ai-images|img-cache)/|gallery_\d+_image#i', $url);
+    }
+
+    /** Deterministic platform avatar for a slot: same site → same faces on every render; different industries rotate. */
+    public static function defaultAvatar(string $industry, int $slot): ?string
+    {
+        static $files = null;
+        if ($files === null) {
+            $files = array_values(array_map('basename', glob(storage_path('app/public/builder-avatars/avatar_*.jpg')) ?: []));
+            sort($files);
+        }
+        if ($files === []) return null;
+        $offset = crc32($industry) % count($files);
+        return '/storage/builder-avatars/' . $files[($offset + $slot - 1) % count($files)];
+    }
+
+    /**
+     * The canonical industry for a template directory. A variant such as restaurant_larder declares
+     * `industry: restaurant`; the 31 originals are their own industry. Anything unknown comes back as given.
+     */
+    /** Preview parity: the same mobile-safety guard deploy() applies, callable from the preview route. */
+    public function injectMobileSafetyPublic(string $html): string
+    {
+        return self::injectMobileSafety($html);
+    }
+
+    public function industryOf(string $slugOrIndustry): string
+    {
+        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower(trim($slugOrIndustry)));
+        if ($slug === '') { return ''; }
+        $m = $this->getManifest($slug);
+        $ind = is_array($m) ? preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($m['industry'] ?? ''))) : '';
+        return $ind !== '' ? $ind : $slug;
+    }
+
     public function getManifest(string $industry): ?array
     {
         $industry = preg_replace('/[^a-z0-9_]/', '', strtolower($industry)); // slug-guard (path traversal)
@@ -561,6 +758,364 @@ class TemplateService
      * @param string $html
      * @return string Path to the deployed file
      */
+    // ── ARTHUR DELEGATION (2026-09-06): added pages and sections live INSIDE the template ─────────────────────
+    /** The pieces of a site's static home export that every page shares: head, nav, footer, lang. */
+    public function siteChrome(int $websiteId): ?array
+    {
+        $path = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (!is_file($path)) return null;
+        $home = (string) file_get_contents($path);
+        if (!preg_match('/<head\b[^>]*>.*?<\/head>/is', $home, $hm)) return null;
+        $nav = '';
+        if (preg_match('/<nav\b[^>]*(?:id="main-nav"|data-block="nav")[^>]*>.*?<\/nav>/is', $home, $nm)) $nav = $nm[0];
+        elseif (preg_match('/<header\b[^>]*>.*?<\/header>/is', $home, $nm2)) $nav = $nm2[0];
+        elseif (preg_match('/<nav\b[^>]*>.*?<\/nav>/is', $home, $nm3)) $nav = $nm3[0];
+        $footer = preg_match('/<footer\b[^>]*>.*?<\/footer>/is', $home, $fm) ? $fm[0] : '';
+        $lang = preg_match('/<html\b[^>]*lang="([^"]+)"/i', $home, $lm) ? $lm[1] : 'en';
+        $siteName = preg_match('/<title>\s*([^<|\x{2014}-]+)/iu', $hm[0], $tn) ? trim($tn[1]) : '';
+        return ['home' => $home, 'head' => $hm[0], 'nav' => $nav, 'footer' => $footer, 'lang' => $lang, 'site_name' => $siteName];
+    }
+
+    /**
+     * Write sites/{id}/{slug}/index.html: the home's head/nav/footer (so fonts, palette, design layer, colour
+     * treatment and mobile nav are identical) around $bodyHtml. In-page anchors become ../#anchor, blog → ../blog/.
+     */
+    public function deployPage(int $websiteId, string $slug, string $bodyHtml, string $title): ?string
+    {
+        $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower($slug));
+        if ($slug === '' || in_array($slug, ['index', 'blog', 'home'], true)) return null;
+        $c = $this->siteChrome($websiteId);
+        if (!$c) return null;
+        $head = preg_replace('/<title>.*?<\/title>/is', '<title>' . e($title) . ($c['site_name'] !== '' ? ' — ' . e($c['site_name']) : '') . '</title>', $c['head'], 1) ?? $c['head'];
+        $head = preg_replace('/<link\b[^>]*rel="canonical"[^>]*>/i', '', $head) ?? $head;
+        $toHome = function (string $frag): string {
+            $frag = preg_replace('/href="#"/i', 'href="../"', $frag) ?? $frag;
+            $frag = preg_replace('/href="#([a-z0-9\-_]+)"/i', 'href="../#$1"', $frag) ?? $frag;
+            $frag = preg_replace('#href="(?:/blog|blog)/?"#i', 'href="../blog/"', $frag) ?? $frag;
+            // links to sibling pages written as "x/" from the home become "../x/"
+            $frag = preg_replace('#href="(?!\.\./|https?:|/|\#|mailto:|tel:)([a-z0-9\-]+)/"#i', 'href="../$1/"', $frag) ?? $frag;
+            return $frag;
+        };
+        // A section CTA that targets an anchor this page does not have (#contact, #booking…) goes home instead.
+        $ids = [];
+        if (preg_match_all('/\bid="([^"]+)"/i', $bodyHtml, $im)) { foreach ($im[1] as $x) $ids[strtolower($x)] = true; }
+        $bodyHtml = preg_replace_callback('/href="#([a-z0-9\-_]+)"/i', fn($m) => isset($ids[strtolower($m[1])]) ? $m[0] : 'href="../#' . $m[1] . '"', $bodyHtml) ?? $bodyHtml;
+        // Every page has one H1: a visible title strip when the stack brought none (cart / checkout / account).
+        if (!preg_match('/<h1\b/i', $bodyHtml)) {
+            $bodyHtml = '<section class="lu-page-title" style="padding:56px 24px 8px"><div style="max-width:1100px;margin:0 auto"><h1 style="margin:0;font-size:clamp(28px,4vw,44px)">' . e($title) . '</h1></div></section>' . $bodyHtml;
+        }
+        // A fixed/sticky template nav must not cover the page's first section (the home hero carries its own offset).
+        $offset = '<script>(function(){try{var n=document.querySelector("nav[data-block=nav],#main-nav,header nav,nav");var m=document.querySelector("main[data-lu-page]");if(!n||!m)return;var p=getComputedStyle(n).position;if(p==="fixed"||p==="absolute"){m.style.paddingTop=(n.offsetHeight+8)+"px";}}catch(e){}})();</script>';
+        $doc = '<!doctype html><html lang="' . e($c['lang']) . '">' . $head . '<body>'
+             . $toHome($c['nav']) . '<main data-lu-page="' . e($slug) . '">' . $bodyHtml . '</main>' . $toHome($c['footer']) . $offset . '</body></html>';
+        $doc = \App\Engines\Builder\Support\ResponsiveNav::inject($doc);
+        $dir = storage_path("app/public/sites/{$websiteId}/{$slug}");
+        if (!is_dir($dir)) mkdir($dir, 0755, true);
+        $path = $dir . '/index.html';
+        file_put_contents($path, $doc);
+        return $path;
+    }
+
+    /**
+     * Put a link to a page into every nav of the site's exports (home, blog, other pages). Idempotent.
+     * Relative depth is handled per file: home → "slug/", sub-pages → "../slug/".
+     */
+    public function addNavLink(int $websiteId, string $slug, string $label): int
+    {
+        $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower($slug));
+        $root = storage_path("app/public/sites/{$websiteId}");
+        if ($slug === '' || !is_dir($root)) return 0;
+        $files = array_merge([$root . '/index.html'], glob($root . '/*/index.html') ?: []);
+        $n = 0;
+        foreach ($files as $file) {
+            if (!is_file($file)) continue;
+            $html = (string) file_get_contents($file);
+            if (preg_match('/data-page="' . preg_quote($slug, '/') . '"/', $html)) continue; // already linked
+            $depth = dirname($file) === $root ? '' : '../';
+            $a = '<a href="' . $depth . e($slug) . '/" class="nav-link lu-page-link" data-page="' . e($slug) . '">' . e($label) . '</a>';
+            $new = preg_replace_callback('/(<(?:nav|header)\b[^>]*>.*?<\/(?:nav|header)>)/is', function ($m) use ($a, $label, $slug, $depth) {
+                $navHtml = $m[1];
+                // A link with the page's wording already exists (template "Contact" → home #contact): point it at the
+                // dedicated page instead of adding a twin. The customer added the page; the menu must reach it.
+                $repointed = preg_replace_callback('/<a\b([^>]*)>(\s*' . preg_quote($label, '/') . '\s*)<\/a>/iu', function ($am) use ($depth, $slug) {
+                    $attrs = preg_replace('/\shref="[^"]*"/i', ' href="' . $depth . e($slug) . '/"', $am[1], 1) ?? $am[1];
+                    if (!str_contains($attrs, 'data-page=')) $attrs .= ' data-page="' . e($slug) . '"';
+                    return '<a' . $attrs . '>' . $am[2] . '</a>';
+                }, $navHtml, 1, $rc);
+                if ($rc > 0 && is_string($repointed)) return $repointed;
+                // NAV CAPACITY: 6+ links already → added pages live in a "More" menu (site CSS, no native select)
+                $linkCount = preg_match_all('/<a\b[^>]*class="[^"]*\bnav-link\b[^"]*"[^>]*>/i', $navHtml, $lm) + preg_match_all('/<li\b[^>]*>\s*<a\b/i', $navHtml, $ll);
+                if ($linkCount >= 6) {
+                    $item = '<a href="' . $depth . e($slug) . '/" class="lu-page-link" data-page="' . e($slug) . '">' . e($label) . '</a>';
+                    if (preg_match('/<div class="lu-more">.*?<div class="lu-more-menu">/is', $navHtml, $mm, PREG_OFFSET_CAPTURE)) {
+                        $pos = $mm[0][1] + strlen($mm[0][0]);
+                        return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
+                    }
+                    $more = '<div class="lu-more"><button type="button" class="lu-more-btn" aria-haspopup="true" aria-expanded="false" onclick="this.parentNode.classList.toggle(\'open\');this.setAttribute(\'aria-expanded\',this.parentNode.classList.contains(\'open\'))">More <span aria-hidden="true">&#9662;</span></button><div class="lu-more-menu">' . $item . '</div></div>';
+                    $isList = (bool) preg_match('/<ul\b[^>]*class="[^"]*nav-links[^"]*"/i', $navHtml);
+                    $moreItem = $isList ? '<li style="list-style:none">' . $more . '</li>' : $more;
+                    if (preg_match('/<a\b[^>]*class="[^"]*\bnav-cta\b[^"]*"[^>]*>/i', $navHtml, $cta, PREG_OFFSET_CAPTURE)) {
+                        $pos = $cta[0][1]; return substr($navHtml, 0, $pos) . $moreItem . substr($navHtml, $pos);
+                    }
+                    if (preg_match('/<\/(?:ul|div)>/i', $navHtml, $end, PREG_OFFSET_CAPTURE, (int) strpos($navHtml, 'nav-links'))) {
+                        $pos = $end[0][1]; return substr($navHtml, 0, $pos) . $moreItem . substr($navHtml, $pos);
+                    }
+                    return $navHtml;
+                }
+                // <ul class="nav-links"> → wrap in <li>; <div class="nav-links"> → bare <a>. Insert before the CTA if present.
+                $isList = (bool) preg_match('/<ul\b[^>]*class="[^"]*nav-links[^"]*"/i', $navHtml);
+                $item = $isList ? '<li style="list-style:none">' . $a . '</li>' : $a;
+                if (preg_match('/<a\b[^>]*class="[^"]*\bnav-cta\b[^"]*"[^>]*>/i', $navHtml, $cta, PREG_OFFSET_CAPTURE)) {
+                    $pos = $cta[0][1];
+                    // if the CTA sits inside the list container, insert before it; else append at container end
+                    return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
+                }
+                if (preg_match('/<\/(?:ul|div)>/i', $navHtml, $end, PREG_OFFSET_CAPTURE, (int) strpos($navHtml, 'nav-links'))) {
+                    $pos = $end[0][1];
+                    return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
+                }
+                return $navHtml;
+            }, $html, 1);
+            if (is_string($new) && $new !== $html) {
+                if (str_contains($new, 'class="lu-more"') && !str_contains($new, 'id="lu-more-css"')) {
+                    $css = '<style id="lu-more-css">.lu-more{position:relative;display:inline-block}.lu-more-btn{font:inherit;background:none;border:0;cursor:pointer;color:inherit;padding:0;display:inline-flex;align-items:center;gap:4px}.lu-more-menu{display:none;position:absolute;top:calc(100% + 10px);left:0;min-width:200px;background:#fff;color:#1a1f26;border:1px solid rgba(15,23,42,.12);border-radius:12px;box-shadow:0 14px 34px rgba(0,0,0,.14);padding:8px;z-index:9998;flex-direction:column}.lu-more.open .lu-more-menu,.lu-more:hover .lu-more-menu{display:flex}.lu-more-menu a{display:block;padding:10px 12px;border-radius:8px;color:inherit;text-decoration:none;white-space:nowrap}.lu-more-menu a:hover{background:rgba(15,23,42,.06)}@media(max-width:900px){.lu-more{display:block}.lu-more-menu{position:static;display:flex;box-shadow:none;border:0;padding:0 0 0 12px;background:transparent;color:inherit}.lu-more-btn{display:none}}</style>';
+                    $new = str_ireplace('</head>', $css . '</head>', $new);
+                }
+                file_put_contents($file, $new); $n++;
+            }
+        }
+        return $n;
+    }
+
+    /** Remember an Arthur-spliced section so deploy() can restore it after any re-render. */
+    public function rememberSpliced(int $websiteId, string $type, string $sectionHtml, string $anchorBlock, string $where): void
+    {
+        $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json']);
+        if (!$w) return;
+        $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+        $list = is_array($s['arthur_sections'] ?? null) ? $s['arthur_sections'] : [];
+        $list = array_values(array_filter($list, fn($x) => ($x['type'] ?? '') !== $type));
+        $list[] = ['type' => $type, 'html' => $sectionHtml, 'anchor' => $anchorBlock, 'where' => $where, 'added_at' => now()->toDateTimeString()];
+        $s['arthur_sections'] = $list;
+        \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($s)]);
+    }
+
+    private function reapplyStoredSections(int $websiteId, string $html): string
+    {
+        try {
+            $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json']);
+            if (!$w) return $html;
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+            foreach ((array) ($s['arthur_sections'] ?? []) as $sec) {
+                $type = (string) ($sec['type'] ?? ''); $frag = (string) ($sec['html'] ?? '');
+                if ($type === '' || $frag === '' || str_contains($html, 'data-block="added_' . $type . '"')) continue;
+                $html = $this->insertBeforeOrAfter($html, $frag, (string) ($sec['anchor'] ?? 'contact'), (string) ($sec['where'] ?? 'before'));
+            }
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] reapplyStoredSections: ' . $e->getMessage()); }
+        return $html;
+    }
+
+    private function reapplyPageNavLinks(int $websiteId): void
+    {
+        try {
+            $pages = \Illuminate\Support\Facades\DB::table('pages')->where('website_id', $websiteId)->where('status', 'published')
+                ->whereNotIn('slug', ['home', 'blog', 'news', ''])->orderBy('position')->get(['slug', 'title']);
+            foreach ($pages as $p) {
+                $slug = (string) $p->slug;
+                if (!is_file(storage_path("app/public/sites/{$websiteId}/{$slug}/index.html"))) continue;
+                $this->addNavLink($websiteId, $slug, trim(explode('/', (string) $p->title)[0]) ?: ucfirst($slug));
+            }
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] reapplyPageNavLinks: ' . $e->getMessage()); }
+    }
+
+    /** Pure string insertion used by both the live splice and the re-apply. */
+    private function insertBeforeOrAfter(string $home, string $sectionHtml, string $anchorBlock, string $where): string
+    {
+        $anchorBlock = preg_replace('/[^a-z0-9_\-]/', '', strtolower($anchorBlock)) ?: 'contact';
+        $pos = null;
+        if ($anchorBlock === 'footer') {
+            if (preg_match('/<footer\b/i', $home, $m, PREG_OFFSET_CAPTURE)) $pos = $m[0][1];
+        } elseif (($hit = $this->locateAnchor($home, $anchorBlock)) !== null) {
+            $start = $hit[0];
+            if ($where === 'after') { $close = stripos($home, '</section>', $start); $pos = $close === false ? null : $close + strlen('</section>'); }
+            else { $pos = $start; }
+        }
+        if ($pos === null) {
+            if (preg_match('/<footer\b/i', $home, $m, PREG_OFFSET_CAPTURE)) $pos = $m[0][1];
+            elseif (($b = stripos($home, '</body>')) !== false) $pos = $b;
+            else return $home;
+        }
+        return substr($home, 0, $pos) . "\n" . $sectionHtml . "\n" . substr($home, $pos);
+    }
+
+    /**
+     * Insert a rendered section into the static home before/after a data-block anchor, then redeploy (nav
+     * injection, blog index and page-relative blog links are re-applied by deploy()). Returns the new home html.
+     */
+    /** What each spoken anchor may be called in a template that names its blocks differently. */
+    private const ANCHOR_SYNONYMS = [
+        'services'     => ['services', 'services_menu', 'menu_highlights', 'specials', 'programs', 'programmes', 'treatments', 'inventory', 'featured_vehicles', 'room_types', 'listings', 'features', 'use_cases', 'offers', 'packages', 'courses', 'experiences', 'amenities', 'venues', 'service_types', 'curriculum', 'expertise'],
+        'about'        => ['about', 'story', 'methodology', 'why_us', 'mission', 'philosophy', 'values'],
+        'process'      => ['process', 'how_it_works', 'steps', 'admissions', 'methodology'],
+        'team'         => ['team', 'doctors', 'staff', 'trainers', 'faculty', 'stylists', 'agents', 'people'],
+        'gallery'      => ['gallery', 'portfolio', 'projects', 'transformations', 'campus_gallery', 'results', 'case_studies', 'work'],
+        'testimonials' => ['testimonials', 'reviews', 'social_proof', 'clients'],
+        'pricing'      => ['pricing', 'membership', 'packages', 'plans', 'rates', 'financing'],
+        'stats'        => ['stats', 'stats_strip', 'numbers', 'results', 'achievements'],
+        'booking'      => ['booking', 'contact_form', 'contact', 'appointments', 'reservations'],
+        'contact'      => ['contact', 'contact_form', 'booking', 'cta_banner'],
+        'blog'         => ['blog', 'news', 'journal', 'articles', 'press'],
+        'why_us'       => ['why_us', 'features', 'trust_signals', 'certifications', 'awards', 'about'],
+        'menu_highlights' => ['menu_highlights', 'specials', 'services_menu', 'services'],
+    ];
+
+    /**
+     * Find the block the customer meant. Returns [offset-of-<section>, block-name-actually-used] or null.
+     * Exact name first; then the synonyms; the caller falls back to the footer as it always did.
+     */
+    private function locateAnchor(string $home, string $anchorBlock): ?array
+    {
+        $candidates = array_values(array_unique(array_merge([$anchorBlock], self::ANCHOR_SYNONYMS[$anchorBlock] ?? [])));
+        foreach ($candidates as $name) {
+            if (preg_match('/<section\b[^>]*data-block="' . preg_quote($name, '/') . '"[^>]*>/i', $home, $m, PREG_OFFSET_CAPTURE)) {
+                return [$m[0][1], $name];
+            }
+        }
+        return null;
+    }
+
+    /** The anchor a splice actually used, for the reply. Set by spliceSectionIntoHome. */
+    public ?string $lastAnchorUsed = null;
+
+    public function spliceSectionIntoHome(int $websiteId, string $sectionHtml, string $anchorBlock = 'contact', string $where = 'before'): ?string
+    {
+        $path = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (!is_file($path)) return null;
+        $home = (string) file_get_contents($path);
+        $anchorBlock = preg_replace('/[^a-z0-9_\-]/', '', strtolower($anchorBlock)) ?: 'contact';
+        $pos = null;
+        $this->lastAnchorUsed = null;
+        if ($anchorBlock === 'footer') {
+            if (preg_match('/<footer\b/i', $home, $m, PREG_OFFSET_CAPTURE)) { $pos = $m[0][1]; $this->lastAnchorUsed = 'footer'; }
+        } elseif (($hit = $this->locateAnchor($home, $anchorBlock)) !== null) {
+            [$start, $used] = $hit;
+            $this->lastAnchorUsed = $used;
+            if ($where === 'after') {
+                $close = stripos($home, '</section>', $start);
+                $pos = $close === false ? null : $close + strlen('</section>');
+            } else { $pos = $start; }
+        }
+        if ($pos === null) {
+            // fall back: before the footer, else before </body>
+            $this->lastAnchorUsed = 'footer';
+            if (preg_match('/<footer\b/i', $home, $m, PREG_OFFSET_CAPTURE)) $pos = $m[0][1];
+            elseif (($b = stripos($home, '</body>')) !== false) $pos = $b;
+            else return null;
+        }
+        $home = substr($home, 0, $pos) . "\n" . $sectionHtml . "\n" . substr($home, $pos);
+        $this->deploy($websiteId, $home);
+        return $home;
+    }
+    /**
+     * Form selects never ship demo options: service/specialty/treatment/program selects list the site's visible services;
+     * people selects (doctor/practitioner/stylist/trainer/specialist/member) list the site's real named people or only the
+     * placeholder. The placeholder option (value="" / disabled) is always kept.
+     */
+    /**
+     * The names of what a site sells, whatever its template calls them. service_N_title where it exists;
+     * otherwise the first family present, in this order. A *_N_display of display:none hides that item.
+     *
+     * @return array<int,string>
+     */
+    public static function serviceTitles(array $variables, int $max = 8): array
+    {
+        $families = [
+            ['service', 'title'], ['treatment', 'title'], ['menu', 'title'], ['special', 'title'], ['program', 'title'],
+            ['programme', 'title'], ['course', 'title'], ['room', 'name'], ['amenity', 'title'], ['featured', 'title'],
+            ['feature', 'title'], ['usecase', 'title'], ['specialty', 'name'], ['package', 'title'], ['plan', 'name'],
+            ['session', 'name'], ['dining', 'name'], ['exp', 'title'], ['offer', 'title'], ['product', 'title'],
+        ];
+        foreach ($families as [$fam, $leaf]) {
+            $out = [];
+            for ($i = 1; $i <= $max; $i++) {
+                $t = trim((string) ($variables["{$fam}_{$i}_{$leaf}"] ?? ''));
+                if ($t === '' || (string) ($variables["{$fam}_{$i}_display"] ?? '') === 'display:none') { continue; }
+                $out[] = $t;
+            }
+            if ($out !== []) { return array_values(array_unique($out)); }
+        }
+        return [];
+    }
+
+    public function fillServiceSelects(string $html, array $variables): string
+    {
+        // Every family a template uses for its offerings, not only service_N_title (SERVICE-TITLES 2026-09-11).
+        $titles = self::serviceTitles($variables);
+        $people = [];
+        foreach ($variables as $k => $v) {
+            if (!is_string($v)) continue;
+            if (preg_match('/^(doctor|dentist|team|member|staff|trainer|stylist|barber|therapist|instructor|coach|specialist|agent|broker)_\d+_name$/i', (string) $k)) {
+                $n = trim($v);
+                if ($n !== '' && !preg_match('/^(team member|our team|staff member)$/i', $n)) $people[] = $n;
+            }
+        }
+        $people = array_values(array_unique($people));
+        $rebuild = function (string $open, string $inner, string $close, array $options) : string {
+            $placeholder = preg_match('#<option\b[^>]*(?:value=""|disabled)[^>]*>.*?</option>#is', $inner, $pm) ? $pm[0] : '<option value="" disabled selected>Select…</option>';
+            $opts = '';
+            foreach ($options as $o) { $opts .= '<option>' . htmlspecialchars($o, ENT_QUOTES, 'UTF-8') . '</option>'; }
+            return $open . $placeholder . $opts . $close;
+        };
+        $html = preg_replace_callback('#(<select\b[^>]*\bname="(?:service|services|service_type|service_needed|specialty|speciality|treatment|procedure|program|programme|course_type)[^"]*"[^>]*>)(.*?)(</select>)#is',
+            fn($m) => $titles === [] ? $m[0] : $rebuild($m[1], $m[2], $m[3], $titles), $html) ?? $html;
+        $html = preg_replace_callback('#(<select\b[^>]*\bname="(?:doctor|dentist|practitioner|physician|stylist|barber|trainer|coach|therapist|specialist|member|staff|agent|broker)[^"]*"[^>]*>)(.*?)(</select>)#is',
+            fn($m) => $rebuild($m[1], $m[2], $m[3], $people), $html) ?? $html;
+        return $html;
+    }
+
+    /** First-and-last names used as sample personas anywhere in the 31 manifests (cached per process). */
+    public static function samplePersonaNames(): array
+    {
+        static $names = null;
+        if ($names !== null) return $names;
+        // stock personas from earlier manifest generations and the model's favourite placeholder people
+        $names = array_fill_keys(['sarah mitchell', 'ahmed hassan', 'emily chen', 'james carter', 'john smith', 'jane doe', 'john doe', 'sarah johnson', 'michael chen', 'fatima al-rashid', 'omar khalil', 'priya sharma', 'david miller', 'emma wilson', 'ali hassan', 'layla ahmed', 'mohammed ali', 'aisha rahman', 'sarah nakamura', 'james whitfield', 'maria santos', 'juan dela cruz'], true);
+        foreach (glob(storage_path('templates/*/manifest.json')) ?: [] as $p) {
+            $m = json_decode((string) @file_get_contents($p), true) ?: [];
+            foreach (($m['variables'] ?? []) as $k => $spec) {
+                if (!is_array($spec) || !preg_match('/_(author|name)$/i', (string) $k) || preg_match('/^(business|brand|company|logo|site)_/i', (string) $k)) continue;
+                $d = trim((string) ($spec['default'] ?? ''));
+                if (preg_match('/^(?:Dr\.?\s+)?([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,2})/u', $d, $mm)) $names[strtolower($mm[1])] = true;
+            }
+        }
+        return $names;
+    }
+
+    /**
+     * A testimonial author that is the template sample, or reuses any sample persona's name, is a fabricated person —
+     * show "Verified client" instead. Sample names in form placeholders become "Your name".
+     */
+    public function scrubSampleAuthors(array $variables, array $manifestVars): array
+    {
+        $personas = self::samplePersonaNames();
+        foreach ($variables as $k => $v) {
+            if (!is_string($v) || !preg_match('/^(testimonial|review)_\d+_(author|name)$/i', (string) $k)) continue;
+            $cur = trim($v); if ($cur === '') continue;
+            $def = trim((string) ($manifestVars[$k]['default'] ?? ''));
+            $first = preg_match('/^(?:Dr\.?\s+)?([A-Z][a-z]+(?:\s[A-Z][a-z]+){1,2})/u', $cur, $mm) ? strtolower($mm[1]) : '';
+            if (($def !== '' && $cur === $def) || ($first !== '' && isset($personas[$first]))) $variables[$k] = 'Verified client';
+        }
+        return $variables;
+    }
+
+    /** Sample names in input placeholders ("Ahmed Hassan") become neutral prompts. */
+    public function scrubPlaceholderNames(string $html): string
+    {
+        $personas = array_keys(self::samplePersonaNames());
+        if ($personas === []) return $html;
+        $alt = implode('|', array_map(fn($n) => preg_quote($n, '/'), $personas));
+        return preg_replace('/placeholder="(?:Dr\.?\s+)?(?:' . $alt . ')[^"]*"/iu', 'placeholder="Your name"', $html) ?? $html;
+    }
     public function deploy(int $websiteId, string $html): string
     {
         // RISK-0101 — never ship placeholder blog cards that link nowhere. When the
@@ -576,8 +1131,21 @@ class TemplateService
         $path = $dir . '/index.html';
         // MOBILE-4: the static export is served straight off disk by nginx, so PublishedSiteMiddleware never sees
         // it. Without this the nav overflows a phone in every draft and preview.
+        // DURABLE ADDITIONS (2026-09-06): Arthur-spliced sections are stored in settings_json.arthur_sections; put back any
+        // that a re-render from variables dropped (idempotent — skipped when the block is already present).
+        $html = $this->reapplyStoredSections($websiteId, $html);
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
+        $html = self::injectMobileSafety($html);
+        // STATIC-EXPORT BLOG LINK (2026-09-05): the export is browsed under /storage/sites/{id}/,
+        // so a root-absolute "/blog" hits the PLATFORM blog, not this site's. Make blog nav links
+        // relative so they reach THIS site's own blog export (sites/{id}/blog/). Export-only —
+        // subdomain serving via getFullHtml keeps /blog.
+        // Only the BARE nav link is rewritten. A permalink (/blog/{slug}) is left root-absolute: that is the
+        // real address of a post on the published site, and it is what the serve-time card injector matches on.
+        $html = preg_replace('#href="/blog/?"#i', 'href="blog/"', $html);
         file_put_contents($path, $html);
+        // …and the menu links of every added page (published, exported) come back too.
+        $this->reapplyPageNavLinks($websiteId);
 
         // Also deploy a static /blog index that reuses THIS page's chrome + theme
         // so /blog shares the same top menu and colours instead of falling to the
@@ -642,8 +1210,8 @@ class TemplateService
 
         // Rewrite in-page anchors so the shared nav/footer navigate back to home.
         $toHome = function (string $frag): string {
-            $frag = preg_replace('/href="#"/i', 'href="/"', $frag);
-            $frag = preg_replace('/href="#([a-z0-9\-]+)"/i', 'href="/#$1"', $frag);
+            $frag = preg_replace('/href="#"/i', 'href="../"', $frag);
+            $frag = preg_replace('/href="#([a-z0-9\-]+)"/i', 'href="../#$1"', $frag);
             return (string) $frag;
         };
         $nav = $toHome($nav);
@@ -671,6 +1239,9 @@ class TemplateService
             mkdir($dir, 0755, true);
         }
         $path = $dir . '/index.html';
+        // Only the BARE blog link is a nav link back to this page. A permalink (/blog/{slug}) must survive,
+        // or the serve-time card injector has no href to point at the article and every card links here.
+        $doc = preg_replace('#href="/blog/?"#i', 'href="./"', $doc);
         file_put_contents($path, $doc);
 
         return $path;
@@ -714,6 +1285,22 @@ class TemplateService
         // interpolated into the XPath below. The route validates too; this guards other callers.
         if (! preg_match('/^[A-Za-z0-9_-]{1,64}$/', $fieldId)) {
             return false;
+        }
+        // STRESS C33 (2026-09-06): no template has an <img> logo slot — an uploaded logo replaces the text logo instead.
+        if ($fieldId === 'logo_url') {
+            $fp = @fopen($path, 'r+');
+            if ($fp === false) return false;
+            if (! flock($fp, LOCK_EX)) { fclose($fp); return false; }
+            $html = (string) stream_get_contents($fp);
+            $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['name', 'template_variables']);
+            $tvL = json_decode((string) ($w->template_variables ?? '{}'), true) ?: [];
+            $alt = (string) ($w->name ?? ''); $text = (string) ($tvL['logo'] ?? $alt);
+            $new = self::applyLogoImage($html, $value, $alt, $text);
+            $changed = $new !== $html;
+            if ($changed) { ftruncate($fp, 0); rewind($fp); fwrite($fp, $new); fflush($fp); }
+            flock($fp, LOCK_UN); fclose($fp);
+            foreach (glob(dirname($path) . '/*/index.html') ?: [] as $sub) { $h = (string) file_get_contents($sub); $n = self::applyLogoImage($h, $value, $alt, $text); if ($n !== $h) file_put_contents($sub, $n); }
+            return $changed;
         }
 
         // RISK-0112 — serialise concurrent field-saves with an exclusive file lock.
@@ -859,7 +1446,159 @@ class TemplateService
         return $found;
     }
 
-    /** RISK-0107 — list a template site's pre-edit backups (newest first). */
+    /**
+     * DEC-0046 (2026-09-13) — one history snapshot per Arthur request, so Versions and Undo cover everything
+     * Arthur does (text, sections, colours, gradients, palettes). Skips when the newest entry already holds these
+     * exact bytes, so a no-op request never consumes undo depth. Nested page exports travel in a sibling
+     * directory index-{stamp}.d/ so a restore puts the whole site back, not just the home page.
+     */
+    public function snapshotToHistory(int $websiteId, string $reason = 'arthur'): ?string
+    {
+        try {
+            $root  = storage_path("app/public/sites/{$websiteId}");
+            $index = "{$root}/index.html";
+            if (! is_file($index)) { return null; }
+            $bytes = (string) @file_get_contents($index);
+            if ($bytes === '') { return null; }
+            $dir = "{$root}/.history";
+            if (! is_dir($dir)) { @mkdir($dir, 0775, true); }
+            if (! is_dir($dir)) { return null; }
+            $existing = glob($dir . '/index-*.html') ?: [];
+            sort($existing);
+            $latest = $existing !== [] ? end($existing) : null;
+            if ($latest !== null && @md5_file($latest) === md5($bytes) && $this->nestedUnchangedSince($root, $latest)) {
+                return basename($latest);
+            }
+            $stamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+            $file  = "{$dir}/index-{$stamp}.html";
+            if (@file_put_contents($file, $bytes) === false) { return null; }
+            // The record travels with the file: template_variables hold palette/design_extras/colours, and an undo
+            // that put the old bytes back while the record still claimed the new palette would lie on rebuild.
+            try {
+                $tvRaw = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables');
+                @file_put_contents("{$dir}/index-{$stamp}.json", json_encode(['template_variables' => $tvRaw !== null ? (string) $tvRaw : null, 'saved_at' => date('c'), 'reason' => $reason]));
+            } catch (\Throwable $e) {}
+            foreach ($this->nestedPages($root) as $rel => $abs) {
+                $dst = "{$dir}/index-{$stamp}.d/{$rel}";
+                @mkdir(dirname($dst), 0775, true);
+                @copy($abs, $dst);
+            }
+            $this->pruneHistory($dir);
+            \Illuminate\Support\Facades\Log::info('[TemplateService] history snapshot', ['website' => $websiteId, 'file' => basename($file), 'reason' => $reason]);
+            return basename($file);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TemplateService] history snapshot failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * DEC-0046 — Undo: put the newest history entry live and consume it. What was live is kept as redo-*.html
+     * (outside the Versions list) so nothing is ever lost. Reports from the file, never from intent.
+     * @return array{undone:bool, restored_from?:string, error?:string, remaining:int}
+     */
+    public function undoLatest(int $websiteId): array
+    {
+        $root    = storage_path("app/public/sites/{$websiteId}");
+        $dir     = "{$root}/.history";
+        $entries = glob($dir . '/index-*.html') ?: [];
+        if ($entries === []) { return ['undone' => false, 'error' => 'nothing_to_undo', 'remaining' => 0]; }
+        sort($entries);
+        $latest = end($entries);
+        $target = "{$root}/index.html";
+        $bytes  = @file_get_contents($latest);
+        if ($bytes === false || $bytes === '' || ! is_file($target)) { return ['undone' => false, 'error' => 'not_found', 'remaining' => count($entries)]; }
+        $fp = @fopen($target, 'r+');
+        if ($fp === false) { return ['undone' => false, 'error' => 'lock_failed', 'remaining' => count($entries)]; }
+        if (! flock($fp, LOCK_EX)) { fclose($fp); return ['undone' => false, 'error' => 'lock_failed', 'remaining' => count($entries)]; }
+        $current = stream_get_contents($fp);
+        $stamp   = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+        if (is_string($current) && $current !== '') { @file_put_contents("{$dir}/redo-{$stamp}.html", $current); }
+        rewind($fp); ftruncate($fp, 0); fwrite($fp, $bytes); fflush($fp);
+        flock($fp, LOCK_UN); fclose($fp);
+        $d = preg_replace('/\.html$/', '.d', $latest);
+        if (is_dir($d)) {
+            foreach ($this->nestedPages($root) as $rel => $abs) { $snap = "{$d}/{$rel}"; if (is_file($snap)) { @copy($snap, $abs); } }
+            $this->rmTree($d);
+        }
+        $this->restoreRecordSidecar($websiteId, $latest);
+        @unlink($latest);
+        $redos = glob($dir . '/redo-*.html') ?: [];
+        sort($redos);
+        foreach (array_slice($redos, 0, max(0, count($redos) - 5)) as $old) { @unlink($old); }
+        $ok = @md5_file($target) === md5($bytes);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        \Illuminate\Support\Facades\Log::info('[TemplateService] undo', ['website' => $websiteId, 'from' => basename($latest), 'ok' => $ok]);
+        return ['undone' => $ok, 'restored_from' => basename($latest), 'remaining' => max(0, count($entries) - 1)];
+    }
+
+    /** @return array<string,string> relative path => absolute path of every export other than index.html */
+    private function nestedPages(string $root): array
+    {
+        $out = [];
+        foreach (glob("{$root}/*/index.html") ?: [] as $abs) {
+            $rel = ltrim(str_replace($root, '', $abs), '/');
+            if (str_starts_with($rel, '.history/')) { continue; }
+            $out[$rel] = $abs;
+        }
+        foreach (glob("{$root}/*.html") ?: [] as $abs) {
+            $rel = basename($abs);
+            if ($rel === 'index.html') { continue; }
+            $out[$rel] = $abs;
+        }
+        return $out;
+    }
+
+    private function nestedUnchangedSince(string $root, string $latestIndexFile): bool
+    {
+        $d = preg_replace('/\.html$/', '.d', $latestIndexFile);
+        foreach ($this->nestedPages($root) as $rel => $abs) {
+            $snap = "{$d}/{$rel}";
+            if (! is_file($snap) || @md5_file($snap) !== @md5_file($abs)) { return false; }
+        }
+        return true;
+    }
+
+    private function pruneHistory(string $dir, int $keep = 10): void
+    {
+        $backups = glob($dir . '/index-*.html') ?: [];
+        if (count($backups) <= $keep) { return; }
+        sort($backups);
+        foreach (array_slice($backups, 0, count($backups) - $keep) as $old) {
+            @unlink($old);
+            @unlink(preg_replace('/\.html$/', '.json', $old));
+            $d = preg_replace('/\.html$/', '.d', $old);
+            if (is_dir($d)) { $this->rmTree($d); }
+        }
+    }
+
+    /** Put the template_variables saved beside a history entry back on the record (and remove the sidecar). */
+    private function restoreRecordSidecar(int $websiteId, string $indexFile): void
+    {
+        $side = preg_replace('/\.html$/', '.json', $indexFile);
+        if (! is_file($side)) { return; }
+        try {
+            $j = json_decode((string) @file_get_contents($side), true);
+            if (is_array($j) && array_key_exists('template_variables', $j) && $j['template_variables'] !== null) {
+                \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['template_variables' => $j['template_variables'], 'updated_at' => now()]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TemplateService] record sidecar restore failed: ' . $e->getMessage());
+        }
+        @unlink($side);
+    }
+
+    private function rmTree(string $dir): void
+    {
+        foreach (scandir($dir) ?: [] as $e) {
+            if ($e === '.' || $e === '..') { continue; }
+            $p = "{$dir}/{$e}";
+            is_dir($p) ? $this->rmTree($p) : @unlink($p);
+        }
+        @rmdir($dir);
+    }
+
+/** RISK-0107 — list a template site's pre-edit backups (newest first). */
     public function listHistory(int $websiteId): array
     {
         $dir = storage_path("app/public/sites/{$websiteId}/.history");
@@ -906,6 +1645,14 @@ class TemplateService
         fflush($fp);
         flock($fp, LOCK_UN);
         fclose($fp);
+        // DEC-0046: nested page exports and the record saved with this version come back with it.
+        $this->restoreRecordSidecar($websiteId, $src);
+        $nestedDir = preg_replace('/\.html$/', '.d', $src);
+        if (is_dir($nestedDir)) {
+            foreach ($this->nestedPages(storage_path("app/public/sites/{$websiteId}")) as $rel => $abs) {
+                if (is_file("{$nestedDir}/{$rel}")) { @copy("{$nestedDir}/{$rel}", $abs); }
+            }
+        }
 
         $backups = glob($dir . '/index-*.html') ?: [];
         if (count($backups) > 10) {
@@ -913,5 +1660,116 @@ class TemplateService
             foreach (array_slice($backups, 0, count($backups) - 10) as $old) { @unlink($old); }
         }
         return ['restored' => true, 'restored_from' => $file, 'prior_backup' => "index-{$preStamp}.html"];
+    }
+    /**
+     * STRESS C33 (2026-09-06): 0 of 31 templates carry an <img> logo slot, so an uploaded logo never showed. Swap the
+     * text inside the logo elements for the image (the text is kept on the element so an empty url restores it).
+     */
+    public static function applyLogoImage(string $html, string $url, string $alt, string $textFallback = ''): string
+    {
+        foreach (['logo', 'header_logo', 'nav_logo', 'footer_logo'] as $f) {
+            $html = preg_replace_callback('/(<(\w+)\b[^>]*\bdata-field="' . $f . '"[^>]*>)(.*?)(<\/\2>)/s', function ($m) use ($url, $alt, $textFallback) {
+                $open = $m[1]; $inner = $m[3];
+                if ($url === '') {
+                    if (!str_contains($inner, 'lu-logo-img')) return $m[0];
+                    $text = preg_match('/data-lu-logo-text="([^"]*)"/', $open, $t) ? $t[1] : e($textFallback !== '' ? $textFallback : $alt);
+                    return preg_replace('/\sdata-lu-logo-text="[^"]*"/', '', $open) . $text . $m[4];
+                }
+                $text = str_contains($inner, 'lu-logo-img') ? (preg_match('/data-lu-logo-text="([^"]*)"/', $open, $t) ? $t[1] : '') : e(trim(strip_tags($inner)));
+                if (!str_contains($open, 'data-lu-logo-text=')) $open = preg_replace('/>$/', ' data-lu-logo-text="' . $text . '">', $open);
+                $img = '<img class="lu-logo-img" src="' . e($url) . '" alt="' . e($alt) . '" style="height:44px;width:auto;max-width:200px;display:block;object-fit:contain">';
+                return $open . $img . $m[4];
+            }, $html) ?? $html;
+        }
+        return $html;
+    }
+
+    /** STRESS C02 (2026-09-06): rebuild the service/people <select>s from the current variables after an inline rename. */
+    public function refreshServiceSelects(int $websiteId, ?array $vars = null): bool
+    {
+        $path = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (!is_file($path)) return false;
+        $vars = $vars ?? (json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: []);
+        $html = (string) file_get_contents($path);
+        $new = $this->fillServiceSelects($html, $vars);
+        if ($new === $html) return false;
+        file_put_contents($path, $new);
+        return true;
+    }
+
+    /** STRESS C12 (2026-09-06): a text field edited on the home export is patched on every added page too (footer phone, nav labels…). */
+    public function patchFieldInSubPages(int $websiteId, string $field, string $value): int
+    {
+        if (!preg_match('/^[A-Za-z0-9_-]{1,64}$/', $field)) return 0;
+        $root = storage_path("app/public/sites/{$websiteId}"); $n = 0;
+        $safe = str_contains($value, '<') ? strip_tags($value, '<br><em><strong><b><i><span>') : e($value);
+        foreach (glob($root . '/*/index.html') ?: [] as $file) {
+            $h = (string) file_get_contents($file);
+            $new = preg_replace_callback('/(<(\w+)\b[^>]*\bdata-field="' . preg_quote($field, '/') . '"[^>]*>)(.*?)(<\/\2>)/s',
+                fn($m) => preg_match('/<(?!\/?(?:br|em|strong|b|i|span)\b)/', $m[3]) ? $m[0] : $m[1] . $safe . $m[4], $h);
+            if (is_string($new) && $new !== $h) { file_put_contents($file, $new); $n++; }
+        }
+        return $n;
+    }
+
+    /** STRESS C15 (2026-09-06): drop a page's menu link from every export (and an emptied "More" menu). */
+    public function removeNavLink(int $websiteId, string $slug): int
+    {
+        $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower($slug));
+        $root = storage_path("app/public/sites/{$websiteId}"); $n = 0;
+        if ($slug === '' || !is_dir($root)) return 0;
+        foreach (array_merge([$root . '/index.html'], glob($root . '/*/index.html') ?: []) as $file) {
+            if (!is_file($file)) continue;
+            $h = (string) file_get_contents($file);
+            $new = preg_replace('/<li[^>]*>\s*<a\b[^>]*data-page="' . preg_quote($slug, '/') . '"[^>]*>.*?<\/a>\s*<\/li>/is', '', $h);
+            $new = preg_replace('/<a\b[^>]*data-page="' . preg_quote($slug, '/') . '"[^>]*>.*?<\/a>/is', '', (string) $new);
+            $new = preg_replace('/(?:<li style="list-style:none">)?<div class="lu-more">(?:(?!<a\b).)*?<div class="lu-more-menu">\s*<\/div>\s*<\/div>(?:<\/li>)?/is', '', (string) $new);
+            if (is_string($new) && $new !== $h) { file_put_contents($file, $new); $n++; }
+        }
+        return $n;
+    }
+
+    /** Remove an Arthur-added section (wrapper `<section data-block="added_{type}">`) from the home export and forget it. */
+    public function removeSplicedSection(int $websiteId, string $type): bool
+    {
+        $path = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (!is_file($path)) return false;
+        $html = (string) file_get_contents($path);
+        $new = self::removeBlock($html, 'added_' . $type);
+        $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json']);
+        if ($w) {
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+            $s['arthur_sections'] = array_values(array_filter((array) ($s['arthur_sections'] ?? []), fn($x) => ($x['type'] ?? '') !== $type));
+            \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($s)]);
+        }
+        if ($new === $html) return false;
+        file_put_contents($path, $new);
+        return true;
+    }
+
+    /** Balanced removal of `<section … data-block="{block}">…</section>` (nested sections respected). */
+    public static function removeBlock(string $html, string $block): string
+    {
+        for ($guard = 0; $guard < 20; $guard++) { $once = self::removeBlockOnce($html, $block); if ($once === $html) break; $html = $once; }
+        return $html;
+    }
+
+    private static function removeBlockOnce(string $html, string $block): string
+    {
+        if (!preg_match('/<section\b[^>]*data-block="' . preg_quote($block, '/') . '"[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE)) return $html;
+        $start = $m[0][1]; $pos = $start + strlen($m[0][0]); $depth = 1;
+        while ($depth > 0 && preg_match('/<\/?section\b[^>]*>/i', $html, $t, PREG_OFFSET_CAPTURE, $pos)) {
+            $pos = $t[0][1] + strlen($t[0][0]);
+            $depth += str_starts_with($t[0][0], '</') ? -1 : 1;
+        }
+        if ($depth !== 0) return $html;
+        $out = substr($html, 0, $start) . substr($html, $pos);
+        return preg_replace('/\n{3,}/', "\n\n", $out) ?? $out;
+    }
+    /** Law 11: template_variables are written here, never by Arthur. */
+    public function saveTemplateVariables(int $websiteId, array $variables): bool
+    {
+        return \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)
+            ->update(['template_variables' => json_encode($variables), 'updated_at' => now()]) >= 0;
     }
 }

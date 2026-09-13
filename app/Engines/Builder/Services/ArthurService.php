@@ -53,7 +53,7 @@ class ArthurService
         'medical_blue', 'medical_deep',
         'cyan', 'violet',
         'sage', 'sage_soft',
-        'navy', 'ember', 'volt',
+        'ember', 'volt',
     ];
 
     // FIX 4 — industry keyword deny-list. If a generated service title
@@ -390,12 +390,12 @@ class ArthurService
         'legal'           => ['label' => 'Legal',           'category' => 'universal',         'aliases' => ['privacy', 'privacy_policy', 'terms', 'terms_of_service'],              'industries' => ['*'],                                                                                                                                                                                    'description' => "Privacy policy / Terms of service skeleton."],
 
         // ─── Bookings + events (D-2) ────────────────────────────────
-        'booking'         => ['label' => 'Booking / Appointments', 'category' => 'bookings_events', 'aliases' => ['book', 'book_now', 'appointments', 'reservations', 'reserve'],     'industries' => ['aesthetic_clinic', 'dental', 'medical_clinic', 'beauty_salon', 'barbershop', 'gym', 'hotel', 'resort', 'restaurant', 'cafe', 'event_venue', 'training_center', 'tutoring'],            'description' => "Hero + booking_form (service picker, date+time, contact fields) + features + FAQ + footer."],
-        'events'          => ['label' => 'Events / Classes',       'category' => 'bookings_events', 'aliases' => ['event', 'classes', 'schedule', 'whats_on'],                        'industries' => ['event_venue', 'training_center', 'online_courses', 'hotel', 'resort', 'cafe', 'restaurant', 'gym', 'news_channel'],                                                                       'description' => "Hero + events_calendar (grid/list of upcoming sessions) + CTA + footer."],
+        'booking'         => ['label' => 'Booking / Appointments', 'category' => 'bookings_events', 'aliases' => ['book', 'book_now', 'appointments', 'reservations', 'reserve'],     'industries' => ['*'],            'description' => "Hero + booking_form (service picker, date+time, contact fields) + features + FAQ + footer."],
+        'events'          => ['label' => 'Events / Classes',       'category' => 'bookings_events', 'aliases' => ['event', 'classes', 'schedule', 'whats_on'],                        'industries' => ['event_venue', 'training_center', 'online_courses', 'hotel', 'resort', 'cafe', 'restaurant', 'gym', 'news_channel', 'pet_services', 'childcare', 'tutoring', 'beauty_salon', 'barbershop', 'marketing_agency', 'consulting', 'it_services', 'aesthetic_clinic', 'dental', 'medical_clinic', 'retail_shop', 'ecommerce'],                                                                       'description' => "Hero + events_calendar (grid/list of upcoming sessions) + CTA + footer."],
 
         // ─── Listings (D-3) ─────────────────────────────────────────
-        'listing_browser' => ['label' => 'Listing browser',  'category' => 'listings',         'aliases' => ['listings', 'properties', 'rooms', 'products', 'shop', 'catalogue', 'catalog', 'inventory', 'fleet', 'courses', 'menu_browser'], 'industries' => ['real_estate_agency', 'short_term_rental', 'ecommerce', 'retail_shop', 'hotel', 'resort', 'automotive', 'online_courses', 'training_center', 'tutoring'],                              'description' => "Hero + filter_bar + grid of cards + cross-sell CTA. Industry-aware kind label (properties / rooms / products / vehicles / courses)."],
-        'listing_detail'  => ['label' => 'Listing detail',   'category' => 'listings',         'aliases' => ['property', 'product', 'room', 'course'],                               'industries' => ['real_estate_agency', 'short_term_rental', 'ecommerce', 'hotel', 'resort', 'automotive', 'online_courses'],                                                                              'description' => "Hero + key-detail features + gallery + trust signals + CTA + inquiry form + related listings."],
+        'listing_browser' => ['label' => 'Listing browser',  'category' => 'listings',         'aliases' => ['listings', 'properties', 'rooms', 'products', 'shop', 'catalogue', 'catalog', 'inventory', 'fleet', 'courses', 'menu_browser'], 'industries' => ['real_estate_agency', 'short_term_rental', 'ecommerce', 'retail_shop', 'hotel', 'resort', 'automotive', 'online_courses', 'training_center', 'tutoring', 'travel_agency', 'childcare'],                              'description' => "Hero + filter_bar + grid of cards + cross-sell CTA. Industry-aware kind label (properties / rooms / products / vehicles / courses)."],
+        'listing_detail'  => ['label' => 'Listing detail',   'category' => 'listings',         'aliases' => ['property', 'product', 'room', 'course'],                               'industries' => ['real_estate_agency', 'short_term_rental', 'ecommerce', 'hotel', 'resort', 'automotive', 'online_courses', 'travel_agency', 'childcare'],                                                                              'description' => "Hero + key-detail features + gallery + trust signals + CTA + inquiry form + related listings."],
         'locations'       => ['label' => 'Locations',        'category' => 'listings',         'aliases' => ['location', 'branches', 'find_us', 'store_finder', 'stores'],           'industries' => ['*'],                                                                                                                                                                                    'description' => "Hero + map with branch list + trust signals + CTA. Suits any tenant with physical presence."],
 
         // ─── Visual portfolios (D-4) ────────────────────────────────
@@ -486,6 +486,42 @@ class ArthurService
     //   - *_deep / *_dark variants → darkened shade of whatever the base
     //     would be for that name
     // Soft/muted variants are left alone to avoid inverted tonal ranges.
+    /**
+     * Content sections whose repeating items are all empty (blanked sample data with no LLM
+     * refill) — return their data-block ids so removeBlocks() drops them. Honest: no fake
+     * placeholder data, no empty band. Structural / form / image-driven sections are never
+     * stripped (they don't rely on blank-able text items).
+     */
+    private function emptyContentBlocksToRemove(string $industrySlug, array $variables): array
+    {
+        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower($industrySlug));
+        $path = storage_path("templates/{$slug}/template.html");
+        if (!is_file($path)) return [];
+        $html = file_get_contents($path);
+        $deny = ['nav','header','footer','hero','contact','contact_form','booking','cta','announcement','map','gallery','inventory','featured_vehicles','menu','travel_quiz'];
+        if (!preg_match_all('/data-block="([a-z0-9_]+)"/', $html, $m, PREG_OFFSET_CAPTURE)) return [];
+        $names = $m[1]; $n = count($names); $out = [];
+        $filled = function ($k) use ($variables) { return trim((string) ($variables[$k] ?? '')) !== ''; };
+        for ($i = 0; $i < $n; $i++) {
+            $block = $names[$i][0];
+            if (in_array($block, $deny, true)) continue;
+            $start = $names[$i][1];
+            $end   = ($i + 1 < $n) ? $names[$i + 1][1] : strlen($html);
+            $chunk = substr($html, $start, $end - $start);
+            if (!preg_match_all('/data-field="([a-z0-9_]+)"/', $chunk, $fm)) continue; // no text fields -> decorative/static, leave
+            $fields = array_values(array_unique($fm[1]));
+            $itemFields = array_values(array_filter($fields, function ($fld) { return preg_match('/_\d+_/', $fld); }));
+            if (!empty($itemFields)) {
+                $anyItem = false; foreach ($itemFields as $fld) { if ($filled($fld)) { $anyItem = true; break; } }
+                if (!$anyItem) $out[] = $block; // showcase with zero real items
+            } else {
+                $any = false; foreach ($fields as $fld) { if ($filled($fld)) { $any = true; break; } }
+                if (!$any) $out[] = $block; // every field empty
+            }
+        }
+        return $out;
+    }
+
     private function applyBrandColors(array &$variables, array $manifest, ?array $colors): void
     {
         if (empty($colors) || !is_array($colors)) return;
@@ -496,6 +532,14 @@ class ArthurService
         // the dominant colour of the whole site and buried the owner's primary.
         $accent    = $this->normalizeHex($colors['accent']    ?? null) ?? $primary ?? $secondary;
         if (!$primary && !$secondary && !$accent) return;
+        // COLOUR THEMES (2026-09-05): whatever reaches the paint step — theme, logo palette, typed hex, named colour —
+        // is made readable first: white text on the primary at WCAG AA (4.5:1), on the accent at 3:1, neon tamed.
+        // Hue is kept; only lightness/saturation move, and only as far as they must. Boss Mac's #FF00FF → #E31CE3.
+        $hz = \App\Engines\Builder\Support\ColorTheme::harmonise(['primary' => $primary, 'secondary' => $secondary, 'accent' => $accent]);
+        if (!empty($hz['adjusted'])) Log::info('[Arthur] brand colours harmonised for contrast', $hz['adjusted']);
+        $primary   = $hz['primary'];
+        $secondary = $hz['secondary'];
+        $accent    = $hz['accent'] ?? $primary ?? $secondary;
         $primaryDeep = $primary ? $this->darkenHex($primary, 12) : null;
         $accentDeep  = $accent  ? $this->darkenHex($accent,  12) : null;
 
@@ -520,12 +564,37 @@ class ArthurService
                 $variables[$name] = $isDeep ? ($accentDeep ?? $accent) : $accent;
             }
         }
+        // COLOR-ROLES (2026-09-05): map brand colours onto THIS template's ACTUAL palette
+        // vars, declared per-template in manifest.color_roles. Fixes templates whose accent
+        // isn't in ACCENT_VAR_NAMES (terra/copper/red/sky/coral/teal/…) and keeps a two-accent
+        // template's secondary distinct instead of collapsing everything to one accent.
+        // Runs AFTER the generic loop so the correct role assignment wins.
+        $roles = $manifest['color_roles'] ?? null;
+        if (is_array($roles)) {
+            if (!empty($roles['accent'])) {
+                $variables[$roles['accent']] = $accent;
+                if (!empty($roles['accent_deep'])) $variables[$roles['accent_deep']] = $accentDeep ?? $accent;
+            }
+            if (!empty($roles['secondary'])) {
+                $variables[$roles['secondary']] = $secondary ?? $accent;
+            }
+        }
+
         // Ensure the canonical trio is explicitly set for downstream CSS
         // regardless of whether the template's manifest declares them.
         if ($primary)       $variables['primary_color']   = $primary;
         if ($secondary)     $variables['secondary_color'] = $secondary;
         if ($accent)        $variables['accent_color']    = $accent;
         if ($primaryDeep)   $variables['primary_deep']    = $primaryDeep;
+        // Hero-overlay tint follows the brand: a dark version of the primary as "r,g,b", used by
+        // templates whose hero gradient was a hardcoded off-brand colour (pet_services teal, it_services cyan).
+        $ovBase = $primary ?? $accent;
+        if ($ovBase) {
+            $ovHex = ltrim($this->darkenHex($ovBase, 55), '#');
+            if (strlen($ovHex) === 6) {
+                $variables['hero_overlay_rgb'] = hexdec(substr($ovHex,0,2)) . ',' . hexdec(substr($ovHex,2,2)) . ',' . hexdec(substr($ovHex,4,2));
+            }
+        }
     }
 
     // FIX 1 — server-side color scanner (mirrors _arthurExtractColors in JS).
@@ -592,6 +661,9 @@ class ArthurService
     //
     // Longest-match-wins (sorted by key length in resolveTemplateSlug).
     private const KEYWORD_TO_TEMPLATE = [
+        // PET (2026-09-05): a pet shop/store is a pet business — 'shop' alone was winning → retail_shop boutique.
+        'pet shop' => 'pet_services', 'pet store' => 'pet_services', 'petshop' => 'pet_services', 'pet supplies' => 'pet_services',
+        'pet services' => 'pet_services', 'pet services and retail' => 'pet_services', 'pets' => 'pet_services',
         // Medical / health (Bico Plastic Surgery → aesthetic_clinic)
         'plastic surgery'        => 'aesthetic_clinic',
         'cosmetic surgery'       => 'aesthetic_clinic',
@@ -862,11 +934,34 @@ class ArthurService
      * template until dedicated manifests are authored. retail_shop/ecommerce have no commerce
      * template yet — consulting is the least-wrong NON-MEDICAL interim (tracked for authoring).
      */
+    /**
+     * 2026-09-10 — RE-INSTATED. This map was emptied on 2026-09-05 with the note "all templates now
+     * serve their own file". That is not true, and the customer-visible result was a restaurant site
+     * built out of a dental clinic: circular .cert-check trust badges, a --medical-deep / --sage-soft
+     * palette, and 38 occurrences of "medical" against one of "chef" (website 669).
+     *
+     * Measured on disk, 2026-09-10 — these nine carry ~147 medical words, 7 cert-check circles each,
+     * and file sizes within 30 bytes of one another, i.e. the same dental file under nine names:
+     *   catering ecommerce online_courses resort restaurant retail_shop short_term_rental
+     *   travel_agency tutoring
+     * The four targets below are genuinely distinct files (cafe 44.6 KB / 1 medical word, hotel 49.2 KB,
+     * training_center 44.7 KB, consulting 45.5 KB, none with a cert-check).
+     *
+     * This is an INTERIM correctness guard, exactly as it was when F-ARTHUR-D-TEMPLATES first found the
+     * clones: an adjacent, honest template beats a dental clinic with the words swapped. It should be
+     * removed only when each industry has a real template of its own — verified by reading the files,
+     * not by assuming the work was done.
+     */
     private const CLONE_OVERRIDE = [
-        'restaurant' => 'cafe', 'catering' => 'cafe',
-        'resort' => 'hotel', 'short_term_rental' => 'hotel', 'travel_agency' => 'hotel',
-        'tutoring' => 'training_center', 'online_courses' => 'training_center',
-        'retail_shop' => 'consulting', 'ecommerce' => 'consulting',
+        'restaurant'        => 'cafe',
+        'catering'          => 'cafe',
+        'resort'            => 'hotel',
+        'short_term_rental' => 'hotel',
+        'travel_agency'     => 'hotel',
+        'tutoring'          => 'training_center',
+        'online_courses'    => 'training_center',
+        'retail_shop'       => 'consulting',
+        'ecommerce'         => 'consulting',
     ];
 
     private function resolveTemplateSlug(string $industry): string
@@ -982,9 +1077,81 @@ class ArthurService
     //
     // Returns up to ~20 distinct URLs so injectImagesToTemplate can fill
     // every image slot in the template even with no uploaded images.
-    private function buildImagePool(string $industry, int $wsId): array
+    /**
+     * EV-1000 (2026-09-12): the platform library is tagged by BASE industry (real_estate_broker, hospitality, medical …)
+     * while a build carries a template directory name (estate_frontage). An exact JSON_CONTAINS on that name matched
+     * nothing for every design variant, so the pool fell through to random photos from other industries and the
+     * gallery to the hero repeated. This returns the tag prefixes that describe the business: the manifest's declared
+     * industry, the template slug, the copy industry, and their photo families. Matched as LIKE '%"<prefix>%'.
+     */
+    public static function galleryTagFamily(string ...$keys): array
+    {
+        static $fam = [
+            'real_estate_agency' => ['real_estate', 'luxury_interior', 'building'],
+            'real_estate_broker' => ['real_estate', 'luxury_interior', 'building'],
+            'interior_design'    => ['interior_design', 'luxury_interior', 'real_estate_broker'],
+            'architecture'       => ['architecture', 'construction', 'building', 'skyline'],
+            'construction'       => ['construction', 'building', 'project'],
+            'home_services'      => ['home_services', 'construction', 'luxury_interior'],
+            'hotel'              => ['hotel', 'hospitality', 'resort', 'room'],
+            'resort'             => ['resort', 'hospitality', 'nature'],
+            'short_term_rental'  => ['short_term_rental', 'hospitality', 'luxury_interior'],
+            'event_venue'        => ['event_venue', 'hospitality', 'catering', 'luxury_interior'],
+            'travel_agency'      => ['travel_agency', 'nature', 'resort'],
+            'restaurant'         => ['restaurant', 'food', 'catering'],
+            'cafe'               => ['cafe', 'food', 'restaurant'],
+            'catering'           => ['catering', 'food', 'restaurant'],
+            'retail_shop'        => ['retail_shop', 'retail', 'ecommerce'],
+            'ecommerce'          => ['ecommerce', 'retail'],
+            'it_services'        => ['it_services', 'technology', 'office'],
+            'marketing_agency'   => ['marketing_agency', 'technology', 'office'],
+            'consulting'         => ['consulting', 'office', 'technology'],
+            'finance'            => ['finance', 'office', 'technology'],
+            'logistics'          => ['logistics', 'vehicle', 'office'],
+            'automotive'         => ['automotive', 'vehicle'],
+            'gym'                => ['gym', 'fitness'],
+            'training_center'    => ['training_center', 'education', 'fitness'],
+            'tutoring'           => ['tutoring', 'education'],
+            'online_courses'     => ['online_courses', 'education'],
+            'childcare'          => ['childcare', 'education'],
+            'medical_clinic'     => ['medical_clinic', 'medical'],
+            'dental'             => ['dental', 'medical'],
+            'aesthetic_clinic'   => ['aesthetic_clinic', 'medical', 'wellness', 'luxury_interior'],
+            'wellness'           => ['wellness', 'medical', 'nature', 'luxury_interior'],
+            'beauty_salon'       => ['beauty_salon', 'wellness', 'luxury_interior'],
+            'barbershop'         => ['barbershop', 'beauty_salon', 'luxury_interior'],
+            'pet_services'       => ['pet_services'],
+            'photography'        => ['photography', 'portfolio'],
+            'news_channel'       => ['news_channel', 'office', 'technology'],
+        ];
+        $tags = [];
+        foreach ($keys as $k) {
+            $k = preg_replace('/[^a-z0-9_]/', '', strtolower(trim((string) $k)));
+            if ($k === '') continue;
+            $tags[] = $k;
+            $base = $k;
+            while (!isset($fam[$base]) && ($p = strrpos($base, '_')) !== false) $base = substr($base, 0, $p);
+            if (isset($fam[$base])) { $tags[] = $base; foreach ($fam[$base] as $t) $tags[] = $t; }
+        }
+        return array_values(array_unique($tags));
+    }
+
+    /** ORDER BY clause: rows tagged with an earlier family entry sort first; ties are random. Tags are slug-safe. */
+    public static function tagPriorityOrder(array $tags): string
+    {
+        $case = 'CASE';
+        foreach (array_values($tags) as $i => $t) {
+            $t = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $t));
+            if ($t === '') continue;
+            $case .= " WHEN tags LIKE '%\"" . $t . "%' THEN " . $i;
+        }
+        return $case . ' ELSE 99 END, RAND()';
+    }
+
+    private function buildImagePool(string $industry, int $wsId, array $tagFamily = []): array
     {
         $pool = [];
+        $tags = $tagFamily !== [] ? $tagFamily : [$industry];
         try {
             // Tier 1 — workspace's own uploads tagged with the industry
             $rows = \Illuminate\Support\Facades\DB::table('media')
@@ -997,32 +1164,22 @@ class ArthurService
                 ->pluck('url')->toArray();
             foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
 
-            // Tier 2 — platform-asset images tagged with this industry
+            // Tier 2 — platform-asset images tagged with this industry FAMILY (EV-1000: the exact-name match found
+            // nothing for a design variant such as estate_frontage)
             if (count($pool) < 15) {
                 $rows = \Illuminate\Support\Facades\DB::table('media')
                     ->where('is_platform_asset', 1)
                     ->where('asset_type', 'image')
                     ->whereNotNull('url')
                     ->where('url', '!=', '')
-                    ->whereRaw('JSON_CONTAINS(tags, ?)', ['"' . $industry . '"'])
-                    ->inRandomOrder()
+                    ->where(function ($q) use ($tags) { foreach ($tags as $t) $q->orWhere('tags', 'like', '%"' . $t . '%'); })
+                    ->orderByRaw(self::tagPriorityOrder($tags))
                     ->limit(15)->pluck('url')->toArray();
                 foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
             }
 
-            // Tier 3 — generic platform-asset template/hero images (any
-            // industry) as a last-resort floor so empty slots aren't blank.
-            if (count($pool) < 8) {
-                $rows = \Illuminate\Support\Facades\DB::table('media')
-                    ->where('is_platform_asset', 1)
-                    ->where('asset_type', 'image')
-                    ->whereIn('category', ['template_image', 'hero'])
-                    ->whereNotNull('url')
-                    ->where('url', '!=', '')
-                    ->inRandomOrder()
-                    ->limit(8)->pluck('url')->toArray();
-                foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
-            }
+            // Tier 3 (any industry) was REMOVED on 2026-09-12 (EV-1000): a gym photo on a realty site is worse than
+            // the slot's own default. injectImagesToTemplate() leaves unfilled slots on their floor.
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[Arthur] buildImagePool query failed: ' . $e->getMessage());
         }
@@ -1049,6 +1206,8 @@ class ArthurService
             if ($type !== 'image') continue;
             if ($varKey === 'logo_url' && !$logoUploadOptIn) continue;
             if ($varKey === 'og_image') continue; // handled separately
+            // DEFAULT TEAM AVATARS (2026-09-06): a person slot never takes a room/gallery photo from the pool — render() gives it an avatar.
+            if (\App\Engines\Builder\Services\TemplateService::personSlotFor((string) $varKey) !== null) continue;
             $current = $variables[$varKey] ?? '';
             $isFloor = ($current === '' || $current === null
                 || ($heroDefaultUrl && $current === $heroDefaultUrl));
@@ -1068,7 +1227,7 @@ class ArthurService
         } else {
             $i = 0;
             foreach ($needFill as $varKey) {
-                $variables[$varKey] = $pool[$i % count($pool)];
+                $variables[$varKey] = self::cropPoolImageForSlot($pool[$i % count($pool)], (string) $varKey); // CROP TOOL 2026-09-06
                 $i++;
             }
         }
@@ -1194,6 +1353,12 @@ class ArthurService
     {
         $haystack = strtolower(trim(($raw ?? '') . ' ' . $message));
         if ($haystack === '') return $raw;
+        // E2E-2 (2026-09-05): the user's own words are the strongest signal ("pet shop" -> pet_services, longest
+        // keyword wins over "shop"); a raw value that already IS one of the 31 templates passes through untouched.
+        $confident = $this->confidentSlugFromText($message);
+        if ($confident !== null) return $confident;
+        $rawSlug = strtolower(trim((string) $raw));
+        if ($rawSlug !== '' && preg_match('/^[a-z_]+$/', $rawSlug) && $this->templates->getManifest($rawSlug)) return $rawSlug;
         $keys = array_keys(self::INDUSTRY_MAP);
         usort($keys, fn($a, $b) => strlen($b) - strlen($a));
         foreach ($keys as $kw) {
@@ -1210,31 +1375,33 @@ class ArthurService
     // BUG 1 FIX — build the all-fields confirmation bubble shown once the
     // first rich message extraction completes. Only includes non-empty
     // fields, so a user who didn't mention e.g. pages won't see an empty
-    // "📄 Pages:" line.
+    // "Pages:" line.
     private function buildConfirmationMessage(array $s): string
     {
         $name = $s['business_name'] ?? 'your business';
         $lines = ["Got it! Here's what I have:\n"];
-        $lines[] = "🏢 Business: " . $name;
+        $lines[] = "Business: " . $name;
 
         if (!empty($s['colors']) && is_array($s['colors'])) {
             $cp = $s['colors']['primary']   ?? null;
             $cs = $s['colors']['secondary'] ?? null;
             $cc = $s['colors']['accent']    ?? null;
             $clist = array_values(array_filter([$cp, $cs, $cc]));
-            if ($clist) $lines[] = "🎨 Colors: " . implode(' + ', $clist);
+            if ($clist) $lines[] = "Colours: " . implode(' + ', $clist);
         }
-        if (!empty($s['location']))      $lines[] = "📍 Location: " . $s['location'];
+        if (!empty($s['location']))      $lines[] = "Location: " . $s['location'];
         if (!empty($s['services'])) {
             $svc = is_array($s['services']) ? implode(', ', $s['services']) : (string)$s['services'];
-            $lines[] = "🛠 Services: " . $svc;
+            $lines[] = "Services: " . $svc;
         }
-        if (!empty($s['target_market'])) $lines[] = "👥 Target: " . $s['target_market'];
+        if (!empty($s['target_market'])) $lines[] = "Audience: " . $s['target_market'];
+        if (!empty($s['style']))         $lines[] = "Style: " . (is_array($s['style']) ? implode(', ', $s['style']) : (string) $s['style']);
+        if (!empty($s['fonts']) && is_array($s['fonts']) && array_filter($s['fonts'])) $lines[] = "Fonts: " . implode(' / ', array_filter($s['fonts']));
         if (!empty($s['pages'])) {
             $pgs = is_array($s['pages'])
                 ? implode(', ', array_map(fn($p) => ucfirst(strtolower((string)$p)), $s['pages']))
                 : (string)$s['pages'];
-            $lines[] = "📄 Pages: " . $pgs;
+            $lines[] = "Pages: " . $pgs;
         }
         $lines[] = "\nDoes this look right?";
         return implode("\n", $lines);
@@ -1274,7 +1441,7 @@ class ArthurService
     public function chat(int $workspaceId, string $userMessage, array $history = []): array
     {
         $systemPrompt = <<<'PROMPT'
-You are Arthur, an expert AI website builder for LevelUp Growth.
+You are Arthur, an expert AI website builder for LevelUpGrowth.
 You have a natural, warm conversation to understand a business
 then build them a professional website.
 
@@ -1286,7 +1453,8 @@ Through natural dialogue, learn:
 - What they do / industry
 - Location / who they serve
 - Main services or products
-- Style preference (modern, luxury, minimal, classic)
+- Style preference — modern, luxury, minimal, classic, or playful (bubbly/colorful/fun). Capture the customer's OWN words for style verbatim in build_data.style (e.g. "bubbly and colorful") — THIS IS APPLIED to typography, shape and colour.
+- Font preference (optional: a named Google font like Poppins/Montserrat, or a mood like "elegant serif") — APPLIED
 
 Rules:
 - Ask 1-2 questions at a time maximum
@@ -1303,7 +1471,7 @@ so they can review and optionally upload a logo. Return ONLY a JSON
 object with these fields:
   {"reply": "<summary message — see SUMMARY FORMAT below>",
    "ready_to_confirm": true,
-   "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","description":"..."}}
+   "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","fonts":{"display":"<named font or null>","body":"<named font or null>"},"description":"..."}}
 
 SUMMARY FORMAT — when ready_to_confirm is true, the "reply" field
 MUST be the following summary, translated into the user's language
@@ -1314,11 +1482,11 @@ Build. Your reply is just the recap:
 
 Here's what I have for your website:
 
-🏢 **Business:** {business name}
-📍 **Location:** {location}
-🎯 **Industry:** {industry}
-⚙️ **Services:** {services}
-🎨 **Style:** {style}
+**Business:** {business name}
+**Location:** {location}
+**Industry:** {industry}
+**Services:** {services}
+**Style:** {style}
 
 Add your logo, photos, and brand colors below — then I'll build it.
 
@@ -1375,7 +1543,9 @@ PROMPT;
             // keys depending on whether DeepSeek's response_format=json_object
             // succeeded in parsing or fell back to raw text. Cover all known
             // shapes so we never show an empty bubble.
-            $parsed = is_array($result['parsed'] ?? null) ? $result['parsed'] : [];
+            // E2E-1 (2026-09-05): the runtime sometimes wraps its answer as {"json":{...}} — peel it here too, or
+            // reply/ready_to_confirm/build_data are all missing and the conversation stalls.
+            $parsed = is_array($result['parsed'] ?? null) ? \App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($result['parsed']) : [];
             $reply  = (string) (
                 $parsed['reply']
                 ?? $parsed['response']
@@ -1496,6 +1666,282 @@ PROMPT;
      * Returns whatever generateWebsite returns: typically
      *   ['type' => 'website_created'|'error', 'website_id' => ?, 'website_url' => ?, 'message' => ?]
      */
+    /* ═══════════════════ DEC-0046 (2026-09-13) — PALETTES, LITERAL GRADIENTS, VERIFIED WRITES ═══════════════════ */
+
+    /**
+     * The curated palettes for THIS built site, each with the exact :root variables it would rewrite, so the
+     * editor can preview a palette instantly in the iframe and the apply step writes the very same map.
+     */
+    public function palettesFor(int $wsId, int $websiteId): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found', 'palettes' => []]; }
+        $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $industry = $this->siteIndustrySlug($site, $settings);
+        $style    = (string) ($tv['design_style'] ?? $settings['theme'] ?? '');
+        $isStatic = is_file(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $CT = \App\Engines\Builder\Support\ColorTheme::class;
+        $recommended = [];
+        foreach ($CT::propose($style ?: null, $industry ?: null, 4) as $t) { $recommended[] = (string) ($t['id'] ?? ''); }
+        $out = [];
+        foreach ($CT::all() as $key => $theme) {
+            $id = (string) ($theme['id'] ?? $key);
+            $out[] = [
+                'id' => $id, 'label' => (string) ($theme['label'] ?? ucwords(str_replace('_', ' ', $id))),
+                'primary' => $theme['primary'], 'secondary' => $theme['secondary'], 'accent' => $theme['accent'],
+                'bg' => $theme['bg'] ?? null, 'text' => $theme['text'] ?? null,
+                'recommended' => in_array($id, $recommended, true),
+                'vars' => $isStatic ? $this->themeVarsForSite($websiteId, $site, $settings, $theme) : [],
+            ];
+        }
+        usort($out, fn ($a, $b) => ((int) $b['recommended'] <=> (int) $a['recommended']));
+        return ['success' => true, 'current' => $tv['palette'] ?? null, 'is_static' => $isStatic, 'industry' => $industry,
+            'palettes' => $out, 'live' => $isStatic ? self::siteColorVars($websiteId) : []];
+    }
+
+    /**
+     * Apply a curated palette to a built site: snapshot → paint the template's own variables exactly as a
+     * build would → contrast guard → verify from the file → persist. Free of charge: no model is involved.
+     * On a verification miss the snapshot is put back and the answer says so.
+     */
+    public function applyPalette(int $wsId, int $websiteId, string $themeId, ?int $actorId = null): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found', 'message' => 'That website is not in this workspace.']; }
+        $theme = \App\Engines\Builder\Support\ColorTheme::find($themeId);
+        if (! $theme) { return ['success' => false, 'error' => 'unknown_palette', 'message' => 'That palette does not exist.']; }
+        $label    = (string) ($theme['label'] ?? ucwords(str_replace('_', ' ', $themeId)));
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $isStatic = is_file(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $editor   = app(ArthurEditService::class);
+        if ($isStatic) {
+            $vars = $this->themeVarsForSite($websiteId, $site, $settings, $theme);
+            if ($vars === []) { return ['success' => false, 'error' => 'no_palette_vars', 'message' => 'This design does not expose a colour palette I can switch.']; }
+            app(TemplateService::class)->snapshotToHistory($websiteId, 'palette');
+            $res = $editor->applyStyleColors($websiteId, $vars);
+            if ((int) ($res['applied'] ?? 0) === 0) {
+                return ['success' => false, 'error' => 'not_applied', 'message' => 'The palette did not match any colour on this site.', 'missed' => $res['missed'] ?? []];
+            }
+            self::writeContrastGuard($websiteId, $vars);
+            // Proof comes from the file, never from the reply.
+            $now = self::siteColorVars($websiteId);
+            $bad = [];
+            foreach ($vars as $k => $v) {
+                if (strtoupper((string) ($now[strtolower($k)] ?? '')) !== strtoupper((string) $v)) { $bad[] = $k; }
+            }
+            if ($bad !== []) {
+                app(TemplateService::class)->undoLatest($websiteId);
+                Log::warning('[Arthur] palette write did not verify; rolled back', ['website' => $websiteId, 'vars' => $bad]);
+                return ['success' => false, 'error' => 'verify_failed', 'message' => 'I could not switch the palette cleanly, so I put the site back exactly as it was.'];
+            }
+        } else {
+            $vars = ['primary' => $theme['primary'], 'secondary' => $theme['secondary'], 'accent' => $theme['accent']];
+            $res  = $editor->applyStyleColors($websiteId, $vars);
+        }
+        // Re-read: applyStyleColors mirrors the vars into template_variables; layer on top of that, not over it.
+        $tv = json_decode((string) (DB::table('websites')->where('id', $websiteId)->value('template_variables') ?: '{}'), true) ?: [];
+        $tv['palette']         = (string) ($theme['id'] ?? $themeId);
+        $tv['primary_color']   = $theme['primary'];
+        $tv['secondary_color'] = $theme['secondary'];
+        $tv['accent_color']    = $theme['accent'];
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        Log::info('[Arthur] palette applied', ['website' => $websiteId, 'palette' => $themeId, 'vars' => array_keys($vars), 'actor' => $actorId]);
+        return ['success' => true, 'palette' => (string) ($theme['id'] ?? $themeId), 'label' => $label,
+            'applied' => (int) ($res['applied'] ?? 0), 'vars' => $vars, 'credits' => 0,
+            'message' => "Switched to {$label}. Undo puts the old colours back."];
+    }
+
+    /**
+     * A theme painted onto THIS site's real :root variables, through the same painter every build uses
+     * (manifest color_roles + the industry accent names), so a palette switch looks exactly like a build
+     * with that palette would. Falls back to usage ranking for designs whose manifest names no palette var.
+     * @return array<string,string> --css-var => #HEX
+     */
+    private function themeVarsForSite(int $websiteId, object $site, array $settings, array $theme): array
+    {
+        $have = self::siteColorVars($websiteId);
+        if ($have === []) { return []; }
+        $manifest = $this->siteManifest($site, $settings);
+        $painted  = [];
+        $this->applyBrandColors($painted, $manifest, ['primary' => $theme['primary'], 'secondary' => $theme['secondary'], 'accent' => $theme['accent']]);
+        $vars = [];
+        foreach ($painted as $name => $hex) {
+            if (! is_string($hex) || ! preg_match('/^#[0-9A-Fa-f]{6}$/', $hex)) { continue; }
+            $css = '--' . str_replace('_', '-', (string) $name);
+            if (isset($have[$css])) { $vars[$css] = strtoupper($hex); }
+        }
+        if ($vars === []) {
+            $vars = self::mapRolesToSiteVars($websiteId, ['primary' => $theme['primary'], 'secondary' => $theme['secondary'], 'accent' => $theme['accent']]);
+        }
+        foreach (['--cf1' => 'accent', '--cf2' => 'secondary', '--cf3' => 'primary'] as $cf => $role) {
+            if (isset($have[$cf])) {
+                $vars[$cf] = strtoupper((string) $theme[$role]);
+                if (isset($have[$cf . 't'])) { $vars[$cf . 't'] = self::shiftLightness((string) $theme[$role], 1); }
+            }
+        }
+        return $vars;
+    }
+
+    private function siteManifest(object $site, array $settings): array
+    {
+        $ts = app(TemplateService::class);
+        foreach ([(string) ($settings['template'] ?? ''), (string) ($settings['industry'] ?? ''), (string) ($site->template_industry ?? ''), (string) ($site->template ?? '')] as $cand) {
+            if ($cand === '') { continue; }
+            $m = $ts->getManifest($cand);
+            if (is_array($m)) { return $m; }
+        }
+        return [];
+    }
+
+    private function siteIndustrySlug(object $site, array $settings): string
+    {
+        $ts = app(TemplateService::class);
+        foreach ([(string) ($settings['template'] ?? ''), (string) ($settings['industry'] ?? ''), (string) ($site->template_industry ?? ''), (string) ($site->template ?? '')] as $cand) {
+            if ($cand === '') { continue; }
+            $i = $ts->industryOf($cand);
+            if ($i !== '') { return $i; }
+        }
+        return '';
+    }
+
+    /**
+     * "gradient from deep green to gold on the buttons" → target + two hex stops (null stops = colours not named).
+     * @return array{target:string, from:?string, to:?string}|null  null when the request is not about a gradient
+     */
+    private function parseGradientAsk(string $request): ?array
+    {
+        $r = mb_strtolower($request);
+        if (! preg_match('/\bgradients?\b/', $r)) { return null; }
+        $target = 'hero';
+        if (preg_match('/\b(buttons?|ctas?|call[- ]to[- ]action)\b/', $r))                         { $target = 'buttons'; }
+        elseif (preg_match('/\bfooter\b/', $r))                                                     { $target = 'footer'; }
+        elseif (preg_match('/\b(nav|navbar|navigation|menu bar|header bar)\b/', $r))               { $target = 'nav'; }
+        elseif (preg_match('/\b(whole page|whole site|entire site|entire page|page background|site background|body)\b/', $r) && ! preg_match('/\bhero\b/', $r)) { $target = 'page'; }
+        $from = $to = null;
+        if (preg_match('/\b(?:from|of|between)\s+(.+?)\s+(?:to|and|into)\s+(.+?)(?:\s+(?:on|for|in|across|over|behind)\b|[.,!;]|$)/', $r, $m)) {
+            $from = self::styleHexLoose($m[1]);
+            $to   = self::styleHexLoose($m[2]);
+        }
+        if ($from === null || $to === null) {
+            $c = $this->scanColorsServerSide($request);
+            $from = $from ?? (isset($c['primary'])   ? self::styleHex((string) $c['primary'])   : null);
+            $to   = $to   ?? (isset($c['secondary']) ? self::styleHex((string) $c['secondary']) : null);
+        }
+        return ['target' => $target, 'from' => $from, 'to' => $to];
+    }
+
+    /** "deep green", "light gold", "forest green", "#1E5CFF" → a hex; darkness words shift lightness. */
+    private static function styleHexLoose(string $phrase): ?string
+    {
+        $p = trim((string) preg_replace('/\s+/', ' ', strtolower($phrase)));
+        $p = (string) preg_replace('/^(a|an|the|some)\s+/', '', $p);
+        if (preg_match('/^#[0-9a-f]{3}([0-9a-f]{3})?$/', $p)) { return strtoupper($p); }
+        $dir = 0;
+        if (preg_match('/^(deep|dark|darker|rich)\s+(.+)$/', $p, $m))                       { $dir = -1; $p = $m[2]; }
+        elseif (preg_match('/^(light|lighter|pale|soft|bright|pastel)\s+(.+)$/', $p, $m))   { $dir = 1;  $p = $m[2]; }
+        $hex = self::COLOR_MAP[$p] ?? null;
+        if ($hex === null) {
+            $w   = explode(' ', $p);
+            $hex = self::COLOR_MAP[end($w)] ?? null;
+            if ($hex !== null && in_array($w[0], ['forest', 'olive', 'midnight', 'deep', 'dark'], true)) { $dir = -1; }
+        }
+        if ($hex === null) { return null; }
+        return $dir === 0 ? strtoupper($hex) : self::shiftLightness($hex, $dir);
+    }
+
+    /** The CSS for one literal gradient, keyed by the part it paints; text is recoloured so it stays readable. */
+    private static function gradientRules(string $target, string $a, string $b): array
+    {
+        $g   = "linear-gradient(135deg,{$a} 0%,{$b} 100%)";
+        $ink = self::readableOnPair($a, $b);
+        switch ($target) {
+            case 'buttons':
+                return ['buttons' => ".btn-primary,.hero-cta,.nav-cta,.btn.primary,.btn-cta,.cta-btn,button[type=submit]{background-image:{$g}!important;background-color:{$a}!important;border-color:transparent!important;color:{$ink}!important}"];
+            case 'footer':
+                return ['footer' => "footer,.footer,[data-block=\"footer\"]{background-image:{$g}!important;background-color:{$a}!important;color:{$ink}!important} footer a,.footer a,footer p,footer li,footer h4,footer h3{color:inherit!important}"];
+            case 'nav':
+                return ['nav' => "nav,.nav,.navbar,[data-block=\"nav\"]{background-image:{$g}!important;background-color:{$a}!important} nav a,.nav a,.navbar a,.nav-links a,nav .logo,.nav .logo{color:{$ink}!important}"];
+            case 'page':
+                return ['page' => "body{background-image:linear-gradient(180deg,{$a} 0%,{$b} 100%)!important;background-attachment:fixed!important;background-color:{$a}!important}"];
+            default:
+                return ['hero' => ".hero,[data-block=\"hero\"],header.hero,section.hero{background-image:{$g}!important;background-color:{$a}!important}"
+                    . " .hero::before,.hero::after,[data-block=\"hero\"]::before,[data-block=\"hero\"]::after{background:none!important;background-image:none!important}"
+                    // Text that sits directly on the gradient: the copy column and the named hero text classes used across the
+                    // template library (hero-copy 54, lede 53, eyebrow 73, hero-trust-item 44 …). A lead/booking form card inside the
+                    // hero (.hero-form) keeps its own colours: it has its own background.
+                    . " .hero h1,.hero .hero-h1,.hero .hero-title,.hero .hero-name,[data-block=\"hero\"] h1,"
+                    . ".hero .lede,.hero .hero-sub,.hero .hero-subtitle,.hero .eyebrow,.hero .hero-eyebrow,.hero .hero-note,"
+                    . ".hero .hero-trust,.hero .hero-trust-item,.hero .hero-facts,.hero .hero-facts *,.hero .hero-band,"
+                    . ".hero .hero-copy,.hero .hero-copy p,.hero .hero-copy li,.hero .hero-copy span:not([class*=btn]),.hero .hero-copy a:not([class*=btn]),"
+                    . ".hero > .wrap > p,.hero > .shell > p,.hero > .hero-inner > p{color:{$ink}!important}"
+                    . " .hero .hero-title span{color:{$ink}!important;opacity:.85}"];
+
+        }
+    }
+
+    /** White must survive the LIGHTER stop and ink the DARKER one; whichever survives its worst case wins. */
+    private static function readableOnPair(string $a, string $b): string
+    {
+        $CT = \App\Engines\Builder\Support\ColorTheme::class;
+        try { $la = $CT::luminance($a); $lb = $CT::luminance($b); } catch (\Throwable $e) { return '#FFFFFF'; }
+        $lighter = $la >= $lb ? $a : $b;
+        $darker  = $la >= $lb ? $b : $a;
+        $white = self::contrastRatio('#FFFFFF', $lighter);
+        $ink   = self::contrastRatio('#111111', $darker);
+        if ($white >= 3.0) { return '#FFFFFF'; }
+        if ($ink >= 3.0)   { return '#111111'; }
+        return $white >= $ink ? '#FFFFFF' : '#111111';
+    }
+
+    /**
+     * Customer-specific rules (literal gradients) live in their own replaceable block after the design layer and
+     * are remembered in template_variables.design_extras, so a later restyle or palette switch does not erase
+     * them. Success is read back from every file, not assumed.
+     */
+    private static function writeDesignExtras(int $websiteId, array $rules, array &$tv): bool
+    {
+        $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+        foreach ($rules as $k => $css) { $extras[(string) $k] = (string) $css; }
+        $tv['design_extras'] = $extras;
+        $block = '<style id="lug-design-extras" data-owner="arthur">' . implode("\n", $extras) . '</style>';
+        $root  = storage_path("app/public/sites/{$websiteId}");
+        $files = glob("{$root}/*.html") ?: [];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $nested) { if (! str_contains($nested, '/.history/')) { $files[] = $nested; } }
+        $verified = 0;
+        foreach (array_values(array_unique($files)) as $file) {
+            $html = @file_get_contents($file);
+            if ($html === false) { continue; }
+            $new = preg_replace('~<style id="lug-design-extras"[^>]*>.*?</style>~is', $block, $html, 1, $n);
+            if ($n === 0) {
+                $new = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', $block . "\n</head>", $html) : $html . $block;
+            }
+            if ($new !== null && $new !== $html) { file_put_contents($file, $new); }
+            $chk = (string) @file_get_contents($file);
+            if (str_contains($chk, $block)) { $verified++; }
+        }
+        return $verified > 0;
+    }
+
+
+    /**
+     * COLOUR THEMES (2026-09-05): the curated themes that fit this business — style words + resolved template slug.
+     * Used by the confirm panel (route adds `themes` to the ready_to_confirm reply) and by the chat palette step.
+     */
+    public function themesFor(array $buildData, int $n = 4): array
+    {
+        try {
+            $raw  = (string) ($buildData['industry'] ?? '');
+            $slug = $raw !== '' ? $this->resolveTemplateSlug($raw) : '';
+            $nameSignal = $this->confidentSlugFromText((string) ($buildData['business_name'] ?? ''));
+            if ($nameSignal !== null) $slug = $nameSignal;
+            return \App\Engines\Builder\Support\ColorTheme::propose($buildData['style'] ?? null, $slug ?: null, $n);
+        } catch (\Throwable $e) {
+            return \App\Engines\Builder\Support\ColorTheme::propose($buildData['style'] ?? null, null, $n);
+        }
+    }
+
     public function buildFromChat(
         int $workspaceId,
         array $buildData,
@@ -1739,12 +2185,24 @@ PROMPT;
                 ];
             }
 
+            // COLOUR THEMES (2026-09-05): no brand colours and no logo palette → offer the three curated themes that fit
+            // the customer's style and industry, in the same card shape the chat already renders. Offered once.
+            if (empty($extracted['palette']) && empty($extracted['palettes_proposed']) && empty($extracted['themes_offered'])
+                && empty($extracted['colors']['primary']) && empty($extracted['colors']['secondary'])) {
+                $extracted['palettes_proposed'] = $this->themesFor($extracted, 3);
+                $extracted['palettes_source']   = 'themes';
+                $extracted['themes_offered']    = true;
+            }
             // T2 (2026-04-20) — if a palette was proposed but not confirmed,
             // hold here. palette_choice fires only when palettes[] is present.
-            if (!empty($extracted['palettes_proposed']) && empty($extracted['palette'])) {
+            // A customer who answers a theme offer by typing their own colours is not held (colors now present).
+            $themeHoldReleased = (($extracted['palettes_source'] ?? '') === 'themes') && !empty($extracted['colors']['primary']);
+            if (!empty($extracted['palettes_proposed']) && empty($extracted['palette']) && !$themeHoldReleased) {
                 return [
                     'type'     => 'palette_choice',
-                    'message'  => 'I found these colors in your logo. Which palette works for your brand?',
+                    'message'  => (($extracted['palettes_source'] ?? '') === 'themes')
+                        ? 'Which colour theme fits your brand? Each one is tuned for contrast and readability — or just tell me your own colours.'
+                        : 'I found these colors in your logo. Which palette works for your brand?',
                     'state'    => $extracted,
                     'palettes' => $extracted['palettes_proposed'],
                     'progress' => $this->getProgress($extracted),
@@ -1793,21 +2251,16 @@ You are Arthur, an AI website builder assistant. Extract EVERY business detail t
 Return a JSON object (include the word "json") with these keys. Use null for fields that are genuinely missing — do NOT invent data.
 
 - business_name: string
-- industry: one of [restaurant, interior_design, fitness, healthcare, legal, real_estate, fashion, technology, events, beauty]. IMPORTANT MAPPING:
-  * digital marketing / marketing agency / seo / web design / social media / advertising / it / software / app / saas / tech → "technology"
-  * law firm / lawyer / attorney / consulting → "legal"
-  * clinic / doctor / dental / hospital → "healthcare"
-  * gym / yoga / pilates / personal trainer → "fitness"
-  * salon / spa / barbershop → "beauty"
-  * restaurant / cafe / bistro → "restaurant"
-  * boutique / clothing / fashion → "fashion"
-  * interior / fit-out / joinery → "interior_design"
-  * property / real estate → "real_estate"
-  * wedding / events → "events"
+- industry: the ONE template slug that best matches what the business actually is, from this list:
+  [aesthetic_clinic, architecture, automotive, barbershop, beauty_salon, cafe, catering, childcare, construction, consulting, dental, ecommerce, event_venue, gym, home_services, hotel, interior_design, it_services, marketing_agency, medical_clinic, news_channel, online_courses, pet_services, real_estate_agency, resort, restaurant, retail_shop, short_term_rental, training_center, travel_agency, tutoring]
+  GUIDE: pet shop / pet store / grooming / vet / kennel → "pet_services" (NEVER beauty_salon, NEVER retail_shop) · salon / spa / nails / lashes → "beauty_salon" · barber → "barbershop" · botox / fillers / cosmetic / med spa → "aesthetic_clinic" · dentist → "dental" · doctor / clinic / physio → "medical_clinic" · gym / yoga / pilates / trainer → "gym" · restaurant / bistro / diner → "restaurant" · café / coffee / bakery → "cafe" · catering → "catering" · hotel → "hotel" · resort / beach club → "resort" · holiday home / airbnb → "short_term_rental" · travel / tours / visa → "travel_agency" · wedding / venue → "event_venue" · nursery / daycare / kids → "childcare" · school / courses online → "online_courses" · tutor → "tutoring" · training / academy / institute → "training_center" · property / realtor / broker → "real_estate_agency" · architect → "architecture" · interior / fit-out / joinery → "interior_design" · builder / contractor → "construction" · plumber / electrician / cleaning / AC / maintenance → "home_services" · car / garage / detailing / rental → "automotive" · digital marketing / seo / social media / ads / web design → "marketing_agency" · IT / software / saas / app → "it_services" · lawyer / accountant / advisory / agency (other) → "consulting" · online store / dropshipping → "ecommerce" · physical shop / boutique / retail → "retail_shop" · magazine / news / media → "news_channel".
+  If nothing fits, return the closest slug anyway — never invent a new label.
 - services: array of short strings (e.g. ["SEO","website design","social media","paid ads"])
 - location: string — ONLY a city/area the user actually wrote; if none was stated, return "" (never guess, never copy an example)
 - target_market: string (who the business serves — e.g. "small and medium sized businesses")
 - colors: object {primary: string|null, secondary: string|null} — named color or hex
+- style: the customer's OWN words about look, feel or mood (e.g. "bubbly and colorful", "luxury and elegant", "clean and minimal"), copied verbatim; null if they said nothing about design
+- fonts: object {display: string|null, body: string|null} — ONLY if the customer names a typeface (e.g. "use Poppins"); otherwise null
 - pages: array of page names if the user lists them (e.g. ["home","about","services","testimonials","blog","contact"])
 - tagline, hero_title (3-6 words, plain text), hero_subtitle, hero_cta (3-4 words), about_text_1, meta_description
 
@@ -1821,8 +2274,19 @@ PROMPT;
 
         try {
             $result = $this->runtime->chatJson($system, $userPrompt, ['task' => 'arthur_extract_all'], 1200);
-            if (($result['success'] ?? false) && is_array($result['parsed'] ?? null)) {
-                $parsed = $result['parsed'];
+            // E2E-1 (2026-09-05): the runtime sometimes wraps its answer as {"json":{...}} / {"data":{...}}. The
+            // envelope used to be merged as a key called "json" and the business name was never seen — Arthur
+            // asked "What's the name of your business?" three times to a message that opened with the name.
+            $parsed = ($result['success'] ?? false) && is_array($result['parsed'] ?? null)
+                ? \App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($result['parsed'])
+                : null;
+            if (is_array($parsed) && empty($parsed['business_name']) && empty($state['business_name'])) {
+                Log::warning('[Arthur] extractAllFields: model returned no business_name', ['keys' => array_keys($parsed)]);
+            }
+            if (!is_array($parsed)) {
+                Log::warning('[Arthur] extractAllFields: runtime returned no parseable JSON — regex fallback', ['error' => $result['error'] ?? null]);
+                $state = $this->simpleExtract($message, $state, $history);
+            } else {
                 foreach ($parsed as $k => $v) {
                     // Never overwrite with null/empty. Arrays must be non-empty
                     // to win over an existing value.
@@ -1848,6 +2312,14 @@ PROMPT;
             $firstWord = mb_strtolower(trim(preg_split('/[,\s]+/', $loc)[0] ?? ''));
             if ($firstWord === '' || !str_contains($hay, $firstWord)) {
                 $state['location'] = '';
+            }
+        }
+        // DESIGN DIRECTION safety net (2026-09-05): if the model dropped the mood words, take them from the
+        // conversation deterministically so "bubbly and colorful" can never be silently lost.
+        if (empty($state['style'])) {
+            $convo = $message . ' ' . implode(' ', array_map(fn($h) => is_array($h) ? (string) ($h['content'] ?? '') : (string) $h, (array) $history));
+            if (preg_match('/\b((?:\w+(?:\s+and\s+|\s*,\s*|\s+))?(?:bubbly|colou?rful|playful|fun|vibrant|cheerful|whimsical|luxury|luxurious|elegant|premium|upscale|sophisticated|modern|contemporary|sleek|bold|minimal|minimalist|clean|simple|airy|classic|traditional|timeless|heritage)(?:\s+and\s+\w+)?)\b/iu', $convo, $sm)) {
+                $state['style'] = trim($sm[1]);
             }
         }
         $state['ready'] = !empty($state['business_name']) && !empty($state['industry']);
@@ -1886,7 +2358,7 @@ PROMPT;
             $result = $this->runtime->chatJson($system, $userPrompt, ['task' => 'arthur_extract'], 800);
             if (($result['success'] ?? false) && is_array($result['parsed'] ?? null)) {
                 // Merge with existing state (don't overwrite with nulls)
-                $parsed = $result['parsed'];
+                $parsed = \App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($result['parsed']);
                 foreach ($parsed as $k => $v) {
                     if ($v !== null && $v !== '') {
                         $state[$k] = $v;
@@ -2023,7 +2495,58 @@ PROMPT;
      * ArchitectureInvariantTest hold this permanently.
      */
 
+    /**
+     * DEC-0045 (2026-09-11): the first draft is a priced act — BuilderCapabilities::pricing()['draft'] credits
+     * (10). Reserved before a single model call, committed only when the build reports 'complete', released on
+     * any other outcome (plan-limit error, template failure, exception). A workspace that cannot cover it is told
+     * the price and its balance; nothing is generated and nothing is charged. Trial credits are already in the
+     * balance at this point (granted at signup), so the 50-credit trial reads 40 after its first draft.
+     */
     private function generateWebsite(int $wsId, array $data, ?int $actorId = null): array
+    {
+        $price   = (int) (\App\Engines\Builder\Support\BuilderCapabilities::pricing()['draft'] ?? 10);
+        $credits = app(\App\Core\Billing\CreditService::class);
+        $resRef  = null;
+        if ($price > 0) {
+            try {
+                $resRef = $credits->reserve($wsId, $price, 'builder_arthur_draft');
+            } catch (\Throwable $e) {
+                $bal = [];
+                try { $bal = $credits->getBalance($wsId); } catch (\Throwable $ignored) {}
+                $available = (int) ($bal['available'] ?? 0);
+                Log::info('[Arthur] draft refused: insufficient credits', ['workspace_id' => $wsId, 'required' => $price, 'available' => $available]);
+                return [
+                    'type'                 => 'error',
+                    'message'              => "Building a website takes {$price} credits and this workspace has {$available}. Add credits or upgrade your plan, and I'll pick up exactly where we left off.",
+                    'insufficient_credits' => true,
+                    'credits_required'     => $price,
+                    'credits_available'    => $available,
+                ];
+            }
+        }
+        try {
+            $result = $this->generateWebsiteCore($wsId, $data, $actorId);
+        } catch (\Throwable $e) {
+            if ($resRef) { try { $credits->release($wsId, $resRef); } catch (\Throwable $ignored) {} }
+            throw $e;
+        }
+        if ($resRef) {
+            try {
+                if (($result['type'] ?? '') === 'complete') {
+                    $credits->commit($wsId, $resRef, $price);
+                    $result['credits_charged'] = $price;
+                    try { $result['credits_available'] = (int) ($credits->getBalance($wsId)['available'] ?? 0); } catch (\Throwable $ignored) {}
+                } else {
+                    $credits->release($wsId, $resRef);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[Arthur] draft credit settlement failed: ' . $e->getMessage(), ['workspace_id' => $wsId, 'ref' => $resRef]);
+            }
+        }
+        return $result;
+    }
+
+    private function generateWebsiteCore(int $wsId, array $data, ?int $actorId = null): array
     {
         // BUILDER888 fix: $actorId is the authenticated actor threaded from the caller
         // (buildFromChat). It was referenced below (created_by) but never declared here,
@@ -2082,7 +2605,19 @@ PROMPT;
         // which sent "Plastic Surgery" → null → restaurant. Now any
         // "plastic surgery" / "cosmetic clinic" / "med spa" maps to
         // aesthetic_clinic. Generic medical → medical_clinic. Etc.
-        $industry = $this->resolveTemplateSlug($rawIndustry);
+        // TEMPLATE SELECTOR (2026-09-11): the keyword resolver's answer is now the FALLBACK. The decision is
+        // made from the whole business — name, description, services, audience, location, style — against a
+        // catalogue of every live design, and it comes back with a reason and a confidence.
+        $keywordSlug = $this->resolveTemplateSlug($rawIndustry);
+        $tplSelection = ['template' => $keywordSlug, 'industry' => $keywordSlug, 'method' => 'keyword', 'confidence' => 0.0, 'reason' => '', 'alternatives' => [], 'keyword_slug' => $keywordSlug];
+        try {
+            $tplSelection = app(\App\Engines\Builder\Services\TemplateSelector::class)->select($data, $keywordSlug);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Arthur] template selector threw; keyword resolver used', ['error' => $e->getMessage()]);
+        }
+        // The clone safety net applies to the model's pick exactly as it applies to the keyword pick.
+        $industry = self::CLONE_OVERRIDE[$tplSelection['template']] ?? $tplSelection['template'];
+        \Illuminate\Support\Facades\Log::info('[Arthur] template selected', ['raw' => $rawIndustry] + $tplSelection + ['rendered_as' => $industry]);
 
         // PATCH (name-grounding, 2026-07-24) — The live chat() path hands
         // industry classification to a free-form LLM that has misrouted on
@@ -2093,7 +2628,8 @@ PROMPT;
         // LLM's guess. confidentSlugFromText() returns null when the text has
         // no real signal (so a signal-free name never overrides a good guess).
         $nameSignal = $this->confidentSlugFromText((string) $name);
-        if ($nameSignal !== null && $nameSignal !== $industry) {
+        // Only when the selector fell back to keywords: the model has already read the name.
+        if ($nameSignal !== null && $nameSignal !== $industry && ($tplSelection['method'] ?? 'keyword') === 'keyword') {
             \Illuminate\Support\Facades\Log::info('[Arthur] name-grounded industry override', [
                 'name'         => $name,
                 'llm_industry' => $rawIndustry,
@@ -2101,6 +2637,10 @@ PROMPT;
                 'name_slug'    => $nameSignal,
             ]);
             $industry = $nameSignal;
+            // E2E-3 (2026-09-05): the override is the decision. Leaving $data['industry'] as the LLM's guess made
+            // templateFits false downstream and borrowed a BEAUTY SALON hero for a pet shop built on pet_services.
+            $data['industry'] = $industry;
+            $rawIndustry = $industry;
         }
 
         $manifest = $this->templates->getManifest($industry);
@@ -2154,16 +2694,32 @@ PROMPT;
 
         // Generate content via LLM
         $variables = $this->generateContent($data, $industry);
+        if ($this->copyUnavailable !== null) {
+            // EV-1000: the writing model was unavailable for every attempt. A draft made of sample copy is not a
+            // draft; nothing has been persisted yet and the priced wrapper releases the reservation on 'error'.
+            Log::error('[Arthur] draft refused — writing model unavailable', ['workspace_id' => $wsId, 'error' => $this->copyUnavailable]);
+            return ['type' => 'error', 'message' => "The writing model is busy right now, so I haven't built anything and nothing has been charged. Please ask me to build it again in a minute.", 'retryable' => true];
+        }
 
         // PATCH (hero-context, 2026-07-24) — signals reused by hero resolution
         // (below). The text-coverage pass and demo-brand sweep intentionally run
         // LATER (after the manifest-default injection) so their neutralizations
         // are not overwritten by that re-defaulting step.
         $rawIndustry  = trim((string) ($data['industry'] ?? ''));
+        // SERVICES LIST (2026-09-05): chat() hands services over as ONE string ("Pet food, toys, accessories, grooming");
+        // handleMessage() as an array. Everything downstream (cards, copy, hero) wants a clean list.
+        $data['services'] = $this->normaliseServicesList($data['services'] ?? null);
         $servicesText = is_array($data['services'] ?? null)
             ? implode(', ', $data['services'])
             : (string) ($data['services'] ?? '');
-        $templateFits = ($rawIndustry === '') || ($this->confidentSlugFromText($rawIndustry) === $industry);
+        // TEMPLATE-FIT (2026-09-05): an exact template slug (e.g. 'travel_agency', 'it_services') obviously
+        // fits its own template — confidentSlugFromText() returned NULL for underscored slugs that match no
+        // keyword, which flipped templateFits to false, skipped the curated platform hero (findOrGenerate)
+        // and generated a junk hero on EVERY build (wasted image credits, office-desk travel heroes).
+        $rawSlug = preg_replace('/[^a-z0-9_]/', '', preg_replace('/[\s-]+/', '_', strtolower($rawIndustry)));
+        $templateFits = ($rawIndustry === '')
+            || ($rawSlug !== '' && $rawSlug === $industry)
+            || ($this->confidentSlugFromText($rawIndustry) === $industry);
         $copyIndustry = $templateFits ? $industry : $rawIndustry;
 
         // /* h2-arthur */ workspace brand colors via single resolver (was direct creative_brand_identities read)
@@ -2279,7 +2835,7 @@ PROMPT;
         // BUGFIX (hero-floor, 2026-07-24) — guarantee hero_image points to a file
         // that EXISTS. When generation times out (intermittent runtime 503) and no
         // applicable media is found, some manifests default to a missing file
-        // (e.g. beauty_salon → /storage/builder-heroes/beauty.jpg, which doesn't
+        // (e.g. beauty_salon → /storage/builder-heroes/beauty_salon.jpg, which doesn't
         // exist), rendering an empty hero. Fall back to the resolved template's
         // own builder-hero, then a guaranteed-present one.
         $heroCur = (string) ($variables['hero_image'] ?? '');
@@ -2307,27 +2863,45 @@ PROMPT;
         // if the library has nothing for this industry. ZERO new DALL-E
         // calls for gallery slots, ever.
         $galleryImages = [];
+        $heroFloor = $variables['hero_image'] ?? '';
         try {
+            // EV-1000 (2026-09-12): matched by industry FAMILY (see galleryTagFamily) — the exact-name match found
+            // nothing for a design variant and every slot became the hero. The hero itself is excluded.
+            $galleryTags = self::galleryTagFamily((string) (($manifest['industry'] ?? '') ?: ''), $industry, (string) ($copyIndustry ?? ''));
             $galleryImages = DB::table('media')
                 ->where('is_platform_asset', 1)
                 ->where('asset_type', 'image')
                 ->whereIn('category', ['template_image', 'hero', 'gallery'])
-                ->whereRaw('JSON_CONTAINS(tags, ?)', [json_encode($industry)])
+                ->where(function ($q) use ($galleryTags) { foreach ($galleryTags as $t) $q->orWhere('tags', 'like', '%"' . $t . '%'); })
                 ->whereNotNull('url')
                 ->where('url', '!=', '')
-                ->inRandomOrder()
+                ->where('url', '!=', (string) $heroFloor)
+                ->orderByRaw(self::tagPriorityOrder($galleryTags))
                 ->limit(11)
                 ->pluck('url')
+                ->unique()->values()
                 ->toArray();
+            Log::info('[Arthur] gallery library', ['tags' => $galleryTags, 'found' => count($galleryImages)]);
         } catch (\Throwable $e) {
             Log::warning('[Arthur] gallery library lookup failed: ' . $e->getMessage());
         }
-        // Fill gallery slots — library photos first, then repeat the hero
-        // for any leftover slot so no template variable is left empty.
-        $heroFloor = $variables['hero_image'] ?? '';
+        // Fill gallery slots — library photos first (cycled when the library is short), the hero only when the
+        // library has nothing at all for this family.
         for ($gi = 1; $gi <= 11; $gi++) {
-            $variables['gallery_image_' . $gi] = $galleryImages[$gi - 1]
-                ?? $heroFloor;
+            $variables['gallery_image_' . $gi] = $galleryImages !== [] ? $galleryImages[($gi - 1) % count($galleryImages)] : $heroFloor;
+        }
+        // EV-1000: the manifest's own gallery_1..N slots (31 templates ship them all defaulted to the hero) get
+        // DISTINCT library photos too; a slot already holding the customer's own photo is left alone.
+        if ($galleryImages !== [] && is_array($manifest['variables'] ?? null)) {
+            $gn = 0;
+            foreach ($manifest['variables'] as $gk => $gs) {
+                if (!preg_match('/^gallery_\d+$/', (string) $gk)) continue;
+                $curG = (string) ($variables[$gk] ?? '');
+                $defG = is_array($gs) ? (string) ($gs['default'] ?? '') : '';
+                if ($curG !== '' && $curG !== $defG && $curG !== $heroFloor) continue;
+                $variables[$gk] = $galleryImages[$gn % count($galleryImages)];
+                $gn++;
+            }
         }
 
 
@@ -2442,7 +3016,7 @@ PROMPT;
         // in the doctor_*_image, gallery_*_image slots — instead of the
         // hero leaking into every slot.
         try {
-            $imagePool = $this->buildImagePool($industry, $wsId);
+            $imagePool = $this->buildImagePool($industry, $wsId, self::galleryTagFamily((string) (($manifest['industry'] ?? '') ?: ''), $industry, (string) ($copyIndustry ?? '')));
             $this->injectImagesToTemplate(
                 $variables,
                 $manifestForImgs ?? ($this->templates->getManifest($industry) ?: []),
@@ -2476,10 +3050,22 @@ PROMPT;
         //   (2) DEMO-BRAND SWEEP — neutralize any field still carrying the
         //       template's demo brand (canonical/og URLs, sample e-mails, or
         //       "Summit Advisors is a…" prose) so no static template text renders.
+        // DESIGN DIRECTION (2026-09-05): Arthur collects `style` (and now `fonts`) — carry them into
+        // the variable set so TemplateService/BuilderRenderer apply the DesignStyle layer. Also parse
+        // explicit font mentions from the description so "use Poppins" is honoured.
+        $dsStyle = \App\Engines\Builder\Support\DesignStyle::normaliseStyle((string) ($data['style'] ?? $data['design_style'] ?? ''));
+        $dsFonts = is_array($data['fonts'] ?? null) ? $data['fonts'] : [];
+        $parsedFonts = \App\Engines\Builder\Support\DesignStyle::parseFonts((string) ($data['description'] ?? '') . ' ' . (string) ($data['style'] ?? ''));
+        $variables['design_style'] = $dsStyle ?? '';
+        $variables['font_display'] = (string) ($dsFonts['display'] ?? $dsFonts['heading'] ?? $parsedFonts['display'] ?? '');
+        $variables['font_body']    = (string) ($dsFonts['body'] ?? $parsedFonts['body'] ?? '');
+
         $variables = $this->fillTemplateTextCoverage(
             $variables, is_array($manifest) ? $manifest : [], $data,
             $copyIndustry, $servicesText, $data['location'] ?? 'Dubai', $established
         );
+        // SERVICE CARDS ARE ATOMIC (2026-09-05): title, description, icon and link of one card describe ONE service.
+        $variables = $this->reconcileServiceCards($variables, $data, is_array($manifest) ? $manifest : [], $industry);
 
         // PATCH (section-labels, 2026-07-24 · P2b) — the re-sectioned clone
         // templates carry a generic "services" block that IS the menu / catalog /
@@ -2566,6 +3152,9 @@ PROMPT;
         // T2 (2026-04-20) — if wizard collected a palette (from logo color
         // extraction), promote it into $data['colors'] so applyBrandColors
         // uses it. Also persist bg/text so templates with those vars pick up.
+        if (!empty($data['palette']) && is_string($data['palette'])) {
+            $data['palette'] = \App\Engines\Builder\Support\ColorTheme::find($data['palette']) ?? null;
+        }
         if (!empty($data['palette']) && is_array($data['palette'])) {
             $pal = $data['palette'];
             $data['colors'] = array_merge(
@@ -2631,6 +3220,31 @@ PROMPT;
                 }
             }
         } catch (\Throwable $e) { /* non-fatal */ }
+
+        // NEVER FABRICATE A PERSON (2026-09-05): unnumbered hero personnel-name fields
+        // (broker_name, agent_name, …) are the single-person identity of a personal-brand
+        // template. The LLM/manifest would otherwise ship an invented individual (e.g.
+        // "James Whitfield" / "Arthur Khalil"). Force them to the business name so the hero
+        // shows the real business; the owner edits to their own name in the editor.
+        try {
+            $heroPersonRx = '/^(broker|agent|realtor|doctor|dentist|physician|surgeon|therapist|'
+                . 'trainer|instructor|coach|attorney|lawyer|stylist|barber|nurse|advisor|consultant|'
+                . 'specialist|founder|principal|owner|host|chef)_name$/i';
+            $bizName = trim((string) ($data['business_name'] ?? $name));
+            if ($bizName !== '') {
+                foreach (($mfPeople['variables'] ?? []) as $mk => $mspec) {
+                    if (preg_match($heroPersonRx, (string) $mk)) { $variables[$mk] = $bizName; }
+                }
+            }
+        } catch (\Throwable $e) { /* non-fatal */ }
+
+        // Empty-content-block guard (2026-09-05): showcase sections whose repeating items
+        // (stat_N_*, project_N_*, client_N_*, result_N_*, …) were blanked by the no-static-text
+        // policy would otherwise render as empty bands. Drop any content section that has no
+        // real content — no fake data AND no empty section.
+        foreach ($this->emptyContentBlocksToRemove($industry, $variables) as $eb) {
+            if (!in_array($eb, $removeBlocks, true)) { $removeBlocks[] = $eb; }
+        }
 
         // RISK-0128 (2026-09-07, DEC-0041; moved before render() in RISK-0128e — the served HTML is rendered from these
         // variables HERE, so a guard placed after the render only corrected the stored row): the description that feeds the meta tag, og:description and the JSON-LD must be
@@ -2759,6 +3373,8 @@ PROMPT;
                     'industry'     => $industry,
                     'template'     => $industry,
                     'generated_by' => 'arthur',
+                    // Why this design: method, confidence, reasoning, runners-up. Auditable, and readable by Sarah.
+                    'template_selection' => $tplSelection,
                 ],
                 'pages'              => $pageSpecs,
                 'generation_meta'    => ['source' => 'arthur_wizard'],
@@ -2972,7 +3588,7 @@ PROMPT;
 
         return [
             'type' => 'complete',
-            'message' => "✅ Your website for **{$name}** is ready! I built it from scratch with a premium " . str_replace('_', ' ', $industry) . " design and generated all the copy for you. You can preview it, edit the text, or publish it right away.",
+            'message' => "Your website for **{$name}** is ready! I built it from scratch with a premium " . str_replace('_', ' ', $industry) . " design and generated all the copy for you. You can preview it, edit the text, or publish it right away.",
             'website_id' => $websiteId,
             'workspace_id' => $wsId, // P1 — the (possibly new) workspace this site lives in; FE switches to it
             'name' => $name,
@@ -2980,8 +3596,30 @@ PROMPT;
         ];
     }
 
-        private function generateContent(array $data, string $industry): array
+    /**
+     * EV-1000 (2026-09-12): every build copy call runs on the Runtime's synthesis lane (55 s provider budget instead of
+     * the interactive lane's ~12 s) with an explicit reasoning budget. DeepSeek V4 flash spends 1.3-3k reasoning
+     * tokens on a 35-field request; the Runtime's default budget of 2,000 was exhausted before the answer was
+     * written (DEEPSEEK_EMPTY_FINAL_CONTENT → reported as 429 rate_limited). Measured: 35 fields in 12.0 s with this.
+     */
+    private const BUILD_CALL_EXTRA = ['workload' => 'synthesis', 'reasoning_budget' => 6000];
+
+    /**
+     * EV-1000 (2026-09-12): CATALOGUE items — listings, rooms, menu dishes, plans, vehicles … — are the template's sample
+     * inventory. The model writes them as realistic SAMPLES in the local currency (even the short fields: price, badge,
+     * specs) and they are exempt from the facts sweep; the customer replaces them with real stock in the editor.
+     */
+    private const CATALOGUE_KEY = '/^(listing|property|room|menu|plan|vehicle|featured|special|area|product|package|course|class|dish|item)_\d+_(price|currency|badge|specs|beds|baths|sqft|sqm|size|location|title|name|meta|tag|detail)$/i';
+
+    /** EV-1000: variables that hold a FACT about the business (never generated, never sampled). $fm[2] = the kind. */
+    private const FACT_KEY = '/^(?!.*_label$)(?!.*_display$)(?!.*_icon$)(?!.*_link$)(?!.*_color$)(?!.*_green$)(.*(?:^|_))(price|fee|cost|rate|phone|whatsapp|fax|website|email)(?:_|$)/i';
+
+    /** EV-1000: set by generateContent() when the site-copy call failed even after the Runtime's retries. */
+    private ?string $copyUnavailable = null;
+
+    private function generateContent(array $data, string $industry): array
     {
+        $this->copyUnavailable = null;
         $name = $data['business_name'] ?? 'Our Business';
         $location = $data['location'] ?? '';  // ARTHUR-3 (2026-08-29): never invent a city
         // BUG 2 FIX — services may arrive as an array from extractAllFields();
@@ -3165,7 +3803,14 @@ PROMPT;
         // consultancy"). Anchor the copy on the STATED industry whenever the
         // template is a non-matching fallback; matched industries are unchanged.
         $rawIndustry  = trim((string) ($data['industry'] ?? ''));
-        $templateFits = ($rawIndustry === '') || ($this->confidentSlugFromText($rawIndustry) === $industry);
+        // TEMPLATE-FIT (2026-09-05): an exact template slug (e.g. 'travel_agency', 'it_services') obviously
+        // fits its own template — confidentSlugFromText() returned NULL for underscored slugs that match no
+        // keyword, which flipped templateFits to false, skipped the curated platform hero (findOrGenerate)
+        // and generated a junk hero on EVERY build (wasted image credits, office-desk travel heroes).
+        $rawSlug = preg_replace('/[^a-z0-9_]/', '', preg_replace('/[\s-]+/', '_', strtolower($rawIndustry)));
+        $templateFits = ($rawIndustry === '')
+            || ($rawSlug !== '' && $rawSlug === $industry)
+            || ($this->confidentSlugFromText($rawIndustry) === $industry);
         $copyIndustry = $templateFits ? $industry : $rawIndustry;
 
         $hint = $industryHints[$industry] ?? "Use {$industry}-appropriate content only. Do not generate content from a different industry.";
@@ -3216,13 +3861,33 @@ PROMPT;
                 . "Do NOT use content appropriate for any industry OTHER than {$copyIndustry}. "
                 . ($isFoodIndustry ? '' : "Do NOT mention cuisine, menus, dishes, kitchen, dining, or chefs anywhere — this is NOT a food business.");
 
-            $result = $this->runtime->chatJson(
-                "You are a professional website copywriter for a {$copyIndustry} business" . ($location !== '' ? " in {$location}" : '') . ". "
-                . "Never generate content from a different industry. Return only valid JSON with the word json.",
-                $prompt,
-                ['task' => 'arthur_copywrite'],
-                2000
-            );
+            // FAST FIRST DRAFT (2026-09-06): the copy call and the text-coverage chunks are independent — send them in one
+            // pooled round-trip. fillTemplateTextCoverage() consumes $this->prefetchedCoverage later.
+            $copySystem = "You are a professional website copywriter for a {$copyIndustry} business" . ($location !== '' ? " in {$location}" : '') . ". "
+                . "Never generate content from a different industry. Return only valid JSON with the word json.";
+            $poolCalls = ['content' => [$copySystem, $prompt, ['task' => 'arthur_copywrite'], 2000, self::BUILD_CALL_EXTRA]];
+            $this->prefetchedCoverage = [];
+            try {
+                $mfVars = is_array($manifest ?? null) ? ($manifest['variables'] ?? []) : [];
+                $cands  = $this->coverageCandidates(is_array($mfVars) ? $mfVars : [], []);
+                $estab  = \App\Engines\Builder\Support\TemplateArchetypes::looksEstablished($data);
+                foreach ($this->coverageChunkCalls($cands, (string) $name, $copyIndustry, $services, (string) $location, $estab) as $ck => $call) $poolCalls[$ck] = $call;
+            } catch (\Throwable $e) { Log::warning('[Arthur] coverage prefetch skipped: ' . $e->getMessage()); }
+            Log::info('[Arthur] pool start', ['calls' => array_keys($poolCalls), 'bytes' => strlen(json_encode($poolCalls))]);
+            $pooled = $this->runtime->chatJsonPool($poolCalls);
+            $result = $pooled['content'] ?? ['success' => false, 'error' => 'pool_missing_content'];
+            if (!($result['success'] ?? false)) {
+                // EV-1000: this used to fall through silently to the template's sample copy.
+                $rawErr = is_array($result['raw'] ?? null) ? array_intersect_key($result['raw'], array_flip(['error', 'message', 'stage', 'provider', 'retry_after_ms'])) : null;
+                Log::error('[Arthur] site copy call failed after retries', ['error' => $result['error'] ?? null, 'raw' => $rawErr]);
+                $this->copyUnavailable = (string) ($result['error'] ?? 'unknown');
+            }
+            foreach ($pooled as $ck => $pr) {
+                if ($ck === 'content' || !($pr['success'] ?? false) || !is_array($pr['parsed'] ?? null)) continue;
+                $pm = \App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($pr['parsed']);
+                foreach ($pm as $k => $v) { if (is_string($v) && trim($v) !== '') $this->prefetchedCoverage[(string) $k] = trim($v); }
+            }
+            Log::info('[Arthur] pooled generation', ['calls' => count($poolCalls), 'prefetched_fields' => count($this->prefetchedCoverage)]);
 
             if (($result['success'] ?? false) && is_array($result['parsed'] ?? null)) {
                 // BUILDER888 P1-8B (2026-08-10) — this is the provider boundary.
@@ -3291,6 +3956,173 @@ PROMPT;
         }
 
         return $cache[$slug] = $set;
+    }
+    /**
+     * SERVICE CARDS ARE ATOMIC (2026-09-05).
+     *
+     * Found on the Boss Mac Pet Shop E2E (site 615): the card titled "Pet Food" carried the grooming write-up,
+     * "Toys" carried the pet-food write-up, the icon letters read V / G / B (the template's demo Vet / Grooming /
+     * Boarding) and the links said "See vet services". Three sources were zipped by slot number: the customer's
+     * services list overwrote the titles (overlayUserServices), the model's descriptions stayed in the model's own
+     * order, and icon/link never left the manifest defaults. The customer's 4th service was then hidden by the
+     * blanket "hide slots 4-6" rule.
+     *
+     * This runs LAST, after every text field exists, and re-pairs each visible card so that all four fields
+     * describe the same service: the customer's services (in their order) own the titles; each title takes the
+     * existing description that actually mentions it (each used once), else a clean fallback; the icon follows the
+     * template's own scheme (letter initials or 01/02 numbering) derived from the title; a link still equal to the
+     * manifest demo label becomes "<verb> <service>". Slots beyond the customer's list are hidden, slots within it
+     * are shown — the customer's list is the truth, not the number 3.
+     */
+    /**
+     * SERVICES LIST (2026-09-05): a string like "Pet food, toys, accessories, and grooming" or "SEO / web design & ads"
+     * becomes ['Pet food','toys','accessories','grooming']. Arrays are cleaned the same way (an array of one comma string
+     * is split too). Order kept, duplicates dropped, max 6.
+     */
+    private function normaliseServicesList(mixed $services): array
+    {
+        $items = [];
+        foreach ((array) $services as $s) {
+            if (is_array($s)) $s = $s['title'] ?? $s['name'] ?? '';
+            if (!is_string($s) || trim($s) === '') continue;
+            $parts = preg_split('/\s*(?:,|;|\/|\||&|\band\b|\n)\s*/iu', $s) ?: [];
+            foreach ($parts as $p) {
+                $p = trim($p, " \t\n\r.-");
+                if ($p === '' || mb_strlen($p) > 60) continue;
+                $key = mb_strtolower($p);
+                if (!isset($items[$key])) $items[$key] = $p;
+            }
+        }
+        return array_slice(array_values($items), 0, 6);
+    }
+
+    private function reconcileServiceCards(array $variables, array $data, array $manifest, string $industry): array
+    {
+        try {
+            $declared = $this->declaredPlaceholders($industry);
+            $has = fn(string $k) => empty($declared) || isset($declared[$k]);
+            if (!$has('service_1_title')) return $variables;
+            $mvars = is_array($manifest['variables'] ?? null) ? $manifest['variables'] : $manifest;
+            $def = fn(string $k) => (string) ($mvars[$k]['default'] ?? '');
+
+            $slots = 0;
+            for ($i = 1; $i <= 6; $i++) { if ($has("service_{$i}_title")) $slots = $i; }
+            if ($slots === 0) return $variables;
+
+            $user = [];
+            foreach ((array) ($data['services'] ?? []) as $s) {
+                if (is_string($s) && trim($s) !== '') $user[] = ucwords(mb_strtolower(trim($s)));
+            }
+            $user = array_slice(array_values(array_unique($user)), 0, $slots);
+
+            $stop  = ['and','the','for','our','your','with','from','of','in','to','a','an','pet','pets','services','service','professional','premium'];
+            $stem  = fn(string $w) => preg_replace('/(ies|ing|es|s)$/', '', $w);
+            $tokens = function (string $t) use ($stop, $stem): array {
+                $out = [];
+                foreach (preg_split('/[^a-z0-9]+/', mb_strtolower($t)) ?: [] as $w) {
+                    if (strlen($w) >= 3 && !in_array($w, $stop, true)) $out[] = $stem($w);
+                }
+                return array_values(array_unique(array_filter($out)));
+            };
+            $name = trim((string) ($data['business_name'] ?? '')) ?: 'our team';
+            $loc  = trim((string) ($data['location'] ?? ''));
+
+            if (!empty($user)) {
+                $original = $variables;
+                // Pool of usable descriptions, whichever slot they sit in today.
+                $pool = [];
+                for ($i = 1; $i <= 6; $i++) {
+                    $t = trim((string) ($variables["service_{$i}_text"] ?? ''));
+                    if ($t === '' || str_contains($t, 'tailored to your business goals')) continue;
+                    if ($this->isCrossIndustryLeak($t, $industry)) continue;
+                    $pool[$i] = $t;
+                }
+                // Pass 1: every title claims the description that mentions it best (each description once).
+                $texts = array_fill(0, count($user), null);
+                foreach ($user as $idx => $title) {
+                    $tk = $tokens($title); $best = null; $bestScore = 0;
+                    foreach ($pool as $pi => $t) {
+                        $lt = mb_strtolower($t); $score = 0;
+                        foreach ($tk as $w) { if (str_contains($lt, $w)) $score++; }
+                        if ($score > $bestScore) { $bestScore = $score; $best = $pi; }
+                    }
+                    if ($best !== null) { $texts[$idx] = $pool[$best]; unset($pool[$best]); }
+                }
+                // Pass 2: a title nothing mentions gets a clean, honest line — never another service's write-up.
+                foreach ($user as $idx => $title) {
+                    if ($texts[$idx] !== null) continue;
+                    $texts[$idx] = "{$title} from {$name}" . ($loc !== '' ? " in {$loc}" : '')
+                        . " — chosen and delivered with care, so you get exactly what you came for.";
+                }
+                // Model cards the customer did not name, kept as intact title+text pairs, for slots the template
+                // cannot hide (most templates always lay out cards 1-3): a real suggested service beats a stale card.
+                $leftover = [];
+                for ($i = 1; $i <= 6; $i++) {
+                    $t = trim((string) ($original["service_{$i}_title"] ?? ''));
+                    $x = trim((string) ($original["service_{$i}_text"] ?? ''));
+                    if ($t === '' || $x === '' || in_array($t, $user, true) || in_array($x, $texts, true)) continue;
+                    if ($this->isCrossIndustryLeak($x, $industry)) continue;
+                    $leftover[] = [$t, $x];
+                }
+                for ($i = 1; $i <= 6; $i++) {
+                    $idx = $i - 1;
+                    if (isset($user[$idx])) {
+                        $variables["service_{$i}_title"]   = $user[$idx];
+                        $variables["service_{$i}_text"]    = $texts[$idx];
+                        $variables["service_{$i}_display"] = '';
+                    } elseif ($has("service_{$i}_display")) {
+                        $variables["service_{$i}_display"] = 'display:none';
+                    } elseif ($lo = array_shift($leftover)) {
+                        [$variables["service_{$i}_title"], $variables["service_{$i}_text"]] = $lo;
+                        $variables["service_{$i}_icon"] = $def("service_{$i}_icon"); // re-derived below from the new title
+                        $variables["service_{$i}_link"] = $def("service_{$i}_link");
+                    }
+                }
+            }
+
+            // Icon and link belong to the title of THEIR card. Template demo initials / labels never ship.
+            $d1 = $def('service_1_icon');
+            for ($i = 1; $i <= 6; $i++) {
+                $title = trim((string) ($variables["service_{$i}_title"] ?? ''));
+                if ($title === '') continue;
+                if ($has("service_{$i}_icon")) {
+                    $cur = trim((string) ($variables["service_{$i}_icon"] ?? ''));
+                    if ($cur === '' || $cur === $def("service_{$i}_icon")) {
+                        if (preg_match('/^\d{1,2}$/', $d1)) {
+                            $variables["service_{$i}_icon"] = str_pad((string) $i, strlen($d1), '0', STR_PAD_LEFT);
+                        } elseif (preg_match('/^[A-Z]{1,3}$/', $d1)) {
+                            // Single-letter scheme: the initial of the DISTINCTIVE word ("Pet Food" → F, "Pet Grooming" → G), so
+                            // three cards that all start with "Pet" do not all read P. Multi-letter scheme: initials of every word.
+                            $words = array_values(array_filter(preg_split('/\s+/', preg_replace('/[^A-Za-z0-9 ]/', '', $title)) ?: []));
+                            $distinct = array_values(array_filter($words, fn($w) => !in_array(mb_strtolower($w), $stop, true)));
+                            if (strlen($d1) === 1) {
+                                $pick = $distinct[0] ?? $words[0] ?? $title;
+                                $variables["service_{$i}_icon"] = strtoupper(substr($pick, 0, 1));
+                            } else {
+                                $ini = '';
+                                foreach ($words as $w) { $ini .= strtoupper($w[0]); }
+                                $variables["service_{$i}_icon"] = substr($ini, 0, 3) ?: strtoupper(substr($title, 0, 1));
+                            }
+                        }
+                    }
+                }
+                if ($has("service_{$i}_link")) {
+                    $cur = trim((string) ($variables["service_{$i}_link"] ?? ''));
+                    $d   = $def("service_{$i}_link");
+                    // A verb-style label ("See grooming") is a generated label, not copy: always re-derive it from THIS card's
+                    // title, so a label can never name another card's service. Custom copy ("Browse our food range") stays.
+                    $isLabel = ($cur === '' || $cur === $d || preg_match('/^(See|Explore|View|Discover|Visit)\b/i', $cur));
+                    if ($isLabel) {
+                        $verb = 'Explore';
+                        if ($d !== '' && preg_match('/^(See|Explore|View|Discover|Visit|Book)\b/i', $d, $vm)) $verb = ucfirst(strtolower($vm[1]));
+                        $variables["service_{$i}_link"] = $verb . ' ' . mb_strtolower($title);
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] reconcileServiceCards failed: ' . $e->getMessage());
+        }
+        return $variables;
     }
     private function overlayUserServices(array $vars, array $data): array
     {
@@ -3396,43 +4228,56 @@ PROMPT;
     // nothing applicable exists so the caller generates a fresh business hero.
     private function findApplicableHero(string $rawIndustry, string $services, int $wsId): ?array
     {
-        $tokens = array_values(array_filter(
-            preg_split('/[^a-z0-9]+/', mb_strtolower($rawIndustry . ' ' . $services)),
-            fn($t) => strlen($t) >= 4
-        ));
-        if (empty($tokens)) return null;
-        $tokens = array_slice(array_unique($tokens), 0, 8);
+        // HERO-SAFE (2026-09-05). The old version matched ANY image (asset_type 'image') by
+        // `category LIKE token` / `tags LIKE token`, workspace-first — so a pet shop whose services
+        // included "pet food" matched the SAME workspace's Chef Red dish photos (category 'food'),
+        // and shipped a broken restaurant image as its hero. Rules now:
+        //   1. Resolve the raw industry to the best-fit industry slug (keyword/pattern), then take
+        //      that industry's CURATED PLATFORM hero (the media library). Industry-matched, always exists.
+        //   2. Otherwise only a genuine category='hero' asset whose tags match, platform first,
+        //      and only if its file actually exists on disk.
+        //   3. Otherwise null — the caller keeps the resolved template's platform hero (already set).
+        $raw = trim($rawIndustry);
         try {
-            $row = DB::table('media')
-                ->whereIn('asset_type', ['hero', 'image'])
-                ->whereNotNull('url')->where('url', '!=', '')
-                ->where(function ($w) use ($tokens) {
-                    // BUGFIX (2026-07-24) — the media table has NO 'industry' column
-                    // (was erroring on every borrowed-template build). Match the raw
-                    // industry/service tokens against the JSON `tags` array instead.
-                    foreach ($tokens as $t) {
-                        $w->orWhere('tags', 'like', '%"' . $t . '"%')
-                          ->orWhere('category', 'like', '%' . $t . '%');
+            $best = $this->confidentSlugFromText($raw);
+            if (!$best) {
+                // fall through the coarse sector patterns used by resolveTemplateSlugInner
+                $inner = $this->resolveTemplateSlugInner($raw);
+                if ($inner !== '' && $this->templates->getManifest($inner)) $best = $inner;
+            }
+            if ($best) {
+                $hit = \App\Services\MediaService::findOrGenerate($best, 'hero', null, null); // platform-only
+                if ($hit && !empty($hit['url'])) {
+                    $p = $hit['path'] ?? '';
+                    if ($p === '' || is_file(storage_path('app/public/' . ltrim($p, '/')))) {
+                        Log::info('[Arthur] borrowed-template hero from platform library', ['raw' => $raw, 'industry' => $best, 'media_id' => $hit['id'] ?? null]);
+                        return ['id' => $hit['id'] ?? null, 'url' => $hit['url']];
                     }
-                })
-                ->where(function ($w) use ($wsId) {
-                    $w->where('workspace_id', $wsId)->orWhereNull('workspace_id');
-                })
-                ->orderByRaw('CASE WHEN workspace_id = ? THEN 0 ELSE 1 END', [$wsId])
-                ->orderByRaw("CASE WHEN asset_type = 'hero' THEN 0 ELSE 1 END")
-                ->first(['id', 'url']);
+                }
+            }
+            // Strict fallback: real hero assets only, tag match on meaningful tokens (>=3 chars), platform first.
+            $tokens = array_values(array_filter(array_unique(preg_split('/[^a-z0-9_]+/', mb_strtolower($raw . ' ' . $services))), fn($t) => strlen($t) >= 3 && !in_array($t, ['and','the','for','with','our','your','services','service','shop','store'], true)));
+            if (empty($tokens)) return null;
+            $tokens = array_slice($tokens, 0, 8);
+            $row = DB::table('media')
+                ->where('category', 'hero')
+                ->whereNotNull('url')->where('url', '!=', '')
+                ->where(function ($w) use ($tokens) { foreach ($tokens as $t) { $w->orWhere('tags', 'like', '%"' . $t . '"%'); } })
+                ->where(function ($w) use ($wsId) { $w->where('is_platform_asset', 1)->orWhere('workspace_id', $wsId); })
+                ->orderByDesc('is_platform_asset')->orderByDesc('created_at')
+                ->first(['id', 'url', 'path']);
             if ($row && !empty($row->url)) {
-                Log::info('[Arthur] applicable existing hero found for borrowed template', [
-                    'raw' => $rawIndustry, 'media_id' => $row->id,
-                ]);
-                return ['id' => $row->id, 'url' => $row->url];
+                $p = (string) ($row->path ?? '');
+                if ($p === '' || is_file(storage_path('app/public/' . ltrim($p, '/')))) {
+                    Log::info('[Arthur] applicable existing hero found for borrowed template', ['raw' => $raw, 'media_id' => $row->id]);
+                    return ['id' => $row->id, 'url' => $row->url];
+                }
             }
         } catch (\Throwable $e) {
             Log::warning('[Arthur] findApplicableHero failed: ' . $e->getMessage());
         }
         return null;
     }
-
     // PATCH (credibility-injection, 2026-07-24 · P3) — When a business is
     // established, map its REAL data (build_data.stats / clients / case_studies)
     // into the template's credibility variables so the kept blocks show the
@@ -3689,6 +4534,61 @@ PROMPT;
     // wrong-industry taglines/prose) can render. Skips colors/images/urls and
     // short structural labels (nav/menu/buttons), targets only unfilled content
     // prose. A deterministic net neutralizes anything the LLM still misses.
+    /** Coverage answers fetched in the same round-trip as the site copy (FAST FIRST DRAFT). key => text */
+    private array $prefetchedCoverage = [];
+
+    /** The text fields whose value is still the manifest sample (the coverage pass's work list). */
+    private function coverageCandidates(array $vars, array $variables): array
+    {
+        $skipKey = '/(image|img|photo|logo|url|color|colour|display|icon|bg|background|style|css|href|src|width|height|dim|ratio|font|hex|locale|canonical|slug|og_image|_id$)/i';
+        $structKey = '/(nav|menu|link|button|_cta$|^cta|tab|breadcrumb|^logo|_label$)/i';
+        $toFill = [];
+        foreach ($vars as $k => $spec) {
+            if (!is_array($spec)) continue;
+            $type = strtolower((string) ($spec['type'] ?? ''));
+            if (in_array($type, ['color', 'image', 'url', 'file', 'media', 'number', 'bool', 'boolean'], true)) continue;
+            $key = (string) $k;
+            if (preg_match($skipKey, $key) || preg_match($structKey, $key)) continue;
+            $def = $spec['default'] ?? null;
+            if (!is_string($def)) continue;
+            $def = trim($def);
+            if ((strlen($def) < 15 || strpos($def, ' ') === false) && !preg_match(self::CATALOGUE_KEY, $key)) continue;
+            if (preg_match('~^(/|https?:|\#|display:)~i', $def)) continue;
+            $cur = $variables[$key] ?? null;
+            if (is_string($cur) && $cur !== '' && $cur !== $def) continue;
+            $toFill[$key] = (string) ($spec['label'] ?? $spec['description'] ?? $key);
+        }
+        return $toFill;
+    }
+
+    /** The coverage prompts, chunked, minus personnel fields (never invent people). key => [system, prompt, ctx, maxTokens] */
+    private function coverageChunkCalls(array $toFill, string $name, string $copyIndustry, string $services, string $location, bool $established): array
+    {
+        $personnelKey = '/^(doctor|dentist|physician|surgeon|therapist|trainer|instructor|coach|staff|team|member|attorney|lawyer|agent|broker|realtor|stylist|barber|nurse|faculty|advisor|consultant|specialist)_\\d+_(name|title|specialty|speciality|bio|role|credential|qualification|position)/i';
+        $llmToFill = array_filter($toFill, fn ($k) => ! preg_match($personnelKey, (string) $k), ARRAY_FILTER_USE_KEY);
+        $sys = "You are a website copywriter for '{$name}', a {$copyIndustry} in {$location}. "
+             . "Return ONLY valid JSON (include the word json). Every value must be authentic, specific "
+             . "content for THIS {$copyIndustry} business — realistic names (never 'John Doe'), concise "
+             . "taglines, 1-2 sentence body copy — and NEVER content from any other industry. "
+             . "Listings, rooms, menu items, plans and any price, rent or fee are illustrative inventory: realistic for the {$location} market, "
+             . "in its local currency (symbol or ISO code), with local place names — the customer replaces them with real stock later. "
+             . "Write every item as a real offer; NEVER use the words sample, placeholder, example, illustrative or dummy anywhere in the copy, "
+             . "and never put the business name inside an address."
+             . ($established ? '' : ' CRITICAL: this is a NEW business with NO track record yet — NEVER '
+                . 'fabricate numbers or claims of experience (no "X years", "X+ clients/projects", revenue '
+                . 'figures, awards, "trusted by", or big-name clients). For trust/badge/credential fields '
+                . 'write qualitative value propositions (approach, quality, care), not invented metrics.');
+        $calls = []; $i = 0;
+        foreach (array_chunk($llmToFill, 35, true) as $chunk) {
+            $lines = [];
+            foreach ($chunk as $k => $label) $lines[] = "- {$k}: {$label}";
+            $prompt = "Services: {$services}.\nWrite on-brand website text for EACH field below, matching its "
+                 . "label/role. Return a JSON object keyed EXACTLY by these field keys:\n" . implode("\n", $lines);
+            $calls['coverage_' . (++$i)] = [$sys, $prompt, ['task' => 'arthur_coverage'], 2000, self::BUILD_CALL_EXTRA];
+        }
+        return $calls;
+    }
+
     private function fillTemplateTextCoverage(array $variables, array $manifest, array $data, string $copyIndustry, string $services, string $location, bool $established = false): array
     {
         $vars = $manifest['variables'] ?? [];
@@ -3711,7 +4611,7 @@ PROMPT;
             $def = trim($def);
             // Only CONTENT prose (multi-word, >=15 chars) — leaves short generic
             // labels ("About Us", "Our Services") untouched.
-            if (strlen($def) < 15 || strpos($def, ' ') === false) continue;
+            if ((strlen($def) < 15 || strpos($def, ' ') === false) && !preg_match(self::CATALOGUE_KEY, $key)) continue;
             if (preg_match('~^(/|https?:|\#|display:)~i', $def)) continue;
             $cur = $variables[$key] ?? null;
             $filledByLLM = is_string($cur) && $cur !== '' && $cur !== $def;
@@ -3736,30 +4636,34 @@ PROMPT;
             . 'qualification|position)/i';
         $llmToFill = array_filter(
             $toFill,
-            fn ($k) => ! preg_match($personnelKey, (string) $k),
+            fn ($k) => ! preg_match($personnelKey, (string) $k) && (! preg_match(self::FACT_KEY, (string) $k) || preg_match(self::CATALOGUE_KEY, (string) $k)),
             ARRAY_FILTER_USE_KEY
         );
 
         // Regenerate in chunks so a large template stays reliable.
-        foreach (array_chunk($llmToFill, 35, true) as $chunk) {
-            $lines = [];
-            foreach ($chunk as $k => $label) $lines[] = "- {$k}: {$label}";
-            $sys = "You are a website copywriter for '{$name}', a {$copyIndustry} in {$location}. "
-                 . "Return ONLY valid JSON (include the word json). Every value must be authentic, specific "
-                 . "content for THIS {$copyIndustry} business — realistic names (never 'John Doe'), concise "
-                 . "taglines, 1-2 sentence body copy — and NEVER content from any other industry."
-                 . ($established ? '' : ' CRITICAL: this is a NEW business with NO track record yet — NEVER '
-                    . 'fabricate numbers or claims of experience (no "X years", "X+ clients/projects", revenue '
-                    . 'figures, awards, "trusted by", or big-name clients). For trust/badge/credential fields '
-                    . 'write qualitative value propositions (approach, quality, care), not invented metrics.');
-            $prompt = "Services: {$services}.\nWrite on-brand website text for EACH field below, matching its "
-                 . "label/role. Return a JSON object keyed EXACTLY by these field keys:\n" . implode("\n", $lines);
+        // FAST FIRST DRAFT (2026-09-06): answers were fetched in the same round-trip as the site copy; take them for every
+        // field still at its sample value, then ask the model only for what is genuinely left (usually nothing).
+        if ($this->prefetchedCoverage !== []) {
+            foreach ($toFill as $k => $label) {
+                if (isset($this->prefetchedCoverage[$k]) && !preg_match($personnelKey, (string) $k)) {
+                    $variables[$k] = $this->prefetchedCoverage[$k];
+                }
+            }
+            $llmToFill = array_filter($llmToFill, function ($k) use ($variables, $vars) {
+                $def = trim((string) ($vars[$k]['default'] ?? '')); $cur = $variables[$k] ?? null;
+                return !(is_string($cur) && $cur !== '' && $cur !== $def);
+            }, ARRAY_FILTER_USE_KEY);
+            Log::info('[Arthur] coverage from prefetch', ['left_for_llm' => count($llmToFill)]);
+        }
+        if ($llmToFill !== []) {
+            $calls = $this->coverageChunkCalls($llmToFill, (string) $name, $copyIndustry, $services, $location, $established);
             try {
-                $res = $this->runtime->chatJson($sys, $prompt, ['task' => 'arthur_coverage'], 2000);
-                if (($res['success'] ?? false) && is_array($res['parsed'] ?? null)) {
-                    foreach ($res['parsed'] as $k => $v) {
-                        if (isset($toFill[$k]) && is_string($v) && trim($v) !== '') {
-                            $variables[$k] = trim($v);
+                foreach ($this->runtime->chatJsonPool($calls) as $res) {
+                    if (($res['success'] ?? false) && is_array($res['parsed'] ?? null)) {
+                        foreach (\App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($res['parsed']) as $k => $v) {
+                            if (isset($toFill[$k]) && is_string($v) && trim($v) !== '') {
+                                $variables[$k] = trim($v);
+                            }
                         }
                     }
                 }
@@ -3767,10 +4671,12 @@ PROMPT;
                 Log::warning('[Arthur] text coverage pass failed: ' . $e->getMessage());
             }
         }
-
-        // Deterministic net — anything STILL unfilled is neutralized so no sample
-        // text can survive. Names/people → blank (never a fake person); taglines/
-        // meta → derive from business; other content prose → blank.
+        // EV-1000 (2026-09-12): a field the model did not answer keeps the template's OWN industry copy — a headline,
+        // a section title, a step or a story reads as a real page and the customer edits it. It used to be blanked, so
+        // one rate-limited round-trip shipped a site with an empty <h1>, empty section titles and empty stat cells.
+        // People (names/authors) and facts about the business (phone, hours, prices, stat values …) are still never
+        // invented and stay empty.
+        $gaps = [];
         foreach ($toFill as $k => $label) {
             $def = trim((string) ($vars[$k]['default'] ?? ''));
             $cur = $variables[$k] ?? null;
@@ -3779,10 +4685,35 @@ PROMPT;
                 $variables[$k] = '';
             } elseif (preg_match('/tagline|meta|subtitle|description/i', $k)) {
                 $variables[$k] = $name . ' — ' . ucfirst($copyIndustry) . ' in ' . $location . '.';
-            } else {
+            } elseif (preg_match('/phone|email|address|whatsapp|hours|opening|legal|canonical|price|fee|_value$|_number$|licen[cs]e|registration|vat|tax/i', $k)) {
                 $variables[$k] = '';
+            } else {
+                $variables[$k] = $def;
+                $gaps[] = $k;
             }
         }
+        if ($gaps !== []) Log::warning('[Arthur] coverage gaps kept template copy', ['count' => count($gaps), 'keys' => array_slice($gaps, 0, 40)]);
+        // EV-1000: FACTS ARE NEVER INVENTED. A phone number, WhatsApp, website or price on a customer's site comes from
+        // the customer or not at all — the site copy call used to answer contact_phone with a made-up number and the
+        // 62 templates that carry service prices shipped their sample '£2,950 fixed'. Labels ("Phone") stay.
+        $given = [
+            'phone'    => trim((string) ($data['phone'] ?? $data['contact_phone'] ?? '')),
+            'whatsapp' => trim((string) ($data['whatsapp'] ?? '')),
+            'website'  => trim((string) ($data['website'] ?? '')),
+            'email'    => trim((string) ($data['email'] ?? $data['contact_email'] ?? '')),
+        ];
+        $cleared = [];
+        foreach ($vars as $k => $spec) {
+            $k = (string) $k;
+            if (!preg_match(self::FACT_KEY, $k, $fm) || preg_match(self::CATALOGUE_KEY, $k)) continue;
+            $kind = strtolower($fm[2]);
+            $val  = $given[$kind] ?? '';
+            if ($val === '' && $kind === 'fax') $val = '';
+            $cur = $variables[$k] ?? null;
+            if ($val !== '') { $variables[$k] = $val; continue; }
+            if (is_string($cur) && trim($cur) !== '') { $variables[$k] = ''; $cleared[] = $k; }
+        }
+        if ($cleared !== []) Log::info('[Arthur] facts cleared (customer supplies them)', ['keys' => $cleared]);
         return $variables;
     }
 
@@ -3958,6 +4889,782 @@ PROMPT;
     // archetype-aware text so an added About/Services/Contact page no longer
     // ships identical consultancy filler ("Quality first", "work with you on
     // your project") for a bakery or a law firm alike.
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════
+    // ARTHUR DELEGATION (2026-09-06). Boss's rule: Sarah never builds — she asks Arthur. Arthur never codes
+    // from scratch — he adds pages and sections FROM THE TEMPLATES (BuilderCapabilities), in the site's current
+    // palette, with the copy rewritten for the business, and every addition is priced.
+    // Entry: EngineExecutionService action 'ask_arthur' (Sarah tool builder.ask_arthur and the legacy
+    // add_page_from_template / create_page / edit_page_with_arthur tools all land here).
+    // ═══════════════════════════════════════════════════════════════════════════════════════════════════
+    public function handleSiteRequest(int $wsId, int $websiteId, string $request, array $ctx = []): array
+    {
+        // DEC-0046: one history snapshot per request, deduplicated, so Undo and Versions cover every Arthur change.
+        try { app(TemplateService::class)->snapshotToHistory($websiteId, 'arthur_request'); } catch (\Throwable $e) {}
+        $caps = \App\Engines\Builder\Support\BuilderCapabilities::class;
+        $site = DB::table('websites')->where('id', $websiteId)->whereNull('deleted_at')->first();
+        if (!$site || (int) $site->workspace_id !== $wsId) {
+            return ['success' => false, 'error' => 'Website not found in this workspace', 'code' => 'NOT_FOUND'];
+        }
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        // VARIANTS (2026-09-11): settings.template may be a design directory (travel_meridian), not an industry.
+        // Element eligibility (trip quiz, shop pages) must be judged on the industry the manifest declares.
+        $industry = $this->templates->industryOf((string) ($settings['template'] ?? $settings['industry'] ?? $site->template_industry ?? ''));
+        $isStatic = is_file(storage_path("app/public/sites/{$websiteId}/index.html"));
+        // FILE HAND-OFF (2026-09-06): attached files (media ids from Sarah / the editor) are placed, not classified
+        $mediaIds = array_values(array_unique(array_filter(array_map('intval', (array) ($ctx['attachments'] ?? [])))));
+        if (preg_match_all('/media[_ ]id\s*#?(\d+)/i', $request, $mm)) $mediaIds = array_values(array_unique(array_merge($mediaIds, array_map('intval', $mm[1]))));
+        $mentionsFile = (bool) preg_match('/\b(logo|photo|photos|picture|pictures|image|images|pic|pics)\b/i', $request);
+        if ($mediaIds !== [] && is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) {
+            return $this->placeMedia($wsId, $websiteId, $request, $mediaIds, $site, json_decode((string) ($site->template_variables ?: '{}'), true) ?: [], $ctx);
+        }
+        if ($mediaIds === [] && $mentionsFile && preg_match('/\b(attached|this|these|here is|here are|sent|uploaded)\b/i', $request) && !preg_match('/\b(section|page|gallery section|remove|delete)\b/i', $request)) {
+            return ['success' => false, 'code' => 'NO_FILE', 'applied' => 0, 'actions_applied' => 0,
+                'message' => "I didn't receive the file itself — attach the logo or photos in the chat and ask again, and I'll place them on {$site->name}."];
+        }
+        $plan     = $caps::classify($request, $industry ?: null);
+        // STRESS C19 (2026-09-06): "change X and add Y" — run each clause, report both, sum the credits.
+        if (empty($ctx['_clause'])) {
+            $clauses = self::splitClauses($request);
+            if (count($clauses) > 1) {
+                // Many instructions at once: consecutive copy edits merge into ONE model call (up to 20 field changes);
+                // additions/removals run one by one; at most 10 units per message, the rest is reported back honestly.
+                $units = []; $editBuf = [];
+                foreach ($clauses as $cl) {
+                    if ($caps::classify($cl, $industry ?: null)['kind'] === 'edit') { $editBuf[] = $cl; continue; }
+                    if ($editBuf !== []) { $units[] = implode('; ', $editBuf); $editBuf = []; }
+                    $units[] = $cl;
+                }
+                if ($editBuf !== []) $units[] = implode('; ', $editBuf);
+                $overflow = array_slice($units, self::MAX_UNITS_PER_MESSAGE); $units = array_slice($units, 0, self::MAX_UNITS_PER_MESSAGE);
+                $agg = ['success' => false, 'kind' => 'compound', 'plan' => $plan, 'credits' => 0, 'applied' => 0, 'parts' => [], 'messages' => []];
+                foreach ($units as $clause) {
+                    try { $p = $this->handleSiteRequest($wsId, $websiteId, $clause, $ctx + ['_clause' => true]); }
+                    catch (\Throwable $e) { Log::error('[Arthur] compound clause failed', ['clause' => $clause, 'error' => $e->getMessage()]); $p = ['success' => false, 'code' => 'CLAUSE_FAILED', 'message' => 'I could not do "' . mb_substr($clause, 0, 60) . '" — ' . 'please try that one again.']; }
+                    $agg['parts'][] = ['request' => $clause, 'success' => (bool) ($p['success'] ?? false), 'code' => $p['code'] ?? null];
+                    if ($p['success'] ?? false) { $agg['success'] = true; $agg['applied'] += max(1, (int) ($p['applied'] ?? 1)); }
+                    $agg['credits'] += (int) ($p['credits'] ?? 0);
+                    $agg['messages'][] = trim((string) ($p['message'] ?? $p['reply'] ?? $p['error'] ?? ''));
+                    if (!empty($p['url'])) $agg['url'] = $p['url'];
+                }
+                if ($overflow !== []) $agg['messages'][] = 'I stopped after ' . self::MAX_UNITS_PER_MESSAGE . ' changes in one go — send the remaining ' . count($overflow) . ' as a new message and I will carry on.';
+                $agg['message'] = implode(' ', array_filter($agg['messages'])); $agg['reply'] = $agg['message']; $agg['actions_applied'] = $agg['applied'];
+                unset($agg['messages']);
+                return $agg;
+            }
+        }
+        $dryRun   = !empty($ctx['dry_run']);
+
+        // Shop pages need the store engine (live cart / checkout / account); a static template site cannot run them yet.
+        if ($plan['kind'] === 'page' && $isStatic && in_array($plan['page'], ['cart', 'checkout', 'account'], true)) {
+            return ['success' => false, 'code' => 'NEEDS_STORE_ENGINE', 'plan' => $plan,
+                'message' => "A {$plan['page']} page needs the live store engine, which this template site doesn't run yet. I can add a listing browser or a product detail page from the templates instead."];
+        }
+        // DESIGN (2026-09-11) — colours, palette, gradients, fonts. Placed BEFORE the unsupported
+        // branch so a design request can never fall out of the bottom as "I can't build that".
+        if ($plan['kind'] === 'style') {
+            try { return $this->applySiteStyle($wsId, $websiteId, $request, $site, $tv, $plan, $isStatic); }
+            catch (\Throwable $e) {
+                Log::error('[Arthur] applySiteStyle failed', ['website' => $websiteId, 'error' => $e->getMessage()]);
+                return ['success' => false, 'code' => 'STYLE_FAILED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0,
+                    'message' => 'I could not apply that design change just now — nothing on your site was altered.'];
+            }
+        }
+        if ($plan['kind'] === 'unsupported') {
+            $pages = implode(', ', array_keys($caps::pages($industry ?: null)));
+            $secs  = implode(', ', array_keys($caps::sections($industry ?: null)));
+            return ['success' => false, 'code' => 'UNSUPPORTED', 'plan' => $plan,
+                'message' => "I can't build that from the templates I have. For {$site->name} I can add these pages: {$pages}; or these sections on the home page: {$secs}. Tell me which, and where."];
+        }
+        if ($plan['kind'] === 'remove' && $isStatic) {
+            try { return $this->removeFromStaticSite($wsId, $websiteId, $request, $plan, $site, $industry ?: null); }
+            catch (\Throwable $e) { Log::error('[Arthur] removeFromStaticSite failed', ['error' => $e->getMessage(), 'website' => $websiteId]); return ['success' => false, 'code' => 'REMOVE_FAILED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'message' => 'I could not remove that just now — nothing on your site was changed.']; }
+        }
+        if ($plan['kind'] === 'remove') {
+            return ['success' => false, 'code' => 'USE_EDITOR', 'plan' => $plan,
+                'message' => "Removing content is done in the page editor (select the section → Remove), so nothing disappears by accident. I can add or rewrite sections from here."];
+        }
+        if ($dryRun) {
+            return ['success' => true, 'dry_run' => true, 'plan' => $plan, 'credits' => $plan['credits'],
+                'message' => "Plan: add {$plan['label']} to {$site->name} for {$plan['credits']} credits."];
+        }
+
+        $identity = $this->siteIdentity($site, $tv, $industry);
+        $brand    = $this->paletteBrand($tv, $settings);
+        $renderer = app(BuilderRenderer::class);
+        $credits  = app(\App\Core\Billing\CreditService::class);
+
+        try {
+            if ($plan['kind'] === 'edit' && $isStatic) {
+                $r = $this->editStaticCopy($wsId, $websiteId, $request, $site, $tv, $plan);
+                if (($r['success'] ?? false) && $plan['credits'] > 0) $credits->debit($wsId, $plan['credits'], 'builder_arthur_edit', $websiteId, ['request' => mb_substr($request, 0, 200), 'fields' => $r['changes'] ?? []]);
+                return $r + ['plan' => $plan, 'credits' => ($r['success'] ?? false) ? $plan['credits'] : 0];
+            }
+            if ($plan['kind'] === 'edit') {
+                $home = DB::table('pages')->where('website_id', $websiteId)->where(function ($q) { $q->where('is_homepage', 1)->orWhere('slug', 'home'); })->orderBy('id')->first();
+                if (!$home) return ['success' => false, 'error' => 'No home page row to edit', 'code' => 'NO_PAGE'];
+                $r = app(ArthurEditService::class)->editPage((int) $home->id, $request, null, ['workspace_id' => $wsId, 'agent_slug' => $ctx['agent_slug'] ?? 'sarah']);
+                if (($r['success'] ?? false) && $plan['credits'] > 0) $credits->debit($wsId, $plan['credits'], 'builder_arthur_edit', $websiteId, ['request' => mb_substr($request, 0, 200)]);
+                return $r + ['plan' => $plan, 'credits' => ($r['success'] ?? false) ? $plan['credits'] : 0];
+            }
+
+            if ($plan['kind'] === 'page') {
+                $slug = $plan['page'];
+                $meta = \App\Engines\Builder\Services\ArthurService::PAGE_TEMPLATE_CATALOGUE[$slug] ?? [];
+                $title = (string) ($meta['label'] ?? ucfirst($slug));
+                $urlSlug = str_replace('_', '-', $slug);
+                if (DB::table('pages')->where('website_id', $websiteId)->where('slug', $urlSlug)->exists()) {
+                    return ['success' => false, 'code' => 'EXISTS', 'plan' => $plan, 'message' => "{$site->name} already has a {$title} page (/{$urlSlug}). I can rewrite it instead — tell me what to change."];
+                }
+                $sections = $this->buildDefaultSectionsForPage($slug, $identity);
+                // persist the page row (published: the static export is what is served, the row keeps the editor + listing honest)
+                $created = app(\App\Engines\Builder\Services\BuilderService::class)->createPage($websiteId, ['title' => $title, 'slug' => $urlSlug, 'sections' => $sections, 'status' => 'published']);
+                $pageId = (int) ($created['page_id'] ?? 0);
+                $url = null;
+                if ($isStatic) {
+                    $body = $this->renderSectionsInTemplateChrome($renderer, $sections, $brand, (array) $site);
+                    $path = $this->templates->deployPage($websiteId, $urlSlug, $body, $title);
+                    if ($path) { $this->templates->addNavLink($websiteId, $urlSlug, trim(explode('/', $title)[0])); $url = "/storage/sites/{$websiteId}/{$urlSlug}/index.html"; }
+                }
+                $credits->debit($wsId, $plan['credits'], 'builder_arthur_page', $websiteId, ['page' => $slug, 'page_id' => $pageId]);
+                Log::info('[Arthur] delegated page added', ['website_id' => $websiteId, 'page' => $slug, 'static' => $isStatic, 'credits' => $plan['credits']]);
+                return ['success' => true, 'kind' => 'page', 'plan' => $plan, 'page_id' => $pageId, 'slug' => $urlSlug, 'url' => $url, 'credits' => $plan['credits'],
+                    'message' => "Added the {$title} page to {$site->name}" . ($url ? " — linked from the menu, in your palette" : '') . ". {$plan['credits']} credits."];
+            }
+
+            if ($plan['kind'] === 'section') {
+                if ($isStatic && str_contains((string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html")), 'data-block="added_' . (string) $plan['section'] . '"')) {
+                    return ['success' => false, 'code' => 'EXISTS', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0,
+                        'message' => "{$site->name}'s home page already has a {$plan['label']} section. Tell me what to change in it, or ask me to remove it first."];
+                }
+                $type = $plan['section'];
+                $sec = $this->defaultSectionSpec($type, $identity, $tv);
+                $html = $renderer->renderSection($sec, $brand, (array) $site);
+                $html = $this->adoptTemplateTypography($html);
+                $blockId = 'added_' . $type;
+                // Wrap, don't rewrite: the rendered markup keeps its own ids (self-initialising elements such as the trip
+                // quiz look themselves up by id). Any id the renderer emitted that collides with a template block is
+                // neutralised, and OUR anchor lives on the wrapper.
+                $html = preg_replace('/(<section\b[^>]*\s)id="(?:booking|contact|services|team|gallery|testimonials|hero|faq|pricing)"/i', '$1data-old-id="$2"', $html) ?? $html;
+                // VISUAL QA 2026-09-06: clears the sticky nav when reached from the menu (template sections carry ~110px top padding)
+                $html = '<section data-block="' . e($blockId) . '" id="lu-' . e($type) . '" style="padding:24px 0;scroll-margin-top:100px">' . $html . '</section>';
+                $placed = false;
+                if ($isStatic) {
+                    $this->templates->rememberSpliced($websiteId, $type, $html, (string) ($plan['anchor'] ?? 'contact'), (string) ($plan['where'] ?? 'before'));
+                    $placed = $this->templates->spliceSectionIntoHome($websiteId, $html, (string) ($plan['anchor'] ?? 'contact'), (string) ($plan['where'] ?? 'before')) !== null;
+                }
+                // keep the home sections row in step so the editor lists it (Law 11: persistence lives in BuilderService)
+                $rowOk = app(\App\Engines\Builder\Services\BuilderService::class)->appendSectionToHomePage($websiteId, $sec);
+                if (!$placed && !$isStatic) $placed = $rowOk;
+                if (!$placed) return ['success' => false, 'code' => 'NOT_PLACED', 'plan' => $plan, 'message' => 'The section could not be placed on the home page.'];
+                $credits->debit($wsId, $plan['credits'], 'builder_arthur_section', $websiteId, ['section' => $type, 'anchor' => $plan['anchor'], 'where' => $plan['where']]);
+                Log::info('[Arthur] delegated section added', ['website_id' => $websiteId, 'section' => $type, 'anchor' => $plan['anchor'], 'where' => $plan['where'], 'credits' => $plan['credits']]);
+                // Say where it really landed: a café has no "services" block, so "after the services" became "after the menu".
+                $usedAnchor = $this->templates->lastAnchorUsed ?? (string) ($plan['anchor'] ?? 'contact');
+                $whereTxt = ($usedAnchor === 'footer' && ($plan['anchor'] ?? '') !== 'footer')
+                    ? 'at the end of the page (it has no ' . str_replace('_', ' ', (string) ($plan['anchor'] ?? 'contact')) . ' section to sit ' . ($plan['where'] ?? 'before') . ')'
+                    : ($plan['where'] ?? 'before') . ' the ' . str_replace('_', ' ', $usedAnchor) . ' section';
+                return ['success' => true, 'kind' => 'section', 'plan' => $plan, 'section' => $type, 'credits' => $plan['credits'],
+                    'url' => $isStatic ? "/storage/sites/{$websiteId}/index.html#lu-{$type}" : null,
+                    'message' => "Added a {$plan['label']} to {$site->name}'s home page {$whereTxt}, in your palette. {$plan['credits']} credits."];
+            }
+        } catch (\Throwable $e) {
+            Log::error('[Arthur] handleSiteRequest failed: ' . $e->getMessage(), ['website_id' => $websiteId, 'request' => mb_substr($request, 0, 200)]);
+            return ['success' => false, 'error' => 'Arthur could not complete that: ' . $e->getMessage(), 'code' => 'ARTHUR_FAILED', 'plan' => $plan];
+        }
+        return ['success' => false, 'error' => 'Unhandled plan', 'code' => 'UNHANDLED', 'plan' => $plan];
+    }
+
+    /** The business facts every added page/section is written from: THIS site's variables first. */
+    private function siteIdentity(object $site, array $tv, string $industry): array
+    {
+        // Whatever this template calls the things it sells (SERVICE-TITLES 2026-09-11).
+        $services = \App\Engines\Builder\Services\TemplateService::serviceTitles($tv);
+        $loc = trim((string) ($tv['city'] ?? $tv['contact_service_area'] ?? $tv['location'] ?? ''));
+        if ($loc === '' && preg_match('/\bin\s+([A-Z][a-zA-Z ]{2,30})$/', (string) ($tv['hero_eyebrow'] ?? ''), $m)) $loc = trim($m[1]);
+        return [
+            'business_name' => (string) ($tv['business_name'] ?? $site->name ?? 'Your Business'),
+            'industry'      => $industry ?: 'business',
+            'core_service'  => $services[0] ?? '',
+            'services'      => $services,
+            'location'      => $loc,
+            'phone'         => (string) ($tv['contact_phone'] ?? $tv['phone'] ?? ''),
+            'email'         => (string) ($tv['contact_email'] ?? $tv['email'] ?? ''),
+            'style'         => (string) ($tv['design_style'] ?? ''),
+        ];
+    }
+
+    /** Brand tokens for BuilderRenderer from the site's OWN palette, never the workspace kit. */
+    /**
+     * DESIGN CHANGES (2026-09-11) — colours, palette, gradients, fonts, overall style.
+     *
+     * Nothing here is new capability. applyStyleColors() has recoloured static exports since 2026-09-02
+     * and DesignStyle::layer() has produced the gradient/typography layer since 2026-09-05; both were
+     * simply unreachable from chat once the delegation shortcut landed. This method is the road back.
+     */
+    private function applySiteStyle(int $wsId, int $websiteId, string $request, object $site, array $tv, array $plan, bool $isStatic): array
+    {
+        $editor  = app(ArthurEditService::class);
+        $credits = app(\App\Core\Billing\CreditService::class);
+        $did     = [];
+        $missed  = [];
+
+        // ── 0. LITERAL GRADIENT (DEC-0046, 2026-09-13) ──────────────────────────────
+        // "make the hero a gradient from deep green to gold": the customer named the stops, so paint exactly
+        // that, in its own replaceable block, and say so. The mood treatment below still handles a bare
+        // "add gradients" with no colours. Answering a gradient ask with a recolour was the defect (EV-1010).
+        $skipColours = false;
+        $grad = $this->parseGradientAsk($request);
+        if ($grad !== null && $grad['from'] !== null && $grad['to'] !== null) {
+            if ($isStatic) {
+                $rules = self::gradientRules($grad['target'], $grad['from'], $grad['to']);
+                if (self::writeDesignExtras($websiteId, $rules, $tv)) {
+                    DB::table('websites')->where('id', $websiteId)->update([
+                        'template_variables' => json_encode($tv), 'updated_at' => now(),
+                    ]);
+                    $where = $grad['target'] === 'page' ? 'page background' : $grad['target'];
+                    $did[] = "painted the {$where} with a gradient from {$grad['from']} to {$grad['to']}";
+                    $skipColours = true;
+                } else {
+                    $missed[] = 'the gradient could not be written to this site';
+                }
+            } else {
+                $missed[] = 'this site is rendered live, so gradients are set in its design settings';
+            }
+        }
+
+        // ── 1. COLOURS ───────────────────────────────────────────────────────────────────────
+        $roles = [];
+        foreach ($this->scanColorsServerSide($request) as $role => $val) {
+            $hex = self::styleHex((string) $val);
+            if ($hex !== null) { $roles[$role] = $hex; }
+        }
+        if ($roles !== [] && ! $skipColours) {
+            $args = $isStatic ? self::mapRolesToSiteVars($websiteId, $roles) : $roles;
+            if ($args === []) {
+                $missed[] = 'I could not find a colour variable on this site to change';
+            } else {
+                $res = $editor->applyStyleColors($websiteId, $args);
+                if ((int) ($res['applied'] ?? 0) > 0) {
+                    // Write through to the stored variables too. The file alone is not enough: the
+                    // design-style layer re-declares the palette from these, and so does any rebuild,
+                    // so a file-only recolour is undone by the very next restyle.
+                    $tvKey = ['primary' => 'primary_color', 'secondary' => 'secondary_color', 'accent' => 'accent_color'];
+                    foreach ($roles as $role => $hex) {
+                        if (isset($tvKey[$role])) { $tv[$tvKey[$role]] = $hex; }
+                    }
+                    DB::table('websites')->where('id', $websiteId)->update([
+                        'template_variables' => json_encode($tv), 'updated_at' => now(),
+                    ]);
+                    if ($isStatic) { self::writeContrastGuard($websiteId, $args); }
+                    $hit = 0;
+                    foreach ($args as $vn => $_v) {
+                        if (strncmp($vn, '--cf', 4) === 0) { continue; }
+                        // Companion shades moved with their parent; they are not separate colours.
+                        if (preg_match('/(-deep|-dark|-strong|-soft|-light|-tint|t)$/', $vn)) { continue; }
+                        $hit++;
+                    }
+                    $asked = count($roles);
+                    $did[] = $hit <= 1 ? 'updated the main colour' : 'updated ' . min($asked, $hit) . ' colours';
+                    if ($hit > 0 && $asked > $hit) { $missed[] = 'this template only exposes ' . $hit . ' brand colour' . ($hit === 1 ? '' : 's') . ', so I applied the first'; }
+                } else {
+                    $missed[] = 'the colour did not match anything on the page';
+                }
+            }
+        }
+
+        // ── 1b. RELATIVE TONE ────────────────────────────────────────────────────────────────
+        // "darker", "lighter", "softer" name no colour, so there is nothing to look up. Read what the
+        // variable is NOW and shift its lightness, which keeps the site's own hue rather than
+        // replacing it with a colour the customer never asked for.
+        if ($roles === [] && $isStatic
+            && preg_match(\App\Engines\Builder\Support\BuilderCapabilities::STYLE_TONES, $request, $tm)) {
+            $dir = self::toneDirection(strtolower($tm[1]));
+            $targets = self::toneTargets($websiteId, $request);
+            $shift = [];
+            foreach ($targets as $var => $curHex) {
+                $shift[$var] = self::shiftLightness($curHex, $dir);
+            }
+            if ($shift !== []) {
+                $res = $editor->applyStyleColors($websiteId, $shift);
+                if ((int) ($res['applied'] ?? 0) > 0) {
+                    $did[] = 'made ' . self::toneScopeLabel($request) . ' ' . strtolower($tm[1]);
+                } else {
+                    $missed[] = 'the tone change did not match anything on the page';
+                }
+            } else {
+                $missed[] = 'I could not find which colour you meant to shift';
+            }
+        }
+
+        // ── 2. MOOD / FONTS / GRADIENTS ──────────────────────────────────────────────────────
+        // DesignStyle turns "make it more luxurious" or "add gradients" into a real CSS layer. It is
+        // the same layer the site was built with, so this stays inside the template's design language.
+        $ds    = \App\Engines\Builder\Support\DesignStyle::class;
+        $style = $ds::normaliseStyle($request);
+        $fonts = $ds::parseFonts($request);
+        $wantsGradient = ! $skipColours && (bool) preg_match('/\bgradients?\b/i', $request);
+        if ($style !== null || $fonts['display'] !== null || $fonts['body'] !== null || $wantsGradient) {
+            $effStyle = $style ?: (string) ($tv['design_style'] ?? '') ?: ($wantsGradient ? 'modern' : null);
+            // The live export is the truth about what colour this site is right now — it may have been
+            // recoloured a moment ago, or in an earlier message. Falling back to stored variables only.
+            $live = $isStatic ? self::siteColorVars($websiteId) : [];
+            $layer = $ds::layer(
+                $effStyle,
+                $fonts['display'] ?? ($tv['font_display'] ?? null),
+                $fonts['body'] ?? ($tv['font_body'] ?? null),
+                // palette() takes its LEAD hue from 'accent' and derives the rest, so the customer's
+                // own lead colour (--cf1) must go in that slot or the restyle discards it.
+                [
+                    'accent'    => $live['--cf1'] ?? ($tv['primary_color'] ?? null),
+                    'secondary' => $live['--cf2'] ?? ($tv['secondary_color'] ?? null),
+                    'primary'   => $live['--cf1'] ?? ($tv['primary_color'] ?? null),
+                ]
+            );
+            if ($layer !== '' && $isStatic && self::writeDesignLayer($websiteId, $layer)) {
+                if ($style !== null)          { $did[] = "restyled the site as {$style}"; }
+                elseif ($wantsGradient)       { $did[] = 'applied a gradient treatment'; }
+                if ($fonts['display'] || $fonts['body']) { $did[] = 'changed the typography'; }
+                // Remember it, so a later rebuild does not silently undo what the customer asked for.
+                $tv['design_style'] = $effStyle;
+                if ($fonts['display']) { $tv['font_display'] = $fonts['display']; }
+                if ($fonts['body'])    { $tv['font_body'] = $fonts['body']; }
+                DB::table('websites')->where('id', $websiteId)->update([
+                    'template_variables' => json_encode($tv), 'updated_at' => now(),
+                ]);
+            } elseif ($layer !== '' && ! $isStatic) {
+                $missed[] = 'this site is rendered live, so its style is set in the design settings';
+            }
+        }
+
+        if ($did === []) {
+            $hint = $missed !== [] ? ' (' . implode('; ', $missed) . ')' : '';
+            // Naming what this site DOES expose turns a dead end into something the customer can act on.
+            $live = $isStatic ? self::siteColorVars($websiteId) : [];
+            $offer = '';
+            if ($live !== []) {
+                $named = [];
+                foreach (['--cf1' => 'main', '--cf2' => 'second', '--cf3' => 'third'] as $v => $label) {
+                    if (isset($live[$v])) { $named[] = "the {$label} colour (now {$live[$v]})"; }
+                }
+                if ($named !== []) { $offer = ' On this site I can change ' . self::joinList($named) . '.'; }
+            }
+            return ['success' => false, 'code' => 'STYLE_NO_TARGET', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => "I understood that as a design change but could not tell exactly what to alter{$hint}.{$offer} "
+                    . 'Give me the part and the colour — for example "make the buttons #1E5CFF", or ask for a whole look like "make it more luxurious".'];
+        }
+
+        $credits->debit($wsId, $plan['credits'], 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => $did]);
+        // The static export is served straight off disk, so there is no cache layer to clear here.
+        Log::info('[Arthur] design change applied', ['website' => $websiteId, 'changes' => $did, 'missed' => $missed]);
+
+        $note = $missed !== [] ? ' I could not do the rest: ' . implode('; ', $missed) . '.' : '';
+        return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => count($did), 'actions_applied' => count($did),
+            'credits' => $plan['credits'],
+            'message' => 'Done — I ' . self::joinList($did) . " on {$site->name}."
+                . " {$plan['credits']} credit." . $note];
+    }
+
+    /**
+     * Every CSS custom property declared in ANY :root block of a site's export, later declarations
+     * winning exactly as the browser would resolve them. Reading only the first block was the bug:
+     * the design-style layer's own :root sits ahead of the template's palette.
+     *
+     * @return array<string,string> lower-cased var name => raw value
+     */
+    private static function siteRootVars(int $websiteId): array
+    {
+        $index = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (! is_file($index)) { return []; }
+        $html = (string) @file_get_contents($index);
+        if (! preg_match_all('/:root\s*\{([^}]*)\}/', $html, $blocks)) { return []; }
+        $vars = [];
+        foreach ($blocks[1] as $body) {
+            if (preg_match_all('/(--[a-z0-9-]+)\s*:\s*([^;]+)/i', $body, $mm, PREG_SET_ORDER)) {
+                foreach ($mm as $p) { $vars[strtolower(trim($p[1]))] = trim($p[2]); }
+            }
+        }
+        return $vars;
+    }
+
+    /** Just the ones holding a literal hex colour — the only ones we can safely rewrite. */
+    private static function siteColorVars(int $websiteId): array
+    {
+        $out = [];
+        foreach (self::siteRootVars($websiteId) as $k => $v) {
+            if (preg_match('/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', trim($v))) { $out[$k] = strtoupper(trim($v)); }
+        }
+        return $out;
+    }
+
+    /** darker/softer/muted -> -1 (down), lighter/brighter -> +1 (up). */
+    private static function toneDirection(string $word): int
+    {
+        return preg_match('/^(lighter|lighten|brighter|brighten|paler|washed out|softer|soften|muted)$/', $word) ? 1 : -1;
+    }
+
+    /**
+     * Which :root variables the tone applies to. If the customer named a part of the page, aim at the
+     * variables that part uses; otherwise shift the brand colours and leave text and paper alone.
+     */
+    private static function toneTargets(int $websiteId, string $request): array
+    {
+        $vars = self::siteColorVars($websiteId);
+        if ($vars === []) { return []; }
+
+        $r = mb_strtolower($request);
+        $want = [];
+        if (preg_match('/\b(background|backdrop|page|body|header|footer|nav|navigation|hero|banner|section)\b/', $r)) {
+            $want = ['--paper', '--bg', '--background', '--surface', '--tint', '--deep', '--s1', '--s2'];
+        } elseif (preg_match('/\b(button|buttons|link|links|cta|accent|brand)\b/', $r)) {
+            $want = ['--accent', '--primary', '--brand', '--c1', '--cf1'];
+        } elseif (preg_match('/\b(text|copy|heading|headings|font)\b/', $r)) {
+            $want = ['--ink', '--text', '--body', '--t1', '--deep'];
+        }
+        if ($want === []) { $want = ['--accent', '--primary', '--brand', '--c1', '--cf1']; }
+
+        $out = [];
+        foreach ($want as $v) { if (isset($vars[$v])) { $out[$v] = $vars[$v]; } }
+        return $out;
+    }
+
+    private static function toneScopeLabel(string $request): string
+    {
+        $r = mb_strtolower($request);
+        if (preg_match('/\b(background|backdrop|page|body|header|footer|nav|hero|banner|section)\b/', $r, $m)) { return 'the ' . $m[1]; }
+        if (preg_match('/\b(button|buttons|link|links|cta)\b/', $r, $m)) { return 'the ' . $m[1]; }
+        if (preg_match('/\b(text|copy|heading|headings)\b/', $r, $m)) { return 'the ' . $m[1]; }
+        return 'the brand colours';
+    }
+
+    /** Shift a hex colour's lightness by ~14% in $dir, staying inside the same hue. */
+    private static function shiftLightness(string $hex, int $dir): string
+    {
+        $h = ltrim($hex, '#');
+        if (strlen($h) === 3) { $h = $h[0] . $h[0] . $h[1] . $h[1] . $h[2] . $h[2]; }
+        if (! preg_match('/^[0-9a-fA-F]{6}$/', $h)) { return $hex; }
+        $rgb = [hexdec(substr($h, 0, 2)), hexdec(substr($h, 2, 2)), hexdec(substr($h, 4, 2))];
+        $out = '#';
+        foreach ($rgb as $c) {
+            $v = $dir > 0 ? $c + (255 - $c) * 0.28 : $c * 0.72;
+            $out .= str_pad(dechex((int) max(0, min(255, round($v)))), 2, '0', STR_PAD_LEFT);
+        }
+        return strtoupper($out);
+    }
+
+    /**
+     * Keep text readable on any background we just repainted.
+     *
+     * Scans the export's own CSS for rules that use a changed variable as a background, works out what
+     * foreground those rules set, and overrides only the ones that fall below WCAG AA (4.5:1). Written
+     * as one replaceable block, so this never accumulates.
+     */
+    private static function writeContrastGuard(int $websiteId, array $applied): bool
+    {
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $index = "{$root}/index.html";
+        if (! is_file($index)) { return false; }
+        $html = (string) @file_get_contents($index);
+
+        // The variables we actually repainted, and what they are now.
+        $vars = self::siteColorVars($websiteId);
+        $rules = [];
+        foreach (array_keys($applied) as $var) {
+            $newHex = $vars[strtolower($var)] ?? null;
+            if ($newHex === null) { continue; }
+            $q = preg_quote($var, '/');
+            // Rules whose declarations paint a background with this variable.
+            if (! preg_match_all('/([^{}]+)\{([^{}]*background[^{}]*var\(\s*' . $q . '\s*\)[^{}]*)\}/i', $html, $mm, PREG_SET_ORDER)) {
+                continue;
+            }
+            foreach ($mm as $m) {
+                $selector = trim(preg_replace('/\s+/', ' ', $m[1]));
+                if ($selector === '' || str_contains($selector, '@')) { continue; }
+                $decls = $m[2];
+                // What colour does this rule put ON that background?
+                $fg = null;
+                if (preg_match('/(?<![-a-z])color\s*:\s*([^;}]+)/i', $decls, $cm)) {
+                    $fg = trim($cm[1]);
+                    if (preg_match('/var\(\s*(--[a-z0-9-]+)/i', $fg, $vm)) {
+                        $fg = $vars[strtolower($vm[1])] ?? null;
+                    }
+                }
+                // No explicit foreground means it inherits — which is exactly how dark-on-dark happens.
+                $ratio = $fg !== null ? self::contrastRatio($fg, $newHex) : 0.0;
+                if ($ratio >= 4.5) { continue; }
+                $best = self::readableOn($newHex);
+                $rules[$selector] = $best;
+            }
+        }
+        if ($rules === []) {
+            // Nothing to guard: drop any stale block so an earlier guard does not outlive its reason.
+            $rules = [];
+        }
+
+        $css = '';
+        foreach ($rules as $sel => $fg) {
+            $css .= $sel . '{color:' . $fg . " !important}\n";
+        }
+        $block = $css === '' ? '' : "<style id=\"lu-contrast-guard\">\n/* readable text on colours changed from chat */\n{$css}</style>\n";
+
+        $files = glob("{$root}/*.html") ?: [];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $n) { $files[] = $n; }
+        $wrote = 0;
+        foreach (array_unique($files) as $file) {
+            $h = @file_get_contents($file);
+            if ($h === false) { continue; }
+            $stripped = preg_replace('~<style id="lu-contrast-guard".*?</style>\s*~is', '', $h) ?? $h;
+            $new = $block === ''
+                ? $stripped
+                : ((stripos($stripped, '</head>') !== false)
+                    ? str_ireplace('</head>', $block . '</head>', $stripped)
+                    : $block . $stripped);
+            if ($new !== $h) { file_put_contents($file, $new); $wrote++; }
+        }
+        return $wrote > 0;
+    }
+
+    /** Relative luminance per WCAG. */
+    private static function luminance(string $hex): float
+    {
+        $h = ltrim(trim($hex), '#');
+        if (strlen($h) === 3) { $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2]; }
+        if (! preg_match('/^[0-9a-fA-F]{6}$/', $h)) { return 0.0; }
+        $out = [];
+        foreach ([0, 2, 4] as $i) {
+            $c = hexdec(substr($h, $i, 2)) / 255;
+            $out[] = $c <= 0.03928 ? $c / 12.92 : pow(($c + 0.055) / 1.055, 2.4);
+        }
+        return 0.2126 * $out[0] + 0.7152 * $out[1] + 0.0722 * $out[2];
+    }
+
+    private static function contrastRatio(string $a, string $b): float
+    {
+        if (! preg_match('/^#?[0-9a-fA-F]{3,6}$/', trim($a)) || ! preg_match('/^#?[0-9a-fA-F]{3,6}$/', trim($b))) { return 21.0; }
+        $la = self::luminance($a); $lb = self::luminance($b);
+        return (max($la, $lb) + 0.05) / (min($la, $lb) + 0.05);
+    }
+
+    /** White or near-black, whichever this background can actually carry. */
+    private static function readableOn(string $bg): string
+    {
+        return self::contrastRatio('#FFFFFF', $bg) >= self::contrastRatio('#111111', $bg) ? '#FFFFFF' : '#111111';
+    }
+
+    /** A colour name or hex from the customer's own words, normalised to #RRGGBB. */
+    private static function styleHex(string $val): ?string
+    {
+        $v = strtolower(trim($val));
+        if (preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/', $v)) { return strtoupper($v); }
+        return self::COLOR_MAP[$v] ?? null;
+    }
+
+    /**
+     * A static export's :root uses whatever variable names its template chose (--accent, --primary,
+     * --c1, --cf1 …). Map the semantic roles the customer spoke in onto the names THIS site actually
+     * has, preferring the most specific match and never inventing a variable that is not there.
+     */
+    private static function mapRolesToSiteVars(int $websiteId, array $roles): array
+    {
+        $have = self::siteColorVars($websiteId);
+        if ($have === []) { return []; }
+
+        $ranked = self::rankedBrandVars($websiteId, $have);
+
+        // An explicitly named variable always beats a guess.
+        $prefs = [
+            'primary'   => ['--primary', '--brand', '--brand-primary', '--color-primary', '--c1'],
+            'secondary' => ['--secondary', '--brand-secondary', '--color-secondary', '--c2'],
+            'accent'    => ['--accent', '--brand-accent', '--color-accent', '--c3'],
+        ];
+        $slot = ['primary' => 0, 'secondary' => 1, 'accent' => 2];
+
+        $out = [];
+        $taken = [];
+        foreach ($roles as $role => $hex) {
+            $target = null;
+            foreach (($prefs[$role] ?? []) as $var) {
+                if (isset($have[$var]) && ! isset($taken[$var])) { $target = $var; break; }
+            }
+            if ($target === null) {
+                // Fall back to the derived ranking: the colour this page paints with most.
+                $idx = $slot[$role] ?? 0;
+                $names = array_keys($ranked);
+                foreach (array_slice($names, $idx) as $cand) {
+                    if (! isset($taken[$cand])) { $target = $cand; break; }
+                }
+            }
+            if ($target === null) { continue; }
+            $out[$target] = $hex;
+            $taken[$target] = true;
+
+            // Companion shades of the same colour must move with it, or a recoloured button keeps its
+            // old hover state and its old tinted background.
+            foreach (['-deep' => -1, '-dark' => -1, '-strong' => -1, '-soft' => 1, '-light' => 1, '-tint' => 1, 't' => 1] as $suffix => $dir) {
+                $companion = $target . $suffix;
+                if (isset($have[$companion]) && ! isset($taken[$companion])) {
+                    $out[$companion] = self::shiftLightness($hex, $dir);
+                    $taken[$companion] = true;
+                }
+            }
+        }
+
+        // Keep the design-layer palette in step, so a later restyle does not reintroduce the old hue.
+        $cfOrder = ['--cf1', '--cf2', '--cf3'];
+        $i = 0;
+        foreach ($roles as $role => $hex) {
+            $cf = $cfOrder[$i++] ?? null;
+            if ($cf !== null && isset($have[$cf])) {
+                $out[$cf] = $hex;
+                if (isset($have[$cf . 't'])) { $out[$cf . 't'] = self::shiftLightness($hex, 1); }
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Colour variables ranked by how much of the page they actually paint, neutrals excluded.
+     *
+     * Neutrals are the page ground, the body text and the hairlines. They are usually the MOST used
+     * variables on a site, so ranking without excluding them would repaint the background on "make it
+     * navy" and leave the site unreadable. Saturation and lightness separate them reliably enough.
+     *
+     * @param array<string,string> $have var name => hex
+     * @return array<string,int> var name => usage count, most used first
+     */
+    private static function rankedBrandVars(int $websiteId, array $have): array
+    {
+        $index = storage_path("app/public/sites/{$websiteId}/index.html");
+        $html = is_file($index) ? (string) @file_get_contents($index) : '';
+        $scored = [];
+        foreach ($have as $name => $hex) {
+            if (strncmp($name, '--cf', 4) === 0) { continue; }   // treatment palette, handled separately
+            if (substr($name, -1) === 't' && isset($have[substr($name, 0, -1)])) { continue; }
+            try { [$h, $sat, $lig] = \App\Engines\Builder\Support\ColorTheme::hexToHsl($hex); }
+            catch (\Throwable $e) { continue; }
+            // Structure, not brand: a hairline, a shadow or a page ground can be perfectly saturated
+            // (--divider:#3B2E57) and would still be the wrong thing to repaint on "make it navy".
+            if (preg_match('/(divider|border|line|rule|outline|shadow|muted|disabled|placeholder|overlay|scrim|bg|background|ground|paper|surface|canvas|ink|text|body)/', $name)) { continue; }
+            if ($sat < 0.18) { continue; }                        // grey/paper/ink
+            if ($lig < 0.25 || $lig > 0.78) { continue; }         // page grounds, not brand colours
+            $scored[$name] = substr_count($html, "var({$name})");
+        }
+        arsort($scored);
+        return $scored;        return $out;
+    }
+
+    /** Replace (or insert) the marked design-style layer in every exported HTML file. */
+    private static function writeDesignLayer(int $websiteId, string $layer): bool
+    {
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $files = glob("{$root}/*.html") ?: [];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $nested) { $files[] = $nested; }
+        $files = array_values(array_unique($files));
+        $stamp = date('YmdHis');
+        $wrote = 0;
+        foreach ($files as $file) {
+            $html = @file_get_contents($file);
+            if ($html === false) { continue; }
+            @copy($file, $file . '.bak-style-' . $stamp);
+            // The layer is <link preconnect> + <link font css> + <style id="lug-design-style">. Replacing
+            // only the <style> left the old font links behind, so each restyle added two more.
+            $html = preg_replace('~<link rel="preconnect" href="https://fonts\.(?:googleapis|gstatic)\.com"[^>]*>~i', '', $html) ?? $html;
+            $html = preg_replace('~<link[^>]+fonts\.googleapis\.com/css2[^>]*>~i', '', $html) ?? $html;
+            $new = preg_replace('~<style id="lug-design-style".*?</style>~is', $layer, $html, 1, $n);
+            if ($n === 0) {
+                $new = (stripos($html, '</head>') !== false)
+                    ? str_ireplace('</head>', $layer . '</head>', $html)
+                    : $layer . $html;
+            }
+            if ($new !== null && $new !== $html) { file_put_contents($file, $new); $wrote++; }
+        }
+        return $wrote > 0;
+    }
+
+    /** "a, b and c" */
+    private static function joinList(array $parts): string
+    {
+        if (count($parts) <= 1) { return (string) ($parts[0] ?? ''); }
+        $last = array_pop($parts);
+        return implode(', ', $parts) . ' and ' . $last;
+    }
+
+    private function paletteBrand(array $tv, array $settings): array
+    {
+        $pick = fn(array $keys) => (function () use ($keys, $tv, $settings) { foreach ($keys as $k) { $v = trim((string) ($tv[$k] ?? $settings[$k] ?? '')); if (preg_match('/^#[0-9a-f]{6}$/i', $v)) return strtoupper($v); } return null; })();
+        $primary   = $pick(['primary_color', 'accent_color']) ?? '#1F2937';
+        $accent    = $pick(['accent_color', 'primary_color']) ?? $primary;
+        $secondary = $pick(['secondary_color']) ?? $accent;
+        return ['primary' => $primary, 'primary_color' => $primary, 'secondary' => $secondary, 'secondary_color' => $secondary,
+                'accent' => $accent, 'accent_color' => $accent, 'logo_url' => (string) ($tv['logo_url'] ?? '')];
+    }
+
+    /** Render a page's sections (minus header/footer — the template chrome supplies them) as a body fragment. */
+    private function renderSectionsInTemplateChrome(BuilderRenderer $renderer, array $sections, array $brand, array $site): string
+    {
+        $out = '';
+        foreach ($sections as $sec) {
+            $type = (string) ($sec['type'] ?? '');
+            if (in_array($type, ['header', 'footer'], true)) continue;
+            $frag = $renderer->renderSection($sec, $brand, $site);
+            $out .= $this->adoptTemplateTypography($frag) . "\n";
+        }
+        return $out;
+    }
+
+    /** Strip inline font-family so the template's own typography (and the DesignStyle layer) cascades into the new markup. */
+    private function adoptTemplateTypography(string $html): string
+    {
+        return preg_replace('/font-family:[^;"]*;?/i', '', $html) ?? $html;
+    }
+
+    /** A ready-to-render section for THIS business (deterministic; no LLM needed for the structure). */
+    private function defaultSectionSpec(string $type, array $id, array $tv): array
+    {
+        $name = $id['business_name']; $svc = $id['services']; $loc = $id['location'];
+        switch ($type) {
+            case 'travel_quiz':
+                $cur = trim((string) ($tv['currency'] ?? ''));
+                if ($cur === '') { $cur = preg_match('/philippin|manila|cebu|laguna|davao/i', $loc . ' ' . (string) ($tv['contact_address'] ?? '')) ? '₱' : 'AED'; }
+                return ['type' => 'travel_quiz', 'business_name' => $name, 'currency' => $cur, 'heading' => "Plan your trip with {$name}",
+                    'subheading' => 'Four quick questions and we send you a tailored quote — no payment online.', 'reference_prefix' => substr(preg_replace('/[^A-Za-z0-9]/', '', $name), 0, 3)];
+            case 'booking_form':
+                return ['type' => 'booking_form', 'heading' => 'Book an appointment', 'subheading' => $loc ? "Choose a service and a time that suits you — we're in {$loc}." : 'Choose a service and a time that suits you.',
+                    'services' => $svc, 'show_calendar' => true, 'show_time_slots' => true, 'submit_label' => 'Request booking', 'success_message' => "Thanks — {$name} will confirm your appointment shortly."];
+            case 'events_calendar':
+                return ['type' => 'events_calendar', 'heading' => "What's on at {$name}", 'subheading' => 'Upcoming classes, sessions and events.', 'events' => [], 'view' => 'grid', 'cta_text' => 'Ask about dates', 'cta_url' => '#contact'];
+            case 'pricing':
+                $tiers = [];
+                foreach (array_slice($svc, 0, 3) as $i => $s) $tiers[] = ['name' => $s, 'price' => 'From AED —', 'features' => ['Tailored to you', 'Book online', 'Friendly experts'], 'cta_text' => 'Enquire', 'cta_url' => '#contact'];
+                return ['type' => 'pricing', 'heading' => 'Simple pricing', 'body' => 'Transparent prices, no surprises. Ask us for a quote on anything not listed.', 'tiers' => $tiers];
+            case 'faq':
+                $items = [['q' => "How do I book with {$name}?", 'a' => 'Use the booking form or call us — we confirm within the day.'], ['q' => 'Where are you located?', 'a' => $loc ? "We're in {$loc}. Directions are in the contact section." : 'See the contact section for our address and directions.'], ['q' => 'Do you offer packages?', 'a' => 'Yes — ask us and we will put together a package that fits.']];
+                return ['type' => 'faq', 'heading' => 'Questions, answered', 'items' => $items];
+            case 'testimonials':
+                return ['type' => 'testimonials', 'heading' => 'What our clients say', 'items' => []];
+            case 'team':
+                return ['type' => 'team', 'heading' => 'Meet the team', 'members' => []];
+            case 'gallery':
+                return ['type' => 'gallery', 'heading' => 'Gallery', 'images' => [], 'columns' => 3];
+            case 'stats':
+                return ['type' => 'stats', 'heading' => '', 'items' => [['value' => count($svc) ?: 3, 'label' => 'Services'], ['value' => $loc ?: 'Local', 'label' => 'Based in'], ['value' => '5★', 'label' => 'Client rating']]];
+            case 'features':
+                $items = array_map(fn($s) => ['title' => $s, 'description' => "{$s} by the {$name} team."], array_slice($svc, 0, 4)) ?: [['title' => 'Expert team', 'description' => "The {$name} team brings care to every visit."]];
+                return ['type' => 'features', 'heading' => "Why choose {$name}", 'items' => $items, 'columns' => min(4, max(2, count($items)))];
+            case 'services':
+                return ['type' => 'services', 'heading' => 'Our services', 'items' => array_map(fn($s) => ['title' => $s, 'description' => ''], $svc)];
+            case 'map':
+                return ['type' => 'map', 'heading' => 'Find us', 'address' => $loc, 'body' => $loc ? "We're in {$loc}." : ''];
+            case 'trust_signals':
+                return ['type' => 'trust_signals', 'heading' => 'Why people trust us', 'items' => [['label' => 'Licensed & insured'], ['label' => 'Transparent pricing'], ['label' => 'Friendly, expert team']]];
+            case 'contact_form':
+                return ['type' => 'contact_form', 'heading' => 'Get in touch', 'body' => 'Tell us what you need and we will reply within the day.', 'phone' => $id['phone'], 'email' => $id['email'], 'address' => $loc];
+            case 'cta':
+            default:
+                return ['type' => 'cta', 'heading' => "Ready to get started with {$name}?", 'body' => 'Book today or send us a message.', 'cta_text' => 'Book now', 'cta_url' => '#booking'];
+        }
+    }
     public function buildDefaultSectionsForPage(string $slug, array $data): array
     {
         $sections = $this->buildRawPageSections($slug, $data);
@@ -4022,8 +5729,12 @@ PROMPT;
         try {
             $r = $this->runtime->chatJson($sys, $prompt, ['task' => 'arthur_page_copy'], 1300);
             if (($r['success'] ?? false) && is_array($r['parsed'] ?? null)) {
+                // Same LLM JSON-mode artifact as generateContent: some providers wrap the whole
+                // payload in a single {"json":{...}} envelope. Peel it before reading keys, or
+                // every field misses and the page silently keeps its skeleton copy.
+                $parsed = \App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($r['parsed']);
                 // keep both scalar copy and nested arrays (tiers / faq)
-                return array_filter($r['parsed'], fn($v) => (is_string($v) && trim($v) !== '') || (is_array($v) && !empty($v)));
+                return array_filter($parsed, fn($v) => (is_string($v) && trim($v) !== '') || (is_array($v) && !empty($v)));
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[Arthur] pageCopy failed: ' . $e->getMessage());
@@ -4788,5 +6499,266 @@ PROMPT;
 
                 return $sections;
         }
+    }
+    /** Most page/section/edit units Arthur performs from one message; the rest is reported back, never silently dropped. */
+    public const MAX_UNITS_PER_MESSAGE = 10;
+
+    /** COMPOUND REQUESTS (stress C19, 2026-09-06): "change X and add Y" → ["change X", "add Y"]. Only splits before an action verb. */
+    public static function splitClauses(string $request): array
+    {
+        $verbs = 'add|create|insert|include|put|change|update|edit|rewrite|revise|reword|replace|tweak|rename|remove|delete|hide|make|set|swap|correct|fix';
+        $parts = preg_split('/\s*(?:;|\band\s+(?:also\s+|then\s+)?(?=(?:' . $verbs . ')\b)|\bthen\s+(?=(?:' . $verbs . ')\b)|,?\s*\balso\s+(?=(?:' . $verbs . ')\b))\s*/iu', trim($request)) ?: [];
+        $parts = array_values(array_filter(array_map('trim', $parts), fn($p) => mb_strlen($p) > 3));
+        return count($parts) > 1 ? $parts : [trim($request)];
+    }
+
+    /** The model sometimes shortens a key ("hero_cta" for hero_cta_primary): resolve to a real field or null. */
+    public static function resolveFieldKey(string $k, array $fields): ?string
+    {
+        $k = trim($k);
+        if ($k === '') return null;
+        if (isset($fields[$k])) return $k;
+        foreach ([$k . '_primary', $k . '_text', $k . '_title', $k . '_1', $k . '_body'] as $cand) { if (isset($fields[$cand])) return $cand; }
+        $pref = array_values(array_filter(array_keys($fields), fn($f) => str_starts_with($f, $k . '_')));
+        return count($pref) === 1 ? $pref[0] : null;
+    }
+
+    /** The text fields a customer can see on a template site (no images, flags, colours, fonts, urls). */
+    public static function editableTextVariables(array $tv): array
+    {
+        $out = [];
+        foreach ($tv as $k => $v) {
+            if (!is_string($v)) continue;
+            $val = trim($v);
+            if ($val === '' || mb_strlen($val) > 600) continue;
+            if (preg_match('/(_image|image_\d+|_img|_display|_url|_src|_href|_link|_icon|_color|_colour|color$|colour$|_font|^font_|^design_|^theme|^og_|^logo|_id$|^nav_logo$|^footer_logo$|^header_logo$|^site_url|^lang(uage)?$)/i', (string) $k)) continue;
+            if (preg_match('#^(https?:)?/|^\#|^display:|^[0-9a-f]{6}$#i', $val)) continue;
+            $out[(string) $k] = $val;
+        }
+        return $out;
+    }
+
+    /**
+     * STRESS C12 (2026-09-06): copy edits on a template (static-export) site. The model picks which of the site's REAL
+     * text fields change; each change is patched into every export file (home + added pages) and stored in
+     * template_variables so a re-render keeps it. Deterministic apply, honest reply when nothing fits.
+     */
+    private function editStaticCopy(int $wsId, int $websiteId, string $request, object $site, array $tv, array $plan): array
+    {
+        $fields = self::editableTextVariables($tv);
+        // only fields this template actually renders (template_variables carry keys from other manifests too)
+        $exportHtml = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if ($exportHtml !== '') { $onPage = array_filter($fields, fn($v, $k) => str_contains($exportHtml, 'data-field="' . $k . '"'), ARRAY_FILTER_USE_BOTH); if ($onPage !== []) $fields = $onPage; }
+        if ($fields === []) return ['success' => false, 'code' => 'NO_FIELDS', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'message' => "This site has no editable text fields I can change from here."];
+        $list = '';
+        foreach ($fields as $k => $v) $list .= $k . ': ' . json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
+        $system = "You are Arthur, editing the text of a finished website for {$site->name}. The website's text lives in named fields; you change fields, nothing else.\n"
+            . "Return ONLY a JSON object: {\"changes\":[{\"key\":\"<field key>\",\"value\":\"<new text>\"}],\"reply\":\"<one or two sentences to the customer>\"}\n"
+            . "Rules:\n- Use only keys from FIELDS. Change every field the request applies to (a phone number or address may appear in several fields).\n"
+            . "- Keep each field's language, tone and rough length; keep existing inline <br>, <em>, <strong> markup when a field has it.\n"
+            . "- Never invent facts, names, prices or claims that are not in the request or already on the site.\n"
+            . "- If the request needs something these fields cannot express (new sections, pages, images, colours, layout), return an empty changes list and say plainly what you cannot do here.\n"
+            . "- Maximum 20 changes. No markdown, no commentary outside the JSON.";
+        $user = "FIELDS (key: current value)\n{$list}\nREQUEST: {$request}";
+        $result = $this->runtime->chatJson($system, $user, ['task' => 'arthur_static_edit', 'workspace_id' => $wsId], 1400);
+        $parsed = ($result['success'] ?? false) && is_array($result['parsed'] ?? null)
+            ? \App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($result['parsed']) : null;
+        if (!is_array($parsed)) {
+            Log::warning('[Arthur] editStaticCopy: no parseable JSON', ['error' => $result['error'] ?? null, 'website' => $websiteId]);
+            return ['success' => false, 'code' => 'MODEL_FAILED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'message' => "I couldn't work out that change just now — please try rephrasing it."];
+        }
+        $changes = is_array($parsed['changes'] ?? null) ? $parsed['changes'] : [];
+        $reply   = trim((string) ($parsed['reply'] ?? ''));
+        $applied = []; $skipped = [];
+        foreach (array_slice($changes, 0, 20) as $ch) {
+            $k = self::resolveFieldKey((string) ($ch['key'] ?? ''), $fields); $v = $ch['value'] ?? null;
+            if ($k === null || !is_string($v)) { $skipped[] = (string) ($ch['key'] ?? ''); continue; }
+            $v = trim(strip_tags($v, '<br><em><strong><b><i><span>'));
+            if ($v === '' || mb_strlen($v) > 2000 || $v === $fields[$k]) { $skipped[] = $k; continue; }
+            if (!$this->templates->updateField($websiteId, $k, $v)) { $skipped[] = $k; continue; }
+            $this->templates->patchFieldInSubPages($websiteId, $k, $v);
+            $tv[$k] = $v; $applied[] = $k;
+        }
+        if ($applied !== []) {
+            $this->templates->saveTemplateVariables($websiteId, $tv); // Law 11: Builder-owned persistence
+            try { $this->templates->refreshServiceSelects($websiteId, $tv); } catch (\Throwable $e) {}
+            try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        }
+        Log::info('[Arthur] editStaticCopy', ['website' => $websiteId, 'applied' => $applied, 'skipped' => $skipped]);
+        $n = count($applied);
+        // never echo a model reply that claims a change when nothing was applied
+        $msg = $n > 0
+            ? ($reply !== '' ? $reply : "Done — I updated {$n} " . ($n === 1 ? 'field' : 'fields') . " on {$site->name}.")
+            : (($changes === [] && $reply !== '' && !preg_match('/\b(updated|changed|done|replaced|set)\b/i', $reply)) ? $reply : "I couldn't find text on {$site->name} that matches that request, so nothing was changed.");
+        return ['success' => $n > 0, 'kind' => 'edit', 'code' => $n > 0 ? 'EDITED' : 'NO_CHANGE', 'plan' => $plan, 'applied' => $n, 'actions_applied' => $n,
+            'changes' => $applied, 'message' => $msg, 'reply' => $msg, 'url' => "/storage/sites/{$websiteId}/index.html"];
+    }
+
+    /** STRESS C15 (2026-09-06): remove an Arthur-added section, or an added page, from a template site. Template-native sections stay editor-only. */
+    private function removeFromStaticSite(int $wsId, int $websiteId, string $request, array $plan, object $site, ?string $industry): array
+    {
+        $r = mb_strtolower($request);
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $added = array_values(array_filter(array_map(fn($x) => (string) ($x['type'] ?? ''), (array) ($settings['arthur_sections'] ?? []))));
+        // the export is the truth: a wrapper still on the page is removable even if the record was already forgotten
+        if (preg_match_all('/data-block="added_([a-z0-9_]+)"/', (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html")), $mm)) $added = array_values(array_unique(array_merge($added, $mm[1])));
+        $credits = app(\App\Core\Billing\CreditService::class);
+        $price = (int) (\App\Engines\Builder\Support\BuilderCapabilities::pricing()['text_edit'] ?? 1);
+        if (preg_match('/\bpage\b/', $r)) {
+            $slug = \App\Engines\Builder\Support\BuilderCapabilities::pageSlugFor($r, $industry);
+            $row = $slug ? DB::table('pages')->where('website_id', $websiteId)->whereNotIn('slug', ['home', 'blog', 'news', ''])
+                ->where(function ($q) use ($slug) { $q->where('slug', $slug)->orWhere('page_template', $slug)->orWhere('slug', str_replace('_', '-', $slug)); })->first() : null;
+            if (!$row) return ['success' => false, 'code' => 'NO_SUCH_PAGE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0,
+                'message' => "{$site->name} doesn't have that page, so there is nothing to remove."];
+            app(\App\Engines\Builder\Services\BuilderService::class)->deletePage((int) $row->id, $wsId);
+            $dir = storage_path("app/public/sites/{$websiteId}/{$row->slug}");
+            if (is_dir($dir)) \Illuminate\Support\Facades\File::deleteDirectory($dir);
+            $this->templates->removeNavLink($websiteId, (string) $row->slug);
+            try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+            $credits->debit($wsId, $price, 'builder_arthur_remove', $websiteId, ['page' => $row->slug]);
+            $msg = "Removed the " . trim(explode('/', (string) $row->title)[0]) . " page from {$site->name} and its menu link.";
+            return ['success' => true, 'kind' => 'remove', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $price, 'message' => $msg, 'reply' => $msg, 'url' => "/storage/sites/{$websiteId}/index.html"];
+        }
+        $type = $plan['section'] ?? null;
+        if ($type === null) { foreach ($added as $t) { if (str_contains($r, str_replace('_', ' ', $t)) || str_contains($r, $t)) { $type = $t; break; } } }
+        if ($type === null || !in_array($type, $added, true)) {
+            $labels = implode(', ', array_map(fn($t) => ucfirst(str_replace('_', ' ', $t)), $added));
+            return ['success' => false, 'code' => 'NOT_REMOVABLE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0,
+                'message' => $added !== []
+                    ? "I can remove the sections I added to {$site->name} ({$labels}). The template's own sections are removed in the page editor (select the section → Remove), so nothing disappears by accident."
+                    : "That is part of {$site->name}'s template. Remove it in the page editor (select the section → Remove) — I only remove sections I added myself."];
+        }
+        $ok = $this->templates->removeSplicedSection($websiteId, $type);
+        try { app(\App\Engines\Builder\Services\BuilderService::class)->removeLastSectionOfTypeFromHomePage($websiteId, $type); } // Law 11: Builder-owned persistence
+        catch (\Throwable $e) { Log::warning('[Arthur] removeFromStaticSite stub: ' . $e->getMessage()); }
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        if ($ok) $credits->debit($wsId, $price, 'builder_arthur_remove', $websiteId, ['section' => $type]);
+        $label = ucfirst(str_replace('_', ' ', $type));
+        $msg = $ok ? "Removed the {$label} section from {$site->name}'s home page." : "I couldn't find the {$label} section on the page any more, so nothing was changed.";
+        return ['success' => $ok, 'kind' => 'remove', 'plan' => $plan, 'section' => $type, 'applied' => $ok ? 1 : 0, 'actions_applied' => $ok ? 1 : 0, 'credits' => $ok ? $price : 0, 'message' => $msg, 'reply' => $msg, 'url' => "/storage/sites/{$websiteId}/index.html"];
+    }
+    /** Where a hand-off file should go, from the customer's words. */
+    public static function mediaIntent(string $request): string
+    {
+        $r = mb_strtolower($request);
+        if (preg_match('/\blogo\b/', $r)) return 'logo';
+        if (preg_match('/\b(hero|banner|cover|header (photo|image)|main (photo|image)|background|top of the (site|page|home))\b/', $r)) return 'hero';
+        if (preg_match('/\b(about|our story|story)\b/', $r)) return 'about';
+        if (preg_match('/\b(team|staff|member|members|doctor|doctors|stylist|trainer|people)\b/', $r)) return 'team';
+        if (preg_match('/\b(share|social|og|preview) (image|photo)\b/', $r)) return 'og';
+        return 'gallery';
+    }
+
+    /** Every placement the customer names, in order: "logo … and … hero" → ['logo','hero']. */
+    public static function mediaIntents(string $request): array
+    {
+        $r = mb_strtolower($request); $found = [];
+        $pat = ['logo' => '/\blogo\b/', 'hero' => '/\b(hero|banner|cover|header (?:photo|image)|main (?:photo|image)|background|top of the (?:site|page|home))\b/', 'about' => '/\b(about|our story|story)\b/', 'team' => '/\b(team|staff|member|members|doctor|doctors|stylist|trainer|people)\b/', 'og' => '/\b(?:share|social|og|preview) (?:image|photo)\b/', 'gallery' => '/\bgallery\b/'];
+        foreach ($pat as $intent => $re) { if (preg_match($re, $r, $m, PREG_OFFSET_CAPTURE)) $found[$intent] = $m[0][1]; }
+        asort($found);
+        return $found === [] ? ['gallery'] : array_keys($found);
+    }
+
+    /** The template fields an intent can fill on this export, in order. */
+    private static function mediaTargets(string $intent, string $export): array
+    {
+        $onPage = fn(string $field) => str_contains($export, 'data-field="' . $field . '"');
+        if ($intent === 'logo') return ['logo_url'];
+        if ($intent === 'og') return ['og_image'];
+        if ($intent === 'hero') return array_values(array_filter(['hero_image'], $onPage));
+        if ($intent === 'about') return array_values(array_filter(['about_image', 'about_image_1', 'story_image'], $onPage));
+        if ($intent === 'team') { $t = []; for ($i = 1; $i <= 8; $i++) { foreach (["member_{$i}_image", "team_{$i}_image", "doctor_{$i}_image", "staff_{$i}_image", "stylist_{$i}_image", "trainer_{$i}_image"] as $f) { if ($onPage($f)) { $t[] = $f; break; } } } return $t; }
+        return preg_match_all('/data-field="(gallery_image_\d+|gallery_\d+_image|image_\d+)"/', $export, $gm) ? array_values(array_unique($gm[1])) : [];
+    }
+
+    /**
+     * FILE HAND-OFF (2026-09-06): place attached media on a template site. Files are copied into the site's folder,
+     * normalised to the slot by ImagePolicy, wired through TemplateService::updateField (export) + saveTemplateVariables
+     * (re-render safe). Logo → text logo swapped on every page. 1 credit per request.
+     */
+    private function placeMedia(int $wsId, int $websiteId, string $request, array $mediaIds, object $site, array $tv, array $ctx): array
+    {
+        $rows = DB::table('media')->where('workspace_id', $wsId)->whereIn('id', $mediaIds)
+            ->where(function ($q) { $q->where('asset_type', 'image')->orWhere('mime_type', 'like', 'image/%'); })->orderByRaw('FIELD(id,' . implode(',', array_map('intval', $mediaIds)) . ')')->get();
+        if ($rows->isEmpty()) {
+            return ['success' => false, 'code' => 'NO_IMAGE', 'applied' => 0, 'actions_applied' => 0,
+                'message' => "The attached file isn't an image I can place (PNG, JPG, WEBP, SVG). Attach the logo or photo again and I'll put it on {$site->name}."];
+        }
+        $intents = self::mediaIntents($request); $intent = $intents[0];
+        $export = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        // file i → the i-th named placement; extra files follow the last one. Each intent hands out its own slots in order.
+        $perIntentTargets = []; $assign = [];
+        foreach ($rows as $k => $row) {
+            $it = $intents[min($k, count($intents) - 1)];
+            if (!isset($perIntentTargets[$it])) $perIntentTargets[$it] = self::mediaTargets($it, $export);
+            $assign[$k] = ['intent' => $it, 'field' => array_shift($perIntentTargets[$it])];
+        }
+        if (!array_filter(array_column($assign, 'field'))) {
+            return ['success' => false, 'code' => 'NO_SLOT', 'applied' => 0, 'actions_applied' => 0,
+                'message' => "{$site->name}'s template has no " . ($intent === 'gallery' ? 'gallery' : $intent) . " image slot on the page, so I have nowhere to put that photo. Ask me to add a gallery section first, or tell me a different place (hero, about, team)."];
+        }
+        $dir = storage_path("app/public/sites/{$websiteId}/media"); @mkdir($dir, 0775, true);
+        $placed = []; $skipped = [];
+        foreach ($rows as $k => $row) {
+            $field = $assign[$k]['field'] ?? null;
+            if (!$field) { $skipped[] = (string) $row->filename; continue; }
+            $src = storage_path('app/public/' . preg_replace('#^/?storage/#', '', ltrim((string) $row->path, '/'))); // uploads: /uploads/x; platform: /storage/x
+            if (!is_file($src)) { $alt = public_path(ltrim((string) ($row->url ?: ''), '/')); if (is_file($alt)) $src = $alt; }
+            if (!is_file($src)) { $skipped[] = (string) $row->filename; continue; }
+            $ext = strtolower(pathinfo((string) $row->path, PATHINFO_EXTENSION) ?: 'jpg');
+            $slot = \App\Engines\Builder\Support\ImagePolicy::slotFor($field);
+            $file = ($field === 'logo_url' ? 'logo' : $slot . '-' . (int) $row->id) . '.' . $ext;
+            $dest = $field === 'logo_url' ? storage_path("app/public/sites/{$websiteId}/{$file}") : $dir . '/' . $file;
+            if ($field === 'logo_url') { foreach (glob(storage_path("app/public/sites/{$websiteId}/logo.*")) ?: [] as $old) @unlink($old); }
+            // CROP TOOL 2026-09-06: every placement has a fixed size — photos are cut to it, logos fitted onto the logo canvas
+            $norm = \App\Engines\Builder\Support\ImageCrop::autoSafe($src, $slot, $dest) ?? \App\Engines\Builder\Support\ImagePolicy::normalise($src, $slot, $dest);
+            if (!empty($norm['path']) && $norm['path'] !== $dest && is_file($norm['path'])) { $dest = $norm['path']; $file = basename($dest); }
+            $norm['changed'] = $norm['changed'] ?? true;
+            if (!is_file($dest)) { $skipped[] = (string) $row->filename; continue; }
+            @chmod($dest, 0664);
+            $url = ($field === 'logo_url' ? "/storage/sites/{$websiteId}/{$file}" : "/storage/sites/{$websiteId}/media/{$file}") . '?v=' . time();
+            $ok = $this->templates->updateField($websiteId, $field, $url);
+            if (!$ok) { $skipped[] = (string) $row->filename; continue; }
+            $tv[$field] = $url;
+            $placed[] = ['file' => (string) $row->filename, 'field' => $field, 'slot' => $slot, 'intent' => $assign[$k]['intent'], 'size' => ($norm['width'] && $norm['height']) ? "{$norm['width']}×{$norm['height']}" : '', 'resized' => (bool) ($norm['changed'] ?? false)];
+        }
+        if ($placed === []) {
+            return ['success' => false, 'code' => 'NOT_PLACED', 'applied' => 0, 'actions_applied' => 0, 'message' => "I couldn't place " . implode(', ', $skipped) . " on {$site->name} — the file could not be read."];
+        }
+        $this->templates->saveTemplateVariables($websiteId, $tv);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        $price = (int) (\App\Engines\Builder\Support\BuilderCapabilities::pricing()['text_edit'] ?? 1);
+        app(\App\Core\Billing\CreditService::class)->debit($wsId, $price, 'builder_arthur_media', $websiteId, ['placed' => array_column($placed, 'field'), 'media' => $mediaIds]);
+        $where = ['logo' => 'as the logo in the header and footer on every page', 'hero' => 'as the hero photo', 'about' => 'in the about section', 'team' => 'on the team cards', 'og' => 'as the social share image', 'gallery' => 'in the gallery'];
+        $parts = [];
+        foreach ($placed as $p) $parts[] = $p['file'] . ($p['resized'] ? " (resized to {$p['size']})" : '') . ' ' . ($where[$p['intent']] ?? 'on the site');
+        $msg = 'Placed ' . implode('; ', $parts) . " on {$site->name}." . ($skipped !== [] ? ' Not placed: ' . implode(', ', $skipped) . ' (no free slot left).' : '');
+        Log::info('[Arthur] placeMedia', ['website' => $websiteId, 'intent' => $intent, 'placed' => $placed, 'skipped' => $skipped]);
+        return ['success' => true, 'kind' => 'media', 'intent' => $intent, 'applied' => count($placed), 'actions_applied' => count($placed), 'placed' => $placed, 'skipped' => $skipped,
+            'credits' => $price, 'message' => $msg, 'reply' => $msg, 'url' => "/storage/sites/{$websiteId}/index.html", 'delegated' => true];
+    }
+    /**
+     * CROP TOOL (2026-09-06): a customer photo dropped into a template slot at build time is cut to that slot's fixed
+     * size (a derived copy under storage/app/public/crops); the original upload is untouched. Non-local or unreadable
+     * images are used as they are.
+     */
+    public static function cropPoolImageForSlot(string $url, string $field): string
+    {
+        try {
+            $p = (string) parse_url($url, PHP_URL_PATH);
+            if (!preg_match('#^/storage/([A-Za-z0-9_\-./]+)$#', $p, $m) || str_contains($m[1], '..') || str_starts_with($m[1], 'template-images/') || str_starts_with($m[1], 'builder-heroes/') || str_starts_with($m[1], 'crops/')) return $url;
+            $src = storage_path('app/public/' . $m[1]);
+            if (!is_file($src)) return $url;
+            $slot = \App\Engines\Builder\Support\ImagePolicy::slotFor($field);
+            if (\App\Engines\Builder\Support\ImageCrop::targetFor($slot) === null) return $url;
+            $ext = strtolower(pathinfo($src, PATHINFO_EXTENSION) ?: 'jpg');
+            $dest = storage_path('app/public/crops/' . $slot . '-' . substr(md5($m[1]), 0, 12) . '.' . $ext);
+            if (!is_file($dest) || !is_file(preg_replace('/\.[a-z0-9]+$/i', '.png', $dest))) {
+                $r = \App\Engines\Builder\Support\ImageCrop::autoSafe($src, $slot, $dest);
+                if (!$r || empty($r['path']) || !is_file($r['path'])) return $url;
+                $dest = $r['path'];
+            } elseif (!is_file($dest)) { $dest = preg_replace('/\.[a-z0-9]+$/i', '.png', $dest); }
+            return '/storage/' . ltrim(str_replace(storage_path('app/public/'), '', $dest), '/');
+        } catch (\Throwable $e) { return $url; }
     }
 }
