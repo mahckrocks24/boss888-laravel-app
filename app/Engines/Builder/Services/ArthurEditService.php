@@ -96,7 +96,7 @@ class ArthurEditService
             // 6-section stub below is for renderer (sections) sites only.
             // DEC-0046 (2026-09-13): 'style' was missing here, so every colour, gradient, font and mood request bypassed
             // Arthur's design brain (applySiteStyle) and fell to the JSON path, which can only recolour variables.
-            if (in_array($planEarly['kind'], ['page', 'section', 'edit', 'remove', 'unsupported', 'style'], true)) {
+            if (in_array($planEarly['kind'], ['page', 'section', 'edit', 'remove', 'unsupported', 'style', 'image'], true)) {
                 $r = app(ArthurService::class)->handleSiteRequest((int) $siteRow->workspace_id, $websiteIdEarly, $userMessage, [
                     'agent_slug' => $context['agent_slug'] ?? 'editor', 'user_id' => $context['user_id'] ?? null,
                 ]);
@@ -604,6 +604,8 @@ PROMPT;
         if (is_file("{$siteRoot}/index.html")) {
             // STATIC: rewrite :root variable values across every exported HTML file.
             $out['is_static'] = true;
+            // DEC-0046: the history snapshot replaces the loose .bak copies that used to sit in the served directory.
+            try { app(TemplateService::class)->snapshotToHistory($websiteId, 'colors'); } catch (\Throwable $e) {}
 
             $files = glob("{$siteRoot}/*.html") ?: [];
             foreach ((glob("{$siteRoot}/*/index.html") ?: []) as $nested) {
@@ -641,7 +643,7 @@ PROMPT;
                 }, $html);
 
                 if (is_string($html) && $html !== $orig) {
-                    @copy($file, "{$file}.bak-{$stamp}");
+                    // (DEC-0046) no loose .bak beside the served file — history snapshots cover it
                     file_put_contents($file, $html);
                     $out['files'][] = ltrim(str_replace($siteRoot, '', $file), '/\\');
                 }
@@ -774,7 +776,7 @@ PROMPT;
                 continue;
             }
             if (is_string($html) && $html !== $orig) {
-                @copy($file, "{$file}.bak-{$stamp}");
+                // (DEC-0046) no loose .bak beside the served file — history snapshots cover it
                 file_put_contents($file, $html);
                 $out['applied']++;
                 $out['files'][] = ltrim(str_replace($siteRoot, '', $file), '/\\');

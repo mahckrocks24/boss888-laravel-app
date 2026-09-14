@@ -2184,8 +2184,9 @@ function _wsShowPageEditor(site, pageId) {
           devBtn('desktop', 'Desktop', '🖥', true) + devBtn('tablet', 'Tablet', '▭', false) + devBtn('mobile', 'Mobile', '📱', false) +
         '</div>' +
         '<span id="pe-status" class="pe-bar-hint" style="color:var(--t3);font-size:11px">Changes made by Arthur save automatically</span>' +
+        '<button type="button" id="t3-undo" onclick="wsUndoLast(' + (site.id || 0) + ')" title="Undo the last change" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
         '<button type="button" id="pe-refresh" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">Refresh preview</button>' +
-        '<button type="button" onclick="bld_openColors(' + (site.id || 0) + ')" title="Brand colours" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Colours</button>' +
+        '<button type="button" onclick="wsOpenPalettes(' + (site.id || 0) + ')" title="Colour palettes — click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Colours</button>' +
         '<button type="button" id="pe-publish" onclick="wsPublishFromEditor(' + (site.id || 0) + ', ' + pubName + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Publish</button>' +
       '</div>' +
       '<div class="pe-main" style="flex:1;display:flex;overflow:hidden">' +
@@ -3658,6 +3659,8 @@ async function _t3ConfirmTier4(websiteId, btn, confirmAction, confirmData) {
 
 /* ══════════════ DEC-0046 (2026-09-13) — palettes, undo, exit choice, preview reload ══════════════ */
 function _t3ReloadPreview() {
+  // The page editor (renderer sites) rebuilds its preview from the API; the template editor reloads the export.
+  if (typeof window._luPageEditorReloadHook === 'function') { try { window._luPageEditorReloadHook(); return; } catch (_e) {} }
   var f = document.getElementById('t3-preview');
   if (!f) return;
   var base = String(f.src || '').split('#')[0].split('?')[0];
@@ -3705,12 +3708,14 @@ function _t3PaletteRestore() {
 window.wsOpenPalettes = async function (siteId) {
   var old = document.getElementById('t3-pal');
   if (old) { old.remove(); _t3PaletteRestore(); return; }
-  var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
+  // Both editors: the template editor's stage or the page editor's frame wrap. Appending to <body> put the panel
+  // underneath the page editor's fixed view (proven: elementFromPoint returned the iframe).
+  var stage = document.querySelector('#template-editor-view .pe-stage') || document.getElementById('pe-frame-wrap') || document.body;
   var panel = document.createElement('div');
   panel.id = 't3-pal'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Colour palettes');
-  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(360px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:30;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.45);padding:14px;font-family:var(--fb)';
+  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(360px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.45);padding:14px;font-family:var(--fb)';
   panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Colour palettes</div><button type="button" id="t3-pal-x" aria-label="Close" style="background:none;border:1px solid var(--bd);color:var(--t2);width:28px;height:28px;border-radius:6px;cursor:pointer">×</button></div>'
-    + '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Hover to preview, click to apply. Every palette is contrast-checked. Undo puts the old colours back.</div>'
+    + '<div id="t3-pal-sub" style="font-size:12px;color:var(--t3);margin-bottom:12px">Hover to preview, click to apply. Every palette is contrast-checked. Undo puts the old colours back.</div>'
     + '<div id="t3-pal-list"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
   stage.appendChild(panel);
   panel.querySelector('#t3-pal-x').addEventListener('click', function () { panel.remove(); _t3PaletteRestore(); });
@@ -3730,6 +3735,7 @@ window.wsOpenPalettes = async function (siteId) {
   var current = (data && data.current) || null;
   if (!pals.length) { list.innerHTML = '<div class="lu-empty"><b>No palettes for this design</b></div>'; return; }
   var canPreview = pals.some(function (p) { return p.vars && Object.keys(p.vars).length; });
+  if (!canPreview) { var sub = panel.querySelector('#t3-pal-sub'); if (sub) sub.textContent = 'Click a palette to apply it — the preview updates right after. Undo puts the old colours back.'; }
   list.innerHTML = '';
   list.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px';
   var applying = false;

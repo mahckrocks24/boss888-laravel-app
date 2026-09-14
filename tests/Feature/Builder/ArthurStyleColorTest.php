@@ -64,8 +64,9 @@ class ArthurStyleColorTest extends TestCase
         $this->assertStringNotContainsString('#D4622A', $after, 'old brand hex is gone');
         // var(--terra) references are untouched and now resolve to the new colour.
         $this->assertStringContainsString('color:var(--terra)', $after);
-        // A reversible backup was written.
-        $this->assertNotEmpty(glob(dirname($file) . '/index.html.bak-*'));
+        // A reversible history snapshot was written (DEC-0046: no loose .bak beside the served file).
+        $this->assertNotEmpty(glob(dirname($file) . '/.history/index-*.html'), 'history snapshot written');
+        $this->assertEmpty(glob(dirname($file) . '/index.html.bak-*'), 'no loose backup in the served directory');
     }
 
     public function test_unknown_variable_and_bad_hex_are_reported_not_written(): void

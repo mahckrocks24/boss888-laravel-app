@@ -1669,6 +1669,54 @@ PROMPT;
     /* ═══════════════════ DEC-0046 (2026-09-13) — PALETTES, LITERAL GRADIENTS, VERIFIED WRITES ═══════════════════ */
 
     /**
+     * IMAGE GENERATION at edit time (DEC-0046 gap closure, 2026-09-14). "Generate a new hero image of …" goes to the
+     * platform's image intelligence (the same service Studio and the blog use), which charges by quality and refunds
+     * itself on failure; a generated image is placed into the named slot of the static export. A provider refusal is
+     * reported as exactly that — never as a change.
+     */
+    private function generateSiteImage(int $wsId, int $websiteId, string $request, object $site, array $plan, bool $isStatic, array $tv): array
+    {
+        $target = (string) ($plan['target'] ?? 'hero');
+        $prompt = trim((string) preg_replace('/^(?:please\s+)?(?:can you\s+)?(?:generate|create|produce|draw|render|design|make|give me)\s+(?:me\s+)?(?:an?\s+|the\s+)?(?:new\s+|another\s+|different\s+)?(?:ai\s+)?(?:hero\s+|banner\s+|background\s+|about\s+|gallery\s+)?(?:image|photo|picture|visual|illustration|artwork)\s*(?:of|for|showing|with|that shows)?\s*/i', '', $request));
+        $prompt = trim((string) preg_replace('/\s+(?:for|on|in)\s+the\s+(?:hero|banner|about|gallery)(?:\s+section)?\.?$/i', '', $prompt));
+        if ($prompt === '') { $prompt = "{$site->name} — " . str_replace('_', ' ', (string) ($tv['industry'] ?? 'business')) . ' hero image'; }
+        try {
+            $res = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
+                'workspace_id' => $wsId, 'user_prompt' => $prompt, 'source' => 'builder',
+                'asset_type' => 'website_hero', 'platform' => 'web', 'aspect_ratio' => '16:9',
+            ]);
+        } catch (\Throwable $e) {
+            $res = ['success' => false, 'error' => 'exception', 'message' => $e->getMessage()];
+        }
+        if (empty($res['success']) || empty($res['url'])) {
+            $why = mb_substr(trim((string) ($res['message'] ?? $res['error'] ?? 'no reason given')), 0, 90);
+            Log::warning('[Arthur] image generation unavailable', ['website' => $websiteId, 'error' => $res['error'] ?? null, 'detail' => $why]);
+            $insufficient = ($res['error'] ?? '') === 'insufficient_credits';
+            return ['success' => false, 'code' => $insufficient ? 'INSUFFICIENT_CREDITS' : 'IMAGE_UNAVAILABLE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => $insufficient
+                    ? 'Generating an image needs ' . (int) ($res['credits_required'] ?? 2) . ' credits and this workspace does not have them yet. Nothing was changed.'
+                    : "I couldn't generate that image right now — the image service declined ({$why}). Nothing was charged and nothing on your site changed. You can still click any image in the preview to upload your own."];
+        }
+        $url   = (string) $res['url'];
+        $field = $target === 'about' ? 'about_image' : ($target === 'gallery' ? 'gallery_1_image' : 'hero_image');
+        $placed = false;
+        if ($isStatic) {
+            try { $placed = $this->templates->updateField($websiteId, $field, $url); } catch (\Throwable $e) { Log::warning('[Arthur] generated image not placed: ' . $e->getMessage()); }
+        }
+        $tv[$field] = $url;
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        $charged = (int) ($res['credits'] ?? $res['credits_charged'] ?? 0);
+        Log::info('[Arthur] image generated at edit time', ['website' => $websiteId, 'field' => $field, 'placed' => $placed, 'asset' => $res['asset_id'] ?? null, 'credits' => $charged]);
+        if (! $placed) {
+            return ['success' => false, 'code' => 'IMAGE_NOT_PLACED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => $charged, 'url' => $url,
+                'message' => "I generated the image (it is in your Media Library) but this design has no {$target} image slot I can put it in. Click any image in the preview to use it there."];
+        }
+        return ['success' => true, 'kind' => 'image', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $charged, 'url' => $url,
+            'message' => "Done — I generated a new {$target} image for {$site->name} and put it in place." . ($charged > 0 ? " {$charged} credit" . ($charged === 1 ? '' : 's') . ' (image service).' : '')];
+    }
+
+
+    /**
      * The curated palettes for THIS built site, each with the exact :root variables it would rewrite, so the
      * editor can preview a palette instantly in the iframe and the apply step writes the very same map.
      */
@@ -1678,6 +1726,7 @@ PROMPT;
         if (! $site) { return ['success' => false, 'error' => 'not_found', 'palettes' => []]; }
         $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
         $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        if (empty($settings['industry']) && ! empty($tv['industry'])) { $settings['industry'] = (string) $tv['industry']; }
         $industry = $this->siteIndustrySlug($site, $settings);
         $style    = (string) ($tv['design_style'] ?? $settings['theme'] ?? '');
         $isStatic = is_file(storage_path("app/public/sites/{$websiteId}/index.html"));
@@ -1715,10 +1764,11 @@ PROMPT;
         $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
         $isStatic = is_file(storage_path("app/public/sites/{$websiteId}/index.html"));
         $editor   = app(ArthurEditService::class);
+        // One snapshot for both kinds of site: static sites keep the export, renderer sites keep the record.
+        app(TemplateService::class)->snapshotToHistory($websiteId, 'palette');
         if ($isStatic) {
             $vars = $this->themeVarsForSite($websiteId, $site, $settings, $theme);
             if ($vars === []) { return ['success' => false, 'error' => 'no_palette_vars', 'message' => 'This design does not expose a colour palette I can switch.']; }
-            app(TemplateService::class)->snapshotToHistory($websiteId, 'palette');
             $res = $editor->applyStyleColors($websiteId, $vars);
             if ((int) ($res['applied'] ?? 0) === 0) {
                 return ['success' => false, 'error' => 'not_applied', 'message' => 'The palette did not match any colour on this site.', 'missed' => $res['missed'] ?? []];
@@ -4970,6 +5020,10 @@ PROMPT;
                     'message' => 'I could not apply that design change just now — nothing on your site was altered.'];
             }
         }
+        // IMAGE GENERATION at edit time (DEC-0046 gap closure, 2026-09-14): the image service existed; Builder never called it.
+        if ($plan['kind'] === 'image') {
+            return $this->generateSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv);
+        }
         if ($plan['kind'] === 'unsupported') {
             $pages = implode(', ', array_keys($caps::pages($industry ?: null)));
             $secs  = implode(', ', array_keys($caps::sections($industry ?: null)));
@@ -5038,8 +5092,16 @@ PROMPT;
                         'message' => "{$site->name}'s home page already has a {$plan['label']} section. Tell me what to change in it, or ask me to remove it first."];
                 }
                 $type = $plan['section'];
-                $sec = $this->defaultSectionSpec($type, $identity, $tv);
+                $sec = $this->defaultSectionSpec($type, $identity, $tv, $request);
+                if ($type === 'video_embed' && trim((string) ($sec['video_url'] ?? '')) === '') {
+                    return ['success' => false, 'code' => 'NEEDS_VIDEO_URL', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                        'message' => 'Happy to add a video section — send me the YouTube or Vimeo link (or a direct .mp4 URL) and I will place it, for example "add a video section with https://youtu.be/…".'];
+                }
                 $html = $renderer->renderSection($sec, $brand, (array) $site);
+                if ($type === 'video_embed' && trim($html) === '') {
+                    return ['success' => false, 'code' => 'VIDEO_HOST_UNSUPPORTED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                        'message' => 'I can embed YouTube and Vimeo links, or a direct .mp4/.webm file — that link is not one of those, so nothing was added.'];
+                }
                 $html = $this->adoptTemplateTypography($html);
                 $blockId = 'added_' . $type;
                 // Wrap, don't rewrite: the rendered markup keeps its own ids (self-initialising elements such as the trip
@@ -5566,7 +5628,7 @@ PROMPT;
         foreach ($files as $file) {
             $html = @file_get_contents($file);
             if ($html === false) { continue; }
-            @copy($file, $file . '.bak-style-' . $stamp);
+            // (DEC-0046) no loose .bak-style beside the served file — the request-level history snapshot covers it
             // The layer is <link preconnect> + <link font css> + <style id="lug-design-style">. Replacing
             // only the <style> left the old font links behind, so each restyle added two more.
             $html = preg_replace('~<link rel="preconnect" href="https://fonts\.(?:googleapis|gstatic)\.com"[^>]*>~i', '', $html) ?? $html;
@@ -5620,7 +5682,7 @@ PROMPT;
     }
 
     /** A ready-to-render section for THIS business (deterministic; no LLM needed for the structure). */
-    private function defaultSectionSpec(string $type, array $id, array $tv): array
+    private function defaultSectionSpec(string $type, array $id, array $tv, string $request = ''): array
     {
         $name = $id['business_name']; $svc = $id['services']; $loc = $id['location'];
         switch ($type) {
@@ -5660,6 +5722,11 @@ PROMPT;
                 return ['type' => 'trust_signals', 'heading' => 'Why people trust us', 'items' => [['label' => 'Licensed & insured'], ['label' => 'Transparent pricing'], ['label' => 'Friendly, expert team']]];
             case 'contact_form':
                 return ['type' => 'contact_form', 'heading' => 'Get in touch', 'body' => 'Tell us what you need and we will reply within the day.', 'phone' => $id['phone'], 'email' => $id['email'], 'address' => $loc];
+            case 'video_embed':
+                // DEC-0046 gap closure: the customer's own link (YouTube, Vimeo or a direct file); the renderer allow-lists hosts.
+                $url = preg_match('~https?://[^\s"\'<>]+~i', $request, $um) ? rtrim($um[0], '.,;)') : '';
+                return ['type' => 'video_embed', 'video_url' => $url, 'eyebrow' => 'Watch', 'heading' => "See {$name} in action",
+                    'subheading' => $loc ? "A closer look at what we do in {$loc}." : 'A closer look at what we do.'];
             case 'cta':
             default:
                 return ['type' => 'cta', 'heading' => "Ready to get started with {$name}?", 'body' => 'Book today or send us a message.', 'cta_text' => 'Book now', 'cta_url' => '#booking'];

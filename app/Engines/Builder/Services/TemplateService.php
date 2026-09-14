@@ -342,6 +342,13 @@ class TemplateService
         if ($dsLayer !== '' && stripos($html, 'lug-design-style') === false) {
             $html = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', $dsLayer . '</head>', $html) : $dsLayer . $html;
         }
+        // DEC-0046 gap closure (2026-09-14): a customer's literal gradients survive a rebuild. They live in
+        // template_variables.design_extras and used to vanish the moment the site was re-rendered.
+        $extras = is_array($variables['design_extras'] ?? null) ? array_filter($variables['design_extras'], 'is_string') : [];
+        if ($extras !== [] && stripos($html, 'lug-design-extras') === false) {
+            $block = '<style id="lug-design-extras" data-owner="arthur">' . implode("\n", $extras) . '</style>';
+            $html = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', $block . "\n</head>", $html) : $html . $block;
+        }
 
         return $html;
     }
@@ -1457,7 +1464,7 @@ class TemplateService
         try {
             $root  = storage_path("app/public/sites/{$websiteId}");
             $index = "{$root}/index.html";
-            if (! is_file($index)) { return null; }
+            if (! is_file($index)) { return $this->snapshotRecordOnly($websiteId, $root, $reason); }
             $bytes = (string) @file_get_contents($index);
             if ($bytes === '') { return null; }
             $dir = "{$root}/.history";
@@ -1502,7 +1509,7 @@ class TemplateService
         $root    = storage_path("app/public/sites/{$websiteId}");
         $dir     = "{$root}/.history";
         $entries = glob($dir . '/index-*.html') ?: [];
-        if ($entries === []) { return ['undone' => false, 'error' => 'nothing_to_undo', 'remaining' => 0]; }
+        if ($entries === []) { return $this->undoRecordOnly($websiteId, $dir); }
         sort($entries);
         $latest = end($entries);
         $target = "{$root}/index.html";
@@ -1570,6 +1577,58 @@ class TemplateService
             $d = preg_replace('/\.html$/', '.d', $old);
             if (is_dir($d)) { $this->rmTree($d); }
         }
+    }
+
+    /**
+     * Renderer (non-static) sites have no index.html: their palette lives in settings_json and their design in
+     * template_variables. Snapshot the record itself so Undo covers a palette switch on those sites too.
+     */
+    private function snapshotRecordOnly(int $websiteId, string $root, string $reason): ?string
+    {
+        try {
+            $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json', 'template_variables']);
+            if (! $row) { return null; }
+            $dir = "{$root}/.history";
+            if (! is_dir($dir)) { @mkdir($dir, 0775, true); }
+            if (! is_dir($dir)) { return null; }
+            $payload = ['settings_json' => $row->settings_json, 'template_variables' => $row->template_variables, 'saved_at' => date('c'), 'reason' => $reason];
+            $existing = glob($dir . '/settings-*.json') ?: [];
+            sort($existing);
+            if ($existing !== []) {
+                $prev = json_decode((string) @file_get_contents(end($existing)), true);
+                if (is_array($prev) && ($prev['settings_json'] ?? null) === $row->settings_json && ($prev['template_variables'] ?? null) === $row->template_variables) {
+                    return basename(end($existing));
+                }
+            }
+            $stamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
+            $file  = "{$dir}/settings-{$stamp}.json";
+            if (@file_put_contents($file, json_encode($payload)) === false) { return null; }
+            $all = glob($dir . '/settings-*.json') ?: [];
+            if (count($all) > 10) { sort($all); foreach (array_slice($all, 0, count($all) - 10) as $old) { @unlink($old); } }
+            return basename($file);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TemplateService] record snapshot failed: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function undoRecordOnly(int $websiteId, string $dir): array
+    {
+        $entries = glob($dir . '/settings-*.json') ?: [];
+        if ($entries === []) { return ['undone' => false, 'error' => 'nothing_to_undo', 'remaining' => 0]; }
+        sort($entries);
+        $latest = end($entries);
+        $j = json_decode((string) @file_get_contents($latest), true);
+        if (! is_array($j)) { @unlink($latest); return ['undone' => false, 'error' => 'corrupt_entry', 'remaining' => max(0, count($entries) - 1)]; }
+        $upd = ['updated_at' => now()];
+        if (array_key_exists('settings_json', $j))      { $upd['settings_json'] = $j['settings_json']; }
+        if (array_key_exists('template_variables', $j)) { $upd['template_variables'] = $j['template_variables']; }
+        \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update($upd);
+        @unlink($latest);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        $now = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json', 'template_variables']);
+        $ok = $now && (! array_key_exists('settings_json', $j) || $now->settings_json === $j['settings_json']);
+        return ['undone' => (bool) $ok, 'restored_from' => basename($latest), 'remaining' => max(0, count($entries) - 1), 'record_only' => true];
     }
 
     /** Put the template_variables saved beside a history entry back on the record (and remove the sidecar). */
