@@ -3409,6 +3409,17 @@ PROMPT;
         $existingHero = $templateFits
             ? \App\Services\MediaService::findOrGenerate($heroIndustry, 'hero', 'luxury', $wsId)
             : $this->findApplicableHero($rawIndustry, $servicesText, $wsId);
+        // PORTRAIT designs (2026-09-14, Owner: 'it must be a photo of a person'): the design ships its own hyper-real
+        // portraits; the industry library holds rooms and offices, not people. Uploaded photos still win.
+        if ((string) ($manifest['hero_kind'] ?? '') === 'portrait' && empty($data['uploaded_images'])) {
+            $portrait = (string) ($manifest['variables']['hero_image']['default'] ?? '');
+            if ($portrait !== '') {
+                $existingHero = ['url' => $portrait, 'id' => 'design-portrait'];
+                $about = (string) ($manifest['variables']['story_image']['default'] ?? '');
+                if ($about !== '') { $variables['story_image'] = $about; }
+                $variables['og_image'] = $portrait;
+            }
+        }
         if ($existingHero) {
             $variables['hero_image'] = $existingHero['url'];
             Log::info('[Arthur] Reused existing hero image: ' . ($existingHero['id'] ?? '?'));

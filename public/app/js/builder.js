@@ -3872,6 +3872,7 @@ window.wsOpenLayouts = async function (siteId) {
         if (!rr.ok || !jj || !jj.success || !jj.html) throw new Error((jj && (jj.message || jj.error)) || ('HTTP ' + rr.status));
         window._t3LayoutPreviewing = true;
         var f = document.getElementById('t3-preview'); if (f) f.srcdoc = jj.html;
+        if (window.innerWidth <= 760) { panel.remove(); }   // phone: the bar carries Apply / Back; the page must be visible
         _t3LayoutBar('Previewing “' + L.name + '”' + (L.credits > 0 ? ' — applying fills ' + L.gaps + ' missing texts for ' + L.credits + ' credits' : ' — free to apply'),
           async function () {
             var b = document.querySelector('#t3-lay-bar [data-a=apply]'); if (b) { b.disabled = true; b.textContent = 'Applying…'; }
@@ -3898,3 +3899,21 @@ window.wsOpenLayouts = async function (siteId) {
     list.appendChild(card);
   });
 };
+
+/* ══════════════ PHONE LAYOUT for the template editor overlays (2026-09-14) ══════════════ */
+(function () {
+  if (document.getElementById('t3-mobile-css')) return;
+  var st = document.createElement('style'); st.id = 't3-mobile-css';
+  st.textContent = '@media (max-width:760px){'
+    + '#template-editor-view .pe-bar{height:auto!important;flex-wrap:wrap;padding:8px 10px!important;gap:6px!important}'
+    + '#template-editor-view .pe-bar button{padding:6px 10px!important;font-size:12px!important}'
+    + '#template-editor-view .pe-bar-hint,#template-editor-view .pe-bar-spacer{display:none!important}'
+    + '#template-editor-view .pe-bar-title{flex:1 1 auto;font-size:13px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '#t3-lay,#t3-pal{top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:min(62vh,100%)!important;border-radius:14px 14px 0 0!important;box-shadow:0 -12px 40px rgba(0,0,0,.5)!important}'
+    + '#t3-lay-bar{left:8px!important;right:8px!important;top:8px!important;transform:none!important;flex-wrap:wrap;border-radius:12px!important;padding:10px 12px!important;gap:8px!important}'
+    + '#t3-lay-bar span{flex:1 1 100%;font-size:12px;line-height:1.35}'
+    + '#t3-lay-bar button{flex:1 1 calc(50% - 4px);white-space:nowrap}'
+    + '#t3-pal-list{grid-template-columns:1fr 1fr!important}'
+    + '}';
+  document.head.appendChild(st);
+})();

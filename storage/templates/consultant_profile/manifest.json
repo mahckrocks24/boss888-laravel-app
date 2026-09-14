@@ -3,7 +3,7 @@
     "name": "Consultant — Profile",
     "industry": "consulting",
     "description": "A personal-brand site for an independent consultant, coach or advisor: portrait, services with prices, credentials, selected work, process and a booking form.",
-    "thumbnail": "/storage/builder-heroes/consulting.jpg",
+    "thumbnail": "/storage/template-images/portraits/consultant_hero.png",
     "category": "professional",
     "version": "1.0.0",
     "variation": "profile",
@@ -134,7 +134,7 @@
         "og_image": {
             "type": "image",
             "label": "OG Image",
-            "default": "/storage/builder-heroes/consulting.jpg"
+            "default": "/storage/template-images/portraits/consultant_hero.png"
         },
         "nav_1": {
             "type": "text",
@@ -189,7 +189,7 @@
         "hero_image": {
             "type": "image",
             "label": "Portrait",
-            "default": "/storage/builder-heroes/consulting.jpg"
+            "default": "/storage/template-images/portraits/consultant_hero.png"
         },
         "stat_1_value": {
             "type": "text",
@@ -324,7 +324,7 @@
         "story_image": {
             "type": "image",
             "label": "About Photo",
-            "default": "/storage/builder-heroes/consulting.jpg"
+            "default": "/storage/template-images/portraits/consultant_about.png"
         },
         "story_point_1": {
             "type": "text",
@@ -661,5 +661,6 @@
             "label": "Testimonial 3 Role",
             "default": "Client"
         }
-    }
+    },
+    "hero_kind": "portrait"
 }

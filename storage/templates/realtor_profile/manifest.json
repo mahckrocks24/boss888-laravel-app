@@ -3,7 +3,7 @@
     "name": "Realtor — Portfolio",
     "industry": "real_estate_agency",
     "description": "A personal site for a realtor rather than an agency: portrait, current listings, recently sold portfolio, the areas they know, credentials, process and a valuation form.",
-    "thumbnail": "/storage/builder-heroes/real_estate_broker.jpg",
+    "thumbnail": "/storage/template-images/portraits/realtor_hero.png",
     "category": "property",
     "version": "1.0.0",
     "variation": "portfolio",
@@ -142,7 +142,7 @@
         "og_image": {
             "type": "image",
             "label": "OG Image",
-            "default": "/storage/builder-heroes/real_estate_broker.jpg"
+            "default": "/storage/template-images/portraits/realtor_hero.png"
         },
         "nav_1": {
             "type": "text",
@@ -197,7 +197,7 @@
         "hero_image": {
             "type": "image",
             "label": "Portrait",
-            "default": "/storage/builder-heroes/real_estate_broker.jpg"
+            "default": "/storage/template-images/portraits/realtor_hero.png"
         },
         "hero_card_label": {
             "type": "text",
@@ -612,7 +612,7 @@
         "story_image": {
             "type": "image",
             "label": "About Photo",
-            "default": "/storage/template-images/real_estate_broker/about_photo.jpg"
+            "default": "/storage/template-images/portraits/realtor_about.png"
         },
         "story_point_1": {
             "type": "text",
@@ -924,5 +924,6 @@
             "label": "Testimonial 3 Role",
             "default": "Client"
         }
-    }
+    },
+    "hero_kind": "portrait"
 }
