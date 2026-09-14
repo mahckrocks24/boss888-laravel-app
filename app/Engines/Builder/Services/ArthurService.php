@@ -7739,6 +7739,17 @@ PROMPT;
                 return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "Here is what I can tell you about {$site->name}."];
             case 'unsupported':
                 return $base + ['success' => false, 'kind' => 'unsupported', 'code' => 'UNSUPPORTED', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "That is not something I can do from here."];
+            case 'tracking':
+                $tr = is_array($intent['tracking'] ?? null) ? array_filter(array_map(fn($v) => trim((string) $v), $intent['tracking'])) : [];
+                if ($tr === []) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which id should I add — a Google Analytics id (G-…), a Tag Manager id (GTM-…), a Meta pixel number or a TikTok pixel?', 'options' => []];
+                $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+                $cur = (array) ($settings['tracking'] ?? []); $bad = [];
+                foreach (['ga4' => '/^G-[A-Z0-9]{4,20}$/', 'gtm' => '/^GTM-[A-Z0-9]{4,12}$/', 'meta_pixel' => '/^\d{8,20}$/', 'tiktok_pixel' => '/^[A-Z0-9]{10,40}$/i'] as $k => $re) { if (! isset($tr[$k])) continue; $v = $k === 'tiktok_pixel' ? $tr[$k] : strtoupper($tr[$k]); if (preg_match($re, $v)) $cur[$k] = $v; else $bad[] = $tr[$k]; }
+                if ($bad !== []) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => '“' . implode('”, “', $bad) . '” does not look like a valid id. GA4 ids look like G-XXXXXXXX, Tag Manager like GTM-XXXXXXX, a Meta pixel is a 15–16 digit number — can you check it?', 'options' => []];
+                $settings['tracking'] = $cur;
+                DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]);
+                try { \Illuminate\Support\Facades\Artisan::call('sites:inject-scripts', ['--site' => $websiteId]); } catch (\Throwable $e) {}
+                return $base + ['success' => true, 'kind' => 'tracking', 'applied' => 1, 'actions_applied' => 1, 'message' => 'Done — tracking is now on every page of ' . $site->name . ' (' . implode(', ', array_map(fn($k) => ['ga4' => 'Google Analytics', 'gtm' => 'Tag Manager', 'meta_pixel' => 'Meta pixel', 'tiktok_pixel' => 'TikTok pixel'][$k] . ' ' . $cur[$k], array_keys($cur))) . ').'];
             case 'copy_edit':
                 $changes = is_array($intent['copy'] ?? null) ? $intent['copy'] : [];
                 if ($changes === []) { if ($normalized !== '') $request = $normalized; return null; }   // the copy model will pick the fields

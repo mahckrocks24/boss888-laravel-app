@@ -984,6 +984,7 @@ function _wsShowTemplateEditor(site) {
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
+      '<button type="button" id="t3-site-btn" onclick="wsOpenSitePanel(' + wsId + ')" title="Tracking ids, download the site, domain" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Site</button>' +
       '<button type="button" id="t3-catalogue-btn" hidden onclick="wsOpenCatalogue(' + wsId + ')" title="What you sell — listings, services and prices, menu; each kind gets its own page" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Listings</button>' +
       '<button type="button" id="t3-layout-btn" onclick="wsOpenLayouts(' + wsId + ')" title="Switch to another layout of this design family — preview is free" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Layout</button>' +
       '<button type="button" onclick="wsOpenPalettes(' + wsId + ')" title="Colour palettes — hover to preview, click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
@@ -1074,6 +1075,7 @@ async function wsCloseTemplateEditor() {
   var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
   var lay = document.getElementById('t3-lay'); if (lay) lay.remove(); window._t3LayoutPreviewing = false;
   var lst = document.getElementById('t3-cat'); if (lst) lst.remove();
+  var stp = document.getElementById('t3-site'); if (stp) stp.remove();
   bldCurrentPageId = null;
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
@@ -3925,7 +3927,7 @@ window.wsOpenLayouts = async function (siteId) {
     + '#template-editor-view .pe-bar button{padding:6px 10px!important;font-size:12px!important}'
     + '#template-editor-view .pe-bar-hint,#template-editor-view .pe-bar-spacer{display:none!important}'
     + '#template-editor-view .pe-bar-title{flex:1 1 auto;font-size:13px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '#t3-lay,#t3-pal,#t3-cat{top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:min(62vh,100%)!important;border-radius:14px 14px 0 0!important;box-shadow:0 -12px 40px rgba(0,0,0,.5)!important}'
+    + '#t3-lay,#t3-pal,#t3-cat,#t3-site{top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:min(62vh,100%)!important;border-radius:14px 14px 0 0!important;box-shadow:0 -12px 40px rgba(0,0,0,.5)!important}'
     + '#t3-lay-bar{left:8px!important;right:8px!important;top:8px!important;transform:none!important;flex-wrap:wrap;border-radius:12px!important;padding:10px 12px!important;gap:8px!important}'
     + '#t3-lay-bar span{flex:1 1 100%;font-size:12px;line-height:1.35}'
     + '#t3-lay-bar button{flex:1 1 calc(50% - 4px);white-space:nowrap}'
@@ -4180,3 +4182,53 @@ function _t3CatForm(siteId, panel, spec, L) {
     } catch (e2) { b.disabled = false; b.textContent = L ? 'Save changes' : 'Add ' + spec.singular; err.textContent = e2.message; }
   });
 }
+
+/* ══════════════ SITE panel — tracking ids, export, domain (DEC-0051 gap closure, 2026-09-15) ══════════════ */
+window.wsOpenSitePanel = async function (siteId) {
+  var old = document.getElementById('t3-site');
+  if (old) { old.remove(); return; }
+  ['t3-pal', 't3-lay', 't3-cat'].forEach(function (id) { var e = document.getElementById(id); if (e) e.remove(); });
+  var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
+  var panel = document.createElement('div');
+  panel.id = 't3-site'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Site settings');
+  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(460px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r,12px);box-shadow:0 20px 60px rgba(0,0,0,.45);padding:14px 14px 16px;font-family:var(--fb)';
+  var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
+  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Site settings</div><button type="button" id="t3-site-x" aria-label="Close" style="background:none;border:0;color:var(--t2);font-size:18px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Tracking, export and domain for this website.</div><div id="t3-site-body"><div class="lu-skel" style="width:80%"></div></div>';
+  stage.appendChild(panel);
+  panel.querySelector('#t3-site-x').addEventListener('click', function () { panel.remove(); });
+  var body = panel.querySelector('#t3-site-body');
+  var d = null;
+  try { var r = await fetch(API + 'builder/websites/' + siteId + '/site-settings', { headers: auth, cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); d = await r.json(); }
+  catch (e) { body.innerHTML = '<div class="lu-empty"><b>Couldn’t load settings</b>' + bld_escH(e.message) + '</div>'; return; }
+  var t = d.tracking || {};
+  var inp = function (k, label, ph) { return '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">' + label + '</label><input type="text" data-t="' + k + '" placeholder="' + ph + '" value="' + bld_escH(t[k] || '') + '" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">'; };
+  body.innerHTML = '<div style="font:600 13px var(--fh);color:var(--t1)">Tracking</div><div style="font-size:12px;color:var(--t3)">Paste the ids from your analytics or ads account. They go into every page of the site.</div>'
+    + inp('ga4', 'Google Analytics 4 measurement id', 'G-XXXXXXXXXX') + inp('gtm', 'Google Tag Manager container id', 'GTM-XXXXXXX') + inp('meta_pixel', 'Meta (Facebook) pixel id', '1234567890123456') + inp('tiktok_pixel', 'TikTok pixel id', 'C0XXXXXXXXXXXXXXXX')
+    + '<div style="display:flex;gap:8px;align-items:center;margin-top:12px"><button type="button" class="lu-btn" id="t3-site-save">Save tracking</button><span id="t3-site-msg" style="font-size:12px;color:var(--t3)"></span></div>'
+    + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
+    + '<div style="font:600 13px var(--fh);color:var(--t1)">Export</div><div style="font-size:12px;color:var(--t3);margin-bottom:8px">Download the whole site as a zip of plain HTML, CSS and images — it is yours.</div><button type="button" class="lu-btn lu-btn--sm" id="t3-site-export">Download site (.zip)</button><span id="t3-site-exp-msg" style="font-size:12px;color:var(--t3);margin-left:8px"></span>'
+    + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
+    + '<div style="font:600 13px var(--fh);color:var(--t1)">Domain</div><div style="font-size:12px;color:var(--t2);margin-top:4px">' + bld_escH(d.domain && d.domain.text ? d.domain.text : 'No domain connected yet.') + '</div>';
+  body.querySelector('#t3-site-save').addEventListener('click', async function () {
+    var b = body.querySelector('#t3-site-save'), m = body.querySelector('#t3-site-msg'); b.disabled = true; m.textContent = 'Saving…';
+    var payload = {}; body.querySelectorAll('[data-t]').forEach(function (el) { payload[el.getAttribute('data-t')] = el.value.trim(); });
+    try {
+      var r = await fetch(API + 'builder/websites/' + siteId + '/tracking', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify(payload) });
+      var j = null; try { j = await r.json(); } catch (_e) {}
+      if (!r.ok || !j || !j.success) throw new Error((j && j.message) || ('HTTP ' + r.status));
+      m.textContent = j.message || 'Saved.'; if (typeof showToast === 'function') showToast(j.message || 'Tracking saved.', 'success'); _t3ReloadPreview();
+    } catch (e) { m.textContent = e.message; if (typeof showToast === 'function') showToast("Couldn’t save — " + e.message, 'error'); }
+    finally { b.disabled = false; }
+  });
+  body.querySelector('#t3-site-export').addEventListener('click', async function () {
+    var b = body.querySelector('#t3-site-export'), m = body.querySelector('#t3-site-exp-msg'); b.disabled = true; m.textContent = 'Preparing…';
+    try {
+      var r = await fetch(API + 'builder/websites/' + siteId + '/export', { headers: auth });
+      if (!r.ok) { var j = null; try { j = await r.json(); } catch (_e) {} throw new Error((j && j.message) || ('HTTP ' + r.status)); }
+      var blob = await r.blob(); var url = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = url; a.download = 'site-' + siteId + '.zip'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      m.textContent = 'Downloaded (' + Math.round(blob.size / 1024) + ' KB).';
+    } catch (e) { m.textContent = e.message; }
+    finally { b.disabled = false; }
+  });
+};

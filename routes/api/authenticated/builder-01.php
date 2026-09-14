@@ -82,6 +82,38 @@ use Illuminate\Support\Facades\Route;
             $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyLayout((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('design', ''), (int) ($r->attributes->get('user_id') ?? optional($r->user())->id ?? 0) ?: null);
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
+        // SITE SETTINGS (DEC-0051, 2026-09-15) — tracking ids into every page, a zip export the customer owns, domain state.
+        $siteOwned = function (\Illuminate\Http\Request $r, $id) { $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->whereNull('deleted_at')->first(); return ($w && (int) $w->workspace_id === (int) $r->attributes->get('workspace_id')) ? $w : null; };
+        Route::get('/websites/{id}/site-settings', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['error' => 'not_found'], 404);
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+            $dom = $w->custom_domain ? ['domain' => $w->custom_domain, 'text' => $w->custom_domain . ($w->domain_verified ? ' — connected' : ' — waiting for DNS / SSL')] : ['domain' => null, 'text' => $w->subdomain ? 'Published at ' . $w->subdomain . '. A custom domain can be connected under Websites → Domain.' : 'No domain yet — set a subdomain to publish, then connect your own domain.'];
+            return response()->json(['tracking' => (array) ($s['tracking'] ?? []), 'domain' => $dom, 'subdomain' => $w->subdomain, 'status' => $w->status]);
+        });
+        Route::put('/websites/{id}/tracking', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $in = []; $bad = [];
+            foreach (['ga4' => '/^G-[A-Z0-9]{4,20}$/', 'gtm' => '/^GTM-[A-Z0-9]{4,12}$/', 'meta_pixel' => '/^\d{8,20}$/', 'tiktok_pixel' => '/^[A-Z0-9]{10,40}$/i'] as $k => $re) {
+                $v = strtoupper(trim((string) $r->input($k, ''))); if ($k === 'tiktok_pixel') $v = trim((string) $r->input($k, ''));
+                if ($v === '') continue; if (! preg_match($re, $v)) { $bad[] = $k; continue; } $in[$k] = $v;
+            }
+            if ($bad) return response()->json(['success' => false, 'message' => 'That does not look like a valid id: ' . implode(', ', $bad) . '. GA4 ids look like G-XXXXXXXX, Tag Manager like GTM-XXXXXXX, a Meta pixel is a 15–16 digit number.'], 422);
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: []; $s['tracking'] = $in;
+            \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->update(['settings_json' => json_encode($s), 'updated_at' => now()]);
+            \Illuminate\Support\Facades\Artisan::call('sites:inject-scripts', ['--site' => (int) $id]);
+            return response()->json(['success' => true, 'tracking' => $in, 'message' => $in === [] ? 'Tracking removed from every page.' : 'Tracking is on every page of the site: ' . implode(', ', array_keys($in)) . '.']);
+        });
+        Route::get('/websites/{id}/export', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $root = storage_path('app/public/sites/' . (int) $id); if (! is_file($root . '/index.html')) return response()->json(['success' => false, 'message' => 'This site has no export yet.'], 422);
+            $tmp = tempnam(sys_get_temp_dir(), 'site') . '.zip'; $zip = new \ZipArchive(); $zip->open($tmp, \ZipArchive::CREATE | \ZipArchive::OVERWRITE);
+            $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($root, \FilesystemIterator::SKIP_DOTS), \RecursiveIteratorIterator::SELF_FIRST);
+            foreach ($it as $f) { $rel = substr($f->getPathname(), strlen($root) + 1); if (str_starts_with($rel, '.history') || preg_match('/\.bak(-|$)/', $rel)) continue; if ($f->isDir()) { $zip->addEmptyDir($rel); } else { $zip->addFile($f->getPathname(), $rel); } }
+            $zip->close();
+            $bytes = (string) @file_get_contents($tmp); @unlink($tmp);
+            if ($bytes === '') return response()->json(['success' => false, 'message' => 'The export could not be built just now — please try again.'], 500);
+            return response($bytes, 200, ['Content-Type' => 'application/zip', 'Content-Disposition' => 'attachment; filename="site-' . (int) $id . '.zip"', 'Content-Length' => (string) strlen($bytes), 'Cache-Control' => 'no-store']);
+        });
         // CATALOGUE888 (DEC-0049, 2026-09-14) — one catalogue backend inside Laravel; kinds (listing, service, menu …) are declared
         // by the design or derived from its variable families. Every other site gets an empty catalogue list.
         $cat = \App\Engines\Builder\Services\CatalogueService::class;

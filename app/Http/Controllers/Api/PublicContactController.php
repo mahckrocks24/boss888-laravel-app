@@ -58,16 +58,19 @@ class PublicContactController
             if ($website) break;
         }
 
+        // PREVIEW PATH (DEC-0051, 2026-09-15): a site opened under /storage/sites/{id}/ (draft or published) sends its forms
+        // to its own workspace too — the owner testing their contact form must see the lead arrive.
+        if (!$website && $referer && preg_match('~/storage/sites/(\d+)/~', (string) $referer, $pm)) {
+            $website = DB::table('websites')->where('id', (int) $pm[1])->whereNull('deleted_at')->first();
+        }
         if (!$website) {
             return response()->json([
                 'success' => false,
                 'message' => 'Site not found for host: ' . implode(' / ', $candidates),
             ], 404);
         }
-
-        // Re-extract slug from subdomain so we can hand control to ::submit
-        // (slug is the first label before .levelupgrowth.io)
-        $slug = explode('.', $website->subdomain)[0] ?? '';
+        $request->attributes->set('lu_website', $website);
+        $slug = explode('.', (string) ($website->subdomain ?? ''))[0] ?? '';
         return $this->submit($request, $slug);
     }
 
@@ -75,7 +78,7 @@ class PublicContactController
     {
         // ─── 1. Resolve website + workspace from subdomain ────────────
         // websites.subdomain stores the full hostname (e.g. "chef-red.levelupgrowth.io")
-        $website = DB::table('websites')
+        $website = $request->attributes->get('lu_website') ?: DB::table('websites')
             ->where('subdomain', $subdomain . '.levelupgrowth.io')
             ->where('status', 'published')
             ->first();

@@ -824,6 +824,7 @@ class TemplateService
         $doc = '<!doctype html><html lang="' . e($c['lang']) . '">' . $head . '<body>'
              . $toHome($c['nav']) . '<main data-lu-page="' . e($slug) . '">' . $bodyHtml . '</main>' . $toHome($c['footer']) . $offset . '</body></html>';
         $doc = \App\Engines\Builder\Support\ResponsiveNav::inject($doc);
+        $doc = \App\Engines\Builder\Support\SiteScripts::inject($doc, $websiteId);
         $dir = storage_path("app/public/sites/{$websiteId}/{$slug}");
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $path = $dir . '/index.html';
@@ -1161,6 +1162,7 @@ class TemplateService
         $html = $this->reapplyStoredSections($websiteId, $html);
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
         $html = self::injectMobileSafety($html);
+        $html = \App\Engines\Builder\Support\SiteScripts::inject($html, $websiteId);   // forms → CRM, tracking ids (DEC-0051)
         // STATIC-EXPORT BLOG LINK (2026-09-05): the export is browsed under /storage/sites/{id}/,
         // so a root-absolute "/blog" hits the PLATFORM blog, not this site's. Make blog nav links
         // relative so they reach THIS site's own blog export (sites/{id}/blog/). Export-only —
