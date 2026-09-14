@@ -5977,6 +5977,78 @@ PROMPT;
         return 'made ' . $label . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
     }
 
+    /** Which part of the page a colour request names, in which colour, and whether it means the background or the text. */
+    private function colourTargetIn(string $request, int $websiteId): ?array
+    {
+        $r = mb_strtolower($request);
+        $hex = null; $word = '';
+        if (preg_match('/#([0-9a-f]{6}|[0-9a-f]{3})\b/i', $request, $hm)) { $hex = self::styleHex($hm[0]); $word = strtoupper($hm[0]); }
+        else {
+            $names = implode('|', array_map('preg_quote', array_keys(self::COLOR_MAP)));
+            if (preg_match('/\b(' . $names . ')\b/i', $r, $cm)) { $hex = self::styleHex($cm[1]); $word = $cm[1]; }
+        }
+        if ($hex === null) return null;
+        $targets = [
+            'footer'   => '/\bfooter\b/',
+            'nav'      => '/\b(header|nav|navigation|navbar|menu bar|top bar)\b/',
+            'hero'     => '/\b(hero|banner|cover)\b/',
+            'buttons'  => '/\b(button|buttons|cta|call to action)\b/',
+            'logo'     => '/\blogo\b/',
+            'headline' => '/\b(headline|main title|hero title|big title|h1)\b/',
+            'headings' => '/\b(headings|section titles|titles|subheadings)\b/',
+            'text'     => '/\b(body text|paragraphs|paragraph|the text|copy|font colour|font color|text colour|text color)\b/',
+            'page'     => '/\b(page background|site background|whole page|whole site|background of the (?:page|site)|the background)\b/',
+        ];
+        $target = null;
+        foreach ($targets as $t => $re) { if (preg_match($re, $r)) { $target = $t; break; } }
+        $block = '';
+        if ($target === null) {   // a section the page actually has: "the listings section", "make testimonials navy"
+            $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+            if (preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm)) {
+                foreach (array_unique($bm[1]) as $b) {
+                    $name = str_replace(['_', '-'], ' ', $b);
+                    if (in_array($b, ['nav', 'hero', 'footer'], true)) continue;
+                    if (preg_match('/\b' . preg_quote($name, '/') . '\b/', $r) || preg_match('/\b' . preg_quote(rtrim($name, 's'), '/') . '\b/', $r)) { $target = 'section'; $block = $b; break; }
+                }
+            }
+        }
+        if ($target === null) return null;
+        $mode = (in_array($target, ['logo', 'headline', 'headings', 'text'], true) || preg_match('/\b(text|font|lettering|wording|letters)\b/', $r)) ? 'text' : 'background';
+        if ($target === 'buttons' && preg_match('/\b(text|lettering)\b/', $r)) $mode = 'text';
+        $what = $target === 'section' ? 'the ' . str_replace(['_', '-'], ' ', $block) . ' section' : ['footer' => 'the footer', 'nav' => 'the header', 'hero' => 'the hero', 'buttons' => 'the buttons', 'logo' => 'the logo', 'headline' => 'the headline', 'headings' => 'the section headings', 'text' => 'the body text', 'page' => 'the page background'][$target];
+        $label = 'made ' . $what . ($mode === 'text' && ! in_array($target, ['logo', 'headline', 'headings', 'text'], true) ? ' text' : ($mode === 'background' && in_array($target, ['footer', 'nav', 'hero', 'section'], true) ? ' background' : '')) . ' ' . $word;
+        return ['target' => $target, 'block' => $block, 'hex' => $hex, 'mode' => $mode, 'label' => $label];
+    }
+
+    /** One replaceable rule per part; readable text is set on a recoloured background so nothing vanishes. */
+    private static function targetedColourRules(string $target, string $hex, string $mode, string $block = ''): array
+    {
+        $ink = self::readableOn($hex);
+        $sel = [
+            'footer'   => ['footer,.footer,[data-block="footer"]', 'footer,.footer,[data-block="footer"],footer a,.footer a,footer p,footer li,footer h3,footer h4,footer span,[data-block="footer"] a,[data-block="footer"] p,[data-block="footer"] h4'],
+            'nav'      => ['nav,.nav,.navbar,.nav-bar,header,[data-block="nav"]', 'nav a,.nav a,.navbar a,.nav-bar a,.nav-links a,.nav-link,nav .logo,.nav .logo,.brand-text,[data-block="nav"] a'],
+            'hero'     => ['.hero,[data-block="hero"],header.hero,section.hero', '.hero h1,.hero .hero-title,.hero .hero-name,[data-block="hero"] h1,.hero .lede,.hero .hero-sub,.hero .hero-subtitle,.hero .eyebrow,.hero .hero-eyebrow,.hero p,[data-block="hero"] p'],
+            'buttons'  => ['.btn-primary,.hero-cta,.nav-cta,.btn.primary,.btn-cta,.cta-btn,button[type=submit],a[class*="btn"],.btn', '.btn-primary,.hero-cta,.nav-cta,.btn.primary,.btn-cta,.cta-btn,button[type=submit],a[class*="btn"],.btn'],
+            'logo'     => ['', '.logo,.logo *,.brand-text,[data-field="logo"]'],
+            'headline' => ['', '.hero h1,[data-block="hero"] h1,.hero .hero-title,.hero .hero-name,.hero-h1'],
+            'headings' => ['', 'h2.section-title,section h2,[data-block] h2'],
+            'text'     => ['', 'main p,section p,section li,.lede,section dd'],
+            'page'     => ['body', 'body'],
+            'section'  => ['[data-block="' . $block . '"]', '[data-block="' . $block . '"] h2,[data-block="' . $block . '"] h3,[data-block="' . $block . '"] p,[data-block="' . $block . '"] li,[data-block="' . $block . '"] span,[data-block="' . $block . '"] .eyebrow,[data-block="' . $block . '"] .lede'],
+        ][$target] ?? null;
+        if ($sel === null) return [];
+        [$bgSel, $textSel] = $sel;
+        $key = 'colour_' . ($target === 'section' ? 'section_' . $block : $target);
+        if ($mode === 'text' || $bgSel === '') {
+            return [$key => $textSel . '{color:' . $hex . '!important}'];
+        }
+        $css = $bgSel . '{background:' . $hex . '!important;background-image:none!important;border-color:' . $hex . '!important}';
+        if ($target === 'hero') $css .= ' .hero::before,.hero::after,[data-block="hero"]::before,[data-block="hero"]::after{background:none!important;background-image:none!important}';
+        $css .= ' ' . $textSel . '{color:' . $ink . '!important}';
+        if ($target === 'buttons') $css = $bgSel . '{background:' . $hex . '!important;background-image:none!important;border-color:' . $hex . '!important;color:' . $ink . '!important}';
+        return [$key => $css];
+    }
+
     private function applySiteStyle(int $wsId, int $websiteId, string $request, object $site, array $tv, array $plan, bool $isStatic): array
     {
         $editor  = app(ArthurEditService::class);
@@ -6010,6 +6082,23 @@ PROMPT;
                 Log::info('[Arthur] size change', ['website' => $websiteId, 'change' => $sz]);
                 return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $plan['credits'],
                     'message' => "Done — I {$sz} on {$site->name}. {$plan['credits']} credit.", 'url' => "/storage/sites/{$websiteId}/index.html"];
+            }
+        }
+
+        // ── 0c. A NAMED PART IN A NAMED COLOUR (2026-09-14): "make the footer background blue", "header white", "buttons green",
+        //        "hero text white", "listings section navy" — a rule for that part, not a repaint of the whole palette.
+        if ($isStatic && $this->parseGradientAsk($request) === null
+            && ! preg_match('/\b(luxur\w+|elegant|premium|upscale|sophisticated|minimal\w*|modern|contemporary|bold|sleek|classic|traditional|timeless|playful|fun|vibrant|colou?rful|look|feel|mood|vibe|style)\b/i', $request)) {
+            $tc = $this->colourTargetIn($request, $websiteId);
+            if ($tc !== null) {
+                $rules = self::targetedColourRules($tc['target'], $tc['hex'], $tc['mode'], $tc['block']);
+                if ($rules !== [] && self::writeDesignExtras($websiteId, $rules, $tv)) {
+                    DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+                    $credits->debit($wsId, (int) $plan['credits'], 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$tc['label']]]);
+                    Log::info('[Arthur] targeted colour', ['website' => $websiteId, 'target' => $tc['target'], 'mode' => $tc['mode'], 'hex' => $tc['hex']]);
+                    return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $plan['credits'],
+                        'message' => "Done — I {$tc['label']} on {$site->name}. {$plan['credits']} credit. Undo puts it back.", 'url' => "/storage/sites/{$websiteId}/index.html"];
+                }
             }
         }
 
@@ -6069,7 +6158,7 @@ PROMPT;
                         $hit++;
                     }
                     $asked = count($roles);
-                    $did[] = $hit <= 1 ? 'updated the main colour' : 'updated ' . min($asked, $hit) . ' colours';
+                    $did[] = $hit <= 1 ? 'changed the main brand colour to ' . strtolower((string) array_values($this->scanColorsServerSide($request))[0]) . ' (it colours the buttons, links and highlights)' : 'updated ' . min($asked, $hit) . ' colours';
                     if ($hit > 0 && $asked > $hit) { $missed[] = 'this template only exposes ' . $hit . ' brand colour' . ($hit === 1 ? '' : 's') . ', so I applied the first'; }
                 } else {
                     $missed[] = 'the colour did not match anything on the page';
