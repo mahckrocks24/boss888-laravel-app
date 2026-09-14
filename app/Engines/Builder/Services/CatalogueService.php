@@ -845,12 +845,18 @@ class CatalogueService
     private static function pickSpec(string $text, array $specs, int $websiteId = 0): ?array
     {
         $t = strtolower($text);
-        if (preg_match('/\b(section|block|heading|headline|subtitle|eyebrow|intro|paragraph|colou?r|font|image|photo|picture|icon|layout|button|page background|gradient)\b/', $t)) return null;
-        $verbs = '(add|list|create|post|put up|publish|remove|delete|take down|drop|withdraw|hide|show|mark|set|flag|change|update|reduce|lower|raise|increase|cut|rename|reprice|turn|switch|sold|let|under offer|available|sold out|back on)';
+        if (preg_match('/\b(section|block|heading|headline|subtitle|eyebrow|intro|paragraph|colou?r|font|image|photo|picture|icon|layout|button|page background|gradient|text|wording|copy|title|label|link|menu link|nav)\b/', $t)) return null;
+        // A catalogue INTENT, not merely a catalogue word: "Change Browse Properties to Check Properties" is a text edit
+        // that happens to contain "properties" (Raymundo Realty, 2026-09-14). Only these shapes are catalogue commands:
+        $intent = '(add|list|create|post|put up|publish|remove|delete|take down|withdraw|hide|unhide|mark|flag|rename|reprice|sold out|back on|under offer)';
+        $priceAsk = (bool) preg_match('/\b(price|cost|rate|fee)\b.{0,40}\bto\b|\b(reduce|lower|raise|increase|cut|drop|change|update|set)\b.{0,30}\b(price|cost|rate|fee)\b/', $t);
+        $verbs = $intent;
         foreach ($specs as $spec) {
             $nouns = '(' . $spec['nouns'] . ')';
-            if (preg_match('/\b' . $verbs . '\b.{0,60}\b' . $nouns . '\b/', $t) || preg_match('/\b' . $nouns . '\b.{0,60}\b' . $verbs . '\b/', $t)) return $spec;
+            if (preg_match('/\b' . $intent . '\b.{0,60}\b' . $nouns . '\b/', $t) || preg_match('/\b' . $nouns . '\b.{0,60}\b' . $intent . '\b/', $t)) return $spec;
+            if ($priceAsk && preg_match('/\b' . $nouns . '\b/', $t)) return $spec;
         }
+        if ($priceAsk) $verbs = '(' . trim($intent, '()') . '|price|cost|rate|fee)';
         // an item named in full or by its distinctive words: "remove the cardamom bun", "mark the Land Cruiser as sold"
         if ($websiteId > 0 && preg_match('/\b' . $verbs . '\b/', $t)) {
             $phrase = (string) (preg_split('/\b(as|to|for|at|with|is|are|now|because|from)\b|[,;—–:]/', $t, 2)[0] ?? $t);
@@ -979,7 +985,8 @@ class CatalogueService
             return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
         }
 
-        return $base + ['success' => false, 'code' => 'UNCLEAR', 'message' => 'I can add a ' . $spec['singular'] . ', change its price, rename it, mark it ' . implode(' / ', array_map('strtolower', array_values(array_diff_key($spec['statuses'], [$spec['default_status'] => 1])))) . ', or remove it. ' . $this->whichOne($spec, $open, 'work on')];
+        // Nothing here matched a catalogue command: hand the request back so the copy / design paths answer it.
+        return $base + ['success' => false, 'code' => 'PASS', 'message' => ''];
     }
 
     private function whichOne(array $spec, array $rows, string $verb): string

@@ -5568,7 +5568,7 @@ PROMPT;
             try {
                 $cat = app(CatalogueService::class);
                 $catSpecs = $cat->enabledSpecs($websiteId, $site);
-                if ($catSpecs !== [] && CatalogueService::looksLikeCatalogueRequest($request, $catSpecs, $websiteId)) { return $cat->arthur($wsId, $websiteId, $request, $ctx); }
+                if ($catSpecs !== [] && CatalogueService::looksLikeCatalogueRequest($request, $catSpecs, $websiteId)) { $catRes = $cat->arthur($wsId, $websiteId, $request, $ctx); if (($catRes['code'] ?? '') !== 'PASS') { return $catRes; } }
             } catch (\Throwable $e) { Log::warning('[Arthur] catalogue branch failed: ' . $e->getMessage()); }
         }
         $plan     = $caps::classify($request, $industry ?: null);
