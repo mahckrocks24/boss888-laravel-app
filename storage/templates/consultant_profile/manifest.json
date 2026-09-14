@@ -1,0 +1,665 @@
+{
+    "id": "consultant_profile",
+    "name": "Consultant — Profile",
+    "industry": "consulting",
+    "description": "A personal-brand site for an independent consultant, coach or advisor: portrait, services with prices, credentials, selected work, process and a booking form.",
+    "thumbnail": "/storage/builder-heroes/consulting.jpg",
+    "category": "professional",
+    "version": "1.0.0",
+    "variation": "profile",
+    "is_active": true,
+    "design": {
+        "generated": "2026-09-14",
+        "generator": "hand-built (Owner brief: personal services / consultant type)",
+        "palette": "ink-amber",
+        "type": "editorial",
+        "scale": "personal",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "line",
+            "hero": "profile",
+            "stats": "line",
+            "offers": "rows",
+            "story": "split",
+            "portfolio": "cards",
+            "steps": "rail",
+            "tst": "quiet",
+            "contact": "book",
+            "footer": "quiet"
+        },
+        "order": [
+            "stats",
+            "offers",
+            "story",
+            "portfolio",
+            "steps",
+            "tst",
+            "contact"
+        ]
+    },
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
+    },
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero-profile h1",
+                "hero_subtitle": ".hero-profile .lede"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Stats",
+            "elements": []
+        },
+        {
+            "id": "services",
+            "name": "Services",
+            "elements": {
+                "service_1_title": "#services .offer-card h3"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About / Credentials",
+            "elements": []
+        },
+        {
+            "id": "portfolio",
+            "name": "Selected work",
+            "elements": {
+                "portfolio_1_title": "#portfolio article h3"
+            }
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": []
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Your Name",
+            "default": "Daniel Mercer"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "Independent consultant for growing businesses"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Daniel Mercer is an independent consultant who helps founders and leadership teams make clearer decisions — strategy, operations and finance, with a fixed scope and a named person doing the work."
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/consulting.jpg"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav 1",
+            "default": "How I help"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav 2",
+            "default": "About"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav 3",
+            "default": "Work"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav 4",
+            "default": "Process"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Independent consultant · Strategy, operations, finance"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Headline",
+            "default": "Clear advice from someone who has done the job, not just studied it"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subtitle",
+            "default": "I work with founders and leadership teams on the decisions that are hard to make from the inside — with a fixed scope, a written plan and one person accountable for the result."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Hero Button",
+            "default": "Book a conversation"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Button 2",
+            "default": "See how I help"
+        },
+        "hero_note": {
+            "type": "text",
+            "label": "Hero Note",
+            "default": "Fifteen years operating, five advising. Engagements are fixed-fee and scoped in writing before we start."
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Portrait",
+            "default": "/storage/builder-heroes/consulting.jpg"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "15+"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "years operating"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "Fixed"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "fee, agreed before we start"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "Weekly"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "written updates"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "One"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "person, start to finish"
+        },
+        "offers_eyebrow": {
+            "type": "text",
+            "label": "Services Eyebrow",
+            "default": "How I help"
+        },
+        "offers_title": {
+            "type": "text",
+            "label": "Services Title",
+            "default": "Four ways to work together"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Services Subtitle",
+            "default": "Each engagement has a defined output, a fixed price and a date. If it is not on this list, ask — the answer is usually a short diagnostic first."
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Diagnostic"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Text",
+            "default": "Three weeks inside the business: a written assessment of what is working, what is not, and the three things to fix first."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price",
+            "default": "From £4,500"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Strategy sprint"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Text",
+            "default": "Six weeks with the leadership team to agree where the business is going and the plan for the next twelve months."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price",
+            "default": "From £12,000"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Operating model"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Text",
+            "default": "Structure, roles, decision rights and the rhythms that keep them honest — designed with the people who will run them."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price",
+            "default": "From £9,000"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Advisory retainer"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Text",
+            "default": "A half day a month and a phone that gets answered, for the conversations that should not wait for a board meeting."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price",
+            "default": "From £2,000 / month"
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "About Eyebrow",
+            "default": "About me"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "About Title",
+            "default": "I advise the way I would want to be advised"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "About Body",
+            "default": "Before consulting I ran operations and then a business of my own, so I know what it feels like to be handed a deck that changes nothing. My work is practical: a clear diagnosis, a plan the team believes in, and help until it is done."
+        },
+        "story_image": {
+            "type": "image",
+            "label": "About Photo",
+            "default": "/storage/builder-heroes/consulting.jpg"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "About Point 1",
+            "default": "No junior team — the person you meet is the person who does the work"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "About Point 2",
+            "default": "Fixed scope and fee agreed in writing before anything starts"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "About Point 3",
+            "default": "Weekly written updates, even in the weeks with no news"
+        },
+        "credentials_title": {
+            "type": "text",
+            "label": "Credentials Title",
+            "default": "Credentials"
+        },
+        "credential_1": {
+            "type": "text",
+            "label": "Credential 1",
+            "default": "MBA, London Business School"
+        },
+        "credential_2": {
+            "type": "text",
+            "label": "Credential 2",
+            "default": "Former COO, growth-stage business"
+        },
+        "credential_3": {
+            "type": "text",
+            "label": "Credential 3",
+            "default": "Member, Institute of Consulting"
+        },
+        "credential_4": {
+            "type": "text",
+            "label": "Credential 4",
+            "default": "Board advisor to two founders"
+        },
+        "portfolio_eyebrow": {
+            "type": "text",
+            "label": "Work Eyebrow",
+            "default": "Selected work"
+        },
+        "portfolio_title": {
+            "type": "text",
+            "label": "Work Title",
+            "default": "Problems I have helped solve"
+        },
+        "portfolio_cta": {
+            "type": "text",
+            "label": "Work Button",
+            "default": "Discuss your situation"
+        },
+        "portfolio_1_title": {
+            "type": "text",
+            "label": "Work 1 Title",
+            "default": "A founder who could not step back"
+        },
+        "portfolio_1_text": {
+            "type": "text",
+            "label": "Work 1 Text",
+            "default": "Every decision still ran through one person. We designed an operating model with real decision rights and a management rhythm to hold it."
+        },
+        "portfolio_1_result": {
+            "type": "text",
+            "label": "Work 1 Result",
+            "default": "Founder time in operations halved within a quarter"
+        },
+        "portfolio_1_image": {
+            "type": "image",
+            "label": "Work 1 Image",
+            "default": "/storage/builder-heroes/consulting.jpg"
+        },
+        "portfolio_2_title": {
+            "type": "text",
+            "label": "Work 2 Title",
+            "default": "Growth that stopped making money"
+        },
+        "portfolio_2_text": {
+            "type": "text",
+            "label": "Work 2 Text",
+            "default": "Revenue rose while margin fell. A diagnostic traced it to pricing and delivery cost; the sprint reset both with the team that owned them."
+        },
+        "portfolio_2_result": {
+            "type": "text",
+            "label": "Work 2 Result",
+            "default": "Margin restored in two quarters"
+        },
+        "portfolio_2_image": {
+            "type": "image",
+            "label": "Work 2 Image",
+            "default": "/storage/builder-heroes/consulting.jpg"
+        },
+        "portfolio_3_title": {
+            "type": "text",
+            "label": "Work 3 Title",
+            "default": "A plan nobody used"
+        },
+        "portfolio_3_text": {
+            "type": "text",
+            "label": "Work 3 Text",
+            "default": "A strategy existed on paper only. We rebuilt it as twelve months of decisions with owners and dates, reviewed monthly."
+        },
+        "portfolio_3_result": {
+            "type": "text",
+            "label": "Work 3 Result",
+            "default": "Plan reviewed every month since"
+        },
+        "portfolio_3_image": {
+            "type": "image",
+            "label": "Work 3 Image",
+            "default": "/storage/builder-heroes/consulting.jpg"
+        },
+        "steps_eyebrow": {
+            "type": "text",
+            "label": "Process Eyebrow",
+            "default": "How it works"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Title",
+            "default": "A simple way of working"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "A conversation"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Forty-five minutes, no charge, to understand the situation and say honestly whether I can help."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "A written scope"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "What I will deliver, by when, and the fixed fee — agreed before anything starts."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "The work"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "On site or remote as it suits you, with a written update every week."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Handover"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Everything documented in your formats, with the people who will run it in the room."
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Title",
+            "default": "What clients say"
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1 Quote",
+            "default": "He told us in week two what our advisors had danced around for a year, and then stayed to help us fix it."
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2 Quote",
+            "default": "A fixed fee and a written scope. We knew exactly what we were buying, and we got it on the date agreed."
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3 Quote",
+            "default": "The plan is still on the wall a year later, and we still review it every month."
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "Start here"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Title",
+            "default": "Book a conversation"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subtitle",
+            "default": "Forty-five minutes, no charge. Tell me a little about the situation and I will come back within a working day."
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Based In",
+            "default": "London — working across the UK and remotely"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Availability",
+            "default": "Taking on two new engagements this quarter"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Send a message"
+        },
+        "footer_blurb": {
+            "type": "text",
+            "label": "Footer Blurb",
+            "default": "Independent consultant for growing businesses. Fixed fees, written scope, one person accountable."
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#1F3A5F"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary Deep",
+            "default": "#16293F"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#B8742D"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#E9E4DA"
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://example.com"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_GB"
+        },
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Get in touch"
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "footer_col_1": {
+            "type": "text",
+            "label": "Footer Column 1",
+            "default": "Explore"
+        },
+        "footer_col_2": {
+            "type": "text",
+            "label": "Footer Column 2",
+            "default": "Contact"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "LinkedIn",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Client name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Client"
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Client name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Client"
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Client name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Client"
+        }
+    }
+}

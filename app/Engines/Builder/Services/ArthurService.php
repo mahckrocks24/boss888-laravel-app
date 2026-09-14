@@ -93,6 +93,12 @@ class ArthurService
     // applyIndustryMap() iterates by descending key length so longer phrases
     // ("digital marketing") match before shorter substrings ("digital").
     private const INDUSTRY_MAP = [
+        // PERSONAL BRAND (2026-09-14, Owner brief) — see KEYWORD_TO_TEMPLATE; both maps must agree.
+        'independent consultant' => 'consultant_profile', 'freelance consultant' => 'consultant_profile', 'personal brand' => 'consultant_profile',
+        'business coach' => 'consultant_profile', 'executive coach' => 'consultant_profile', 'career coach' => 'consultant_profile', 'leadership coach' => 'consultant_profile',
+        'management consultant' => 'consultant_profile', 'strategy consultant' => 'consultant_profile', 'fractional' => 'consultant_profile',
+        'keynote speaker' => 'consultant_profile', 'public speaker' => 'consultant_profile', 'speaker' => 'consultant_profile', 'mentor' => 'consultant_profile',
+        'business advisor' => 'consultant_profile', 'business adviser' => 'consultant_profile', 'strategist' => 'consultant_profile', 'freelancer' => 'consultant_profile',
         // Marketing agency (new industry) — digital marketing agencies are NOT SaaS
         'digital marketing'        => 'marketing_agency',
         'marketing agency'         => 'marketing_agency',
@@ -267,12 +273,12 @@ class ArthurService
         // beat 'real estate' / 'property' which go to the company-site
         // 'real_estate' template. Keys ordered so the more-specific phrase
         // matches first via normalizeIndustry()'s longest-key-wins rule.
-        'real estate broker'       => 'real_estate_agency',
-        'property broker'          => 'real_estate_agency',
-        'real estate agent'        => 'real_estate_agency',
-        'property agent'           => 'real_estate_agency',
-        'property consultant'      => 'real_estate_agency',
-        'realtor'                  => 'real_estate_agency',
+        'real estate broker'       => 'realtor_profile',
+        'property broker'          => 'realtor_profile',
+        'real estate agent'        => 'realtor_profile',
+        'property agent'           => 'realtor_profile',
+        'property consultant'      => 'realtor_profile',
+        'realtor'                  => 'realtor_profile',
         'broker'                   => 'real_estate_agency',
         // v1.4.4 (2026-05-30) — legacy aliases REMAPPED to actual template
         // slugs. Before this, `legal`, `healthcare`, `fitness`, `beauty`,
@@ -661,6 +667,16 @@ class ArthurService
     //
     // Longest-match-wins (sorted by key length in resolveTemplateSlug).
     private const KEYWORD_TO_TEMPLATE = [
+        // a realtor / agent / broker is a PERSON: the portfolio design (longest match keeps 'real estate agency' an agency)
+        'real estate agent' => 'realtor_profile', 'property agent' => 'realtor_profile', 'property broker' => 'realtor_profile',
+        'real estate broker' => 'realtor_profile', 'property consultant' => 'realtor_profile', 'estate agent' => 'realtor_profile',
+        // PERSONAL BRAND (2026-09-14, Owner brief): an individual consultant / coach / advisor gets the profile design.
+        // (Realtor keys are re-pointed in place further down — a later duplicate key would override these.)
+        'independent consultant' => 'consultant_profile', 'freelance consultant' => 'consultant_profile', 'personal brand' => 'consultant_profile',
+        'business coach' => 'consultant_profile', 'executive coach' => 'consultant_profile', 'career coach' => 'consultant_profile', 'leadership coach' => 'consultant_profile',
+        'management consultant' => 'consultant_profile', 'strategy consultant' => 'consultant_profile', 'fractional' => 'consultant_profile',
+        'keynote speaker' => 'consultant_profile', 'public speaker' => 'consultant_profile', 'speaker' => 'consultant_profile', 'mentor' => 'consultant_profile',
+        'business advisor' => 'consultant_profile', 'business adviser' => 'consultant_profile', 'strategist' => 'consultant_profile', 'freelancer' => 'consultant_profile',
         // PET (2026-09-05): a pet shop/store is a pet business — 'shop' alone was winning → retail_shop boutique.
         'pet shop' => 'pet_services', 'pet store' => 'pet_services', 'petshop' => 'pet_services', 'pet supplies' => 'pet_services',
         'pet services' => 'pet_services', 'pet services and retail' => 'pet_services', 'pets' => 'pet_services',
@@ -790,7 +806,7 @@ class ArthurService
         // Real estate
         'real estate agency'     => 'real_estate_agency',
         'real estate'            => 'real_estate_agency',
-        'realtor'                => 'real_estate_agency',
+        'realtor'                => 'realtor_profile',        // 2026-09-14: a realtor is a person, not an agency
         'property'               => 'real_estate_agency',
         'broker'                 => 'real_estate_agency',
         // Education
@@ -3359,13 +3375,15 @@ PROMPT;
         // This runs BEFORE any DALL-E attempt so that generation failures
         // never leave the site with an empty hero. DALL-E success below
         // simply overwrites this value.
+        // 2026-09-14: a design variant's slug is not an industry — heroes are looked up by the manifest's industry.
+        $heroIndustry = $this->templates->industryOf((string) $industry) ?: (string) $industry;
         $heroDefaultUrl = null;
         try {
             $defaultRow = DB::table('builder_default_assets')
                 ->where('asset_type', 'hero')
                 // Borrowed template → the slug's floor hero is the wrong industry
                 // (consulting=office); use the neutral 'default' floor instead.
-                ->where('industry', $templateFits ? $industry : 'default')
+                ->where('industry', $templateFits ? $heroIndustry : 'default')
                 ->first();
             if (!$defaultRow) {
                 $defaultRow = DB::table('builder_default_assets')
@@ -3389,7 +3407,7 @@ PROMPT;
         // the ACTUAL business first and generate a business-context hero only as a
         // last resort — never reuse or poison the slug's shared platform hero.
         $existingHero = $templateFits
-            ? \App\Services\MediaService::findOrGenerate($industry, 'hero', 'luxury', $wsId)
+            ? \App\Services\MediaService::findOrGenerate($heroIndustry, 'hero', 'luxury', $wsId)
             : $this->findApplicableHero($rawIndustry, $servicesText, $wsId);
         if ($existingHero) {
             $variables['hero_image'] = $existingHero['url'];
@@ -3397,7 +3415,7 @@ PROMPT;
         } else {
         // Generate hero image — context depends on whether the template fits.
         $heroPrompt = $templateFits
-            ? $this->getHeroImagePrompt($industry, $data['location'] ?? 'Dubai')
+            ? $this->getHeroImagePrompt($heroIndustry, $data['location'] ?? 'Dubai')
             : $this->getBusinessHeroPrompt($rawIndustry, $servicesText, $data['location'] ?? 'Dubai');
 
         try {
@@ -3451,7 +3469,7 @@ PROMPT;
             : '';
         $heroOk = $heroCur !== '' && (str_starts_with($heroCur, 'http') || ($heroLocal !== '' && is_file($heroLocal)));
         if (!$heroOk) {
-            foreach ([$industry, 'consulting', 'restaurant'] as $slugTry) {
+            foreach ([$industry, $heroIndustry, 'consulting', 'restaurant'] as $slugTry) {
                 $cand = '/storage/builder-heroes/' . $slugTry . '.jpg';
                 if (is_file(storage_path('app/public/builder-heroes/' . $slugTry . '.jpg'))) {
                     $variables['hero_image'] = $cand;

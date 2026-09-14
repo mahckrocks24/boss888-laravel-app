@@ -29,7 +29,9 @@ final class TemplateArchetypes
         'barbershop' => 'appointment_service',
         // professional advisory (case studies + clients — only when established)
         'consulting' => 'professional_advisory', 'marketing_agency' => 'professional_advisory',
-        'it_services' => 'professional_advisory', 'real_estate_agency' => 'professional_advisory',
+        'it_services' => 'professional_advisory', 'real_estate_agency' => 'real_estate', 'estate_frontage' => 'real_estate',
+        // 2026-09-14 (Owner brief): personal-brand designs — a consultant's profile, a realtor's portfolio with listings
+        'consultant_profile' => 'professional_advisory', 'realtor_profile' => 'real_estate',
         // portfolio / project
         'architecture' => 'portfolio_project', 'interior_design' => 'portfolio_project',
         'construction' => 'portfolio_project',
@@ -66,6 +68,13 @@ final class TemplateArchetypes
             'forbidden' => ['doctors', 'case_studies', 'clients', 'methodology', 'inventory', 'financing', 'room_types', 'listings', 'certifications'],
             'maturity'  => ['stats', 'stats_strip', 'awards', 'press', 'social_proof', 'transformations', 'partners', 'brands'],
             'fallback'  => 'beauty_salon',
+        ],
+        // EV-1000 (2026-09-12): real estate is an INVENTORY business — listings/areas are what it sells, never a
+        // credibility block to be held back until the business is 'established'.
+        'real_estate' => [
+            'forbidden' => ['doctors', 'menu_highlights', 'specials', 'room_types', 'inventory', 'financing', 'transformations', 'membership', 'breeds_served'],
+            'maturity'  => ['stats', 'stats_strip', 'case_studies', 'clients', 'results', 'awards', 'press', 'social_proof', 'partners'],
+            'fallback'  => 'real_estate_agency',
         ],
         'professional_advisory' => [
             'forbidden' => ['doctors', 'menu_highlights', 'specials', 'room_types', 'inventory', 'financing', 'transformations', 'membership', 'breeds_served'],
@@ -119,6 +128,7 @@ final class TemplateArchetypes
         'portfolio_project'     => ['architect', 'interior', 'construction', 'contractor', 'builder', 'renovat', 'landscap', 'photograph', 'videograph', 'design studio', 'fit-out', 'fitout', 'joinery', 'carpentry', 'engineering firm', 'surveyor'],
         'local_service'         => ['plumb', 'electric', 'hvac', 'cleaning', 'handyman', 'repair', 'auto ', 'automotive', 'mechanic', 'pest', 'moving', 'movers', 'locksmith', 'garage', 'detailing', 'maintenance', 'installation', 'roofing', 'painting', 'pool service', 'shelving', 'funeral', 'memorial', 'cremation', 'mortuary', 'crematorium', 'landscaping', 'gardening', 'security service', 'catering equipment'],
         'content_editorial'     => ['news', 'magazine', 'media outlet', 'blog', 'publication', 'journal', 'press', 'broadcast', 'podcast', 'newspaper', 'gazette', 'tribune'],
+        'real_estate'           => ['real estate', 'realty', 'realtor', 'estate agent', 'estate agency', 'property', 'properties', 'lettings', 'leasing', 'brokerage'],
         'professional_advisory' => ['consult', 'advisory', 'agency', 'marketing', 'seo', 'advertis', 'branding', 'legal', 'law firm', 'lawyer', 'attorney', 'account', 'bookkeep', 'finance', 'financial', 'insurance', 'hr ', 'recruit', 'it services', 'software', 'saas', 'tech', 'real estate', 'realtor', 'broker', 'property', 'notary', 'audit', 'tax'],
     ];
 

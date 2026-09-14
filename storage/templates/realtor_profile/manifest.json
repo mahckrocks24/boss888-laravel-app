@@ -1,0 +1,928 @@
+{
+    "id": "realtor_profile",
+    "name": "Realtor — Portfolio",
+    "industry": "real_estate_agency",
+    "description": "A personal site for a realtor rather than an agency: portrait, current listings, recently sold portfolio, the areas they know, credentials, process and a valuation form.",
+    "thumbnail": "/storage/builder-heroes/real_estate_broker.jpg",
+    "category": "property",
+    "version": "1.0.0",
+    "variation": "portfolio",
+    "is_active": true,
+    "design": {
+        "generated": "2026-09-14",
+        "generator": "hand-built (Owner brief: realtor profile with portfolio and listings)",
+        "palette": "navy-gold",
+        "type": "agent",
+        "scale": "personal",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "bar",
+            "hero": "agent",
+            "stats": "strip",
+            "listings": "grid",
+            "portfolio": "sold",
+            "story": "about",
+            "areas": "tiles",
+            "steps": "row",
+            "tst": "cards",
+            "contact": "agent",
+            "footer": "agent"
+        },
+        "order": [
+            "stats",
+            "listings",
+            "portfolio",
+            "story",
+            "areas",
+            "steps",
+            "tst",
+            "contact"
+        ]
+    },
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
+    },
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero-agent h1",
+                "hero_subtitle": ".hero-agent .lede"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Stats",
+            "elements": []
+        },
+        {
+            "id": "listings",
+            "name": "Listings",
+            "elements": {
+                "listings_title": "#listings h2",
+                "listing_1_title": "#listings .listing-card h3"
+            }
+        },
+        {
+            "id": "portfolio",
+            "name": "Recently sold",
+            "elements": {
+                "portfolio_1_title": "#portfolio article h3"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About / Credentials",
+            "elements": []
+        },
+        {
+            "id": "areas",
+            "name": "Areas",
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": []
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Your Name",
+            "default": "Sofia Alvarez"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "Licensed realtor · Homes and investments across the city"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Sofia Alvarez is a licensed realtor helping buyers, sellers and investors across the city — current listings, recent sales, and a straight answer on price."
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/real_estate_broker.jpg"
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav 1",
+            "default": "Listings"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav 2",
+            "default": "Recently sold"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav 3",
+            "default": "About"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav 4",
+            "default": "Areas"
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Licensed realtor · Buying, selling, investing"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Headline",
+            "default": "A realtor who tells you the real number"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subtitle",
+            "default": "I price homes from completed sales, not wishful thinking, and I am the person who shows you round, negotiates for you and picks up the phone — from the first viewing to the keys."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Hero Button",
+            "default": "Book a valuation"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Button 2",
+            "default": "See current listings"
+        },
+        "hero_licence_value": {
+            "type": "text",
+            "label": "Licence Line",
+            "default": "Licence no. 000000 · Member of the local realtor association"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Portrait",
+            "default": "/storage/builder-heroes/real_estate_broker.jpg"
+        },
+        "hero_card_label": {
+            "type": "text",
+            "label": "Portrait Card Label",
+            "default": "Available this week for viewings"
+        },
+        "hero_card_value": {
+            "type": "text",
+            "label": "Portrait Card Value",
+            "default": "Book a slot"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "120+"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "homes sold"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "98%"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "of asking price achieved"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "21 days"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "median time to offer"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "12 years"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "in this market"
+        },
+        "listings_eyebrow": {
+            "type": "text",
+            "label": "Listings Eyebrow",
+            "default": "On the market"
+        },
+        "listings_title": {
+            "type": "text",
+            "label": "Listings Title",
+            "default": "Current listings"
+        },
+        "listings_subtitle": {
+            "type": "text",
+            "label": "Listings Subtitle",
+            "default": "Homes I am selling and letting right now. Ask about anything coming to market before it is listed."
+        },
+        "listings_cta": {
+            "type": "text",
+            "label": "Listings Button",
+            "default": "Ask about a property"
+        },
+        "listing_1_image": {
+            "type": "image",
+            "label": "Listing 1 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_1_image.jpg"
+        },
+        "listing_1_badge": {
+            "type": "text",
+            "label": "Listing 1 Badge",
+            "default": "For sale"
+        },
+        "listing_1_price": {
+            "type": "text",
+            "label": "Listing 1 Price",
+            "default": "£425,000"
+        },
+        "listing_1_title": {
+            "type": "text",
+            "label": "Listing 1 Title",
+            "default": "Three-bedroom semi on Oakfield Road"
+        },
+        "listing_1_location": {
+            "type": "text",
+            "label": "Listing 1 Location",
+            "default": "Westbury · 0.4 mi from the station"
+        },
+        "listing_1_specs": {
+            "type": "text",
+            "label": "Listing 1 Specs",
+            "default": "3 bed · 2 bath · 1,240 sq ft"
+        },
+        "listing_1_cta": {
+            "type": "text",
+            "label": "Listing 1 Button",
+            "default": "Enquire"
+        },
+        "listing_2_image": {
+            "type": "image",
+            "label": "Listing 2 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_2_image.jpg"
+        },
+        "listing_2_badge": {
+            "type": "text",
+            "label": "Listing 2 Badge",
+            "default": "To let"
+        },
+        "listing_2_price": {
+            "type": "text",
+            "label": "Listing 2 Price",
+            "default": "£1,450 pcm"
+        },
+        "listing_2_title": {
+            "type": "text",
+            "label": "Listing 2 Title",
+            "default": "Two-bedroom apartment at Mill Quarter"
+        },
+        "listing_2_location": {
+            "type": "text",
+            "label": "Listing 2 Location",
+            "default": "Riverside · top floor, lift"
+        },
+        "listing_2_specs": {
+            "type": "text",
+            "label": "Listing 2 Specs",
+            "default": "2 bed · 2 bath · 860 sq ft"
+        },
+        "listing_2_cta": {
+            "type": "text",
+            "label": "Listing 2 Button",
+            "default": "Enquire"
+        },
+        "listing_3_image": {
+            "type": "image",
+            "label": "Listing 3 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_3_image.jpg"
+        },
+        "listing_3_badge": {
+            "type": "text",
+            "label": "Listing 3 Badge",
+            "default": "For sale"
+        },
+        "listing_3_price": {
+            "type": "text",
+            "label": "Listing 3 Price",
+            "default": "£689,000"
+        },
+        "listing_3_title": {
+            "type": "text",
+            "label": "Listing 3 Title",
+            "default": "Detached family home with a south garden"
+        },
+        "listing_3_location": {
+            "type": "text",
+            "label": "Listing 3 Location",
+            "default": "Kings Hill · quiet cul-de-sac"
+        },
+        "listing_3_specs": {
+            "type": "text",
+            "label": "Listing 3 Specs",
+            "default": "4 bed · 3 bath · 1,980 sq ft"
+        },
+        "listing_3_cta": {
+            "type": "text",
+            "label": "Listing 3 Button",
+            "default": "Enquire"
+        },
+        "listing_4_image": {
+            "type": "image",
+            "label": "Listing 4 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_4_image.jpg"
+        },
+        "listing_4_badge": {
+            "type": "text",
+            "label": "Listing 4 Badge",
+            "default": "For sale"
+        },
+        "listing_4_price": {
+            "type": "text",
+            "label": "Listing 4 Price",
+            "default": "£1,150,000"
+        },
+        "listing_4_title": {
+            "type": "text",
+            "label": "Listing 4 Title",
+            "default": "Period townhouse with a coach house"
+        },
+        "listing_4_location": {
+            "type": "text",
+            "label": "Listing 4 Location",
+            "default": "Old Town · conservation area"
+        },
+        "listing_4_specs": {
+            "type": "text",
+            "label": "Listing 4 Specs",
+            "default": "5 bed · 3 bath · 2,760 sq ft"
+        },
+        "listing_4_cta": {
+            "type": "text",
+            "label": "Listing 4 Button",
+            "default": "Enquire"
+        },
+        "listing_5_image": {
+            "type": "image",
+            "label": "Listing 5 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_5_image.jpg"
+        },
+        "listing_5_badge": {
+            "type": "text",
+            "label": "Listing 5 Badge",
+            "default": "New"
+        },
+        "listing_5_price": {
+            "type": "text",
+            "label": "Listing 5 Price",
+            "default": "£540,000"
+        },
+        "listing_5_title": {
+            "type": "text",
+            "label": "Listing 5 Title",
+            "default": "Garden flat with a private entrance"
+        },
+        "listing_5_location": {
+            "type": "text",
+            "label": "Listing 5 Location",
+            "default": "Parkside · two minutes from the green"
+        },
+        "listing_5_specs": {
+            "type": "text",
+            "label": "Listing 5 Specs",
+            "default": "2 bed · 1 bath · 910 sq ft"
+        },
+        "listing_5_cta": {
+            "type": "text",
+            "label": "Listing 5 Button",
+            "default": "Enquire"
+        },
+        "listing_6_image": {
+            "type": "image",
+            "label": "Listing 6 Image",
+            "default": "/storage/template-images/real_estate_broker/listing_6_image.jpg"
+        },
+        "listing_6_badge": {
+            "type": "text",
+            "label": "Listing 6 Badge",
+            "default": "Under offer"
+        },
+        "listing_6_price": {
+            "type": "text",
+            "label": "Listing 6 Price",
+            "default": "£372,500"
+        },
+        "listing_6_title": {
+            "type": "text",
+            "label": "Listing 6 Title",
+            "default": "Renovated cottage with a workshop"
+        },
+        "listing_6_location": {
+            "type": "text",
+            "label": "Listing 6 Location",
+            "default": "Ashcombe · edge of the village"
+        },
+        "listing_6_specs": {
+            "type": "text",
+            "label": "Listing 6 Specs",
+            "default": "2 bed · 1 bath · 990 sq ft"
+        },
+        "listing_6_cta": {
+            "type": "text",
+            "label": "Listing 6 Button",
+            "default": "Enquire"
+        },
+        "portfolio_eyebrow": {
+            "type": "text",
+            "label": "Sold Eyebrow",
+            "default": "Recently sold"
+        },
+        "portfolio_title": {
+            "type": "text",
+            "label": "Sold Title",
+            "default": "Homes I have sold this year"
+        },
+        "portfolio_subtitle": {
+            "type": "text",
+            "label": "Sold Subtitle",
+            "default": "A few recent results. Every sale was priced from comparable completions and negotiated by me personally."
+        },
+        "portfolio_1_image": {
+            "type": "image",
+            "label": "Sold 1 Image",
+            "default": "/storage/template-images/real_estate_broker/area_1_image.jpg"
+        },
+        "portfolio_1_badge": {
+            "type": "text",
+            "label": "Sold property 1 status badge (Sold or Let)",
+            "default": "Sold"
+        },
+        "portfolio_1_price": {
+            "type": "text",
+            "label": "Sold 1 Price",
+            "default": "£615,000"
+        },
+        "portfolio_1_title": {
+            "type": "text",
+            "label": "Sold property 1 — describe the home that was sold (type, bedrooms, street or area), never a service",
+            "default": "Four-bedroom townhouse, Old Town"
+        },
+        "portfolio_1_price_note": {
+            "type": "text",
+            "label": "Sold property 1 — one line on how the sale went (asking price achieved, days on market, offers)",
+            "default": "Full asking price · 19 days"
+        },
+        "portfolio_2_image": {
+            "type": "image",
+            "label": "Sold 2 Image",
+            "default": "/storage/template-images/real_estate_broker/area_2_image.jpg"
+        },
+        "portfolio_2_badge": {
+            "type": "text",
+            "label": "Sold property 2 status badge (Sold or Let)",
+            "default": "Sold"
+        },
+        "portfolio_2_price": {
+            "type": "text",
+            "label": "Sold 2 Price",
+            "default": "£398,000"
+        },
+        "portfolio_2_title": {
+            "type": "text",
+            "label": "Sold property 2 — describe the home that was sold (type, bedrooms, street or area), never a service",
+            "default": "Two-bedroom flat, Riverside"
+        },
+        "portfolio_2_price_note": {
+            "type": "text",
+            "label": "Sold property 2 — one line on how the sale went (asking price achieved, days on market, offers)",
+            "default": "Three offers in the first week"
+        },
+        "portfolio_3_image": {
+            "type": "image",
+            "label": "Sold 3 Image",
+            "default": "/storage/template-images/real_estate_broker/area_3_image.jpg"
+        },
+        "portfolio_3_badge": {
+            "type": "text",
+            "label": "Sold property 3 status badge (Sold or Let)",
+            "default": "Sold"
+        },
+        "portfolio_3_price": {
+            "type": "text",
+            "label": "Sold 3 Price",
+            "default": "£845,000"
+        },
+        "portfolio_3_title": {
+            "type": "text",
+            "label": "Sold property 3 — describe the home that was sold (type, bedrooms, street or area), never a service",
+            "default": "Detached home with annexe, Kings Hill"
+        },
+        "portfolio_3_price_note": {
+            "type": "text",
+            "label": "Sold property 3 — one line on how the sale went (asking price achieved, days on market, offers)",
+            "default": "Sold off-market to a registered buyer"
+        },
+        "portfolio_4_image": {
+            "type": "image",
+            "label": "Sold 4 Image",
+            "default": "/storage/template-images/real_estate_broker/area_4_image.jpg"
+        },
+        "portfolio_4_badge": {
+            "type": "text",
+            "label": "Sold property 4 status badge (Sold or Let)",
+            "default": "Let"
+        },
+        "portfolio_4_price": {
+            "type": "text",
+            "label": "Sold 4 Price",
+            "default": "£2,300 pcm"
+        },
+        "portfolio_4_title": {
+            "type": "text",
+            "label": "Sold property 4 — describe the home that was sold (type, bedrooms, street or area), never a service",
+            "default": "Loft apartment, Mill Quarter"
+        },
+        "portfolio_4_price_note": {
+            "type": "text",
+            "label": "Sold property 4 — one line on how the sale went (asking price achieved, days on market, offers)",
+            "default": "Let to referenced tenants in 9 days"
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "About Eyebrow",
+            "default": "About me"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "About Title",
+            "default": "Twelve years in this market, and I still do every viewing myself"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "About Body",
+            "default": "I started in lettings, moved into sales, and have sold homes in every corner of this city. What has not changed is the way I work: an honest price, marketing prepared properly, and one person you can call at any point."
+        },
+        "story_image": {
+            "type": "image",
+            "label": "About Photo",
+            "default": "/storage/template-images/real_estate_broker/about_photo.jpg"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "About Point 1",
+            "default": "Valuations built from completed sales, with the comparables shown to you"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "About Point 2",
+            "default": "Every viewing accompanied by me, not a junior"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "About Point 3",
+            "default": "A written update every week, whether or not there is news"
+        },
+        "credential_1": {
+            "type": "text",
+            "label": "Credential 1",
+            "default": "Licensed realtor since 2014"
+        },
+        "credential_2": {
+            "type": "text",
+            "label": "Credential 2",
+            "default": "Member of the local realtor association"
+        },
+        "credential_3": {
+            "type": "text",
+            "label": "Credential 3",
+            "default": "Certified negotiation specialist"
+        },
+        "credential_4": {
+            "type": "text",
+            "label": "Credential 4",
+            "default": "Top 5% of agents in the city, last three years"
+        },
+        "areas_title": {
+            "type": "text",
+            "label": "Areas Title",
+            "default": "Areas I know street by street"
+        },
+        "area_1_image": {
+            "type": "image",
+            "label": "Area 1 Image",
+            "default": "/storage/template-images/real_estate_broker/area_1_image.jpg"
+        },
+        "area_1_title": {
+            "type": "text",
+            "label": "Area 1 Title",
+            "default": "Old Town"
+        },
+        "area_1_text": {
+            "type": "text",
+            "label": "Area 1 Text",
+            "default": "Period homes, conservation rules, and the streets that hold their value."
+        },
+        "area_2_image": {
+            "type": "image",
+            "label": "Area 2 Image",
+            "default": "/storage/template-images/real_estate_broker/area_2_image.jpg"
+        },
+        "area_2_title": {
+            "type": "text",
+            "label": "Area 2 Title",
+            "default": "Riverside"
+        },
+        "area_2_text": {
+            "type": "text",
+            "label": "Area 2 Text",
+            "default": "New-build apartments and the buildings with the best management."
+        },
+        "area_3_image": {
+            "type": "image",
+            "label": "Area 3 Image",
+            "default": "/storage/template-images/real_estate_broker/area_3_image.jpg"
+        },
+        "area_3_title": {
+            "type": "text",
+            "label": "Area 3 Title",
+            "default": "Kings Hill"
+        },
+        "area_3_text": {
+            "type": "text",
+            "label": "Area 3 Text",
+            "default": "Family homes, the good school catchments, and where the gardens face south."
+        },
+        "steps_eyebrow": {
+            "type": "text",
+            "label": "Process Eyebrow",
+            "default": "How it works"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Title",
+            "default": "Selling with me, step by step"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "A real valuation"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Priced from completed sales, with the comparables printed for you to check."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Marketing prepared properly"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Photography, floorplan and particulars ready before the listing goes live."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Viewings and offers"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Every viewing accompanied by me; every offer qualified before it reaches you."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Through to completion"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Chased weekly with a written update, until the keys change hands."
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Title",
+            "default": "What my clients say"
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1 Quote",
+            "default": "She valued our house honestly, sold it in three weeks, and rang us every Friday whether there was news or not."
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2 Quote",
+            "default": "We saw eleven flats with her and never felt rushed. She told us which ones to walk away from."
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3 Quote",
+            "default": "Three offers in the first week, and she handled the negotiation so we did not have to."
+        },
+        "contact_eyebrow": {
+            "type": "text",
+            "label": "Contact Eyebrow",
+            "default": "Get in touch"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Title",
+            "default": "Tell me what you are looking for"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subtitle",
+            "default": "Buying, selling, letting or just wondering what your home is worth — I reply within a working day."
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Office",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Hours",
+            "default": "Mon–Sat 9–7 · viewings by appointment"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Send a message"
+        },
+        "footer_blurb": {
+            "type": "text",
+            "label": "Footer Blurb",
+            "default": "Licensed realtor. Honest prices, accompanied viewings, one person from first call to completion."
+        },
+        "footer_licence_value": {
+            "type": "text",
+            "label": "Footer Licence",
+            "default": "Licence no. 000000."
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#1B2A41"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary Deep",
+            "default": "#121C2C"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#C08A2E"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#DDE3EA"
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://example.com"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_GB"
+        },
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book a valuation"
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "footer_col_1": {
+            "type": "text",
+            "label": "Footer Column 1",
+            "default": "Explore"
+        },
+        "footer_col_2": {
+            "type": "text",
+            "label": "Footer Column 2",
+            "default": "Contact"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "LinkedIn",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Client name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Client"
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Client name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Client"
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Client name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Client"
+        }
+    }
+}
