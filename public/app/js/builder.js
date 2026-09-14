@@ -984,7 +984,7 @@ function _wsShowTemplateEditor(site) {
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
-      '<button type="button" id="t3-listings-btn" hidden onclick="wsOpenListings(' + wsId + ')" title="Property listings — add, edit, mark sold; each one gets its own page" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Listings</button>' +
+      '<button type="button" id="t3-catalogue-btn" hidden onclick="wsOpenCatalogue(' + wsId + ')" title="What you sell — listings, services and prices, menu; each kind gets its own page" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Listings</button>' +
       '<button type="button" id="t3-layout-btn" onclick="wsOpenLayouts(' + wsId + ')" title="Switch to another layout of this design family — preview is free" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Layout</button>' +
       '<button type="button" onclick="wsOpenPalettes(' + wsId + ')" title="Colour palettes — hover to preview, click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
@@ -1020,7 +1020,7 @@ function _wsShowTemplateEditor(site) {
 
   document.body.insertAdjacentHTML('beforeend', html);
   _wsTplBindPage(wsId);
-  try { _t3ListingsGate(wsId); } catch (_e) {}   // Listings button only on designs with a property catalogue
+  try { _t3CatalogueGate(wsId); } catch (_e) {}   // Catalogue button only on designs that carry one
 }
 
 /**
@@ -1073,7 +1073,7 @@ async function wsCloseTemplateEditor() {
   }
   var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
   var lay = document.getElementById('t3-lay'); if (lay) lay.remove(); window._t3LayoutPreviewing = false;
-  var lst = document.getElementById('t3-lst'); if (lst) lst.remove();
+  var lst = document.getElementById('t3-cat'); if (lst) lst.remove();
   bldCurrentPageId = null;
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
@@ -3912,7 +3912,7 @@ window.wsOpenLayouts = async function (siteId) {
     + '#template-editor-view .pe-bar button{padding:6px 10px!important;font-size:12px!important}'
     + '#template-editor-view .pe-bar-hint,#template-editor-view .pe-bar-spacer{display:none!important}'
     + '#template-editor-view .pe-bar-title{flex:1 1 auto;font-size:13px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '#t3-lay,#t3-pal,#t3-lst{top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:min(62vh,100%)!important;border-radius:14px 14px 0 0!important;box-shadow:0 -12px 40px rgba(0,0,0,.5)!important}'
+    + '#t3-lay,#t3-pal,#t3-cat{top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:min(62vh,100%)!important;border-radius:14px 14px 0 0!important;box-shadow:0 -12px 40px rgba(0,0,0,.5)!important}'
     + '#t3-lay-bar{left:8px!important;right:8px!important;top:8px!important;transform:none!important;flex-wrap:wrap;border-radius:12px!important;padding:10px 12px!important;gap:8px!important}'
     + '#t3-lay-bar span{flex:1 1 100%;font-size:12px;line-height:1.35}'
     + '#t3-lay-bar button{flex:1 1 calc(50% - 4px);white-space:nowrap}'
@@ -3921,229 +3921,249 @@ window.wsOpenLayouts = async function (siteId) {
   document.head.appendChild(st);
 })();
 
-/* ══════════════ PROPERTY LISTINGS panel — template editor (DEC-0048, 2026-09-14) ══════════════
- * Shown ONLY when the site's design declares a property catalogue (GET /builder/websites/{id}/listings → catalogue).
- * Rows live in Laravel; every save re-projects the home block, the Listings page and the property pages, then the
- * preview reloads. Site CSS controls only: status pills, inline confirms — no native dialogs. */
+/* ══════════════ CATALOGUE panel — template editor (DEC-0049, 2026-09-14) ══════════════
+ * One panel for everything the site sells: a tab per kind the design carries (Listings, Treatments, Menu …), forms
+ * generated from the kind's schema (GET /builder/websites/{id}/catalogue). Every save re-projects the home block,
+ * the kind's page and its item pages, then the preview reloads. Site CSS controls only — no native dialogs. */
 (function () {
-  if (document.getElementById('t3-lst-css')) return;
-  var st = document.createElement('style'); st.id = 't3-lst-css';
-  st.textContent = '#t3-lst .lst-row{display:flex;gap:10px;align-items:center;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;background:var(--s2)}'
-    + '#t3-lst .lst-row img{width:64px;height:48px;object-fit:cover;border-radius:6px;background:#0B0D13;flex-shrink:0}'
-    + '#t3-lst .lst-row .m{flex:1;min-width:0}#t3-lst .lst-row .t{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '#t3-lst .lst-row .s{font-size:11.5px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '#t3-lst .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--p);color:#fff;margin-right:6px;vertical-align:1px}'
-    + '#t3-lst .pill.closed{background:#4b5563}#t3-lst .pill.off{background:#7c3aed}'
-    + '#t3-lst .acts{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}'
-    + '#t3-lst .lu-btn--sm{padding:5px 9px;font-size:12px}'
-    + '#t3-lst label{display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px}'
-    + '#t3-lst input[type=text],#t3-lst input[type=number],#t3-lst textarea{width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px}'
-    + '#t3-lst textarea{min-height:72px;resize:vertical}'
-    + '#t3-lst .seg{display:flex;flex-wrap:wrap;gap:6px}#t3-lst .seg button{background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:999px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}'
-    + '#t3-lst .seg button[aria-pressed=true]{background:var(--p);border-color:var(--p);color:#fff}'
-    + '#t3-lst .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}#t3-lst .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}'
-    + '#t3-lst .photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#t3-lst .photos .ph{position:relative;width:72px;height:54px;border-radius:6px;overflow:hidden;background:#0B0D13}'
-    + '#t3-lst .photos .ph img{width:100%;height:100%;object-fit:cover}#t3-lst .photos .ph button{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:11px;cursor:pointer;line-height:18px;padding:0}'
-    + '#t3-lst .inl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--t2)}'
-    + '#t3-lst .sw{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);margin-bottom:10px}'
-    + '#t3-lst .sw input{accent-color:var(--p)}'
-    + '@media (max-width:760px){#t3-lst .three{grid-template-columns:1fr 1fr}#t3-lst .lst-row{flex-wrap:wrap}#t3-lst .lst-row .m{flex:1 1 55%}#t3-lst .acts{flex:1 1 100%;justify-content:flex-start}}';
+  if (document.getElementById('t3-cat-css')) return;
+  var st = document.createElement('style'); st.id = 't3-cat-css';
+  st.textContent = '#t3-cat .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}#t3-cat .tabs button{background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:999px;padding:5px 12px;font:inherit;font-size:12px;cursor:pointer}#t3-cat .tabs button[aria-selected=true]{background:var(--p);border-color:var(--p);color:#fff}'
+    + '#t3-cat .row{display:flex;gap:10px;align-items:center;border:1px solid var(--bd);border-radius:10px;padding:8px 10px;background:var(--s2)}'
+    + '#t3-cat .row img{width:64px;height:48px;object-fit:cover;border-radius:6px;background:#0B0D13;flex-shrink:0}'
+    + '#t3-cat .row .m{flex:1;min-width:0}#t3-cat .row .t{font-size:13px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '#t3-cat .row .s{font-size:11.5px;color:var(--t3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '#t3-cat .pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:999px;background:var(--p);color:#fff;margin-right:6px;vertical-align:1px}'
+    + '#t3-cat .pill.closed{background:#4b5563}#t3-cat .pill.off{background:#7c3aed}'
+    + '#t3-cat .acts{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end}#t3-cat .lu-btn--sm{padding:5px 9px;font-size:12px}'
+    + '#t3-cat label{display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px}'
+    + '#t3-cat input[type=text],#t3-cat input[type=number],#t3-cat textarea{width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px}'
+    + '#t3-cat textarea{min-height:72px;resize:vertical}'
+    + '#t3-cat .seg{display:flex;flex-wrap:wrap;gap:6px}#t3-cat .seg button{background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:999px;padding:5px 11px;font:inherit;font-size:12px;cursor:pointer}#t3-cat .seg button[aria-pressed=true]{background:var(--p);border-color:var(--p);color:#fff}'
+    + '#t3-cat .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}#t3-cat .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}'
+    + '#t3-cat .photos{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}#t3-cat .photos .ph{position:relative;width:72px;height:54px;border-radius:6px;overflow:hidden;background:#0B0D13}'
+    + '#t3-cat .photos .ph img{width:100%;height:100%;object-fit:cover}#t3-cat .photos .ph button{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;border:0;background:rgba(0,0,0,.7);color:#fff;font-size:11px;cursor:pointer;line-height:18px;padding:0}'
+    + '#t3-cat .inl{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--t2)}'
+    + '#t3-cat .sw{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);margin-bottom:10px}#t3-cat .sw input{accent-color:var(--p)}'
+    + '@media (max-width:760px){#t3-cat .three{grid-template-columns:1fr 1fr}#t3-cat .row{flex-wrap:wrap}#t3-cat .row .m{flex:1 1 55%}#t3-cat .acts{flex:1 1 100%;justify-content:flex-start}}';
   document.head.appendChild(st);
 })();
 
-function _t3LstAuth() { return { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' }; }
+function _t3CatAuth() { return { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' }; }
+function _t3CatKinds(d) { return d && d.catalogues ? Object.keys(d.catalogues) : []; }
 
-/* Reveal the Listings button when — and only when — the design carries a catalogue. */
-window._t3ListingsGate = async function (siteId) {
-  var btn = document.getElementById('t3-listings-btn');
+/* Reveal the button when — and only when — the design carries at least one catalogue. */
+window._t3CatalogueGate = async function (siteId) {
+  var btn = document.getElementById('t3-catalogue-btn');
   if (!btn) return;
   btn.hidden = true;
   try {
-    var r = await fetch(API + 'builder/websites/' + siteId + '/listings', { headers: _t3LstAuth(), cache: 'no-store' });
+    var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue', { headers: _t3CatAuth(), cache: 'no-store' });
     if (!r.ok) return;
     var d = await r.json();
-    if (d && d.catalogue) { btn.hidden = false; btn.textContent = (d.catalogue.label || 'Listings') + (d.enabled ? '' : ' (off)'); window._t3ListingsData = d; }
+    var kinds = _t3CatKinds(d);
+    if (kinds.length) { btn.hidden = false; btn.textContent = kinds.length === 1 ? d.catalogues[kinds[0]].label : 'Catalogue'; window._t3CatalogueData = d; }
   } catch (_e) {}
 };
 
-window.wsOpenListings = async function (siteId) {
-  var old = document.getElementById('t3-lst');
-  if (old) { old.remove(); return; }
+window.wsOpenCatalogue = async function (siteId, kind) {
+  var old = document.getElementById('t3-cat');
+  if (old && !kind) { old.remove(); return; }
+  if (old) old.remove();
   var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
   var lay = document.getElementById('t3-lay'); if (lay) lay.remove();
   var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
   var panel = document.createElement('div');
-  panel.id = 't3-lst'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Property listings');
+  panel.id = 't3-cat'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Catalogue');
   panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(520px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r,12px);box-shadow:0 20px 60px rgba(0,0,0,.45);padding:14px 14px 16px;font-family:var(--fb)';
-  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Property listings</div><button type="button" id="t3-lst-x" aria-label="Close" style="background:none;border:0;color:var(--t2);font-size:18px;cursor:pointer;line-height:1">×</button></div>'
-    + '<div id="t3-lst-sub" style="font-size:12px;color:var(--t3);margin-bottom:12px">Every listing here shows on the home page, on the Listings page and on its own page with an enquiry form. Mark one sold and it moves to the sold row.</div>'
-    + '<div id="t3-lst-body"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
+  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div id="t3-cat-title" style="font:700 14px var(--fh);color:var(--t1);flex:1">What you sell</div><button type="button" id="t3-cat-x" aria-label="Close" style="background:none;border:0;color:var(--t2);font-size:18px;cursor:pointer;line-height:1">×</button></div>'
+    + '<div id="t3-cat-sub" style="font-size:12px;color:var(--t3);margin-bottom:12px">Each item here shows on the home page and on its own list page with an enquiry form. Change it here and the site follows.</div>'
+    + '<div class="tabs" id="t3-cat-tabs"></div><div id="t3-cat-body"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
   stage.appendChild(panel);
-  panel.querySelector('#t3-lst-x').addEventListener('click', function () { panel.remove(); });
-  _t3LstLoad(siteId, panel);
+  panel.querySelector('#t3-cat-x').addEventListener('click', function () { panel.remove(); });
+  panel.setAttribute('data-kind', kind || '');
+  _t3CatLoad(siteId, panel);
 };
 
-async function _t3LstLoad(siteId, panel) {
-  var body = panel.querySelector('#t3-lst-body');
+async function _t3CatLoad(siteId, panel) {
+  var body = panel.querySelector('#t3-cat-body');
   try {
-    var r = await fetch(API + 'builder/websites/' + siteId + '/listings', { headers: _t3LstAuth(), cache: 'no-store' });
+    var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue', { headers: _t3CatAuth(), cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     var d = await r.json();
-    window._t3ListingsData = d;
-    _t3LstRenderList(siteId, panel, d);
-  } catch (e) { body.innerHTML = '<div class="lu-empty"><b>Couldn’t load listings</b>' + bld_escH(e.message) + '</div>'; }
+    window._t3CatalogueData = d;
+    var kinds = _t3CatKinds(d);
+    if (!kinds.length) { body.innerHTML = '<div class="lu-empty"><b>No catalogue on this design</b>This design has no list of things to sell that I can manage.</div>'; return; }
+    var kind = panel.getAttribute('data-kind') || kinds[0];
+    if (kinds.indexOf(kind) < 0) kind = kinds[0];
+    panel.setAttribute('data-kind', kind);
+    var tabs = panel.querySelector('#t3-cat-tabs');
+    tabs.innerHTML = kinds.length > 1 ? kinds.map(function (k) { return '<button type="button" role="tab" data-k="' + k + '" aria-selected="' + (k === kind ? 'true' : 'false') + '">' + bld_escH(d.catalogues[k].label) + ' (' + d.catalogues[k].items.length + ')</button>'; }).join('') : '';
+    tabs.querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { panel.setAttribute('data-kind', b.getAttribute('data-k')); _t3CatLoad(siteId, panel); }); });
+    panel.querySelector('#t3-cat-title').textContent = d.catalogues[kind].label;
+    _t3CatRenderList(siteId, panel, d.catalogues[kind]);
+  } catch (e) { body.innerHTML = '<div class="lu-empty"><b>Couldn’t load the catalogue</b>' + bld_escH(e.message) + '</div>'; }
 }
 
-function _t3LstRenderList(siteId, panel, d) {
-  var body = panel.querySelector('#t3-lst-body');
-  if (!d || !d.catalogue) { body.innerHTML = '<div class="lu-empty"><b>No property catalogue on this design</b>Listings are only available on real-estate designs.</div>'; return; }
-  var rows = d.listings || [];
-  var h = '<label class="sw"><input type="checkbox" id="t3-lst-on"' + (d.enabled ? ' checked' : '') + '> Show listings on this site (Listings page + property pages)</label>';
-  if (!d.enabled) h += '<div class="lu-empty" style="margin-bottom:10px"><b>Listings are off</b>The home page keeps what it shows; the Listings page and property pages are removed until you switch this back on.</div>';
-  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;font-size:12px;color:var(--t3)">' + rows.length + ' listing' + (rows.length === 1 ? '' : 's') + ' · ' + rows.filter(function (L) { return ['for_sale', 'to_let', 'under_offer'].indexOf(L.status) >= 0; }).length + ' available</div>'
-    + '<button type="button" class="lu-btn lu-btn--sm" id="t3-lst-add"' + (d.enabled ? '' : ' disabled') + '>+ Add listing</button></div>';
-  h += '<div id="t3-lst-rows" style="display:flex;flex-direction:column;gap:8px">';
-  if (!rows.length) h += '<div class="lu-empty"><b>No listings yet</b>Add your first property — or tell Arthur: “Add a listing: 3-bed townhouse in Travis Heights, $925,000”.</div>';
+function _t3CatIsClosed(spec, L) { return (spec.closed_statuses || []).indexOf(L.status) >= 0; }
+
+function _t3CatRenderList(siteId, panel, spec) {
+  var body = panel.querySelector('#t3-cat-body');
+  var rows = spec.items || [];
+  var open = rows.filter(function (L) { return (spec.open || []).indexOf(L.status) >= 0; }).length;
+  var h = '<label class="sw"><input type="checkbox" id="t3-cat-on"' + (spec.enabled ? ' checked' : '') + '> Show ' + bld_escH(spec.label.toLowerCase()) + ' on this site (' + bld_escH(spec.label) + ' page' + (spec.pages === 'index+detail' ? ' + one page per item' : '') + ')</label>';
+  if (!spec.enabled) h += '<div class="lu-empty" style="margin-bottom:10px"><b>' + bld_escH(spec.label) + ' are off</b>The home page keeps what it shows; the ' + bld_escH(spec.label) + ' page is removed until you switch this back on.</div>';
+  h += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><div style="flex:1;font-size:12px;color:var(--t3)">' + rows.length + ' ' + bld_escH(rows.length === 1 ? spec.singular : spec.label.toLowerCase()) + ' · ' + open + ' shown · first ' + spec.slots + ' on the home page</div>'
+    + '<button type="button" class="lu-btn lu-btn--sm" id="t3-cat-add"' + (spec.enabled ? '' : ' disabled') + '>+ Add ' + bld_escH(spec.singular) + '</button></div>';
+  h += '<div id="t3-cat-rows" style="display:flex;flex-direction:column;gap:8px">';
+  if (!rows.length) h += '<div class="lu-empty"><b>Nothing here yet</b>Add your first ' + bld_escH(spec.singular) + ' — or tell Arthur: “Add a ' + bld_escH(spec.singular) + ': …”.</div>';
   rows.forEach(function (L) {
-    var closed = L.status === 'sold' || L.status === 'let';
-    var pill = '<span class="pill' + (closed ? ' closed' : (L.status === 'withdrawn' ? ' off' : '')) + '">' + bld_escH(L.status_label) + '</span>';
-    var priceTxt = (closed && L.price === null && !L.price_label) ? '' : L.price_display;
-    h += '<div class="lst-row" data-id="' + L.id + '"><img src="' + bld_escH((L.photos && L.photos[0]) || '/storage/template-images/listing-placeholder.svg') + '" alt="">'
-      + '<div class="m"><div class="t">' + pill + bld_escH(L.title) + '</div><div class="s">' + bld_escH(priceTxt) + (L.location ? (priceTxt ? ' · ' : '') + bld_escH(L.location) : '') + (L.specs_display ? ' · ' + bld_escH(L.specs_display) : '') + (closed && L.sold_note ? ' · ' + bld_escH(L.sold_note) : '') + '</div></div>'
-      + '<div class="acts"><button type="button" class="lu-btn lu-btn--sm" data-a="edit">Edit</button>'
-      + (closed ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="sold">Sold</button>')
-      + '<button type="button" class="lu-btn lu-btn--sm" data-a="del" title="Remove this listing">✕</button></div></div>';
+    var closed = _t3CatIsClosed(spec, L);
+    var hidden = (spec.open || []).indexOf(L.status) < 0 && !closed;
+    var pill = (L.status !== spec.default_status || spec.kind === 'listing') ? '<span class="pill' + (closed ? ' closed' : (hidden ? ' off' : '')) + '">' + bld_escH(L.status_label) + '</span>' : '';
+    var priceTxt = (L.price === null && !L.price_label) ? '' : L.price_display;
+    var bits = [priceTxt, L.attrs && L.attrs.location ? L.attrs.location : '', L.specs_display || '', closed && L.closed_note ? L.closed_note : ''].filter(Boolean);
+    h += '<div class="row" data-id="' + L.id + '">' + ((L.photos && L.photos[0]) || spec.kind === 'listing' ? '<img src="' + bld_escH((L.photos && L.photos[0]) || '/storage/template-images/listing-placeholder.svg') + '" alt="">' : '')
+      + '<div class="m"><div class="t">' + pill + bld_escH(L.title) + '</div><div class="s">' + bld_escH(bits.join(' · ') || (L.summary || '')) + '</div></div>'
+      + '<div class="acts"><button type="button" class="lu-btn lu-btn--sm" data-a="edit">Edit</button><button type="button" class="lu-btn lu-btn--sm" data-a="status">Status</button><button type="button" class="lu-btn lu-btn--sm" data-a="del" title="Remove">✕</button></div></div>';
   });
   h += '</div>';
   body.innerHTML = h;
-  var on = body.querySelector('#t3-lst-on');
+  var on = body.querySelector('#t3-cat-on');
   on.addEventListener('change', async function () {
     on.disabled = true;
     try {
-      var r = await fetch(API + 'builder/websites/' + siteId + '/listings/settings', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, _t3LstAuth()), body: JSON.stringify({ enabled: on.checked }) });
+      var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue/' + spec.kind + '/settings', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, _t3CatAuth()), body: JSON.stringify({ enabled: on.checked }) });
       var j = null; try { j = await r.json(); } catch (_e) {}
       if (!r.ok || !j || !j.success) throw new Error((j && j.message) || ('HTTP ' + r.status));
       if (typeof showToast === 'function') showToast(j.message || 'Saved.', 'success');
-      _t3ReloadPreview(); _t3ListingsGate(siteId); _t3LstLoad(siteId, panel);
+      _t3ReloadPreview(); _t3CatalogueGate(siteId); _t3CatLoad(siteId, panel);
     } catch (e) { on.checked = !on.checked; on.disabled = false; if (typeof showToast === 'function') showToast("Couldn’t change that — " + e.message, 'error'); }
   });
-  var add = body.querySelector('#t3-lst-add');
-  if (add) add.addEventListener('click', function () { _t3LstForm(siteId, panel, null, d); });
-  body.querySelectorAll('.lst-row').forEach(function (row) {
+  var add = body.querySelector('#t3-cat-add');
+  if (add) add.addEventListener('click', function () { _t3CatForm(siteId, panel, spec, null); });
+  body.querySelectorAll('.row').forEach(function (row) {
     var id = parseInt(row.getAttribute('data-id'), 10);
     var L = rows.filter(function (x) { return x.id === id; })[0];
-    row.querySelector('[data-a=edit]').addEventListener('click', function () { _t3LstForm(siteId, panel, L, d); });
-    var sold = row.querySelector('[data-a=sold]');
-    if (sold) sold.addEventListener('click', function () { _t3LstSoldInline(siteId, panel, row, L); });
-    row.querySelector('[data-a=del]').addEventListener('click', function () { _t3LstDeleteInline(siteId, panel, row, L); });
+    row.querySelector('[data-a=edit]').addEventListener('click', function () { _t3CatForm(siteId, panel, spec, L); });
+    row.querySelector('[data-a=status]').addEventListener('click', function () { _t3CatStatusInline(siteId, panel, spec, row, L); });
+    row.querySelector('[data-a=del]').addEventListener('click', function () { _t3CatDeleteInline(siteId, panel, spec, row, L); });
   });
 }
 
-/* Inline "mark sold" — status pills + an optional note (only what the customer states), no native prompt. */
-function _t3LstSoldInline(siteId, panel, row, L) {
+/* Inline status change — the kind's own statuses as pills; an optional note only for closed ones (sold, let). */
+function _t3CatStatusInline(siteId, panel, spec, row, L) {
   var acts = row.querySelector('.acts');
   var wasHtml = acts.innerHTML;
-  acts.innerHTML = '<div style="width:100%"><div class="seg" style="margin-bottom:6px"><button type="button" data-s="sold" aria-pressed="true">Sold</button><button type="button" data-s="let" aria-pressed="false">Let</button><button type="button" data-s="under_offer" aria-pressed="false">Under offer</button><button type="button" data-s="withdrawn" aria-pressed="false">Withdrawn</button></div>'
-    + '<input type="text" data-note placeholder="Note shown on the site (optional) — e.g. Sold in 5 days, over asking" maxlength="190" style="margin-bottom:6px">'
+  var status = L.status;
+  var keys = Object.keys(spec.statuses || {});
+  acts.innerHTML = '<div style="width:100%"><div class="seg" style="margin-bottom:6px">' + keys.map(function (k) { return '<button type="button" data-s="' + k + '" aria-pressed="' + (k === status ? 'true' : 'false') + '">' + bld_escH(spec.statuses[k]) + '</button>'; }).join('') + '</div>'
+    + '<input type="text" data-note placeholder="Note shown on the site (optional) — e.g. Sold in 5 days, over asking" maxlength="190" value="' + bld_escH(L.closed_note || '') + '" style="margin-bottom:6px"' + ((spec.closed_statuses || []).indexOf(status) >= 0 ? '' : ' hidden') + '>'
     + '<div class="inl"><button type="button" class="lu-btn lu-btn--sm" data-a="ok">Save</button><button type="button" class="lu-btn lu-btn--sm" data-a="cancel">Cancel</button></div></div>';
-  var status = 'sold';
-  acts.querySelectorAll('.seg button').forEach(function (b) { b.addEventListener('click', function () { status = b.getAttribute('data-s'); acts.querySelectorAll('.seg button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); }); });
-  acts.querySelector('[data-a=cancel]').addEventListener('click', function () { acts.innerHTML = wasHtml; _t3LstLoad(siteId, panel); });
+  acts.querySelectorAll('.seg button').forEach(function (b) { b.addEventListener('click', function () { status = b.getAttribute('data-s'); acts.querySelectorAll('.seg button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); acts.querySelector('[data-note]').hidden = (spec.closed_statuses || []).indexOf(status) < 0; }); });
+  acts.querySelector('[data-a=cancel]').addEventListener('click', function () { acts.innerHTML = wasHtml; _t3CatLoad(siteId, panel); });
   acts.querySelector('[data-a=ok]').addEventListener('click', async function () {
     var b = acts.querySelector('[data-a=ok]'); b.disabled = true; b.textContent = 'Saving…';
     try {
-      var payload = { status: status }; var note = acts.querySelector('[data-note]').value.trim(); if (note) payload.sold_note = note;
-      var r = await fetch(API + 'builder/websites/' + siteId + '/listings/' + L.id + '/status', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, _t3LstAuth()), body: JSON.stringify(payload) });
+      var payload = { status: status }; var note = acts.querySelector('[data-note]').value.trim(); if ((spec.closed_statuses || []).indexOf(status) >= 0) payload.closed_note = note;
+      var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue/' + spec.kind + '/' + L.id + '/status', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, _t3CatAuth()), body: JSON.stringify(payload) });
       var j = null; try { j = await r.json(); } catch (_e) {}
       if (!r.ok || !j || !j.success) throw new Error((j && j.message) || ('HTTP ' + r.status));
       if (typeof showToast === 'function') showToast(j.message || 'Saved.', 'success');
-      _t3ReloadPreview(); _t3LstLoad(siteId, panel);
+      _t3ReloadPreview(); _t3CatLoad(siteId, panel);
     } catch (e) { b.disabled = false; b.textContent = 'Save'; if (typeof showToast === 'function') showToast("Couldn’t save — " + e.message, 'error'); }
   });
 }
 
-function _t3LstDeleteInline(siteId, panel, row, L) {
+function _t3CatDeleteInline(siteId, panel, spec, row, L) {
   var acts = row.querySelector('.acts');
   var wasHtml = acts.innerHTML;
   acts.innerHTML = '<div class="inl">Remove “' + bld_escH(L.title.length > 28 ? L.title.slice(0, 28) + '…' : L.title) + '”?<button type="button" class="lu-btn lu-btn--sm" data-a="yes">Yes, remove</button><button type="button" class="lu-btn lu-btn--sm" data-a="no">Keep</button></div>';
-  acts.querySelector('[data-a=no]').addEventListener('click', function () { acts.innerHTML = wasHtml; _t3LstLoad(siteId, panel); });
+  acts.querySelector('[data-a=no]').addEventListener('click', function () { acts.innerHTML = wasHtml; _t3CatLoad(siteId, panel); });
   acts.querySelector('[data-a=yes]').addEventListener('click', async function () {
     var b = acts.querySelector('[data-a=yes]'); b.disabled = true; b.textContent = 'Removing…';
     try {
-      var r = await fetch(API + 'builder/websites/' + siteId + '/listings/' + L.id, { method: 'DELETE', headers: _t3LstAuth() });
+      var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue/' + spec.kind + '/' + L.id, { method: 'DELETE', headers: _t3CatAuth() });
       var j = null; try { j = await r.json(); } catch (_e) {}
       if (!r.ok || !j || !j.success) throw new Error((j && j.message) || ('HTTP ' + r.status));
       if (typeof showToast === 'function') showToast(j.message || 'Removed.', 'success');
-      _t3ReloadPreview(); _t3LstLoad(siteId, panel);
+      _t3ReloadPreview(); _t3CatLoad(siteId, panel);
     } catch (e) { b.disabled = false; b.textContent = 'Yes, remove'; if (typeof showToast === 'function') showToast("Couldn’t remove — " + e.message, 'error'); }
   });
 }
 
-/* Add / edit form. Photos: paste a web address or upload from the device (stored under the site). */
-function _t3LstForm(siteId, panel, L, d) {
-  var body = panel.querySelector('#t3-lst-body');
+/* Add / edit form, generated from the kind's schema. Photos: paste a web address or upload from the device. */
+function _t3CatForm(siteId, panel, spec, L) {
+  var body = panel.querySelector('#t3-cat-body');
   var v = function (k, def) { return L && L[k] !== null && L[k] !== undefined ? L[k] : (def === undefined ? '' : def); };
-  var cur = v('currency', (d && d.catalogue && d.catalogue.currency) || 'USD');
+  var attrs = (L && L.attrs) ? Object.assign({}, L.attrs) : {};
+  var cur = v('currency', spec.currency || 'USD');
   var photos = (L && L.photos ? L.photos.slice() : []);
-  var status = v('status', 'for_sale');
-  var unit = v('size_unit', 'sq ft');
-  var statuses = d && d.statuses ? d.statuses : { for_sale: 'For Sale', to_let: 'To Let', under_offer: 'Under Offer', sold: 'Sold', let: 'Let', withdrawn: 'Withdrawn' };
-  var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button type="button" class="lu-btn lu-btn--sm" id="t3-lst-back">‹ Back</button><div style="font:600 13px var(--fh);color:var(--t1)">' + (L ? 'Edit listing' : 'New listing') + '</div></div>'
-    + '<label>Title</label><input type="text" data-f="title" maxlength="190" placeholder="3-bed townhouse in Travis Heights" value="' + bld_escH(v('title')) + '">'
-    + '<label>Status</label><div class="seg" id="t3-lst-status">' + Object.keys(statuses).map(function (k) { return '<button type="button" data-s="' + k + '" aria-pressed="' + (k === status ? 'true' : 'false') + '">' + bld_escH(statuses[k]) + '</button>'; }).join('') + '</div>'
-    + '<div class="three"><div><label>Price</label><input type="number" data-f="price" min="0" step="1" placeholder="925000" value="' + bld_escH(v('price')) + '"></div><div><label>Currency</label><input type="text" data-f="currency" maxlength="3" value="' + bld_escH(cur) + '"></div><div><label>Per</label><div class="seg" id="t3-lst-period"><button type="button" data-p="" aria-pressed="' + (v('price_period') ? 'false' : 'true') + '">Total</button><button type="button" data-p="month" aria-pressed="' + (v('price_period') === 'month' ? 'true' : 'false') + '">Month</button><button type="button" data-p="week" aria-pressed="' + (v('price_period') === 'week' ? 'true' : 'false') + '">Week</button></div></div></div>'
-    + '<label>Price wording (optional — replaces the number, e.g. “From $2,500 / month”, “POA”)</label><input type="text" data-f="price_label" maxlength="80" value="' + bld_escH(v('price_label')) + '">'
-    + '<label>Location</label><input type="text" data-f="location" maxlength="190" placeholder="Travis Heights, Austin, TX" value="' + bld_escH(v('location')) + '">'
-    + '<div class="three"><div><label>Beds</label><input type="number" data-f="beds" min="0" step="0.5" value="' + bld_escH(v('beds')) + '"></div><div><label>Baths</label><input type="number" data-f="baths" min="0" step="0.5" value="' + bld_escH(v('baths')) + '"></div><div><label>Size</label><input type="number" data-f="size_value" min="0" step="1" value="' + bld_escH(v('size_value')) + '"></div></div>'
-    + '<div class="seg" id="t3-lst-unit" style="margin-top:6px"><button type="button" data-u="sq ft" aria-pressed="' + (unit === 'sq ft' ? 'true' : 'false') + '">sq ft</button><button type="button" data-u="sq m" aria-pressed="' + (unit === 'sq m' ? 'true' : 'false') + '">sq m</button><button type="button" data-u="acres" aria-pressed="' + (unit === 'acres' ? 'true' : 'false') + '">acres</button></div>'
-    + '<label>Property type (optional)</label><input type="text" data-f="property_type" maxlength="60" placeholder="Townhouse" value="' + bld_escH(v('property_type')) + '">'
-    + '<label>Description</label><textarea data-f="description" maxlength="6000" placeholder="What makes this property special — blank paragraphs become paragraphs on the page.">' + bld_escH(v('description')) + '</textarea>'
-    + '<label>Features (one per line, optional)</label><textarea data-f="features" style="min-height:52px" placeholder="Pool&#10;Double garage">' + bld_escH((v('features', []) || []).join('\n')) + '</textarea>'
-    + '<label>Photos (first one is the card photo)</label><div class="photos" id="t3-lst-photos"></div>'
-    + '<div class="inl" style="margin-top:6px"><input type="text" id="t3-lst-photo-url" placeholder="Paste a photo address (https://…)" style="flex:1;min-width:160px"><button type="button" class="lu-btn lu-btn--sm" id="t3-lst-photo-add">Add</button><button type="button" class="lu-btn lu-btn--sm" id="t3-lst-photo-up">Upload</button><input type="file" id="t3-lst-photo-file" accept="image/jpeg,image/png,image/webp" hidden></div>'
-    + '<label class="sw" style="margin-top:12px"><input type="checkbox" data-f="featured"' + (v('featured', false) ? ' checked' : '') + '> Featured (shown first)</label>'
-    + '<div id="t3-lst-soldwrap"' + (status === 'sold' || status === 'let' ? '' : ' hidden') + '><label>Outcome note shown on the site (only what you want to state)</label><input type="text" data-f="sold_note" maxlength="190" placeholder="Sold in 5 days, over asking" value="' + bld_escH(v('sold_note')) + '"></div>'
-    + '<div class="inl" style="margin-top:14px"><button type="button" class="lu-btn" id="t3-lst-save">' + (L ? 'Save changes' : 'Add listing') + '</button><button type="button" class="lu-btn lu-btn--sm" id="t3-lst-cancel">Cancel</button><span id="t3-lst-err" style="color:#f87171;font-size:12px"></span></div>';
-  body.innerHTML = h;
+  var status = v('status', spec.default_status);
   var period = v('price_period', '') || '';
+  var hasPrice = (spec.suffixes || []).indexOf('price') >= 0 || spec.kind === 'listing';
+  var isListing = spec.kind === 'listing';
+  var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button type="button" class="lu-btn lu-btn--sm" id="t3-cat-back">‹ Back</button><div style="font:600 13px var(--fh);color:var(--t1)">' + (L ? 'Edit ' : 'New ') + bld_escH(spec.singular) + '</div></div>'
+    + '<label>Name</label><input type="text" data-f="title" maxlength="190" placeholder="' + bld_escH(isListing ? '3-bed townhouse in Travis Heights' : 'Deep tissue massage') + '" value="' + bld_escH(v('title')) + '">'
+    + '<label>Status</label><div class="seg" id="t3-cat-status">' + Object.keys(spec.statuses).map(function (k) { return '<button type="button" data-s="' + k + '" aria-pressed="' + (k === status ? 'true' : 'false') + '">' + bld_escH(spec.statuses[k]) + '</button>'; }).join('') + '</div>'
+    + '<div class="three"><div><label>Price</label><input type="number" data-f="price" min="0" step="0.01" placeholder="' + (isListing ? '925000' : '90') + '" value="' + bld_escH(v('price')) + '"></div><div><label>Currency</label><input type="text" data-f="currency" maxlength="3" value="' + bld_escH(cur) + '"></div><div><label>Per</label><div class="seg" id="t3-cat-period">' + ['', 'month', 'week', 'night', 'hour', 'person', 'session'].map(function (p) { return '<button type="button" data-p="' + p + '" aria-pressed="' + (period === p ? 'true' : 'false') + '">' + (p || 'Total') + '</button>'; }).join('') + '</div></div></div>'
+    + '<label>Price wording (optional — replaces the number, e.g. “From $120”, “POA”)</label><input type="text" data-f="price_label" maxlength="80" value="' + bld_escH(v('price_label')) + '">';
+  (spec.attrs || []).forEach(function (a) {
+    var val = attrs[a.key] !== undefined && attrs[a.key] !== null ? attrs[a.key] : (a.default || '');
+    if (a.type === 'select') { h += '<label>' + bld_escH(a.label) + '</label><div class="seg" data-attr-seg="' + a.key + '">' + (a.options || []).map(function (o) { return '<button type="button" data-o="' + bld_escH(o) + '" aria-pressed="' + (String(val) === o ? 'true' : 'false') + '">' + bld_escH(o) + '</button>'; }).join('') + '</div>'; }
+    else if (a.type === 'textarea') { h += '<label>' + bld_escH(a.label) + '</label><textarea data-attr="' + a.key + '">' + bld_escH(String(val)) + '</textarea>'; }
+    else { h += '<label>' + bld_escH(a.label) + '</label><input type="' + (a.type === 'number' ? 'number' : 'text') + '" data-attr="' + a.key + '"' + (a.type === 'number' ? ' step="0.5" min="0"' : ' maxlength="190"') + ' value="' + bld_escH(String(val)) + '">'; }
+  });
+  h += '<label>Short text (on the card)</label><input type="text" data-f="summary" maxlength="300" value="' + bld_escH(v('summary')) + '">'
+    + '<label>Full description (on the page)</label><textarea data-f="description" maxlength="6000">' + bld_escH(v('description')) + '</textarea>'
+    + '<label>Features (one per line, optional)</label><textarea data-f="features" style="min-height:52px">' + bld_escH((v('features', []) || []).join('\n')) + '</textarea>'
+    + '<label>Photos (first one is the card photo)</label><div class="photos" id="t3-cat-photos"></div>'
+    + '<div class="inl" style="margin-top:6px"><input type="text" id="t3-cat-photo-url" placeholder="Paste a photo address (https://…)" style="flex:1;min-width:160px"><button type="button" class="lu-btn lu-btn--sm" id="t3-cat-photo-add">Add</button><button type="button" class="lu-btn lu-btn--sm" id="t3-cat-photo-up">Upload</button><input type="file" id="t3-cat-photo-file" accept="image/jpeg,image/png,image/webp" hidden></div>'
+    + '<label class="sw" style="margin-top:12px"><input type="checkbox" data-f="featured"' + (v('featured', false) ? ' checked' : '') + '> Featured (shown first)</label>'
+    + '<div id="t3-cat-closedwrap"' + ((spec.closed_statuses || []).indexOf(status) >= 0 ? '' : ' hidden') + '><label>Outcome note shown on the site (only what you want to state)</label><input type="text" data-f="closed_note" maxlength="190" placeholder="Sold in 5 days, over asking" value="' + bld_escH(v('closed_note')) + '"></div>'
+    + '<div class="inl" style="margin-top:14px"><button type="button" class="lu-btn" id="t3-cat-save">' + (L ? 'Save changes' : 'Add ' + bld_escH(spec.singular)) + '</button><button type="button" class="lu-btn lu-btn--sm" id="t3-cat-cancel">Cancel</button><span id="t3-cat-err" style="color:#f87171;font-size:12px"></span></div>';
+  body.innerHTML = h;
+  if (!hasPrice) { /* the design has no price slot on the card; the price still shows on the list page */ }
   var renderPhotos = function () {
-    var box = body.querySelector('#t3-lst-photos');
-    box.innerHTML = photos.length ? photos.map(function (p, i) { return '<div class="ph"><img src="' + bld_escH(p) + '" alt=""><button type="button" data-i="' + i + '" aria-label="Remove photo">×</button></div>'; }).join('') : '<div style="font-size:12px;color:var(--t3)">No photo yet — the card shows a “photo coming soon” placeholder, never someone else’s house.</div>';
+    var box = body.querySelector('#t3-cat-photos');
+    box.innerHTML = photos.length ? photos.map(function (p, i) { return '<div class="ph"><img src="' + bld_escH(p) + '" alt=""><button type="button" data-i="' + i + '" aria-label="Remove photo">×</button></div>'; }).join('') : '<div style="font-size:12px;color:var(--t3)">' + (isListing ? 'No photo yet — the card shows a “photo coming soon” placeholder, never someone else’s house.' : 'No photo — the card keeps the design’s own look.') + '</div>';
     box.querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { photos.splice(parseInt(b.getAttribute('data-i'), 10), 1); renderPhotos(); }); });
   };
   renderPhotos();
-  body.querySelector('#t3-lst-status').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { status = b.getAttribute('data-s'); body.querySelectorAll('#t3-lst-status button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); body.querySelector('#t3-lst-soldwrap').hidden = !(status === 'sold' || status === 'let'); }); });
-  body.querySelector('#t3-lst-period').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { period = b.getAttribute('data-p'); body.querySelectorAll('#t3-lst-period button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); }); });
-  body.querySelector('#t3-lst-unit').querySelectorAll('button').forEach(function (b) { b.addEventListener('click', function () { unit = b.getAttribute('data-u'); body.querySelectorAll('#t3-lst-unit button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); }); });
-  body.querySelector('#t3-lst-photo-add').addEventListener('click', function () { var u = body.querySelector('#t3-lst-photo-url').value.trim(); if (!u) return; if (!/^(https?:\/\/|\/storage\/)/i.test(u)) { body.querySelector('#t3-lst-err').textContent = 'A photo address starts with https://'; return; } photos.push(u); body.querySelector('#t3-lst-photo-url').value = ''; body.querySelector('#t3-lst-err').textContent = ''; renderPhotos(); });
-  body.querySelector('#t3-lst-photo-up').addEventListener('click', function () { body.querySelector('#t3-lst-photo-file').click(); });
-  body.querySelector('#t3-lst-photo-file').addEventListener('change', async function (e) {
+  var seg = function (sel, onPick) { body.querySelectorAll(sel + ' button').forEach(function (b) { b.addEventListener('click', function () { body.querySelectorAll(sel + ' button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); }); onPick(b); }); }); };
+  seg('#t3-cat-status', function (b) { status = b.getAttribute('data-s'); body.querySelector('#t3-cat-closedwrap').hidden = (spec.closed_statuses || []).indexOf(status) < 0; });
+  seg('#t3-cat-period', function (b) { period = b.getAttribute('data-p'); });
+  body.querySelectorAll('[data-attr-seg]').forEach(function (s) { var key = s.getAttribute('data-attr-seg'); seg('[data-attr-seg="' + key + '"]', function (b) { attrs[key] = b.getAttribute('data-o'); }); });
+  body.querySelector('#t3-cat-photo-add').addEventListener('click', function () { var u = body.querySelector('#t3-cat-photo-url').value.trim(); if (!u) return; if (!/^(https?:\/\/|\/storage\/)/i.test(u)) { body.querySelector('#t3-cat-err').textContent = 'A photo address starts with https://'; return; } photos.push(u); body.querySelector('#t3-cat-photo-url').value = ''; body.querySelector('#t3-cat-err').textContent = ''; renderPhotos(); });
+  body.querySelector('#t3-cat-photo-up').addEventListener('click', function () { body.querySelector('#t3-cat-photo-file').click(); });
+  body.querySelector('#t3-cat-photo-file').addEventListener('change', async function (e) {
     var f = e.target.files && e.target.files[0]; if (!f) return;
-    var up = body.querySelector('#t3-lst-photo-up'); up.disabled = true; up.textContent = 'Uploading…';
+    var up = body.querySelector('#t3-cat-photo-up'); up.disabled = true; up.textContent = 'Uploading…';
     try {
       var fd = new FormData(); fd.append('photo', f);
-      var r = await fetch(API + 'builder/websites/' + siteId + '/listings/photo', { method: 'POST', headers: _t3LstAuth(), body: fd });
+      var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue/photo', { method: 'POST', headers: _t3CatAuth(), body: fd });
       var j = null; try { j = await r.json(); } catch (_e) {}
       if (!r.ok || !j || !j.success) throw new Error((j && j.message) || ('HTTP ' + r.status));
       photos.push(j.url); renderPhotos();
-    } catch (err) { body.querySelector('#t3-lst-err').textContent = "Couldn’t upload — " + err.message; }
+    } catch (err) { body.querySelector('#t3-cat-err').textContent = "Couldn’t upload — " + err.message; }
     finally { up.disabled = false; up.textContent = 'Upload'; e.target.value = ''; }
   });
-  var back = function () { _t3LstLoad(siteId, panel); };
-  body.querySelector('#t3-lst-back').addEventListener('click', back);
-  body.querySelector('#t3-lst-cancel').addEventListener('click', back);
-  body.querySelector('#t3-lst-save').addEventListener('click', async function () {
-    var b = body.querySelector('#t3-lst-save'); var err = body.querySelector('#t3-lst-err'); err.textContent = '';
+  var back = function () { _t3CatLoad(siteId, panel); };
+  body.querySelector('#t3-cat-back').addEventListener('click', back);
+  body.querySelector('#t3-cat-cancel').addEventListener('click', back);
+  body.querySelector('#t3-cat-save').addEventListener('click', async function () {
+    var b = body.querySelector('#t3-cat-save'); var err = body.querySelector('#t3-cat-err'); err.textContent = '';
     var g = function (k) { var el = body.querySelector('[data-f=' + k + ']'); return el ? (el.type === 'checkbox' ? el.checked : el.value) : ''; };
-    if (!g('title').trim()) { err.textContent = 'Give the listing a title.'; return; }
-    var payload = { title: g('title').trim(), status: status, price: g('price'), currency: g('currency').trim().toUpperCase() || cur, price_period: period, price_label: g('price_label'), location: g('location'), beds: g('beds'), baths: g('baths'), size_value: g('size_value'), size_unit: unit, property_type: g('property_type'), description: g('description'), features: g('features'), photos: photos, featured: g('featured') ? 1 : 0, sold_note: g('sold_note') };
+    if (!g('title').trim()) { err.textContent = 'Give it a name.'; return; }
+    body.querySelectorAll('[data-attr]').forEach(function (el) { attrs[el.getAttribute('data-attr')] = el.value; });
+    var payload = { title: g('title').trim(), status: status, price: g('price'), currency: g('currency').trim().toUpperCase() || cur, price_period: period, price_label: g('price_label'), summary: g('summary'), description: g('description'), features: g('features'), photos: photos, featured: g('featured') ? 1 : 0, closed_note: g('closed_note'), attrs: attrs };
     b.disabled = true; b.textContent = 'Saving…';
     try {
-      var r = await fetch(API + 'builder/websites/' + siteId + '/listings' + (L ? '/' + L.id : ''), { method: L ? 'PUT' : 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, _t3LstAuth()), body: JSON.stringify(payload) });
+      var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue/' + spec.kind + (L ? '/' + L.id : ''), { method: L ? 'PUT' : 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, _t3CatAuth()), body: JSON.stringify(payload) });
       var j = null; try { j = await r.json(); } catch (_e) {}
       if (!r.ok || !j || !j.success) throw new Error((j && j.message) || ('HTTP ' + r.status));
       if (typeof showToast === 'function') showToast(j.message || 'Saved.', 'success');
-      _t3ReloadPreview(); _t3LstLoad(siteId, panel);
-    } catch (e2) { b.disabled = false; b.textContent = L ? 'Save changes' : 'Add listing'; err.textContent = e2.message; }
+      _t3ReloadPreview(); _t3CatLoad(siteId, panel);
+    } catch (e2) { b.disabled = false; b.textContent = L ? 'Save changes' : 'Add ' + spec.singular; err.textContent = e2.message; }
   });
 }

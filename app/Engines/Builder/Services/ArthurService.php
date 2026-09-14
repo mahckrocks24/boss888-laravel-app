@@ -5562,13 +5562,14 @@ PROMPT;
             return ['success' => false, 'code' => 'NO_FILE', 'applied' => 0, 'actions_applied' => 0,
                 'message' => "I didn't receive the file itself — attach the logo or photos in the chat and ask again, and I'll place them on {$site->name}."];
         }
-        // PROPERTY LISTINGS (DEC-0048, 2026-09-14): on a design that declares a catalogue, listing commands go to the
+        // CATALOGUE888 (DEC-0049, 2026-09-14): on a design that carries a catalogue (listings, services, menu …), item commands go to the
         // catalogue backend (add / reprice / mark sold / remove). Every other site never enters this branch.
-        if ($isStatic && ListingsService::looksLikeListingRequest($request)) {
+        if ($isStatic) {
             try {
-                $lst = app(ListingsService::class);
-                if ($lst->catalogueFor($websiteId, $site)) { return $lst->arthur($wsId, $websiteId, $request, $ctx); }
-            } catch (\Throwable $e) { Log::warning('[Arthur] listings branch failed: ' . $e->getMessage()); }
+                $cat = app(CatalogueService::class);
+                $catSpecs = $cat->enabledSpecs($websiteId, $site);
+                if ($catSpecs !== [] && CatalogueService::looksLikeCatalogueRequest($request, $catSpecs, $websiteId)) { return $cat->arthur($wsId, $websiteId, $request, $ctx); }
+            } catch (\Throwable $e) { Log::warning('[Arthur] catalogue branch failed: ' . $e->getMessage()); }
         }
         $plan     = $caps::classify($request, $industry ?: null);
         // STRESS C19 (2026-09-06): "change X and add Y" — run each clause, report both, sum the credits.

@@ -82,35 +82,37 @@ use Illuminate\Support\Facades\Route;
             $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyLayout((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('design', ''), (int) ($r->attributes->get('user_id') ?? optional($r->user())->id ?? 0) ?: null);
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
-        // PROPERTY LISTINGS (DEC-0048, 2026-09-14) — a catalogue backend inside Laravel, only for designs whose manifest declares one.
-        $lst = \App\Engines\Builder\Services\ListingsService::class;
-        Route::get('/websites/{id}/listings', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($lst)->overview((int) $r->attributes->get('workspace_id'), (int) $id)));
-        Route::put('/websites/{id}/listings/settings', function (\Illuminate\Http\Request $r, $id) use ($lst) {
-            $res = app($lst)->setEnabled((int) $r->attributes->get('workspace_id'), (int) $id, $r->boolean('enabled'));
-            return response()->json($res, ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422));
-        });
-        Route::post('/websites/{id}/listings/photo', function (\Illuminate\Http\Request $r, $id) use ($lst) {
+        // CATALOGUE888 (DEC-0049, 2026-09-14) — one catalogue backend inside Laravel; kinds (listing, service, menu …) are declared
+        // by the design or derived from its variable families. Every other site gets an empty catalogue list.
+        $cat = \App\Engines\Builder\Services\CatalogueService::class;
+        $catStatus = fn(array $res) => ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422);
+        Route::get('/websites/{id}/catalogue', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($cat)->overview((int) $r->attributes->get('workspace_id'), (int) $id)));
+        Route::post('/websites/{id}/catalogue/photo', function (\Illuminate\Http\Request $r, $id) use ($cat, $catStatus) {
             $f = $r->file('photo');
             if (! $f || ! $f->isValid()) return response()->json(['success' => false, 'message' => 'Attach a photo (JPG, PNG or WEBP).'], 422);
-            $res = app($lst)->storePhoto((int) $r->attributes->get('workspace_id'), (int) $id, $f);
-            return response()->json($res, ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422));
+            $res = app($cat)->storePhoto((int) $r->attributes->get('workspace_id'), (int) $id, $f);
+            return response()->json($res, $catStatus($res));
         });
-        Route::post('/websites/{id}/listings', function (\Illuminate\Http\Request $r, $id) use ($lst) {
-            $res = app($lst)->create((int) $r->attributes->get('workspace_id'), (int) $id, (array) $r->all(), (int) ($r->attributes->get('user_id') ?? 0) ?: null, 'editor');
-            return response()->json($res, ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422));
-        });
-        Route::put('/websites/{id}/listings/{lid}', function (\Illuminate\Http\Request $r, $id, $lid) use ($lst) {
-            $res = app($lst)->update((int) $r->attributes->get('workspace_id'), (int) $id, (int) $lid, (array) $r->all());
-            return response()->json($res, ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422));
-        })->where('lid', '[0-9]+');
-        Route::post('/websites/{id}/listings/{lid}/status', function (\Illuminate\Http\Request $r, $id, $lid) use ($lst) {
-            $res = app($lst)->setStatus((int) $r->attributes->get('workspace_id'), (int) $id, (int) $lid, (string) $r->input('status', 'sold'), $r->has('sold_note') ? (string) $r->input('sold_note') : null);
-            return response()->json($res, ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422));
-        })->where('lid', '[0-9]+');
-        Route::delete('/websites/{id}/listings/{lid}', function (\Illuminate\Http\Request $r, $id, $lid) use ($lst) {
-            $res = app($lst)->delete((int) $r->attributes->get('workspace_id'), (int) $id, (int) $lid);
-            return response()->json($res, ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422));
-        })->where('lid', '[0-9]+');
+        Route::put('/websites/{id}/catalogue/{kind}/settings', function (\Illuminate\Http\Request $r, $id, $kind) use ($cat, $catStatus) {
+            $res = app($cat)->setEnabled((int) $r->attributes->get('workspace_id'), (int) $id, (string) $kind, $r->boolean('enabled'));
+            return response()->json($res, $catStatus($res));
+        })->where('kind', '[a-z_]+');
+        Route::post('/websites/{id}/catalogue/{kind}', function (\Illuminate\Http\Request $r, $id, $kind) use ($cat, $catStatus) {
+            $res = app($cat)->create((int) $r->attributes->get('workspace_id'), (int) $id, (string) $kind, (array) $r->all(), (int) ($r->attributes->get('user_id') ?? 0) ?: null, 'editor');
+            return response()->json($res, $catStatus($res));
+        })->where('kind', '[a-z_]+');
+        Route::put('/websites/{id}/catalogue/{kind}/{iid}', function (\Illuminate\Http\Request $r, $id, $kind, $iid) use ($cat, $catStatus) {
+            $res = app($cat)->update((int) $r->attributes->get('workspace_id'), (int) $id, (string) $kind, (int) $iid, (array) $r->all());
+            return response()->json($res, $catStatus($res));
+        })->where('kind', '[a-z_]+')->where('iid', '[0-9]+');
+        Route::post('/websites/{id}/catalogue/{kind}/{iid}/status', function (\Illuminate\Http\Request $r, $id, $kind, $iid) use ($cat, $catStatus) {
+            $res = app($cat)->setStatus((int) $r->attributes->get('workspace_id'), (int) $id, (string) $kind, (int) $iid, (string) $r->input('status', ''), $r->has('closed_note') ? (string) $r->input('closed_note') : null);
+            return response()->json($res, $catStatus($res));
+        })->where('kind', '[a-z_]+')->where('iid', '[0-9]+');
+        Route::delete('/websites/{id}/catalogue/{kind}/{iid}', function (\Illuminate\Http\Request $r, $id, $kind, $iid) use ($cat, $catStatus) {
+            $res = app($cat)->delete((int) $r->attributes->get('workspace_id'), (int) $id, (string) $kind, (int) $iid);
+            return response()->json($res, $catStatus($res));
+        })->where('kind', '[a-z_]+')->where('iid', '[0-9]+');
         Route::get('/pages/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
             $page = app($s)->getPage((int) $id, (int) $r->attributes->get('workspace_id'));
             return $page ? response()->json($page) : response()->json(['error' => 'Page not found'], 404);

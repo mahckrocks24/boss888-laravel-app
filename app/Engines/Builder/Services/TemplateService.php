@@ -352,8 +352,8 @@ class TemplateService
             $block = '<style id="lug-design-extras" data-owner="arthur">' . implode("\n", $extras) . '</style>';
             $html = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', $block . "\n</head>", $html) : $html . $block;
         }
-        // PROPERTY LISTINGS (DEC-0048, 2026-09-14): a rebuilt home hides the listing slots its catalogue does not fill.
-        if ($websiteId) { try { $html = app(ListingsService::class)->decorateRendered($websiteId, $html); } catch (\Throwable $e) {} }
+        // CATALOGUE888 (DEC-0049, 2026-09-14): a rebuilt home hides the slots its catalogues do not fill.
+        if ($websiteId) { try { $html = app(CatalogueService::class)->decorateRendered($websiteId, $html); } catch (\Throwable $e) {} }
 
         return $html;
     }
