@@ -4237,7 +4237,8 @@ PROMPT;
     private const CATALOGUE_KEY = '/^(listing|property|room|menu|plan|vehicle|featured|special|area|product|package|course|class|dish|item)_\d+_(price|currency|badge|specs|beds|baths|sqft|sqm|size|location|title|name|meta|tag|detail)$/i';
 
     /** EV-1000: variables that hold a FACT about the business (never generated, never sampled). $fm[2] = the kind. */
-    private const FACT_KEY = '/^(?!.*_label$)(?!.*_display$)(?!.*_icon$)(?!.*_link$)(?!.*_color$)(?!.*_green$)(.*(?:^|_))(price|fee|cost|rate|phone|whatsapp|fax|website|email)(?:_|$)/i';
+    // 2026-09-14: licence / registration numbers are facts too (a realtor's licence line was open to invention).
+    private const FACT_KEY = '/^(?!.*_label$)(?!.*_display$)(?!.*_icon$)(?!.*_link$)(?!.*_color$)(?!.*_green$)(.*(?:^|_))(price|fee|cost|rate|phone|whatsapp|fax|website|email|licen[cs]e|registration)(?:_|$)/i';
 
     /** EV-1000: set by generateContent() when the site-copy call failed even after the Runtime's retries. */
     private ?string $copyUnavailable = null;
