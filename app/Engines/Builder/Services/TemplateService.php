@@ -156,6 +156,9 @@ class TemplateService
         if (!isset($variables['logo_url'])) {
             $variables['logo_url'] = '';
         }
+        // LOGO PLACEHOLDER (2026-09-14): the transparent 1×1 the text-logo designs carry is not a logo. Stored as one
+        // (layout switch harvest), it hid the brand text on Raymundo Realty — a blank header.
+        if (str_contains((string) $variables['logo_url'], 'width%3D%221%22%20height%3D%221%22')) { $variables['logo_url'] = ''; }
         // Brand-agnostic dark fallback so hero overlays never render a broken rgba().
         if (empty($variables['hero_overlay_rgb'])) { $variables['hero_overlay_rgb'] = '17,20,28'; }
         $variables['logo_text_display'] = !empty($variables['logo_url'])
@@ -349,6 +352,8 @@ class TemplateService
             $block = '<style id="lug-design-extras" data-owner="arthur">' . implode("\n", $extras) . '</style>';
             $html = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', $block . "\n</head>", $html) : $html . $block;
         }
+        // PROPERTY LISTINGS (DEC-0048, 2026-09-14): a rebuilt home hides the listing slots its catalogue does not fill.
+        if ($websiteId) { try { $html = app(ListingsService::class)->decorateRendered($websiteId, $html); } catch (\Throwable $e) {} }
 
         return $html;
     }
@@ -1294,7 +1299,7 @@ class TemplateService
      * @param string $value
      * @return bool
      */
-    public function updateField(int $websiteId, string $fieldId, string $value): bool
+    public function updateField(int $websiteId, string $fieldId, string $value, bool $snapshot = true): bool
     {
         $path = storage_path("app/public/sites/{$websiteId}/index.html");
         if (!file_exists($path)) {
@@ -1441,7 +1446,8 @@ class TemplateService
             // RISK-0107 — preserve the pre-edit served content so a bad inline edit is recoverable.
             // DEC-0046 (2026-09-14): through the shared snapshot (deduplicated, nested pages, record sidecar) — a raw copy
             // here produced a sidecar-less entry that Undo consumed, leaving the record stale.
-            try { $this->snapshotToHistory($websiteId, 'field_edit'); } catch (\Throwable $e) {
+            // LISTINGS (2026-09-14): a catalogue sync patches many fields under ONE snapshot of its own ($snapshot=false).
+            if ($snapshot) try { $this->snapshotToHistory($websiteId, 'field_edit'); } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('[TemplateService] RISK-0107 pre-edit backup failed: ' . $e->getMessage());
             }
 

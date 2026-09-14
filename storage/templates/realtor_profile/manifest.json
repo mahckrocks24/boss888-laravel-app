@@ -2,6 +2,14 @@
     "id": "realtor_profile",
     "name": "Realtor — Portfolio",
     "industry": "real_estate_agency",
+    "catalogue": {
+        "kind": "listings",
+        "label": "Listings",
+        "home_block": "listings",
+        "slots": 6,
+        "sold_block": "portfolio",
+        "sold_slots": 4
+    },
     "description": "A personal site for a realtor rather than an agency: portrait, current listings, recently sold portfolio, the areas they know, credentials, process and a valuation form.",
     "thumbnail": "/storage/template-images/portraits/realtor_hero.png",
     "category": "property",

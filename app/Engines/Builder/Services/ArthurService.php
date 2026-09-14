@@ -2177,6 +2177,9 @@ PROMPT;
      * URL. Nested wrappers (a hero that contains other fields) are skipped so a container never overwrites its parts.
      * @return array<string,string>
      */
+    /** The transparent 1×1 every text-logo design carries in its logo <img>: never a logo, never harvested. */
+    private const BLANK_LOGO = 'width%3D%221%22%20height%3D%221%22';
+
     private function harvestExportFields(int $websiteId): array
     {
         $index = storage_path("app/public/sites/{$websiteId}/index.html");
@@ -2201,7 +2204,7 @@ PROMPT;
                     if ($url === '') { $img = $el->getElementsByTagName('img')->item(0); if ($img instanceof \DOMElement) { $url = (string) $img->getAttribute('src'); } }
                     if ($url === '' && preg_match('~url\((["\']?)([^)"\']+)\1\)~i', (string) $el->getAttribute('style'), $m)) { $url = $m[2]; }
                     $url = trim($url);
-                    if ($url !== '' && ! str_starts_with($url, '{{')) { $out[$name] = $url; }
+                    if ($url !== '' && ! str_starts_with($url, '{{') && ! str_contains($url, self::BLANK_LOGO)) { $out[$name] = $url; }
                     continue;
                 }
                 if ($xp->query('.//*[@data-field]', $el)->length > 0) { continue; }   // a wrapper of other fields
@@ -5559,6 +5562,14 @@ PROMPT;
             return ['success' => false, 'code' => 'NO_FILE', 'applied' => 0, 'actions_applied' => 0,
                 'message' => "I didn't receive the file itself — attach the logo or photos in the chat and ask again, and I'll place them on {$site->name}."];
         }
+        // PROPERTY LISTINGS (DEC-0048, 2026-09-14): on a design that declares a catalogue, listing commands go to the
+        // catalogue backend (add / reprice / mark sold / remove). Every other site never enters this branch.
+        if ($isStatic && ListingsService::looksLikeListingRequest($request)) {
+            try {
+                $lst = app(ListingsService::class);
+                if ($lst->catalogueFor($websiteId, $site)) { return $lst->arthur($wsId, $websiteId, $request, $ctx); }
+            } catch (\Throwable $e) { Log::warning('[Arthur] listings branch failed: ' . $e->getMessage()); }
+        }
         $plan     = $caps::classify($request, $industry ?: null);
         // STRESS C19 (2026-09-06): "change X and add Y" — run each clause, report both, sum the credits.
         if (empty($ctx['_clause'])) {
@@ -5755,12 +5766,112 @@ PROMPT;
      * and DesignStyle::layer() has produced the gradient/typography layer since 2026-09-05; both were
      * simply unreachable from chat once the delegation shortcut landed. This method is the road back.
      */
+    /**
+     * Make the brand mark readable. Three cases, in order: (1) the export carries the transparent placeholder as
+     * its logo and the brand text is hidden → show the text again and forget the placeholder (free); (2) a visible
+     * TEXT logo → one replaceable rule colours it for the header it sits on; (3) an uploaded IMAGE logo → nothing
+     * we can recolour from here; say so.
+     */
+    private function fixLogoVisibility(int $websiteId, object $site, array &$tv): array
+    {
+        $did = []; $missed = []; $charge = false;
+        $root  = storage_path("app/public/sites/{$websiteId}");
+        $index = "{$root}/index.html";
+        if (! is_file($index)) { return ['did' => [], 'missed' => ['This site has no page export yet.'], 'charge' => false]; }
+        $files = [$index];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $f) { if (! str_contains($f, '/.history/')) { $files[] = $f; } }
+        $home = (string) file_get_contents($index);
+        $name = trim((string) ($tv['logo'] ?? $tv['business_name'] ?? $site->name));
+        $blankStored = str_contains((string) ($tv['logo_url'] ?? ''), self::BLANK_LOGO);
+        $hiddenText  = (bool) preg_match('/<[^>]*class="[^"]*brand-text[^"]*"[^>]*style="display:none"/', $home);
+        if ($hiddenText && ($blankStored || preg_match('/<img[^>]*src="[^"]*' . preg_quote(self::BLANK_LOGO, '/') . '[^"]*"[^>]*data-field="logo_url"/', $home))) {
+            $n = 0;
+            foreach ($files as $f) {
+                $h = (string) file_get_contents($f);
+                $new = preg_replace('/(<[^>]*class="[^"]*brand-text[^"]*"[^>]*style=")display:none(")/', '$1display:block$2', $h);
+                if ($new !== null && $new !== $h) { file_put_contents($f, $new); $n++; }
+            }
+            $tv['logo_url'] = ''; $tv['logo_text_display'] = 'display:block';
+            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            if ($n > 0) { $did[] = "put the text logo “{$name}” back in the header — the logo image was blank, so nothing showed there"; return compact('did', 'missed', 'charge'); }
+            $missed[] = 'The logo text could not be restored on this export — open the page editor and click the logo to set it.';
+            return compact('did', 'missed', 'charge');
+        }
+        $hasImageLogo = (bool) preg_match('/<img[^>]*class="[^"]*(?:lu-logo-img|brand-mark)[^"]*"[^>]*src="(?!data:image\/svg\+xml;utf8,%3Csvg)[^"]+"/', $home)
+            || (bool) preg_match('/<img[^>]*src="(?!data:image\/svg\+xml;utf8,%3Csvg)[^"]+"[^>]*class="[^"]*(?:lu-logo-img|brand-mark)[^"]*"/', $home);
+        if ($hasImageLogo) {
+            $missed[] = 'Your logo is an uploaded image, so I cannot recolour it from here — click the logo in the editor to upload a version with lighter or darker lettering, or ask me to remove the logo image so the name shows as text.';
+            return compact('did', 'missed', 'charge');
+        }
+        $bg = $this->headerBackground($websiteId, $home);
+        $fg = self::readableOn($bg);
+        $rule = ['logo' => '.logo,.logo *,.brand-text,.nav-logo,.site-logo,[data-field="logo"],[data-field="logo"] *,[data-field="nav_logo"],[data-field="header_logo"]{color:' . $fg . '!important;opacity:1!important;visibility:visible!important}'];
+        if (self::writeDesignExtras($websiteId, $rule, $tv)) {
+            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            $did[] = 'set the logo to ' . ($fg === '#FFFFFF' ? 'white' : 'dark ink') . ' so it reads clearly on the ' . (self::luminance($bg) < 0.4 ? 'dark' : 'light') . ' header';
+            $charge = true;
+        } else {
+            $missed[] = 'The logo colour could not be written to this site.';
+        }
+        return compact('did', 'missed', 'charge');
+    }
+
+    /** The colour the header paints behind the logo, resolved through the site's own :root variables. */
+    private function headerBackground(int $websiteId, string $home): string
+    {
+        $vars = self::siteRootVars($websiteId);
+        $resolve = function (string $val) use ($vars): ?string {
+            $val = trim($val);
+            for ($i = 0; $i < 4 && preg_match('/var\(\s*(--[a-z0-9-]+)\s*(?:,\s*([^)]+))?\)/i', $val, $m); $i++) {
+                $val = trim((string) ($vars[strtolower($m[1])] ?? ($m[2] ?? '')));
+                if ($val === '') { return null; }
+            }
+            if (preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/i', $val)) { return strtoupper($val); }
+            if (preg_match('/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i', $val, $c)) { return sprintf('#%02X%02X%02X', (int) $c[1], (int) $c[2], (int) $c[3]); }
+            if (preg_match('/^(white|#fff)\b/i', $val)) { return '#FFFFFF'; }
+            if (preg_match('/^black\b/i', $val)) { return '#000000'; }
+            if (stripos($val, 'transparent') !== false) { return '#1A1A1A'; }   // header over the hero photo: dark
+            return null;
+        };
+        foreach (['\.nav-bar', 'nav\[data-block="?nav"?\]', '#main-nav', '\.navbar', '\.site-header', '\.topbar', '\.nav-wrap', '\.nav', 'header'] as $sel) {
+            if (! preg_match_all('/(?:^|[},\s])' . $sel . '\s*\{([^}]*)\}/i', $home, $mm)) { continue; }
+            foreach ($mm[1] as $decls) {
+                if (preg_match('/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i', $decls, $b)) {
+                    $hex = $resolve($b[1]);
+                    if ($hex !== null) { return $hex; }
+                }
+            }
+        }
+        foreach (['--paper', '--bg', '--surface', '--cf-bg', '--background'] as $v) {
+            if (isset($vars[$v]) && ($hex = $resolve($vars[$v])) !== null) { return $hex; }
+        }
+        return '#FFFFFF';
+    }
+
     private function applySiteStyle(int $wsId, int $websiteId, string $request, object $site, array $tv, array $plan, bool $isStatic): array
     {
         $editor  = app(ArthurEditService::class);
         $credits = app(\App\Core\Billing\CreditService::class);
         $did     = [];
         $missed  = [];
+
+        // ── 0a. LOGO VISIBILITY / CONTRAST (2026-09-14, Owner: "fix logo contrast" on Raymundo Realty) ──
+        // A blanked text logo comes back free (it was our placeholder, not the customer's choice); a legible
+        // colour for a visible text logo is a design change at the style price.
+        if ($isStatic && preg_match(\App\Engines\Builder\Support\BuilderCapabilities::LOGO_VISIBILITY, $request)) {
+            $fix = $this->fixLogoVisibility($websiteId, $site, $tv);
+            if ($fix['did'] !== []) {
+                $cost = $fix['charge'] ? (int) $plan['credits'] : 0;
+                if ($cost > 0) { $credits->debit($wsId, $cost, 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => $fix['did']]); }
+                Log::info('[Arthur] logo visibility', ['website' => $websiteId, 'changes' => $fix['did'], 'credits' => $cost]);
+                return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => count($fix['did']), 'actions_applied' => count($fix['did']), 'credits' => $cost,
+                    'message' => 'Done — I ' . self::joinList($fix['did']) . " on {$site->name}." . ($cost > 0 ? " {$cost} credit." : ' No charge.'),
+                    'url' => "/storage/sites/{$websiteId}/index.html"];
+            }
+            if ($fix['missed'] !== []) {
+                return ['success' => false, 'code' => 'LOGO_NO_CHANGE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'message' => implode(' ', $fix['missed'])];
+            }
+        }
 
         // ── 0. LITERAL GRADIENT (DEC-0046, 2026-09-13) ──────────────────────────────
         // "make the hero a gradient from deep green to gold": the customer named the stops, so paint exactly

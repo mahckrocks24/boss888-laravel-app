@@ -59,6 +59,10 @@ final class BuilderCapabilities
     private const COLOR_NAMES   = '/\b(black|white|red|blue|navy|gold|green|purple|violet|orange|pink|grey|gray|brown|teal|yellow|cyan|rose|emerald|indigo|silver|cream|beige|ivory|charcoal|maroon|crimson|bronze|copper|mint|coral|magenta|turquoise)\b/i';
     private const HEX_CODE      = '/#(?:[0-9a-f]{3}|[0-9a-f]{6})\b/i';
     /** Relative shifts: no colour named, but still a design instruction we can compute. */
+    /** "fix logo contrast", "the logo is invisible", "bring the logo back" — a design request about the brand mark (2026-09-14). */
+    public const LOGO_VISIBILITY = '/\blogo\b.{0,40}\b(contrast|visib\w*|invisible|missing|gone|disappear\w*|hidden|not showing|show(?:ing)? up|readable|legib\w*|see it|can\'?t see|back)\b|\b(contrast|visib\w*|invisible|missing|gone|disappear\w*|hidden|show|see|bring back|restore)\b.{0,30}\blogo\b/i';
+    /** Legibility words: with a part of the page named they are a design request, never a copy edit. */
+    public const LEGIBILITY     = '/\b(contrast|legib\w*|readab\w*|hard to (?:read|see)|can\'?t (?:read|see)|invisible|blends? in|too faint|unreadable)\b/i';
     public const STYLE_TONES    = '/\b(darker|darken|lighter|lighten|brighter|brighten|dimmer|softer|soften|warmer|cooler|paler|richer|deeper|bolder|muted|more contrast|less contrast|washed out)\b/i';
     /** Anchors a customer names when placing a section: "after the services", "above the footer". */
     private const ANCHORS = ['services' => 'services', 'team' => 'team', 'testimonials' => 'testimonials', 'reviews' => 'testimonials', 'gallery' => 'gallery',
@@ -287,6 +291,8 @@ final class BuilderCapabilities
         $hasElement = (bool) preg_match(self::ELEMENT_NOUNS, $r);
         if ($hasElement && preg_match(self::COLOR_NAMES, $r)) { return true; }
         if (preg_match(self::STYLE_TONES, $r)) { return true; }
+        if (preg_match(self::LOGO_VISIBILITY, $r)) { return true; }
+        if ($hasElement && preg_match(self::LEGIBILITY, $r)) { return true; }
         // "make the site look more luxurious" — a mood, aimed at the site, with a change verb.
         if ($hasElement && preg_match(self::STYLE_MOODS, $r)
             && preg_match('/\b(make|change|update|give|want|more|less|feel|look)\b/', $r)) { return true; }
