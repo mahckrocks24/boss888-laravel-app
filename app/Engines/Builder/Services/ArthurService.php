@@ -6020,6 +6020,62 @@ PROMPT;
         return ['target' => $target, 'block' => $block, 'hex' => $hex, 'mode' => $mode, 'label' => $label];
     }
 
+    /** The part of the page a request names (no colour needed): footer, header, hero, buttons, page, or a section the page has. */
+    private function partIn(string $request, int $websiteId): ?array
+    {
+        $r = mb_strtolower($request);
+        $targets = ['footer' => '/\bfooter\b/', 'nav' => '/\b(header|nav|navigation|navbar|menu bar|top bar)\b/', 'hero' => '/\b(hero|banner|cover)\b/', 'buttons' => '/\b(button|buttons|cta)\b/', 'page' => '/\b(page background|site background|whole page|whole site|the background|the page)\b/'];
+        foreach ($targets as $t => $re) { if (preg_match($re, $r)) { return ['target' => $t, 'block' => '', 'what' => ['footer' => 'the footer', 'nav' => 'the header', 'hero' => 'the hero', 'buttons' => 'the buttons', 'page' => 'the page background'][$t]]; } }
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if (preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm)) {
+            foreach (array_unique($bm[1]) as $b) {
+                if (in_array($b, ['nav', 'hero', 'footer'], true)) continue;
+                $name = str_replace(['_', '-'], ' ', $b);
+                if (preg_match('/\b' . preg_quote($name, '/') . '\b/', $r) || preg_match('/\b' . preg_quote(rtrim($name, 's'), '/') . '\b/', $r)) { return ['target' => 'section', 'block' => $b, 'what' => 'the ' . $name . ' section']; }
+            }
+        }
+        return null;
+    }
+
+    /** The background a part is painted with today, read from the page's CSS and its :root variables (null when it sits on a photo or cannot be read). */
+    private function partBackground(int $websiteId, string $home, string $target, string $block = ''): ?string
+    {
+        $vars = self::siteRootVars($websiteId);
+        $resolve = function (string $val) use ($vars): ?string {
+            $val = trim($val);
+            for ($i = 0; $i < 4 && preg_match('/var\(\s*(--[a-z0-9-]+)\s*(?:,\s*([^)]+))?\)/i', $val, $m); $i++) { $val = trim((string) ($vars[strtolower($m[1])] ?? ($m[2] ?? ''))); if ($val === '') return null; }
+            if (preg_match('/^#([0-9a-f]{3}|[0-9a-f]{6})$/i', $val)) return strtoupper(strlen($val) === 4 ? '#' . $val[1] . $val[1] . $val[2] . $val[2] . $val[3] . $val[3] : $val);
+            if (preg_match('/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i', $val, $c)) return sprintf('#%02X%02X%02X', (int) $c[1], (int) $c[2], (int) $c[3]);
+            if (preg_match('/^white\b/i', $val)) return '#FFFFFF';
+            if (preg_match('/^black\b/i', $val)) return '#000000';
+            return null;
+        };
+        // the customer's own earlier rule wins (design extras are the last word on the page)
+        $tv = json_decode((string) DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
+        $key = 'colour_' . ($target === 'section' ? 'section_' . $block : $target);
+        if (! empty($tv['design_extras'][$key]) && preg_match('/background:(#[0-9A-Fa-f]{6})/', (string) $tv['design_extras'][$key], $km)) return strtoupper($km[1]);
+        $sels = ['footer' => ['footer', '\.footer', '\[data-block="footer"\]'], 'nav' => ['\.nav-bar', 'nav\[data-block="?nav"?\]', '#main-nav', '\.navbar', '\.site-header', '\.nav', 'header'], 'buttons' => ['\.btn-primary', '\.hero-cta', '\.btn\.primary', '\.nav-cta', '\.btn'], 'page' => ['body'], 'section' => ['\[data-block="' . preg_quote($block, '/') . '"\]', '\.' . preg_quote($block, '/'), 'section\.' . preg_quote($block, '/')]][$target] ?? [];
+        foreach ($sels as $sel) {
+            if (! preg_match_all('/(?:^|[},\s])' . $sel . '\s*\{([^}]*)\}/i', $home, $mm)) continue;
+            foreach ($mm[1] as $decls) {
+                if (preg_match('/(?:^|;)\s*background(?:-color)?\s*:\s*([^;]+)/i', $decls, $b)) { if (stripos($b[1], 'url(') !== false) return null; $hex = $resolve($b[1]); if ($hex !== null) return $hex; }
+            }
+        }
+        if ($target === 'page') { foreach (['--paper', '--bg', '--surface', '--background'] as $v) { if (isset($vars[$v]) && ($hex = $resolve($vars[$v])) !== null) return $hex; } return '#FFFFFF'; }
+        if ($target === 'section') { return $this->partBackground($websiteId, $home, 'page'); }
+        return null;
+    }
+
+    /** A translucent overlay on one part only — for parts on photos, where no colour can be shifted. */
+    private static function overlayRules(string $target, int $dir, string $block = ''): array
+    {
+        $sel = ['footer' => 'footer,.footer,[data-block="footer"]', 'nav' => 'nav,.nav,.navbar,.nav-bar,header,[data-block="nav"]', 'hero' => '.hero,[data-block="hero"],header.hero,section.hero', 'buttons' => '.btn-primary,.hero-cta,.nav-cta,.btn.primary,.btn-cta,.cta-btn,button[type=submit],a[class*="btn"],.btn', 'page' => 'body', 'section' => '[data-block="' . $block . '"]'][$target] ?? null;
+        if ($sel === null) return [];
+        $veil = $dir < 0 ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.22)';
+        $key = 'tone_' . ($target === 'section' ? 'section_' . $block : $target);
+        return [$key => $sel . '{box-shadow:inset 0 0 0 100vmax ' . $veil . '!important}'];
+    }
+
     /** One replaceable rule per part; readable text is set on a recoloured background so nothing vanishes. */
     private static function targetedColourRules(string $target, string $hex, string $mode, string $block = ''): array
     {
@@ -6162,6 +6218,25 @@ PROMPT;
                     if ($hit > 0 && $asked > $hit) { $missed[] = 'this template only exposes ' . $hit . ' brand colour' . ($hit === 1 ? '' : 's') . ', so I applied the first'; }
                 } else {
                     $missed[] = 'the colour did not match anything on the page';
+                }
+            }
+        }
+
+        // ── 1a. A NAMED PART, DARKER OR LIGHTER (2026-09-14): its own colour shifted, or an overlay on that part alone ──
+        if ($roles === [] && $isStatic && preg_match(\App\Engines\Builder\Support\BuilderCapabilities::STYLE_TONES, $request, $tm0)) {
+            $part = $this->partIn($request, $websiteId);
+            if ($part !== null) {
+                $dir0 = self::toneDirection(strtolower($tm0[1]));
+                $home0 = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+                $cur = in_array($part['target'], ['hero'], true) ? null : $this->partBackground($websiteId, $home0, $part['target'], $part['block']);
+                if ($cur !== null) { $rules = self::targetedColourRules($part['target'], self::shiftLightness($cur, $dir0), 'background', $part['block']); }
+                else { $rules = self::overlayRules($part['target'], $dir0, $part['block']); }
+                if ($rules !== [] && self::writeDesignExtras($websiteId, $rules, $tv)) {
+                    DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+                    $credits->debit($wsId, (int) $plan['credits'], 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => ['made ' . $part['what'] . ' ' . strtolower($tm0[1])]]);
+                    Log::info('[Arthur] targeted tone', ['website' => $websiteId, 'target' => $part['target'], 'dir' => $dir0, 'from' => $cur]);
+                    return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $plan['credits'],
+                        'message' => 'Done — I made ' . $part['what'] . ' ' . strtolower($tm0[1]) . " on {$site->name}. {$plan['credits']} credit. Undo puts it back.", 'url' => "/storage/sites/{$websiteId}/index.html"];
                 }
             }
         }
