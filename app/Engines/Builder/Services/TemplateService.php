@@ -619,7 +619,10 @@ class TemplateService
     {
         static $files = null;
         if ($files === null) {
-            $files = array_values(array_map('basename', glob(storage_path('app/public/builder-avatars/avatar_*.jpg')) ?: []));
+            // 2026-09-14 (Owner: 'image placeholders for team that is like human not cartoon'): photorealistic headshots
+            // (photo_*.jpg) are the default; the illustrated set is the fallback when none exist.
+            $files = array_values(array_map('basename', glob(storage_path('app/public/builder-avatars/photo_*.jpg')) ?: []));
+            if ($files === []) { $files = array_values(array_map('basename', glob(storage_path('app/public/builder-avatars/avatar_*.jpg')) ?: [])); }
             sort($files);
         }
         if ($files === []) return null;

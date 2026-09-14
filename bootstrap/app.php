@@ -88,6 +88,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // → settle credits), so a closed tab can never strand a job or its reserved
         // credit. Idempotent + bounded (see VideoFinalizePendingCommand). No video
         // assets in flight ⇒ proven no-op.
+        // OWNER RULE 2026-09-14: every new image gets vision-verified tags and a description, a few at a time.
+        $schedule->command('media:vision-verify --limit=20')->name('media:vision-verify')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('video:finalize-pending')
             ->name('video:finalize-pending')
             ->everyMinute()
