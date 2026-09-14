@@ -96,7 +96,7 @@ class ArthurEditService
             // 6-section stub below is for renderer (sections) sites only.
             // DEC-0046 (2026-09-13): 'style' was missing here, so every colour, gradient, font and mood request bypassed
             // Arthur's design brain (applySiteStyle) and fell to the JSON path, which can only recolour variables.
-            if (in_array($planEarly['kind'], ['page', 'section', 'edit', 'remove', 'unsupported', 'style', 'image'], true)) {
+            if (in_array($planEarly['kind'], ['page', 'section', 'edit', 'remove', 'unsupported', 'style', 'image', 'video', 'overlay', 'image_edit'], true)) {
                 $r = app(ArthurService::class)->handleSiteRequest((int) $siteRow->workspace_id, $websiteIdEarly, $userMessage, [
                     'agent_slug' => $context['agent_slug'] ?? 'editor', 'user_id' => $context['user_id'] ?? null,
                 ]);

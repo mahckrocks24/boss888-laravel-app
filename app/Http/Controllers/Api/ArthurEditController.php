@@ -91,9 +91,16 @@ class ArthurEditController
                 pageId:       $pageId,
                 userMessage:  $validated['message'],
                 sectionIndex: $validated['section_index'] ?? null,
-                context:      ['subdomain' => $page->subdomain ?? null],
+                // 2026-09-14: the requester travels with the request — the kernel auto-approves review-tier studio
+                // actions (video, image edits) only for a direct user action carrying user_id.
+                context:      ['subdomain' => $page->subdomain ?? null,
+                               'user_id'   => (int) ($request->attributes->get('user_id') ?? optional($request->user())->id ?? 0) ?: null],
             );
-            if (($result['success'] ?? false) && (int) ($result['actions_applied'] ?? 0) > 0) {
+            if (!empty($result['delegated'])) {
+                // STRESS 2026-09-06: Arthur already priced pages/sections/edits himself — never bill the reservation on top
+                $credits->releaseReservedCredits($reservationRef);
+                $result['credits_used'] = (int) ($result['credits'] ?? 0);
+            } elseif (($result['success'] ?? false) && (int) ($result['actions_applied'] ?? 0) > 0) {
                 $credits->commitReservedCredits($reservationRef);
                 $result['credits_used'] = 1;
             } else {

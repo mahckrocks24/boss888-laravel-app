@@ -1716,6 +1716,303 @@ PROMPT;
     }
 
 
+    /* ═══════════════ STUDIO → ARTHUR (2026-09-14) — video, text over an image, background / object removal ═══════════════ */
+
+    /** The image currently shown in a site slot: the stored variable first, then the export itself. */
+    private function siteImageUrl(int $websiteId, string $field, array $tv): string
+    {
+        // What the page SHOWS wins over what the record remembers: a crop, a click-to-replace or an earlier undo can
+        // leave the record pointing at an image that is no longer on the page (proven on fixture 411).
+        $index = storage_path("app/public/sites/{$websiteId}/index.html");
+        $html  = is_file($index) ? (string) @file_get_contents($index) : '';
+        if ($html === '') { return ''; }
+        if (preg_match('~<[^>]*data-field="' . preg_quote($field, '~') . '"[^>]*>~i', $html, $m)) {
+            $tag = $m[0];
+            if (preg_match('~url\((["\']?)([^)"\']+)\1\)~i', $tag, $u1)) { return trim($u1[2]); }
+            if (preg_match('~\ssrc="([^"]+)"~i', $tag, $u2)) { return trim($u2[1]); }
+            $pos = strpos($html, $tag);
+            if (preg_match('~<img[^>]*\ssrc="([^"]+)"~i', substr($html, (int) $pos, 1500), $u3)) { return trim($u3[1]); }
+        }
+        $u = trim((string) ($tv[$field] ?? ''));
+        return ($u !== '' && ! str_starts_with($u, '{{')) ? $u : '';
+    }
+
+    /**
+     * A site image as a file on the public disk. Our own /storage/ URLs map straight to a path; anything else is
+     * fetched once (15 MB cap, raster only) into ai-images/{ws}/, the same shape Studio uses when it ingests.
+     * @return array{path:?string, width:int, height:int, error:?string}
+     */
+    private function siteImageOnDisk(int $wsId, string $url): array
+    {
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        $u = trim($url);
+        if ($u === '') { return ['path' => null, 'width' => 0, 'height' => 0, 'error' => 'no_image']; }
+        $p = parse_url($u) ?: [];
+        $pathPart = (string) ($p['path'] ?? $u);
+        $path = null;
+        $ours = empty($p['host']) || str_contains((string) $p['host'], 'levelupgrowth') || str_contains((string) config('app.url'), (string) $p['host']);
+        if ($ours && preg_match('~^/?storage/(.+)$~', $pathPart, $m)) {
+            $cand = $m[1];
+            if ($disk->exists($cand)) { $path = $cand; }
+        }
+        if ($path === null && ! empty($p['host']) && in_array(strtolower((string) ($p['scheme'] ?? '')), ['http', 'https'], true)) {
+            $ch = curl_init($u);
+            curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3, CURLOPT_TIMEOUT => 25,
+                CURLOPT_MAXFILESIZE => 15728640, CURLOPT_SSL_VERIFYPEER => true, CURLOPT_SSL_VERIFYHOST => 2]);
+            $bytes = curl_exec($ch);
+            $code  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($bytes === false || $code !== 200 || $bytes === '' || strlen($bytes) > 15728640) { return ['path' => null, 'width' => 0, 'height' => 0, 'error' => 'download_failed']; }
+            $info = @getimagesizefromstring($bytes);
+            $ext  = $info ? ([IMAGETYPE_PNG => 'png', IMAGETYPE_JPEG => 'jpg', IMAGETYPE_WEBP => 'webp'][$info[2]] ?? null) : null;
+            if ($ext === null) { return ['path' => null, 'width' => 0, 'height' => 0, 'error' => 'not_a_raster_image']; }
+            $path = 'ai-images/' . $wsId . '/ingest-' . substr(hash('sha256', $u . '|' . strlen($bytes)), 0, 24) . '.' . $ext;
+            $disk->put($path, $bytes);
+        }
+        if ($path === null) { return ['path' => null, 'width' => 0, 'height' => 0, 'error' => 'not_found']; }
+        $info = @getimagesize(storage_path('app/public/' . $path));
+        return ['path' => $path, 'width' => (int) ($info[0] ?? 0), 'height' => (int) ($info[1] ?? 0), 'error' => null];
+    }
+
+    /** The Media Library row for a site image, created on first use in Studio's ingest shape, so the kernel can version it. */
+    private function assetForSiteImage(int $wsId, string $url, array $onDisk): ?int
+    {
+        $existing = DB::table('assets')->where('workspace_id', $wsId)->whereNull('deleted_at')
+            ->where(function ($q) use ($url, $onDisk) {
+                $q->where('url', $url);
+                if (! empty($onDisk['path'])) { $q->orWhere('storage_path', $onDisk['path']); }
+            })->orderByDesc('id')->value('id');
+        if ($existing) { return (int) $existing; }
+        if (empty($onDisk['path'])) { return null; }
+        $abs  = storage_path('app/public/' . $onDisk['path']);
+        $mime = (string) (@mime_content_type($abs) ?: 'image/jpeg');
+        $id = DB::table('assets')->insertGetId([
+            'workspace_id' => $wsId, 'type' => 'image', 'title' => 'Website image', 'provider' => 'Imported', 'model' => 'Imported', 'status' => 'completed',
+            'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($onDisk['path']), 'storage_path' => $onDisk['path'], 'mime_type' => $mime,
+            'width' => (int) $onDisk['width'], 'height' => (int) $onDisk['height'], 'version' => 1, 'edit_mode' => 'import',
+            'metadata_json' => json_encode(['imported' => true, 'ingest_source_url' => $url, 'edit_origin' => 'arthur_site_image', 'workspace_id' => $wsId, 'imported_at' => now()->toIso8601String()]),
+            'tags_json' => json_encode(['imported', 'website']), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        DB::table('assets')->where('id', $id)->update(['root_asset_id' => $id]);
+        return (int) $id;
+    }
+
+    /** One honest sentence for a kernel or provider refusal: plan, credits, approval, or the provider itself. */
+    private function honestKernelRefusal(array $res, array $data, array $plan, string $what, int $cost): array
+    {
+        $code = (string) ($res['code'] ?? $data['code'] ?? '');
+        $err  = trim((string) ($res['error'] ?? $data['error'] ?? $data['message'] ?? ''));
+        if ($code === 'PLAN_GATED') {
+            $msg = "I can {$what} on the Pro plan — this workspace's plan does not include the image and video studio yet, so nothing was changed.";
+        } elseif ($code === 'NO_CREDITS') {
+            $msg = "To {$what} I need {$cost} credits and this workspace does not have them yet. Nothing was changed.";
+        } elseif (str_contains(strtolower($code . ' ' . $err), 'approval')) {
+            $msg = 'That request is waiting for approval in your workspace before it runs — nothing has changed yet.';
+        } else {
+            $msg = "I couldn't {$what} right now — the studio declined (" . mb_substr($err !== '' ? $err : 'no reason given', 0, 90) . '). Nothing was charged and nothing on your site changed.';
+        }
+        Log::warning('[Arthur] studio capability refused', ['code' => $code, 'error' => mb_substr($err, 0, 200), 'what' => $what]);
+        return ['success' => false, 'code' => $code !== '' ? $code : 'STUDIO_UNAVAILABLE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'message' => $msg];
+    }
+
+    /**
+     * TEXT OVER AN IMAGE — the studio's overlay renderer (headless Chromium, real typography, brand palette) writes
+     * the customer's words across the hero or about image; the composed image replaces the slot. No provider, 1 credit.
+     */
+    private function overlayTextOnSiteImage(int $wsId, int $websiteId, string $request, object $site, array $plan, bool $isStatic, array $tv): array
+    {
+        $target = (string) ($plan['target'] ?? 'hero');
+        $field  = $target === 'about' ? 'about_image' : 'hero_image';
+        $text   = '';
+        if (preg_match('/["“”]([^"“”]{2,120})["“”]/u', $request, $qm)) { $text = trim($qm[1]); }
+        elseif (preg_match("/'([^']{2,120})'/u", $request, $qm2)) { $text = trim($qm2[1]); }
+        elseif (preg_match('/\b(?:saying|that says|reading|with the words?|the words?|the text)\s*[:\-]?\s*(.{2,120}?)(?:\s+(?:on|over|onto|across)\b|[.!]?$)/iu', $request, $sm)) { $text = trim($sm[1], " \t\"'"); }
+        if ($text === '') {
+            return ['success' => false, 'code' => 'NEEDS_TEXT', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'Tell me the exact words in quotes and I will write them across the image — for example: put "Grand Opening" on the hero image.'];
+        }
+        if (! $isStatic) {
+            return ['success' => false, 'code' => 'NOT_STATIC', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'Text on images is for template sites; this site is rendered live, so edit its hero copy instead.'];
+        }
+        $url = $this->siteImageUrl($websiteId, $field, $tv);
+        if ($url === '') {
+            return ['success' => false, 'code' => 'NO_IMAGE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => "I could not find a {$target} image on {$site->name} to write on."];
+        }
+        $disk = $this->siteImageOnDisk($wsId, $url);
+        if (empty($disk['path']) || $disk['width'] < 50 || $disk['height'] < 50) {
+            return ['success' => false, 'code' => 'IMAGE_UNREADABLE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'I could not read that image file (' . ($disk['error'] ?? 'unreadable') . '), so nothing was changed.'];
+        }
+        $w = min(1600, $disk['width']);
+        $h = (int) round($disk['height'] * ($w / max(1, $disk['width'])));
+        $palette = array_values(array_filter([$tv['primary_color'] ?? null, $tv['secondary_color'] ?? null, $tv['accent_color'] ?? null]));
+        $res = app(\App\Core\ImageIntelligence\ImageOverlayRenderer::class)->render($disk['path'], ['headline' => $text, 'supporting_copy' => [], 'color_palette' => $palette], $w, $h, $wsId);
+        if (empty($res['success']) || empty($res['url'])) {
+            Log::warning('[Arthur] overlay render failed', ['website' => $websiteId, 'error' => $res['error'] ?? null]);
+            return ['success' => false, 'code' => 'RENDER_FAILED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'I could not render the text onto the image just now (' . ($res['error'] ?? 'render failed') . '); nothing was changed.'];
+        }
+        $newUrl = (string) $res['url'];
+        $pp = parse_url($newUrl);
+        if (! empty($pp['path'])) { $newUrl = $pp['path']; }   // same-origin path, so the export never depends on the host name
+        $placed = false;
+        try { $placed = $this->templates->updateField($websiteId, $field, $newUrl); } catch (\Throwable $e) { Log::warning('[Arthur] overlay not placed: ' . $e->getMessage()); }
+        if (! $placed) {
+            return ['success' => false, 'code' => 'NOT_PLACED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => "I rendered the image but could not place it in the {$target} slot, so nothing on the site changed."];
+        }
+        $tv[$field] = $newUrl;
+        $tv[$field . '_overlay'] = ['text' => $text, 'source' => $url, 'at' => now()->toIso8601String()];
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Core\Billing\CreditService::class)->debit($wsId, (int) $plan['credits'], 'builder_arthur_overlay', $websiteId, ['field' => $field, 'text' => mb_substr($text, 0, 120)]);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        Log::info('[Arthur] text overlaid on site image', ['website' => $websiteId, 'field' => $field, 'text' => $text, 'url' => $newUrl]);
+        return ['success' => true, 'kind' => 'overlay', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) $plan['credits'], 'url' => $newUrl,
+            'message' => "Done — I wrote “{$text}” across the {$target} image on {$site->name}. Undo puts the original back. {$plan['credits']} credit."];
+    }
+
+    /**
+     * BACKGROUND / OBJECT REMOVAL — the studio's governed edit_image capability (kernel: plan, credits, lineage,
+     * versioning) on the site's own image; the edited child replaces the slot, the original stays in the library.
+     */
+    private function editSiteImage(int $wsId, int $websiteId, string $request, object $site, array $plan, bool $isStatic, array $tv, array $ctx): array
+    {
+        $target = (string) ($plan['target'] ?? 'hero');
+        $field  = $target === 'about' ? 'about_image' : 'hero_image';
+        $op     = (string) ($plan['operation'] ?? 'remove_background');
+        if (! $isStatic) {
+            return ['success' => false, 'code' => 'NOT_STATIC', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'Image edits are for template sites; this site is rendered live.'];
+        }
+        $url = $this->siteImageUrl($websiteId, $field, $tv);
+        if ($url === '') {
+            return ['success' => false, 'code' => 'NO_IMAGE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => "I could not find a {$target} image on {$site->name} to edit."];
+        }
+        $disk    = $this->siteImageOnDisk($wsId, $url);
+        $assetId = $this->assetForSiteImage($wsId, $url, $disk);
+        if (! $assetId) {
+            return ['success' => false, 'code' => 'IMAGE_UNREADABLE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'I could not import that image into your Media Library (' . ($disk['error'] ?? 'unreadable') . '), so nothing was changed.'];
+        }
+        if ($op === 'remove_background') {
+            $prompt = 'Remove the background entirely and place the main subject on a clean, solid pure-white background. Keep the subject itself unchanged.';
+            $done   = 'removed the background of';
+        } else {
+            $obj = trim((string) ($plan['object'] ?? ''));
+            if ($obj === '') {
+                return ['success' => false, 'code' => 'NEEDS_OBJECT', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                    'message' => 'Tell me which object to remove — for example: remove the car from the hero image.'];
+            }
+            $prompt = 'Remove the ' . $obj . ' from the image completely, filling the space naturally and seamlessly so it looks like it was never there, matching the surrounding lighting and texture.';
+            $done   = "removed the {$obj} from";
+        }
+        $res  = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute($wsId, 'creative', 'edit_image',
+            ['source_asset_id' => $assetId, 'prompt' => $prompt, 'selection_type' => 'full', 'idempotency_key' => 'arthur-edit-' . $websiteId . '-' . $field . '-' . substr(md5($prompt . $assetId), 0, 12)],
+            ['user_id' => $ctx['user_id'] ?? null, 'source' => 'manual', 'origin' => 'arthur_chat']);   // manual + user_id = the customer's own click authorises the spend
+        $data = (is_array($res) && isset($res['data']) && is_array($res['data'])) ? $res['data'] : (is_array($res) ? $res : []);
+        $ok   = (bool) ($res['success'] ?? ($data['success'] ?? false));
+        $new  = (string) ($data['url'] ?? '');
+        if (! $ok || $new === '') { return $this->honestKernelRefusal($res, $data, $plan, 'edit that image', 2); }
+        $pp  = parse_url($new);
+        $rel = (! empty($pp['path']) && str_starts_with((string) $pp['path'], '/storage/')) ? (string) $pp['path'] : $new;
+        $placed = false;
+        try { $placed = $this->templates->updateField($websiteId, $field, $rel); } catch (\Throwable $e) { Log::warning('[Arthur] edited image not placed: ' . $e->getMessage()); }
+        $tv[$field] = $rel;
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        $charged = 2;
+        Log::info('[Arthur] site image edited via studio', ['website' => $websiteId, 'field' => $field, 'op' => $op, 'asset' => $assetId, 'child' => $data['asset_id'] ?? null, 'placed' => $placed]);
+        if (! $placed) {
+            return ['success' => false, 'code' => 'NOT_PLACED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => $charged, 'url' => $rel,
+                'message' => "The studio {$done} the image (it is in your Media Library) but I could not place it in the {$target} slot. Click the image in the preview to use it."];
+        }
+        return ['success' => true, 'kind' => 'image_edit', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $charged, 'url' => $rel,
+            'message' => "Done — I {$done} the {$target} image on {$site->name}. The original is kept in your Media Library and Undo puts it back. {$charged} credits (image studio)."];
+    }
+
+    /**
+     * VIDEO GENERATION — the studio's governed generate_video (kernel: plan, credits, approval; MiniMax; finalised by
+     * video:finalize-pending). Arthur starts it, answers at once, and PlaceGeneratedVideoJob puts the finished clip
+     * on the home page. 8 credits at kickoff, refunded by the studio if the render fails.
+     */
+    private function generateSiteVideo(int $wsId, int $websiteId, string $request, object $site, array $plan, bool $isStatic, array $tv, string $industry, array $ctx): array
+    {
+        if (! $isStatic) {
+            return ['success' => false, 'code' => 'NOT_STATIC', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'Generated videos go on template sites; this site is rendered live.'];
+        }
+        $name = (string) $site->name;
+        $ind  = str_replace('_', ' ', $industry !== '' ? $industry : (string) ($tv['industry'] ?? 'business'));
+        $loc  = trim((string) ($tv['location'] ?? $tv['contact_city'] ?? ''));
+        $prompt = trim((string) preg_replace('/^(?:please\s+)?(?:can you\s+)?(?:generate|create|make|produce|render|shoot|design)\s+(?:me\s+|us\s+)?(?:an?\s+|the\s+)?(?:short\s+|quick\s+|new\s+)?(?:promo\s+|intro\s+|hero\s+|background\s+)?(?:video|clip|reel|promo)\s*(?:of|for|showing|about|that shows)?\s*/i', '', $request));
+        $prompt = trim((string) preg_replace('/\b(?:for|on)\s+(?:my|the|our)\s+(?:site|website|home ?page|business)\b\.?$/i', '', $prompt));
+        if ($prompt === '' || mb_strlen($prompt) < 8 || preg_match('/^(my|our|the)\s+(site|website|business|shop|company)$/i', $prompt)) {
+            $prompt = "Cinematic promotional clip for {$name}, a {$ind}" . ($loc !== '' ? " in {$loc}" : '') . ': warm natural light, slow camera movement, inviting atmosphere, no text, no logos.';
+        } else {
+            $prompt .= " — for {$name}, a {$ind}. Cinematic, natural light, no text, no logos.";
+        }
+        $res  = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute($wsId, 'creative', 'generate_video',
+            ['prompt' => $prompt, 'duration' => 6, 'aspect_ratio' => '16:9'],
+            ['user_id' => $ctx['user_id'] ?? null, 'source' => 'manual', 'origin' => 'arthur_chat']);   // manual + user_id = the customer's own click authorises the spend
+        $data = (is_array($res) && isset($res['data']) && is_array($res['data'])) ? $res['data'] : (is_array($res) ? $res : []);
+        $ok   = (bool) ($res['success'] ?? ($data['success'] ?? false));
+        $assetId = (int) ($data['asset_id'] ?? $data['id'] ?? 0);
+        $approvalId = (int) ($res['approval_id'] ?? $data['approval_id'] ?? 0);
+        if ($ok && $assetId <= 0 && ($approvalId > 0 || ! empty($res['pending_approval']) || ($res['code'] ?? '') === 'AWAITING_APPROVAL')) {
+            // The workspace reviews video generation before it runs. The clip will exist only after someone approves,
+            // so the watcher adopts it by prompt once it appears, and Arthur says exactly where the customer stands.
+            $tv['pending_video'] = ['asset_id' => 0, 'approval_id' => $approvalId, 'requested_at' => now()->toIso8601String(), 'prompt' => $prompt, 'status' => 'awaiting_approval'];
+            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            \App\Jobs\PlaceGeneratedVideoJob::dispatch($wsId, $websiteId, 0, $prompt)->delay(now()->addSeconds(60));
+            Log::info('[Arthur] video generation awaiting approval', ['website' => $websiteId, 'approval' => $approvalId]);
+            return ['success' => true, 'kind' => 'video', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'approval_id' => $approvalId, 'pending' => true,
+                'message' => "Video generation in this workspace needs a quick approval first — it is waiting under Approvals. Once approved, the studio renders a 6-second clip (about two minutes, 8 credits) and I add it to {$name}'s home page automatically."];
+        }
+        if (! $ok || $assetId <= 0) { return $this->honestKernelRefusal($res, $data, $plan, 'make a video', 8); }
+        $tv['pending_video'] = ['asset_id' => $assetId, 'requested_at' => now()->toIso8601String(), 'prompt' => mb_substr($prompt, 0, 200), 'status' => 'rendering'];
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        \App\Jobs\PlaceGeneratedVideoJob::dispatch($wsId, $websiteId, $assetId, $prompt)->delay(now()->addSeconds(45));
+        Log::info('[Arthur] video generation started', ['website' => $websiteId, 'asset' => $assetId, 'prompt' => mb_substr($prompt, 0, 160)]);
+        return ['success' => true, 'kind' => 'video', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => 8, 'asset_id' => $assetId, 'pending' => true,
+            'message' => "Your video is rendering now — about two minutes for a 6-second clip. I'll add it to {$name}'s home page just before the contact section the moment it is ready; refresh the preview then. 8 credits (video studio)."];
+    }
+
+    /** Called by PlaceGeneratedVideoJob once the studio has finished: put the finished clip on the home page. */
+    public function placeVideoOnSite(int $wsId, int $websiteId, string $videoUrl, ?string $heading = null): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found']; }
+        if (! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) { return ['success' => false, 'error' => 'not_static']; }
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $industry = $this->templates->industryOf((string) ($settings['template'] ?? $settings['industry'] ?? $site->template_industry ?? ''));
+        app(TemplateService::class)->snapshotToHistory($websiteId, 'video_placed');
+        $identity = $this->siteIdentity($site, $tv, (string) $industry);
+        $sec = $this->defaultSectionSpec('video_embed', $identity, $tv, $videoUrl);
+        if ($heading) { $sec['heading'] = $heading; }
+        $sec['subheading'] = 'A short film made for ' . $site->name . '.';
+        $renderer = app(BuilderRenderer::class);
+        $brand    = ['primary' => $tv['primary_color'] ?? '#6C5CE7', 'secondary' => $tv['secondary_color'] ?? '#00E5A8', 'accent' => $tv['accent_color'] ?? '#F4F7FB'];
+        $html = $this->adoptTemplateTypography($renderer->renderSection($sec, $brand, (array) $site));
+        if (trim($html) === '') { return ['success' => false, 'error' => 'render_empty']; }
+        $html = preg_replace('/(<section\b[^>]*\s)id="(?:booking|contact|services|team|gallery|testimonials|hero|faq|pricing)"/i', '$1data-old-id="$2"', $html) ?? $html;
+        $html = '<section data-block="added_video_embed" id="lu-video_embed" style="padding:24px 0;scroll-margin-top:100px">' . $html . '</section>';
+        try { $this->templates->removeSplicedSection($websiteId, 'video_embed'); } catch (\Throwable $e) {}   // replace, never stack
+        $this->templates->rememberSpliced($websiteId, 'video_embed', $html, 'contact', 'before');
+        $placed = $this->templates->spliceSectionIntoHome($websiteId, $html, 'contact', 'before') !== null;
+        if ($placed) { try { app(\App\Engines\Builder\Services\BuilderService::class)->appendSectionToHomePage($websiteId, $sec); } catch (\Throwable $e) {} }
+        unset($tv['pending_video']);
+        $tv['video_url'] = $videoUrl;
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        Log::info('[Arthur] generated video placed on site', ['website' => $websiteId, 'placed' => $placed, 'url' => $videoUrl]);
+        return ['success' => $placed, 'url' => $videoUrl, 'error' => $placed ? null : 'not_placed'];
+    }
+
+
     /**
      * The curated palettes for THIS built site, each with the exact :root variables it would rewrite, so the
      * editor can preview a palette instantly in the iframe and the apply step writes the very same map.
@@ -5024,6 +5321,10 @@ PROMPT;
         if ($plan['kind'] === 'image') {
             return $this->generateSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv);
         }
+        // STUDIO → ARTHUR (2026-09-14): the studio's video, text-on-image and image-edit capabilities, from the chat.
+        if ($plan['kind'] === 'video')      { return $this->generateSiteVideo($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv, (string) $industry, $ctx); }
+        if ($plan['kind'] === 'overlay')    { return $this->overlayTextOnSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv); }
+        if ($plan['kind'] === 'image_edit') { return $this->editSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv, $ctx); }
         if ($plan['kind'] === 'unsupported') {
             $pages = implode(', ', array_keys($caps::pages($industry ?: null)));
             $secs  = implode(', ', array_keys($caps::sections($industry ?: null)));

@@ -1373,12 +1373,14 @@ class TemplateService
                 $done = true;
             }
             if ($el->hasAttribute('style') && stripos($el->getAttribute('style'), 'background') !== false) {
-                $el->setAttribute('style', preg_replace(
-                    '/background-image\s*:\s*url\([^)]*\)/i',
-                    "background-image:url('" . $cssUrl . "')",
-                    $el->getAttribute('style')
-                ));
-                $done = true;
+                // 2026-09-14: the inline declaration is usually "linear-gradient(wash),url(photo)" — swap the url() inside
+                // the declaration and keep the wash. The old pattern only matched a bare url() and reported success anyway.
+                $styleNow = (string) $el->getAttribute('style');
+                $styleNew = preg_replace_callback('/(background(?:-image)?\s*:\s*)([^;]*)/i', function ($m) use ($cssUrl) {
+                    if (stripos($m[2], 'url(') === false) { return $m[0]; }
+                    return $m[1] . preg_replace('/url\([^)]*\)/i', "url('" . $cssUrl . "')", $m[2]);
+                }, $styleNow);
+                if (is_string($styleNew) && $styleNew !== $styleNow) { $el->setAttribute('style', $styleNew); $done = true; }
             }
             // BUILDER888 D4 (2026-08-28) — a background wrapper whose image comes from a CSS
             // class (no inline style) used to fall through to the TEXT branch below, which
@@ -1424,20 +1426,9 @@ class TemplateService
 
         if ($found) {
             // RISK-0107 — preserve the pre-edit served content so a bad inline edit is recoverable.
-            // Best-effort: a backup failure must NEVER block the edit. Rolling last-10 under .history.
-            try {
-                $histDir = storage_path("app/public/sites/{$websiteId}/.history");
-                if (! is_dir($histDir)) { @mkdir($histDir, 0775, true); }
-                if (is_dir($histDir) && is_string($original) && $original !== '') {
-                    $stamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
-                    @file_put_contents($histDir . "/index-{$stamp}.html", $original);
-                    $backups = glob($histDir . '/index-*.html') ?: [];
-                    if (count($backups) > 10) {
-                        sort($backups);   // zero-padded stamp -> lexicographic == chronological
-                        foreach (array_slice($backups, 0, count($backups) - 10) as $old) { @unlink($old); }
-                    }
-                }
-            } catch (\Throwable $e) {
+            // DEC-0046 (2026-09-14): through the shared snapshot (deduplicated, nested pages, record sidecar) — a raw copy
+            // here produced a sidecar-less entry that Undo consumed, leaving the record stale.
+            try { $this->snapshotToHistory($websiteId, 'field_edit'); } catch (\Throwable $e) {
                 \Illuminate\Support\Facades\Log::warning('[TemplateService] RISK-0107 pre-edit backup failed: ' . $e->getMessage());
             }
 
@@ -1473,7 +1464,7 @@ class TemplateService
             $existing = glob($dir . '/index-*.html') ?: [];
             sort($existing);
             $latest = $existing !== [] ? end($existing) : null;
-            if ($latest !== null && @md5_file($latest) === md5($bytes) && $this->nestedUnchangedSince($root, $latest)) {
+            if ($latest !== null && @md5_file($latest) === md5($bytes) && $this->nestedUnchangedSince($root, $latest) && $this->recordUnchangedSince($websiteId, $latest)) {
                 return basename($latest);
             }
             $stamp = date('Ymd-His') . '-' . bin2hex(random_bytes(2));
@@ -1554,6 +1545,17 @@ class TemplateService
             $out[$rel] = $abs;
         }
         return $out;
+    }
+
+    /** The sidecar beside the newest entry holds the record as it was; a record-only change (an image slot, a palette id) still deserves an entry. */
+    private function recordUnchangedSince(int $websiteId, string $latestIndexFile): bool
+    {
+        $side = preg_replace('/\.html$/', '.json', $latestIndexFile);
+        if (! is_file($side)) { return false; }
+        $j = json_decode((string) @file_get_contents($side), true);
+        if (! is_array($j) || ! array_key_exists('template_variables', $j)) { return false; }
+        $tvRaw = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables');
+        return (string) $j['template_variables'] === (string) $tvRaw;
     }
 
     private function nestedUnchangedSince(string $root, string $latestIndexFile): bool

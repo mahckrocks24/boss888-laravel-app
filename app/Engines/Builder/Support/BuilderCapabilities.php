@@ -198,6 +198,37 @@ final class BuilderCapabilities
 
         // DESIGN (2026-09-11) — decided first: a colour or font request matches the edit verb too,
         // and losing that race is what turned "make the buttons green" into a no-op copy edit.
+        // STUDIO CAPABILITIES IN ARTHUR (2026-09-14, Owner: "we are able to generate videos too using studio …
+        // removing background … adding text over image, we want to utilize that"). Decided before image, style
+        // and remove: "remove the background" would otherwise be a section removal, and "make a video" a section.
+        $hasUrl = (bool) preg_match('~https?://~i', $r);
+        if (preg_match('/\b(put|add|write|place|overlay|print|burn|stamp)\b.{0,40}\b(text|words?|headline|title|caption|slogan|tagline)\b.{0,60}\b(on|over|onto|across|into)\b.{0,30}\b(image|photo|picture|hero|banner|background)\b/i', $r)
+            || preg_match('/\b(text|words?|headline|caption|slogan)\b.{0,10}\b(on|over|onto|across)\b.{0,10}\b(the\s+)?(hero|image|photo|picture|banner)\b/i', $r)
+            || preg_match('/\b(write|print|stamp|overlay)\b.{2,80}\b(across|over|onto|on top of)\b.{0,20}\b(the\s+)?(hero|image|photo|picture|banner)\b/i', $r)) {
+            $out['kind']    = 'overlay';
+            $out['credits'] = self::pricing()['style'];
+            $out['label']   = 'text on image';
+            $out['target']  = preg_match('/\b(about|story)\b/i', $r) ? 'about' : 'hero';
+            return $out;
+        }
+        if (! preg_match('/\bbackground\s+(colou?r|gradient|image)\b/i', $r)
+            && (preg_match('/\b(remove|cut out|strip|erase|delete|take out|get rid of)\b.{0,20}\bbackground\b/i', $r)
+                || preg_match('/\b(remove|erase|take out|get rid of)\b\s+(?:the\s+)?([a-z][a-z ]{2,30}?)\s+(?:from|out of|in)\s+(?:the\s+)?(?:hero|about|gallery|banner)?\s*(?:image|photo|picture)\b/i', $r))) {
+            $out['kind']      = 'image_edit';
+            $out['credits']   = 0; // the image studio charges 2 credits and releases the hold on failure
+            $out['label']     = 'image edit';
+            $out['operation'] = preg_match('/\bbackground\b/i', $r) ? 'remove_background' : 'remove_object';
+            $out['target']    = preg_match('/\b(about|story)\b/i', $r) ? 'about' : 'hero';
+            if ($out['operation'] === 'remove_object' && preg_match('/\b(?:remove|erase|take out|get rid of)\b\s+(?:the\s+)?([a-z][a-z ]{2,30}?)\s+(?:from|out of|in)\b/i', $r, $om)) { $out['object'] = trim($om[1]); }
+            return $out;
+        }
+        if (! $hasUrl && ! preg_match('/\bsection\b/i', $r)
+            && preg_match('/\b(generate|create|make|produce|render|shoot|design)\b.{0,40}\b(video|clip|reel|promo video|intro video|promo)\b/i', $r)) {
+            $out['kind']    = 'video';
+            $out['credits'] = 0; // the video studio charges 8 credits at kickoff and refunds on failure
+            $out['label']   = 'video generation';
+            return $out;
+        }
         // IMAGE GENERATION (DEC-0046 gap closure, 2026-09-14): "generate a hero image of …" is neither copy nor style.
         // Decided before style so "create a photo in warm colours" is an image ask, not a recolour.
         if (preg_match('/\b(generate|create|produce|draw|render|design|ai[- ]generate)\b.{0,40}\b(image|photo|picture|visual|illustration|artwork)\b/i', $r)
