@@ -5890,7 +5890,6 @@ PROMPT;
         foreach ($lines as $i => $line) {
             if (! str_contains($line, 'data-field="' . $key . '"')) { continue; }
             $rendered = $render($line);
-            if (str_contains($html, trim($rendered))) { continue; }   // already there
             $placed = false;
             // a neighbour that survived: next lines first (insert before), then previous lines (insert after)
             foreach ([1, 2, 3, 4, -1, -2, -3, -4] as $d) {
@@ -5900,6 +5899,9 @@ PROMPT;
                 if (strlen($anchor) < 12 || ! str_contains($anchor, '<')) { continue; }
                 $pos = strpos($html, $anchor);
                 if ($pos === false) { continue; }
+                // this copy of the line is already next to its neighbour (the field may legitimately appear twice on the page)
+                $window = substr($html, max(0, $pos - 700), 700 + strlen($anchor) + 700);
+                if (str_contains($window, 'data-field="' . $key . '"')) { $placed = true; break; }
                 $html = $d > 0
                     ? substr($html, 0, $pos) . $rendered . "\n" . substr($html, $pos)
                     : substr($html, 0, $pos + strlen($anchor)) . "\n" . $rendered . substr($html, $pos + strlen($anchor));
@@ -5909,6 +5911,24 @@ PROMPT;
         }
         if ($done > 0) { file_put_contents($index, $html); Log::info('[Arthur] fact line re-inserted', ['website' => $websiteId, 'field' => $key, 'lines' => $done]); }
         return $done > 0;
+    }
+
+    /** A phone or e-mail link dials / mails the NEW value: tel:/mailto: hrefs on the field's own <a> follow the text. */
+    private function patchFactHref(int $websiteId, string $key, string $value): void
+    {
+        $isPhone = (bool) preg_match('/(phone|whatsapp|mobile|fax)/i', $key);
+        $isMail  = (bool) preg_match('/email/i', $key);
+        if (! $isPhone && ! $isMail) { return; }
+        $href = $isPhone ? 'tel:' . preg_replace('/[^\d+]/', '', $value) : 'mailto:' . trim($value);
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $files = [$root . '/index.html'];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $f) { if (! str_contains($f, '/.history/')) { $files[] = $f; } }
+        foreach ($files as $f) {
+            $h = (string) @file_get_contents($f);
+            if ($h === '' || ! str_contains($h, 'data-field="' . $key . '"')) { continue; }
+            $new = preg_replace('/(<a\b[^>]*\bhref=")(?:tel|mailto):[^"]*("[^>]*\bdata-field="' . preg_quote($key, '/') . '")/i', '$1' . $href . '$2', $h) ?? $h;
+            if ($new !== $h) { file_put_contents($f, $new); }
+        }
     }
 
     /** Size changes as a remembered zoom factor per target, written into the customer's design-extras block. */
@@ -7456,6 +7476,7 @@ PROMPT;
             if (in_array($k, $factKeys, true) && ! str_contains($exportHtml, 'data-field="' . $k . '"')) { $this->reinsertTemplateField($websiteId, $site, $k, $v, $tv); $exportHtml = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html")); }
             if (!$this->templates->updateField($websiteId, $k, $v)) { $skipped[] = $k; continue; }
             $this->templates->patchFieldInSubPages($websiteId, $k, $v);
+            if (in_array($k, $factKeys, true)) { $this->patchFactHref($websiteId, $k, $v); }
             $tv[$k] = $v; $applied[] = $k;
         }
         if ($applied !== []) {
