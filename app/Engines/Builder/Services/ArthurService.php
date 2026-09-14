@@ -1804,16 +1804,11 @@ PROMPT;
     private static function customerReason(string $raw): string
     {
         $r = strtolower($raw);
-        if (preg_match('/no credits remaining|insufficient_quota|billing|quota|429|rate limit|out of capacity/', $r)) {
-            return 'the image and video service is temporarily unavailable on our side.';
-        }
-        if (preg_match('/timeout|timed out|unavailable|503|502|connection/', $r)) {
-            return 'the image and video service did not answer in time.';
-        }
+        // OWNER RULE 2026-09-14: generic maintenance wording, never a vendor, never an upstream code.
         if (preg_match('/safety|policy|moderation|blocked/', $r)) {
             return 'the request was declined by the content policy — try describing the image differently.';
         }
-        return 'the image and video service is temporarily unavailable.';
+        return 'that part of the service is undergoing maintenance. Please try again shortly.';
     }
 
     /** One honest sentence for a kernel or provider refusal: plan, credits, approval, or the provider itself. */
