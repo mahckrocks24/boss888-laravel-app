@@ -5562,6 +5562,21 @@ PROMPT;
             return ['success' => false, 'code' => 'NO_FILE', 'applied' => 0, 'actions_applied' => 0,
                 'message' => "I didn't receive the file itself — attach the logo or photos in the chat and ask again, and I'll place them on {$site->name}."];
         }
+        // ARTHUR LLM-FIRST (DEC-0050, 2026-09-14, Owner: 'Arthur must be LLM first … must understand full context. he is not a robot'):
+        // the model reads the message with the whole site and the conversation, decides one intent or asks; executors act.
+        if ($isStatic && empty($ctx['_clause']) && empty($ctx['_no_brain'])) {
+            $intent = null; $brain = null;
+            try { $brain = app(ArthurIntentService::class); $intent = $brain->interpret($wsId, $websiteId, $site, $request, $ctx, $this->intentContext($wsId, $websiteId, $site, $tv, (string) $industry)); }
+            catch (\Throwable $e) { Log::warning('[Arthur] intent failed, classic path', ['website' => $websiteId, 'error' => $e->getMessage()]); }
+            if ($intent !== null && $brain !== null) {
+                $out = $this->dispatchIntent($wsId, $websiteId, $site, $request, $ctx, $tv, (string) $industry, $intent, $isStatic);
+                if ($out !== null) { $brain->remember($wsId, $websiteId, $ctx, $request, $out, $intent); return $out; }
+                // the classic executors run with the model's explicit wording (sections, pages, images, video …), then the turn is remembered
+                $classic = $this->handleSiteRequest($wsId, $websiteId, $request, $ctx + ['_no_brain' => true]);
+                $brain->remember($wsId, $websiteId, $ctx, $request, $classic, $intent);
+                return $classic;
+            }
+        }
         // CATALOGUE888 (DEC-0049, 2026-09-14): on a design that carries a catalogue (listings, services, menu …), item commands go to the
         // catalogue backend (add / reprice / mark sold / remove). Every other site never enters this branch.
         if ($isStatic) {
@@ -7468,6 +7483,12 @@ PROMPT;
         }
         $changes = is_array($parsed['changes'] ?? null) ? $parsed['changes'] : [];
         $reply   = trim((string) ($parsed['reply'] ?? ''));
+        return $this->applyCopyChanges($wsId, $websiteId, $site, $tv, $fields, $factKeys, $exportHtml, $changes, $reply, $plan);
+    }
+
+    /** Apply a list of {key, value} text changes to a template site: facts re-inserted, hrefs patched, record saved, honest reply. */
+    private function applyCopyChanges(int $wsId, int $websiteId, object $site, array $tv, array $fields, array $factKeys, string $exportHtml, array $changes, string $reply, array $plan): array
+    {
         $applied = []; $skipped = [];
         foreach (array_slice($changes, 0, 20) as $ch) {
             $k = self::resolveFieldKey((string) ($ch['key'] ?? ''), $fields); $v = $ch['value'] ?? null;
@@ -7493,6 +7514,101 @@ PROMPT;
             : (($changes === [] && $reply !== '' && !preg_match('/\b(updated|changed|done|replaced|set)\b/i', $reply)) ? $reply : "I couldn't find text on {$site->name} that matches that request, so nothing was changed. Tell me the exact words you see on the page and what they should become — for colours, photos, sections or listings, say what should change.");
         return ['success' => $n > 0, 'kind' => 'edit', 'code' => $n > 0 ? 'EDITED' : 'NO_CHANGE', 'plan' => $plan, 'applied' => $n, 'actions_applied' => $n,
             'changes' => $applied, 'message' => $msg, 'reply' => $msg, 'url' => "/storage/sites/{$websiteId}/index.html"];
+    }
+
+    /** The text fields a template site exposes for editing (on-page only), plus its fact fields kept offered when empty. */
+    private function copyFieldsFor(int $websiteId, object $site, array $tv): array
+    {
+        $fields = self::editableTextVariables($tv);
+        $exportHtml = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if ($exportHtml !== '') { $onPage = array_filter($fields, fn($v, $k) => str_contains($exportHtml, 'data-field="' . $k . '"'), ARRAY_FILTER_USE_BOTH); if ($onPage !== []) $fields = $onPage; }
+        $factKeys = $this->templateFactKeys($websiteId, $site);
+        foreach ($factKeys as $fk) { if (! isset($fields[$fk])) { $fields[$fk] = trim((string) ($tv[$fk] ?? '')); } }
+        return [$fields, $factKeys, $exportHtml];
+    }
+
+    /** Everything the model should see before deciding what a message means (DEC-0050). */
+    private function intentContext(int $wsId, int $websiteId, object $site, array $tv, string $industry): array
+    {
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        [$fields] = $this->copyFieldsFor($websiteId, $site, $tv);
+        $fields = array_slice($fields, 0, 140, true);
+        $images = [];
+        foreach ($tv as $k => $v) { if (is_string($v) && preg_match('/(_image|^image_\d+|_img)$/', (string) $k) && $v !== '') $images[] = (string) $k; }
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $home = (string) @file_get_contents($root . '/index.html');
+        $sections = preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm) ? array_values(array_unique($bm[1])) : [];
+        $pages = [];
+        foreach (glob($root . '/*/index.html') ?: [] as $f) { $slug = basename(dirname($f)); if ($slug !== '.history') $pages[] = '/' . $slug . '/'; }
+        $catalogues = [];
+        try {
+            $cat = app(CatalogueService::class);
+            foreach ($cat->specs($websiteId, $site) as $kind => $spec) {
+                $items = [];
+                foreach (DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->orderByDesc('featured')->orderBy('sort_order')->orderBy('id')->limit(30)->get() as $r) {
+                    $items[] = $r->title . ' — ' . $cat->priceText($r) . ' — ' . ($spec['statuses'][$r->status] ?? $r->status);
+                }
+                $catalogues[$kind] = ['label' => $spec['label'], 'statuses' => array_keys($spec['statuses']), 'enabled' => $spec['enabled'], 'items' => $items];
+            }
+        } catch (\Throwable $e) {}
+        $caps = \App\Engines\Builder\Support\BuilderCapabilities::class;
+        $colours = [];
+        try { foreach (['--cf1' => 'main', '--cf2' => 'second', '--cf3' => 'third'] as $var => $label) { $v = self::siteColorVars($websiteId)[$var] ?? null; if ($v) $colours[$label] = $v; } } catch (\Throwable $e) {}
+        return [
+            'name' => (string) $site->name, 'industry' => $industry ?: (string) ($settings['industry'] ?? ''), 'design' => (string) ($settings['template'] ?? $settings['industry'] ?? ''),
+            'fields' => $fields, 'images' => array_slice($images, 0, 40), 'sections' => $sections, 'pages' => $pages, 'catalogues' => $catalogues, 'colours' => $colours,
+            'addable_sections' => array_keys($caps::sections($industry ?: null)), 'addable_pages' => array_keys($caps::pages($industry ?: null)),
+            'abilities' => ['generate a photo for the hero, about or gallery', 'generate a short video', 'write text over a photo', 'remove a photo background or an object', 'switch colour palettes, gradients, darker/lighter, luxury or minimal looks, bigger/smaller text', 'restore or recolour the logo', 'undo the last change (Undo button)'],
+        ];
+    }
+
+    /** Route the model's decision to the deterministic executor. Returns null to let the classic path handle it (with the normalized wording). */
+    private function dispatchIntent(int $wsId, int $websiteId, object $site, string &$request, array $ctx, array $tv, string $industry, array $intent, bool $isStatic): ?array
+    {
+        $base = ['plan' => ['kind' => $intent['intent'], 'credits' => 0], 'credits' => 0, 'applied' => 0, 'actions_applied' => 0];
+        $normalized = trim((string) ($intent['normalized'] ?? ''));
+        switch ($intent['intent']) {
+            case 'clarify':
+                $q = trim((string) ($intent['question'] ?? '')) ?: "I want to get this right — what exactly should change on {$site->name}?";
+                return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => $q, 'options' => array_slice($intent['options'], 0, 4)];
+            case 'answer':
+                return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "Here is what I can tell you about {$site->name}."];
+            case 'unsupported':
+                return $base + ['success' => false, 'kind' => 'unsupported', 'code' => 'UNSUPPORTED', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "That is not something I can do from here."];
+            case 'copy_edit':
+                $changes = is_array($intent['copy'] ?? null) ? $intent['copy'] : [];
+                if ($changes === []) { if ($normalized !== '') $request = $normalized; return null; }   // the copy model will pick the fields
+                [$fields, $factKeys, $exportHtml] = $this->copyFieldsFor($websiteId, $site, $tv);
+                $plan = ['kind' => 'edit', 'credits' => \App\Engines\Builder\Support\BuilderCapabilities::pricing()['text_edit'] ?? 1];
+                $res = $this->applyCopyChanges($wsId, $websiteId, $site, $tv, $fields, $factKeys, $exportHtml, $changes, trim((string) ($intent['reply'] ?? '')), $plan);
+                if (empty($res['success'])) {   // the model named text that is not on the page: ask instead of a dead end
+                    $opts = [];
+                    foreach ($changes as $ch) { $k = (string) ($ch['key'] ?? ''); if ($k !== '' && ! isset($fields[$k])) { foreach (array_keys($fields) as $fk) { if (levenshtein($k, $fk) <= 4 && count($opts) < 4) $opts[] = $fk; } } }
+                    $res['kind'] = 'clarify'; $res['method'] = 'clarify'; $res['options'] = [];
+                    $res['message'] = "I couldn't match that to a text on {$site->name}. Tell me the exact words you see on the page and what they should become.";
+                }
+                return $res;
+            case 'catalogue':
+                $p = is_array($intent['catalogue'] ?? null) ? $intent['catalogue'] : [];
+                if ($p === [] || empty($p['kind'])) { if ($normalized !== '') $request = $normalized; return null; }
+                $res = app(CatalogueService::class)->execute($wsId, $websiteId, $p + ['_customer' => $request], $ctx);
+                if (($res['code'] ?? '') === 'WHICH') { return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => (string) $res['message'], 'options' => array_slice((array) ($res['options'] ?? []), 0, 4)]; }
+                if (($res['code'] ?? '') === 'PASS') { if ($normalized !== '') $request = $normalized; return null; }
+                return $base + $res + ['kind' => 'catalogue'];
+            case 'style':
+                if ($normalized !== '') $request = $normalized;
+                $plan = ['kind' => 'style', 'credits' => \App\Engines\Builder\Support\BuilderCapabilities::pricing()['style'] ?? 1];
+                try { $res = $this->applySiteStyle($wsId, $websiteId, $request, $site, $tv, $plan, $isStatic); }
+                catch (\Throwable $e) { Log::error('[Arthur] applySiteStyle failed', ['website' => $websiteId, 'error' => $e->getMessage()]); return $base + ['success' => false, 'code' => 'STYLE_FAILED', 'message' => 'I could not apply that design change just now — nothing on your site was altered.']; }
+                if (($res['code'] ?? '') === 'STYLE_NO_TARGET') {
+                    return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which part should change, and to what? For example the buttons, the header, the hero or the whole page — and a colour or a look.', 'options' => ['The buttons', 'The header', 'The hero', 'The whole page']];
+                }
+                return $res;
+            default:
+                // section_add, section_remove, page_add, image, video, overlay, image_edit, logo: the classic executors, with explicit wording
+                if ($normalized !== '') $request = $normalized;
+                return null;
+        }
     }
 
     /** STRESS C15 (2026-09-06): remove an Arthur-added section, or an added page, from a template site. Template-native sections stay editor-only. */

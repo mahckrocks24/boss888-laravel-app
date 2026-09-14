@@ -279,6 +279,14 @@ class CatalogueService
         if ($errors) return $this->fail('INVALID', implode(' ', $errors)) + ['errors' => $errors];
         $dup = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->whereRaw('LOWER(title) = ?', [mb_strtolower($a['title'])])->first();
         if ($dup) return $this->fail('DUPLICATE', 'There is already a ' . $spec['singular'] . ' called “' . $dup->title . '” — edit that one instead (say "change the price of ' . $dup->title . ' to …", or open it in the ' . $spec['label'] . ' panel).');
+        // an item removed earlier and added again by the same name comes back (its photos and details with it)
+        $gone = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNotNull('deleted_at')->whereRaw('LOWER(title) = ?', [mb_strtolower($a['title'])])->orderByDesc('deleted_at')->first();
+        if ($gone) {
+            DB::table('catalogue_items')->where('id', $gone->id)->update($a + ['deleted_at' => null, 'updated_at' => now()]);
+            $sync = $this->sync($websiteId, $kind, 'catalogue_restore');
+            $row = DB::table('catalogue_items')->where('id', $gone->id)->first();
+            return ['success' => true, 'item' => $this->present($spec, $row), 'sync' => $sync, 'restored' => true, 'message' => '“' . $row->title . '” is back on the site.'];
+        }
         $a['slug'] = $this->uniqueSlug($websiteId, $kind, $a['title']);
         if (! isset($a['sort_order'])) { $a['sort_order'] = (int) DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->max('sort_order') + 1; }   // new items go last; Featured puts one first
         $a += ['workspace_id' => $wsId, 'website_id' => $websiteId, 'kind' => $kind, 'source' => $source, 'created_by' => $actorId, 'created_at' => now(), 'updated_at' => now()];
@@ -986,6 +994,122 @@ class CatalogueService
         }
 
         // Nothing here matched a catalogue command: hand the request back so the copy / design paths answer it.
+        return $base + ['success' => false, 'code' => 'PASS', 'message' => ''];
+    }
+
+    /**
+     * Structured entry for the model-first path (DEC-0050): the model already parsed kind, action and parameters.
+     * Ambiguity comes back as code WHICH with tappable options; an action this catalogue cannot do comes back as PASS.
+     */
+    public function execute(int $wsId, int $websiteId, array $p, array $ctx = []): array
+    {
+        $base = ['kind' => 'catalogue', 'credits' => 0, 'applied' => 0, 'actions_applied' => 0];
+        $site = $this->owned($wsId, $websiteId);
+        $kind = (string) ($p['kind'] ?? '');
+        $spec = $site ? $this->spec($websiteId, $kind, $site) : null;
+        if (! $site || ! $spec) return $base + ['success' => false, 'code' => 'PASS', 'message' => ''];
+        $action = strtolower((string) ($p['action'] ?? ''));
+        $actor = (int) ($ctx['user_id'] ?? 0) ?: null;
+        if ($action === 'toggle') {
+            $on = ! in_array(strtolower((string) ($p['status'] ?? 'on')), ['off', 'hidden', 'disable', 'disabled'], true);
+            $res = $this->setEnabled($wsId, $websiteId, $kind, $on);
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+        }
+        if (! $spec['enabled']) return $base + ['success' => false, 'code' => 'CATALOGUE_OFF', 'message' => $spec['label'] . ' are switched off for this site — say "turn ' . strtolower($spec['label']) . ' on" and I will bring the page back.'];
+        if (empty($spec['seeded_at'])) { $this->seedFromSite($wsId, $websiteId, $site, $spec); }
+        $rows = $this->rows($websiteId, $kind);
+        if ($action === 'add') {
+            $in = ['title' => trim((string) ($p['title'] ?? $p['item'] ?? '')), 'status' => (string) ($p['status'] ?? $spec['default_status'])];
+            if (! isset($spec['statuses'][$in['status']])) $in['status'] = $spec['default_status'];
+            foreach (['price', 'currency', 'period' => 'price_period', 'summary', 'note' => 'closed_note'] as $from => $to) { if (is_int($from)) $from = $to; if (isset($p[$from]) && $p[$from] !== '' && $p[$from] !== null) $in[$to] = $p[$from]; }
+            foreach ((array) ($p['attrs'] ?? []) as $k => $v) { if ($v !== '' && $v !== null) $in[$k] = $v; }
+            if ($in['title'] === '') return $base + ['success' => false, 'code' => 'WHICH', 'message' => 'What should the new ' . $spec['singular'] . ' be called?', 'options' => []];
+            $res = $this->create($wsId, $websiteId, $kind, $in, $actor, 'arthur');
+            if (empty($res['success'])) return $base + ['success' => false, 'code' => $res['code'] ?? 'INVALID', 'message' => (string) ($res['message'] ?? '')];
+            $L = $res['item'];
+            $placement = (string) substr((string) $res['message'], (int) strpos((string) $res['message'], '.') + 1);
+            if ($L['page'] && str_contains($placement, 'its own page')) $placement = str_replace('its own page', 'its own page at ' . $L['page'], $placement);
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'item' => $L, 'message' => 'Added “' . $L['title'] . '”' . ($L['price'] !== null || $L['price_label'] ? ' at ' . $L['price_display'] : '') . ($L['specs_display'] !== '' ? ' (' . $L['specs_display'] . ')' : '') . '.' . $placement];
+        }
+        if ($action === 'restore') {   // bring back something removed by chat or in the panel
+            $name = mb_strtolower(trim((string) ($p['item'] ?? $p['title'] ?? '')));
+            $q = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNotNull('deleted_at')->orderByDesc('deleted_at');
+            $gone = $name !== '' ? ((clone $q)->whereRaw('LOWER(title) = ?', [$name])->first() ?: (clone $q)->whereRaw('LOWER(title) LIKE ?', ['%' . $name . '%'])->first()) : $q->first();
+            if (! $gone) return $base + ['success' => false, 'code' => 'NOTHING_TO_RESTORE', 'message' => 'Nothing has been removed from ' . strtolower($spec['label']) . ' that I could bring back.'];
+            DB::table('catalogue_items')->where('id', $gone->id)->update(['deleted_at' => null, 'updated_at' => now()]);
+            $this->sync($websiteId, $kind, 'catalogue_restore');
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $gone->title . '” is back on the site.'];
+        }
+        // every other action needs one item
+        $name = trim((string) ($p['item'] ?? $p['title'] ?? ''));
+        $target = null;
+        foreach ($rows as $r) { if (mb_strtolower($r->title) === mb_strtolower($name)) { $target = $r; break; } }
+        if (! $target && $name !== '') $target = $this->findTarget($spec, $name, $rows, $rows);
+        if (! $target) {
+            $opts = array_map(fn($r) => (string) $r->title, array_slice($rows, 0, 4));
+            return $base + ['success' => false, 'code' => 'WHICH', 'message' => $rows === [] ? 'There are no ' . strtolower($spec['label']) . ' on this site yet — shall I add one?' : 'Which ' . $spec['singular'] . ' do you mean?', 'options' => $opts];
+        }
+        // A removal or a status change is judged on the CUSTOMER's words, not the model's pick: when two items share the words
+        // they used ("the Hyde Park one" with two Hyde Park listings), ask — even if the model chose one of them.
+        if (in_array($action, ['remove', 'status'], true) && ! empty($p['_customer'])) {
+            $said = mb_strtolower((string) $p['_customer']);
+            if (! str_contains($said, mb_strtolower($target->title))) {
+                $phrase = (string) (preg_split('/\b(as|to|for|at|with|is|are|now|because|from)\b|[,;—–:]/', $said, 2)[0] ?? $said);
+                // "the charming home" names exactly one title as a phrase, even though "charming" alone fits two
+                $core = trim(preg_replace('/\s+/', ' ', preg_replace('/\b(the|a|an|that|this|one|please|remove|delete|take|down|mark|set|hide|unhide|show|flag|listing|listings|item|items|it)\b/', ' ', $phrase) ?? $phrase) ?? $phrase);
+                $hay = fn($r) => mb_strtolower($r->title . ' ' . (($this->attrs($r)['location'] ?? '')));
+                if (mb_strlen($core) >= 4) {
+                    $byPhrase = array_values(array_filter($rows, fn($r) => str_contains($hay($r), $core)));
+                    if (count($byPhrase) === 1) { $target = $byPhrase[0]; goto resolved; }
+                }
+                // otherwise every distinctive word the customer used must sit in ONE item; two → ask; none → trust the model's pick
+                $nounWords = array_filter(explode('|', $spec['nouns']), fn($n) => ! str_contains($n, ' '));
+                $words = array_values(array_filter(array_diff(preg_split('/[^a-z0-9]+/', $phrase), self::STOP, $nounWords), fn($w) => strlen($w) >= 3 && ! preg_match('/^\d+$/', $w)));
+                if ($words !== []) {
+                    $all = array_values(array_filter($rows, function ($r) use ($words, $hay) { $tl = $hay($r); foreach ($words as $w) { if (! str_contains($tl, $w)) return false; } return true; }));
+                    if (count($all) > 1) {
+                        return $base + ['success' => false, 'code' => 'WHICH', 'message' => count($all) . ' ' . strtolower($spec['label']) . ' match that — which one?', 'options' => array_map(fn($r) => (string) $r->title, array_slice($all, 0, 4))];
+                    }
+                    if (count($all) === 1) { $target = $all[0]; }
+                }
+            }
+        }
+        resolved:
+        if ($action === 'price') {
+            $in = [];
+            if (isset($p['price']) && $p['price'] !== '' && $p['price'] !== null) { $in['price'] = $p['price']; $in['price_label'] = ''; }
+            if (! empty($p['currency'])) $in['currency'] = $p['currency'];
+            if (isset($p['period'])) $in['price_period'] = $p['period'];
+            if ($in === []) return $base + ['success' => false, 'code' => 'WHICH', 'message' => 'What should the new price of “' . $target->title . '” be?', 'options' => []];
+            $res = $this->update($wsId, $websiteId, $kind, (int) $target->id, $in, 'catalogue_price');
+            if (empty($res['success'])) return $base + ['success' => false, 'message' => (string) ($res['message'] ?? '')];
+            $open = array_values(array_filter($this->rows($websiteId, $kind), fn($r) => in_array($r->status, $spec['open'], true)));
+            $pos = array_search((int) $target->id, array_map(fn($r) => (int) $r->id, $open), true);
+            $onHome = $pos !== false && $pos < $spec['slots'];
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $target->title . '” is now ' . $res['item']['price_display'] . ($onHome ? ' on the home page and the ' : ' on the ') . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' and its own page' : '') . '.'];
+        }
+        if ($action === 'status') {
+            $status = (string) ($p['status'] ?? '');
+            if (! isset($spec['statuses'][$status])) { $status = (string) array_search(mb_strtolower($status), array_map('mb_strtolower', $spec['statuses']), true); }
+            if ($status === '' || ! isset($spec['statuses'][$status])) return $base + ['success' => false, 'code' => 'WHICH', 'message' => 'Which status should “' . $target->title . '” have?', 'options' => array_slice(array_values($spec['statuses']), 0, 4)];
+            $note = isset($p['note']) && trim((string) $p['note']) !== '' ? trim((string) $p['note']) : null;
+            $res = $this->setStatus($wsId, $websiteId, $kind, (int) $target->id, $status, $note);
+            if (empty($res['success'])) return $base + ['success' => false, 'message' => (string) ($res['message'] ?? '')];
+            $msg = '“' . $target->title . '” is now marked ' . strtolower($spec['statuses'][$status]);
+            if (in_array($status, $spec['closed_statuses'], true)) $msg .= $spec['closed'] ? ' — it moved to the ' . strtolower($spec['closed_label'] ?: 'closed') . ' row on the home page and the ' . $spec['label'] . ' page' : ' — it shows under ' . strtolower($spec['closed_label'] ?: 'closed') . ' on the ' . $spec['label'] . ' page';
+            $msg .= $note ? ', with the note “' . $note . '” — only what you told me.' : '.';
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => $msg];
+        }
+        if ($action === 'rename') {
+            $new = trim((string) ($p['title'] ?? ''));
+            if ($new === '' || mb_strtolower($new) === mb_strtolower($target->title)) return $base + ['success' => false, 'code' => 'WHICH', 'message' => 'What should “' . $target->title . '” be called?', 'options' => []];
+            $res = $this->update($wsId, $websiteId, $kind, (int) $target->id, ['title' => $new], 'catalogue_rename');
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+        }
+        if ($action === 'remove') {
+            $res = $this->delete($wsId, $websiteId, $kind, (int) $target->id);
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+        }
         return $base + ['success' => false, 'code' => 'PASS', 'message' => ''];
     }
 

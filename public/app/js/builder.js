@@ -1558,6 +1558,11 @@ async function _t3ArthurSend(websiteId) {
           var _human = d.message || (d.error === 'insufficient_credits' ? 'Not enough credits for this change (1 credit per edit).' : d.error);
           if (d.error === 'insufficient_credits' || d.error === 'INSUFFICIENT_CREDITS') _human += ' Add credits under Billing to continue.';
           d = { error: _human, conflict: !!d.conflict, legacy: !!d.legacy };
+        } else if (d && (d.kind === 'clarify' || d.method === 'clarify')) {
+          // ARTHUR LLM-FIRST (DEC-0050): a question with tappable options, never a dead end
+          d = { method: 'clarify', message: d.message || d.question || '', options: d.options || [] };
+        } else if (d && (d.kind === 'answer' || d.kind === 'unsupported')) {
+          d = { method: 'chat', message: d.message || d.reply || '' };
         } else if (d && d.success === false) {
           // ARTHUR EDITOR FIX (2026-09-10) — the endpoint answers HTTP 200 with
           // {success:false, reply:"…"} when nothing on the site actually changed:
@@ -1607,6 +1612,14 @@ async function _t3ArthurSend(websiteId) {
       }
       if (typeof wsLoadSites === 'function' && (d.action === 'page_added' || d.action === 'page_deleted' || d.action === 'page_duplicated')) {
         wsLoadSites();
+      }
+    } else if (d.method === 'clarify') {
+      if (feed) {
+        var _qid = 'q_' + Date.now();
+        feed.innerHTML += '<div id="' + _qid + '" style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid var(--p)"><div style="color:var(--t1);font-size:13px;line-height:1.5">' + bld_escH(d.message) + '</div>'
+          + ((d.options && d.options.length) ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + d.options.map(function (o) { return '<button type="button" class="lu-btn lu-btn--sm" data-arthur-opt="' + bld_escH(o) + '">' + bld_escH(o) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+        var _q = document.getElementById(_qid);
+        if (_q) { _q.querySelectorAll('[data-arthur-opt]').forEach(function (b) { b.addEventListener('click', function () { var i = document.getElementById('t3-arthur-input'); if (i) { i.value = b.getAttribute('data-arthur-opt'); _t3ArthurSend(websiteId); } }); }); _q.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       }
     } else if (d.method === 'noop') {
       // Not an error — Arthur understood, but nothing on the site changed and nothing was charged.
