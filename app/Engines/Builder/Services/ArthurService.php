@@ -1698,6 +1698,9 @@ PROMPT;
                     : "I couldn't generate that image right now — " . self::customerReason($why) . " Nothing was charged and nothing on your site changed. You can still click any image in the preview to upload your own."];
         }
         $url   = (string) $res['url'];
+        // Same-origin images go in as a path, never with a host, so the export does not depend on the current domain.
+        $pu = parse_url($url);
+        if (! empty($pu['path']) && str_starts_with((string) $pu['path'], '/storage/') && (empty($pu['host']) || str_contains((string) $pu['host'], 'levelupgrowth'))) { $url = (string) $pu['path']; }
         $field = $target === 'about' ? 'about_image' : ($target === 'gallery' ? 'gallery_1_image' : 'hero_image');
         $placed = false;
         if ($isStatic) {
