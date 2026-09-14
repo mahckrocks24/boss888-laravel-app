@@ -2030,6 +2030,249 @@ PROMPT;
     }
 
 
+    /* ═══════════════ LAYOUT SWITCHER (2026-09-14, Owner: "allow users to pick a template on arthur editor, like the layout and structure") ═══════════════ */
+
+    /** Credits charged when a switch must write copy the old layout never had (one coverage pass, the build's own). */
+    public const LAYOUT_FILL_CREDITS = 5;
+
+    /** The design directory a site is built from, and its industry. */
+    private function siteDesignSlug(object $site, array $settings): string
+    {
+        foreach ([(string) ($settings['template'] ?? ''), (string) ($settings['industry'] ?? ''), (string) ($site->template_industry ?? ''), (string) ($site->template ?? '')] as $cand) {
+            $cand = preg_replace('/[^a-z0-9_]/', '', strtolower($cand));
+            if ($cand !== '' && is_file(storage_path("templates/{$cand}/manifest.json"))) { return $cand; }
+        }
+        return '';
+    }
+
+    /** Copy variables of a manifest: the same rule the coverage pass uses (text with a real sentence as default). */
+    private static function layoutCopyKeys(array $manifest): array
+    {
+        $skipKey   = '/(image|img|photo|logo|url|color|colour|display|icon|bg|background|style|css|href|src|width|height|dim|ratio|font|hex|locale|canonical|slug|og_image)/i';
+        $structKey = '/(nav|menu|link|button|_cta$|^cta|tab|breadcrumb|^logo|_label$)/i';
+        $out = [];
+        foreach (($manifest['variables'] ?? []) as $k => $spec) {
+            if (! is_array($spec)) { continue; }
+            $type = strtolower((string) ($spec['type'] ?? ''));
+            if (in_array($type, ['color', 'image', 'url', 'file', 'media', 'number', 'bool', 'boolean'], true)) { continue; }
+            $key = (string) $k;
+            if (preg_match($skipKey, $key) || preg_match($structKey, $key)) { continue; }
+            $def = $spec['default'] ?? null;
+            if (! is_string($def)) { continue; }
+            $def = trim($def);
+            if ((strlen($def) < 15 || strpos($def, ' ') === false) && ! preg_match(self::CATALOGUE_KEY, $key)) { continue; }
+            if (preg_match('~^(/|https?:|\#|display:)~i', $def)) { continue; }
+            $out[$key] = $def;
+        }
+        return $out;
+    }
+
+    /**
+     * The other layouts of this site's design family, each with what carries over and what a switch would cost.
+     * Screenshots are the ones shot for the home-page carousel.
+     */
+    public function layoutsFor(int $wsId, int $websiteId): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found', 'layouts' => []]; }
+        if (! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) { return ['success' => false, 'error' => 'not_static', 'message' => 'Layouts apply to template sites.', 'layouts' => []]; }
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $current  = $this->siteDesignSlug($site, $settings);
+        $industry = $current !== '' ? $this->templates->industryOf($current) : '';
+        $out = [];
+        foreach (glob(storage_path('templates/*/manifest.json')) ?: [] as $mf) {
+            $slug = basename(dirname($mf));
+            $m = json_decode((string) @file_get_contents($mf), true);
+            if (! is_array($m)) { continue; }
+            if (array_key_exists('is_active', $m) && ! $m['is_active'] && $slug !== $current) { continue; }
+            $ind = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($m['industry'] ?? $slug)));
+            if ($ind !== $industry) { continue; }
+            $copy = self::layoutCopyKeys($m);
+            $have = 0; $gaps = 0;
+            foreach ($copy as $key => $def) {
+                $cur = $tv[$key] ?? null;
+                if (is_string($cur) && trim($cur) !== '' && trim($cur) !== $def) { $have++; } else { $gaps++; }
+            }
+            $total = count($copy);
+            $shot  = "/assets/product/templates/{$slug}.webp";
+            $out[] = [
+                'slug' => $slug, 'name' => (string) ($m['name'] ?? ucwords(str_replace('_', ' ', $slug))), 'industry' => $ind,
+                'current' => $slug === $current,
+                'screenshot' => is_file(public_path('marketing-next/dist-root' . $shot)) ? $shot : null,
+                'carry_over' => $total > 0 ? (int) round(100 * $have / $total) : 100,
+                'gaps' => $slug === $current ? 0 : $gaps,
+                'credits' => ($slug === $current || $gaps === 0) ? 0 : self::LAYOUT_FILL_CREDITS,
+            ];
+        }
+        usort($out, fn ($a, $b) => ((int) $b['current'] <=> (int) $a['current']) ?: strcmp($a['name'], $b['name']));
+        return ['success' => true, 'current' => $current, 'industry' => $industry, 'layouts' => $out];
+    }
+
+    /**
+     * Render another design of the same family with THIS site's content. Text the new design needs and the site
+     * never had is filled by the build's own coverage pass when $fillGaps is true, else it keeps the design's copy.
+     * @return array{html:string, variables:array, filled:int}
+     */
+    private function composeLayout(int $wsId, int $websiteId, object $site, array $settings, array $tv, string $design, bool $fillGaps): array
+    {
+        $manifest = $this->templates->getManifest($design) ?: [];
+        $industry = $this->templates->industryOf($design);
+        $variables = [];
+        foreach (($manifest['variables'] ?? []) as $k => $spec) {
+            $variables[(string) $k] = is_array($spec) ? (string) ($spec['default'] ?? '') : (string) $spec;
+        }
+        // the site's own content wins wherever the names match; everything else the site remembers rides along
+        foreach ($tv as $k => $v) { if (is_scalar($v) || is_array($v)) { $variables[(string) $k] = $v; } }
+        // …and what the page SHOWS wins over what the record remembers (inline edits, restores and old tests can leave
+        // the record behind; the export is what the customer has been looking at).
+        foreach ($this->harvestExportFields($websiteId) as $k => $v) { $variables[$k] = $v; }
+        $variables['business_name'] = (string) ($tv['business_name'] ?? $site->name);
+        // the design's own colour roles take the site's palette, exactly as a build would paint them
+        $colors = array_filter(['primary' => $tv['primary_color'] ?? null, 'secondary' => $tv['secondary_color'] ?? null, 'accent' => $tv['accent_color'] ?? null]);
+        if ($colors !== []) { $this->applyBrandColors($variables, $manifest, $colors); }
+        $filled = 0;
+        if ($fillGaps) {
+            $svc = [];
+            foreach ($tv as $k => $v) { if (preg_match('/^service_\d+_(title|name)$/', (string) $k) && is_string($v) && trim($v) !== '') { $svc[] = trim($v); } }
+            $location = (string) ($tv['location'] ?? $tv['city'] ?? $tv['contact_city'] ?? '');
+            $data = ['business_name' => $variables['business_name'], 'industry' => $industry, 'location' => $location, 'services' => $svc,
+                'description' => (string) ($tv['meta_description'] ?? $tv['business_tagline'] ?? '')];
+            $before = $variables;
+            try {
+                $variables = $this->fillTemplateTextCoverage($variables, $manifest, $data, $industry, implode(', ', $svc), $location !== '' ? $location : 'your area', false);
+            } catch (\Throwable $e) { Log::warning('[Arthur] layout coverage pass failed: ' . $e->getMessage()); }
+            foreach (self::layoutCopyKeys($manifest) as $key => $def) {
+                if (($before[$key] ?? null) !== ($variables[$key] ?? null)) { $filled++; }
+            }
+        }
+        $data = ['business_name' => $variables['business_name']];
+        $removeBlocks = \App\Engines\Builder\Support\TemplateArchetypes::blocksToRemove($industry, \App\Engines\Builder\Support\TemplateArchetypes::looksEstablished($data));
+        $html = \App\Engines\Builder\Support\TemplateArchetypes::removeBlocks($this->scrubSampleStaff($this->templates->render($design, $variables, $websiteId)), $removeBlocks);
+        $html = $this->templates->stripDanglingNavAnchors($html);
+        // the design this export was rendered from, readable by the editor and by a later switch
+        $html = preg_replace('~<!-- lug-design:[a-z0-9_]+ -->\s*~', '', $html) ?? $html;
+        $html = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', "<!-- lug-design:{$design} -->\n</head>", $html) : $html . "<!-- lug-design:{$design} -->";
+        return ['html' => $html, 'variables' => $variables, 'filled' => $filled];
+    }
+
+    /**
+     * Every data-field value the export currently shows: text fields as their visible text, image fields as their
+     * URL. Nested wrappers (a hero that contains other fields) are skipped so a container never overwrites its parts.
+     * @return array<string,string>
+     */
+    private function harvestExportFields(int $websiteId): array
+    {
+        $index = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (! is_file($index)) { return []; }
+        $html = (string) @file_get_contents($index);
+        if ($html === '') { return []; }
+        $out = [];
+        try {
+            $dom = new \DOMDocument();
+            libxml_use_internal_errors(true);
+            $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NOWARNING | LIBXML_NOERROR);
+            libxml_clear_errors();
+            $xp = new \DOMXPath($dom);
+            foreach ($xp->query('//*[@data-field]') as $el) {
+                if (! $el instanceof \DOMElement) { continue; }
+                $name = trim((string) $el->getAttribute('data-field'));
+                if ($name === '' || ! preg_match('/^[a-z0-9_]+$/i', $name)) { continue; }
+                $isImg = str_ends_with($name, '_image') || $name === 'logo_url' || str_contains($name, 'image_') || str_contains($name, '_img');
+                if ($isImg) {
+                    $url = '';
+                    if (strtolower($el->nodeName) === 'img') { $url = (string) $el->getAttribute('src'); }
+                    if ($url === '') { $img = $el->getElementsByTagName('img')->item(0); if ($img instanceof \DOMElement) { $url = (string) $img->getAttribute('src'); } }
+                    if ($url === '' && preg_match('~url\((["\']?)([^)"\']+)\1\)~i', (string) $el->getAttribute('style'), $m)) { $url = $m[2]; }
+                    $url = trim($url);
+                    if ($url !== '' && ! str_starts_with($url, '{{')) { $out[$name] = $url; }
+                    continue;
+                }
+                if ($xp->query('.//*[@data-field]', $el)->length > 0) { continue; }   // a wrapper of other fields
+                $text = trim(preg_replace('/\s+/u', ' ', (string) $el->textContent) ?? '');
+                if ($text !== '' && ! str_starts_with($text, '{{') && mb_strlen($text) <= 2000) { $out[$name] = $text; }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] harvestExportFields: ' . $e->getMessage());
+        }
+        return $out;
+    }
+
+    /** Free: the chosen layout with the site's content, finished exactly as a deploy would be, for the editor's iframe. */
+    public function previewLayout(int $wsId, int $websiteId, string $design): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found']; }
+        $design = preg_replace('/[^a-z0-9_]/', '', strtolower($design));
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $current  = $this->siteDesignSlug($site, $settings);
+        if ($design === '' || ! is_file(storage_path("templates/{$design}/manifest.json"))) { return ['success' => false, 'error' => 'unknown_design', 'message' => 'That layout does not exist.']; }
+        if ($current !== '' && $this->templates->industryOf($design) !== $this->templates->industryOf($current)) { return ['success' => false, 'error' => 'other_family', 'message' => 'That layout belongs to a different design family. Ask Arthur to build a new site for it.']; }
+        try {
+            $c = $this->composeLayout($wsId, $websiteId, $site, $settings, $tv, $design, false);
+            $html = $this->templates->finishForPreview($websiteId, $c['html']);
+            return ['success' => true, 'design' => $design, 'html' => $html];
+        } catch (\Throwable $e) {
+            Log::warning('[Arthur] layout preview failed', ['website' => $websiteId, 'design' => $design, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'render_failed', 'message' => 'That layout could not be rendered just now; nothing was changed.'];
+        }
+    }
+
+    /** Apply: snapshot → compose (filling gaps if needed, charged) → deploy → verify from the file → record. */
+    public function applyLayout(int $wsId, int $websiteId, string $design, ?int $actorId = null): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found', 'message' => 'That website is not in this workspace.']; }
+        if (! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) { return ['success' => false, 'error' => 'not_static', 'message' => 'Layouts apply to template sites.']; }
+        $design = preg_replace('/[^a-z0-9_]/', '', strtolower($design));
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $tv       = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $current  = $this->siteDesignSlug($site, $settings);
+        if ($design === '' || ! is_file(storage_path("templates/{$design}/manifest.json"))) { return ['success' => false, 'error' => 'unknown_design', 'message' => 'That layout does not exist.']; }
+        if ($design === $current) { return ['success' => false, 'error' => 'already_current', 'message' => 'That is already the layout in use.']; }
+        if ($current !== '' && $this->templates->industryOf($design) !== $this->templates->industryOf($current)) { return ['success' => false, 'error' => 'other_family', 'message' => 'That layout belongs to a different design family. Ask Arthur to build a new site for it.']; }
+        $info = null;
+        foreach ($this->layoutsFor($wsId, $websiteId)['layouts'] ?? [] as $l) { if ($l['slug'] === $design) { $info = $l; } }
+        $cost = (int) ($info['credits'] ?? 0);
+        $credits = app(\App\Core\Billing\CreditService::class);
+        if ($cost > 0 && ! $credits->hasBalance($wsId, $cost)) {
+            return ['success' => false, 'error' => 'insufficient_credits', 'message' => "Switching to this layout fills " . (int) ($info['gaps'] ?? 0) . " texts the old one never had, which needs {$cost} credits. Nothing was changed."];
+        }
+        app(TemplateService::class)->snapshotToHistory($websiteId, 'layout_switch');
+        try {
+            $c = $this->composeLayout($wsId, $websiteId, $site, $settings, $tv, $design, $cost > 0);
+            $this->templates->deploy($websiteId, $c['html']);
+        } catch (\Throwable $e) {
+            Log::error('[Arthur] layout apply failed', ['website' => $websiteId, 'design' => $design, 'error' => $e->getMessage()]);
+            app(TemplateService::class)->undoLatest($websiteId);
+            return ['success' => false, 'error' => 'apply_failed', 'message' => 'That layout could not be applied, so I put the site back exactly as it was. Nothing was charged.'];
+        }
+        $now = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if (! str_contains($now, "<!-- lug-design:{$design} -->")) {
+            app(TemplateService::class)->undoLatest($websiteId);
+            Log::warning('[Arthur] layout apply did not verify; rolled back', ['website' => $websiteId, 'design' => $design]);
+            return ['success' => false, 'error' => 'verify_failed', 'message' => 'The new layout did not land cleanly, so I put the site back exactly as it was. Nothing was charged.'];
+        }
+        $settings['template'] = $design;
+        $settings['layout_switched_at'] = now()->toIso8601String();
+        $settings['layout_previous'] = $current;
+        DB::table('websites')->where('id', $websiteId)->update([
+            'settings_json' => json_encode($settings), 'template_variables' => json_encode($c['variables']), 'updated_at' => now(),
+        ]);
+        $charged = 0;
+        if ($cost > 0 && $c['filled'] > 0) {
+            $credits->debit($wsId, $cost, 'builder_arthur_layout', $websiteId, ['design' => $design, 'from' => $current, 'filled' => $c['filled']]);
+            $charged = $cost;
+        }
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        Log::info('[Arthur] layout switched', ['website' => $websiteId, 'from' => $current, 'to' => $design, 'filled' => $c['filled'], 'credits' => $charged, 'actor' => $actorId]);
+        $name = (string) ($info['name'] ?? ucwords(str_replace('_', ' ', $design)));
+        return ['success' => true, 'design' => $design, 'from' => $current, 'filled' => $c['filled'], 'credits' => $charged,
+            'message' => "Switched to the {$name} layout with your content" . ($c['filled'] > 0 ? ", and wrote {$c['filled']} texts the old layout never had ({$charged} credits)" : '') . '. Undo puts the old layout back.'];
+    }
+
+
     /**
      * The curated palettes for THIS built site, each with the exact :root variables it would rewrite, so the
      * editor can preview a palette instantly in the iframe and the apply step writes the very same map.

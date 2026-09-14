@@ -907,6 +907,16 @@ class TemplateService
         \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($s)]);
     }
 
+    /** LAYOUT SWITCHER (2026-09-14): everything deploy() does to the markup, without writing — for a faithful preview. */
+    public function finishForPreview(int $websiteId, string $html): string
+    {
+        $html = $this->honestBlogSection($websiteId, $html);
+        $html = $this->reapplyStoredSections($websiteId, $html);
+        $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
+        $html = self::injectMobileSafety($html);
+        return preg_replace('#href="/blog/?"#i', 'href="blog/"', $html) ?? $html;
+    }
+
     private function reapplyStoredSections(int $websiteId, string $html): string
     {
         try {
@@ -1473,8 +1483,9 @@ class TemplateService
             // The record travels with the file: template_variables hold palette/design_extras/colours, and an undo
             // that put the old bytes back while the record still claimed the new palette would lie on rebuild.
             try {
-                $tvRaw = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables');
-                @file_put_contents("{$dir}/index-{$stamp}.json", json_encode(['template_variables' => $tvRaw !== null ? (string) $tvRaw : null, 'saved_at' => date('c'), 'reason' => $reason]));
+                $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['template_variables', 'settings_json']);
+                $tvRaw = $row->template_variables ?? null;
+                @file_put_contents("{$dir}/index-{$stamp}.json", json_encode(['template_variables' => $tvRaw !== null ? (string) $tvRaw : null, 'settings_json' => isset($row->settings_json) ? (string) $row->settings_json : null, 'saved_at' => date('c'), 'reason' => $reason]));
             } catch (\Throwable $e) {}
             foreach ($this->nestedPages($root) as $rel => $abs) {
                 $dst = "{$dir}/index-{$stamp}.d/{$rel}";
@@ -1554,8 +1565,9 @@ class TemplateService
         if (! is_file($side)) { return false; }
         $j = json_decode((string) @file_get_contents($side), true);
         if (! is_array($j) || ! array_key_exists('template_variables', $j)) { return false; }
-        $tvRaw = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables');
-        return (string) $j['template_variables'] === (string) $tvRaw;
+        $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['template_variables', 'settings_json']);
+        if ((string) $j['template_variables'] !== (string) ($row->template_variables ?? '')) { return false; }
+        return ! array_key_exists('settings_json', $j) || (string) $j['settings_json'] === (string) ($row->settings_json ?? '');
     }
 
     private function nestedUnchangedSince(string $root, string $latestIndexFile): bool
@@ -1640,8 +1652,11 @@ class TemplateService
         if (! is_file($side)) { return; }
         try {
             $j = json_decode((string) @file_get_contents($side), true);
-            if (is_array($j) && array_key_exists('template_variables', $j) && $j['template_variables'] !== null) {
-                \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['template_variables' => $j['template_variables'], 'updated_at' => now()]);
+            if (is_array($j)) {
+                $upd = [];
+                if (array_key_exists('template_variables', $j) && $j['template_variables'] !== null) { $upd['template_variables'] = $j['template_variables']; }
+                if (array_key_exists('settings_json', $j) && $j['settings_json'] !== null) { $upd['settings_json'] = $j['settings_json']; }
+                if ($upd !== []) { $upd['updated_at'] = now(); \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update($upd); }
             }
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[TemplateService] record sidecar restore failed: ' . $e->getMessage());

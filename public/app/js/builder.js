@@ -984,6 +984,7 @@ function _wsShowTemplateEditor(site) {
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
+      '<button type="button" id="t3-layout-btn" onclick="wsOpenLayouts(' + wsId + ')" title="Switch to another layout of this design family — preview is free" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Layout</button>' +
       '<button type="button" onclick="wsOpenPalettes(' + wsId + ')" title="Colour palettes — hover to preview, click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
@@ -1069,6 +1070,7 @@ async function wsCloseTemplateEditor() {
     }
   }
   var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
+  var lay = document.getElementById('t3-lay'); if (lay) lay.remove(); window._t3LayoutPreviewing = false;
   bldCurrentPageId = null;
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
@@ -1098,6 +1100,7 @@ function _wsTplSetDevice(key) {
 }
 
 function _t3InitEditing(iframe) {
+  if (window._t3LayoutPreviewing) return; // a previewed layout is not the live site: nothing to edit yet
   // Editing is already injected server-side in the preview route
   // Listen for field changes from iframe
   window.addEventListener('message', _t3HandleMessage);
@@ -3805,3 +3808,93 @@ function _t3ExitChoice(n) {
     var s = box.querySelector('button[data-c=save]'); if (s) s.focus();
   });
 }
+
+/* ══════════════ LAYOUT SWITCHER (2026-09-14) — sibling designs, free preview, apply with undo ══════════════ */
+window._t3LayoutPreviewing = false;
+function _t3LayoutBar(text, onApply, onBack) {
+  var old = document.getElementById('t3-lay-bar'); if (old) old.remove();
+  var stage = document.querySelector('#template-editor-view .pe-stage'); if (!stage) return;
+  var bar = document.createElement('div'); bar.id = 't3-lay-bar';
+  bar.style.cssText = 'position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:125;background:var(--s1);border:1px solid var(--bd2);border-radius:999px;padding:8px 10px 8px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 12px 32px rgba(0,0,0,.4);font-family:var(--fb);font-size:13px;color:var(--t1)';
+  bar.innerHTML = '<span>' + bld_escH(text) + '</span>'
+    + '<button type="button" class="lu-btn lu-btn--sm" data-a="back">Back to current</button>'
+    + '<button type="button" class="lu-btn lu-btn--sm" data-a="apply" style="background:var(--p);color:#fff;border-color:var(--p)">Apply this layout</button>';
+  bar.querySelector('[data-a=back]').addEventListener('click', onBack);
+  bar.querySelector('[data-a=apply]').addEventListener('click', onApply);
+  stage.appendChild(bar);
+}
+function _t3LayoutEndPreview() {
+  window._t3LayoutPreviewing = false;
+  var bar = document.getElementById('t3-lay-bar'); if (bar) bar.remove();
+  var f = document.getElementById('t3-preview');
+  if (f) { try { f.removeAttribute('srcdoc'); } catch (_e) {} }
+  _t3ReloadPreview();
+}
+window.wsOpenLayouts = async function (siteId) {
+  var old = document.getElementById('t3-lay');
+  if (old) { old.remove(); return; }
+  var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
+  var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
+  var panel = document.createElement('div');
+  panel.id = 't3-lay'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Layouts');
+  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(420px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.45);padding:14px;font-family:var(--fb)';
+  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Layouts</div><button type="button" id="t3-lay-x" aria-label="Close" style="background:none;border:1px solid var(--bd);color:var(--t2);width:28px;height:28px;border-radius:6px;cursor:pointer">×</button></div>'
+    + '<div id="t3-lay-sub" style="font-size:12px;color:var(--t3);margin-bottom:12px">Other layouts in this design family. Click one to preview it with your own content — free. Apply keeps your text, images, colours and added sections; Undo puts the old layout back.</div>'
+    + '<div id="t3-lay-list"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
+  stage.appendChild(panel);
+  panel.querySelector('#t3-lay-x').addEventListener('click', function () { panel.remove(); if (window._t3LayoutPreviewing) _t3LayoutEndPreview(); });
+  var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
+  var list = panel.querySelector('#t3-lay-list');
+  var data = null;
+  try {
+    var r = await fetch(API + 'builder/websites/' + siteId + '/layouts', { headers: auth, cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    data = await r.json();
+  } catch (e) { list.innerHTML = '<div class="lu-empty"><b>Couldn’t load layouts</b>' + bld_escH(e.message) + '</div>'; return; }
+  var lays = (data && data.layouts) || [];
+  if (lays.length < 2) { list.innerHTML = '<div class="lu-empty"><b>This design family has one layout</b>Ask Arthur to build a new site for a different structure.</div>'; return; }
+  list.innerHTML = ''; list.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+  var busy = false;
+  lays.forEach(function (L) {
+    var card = document.createElement('div');
+    card.setAttribute('data-lay', L.slug);
+    card.style.cssText = 'border:1px solid ' + (L.current ? 'var(--p)' : 'var(--bd)') + ';border-radius:10px;overflow:hidden;background:var(--s2)';
+    card.innerHTML = (L.screenshot ? '<img src="' + L.screenshot + '" alt="" loading="lazy" style="display:block;width:100%;aspect-ratio:16/9;object-fit:cover;object-position:top;background:#0B0D13">' : '<div style="width:100%;aspect-ratio:16/9;background:#0B0D13"></div>')
+      + '<div style="padding:9px 10px 10px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">' + bld_escH(L.name) + '</div>'
+      + '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + (L.current ? '✓ Current layout' : (L.carry_over + '% of your content carries over · ' + (L.credits > 0 ? L.credits + ' credits to fill the rest' : 'free to apply'))) + '</div></div>'
+      + (L.current ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="preview">Preview</button>') + '</div>';
+    var btn = card.querySelector('[data-a=preview]');
+    if (btn) btn.addEventListener('click', async function () {
+      if (busy) return; busy = true; btn.disabled = true; btn.textContent = 'Rendering…';
+      try {
+        var rr = await fetch(API + 'builder/websites/' + siteId + '/layout/preview', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ design: L.slug }) });
+        var jj = null; try { jj = await rr.json(); } catch (_e) {}
+        if (!rr.ok || !jj || !jj.success || !jj.html) throw new Error((jj && (jj.message || jj.error)) || ('HTTP ' + rr.status));
+        window._t3LayoutPreviewing = true;
+        var f = document.getElementById('t3-preview'); if (f) f.srcdoc = jj.html;
+        _t3LayoutBar('Previewing “' + L.name + '”' + (L.credits > 0 ? ' — applying fills ' + L.gaps + ' missing texts for ' + L.credits + ' credits' : ' — free to apply'),
+          async function () {
+            var b = document.querySelector('#t3-lay-bar [data-a=apply]'); if (b) { b.disabled = true; b.textContent = 'Applying…'; }
+            try {
+              var ra = await fetch(API + 'builder/websites/' + siteId + '/layout', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ design: L.slug }) });
+              var ja = null; try { ja = await ra.json(); } catch (_e) {}
+              if (!ra.ok || !ja || !ja.success) throw new Error((ja && (ja.message || ja.error)) || ('HTTP ' + ra.status));
+              if (typeof showToast === 'function') showToast(ja.message || ('Switched to ' + L.name + '. Undo puts the old layout back.'), 'success');
+              window._t3LayoutPreviewing = false;
+              var bar = document.getElementById('t3-lay-bar'); if (bar) bar.remove();
+              var fr = document.getElementById('t3-preview'); if (fr) { try { fr.removeAttribute('srcdoc'); } catch (_e) {} }
+              panel.remove();
+              _t3ReloadPreview();
+            } catch (e) {
+              if (typeof showToast === 'function') showToast("Couldn’t apply that layout — " + e.message, 'error');
+              if (b) { b.disabled = false; b.textContent = 'Apply this layout'; }
+            }
+          },
+          function () { _t3LayoutEndPreview(); });
+      } catch (e) {
+        if (typeof showToast === 'function') showToast("Couldn’t preview that layout — " + e.message, 'error');
+      } finally { busy = false; btn.disabled = false; btn.textContent = 'Preview'; }
+    });
+    list.appendChild(card);
+  });
+};

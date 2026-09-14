@@ -70,6 +70,18 @@ use Illuminate\Support\Facades\Route;
             $res = app(\App\Engines\Builder\Services\TemplateService::class)->undoLatest((int) $id);
             return response()->json($res, ! empty($res['undone']) ? 200 : 422);
         });
+        // LAYOUT SWITCHER (2026-09-14) — sibling designs, free preview, apply with undo.
+        Route::get('/websites/{id}/layouts', fn(\Illuminate\Http\Request $r, $id) => response()->json(
+            app(\App\Engines\Builder\Services\ArthurService::class)->layoutsFor((int) $r->attributes->get('workspace_id'), (int) $id)
+        ));
+        Route::post('/websites/{id}/layout/preview', function (\Illuminate\Http\Request $r, $id) {
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->previewLayout((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('design', ''));
+            return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
+        Route::post('/websites/{id}/layout', function (\Illuminate\Http\Request $r, $id) {
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyLayout((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('design', ''), (int) ($r->attributes->get('user_id') ?? optional($r->user())->id ?? 0) ?: null);
+            return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
         Route::get('/pages/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) {
             $page = app($s)->getPage((int) $id, (int) $r->attributes->get('workspace_id'));
             return $page ? response()->json($page) : response()->json(['error' => 'Page not found'], 404);
