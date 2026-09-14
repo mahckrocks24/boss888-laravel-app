@@ -25,6 +25,9 @@ class CatalogueService
 {
     public const PLACEHOLDER = '/storage/template-images/listing-placeholder.svg';
     private const SYMBOLS = ['USD' => '$', 'EUR' => '€', 'GBP' => '£', 'AED' => 'AED ', 'PHP' => '₱', 'CAD' => 'C$', 'AUD' => 'A$', 'SGD' => 'S$', 'INR' => '₹', 'ZAR' => 'R', 'NZD' => 'NZ$', 'CHF' => 'CHF ', 'SAR' => 'SAR ', 'QAR' => 'QAR '];
+    /** Words that never name an item: verbs, articles, status words and the generic nouns of every kind. */
+    private const STOP = ['the', 'a', 'an', 'and', 'or', 'of', 'in', 'at', 'on', 'to', 'for', 'as', 'is', 'it', 'that', 'this', 'mark', 'set', 'flag', 'sold', 'let', 'under', 'offer', 'remove', 'delete', 'price', 'change', 'update', 'please', 'take', 'down', 'withdrawn', 'reduce', 'lower', 'raise', 'drop', 'with', 'from', 'our', 'my', 'now', 'has', 'been', 'was', 'rename', 'call', 'hide', 'out', 'available', 'again', 'back', 'full', 'reserved', 'show', 'reprice', 'cut', 'increase',
+        'listing', 'listings', 'property', 'properties', 'house', 'home', 'apartment', 'flat', 'villa', 'condo', 'service', 'services', 'item', 'items', 'dish', 'dishes', 'treatment', 'treatments', 'product', 'products', 'course', 'courses', 'room', 'rooms', 'suite', 'package', 'packages', 'plan', 'plans', 'membership', 'memberships', 'tier', 'session', 'sessions', 'class', 'classes', 'programme', 'programmes', 'program', 'programs', 'project', 'projects', 'case', 'study', 'studies', 'event', 'events', 'vehicle', 'vehicles', 'car', 'cars', 'menu', 'one', 'first', 'second', 'third', 'last'];
 
     public function __construct(private TemplateService $templates) {}
 
@@ -71,11 +74,18 @@ class CatalogueService
                 'closed' => ! empty($d['sold_block']) ? ['family' => 'portfolio', 'block' => $d['sold_block'], 'slots' => (int) ($d['sold_slots'] ?? 0)] : null];
         }
         $out = [];
+        $claimed = [];   // families already taken by an earlier kind (as its slots or its closed row): the realtor's portfolio is the listing's sold row, not a project list
         foreach (CatalogueKinds::KINDS as $kind => $def) {
-            $family = (string) ($declared[$kind]['family'] ?? $def['family']);
-            $slots = 0;
-            foreach ($vars as $k => $_) { if (preg_match('/^' . preg_quote($family, '/') . '_(\d+)_/', (string) $k, $m)) $slots = max($slots, (int) $m[1]); }
+            $candidates = isset($declared[$kind]['family']) ? [(string) $declared[$kind]['family']] : (array) ($def['families'] ?? [$def['family']]);
+            $family = ''; $slots = 0;
+            foreach ($candidates as $cand) {
+                if (in_array($cand, $claimed, true)) continue;
+                $n = 0;
+                foreach ($vars as $k => $_) { if (preg_match('/^' . preg_quote($cand, '/') . '_(\d+)_/', (string) $k, $m)) $n = max($n, (int) $m[1]); }
+                if ($n > 0) { $family = $cand; $slots = $n; break; }
+            }
             if ($slots === 0) continue;                       // the design has no such family
+            $claimed[] = $family;
             $d = $declared[$kind] ?? null;
             $homeBlock = (string) ($d['home_block'] ?? '');
             if ($homeBlock === '') {
@@ -92,6 +102,7 @@ class CatalogueService
                 if ($cs > 0) {
                     $tplHtml = $tplHtml ?? (string) @file_get_contents(storage_path("templates/{$design}/template.html"));
                     $closed = ['family' => $closedFamily, 'slots' => (int) ($d['closed']['slots'] ?? $cs), 'block' => (string) ($d['closed']['block'] ?? ($this->enclosingBlock($tplHtml, $closedFamily) ?: $closedFamily)), 'suffixes' => $csuf];
+                    $claimed[] = $closedFamily;
                 }
             }
             $labels = CatalogueKinds::labels($kind, $industry);
@@ -104,7 +115,7 @@ class CatalogueService
                 'style' => in_array('area', $suffixes, true) && ! in_array('title', $suffixes, true) ? 'agency' : 'card',
                 'closed' => $closed, 'closed_label' => $def['closed_label'],
                 'statuses' => $def['statuses'], 'open' => $def['open'], 'closed_statuses' => $def['closed'], 'default_status' => $def['default_status'],
-                'attrs' => $def['attrs'],
+                'attrs' => $def['attrs'], 'title_from' => (array) ($def['title_from'] ?? []),
                 'enabled' => ! (isset($ls['enabled']) && $ls['enabled'] === false),
                 'seeded_at' => $ls['seeded_at'] ?? null,
                 'currency' => (string) ($ls['currency'] ?? 'USD'),
@@ -266,6 +277,8 @@ class CatalogueService
         if (! $spec || ! $spec['enabled']) return $this->fail('NO_CATALOGUE', 'This design does not carry that catalogue.');
         [$a, $errors] = $this->normalise($spec, $in, null);
         if ($errors) return $this->fail('INVALID', implode(' ', $errors)) + ['errors' => $errors];
+        $dup = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->whereRaw('LOWER(title) = ?', [mb_strtolower($a['title'])])->first();
+        if ($dup) return $this->fail('DUPLICATE', 'There is already a ' . $spec['singular'] . ' called “' . $dup->title . '” — edit that one instead (say "change the price of ' . $dup->title . ' to …", or open it in the ' . $spec['label'] . ' panel).');
         $a['slug'] = $this->uniqueSlug($websiteId, $kind, $a['title']);
         if (! isset($a['sort_order'])) { $a['sort_order'] = (int) DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->max('sort_order') + 1; }   // new items go last; Featured puts one first
         $a += ['workspace_id' => $wsId, 'website_id' => $websiteId, 'kind' => $kind, 'source' => $source, 'created_by' => $actorId, 'created_at' => now(), 'updated_at' => now()];
@@ -361,7 +374,12 @@ class CatalogueService
         $seed = function (string $family, int $slots, bool $closedRow) use (&$n, $tv, $spec, $wsId, $websiteId, $kind) {
             for ($i = 1; $i <= $slots; $i++) {
                 $title = $this->slotValue($tv, $family, $i, CatalogueKinds::SHARED_SUFFIXES['title']) ?? $this->slotValue($tv, $family, $i, ['area']);
+                if ($title === null && $spec['title_from'] !== []) {   // a vehicle is "make model"
+                    $parts = array_filter(array_map(fn($s) => $this->slotValue($tv, $family, $i, [$s]), $spec['title_from']));
+                    if ($parts !== []) $title = implode(' ', $parts);
+                }
                 if ($title === null) continue;
+                $periodRaw = trim((string) ($this->slotValue($tv, $family, $i, ['period']) ?? ''), " /");
                 $badge = strtolower((string) ($this->slotValue($tv, $family, $i, ['badge']) ?? ''));
                 $status = $closedRow ? ($spec['closed_statuses'][0] ?? $spec['default_status']) : $spec['default_status'];
                 if ($kind === 'listing' && ! $closedRow) { $status = str_contains($badge, 'sold') ? 'sold' : (preg_match('/rent|let/', $badge) ? 'to_let' : (str_contains($badge, 'offer') ? 'under_offer' : 'for_sale')); }
@@ -387,6 +405,7 @@ class CatalogueService
                     'closed_note' => $closedRow ? (mb_substr((string) ($this->slotValue($tv, $family, $i, ['price_note', 'note', 'result']) ?? ''), 0, 190) ?: null) : null,
                     'closed_at' => $closedRow ? now() : null,
                     'sort_order' => ($closedRow ? 100 : 0) + $i, 'source' => 'seed', 'created_at' => now(), 'updated_at' => now(),
+                    'price_period' => $periodRaw !== '' ? mb_substr($periodRaw, 0, 12) : null,
                 ];
                 $clean = preg_replace('/[^\d.]/', '', $priceRaw);
                 if ($priceRaw !== '' && is_numeric($clean) && preg_match('/^\s*(?:[^\d]{0,4})[\d,]+(?:\.\d+)?\s*$/u', $priceRaw)) { $row['price'] = round((float) $clean, 2); }
@@ -414,22 +433,22 @@ class CatalogueService
 
     // ───────────────────────────── text ─────────────────────────────
 
-    public function priceText(object $r): string
+    public function priceText(object $r, bool $withPeriod = true): string
     {
         if (! empty($r->price_label)) return (string) $r->price_label;
         if ($r->price === null) return 'Price on request';
         $sym = self::SYMBOLS[$r->currency] ?? ($r->currency . ' ');
         $n = (float) $r->price;
         $txt = $sym . number_format($n, fmod($n, 1.0) !== 0.0 ? 2 : 0);
-        if (! empty($r->price_period)) $txt .= ' / ' . $r->price_period;
+        if ($withPeriod && ! empty($r->price_period)) $txt .= ' / ' . $r->price_period;
         return $txt;
     }
 
-    private function priceParts(object $r): array
+    private function priceParts(object $r, bool $withPeriod = true): array
     {
-        if (! empty($r->price_label) || $r->price === null) return [$this->priceText($r), ''];
+        if (! empty($r->price_label) || $r->price === null) return [$this->priceText($r, $withPeriod), ''];
         $n = (float) $r->price;
-        return [number_format($n, fmod($n, 1.0) !== 0.0 ? 2 : 0) . (! empty($r->price_period) ? ' / ' . $r->price_period : ''), (string) $r->currency];
+        return [number_format($n, fmod($n, 1.0) !== 0.0 ? 2 : 0) . ($withPeriod && ! empty($r->price_period) ? ' / ' . $r->price_period : ''), (string) $r->currency];
     }
 
     private function num(float $n): string { return fmod($n, 1.0) !== 0.0 ? rtrim(rtrim(number_format($n, 1), '0'), '.') : (string) (int) $n; }
@@ -447,7 +466,7 @@ class CatalogueService
             return implode(' • ', $p);
         }
         $p = [];
-        foreach ($spec['attrs'] as $def) { $k = $def['key']; if (isset($a[$k]) && $a[$k] !== '' && $def['type'] !== 'textarea') $p[] = $def['type'] === 'number' ? $this->num((float) $a[$k]) : (string) $a[$k]; }
+        foreach ($spec['attrs'] as $def) { $k = $def['key']; if (! empty($def['in_title'])) continue; if (isset($a[$k]) && $a[$k] !== '' && $def['type'] !== 'textarea') $p[] = $def['type'] === 'number' ? $this->num((float) $a[$k]) : (string) $a[$k]; }
         return implode(' • ', $p);
     }
 
@@ -487,9 +506,19 @@ class CatalogueService
             }
             return $vals;
         }
-        if ($has('price')) $vals['price'] = ($r->price !== null || ! empty($r->price_label)) ? $this->priceText($r) : '';
+        $ownPeriodSlot = $has('period');                          // the design shows "/ month" in its own slot → keep it out of the price text
+        if ($has('currency')) {                                  // designs that show the number and the currency code apart (plans, agency listings)
+            [$num, $code] = $this->priceParts($r, ! $ownPeriodSlot);
+            if ($has('price')) $vals['price'] = ($r->price !== null || ! empty($r->price_label)) ? $num : '';
+            $vals['currency'] = $code;
+        } elseif ($has('price')) { $vals['price'] = ($r->price !== null || ! empty($r->price_label)) ? $this->priceText($r, ! $ownPeriodSlot) : ''; }
+        if ($ownPeriodSlot) { $p = (string) ($r->price_period ?? ''); $vals['period'] = $p === '' ? '' : (in_array($p, ['month', 'week', 'year', 'night', 'hour', 'person', 'session', 'visit', 'day', 'class'], true) ? '/ ' . $p : $p); }
         foreach ($spec['attrs'] as $def) {
             foreach ((array) ($def['from'] ?? []) as $s) { if ($has($s)) { $v = $a[$def['key']] ?? ''; $vals[$s] = $def['type'] === 'number' && $v !== '' ? $this->num((float) $v) : (string) $v; break; } }
+        }
+        if ($spec['title_from'] !== [] && ($a['make'] ?? '') === '' && $has('make')) {   // a vehicle added by name only: "Toyota Camry 2021"
+            $parts = explode(' ', trim((string) $r->title), 2);
+            $vals['make'] = $parts[0]; if ($has('model')) $vals['model'] = trim((string) ($parts[1] ?? '')) ?: $parts[0];
         }
         return $vals;
     }
@@ -513,7 +542,12 @@ class CatalogueService
             for ($i = 1; $i <= $spec['slots']; $i++) {
                 $r = $open[$i - 1] ?? null;
                 if (! $r) continue;
-                foreach ($this->slotValues($spec, $r) as $s => $v) { $k = "{$spec['family']}_{$i}_{$s}"; if ((string) ($tv[$k] ?? null) !== $v) $changes[$k] = $v; }
+                foreach ($this->slotValues($spec, $r) as $s => $v) {
+                    $k = "{$spec['family']}_{$i}_{$s}";
+                    // the design's own button wording stays ("Book Test Drive", "Start Classes") unless the slot is empty; listings say "View details" because the button opens the property page
+                    if ($s === 'cta' && $kind !== 'listing' && trim((string) ($tv[$k] ?? '')) !== '') continue;
+                    if ((string) ($tv[$k] ?? null) !== $v) $changes[$k] = $v;
+                }
             }
             if ($spec['closed']) {
                 for ($i = 1; $i <= $spec['closed']['slots']; $i++) {
@@ -817,13 +851,21 @@ class CatalogueService
             $nouns = '(' . $spec['nouns'] . ')';
             if (preg_match('/\b' . $verbs . '\b.{0,60}\b' . $nouns . '\b/', $t) || preg_match('/\b' . $nouns . '\b.{0,60}\b' . $verbs . '\b/', $t)) return $spec;
         }
-        // an item named in full: "remove the cardamom bun", "mark Deep Tissue as sold out"
+        // an item named in full or by its distinctive words: "remove the cardamom bun", "mark the Land Cruiser as sold"
         if ($websiteId > 0 && preg_match('/\b' . $verbs . '\b/', $t)) {
+            $phrase = (string) (preg_split('/\b(as|to|for|at|with|is|are|now|because|from)\b|[,;—–:]/', $t, 2)[0] ?? $t);
+            $words = array_values(array_filter(preg_split('/[^a-z0-9]+/', $phrase), fn($w) => strlen($w) >= 3 && ! in_array($w, self::STOP, true) && ! preg_match('/^\d+$/', $w)));
+            $hits = [];
             foreach ($specs as $spec) {
+                $nounWords = array_filter(explode('|', $spec['nouns']), fn($n) => ! str_contains($n, ' '));
+                $ws = array_values(array_diff($words, $nounWords));
                 foreach (DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $spec['kind'])->whereNull('deleted_at')->pluck('title') as $title) {
-                    if (mb_strlen($title) >= 3 && str_contains($t, strtolower($title))) return $spec;
+                    $tl = strtolower($title);
+                    if (mb_strlen($title) >= 3 && str_contains($t, $tl)) return $spec;
+                    if ($ws !== [] && array_filter($ws, fn($w) => ! str_contains($tl, $w)) === []) $hits[$spec['kind']] = $spec;
                 }
             }
+            if (count($hits) === 1) return array_values($hits)[0];
         }
         // one catalogue only: "mark the Modern Bungalow as sold", "reduce the price of Deep Tissue to $90"
         if (count($specs) === 1 && preg_match('/\b(mark|sold|under offer|sold out|reprice|price of|the price)\b/', $t)) return array_values($specs)[0];
@@ -887,7 +929,7 @@ class CatalogueService
         if ($defaultLabel !== '' && preg_match('/\b(as|back|to|now|again)\b.{0,12}\b' . preg_quote($defaultLabel, '/') . '\b|\b' . preg_quote($defaultLabel, '/') . '\b.{0,6}\bagain\b/', $lower)) $statusWord = $spec['default_status'];
         if ($statusWord !== null && ! preg_match('/\b(remove|delete|take down)\b/', $lower) && ! preg_match('/\bprice\b.{0,20}\bto\b/', $lower)) {
             $pool = $statusWord === 'active' ? $rows : $rows;
-            $target = $this->findTarget($t, $rows, $pool);
+            $target = $this->findTarget($spec, $t,$rows, $pool);
             if (! $target) return $base + ['success' => false, 'code' => 'WHICH', 'message' => $this->whichOne($spec, $rows, 'mark as ' . strtolower($spec['statuses'][$statusWord]))];
             $note = null;
             if ($kind === 'listing') {
@@ -905,7 +947,7 @@ class CatalogueService
 
         // PRICE
         if (preg_match('/\bprice\b|\b(reduce|lower|raise|increase|drop|cut|reprice)\b/', $lower) && preg_match('/\bto\s+((?:[\$€£₱]|AED|USD|EUR|GBP|PHP)\s?[\d,\.]+\s*[kKmM]?|[\d,\.]+\s*[kKmM]?\s*(?:AED|USD|EUR|GBP|PHP|dollars|euros|pounds)?)\b/iu', $t, $pm)) {
-            $target = $this->findTarget($t, $rows, $open ?: $rows);
+            $target = $this->findTarget($spec, $t,$rows, $open ?: $rows);
             if (! $target) return $base + ['success' => false, 'code' => 'WHICH', 'message' => $this->whichOne($spec, $open ?: $rows, 'reprice')];
             $price = $this->moneyToNumber($pm[1]);
             if ($price === null) return $base + ['success' => false, 'message' => 'I could not read the new price — say it as a number, e.g. "to $90".'];
@@ -915,12 +957,15 @@ class CatalogueService
             if (preg_match('/\b(per|a|\/)\s*(month|week|night|hour|person|session|year)\b/', $lower, $per)) $in['price_period'] = $per[2];
             $res = $this->update($wsId, $websiteId, $kind, (int) $target->id, $in, 'catalogue_price');
             if (empty($res['success'])) return $base + ['success' => false, 'message' => (string) ($res['message'] ?? 'I could not change that price.')];
-            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $target->title . '” is now ' . $res['item']['price_display'] . ' on the home page and the ' . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' and its own page' : '') . '.'];
+            $openIds = array_map(fn($r) => (int) $r->id, $open);
+            $pos = array_search((int) $target->id, $openIds, true);
+            $onHome = $pos !== false && $pos < $spec['slots'];
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $target->title . '” is now ' . $res['item']['price_display'] . ($onHome ? ' on the home page and the ' : ' on the ') . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' and its own page' : '') . '.'];
         }
 
         // RENAME
         if (preg_match('/\b(rename|call)\b.{0,80}\b(to|as)\s+["“]?([^"”]{2,120})["”]?\s*$/iu', $t, $rm)) {
-            $target = $this->findTarget(preg_replace('/\b(to|as)\s+["“]?' . preg_quote($rm[3], '/') . '.*$/iu', '', $t) ?? $t, $rows, $rows);
+            $target = $this->findTarget($spec, preg_replace('/\b(to|as)\s+["“]?' . preg_quote($rm[3], '/') . '.*$/iu', '', $t) ?? $t, $rows, $rows);
             if (! $target) return $base + ['success' => false, 'code' => 'WHICH', 'message' => $this->whichOne($spec, $rows, 'rename')];
             $res = $this->update($wsId, $websiteId, $kind, (int) $target->id, ['title' => trim($rm[3], " .\"”“")], 'catalogue_rename');
             return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
@@ -928,7 +973,7 @@ class CatalogueService
 
         // REMOVE
         if (preg_match('/\b(remove|delete|take down|drop|withdraw)\b/', $lower)) {
-            $target = $this->findTarget($t, $rows, $rows);
+            $target = $this->findTarget($spec, $t,$rows, $rows);
             if (! $target) return $base + ['success' => false, 'code' => 'WHICH', 'message' => $this->whichOne($spec, $rows, 'remove')];
             $res = $this->delete($wsId, $websiteId, $kind, (int) $target->id);
             return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
@@ -945,7 +990,7 @@ class CatalogueService
     }
 
     /** Which item is meant: an ordinal ("the second service"), a price, or the best word overlap with title/location. */
-    private function findTarget(string $text, array $all, array $pool): ?object
+    private function findTarget(array $spec, string $text, array $all, array $pool): ?object
     {
         $pool = $pool ?: $all;
         if ($pool === []) return null;
@@ -957,7 +1002,7 @@ class CatalogueService
         if (preg_match_all('/(?:[\$€£₱]|AED|USD|EUR|GBP)\s?([\d,\.]+\s*[kKmM]?)/iu', $text, $pm)) {
             foreach ($pm[1] as $raw) { $n = $this->moneyToNumber($raw); foreach ($pool as $r) { if ($n !== null && $r->price !== null && abs((float) $r->price - $n) < 0.5) return $r; } }
         }
-        $stop = ['the', 'a', 'an', 'and', 'or', 'of', 'in', 'at', 'on', 'to', 'for', 'as', 'is', 'it', 'that', 'this', 'mark', 'set', 'sold', 'let', 'under', 'offer', 'remove', 'delete', 'listing', 'property', 'price', 'change', 'update', 'please', 'take', 'down', 'withdrawn', 'reduce', 'lower', 'raise', 'drop', 'with', 'from', 'our', 'my', 'now', 'has', 'been', 'was', 'house', 'home', 'apartment', 'flat', 'villa', 'condo', 'service', 'item', 'dish', 'treatment', 'product', 'course', 'room', 'package', 'rename', 'call', 'hide', 'out', 'menu', 'available', 'again', 'back'];
+        $stop = array_merge(self::STOP, array_filter(explode('|', $spec['nouns']), fn($n) => ! str_contains($n, ' ')));
         // an item named in full wins outright ("mark the cardamom bun as sold out")
         $byTitle = array_values(array_filter($pool, fn($r) => mb_strlen($r->title) >= 3 && str_contains($t, strtolower($r->title))));
         if (count($byTitle) === 1) return $byTitle[0];
@@ -997,15 +1042,27 @@ class CatalogueService
     {
         $in = ['title' => '', 'status' => $spec['default_status']];
         $t = $text;
-        if (preg_match('/(?:[\$€£₱]|\b(?:AED|USD|EUR|GBP|PHP|CAD|AUD)\b)\s?([\d][\d,\.]*\s*[kKmM]?)\b|\b([\d][\d,\.]*\s*[kKmM]?)\s*(?:AED|USD|EUR|GBP|PHP|dollars|euros|pounds)\b/iu', $t, $pm)) {
-            $num = $this->moneyToNumber(($pm[1] ?? '') !== '' ? $pm[1] : ($pm[2] ?? ''));
+        $attrKeys = array_column($spec['attrs'], 'key');
+        // money: a currency-led amount first ("AED 245,000", "$199"), then a number followed by a currency word; never a bare year
+        $pm = null;
+        if (preg_match('/(?:[\$€£₱]|\b(?:AED|USD|EUR|GBP|PHP|CAD|AUD|SAR|QAR)\b)\s?(\d(?:[\d,\.]*\d)?\s*[kKmM]?)\b/iu', $t, $m1)) { $pm = [$m1[0], $m1[1]]; }
+        elseif (preg_match('/\b(\d(?:[\d,\.]*\d)?\s*[kKmM]?)\s*(?:AED|USD|EUR|GBP|PHP|SAR|QAR|dollars|euros|pounds|dirhams)\b/iu', $t, $m2)) { $pm = [$m2[0], $m2[1]]; }
+        if ($pm) {
+            $num = $this->moneyToNumber($pm[1]);
             if ($num !== null) { $in['price'] = $num; $in['currency'] = $this->currencyFromText($pm[0], $spec['currency']); }
-            if (preg_match('/' . preg_quote($pm[0], '/') . '\s*(?:per|a|\/)\s*(month|week|night|hour|person|session|year)\b/i', $t, $per)) { $in['price_period'] = strtolower($per[1]); $t = str_replace($per[0], ' ', $t); }
+            if (preg_match('/' . preg_quote($pm[0], '/') . '\s*(?:per|a|\/)\s*(month|week|night|hour|person|session|year|visit|day|class)\b/i', $t, $per)) { $in['price_period'] = strtolower($per[1]); $t = str_replace($per[0], ' ', $t); }
             $t = str_replace($pm[0], ' ', $t);
         }
-        foreach ($spec['attrs'] as $def) {
-            if ($def['key'] === 'duration' && preg_match('/\b(\d+(?:\.\d)?)\s*(min|mins|minutes|minute|hr|hrs|hour|hours|h)\b/i', $t, $dm)) { $u = strtolower($dm[2]); $in['duration'] = $dm[1] . ' ' . (str_starts_with($u, 'h') ? ($dm[1] == 1 ? 'hour' : 'hours') : 'min'); $t = str_replace($dm[0], ' ', $t); }
-        }
+        if (in_array('duration', $attrKeys, true) && preg_match('/\b(\d+(?:\.\d)?)\s*(min|mins|minutes|minute|hr|hrs|hour|hours|h)\b/i', $t, $dm)) { $u = strtolower($dm[2]); $in['duration'] = $dm[1] . ' ' . (str_starts_with($u, 'h') ? ($dm[1] == 1 ? 'hour' : 'hours') : 'min'); $t = str_replace($dm[0], ' ', $t); }
+        if (in_array('mileage', $attrKeys, true) && preg_match('/\b(\d[\d,\.]*)\s*(km|kms|miles|mi)\b/i', $t, $mm)) { $in['mileage'] = $mm[1] . ' ' . (str_starts_with(strtolower($mm[2]), 'k') ? 'km' : 'miles'); $t = str_replace($mm[0], ' ', $t); }
+        if (in_array('year', $attrKeys, true) && preg_match('/\b((?:19|20)\d{2})\b/', $t, $ym)) { $in['year'] = $ym[1]; }
+        if (in_array('engine', $attrKeys, true) && preg_match('/\b(\d\.\d\s?L(?:\s+[A-Za-z0-9\-]+){0,3}|electric|hybrid|diesel|petrol)\b/i', $t, $em)) { $in['engine'] = trim($em[1]); $t = str_replace($em[0], ' ', $t); }
+        if (in_array('size', $attrKeys, true) && preg_match('/\b(\d[\d,\.]*\s*(?:sqm|sq ?m|m²|sq ?ft|sqft)[^,;]*)/iu', $t, $sm)) { $in['size'] = trim($sm[1], " ·-"); $t = str_replace($sm[0], ' ', $t); }
+        if (in_array('age', $attrKeys, true) && preg_match('/\b(?:ages?|for)\s+(\d{1,2}\s*[-–]\s*\d{1,2}(?:\s*(?:years|yrs|months))?|\d{1,2}\+)/i', $t, $am)) { $in['age'] = trim($am[1]); $t = str_replace($am[0], ' ', $t); }
+        if (in_array('time', $attrKeys, true) && preg_match('/\b(\d{1,2}[:.]\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))\b/i', $t, $tm)) { $in['time'] = trim($tm[1]); $t = str_replace($tm[0], ' ', $t); }
+        if (in_array('trainer', $attrKeys, true) && preg_match('/\b(?:coach|trainer|instructor|with)\s+([A-Z][a-z]+(?:\s[A-Z][a-z]+)?)/u', $t, $trm)) { $in['trainer'] = $trm[1]; $t = str_replace($trm[0], ' ', $t); }
+        if (in_array('client', $attrKeys, true) && preg_match('/\bclient\s+([^,;—]+)/iu', $t, $cm)) { $in['client'] = trim($cm[1]); $t = str_replace($cm[0], ' ', $t); }
+        if (in_array('venue', $attrKeys, true) && preg_match('/\b(\d[\d,]*\s*guests?)\b/iu', $t, $vm)) { $in['venue'] = $vm[1]; $t = str_replace($vm[0], ' ', $t); }
         $core = preg_replace('/^.*?\b(?:add|list|create|post|put up|publish)\b\s*(?:a |an |new |another |this )?(?:(?:' . $spec['nouns'] . ')\b\s*(?:called|named|for|of|:)?\s*)?(?:a |an )?/i', '', $t, 1) ?? $t;
         $parts = preg_split('/\s*(?:,|;|—|–| - |:)\s*/', trim($core), 2);
         $title = trim((string) ($parts[0] ?? ''), " ,.;:-\"”“");
