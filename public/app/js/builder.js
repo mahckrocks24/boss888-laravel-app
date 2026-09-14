@@ -4209,7 +4209,26 @@ window.wsOpenSitePanel = async function (siteId) {
     + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
     + '<div style="font:600 13px var(--fh);color:var(--t1)">Export</div><div style="font-size:12px;color:var(--t3);margin-bottom:8px">Download the whole site as a zip of plain HTML, CSS and images — it is yours.</div><button type="button" class="lu-btn lu-btn--sm" id="t3-site-export">Download site (.zip)</button><span id="t3-site-exp-msg" style="font-size:12px;color:var(--t3);margin-left:8px"></span>'
     + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
+    + '<div style="font:600 13px var(--fh);color:var(--t1)">Payments</div><div id="t3-site-pay" style="font-size:12px;color:var(--t2);margin-top:4px">Loading…</div>'
+    + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
     + '<div style="font:600 13px var(--fh);color:var(--t1)">Domain</div><div style="font-size:12px;color:var(--t2);margin-top:4px">' + bld_escH(d.domain && d.domain.text ? d.domain.text : 'No domain connected yet.') + '</div>';
+  (async function renderPay() {
+    var box = body.querySelector('#t3-site-pay'); var st = null;
+    try { var rp = await fetch(API + 'builder/store-payments', { headers: auth, cache: 'no-store' }); st = await rp.json(); } catch (e) { box.textContent = 'Could not load payment settings.'; return; }
+    if (st && st.connected) {
+      box.innerHTML = '<div>' + bld_escH(st.message) + '</div><div style="margin-top:4px">Key ' + bld_escH(st.key_hint || '') + ' · ' + bld_escH(st.currency || '') + ' · ' + st.orders + ' order' + (st.orders === 1 ? '' : 's') + ', ' + st.paid + ' paid</div><div style="margin-top:8px"><button type="button" class="lu-btn lu-btn--sm" id="t3-site-pay-off">Disconnect</button></div>';
+      box.querySelector('#t3-site-pay-off').addEventListener('click', async function () { var b = this; b.disabled = true; try { var rd = await fetch(API + 'builder/store-payments', { method: 'DELETE', headers: auth }); var jd = await rd.json(); if (typeof showToast === 'function') showToast(jd.message || 'Disconnected.', 'success'); renderPay(); } catch (e) { b.disabled = false; } });
+      return;
+    }
+    box.innerHTML = '<div>Take payments for priced items (listings deposits, rooms, services, dishes) through your own Stripe account. Create a <b>restricted key</b> in Stripe with Checkout Sessions (write), Webhook Endpoints (write) and Balance (read), and paste it here. It is stored encrypted and never shown again.</div>'
+      + '<input type="password" id="t3-pay-key" placeholder="rk_live_… or sk_test_…" autocomplete="off" style="width:100%;box-sizing:border-box;margin-top:8px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">'
+      + '<div style="display:flex;gap:8px;margin-top:8px"><input type="text" id="t3-pay-cur" placeholder="Currency (USD)" maxlength="3" style="width:120px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px"><button type="button" class="lu-btn lu-btn--sm" id="t3-site-pay-on">Connect Stripe</button></div><div id="t3-pay-msg" style="margin-top:6px"></div>';
+    box.querySelector('#t3-site-pay-on').addEventListener('click', async function () {
+      var b = this, m = box.querySelector('#t3-pay-msg'); var key = box.querySelector('#t3-pay-key').value.trim(); if (!key) { m.textContent = 'Paste the key first.'; return; } b.disabled = true; m.textContent = 'Checking with Stripe…';
+      try { var rc = await fetch(API + 'builder/store-payments', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ secret_key: key, currency: box.querySelector('#t3-pay-cur').value.trim() || 'USD' }) }); var jc = await rc.json(); if (!rc.ok || !jc.success) throw new Error(jc.message || ('HTTP ' + rc.status)); if (typeof showToast === 'function') showToast(jc.message, 'success'); _t3ReloadPreview(); renderPay(); }
+      catch (e) { m.textContent = e.message; b.disabled = false; }
+    });
+  })();
   body.querySelector('#t3-site-save').addEventListener('click', async function () {
     var b = body.querySelector('#t3-site-save'), m = body.querySelector('#t3-site-msg'); b.disabled = true; m.textContent = 'Saving…';
     var payload = {}; body.querySelectorAll('[data-t]').forEach(function (el) { payload[el.getAttribute('data-t')] = el.value.trim(); });

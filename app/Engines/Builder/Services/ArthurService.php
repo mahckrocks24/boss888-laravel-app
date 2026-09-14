@@ -7739,6 +7739,25 @@ PROMPT;
                 return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "Here is what I can tell you about {$site->name}."];
             case 'unsupported':
                 return $base + ['success' => false, 'kind' => 'unsupported', 'code' => 'UNSUPPORTED', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "That is not something I can do from here."];
+            case 'section_move':
+            case 'section_hide':
+            case 'section_show':
+                $sec = is_array($intent['section'] ?? null) ? $intent['section'] : [];
+                $blk = preg_replace('/[^a-z0-9_\-]/', '', strtolower(str_replace(' ', '_', (string) ($sec['block'] ?? ''))));
+                if ($blk === '') return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which section do you mean?', 'options' => array_slice(array_values(array_diff($this->intentContext($wsId, $websiteId, $site, $tv, $industry)['sections'], ['nav', 'hero', 'footer'])), 0, 4)];
+                if ($intent['intent'] === 'section_move') {
+                    $pos = strtolower((string) ($sec['position'] ?? '')); $ref = preg_replace('/[^a-z0-9_\-]/', '', strtolower(str_replace(' ', '_', (string) ($sec['ref'] ?? '')))) ?: null;
+                    $res = $this->templates->moveSection($websiteId, $blk, $pos, $ref);
+                    if (empty($res['success'])) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => (string) $res['message'], 'options' => []];
+                    $credits->debit($wsId, 1, 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$res['message']]]);
+                    return $base + ['success' => true, 'kind' => 'section', 'applied' => 1, 'actions_applied' => 1, 'credits' => 1, 'message' => 'Done — I ' . $res['message'] . " on {$site->name}. 1 credit. Undo puts it back."];
+                }
+                $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+                if ($intent['intent'] === 'section_hide') { $rules = ['hide_' . $blk => '[data-block="' . $blk . '"],a[href="#' . $blk . '"]{display:none!important}']; }
+                else { unset($extras['hide_' . $blk]); $tv['design_extras'] = $extras; $rules = []; }
+                if ($rules !== [] ? ! self::writeDesignExtras($websiteId, $rules, $tv) : ! self::writeDesignExtras($websiteId, [], $tv)) return $base + ['success' => false, 'message' => 'I could not change that section just now.'];
+                DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+                return $base + ['success' => true, 'kind' => 'section', 'applied' => 1, 'actions_applied' => 1, 'credits' => 0, 'message' => 'Done — the ' . str_replace('_', ' ', $blk) . ' section is now ' . ($intent['intent'] === 'section_hide' ? 'hidden (its menu link too). Say "show the ' . str_replace('_', ' ', $blk) . ' section" to bring it back.' : 'visible again.')];
             case 'tracking':
                 $tr = is_array($intent['tracking'] ?? null) ? array_filter(array_map(fn($v) => trim((string) $v), $intent['tracking'])) : [];
                 if ($tr === []) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which id should I add — a Google Analytics id (G-…), a Tag Manager id (GTM-…), a Meta pixel number or a TikTok pixel?', 'options' => []];

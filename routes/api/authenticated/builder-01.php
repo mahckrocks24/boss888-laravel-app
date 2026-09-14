@@ -82,6 +82,20 @@ use Illuminate\Support\Facades\Route;
             $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyLayout((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('design', ''), (int) ($r->attributes->get('user_id') ?? optional($r->user())->id ?? 0) ?: null);
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
+        // STORE PAYMENTS (DEC-0051, 2026-09-15) — the workspace's own Stripe account; priced catalogue items get a checkout button.
+        $pay = \App\Engines\Builder\Services\StorePaymentsService::class;
+        Route::get('/store-payments', fn(\Illuminate\Http\Request $r) => response()->json(app($pay)->status((int) $r->attributes->get('workspace_id'))));
+        Route::put('/store-payments', function (\Illuminate\Http\Request $r) use ($pay) {
+            $res = app($pay)->connect((int) $r->attributes->get('workspace_id'), (string) $r->input('secret_key', ''), $r->input('publishable_key'), (string) $r->input('currency', 'USD'), (string) config('app.url'));
+            if (! empty($res['success'])) { foreach (\Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->whereNull('deleted_at')->pluck('id') as $sid) { try { app(\App\Engines\Builder\Services\CatalogueService::class)->sync((int) $sid, null, 'payments_on'); } catch (\Throwable $e) {} } }
+            return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
+        Route::delete('/store-payments', function (\Illuminate\Http\Request $r) use ($pay) {
+            $res = app($pay)->disconnect((int) $r->attributes->get('workspace_id'));
+            foreach (\Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->whereNull('deleted_at')->pluck('id') as $sid) { try { app(\App\Engines\Builder\Services\CatalogueService::class)->sync((int) $sid, null, 'payments_off'); } catch (\Throwable $e) {} }
+            return response()->json($res);
+        });
+        Route::get('/store-payments/orders', fn(\Illuminate\Http\Request $r) => response()->json(['orders' => \Illuminate\Support\Facades\DB::table('catalogue_orders')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->orderByDesc('id')->limit(50)->get()]));
         // SITE SETTINGS (DEC-0051, 2026-09-15) — tracking ids into every page, a zip export the customer owns, domain state.
         $siteOwned = function (\Illuminate\Http\Request $r, $id) { $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->whereNull('deleted_at')->first(); return ($w && (int) $w->workspace_id === (int) $r->attributes->get('workspace_id')) ? $w : null; };
         Route::get('/websites/{id}/site-settings', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
@@ -453,7 +467,13 @@ use Illuminate\Support\Facades\Route;
             }
 
             // Conversation turn — pure chat() dialogue, no build trigger.
-            $result = $arthur->chat($wsId, $msg, $history);
+            // RECREATE FROM A URL (DEC-0051, 2026-09-15): an address in the first messages is read and turned into the same
+            // build_data a conversation produces; the confirm panel follows as usual.
+            if (count($history) <= 4 && preg_match('~(?:https?://|www\.)[^\s<>"]+~i', $msg, $um) && ! preg_match('~levelupgrowth\.io~i', $um[0])) {
+                $result = app(\App\Engines\Builder\Services\SiteImportService::class)->importForChat((int) $wsId, $um[0]);
+            } else {
+                $result = $arthur->chat($wsId, $msg, $history);
+            }
             // COLOUR THEMES (2026-09-05): the confirm panel shows curated themes for THIS business instead of a bare picker.
             if (is_array($result) && !empty($result['build_data']['business_name'])) {
                 $result['themes'] = $arthur->themesFor((array) $result['build_data'], 4);

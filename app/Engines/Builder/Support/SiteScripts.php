@@ -23,7 +23,7 @@ final class SiteScripts
             $settings = json_decode((string) (DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: [];
         }
         $html = self::stripFakeSubmits($html);
-        $html = self::replaceBlock($html, 'lu-forms-js', self::formsScript(), 'body');
+        $html = self::replaceBlock($html, 'lu-forms-js', self::formsScript($websiteId), 'body');
         $html = self::replaceBlock($html, 'lu-tracking', self::trackingSnippet((array) ($settings['tracking'] ?? [])), 'head');
         return $html;
     }
@@ -61,8 +61,9 @@ final class SiteScripts
     }
 
     /** The form poster: any form without a real action is sent to the workspace CRM; the reply is site-styled, never a native dialog. */
-    public static function formsScript(): string
+    public static function formsScript(int $websiteId = 0): string
     {
+        $SITEID = (int) $websiteId;
         $api = rtrim((string) config('app.url'), '/') . '/api/public/contact/by-host';
         $apiJson = json_encode($api, JSON_UNESCAPED_SLASHES);
         return '<script id="lu-forms-js">(function(){'
@@ -87,6 +88,10 @@ final class SiteScripts
             . '.catch(function(){m.textContent="Sorry, that did not go through. Please try again.";m.style.color="#b91c1c";if(b){b.disabled=false;b.textContent=was;}});}'
             . 'function arm(){Array.prototype.forEach.call(document.querySelectorAll("form"),function(f){if(f.__lu||!own(f))return;f.__lu=true;f.removeAttribute("onsubmit");f.setAttribute("novalidate","novalidate");f.addEventListener("submit",function(e){e.preventDefault();post(f);});});}'
             . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",arm);else arm();'
+            // STORE PAYMENTS (DEC-0051): the checkout form carries the page address; a return with ?paid= confirms and thanks
+            . 'function pay(){Array.prototype.forEach.call(document.querySelectorAll("form.lu-pay"),function(f){var i=f.querySelector("[name=return]");if(i)i.value=location.href.split("?")[0];});var q=new URLSearchParams(location.search),sid=q.get("paid");if(!sid)return;var box=document.createElement("div");box.setAttribute("role","status");box.style.cssText="position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;background:#14532d;color:#fff;padding:14px 18px;border-radius:12px;font:15px system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3)";box.textContent="Checking your payment…";document.body.appendChild(box);'
+            . 'fetch(API.replace("/contact/by-host","/store-confirm/")+' . $SITEID . ',{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify({session:sid})}).then(function(r){return r.json();}).then(function(j){box.textContent=j&&j.paid?"Payment received — thank you! We will be in touch shortly.":"Your payment is being confirmed — you will hear from us shortly.";}).catch(function(){box.textContent="Thank you — we will confirm your payment shortly.";});setTimeout(function(){box.remove();},12000);history.replaceState(null,"",location.pathname);}'
+            . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",pay);else pay();'
             . '})();</script>';
     }
 }

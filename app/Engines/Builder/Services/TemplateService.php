@@ -926,6 +926,78 @@ class TemplateService
         return preg_replace('#href="/blog/?"#i', 'href="blog/"', $html) ?? $html;
     }
 
+    /**
+     * SECTIONS BY CHAT (DEC-0051, 2026-09-15). Move a home-page block before/after another, or to the top (right after
+     * the hero) or the bottom (right before the footer). The move is written to the export now and remembered in
+     * settings_json.section_ops so every later deploy re-applies it.
+     */
+    public function moveSection(int $websiteId, string $block, string $position, ?string $ref = null): array
+    {
+        $path = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (! is_file($path)) return ['success' => false, 'message' => 'This site has no page export yet.'];
+        $html = (string) file_get_contents($path);
+        $res = $this->applyOneMove($html, $block, $position, $ref);
+        if (! $res['success']) return $res;
+        try { $this->snapshotToHistory($websiteId, 'section_move'); } catch (\Throwable $e) {}
+        file_put_contents($path, $res['html']);
+        $settings = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: [];
+        $ops = array_values(array_filter((array) ($settings['section_ops'] ?? []), fn($o) => ($o['block'] ?? '') !== $block));   // one remembered place per block
+        $ops[] = ['block' => $block, 'position' => $position, 'ref' => $ref];
+        $settings['section_ops'] = $ops;
+        \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]);
+        return ['success' => true, 'message' => $res['message']];
+    }
+
+    /** Re-apply remembered moves to a freshly rendered home (called from deploy()). */
+    private function applySectionOps(int $websiteId, string $html): string
+    {
+        $settings = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: [];
+        foreach ((array) ($settings['section_ops'] ?? []) as $op) {
+            $r = $this->applyOneMove($html, (string) ($op['block'] ?? ''), (string) ($op['position'] ?? ''), $op['ref'] ?? null);
+            if ($r['success']) $html = $r['html'];
+        }
+        return $html;
+    }
+
+    private function applyOneMove(string $html, string $block, string $position, ?string $ref): array
+    {
+        if (! preg_match('/^[a-z0-9_\-]+$/', $block) || ($ref !== null && $ref !== '' && ! preg_match('/^[a-z0-9_\-]+$/', $ref))) return ['success' => false, 'message' => 'I could not tell which section you mean.'];
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        $xp = new \DOMXPath($dom);
+        $find = fn(string $b) => $xp->query('//*[@data-block="' . $b . '"]')->item(0);
+        $node = $find($block);
+        if (! $node) return ['success' => false, 'message' => "There is no “" . str_replace('_', ' ', $block) . "” section on the home page."];
+        if (in_array($block, ['nav', 'hero', 'footer'], true)) return ['success' => false, 'message' => 'The header, hero and footer stay where they are — everything between them can move.'];
+        $parent = $node->parentNode;
+        if ($position === 'top') {
+            $hero = $find('hero'); $target = $hero ? $hero->nextSibling : null;
+            while ($target && $target->nodeType !== XML_ELEMENT_NODE) $target = $target->nextSibling;
+            if (! $hero) return ['success' => false, 'message' => 'I could not find the hero to place it after.'];
+            if ($target) $hero->parentNode->insertBefore($node, $target); else $hero->parentNode->appendChild($node);
+            $where = 'right after the hero';
+        } elseif ($position === 'bottom') {
+            $footer = $find('footer');
+            if ($footer) $footer->parentNode->insertBefore($node, $footer); else $parent->appendChild($node);
+            $where = 'at the bottom, just above the footer';
+        } elseif (in_array($position, ['before', 'after'], true) && $ref) {
+            $refNode = $find($ref);
+            if (! $refNode) return ['success' => false, 'message' => "There is no “" . str_replace('_', ' ', $ref) . "” section to place it " . $position . '.'];
+            if ($refNode === $node) return ['success' => false, 'message' => 'That is the same section.'];
+            if ($position === 'before') $refNode->parentNode->insertBefore($node, $refNode);
+            else { $next = $refNode->nextSibling; if ($next) $refNode->parentNode->insertBefore($node, $next); else $refNode->parentNode->appendChild($node); }
+            $where = $position . ' the ' . str_replace('_', ' ', $ref) . ' section';
+        } else {
+            return ['success' => false, 'message' => 'Tell me where it should go — before or after another section, or to the top or the bottom.'];
+        }
+        $out = $dom->saveHTML();
+        $out = preg_replace('/^<\?xml encoding="UTF-8"\?>\s*/', '', $out) ?? $out;
+        $out = $this->restoreUtf8Entities($out);
+        return ['success' => true, 'html' => $out, 'message' => 'moved the ' . str_replace('_', ' ', $block) . ' section ' . $where];
+    }
+
     private function reapplyStoredSections(int $websiteId, string $html): string
     {
         try {
@@ -1160,6 +1232,7 @@ class TemplateService
         // DURABLE ADDITIONS (2026-09-06): Arthur-spliced sections are stored in settings_json.arthur_sections; put back any
         // that a re-render from variables dropped (idempotent — skipped when the block is already present).
         $html = $this->reapplyStoredSections($websiteId, $html);
+        $html = $this->applySectionOps($websiteId, $html);   // remembered section moves (DEC-0051)
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
         $html = self::injectMobileSafety($html);
         $html = \App\Engines\Builder\Support\SiteScripts::inject($html, $websiteId);   // forms → CRM, tracking ids (DEC-0051)

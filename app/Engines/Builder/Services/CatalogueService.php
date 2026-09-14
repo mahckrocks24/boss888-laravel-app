@@ -792,7 +792,7 @@ class CatalogueService
                     $specs = $this->specsText($spec, $r);
                     $h .= '<div class="lu-cat-row"><div><h3>' . e($r->title) . ($r->status !== $spec['default_status'] ? ' <span class="lu-cat-badge inline">' . e($spec['statuses'][$r->status] ?? $r->status) . '</span>' : '') . '</h3>'
                         . (! empty($r->summary) ? '<p class="lu-cat-sum">' . e($r->summary) . '</p>' : '') . ($specs !== '' ? '<p class="lu-cat-specs">' . e($specs) . '</p>' : '') . '</div>'
-                        . (($r->price !== null || ! empty($r->price_label)) ? '<div class="lu-cat-price">' . e($this->priceText($r)) . '</div>' : '<div></div>') . '</div>';
+                        . (($r->price !== null || ! empty($r->price_label)) ? '<div class="lu-cat-price">' . e($this->priceText($r)) . (function () use ($r, $spec) { try { return app(StorePaymentsService::class)->buttonHtml((int) $r->website_id, $r, $spec['kind'] === 'menu' ? 'Order' : 'Buy now', (string) config('app.url')); } catch (\Throwable $e) { return ''; } })() . '</div>' : '<div></div>') . '</div>';
                 }
                 $h .= '</div>';
             }
@@ -835,6 +835,8 @@ class CatalogueService
         if ($features !== []) { $h .= '<h2 style="font-size:20px;margin:8px 0 10px">Features</h2><ul class="lu-prop-features">'; foreach ($features as $f) $h .= '<li>' . e($f) . '</li>'; $h .= '</ul>'; }
         if ($closed && ! empty($r->closed_note)) $h .= '<p class="lu-cat-note"><b>' . e($spec['statuses'][$r->status] ?? '') . ':</b> ' . e($r->closed_note) . '</p>';
         $h .= '</div>';
+        // STORE PAYMENTS (DEC-0051): a priced open item gets a checkout button when the workspace takes payments
+        if (! $closed && $r->price !== null && (float) $r->price > 0) { try { $h .= app(StorePaymentsService::class)->buttonHtml((int) $r->website_id, $r, $spec['kind'] === 'listing' ? 'Reserve with a deposit' : ($spec['kind'] === 'room' ? 'Book & pay' : 'Buy now'), (string) config('app.url')); } catch (\Throwable $e) {} }
         $prefill = $closed ? 'I saw that ' . $r->title . ' has been ' . strtolower($spec['statuses'][$r->status] ?? 'sold') . ' — please let me know about similar ones.' : "I'm interested in " . $r->title . (! empty($a['location']) ? ' (' . $a['location'] . ')' : '') . ', listed at ' . $this->priceText($r) . '. Please get in touch.';
         $h .= $this->enquiryForm($spec, $closed ? 'Looking for something similar?' : 'Enquire about this ' . $spec['singular'], $prefill, $r->title, false);
         $h .= '</div></section>';
