@@ -1695,7 +1695,7 @@ PROMPT;
             return ['success' => false, 'code' => $insufficient ? 'INSUFFICIENT_CREDITS' : 'IMAGE_UNAVAILABLE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
                 'message' => $insufficient
                     ? 'Generating an image needs ' . (int) ($res['credits_required'] ?? 2) . ' credits and this workspace does not have them yet. Nothing was changed.'
-                    : "I couldn't generate that image right now — the image service declined ({$why}). Nothing was charged and nothing on your site changed. You can still click any image in the preview to upload your own."];
+                    : "I couldn't generate that image right now — " . self::customerReason($why) . " Nothing was charged and nothing on your site changed. You can still click any image in the preview to upload your own."];
         }
         $url   = (string) $res['url'];
         $field = $target === 'about' ? 'about_image' : ($target === 'gallery' ? 'gallery_1_image' : 'hero_image');
@@ -1797,6 +1797,25 @@ PROMPT;
         return (int) $id;
     }
 
+    /**
+     * What a customer is told when a provider says no. The raw text (provider name, HTTP code, JSON) is for our
+     * log; the customer hears what it means for them. Unknown reasons become "temporarily unavailable".
+     */
+    private static function customerReason(string $raw): string
+    {
+        $r = strtolower($raw);
+        if (preg_match('/no credits remaining|insufficient_quota|billing|quota|429|rate limit|out of capacity/', $r)) {
+            return 'the image and video service is temporarily unavailable on our side.';
+        }
+        if (preg_match('/timeout|timed out|unavailable|503|502|connection/', $r)) {
+            return 'the image and video service did not answer in time.';
+        }
+        if (preg_match('/safety|policy|moderation|blocked/', $r)) {
+            return 'the request was declined by the content policy — try describing the image differently.';
+        }
+        return 'the image and video service is temporarily unavailable.';
+    }
+
     /** One honest sentence for a kernel or provider refusal: plan, credits, approval, or the provider itself. */
     private function honestKernelRefusal(array $res, array $data, array $plan, string $what, int $cost): array
     {
@@ -1809,7 +1828,7 @@ PROMPT;
         } elseif (str_contains(strtolower($code . ' ' . $err), 'approval')) {
             $msg = 'That request is waiting for approval in your workspace before it runs — nothing has changed yet.';
         } else {
-            $msg = "I couldn't {$what} right now — the studio declined (" . mb_substr($err !== '' ? $err : 'no reason given', 0, 90) . '). Nothing was charged and nothing on your site changed.';
+            $msg = "I couldn't {$what} right now — " . self::customerReason($err) . ' Nothing was charged and nothing on your site changed.';
         }
         Log::warning('[Arthur] studio capability refused', ['code' => $code, 'error' => mb_substr($err, 0, 200), 'what' => $what]);
         return ['success' => false, 'code' => $code !== '' ? $code : 'STUDIO_UNAVAILABLE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'message' => $msg];
