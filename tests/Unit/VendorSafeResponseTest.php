@@ -5,7 +5,7 @@ namespace Tests\Unit;
 use App\Http\Middleware\VendorSafeResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use PHPUnit\Framework\TestCase;
+use Tests\TestCase;
 
 /** Owner rule 2026-09-14: no vendor ever reaches a customer-facing error; legitimate mentions are untouched. */
 class VendorSafeResponseTest extends TestCase
