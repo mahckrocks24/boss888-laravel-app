@@ -63,6 +63,8 @@ final class BuilderCapabilities
     public const LOGO_VISIBILITY = '/\blogo\b.{0,40}\b(contrast|visib\w*|invisible|missing|gone|disappear\w*|hidden|not showing|show(?:ing)? up|readable|legib\w*|see it|can\'?t see|back)\b|\b(contrast|visib\w*|invisible|missing|gone|disappear\w*|hidden|show|see|bring back|restore)\b.{0,30}\blogo\b/i';
     /** Legibility words: with a part of the page named they are a design request, never a copy edit. */
     public const LEGIBILITY     = '/\b(contrast|legib\w*|readab\w*|hard to (?:read|see)|can\'?t (?:read|see)|invisible|blends? in|too faint|unreadable)\b/i';
+    /** "make the hero text bigger", "smaller buttons" — a size change is a design change (2026-09-14). */
+    public const STYLE_SIZE     = '/\b(bigger|larger|smaller|tinier|huge|enlarge|shrink|increase the size|reduce the size|more prominent|less prominent)\b.{0,30}\b(text|font|fonts|heading|headings|headline|title|hero|button|buttons|nav|menu|logo|lettering|type|copy|paragraph|paragraphs)\b|\b(text|font|fonts|heading|headings|headline|title|hero|button|buttons|nav|menu|logo|lettering|paragraph|paragraphs)\b.{0,30}\b(bigger|larger|smaller|tinier|huge|more prominent|less prominent)\b/i';
     public const STYLE_TONES    = '/\b(darker|darken|lighter|lighten|brighter|brighten|dimmer|softer|soften|warmer|cooler|paler|richer|deeper|bolder|muted|more contrast|less contrast|washed out)\b/i';
     /** Anchors a customer names when placing a section: "after the services", "above the footer". */
     private const ANCHORS = ['services' => 'services', 'team' => 'team', 'testimonials' => 'testimonials', 'reviews' => 'testimonials', 'gallery' => 'gallery',
@@ -233,6 +235,14 @@ final class BuilderCapabilities
             $out['label']   = 'video generation';
             return $out;
         }
+        // "change the hero image to a photo of downtown at sunset" describes a picture that does not exist yet → generate it.
+        if (preg_match('/\b(change|replace|swap|update|set|make)\b.{0,25}\b(image|photo|picture|banner|background)\b.{0,12}\b(to|with|into|for)\b\s+(?:a|an|the)?\s*(?:new |fresh |different |nice |beautiful )?(?:photo|image|picture|shot|render|illustration)\b.{0,6}\b(of|showing|with|featuring)\b/i', $r)) {
+            $out['kind']    = 'image';
+            $out['credits'] = 0;
+            $out['label']   = 'image generation';
+            $out['target']  = preg_match('/\b(about|story)\b/i', $r) ? 'about' : (preg_match('/\bgallery\b/i', $r) ? 'gallery' : 'hero');
+            return $out;
+        }
         // IMAGE GENERATION (DEC-0046 gap closure, 2026-09-14): "generate a hero image of …" is neither copy nor style.
         // Decided before style so "create a photo in warm colours" is an image ask, not a recolour.
         if (preg_match('/\b(generate|create|produce|draw|render|design|ai[- ]generate)\b.{0,40}\b(image|photo|picture|visual|illustration|artwork)\b/i', $r)
@@ -292,6 +302,7 @@ final class BuilderCapabilities
         if ($hasElement && preg_match(self::COLOR_NAMES, $r)) { return true; }
         if (preg_match(self::STYLE_TONES, $r)) { return true; }
         if (preg_match(self::LOGO_VISIBILITY, $r)) { return true; }
+        if (preg_match(self::STYLE_SIZE, $r)) { return true; }
         if ($hasElement && preg_match(self::LEGIBILITY, $r)) { return true; }
         // "make the site look more luxurious" — a mood, aimed at the site, with a change verb.
         if ($hasElement && preg_match(self::STYLE_MOODS, $r)

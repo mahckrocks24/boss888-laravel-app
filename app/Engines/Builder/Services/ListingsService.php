@@ -746,7 +746,7 @@ class ListingsService
             $msg = '“' . $target->title . '” is now marked ' . strtolower(self::STATUSES[$status]) . '.';
             if (in_array($status, self::CLOSED, true)) $msg .= $cat['sold_block'] !== '' ? ' It moved from the available listings to the sold row on the home page and the Listings page' : ' It left the available listings and shows under recently sold on the Listings page';
             if ($note) { $msg .= ', with the note “' . $note . '” — only what you told me.'; }
-            else { $msg .= in_array($status, self::CLOSED, true) ? '. I did not add a sale price or outcome; tell me and I will note it.' : '.'; }
+            else { $msg .= in_array($status, self::CLOSED, true) ? '. I did not add a sale price or outcome; tell me and I will note it.' : ''; }
             return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => $msg];
         }
 

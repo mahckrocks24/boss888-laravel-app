@@ -5626,6 +5626,12 @@ PROMPT;
         if ($plan['kind'] === 'video')      { return $this->generateSiteVideo($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv, (string) $industry, $ctx); }
         if ($plan['kind'] === 'overlay')    { return $this->overlayTextOnSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv); }
         if ($plan['kind'] === 'image_edit') { return $this->editSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv, $ctx); }
+        if ($plan['kind'] === 'unsupported' && preg_match('/\bblog\b/i', $request)) {
+            $hasBlog = is_file(storage_path("app/public/sites/{$websiteId}/blog/index.html"));
+            return ['success' => false, 'code' => 'BLOG_VIA_WRITE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => $hasBlog ? "{$site->name} already has a blog at /blog/ — articles you publish from Write appear there automatically; I don't add blog pages by hand."
+                    : "The blog is not a page I add by hand: publish an article from Write and {$site->name} gets its blog at /blog/ automatically, with a Blog link in the menu."];
+        }
         if ($plan['kind'] === 'unsupported') {
             $pages = implode(', ', array_keys($caps::pages($industry ?: null)));
             $secs  = implode(', ', array_keys($caps::sections($industry ?: null)));
@@ -5848,6 +5854,93 @@ PROMPT;
         return '#FFFFFF';
     }
 
+    /** The design's fact fields (phone, email, WhatsApp, address, hours, licence …) as data-field keys in its template. */
+    private function templateFactKeys(int $websiteId, object $site): array
+    {
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $design = $this->siteDesignSlug($site, $settings);
+        if ($design === '') { return []; }
+        $tpl = (string) @file_get_contents(storage_path("templates/{$design}/template.html"));
+        if ($tpl === '' || ! preg_match_all('/data-field="([a-z0-9_]+)"/i', $tpl, $m)) { return []; }
+        $keys = [];
+        foreach (array_unique($m[1]) as $k) {
+            if (preg_match('/(phone|email|whatsapp|address|hours|licen[cs]e|registration|fax|mobile)/i', $k) && ! preg_match('/(_label|_title|_display|_icon|_link)$/i', $k)) { $keys[] = $k; }
+        }
+        return $keys;
+    }
+
+    /**
+     * A fact line the build stripped (empty at the time) comes back from the template markup: the template line that
+     * carries the field is rendered with the site's variables and put back next to a neighbouring line that is still on
+     * the page. Home page only; sub-pages pick it up from the chrome the next time they are written.
+     */
+    private function reinsertTemplateField(int $websiteId, object $site, string $key, string $value, array $tv): bool
+    {
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $design = $this->siteDesignSlug($site, $settings);
+        $index = storage_path("app/public/sites/{$websiteId}/index.html");
+        if ($design === '' || ! is_file($index)) { return false; }
+        $lines = preg_split('/\r?\n/', (string) @file_get_contents(storage_path("templates/{$design}/template.html"))) ?: [];
+        $html = (string) file_get_contents($index);
+        $vars = $tv; $vars[$key] = $value;
+        $render = function (string $line) use ($vars): string {
+            return preg_replace_callback('/\{\{\s*([a-z0-9_]+)\s*\}\}/i', fn($m) => e((string) ($vars[$m[1]] ?? '')), $line) ?? $line;
+        };
+        $done = 0;
+        foreach ($lines as $i => $line) {
+            if (! str_contains($line, 'data-field="' . $key . '"')) { continue; }
+            $rendered = $render($line);
+            if (str_contains($html, trim($rendered))) { continue; }   // already there
+            $placed = false;
+            // a neighbour that survived: next lines first (insert before), then previous lines (insert after)
+            foreach ([1, 2, 3, 4, -1, -2, -3, -4] as $d) {
+                $j = $i + $d;
+                if (! isset($lines[$j])) { continue; }
+                $anchor = trim($render($lines[$j]));
+                if (strlen($anchor) < 12 || ! str_contains($anchor, '<')) { continue; }
+                $pos = strpos($html, $anchor);
+                if ($pos === false) { continue; }
+                $html = $d > 0
+                    ? substr($html, 0, $pos) . $rendered . "\n" . substr($html, $pos)
+                    : substr($html, 0, $pos + strlen($anchor)) . "\n" . $rendered . substr($html, $pos + strlen($anchor));
+                $placed = true; break;
+            }
+            if ($placed) { $done++; }
+        }
+        if ($done > 0) { file_put_contents($index, $html); Log::info('[Arthur] fact line re-inserted', ['website' => $websiteId, 'field' => $key, 'lines' => $done]); }
+        return $done > 0;
+    }
+
+    /** Size changes as a remembered zoom factor per target, written into the customer's design-extras block. */
+    private function applySizeChange(int $websiteId, string $request, array &$tv): ?string
+    {
+        $r = mb_strtolower($request);
+        $up = (bool) preg_match('/\b(bigger|larger|huge|enlarge|increase|more prominent)\b/', $r);
+        $step = preg_match('/\b(huge|much bigger|much larger|a lot bigger|way bigger|much smaller|a lot smaller|tiny)\b/', $r) ? 1.3 : 1.15;
+        $targets = [
+            'headline' => ['/\b(headline|title|heading|h1)\b/', '.hero h1,[data-block="hero"] h1,.hero .hero-title,.hero-h1,.hero .hero-name', 'the headline'],
+            'hero'     => ['/\bhero\b/', '.hero h1,[data-block="hero"] h1,.hero .hero-title,.hero .lede,.hero .hero-sub,.hero .hero-subtitle,[data-block="hero"] p', 'the hero text'],
+            'buttons'  => ['/\b(button|buttons|cta)\b/', '.btn,.btn-primary,.nav-cta,.hero-cta,button[type=submit],a[class*="btn"]', 'the buttons'],
+            'nav'      => ['/\b(nav|menu|navigation)\b/', '.nav-links a,.nav-link,nav a', 'the menu text'],
+            'logo'     => ['/\blogo\b/', '.logo,.brand-text,[data-field="logo"]', 'the logo'],
+            'headings' => ['/\b(headings|section titles|titles)\b/', 'h2.section-title,section h2,[data-block] h2', 'the section headings'],
+            'text'     => ['/\b(text|font|fonts|copy|paragraph|paragraphs|lettering|type)\b/', 'main p,section p,section li,.lede,section dd', 'the body text'],
+        ];
+        $picked = null;
+        foreach (['hero', 'headline', 'buttons', 'nav', 'logo', 'headings', 'text'] as $k) { if (preg_match($targets[$k][0], $r)) { $picked = $k; break; } }
+        if ($picked === 'hero' && preg_match('/\b(headline|title|heading)\b/', $r)) { $picked = 'headline'; }
+        if ($picked === null) { $picked = 'text'; }
+        [, $selector, $label] = $targets[$picked];
+        $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+        $current = 1.0;
+        if (isset($extras['size_' . $picked]) && preg_match('/zoom:([\d.]+)/', (string) $extras['size_' . $picked], $zm)) { $current = (float) $zm[1]; }
+        $factor = max(0.6, min(1.8, round($current * ($up ? $step : 1 / $step), 3)));
+        $rule = ['size_' . $picked => $selector . '{zoom:' . $factor . '}'];
+        if (! self::writeDesignExtras($websiteId, $rule, $tv)) { return null; }
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        return 'made ' . $label . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
+    }
+
     private function applySiteStyle(int $wsId, int $websiteId, string $request, object $site, array $tv, array $plan, bool $isStatic): array
     {
         $editor  = app(ArthurEditService::class);
@@ -5870,6 +5963,17 @@ PROMPT;
             }
             if ($fix['missed'] !== []) {
                 return ['success' => false, 'code' => 'LOGO_NO_CHANGE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'message' => implode(' ', $fix['missed'])];
+            }
+        }
+
+        // ── 0b. SIZE (2026-09-14, "make the hero text bigger") — one replaceable rule per target, factor remembered ──
+        if ($isStatic && preg_match(\App\Engines\Builder\Support\BuilderCapabilities::STYLE_SIZE, $request)) {
+            $sz = $this->applySizeChange($websiteId, $request, $tv);
+            if ($sz !== null) {
+                $credits->debit($wsId, (int) $plan['credits'], 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$sz]]);
+                Log::info('[Arthur] size change', ['website' => $websiteId, 'change' => $sz]);
+                return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $plan['credits'],
+                    'message' => "Done — I {$sz} on {$site->name}. {$plan['credits']} credit.", 'url' => "/storage/sites/{$websiteId}/index.html"];
             }
         }
 
@@ -7319,6 +7423,11 @@ PROMPT;
         $exportHtml = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
         if ($exportHtml !== '') { $onPage = array_filter($fields, fn($v, $k) => str_contains($exportHtml, 'data-field="' . $k . '"'), ARRAY_FILTER_USE_BOTH); if ($onPage !== []) $fields = $onPage; }
         if ($fields === []) return ['success' => false, 'code' => 'NO_FIELDS', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'message' => "This site has no editable text fields I can change from here."];
+        // FACTS LEFT EMPTY AT BUILD (2026-09-14): a phone / email / WhatsApp / address line the customer never gave is stripped
+        // from the page (never invented), so its key vanished from this list and the customer could not add it by chat.
+        // The template's own fact fields stay offered, empty; a filled one is re-inserted from the template markup below.
+        $factKeys = $this->templateFactKeys($websiteId, $site);
+        foreach ($factKeys as $fk) { if (! isset($fields[$fk])) { $fields[$fk] = trim((string) ($tv[$fk] ?? '')); } }
         $list = '';
         foreach ($fields as $k => $v) $list .= $k . ': ' . json_encode($v, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
         $system = "You are Arthur, editing the text of a finished website for {$site->name}. The website's text lives in named fields; you change fields, nothing else.\n"
@@ -7344,6 +7453,7 @@ PROMPT;
             if ($k === null || !is_string($v)) { $skipped[] = (string) ($ch['key'] ?? ''); continue; }
             $v = trim(strip_tags($v, '<br><em><strong><b><i><span>'));
             if ($v === '' || mb_strlen($v) > 2000 || $v === $fields[$k]) { $skipped[] = $k; continue; }
+            if (in_array($k, $factKeys, true) && ! str_contains($exportHtml, 'data-field="' . $k . '"')) { $this->reinsertTemplateField($websiteId, $site, $k, $v, $tv); $exportHtml = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html")); }
             if (!$this->templates->updateField($websiteId, $k, $v)) { $skipped[] = $k; continue; }
             $this->templates->patchFieldInSubPages($websiteId, $k, $v);
             $tv[$k] = $v; $applied[] = $k;
@@ -7358,7 +7468,7 @@ PROMPT;
         // never echo a model reply that claims a change when nothing was applied
         $msg = $n > 0
             ? ($reply !== '' ? $reply : "Done — I updated {$n} " . ($n === 1 ? 'field' : 'fields') . " on {$site->name}.")
-            : (($changes === [] && $reply !== '' && !preg_match('/\b(updated|changed|done|replaced|set)\b/i', $reply)) ? $reply : "I couldn't find text on {$site->name} that matches that request, so nothing was changed.");
+            : (($changes === [] && $reply !== '' && !preg_match('/\b(updated|changed|done|replaced|set)\b/i', $reply)) ? $reply : "I couldn't find text on {$site->name} that matches that request, so nothing was changed. Tell me the exact words you see on the page and what they should become — for colours, photos, sections or listings, say what should change.");
         return ['success' => $n > 0, 'kind' => 'edit', 'code' => $n > 0 ? 'EDITED' : 'NO_CHANGE', 'plan' => $plan, 'applied' => $n, 'actions_applied' => $n,
             'changes' => $applied, 'message' => $msg, 'reply' => $msg, 'url' => "/storage/sites/{$websiteId}/index.html"];
     }
