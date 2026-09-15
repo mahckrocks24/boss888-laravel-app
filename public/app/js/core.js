@@ -836,7 +836,7 @@ window._luRouter = (function () {
   // P1-U2 (2026-08-30): retired views dropped (automation, builder, blog, manualedit, marketing, mentions, tools —
   // they had no panel or were launch-scope removed); Basic surfaces added.
   var KNOWN_VIEWS = {
-    sarah:1, attention:1, results:1, website:1, customers:1, account:1,
+    sarah:1, attention:1, results:1, website:1, customers:1, account:1, aria:1,
     agents:1, approvals:1, billing:1,
     calendar:1, chatbot:1, command:1, crm:1,
     meeting:1, messages:1, projects:1, queue:1, reports:1, seo:1,
@@ -855,7 +855,7 @@ window._luRouter = (function () {
   };
 
   // v5.7.23 (2026-05-31) — per-view human titles for document.title.
-  // Updated on every successful nav() call. Default is "LevelUp Growth"
+  // Updated on every successful nav() call. Default is "LevelUpGrowth"
   // (the bare brand) for the workspace home; everything else gets a
   // suffix so browser tabs / bookmarks read meaningfully.
   var VIEW_TITLES = {
@@ -865,6 +865,7 @@ window._luRouter = (function () {
     website:    'Website',
     customers:  'Customers',
     account:    'Account',
+    aria:       'Aria',
     workspace:  'Workspace',
     infrastructure: 'Infrastructure',
     command:    'Command Center',
@@ -938,7 +939,7 @@ window._luRouter = (function () {
   // nav() after the view dispatch. Keeps browser tabs + bookmarks readable.
   function setTitle(view) {
     if (typeof document === 'undefined') return;
-    var brand = (window.LU_CFG && window.LU_CFG.bn) || 'LevelUp Growth';
+    var brand = (window.LU_CFG && window.LU_CFG.bn) || 'LevelUpGrowth';
     var label = VIEW_TITLES[view];
     document.title = label ? (label + ' · ' + brand) : brand;
   }
@@ -1218,6 +1219,7 @@ async function nav(view, opts){
   if(view==='website')    { var _wr=document.getElementById('website-root'); if(_wr && typeof window.basicWebsiteLoad==='function') window.basicWebsiteLoad(_wr); }
   if(view==='customers')  { var _cr=document.getElementById('customers-root'); if(_cr && typeof window.basicCustomersLoad==='function') window.basicCustomersLoad(_cr); }
   if(view==='account')    { var _acr=document.getElementById('account-root'); if(_acr && typeof window.basicAccountLoad==='function') window.basicAccountLoad(_acr); }
+  if(view==='aria')       { var _arr=document.getElementById('aria-root'); if(_arr && typeof window.ariaLoad==='function') window.ariaLoad(_arr); }   /* ARIA888 DEC-0054 */
   if(view==='reports')    loadReports();
   if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); }
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
@@ -4442,9 +4444,6 @@ var EXEC_INTENTS = [
   {rx:/\b(?:add|insert|place)\s+(?:a\s+)?(?:internal\s+)?link/i,                                         tool:'insert_link',      label:'Insert Link',         icon:''+window.icon("link",14)+'', paramFn:_pId},
   {rx:/\b(?:write|create|generate|draft)\s+(?:a\s+)?(?:blog\s+|seo\s+)?(?:article|post|content)/i,      tool:'write_article',    label:'Generate Article',    icon:''+window.icon("edit",14)+'', paramFn:_pKeyword},
   {rx:/\b(?:improve|optimize|rewrite|enhance)\s+(?:the\s+)?(?:content|draft|copy|text)/i,                tool:'improve_draft',    label:'Improve Content',     icon:''+window.icon("edit",14)+'', paramFn:_pKeyword},
-  {rx:/\b(?:create|launch|set up|build|start)\s+(?:a\s+)?(?:email\s+|marketing\s+)?campaign/i,          tool:'create_campaign',  label:'Create Campaign',     icon:''+window.icon("message",14)+'', paramFn:()=>({name:'New Campaign',type:'email'})},
-  {rx:/\b(?:send|blast|dispatch)\s+(?:the\s+)?(?:email|campaign|newsletter)/i,                           tool:'send_campaign',    label:'Send Campaign',       icon:''+window.icon("message",14)+'', paramFn:()=>({})},
-  {rx:/\b(?:show|list|view|check)\s+(?:all\s+|the\s+)?campaign/i,                                       tool:'list_campaigns',   label:'View Campaigns',      icon:''+window.icon("more",14)+'', paramFn:()=>({})},
   {rx:/\b(?:create|write|draft)\s+(?:a\s+)?(?:social\s+)?(?:media\s+)?post/i,                           tool:'create_post',      label:'Create Social Post',  icon:''+window.icon("message",14)+'', paramFn:()=>({content:'',platforms:['facebook']})},
   {rx:/\bschedule\s+(?:a\s+)?(?:social\s+)?post/i,                                                      tool:'schedule_post',    label:'Schedule Post',       icon:''+window.icon("calendar",14)+'', paramFn:()=>({})},
   {rx:/\bpublish\s+(?:the\s+|a\s+)?post/i,                                                              tool:'publish_post',     label:'Publish Post',        icon:''+window.icon("rocket",14)+'', paramFn:()=>({})},
@@ -4476,14 +4475,11 @@ var EXEC_CHAINS = [
    steps:[{tool:'deep_audit',label:'Audit site',paramFn:_pPostId},{tool:'serp_analysis',label:'Keyword analysis',paramFn:_pKeyword},{tool:'link_suggestions',label:'Find link opportunities',paramFn:_pPostId}]},
   {rx:/\b(?:create|write|produce)\s+(?:new\s+)?content\b/i, label:'Content Creation Flow', icon:''+window.icon("edit",14)+'',
    steps:[{tool:'serp_analysis',label:'Research keywords',paramFn:_pKeyword},{tool:'write_article',label:'Generate article',paramFn:_pKeyword}]},
-  {rx:/\b(?:launch|start|run)\s+(?:a\s+)?(?:marketing\s+)?campaign\b/i, label:'Campaign Launch Flow', icon:''+window.icon("message",14)+'',
-   steps:[{tool:'list_leads',label:'Check leads',paramFn:()=>({})},{tool:'create_campaign',label:'Create campaign',paramFn:()=>({name:'New Campaign',type:'email'})}]},
   {rx:/\b(?:fix|check|analyze)\s+(?:all\s+)?(?:broken\s+)?links\b/i, label:'Link Health Flow', icon:''+window.icon("link",14)+'',
    steps:[{tool:'outbound_links',label:'Check outbound links',paramFn:_pPostId},{tool:'link_suggestions',label:'Find link opportunities',paramFn:_pPostId}]},
 ];
 
 // Drop any chain that contains a removed step, and any chain whose own label
-// advertises a removed capability (e.g. "Campaign Launch Flow").
 if (window.LU_SCOPE) {
   EXEC_CHAINS = EXEC_CHAINS.filter(function (ch) {
     if (window.LU_SCOPE.isRemovedLabel(String(ch.label || '').replace(/\s*Flow$/i, ''))) return false;
@@ -4852,7 +4848,7 @@ async function sendMessage(){
 async function wrapUp(){if(!mid)return;document.getElementById('btn-wrap').disabled=true;try{await post(API+'meeting/'+mid+'/wrap',{topic:document.getElementById('mtg-topic').textContent});}catch(e){showMsgErr(e.message);}}
 async function downloadTranscript(){
   var d=await get(API+'meeting/'+mid+'/status');
-  var lines=[`LevelUp Growth — Strategy Session\nTopic: ${d.topic}\nDate: ${new Date().toLocaleString()}\n\n${'─'.repeat(60)}\n\n`];
+  var lines=[`LevelUpGrowth — Strategy Session\nTopic: ${d.topic}\nDate: ${new Date().toLocaleString()}\n\n${'─'.repeat(60)}\n\n`];
   (d.messages||[]).forEach(m=>{lines.push(`${m.name.toUpperCase()}\n${m.content}\n\n`);});
   var a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([lines.join('')],{type:'text/plain'})),download:`strategy-${mid}.txt`});a.click();
 }
@@ -5061,7 +5057,7 @@ async function sendDm() {
         if (body) body.innerHTML = `<div class="dm-sent">✓ Message sent to ${document.getElementById('dm-name')?.textContent || 'agent'}.<br><span style="color:var(--t3);font-size:9px">Reply will appear in the main feed.</span></div>`;
         setTimeout(closeDmModal, 1800);
     } catch(e) {
-        if (btn) { btn.disabled = false; btn.textContent = 'Send →'; }
+        if (btn) { btn.disabled = false; /* icon button: nothing to re-label */ }
         console.error('DM failed:', e);
     }
 }
@@ -5794,7 +5790,7 @@ async function arthurSendCommand(){
   var sendBtn=document.getElementById('arthur-send');
   busyEl.classList.add('visible'); resEl.classList.remove('visible');
   if(sendBtn) sendBtn.disabled=true;
-  var instruction=`You are Arthur, the LevelUp AI builder assistant inside LevelUp Growth Platform. The user selected a "${arthurContext.type}" element with content: ${JSON.stringify(arthurContext.content)}. Business: ${BN} (${BU}). Request: "${command}". Return ONLY a raw JSON object — the updated content. No markdown, no explanation. Match the existing content structure. For heading/text: {"text":"..."}. For button: {"label":"...","href":"#","variant":"primary"}. For testimonial: {"quote":"...","author":"...","role":"..."}.`;
+  var instruction=`You are Arthur, the LevelUp AI builder assistant inside LevelUpGrowth Platform. The user selected a "${arthurContext.type}" element with content: ${JSON.stringify(arthurContext.content)}. Business: ${BN} (${BU}). Request: "${command}". Return ONLY a raw JSON object — the updated content. No markdown, no explanation. Match the existing content structure. For heading/text: {"text":"..."}. For button: {"label":"...","href":"#","variant":"primary"}. For testimonial: {"quote":"...","author":"...","role":"..."}.`;
   try{
     var r = await fetch(API + 'builder/arthur', {
       method: 'POST',
@@ -5953,15 +5949,16 @@ async function _appBootstrap() {
   }
 
   var token = localStorage.getItem('lu_token');
+  // CROSS-TAB SESSION (2026-09-11): a missing access token with a live refresh token beside it is a session
+  // waiting to be refreshed, not a visitor to send to the login card.
+  if (!token && localStorage.getItem('lu_refresh_token')) token = 'refresh-pending';
   if (!token) {
-    if (window.location.hash === "#signup") {
-      var _prod = ['levelupgrowth.io', 'www.levelupgrowth.io'].indexOf(window.location.hostname) !== -1;
-      if (_prod) {
-        try { history.replaceState(null, '', window.location.pathname + window.location.search + '#'); } catch (_) { window.location.hash = ''; }
-        _renderLogin();
-      } else {
-        _renderSignup();
-      }
+    if (window.location.hash.indexOf('#signup') === 0) {
+      // 2026-09-11 (Owner): account creation lives on the marketing site — /start/ — on every host. The old
+      // in-app signup form is no longer a public door. ?plan= survives the hop.
+      var _plan = (window.location.hash.match(/[?&]plan=([^&]+)/) || [])[1] || (new URLSearchParams(window.location.search).get('plan') || '');
+      window.location.replace('/start/' + (_plan ? '?plan=' + encodeURIComponent(_plan) : ''));
+      return;
     } else {
       _renderLogin();
     }
@@ -5987,6 +5984,17 @@ async function _appBootstrap() {
     return;
   }
 
+  // 2026-09-10 — a visitor handed over by the marketing hero has ALREADY had this conversation:
+  // they described their business to Arthur, he asked his follow-ups, and the brief crossed with
+  // them. Running the new-account onboarding here asked the same questions a second time and, worse,
+  // rendered "Meet Sarah" into #lu-auth-root at z-index 9999 on top of the Arthur wizard the boot
+  // script had just opened — so the customer's answer to "finish my website" was a different agent
+  // introducing herself. Enter the app and let Arthur have the screen.
+  //
+  // Deliberately NOT setting lu_onboarded here: nothing has been completed yet. The workspace earns
+  // that flag the moment Arthur's build gives it a website, through the check just below.
+  if (window.__luArthurHandoff) { _appEnterDashboard(); return; }
+
   // Check onboarding completion via new /onboarding/status endpoint.
   // Falls back to legacy /workspace/status path + lu_onboarded flag for back-compat.
   if (localStorage.getItem('lu_onboarded') === '1') {
@@ -6004,11 +6012,42 @@ async function _appBootstrap() {
     if (wsRes.ok) {
       var wsData = await wsRes.json();
       var sites = (wsData && (wsData.websites || wsData.data)) || (Array.isArray(wsData) ? wsData : []);
-      if (Array.isArray(sites) && sites.length > 0) {
+      sites = Array.isArray(sites) ? sites : [];
+
+      // OWNER RULE (2026-09-10): "Sarah should only introduce herself once the website has been
+      // published inside Laravel, never on the marketing website."
+      //
+      // The order used to be the reverse of that. A brand-new account has no website — because Arthur
+      // has not built it yet, which is the entire reason the customer is standing here — and THAT was
+      // the condition that triggered her introduction. So the first thing a new customer met was a
+      // second agent introducing herself, before they had anything for her to manage.
+      //
+      // Published, not merely existing: a draft site is still Arthur's work in progress. Sarah runs
+      // growth for something that is live, so that is the moment she has a reason to speak.
+      var hasPublished = sites.some(function (w) { return w && String(w.status) === 'published'; });
+
+      if (hasPublished) {
+        localStorage.setItem('lu_onboarded', '1');
+        // Once, and only once. Introducing herself on every load is not an introduction.
+        if (localStorage.getItem('lu_sarah_intro') !== '1' && typeof _renderMeetSarah === 'function') {
+          localStorage.setItem('lu_sarah_intro', '1');
+          _renderMeetSarah();
+          return;
+        }
+        _appEnterDashboard();
+        return;
+      }
+
+      if (sites.length > 0) {
+        // Built but not published yet — the customer is mid-build with Arthur. Nothing to introduce.
         localStorage.setItem('lu_onboarded', '1');
         _appEnterDashboard();
         return;
       }
+
+      // No website at all: Arthur's stage. Enter the app rather than hand the screen to Sarah.
+      _appEnterDashboard();
+      return;
     }
   } catch(_) { /* fall through to onboarding-status check */ }
   try {
@@ -6027,8 +6066,10 @@ async function _appBootstrap() {
         _showOnboardingStep3();
         return;
       }
-      // step 1 or 2 → render Step 2 (collect business info)
-      _renderMeetSarah();
+      // step 1 or 2 — the account has not finished onboarding, but under the Owner's rule that is NOT
+      // a reason for Sarah to introduce herself: nothing has been published for her to run yet.
+      // (Reached only when the websites call above failed, so we cannot see the sites.)
+      _appEnterDashboard();
       return;
     }
   } catch(_) { /* fall through to legacy path */ }
@@ -6037,11 +6078,11 @@ async function _appBootstrap() {
     var ws = await _luFetch('GET', '/workspace/status').then(function(r){ return r.json(); });
     if (ws.industry && ws.website_count > 0) {
       localStorage.setItem('lu_onboarded', '1');
-      _appEnterDashboard();
-    } else {
-      _renderMeetSarah();
     }
-  } catch(_) { _renderMeetSarah(); }
+    // Legacy fallback path. It cannot tell a published site from a draft, so under the Owner's rule it
+    // does not introduce Sarah either — the published check above is the only place that may.
+    _appEnterDashboard();
+  } catch(_) { _appEnterDashboard(); }
 }
 
 function _appEnterDashboard() {
@@ -6541,7 +6582,7 @@ async function _openNotifications() {
               var unread = !n.read_at;
               return '<div style="display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid var(--bd);background:' + (unread?'rgba(108,92,231,.06)':'') + ';cursor:pointer" onclick="_markNotifRead(' + n.id + ',this)">'
                 + '<div style="width:8px;height:8px;border-radius:50%;background:' + (unread?'var(--p,#6C5CE7)':'transparent') + ';flex-shrink:0;margin-top:4px"></div>'
-                + '<div style="flex:1"><div style="font-size:13px;font-weight:' + (unread?'600':'400') + ';color:var(--t1)">' + _luEsc(n.title || 'LevelUp Growth') + '</div>'
+                + '<div style="flex:1"><div style="font-size:13px;font-weight:' + (unread?'600':'400') + ';color:var(--t1)">' + _luEsc(n.title || 'LevelUpGrowth') + '</div>'
                 + (n.body ? '<div style="font-size:12px;color:var(--t2);margin-top:2px;line-height:1.4">' + _luEsc(n.body) + '</div>' : '')
                 + '<div style="font-size:11px;color:var(--t3);margin-top:3px">' + window._luParseTs(n.created_at).toLocaleString() + '</div></div></div>';
             }).join(''))
@@ -7539,7 +7580,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // Run bootstrap — will short-circuit if not on standalone SPA
-  _appBootstrap();
+  // BOOT-VEIL (2026-09-11): the shell stays hidden until bootstrap has chosen login / signup / dashboard.
+  Promise.resolve().then(function () { return _appBootstrap(); }).catch(function (e) { try { console.warn('[boot] bootstrap failed', e); } catch (_) {} })
+    .then(function () { document.documentElement.classList.remove('lu-booting'); });
 });
 
 console.log('[LevelUp] v3.3.0 — auth, onboarding, notifications, analytics loaded');
@@ -7953,7 +7996,7 @@ window._renderApiKeys = async function _renderApiKeys(el) {
         '<button onclick="_generateApiKey()" class="btn btn-primary" style="font-size:13px;padding:8px 16px">+ Generate Key</button>' +
       '</div>' +
       '<p style="font:400 13px Inter,sans-serif;color:var(--t3);margin-bottom:20px">' +
-        'Use these keys to connect your WordPress site with the LevelUp Growth SEO Connector plugin.' +
+        'Use these keys to connect your WordPress site with the LevelUpGrowth SEO Connector plugin.' +
       '</p>';
     if (keys.length === 0) {
       html += '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:32px;text-align:center;color:#6B7280">No API keys yet. Generate one to connect your WordPress site.</div>';

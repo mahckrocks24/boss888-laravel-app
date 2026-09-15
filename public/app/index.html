@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head><script>/*BOOT-VEIL 2026-09-11*/document.documentElement.classList.add("lu-booting");setTimeout(function(){document.documentElement.classList.remove("lu-booting")},6000);</script><style id="lu-boot-veil">html.lu-booting .app,html.lu-booting #lu-auth-root{visibility:hidden!important}html.lu-booting body::after{content:"";position:fixed;inset:0;z-index:2147483000;background:#0A0D14 url(/img/logo-icon-48.png) center/36px 36px no-repeat;animation:luBootPulse 1.2s ease-in-out infinite}html.lu-booting.lu-light body::after,html.lu-booting[data-theme="light"] body::after{background-color:#F6F7FB}@keyframes luBootPulse{0%,100%{opacity:1}50%{opacity:.82}}</style><script>/*MW1A-GATE*/(function(){try{var P=["levelupgrowth.io","www.levelupgrowth.io"];var LAUNCHED=false;if(!LAUNCHED&&P.indexOf(location.hostname)!==-1){location.replace("/");}}catch(e){}})();</script>
+<!-- M1 mobile foundation: tokens + dvh + safe-area + z-index system --><html lang="en"><head><script>/*BOOT-VEIL 2026-09-11*/document.documentElement.classList.add("lu-booting");setTimeout(function(){document.documentElement.classList.remove("lu-booting")},6000);</script><style id="lu-boot-veil">html.lu-booting .app,html.lu-booting #lu-auth-root{visibility:hidden!important}html.lu-booting body::after{content:"";position:fixed;inset:0;z-index:2147483000;background:#0A0D14 url(/img/logo-icon-48.png) center/36px 36px no-repeat;animation:luBootPulse 1.2s ease-in-out infinite}html.lu-booting.lu-light body::after,html.lu-booting[data-theme="light"] body::after{background-color:#F6F7FB}@keyframes luBootPulse{0%,100%{opacity:1}50%{opacity:.82}}</style><script>/*MW1A-GATE — LAUNCHED (DEC-0053, 2026-09-15): public sign-ups are open, the apex serves the app*/(function(){try{var P=["levelupgrowth.io","www.levelupgrowth.io"];var LAUNCHED=true;if(!LAUNCHED&&P.indexOf(location.hostname)!==-1){location.replace("/");}}catch(e){}})();</script>
 <script>
 // ═══════════════════════════════════════════════════════════════════
 // LGSC global fetch + XHR interceptor — MUST be first script in <head>.
@@ -2589,7 +2589,7 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
   // P1-U2: if the current view is not part of the mode we just entered, land on that mode's home.
   try {
     var _cur = (typeof currentView !== 'undefined') ? currentView : null;
-    var _basicViews = ['sarah','attention','results','website','customers','account','approvals','command','websites','crm','settings','billing','calendar','reports'];
+    var _basicViews = ['sarah','attention','results','website','customers','account','aria','approvals','command','websites','crm','settings','billing','calendar','reports'];
     if ((!opts.skipServer || opts.fromServer) && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav('workspace'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link
   } catch (e) {}
   if (mode === 'basic') document.body.classList.add('lu-mode-basic');
@@ -2685,7 +2685,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // P1R-3 (2026-08-31): 'command' removed — the Command Center exposes specialist agent cards that open the
   // specialist drawer, and Basic must not offer direct specialist interaction. 'settings' removed — in Basic it is
   // rewritten to 'account' below (customer settings), so nobody deep-links into the internal Advanced settings.
-  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog'];
+  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog','aria'];   /* ARIA888 DEC-0054: Aria is in both views */
   var _origNav = window.nav;
   if (typeof _origNav === 'function') {
     window.nav = function (view) {
@@ -2968,6 +2968,7 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('website')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Website</button>
       <button type="button" class="nav-item" onclick="nav('customers')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Customers</button>
       <button type="button" class="nav-item" onclick="nav('account')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Account</button>
+      <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
       <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced')" id="ni-advanced" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
       <!-- /* b24-sidebar-reorganized */ -->
       <div class="nav-section">Workspace</div>
@@ -3017,6 +3018,8 @@ window.luSwipeToClose = luSwipeToClose;
       <!-- Tool Registry removed from app sidebar 2026-04-21 — admin-only feature, accessed via /admin/ panel -->
             <button type="button" class="nav-item" onclick="nav('billing')" id="ni-billing" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16M5 13h3"/></svg></span>Billing</button>
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-settings" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg></span>Settings</button>
+      <div class="nav-section">Help</div>
+      <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
 
       </div>
     <div class="sb-bottom">
@@ -3046,6 +3049,8 @@ window.luSwipeToClose = luSwipeToClose;
     <div id="view-website" class="view" style="display:none;flex-direction:column;height:100%;min-height:0"><div id="website-root" style="flex:1;min-height:0;display:flex;flex-direction:column"></div></div>
     <div id="view-customers" class="view" style="display:none;flex-direction:column;height:100%;min-height:0"><div id="customers-root" style="flex:1;min-height:0;display:flex;flex-direction:column"></div></div>
     <div id="view-account" class="view" style="display:none;flex-direction:column;height:100%;min-height:0"><div id="account-root" style="flex:1;min-height:0;display:flex;flex-direction:column"></div></div>
+    <!-- ARIA888 (DEC-0054): Aria, the platform FAQ, in the sidebar of BOTH views (aria.js). -->
+    <div id="view-aria" class="view" style="display:none;flex-direction:column;height:100%;min-height:0"><div id="aria-root" style="flex:1;min-height:0;display:flex;flex-direction:column"></div></div>
     <div id="view-workspace" class="view" style="display:none;position:relative;height:100%;background:#0D0D0F" data-adv="1"></div>
 
         <!-- ── MEETING ROOM ── -->
@@ -4820,7 +4825,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=session-20260911"></script>
+<script defer src="/app/js/core.js?v=aria1-20260915"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
@@ -5003,6 +5008,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/messages-ui.js?v=lugmark-20260910"></script>
 <script defer src="/app/js/sarah.js?v=idem1-20260906"></script>
 <script defer src="/app/js/basic.js?v=1.0.5-biz2"></script>
+<script defer src="/app/js/aria.js?v=aria2-20260915"></script>
 <script defer src="/app/js/arthur-chat.js?v=nofocus-20260912"></script>
 <script defer src="/app/js/chatbot-spa.js?v=kblib-20260910"></script>
 
