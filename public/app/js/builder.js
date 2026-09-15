@@ -1093,14 +1093,32 @@ async function wsCloseTemplateEditor() {
 // BUILDER888 D6 (2026-08-28) - desktop / tablet / mobile preview for the template editor
 // (the editor had no responsive view at all; the image panel keeps anchoring to the
 // iframe rect so click-to-replace still lines up).
+// DEVICE FIT (2026-09-15): the preview lays out at the device's real width and is scaled to fit the stage, so a phone
+// shows the true desktop layout zoomed out instead of the responsive mobile layout.
+function _t3FitPreview(key) {
+  var widths = { desktop: 1280, tablet: 820, mobile: 390 };
+  var iframe = document.getElementById('t3-preview'); if (!iframe) return;
+  var W = widths[key] || 1280, stage = iframe.parentElement, sw = stage ? stage.clientWidth : window.innerWidth, sh = stage ? stage.clientHeight : window.innerHeight;
+  window._t3DeviceKey = key;
+  if (key === 'desktop' && sw >= 900) { iframe.style.width = '100%';   // a stage this wide already lays out as desktop; keep it readable iframe.style.height = '100%'; iframe.style.transform = ''; iframe.style.transformOrigin = ''; window._t3PreviewScale = 1; return; }
+  var scale = sw < W ? Math.max(0.2, (sw / W)) : 1;
+  iframe.style.width = W + 'px';
+  iframe.style.transformOrigin = 'top left';
+  iframe.style.transform = scale < 1 ? 'scale(' + scale.toFixed(4) + ')' : '';
+  iframe.style.height = scale < 1 ? Math.round(sh / scale) + 'px' : '100%';
+  iframe.style.margin = scale < 1 ? '0' : '0 auto';
+  if (stage) stage.style.overflow = 'hidden';
+  window._t3PreviewScale = scale;
+}
+window.addEventListener('resize', function () { clearTimeout(window._t3FitTimer); window._t3FitTimer = setTimeout(function () { if (window._t3DeviceKey && document.getElementById('t3-preview')) _t3FitPreview(window._t3DeviceKey); }, 150); });
+
 function _wsTplSetDevice(key) {
-  var widths = { desktop: '100%', tablet: '820px', mobile: '390px' };
   var iframe = document.getElementById('t3-preview');
   if (iframe) {
-    iframe.style.width = widths[key] || '100%';
     iframe.style.display = 'block';
     iframe.style.margin = '0 auto';
     iframe.style.background = '#fff';
+    _t3FitPreview(key);
     if (iframe.parentElement) iframe.parentElement.style.background = key === 'desktop' ? '' : '#0B0D13';
   }
   ['desktop', 'tablet', 'mobile'].forEach(function (k) {
@@ -1114,6 +1132,7 @@ function _wsTplSetDevice(key) {
 }
 
 function _t3InitEditing(iframe) {
+  try { _t3FitPreview(window._t3DeviceKey || 'desktop'); } catch (_f) {}   // DEVICE FIT: a phone opens on the true desktop view
   if (window._t3LayoutPreviewing) return; // a previewed layout is not the live site: nothing to edit yet
   // Editing is already injected server-side in the preview route
   // Listen for field changes from iframe
@@ -1151,8 +1170,9 @@ function _t3ShowImagePanel(info) {
   panel.id = 't3-img-panel';
   var panelW = isLogo ? 320 : 420;
   panel.style.cssText = 'position:fixed;z-index:99999;background:var(--s1,#1a1a24);border:1px solid var(--s3,rgba(255,255,255,0.12));border-radius:12px;padding:' + (isLogo ? '14px' : '10px') + ';box-shadow:0 12px 40px rgba(0,0,0,0.5);display:flex;flex-direction:' + (isLogo ? 'column' : 'row') + ';gap:' + (isLogo ? '10px' : '8px') + ';align-items:' + (isLogo ? 'stretch' : 'center') + ';font-family:var(--fb,system-ui);color:var(--t1,#fff);min-width:' + panelW + 'px';
-  var panelLeft = Math.max(8, Math.min(window.innerWidth - panelW - 8, ir.left + r.left));
-  var panelTop = Math.max(8, Math.min(window.innerHeight - 80, ir.top + r.bottom + 8));
+  var _sc = window._t3PreviewScale || 1;   // DEVICE FIT: rects inside a scaled preview are in its own pixels
+  var panelLeft = Math.max(8, Math.min(window.innerWidth - panelW - 8, ir.left + r.left * _sc));
+  var panelTop = Math.max(8, Math.min(window.innerHeight - 80, ir.top + r.bottom * _sc + 8));
   panel.style.left = panelLeft + 'px';
   panel.style.top  = panelTop + 'px';
 
@@ -2267,9 +2287,8 @@ function _wsClosePageEditor() {
 }
 
 function _wsPageEditorSetDevice(key) {
-  var widths = { desktop: '100%', tablet: '820px', mobile: '390px' };
   var iframe = document.getElementById('t3-preview');
-  if (iframe) iframe.style.width = widths[key] || '100%';
+  if (iframe) _t3FitPreview(key);   // DEVICE FIT (2026-09-15)
   ['desktop', 'tablet', 'mobile'].forEach(function (k) {
     var b = document.getElementById('pe-dev-' + k);
     if (!b) return;
