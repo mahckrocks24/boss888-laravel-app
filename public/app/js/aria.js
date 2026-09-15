@@ -61,6 +61,11 @@
       '.ar-topics summary{cursor:pointer;padding:10px 12px;font:600 13px var(--fb);min-height:44px;display:flex;align-items:center;color:var(--t1)}',
       '.ar-topics .ar-chips{padding:0 12px 12px}',
       '.ar-head .ar-new{white-space:nowrap}',
+      '.ar-follow{display:flex;flex-direction:column;gap:6px;margin-top:2px}',
+      '.ar-label{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);font-weight:600}',
+      '.ar-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}.ar-tabs::-webkit-scrollbar{display:none}',
+      '.ar-tab{flex:none;min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid var(--bd);background:transparent;color:var(--t2);font:600 12.5px var(--fb);cursor:pointer;white-space:nowrap}',
+      '.ar-tab.on{background:var(--p);border-color:var(--p);color:#fff}.ar-tab:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '@media (min-width:900px){.ar-feed{padding:24px 24px 8px}.ar-msg{max-width:80%}.ar-compose{padding-left:84px}}'   /* room for the floating Sarah orb at bottom-left */
     ].join('\n');
     document.head.appendChild(st);
@@ -76,24 +81,28 @@
   function renderAria(r) {
     var m = el('div', 'ar-msg aria');
     m.appendChild(el('div', 'ar-b', md(r.answer || '')));
-    var meta = el('div', 'ar-meta');
-    (r.sources || []).forEach(function (s) {
-      if (s.url) { var a = el('a', 'ar-src', '↗ ' + esc(s.title)); a.href = s.url; a.target = '_blank'; a.rel = 'noopener'; meta.appendChild(a); }
-      else meta.appendChild(el('span', 'ar-src', esc(s.title)));
-    });
-    if (r.chat_meter && r.chat_meter.debited) meta.appendChild(el('span', 'ar-note', '1 credit — every 10th chat message'));
-    if (r.mode === 'out_of_credits') meta.appendChild(el('span', 'ar-note warn', 'Documentation answer — no credits left in this workspace'));
-    if (meta.childNodes.length) m.appendChild(meta);
+    // Owner (2026-09-15): one line of meta, not a wall of pills — the hand-off first, one source, two follow-ups.
     if (r.handoff && r.handoff.to) {
       var acts = el('div', 'ar-acts');
       var b = el('button', 'ar-btn primary', r.handoff.to === 'arthur' ? 'Ask Arthur to do this' : 'Ask Sarah to do this');
       b.type = 'button'; b.addEventListener('click', function () { handoff(r.handoff); });
       acts.appendChild(b); m.appendChild(acts);
     }
+    var meta = el('div', 'ar-meta');
+    var src = (r.sources || [])[0];
+    if (src) {
+      if (src.url) { var a = el('a', 'ar-src', 'Read more ↗'); a.href = src.url; a.target = '_blank'; a.rel = 'noopener'; a.title = src.title; meta.appendChild(a); }
+      else meta.appendChild(el('span', 'ar-note', 'From: ' + esc(src.doc || src.title)));
+    }
+    if (r.chat_meter && r.chat_meter.debited) meta.appendChild(el('span', 'ar-note', '1 credit — every 10th chat message'));
+    if (r.mode === 'out_of_credits') meta.appendChild(el('span', 'ar-note warn', 'Documentation answer — no credits left in this workspace'));
+    if (meta.childNodes.length) m.appendChild(meta);
     if (r.followups && r.followups.length) {
+      var fu = el('div', 'ar-follow');
+      fu.appendChild(el('div', 'ar-label', 'You might also ask'));
       var chips = el('div', 'ar-chips');
-      r.followups.forEach(function (q) { chips.appendChild(chip(q)); });
-      m.appendChild(chips);
+      r.followups.slice(0, 2).forEach(function (q) { chips.appendChild(chip(q)); });
+      fu.appendChild(chips); m.appendChild(fu);
     }
     feed.appendChild(m); toBottom(); return m;
   }
@@ -141,15 +150,24 @@
   function renderSuggestions(s) {
     sugg = el('div', 'ar-msg aria'); sugg.style.maxWidth = '100%';
     sugg.appendChild(el('div', 'ar-b', md(s.greeting || 'Hi, I am Aria. Ask me anything about the platform.')));
-    var chips = el('div', 'ar-chips'); (s.starters || []).forEach(function (q) { chips.appendChild(chip(q)); }); sugg.appendChild(chips);
+    // Owner (2026-09-15): four popular questions, then the topics behind a picker — one topic open at a time.
+    var pop = el('div', 'ar-follow'); pop.appendChild(el('div', 'ar-label', 'Popular questions'));
+    var chips = el('div', 'ar-chips'); (s.starters || []).slice(0, 4).forEach(function (q) { chips.appendChild(chip(q)); }); pop.appendChild(chips); sugg.appendChild(pop);
     var topics = s.topics || {}; var keys = Object.keys(topics);
     if (keys.length) {
-      var t = el('div', 'ar-topics');
+      var t = el('div', 'ar-follow'); t.appendChild(el('div', 'ar-label', 'Browse by topic'));
+      var tabs = el('div', 'ar-tabs'); var list = el('div', 'ar-chips'); list.hidden = true;
       keys.forEach(function (k) {
-        var d = el('details', ''); d.appendChild(el('summary', '', esc(k)));
-        var c = el('div', 'ar-chips'); (topics[k] || []).forEach(function (q) { c.appendChild(chip(q)); }); d.appendChild(c); t.appendChild(d);
+        var tab = el('button', 'ar-tab', esc(k)); tab.type = 'button';
+        tab.addEventListener('click', function () {
+          var on = tab.classList.contains('on');
+          Array.prototype.forEach.call(tabs.children, function (x) { x.classList.remove('on'); });
+          list.innerHTML = ''; list.hidden = on;
+          if (!on) { tab.classList.add('on'); (topics[k] || []).slice(0, 8).forEach(function (q) { list.appendChild(chip(q)); }); }
+        });
+        tabs.appendChild(tab);
       });
-      sugg.appendChild(t);
+      t.appendChild(tabs); t.appendChild(list); sugg.appendChild(t);
     }
     feed.appendChild(sugg);
   }
@@ -164,7 +182,7 @@
     var shell = el('div', 'ar');
     var head = el('div', 'ar-head');
     head.appendChild(el('div', 'ar-av', 'A'));
-    head.appendChild(el('div', '', '<h1>Aria</h1><p>Platform help. Ask how anything works, what a plan includes, what something costs.</p>'));
+    head.appendChild(el('div', '', '<h1>Aria</h1><p>Platform help</p>'));
     var nb2 = el('button', 'ar-new', 'New chat'); nb2.type = 'button'; nb2.addEventListener('click', newConversation); head.appendChild(nb2);
     shell.appendChild(head);
     scroll = el('div', 'ar-scroll'); feed = el('div', 'ar-feed'); scroll.appendChild(feed); shell.appendChild(scroll);
