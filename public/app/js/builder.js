@@ -986,7 +986,6 @@ function _wsShowTemplateEditor(site) {
       '<span class="pe-bar-spacer" style="flex:1"></span>' +
       '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
         '<button type="button" id="t3-dev-desktop" onclick="_wsTplSetDevice(\'desktop\')" aria-label="Desktop preview" aria-pressed="true" title="Desktop" style="padding:5px 10px;border:none;background:var(--pu);color:#fff;cursor:pointer;font-size:13px">\uD83D\uDDA5</button>' +
-        '<button type="button" id="t3-dev-tablet" onclick="_wsTplSetDevice(\'tablet\')" aria-label="Tablet preview" aria-pressed="false" title="Tablet" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\u25AD</button>' +
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
       '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it \u00B7 your own edits are free \u00B7 changes by Arthur cost 1 credit</span>' +
@@ -2258,7 +2257,7 @@ function _wsShowPageEditor(site, pageId) {
         '<span id="pe-page-title" style="color:var(--t3);font-size:12px"></span>' +
         '<span class="pe-bar-spacer" style="flex:1"></span>' +
         '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
-          devBtn('desktop', 'Desktop', '🖥', true) + devBtn('tablet', 'Tablet', '▭', false) + devBtn('mobile', 'Mobile', '📱', false) +
+          devBtn('desktop', 'Desktop', '🖥', true) + devBtn('mobile', 'Mobile', '📱', false) +
         '</div>' +
         '<span id="pe-status" class="pe-bar-hint" style="color:var(--t3);font-size:11px">Changes made by Arthur save automatically</span>' +
         '<button type="button" id="t3-undo" onclick="wsUndoLast(' + (site.id || 0) + ')" title="Undo the last change" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
