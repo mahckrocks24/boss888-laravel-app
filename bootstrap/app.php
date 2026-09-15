@@ -25,6 +25,12 @@ return Application::configure(basePath: dirname(__DIR__))
             ->name('social:publish-due')
             ->everyMinute()
             ->withoutOverlapping();
+        // SITE THUMBNAILS (2026-09-15): the Websites-page card shows a shot of each home page; every editing path rewrites
+        // sites/{id}/index.html directly, so the export's mtime drives the re-shoot (see SitesThumbnailsCommand --stale).
+        $schedule->command('sites:thumbnails --stale')
+            ->name('sites:thumbnails-stale')
+            ->everyMinute()
+            ->withoutOverlapping(10);
 
         // PUBLISHER888 Unit 1 (2026-09-04) — desk-scheduled stories go live on time.
         // RESUME888 — retention sweep for the resume builder.

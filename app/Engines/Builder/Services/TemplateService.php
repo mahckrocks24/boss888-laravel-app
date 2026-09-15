@@ -1255,6 +1255,8 @@ class TemplateService
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[TemplateService] blog index deploy failed: ' . $e->getMessage());
         }
+        // SITE THUMBNAIL (2026-09-15): the Websites-page card shows a shot of the home page; re-shoot after each deploy (unique per site, 20 s).
+        try { \App\Jobs\GenerateSiteThumbnailJob::dispatch($websiteId)->delay(now()->addSeconds(8)); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] thumbnail job not queued: ' . $e->getMessage()); }
 
         return $path;
     }
