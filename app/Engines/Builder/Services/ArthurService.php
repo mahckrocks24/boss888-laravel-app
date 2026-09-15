@@ -5977,7 +5977,10 @@ PROMPT;
         return 'made ' . $label . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
     }
 
-    /** Which part of the page a colour request names, in which colour, and whether it means the background or the text. */
+    /** Which part of the page a colour request names, in which colour, and whether it means the background or the text.
+     *  COLOUR SCOPE (2026-09-15): resolution order is a quoted element → a section the page has (with an optional part
+     *  inside it: its text, its title, its buttons) → footer/header/hero → site-wide parts → the page. Shade words
+     *  ("light blue", "dark green", "pale grey") tint or darken the named colour. */
     private function colourTargetIn(string $request, int $websiteId): ?array
     {
         $r = mb_strtolower($request);
@@ -5985,41 +5988,102 @@ PROMPT;
         if (preg_match('/#([0-9a-f]{6}|[0-9a-f]{3})\b/i', $request, $hm)) { $hex = self::styleHex($hm[0]); $word = strtoupper($hm[0]); }
         else {
             $names = implode('|', array_map('preg_quote', array_keys(self::COLOR_MAP)));
-            if (preg_match('/\b(' . $names . ')\b/i', $r, $cm)) { $hex = self::styleHex($cm[1]); $word = $cm[1]; }
+            if (preg_match('/\b(?:(light|lighter|pale|soft|bright|dark|darker|deep|rich)\s+)?(' . $names . ')\b/i', $r, $cm)) {
+                $hex = self::styleHex($cm[2]); $word = trim($cm[1] . ' ' . $cm[2]);
+                $hex = self::shadeHex($hex, $cm[1]);
+            }
         }
         if ($hex === null) return null;
-        $targets = [
-            'footer'   => '/\bfooter\b/',
-            'nav'      => '/\b(header|nav|navigation|navbar|menu bar|top bar)\b/',
-            'hero'     => '/\b(hero|banner|cover)\b/',
-            'buttons'  => '/\b(button|buttons|cta|call to action)\b/',
-            'logo'     => '/\blogo\b/',
-            'headline' => '/\b(headline|main title|hero title|big title|h1)\b/',
-            'headings' => '/\b(headings|section titles|titles|subheadings)\b/',
-            'text'     => '/\b(body text|paragraphs|paragraph|the text|copy|font colour|font color|text colour|text color)\b/',
-            'page'     => '/\b(page background|site background|whole page|whole site|background of the (?:page|site)|the background)\b/',
-        ];
-        $target = null;
-        foreach ($targets as $t => $re) { if (preg_match($re, $r)) { $target = $t; break; } }
-        $block = '';
-        if ($target === null) {   // a section the page actually has: "the listings section", "make testimonials navy"
-            $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
-            if (preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm)) {
-                foreach (array_unique($bm[1]) as $b) {
-                    $name = str_replace(['_', '-'], ' ', $b);
-                    if (in_array($b, ['nav', 'hero', 'footer'], true)) continue;
-                    if (preg_match('/\b' . preg_quote($name, '/') . '\b/', $r) || preg_match('/\b' . preg_quote(rtrim($name, 's'), '/') . '\b/', $r)) { $target = 'section'; $block = $b; break; }
+        $textWords = '/\b(text|texts|font|fonts|lettering|wording|letters|words|title|titles|heading|headings|headline|subheading|subheadings|h1|h2|h3|paragraph|paragraphs|copy)\b/';
+        $titleWords = '/\b(title|titles|heading|headings|headline|subheading|subheadings|h1|h2|h3)\b/';
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $partsOf = fn (string $b) => str_replace(['_', '-'], ' ', $b);
+
+        // (a) a quoted element the page has: "the 'Ask about a property' button", "the title 'A Clear Path…'"
+        if (preg_match_all('/["\x{201C}\x{201D}\x{2018}\x{2019}\']([^"\x{201C}\x{201D}\x{2018}\x{2019}\']{3,80})["\x{201C}\x{201D}\x{2018}\x{2019}\']/u', $request, $qm)) {
+            foreach ($qm[1] as $phrase) {
+                $needle = mb_strtolower(trim(preg_replace('/\s+/', ' ', $phrase)));
+                if (preg_match_all('/<(a|button|h1|h2|h3|h4|p|span|li|div|strong)\b[^>]*data-field="([a-z0-9_\-]+)"[^>]*>(.*?)<\/\1>/su', $home, $em, PREG_SET_ORDER)) {
+                    // best match wins: the exact text, else an element whose text contains the phrase, else (long phrases only)
+                    // an element whose whole text sits inside the phrase; a request that says "button" prefers buttons.
+                    $wantsButton = (bool) preg_match('/\b(button|cta)\b/', $r); $best = null; $bestScore = 0;
+                    foreach ($em as $e) {
+                        $txt = mb_strtolower(trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($e[3])))));
+                        if ($txt === '' || mb_strlen($txt) < 3) continue;
+                        $score = $txt === $needle ? 30 : (str_contains($txt, $needle) && mb_strlen($needle) >= 6 ? 20 : (mb_strlen($txt) >= 12 && str_contains($needle, $txt) ? 10 : 0));
+                        if ($score === 0) continue;
+                        $btn = $e[1] === 'button' || ($e[1] === 'a' && preg_match('/class="[^"]*\bbtn/i', $e[0]));
+                        if ($wantsButton === $btn) $score += 5;
+                        if ($score > $bestScore) { $bestScore = $score; $best = $e; }
+                    }
+                    if ($best !== null) {
+                        $e = $best;
+                        {
+                            $isButton = $e[1] === 'button' || ($e[1] === 'a' && preg_match('/class="[^"]*\bbtn/i', $e[0]));
+                            $mode = ($isButton && ! preg_match('/\b(text|lettering|letters|font|wording|words)\b/', $r)) ? 'background' : 'text';
+                            $what = ($isButton ? 'the "' : 'the "') . trim($phrase) . '"' . ($isButton ? ' button' : ($e[1] === 'a' ? ' link' : ' text'));
+                            return ['target' => 'element', 'block' => $e[2], 'hex' => $hex, 'mode' => $mode, 'label' => 'made ' . $what . ($isButton && $mode === 'background' ? ' background' : '') . ' ' . $word, 'button' => $isButton];
+                        }
+                    }
                 }
             }
         }
-        if ($target === null) return null;
-        $mode = (in_array($target, ['logo', 'headline', 'headings', 'text'], true) || preg_match('/\b(text|font|lettering|wording|letters)\b/', $r)) ? 'text' : 'background';
-        if ($target === 'buttons' && preg_match('/\b(text|lettering)\b/', $r)) $mode = 'text';
-        $what = $target === 'section' ? 'the ' . str_replace(['_', '-'], ' ', $block) . ' section' : ['footer' => 'the footer', 'nav' => 'the header', 'hero' => 'the hero', 'buttons' => 'the buttons', 'logo' => 'the logo', 'headline' => 'the headline', 'headings' => 'the section headings', 'text' => 'the body text', 'page' => 'the page background'][$target];
+
+        // (b) the structural parts and the sections the page has — a container the request names
+        $container = null; $block = '';
+        if (preg_match('/\bfooter\b/', $r)) $container = 'footer';
+        elseif (preg_match('/\b(header|nav|navigation|navbar|menu bar|top bar)\b/', $r) && ! preg_match('/\bsection header\b/', $r)) $container = 'nav';
+        elseif (preg_match('/\b(hero|banner|cover)\b/', $r)) $container = 'hero';
+        if (preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm)) {
+            foreach (array_unique($bm[1]) as $b) {
+                if (in_array($b, ['nav', 'hero', 'footer'], true)) continue;
+                $name = $partsOf($b);
+                if (preg_match('/\b' . preg_quote($name, '/') . '\b/', $r) || preg_match('/\b' . preg_quote(rtrim($name, 's'), '/') . '\b/', $r)) { $container = 'section'; $block = $b; break; }
+            }
+        }
+
+        // (c) the part inside (or without) a container
+        $part = null;
+        foreach (['buttons' => '/\b(button|buttons|cta|call to action)\b/', 'logo' => '/\blogo\b/', 'headline' => '/\b(headline|main title|hero title|big title|h1)\b/', 'headings' => '/\b(headings|section titles|titles|subheadings|title|heading)\b/', 'text' => '/\b(body text|paragraphs|paragraph|the text|text|copy|font colour|font color|text colour|text color|font|lettering|wording|words)\b/'] as $t => $re) {
+            if (preg_match($re, $r)) { $part = $t; break; }
+        }
+        if ($container !== null && $part !== null && $part !== 'logo') {
+            $key = $container === 'section' ? $block : $container;
+            $where = $container === 'section' ? 'the ' . $partsOf($block) . ' section' : ['footer' => 'the footer', 'nav' => 'the header', 'hero' => 'the hero'][$container];
+            if ($part === 'buttons') {
+                $mode = preg_match('/\b(text|lettering|letters|font|wording)\b/', $r) ? 'text' : 'background';
+                return ['target' => 'scoped_buttons', 'block' => $key, 'hex' => $hex, 'mode' => $mode, 'label' => 'made the buttons in ' . $where . ($mode === 'background' ? ' background' : ' text') . ' ' . $word];
+            }
+            if ($part === 'headline' || $part === 'headings' || preg_match($titleWords, $r)) {
+                return ['target' => 'scoped_headings', 'block' => $key, 'hex' => $hex, 'mode' => 'text', 'label' => 'made the title in ' . $where . ' ' . $word];
+            }
+            return ['target' => 'scoped_text', 'block' => $key, 'hex' => $hex, 'mode' => 'text', 'label' => 'made the text in ' . $where . ' ' . $word];
+        }
+        if ($container !== null) {
+            $target = $container;
+            $mode = preg_match($textWords, $r) ? 'text' : 'background';
+        } elseif ($part !== null) {
+            $target = $part;
+            $mode = in_array($target, ['logo', 'headline', 'headings', 'text'], true) ? 'text' : (preg_match('/\b(text|lettering|letters|font|wording)\b/', $r) ? 'text' : 'background');
+        } elseif (preg_match('/\b(page background|site background|whole page|whole site|entire site|entire page|background of the (?:page|site)|the background|background colou?r)\b/', $r)) {
+            $target = 'page'; $mode = 'background';
+        } else {
+            return null;
+        }
+        $what = $target === 'section' ? 'the ' . $partsOf($block) . ' section' : ['footer' => 'the footer', 'nav' => 'the header', 'hero' => 'the hero', 'buttons' => 'the buttons', 'logo' => 'the logo', 'headline' => 'the headline', 'headings' => 'the section headings', 'text' => 'the body text', 'page' => 'the page background'][$target];
         $label = 'made ' . $what . ($mode === 'text' && ! in_array($target, ['logo', 'headline', 'headings', 'text'], true) ? ' text' : ($mode === 'background' && in_array($target, ['footer', 'nav', 'hero', 'section'], true) ? ' background' : '')) . ' ' . $word;
         return ['target' => $target, 'block' => $block, 'hex' => $hex, 'mode' => $mode, 'label' => $label];
     }
 
+    /** "light blue" is a tint of blue, "dark green" a shade of green — mixed towards white or black, never the base colour. */
+    private static function shadeHex(?string $hex, string $shade): ?string
+    {
+        if ($hex === null || $shade === '') return $hex;
+        $mix = ['light' => ['#FFFFFF', 0.55], 'lighter' => ['#FFFFFF', 0.55], 'pale' => ['#FFFFFF', 0.72], 'soft' => ['#FFFFFF', 0.62], 'bright' => [null, 0], 'dark' => ['#000000', 0.38], 'darker' => ['#000000', 0.38], 'deep' => ['#000000', 0.45], 'rich' => ['#000000', 0.2]][strtolower($shade)] ?? [null, 0];
+        if ($mix[0] === null || $mix[1] <= 0) return $hex;
+        $c = sscanf($hex, '#%02x%02x%02x'); $t = sscanf($mix[0], '#%02x%02x%02x');
+        return sprintf('#%02X%02X%02X', (int) round($c[0] + ($t[0] - $c[0]) * $mix[1]), (int) round($c[1] + ($t[1] - $c[1]) * $mix[1]), (int) round($c[2] + ($t[2] - $c[2]) * $mix[1]));
+    }
     /** The part of the page a request names (no colour needed): footer, header, hero, buttons, page, or a section the page has. */
     private function partIn(string $request, int $websiteId): ?array
     {
@@ -6082,7 +6146,7 @@ PROMPT;
         $ink = self::readableOn($hex);
         $sel = [
             'footer'   => ['footer,.footer,[data-block="footer"]', 'footer,.footer,[data-block="footer"],footer a,.footer a,footer p,footer li,footer h3,footer h4,footer span,[data-block="footer"] a,[data-block="footer"] p,[data-block="footer"] h4'],
-            'nav'      => ['nav,.nav,.navbar,.nav-bar,header,[data-block="nav"]', 'nav a,.nav a,.navbar a,.nav-bar a,.nav-links a,.nav-link,nav .logo,.nav .logo,.brand-text,[data-block="nav"] a'],
+            'nav'      => ['nav,.nav,.navbar,.nav-bar,header:not(.hero):not([data-block="hero"]),[data-block="nav"]', 'nav a,.nav a,.navbar a,.nav-bar a,.nav-links a,.nav-link,nav .logo,.nav .logo,.brand-text,[data-block="nav"] a'],
             'hero'     => ['.hero,[data-block="hero"],header.hero,section.hero', '.hero h1,.hero .hero-title,.hero .hero-name,[data-block="hero"] h1,.hero .lede,.hero .hero-sub,.hero .hero-subtitle,.hero .eyebrow,.hero .hero-eyebrow,.hero p,[data-block="hero"] p'],
             'buttons'  => ['.btn-primary,.hero-cta,.nav-cta,.btn.primary,.btn-cta,.cta-btn,button[type=submit],a[class*="btn"],.btn', '.btn-primary,.hero-cta,.nav-cta,.btn.primary,.btn-cta,.cta-btn,button[type=submit],a[class*="btn"],.btn'],
             'logo'     => ['', '.logo,.logo *,.brand-text,[data-field="logo"]'],
@@ -6092,6 +6156,23 @@ PROMPT;
             'page'     => ['body', 'body'],
             'section'  => ['[data-block="' . $block . '"]', '[data-block="' . $block . '"] h2,[data-block="' . $block . '"] h3,[data-block="' . $block . '"] p,[data-block="' . $block . '"] li,[data-block="' . $block . '"] span,[data-block="' . $block . '"] .eyebrow,[data-block="' . $block . '"] .lede'],
         ][$target] ?? null;
+        // COLOUR SCOPE (2026-09-15): one element, or one part inside one section / the footer / the header / the hero.
+        if ($target === 'element') {
+            // :not(.lu-x) lifts specificity above the section rule's own readable-ink line, whatever order the rules were written in
+            $s = '[data-field="' . $block . '"]:not(.lu-x)';
+            if ($mode === 'text') return ['colour_field_' . $block => $s . ',' . $s . ' *{color:' . $hex . '!important}'];
+            return ['colour_field_' . $block => $s . '{background:' . $hex . '!important;background-image:none!important;border-color:' . $hex . '!important;color:' . $ink . '!important}'];
+        }
+        if (in_array($target, ['scoped_buttons', 'scoped_headings', 'scoped_text'], true)) {
+            $scope = in_array($block, ['footer', 'nav', 'hero'], true) ? ['footer' => 'footer,.footer,[data-block="footer"]', 'nav' => 'nav,.nav,.navbar,.nav-bar,[data-block="nav"]', 'hero' => '.hero,[data-block="hero"],header.hero,section.hero'][$block] : '[data-block="' . $block . '"]';
+            $inner = ['scoped_buttons' => '.btn,a[class*="btn"],button,.btn-primary,.hero-cta,.nav-cta,.cta-btn', 'scoped_headings' => 'h1,h2,h3,.section-title,.hero-title,.eyebrow', 'scoped_text' => 'h1,h2,h3,h4,p,li,span,dd,dt,.lede,.eyebrow,a:not([class*="btn"])'][$target];
+            $sels = [];
+            foreach (explode(',', $scope) as $sc) { foreach (explode(',', $inner) as $in) { $sels[] = trim($sc) . ' ' . trim($in) . ':not(.lu-x)'; } }
+            $s = implode(',', $sels);
+            $key = 'colour_' . str_replace('scoped_', '', $target) . '_' . $block;
+            if ($target === 'scoped_buttons' && $mode === 'background') return [$key => $s . '{background:' . $hex . '!important;background-image:none!important;border-color:' . $hex . '!important;color:' . $ink . '!important}'];
+            return [$key => $s . '{color:' . $hex . '!important}'];
+        }
         if ($sel === null) return [];
         [$bgSel, $textSel] = $sel;
         $key = 'colour_' . ($target === 'section' ? 'section_' . $block : $target);
@@ -6099,6 +6180,8 @@ PROMPT;
             return [$key => $textSel . '{color:' . $hex . '!important}'];
         }
         $css = $bgSel . '{background:' . $hex . '!important;background-image:none!important;border-color:' . $hex . '!important}';
+        // a light page background keeps the design's own dark text; only a dark page needs its text lifted to white
+        if ($target === 'page' && $ink !== '#FFFFFF') return [$key => $css];
         if ($target === 'hero') $css .= ' .hero::before,.hero::after,[data-block="hero"]::before,[data-block="hero"]::after{background:none!important;background-image:none!important}';
         $css .= ' ' . $textSel . '{color:' . $ink . '!important}';
         if ($target === 'buttons') $css = $bgSel . '{background:' . $hex . '!important;background-image:none!important;border-color:' . $hex . '!important;color:' . $ink . '!important}';
