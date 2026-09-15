@@ -16,6 +16,78 @@ class ArthurService
     private \App\Connectors\RuntimeClient $runtime;
     private TemplateService $templates;
 
+    /* ═══════════════════ ELEMENT888 (DEC-0052, 2026-09-15) — align and size one element; shared by chat, toolbox and drag ═══════════════════ */
+
+    /** What one [data-field] element is on the home page: tag, whether it is a button/link/image, its text. */
+    public function elementInfo(int $websiteId, string $field): ?array
+    {
+        $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', $field);
+        if ($field === '') return null;
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if (preg_match('/<(img)\b[^>]*data-field="' . preg_quote($field, '/') . '"/i', $home)) return ['field' => $field, 'tag' => 'img', 'kind' => 'image', 'text' => ''];
+        if (! preg_match('/<([a-z0-9]+)\b([^>]*)data-field="' . preg_quote($field, '/') . '"[^>]*>(.*?)<\/\1>/su', $home, $m)) return null;
+        $tag = strtolower($m[1]);
+        $isButton = $tag === 'button' || ($tag === 'a' && preg_match('/class="[^"]*\bbtn/i', $m[2]));
+        $kind = $isButton ? 'button' : ($tag === 'a' ? 'link' : (in_array($tag, ['div', 'figure', 'picture'], true) && preg_match('/<img\b/i', $m[3]) ? 'image' : 'text'));
+        return ['field' => $field, 'tag' => $tag, 'kind' => $kind, 'text' => mb_substr(trim((string) preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($m[3])))), 0, 80)];
+    }
+
+    /** Align one element left / center / right — text by text-align, buttons/images/links by block + auto margins (+ grid justify-self). */
+    public function alignElement(int $websiteId, string $field, string $align): array
+    {
+        $align = ['centre' => 'center', 'middle' => 'center'][$align] ?? $align;
+        if (! in_array($align, ['left', 'center', 'right'], true)) return ['success' => false, 'message' => 'Left, centre or right?'];
+        $info = $this->elementInfo($websiteId, $field);
+        if ($info === null) return ['success' => false, 'message' => 'I could not find that element on the page.'];
+        $tv = json_decode((string) DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
+        try { $this->templates->snapshotToHistory($websiteId, 'element_align'); } catch (\Throwable $e) {}
+        $s = '[data-field="' . $info['field'] . '"]:not(.lu-x)';
+        $js = ['left' => 'start', 'center' => 'center', 'right' => 'end'][$align];
+        if ($info['kind'] === 'text') {
+            $css = "{$s}{text-align:{$align}!important;justify-self:{$js}!important}";
+        } else {
+            $ml = $align === 'left' ? '0' : 'auto'; $mr = $align === 'right' ? '0' : 'auto';
+            $css = "{$s}{display:block!important;width:fit-content!important;max-width:100%!important;margin-left:{$ml}!important;margin-right:{$mr}!important;justify-self:{$js}!important}";
+            if ($info['kind'] === 'image') $css = "{$s}{display:block!important;margin-left:{$ml}!important;margin-right:{$mr}!important;justify-self:{$js}!important}";
+        }
+        if (! self::writeDesignExtras($websiteId, ['align_field_' . $info['field'] => $css], $tv)) return ['success' => false, 'message' => 'I could not write that change to the page.'];
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        $label = ($info['text'] !== '' ? '"' . mb_substr($info['text'], 0, 40) . '"' : 'the ' . str_replace(['_', '-'], ' ', $info['field']));
+        return ['success' => true, 'message' => 'aligned ' . $label . ' to the ' . ($align === 'center' ? 'centre' : $align)];
+    }
+
+    /** Size one element: text/buttons by zoom (60–180 %), images by width % of their column (30–100 %). dir = bigger | smaller. */
+    public function sizeElement(int $websiteId, string $field, string $dir, bool $big = false): array
+    {
+        $info = $this->elementInfo($websiteId, $field);
+        if ($info === null) return ['success' => false, 'message' => 'I could not find that element on the page.'];
+        $up = $dir !== 'smaller';
+        $tv = json_decode((string) DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
+        $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+        $key = 'size_field_' . $info['field']; $s = '[data-field="' . $info['field'] . '"]:not(.lu-x)';
+        $label = ($info['text'] !== '' ? '"' . mb_substr($info['text'], 0, 40) . '"' : 'the ' . str_replace(['_', '-'], ' ', $info['field']));
+        if ($info['kind'] === 'image') {
+            $pct = 100;
+            if (isset($extras[$key]) && preg_match('/width:(\d+)%/', (string) $extras[$key], $wm)) $pct = (int) $wm[1];
+            if ($up && $pct >= 100) return ['success' => false, 'message' => ucfirst($label) . ' already fills its space — a photo cannot grow past its column. I can make it smaller, or switch to a layout with a larger photo.'];
+            $step = $big ? 25 : 15;
+            $pct = max(30, min(100, $pct + ($up ? $step : -$step)));
+            $css = "{$s}{width:{$pct}%!important;max-width:100%!important;height:auto!important}";
+            $said = 'made ' . $label . ($up ? ' bigger' : ' smaller') . " (now {$pct}% of its space)";
+        } else {
+            $current = 1.0;
+            if (isset($extras[$key]) && preg_match('/zoom:([\d.]+)/', (string) $extras[$key], $zm)) $current = (float) $zm[1];
+            $step = $big ? 1.3 : 1.15;
+            $factor = max(0.6, min(1.8, round($current * ($up ? $step : 1 / $step), 3)));
+            if ($factor === $current) return ['success' => false, 'message' => ucfirst($label) . ' is already at the ' . ($up ? 'largest' : 'smallest') . ' size I allow (' . (int) round($factor * 100) . '% of the design).'];
+            $css = "{$s}{zoom:{$factor}}";
+            $said = 'made ' . $label . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
+        }
+        try { $this->templates->snapshotToHistory($websiteId, 'element_size'); } catch (\Throwable $e) {}
+        if (! self::writeDesignExtras($websiteId, [$key => $css], $tv)) return ['success' => false, 'message' => 'I could not write that change to the page.'];
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        return ['success' => true, 'message' => $said];
+    }
     /** SELECTION888 (2026-09-15): the element / section the customer clicked in the editor, for the style executors of the current request. */
     private ?array $selTarget = null;
     private const SEL_WORDS = '/\b(selected|highlighted|chosen|this one|this element|this text|this title|this heading|this button|this section|this|it|that|here)\b/';
@@ -33,6 +105,20 @@ class ArthurService
         elseif ($field !== '' && preg_match('/<img\b[^>]*data-field="' . preg_quote($field, '/') . '"/', $home)) { $tag = 'img'; }
         if ($block === '' && $field !== '' && preg_match('/data-block="([a-z_\-]+)"(?:(?!data-block=).)*?data-field="' . preg_quote($field, '/') . '"/su', $home, $bm)) { $block = $bm[1]; }
         return ['field' => $field, 'block' => $block, 'tag' => $tag, 'text' => mb_substr($text, 0, 160)];
+    }
+
+    /** The image the words name: 'the hero photo', 'the about image' → the first image field inside that section (ELEMENT888). */
+    private function imageFieldFor(int $websiteId, string $request): string
+    {
+        $r = mb_strtolower($request);
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $block = '';
+        if (preg_match('/\b(hero|banner)\b/', $r)) $block = 'hero';
+        elseif (preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm)) { foreach (array_unique($bm[1]) as $b) { $name = str_replace(['_', '-'], ' ', $b); if (preg_match('/\b' . preg_quote($name, '/') . '\b/', $r) || preg_match('/\b' . preg_quote(rtrim($name, 's'), '/') . '\b/', $r)) { $block = $b; break; } } }
+        $scope = $home;
+        if ($block !== '' && preg_match('/<[a-z0-9]+\b[^>]*data-block="' . preg_quote($block, '/') . '"[^>]*>(.*?)(?=<[a-z0-9]+\b[^>]*data-block="|<\/body>)/su', $home, $sm)) $scope = $sm[1];
+        if (preg_match('/<img\b[^>]*data-field="([a-z0-9_\-]+)"/i', $scope, $im)) return $im[1];
+        return '';
     }
 
     /** The target a style request acts on: the model's explicit target, else the selection when the words point at it. */
@@ -6005,7 +6091,7 @@ PROMPT;
         $up = (bool) preg_match('/\b(bigger|larger|huge|enlarge|increase|more prominent)\b/', $r);
         $step = preg_match('/\b(huge|much bigger|much larger|a lot bigger|way bigger|much smaller|a lot smaller|tiny)\b/', $r) ? 1.3 : 1.15;
         // SELECTION888: 'make it bigger' with an element selected in the editor sizes that element alone
-        if ($this->selTarget !== null && ($this->selTarget['field'] ?? '') !== '' && (preg_match(self::SEL_WORDS, $r) || ! preg_match('/\b(headline|title|heading|h1|hero|button|buttons|cta|nav|menu|navigation|logo|headings|titles|text|font|fonts|copy|paragraph|paragraphs|lettering|type)\b/', $r))) {
+        if ($this->selTarget !== null && ($this->selTarget['field'] ?? '') !== '') {   // a targeted element is sized on its own
             $sf = (string) $this->selTarget['field']; $key = 'size_field_' . $sf;
             $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
             $current = 1.0;
@@ -7893,6 +7979,7 @@ PROMPT;
     /** Route the model's decision to the deterministic executor. Returns null to let the classic path handle it (with the normalized wording). */
     private function dispatchIntent(int $wsId, int $websiteId, object $site, string &$request, array $ctx, array $tv, string $industry, array $intent, bool $isStatic): ?array
     {
+        $customerWords = $request;   // the customer's own words — the model's normalised sentence replaces $request below
         $base = ['plan' => ['kind' => $intent['intent'], 'credits' => 0], 'credits' => 0, 'applied' => 0, 'actions_applied' => 0];
         $normalized = trim((string) ($intent['normalized'] ?? ''));
         switch ($intent['intent']) {
@@ -7903,6 +7990,26 @@ PROMPT;
                 return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "Here is what I can tell you about {$site->name}."];
             case 'unsupported':
                 return $base + ['success' => false, 'kind' => 'unsupported', 'code' => 'UNSUPPORTED', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "That is not something I can do from here."];
+            case 'element_move':
+            case 'element_align': {
+                // ELEMENT888 (DEC-0052): move / swap / align one element; the model names the field (from FIELDS or the selection)
+                $el = is_array($intent['element'] ?? null) ? $intent['element'] : [];
+                $sel = is_array($ctx['selected'] ?? null) ? $ctx['selected'] : [];
+                $fld = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($el['field'] ?? '')); if ($fld === '') $fld = (string) ($sel['field'] ?? '');
+                if ($fld === '') return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which element? Tap it in the preview, or tell me the words you see on it.', 'options' => []];
+                $action = $intent['intent'] === 'element_move' ? 'element_move' : 'element_align';
+                if (! \App\Engines\Builder\Support\EditorCredits::canAfford($wsId, $action)) return $base + ['success' => false, 'code' => 'INSUFFICIENT_CREDITS', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal($action)];
+                if ($action === 'element_move') {
+                    $op = strtolower((string) ($el['op'] ?? '')); $ref = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($el['ref'] ?? '')) ?: null;
+                    $res = $this->templates->moveElement($websiteId, $fld, $op, $ref);
+                } else {
+                    $res = $this->alignElement($websiteId, $fld, strtolower((string) ($el['align'] ?? '')));
+                }
+                if (empty($res['success'])) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => (string) $res['message'], 'options' => []];
+                $cost = \App\Engines\Builder\Support\EditorCredits::charge($wsId, $action, $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$res['message']]]);
+                Log::info('[Arthur] element op', ['website' => $websiteId, 'action' => $action, 'field' => $fld, 'change' => $res['message']]);
+                return $base + ['success' => true, 'kind' => 'element', 'applied' => 1, 'actions_applied' => 1, 'credits' => $cost, 'message' => 'Done — I ' . $res['message'] . " on {$site->name}." . ($cost > 0 ? " {$cost} credit" . ($cost === 1 ? '' : 's') . '.' : '') . ' Undo puts it back.'];
+            }
             case 'section_move':
             case 'section_hide':
             case 'section_show':
@@ -7958,7 +8065,20 @@ PROMPT;
             case 'style':
                 if ($normalized !== '') $request = $normalized;
                 $plan = ['kind' => 'style', 'credits' => \App\Engines\Builder\Support\BuilderCapabilities::pricing()['style'] ?? 1];
-                $this->selTarget = $this->selectionTargetFor($intent, $ctx, $request);   // SELECTION888
+                $this->selTarget = $this->selectionTargetFor($intent, $ctx, $customerWords);   // SELECTION888 (judged on the customer's words)
+                // ELEMENT888: a size request on one element (the selected one, or an image the words name) — images by width, the rest by zoom
+                if (preg_match('/\b(bigger|larger|smaller|enlarge|shrink|increase|decrease|reduce)\b/i', $request) && (($this->selTarget['field'] ?? '') !== '' || ! preg_match('/\b(text|font|fonts|headline|headings|titles|paragraphs|buttons|menu|nav|logo)\b/i', $request))) {
+                    $szField = (string) ($this->selTarget['field'] ?? '');
+                    if ($szField === '' && preg_match('/\b(image|photo|picture|portrait)\b/i', $request)) { $szField = $this->imageFieldFor($websiteId, $request); }
+                    if ($szField !== '') {
+                        if (! \App\Engines\Builder\Support\EditorCredits::canAfford($wsId, 'element_size')) { $this->selTarget = null; return $base + ['success' => false, 'code' => 'INSUFFICIENT_CREDITS', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal('element_size')]; }
+                        $szRes = $this->sizeElement($websiteId, $szField, preg_match('/\b(smaller|shrink|decrease|reduce)\b/i', $request) ? 'smaller' : 'bigger', (bool) preg_match('/\b(much|a lot|way|huge|tiny)\b/i', $request));
+                        $this->selTarget = null;
+                        if (empty($szRes['success'])) return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'message' => (string) $szRes['message']];
+                        $szCost = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'element_size', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$szRes['message']]]);
+                        return $base + ['success' => true, 'kind' => 'style', 'applied' => 1, 'actions_applied' => 1, 'credits' => $szCost, 'message' => 'Done — I ' . $szRes['message'] . " on {$site->name}." . ($szCost > 0 ? " {$szCost} credit" . ($szCost === 1 ? '' : 's') . '.' : '') . ' Undo puts it back.'];
+                    }
+                }
                 try { $res = $this->applySiteStyle($wsId, $websiteId, $request, $site, $tv, $plan, $isStatic); $this->selTarget = null; }
                 catch (\Throwable $e) { $this->selTarget = null; Log::error('[Arthur] applySiteStyle failed', ['website' => $websiteId, 'error' => $e->getMessage()]); return $base + ['success' => false, 'code' => 'STYLE_FAILED', 'message' => 'I could not apply that design change just now — nothing on your site was altered.']; }
                 if (($res['code'] ?? '') === 'STYLE_NO_TARGET') {

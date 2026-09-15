@@ -825,6 +825,7 @@ class TemplateService
              . $toHome($c['nav']) . '<main data-lu-page="' . e($slug) . '">' . $bodyHtml . '</main>' . $toHome($c['footer']) . $offset . '</body></html>';
         $doc = \App\Engines\Builder\Support\ResponsiveNav::inject($doc);
         $doc = \App\Engines\Builder\Support\SiteScripts::inject($doc, $websiteId);
+        $doc = $this->applyElementOps($websiteId, $doc);   // ELEMENT888: nav/footer element moves live on every page
         $dir = storage_path("app/public/sites/{$websiteId}/{$slug}");
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $path = $dir . '/index.html';
@@ -948,6 +949,133 @@ class TemplateService
         return ['success' => true, 'message' => $res['message']];
     }
 
+    /* ═══════════════════ ELEMENT888 (DEC-0052, 2026-09-15) — one [data-field] element moves among its siblings ═══════════════════ */
+
+    /** Move / swap one element: op = up | down | top | bottom | before | after | swap (ref = the other element's field key).
+     *  Applied to every page carrying the field, remembered in settings.element_ops for deploy(), snapshotted first for Undo. */
+    public function moveElement(int $websiteId, string $field, string $op, ?string $ref = null): array
+    {
+        $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', $field);
+        $ref = $ref !== null && $ref !== '' ? (string) preg_replace('/[^a-z0-9_\-]/i', '', $ref) : null;
+        if ($field === '' || ! in_array($op, ['up', 'down', 'top', 'bottom', 'before', 'after', 'swap'], true)) {
+            return ['success' => false, 'message' => 'Tell me which element and where it should go — up, down, to the top or bottom of its group, before or after another element, or swapped with one.'];
+        }
+        if (in_array($op, ['before', 'after', 'swap'], true) && ($ref === null || $ref === $field)) {
+            return ['success' => false, 'message' => 'Which element should it go ' . ($op === 'swap' ? 'in place of' : $op) . '? Name the text or button you mean.'];
+        }
+        $root = storage_path("app/public/sites/{$websiteId}");
+        if (! is_file("{$root}/index.html")) return ['success' => false, 'message' => 'This site has no page export yet.'];
+        $files = ["{$root}/index.html"];
+        foreach (glob("{$root}/*/index.html") ?: [] as $f) { if (! str_contains($f, '/.history/')) $files[] = $f; }
+        $done = 0; $message = ''; $firstFailure = null;
+        foreach ($files as $f) {
+            $html = (string) @file_get_contents($f);
+            if (! str_contains($html, 'data-field="' . $field . '"')) continue;
+            $r = $this->applyOneElementOp($html, $field, $op, $ref);
+            if (! $r['success']) { $firstFailure = $firstFailure ?? $r; continue; }
+            if ($done === 0) { try { $this->snapshotToHistory($websiteId, 'element_move'); } catch (\Throwable $e) {} }
+            file_put_contents($f, $r['html']);
+            $done++; $message = $r['message'];
+        }
+        if ($done === 0) return $firstFailure ?? ['success' => false, 'message' => 'I could not find that element on the page.'];
+        $settings = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: [];
+        $ops = array_values((array) ($settings['element_ops'] ?? []));
+        $ops[] = ['field' => $field, 'op' => $op, 'ref' => $ref, 'at' => date('c')];
+        if (count($ops) > 80) $ops = array_slice($ops, -80);
+        $settings['element_ops'] = $ops;
+        \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        return ['success' => true, 'message' => $message, 'pages' => $done];
+    }
+
+    /** Re-apply remembered element moves to a freshly rendered page (deploy / deployPage). */
+    private function applyElementOps(int $websiteId, string $html): string
+    {
+        $settings = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: [];
+        foreach ((array) ($settings['element_ops'] ?? []) as $op) {
+            $field = (string) ($op['field'] ?? '');
+            if ($field === '' || ! str_contains($html, 'data-field="' . $field . '"')) continue;
+            $r = $this->applyOneElementOp($html, $field, (string) ($op['op'] ?? ''), $op['ref'] ?? null);
+            if ($r['success']) $html = $r['html'];
+        }
+        return $html;
+    }
+
+    /** The DOM operation itself. Siblings = element children of the same parent (scripts/styles ignored); before/after/swap stay inside one section. */
+    private function applyOneElementOp(string $html, string $field, string $op, ?string $ref): array
+    {
+        $pretty = fn(string $k) => str_replace(['_', '-'], ' ', $k);
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        $xp = new \DOMXPath($dom);
+        $find = fn(string $k) => $xp->query('//*[@data-field="' . $k . '"]')->item(0);
+        $node = $find($field);
+        if (! $node) return ['success' => false, 'message' => 'I could not find the ' . $pretty($field) . ' on this page.'];
+        $blockOf = function (\DOMNode $n): string { for ($p = $n; $p; $p = $p->parentNode) { if ($p instanceof \DOMElement && $p->hasAttribute('data-block')) return $p->getAttribute('data-block'); } return ''; };
+        $isEl = fn(?\DOMNode $n) => $n instanceof \DOMElement && ! in_array(strtolower($n->tagName), ['script', 'style', 'template', 'noscript'], true);
+        $prevEl = function (\DOMNode $n) use ($isEl) { for ($s = $n->previousSibling; $s; $s = $s->previousSibling) { if ($isEl($s)) return $s; } return null; };
+        $nextEl = function (\DOMNode $n) use ($isEl) { for ($s = $n->nextSibling; $s; $s = $s->nextSibling) { if ($isEl($s)) return $s; } return null; };
+        $parent = $node->parentNode;
+        if (! $parent) return ['success' => false, 'message' => 'That element cannot be moved.'];
+        $nameOf = function (\DOMNode $n) use ($pretty): string { $t = trim((string) preg_replace('/\s+/', ' ', $n->textContent ?? '')); $k = $n instanceof \DOMElement ? $n->getAttribute('data-field') : ''; return ($t !== '' && mb_strlen($t) <= 60) ? '"' . mb_substr($t, 0, 40) . '"' : 'the ' . $pretty($k); };
+        $what = $nameOf($node);
+        switch ($op) {
+            case 'up':
+                $prev = $prevEl($node);
+                if (! $prev) return ['success' => false, 'message' => ucfirst($what) . ' is already the first thing in its group.'];
+                $parent->insertBefore($node, $prev); $message = 'moved ' . $what . ' up'; break;
+            case 'down':
+                $next = $nextEl($node);
+                if (! $next) return ['success' => false, 'message' => ucfirst($what) . ' is already the last thing in its group.'];
+                $after = $nextEl($next) ?? $next->nextSibling;
+                if ($after) $parent->insertBefore($node, $after); else $parent->appendChild($node);
+                $message = 'moved ' . $what . ' down'; break;
+            case 'top':
+                $first = null; foreach ($parent->childNodes as $c) { if ($isEl($c)) { $first = $c; break; } }
+                if ($first === $node) return ['success' => false, 'message' => ucfirst($what) . ' is already at the top of its group.'];
+                $parent->insertBefore($node, $first); $message = 'moved ' . $what . ' to the top of its group'; break;
+            case 'bottom':
+                if ($nextEl($node) === null) return ['success' => false, 'message' => ucfirst($what) . ' is already at the bottom of its group.'];
+                $parent->appendChild($node); $message = 'moved ' . $what . ' to the bottom of its group'; break;
+            case 'before':
+            case 'after':
+            case 'swap':
+                $refNode = $ref !== null ? $find($ref) : null;
+                if (! $refNode) return ['success' => false, 'message' => 'I could not find the ' . $pretty((string) $ref) . ' on this page.'];
+                if ($refNode === $node || $refNode->contains($node) || $node->contains($refNode)) return ['success' => false, 'message' => 'Those are the same element, or one sits inside the other.'];
+                if ($blockOf($refNode) !== $blockOf($node)) return ['success' => false, 'message' => 'I can move things around inside their own section. ' . ucfirst($what) . ' and the ' . $pretty((string) $ref) . ' sit in different sections — move the whole section instead, or ask me to add the same text there.'];
+                if ($op === 'swap') {
+                    $ph = $dom->createElement('span');
+                    $refNode->parentNode->insertBefore($ph, $refNode);
+                    $parent->insertBefore($refNode, $node);
+                    $ph->parentNode->insertBefore($node, $ph);
+                    $ph->parentNode->removeChild($ph);
+                    $message = 'swapped ' . $what . ' and ' . $nameOf($refNode);
+                } elseif ($op === 'before') {
+                    $refNode->parentNode->insertBefore($node, $refNode); $message = 'moved ' . $what . ' before ' . $nameOf($refNode);
+                } else {
+                    $n2 = $refNode->nextSibling; if ($n2) $refNode->parentNode->insertBefore($node, $n2); else $refNode->parentNode->appendChild($node);
+                    $message = 'moved ' . $what . ' after ' . $nameOf($refNode);
+                }
+                break;
+            default:
+                return ['success' => false, 'message' => 'Tell me where it should go.'];
+        }
+        $out = $dom->saveHTML();
+        $out = preg_replace('/^<\?xml encoding="UTF-8"\?>\s*/', '', $out) ?? $out;
+        $out = $this->restoreUtf8Entities($out);
+        return ['success' => true, 'html' => $out, 'message' => $message];
+    }
+
+    /** The order of the data-field elements on the home page (for proofs and the model's context). */
+    public function fieldOrder(int $websiteId, string $block = ''): array
+    {
+        $html = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if ($block !== '' && preg_match('/<[a-z0-9]+\b[^>]*data-block="' . preg_quote($block, '/') . '"[^>]*>(.*?)(?=<[a-z0-9]+\b[^>]*data-block="|<\/body>)/su', $html, $m)) $html = $m[1];
+        return preg_match_all('/data-field="([a-z0-9_\-]+)"/i', $html, $mm) ? array_values(array_unique($mm[1])) : [];
+    }
     /** Re-apply remembered moves to a freshly rendered home (called from deploy()). */
     private function applySectionOps(int $websiteId, string $html): string
     {
@@ -1233,6 +1361,7 @@ class TemplateService
         // that a re-render from variables dropped (idempotent — skipped when the block is already present).
         $html = $this->reapplyStoredSections($websiteId, $html);
         $html = $this->applySectionOps($websiteId, $html);   // remembered section moves (DEC-0051)
+        $html = $this->applyElementOps($websiteId, $html);   // remembered element moves (ELEMENT888, DEC-0052)
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
         $html = self::injectMobileSafety($html);
         $html = \App\Engines\Builder\Support\SiteScripts::inject($html, $websiteId);   // forms → CRM, tracking ids (DEC-0051)
