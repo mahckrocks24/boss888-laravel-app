@@ -136,7 +136,11 @@ final class BuilderCapabilities
             . "- Pages (" . $p['page'] . " credits each" . ($industry ? ", available for {$industry}" : '') . "): " . implode(', ', $pages) . ".\n"
             . "- Sections/rows (" . $p['section'] . " credits each, added to the home page at a named position): " . implode(', ', $secs) . ".\n"
             . "- Copy edits on an existing page: " . $p['text_edit'] . " credit.\n"
-            . "- Design changes (colours, palette, gradients, fonts, overall style): " . $p['style'] . " credit.\n"
+            . "- Design changes (colours, palette, gradients, fonts, overall style): " . $p['style'] . " credit. A colour or gradient can be aimed at one part: the header, the footer, the hero, the buttons, one named section, one named element ('make the listings section a gradient of purple and pink', 'make the Ask about a property button white').\n"
+            . "- Elements on a page (" . $p['element_move'] . " credit each): move a text, button or photo up/down/top/bottom within its section, before/after or swapped with another element of the same section; align it left/centre/right; make it bigger/smaller (photos by width, text and buttons by size); opacity, shadow, glow on one element; a dark or light overlay on a section background.\n"
+            . "- Sections of the home page: move before/after another section, to the top or the bottom; hide or show a section (" . $p['section_move'] . " credit).\n"
+            . "- Catalogue items — listings, services, menu items, plans, rooms, vehicles, programmes, events, sessions, projects (" . $p['catalogue'] . " credit each): add, change the price, mark the status (for sale / sold / under offer …), rename, remove, restore; they appear on the site's own pages.\n"
+            . "- Tracking ids (free): Google Analytics, Tag Manager, Meta and TikTok pixels on every page.\n"
             . "- Limits: " . implode(' ', self::limitations());
     }
 

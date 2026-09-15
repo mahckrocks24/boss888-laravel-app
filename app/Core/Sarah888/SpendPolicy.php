@@ -79,6 +79,11 @@ class SpendPolicy
         . 'get (?:it|them) done|please do)\b/i';
 
     /** Phrases that authorise spend explicitly, even inside a question. */
+    /** WEBSITE EDITS (2026-09-15, EV-1038): editing verbs that are deliberately absent from DIRECTIVE, but ARE work when they
+     *  act on a named part of a website — the set Arthur executes (elements, effects, colours, sections, catalogue). */
+    private const SITE_EDIT_VERBS = '/\b(?:move|align|centre|center|shift|nudge|swap|resize|enlarge|shrink|fade|darken|lighten|brighten|dim|give|apply|set|put|mark|hide|show|reveal|colou?r|paint|tint|bold|blur|glow|add|make|change|increase|decrease|reduce|raise|lower|widen|narrow|drop|lift|place|position|reposition|rearrange|reorder|flip|highlight|emphasi[sz]e|soften|sharpen|bigger|smaller|larger)\b/i';
+    private const SITE_NOUNS = '/\b(?:website|site|web ?page|page|hero|header|nav(?:igation)?|menu bar|footer|button|cta|title|headline|heading|subtitle|eyebrow|tagline|section|photo|image|picture|banner|logo|listing|listings|property|properties|service|services|menu item|dish|plan|room|price|background|text|paragraph|element|overlay|shadow|glow|opacity|gradient|palette|colou?rs?|font|sold|for sale|under offer|let agreed|rented|available|unavailable|out of stock|in stock)\b/i';
+
     private const EXPLICIT_AUTH = '/\b(?:yes,? (?:do|go|please)|go ahead|do it|approved?|proceed|make it so|run it|queue (?:it|them)|say the word|add the missing images'
         // MONEY-1 (2026-08-29): first-person authorisation is the clearest spend authority there is.
         . '|i (?:hereby )?authori[sz]e|you have my (?:approval|authori[sz]ation|go-?ahead|permission)|green ?light|go for it|run (?:it |them |all )?(?:now|again)|run all)\b/i';
@@ -228,6 +233,14 @@ class SpendPolicy
         // are followed by lowercase words and survive the strip.
         $withoutProperNouns = preg_replace('/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+\b/', ' ', $m);
         $isDirective = (bool) preg_match(self::DIRECTIVE, $withoutProperNouns);
+        // WEBSITE EDITS (EV-1038): "move the hero eyebrow below the title", "give the hero title a blue glow", "mark the
+        // bungalow as sold" — an editing verb on a named part of the site is a work order, not a statement. Not when the
+        // owner asks to be SHOWN something ("show me the hero"), and never a question.
+        $siteEdit = ! $isDirective && ! str_ends_with($m, '?')
+            && ! preg_match('/^\s*(?:please\s+)?(?:list|show|display|summarise|summarize|tell|give)\s+(?:me|us)\b/i', $m)
+            && ! preg_match(self::INTERROGATIVE, $m)
+            && preg_match(self::SITE_EDIT_VERBS, $withoutProperNouns) && preg_match(self::SITE_NOUNS, $m);
+        if ($siteEdit) $isDirective = true;
 
         // A directive verb inside a wh-question is reporting, not commanding.
         // "What did Bristol Trade Morning produce?" asks about an outcome; it
@@ -257,6 +270,7 @@ class SpendPolicy
         // with a display word but asks for something to be made, and must stay
         // a directive.
         if (preg_match('/^\s*(?:please\s+)?(?:list|show|display|summarise|summarize|tell|give)\b/i', $m)
+            && ! $siteEdit
             && !preg_match('/\b(?:create|write|draft|generate|publish|send|delete|build|make)\b/i', $m)) {
             return ['specifies_action' => $__specifies, 'authorized' => false,
                     'reason' => 'a request to be shown existing state, not a work commission',
@@ -274,7 +288,7 @@ class SpendPolicy
         // A directive inside a question ("can you write the article?") is a
         // request for work, not a request for information.
         if ($isDirective) {
-            return ['specifies_action' => $__specifies, 'authorized' => true, 'reason' => 'work was requested', 'classification' => $isQuestion ? 'directive-question' : 'directive'];
+            return ['specifies_action' => $__specifies, 'site_edit' => (bool) ($siteEdit ?? false), 'authorized' => true, 'reason' => 'work was requested', 'classification' => $isQuestion ? 'directive-question' : 'directive'];
         }
         if ($isQuestion) {
             return ['specifies_action' => $__specifies, 'authorized' => false, 'reason' => 'informational question — no work was requested', 'classification' => 'question'];

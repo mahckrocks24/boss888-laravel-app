@@ -382,13 +382,28 @@ class DerivedState
             ->groupBy('website_id')
             ->pluck('c', 'website_id');
 
-        $items = $sites->map(fn ($s) => [
-            'id'       => (int) $s->id,
-            'name'     => trim((string) ($s->name ?? '')) ?: ('website #' . $s->id),
-            'status'   => (string) ($s->status ?? ''),
-            'host'     => (string) ($s->custom_domain ?: $s->subdomain ?: ''),
-            'articles' => (int) ($articles[$s->id] ?? 0),
-        ])->values()->all();
+        // EV-1038 (2026-09-15): pages, home sections and catalogue items — what the site really holds (Sarah used to read
+        // zero blog articles as 'NO content written yet' and refused to touch listings she could not see).
+        $pageCounts = DB::table('pages')->whereIn('website_id', $sites->pluck('id')->all())->selectRaw('website_id, COUNT(*) c')->groupBy('website_id')->pluck('c', 'website_id');
+        $catRows = DB::table('catalogue_items')->whereIn('website_id', $sites->pluck('id')->all())->whereNull('deleted_at')->orderBy('sort_order')->orderBy('id')->get(['website_id', 'kind', 'title', 'status']);
+        $cats = [];
+        foreach ($catRows as $c) { $cats[$c->website_id][$c->kind][] = $c->title . ' · ' . str_replace('_', ' ', (string) $c->status); }
+        $items = $sites->map(function ($s) use ($articles, $pageCounts, $cats) {
+            $home = (string) @file_get_contents(storage_path('app/public/sites/' . (int) $s->id . '/index.html'));
+            $sections = preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm) ? array_values(array_unique($bm[1])) : [];
+            $catText = [];
+            foreach ((array) ($cats[$s->id] ?? []) as $kind => $titles) { $catText[] = count($titles) . ' ' . $kind . (count($titles) === 1 ? '' : 's') . ' (' . implode('; ', array_slice($titles, 0, 12)) . (count($titles) > 12 ? '; …' : '') . ')'; }
+            return [
+                'id'        => (int) $s->id,
+                'name'      => trim((string) ($s->name ?? '')) ?: ('website #' . $s->id),
+                'status'    => (string) ($s->status ?? ''),
+                'host'      => (string) ($s->custom_domain ?: $s->subdomain ?: ''),
+                'articles'  => (int) ($articles[$s->id] ?? 0),
+                'pages'     => (int) ($pageCounts[$s->id] ?? 0),
+                'sections'  => $sections,
+                'catalogue' => $catText,
+            ];
+        })->values()->all();
 
         return ['key' => 'websites', 'value' => count($items), 'items' => $items];
     }
@@ -461,9 +476,12 @@ class DerivedState
             foreach ($sites['items'] as $w) {
                 $s .= "      • \"{$w['name']}\""
                     . ($w['host'] !== '' ? " ({$w['host']})" : '')
-                    . " — {$w['status']}, "
-                    . ($w['articles'] > 0 ? "{$w['articles']} article" . ($w['articles'] === 1 ? '' : 's')
-                                          : 'NO content written yet')
+                    . " — {$w['status']}"
+                    . (!empty($w['pages']) ? ", {$w['pages']} page" . ($w['pages'] === 1 ? '' : 's') : '')
+                    . (!empty($w['sections']) ? ' (home sections: ' . implode(', ', $w['sections']) . ')' : '')
+                    . (!empty($w['catalogue']) ? '; catalogue: ' . implode('; ', $w['catalogue']) : '')
+                    . '; ' . ($w['articles'] > 0 ? "{$w['articles']} blog article" . ($w['articles'] === 1 ? '' : 's') : 'no blog articles yet')
+                    . '. Site changes (text, colours, elements, effects, sections, catalogue items) go to Arthur via builder.ask_arthur.'
                     . "\n";
             }
         } else {
