@@ -358,7 +358,7 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .sb-nav .nav-item{min-height:44px;background:none;border:0;width:calc(100% - 16px);text-align:left;font-family:inherit}
 .sb-nav button.nav-item:focus-visible{outline:2px solid var(--p) !important;outline-offset:-2px}
 .sb-nav .nav-item.nav-sarah{font-weight:700;color:var(--t1)}
-.sb-nav .nav-item.nav-sarah .ni{width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD27A,#F59E0B 55%,#B7700A)}
+.sb-nav .nav-item.nav-sarah .ni{width:22px;height:22px;border-radius:50%;background:#0B1020 url(/img/agents/sarah.webp) center/cover}   /* AVATAR888: Sarah face, no ring */
 .sb-nav .nav-item.nav-sarah.active{background:rgba(245,158,11,.14);color:var(--t1)}
 .sb-nav .nav-sub{padding:12px 24px 4px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}
 .sb-nav .nav-adv-link{margin-top:auto}
@@ -4143,68 +4143,7 @@ window.luSwipeToClose = luSwipeToClose;
     <div id="view-agents" class="view" style="display:none">
       <div class="agents-view">
         <div class="av-hdr"><div class="av-title">Agent Profiles</div><div class="av-sub">Your AI marketing team. Click any agent to view their profile, tasks and messages.</div></div>
-        <div class="av-grid" id="av-grid">
-                    <div class="av-card" onclick="openAgentDrawer('dmm')">
-            <div class="av-card-top">
-              <div class="av-card-av" style="background:transparent;border:none" data-orb-agent="sarah" data-orb-size="md" data-orb-state="idle"></div>
-              <div><div class="av-card-name" style="color:#6C5CE7">Sarah</div><div class="av-card-role">DMM</div></div>
-            </div>
-            <div class="av-card-stats">
-              <div class="av-stat"><div class="av-stat-val" id="av-ongoing-dmm">—</div><div class="av-stat-lbl">Ongoing</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-upcoming-dmm">—</div><div class="av-stat-lbl">Upcoming</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-completed-dmm">—</div><div class="av-stat-lbl">Done</div></div>
-            </div>
-            <div class="av-card-expertise">Strategy · Growth · Analytics</div>
-          </div>
-                    <div class="av-card" onclick="openAgentDrawer('james')">
-            <div class="av-card-top">
-              <div class="av-card-av" style="background:transparent;border:none" data-orb-agent="james" data-orb-size="md" data-orb-state="idle"></div>
-              <div><div class="av-card-name" style="color:#3B8BF5">James</div><div class="av-card-role">SEO Strategist</div></div>
-            </div>
-            <div class="av-card-stats">
-              <div class="av-stat"><div class="av-stat-val" id="av-ongoing-james">—</div><div class="av-stat-lbl">Ongoing</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-upcoming-james">—</div><div class="av-stat-lbl">Upcoming</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-completed-james">—</div><div class="av-stat-lbl">Done</div></div>
-            </div>
-            <div class="av-card-expertise">Keywords · Search Intent · Topical Authority</div>
-          </div>
-                    <div class="av-card" onclick="openAgentDrawer('priya')">
-            <div class="av-card-top">
-              <div class="av-card-av" style="background:transparent;border:none" data-orb-agent="priya" data-orb-size="md" data-orb-state="idle"></div>
-              <div><div class="av-card-name" style="color:#A78BFA">Priya</div><div class="av-card-role">Content Manager</div></div>
-            </div>
-            <div class="av-card-stats">
-              <div class="av-stat"><div class="av-stat-val" id="av-ongoing-priya">—</div><div class="av-stat-lbl">Ongoing</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-upcoming-priya">—</div><div class="av-stat-lbl">Upcoming</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-completed-priya">—</div><div class="av-stat-lbl">Done</div></div>
-            </div>
-            <div class="av-card-expertise">Editorial · Brand Voice · Content Strategy</div>
-          </div>
-                    <div class="av-card" onclick="openAgentDrawer('elena')">
-            <div class="av-card-top">
-              <div class="av-card-av" style="background:transparent;border:none" data-orb-agent="elena" data-orb-size="md" data-orb-state="idle"></div>
-              <div><div class="av-card-name" style="color:#F87171">Elena</div><div class="av-card-role">CRM & Leads</div></div>
-            </div>
-            <div class="av-card-stats">
-              <div class="av-stat"><div class="av-stat-val" id="av-ongoing-elena">—</div><div class="av-stat-lbl">Ongoing</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-upcoming-elena">—</div><div class="av-stat-lbl">Upcoming</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-completed-elena">—</div><div class="av-stat-lbl">Done</div></div>
-            </div>
-            <div class="av-card-expertise">Lead Capture · Lead Nurture · CRM Pipeline</div>
-          </div>
-                    <div class="av-card" onclick="openAgentDrawer('alex')">
-            <div class="av-card-top">
-              <div class="av-card-av" style="background:transparent;border:none" data-orb-agent="alex" data-orb-size="md" data-orb-state="idle"></div>
-              <div><div class="av-card-name" style="color:#00E5A8">Alex</div><div class="av-card-role">Technical SEO</div></div>
-            </div>
-            <div class="av-card-stats">
-              <div class="av-stat"><div class="av-stat-val" id="av-ongoing-alex">—</div><div class="av-stat-lbl">Ongoing</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-upcoming-alex">—</div><div class="av-stat-lbl">Upcoming</div></div>
-              <div class="av-stat"><div class="av-stat-val" id="av-completed-alex">—</div><div class="av-stat-lbl">Done</div></div>
-            </div>
-            <div class="av-card-expertise">Core Web Vitals · Crawl · Schema · Speed</div>
-          </div>
-                  </div>
+        <div class="av-grid" id="av-grid"></div>   <!-- AVATAR888 DEC-0055: rendered from the agent registry (agent-avatars.js) -->
       </div>
     </div>
 
@@ -4811,7 +4750,8 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=1.0.1"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<script defer src="/app/js/orb.js?v=brand-20260911"></script>
+<script defer src="/app/js/agent-avatars.js?v=av2-20260915"></script>
+<script defer src="/app/js/orb.js?v=av1-20260915"></script>
 <script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
@@ -4825,7 +4765,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=sarahintro-20260915"></script>
+<script defer src="/app/js/core.js?v=av2-20260915"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
@@ -4891,11 +4831,11 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 .eng-agent-card::before {
   content:''; position:absolute; top:0; left:0; right:0; height:2px;
 }
-.eng-agent-card[data-agent="sarah"]::before  { background:#6C5CE7; }
-.eng-agent-card[data-agent="james"]::before  { background:#3B8BF5; }
-.eng-agent-card[data-agent="priya"]::before  { background:#A78BFA; }
-.eng-agent-card[data-agent="elena"]::before  { background:#F87171; }
-.eng-agent-card[data-agent="alex"]::before   { background:#00E5A8; }
+.eng-agent-card[data-agent="sarah"]::before  { background:var(--bd2); }
+.eng-agent-card[data-agent="james"]::before  { background:var(--bd2); }
+.eng-agent-card[data-agent="priya"]::before  { background:var(--bd2); }
+.eng-agent-card[data-agent="elena"]::before  { background:var(--bd2); }
+.eng-agent-card[data-agent="alex"]::before   { background:var(--bd2); }
 .eng-agent-name { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; }
 .eng-agent-stats { display:flex; gap:8px; margin-top:2px; }
 .eng-stat { font-size:11px; color:#8892a4; }
@@ -5005,11 +4945,11 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 
 <!-- JS in core.js -->
 
-<script defer src="/app/js/messages-ui.js?v=lugmark-20260910"></script>
-<script defer src="/app/js/sarah.js?v=idem1-20260906"></script>
+<script defer src="/app/js/messages-ui.js?v=av2-20260915"></script>
+<script defer src="/app/js/sarah.js?v=av2-20260915"></script>
 <script defer src="/app/js/basic.js?v=1.0.5-biz2"></script>
-<script defer src="/app/js/aria.js?v=aria4-20260915"></script>
-<script defer src="/app/js/arthur-chat.js?v=nofocus-20260912"></script>
+<script defer src="/app/js/aria.js?v=av1-20260915"></script>
+<script defer src="/app/js/arthur-chat.js?v=av1-20260915"></script>
 <script defer src="/app/js/chatbot-spa.js?v=kblib-20260910"></script>
 
 <script>

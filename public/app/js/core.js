@@ -1117,11 +1117,11 @@ var icons = {
 };
 var wpNonce_alias = NONCE; // alias used by some governance calls
 var AGENTS={
-  dmm: {name:'Sarah',role:'Digital Marketing Manager',emoji:'👩‍💼',color:'var(--p)',expertise:['Strategy','Growth','Analytics','Content Planning']},
-  james:{name:'James',role:'SEO Strategist',emoji:'📊',color:'var(--bl)',expertise:['Keyword Research','Search Intent','Topical Authority','SERP Features','Local SEO']},
-  priya:{name:'Priya',role:'Content Manager',emoji:'✍️',color:'var(--pu)',expertise:['Editorial Calendar','Brand Voice','Content Briefs','TOFU/MOFU/BOFU','Repurposing']},
-  elena:{name:'Elena',role:'CRM & Leads Specialist',emoji:'🎯',color:'var(--rd)',expertise:['Lead Capture','Lead Nurture','CRM Segmentation','Lead Scoring','Attribution']},
-  alex:{name:'Alex',role:'Technical SEO Engineer',emoji:'⚙️',color:'var(--ac)',expertise:['Core Web Vitals','Crawl Budget','Schema Markup','Site Architecture','Speed Optimisation']},
+  dmm: {name:'Sarah',role:'Digital Marketing Manager',emoji:'',color:'#8B93A7',expertise:['Strategy','Growth','Analytics','Content Planning']},
+  james:{name:'James',role:'SEO Strategist',emoji:'',color:'#8B93A7',expertise:['Keyword Research','Search Intent','Topical Authority','SERP Features','Local SEO']},
+  priya:{name:'Priya',role:'Content Manager',emoji:'',color:'#8B93A7',expertise:['Editorial Calendar','Brand Voice','Content Briefs','TOFU/MOFU/BOFU','Repurposing']},
+  elena:{name:'Elena',role:'Lead & CRM Manager',emoji:'',color:'#8B93A7',expertise:['Lead Capture','Lead Nurture','CRM Segmentation','Lead Scoring','Attribution']},
+  alex:{name:'Alex',role:'Technical SEO Engineer',emoji:'',color:'#8B93A7',expertise:['Core Web Vitals','Crawl Budget','Schema Markup','Site Architecture','Speed Optimisation']},
 };
 var PAIR_COLORS={'dmm-james':'var(--bl)','dmm-priya':'var(--pu)','dmm-elena':'var(--rd)','dmm-alex':'var(--ac)','james-priya':'#06B6D4','james-elena':'#EC4899','james-alex':'#10B981','priya-elena':'#EAB308','priya-alex':'#84CC16','elena-alex':'#818CF8'};
 function pairColor(a,b){var k=[a,b].sort().join('-');return PAIR_COLORS[k]||'var(--t2)';}
@@ -1226,7 +1226,7 @@ async function nav(view, opts){
   // P4-U1: mentions view retired.
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
   if(view==='workspace')  {loadTasks();drawCanvas();drawZones(); if(typeof loadAgentStats==='function') loadAgentStats();}
-  if(view==='agents')     { loadTasks(); loadAgentStats(); }
+  if(view==='agents')     { if (window.luRenderAgentsGrid) { try { luRenderAgentsGrid(); } catch (_e) {} } loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
   if(view==='settings') { loadSettings(); try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} } /* P1R-6/7 */
@@ -1462,7 +1462,7 @@ async function loadToolRegistry(el) {
 }
 
 // ── Governance ─────────────────────────────────────────────────────────────
-var AGENT_COLORS = {dmm:'var(--p)',james:'var(--bl)',priya:'var(--pu)',elena:'var(--rd)',alex:'var(--ac)'};
+var AGENT_COLORS = {dmm:'#8B93A7',james:'#8B93A7',priya:'#8B93A7',elena:'#8B93A7',alex:'#8B93A7'};   /* Owner 2026-09-15: no colour per agent */
 var AGENT_NAMES  = {dmm:'Sarah',james:'James',priya:'Priya',elena:'Elena',alex:'Alex'};
 let govHistory = [];
 
@@ -2056,7 +2056,7 @@ function renderTaskNode(task, agents) {
   node.dataset.taskAgents = agents.join(',');
   node.innerHTML = `
     <div class="tn-title" title="${esc(task.title)}">${esc(task.title)}</div>
-    <div class="tn-assignees">${ag.map(a=>`<div class="tn-av" style="background:${a.color}22;border-color:${a.color}44" title="${a.name}">${a.emoji}</div>`).join('')}</div>
+    <div class="tn-assignees">${ag.map(a=>`<div class="tn-av" style="background:transparent;border-color:transparent" title="${a.name}">${window.luAvatar?luAvatar(a.name,20):a.emoji}</div>`).join('')}</div>
     <div class="tn-meta">
       <span class="tn-pri ${priCls}">${task.priority||'medium'}</span>
       <span class="tn-status">${stLabel}</span>
@@ -2093,7 +2093,7 @@ function showConnTooltip(e,agentA,agentB,tasks){
   noteTargetConn={agentA,agentB,tasks};
   var tt=document.getElementById('conn-tooltip');
   var aInfo=AGENTS[agentA]||{}, bInfo=AGENTS[agentB]||{};
-  document.getElementById('ctt-agents').innerHTML=`<span class="ct-agent-av">${aInfo.emoji||'?'}</span><span style="color:${aInfo.color||'#fff'};font-family:var(--fh);font-size:12px;font-weight:700">${aInfo.name||agentA}</span><span class="ct-arrow">⟷</span><span class="ct-agent-av">${bInfo.emoji||'?'}</span><span style="color:${bInfo.color||'#fff'};font-family:var(--fh);font-size:12px;font-weight:700">${bInfo.name||agentB}</span>`;
+  document.getElementById('ctt-agents').innerHTML=`<span class="ct-agent-av">${window.luAvatar?luAvatar(aInfo.name||agentA,20):(aInfo.emoji||'?')}</span><span style="color:${aInfo.color||'#fff'};font-family:var(--fh);font-size:12px;font-weight:700">${aInfo.name||agentA}</span><span class="ct-arrow">⟷</span><span class="ct-agent-av">${bInfo.emoji||'?'}</span><span style="color:${bInfo.color||'#fff'};font-family:var(--fh);font-size:12px;font-weight:700">${bInfo.name||agentB}</span>`;
   var list=document.getElementById('ctt-tasks');
   list.innerHTML=tasks.slice(0,3).map(t=>{
     var stClass=t.status==='ongoing'?'st-ongoing':t.status==='upcoming'?'st-upcoming':'st-completed';
@@ -2590,9 +2590,9 @@ function openAgentDrawer(id){
   console.log('[Drawer] openAgentDrawer called for', id);
   currentAgent=id;
   window._agentDrawerOpen=id;
-  var ag=AGENTS[id]||{};
+  var ag=AGENTS[id]||(window.luAgent&&luAgent(id)?{name:luAgent(id).name,role:luAgent(id).title,color:luAgent(id).color,expertise:luAgent(id).skills||[],emoji:''}:{});   /* AVATAR888: every registry agent opens */
   console.log('[Drawer] AGENTS[' + id + '] =', ag.name || '(not in AGENTS map)');
-  var col=ag.color||'var(--t2)';
+  var col='var(--t1)';   /* Owner 2026-09-15: no colour per agent */
 
   // 2026-05-25 — each sub-render wrapped so one failure doesn't abort the
   // drawer open. Previously a throw in renderProfilePane / loadDrawerMessages
@@ -3727,7 +3727,7 @@ function renderTimeline() {
         row.className = 'tl-row';
         var lbl = document.createElement('div');
         lbl.className = 'tl-row-lbl';
-        lbl.innerHTML = `<span style="font-size:14px">${a.emoji}</span><span>${esc(a.name)}</span>`;
+        lbl.innerHTML = `${window.luAvatar?luAvatar(a.name,'xs'):''}<span>${esc(a.name)}</span>`;
         row.appendChild(lbl);
         var grid = document.createElement('div');
         grid.className = 'tl-grid';
@@ -3769,7 +3769,7 @@ async function openTaskDrawer(taskId) {
 
 function renderTaskDrawer(task) {
     var a = AGENTS[task.assignee] || { emoji:'👤', name: task.assignee, color:'var(--t2)', title:'' };
-    setEl('td-agent-em', a.emoji);
+    (function(){ var e=document.getElementById('td-agent-em'); if(e) e.innerHTML = window.luAvatar ? luAvatar(a.name,'sm') : ''; })();
     setEl('td-title', task.title);
     document.getElementById('td-meta').innerHTML = `
         <span class="msg-badge" style="background:${STATUS_COLORS[task.status]}22;color:${STATUS_COLORS[task.status]};border:1px solid ${STATUS_COLORS[task.status]}44">${STATUS_LABELS[task.status]||task.status}</span>
@@ -3777,12 +3777,12 @@ function renderTaskDrawer(task) {
         <span style="font-size:10px;color:var(--t3)">${task.estimated_time||60}m est</span>`;
     setEl('td-desc', task.description || '—');
     setEl('td-metric', task.success_metric || '—');
-    setEl('td-assignee', `${a.emoji} ${a.name} — ${a.title}`);
+    setEl('td-assignee', `${a.name} — ${a.title}`);
 
     var coordWrap = document.getElementById('td-coord-wrap');
     if (task.coordinator && AGENTS[task.coordinator]) {
         var c = AGENTS[task.coordinator];
-        setEl('td-coord', `${c.emoji} ${c.name} — ${c.title}`);
+        setEl('td-coord', `${c.name} — ${c.title}`);
         coordWrap.style.display = 'block';
     } else { coordWrap.style.display = 'none'; }
 
@@ -7522,6 +7522,11 @@ document.addEventListener('visibilitychange', function() {
 // Utility
 function _cmdcOrbHtml(agent, big) {
   var a = agent || { name: '?', color: '#6C5CE7' };
+  // AVATAR888 (DEC-0055): the portrait, not an initial. The feed carries agent_id/slug or just a name; all resolve.
+  if (window.luAvatar && window.luAgent && (window.luAgent(a.slug || a.agent_id || a.id || '') || window.luAgent(a.name || ''))) {
+    var _k = window.luAgent(a.slug || a.agent_id || a.id || '') ? (a.slug || a.agent_id || a.id) : a.name;
+    return luAvatar(_k, big ? 44 : 28, 'idle', { cls: 'cmd-orb-face' });
+  }
   var initials = (a.name || '?').substr(0, 1).toUpperCase();
   var color = a.color || '#6C5CE7';
   var cls = 'cmd-orb' + (big ? ' cmd-orb-lg' : '');

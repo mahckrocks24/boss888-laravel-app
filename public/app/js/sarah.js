@@ -41,7 +41,7 @@
     st.textContent = [
       '#sarah-home{display:flex;flex-direction:column;height:100%;min-height:0;background:var(--bg);color:var(--t1);font-family:var(--fb)}',
       '.sh-top{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--bd);background:var(--s1);flex:none;flex-wrap:wrap}',
-      '.sh-avatar{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#FFD27A,#F59E0B 55%,#B7700A);box-shadow:0 0 0 3px rgba(245,158,11,.18);flex:none}',
+      '.sh-avatar{width:40px;height:40px;border-radius:50%;background:#0B1020 url(/img/agents/sarah.webp) center/cover;flex:none}',
       '.sh-who{min-width:0;flex:1}.sh-name{font:700 15px var(--fh);letter-spacing:-.01em}.sh-role{font-size:12px;color:var(--t2)}',
       '.sh-ctx{border:0;font-family:inherit;min-height:36px}', /* WS-PICK-REMOVE: no longer a control, so no pointer, hover or focus ring */
       '.sh-wsp-ov{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:var(--z-modal,400);display:flex;align-items:center;justify-content:center;padding:20px}',
@@ -469,6 +469,9 @@
     S.feed.appendChild(bubble({ from: 'User', content: text || ('I\'ve attached ' + (pendingAtts.length === 1 ? '"' + pendingAtts[0].name + '"' : pendingAtts.length + ' files') + '.'), ts: null, attachments: pendingAtts })); S.feed.scrollTop = S.feed.scrollHeight;
     var typing = document.createElement('div'); typing.className = 'sh-orch'; typing.id = 'sh-typing'; typing.innerHTML = '<span class="dot"></span><span>Sarah is thinking…</span>'; S.feed.appendChild(typing); S.feed.scrollTop = S.feed.scrollHeight;
     var body = { content: text, from: 'User' };
+    // CHAT888 (2026-09-06): idempotency key — the same message within a 10 s window shares one key, so a double
+    // click or a network retry replays the first ack instead of sending (and metering) the message twice.
+    try { var _h = 5381, _s = String(text || ''); for (var _i = 0; _i < _s.length; _i++) _h = ((_h << 5) + _h + _s.charCodeAt(_i)) | 0; body.idempotency_key = 's1:' + (_h >>> 0).toString(16) + ':' + Math.floor(Date.now() / 10000); } catch (e) {}
     if (window._lgseActiveSiteUrl) body.site_url = window._lgseActiveSiteUrl;
     try { if (window.LU_attachComposer) { var atts = window.LU_attachComposer.getPending('sh-input'); if (atts && atts.length) body.attachments = atts; window.LU_attachComposer.clear('sh-input'); } } catch (e) {}
     setBusy(true);

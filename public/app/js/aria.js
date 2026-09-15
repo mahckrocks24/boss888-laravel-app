@@ -181,7 +181,7 @@
     root.innerHTML = '';
     var shell = el('div', 'ar');
     var head = el('div', 'ar-head');
-    head.appendChild(el('div', 'ar-av', 'A'));
+    head.appendChild(el('div', 'ar-av', (window.luAvatarUrl && luAvatarUrl('aria')) ? '<img src="' + luAvatarUrl('aria') + '" alt="" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:block">' : 'A'));
     head.appendChild(el('div', '', '<h1>Aria</h1><p>Platform help</p>'));
     var nb2 = el('button', 'ar-new', 'New chat'); nb2.type = 'button'; nb2.addEventListener('click', newConversation); head.appendChild(nb2);
     shell.appendChild(head);

@@ -1,5 +1,5 @@
 /**
- * LevelUp Growth — Orb Avatar System v2
+ * LevelUpGrowth — Orb Avatar System v2
  * Color = Role (never changes with seniority)
  * Motion complexity = Seniority level
  * setOrbState(agentId, state) — global state control
@@ -11,8 +11,8 @@ const ORB_CONFIG = {
     dmm:       { color: '#F59E0B', label: 'Sarah',  role: 'Marketing Lead'      },
     seo:       { color: '#3B82F6', label: 'James',  role: 'SEO Strategist'      },
     content:   { color: '#7C3AED', label: 'Priya',  role: 'Content Manager'     },
-    social:    { color: '#EC4899', label: 'LevelUp Growth', role: 'Article share' },
-    ads:       { color: '#F97316', label: 'Elena',  role: 'CRM Manager'         },
+    social:    { color: '#EC4899', label: 'Social',  role: 'Social media'        },
+    ads:       { color: '#F97316', label: 'Automation', role: 'Automation'       },
     technical: { color: '#06B6D4', label: 'Alex',   role: 'Technical SEO'       },
     crm:       { color: '#00E5A8', label: 'Elena',  role: 'CRM Manager'         },
 };
@@ -126,6 +126,8 @@ function getAgentLevel(agentId) {
  * @param {string} label   - optional
  */
 function buildAgentOrb(agentId, size, state, label) {
+    // AVATAR888 (DEC-0055): a known agent is drawn as their portrait inside the state ring; unknown ids keep the orb.
+    if (window.luAvatar && window.luAgent && window.luAgent(agentId)) return window.luAvatar(agentId, size || 'md', state || 'idle');
     const type  = AGENT_ORB_MAP[agentId] || agentId;
     const level = getAgentLevel(agentId);
     return buildOrb(type, size || 'md', state || 'idle', label || '', level);
@@ -144,6 +146,7 @@ function setOrbState(agentId, state, autoresetMs) {
         '.orb[data-agent="' + type + '"], .orb[data-type="' + type + '"]'
     );
     orbs.forEach(function(orb) { orb.dataset.state = state; });
+    if (window.luAvatarState) window.luAvatarState(agentId, state);
     if (autoresetMs > 0) {
         setTimeout(function() { setOrbState(agentId, 'idle'); }, autoresetMs);
     }
@@ -180,7 +183,7 @@ function initOrbMounts() {
         const state   = el.dataset.orbState || 'idle';
         const label   = el.dataset.orbLabel !== undefined ? el.dataset.orbLabel : '';
         const level   = el.dataset.orbLevel || getAgentLevel(agentId);
-        el.innerHTML  = buildOrb(type, size, state, label, level);
+        el.innerHTML  = (window.luAvatar && window.luAgent && window.luAgent(agentId)) ? window.luAvatar(agentId, size, state) : buildOrb(type, size, state, label, level);
     });
 }
 

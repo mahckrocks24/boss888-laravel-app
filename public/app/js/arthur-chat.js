@@ -86,18 +86,18 @@ window.wsShowArthurWizard = function(prefillArg) {
         '<div class="lu-arthur-modal" style="background:var(--s1,#161927);border:1px solid var(--bd);border-radius:20px;width:90%;max-width:600px;height:80vh;max-height:640px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.5)">'
         // Header
         + '<div style="padding:20px 24px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px">'
-        + '<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--p,#6C5CE7),#3B82F6);display:flex;align-items:center;justify-content:center;font-size:20px">⚡</div>'
+        + '<div style="width:40px;height:40px;border-radius:12px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden"><img src="/img/logo-icon-48.png" alt="Arthur" width="30" height="30" style="display:block"></div>'
         + '<div style="flex:1"><div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1)">Arthur — AI Website Builder</div>'
-        + '<div style="font-size:11px;color:var(--t3)">Describe your business and I\'ll build your website</div></div>'
+        + '<div style="font-size:11px;color:var(--t3)">Launch Your Websites in Minutes.</div></div>'
         + '<button onclick="document.getElementById(\'arthur-modal\').remove()" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;padding:4px">\u2715</button></div>'
         // Progress bar
         + '<div id="arthur-progress" style="display:none;padding:8px 24px;border-bottom:1px solid var(--bd);gap:8px"></div>'
         // Chat feed
         + '<div id="arthur-feed" style="flex:1;overflow-y:auto;padding:16px 24px;display:flex;flex-direction:column;gap:12px"></div>'
         // Input
-        + '<div style="padding:12px 20px;border-top:1px solid var(--bd);display:flex;gap:10px">'
-        + '<input id="arthur-chat-input" type="text" placeholder="Tell me about your business..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);padding:12px 16px;font-size:14px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')_arthurSend()">'
-        + '<button onclick="_arthurSend()" id="arthur-chat-send-btn" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:10px;padding:12px 18px;font-size:14px;cursor:pointer;font-weight:600;white-space:nowrap">Send \u2192</button>'
+        + '<div style="padding:12px 20px;border-top:1px solid var(--bd);display:flex;gap:10px;align-items:flex-end">'
+        + '<textarea id="arthur-chat-input" rows="1" placeholder="Tell me about your business..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);padding:12px 16px;font-size:14px;line-height:1.45;outline:none;font-family:inherit;resize:none;overflow-y:auto;height:44px;max-height:85px" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_arthurSend();}" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,85)+\'px\'"></textarea>'
+        + '<button onclick="_arthurSend()" id="arthur-chat-send-btn" aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>'
         + '</div></div>';
     ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
@@ -121,7 +121,11 @@ window.wsShowArthurWizard = function(prefillArg) {
     }
     _arthurAddMsg('arthur', _openLine);
 
-    setTimeout(function() { var inp = document.getElementById('arthur-chat-input'); if (inp) inp.focus(); }, 200);
+    // 2026-09-12 — never take focus on a touch device: it opens the keyboard the moment the page loads.
+    try {
+        var _finePointer = !window.matchMedia || window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+        if (_finePointer) setTimeout(function() { var inp = document.getElementById('arthur-chat-input'); if (inp) inp.focus(); }, 200);
+    } catch (_f) {}
 }
 
 window._arthurSend = async function() {
@@ -144,10 +148,11 @@ window._arthurSend = async function() {
     var msg = inp.value.trim();
     if (!msg) return;
     inp.value = '';
+    inp.style.height = '44px';   // a textarea keeps its grown height until told otherwise
 
     _arthur.busy = true;
     var btn = document.getElementById('arthur-chat-send-btn');
-    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    if (btn) { btn.disabled = true; btn.style.opacity = '.55'; }   // icon button: dim, never re-label
 
     _arthurAddMsg('user', msg);
     _arthurAddMsg('typing', '');
@@ -195,16 +200,35 @@ window._arthurSend = async function() {
             try { console.log('[arthur] rendering confirm panel (server type=' + d.type + ', looksLikeSummary=' + looksLikeSummary + ')'); } catch(_){}
             // Build a fallback build_data from history if server didn't send one
             var bd = (d.build_data && d.build_data.business_name) ? d.build_data : (window._arthurBuildData || {});
+            if (Array.isArray(d.themes) && d.themes.length) { window._arthurThemes = d.themes; if (!window._arthurColorsTouched) window._arthurTheme = d.themes[0]; }
+            if (Array.isArray(d.themes_all) && d.themes_all.length) { window._arthurThemesAll = d.themes_all; }
             // setTimeout 100ms — let the summary message bubble paint to the
             // DOM before we append the panel below it. Avoids race conditions
             // with feed scroll/layout reflow.
             setTimeout(function(){ _arthurShowConfirmActions(bd); }, 100);
+        }
+        else if (d.type === 'palette_choice' && Array.isArray(d.palettes) && d.palettes.length) {
+            _arthur.state.palettes_proposed = d.palettes;
+            _arthurShowPaletteChoice(d.palettes);
         }
         // type='complete' OR legacy ready_to_build → website was built
         // BUILDER888 P1-8B — a failed build now truthfully reports type='error'
         // instead of 'complete'; the renderer below shows the safe message.
         else if (d.type === 'complete' || d.type === 'error' || d.ready_to_build === true) {
             _arthurRenderBuildResult(d);
+            // 2026-09-12 — a finished build changes the workspace's website list. Reload it now so the site
+            // the visitor just watched being built is selectable immediately, with no manual refresh.
+            if (d.type === 'complete') {
+                try {
+                    if (window.LU_Website && typeof window.LU_Website.refresh === 'function') {
+                        window.LU_Website.refresh().then(function (list) {
+                            var id = d.website_id || (d.website && d.website.id) || null;
+                            if (id && typeof window.LU_Website.set === 'function') { try { window.LU_Website.set(id); } catch (_s) {} }
+                            try { console.log('[arthur] website cache refreshed after build', { count: (list || []).length, selected: id }); } catch (_l) {}
+                        }).catch(function () {});
+                    }
+                } catch (_r) {}
+            }
         }
     } catch (e) {
         var _t2 = document.getElementById('arthur-typing'); if (_t2) _t2.remove();
@@ -212,7 +236,7 @@ window._arthurSend = async function() {
     }
 
     _arthur.busy = false;
-    if (btn) { btn.disabled = false; btn.textContent = 'Send →'; }
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; }
 };
 
 // ── Confirm panel — premium dark redesign, 2026-05-09 ────────────
@@ -248,10 +272,7 @@ function _arthurShowConfirmActionsImpl(buildData) {
     var feed = document.getElementById('arthur-feed')
             || document.getElementById('arthur-messages')
             || document.querySelector('.arthur-messages');
-    if (!feed) {
-        try { console.error('[arthur] confirm panel: no feed container found'); } catch(_){}
-        return;
-    }
+    if (!feed) { try { console.error('[arthur] confirm panel: no feed container found'); } catch(_){} return; }
     var prev = document.getElementById('arthur-confirm-panel');
     if (prev) prev.remove();
 
@@ -260,168 +281,192 @@ function _arthurShowConfirmActionsImpl(buildData) {
     window._arthurLogoUrl = '';
     window._arthurImages  = [];
     window._arthurColors  = { primary: '#6C5CE7', secondary: '#3B8BF5' };
+    window._arthurColorsTouched = false;
+    window._arthurStep = { cur: 1, done: {}, meta: {} };
+    window._arthurShowAllThemes = false;
+
+    // STEPS (2026-09-05) — one ask at a time: Logo → Photos → Colour theme → Build. Every colour, size and radius
+    // comes from the app's tokens so the card belongs to the modal in both themes (the old panel was a hard-coded
+    // dark box floating in a light modal). Styles are injected once.
+    if (!document.getElementById('arthur-steps-css')) {
+        var css = document.createElement('style'); css.id = 'arthur-steps-css';
+        css.textContent =
+            '.ar-steps{flex:0 0 auto;min-height:0;margin-top:14px;border:1px solid var(--bd);border-radius:16px;background:var(--s1);overflow:hidden;box-shadow:0 12px 32px rgba(0,0,0,.08)}' +
+            '.ar-steps-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--bd);background:var(--s2)}' +
+            '.ar-steps-title{font-size:13px;font-weight:700;color:var(--t1)}.ar-steps-sub{font-size:11px;color:var(--t3);margin-top:2px}' +
+            '.ar-prog{display:flex;align-items:center;gap:6px}.ar-prog span{width:26px;height:4px;border-radius:2px;background:var(--bd);transition:background .2s}' +
+            '.ar-prog span.on{background:var(--p)}.ar-prog span.done{background:#10B981}.ar-prog b{font-size:11px;color:var(--t3);font-weight:600;margin-left:6px;white-space:nowrap}' +
+            '.ar-step{border-bottom:1px solid var(--bd)}.ar-step:last-of-type{border-bottom:none}' +
+            '.ar-step-bar{display:flex;align-items:center;gap:12px;padding:14px 18px;width:100%;text-align:left;font:inherit;color:var(--t1);background:transparent;border:none;cursor:pointer}' +
+            '.ar-step-bar:hover{background:var(--s2)}.ar-step.active .ar-step-bar{cursor:default;background:transparent}' +
+            '.ar-step-num{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:var(--s2);color:var(--t2);border:1px solid var(--bd);flex:0 0 26px}' +
+            '.ar-step.active .ar-step-num{background:var(--p);color:#fff;border-color:var(--p)}.ar-step.done .ar-step-num{background:#10B981;color:#fff;border-color:transparent}' +
+            '.ar-step-name{font-size:13px;font-weight:600}.ar-step-hint{font-size:11px;color:var(--t3);margin-top:1px}' +
+            '.ar-step-meta{font-size:11px;color:var(--t3);margin-left:auto;white-space:nowrap}.ar-step.done .ar-step-meta{color:#10B981}' +
+            '.ar-step-body{display:none;padding:0 18px 18px 56px}.ar-step.active .ar-step-body{display:block}' +
+            '.ar-drop{display:flex;align-items:center;gap:14px;padding:16px;border:1.5px dashed var(--bd);border-radius:12px;background:var(--s2);cursor:pointer;transition:border-color .15s,background .15s}' +
+            '.ar-drop:hover{border-color:var(--p)}.ar-drop-ico{width:44px;height:44px;border-radius:10px;background:var(--s1);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;font-size:20px;flex:0 0 44px}' +
+            '.ar-drop-t{font-size:13px;font-weight:600;color:var(--t1)}.ar-drop-s{font-size:11px;color:var(--t3);margin-top:2px}' +
+            '.ar-status{font-size:11px;color:var(--t3);min-height:16px;margin-top:8px}' +
+            '.ar-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:14px}' +
+            '.ar-btn{font:inherit;font-size:12px;font-weight:600;border-radius:9px;padding:9px 14px;cursor:pointer;border:1px solid var(--bd);background:var(--s1);color:var(--t1);transition:background .15s}' +
+            '.ar-btn:hover{background:var(--s2)}.ar-btn.primary{background:var(--p);color:#fff;border-color:var(--p)}.ar-btn.primary:hover{filter:brightness(1.08)}' +
+            '.ar-btn.ghost{background:transparent;border-color:transparent;color:var(--t3)}.ar-btn.ghost:hover{color:var(--t1);background:var(--s2)}' +
+            '#arthur-theme-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}' +
+            '.ar-theme{display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:12px;border:1.5px solid var(--bd);background:var(--s1);cursor:pointer;text-align:left;font:inherit;color:var(--t1);min-width:0;transition:border-color .15s,box-shadow .15s}' +
+            '.ar-theme:hover{border-color:var(--t3)}.ar-theme.on{border-color:var(--p);box-shadow:0 0 0 3px rgba(108,92,231,.18)}' +
+            '.ar-theme-bar{display:flex;height:26px;border-radius:8px;overflow:hidden}.ar-theme-bar span{flex:1}.ar-theme-bar span:first-child{flex:2}' +
+            '.ar-theme-name{font-size:12px;font-weight:600;display:flex;justify-content:space-between;align-items:center}.ar-theme-name i{font-style:normal;font-size:11px;color:var(--p)}' +
+            '#arthur-own-colors{display:none;margin-top:12px;gap:18px;flex-wrap:wrap;align-items:center}' +
+            '.ar-swatch{display:inline-flex;align-items:center;gap:8px;font-size:11px;color:var(--t3)}.ar-swatch label{position:relative;width:34px;height:34px;border-radius:9px;border:1px solid var(--bd);overflow:hidden;cursor:pointer;display:inline-block}' +
+            '.ar-swatch input[type=color]{position:absolute;inset:-8px;width:60px;height:60px;border:none;padding:0;cursor:pointer}.ar-swatch code{font-family:ui-monospace,monospace;font-size:11px;color:var(--t2)}' +
+            '#arthur-color-note{font-size:11px;color:#10B981;min-height:14px;margin-top:8px}' +
+            '#arthur-img-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px}' +
+            '.ar-build{padding:16px 18px;background:var(--s2);border-top:1px solid var(--bd)}' +
+            '.ar-build .cta{width:100%;padding:14px;border-radius:12px;border:none;background:var(--p);color:#fff;font:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:filter .15s}.ar-build .cta:hover{filter:brightness(1.08)}' +
+            '.ar-build-hint{text-align:center;margin-top:8px;font-size:11px;color:var(--t3)}' +
+            '@media(max-width:560px){.ar-step-body{padding-left:18px}#arthur-theme-row{grid-template-columns:1fr}#arthur-img-grid{grid-template-columns:repeat(4,1fr)}}';
+        document.head.appendChild(css);
+    }
+
+    var bd  = window._arthurBuildData || {};
+    var biz = bd.business_name ? bld_escH(bd.business_name) : 'your business';
 
     var panel = document.createElement('div');
-    panel.id  = 'arthur-confirm-panel';
-    // PATCH (panel-1.6px-collapse, 2026-05-09) — `overflow:hidden` on the
-    // outer panel collapsed it to 1.6px tall inside the flex column feed.
-    // The intent of overflow:hidden was to round-corner-clip the inner
-    // rows; instead it ate the panel's height. Removed. min-height floor
-    // added so the panel always reserves its full footprint even before
-    // children paint, eliminating the layout-thrash window where the
-    // scroll fix was racing against zero-height.
-    panel.style.cssText =
-        'margin-top:16px;display:flex;flex-direction:column;gap:0;' +
-        'border-radius:14px;' +
-        'border:1px solid #6C5CE7;' +
-        'background:#15151A;' +
-        'min-height:320px;' +
-        'box-shadow:0 0 0 1px rgba(108,92,231,0.25),0 8px 32px rgba(0,0,0,0.4)';
-
+    panel.id = 'arthur-confirm-panel';
+    panel.className = 'ar-steps';
     panel.innerHTML =
-        // ── LOGO ROW ──
-        '<div style="padding:16px 20px;border-bottom:1px solid #2A2A33">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
-            '<div>' +
-              '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em">Logo</div>' +
-              '<div style="font-size:11px;color:var(--t3,#888);margin-top:2px">Optional — we\'ll auto-detect your brand colors</div>' +
-            '</div>' +
-            '<label data-arthur-upload="1" style="cursor:pointer;background:#6C5CE7;border:1px solid #6C5CE7;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;color:#fff;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap;min-height:32px">' +
-              '<input type="file" id="arthur-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none" onchange="_arthurConfirmLogoChosen(this)">' +
-              '<span>📎 Upload Logo</span>' +
-            '</label>' +
-          '</div>' +
-          '<div id="arthur-logo-status" style="font-size:11px;color:var(--t3,#888);min-height:16px"></div>' +
+        '<div class="ar-steps-head">' +
+          '<div><div class="ar-steps-title">Finishing touches for ' + biz + '</div>' +
+          '<div class="ar-steps-sub">Three quick, optional steps — skip any of them and I\'ll use sensible defaults.</div></div>' +
+          '<div class="ar-prog" id="arthur-steps-prog"><span></span><span></span><span></span><b>1 / 3</b></div>' +
         '</div>' +
 
-        // ── PHOTOS ROW ──
-        '<div style="padding:16px 20px;border-bottom:1px solid #2A2A33">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">' +
-            '<div>' +
-              '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em">Your Photos</div>' +
-              '<div style="font-size:11px;color:var(--t3,#888);margin-top:2px">Up to 10 — placed across all sections</div>' +
-            '</div>' +
-            '<div style="display:flex;align-items:center;gap:10px">' +
-              '<span id="arthur-img-count" style="font-size:11px;color:var(--t3,#888)">0 / 10</span>' +
-              '<label data-arthur-upload="1" style="cursor:pointer;background:#6C5CE7;border:1px solid #6C5CE7;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:600;color:#fff;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s;white-space:nowrap;min-height:32px">' +
-                '<input type="file" id="arthur-images-input" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" onchange="_arthurConfirmImagesChosen(this)">' +
-                '<span>🖼 Add Photos</span>' +
-              '</label>' +
-            '</div>' +
-          '</div>' +
-          '<div id="arthur-img-status" style="font-size:11px;color:#10b981;min-height:14px;margin-bottom:6px"></div>' +
-          '<div id="arthur-img-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;min-height:0"></div>' +
-        '</div>' +
-
-        // ── COLORS ROW ──
-        '<div style="padding:16px 20px;border-bottom:1px solid #2A2A33">' +
-          '<div style="font-size:12px;font-weight:600;color:var(--t1,#fff);letter-spacing:0.04em;margin-bottom:12px">Brand Colors</div>' +
-          '<div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">' +
-            '<div style="display:flex;align-items:center;gap:10px">' +
-              '<label style="font-size:11px;color:var(--t3,#888);white-space:nowrap">Primary</label>' +
-              '<input type="color" id="arthur-color-primary" value="#6C5CE7" oninput="_arthurColorChanged(\'primary\',this.value)" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;padding:2px;background:transparent">' +
-              '<span id="arthur-color-primary-hex" style="font-size:11px;color:var(--t3,#888);font-family:monospace">#6C5CE7</span>' +
-            '</div>' +
-            '<div style="display:flex;align-items:center;gap:10px">' +
-              '<label style="font-size:11px;color:var(--t3,#888);white-space:nowrap">Secondary</label>' +
-              '<input type="color" id="arthur-color-secondary" value="#3B8BF5" oninput="_arthurColorChanged(\'secondary\',this.value)" style="width:36px;height:36px;border:none;border-radius:8px;cursor:pointer;padding:2px;background:transparent">' +
-              '<span id="arthur-color-secondary-hex" style="font-size:11px;color:var(--t3,#888);font-family:monospace">#3B8BF5</span>' +
-            '</div>' +
-            '<div id="arthur-color-note" style="font-size:11px;color:#10b981;min-height:14px"></div>' +
-          '</div>' +
-        '</div>' +
-
-        // ── BUILD BUTTON ──
-        '<div style="padding:16px 20px">' +
-          '<button id="arthur-confirm-build-btn" type="button" onclick="_arthurConfirmBuild()" style="width:100%;padding:14px;background:linear-gradient(135deg,#6C5CE7,#A855F7);border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:0.02em;box-shadow:0 4px 20px rgba(108,92,231,0.3);transition:opacity 0.2s">' +
-            '⚡ Build My Website' +
+        // ── STEP 1 · LOGO ──
+        '<section class="ar-step active" id="arthur-step-1">' +
+          '<button type="button" class="ar-step-bar" onclick="_arthurStepGo(1)">' +
+            '<span class="ar-step-num">1</span>' +
+            '<span><div class="ar-step-name">Logo</div><div class="ar-step-hint">Goes in the navigation and footer</div></span>' +
+            '<span class="ar-step-meta" id="arthur-step-meta-1"></span>' +
           '</button>' +
-          '<div style="text-align:center;margin-top:8px;font-size:11px;color:var(--t3,#888)">Usually takes 15–20 seconds</div>' +
+          '<div class="ar-step-body">' +
+            '<label class="ar-drop" data-arthur-upload="1">' +
+              '<input type="file" id="arthur-logo-input" accept=".png,.jpg,.jpeg,.svg,.webp" style="display:none" onchange="_arthurConfirmLogoChosen(this)">' +
+              '<span class="ar-drop-ico">📎</span>' +
+              '<span><div class="ar-drop-t">Upload your logo</div><div class="ar-drop-s">PNG, JPG, SVG or WEBP · under 2 MB · I\'ll read your brand colours from it</div></span>' +
+            '</label>' +
+            '<div id="arthur-logo-status" class="ar-status"></div>' +
+            '<div class="ar-actions"><button type="button" class="ar-btn ghost" onclick="_arthurStepSkip(1)">No logo yet — skip</button></div>' +
+          '</div>' +
+        '</section>' +
+
+        // ── STEP 2 · PHOTOS ──
+        '<section class="ar-step" id="arthur-step-2">' +
+          '<button type="button" class="ar-step-bar" onclick="_arthurStepGo(2)">' +
+            '<span class="ar-step-num">2</span>' +
+            '<span><div class="ar-step-name">Photos</div><div class="ar-step-hint">Team, workspace, past work — placed across the site</div></span>' +
+            '<span class="ar-step-meta" id="arthur-step-meta-2"></span>' +
+          '</button>' +
+          '<div class="ar-step-body">' +
+            '<label class="ar-drop" data-arthur-upload="1">' +
+              '<input type="file" id="arthur-images-input" accept=".jpg,.jpeg,.png,.webp" multiple style="display:none" onchange="_arthurConfirmImagesChosen(this)">' +
+              '<span class="ar-drop-ico">🖼</span>' +
+              '<span><div class="ar-drop-t">Add up to 10 photos</div><div class="ar-drop-s">JPG, PNG or WEBP · optimised automatically · <span id="arthur-img-count">0 / 10</span></div></span>' +
+            '</label>' +
+            '<div id="arthur-img-status" class="ar-status"></div>' +
+            '<div id="arthur-img-grid"></div>' +
+            '<div class="ar-actions">' +
+              '<button type="button" class="ar-btn ghost" onclick="_arthurStepSkip(2)">Use stock imagery — skip</button>' +
+              '<button type="button" class="ar-btn primary" onclick="_arthurStepDone(2)">Continue</button>' +
+            '</div>' +
+          '</div>' +
+        '</section>' +
+
+        // ── STEP 3 · COLOUR THEME ──
+        '<section class="ar-step" id="arthur-step-3">' +
+          '<button type="button" class="ar-step-bar" onclick="_arthurStepGo(3)">' +
+            '<span class="ar-step-num">3</span>' +
+            '<span><div class="ar-step-name">Colour theme</div><div class="ar-step-hint">Chosen for your style and industry — every theme is tuned for contrast</div></span>' +
+            '<span class="ar-step-meta" id="arthur-step-meta-3"></span>' +
+          '</button>' +
+          '<div class="ar-step-body">' +
+            '<div id="arthur-theme-row"></div>' +
+            '<div id="arthur-own-colors">' +
+              '<span class="ar-swatch">Primary <label><input type="color" id="arthur-color-primary" value="#6C5CE7" oninput="_arthurColorChanged(\'primary\',this.value)"></label><code id="arthur-color-primary-hex">#6C5CE7</code></span>' +
+              '<span class="ar-swatch">Secondary <label><input type="color" id="arthur-color-secondary" value="#3B8BF5" oninput="_arthurColorChanged(\'secondary\',this.value)"></label><code id="arthur-color-secondary-hex">#3B8BF5</code></span>' +
+            '</div>' +
+            '<div id="arthur-color-note"></div>' +
+            '<div class="ar-actions" style="justify-content:space-between">' +
+              '<button type="button" id="arthur-themes-toggle" class="ar-btn ghost" onclick="window._arthurShowAllThemes=!window._arthurShowAllThemes;_arthurRenderThemes()">Show all themes</button>' +
+              '<button type="button" id="arthur-own-colors-btn" class="ar-btn ghost" onclick="_arthurToggleOwnColors()">Use my own colours</button>' +
+            '</div>' +
+          '</div>' +
+        '</section>' +
+
+        // ── BUILD ──
+        '<div class="ar-build">' +
+          '<button id="arthur-confirm-build-btn" type="button" class="cta" onclick="_arthurConfirmBuild()">⚡ Build my website</button>' +
+          '<div class="ar-build-hint">About a minute · you can edit everything afterwards</div>' +
         '</div>';
 
-    try {
-        feed.appendChild(panel);
-        try { console.log('[arthur] confirm panel appended', panel); } catch(_){}
-    } catch (eAppend) {
-        try { console.error('[arthur] panel append failed', eAppend); } catch(_){}
-    }
+    feed.appendChild(panel);
+    try { _arthurRenderThemes(); } catch(_){}
+    _arthurStepPaint();
 
-    // Hover effect on the upload-style purple labels
-    try {
-        var labels = panel.querySelectorAll('label[data-arthur-upload="1"]');
-        for (var li = 0; li < labels.length; li++) {
-            (function(el){
-                el.addEventListener('mouseenter', function(){ el.style.background = '#7C6CF0'; });
-                el.addEventListener('mouseleave', function(){ el.style.background = '#6C5CE7'; });
-            })(labels[li]);
-        }
-    } catch (eHover) {
-        try { console.warn('[arthur] hover wiring failed', eHover); } catch(_){}
-    }
-
-    // No longer disable the chat input — the user can keep chatting if
-    // they want to revise the brief, and the explicit Build button in
-    // the panel is the only build trigger.
-
-    // PATCH (panel-only-tip-shows, 2026-05-09) — Aggressive scroll fix.
-    //
-    // Root cause #1: classic flexbox bug. feed has `flex:1; overflow-y:auto`
-    // inside a max-height:640px modal but no `min-height:0`. Without that,
-    // the flex item can't shrink below its content's min-content size, so
-    // the feed grows past the modal and the modal's `overflow:hidden`
-    // clips it. Result: feed.scrollTop = scrollHeight does nothing because
-    // the feed itself isn't actually scrollable in this state.
-    //
-    // Root cause #2: prior fix called scrollIntoView AFTER scrollTop=
-    // scrollHeight. scrollIntoView with block:'nearest' on a content-
-    // overflowing element can land on the TOP, undoing the bottom scroll.
-    //
-    // Fix:
-    //  1. Force min-height:0 on feed so flexbox actually constrains it.
-    //  2. Force a reflow by reading offsetHeight.
-    //  3. requestAnimationFrame chain so layout fully settles before each
-    //     scroll attempt.
-    //  4. Use block:'end' (anchors panel-bottom to viewport-bottom) so
-    //     the maximum amount of the panel is visible.
-    //  5. Final pass at 350ms with feed.scrollTop = scrollHeight as the
-    //     authoritative last-write — guaranteed to land at the bottom.
-    try { feed.style.minHeight = '0'; } catch (_) {}
-    void feed.offsetHeight; // force reflow
-
-    function scrollToPanel() {
-        try { feed.scrollTop = feed.scrollHeight; } catch (_) {}
-    }
-
-    if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(function(){
-            scrollToPanel();
-            requestAnimationFrame(scrollToPanel);
-        });
-    } else {
-        scrollToPanel();
-    }
-    setTimeout(scrollToPanel, 100);
-    setTimeout(function(){
-        try { panel.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (_) {}
-    }, 200);
-    setTimeout(scrollToPanel, 350); // authoritative final pass
-
-    // PATCH (force-scroll, 2026-05-09) — final brute-force scroll at 300ms
-    // for cases where the prior passes still leave the panel clipped.
-    setTimeout(function() {
-        var f = document.getElementById('arthur-feed');
-        var p = document.getElementById('arthur-confirm-panel');
-        if (f) f.scrollTop = f.scrollHeight + 9999;
-        if (p) p.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 300);
+    function scrollToPanel() { try { feed.scrollTop = feed.scrollHeight; } catch (_) {} }
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(scrollToPanel);
+    setTimeout(scrollToPanel, 120);
+    setTimeout(function(){ try { panel.scrollIntoView({ behavior: 'smooth', block: 'end' }); } catch (_) {} }, 250);
 }
 
+// ── Step state ────────────────────────────────────────────────────────────────────────────────────────
+function _arthurStepPaint() {
+    var st = window._arthurStep || { cur: 1, done: {}, meta: {} };
+    for (var i = 1; i <= 3; i++) {
+        var sec = document.getElementById('arthur-step-' + i);
+        if (!sec) continue;
+        sec.classList.toggle('active', st.cur === i);
+        sec.classList.toggle('done', !!st.done[i] && st.cur !== i);
+        var meta = document.getElementById('arthur-step-meta-' + i);
+        if (meta) meta.textContent = (st.cur === i) ? '' : (st.meta[i] || '');
+    }
+    var prog = document.getElementById('arthur-steps-prog');
+    if (prog) {
+        var bars = prog.querySelectorAll('span');
+        for (var j = 0; j < bars.length; j++) { bars[j].className = st.done[j + 1] ? 'done' : (st.cur === j + 1 ? 'on' : ''); }
+        var b = prog.querySelector('b'); if (b) b.textContent = Math.min(st.cur, 3) + ' / 3';
+    }
+}
+window._arthurStepGo = function (n) {
+    if (!window._arthurStep) window._arthurStep = { cur: 1, done: {}, meta: {} };
+    window._arthurStep.cur = n;
+    _arthurStepPaint();
+};
+window._arthurStepDone = function (n, meta) {
+    if (!window._arthurStep) window._arthurStep = { cur: 1, done: {}, meta: {} };
+    var st = window._arthurStep;
+    st.done[n] = true;
+    if (meta !== undefined) st.meta[n] = meta;
+    else if (n === 2) { var k = (window._arthurImages || []).length; st.meta[2] = k ? k + ' photo' + (k > 1 ? 's' : '') : 'Stock imagery'; }
+    if (st.cur === n && n < 3) st.cur = n + 1;
+    _arthurStepPaint();
+};
+window._arthurStepSkip = function (n) {
+    _arthurStepDone(n, n === 1 ? 'Skipped — no logo' : n === 2 ? 'Stock imagery' : 'Skipped');
+};
+window._arthurStepMeta = function (n, meta) {
+    if (!window._arthurStep) return;
+    window._arthurStep.meta[n] = meta;
+    _arthurStepPaint();
+};
 // Live color picker handler — wired via inline oninput attribute on the
 // <input type="color"> elements. Accepts the role name + new hex value,
 // updates window._arthurColors and the inline hex label.
 window._arthurColorChanged = function(role, hex) {
     if (!window._arthurColors) window._arthurColors = {};
     window._arthurColors[role] = hex;
+    window._arthurColorsTouched = true;
+    try { _arthurRenderThemes(); } catch(_){}
     var label = document.getElementById('arthur-color-' + role + '-hex');
     if (label) label.textContent = (hex || '').toUpperCase();
 };
@@ -466,6 +511,7 @@ window._arthurConfirmLogoChosen = function(arg) {
             return;
         }
         window._arthurLogoUrl = d.temp_url || '';
+        try { _arthurStepDone(1, 'Logo added'); } catch(_){}
 
         // Auto-fill brand colors from the first palette returned by
         // ColorExtractorService (if any).
@@ -475,6 +521,8 @@ window._arthurConfirmLogoChosen = function(arg) {
             if (p && p.primary && p.secondary) {
                 window._arthurColors.primary   = p.primary;
                 window._arthurColors.secondary = p.secondary;
+                window._arthurColorsTouched    = true; // brand colours from the logo beat a theme
+                try { var ownBox = document.getElementById('arthur-own-colors'); if (ownBox) ownBox.style.display = 'flex'; _arthurRenderThemes(); } catch(_){}
                 var pri = document.getElementById('arthur-color-primary');
                 var sec = document.getElementById('arthur-color-secondary');
                 var pHx = document.getElementById('arthur-color-primary-hex');
@@ -573,6 +621,7 @@ function _arthurRenderImageGrid() {
     if (!grid) return;
     var imgs = window._arthurImages || [];
     if (counter) counter.textContent = imgs.length + ' / 10';
+    try { if (window._arthurStep && window._arthurStep.done[2]) _arthurStepMeta(2, imgs.length ? imgs.length + ' photo' + (imgs.length > 1 ? 's' : '') : 'Stock imagery'); } catch(_){}
     grid.innerHTML = imgs.map(function(url, idx){
         return '<div style="position:relative;width:100%;padding-top:100%;border-radius:8px;overflow:hidden;border:1px solid var(--bd,#333);background:var(--s1,#0d0d0d)">' +
           '<img src="' + url + '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">' +
@@ -600,9 +649,7 @@ window._arthurConfirmBuild = async function() {
         animBox.id = 'arthur-build-anim';
         animBox.style.cssText = 'display:flex;gap:10px;align-items:flex-start;margin:8px 0';
         animBox.innerHTML =
-          '<div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--p,#6C5CE7),#3B82F6);display:flex;align-items:center;justify-content:center;flex-shrink:0">' +
-            (window.icon ? window.icon('ai',18) : '🤖') +
-          '</div>' +
+          '<div style="width:28px;height:28px;border-radius:8px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden"><img src="/img/logo-icon-48.png" alt="Arthur" width="20" height="20" style="display:block"></div>' +
           '<div id="arthur-build-step" style="padding:10px 14px;border-radius:12px;background:var(--s2,#1a1a1a);color:var(--t1,#fff);font-size:13px;animation:pulse 1.5s infinite">🎨 Selecting your design...</div>';
         feed.appendChild(animBox);
         animBox.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -619,8 +666,9 @@ window._arthurConfirmBuild = async function() {
                 confirm:         true,
                 logo_url:        window._arthurLogoUrl || '',
                 images:          window._arthurImages || [],
-                primary_color:   colors.primary,
-                secondary_color: colors.secondary,
+                primary_color:   (window._arthurColorsTouched || !window._arthurTheme) ? colors.primary   : undefined,
+                secondary_color: (window._arthurColorsTouched || !window._arthurTheme) ? colors.secondary : undefined,
+                palette:         (window._arthurTheme && !window._arthurColorsTouched) ? window._arthurTheme : undefined,
                 build_data:      window._arthurBuildData || {},
             })
         });
@@ -675,6 +723,11 @@ function _arthurRenderBuildResult(d) {
     if (d.website_id) {
         var bdata = d.build_data || window._arthurBuildData || {};
         _arthurShowWebsiteCard(d.website_id, bdata.business_name || 'Your Website', bdata.industry || '', d.workspace_id || null);
+        // DEC-0045 (2026-09-11): the draft is priced — say what it cost and refresh the sidebar balance now.
+        if (d.credits_charged) {
+            _arthurAddMsg('arthur', 'This draft used ' + d.credits_charged + ' credits' + (typeof d.credits_available === 'number' ? ' — ' + d.credits_available + ' left in your balance.' : '.'));
+            try { if (typeof _checkTrialStatus === 'function') _checkTrialStatus(); } catch (_) {}
+        }
         try {
             window.dispatchEvent(new CustomEvent('lu:website-generated', {
                 detail: {
@@ -700,7 +753,7 @@ function _arthurAddMsg(role, text) {
     if (!feed) return;
 
     if (role === 'typing') {
-        feed.innerHTML += '<div id="arthur-typing" style="display:flex;gap:10px;align-items:flex-start"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--p),#3B82F6);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">'+window.icon('ai',18)+'</div><div style="padding:10px 14px;border-radius:12px;background:var(--s2);color:var(--t3);font-size:13px;font-style:italic;animation:pulse 1.5s infinite">Thinking...</div></div>';
+        feed.innerHTML += '<div id="arthur-typing" style="display:flex;gap:10px;align-items:flex-start"><div style="width:28px;height:28px;border-radius:8px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden"><img src="/img/logo-icon-48.png" alt="Arthur" width="20" height="20" style="display:block"></div><div style="padding:10px 14px;border-radius:12px;background:var(--s2);color:var(--t3);font-size:13px;font-style:italic;animation:pulse 1.5s infinite">Thinking...</div></div>';
         feed.scrollTop = feed.scrollHeight;
         return;
     }
@@ -716,7 +769,7 @@ function _arthurAddMsg(role, text) {
     if (isUser) {
         html = '<div style="display:flex;justify-content:flex-end"><div style="max-width:80%;padding:12px 16px;border-radius:14px;background:var(--p,#6C5CE7);color:#fff;font-size:14px;line-height:1.6">' + parsed + '</div></div>';
     } else {
-        html = '<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--p),#3B82F6);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0">'+window.icon('ai',18)+'</div><div style="max-width:85%;padding:12px 16px;border-radius:14px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);font-size:14px;line-height:1.7">' + parsed + '</div></div>';
+        html = '<div style="display:flex;gap:10px;align-items:flex-start"><div style="width:28px;height:28px;border-radius:8px;background:var(--s2);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden"><img src="/img/logo-icon-48.png" alt="Arthur" width="20" height="20" style="display:block"></div><div style="max-width:85%;padding:12px 16px;border-radius:14px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);font-size:14px;line-height:1.7">' + parsed + '</div></div>';
     }
 
     feed.innerHTML += html;
@@ -999,11 +1052,36 @@ function _arthurCurrentWs() {
         return parseInt(p.ws || p.workspace_id || 0, 10) || 0;
     } catch (_e) { return 0; }
 }
+// ARTHUR EDITOR FIX (2026-09-10) — "Open in Editor" used to call wsOpenSite() directly. That had two
+// faults and the customer saw the same thing from both: Sarah's chat, with no error. (1) wsOpenSite reads
+// the undeclared global wsSites on its first statement and threw for every new signup (fixed in
+// builder.js, kept defensive here); the call was neither awaited nor caught, so the rejection was silent.
+// (2) Even when it worked it only rewrote the DOM *inside* view-websites and pushed the URL — it never
+// made that view active, so a non-template site left the customer on whatever view they were already on.
+// nav('websites', {tail}) is the path that loads the grid, activates the view and deep-links the site, and
+// it works in Basic mode because 'websites' is in BASIC_VISIBLE.
+function _arthurEnterEditor(websiteId) {
+    var fell = false;
+    var fallback = function (err) {
+        if (fell) return; fell = true;
+        if (err) console.error('[Arthur] open editor failed:', err);
+        window.location.href = '/app/websites/' + websiteId;
+    };
+    try {
+        if (typeof window.nav === 'function') {
+            var r = window.nav('websites', { tail: String(websiteId) });
+            if (r && typeof r.catch === 'function') r.catch(fallback);
+            return;
+        }
+    } catch (e) { fallback(e); return; }
+    fallback(null);
+}
+
 window._arthurOpenBuiltSite = function (websiteId, workspaceId) {
     var m = document.getElementById('arthur-modal'); if (m) m.remove();
     var target = parseInt(workspaceId || 0, 10) || 0;
     if (!target || target === _arthurCurrentWs()) {
-        if (typeof wsOpenSite === 'function') wsOpenSite(websiteId);
+        _arthurEnterEditor(websiteId);
         return;
     }
     if (typeof showToast === 'function') showToast('Opening your new website…', 'info');
@@ -1127,7 +1205,7 @@ window._bldShowTemplatePicker = function() {
 
         // Option 1 — Build with Arthur
         + '<div id="lu-wiz-opt-arthur" style="display:flex;align-items:center;gap:14px;padding:16px 18px;background:linear-gradient(135deg,rgba(108,92,231,.08),rgba(168,85,247,.08));border:1px solid rgba(108,92,231,.3);border-radius:12px;cursor:pointer;transition:all .2s">'
-        +   '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+window.icon('ai',18)+'</div>'
+        +   (window.luAvatar ? luAvatar('arthur', 52) : '<div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#6C5CE7,#A855F7);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">'+window.icon('ai',18)+'</div>')
         +   '<div style="flex:1">'
         +     '<div style="font-size:15px;font-weight:700;color:var(--t1)">Build with Arthur</div>'
         +     '<div style="font-size:12px;color:var(--t3);margin-top:2px">Chat with AI and get your website built in seconds</div>'
@@ -1453,4 +1531,64 @@ window._arthurConfirmPalette = function(paletteId) {
     var inp = document.getElementById('arthur-chat-input');
     if (inp) inp.value = 'Build the site now.';
     if (typeof window._arthurSend === 'function') window._arthurSend();
+};
+// ── COLOUR THEMES (2026-09-05) ────────────────────────────────────────────────────────────────────────
+// Curated palettes replace the bare colour picker. The server proposes themes for the business (d.themes on the
+// confirm response); this is only a fallback so the panel never renders empty. Every theme is contrast-checked.
+var _ARTHUR_FALLBACK_THEMES = [
+  { id: 'lagoon',        label: 'Lagoon',        primary: '#0F4C81', secondary: '#38BDF8', accent: '#126592', bg: '#F6FAFE', text: '#0F2233', source: 'theme' },
+  { id: 'coral_reef',    label: 'Coral Reef',    primary: '#C8502F', secondary: '#F4A261', accent: '#2A9D8F', bg: '#FFFDF9', text: '#1F2933', source: 'theme' },
+  { id: 'midnight_gold', label: 'Midnight Gold', primary: '#1A2744', secondary: '#C9943A', accent: '#A9782A', bg: '#FDFBF7', text: '#1A2233', source: 'theme' },
+  { id: 'sage_linen',    label: 'Sage Linen',    primary: '#3F5B4F', secondary: '#D9CFC1', accent: '#5E8266', bg: '#FBFAF7', text: '#22302A', source: 'theme' }
+];
+function _arthurThemeList() {
+    return (window._arthurThemes && window._arthurThemes.length) ? window._arthurThemes : _ARTHUR_FALLBACK_THEMES;
+}
+function _arthurThemeListAll() {
+    var all = (window._arthurThemesAll && window._arthurThemesAll.length) ? window._arthurThemesAll : [];
+    var rec = _arthurThemeList(), seen = {}, out = [];
+    rec.concat(all).forEach(function (t) { if (t && t.id && !seen[t.id]) { seen[t.id] = 1; out.push(t); } });
+    return out;
+}
+window._arthurRenderThemes = function () {
+    var row = document.getElementById('arthur-theme-row');
+    if (!row) return;
+    var rec = _arthurThemeList();
+    var all = _arthurThemeListAll();
+    var list = window._arthurShowAllThemes ? all : rec;
+    if (!window._arthurTheme && !window._arthurColorsTouched) window._arthurTheme = rec[0];
+    var toggle = document.getElementById('arthur-themes-toggle');
+    if (toggle) { toggle.style.display = all.length > rec.length ? '' : 'none'; toggle.textContent = window._arthurShowAllThemes ? 'Show recommended only' : 'Show all ' + all.length + ' themes'; }
+    row.innerHTML = list.map(function (t) {
+        var on = !!(window._arthurTheme && window._arthurTheme.id === t.id && !window._arthurColorsTouched);
+        var bar = ['primary', 'secondary', 'accent'].map(function (k) { return '<span style="background:' + (t[k] || '#888') + '"></span>'; }).join('');
+        return '<button type="button" class="ar-theme' + (on ? ' on' : '') + '" onclick="_arthurPickTheme(\'' + String(t.id).replace(/[^a-zA-Z0-9_]/g, '') + '\')" aria-pressed="' + (on ? 'true' : 'false') + '">' +
+            '<span class="ar-theme-bar">' + bar + '</span>' +
+            '<span class="ar-theme-name">' + bld_escH(t.label || t.id) + (on ? '<i>Selected ✓</i>' : '') + '</span>' +
+            '</button>';
+    }).join('');
+    var note = document.getElementById('arthur-color-note');
+    if (note) note.textContent = window._arthurColorsTouched
+        ? 'Using your own colours — Arthur tunes them for contrast automatically'
+        : '';
+    var btn = document.getElementById('arthur-own-colors-btn');
+    if (btn) btn.textContent = window._arthurColorsTouched ? 'Back to themes' : 'Use my own colours';
+    try { _arthurStepMeta(3, window._arthurColorsTouched ? 'Own colours' : (window._arthurTheme ? 'Theme: ' + (window._arthurTheme.label || window._arthurTheme.id) : '')); } catch(_){}
+};window._arthurPickTheme = function (id) {
+    var list = _arthurThemeListAll();
+    for (var i = 0; i < list.length; i++) { if (String(list[i].id) === String(id)) { window._arthurTheme = list[i]; break; } }
+    window._arthurColorsTouched = false;
+    var own = document.getElementById('arthur-own-colors');
+    if (own) own.style.display = 'none';
+    _arthurRenderThemes();
+};
+window._arthurToggleOwnColors = function () {
+    var own = document.getElementById('arthur-own-colors');
+    if (!own) return;
+    var show = own.style.display === 'none' || own.style.display === '';
+    own.style.display = show ? 'flex' : 'none';
+    window._arthurColorsTouched = show;
+    if (show) { try { _arthurStepGo(3); } catch(_){} }
+    if (!show && !window._arthurTheme) window._arthurTheme = _arthurThemeList()[0];
+    _arthurRenderThemes();
 };

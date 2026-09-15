@@ -6,7 +6,7 @@
 'use strict';
 
 var _msg = { open: false, agent: 'sarah', conversations: [], messages: [], unread: {}, pollTimer: null };
-var AGENT_COLORS = {sarah:'#F59E0B',james:'#3B82F6',alex:'#06B6D4',priya:'#7C3AED',marcus:'#EC4899',elena:'#00E5A8',diana:'#F97316',ryan:'#10B981',sofia:'#8B5CF6',leo:'#EF4444'};
+var AGENT_COLORS = {};   /* Owner 2026-09-15: no colour per agent — the neutral fallback var(--t3) applies everywhere */
 
 function _msgE(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function _msgAgo(ts){if(!ts)return'';var d=(typeof window!=='undefined'&&window._luParseTs)?window._luParseTs(ts):new Date(ts.replace(' ','T')+'Z');var m=Math.round((Date.now()-d)/60000);if(m<1)return'now';if(m<60)return m+'m ago';if(m<1440)return Math.floor(m/60)+'h ago';return Math.floor(m/1440)+'d ago';}
@@ -36,11 +36,32 @@ window._msgMarkAllRead=function(){
 };
 
 // ── Floater Button ─────────────────────────────────────────────────────────
+/* Owner 2026-09-10: the floating chat must not exist in Basic at all.
+   It was already data-adv="1", which the stylesheet hides via
+   html[data-mode="basic"] [data-adv="1"]{display:none!important} — but that is a
+   CSS hide on an element that is still built, still focusable by assistive tech and
+   still one attribute away from being visible. Basic now never CONSTRUCTS it, and a
+   later switch to Basic removes it. Advanced is unchanged apart from the icon. */
+function _msgBasicMode(){
+  try{
+    var m=document.documentElement.getAttribute('data-mode');
+    if(m) return m==='basic';
+    return (localStorage.getItem('lu_visibility_mode')||'basic')!=='advanced';
+  }catch(e){ return true; }   // unreadable mode = treat as Basic, the smaller surface
+}
+function _msgRemoveFloater(){
+  var el=document.getElementById('lu-messages-floater'); if(el) el.remove();
+  var md=document.getElementById('lu-msg-modal'); if(md) md.style.display='none';
+}
 function _msgCreateFloater(){
+  if(_msgBasicMode()){ _msgRemoveFloater(); return; }
   if(document.getElementById('lu-messages-floater'))return;
   var btn=document.createElement('div');
   btn.id='lu-messages-floater'; btn.setAttribute('data-adv','1'); btn.setAttribute('aria-label','Messages'); // P1-U2: Advanced-only — Basic talks to Sarah on the home
-  btn.innerHTML=''+window.icon("message",14)+'<div id="lu-messages-badge"></div>';
+  // Owner 2026-09-10: the LevelUp mark instead of the generic speech bubble — the same
+  // asset Arthur wears in the wizard (CP-0449), so one file governs both surfaces.
+  // AVATAR888 (DEC-0055, Owner: "the floater Sarah"): the button IS Sarah — her portrait, not the company mark.
+  btn.innerHTML='<img src="/img/agents/sarah.webp" alt="" width="34" height="34" style="display:block;width:34px;height:34px;border-radius:50%;object-fit:cover;pointer-events:none" onerror="this.src=\'/img/logo-icon-48.png\';this.style.borderRadius=\'0\';this.style.boxShadow=\'none\'"><div id="lu-messages-badge"></div>';
   btn.onclick=_msgToggle;
   document.body.appendChild(btn);
 
@@ -52,6 +73,15 @@ function _msgCreateFloater(){
     +'@media(max-width:768px){#lu-messages-floater{left:16px;bottom:80px}#lu-msg-modal{left:8px;right:8px;width:auto;bottom:136px;height:60vh}}';
   document.head.appendChild(style);
 }
+
+/* Toggling Basic/Advanced without a reload must add or remove the floater, not just
+   restyle it — the toggle dispatches this event after setting data-mode. */
+try{
+  window.addEventListener('lu:visibility-mode', function(e){
+    var mode=(e&&e.detail&&e.detail.mode)||null;
+    if(mode==='advanced'){ _msgCreateFloater(); } else { _msgRemoveFloater(); }
+  });
+}catch(e){}
 
 window._msgToggle=function(){
   _msg.open=!_msg.open;
@@ -112,7 +142,7 @@ function _msgRenderAgentList(){
     var unreadBadge=c.unread>0?'<span style="background:#C0392B;color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">'+c.unread+'</span>':'';
     var lastMsg=c.last_message?'<div style="font-size:10px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">'+_msgE(c.last_message.content).substring(0,30)+'</div>':'';
     return'<div onclick="_msgSelectAgent(\''+c.slug+'\')" style="padding:10px 12px;cursor:pointer;border-left:3px solid '+(active?color:'transparent')+';background:'+(active?'var(--s2)':'transparent')+';transition:all .15s" onmouseover="this.style.background=\'var(--s2)\'" onmouseout="this.style.background=\''+(active?'var(--s2)':'transparent')+'\'">'
-      +'<div style="display:flex;align-items:center;gap:8px"><div style="width:28px;height:28px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:'+color+';font-weight:700">'+c.name.charAt(0)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px">'+(window.luAvatar?luAvatar(c.slug,28):'<div style="width:28px;height:28px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;color:'+color+';font-weight:700">'+c.name.charAt(0)+'</div>')+''
       +'<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:'+(active?'700':'500')+';color:'+(active?'var(--t1)':'var(--t2)')+'">'+_msgE(c.name)+'</div>'+lastMsg+'</div>'+unreadBadge+'</div></div>';
   }).join('');
 }
@@ -361,7 +391,7 @@ window.messagesLoad=function(el){console.log("[Messages] messagesLoad called",el
       +'<div id="lu-msg-page-feed" style="flex:1;overflow-y:auto;padding:16px 20px"></div>'
       +'<div style="padding:12px 20px;border-top:1px solid var(--bd);display:flex;gap:10px">'
         +'<input id="lu-msg-page-input" type="text" placeholder="Type a message..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);padding:12px 16px;font-size:14px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')_msgPageSend()">'
-        +'<button onclick="_msgPageSend()" style="background:var(--p);color:#fff;border:none;border-radius:10px;padding:12px 20px;font-size:14px;cursor:pointer;font-weight:600">Send \u2192</button>'
+        +'<button onclick="_msgPageSend()" aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>'
       +'</div>'
     +'</div></div>';
   _msgLoadConversationsPage();
@@ -385,7 +415,7 @@ function _msgRenderPageAgents(){
       var unread=c.unread>0?'<span style="background:#C0392B;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;font-weight:700">'+c.unread+'</span>':'';
       var lastLine=c.last_message?_msgE(c.last_message.content).substring(0,40):'No messages yet';
       return'<div onclick="_msgPageSelect(\''+c.slug+'\')" style="padding:12px 16px;cursor:pointer;background:'+(active?'var(--s2)':'transparent')+';border-left:3px solid '+(active?color:'transparent')+';transition:all .15s">'
-        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px"><div style="width:32px;height:32px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:14px;color:'+color+';font-weight:700">'+c.name.charAt(0)+'</div>'
+        +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">'+(window.luAvatar?luAvatar(c.slug,32):'<div style="width:32px;height:32px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:14px;color:'+color+';font-weight:700">'+c.name.charAt(0)+'</div>')+''
         +'<div style="flex:1"><div style="font-size:13px;font-weight:'+(active?'700':'500')+';color:var(--t1)">'+_msgE(c.name)+'</div><div style="font-size:10px;color:var(--t3)">'+_msgE(c.title||'')+'</div></div>'+unread+'</div>'
         +'<div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:42px">'+lastLine+'</div>'
         +'</div>';
@@ -406,7 +436,7 @@ async function _msgLoadPageThread(slug){
 
   var conv=_msg.conversations.find(function(c){return c.slug===slug;})||{name:slug,title:''};
   var color=AGENT_COLORS[slug]||'var(--t3)';
-  if(header)header.innerHTML='<div style="display:flex;align-items:center;gap:12px"><div style="width:36px;height:36px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:16px;color:'+color+';font-weight:700">'+conv.name.charAt(0)+'</div><div><div style="font-size:15px;font-weight:700;color:var(--t1)">'+_msgE(conv.name)+'</div><div style="font-size:11px;color:var(--t3)">'+_msgE(conv.title||'Agent')+'</div></div></div>';
+  if(header)header.innerHTML='<div style="display:flex;align-items:center;gap:12px">'+(window.luAvatar?luAvatar(slug,36):'<div style="width:36px;height:36px;border-radius:50%;background:'+color+'22;border:1px solid '+color+'44;display:flex;align-items:center;justify-content:center;font-size:16px;color:'+color+';font-weight:700">'+conv.name.charAt(0)+'</div>')+'<div><div style="font-size:15px;font-weight:700;color:var(--t1)">'+_msgE(conv.name)+'</div><div style="font-size:11px;color:var(--t3)">'+_msgE(conv.title||'Agent')+'</div></div></div>';
 
   feed.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px">Loading...</div>';
   var uiSlug=slug==='sarah'?'dmm':slug;
