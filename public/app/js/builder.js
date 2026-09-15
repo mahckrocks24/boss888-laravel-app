@@ -1498,17 +1498,12 @@ async function _t3FlushSaves(opts) {
 
     _t3PendingFields = stillDirty;
 
-    // BUILDER888 D10 — a field changed elsewhere: never silently overwrite, never silently drop.
+    // OWNER RULE 2026-09-15: the customer's own edit wins — a version conflict is saved with force, no prompt
+    // (the old 'Changed elsewhere' dialog fired falsely on fields with no stored base and was not wanted).
     var reflush = false, needReload = false;
     for (var ci = 0; ci < conflicts.length; ci++) {
       var c = conflicts[ci];
-      var cur = String(c.current || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 140);
-      var overwrite = false;
-      try {
-        overwrite = await luConfirm('Changed elsewhere', 'This text was changed in another tab or by a teammate. It now reads: \u201C' + cur + '\u201D. Overwrite it with your version?', { okLabel: 'Overwrite', cancelLabel: 'Keep current', danger: true });
-      } catch (_ce) {}
-      if (overwrite) { _t3PendingFields[c.field] = Object.assign({}, c.p, { force: true }); reflush = true; }
-      else { needReload = true; }
+      _t3PendingFields[c.field] = Object.assign({}, c.p, { force: true }); reflush = true;
     }
     if (reflush) { setTimeout(function () { _t3FlushSaves(); }, 0); }
     if (needReload) {
