@@ -5616,6 +5616,7 @@ PROMPT;
         if ($isStatic && empty($ctx['_clause']) && empty($ctx['_no_brain'])) {
             $intent = null; $brain = null;
             $ctx['selected'] = $this->selectionContext($websiteId, $ctx);   // SELECTION888: what the customer clicked, with its text
+            Log::info('[Arthur] selection', ['website' => $websiteId, 'selected' => $ctx['selected'] === null ? 'none' : $ctx['selected']['field'] . '@' . $ctx['selected']['block'] . ' <' . $ctx['selected']['tag'] . '>']);
             try { $brain = app(ArthurIntentService::class); $intent = $brain->interpret($wsId, $websiteId, $site, $request, $ctx, $this->intentContext($wsId, $websiteId, $site, $tv, (string) $industry) + ['selected' => $ctx['selected']]); }
             catch (\Throwable $e) { Log::warning('[Arthur] intent failed, classic path', ['website' => $websiteId, 'error' => $e->getMessage()]); }
             if ($intent !== null && $brain !== null) {
