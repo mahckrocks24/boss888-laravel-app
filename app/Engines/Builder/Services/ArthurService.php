@@ -88,6 +88,98 @@ class ArthurService
         DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
         return ['success' => true, 'message' => $said];
     }
+    /* ═══════════════════ EFFECTS888 (2026-09-15) — opacity, shadow, glow of one element; dark/light overlay on a section ═══════════════════ */
+
+    private const FX_TEXT_SHADOW = ['', '0 1px 2px rgba(0,0,0,.25)', '0 2px 6px rgba(0,0,0,.35)', '0 4px 12px rgba(0,0,0,.45)', '0 6px 20px rgba(0,0,0,.55)'];
+    private const FX_BOX_SHADOW  = ['', '0 2px 6px rgba(0,0,0,.15)', '0 6px 16px rgba(0,0,0,.22)', '0 12px 28px rgba(0,0,0,.30)', '0 20px 44px rgba(0,0,0,.38)'];
+    private const FX_GLOW_PX     = [0, 8, 16, 28, 44];
+    private const FX_LEVEL_WORD  = ['none', 'soft', 'medium', 'strong', 'dramatic'];
+
+    /** The effect state of one target (a field, or 'section:{block}'), rendered to its rule. */
+    public function effectElement(int $websiteId, string $field, string $effect, string $dir = 'up', ?float $value = null, ?string $color = null, string $block = ''): array
+    {
+        $effect = strtolower(trim($effect)); $dir = strtolower(trim($dir)) ?: 'up';
+        if (! in_array($effect, ['opacity', 'shadow', 'glow', 'overlay'], true)) return ['success' => false, 'message' => 'Opacity, shadow, glow — or a dark or light overlay on a section?'];
+        $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', $field); $block = (string) preg_replace('/[^a-z0-9_\-]/i', '', $block);
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if ($effect === 'overlay') {
+            if ($block === '' && $field !== '' && preg_match('/data-block="([a-z_\-]+)"(?:(?!data-block=).)*?data-field="' . preg_quote($field, '/') . '"/su', $home, $bm)) $block = $bm[1];
+            if ($block === '' || ! str_contains($home, 'data-block="' . $block . '"')) return ['success' => false, 'message' => 'Which section should get the overlay?'];
+            $key = 'section:' . $block; $info = null;
+        } else {
+            $info = $this->elementInfo($websiteId, $field);
+            if ($info === null) return ['success' => false, 'message' => 'I could not find that element on the page.'];
+            $key = $info['field'];
+        }
+        $this->fxSiteId = $websiteId;
+        $tv = json_decode((string) DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
+        $fx = is_array($tv['element_fx'] ?? null) ? $tv['element_fx'] : [];
+        $st = is_array($fx[$key] ?? null) ? $fx[$key] : [];
+        $label = $info ? ($info['text'] !== '' ? '"' . mb_substr($info['text'], 0, 40) . '"' : 'the ' . str_replace(['_', '-'], ' ', $info['field'])) : 'the ' . str_replace(['_', '-'], ' ', $block) . ' section';
+        $said = '';
+        if ($effect === 'opacity') {
+            $cur = (int) ($st['opacity'] ?? 100);
+            $new = $value !== null ? (int) round($value) : ($dir === 'none' ? 100 : ($dir === 'down' ? $cur - 10 : $cur + 10));
+            $new = max(20, min(100, $new));
+            if ($new === $cur) return ['success' => false, 'message' => ucfirst($label) . ' is already ' . ($cur === 100 ? 'fully opaque' : $cur . '% opaque') . ($cur <= 20 ? ' — that is as faint as I go' : '') . '.'];
+            $st['opacity'] = $new; $said = ($new === 100 ? 'made ' . $label . ' fully opaque again' : 'set ' . $label . ' to ' . $new . '% opacity');
+        } elseif ($effect === 'shadow' || $effect === 'glow') {
+            $cur = (int) ($st[$effect] ?? 0);
+            $new = $value !== null ? (int) round($value) : ($dir === 'none' ? 0 : ($dir === 'down' ? $cur - 1 : $cur + 1));
+            $new = max(0, min(4, $new));
+            $hex = null;
+            if ($effect === 'glow' && $color !== null && trim($color) !== '') { $hex = self::styleHex(strtolower(trim($color))) ?? self::styleHexLoose($color); }
+            if ($new === $cur && ($hex === null || $hex === ($st['glow_color'] ?? null))) return ['success' => false, 'message' => ucfirst($label) . ($cur === 0 ? ' has no ' . $effect . ' to remove.' : ' already has a ' . self::FX_LEVEL_WORD[$cur] . ' ' . $effect . ($cur === 4 ? ' — the strongest I do.' : '.'))];
+            $st[$effect] = $new; if ($hex !== null) $st['glow_color'] = $hex;
+            if ($new === 0) { $said = 'removed the ' . $effect . ' from ' . $label; unset($st['glow_color']); }
+            else $said = ($cur === 0 ? 'added a ' : 'set a ') . self::FX_LEVEL_WORD[$new] . ($effect === 'glow' && ! empty($st['glow_color']) ? ' ' . (array_search($st['glow_color'], self::COLOR_MAP, true) ?: '') : '') . ' ' . $effect . ($cur === 0 ? ' to ' : ' on ') . $label;
+        } else {
+            $cur = (int) ($st['overlay'] ?? 0); $tone = $color !== null && preg_match('/light|white|bright/i', $color) ? 'light' : (($st['overlay_tone'] ?? 'dark'));
+            if ($color !== null && preg_match('/dark|black|dim/i', $color)) $tone = 'dark';
+            $new = $value !== null ? (int) round($value) : ($dir === 'none' ? 0 : ($dir === 'down' ? $cur - 1 : $cur + 1));
+            $new = max(0, min(5, $new));
+            if ($new === $cur && $tone === ($st['overlay_tone'] ?? 'dark')) return ['success' => false, 'message' => ucfirst($label) . ($cur === 0 ? ' has no overlay to remove.' : ' already has that overlay (level ' . $cur . ' of 5).')];
+            $st['overlay'] = $new; $st['overlay_tone'] = $tone;
+            $said = $new === 0 ? 'removed the overlay from ' . $label : (($tone === 'light' ? 'lightened' : 'darkened') . ' the background of ' . $label . ' (level ' . $new . ' of 5)');
+        }
+        $fx[$key] = $st; $tv['element_fx'] = $fx;
+        $rules = $this->fxRules($key, $st, $info);
+        try { $this->templates->snapshotToHistory($websiteId, 'element_effect'); } catch (\Throwable $e) {}
+        $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+        $ruleKey = $info ? 'fx_field_' . $key : 'fx_section_' . $block;
+        if ($rules === '') { unset($extras[$ruleKey]); $tv['design_extras'] = $extras; $ok = self::writeDesignExtras($websiteId, [], $tv); }
+        else { $ok = self::writeDesignExtras($websiteId, [$ruleKey => $rules], $tv); }
+        if (! $ok) return ['success' => false, 'message' => 'I could not write that change to the page.'];
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        return ['success' => true, 'message' => $said, 'state' => $st];
+    }
+
+    /** The CSS of one target's effect state (empty when everything is at its default). */
+    private function fxRules(string $key, array $st, ?array $info): string
+    {
+        if ($info === null) {
+            $lvl = (int) ($st['overlay'] ?? 0); if ($lvl <= 0) return '';
+            $blk = substr($key, 8); $alpha = [0, .15, .3, .45, .6, .75][$lvl];
+            $veil = ($st['overlay_tone'] ?? 'dark') === 'light' ? "rgba(255,255,255,{$alpha})" : "rgba(0,0,0,{$alpha})";
+            $sel = $blk === 'hero' ? '.hero,[data-block="hero"],header.hero,section.hero' : '[data-block="' . $blk . '"]';
+            return "{$sel}{box-shadow:inset 0 0 0 100vmax {$veil}!important}";
+        }
+        $s = '[data-field="' . $info['field'] . '"]:not(.lu-x)'; $decl = [];
+        $op = (int) ($st['opacity'] ?? 100); if ($op < 100) $decl[] = 'opacity:' . ($op / 100) . '!important';
+        $isText = $info['kind'] === 'text';
+        $shadow = (int) ($st['shadow'] ?? 0); $glow = (int) ($st['glow'] ?? 0);
+        $parts = [];
+        if ($shadow > 0) $parts[] = $isText ? self::FX_TEXT_SHADOW[$shadow] : self::FX_BOX_SHADOW[$shadow];
+        if ($glow > 0) {
+            $px = self::FX_GLOW_PX[$glow];
+            $col = $st['glow_color'] ?? null;
+            if ($col === null) { $col = $isText || $info['kind'] === 'link' ? 'currentColor' : ($info['kind'] === 'image' ? 'rgba(255,255,255,.55)' : (self::siteColorVars((int) ($this->fxSiteId ?? 0))['--cf1'] ?? '#6C5CE7')); }
+            $parts[] = $isText ? "0 0 {$px}px {$col}" : "0 0 {$px}px " . (int) round($px / 6) . "px {$col}";
+        }
+        if ($parts !== []) $decl[] = ($isText ? 'text-shadow:' : 'box-shadow:') . implode(',', $parts) . '!important';
+        return $decl === [] ? '' : $s . '{' . implode(';', $decl) . '}';
+    }
+    private ?int $fxSiteId = null;
     /** SELECTION888 (2026-09-15): the element / section the customer clicked in the editor, for the style executors of the current request. */
     private ?array $selTarget = null;
     private const SEL_WORDS = '/\b(selected|highlighted|chosen|this one|this element|this text|this title|this heading|this button|this section|this|it|that|here)\b/';
@@ -7990,6 +8082,30 @@ PROMPT;
                 return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "Here is what I can tell you about {$site->name}."];
             case 'unsupported':
                 return $base + ['success' => false, 'kind' => 'unsupported', 'code' => 'UNSUPPORTED', 'method' => 'chat', 'message' => trim((string) ($intent['reply'] ?? '')) ?: "That is not something I can do from here."];
+            case 'element_effect': {
+                // EFFECTS888: opacity / shadow / glow of one element, or an overlay on a section
+                $el = is_array($intent['element'] ?? null) ? $intent['element'] : [];
+                $sel = is_array($ctx['selected'] ?? null) ? $ctx['selected'] : [];
+                $fld = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($el['field'] ?? '')); $blk = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($el['block'] ?? ''));
+                $eff = strtolower((string) ($el['effect'] ?? ''));
+                if ($fld === '' && $blk === '') { $fld = (string) ($sel['field'] ?? ''); $blk = (string) ($sel['block'] ?? ''); }
+                if ($fld === '' && $blk === '') return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which element or section? Tap it in the preview, or tell me the words you see on it.', 'options' => []];
+                if (! \App\Engines\Builder\Support\EditorCredits::canAfford($wsId, 'element_effect')) return $base + ['success' => false, 'code' => 'INSUFFICIENT_CREDITS', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal('element_effect')];
+                $val = isset($el['value']) && $el['value'] !== '' && $el['value'] !== null ? (float) $el['value'] : null;
+                $dirIn = strtolower((string) ($el['dir'] ?? 'up'));
+                if ($val !== null && $val <= 0 && $dirIn !== 'none') $val = null;   // the schema's 0 is not a wish — only 'none' removes
+                if ($eff === 'opacity' && preg_match('/(\d{1,3})\s*%\s*transparen/i', $customerWords, $tm)) { $val = max(20, 100 - (int) $tm[1]); }   // '60% transparent' = 40% opaque
+                elseif ($eff === 'opacity' && preg_match('/(\d{1,3})\s*%/', $customerWords, $om)) { $val = (int) $om[1]; }
+                if ($eff !== 'opacity' && preg_match('/\b(a little|a bit|slightly|a touch|somewhat)\b/i', $customerWords)) $val = null;
+                if (preg_match('/\b(remove|no more|get rid|take off|turn off|without)\b/i', $customerWords) && ! preg_match('/\b(less|lighter|weaker)\b/i', $customerWords)) $dirIn = 'none';
+                $el['dir'] = $dirIn;
+                $res = $this->effectElement($websiteId, $eff === 'overlay' ? '' : $fld, $eff, (string) ($el['dir'] ?? 'up'), $val, isset($el['color']) ? (string) $el['color'] : null, $eff === 'overlay' ? ($blk !== '' ? $blk : '') : '');
+                if ($eff === 'overlay' && empty($res['success']) && $blk === '' && $fld !== '') $res = $this->effectElement($websiteId, $fld, 'overlay', (string) ($el['dir'] ?? 'up'), $val, isset($el['color']) ? (string) $el['color'] : null, '');
+                if (empty($res['success'])) return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'message' => (string) $res['message']];
+                $cost = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'element_effect', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$res['message']]]);
+                Log::info('[Arthur] element op', ['website' => $websiteId, 'action' => 'element_effect', 'field' => $fld ?: 'section:' . $blk, 'change' => $res['message']]);
+                return $base + ['success' => true, 'kind' => 'element', 'applied' => 1, 'actions_applied' => 1, 'credits' => $cost, 'message' => 'Done — I ' . $res['message'] . " on {$site->name}." . ($cost > 0 ? " {$cost} credit" . ($cost === 1 ? '' : 's') . '.' : '') . ' Undo puts it back.'];
+            }
             case 'element_move':
             case 'element_align': {
                 // ELEMENT888 (DEC-0052): move / swap / align one element; the model names the field (from FIELDS or the selection)

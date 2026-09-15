@@ -1149,7 +1149,7 @@ async function _t3ElementOp(d) {
   var siteId = window._t3PreviewSiteId || (f && f.getAttribute('data-site')) || (m ? m[1] : null);
   if (!siteId || !d || !d.field || !d.op) return;
   var body = { field: d.field };
-  if (d.op === 'move') { body.dir = d.dir; if (d.ref) body.ref = d.ref; } else if (d.op === 'align') { body.align = d.align; } else { body.dir = d.dir; }
+  if (d.op === 'move') { body.dir = d.dir; if (d.ref) body.ref = d.ref; } else if (d.op === 'align') { body.align = d.align; } else if (d.op === 'effect') { body.effect = d.effect; body.dir = d.dir; if (d.block) body.block = d.block; if (d.value != null) body.value = d.value; if (d.color) body.color = d.color; } else { body.dir = d.dir; }
   var feed = document.getElementById('t3-arthur-feed');
   var note = function (text, colour) { if (!feed) return; feed.innerHTML += '<div style="background:var(--s2);border-left:3px solid ' + colour + ';border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0">' + bld_escH(text) + '</div>'; feed.scrollTop = feed.scrollHeight; };
   try {
@@ -1159,6 +1159,7 @@ async function _t3ElementOp(d) {
       note(j.message + (j.credits ? ' \u00B7 ' + j.credits + ' credit' + (j.credits === 1 ? '' : 's') : ''), '#00E5A8');
       // LIVE PREVIEW: the preview already shows the change; reload only when it could not apply it itself
       if (!d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); }
+      else if (d.op === 'effect' && j.state) { try { f.contentWindow.postMessage({ type: 'fx-state', effect: d.effect, field: d.field, block: d.block, state: j.state }, '*'); } catch (_fs) {} }   // EFFECTS888: the exact saved state
       if (typeof _luRefreshCredits === 'function') { try { _luRefreshCredits(); } catch (_c) {} }
     } else {
       note((j && j.message) || 'That did not work.', r.status === 402 ? '#F87171' : '#F59E0B');

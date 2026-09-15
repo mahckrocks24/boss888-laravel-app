@@ -121,14 +121,18 @@ use Illuminate\Support\Facades\Route;
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
         Route::post('/websites/{id}/elements/{op}', function (\Illuminate\Http\Request $r, $id, $op) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
-            if (! in_array($op, ['move', 'align', 'size'], true)) return response()->json(['success' => false, 'message' => 'Unknown operation'], 422);
+            if (! in_array($op, ['move', 'align', 'size', 'effect'], true)) return response()->json(['success' => false, 'message' => 'Unknown operation'], 422);
             $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) $r->input('field', ''));
-            if ($field === '') return response()->json(['success' => false, 'message' => 'Which element?'], 422);
+            $blockIn = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) $r->input('block', ''));
+            if ($field === '' && ! ($op === 'effect' && $blockIn !== '')) return response()->json(['success' => false, 'message' => 'Which element?'], 422);
             $action = 'element_' . $op; $ws = (int) $r->attributes->get('workspace_id');
             // OWNER RULE 2026-09-15: the toolbox and the drag handle are the customer's own hands — free. Arthur's version of the same change costs 1.
             if ($op === 'move') {
                 $dir = strtolower((string) $r->input('dir', '')); $ref = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) $r->input('ref', '')) ?: null;
                 $res = app(\App\Engines\Builder\Services\TemplateService::class)->moveElement((int) $id, $field, $dir, $ref);
+            } elseif ($op === 'effect') {
+                $v = $r->input('value'); $v = ($v === null || $v === '') ? null : (float) $v;
+                $res = app(\App\Engines\Builder\Services\ArthurService::class)->effectElement((int) $id, $field, (string) $r->input('effect', ''), (string) $r->input('dir', 'up'), $v, $r->input('color') !== null ? (string) $r->input('color') : null, $blockIn);
             } elseif ($op === 'align') {
                 $res = app(\App\Engines\Builder\Services\ArthurService::class)->alignElement((int) $id, $field, strtolower((string) $r->input('align', '')));
             } else {
@@ -136,7 +140,7 @@ use Illuminate\Support\Facades\Route;
             }
             if (empty($res['success'])) return response()->json(['success' => false, 'message' => (string) ($res['message'] ?? 'That did not work.')], 422);
             $cost = 0;
-            return response()->json(['success' => true, 'message' => ucfirst((string) $res['message']) . '.', 'credits' => $cost, 'url' => '/storage/sites/' . (int) $id . '/index.html']);
+            return response()->json(['success' => true, 'message' => ucfirst((string) $res['message']) . '.', 'credits' => $cost, 'state' => $res['state'] ?? null, 'url' => '/storage/sites/' . (int) $id . '/index.html']);
         });
         Route::put('/websites/{id}/tracking', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
