@@ -17,7 +17,9 @@ use App\Engines\Builder\Services\ArthurService;
 final class BuilderCapabilities
 {
     /** Credits per action. Reviewed by the Owner; override via config('builder.pricing'). */
-    public const PRICING = ['page' => 5, 'section' => 2, 'text_edit' => 1, 'style' => 1, 'draft' => 10]; // DEC-0045: first draft 10
+    public const PRICING = ['page' => 5, 'section' => 2, 'text_edit' => 1, 'style' => 1, 'draft' => 10, // DEC-0045: first draft 10
+        // EDITOR ACTIONS (2026-09-15): every change in the editor is priced here, chat and panel alike; 0 = free
+        'catalogue' => 1, 'inline' => 1, 'image_replace' => 1, 'logo' => 1, 'palette' => 1, 'layout' => 2, 'section_move' => 1, 'section_toggle' => 1, 'tracking' => 0, 'export' => 0, 'undo' => 0];
 
     /**
      * Sections Arthur can add to an existing page. Synonyms are what customers say; the type is what the

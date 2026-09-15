@@ -5583,7 +5583,7 @@ PROMPT;
             try {
                 $cat = app(CatalogueService::class);
                 $catSpecs = $cat->enabledSpecs($websiteId, $site);
-                if ($catSpecs !== [] && CatalogueService::looksLikeCatalogueRequest($request, $catSpecs, $websiteId)) { $catRes = $cat->arthur($wsId, $websiteId, $request, $ctx); if (($catRes['code'] ?? '') !== 'PASS') { return $catRes; } }
+                if ($catSpecs !== [] && CatalogueService::looksLikeCatalogueRequest($request, $catSpecs, $websiteId)) { $catRes = $cat->arthur($wsId, $websiteId, $request, $ctx); if (($catRes['code'] ?? '') !== 'PASS') { return $catRes; } }   // credits set by CatalogueService
             } catch (\Throwable $e) { Log::warning('[Arthur] catalogue branch failed: ' . $e->getMessage()); }
         }
         $plan     = $caps::classify($request, $industry ?: null);
@@ -7757,7 +7757,8 @@ PROMPT;
                 else { unset($extras['hide_' . $blk]); $tv['design_extras'] = $extras; $rules = []; }
                 if ($rules !== [] ? ! self::writeDesignExtras($websiteId, $rules, $tv) : ! self::writeDesignExtras($websiteId, [], $tv)) return $base + ['success' => false, 'message' => 'I could not change that section just now.'];
                 DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
-                return $base + ['success' => true, 'kind' => 'section', 'applied' => 1, 'actions_applied' => 1, 'credits' => 0, 'message' => 'Done — the ' . str_replace('_', ' ', $blk) . ' section is now ' . ($intent['intent'] === 'section_hide' ? 'hidden (its menu link too). Say "show the ' . str_replace('_', ' ', $blk) . ' section" to bring it back.' : 'visible again.')];
+                $tc = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'section_toggle', $websiteId, ['block' => $blk, 'op' => $intent['intent']]);
+                return $base + ['success' => true, 'kind' => 'section', 'applied' => 1, 'actions_applied' => 1, 'credits' => $tc, 'message' => 'Done — the ' . str_replace('_', ' ', $blk) . ' section is now ' . ($intent['intent'] === 'section_hide' ? 'hidden (its menu link too). Say "show the ' . str_replace('_', ' ', $blk) . ' section" to bring it back.' : 'visible again.')];
             case 'tracking':
                 $tr = is_array($intent['tracking'] ?? null) ? array_filter(array_map(fn($v) => trim((string) $v), $intent['tracking'])) : [];
                 if ($tr === []) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which id should I add — a Google Analytics id (G-…), a Tag Manager id (GTM-…), a Meta pixel number or a TikTok pixel?', 'options' => []];
@@ -7775,6 +7776,7 @@ PROMPT;
                 [$fields, $factKeys, $exportHtml] = $this->copyFieldsFor($websiteId, $site, $tv);
                 $plan = ['kind' => 'edit', 'credits' => \App\Engines\Builder\Support\BuilderCapabilities::pricing()['text_edit'] ?? 1];
                 $res = $this->applyCopyChanges($wsId, $websiteId, $site, $tv, $fields, $factKeys, $exportHtml, $changes, trim((string) ($intent['reply'] ?? '')), $plan);
+                if (! empty($res['success'])) { $res['credits'] = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'text_edit', $websiteId, ['request' => mb_substr($request, 0, 200), 'fields' => $res['changes'] ?? []]); }
                 if (empty($res['success'])) {   // the model named text that is not on the page: ask instead of a dead end
                     $opts = [];
                     foreach ($changes as $ch) { $k = (string) ($ch['key'] ?? ''); if ($k !== '' && ! isset($fields[$k])) { foreach (array_keys($fields) as $fk) { if (levenshtein($k, $fk) <= 4 && count($opts) < 4) $opts[] = $fk; } } }
@@ -7788,7 +7790,7 @@ PROMPT;
                 $res = app(CatalogueService::class)->execute($wsId, $websiteId, $p + ['_customer' => $request], $ctx);
                 if (($res['code'] ?? '') === 'WHICH') { return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => (string) $res['message'], 'options' => array_slice((array) ($res['options'] ?? []), 0, 4)]; }
                 if (($res['code'] ?? '') === 'PASS') { if ($normalized !== '') $request = $normalized; return null; }
-                return $base + $res + ['kind' => 'catalogue'];
+                return array_merge($base, $res, ['kind' => 'catalogue']);   // the service's own credits win over the zero in $base
             case 'style':
                 if ($normalized !== '') $request = $normalized;
                 $plan = ['kind' => 'style', 'credits' => \App\Engines\Builder\Support\BuilderCapabilities::pricing()['style'] ?? 1];

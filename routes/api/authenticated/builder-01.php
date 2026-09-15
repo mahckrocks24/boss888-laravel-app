@@ -61,7 +61,10 @@ use Illuminate\Support\Facades\Route;
             app(\App\Engines\Builder\Services\ArthurService::class)->palettesFor((int) $r->attributes->get('workspace_id'), (int) $id)
         ));
         Route::post('/websites/{id}/palette', function (\Illuminate\Http\Request $r, $id) {
-            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyPalette((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('theme', ''));
+            $__ws = (int) $r->attributes->get('workspace_id');
+            if (! \App\Engines\Builder\Support\EditorCredits::canAfford($__ws, 'palette')) return response()->json(['success' => false, 'error' => 'insufficient_credits', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal('palette')], 402);
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyPalette($__ws, (int) $id, (string) $r->input('theme', ''));
+            if (! empty($res['success'])) { $res['credits'] = \App\Engines\Builder\Support\EditorCredits::charge($__ws, 'palette', (int) $id, ['theme' => (string) $r->input('theme', '')]); $res['message'] = rtrim((string) ($res['message'] ?? 'Palette applied.'), ' .') . '.' . \App\Engines\Builder\Support\EditorCredits::suffix((int) $res['credits']); }
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
         Route::post('/websites/{id}/undo', function (\Illuminate\Http\Request $r, $id) {
@@ -79,7 +82,10 @@ use Illuminate\Support\Facades\Route;
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
         Route::post('/websites/{id}/layout', function (\Illuminate\Http\Request $r, $id) {
-            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyLayout((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('design', ''), (int) ($r->attributes->get('user_id') ?? optional($r->user())->id ?? 0) ?: null);
+            $__ws = (int) $r->attributes->get('workspace_id');
+            if (! \App\Engines\Builder\Support\EditorCredits::canAfford($__ws, 'layout')) return response()->json(['success' => false, 'error' => 'insufficient_credits', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal('layout')], 402);
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyLayout($__ws, (int) $id, (string) $r->input('design', ''), (int) ($r->attributes->get('user_id') ?? optional($r->user())->id ?? 0) ?: null);
+            if (! empty($res['success'])) { $__base = \App\Engines\Builder\Support\EditorCredits::charge($__ws, 'layout', (int) $id, ['design' => (string) $r->input('design', '')]); $res['credits'] = (int) ($res['credits'] ?? 0) + $__base; $res['message'] = rtrim((string) ($res['message'] ?? 'Layout applied.'), ' .') . '.' . \App\Engines\Builder\Support\EditorCredits::suffix((int) $res['credits']); }
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
         // STORE PAYMENTS (DEC-0051, 2026-09-15) — the workspace's own Stripe account; priced catalogue items get a checkout button.
@@ -131,7 +137,7 @@ use Illuminate\Support\Facades\Route;
         // CATALOGUE888 (DEC-0049, 2026-09-14) — one catalogue backend inside Laravel; kinds (listing, service, menu …) are declared
         // by the design or derived from its variable families. Every other site gets an empty catalogue list.
         $cat = \App\Engines\Builder\Services\CatalogueService::class;
-        $catStatus = fn(array $res) => ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : 422);
+        $catStatus = fn(array $res) => ! empty($res['success']) ? 200 : ((($res['code'] ?? '') === 'NOT_FOUND') ? 404 : ((($res['code'] ?? '') === 'NO_CREDITS') ? 402 : 422));
         Route::get('/websites/{id}/catalogue', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($cat)->overview((int) $r->attributes->get('workspace_id'), (int) $id)));
         Route::post('/websites/{id}/catalogue/photo', function (\Illuminate\Http\Request $r, $id) use ($cat, $catStatus) {
             $f = $r->file('photo');

@@ -31,6 +31,27 @@ class CatalogueService
 
     public function __construct(private TemplateService $templates) {}
 
+    /** Credits charged during the current public call (chat and panel share the same price list). */
+    private int $charged = 0;
+
+    private function affordOrFail(int $wsId): ?array
+    {
+        return \App\Engines\Builder\Support\EditorCredits::canAfford($wsId, 'catalogue') ? null : $this->fail('NO_CREDITS', \App\Engines\Builder\Support\EditorCredits::refusal('catalogue'));
+    }
+
+    private function chargeItem(int $wsId, int $websiteId, string $what, int $itemId): void
+    {
+        $this->charged += \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'catalogue', $websiteId, ['what' => $what, 'item' => $itemId]);
+    }
+
+    /** Attach what this call cost to a result that succeeded. */
+    private function priced(array $res): array
+    {
+        if (! empty($res['success']) && $this->charged > 0) { $res['credits'] = $this->charged; $res['message'] = rtrim((string) ($res['message'] ?? ''), ' .') . '.' . \App\Engines\Builder\Support\EditorCredits::suffix($this->charged); }
+        $this->charged = 0;
+        return $res;
+    }
+
     // ───────────────────────────── declarations ─────────────────────────────
 
     private function site(int $websiteId): ?object
@@ -275,6 +296,7 @@ class CatalogueService
         if (! $site) return $this->fail('NOT_FOUND', 'Website not found in this workspace.');
         $spec = $this->spec($websiteId, $kind, $site);
         if (! $spec || ! $spec['enabled']) return $this->fail('NO_CATALOGUE', 'This design does not carry that catalogue.');
+        if ($no = $this->affordOrFail($wsId)) return $no;
         [$a, $errors] = $this->normalise($spec, $in, null);
         if ($errors) return $this->fail('INVALID', implode(' ', $errors)) + ['errors' => $errors];
         $dup = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->whereRaw('LOWER(title) = ?', [mb_strtolower($a['title'])])->first();
@@ -285,13 +307,15 @@ class CatalogueService
             DB::table('catalogue_items')->where('id', $gone->id)->update($a + ['deleted_at' => null, 'updated_at' => now()]);
             $sync = $this->sync($websiteId, $kind, 'catalogue_restore');
             $row = DB::table('catalogue_items')->where('id', $gone->id)->first();
-            return ['success' => true, 'item' => $this->present($spec, $row), 'sync' => $sync, 'restored' => true, 'message' => '“' . $row->title . '” is back on the site.'];
+            $this->chargeItem($wsId, $websiteId, 'restore', (int) $gone->id);
+            return $this->priced(['success' => true, 'item' => $this->present($spec, $row), 'sync' => $sync, 'restored' => true, 'message' => '“' . $row->title . '” is back on the site.']);
         }
         $a['slug'] = $this->uniqueSlug($websiteId, $kind, $a['title']);
         if (! isset($a['sort_order'])) { $a['sort_order'] = (int) DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->max('sort_order') + 1; }   // new items go last; Featured puts one first
         $a += ['workspace_id' => $wsId, 'website_id' => $websiteId, 'kind' => $kind, 'source' => $source, 'created_by' => $actorId, 'created_at' => now(), 'updated_at' => now()];
         $id = (int) DB::table('catalogue_items')->insertGetId($a);
         $sync = $this->sync($websiteId, $kind, 'catalogue_add');
+        $this->chargeItem($wsId, $websiteId, 'add', $id);
         $row = DB::table('catalogue_items')->where('id', $id)->first();
         $openIds = array_map(fn($r) => (int) $r->id, array_values(array_filter($this->rows($websiteId, $kind), fn($r) => in_array($r->status, $spec['open'], true))));
         $pos = array_search($id, $openIds, true);
@@ -299,8 +323,8 @@ class CatalogueService
         $where = $onHome
             ? ($spec['pages'] === 'index+detail' ? ' It is on the home page, on the ' . $spec['label'] . ' page and has its own page.' : ' It is on the home page and on the ' . $spec['label'] . ' page.')
             : ' It is on the ' . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' with its own page' : '') . '; the home page shows the first ' . $spec['slots'] . ' — tick Featured to put it there.';
-        return ['success' => true, 'item' => $this->present($spec, $row), 'sync' => $sync,
-            'message' => '“' . $row->title . '” added.' . $where . ($row->price === null && empty($row->price_label) && in_array('price', $spec['suffixes'], true) ? ' No price yet — it shows “Price on request” until you add one.' : '')];
+        return $this->priced(['success' => true, 'item' => $this->present($spec, $row), 'sync' => $sync,
+            'message' => '“' . $row->title . '” added.' . $where . ($row->price === null && empty($row->price_label) && in_array('price', $spec['suffixes'], true) ? ' No price yet — it shows “Price on request” until you add one.' : '')]);
     }
 
     public function update(int $wsId, int $websiteId, string $kind, int $itemId, array $in, string $reason = 'catalogue_edit'): array
@@ -311,6 +335,7 @@ class CatalogueService
         if (! $spec) return $this->fail('NO_CATALOGUE', 'This design does not carry that catalogue.');
         $row = DB::table('catalogue_items')->where('id', $itemId)->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->first();
         if (! $row) return $this->fail('NOT_FOUND', 'That ' . $spec['singular'] . ' is not on this site.');
+        if ($no = $this->affordOrFail($wsId)) return $no;
         [$a, $errors] = $this->normalise($spec, $in, $row);
         if ($errors) return $this->fail('INVALID', implode(' ', $errors)) + ['errors' => $errors];
         $oldSlug = $row->slug;
@@ -319,9 +344,10 @@ class CatalogueService
         DB::table('catalogue_items')->where('id', $itemId)->update($a);
         if (isset($a['slug']) && $a['slug'] !== $oldSlug) $this->removePage($websiteId, $spec['detail_prefix'] . '-' . $oldSlug);
         $sync = $this->sync($websiteId, $kind, $reason);
+        $this->chargeItem($wsId, $websiteId, $reason, $itemId);
         $row = DB::table('catalogue_items')->where('id', $itemId)->first();
-        return ['success' => true, 'item' => $this->present($spec, $row), 'sync' => $sync,
-            'message' => '“' . $row->title . '” updated — ' . strtolower($spec['statuses'][$row->status] ?? $row->status) . (in_array('price', $spec['suffixes'], true) || $row->price !== null ? ', ' . $this->priceText($row) : '') . '.'];
+        return $this->priced(['success' => true, 'item' => $this->present($spec, $row), 'sync' => $sync,
+            'message' => '“' . $row->title . '” updated — ' . strtolower($spec['statuses'][$row->status] ?? $row->status) . (in_array('price', $spec['suffixes'], true) || $row->price !== null ? ', ' . $this->priceText($row) : '') . '.']);
     }
 
     public function setStatus(int $wsId, int $websiteId, string $kind, int $itemId, string $status, ?string $note = null): array
@@ -338,10 +364,12 @@ class CatalogueService
         $spec = $this->spec($websiteId, $kind, $site);
         $row = DB::table('catalogue_items')->where('id', $itemId)->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->first();
         if (! $spec || ! $row) return $this->fail('NOT_FOUND', 'That item is not on this site.');
+        if ($no = $this->affordOrFail($wsId)) return $no;
         DB::table('catalogue_items')->where('id', $itemId)->update(['deleted_at' => now(), 'updated_at' => now()]);
         $this->removePage($websiteId, $spec['detail_prefix'] . '-' . $row->slug);
         $sync = $this->sync($websiteId, $kind, 'catalogue_remove');
-        return ['success' => true, 'sync' => $sync, 'message' => '“' . $row->title . '” removed from the site.'];
+        $this->chargeItem($wsId, $websiteId, 'remove', $itemId);
+        return $this->priced(['success' => true, 'sync' => $sync, 'message' => '“' . $row->title . '” removed from the site.']);
     }
 
     /** Per-site switch for one kind. Off: the pages and the menu link go, the home page keeps what it shows; rows are kept. */
@@ -900,7 +928,7 @@ class CatalogueService
         if (preg_match('/\b(turn|switch)\b.{0,30}\b(on|off)\b|\b(on|off)\b.{0,20}\b(site|page|website)\b/', $lower)) {
             $on = ! preg_match('/\boff\b/', $lower);
             $res = $this->setEnabled($wsId, $websiteId, $kind, $on);
-            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => (string) ($res['message'] ?? '')];
         }
         if (! $spec['enabled']) return $base + ['success' => false, 'code' => 'CATALOGUE_OFF', 'message' => $spec['label'] . ' are switched off for this site. Say "turn ' . strtolower($spec['label']) . ' on" and I will bring the page back.'];
         if (empty($spec['seeded_at'])) { $this->seedFromSite($wsId, $websiteId, $site, $spec); }
@@ -976,7 +1004,7 @@ class CatalogueService
             $openIds = array_map(fn($r) => (int) $r->id, $open);
             $pos = array_search((int) $target->id, $openIds, true);
             $onHome = $pos !== false && $pos < $spec['slots'];
-            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $target->title . '” is now ' . $res['item']['price_display'] . ($onHome ? ' on the home page and the ' : ' on the ') . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' and its own page' : '') . '.'];
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => '“' . $target->title . '” is now ' . $res['item']['price_display'] . ($onHome ? ' on the home page and the ' : ' on the ') . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' and its own page' : '') . '.' . \App\Engines\Builder\Support\EditorCredits::suffix((int) ($res['credits'] ?? 0))];
         }
 
         // RENAME
@@ -984,7 +1012,7 @@ class CatalogueService
             $target = $this->findTarget($spec, preg_replace('/\b(to|as)\s+["“]?' . preg_quote($rm[3], '/') . '.*$/iu', '', $t) ?? $t, $rows, $rows);
             if (! $target) return $base + ['success' => false, 'code' => 'WHICH', 'message' => $this->whichOne($spec, $rows, 'rename')];
             $res = $this->update($wsId, $websiteId, $kind, (int) $target->id, ['title' => trim($rm[3], " .\"”“")], 'catalogue_rename');
-            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => (string) ($res['message'] ?? '')];
         }
 
         // REMOVE
@@ -992,7 +1020,7 @@ class CatalogueService
             $target = $this->findTarget($spec, $t,$rows, $rows);
             if (! $target) return $base + ['success' => false, 'code' => 'WHICH', 'message' => $this->whichOne($spec, $rows, 'remove')];
             $res = $this->delete($wsId, $websiteId, $kind, (int) $target->id);
-            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => (string) ($res['message'] ?? '')];
         }
 
         // Nothing here matched a catalogue command: hand the request back so the copy / design paths answer it.
@@ -1015,7 +1043,7 @@ class CatalogueService
         if ($action === 'toggle') {
             $on = ! in_array(strtolower((string) ($p['status'] ?? 'on')), ['off', 'hidden', 'disable', 'disabled'], true);
             $res = $this->setEnabled($wsId, $websiteId, $kind, $on);
-            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => (string) ($res['message'] ?? '')];
         }
         if (! $spec['enabled']) return $base + ['success' => false, 'code' => 'CATALOGUE_OFF', 'message' => $spec['label'] . ' are switched off for this site — say "turn ' . strtolower($spec['label']) . ' on" and I will bring the page back.'];
         if (empty($spec['seeded_at'])) { $this->seedFromSite($wsId, $websiteId, $site, $spec); }
@@ -1031,16 +1059,18 @@ class CatalogueService
             $L = $res['item'];
             $placement = (string) substr((string) $res['message'], (int) strpos((string) $res['message'], '.') + 1);
             if ($L['page'] && str_contains($placement, 'its own page')) $placement = str_replace('its own page', 'its own page at ' . $L['page'], $placement);
-            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'item' => $L, 'message' => 'Added “' . $L['title'] . '”' . ($L['price'] !== null || $L['price_label'] ? ' at ' . $L['price_display'] : '') . ($L['specs_display'] !== '' ? ' (' . $L['specs_display'] . ')' : '') . '.' . $placement];
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'item' => $L, 'credits' => (int) ($res['credits'] ?? 0), 'message' => 'Added “' . $L['title'] . '”' . ($L['price'] !== null || $L['price_label'] ? ' at ' . $L['price_display'] : '') . ($L['specs_display'] !== '' ? ' (' . $L['specs_display'] . ')' : '') . '.' . $placement];
         }
         if ($action === 'restore') {   // bring back something removed by chat or in the panel
             $name = mb_strtolower(trim((string) ($p['item'] ?? $p['title'] ?? '')));
             $q = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNotNull('deleted_at')->orderByDesc('deleted_at');
             $gone = $name !== '' ? ((clone $q)->whereRaw('LOWER(title) = ?', [$name])->first() ?: (clone $q)->whereRaw('LOWER(title) LIKE ?', ['%' . $name . '%'])->first()) : $q->first();
             if (! $gone) return $base + ['success' => false, 'code' => 'NOTHING_TO_RESTORE', 'message' => 'Nothing has been removed from ' . strtolower($spec['label']) . ' that I could bring back.'];
+            if ($no = $this->affordOrFail($wsId)) return $base + $no;
             DB::table('catalogue_items')->where('id', $gone->id)->update(['deleted_at' => null, 'updated_at' => now()]);
             $this->sync($websiteId, $kind, 'catalogue_restore');
-            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $gone->title . '” is back on the site.'];
+            $this->chargeItem($wsId, $websiteId, 'restore', (int) $gone->id);
+            return array_merge($base, $this->priced(['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $gone->title . '” is back on the site.']));
         }
         // every other action needs one item
         $name = trim((string) ($p['item'] ?? $p['title'] ?? ''));
@@ -1088,7 +1118,7 @@ class CatalogueService
             $open = array_values(array_filter($this->rows($websiteId, $kind), fn($r) => in_array($r->status, $spec['open'], true)));
             $pos = array_search((int) $target->id, array_map(fn($r) => (int) $r->id, $open), true);
             $onHome = $pos !== false && $pos < $spec['slots'];
-            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => '“' . $target->title . '” is now ' . $res['item']['price_display'] . ($onHome ? ' on the home page and the ' : ' on the ') . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' and its own page' : '') . '.'];
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => '“' . $target->title . '” is now ' . $res['item']['price_display'] . ($onHome ? ' on the home page and the ' : ' on the ') . $spec['label'] . ' page' . ($spec['pages'] === 'index+detail' ? ' and its own page' : '') . '.' . \App\Engines\Builder\Support\EditorCredits::suffix((int) ($res['credits'] ?? 0))];
         }
         if ($action === 'status') {
             $status = (string) ($p['status'] ?? '');
@@ -1100,17 +1130,17 @@ class CatalogueService
             $msg = '“' . $target->title . '” is now marked ' . strtolower($spec['statuses'][$status]);
             if (in_array($status, $spec['closed_statuses'], true)) $msg .= $spec['closed'] ? ' — it moved to the ' . strtolower($spec['closed_label'] ?: 'closed') . ' row on the home page and the ' . $spec['label'] . ' page' : ' — it shows under ' . strtolower($spec['closed_label'] ?: 'closed') . ' on the ' . $spec['label'] . ' page';
             $msg .= $note ? ', with the note “' . $note . '” — only what you told me.' : '.';
-            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'message' => $msg];
+            return $base + ['success' => true, 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => $msg . \App\Engines\Builder\Support\EditorCredits::suffix((int) ($res['credits'] ?? 0))];
         }
         if ($action === 'rename') {
             $new = trim((string) ($p['title'] ?? ''));
             if ($new === '' || mb_strtolower($new) === mb_strtolower($target->title)) return $base + ['success' => false, 'code' => 'WHICH', 'message' => 'What should “' . $target->title . '” be called?', 'options' => []];
             $res = $this->update($wsId, $websiteId, $kind, (int) $target->id, ['title' => $new], 'catalogue_rename');
-            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => (string) ($res['message'] ?? '')];
         }
         if ($action === 'remove') {
             $res = $this->delete($wsId, $websiteId, $kind, (int) $target->id);
-            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'message' => (string) ($res['message'] ?? '')];
+            return $base + ['success' => (bool) ($res['success'] ?? false), 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits'] ?? 0), 'message' => (string) ($res['message'] ?? '')];
         }
         return $base + ['success' => false, 'code' => 'PASS', 'message' => ''];
     }
