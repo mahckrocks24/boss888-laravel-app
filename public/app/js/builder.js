@@ -1100,7 +1100,7 @@ function _t3FitPreview(key) {
   var iframe = document.getElementById('t3-preview'); if (!iframe) return;
   var W = widths[key] || 1280, stage = iframe.parentElement, sw = stage ? stage.clientWidth : window.innerWidth, sh = stage ? stage.clientHeight : window.innerHeight;
   window._t3DeviceKey = key;
-  if (key === 'desktop' && sw >= 900) { iframe.style.width = '100%';   // a stage this wide already lays out as desktop; keep it readable iframe.style.height = '100%'; iframe.style.transform = ''; iframe.style.transformOrigin = ''; window._t3PreviewScale = 1; return; }
+  if (key === 'desktop' && sw >= 900) { iframe.style.width = '100%'; /* a stage this wide already lays out as desktop; keep it readable */ iframe.style.height = '100%'; iframe.style.transform = ''; iframe.style.transformOrigin = ''; window._t3PreviewScale = 1; return; }
   var scale = sw < W ? Math.max(0.2, (sw / W)) : 1;
   iframe.style.width = W + 'px';
   iframe.style.transformOrigin = 'top left';
