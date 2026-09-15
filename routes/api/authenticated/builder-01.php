@@ -110,6 +110,14 @@ use Illuminate\Support\Facades\Route;
             $dom = $w->custom_domain ? ['domain' => $w->custom_domain, 'text' => $w->custom_domain . ($w->domain_verified ? ' — connected' : ' — waiting for DNS / SSL')] : ['domain' => null, 'text' => $w->subdomain ? 'Published at ' . $w->subdomain . '. A custom domain can be connected under Websites → Domain.' : 'No domain yet — set a subdomain to publish, then connect your own domain.'];
             return response()->json(['tracking' => (array) ($s['tracking'] ?? []), 'domain' => $dom, 'subdomain' => $w->subdomain, 'status' => $w->status]);
         });
+        // PREVIEW GATE (2026-09-15, RISK-0177): the editor preview is for signed-in members of the site's workspace only.
+        // The renderer (inline editing script and all) is app('lu.preview.render'), defined in routes/api.php. A soft-deleted
+        // draft still reaches the renderer, which redirects to the workspace's live site (EV-1003) — same workspace, same gate.
+        Route::get('/websites/{id}/preview', function (\Illuminate\Http\Request $r, $id) {
+            $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'workspace_id']);
+            if (! $w || (int) $w->workspace_id !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'not_found'], 404);
+            return app('lu.preview.render')((int) $id);
+        });
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
         Route::post('/websites/{id}/elements/{op}', function (\Illuminate\Http\Request $r, $id, $op) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
@@ -117,7 +125,7 @@ use Illuminate\Support\Facades\Route;
             $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) $r->input('field', ''));
             if ($field === '') return response()->json(['success' => false, 'message' => 'Which element?'], 422);
             $action = 'element_' . $op; $ws = (int) $r->attributes->get('workspace_id');
-            if (! \App\Engines\Builder\Support\EditorCredits::canAfford($ws, $action)) return response()->json(['success' => false, 'error' => 'insufficient_credits', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal($action)], 402);
+            // OWNER RULE 2026-09-15: the toolbox and the drag handle are the customer's own hands — free. Arthur's version of the same change costs 1.
             if ($op === 'move') {
                 $dir = strtolower((string) $r->input('dir', '')); $ref = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) $r->input('ref', '')) ?: null;
                 $res = app(\App\Engines\Builder\Services\TemplateService::class)->moveElement((int) $id, $field, $dir, $ref);
@@ -127,7 +135,7 @@ use Illuminate\Support\Facades\Route;
                 $res = app(\App\Engines\Builder\Services\ArthurService::class)->sizeElement((int) $id, $field, strtolower((string) $r->input('dir', 'bigger')) === 'smaller' ? 'smaller' : 'bigger');
             }
             if (empty($res['success'])) return response()->json(['success' => false, 'message' => (string) ($res['message'] ?? 'That did not work.')], 422);
-            $cost = \App\Engines\Builder\Support\EditorCredits::charge($ws, $action, (int) $id, ['source' => 'toolbox', 'field' => $field, 'changes' => [$res['message']]]);
+            $cost = 0;
             return response()->json(['success' => true, 'message' => ucfirst((string) $res['message']) . '.', 'credits' => $cost, 'url' => '/storage/sites/' . (int) $id . '/index.html']);
         });
         Route::put('/websites/{id}/tracking', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {

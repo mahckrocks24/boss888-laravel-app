@@ -31,16 +31,19 @@ class CatalogueService
 
     public function __construct(private TemplateService $templates) {}
 
-    /** Credits charged during the current public call (chat and panel share the same price list). */
+    /** Credits charged during the current public call. OWNER RULE 2026-09-15: only Arthur's work is priced — the panel is free. */
     private int $charged = 0;
+    private bool $viaArthur = false;
 
     private function affordOrFail(int $wsId): ?array
     {
+        if (! $this->viaArthur) return null;
         return \App\Engines\Builder\Support\EditorCredits::canAfford($wsId, 'catalogue') ? null : $this->fail('NO_CREDITS', \App\Engines\Builder\Support\EditorCredits::refusal('catalogue'));
     }
 
     private function chargeItem(int $wsId, int $websiteId, string $what, int $itemId): void
     {
+        if (! $this->viaArthur) return;
         $this->charged += \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'catalogue', $websiteId, ['what' => $what, 'item' => $itemId]);
     }
 
@@ -918,6 +921,7 @@ class CatalogueService
 
     public function arthur(int $wsId, int $websiteId, string $request, array $ctx = []): array
     {
+        $this->viaArthur = true;
         $base = ['kind' => 'catalogue', 'credits' => 0, 'applied' => 0, 'actions_applied' => 0];
         $site = $this->owned($wsId, $websiteId);
         $specs = $site ? $this->specs($websiteId, $site) : [];
@@ -1033,6 +1037,7 @@ class CatalogueService
      */
     public function execute(int $wsId, int $websiteId, array $p, array $ctx = []): array
     {
+        $this->viaArthur = true;
         $base = ['kind' => 'catalogue', 'credits' => 0, 'applied' => 0, 'actions_applied' => 0];
         $site = $this->owned($wsId, $websiteId);
         $kind = (string) ($p['kind'] ?? '');

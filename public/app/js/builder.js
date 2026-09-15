@@ -989,7 +989,7 @@ function _wsShowTemplateEditor(site) {
         '<button type="button" id="t3-dev-tablet" onclick="_wsTplSetDevice(\'tablet\')" aria-label="Tablet preview" aria-pressed="false" title="Tablet" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\u25AD</button>' +
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
-      '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it \u00B7 1 credit per change</span>' +
+      '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it \u00B7 your own edits are free \u00B7 changes by Arthur cost 1 credit</span>' +
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
@@ -1022,7 +1022,7 @@ function _wsShowTemplateEditor(site) {
       '</div>' +
       // Preview iframe
       '<div class="pe-stage" style="flex:1;position:relative">' +
-        '<iframe id="t3-preview" src="' + previewUrl + '" style="width:100%;height:100%;border:none" onload="_t3InitEditing(this)"></iframe>' +
+        '<iframe id="t3-preview" data-site="' + wsId + '" title="Site preview" style="width:100%;height:100%;border:none;background:#fff" onload="_t3InitEditing(this)"></iframe>' +
         '<div id="t3-saved" style="display:none;position:absolute;top:10px;right:10px;background:var(--ac,#00E5A8);color:#000;padding:5px 12px;border-radius:16px;font-size:11px;font-weight:600">\u2713 Saved</div>' +
       '</div>' +
     '</div>' +
@@ -1030,6 +1030,7 @@ function _wsShowTemplateEditor(site) {
 
   document.body.insertAdjacentHTML('beforeend', html);
   _wsTplBindPage(wsId);
+  _t3LoadPreview(wsId, document.getElementById('t3-preview'));   // PREVIEW GATE: fetched with the bearer token, never a public URL
   try { _t3CatalogueGate(wsId); } catch (_e) {}   // Catalogue button only on designs that carry one
 }
 
@@ -1146,17 +1147,25 @@ var _t3PendingFields = {};
 // ELEMENT888 (DEC-0052): the preview toolbox / drag handle asks for a move, alignment or size change
 async function _t3ElementOp(d) {
   var f = document.getElementById('t3-preview'); var m = /websites\/(\d+)\/preview/.exec((f && f.src) || '');
-  if (!m || !d || !d.field || !d.op) return;
-  var siteId = m[1]; var body = { field: d.field };
+  var siteId = window._t3PreviewSiteId || (f && f.getAttribute('data-site')) || (m ? m[1] : null);
+  if (!siteId || !d || !d.field || !d.op) return;
+  var body = { field: d.field };
   if (d.op === 'move') { body.dir = d.dir; if (d.ref) body.ref = d.ref; } else if (d.op === 'align') { body.align = d.align; } else { body.dir = d.dir; }
   var feed = document.getElementById('t3-arthur-feed');
   var note = function (text, colour) { if (!feed) return; feed.innerHTML += '<div style="background:var(--s2);border-left:3px solid ' + colour + ';border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0">' + bld_escH(text) + '</div>'; feed.scrollTop = feed.scrollHeight; };
   try {
     var r = await fetch('/api/builder/websites/' + siteId + '/elements/' + d.op, { method: 'POST', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body) });
     var j = null; try { j = await r.json(); } catch (_j) { j = null; }
-    if (r.ok && j && j.success) { note(j.message + (j.credits ? ' \u00B7 ' + j.credits + ' credit' + (j.credits === 1 ? '' : 's') : ''), '#00E5A8'); window._t3Reselect = d.field; _t3ReloadPreview(); if (typeof _luRefreshCredits === 'function') { try { _luRefreshCredits(); } catch (_c) {} } }
-    else { note((j && j.message) || 'That did not work.', r.status === 402 ? '#F87171' : '#F59E0B'); }
-  } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); }
+    if (r.ok && j && j.success) {
+      note(j.message + (j.credits ? ' \u00B7 ' + j.credits + ' credit' + (j.credits === 1 ? '' : 's') : ''), '#00E5A8');
+      // LIVE PREVIEW: the preview already shows the change; reload only when it could not apply it itself
+      if (!d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); }
+      if (typeof _luRefreshCredits === 'function') { try { _luRefreshCredits(); } catch (_c) {} }
+    } else {
+      note((j && j.message) || 'That did not work.', r.status === 402 ? '#F87171' : '#F59E0B');
+      if (d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); }   // put the preview back in step with the saved page
+    }
+  } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); if (d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); } }
 }
 
 function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; inp.focus(); }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; inp.focus(); }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "image-clicked") {
@@ -1504,7 +1513,7 @@ async function _t3FlushSaves(opts) {
     if (reflush) { setTimeout(function () { _t3FlushSaves(); }, 0); }
     if (needReload) {
       if (typeof window._luPageEditorReloadHook === 'function') { window._luPageEditorReloadHook(); }
-      else { var _ifr = document.getElementById('t3-preview'); if (_ifr && _ifr.src) _ifr.src = _ifr.src; }
+      else { _t3ReloadPreview(); }
     }
 
     var ind = document.getElementById('t3-saved');
@@ -1936,7 +1945,7 @@ async function wsShowVersions(siteId) {
           .then(function (o) {
             if (!o.ok || !(o.j && (o.j.restored || o.j.success))) throw new Error((o.j && (o.j.error || o.j.message)) || 'restore failed');
             if (typeof showToast === 'function') showToast('That version is live again.', 'success');
-            var pv = document.getElementById('t3-preview'); if (pv) pv.src = pv.src.split('#')[0] + '#r' + Date.now();
+            _t3ReloadPreview();
             close(); wsShowVersions(siteId);
           })
           .catch(function (e) { b.disabled = false; b.textContent = 'Restore'; if (typeof showToast === 'function') showToast("Couldn't restore that version \u2014 " + e.message, 'error'); });
@@ -3713,7 +3722,7 @@ async function _t3ConfirmTier4(websiteId, btn, confirmAction, confirmData) {
         feed.innerHTML += '<div style="background:rgba(248,113,113,.08);padding:10px 12px;border-radius:8px;margin:4px 0"><div style="color:#F87171;font-size:13px">' + bld_escH(d.error) + '</div></div>';
       } else {
         feed.innerHTML += '<div style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid #00E5A8"><div style="color:var(--t1);font-size:13px">' + bld_escH(d.message || 'Done.') + '</div></div>';
-        if (d.reload_preview) { var ifr = document.getElementById('t3-preview'); if (ifr) ifr.src = ifr.src; }
+        if (d.reload_preview) _t3ReloadPreview();
         if (typeof wsLoadSites === 'function' && (d.action === 'page_deleted' || d.action === 'page_duplicated')) wsLoadSites();
       }
     }
@@ -3725,11 +3734,28 @@ async function _t3ConfirmTier4(websiteId, btn, confirmAction, confirmData) {
 
 
 /* ══════════════ DEC-0046 (2026-09-13) — palettes, undo, exit choice, preview reload ══════════════ */
+// PREVIEW GATE (2026-09-15): the preview is fetched with the bearer token and written into the iframe (srcdoc); a <base>
+// keeps relative links resolving as they did when the iframe pointed at the preview URL. Nothing token-bearing is in a URL.
+async function _t3LoadPreview(siteId, iframe) {
+  iframe = iframe || document.getElementById('t3-preview'); if (!iframe || !siteId) return;
+  window._t3PreviewSiteId = siteId;
+  var seq = (window._t3PreviewSeq = (window._t3PreviewSeq || 0) + 1);
+  try {
+    var r = await fetch('/api/builder/websites/' + siteId + '/preview', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'text/html' }, cache: 'no-store' });
+    if (seq !== window._t3PreviewSeq) return;   // a newer load won
+    if (!r.ok) { iframe.srcdoc = '<div style="font:14px/1.5 system-ui,sans-serif;padding:28px;color:#334">' + (r.status === 401 || r.status === 403 ? 'Please sign in again to see this preview.' : (r.status === 404 ? 'This preview is available to members of its workspace only.' : 'The preview could not be loaded (HTTP ' + r.status + ').')) + '</div>'; return; }
+    var html = await r.text();
+    if (!/<base\s/i.test(html)) html = html.replace(/<head([^>]*)>/i, '<head$1><base href="' + location.origin + '/api/builder/websites/' + siteId + '/preview">');
+    iframe.srcdoc = html;
+  } catch (e) { if (seq === window._t3PreviewSeq) iframe.srcdoc = '<div style="font:14px/1.5 system-ui,sans-serif;padding:28px;color:#334">The preview could not be loaded. Check your connection and try again.</div>'; }
+}
+
 function _t3ReloadPreview() {
   // The page editor (renderer sites) rebuilds its preview from the API; the template editor reloads the export.
   if (typeof window._luPageEditorReloadHook === 'function') { try { window._luPageEditorReloadHook(); return; } catch (_e) {} }
   var f = document.getElementById('t3-preview');
   if (!f) return;
+  if (window._t3PreviewSiteId) { _t3LoadPreview(window._t3PreviewSiteId, f); return; }   // PREVIEW GATE
   var base = String(f.src || '').split('#')[0].split('?')[0];
   f.src = base + '?v=' + Date.now();
 }
