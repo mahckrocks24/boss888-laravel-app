@@ -42,6 +42,11 @@ class ArthurEditController
             return response()->json(['error' => 'Page not found'], 404);
         }
 
+        // CHAT METER (2026-09-15): every chat message counts — 1 credit per 10, on every chat surface of the platform.
+        $__meter = app(\App\Core\Billing\CreditService::class)->meterChat($wsId, 'arthur_message');
+        if (empty($__meter['sufficient'])) {
+            return response()->json(['error' => 'insufficient_credits', 'required_credits' => 1, 'message' => 'Not enough credits to chat — 1 credit covers 10 messages. Add credits under Billing to continue.'], 402);
+        }
         // RISK-0100 — opt-in optimistic lock (parity with the direct save path). If
         // the caller sent the base_version it loaded (sha1 of sections_json), refuse a
         // stale AI edit with 409 BEFORE reserving credits or calling the runtime, so a
@@ -113,6 +118,7 @@ class ArthurEditController
             if (($result['success'] ?? false)) {
                 $result['version'] = sha1((string) \Illuminate\Support\Facades\DB::table('pages')->where('id', $pageId)->value('sections_json'));
             }
+            if (! empty($__meter['debited'])) { $result['chat_meter'] = 1; $result['credits_used'] = (int) ($result['credits_used'] ?? 0) + 1; foreach (['message', 'reply'] as $__k) { if (! empty($result[$__k]) && is_string($result[$__k])) { $result[$__k] = rtrim($result[$__k]) . ' (1 credit — every 10th chat message)'; } } }
             return response()->json($result);
         } catch (\Throwable $e) {
             if ($reservationRef) {

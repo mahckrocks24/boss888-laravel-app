@@ -378,6 +378,12 @@ use Illuminate\Support\Facades\Route;
             //       buildFromChat($wsId, $buildData, $logoUrl), and return
             //       type='complete' with website_id + website_url.
             $isConfirm = (bool) $r->input('confirm', false);
+            // CHAT METER (2026-09-15): the build conversation is chat too — 1 credit per 10 messages; the build itself is priced separately.
+            $__meter = ['debited' => false];
+            if (! $isConfirm) {
+                $__meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'arthur_message');
+                if (empty($__meter['sufficient'])) return response()->json(['type' => 'error', 'reply' => 'Not enough credits to chat — 1 credit covers 10 messages. Add credits under Billing to continue.', 'build_error' => 'insufficient_credits'], 402);
+            }
 
             if ($isConfirm) {
                 // PATCH (Arthur build timeout, 2026-05-09) — website builds
@@ -485,6 +491,7 @@ use Illuminate\Support\Facades\Route;
                 $result['themes'] = $arthur->themesFor((array) $result['build_data'], 4);
                 $result['themes_all'] = array_map(fn($t) => array_diff_key($t, ['moods' => 1, 'industries' => 1]), \App\Engines\Builder\Support\ColorTheme::all());
             }
+            if (! empty($__meter['debited']) && is_array($result) && ! empty($result['reply'])) { $result['chat_meter'] = 1; $result['reply'] = rtrim((string) $result['reply']) . ' (1 credit — every 10th chat message)'; }
             return response()->json($result);
         });
 

@@ -46,7 +46,8 @@ use Illuminate\Support\Facades\Log;
  */
 class ChatbotResponseService
 {
-    public const CREDIT_COST_PER_MESSAGE = 1;
+    /** OWNER RULE 2026-09-15: chat is metered 1 credit per 10 messages on every chat surface (CreditService::meterChat); no per-message cost. */
+    public const CREDIT_COST_PER_MESSAGE = 0;
     private const MAX_USER_LEN = 4000;
 
     public function __construct(
@@ -218,25 +219,15 @@ class ChatbotResponseService
             }
         }
 
-        // ── Step 1: reserve credit ──
+        // ── Step 1: the chat meter (1 credit per 10 messages, platform-wide rule) ──
         $reservationRef = null;
-        try {
-            $rsv = $this->credits->reserveCredits(
-                $workspaceId,
-                self::CREDIT_COST_PER_MESSAGE,
-                'chatbot_message',
-                $sessionId
-            );
-            $reservationRef = $rsv->reservation_reference;
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
-            if ($e->getStatusCode() === 402) {
-                return [
-                    'success' => false,
-                    'error'   => 'INSUFFICIENT_CREDITS',
-                    'message' => 'You have run out of credits. Please top up to continue.',
-                ];
-            }
-            throw $e;
+        $__meter = $this->credits->meterChat($workspaceId, 'chatbot_message');
+        if (empty($__meter['sufficient'])) {
+            return [
+                'success' => false,
+                'error'   => 'INSUFFICIENT_CREDITS',
+                'message' => 'This chatbot is paused: its owner has run out of credits.',
+            ];
         }
 
         // Step 2: persist user message early
@@ -264,6 +255,14 @@ class ChatbotResponseService
             // brittle string-pattern parsing in ChatbotIntentClassifier and
             // gives a real natural-language understanding step.
             $expectingField = $this->lastAskedField($sessionId);
+            // F-CB-C1: deterministic first — a bare answer to the field we just asked for IS that field.
+            if ($expectingField === 'name' && empty($classified['captured_fields']['name'])) {
+                $bare = \App\Engines\Chatbot\Services\ChatbotIntentClassifier::bareNameAnswer($userMessage);
+                if ($bare !== null) $classified['captured_fields']['name'] = $bare;
+            }
+            if ($expectingField === 'service' && empty($classified['captured_fields']['service']) && str_word_count($userMessage) <= 8 && !preg_match('/[@]|\d{5,}/', $userMessage)) {
+                $classified['captured_fields']['service'] = trim($userMessage, " \t.,!");
+            }
             if ($expectingField && empty($classified['captured_fields'][$expectingField])) {
                 $extracted = $this->extractFieldViaLLM($userMessage, $expectingField, $fsmState['captured'] ?? []);
                 if ($extracted !== null) {
@@ -290,6 +289,14 @@ class ChatbotResponseService
 
             // Step 5: state transition
             $merged = $classified['captured_fields'];  // already merged with $fsmState['captured']
+            // F-CB-D2 (2026-09-06): a soft lead-capture match ("how much", "pricing", "interested in") on an idle session
+            // with a knowledge-base hit is a QUESTION the business can answer — answer it; the answer path still offers
+            // to take details. Only the soft rule (confidence <= 0.75) is overridden; explicit "contact me" stays a lead.
+            if ($classified['intent'] === 'lead_capture' && (float) ($classified['confidence'] ?? 1) <= 0.75
+                && ($fsmState['state'] ?? 'idle') === ChatbotSessionStateService::STATE_IDLE && (int) ($ctx['kb_hits_count'] ?? 0) > 0
+                && empty($merged['email']) && empty($merged['phone'])) {
+                $classified['intent'] = 'faq'; $classified['classifier_source'] = 'kb_answers_soft_lead';
+            }
             $transition = $this->fsm->transition($fsmState['state'], $classified['intent'], $merged);
 
             // Step 6: run the chosen action
