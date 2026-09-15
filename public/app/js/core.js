@@ -6028,12 +6028,10 @@ async function _appBootstrap() {
 
       if (hasPublished) {
         localStorage.setItem('lu_onboarded', '1');
-        // Once, and only once. Introducing herself on every load is not an introduction.
-        if (localStorage.getItem('lu_sarah_intro') !== '1' && typeof _renderMeetSarah === 'function') {
-          localStorage.setItem('lu_sarah_intro', '1');
-          _renderMeetSarah();
-          return;
-        }
+        // OWNER RULE (2026-09-15, EV-1043): Sarah never takes the screen. Her introduction is the first message of
+        // her OWN thread (seeded at registration for new accounts), so it shows in the Basic Sarah view and in the
+        // Advanced Messages floater alike. An existing account on a new device simply sees its thread — the old
+        // full-screen "Meet Sarah" interview keyed on a device flag met every returning customer as if they were new.
         _appEnterDashboard();
         return;
       }

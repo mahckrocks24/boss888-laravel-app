@@ -9,6 +9,7 @@ use App\Models\Subscription;
 use App\Models\Plan;
 use App\Models\Agent;
 use App\Core\Audit\AuditLogService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -74,6 +75,32 @@ class AuthService
         $sarah = Agent::where('slug', 'sarah')->where('status', 'active')->first();
         if ($sarah) {
             $workspace->agents()->attach($sarah->id, ['enabled' => true]);
+        }
+
+        // EV-1043 (Owner, 2026-09-15): the sign-up page already asked for the business name and industry — keep them
+        // on the workspace, and let Sarah introduce herself as the FIRST MESSAGE OF HER OWN THREAD. That thread is
+        // the one surface every Sarah door reads (Basic Sarah view, Advanced Messages floater), so the introduction
+        // happens once, for new accounts only, inside her real interface — never on a separate onboarding screen.
+        try {
+            $facts = [];
+            if (!empty($data['workspace_name'])) $facts['business_name'] = (string) $data['workspace_name'];
+            if (!empty($data['industry']))       $facts['industry']      = mb_substr(trim((string) $data['industry']), 0, 120);
+            if ($facts) $workspace->update($facts);
+            $first = trim((string) (explode(' ', trim((string) $data['name']))[0] ?? ''));
+            $biz   = !empty($data['workspace_name']) ? (string) $data['workspace_name'] : 'your business';
+            $intro = "Hi" . ($first !== '' ? ' ' . $first : '') . ", I'm Sarah, your Digital Marketing Manager. I plan your growth, brief the specialists and bring you the work to approve — nothing goes live without you. Arthur builds and edits your website.\n\nTo start, tell me a bit about " . $biz . ": what you do, who you do it for, and what you would like to achieve first.";
+            DB::table('agent_messages')->insert([
+                'workspace_id'  => $workspace->id,
+                'agent_slug'    => 'sarah',
+                'sender'        => 'Sarah',
+                'content'       => $intro,
+                'role'          => 'agent',
+                'metadata_json' => json_encode(['notification_type' => 'sarah_intro']),
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('sarah intro at registration failed', ['workspace_id' => $workspace->id, 'error' => $e->getMessage()]);
         }
 
         $tokens = $this->refreshTokenService->issueTokenPair($user, $workspace);
@@ -322,16 +349,18 @@ class AuthService
                         ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'password_reset');
 
                     $m->to($user->email, $user->name)
-                      ->subject('Reset your LevelUp Growth password')
+                      ->subject('Reset your LevelUpGrowth password')
                       ->from(
                           config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@levelupgrowth.io')),
-                          config('mail.from.name', env('MAIL_FROM_NAME', 'LevelUp Growth'))
+                          config('mail.from.name', env('MAIL_FROM_NAME', 'LevelUpGrowth'))
                       );
                 }
             );
         } catch (\Throwable $e) {
+            $__ledgerId = app(\App\Core\Email888\DeliveryLedger::class)->markLastRecordedFailed($e); // F-EM-C2
             Log::error('forgotPassword mail send failed', [
                 'user_id' => $user->id,
+                'delivery_id' => $__ledgerId,
                 'error'   => $e->getMessage(),
             ]);
         }

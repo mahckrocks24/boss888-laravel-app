@@ -42,6 +42,7 @@ class AuthController
                 'regex:/[0-9]/',
             ],
             'workspace_name' => 'nullable|string|max:255',
+            'industry' => 'nullable|string|max:120',   // EV-1043: from the sign-up page
         ], [
             'password.regex' => 'Password must contain at least one uppercase letter and one number.',
             'password.confirmed' => 'Passwords do not match.',
@@ -96,7 +97,10 @@ class AuthController
     public function refresh(Request $request): JsonResponse
     {
         $request->validate(['refresh_token' => 'required|string']);
-        return response()->json($this->authService->refresh($request->input('refresh_token')));
+        // ADMIN COOKIE ON REFRESH (2026-09-11): the page-identity cookie must follow the token it carries, or
+        // server-rendered admin pages start answering 302 twelve hours after login while the console works on.
+        $result = $this->authService->refresh($request->input('refresh_token'));
+        return $this->withAdminIdentityCookie(response()->json($result), $result);
     }
 
     public function logout(Request $request): JsonResponse
