@@ -70,6 +70,10 @@ class ArthurEditController
         $validated = $request->validate([
             'message'       => 'required|string|max:2000',
             'section_index' => 'nullable|integer|min:0',
+            // SELECTION888 (2026-09-15): the element / section the customer clicked in the editor
+            'selected'       => 'nullable|array',
+            'selected.block' => 'nullable|string|max:80',
+            'selected.field' => 'nullable|string|max:120',
         ]);
 
         // A2 (2026-06-24) — meter Arthur prompt edits at 1 credit per block edit
@@ -98,7 +102,7 @@ class ArthurEditController
                 sectionIndex: $validated['section_index'] ?? null,
                 // 2026-09-14: the requester travels with the request — the kernel auto-approves review-tier studio
                 // actions (video, image edits) only for a direct user action carrying user_id.
-                context:      ['subdomain' => $page->subdomain ?? null,
+                context:      ['subdomain' => $page->subdomain ?? null, 'selected' => $validated['selected'] ?? null,
                                'user_id'   => (int) ($request->attributes->get('user_id') ?? optional($request->user())->id ?? 0) ?: null],
             );
             if (!empty($result['delegated'])) {

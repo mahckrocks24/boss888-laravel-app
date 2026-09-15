@@ -789,6 +789,10 @@ function wsRenderGrid(){
     grid.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--t3)"><div style="font-size:48px;margin-bottom:16px">${window.icon('globe',14)}</div><div style="font-size:16px;font-weight:600;color:var(--t2);margin-bottom:8px">No websites yet</div><div style="font-size:13px;margin-bottom:24px">Create your first multi-page website</div><button class="ct-btn primary" onclick="wsShowCreate()">+ New Website</button></div>`;
     return;
   }
+  // SITE THUMBNAIL (2026-09-15): spinner styles once; while a preview is still being rendered, refresh the list every 20 s (10 min at most).
+  if(!document.getElementById('ws-thumb-css')){var _st=document.createElement('style');_st.id='ws-thumb-css';_st.textContent='.ws-thumb{overflow:hidden}.ws-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;transition:opacity .35s ease}.ws-thumb.ws-thumb-loading img{opacity:0}.ws-thumb-spin{display:none;width:28px;height:28px;border:3px solid rgba(255,255,255,.14);border-top-color:var(--pu,#6C5CE7);border-radius:50%;animation:wsThumbSpin .9s linear infinite}.ws-thumb.ws-thumb-loading .ws-thumb-spin{display:block}.ws-thumb-note{position:absolute;left:0;right:0;bottom:12px;text-align:center;font-size:11px;color:var(--t3,rgba(255,255,255,.55))}@keyframes wsThumbSpin{to{transform:rotate(360deg)}}@media (prefers-reduced-motion:reduce){.ws-thumb-spin{animation:none;border-top-color:rgba(255,255,255,.14)}}';document.head.appendChild(_st);}
+  clearTimeout(window._wsThumbPoll);
+  if(wsSites.some(function(s){return !(s.type==='external'||!!s.external_url)&&!s.thumbnail_url;})){window._wsThumbPollN=(window._wsThumbPollN||0)+1;if(window._wsThumbPollN<=30){window._wsThumbPoll=setTimeout(function(){if(document.getElementById('ws-grid')&&typeof wsLoadSites==='function')wsLoadSites();},20000);}}else{window._wsThumbPollN=0;}
   grid.innerHTML=wsSites.map(function(s){ try {
     const isExt=s.type==='external'||!!s.external_url;
     const platform=s.platform||(s.settings_json?((typeof s.settings_json==='string'?JSON.parse(s.settings_json):s.settings_json).platform||''):'');
@@ -806,8 +810,13 @@ function wsRenderGrid(){
 
     // Thumbnail
     let thumbContent;
-    if(isExt&&s.thumbnail_url){
-      thumbContent=`<div class="ws-thumb" style="background-image:url(${s.thumbnail_url});background-size:cover;background-position:center"><span class="ws-badge" style="${badgeStyle};position:absolute;top:8px;left:8px;font-size:10px;padding:2px 8px;border-radius:5px;font-weight:600">${badgeText}</span></div>`;
+    // SITE THUMBNAIL (2026-09-15): builder sites carry a home-page shot too (websites.thumbnail_url, re-shot after each change).
+    // A spinner covers the card until the image has loaded; a site whose preview is still being rendered says so.
+    const badgeHtml=isExt?`<span class="ws-badge" style="${badgeStyle};position:absolute;top:8px;left:8px;font-size:10px;padding:2px 8px;border-radius:5px;font-weight:600">${badgeText}</span>`:`<span class="ws-badge ${badgeClass}">${badgeText}</span>`;
+    if(s.thumbnail_url){
+      thumbContent=`<div class="ws-thumb ws-thumb-loading"><div class="ws-thumb-spin"></div><img src="${s.thumbnail_url}" alt="" loading="lazy" onload="this.parentNode.classList.remove('ws-thumb-loading')" onerror="this.parentNode.classList.remove('ws-thumb-loading');this.remove()">${badgeHtml}</div>`;
+    }else if(!isExt){
+      thumbContent=`<div class="ws-thumb ws-thumb-loading ws-thumb-pending"><div class="ws-thumb-spin"></div><span class="ws-thumb-note">Preparing preview…</span>${badgeHtml}</div>`;
     }else{
       thumbContent=`<div class="ws-thumb"><span>${window.icon('globe',14)}</span><span class="ws-badge ${badgeClass}" ${badgeStyle?'style="'+badgeStyle+'"':''}>${badgeText}</span></div>`;
     }
@@ -1538,7 +1547,8 @@ async function _t3ArthurSend(websiteId) {
       r = await fetch('/api/builder/pages/' + pid + '/arthur-edit', {
         method: 'POST',
         headers: {'Authorization': 'Bearer ' + t, 'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: JSON.stringify({message: msg, section_index: null})
+        // SELECTION888 (2026-09-15): the clicked element / section travels with the message so Arthur knows what 'this' is
+        body: JSON.stringify({message: msg, section_index: null, selected: (window._t3SelectedBlock || window._t3SelectedElement) ? {block: window._t3SelectedBlock || null, field: window._t3SelectedElement || null} : null})
       });
       d = await r.json();
       if (r.status === 422 && d && d.legacy === true) {

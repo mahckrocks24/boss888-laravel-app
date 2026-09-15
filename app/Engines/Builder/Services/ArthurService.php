@@ -16,6 +16,36 @@ class ArthurService
     private \App\Connectors\RuntimeClient $runtime;
     private TemplateService $templates;
 
+    /** SELECTION888 (2026-09-15): the element / section the customer clicked in the editor, for the style executors of the current request. */
+    private ?array $selTarget = null;
+    private const SEL_WORDS = '/\b(selected|highlighted|chosen|this one|this element|this text|this title|this heading|this button|this section|this|it|that|here)\b/';
+
+    /** What the customer has selected in the editor (data-field key, data-block), with its tag and text read from the export. */
+    private function selectionContext(int $websiteId, array $ctx): ?array
+    {
+        $sel = is_array($ctx['selected'] ?? null) ? $ctx['selected'] : null;
+        if ($sel === null) return null;
+        $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($sel['field'] ?? '')); $block = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($sel['block'] ?? ''));
+        if ($field === '' && $block === '') return null;
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $tag = ''; $text = '';
+        if ($field !== '' && preg_match('/<(a|button|h1|h2|h3|h4|h5|p|span|li|div|strong|em)\b[^>]*data-field="' . preg_quote($field, '/') . '"[^>]*>(.*?)<\/\1>/su', $home, $m)) { $tag = $m[1]; $text = trim((string) preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($m[2])))); }
+        elseif ($field !== '' && preg_match('/<img\b[^>]*data-field="' . preg_quote($field, '/') . '"/', $home)) { $tag = 'img'; }
+        if ($block === '' && $field !== '' && preg_match('/data-block="([a-z_\-]+)"(?:(?!data-block=).)*?data-field="' . preg_quote($field, '/') . '"/su', $home, $bm)) { $block = $bm[1]; }
+        return ['field' => $field, 'block' => $block, 'tag' => $tag, 'text' => mb_substr($text, 0, 160)];
+    }
+
+    /** The target a style request acts on: the model's explicit target, else the selection when the words point at it. */
+    private function selectionTargetFor(array $intent, array $ctx, string $request): ?array
+    {
+        $t = is_array($intent['target'] ?? null) ? $intent['target'] : [];
+        $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($t['field'] ?? '')); $block = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($t['block'] ?? ''));
+        $sel = is_array($ctx['selected'] ?? null) ? $ctx['selected'] : null;
+        if ($field === '' && $block === '' && $sel !== null && preg_match(self::SEL_WORDS, mb_strtolower($request))) { $field = (string) ($sel['field'] ?? ''); $block = (string) ($sel['block'] ?? ''); }
+        if ($field === '' && $block === '') return null;
+        return ['field' => $field, 'block' => $block, 'text' => (string) ($sel['text'] ?? ''), 'tag' => (string) ($sel['tag'] ?? '')];
+    }
+
     // FIX 1 — named color → hex map used by applyBrandColors()
     private const COLOR_MAP = [
         'black'     => '#0A0A0A', 'white'   => '#FFFFFF', 'red'     => '#DC2626',
@@ -2436,7 +2466,7 @@ PROMPT;
      * "gradient from deep green to gold on the buttons" → target + two hex stops (null stops = colours not named).
      * @return array{target:string, from:?string, to:?string}|null  null when the request is not about a gradient
      */
-    private function parseGradientAsk(string $request): ?array
+    private function parseGradientAsk(string $request, int $websiteId = 0): ?array
     {
         $r = mb_strtolower($request);
         if (! preg_match('/\bgradients?\b/', $r)) { return null; }
@@ -2445,6 +2475,21 @@ PROMPT;
         elseif (preg_match('/\bfooter\b/', $r))                                                     { $target = 'footer'; }
         elseif (preg_match('/\b(nav|navbar|navigation|menu bar|header bar)\b/', $r))               { $target = 'nav'; }
         elseif (preg_match('/\b(whole page|whole site|entire site|entire page|page background|site background|body)\b/', $r) && ! preg_match('/\bhero\b/', $r)) { $target = 'page'; }
+        // SELECTION888 / COLOUR SCOPE (2026-09-15): 'make the listings section a gradient …' paints that section, not the hero; so does a selected section
+        if ($target === 'hero' && $websiteId > 0 && ! preg_match('/\bhero\b/', $r)) {
+            $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+            if (preg_match_all('/data-block="([a-z_\-]+)"/', $home, $bm)) {
+                foreach (array_unique($bm[1]) as $blk) {
+                    if (in_array($blk, ['nav', 'hero', 'footer'], true)) continue;
+                    $name = str_replace(['_', '-'], ' ', $blk);
+                    if (preg_match('/\b' . preg_quote($name, '/') . '\b/', $r) || preg_match('/\b' . preg_quote(rtrim($name, 's'), '/') . '\b/', $r)) { $target = 'section:' . $blk; break; }
+                }
+            }
+            if ($target === 'hero' && $this->selTarget !== null && ($this->selTarget['block'] ?? '') !== '' && preg_match(self::SEL_WORDS, $r)) {
+                $sb = (string) $this->selTarget['block'];
+                $target = in_array($sb, ['nav', 'footer', 'hero'], true) ? $sb : 'section:' . $sb;
+            }
+        }
         $from = $to = null;
         if (preg_match('/\b(?:from|of|between)\s+(.+?)\s+(?:to|and|into)\s+(.+?)(?:\s+(?:on|for|in|across|over|behind)\b|[.,!;]|$)/', $r, $m)) {
             $from = self::styleHexLoose($m[1]);
@@ -2482,6 +2527,10 @@ PROMPT;
     {
         $g   = "linear-gradient(135deg,{$a} 0%,{$b} 100%)";
         $ink = self::readableOnPair($a, $b);
+        if (str_starts_with($target, 'section:')) {   // SELECTION888: one home-page section; its own heading/intro text made readable, cards keep their colours
+            $blk = substr($target, 8); $s = '[data-block="' . $blk . '"]';
+            return ['gradient_section_' . $blk => "{$s}{background-image:{$g}!important;background-color:{$a}!important} {$s} h2,{$s} .section-title,{$s} .eyebrow,{$s} .lede,{$s} .section-sub,{$s} .section-intro,{$s} > .inner > p,{$s} > p{color:{$ink}!important}"];
+        }
         switch ($target) {
             case 'buttons':
                 return ['buttons' => ".btn-primary,.hero-cta,.nav-cta,.btn.primary,.btn-cta,.cta-btn,button[type=submit]{background-image:{$g}!important;background-color:{$a}!important;border-color:transparent!important;color:{$ink}!important}"];
@@ -5566,7 +5615,8 @@ PROMPT;
         // the model reads the message with the whole site and the conversation, decides one intent or asks; executors act.
         if ($isStatic && empty($ctx['_clause']) && empty($ctx['_no_brain'])) {
             $intent = null; $brain = null;
-            try { $brain = app(ArthurIntentService::class); $intent = $brain->interpret($wsId, $websiteId, $site, $request, $ctx, $this->intentContext($wsId, $websiteId, $site, $tv, (string) $industry)); }
+            $ctx['selected'] = $this->selectionContext($websiteId, $ctx);   // SELECTION888: what the customer clicked, with its text
+            try { $brain = app(ArthurIntentService::class); $intent = $brain->interpret($wsId, $websiteId, $site, $request, $ctx, $this->intentContext($wsId, $websiteId, $site, $tv, (string) $industry) + ['selected' => $ctx['selected']]); }
             catch (\Throwable $e) { Log::warning('[Arthur] intent failed, classic path', ['website' => $websiteId, 'error' => $e->getMessage()]); }
             if ($intent !== null && $brain !== null) {
                 $out = $this->dispatchIntent($wsId, $websiteId, $site, $request, $ctx, $tv, (string) $industry, $intent, $isStatic);
@@ -5953,6 +6003,17 @@ PROMPT;
         $r = mb_strtolower($request);
         $up = (bool) preg_match('/\b(bigger|larger|huge|enlarge|increase|more prominent)\b/', $r);
         $step = preg_match('/\b(huge|much bigger|much larger|a lot bigger|way bigger|much smaller|a lot smaller|tiny)\b/', $r) ? 1.3 : 1.15;
+        // SELECTION888: 'make it bigger' with an element selected in the editor sizes that element alone
+        if ($this->selTarget !== null && ($this->selTarget['field'] ?? '') !== '' && (preg_match(self::SEL_WORDS, $r) || ! preg_match('/\b(headline|title|heading|h1|hero|button|buttons|cta|nav|menu|navigation|logo|headings|titles|text|font|fonts|copy|paragraph|paragraphs|lettering|type)\b/', $r))) {
+            $sf = (string) $this->selTarget['field']; $key = 'size_field_' . $sf;
+            $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+            $current = 1.0;
+            if (isset($extras[$key]) && preg_match('/zoom:([\d.]+)/', (string) $extras[$key], $zm)) { $current = (float) $zm[1]; }
+            $factor = max(0.6, min(1.8, round($current * ($up ? $step : 1 / $step), 3)));
+            if (! self::writeDesignExtras($websiteId, [$key => '[data-field="' . $sf . '"]{zoom:' . $factor . '}'], $tv)) { return null; }
+            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            return 'made the selected text' . (($this->selTarget['text'] ?? '') !== '' ? ' ("' . mb_substr((string) $this->selTarget['text'], 0, 40) . '")' : '') . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
+        }
         $targets = [
             'headline' => ['/\b(headline|title|heading|h1)\b/', '.hero h1,[data-block="hero"] h1,.hero .hero-title,.hero-h1,.hero .hero-name', 'the headline'],
             'hero'     => ['/\bhero\b/', '.hero h1,[data-block="hero"] h1,.hero .hero-title,.hero .lede,.hero .hero-sub,.hero .hero-subtitle,[data-block="hero"] p', 'the hero text'],
@@ -5998,6 +6059,25 @@ PROMPT;
         $titleWords = '/\b(title|titles|heading|headings|headline|subheading|subheadings|h1|h2|h3)\b/';
         $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
         $partsOf = fn (string $b) => str_replace(['_', '-'], ' ', $b);
+
+        // SELECTION888: the element or section the customer clicked in the editor, when the request points at it (or the model targeted it)
+        if ($this->selTarget !== null) {
+            $sf = (string) ($this->selTarget['field'] ?? ''); $sb = (string) ($this->selTarget['block'] ?? '');
+            if ($sf !== '' && preg_match('/<(a|button|h1|h2|h3|h4|h5|p|span|li|div|strong|em)\b[^>]*data-field="' . preg_quote($sf, '/') . '"/', $home, $sm)) {
+                $isButton = $sm[1] === 'button' || ($sm[1] === 'a' && preg_match('/class="[^"]*\bbtn/i', $sm[0]));
+                $mode = ($isButton && ! preg_match('/\b(text|lettering|letters|font|wording|words)\b/', $r)) ? 'background' : 'text';
+                $what = 'the selected ' . ($isButton ? 'button' : 'text') . (($this->selTarget['text'] ?? '') !== '' ? ' ("' . mb_substr((string) $this->selTarget['text'], 0, 40) . '")' : '');
+                return ['target' => 'element', 'block' => $sf, 'hex' => $hex, 'mode' => $mode, 'label' => 'made ' . $what . ($isButton && $mode === 'background' ? ' background' : '') . ' ' . $word, 'button' => $isButton];
+            }
+            if ($sb !== '' && in_array($sb, ['nav', 'hero', 'footer'], true)) {
+                $mode = preg_match($textWords, $r) ? 'text' : 'background';
+                return ['target' => $sb, 'block' => '', 'hex' => $hex, 'mode' => $mode, 'label' => 'made the ' . ['nav' => 'header', 'hero' => 'hero', 'footer' => 'footer'][$sb] . ($mode === 'text' ? ' text' : ' background') . ' ' . $word];
+            }
+            if ($sb !== '' && str_contains($home, 'data-block="' . $sb . '"')) {
+                if (preg_match($textWords, $r)) return ['target' => 'scoped_text', 'block' => $sb, 'hex' => $hex, 'mode' => 'text', 'label' => 'made the text in the ' . $partsOf($sb) . ' section ' . $word];
+                return ['target' => 'section', 'block' => $sb, 'hex' => $hex, 'mode' => 'background', 'label' => 'made the ' . $partsOf($sb) . ' section background ' . $word];
+            }
+        }
 
         // (a) a quoted element the page has: "the 'Ask about a property' button", "the title 'A Clear Path…'"
         if (preg_match_all('/["\x{201C}\x{201D}\x{2018}\x{2019}\']([^"\x{201C}\x{201D}\x{2018}\x{2019}\']{3,80})["\x{201C}\x{201D}\x{2018}\x{2019}\']/u', $request, $qm)) {
@@ -6226,7 +6306,7 @@ PROMPT;
 
         // ── 0c. A NAMED PART IN A NAMED COLOUR (2026-09-14): "make the footer background blue", "header white", "buttons green",
         //        "hero text white", "listings section navy" — a rule for that part, not a repaint of the whole palette.
-        if ($isStatic && $this->parseGradientAsk($request) === null
+        if ($isStatic && $this->parseGradientAsk($request, $websiteId) === null
             && ! preg_match('/\b(luxur\w+|elegant|premium|upscale|sophisticated|minimal\w*|modern|contemporary|bold|sleek|classic|traditional|timeless|playful|fun|vibrant|colou?rful|look|feel|mood|vibe|style)\b/i', $request)) {
             $tc = $this->colourTargetIn($request, $websiteId);
             if ($tc !== null) {
@@ -6246,7 +6326,7 @@ PROMPT;
         // that, in its own replaceable block, and say so. The mood treatment below still handles a bare
         // "add gradients" with no colours. Answering a gradient ask with a recolour was the defect (EV-1010).
         $skipColours = false;
-        $grad = $this->parseGradientAsk($request);
+        $grad = $this->parseGradientAsk($request, $websiteId);
         if ($grad !== null && $grad['from'] !== null && $grad['to'] !== null) {
             if ($isStatic) {
                 $rules = self::gradientRules($grad['target'], $grad['from'], $grad['to']);
@@ -6254,7 +6334,7 @@ PROMPT;
                     DB::table('websites')->where('id', $websiteId)->update([
                         'template_variables' => json_encode($tv), 'updated_at' => now(),
                     ]);
-                    $where = $grad['target'] === 'page' ? 'page background' : $grad['target'];
+                    $where = $grad['target'] === 'page' ? 'page background' : (str_starts_with($grad['target'], 'section:') ? str_replace(['_', '-'], ' ', substr($grad['target'], 8)) . ' section' : $grad['target']);
                     $did[] = "painted the {$where} with a gradient from {$grad['from']} to {$grad['to']}";
                     $skipColours = true;
                 } else {
@@ -7877,8 +7957,9 @@ PROMPT;
             case 'style':
                 if ($normalized !== '') $request = $normalized;
                 $plan = ['kind' => 'style', 'credits' => \App\Engines\Builder\Support\BuilderCapabilities::pricing()['style'] ?? 1];
-                try { $res = $this->applySiteStyle($wsId, $websiteId, $request, $site, $tv, $plan, $isStatic); }
-                catch (\Throwable $e) { Log::error('[Arthur] applySiteStyle failed', ['website' => $websiteId, 'error' => $e->getMessage()]); return $base + ['success' => false, 'code' => 'STYLE_FAILED', 'message' => 'I could not apply that design change just now — nothing on your site was altered.']; }
+                $this->selTarget = $this->selectionTargetFor($intent, $ctx, $request);   // SELECTION888
+                try { $res = $this->applySiteStyle($wsId, $websiteId, $request, $site, $tv, $plan, $isStatic); $this->selTarget = null; }
+                catch (\Throwable $e) { $this->selTarget = null; Log::error('[Arthur] applySiteStyle failed', ['website' => $websiteId, 'error' => $e->getMessage()]); return $base + ['success' => false, 'code' => 'STYLE_FAILED', 'message' => 'I could not apply that design change just now — nothing on your site was altered.']; }
                 if (($res['code'] ?? '') === 'STYLE_NO_TARGET') {
                     return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which part should change, and to what? For example the buttons, the header, the hero or the whole page — and a colour or a look.', 'options' => ['The buttons', 'The header', 'The hero', 'The whole page']];
                 }

@@ -61,7 +61,8 @@ class ArthurIntentService
             . "- When it is clear, act. A small typo in the customer's words is not ambiguity: 'Propeties' means 'Properties'.\n"
             . "- Never invent facts: prices, phone numbers, names, dates, outcomes come only from the customer or the site.\n"
             . "- Answer questions about the site from the context (how many listings, what the hero says, what you can do). Be brief, warm and specific. No jargon, no vendor names, no field keys in what you say to the customer.\n"
-            . "- If something is not possible here, say plainly what is not and what you can do instead (intent 'unsupported').\n\n"
+            . "- If something is not possible here, say plainly what is not and what you can do instead (intent 'unsupported').\n"
+            . "- SELECTED ELEMENT / SECTION: when the context lists one and the message points at it ('this', 'it', 'the selected/highlighted …', 'here') or names no other target, act on it — never ask which text when a selection is present: copy_edit → that field key; style → fill target {field, block} and describe the change; section_move/hide/show → that section. When the message clearly names something else (another section, the buttons, the footer), the selection is irrelevant.\n\n"
             . "INTENTS\n"
             . "copy_edit — change text. Fill copy: [{key, value}] using ONLY keys from FIELDS; change every field the request applies to; keep language, tone and length; keep inline <br>/<em>/<strong> when present.\n"
             . "style — colours, palette, gradients, darker/lighter, luxury/minimal moods, fonts, bigger/smaller text, logo colour or visibility. Fill normalized with an explicit sentence (e.g. 'Make the buttons navy', 'Make the hero text bigger', 'Make the hero a gradient from navy to gold').\n"
@@ -77,7 +78,7 @@ class ArthurIntentService
             . "clarify — fill question and options (2–4 short options, each a complete choice the customer can tap).\n"
             . "unsupported — fill reply.\n\n"
             . "OUTPUT (JSON only)\n"
-            . '{"intent":"copy_edit|style|catalogue|section_add|section_remove|section_move|section_hide|section_show|page_add|image|video|overlay|image_edit|logo|tracking|answer|clarify|unsupported","confidence":0.0-1.0,"normalized":"the request as one explicit self-contained sentence","reply":"one or two sentences to the customer (answer/unsupported)","question":"the clarifying question","options":["…"],"copy":[{"key":"…","value":"…"}],"section":{"block":"","position":"before|after|top|bottom","ref":""},"tracking":{"ga4":"","gtm":"","meta_pixel":"","tiktok_pixel":""},"catalogue":{"kind":"…","action":"add|price|status|rename|remove|toggle","item":"…","title":"…","price":0,"currency":"USD","period":"","status":"…","note":"","summary":"","attrs":{}}}';
+            . '{"intent":"copy_edit|style|catalogue|section_add|section_remove|section_move|section_hide|section_show|page_add|image|video|overlay|image_edit|logo|tracking|answer|clarify|unsupported","confidence":0.0-1.0,"normalized":"the request as one explicit self-contained sentence","reply":"one or two sentences to the customer (answer/unsupported)","question":"the clarifying question","options":["…"],"copy":[{"key":"…","value":"…"}],"target":{"field":"field key of the selected or named element, or empty","block":"the section or empty"},"section":{"block":"","position":"before|after|top|bottom","ref":""},"tracking":{"ga4":"","gtm":"","meta_pixel":"","tiktok_pixel":""},"catalogue":{"kind":"…","action":"add|price|status|rename|remove|toggle","item":"…","title":"…","price":0,"currency":"USD","period":"","status":"…","note":"","summary":"","attrs":{}}}';
         $user = $this->contextBlock($siteCtx, $h) . "\nMESSAGE FROM THE CUSTOMER: " . $request;
         $result = $this->runtime->chatJson($system, $user, ['task' => 'arthur_intent', 'workspace_id' => $wsId, 'reasoning_budget' => 2000], 900);
         $parsed = ($result['success'] ?? false) && is_array($result['parsed'] ?? null)
@@ -89,6 +90,7 @@ class ArthurIntentService
         $parsed['intent'] = strtolower(trim((string) $parsed['intent']));
         $parsed['confidence'] = isset($parsed['confidence']) ? (float) $parsed['confidence'] : 0.8;
         $parsed['options'] = array_values(array_filter(array_map(fn($o) => trim((string) $o), (array) ($parsed['options'] ?? []))));
+        $parsed['target'] = is_array($parsed['target'] ?? null) ? $parsed['target'] : [];   // SELECTION888
         Log::info('[Arthur] intent', ['website' => $websiteId, 'intent' => $parsed['intent'], 'confidence' => $parsed['confidence'], 'normalized' => mb_substr((string) ($parsed['normalized'] ?? ''), 0, 160), 'pending' => $h['pending'] !== null]);
         // a low-confidence action becomes a question — with the model's own question when it gave one
         if ($parsed['confidence'] < 0.55 && ! in_array($parsed['intent'], ['clarify', 'answer', 'unsupported'], true)) {
@@ -107,6 +109,12 @@ class ArthurIntentService
         $b .= "FIELDS (key: current text — the editable text of the site):\n";
         foreach ($c['fields'] as $k => $v) $b .= "  $k: " . json_encode(mb_substr((string) $v, 0, 110), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
         if (! empty($c['images'])) $b .= "IMAGE SLOTS: " . implode(', ', $c['images']) . "\n";
+        // SELECTION888 (2026-09-15): what the customer clicked in the editor
+        if (! empty($c['selected']) && is_array($c['selected'])) {
+            $s = $c['selected'];
+            if (($s['field'] ?? '') !== '') $b .= "SELECTED ELEMENT (the customer clicked it in the editor; 'this', 'it', 'the selected/highlighted element/text/button', 'here' mean it): field {$s['field']}" . (($s['block'] ?? '') !== '' ? " in section {$s['block']}" : '') . (($s['tag'] ?? '') !== '' ? " (<{$s['tag']}>)" : '') . (($s['text'] ?? '') !== '' ? ' — text ' . json_encode($s['text'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '') . "\n";
+            elseif (($s['block'] ?? '') !== '') $b .= "SELECTED SECTION (the customer clicked it in the editor; 'this section', 'it', 'here' mean it): {$s['block']}\n";
+        }
         foreach ((array) ($c['catalogues'] ?? []) as $kind => $cat) {
             $b .= "CATALOGUE '{$kind}' ({$cat['label']}, statuses: " . implode('/', $cat['statuses']) . ")" . ($cat['enabled'] ? '' : ' — switched off') . ":\n";
             foreach ($cat['items'] as $it) $b .= "  - {$it}\n";

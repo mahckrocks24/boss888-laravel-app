@@ -99,6 +99,7 @@ class ArthurEditService
             if (in_array($planEarly['kind'], ['page', 'section', 'edit', 'remove', 'unsupported', 'style', 'image', 'video', 'overlay', 'image_edit'], true)) {
                 $r = app(ArthurService::class)->handleSiteRequest((int) $siteRow->workspace_id, $websiteIdEarly, $userMessage, [
                     'agent_slug' => $context['agent_slug'] ?? 'editor', 'user_id' => $context['user_id'] ?? null,
+                    'selected' => $context['selected'] ?? null,   // SELECTION888
                 ]);
                 $freshRaw = json_decode((string) (DB::table('pages')->where('id', $pageId)->value('sections_json') ?: '[]'), true) ?: [];
                 $freshSections = is_array($freshRaw) && isset($freshRaw['sections']) ? $freshRaw['sections'] : (is_array($freshRaw) ? $freshRaw : []);
