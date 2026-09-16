@@ -1,0 +1,583 @@
+{
+    "id": "barber_chairs",
+    "name": "Barbershop — Chairs",
+    "industry": "barbershop",
+    "description": "A proper barbershop, walk in or book",
+    "thumbnail": "/storage/builder-heroes/barbershop.jpg",
+    "category": "personal_care",
+    "version": "1.0.0",
+    "variation": "chairs",
+    "is_active": true,
+    "design": {
+        "generated": "2026-09-10",
+        "generator": "lug-template-generator v1",
+        "palette": "mono",
+        "type": "industrial",
+        "scale": "compact",
+        "radius": "square",
+        "archetypes": {
+            "nav": "edge",
+            "hero": "offset",
+            "stats": "divided",
+            "offers": "ledger",
+            "story": "facing",
+            "gallery": "quad",
+            "steps": "track",
+            "tst": "trio",
+            "contact": "split",
+            "footer": "minimal"
+        },
+        "order": [
+            "stats",
+            "offers",
+            "story",
+            "gallery",
+            "steps",
+            "tst",
+            "contact"
+        ]
+    },
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Stats",
+            "elements": []
+        },
+        {
+            "id": "services",
+            "name": "Services",
+            "elements": {
+                "service_1_title": "#services .offer-card h3"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": []
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Six Chairs"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "A proper barbershop, walk in or book"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Traditional barbering with hot towel shaves, six chairs and walk-ins welcome six days a week."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://example.com"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/barbershop.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_GB"
+        },
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Six chairs · Walk-ins welcome"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "Six chairs, no appointment necessary, and a shave done properly"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subheading",
+            "default": "Cuts from twenty-two pounds, hot towel shaves, and a queue that moves. Book if you like, or just turn up."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Hero Button",
+            "default": "Book a chair"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Secondary Button",
+            "default": "See the price list"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Image",
+            "default": "/storage/builder-heroes/barbershop.jpg"
+        },
+        "offers_title": {
+            "type": "text",
+            "label": "Offers Heading",
+            "default": "Cuts and shaves"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Offers Subheading",
+            "default": "Straightforward prices. No consultation fee, no product hard-sell."
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "Our story"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Heading",
+            "default": "Open since 1997, same corner, same chairs"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "The chairs were reclaimed from a shop in Salford that closed the year we opened. Three of the barbers have been here more than a decade. We have never taken a booking deposit and we have never turned away a walk-in who was prepared to wait."
+        },
+        "story_image": {
+            "type": "image",
+            "label": "Story Image",
+            "default": "/storage/builder-heroes/barbershop.jpg"
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Heading",
+            "default": "In the shop"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Heading",
+            "default": "How it works"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Heading",
+            "default": "What people say"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Heading",
+            "default": "Book, or just come in"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "The live queue on this page updates every few minutes during opening hours."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Opening Hours",
+            "default": "Tue–Fri 9–7 · Sat 8–5 · Sun 10–3"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Book a chair"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Services"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "The shop"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Our barbers"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book now"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "1997"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Opened"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "6"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Chairs"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "40 min"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Every cut"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "£22"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Cut, any barber"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Cut"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Clippers or scissors, washed and finished. Forty minutes."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£22"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Cut & beard"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "The full sit-down, with the beard shaped and lined out."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£32"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Hot towel shave"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Three towels, two passes, a proper cut-throat. Fifty minutes."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£35"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Skin fade"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Taken down properly and blended, by the barbers who actually enjoy them."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "£26"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Under 12s"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Any day before four, with no expectation of sitting still."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "£14"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Wedding party"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "The shop to yourselves before opening, coffee included."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "From £180"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Walk-ins always welcome, every day we are open"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Barbers are on a wage plus tips, not on commission"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Same price whoever cuts your hair"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/builder-heroes/barbershop.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/builder-heroes/barbershop.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/builder-heroes/barbershop.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/builder-heroes/barbershop.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Turn up or book"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "The live queue is on the site. Booking just skips the wait."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Tell the barber"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Or show a photo. Nobody here will pretend to know what you meant."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Sit down properly"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Cuts are forty minutes. We are not turning chairs over in twenty."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Come back when you need to"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "No membership, no package, no reminder texts."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "Been coming since I was nine. Now I bring my son. Same chair, same price structure."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Customer"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "The hot towel shave is worth the money and then some."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Customer"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "Never been upsold a product. Not once in twelve years."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Customer"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#1F1F1F"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#191919"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#1F1F1F"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#0B0B0B"
+        }
+    },
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
+    }
+}

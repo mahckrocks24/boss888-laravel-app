@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:locale" content="{{og_locale}}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#3D444C; --deep:#12161B; --tint:#F2F5F6;
+  /* brand colours are template variables so Arthur, the editor and the design layer can move them */
+  --accent:{{accent_color}}; --brand:{{primary_color}}; --brand-deep:{{primary_deep}}; --brand-2:{{secondary_color}};
+  --line:#DEE4E7; --paper:#FFFFFF;
+  --display:"Space Grotesk", system-ui, sans-serif; --body:"Inter", system-ui, sans-serif; --dw:600; --tr:-0.025em; --tt:none;
+  --h1:clamp(2.3rem, 4.4vw, 3.6rem); --h2:clamp(1.6rem, 2.6vw, 2.3rem); --pad:92px; --max:1120px; --r:6px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+figure{margin:0}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4{font-family:var(--display);font-weight:var(--dw);letter-spacing:var(--tr);
+  color:var(--deep);margin:0 0 .5em;line-height:1.1;text-wrap:balance}
+h1{font-size:var(--h1)} h2{font-size:var(--h2)} h3{font-size:1.22rem;line-height:1.3}
+p{margin:0 0 1em}
+section{padding:var(--pad) 24px}
+.shell{max-width:var(--max);margin:0 auto;width:100%}
+.eyebrow{font:600 11.5px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);display:block;margin-bottom:18px}
+.lede{font-size:1.12rem;color:var(--ink);opacity:.86;max-width:62ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.55em;
+  font:600 14.5px/1 var(--body);letter-spacing:.01em;padding:17px 30px;border-radius:var(--r);
+  background:var(--brand);color:#fff;border:1px solid var(--brand);transition:.18s ease}
+.btn:hover{background:var(--brand-deep);border-color:var(--brand-deep)}
+.btn-ghost{background:transparent;color:var(--deep);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--deep);filter:none}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+.tint{background:var(--tint)}
+.dark{background:var(--deep);color:rgba(255,255,255,.76)}
+.dark h1,.dark h2,.dark h3{color:#fff}
+.dark .rule{background:rgba(255,255,255,.14)}
+.dark .btn-ghost{color:#fff;border-color:rgba(255,255,255,.3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.nav-edge{position:sticky;top:0;z-index:40;background:var(--paper)}
+.nav-edge .inner{display:flex;align-items:center;gap:28px;padding:28px 24px 20px;border-bottom:2px solid var(--deep)}
+.nav-edge .logo{display:flex;align-items:center;gap:11px;font:var(--dw) 22px/1 var(--display);
+  letter-spacing:var(--tr);color:var(--deep);margin-right:auto}
+.nav-edge .brand-mark{height:34px;width:auto}
+.nav-edge .nav-links{display:flex;align-items:center;gap:26px}
+.nav-edge .nav-link{font:500 14px/1 var(--body);color:var(--ink)}
+.nav-edge .nav-link:hover{color:var(--accent)}
+.nav-edge .nav-cta{font:600 14px/1 var(--body);color:var(--accent)}
+@media (max-width:860px){.nav-edge .inner{padding:18px 24px 14px}}
+.hero-portal{padding:clamp(104px,12vw,168px) 24px 0}
+.hero-portal .hero-frame{position:relative;padding:clamp(14px,1.6vw,22px);border:1px solid var(--line);border-radius:var(--r)}
+.hero-portal .hero-shot{aspect-ratio:16/7;overflow:hidden;border-radius:calc(var(--r) / 2)}
+.hero-portal .hero-shot img{width:100%;height:100%;object-fit:cover}
+.hero-portal .hero-grid{display:grid;grid-template-columns:1.4fr .6fr;gap:clamp(32px,4vw,64px);
+  align-items:end;margin-top:clamp(40px,5vw,64px)}
+.hero-portal h1{margin-bottom:18px}
+.hero-portal .hero-actions{display:flex;gap:14px;flex-wrap:wrap}
+@media (max-width:860px){
+  .hero-portal .hero-grid{grid-template-columns:1fr;gap:26px;align-items:start}
+  .hero-portal .hero-shot{aspect-ratio:4/3}
+}
+.offer-column{padding:var(--pad) 24px;background:var(--tint)}
+.offer-column .grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:clamp(40px,5vw,88px);align-items:start}
+.offer-column .head{position:sticky;top:100px}
+.offer-column .stack{display:grid;gap:1px;background:var(--line);border:1px solid var(--line);
+  border-radius:var(--r);overflow:hidden}
+.offer-column .row{background:var(--paper);padding:clamp(26px,3vw,36px);
+  display:grid;grid-template-columns:1fr auto;gap:18px;align-items:start}
+.offer-column h3{margin-bottom:9px}
+.offer-column p{margin:0;font-size:.96rem;opacity:.83}
+.offer-column .meta{font:600 13.5px/1 var(--body);color:var(--accent);white-space:nowrap}
+@media (max-width:900px){
+  .offer-column .grid{grid-template-columns:1fr;gap:36px}
+  .offer-column .head{position:static}
+  .offer-column .row{grid-template-columns:1fr;gap:10px}
+  .offer-column .meta{white-space:normal}
+}
+.gal-quad{padding:var(--pad) 24px;background:var(--tint)}
+.gal-quad .head{text-align:center;margin-bottom:clamp(36px,4vw,56px)}
+.gal-quad .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line)}
+.gal-quad .cell{margin:0;aspect-ratio:1;overflow:hidden;background:var(--paper)}
+.gal-quad .cell img{width:100%;height:100%;object-fit:cover;filter:saturate(.92)}
+.gal-quad .cell:hover img{filter:none}
+@media (max-width:860px){.gal-quad .grid{grid-template-columns:repeat(2,1fr)}}
+.stat-slab{background:var(--deep);padding:calc(var(--pad) * .58) 24px}
+.stat-slab .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:34px}
+.stat-slab b{display:block;font:var(--dw) clamp(2.1rem,3.6vw,3.2rem)/1 var(--display);color:#fff;margin-bottom:8px}
+.stat-slab span{font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);display:block}
+@media (max-width:860px){.stat-slab .grid{grid-template-columns:repeat(2,1fr);gap:28px}}
+.story-statement{padding:var(--pad) 24px;background:var(--deep);color:rgba(255,255,255,.78)}
+.story-statement h2{color:#fff;font-size:clamp(1.9rem,3.6vw,3.1rem);max-width:20ch;margin-bottom:26px}
+.story-statement .eyebrow{color:#fff;opacity:.62}
+.story-statement .lede{color:rgba(255,255,255,.8);max-width:64ch}
+.story-statement .pts{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(24px,3vw,48px);
+  margin-top:clamp(48px,5vw,76px);padding-top:36px;border-top:1px solid rgba(255,255,255,.16)}
+.story-statement .pts div{font-size:.98rem;color:rgba(255,255,255,.82)}
+@media (max-width:860px){.story-statement .pts{grid-template-columns:1fr;gap:20px}}
+.tst-feature{padding:var(--pad) 24px;background:var(--tint)}
+.tst-feature .grid{display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(32px,4vw,64px);align-items:start}
+.tst-feature .lead blockquote{margin:0 0 24px;font:var(--dw) clamp(1.4rem,2.5vw,2.05rem)/1.35 var(--display);
+  color:var(--deep);letter-spacing:var(--tr)}
+.tst-feature .side{display:grid;gap:0}
+.tst-feature .side .cell{padding:22px 0;border-bottom:1px solid var(--line)}
+.tst-feature .side .cell:first-child{padding-top:0}
+.tst-feature .side blockquote{margin:0 0 12px;font-size:.98rem;line-height:1.6}
+.tst-feature .who{font:600 13.5px/1.4 var(--body);color:var(--deep)}
+.tst-feature .role{display:block;font-weight:400;font-size:12px;opacity:.7;margin-top:3px}
+@media (max-width:860px){.tst-feature .grid{grid-template-columns:1fr;gap:34px}}
+.step-ledger{padding:var(--pad) 24px}
+.step-ledger .head{text-align:center;margin-bottom:clamp(40px,4.5vw,62px)}
+.step-ledger .grid{border-top:1px solid var(--line)}
+.step-ledger .cell{display:grid;grid-template-columns:72px .8fr 1.4fr;gap:22px;align-items:baseline;
+  padding:26px 0;border-bottom:1px solid var(--line)}
+.step-ledger .num{font:var(--dw) 1.5rem/1 var(--display);color:var(--line)}
+.step-ledger h3{margin:0;font-size:1.1rem}
+.step-ledger p{margin:0;font-size:.96rem;opacity:.82}
+@media (max-width:860px){.step-ledger .cell{grid-template-columns:44px 1fr;gap:6px 16px}
+  .step-ledger p{grid-column:2}}
+.cform{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cform label{display:flex;flex-direction:column;gap:7px;font:500 12.5px/1 var(--body);
+  letter-spacing:.05em;text-transform:uppercase;color:var(--ink)}
+.cform label.wide{grid-column:1 / -1}
+.cform input,.cform select,.cform textarea{font:400 15px/1.4 var(--body);color:var(--deep);
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;width:100%}
+.cform input:focus,.cform select:focus,.cform textarea:focus{outline:none;border-color:var(--accent)}
+.cform textarea{resize:vertical}
+.cform button{grid-column:1 / -1;justify-self:start;margin-top:4px}
+@media (max-width:640px){.cform{grid-template-columns:1fr}}.cdetails{margin:0;display:grid;gap:20px}
+.cdetails dt{font:600 11px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:6px}
+.cdetails dd{margin:0;font-size:1rem}.ct-split{padding:var(--pad) 24px;background:var(--tint)}
+.ct-split .grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:clamp(36px,5vw,80px);align-items:start}
+.ct-split h2{margin-bottom:14px}
+.ct-split .cdetails{margin-top:32px}
+@media (max-width:860px){.ct-split .grid{grid-template-columns:1fr;gap:36px}}
+.ft-slab{background:var(--tint);padding:0 24px clamp(30px,3.4vw,44px)}
+.ft-slab .cta{background:var(--deep);border-radius:var(--r);padding:clamp(40px,5vw,68px);
+  display:grid;grid-template-columns:1fr auto;gap:26px;align-items:center;
+  margin-bottom:clamp(44px,5vw,64px);transform:translateY(clamp(-64px,-6vw,-40px))}
+.ft-slab .cta h3{color:#fff;font-size:clamp(1.5rem,2.6vw,2.1rem);margin:0}
+.ft-slab .grid{display:grid;grid-template-columns:1.3fr .7fr .7fr;gap:clamp(26px,3.4vw,56px);
+  margin-top:clamp(-40px,-3.4vw,-24px)}
+.ft-slab .brand{font:var(--dw) 20px/1 var(--display);color:var(--deep);display:block;margin-bottom:12px}
+.ft-slab p{font-size:.94rem;max-width:38ch}
+.ft-slab h4{font:600 11px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+.ft-slab .col a{display:block;font-size:.94rem;padding:5px 0;color:var(--ink)}
+.ft-slab .col a:hover{color:var(--accent)}
+.ft-slab .social{display:flex;gap:16px;margin-top:20px;font-size:.9rem}
+.ft-slab .legal{margin-top:clamp(34px,4vw,52px);padding-top:22px;border-top:1px solid var(--line);
+  font-size:.84rem;opacity:.66}
+@media (max-width:860px){
+  .ft-slab .cta{grid-template-columns:1fr;text-align:left}
+  .ft-slab .grid{grid-template-columns:1fr;gap:26px}
+}
+/* HERO COVER (2026-09-12, EV-1002) — replaces the framed "portal" strip: full-bleed photo, copy over it */
+.hero-portal{padding:0;position:relative;color:#fff}
+.hero-portal .shell{max-width:none;position:relative}
+.hero-portal .hero-frame{padding:0;border:0;border-radius:0;position:relative}
+.hero-portal .hero-shot{margin:0;position:relative;aspect-ratio:auto;height:clamp(520px,78vh,820px);border-radius:0;overflow:hidden}
+.hero-portal .hero-shot img{width:100%;height:100%;object-fit:cover}
+.hero-portal .hero-shot::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(18,22,27,.06) 0%,rgba(18,22,27,.22) 40%,rgba(18,22,27,.84) 100%)}
+.hero-portal .hero-grid{position:absolute;left:0;right:0;bottom:0;max-width:var(--max);margin:0 auto;padding:0 24px clamp(48px,6vw,88px);display:grid;grid-template-columns:1.4fr .6fr;gap:clamp(32px,4vw,64px);align-items:end}
+.hero-portal .eyebrow{color:#fff;opacity:.85}
+.hero-portal h1{color:#fff;margin-bottom:18px;text-shadow:0 2px 24px rgba(0,0,0,.25)}
+.hero-portal .lede{color:#fff;opacity:.9;max-width:56ch}
+.hero-portal .hero-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.hero-portal .btn-ghost{color:#fff;border-color:rgba(255,255,255,.5)}
+.hero-portal .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.08)}
+@media (max-width:860px){
+  .hero-portal .hero-shot{height:min(78svh,640px);min-height:440px}
+  .hero-portal .hero-grid{grid-template-columns:1fr;gap:22px;padding-bottom:40px;align-items:start}
+  .hero-portal .hero-actions{justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+<a class="sr" href="#services">Skip to content</a>
+<nav class="nav-edge" data-block="nav"><div class="inner shell">
+  <a class="logo" href="#top">
+  <img class="brand-mark" src="{{logo_img_src}}" alt="" data-field="logo_url">
+  <span class="brand-text" style="{{logo_text_display}}" data-field="business_name">{{business_name}}</span>
+</a>
+  <div class="nav-links"><a class="nav-link" href="#services" data-field="nav_1">{{nav_1}}</a><a class="nav-link" href="#about" data-field="nav_2">{{nav_2}}</a><a class="nav-link" href="#gallery" data-field="nav_3">{{nav_3}}</a><a class="nav-link" href="#process" data-field="nav_4">{{nav_4}}</a><a class="nav-cta" href="#contact" data-field="nav_cta">{{nav_cta}}</a></div>
+</div></nav>
+<section class="hero-portal" data-block="hero" id="top">
+  <div class="shell">
+    <div class="hero-frame"><figure class="hero-shot"><img src="{{hero_image}}" alt="{{business_name}}" data-field="hero_image" loading="eager"></figure></div>
+    <div class="hero-grid">
+      <div class="hero-copy">
+        <span class="eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+        <h1 data-field="hero_title">{{hero_title}}</h1>
+        <p class="lede" data-field="hero_subtitle">{{hero_subtitle}}</p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn" href="#contact" data-field="hero_cta">{{hero_cta}}</a>
+        <a class="btn btn-ghost" href="#services" data-field="hero_cta_2">{{hero_cta_2}}</a>
+      </div>
+    </div>
+  </div>
+</section>
+<section class="offer-column" data-block="services" id="services">
+<div class="shell grid">
+  <div class="head">
+    <h2 data-field="offers_title">{{offers_title}}</h2>
+    <p class="lede" data-field="offers_subtitle">{{offers_subtitle}}</p>
+    <a class="btn" href="#contact" style="margin-top:22px" data-field="contact_cta">{{contact_cta}}</a>
+  </div>
+  <div class="stack"><div class="row offer-card">
+  <div><h3 data-field="service_1_title">{{service_1_title}}</h3>
+    <p data-field="service_1_text">{{service_1_text}}</p></div>
+  <span class="meta" data-field="service_1_price">{{service_1_price}}</span>
+</div><div class="row offer-card">
+  <div><h3 data-field="service_2_title">{{service_2_title}}</h3>
+    <p data-field="service_2_text">{{service_2_text}}</p></div>
+  <span class="meta" data-field="service_2_price">{{service_2_price}}</span>
+</div><div class="row offer-card">
+  <div><h3 data-field="service_3_title">{{service_3_title}}</h3>
+    <p data-field="service_3_text">{{service_3_text}}</p></div>
+  <span class="meta" data-field="service_3_price">{{service_3_price}}</span>
+</div><div class="row offer-card">
+  <div><h3 data-field="service_4_title">{{service_4_title}}</h3>
+    <p data-field="service_4_text">{{service_4_text}}</p></div>
+  <span class="meta" data-field="service_4_price">{{service_4_price}}</span>
+</div><div class="row offer-card">
+  <div><h3 data-field="service_5_title">{{service_5_title}}</h3>
+    <p data-field="service_5_text">{{service_5_text}}</p></div>
+  <span class="meta" data-field="service_5_price">{{service_5_price}}</span>
+</div><div class="row offer-card">
+  <div><h3 data-field="service_6_title">{{service_6_title}}</h3>
+    <p data-field="service_6_text">{{service_6_text}}</p></div>
+  <span class="meta" data-field="service_6_price">{{service_6_price}}</span>
+</div></div></div>
+</section>
+<section class="gal-quad" data-block="gallery" id="gallery">
+<div class="shell"><div class="head"><h2 data-field="gallery_title">{{gallery_title}}</h2></div><div class="grid"><figure class="cell"><img src="{{gallery_1}}" alt="" data-field="gallery_1" loading="lazy"></figure><figure class="cell"><img src="{{gallery_2}}" alt="" data-field="gallery_2" loading="lazy"></figure><figure class="cell"><img src="{{gallery_3}}" alt="" data-field="gallery_3" loading="lazy"></figure><figure class="cell"><img src="{{gallery_4}}" alt="" data-field="gallery_4" loading="lazy"></figure></div></div>
+</section>
+<section class="stat-slab" data-block="stats"><div class="shell grid">
+  <div><b data-field="stat_1_value">{{stat_1_value}}</b><span data-field="stat_1_label">{{stat_1_label}}</span></div>
+  <div><b data-field="stat_2_value">{{stat_2_value}}</b><span data-field="stat_2_label">{{stat_2_label}}</span></div>
+  <div><b data-field="stat_3_value">{{stat_3_value}}</b><span data-field="stat_3_label">{{stat_3_label}}</span></div>
+  <div><b data-field="stat_4_value">{{stat_4_value}}</b><span data-field="stat_4_label">{{stat_4_label}}</span></div>
+</div></section>
+<section class="story-statement" data-block="about" id="about">
+<div class="shell">
+  <span class="eyebrow" data-field="story_eyebrow">{{story_eyebrow}}</span>
+  <h2 data-field="story_title">{{story_title}}</h2>
+  <p class="lede" data-field="story_body">{{story_body}}</p>
+  <div class="pts"><div data-field="story_point_1">{{story_point_1}}</div><div data-field="story_point_2">{{story_point_2}}</div><div data-field="story_point_3">{{story_point_3}}</div></div>
+</div>
+</section>
+<section class="tst-feature" data-block="testimonials" id="testimonials">
+<div class="shell"><h2 data-field="testimonials_title">{{testimonials_title}}</h2><div class="grid"><div class="lead testimonial_1-card"><blockquote data-field="testimonial_1_quote">{{testimonial_1_quote}}</blockquote><div class="who"><span data-field="testimonial_1_name">{{testimonial_1_name}}</span><span class="role" data-field="testimonial_1_role">{{testimonial_1_role}}</span></div></div><div class="side"><div class="cell testimonial_2-card">
+  <blockquote data-field="testimonial_2_quote">{{testimonial_2_quote}}</blockquote>
+  <div class="who"><span data-field="testimonial_2_name">{{testimonial_2_name}}</span>
+    <span class="role" data-field="testimonial_2_role">{{testimonial_2_role}}</span></div>
+</div><div class="cell testimonial_3-card">
+  <blockquote data-field="testimonial_3_quote">{{testimonial_3_quote}}</blockquote>
+  <div class="who"><span data-field="testimonial_3_name">{{testimonial_3_name}}</span>
+    <span class="role" data-field="testimonial_3_role">{{testimonial_3_role}}</span></div>
+</div></div></div></div>
+</section>
+<section class="step-ledger" data-block="process" id="process">
+<div class="shell"><div class="head"><h2 data-field="steps_title">{{steps_title}}</h2></div><div class="grid"><div class="cell"><span class="num">01</span>
+  <h3 data-field="step_1_title">{{step_1_title}}</h3>
+  <p data-field="step_1_body">{{step_1_body}}</p></div><div class="cell"><span class="num">02</span>
+  <h3 data-field="step_2_title">{{step_2_title}}</h3>
+  <p data-field="step_2_body">{{step_2_body}}</p></div><div class="cell"><span class="num">03</span>
+  <h3 data-field="step_3_title">{{step_3_title}}</h3>
+  <p data-field="step_3_body">{{step_3_body}}</p></div><div class="cell"><span class="num">04</span>
+  <h3 data-field="step_4_title">{{step_4_title}}</h3>
+  <p data-field="step_4_body">{{step_4_body}}</p></div></div></div>
+</section>
+<section class="ct-split" data-block="contact" id="contact">
+<div class="shell grid"><div><h2 data-field="contact_title">{{contact_title}}</h2><p class="lede" data-field="contact_subtitle">{{contact_subtitle}}</p><dl class="cdetails">
+  <div><dt>Call</dt><dd><a href="tel:{{contact_phone}}" data-field="contact_phone">{{contact_phone}}</a></dd></div>
+  <div><dt>Email</dt><dd><a href="mailto:{{contact_email}}" data-field="contact_email">{{contact_email}}</a></dd></div>
+  <div><dt>Visit</dt><dd data-field="contact_address">{{contact_address}}</dd></div>
+  <div><dt>Open</dt><dd data-field="contact_hours">{{contact_hours}}</dd></div>
+</dl></div><div><form class="cform" method="post" action="#" novalidate>
+  <label><span>Name</span><input type="text" name="name" autocomplete="name" required></label>
+  <label><span>Email</span><input type="email" name="email" autocomplete="email" required></label>
+  <label><span>Phone</span><input type="tel" name="phone" autocomplete="tel"></label>
+  <label class="wide"><span>Which service?</span><select name="service"><option>General enquiry</option></select></label>
+  <label class="wide"><span>Message</span><textarea name="message" rows="4"></textarea></label>
+  <button class="btn" type="submit" data-field="contact_cta">{{contact_cta}}</button>
+</form></div></div>
+</section>
+<footer class="ft-slab" data-block="footer">
+<div class="shell cta">
+  <h3 data-field="contact_title">{{contact_title}}</h3>
+  <a class="btn" href="#contact" data-field="contact_cta">{{contact_cta}}</a>
+</div>
+<div class="shell grid">
+  <div><span class="brand" data-field="business_name">{{business_name}}</span>
+    <p data-field="footer_blurb">{{footer_blurb}}</p><div class="social">
+  <a href="{{social_facebook}}" data-field="social_facebook" aria-label="Facebook">Facebook</a>
+  <a href="{{social_instagram}}" data-field="social_instagram" aria-label="Instagram">Instagram</a>
+  <a href="{{social_linkedin}}" data-field="social_linkedin" aria-label="LinkedIn">LinkedIn</a>
+  <a href="{{social_x}}" data-field="social_x" aria-label="X">X</a>
+</div></div>
+  <div class="col"><h4 data-field="footer_col_1">{{footer_col_1}}</h4><a href="#services" data-field="nav_1">{{nav_1}}</a><a href="#about" data-field="nav_2">{{nav_2}}</a><a href="#gallery" data-field="nav_3">{{nav_3}}</a><a href="#process" data-field="nav_4">{{nav_4}}</a></div>
+  <div class="col"><h4 data-field="footer_col_2">{{footer_col_2}}</h4>
+    <a href="tel:{{contact_phone}}" data-field="contact_phone">{{contact_phone}}</a>
+    <a href="mailto:{{contact_email}}" data-field="contact_email">{{contact_email}}</a>
+    <a href="#contact" data-field="contact_address">{{contact_address}}</a></div>
+</div>
+<div class="shell legal">&copy; <span data-field="business_name">{{business_name}}</span>. <span data-field="footer_legal">{{footer_legal}}</span></div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,583 @@
+{
+    "id": "restaurant_counter",
+    "name": "Restaurant — Counter",
+    "industry": "restaurant",
+    "description": "Modern British cooking, served all week",
+    "thumbnail": "/storage/builder-heroes/restaurant.jpg",
+    "category": "hospitality",
+    "version": "1.0.0",
+    "variation": "counter",
+    "is_active": true,
+    "design": {
+        "generated": "2026-09-10",
+        "generator": "lug-template-generator v1",
+        "palette": "clay",
+        "type": "warm",
+        "scale": "compact",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "edge",
+            "hero": "band",
+            "stats": "none",
+            "offers": "plate",
+            "story": "measure",
+            "gallery": "columns",
+            "steps": "track",
+            "tst": "cards",
+            "contact": "stack",
+            "footer": "minimal"
+        },
+        "order": [
+            "offers",
+            "gallery",
+            "stats",
+            "story",
+            "tst",
+            "steps",
+            "contact"
+        ]
+    },
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
+            }
+        },
+        {
+            "id": "services",
+            "name": "Services",
+            "elements": {
+                "service_1_title": "#services .offer-card h3"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": []
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Counter & Co"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "Modern British cooking, served all week"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "A neighbourhood dining room serving a short, seasonal menu with a considered wine list. Book a table online."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://example.com"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/restaurant.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_GB"
+        },
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Counter dining · Open kitchen · 14 seats"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "Fourteen seats at a counter, one menu, and the cooks two feet away"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subheading",
+            "default": "A set menu that changes weekly, served across the pass by the people who cooked it. Two sittings a night, booked in advance."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Hero Button",
+            "default": "Book a table"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Secondary Button",
+            "default": "See the menu"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Image",
+            "default": "/storage/builder-heroes/restaurant.jpg"
+        },
+        "offers_title": {
+            "type": "text",
+            "label": "Offers Heading",
+            "default": "On the menu this season"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Offers Subheading",
+            "default": "The card changes every few weeks. These are the plates people come back for."
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "Our story"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Heading",
+            "default": "One kitchen, one supplier list, no shortcuts"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "We opened with eight tables and a wood oven. The oven is still here and so is the approach: buy well, cook it simply, and do not put anything on the plate that has not earned its place. The list of growers on the back of the menu has barely changed in ten years."
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Heading",
+            "default": "The room, the plates, the people"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Heading",
+            "default": "Booking, plainly"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Heading",
+            "default": "What people say"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Heading",
+            "default": "Find us, book us, ask us anything"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "The phone is answered by whoever is nearest, usually between ten and five."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Opening Hours",
+            "default": "Tue–Sun 12–3, 6–10 · Closed Mondays"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Book a table"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Menu"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "The room"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Private hire"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Reserve"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "10 yrs"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Serving the same street"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "12"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Dishes on the card"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "50 mi"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Furthest supplier"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "4.8"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Average from 900+ reviews"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Set lunch"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Three courses from the day's market list, poured with a glass of something sensible."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£32"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Tasting menu"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Seven courses through the season, with an optional pairing from the cellar."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£78"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Sunday roast"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Dry-aged sirloin, dripping potatoes, greens from the farm at Frampton."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£28"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "The bar list"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Twenty-odd wines by the glass, low-intervention where it earns its place."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "From £7"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Private dining"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "The back room seats fourteen, with a menu written around your table."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "From £65pp"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "At home"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "Cook-at-home boxes for two, collected Friday, eaten whenever you like."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "£45"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Produce bought within fifty miles wherever the season allows"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Bread, pasta and ice cream made in-house each morning"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "A kitchen that closes for two weeks in August, because people need rest"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/template-images/restaurant/gallery_1.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/template-images/restaurant/gallery_2.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/template-images/restaurant/gallery_3.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/template-images/restaurant/gallery_4.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
+            "default": "/storage/template-images/restaurant/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/builder-heroes/restaurant.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Choose a sitting"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Lunch runs from noon; dinner from six. Tables are held for fifteen minutes."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Tell us the details"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Allergies, celebrations, prams, dogs — all easier to plan for in advance."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "We confirm by email"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "No deposit for tables under six. Larger parties, we will call."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Arrive hungry"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "The menu is on the wall and the sommelier does not upsell."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "The best set lunch in the city and it is not close. Nothing on the plate is there for decoration."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Regular since 2019"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "We have had three birthdays in the back room now. They remember what we drank last time."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Regular since 2019"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "Unfussy, seasonal, honestly priced. The kind of place you end up going to on a Tuesday."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Regular since 2019"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#C0603C"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#9D4F31"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#C0603C"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#1C1512"
+        }
+    },
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
+    }
+}

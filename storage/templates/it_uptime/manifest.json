@@ -1,0 +1,583 @@
+{
+    "id": "it_uptime",
+    "name": "IT Services — Uptime",
+    "industry": "it_services",
+    "description": "Managed IT with an engineer who knows your network",
+    "thumbnail": "/storage/builder-heroes/it_services.jpg",
+    "category": "professional",
+    "version": "1.0.0",
+    "variation": "uptime",
+    "is_active": true,
+    "design": {
+        "generated": "2026-09-10",
+        "generator": "lug-template-generator v1",
+        "palette": "ironblue",
+        "type": "technical",
+        "scale": "compact",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "edge",
+            "hero": "split",
+            "stats": "divided",
+            "offers": "column",
+            "story": "margin",
+            "gallery": "quad",
+            "steps": "ledger",
+            "tst": "trio",
+            "contact": "aside",
+            "footer": "minimal"
+        },
+        "order": [
+            "offers",
+            "stats",
+            "story",
+            "steps",
+            "gallery",
+            "tst",
+            "contact"
+        ]
+    },
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
+            }
+        },
+        {
+            "id": "stats",
+            "name": "Stats",
+            "elements": []
+        },
+        {
+            "id": "services",
+            "name": "Services",
+            "elements": {
+                "service_1_title": "#services .offer-card h3"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": []
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Uptime"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "Managed IT with an engineer who knows your network"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Managed IT support and cyber security for small businesses, with named engineers and published response times."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://example.com"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/it_services.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_GB"
+        },
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Managed IT · Cyber Essentials"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "A named engineer who has actually seen your network"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subheading",
+            "default": "Published response times we pay penalties against, an engineer assigned to your account, and documentation you own rather than rent."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Hero Button",
+            "default": "Book an assessment"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Secondary Button",
+            "default": "See the services"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Image",
+            "default": "/storage/builder-heroes/it_services.jpg"
+        },
+        "offers_title": {
+            "type": "text",
+            "label": "Offers Heading",
+            "default": "Services"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Offers Subheading",
+            "default": "Everything priced per user per month, with no minimum term after year one."
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "Our story"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Heading",
+            "default": "Documentation you own, not documentation we hold hostage"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "The commonest trick in managed IT is keeping the network documentation, the admin credentials and the licence tenancy in the provider's name, so leaving costs more than staying. Everything we build is in your tenancy, in your name, exported to you quarterly."
+        },
+        "story_image": {
+            "type": "image",
+            "label": "Story Image",
+            "default": "/storage/builder-heroes/it_services.jpg"
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Heading",
+            "default": "The team at work"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Heading",
+            "default": "Onboarding"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Heading",
+            "default": "What people say"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Heading",
+            "default": "Book a free assessment"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "Two days on site, a written report, and no obligation to do anything with it."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Opening Hours",
+            "default": "Support Mon–Fri 8–6 · Security monitored 24/7"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Book an assessment"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Services"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "Security"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Onboarding"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Get in touch"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "15 min"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "First response, published"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "24/7"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Security monitoring"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "Quarterly"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Documentation handed to you"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "Your name"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Every credential and tenancy"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Managed support"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Unlimited tickets, a named engineer, and a fifteen-minute first response."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£38/user/mo"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Cyber security"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Endpoint, email and identity, monitored around the clock."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£16/user/mo"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Cloud & Microsoft 365"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Licensing at cost, tenant hardening, and backup that is actually tested."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£12/user/mo"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Projects & migration"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Fixed-price, out of hours, with a rollback plan written first."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "Fixed quote"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Cyber Essentials"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Assessment, remediation and certification, in six to eight weeks."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "£2,400"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Virtual IT director"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "A day a month on strategy, budget and risk, at board level."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "£980/mo"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "All credentials and tenancies held in your name, not ours"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Documentation exported to you every quarter, automatically"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Response times published, with service credits when we miss them"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/builder-heroes/it_services.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/builder-heroes/it_services.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/builder-heroes/it_services.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/builder-heroes/it_services.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "A free assessment"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Two days on site, documenting what you actually have."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "A written report"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Risks, costs and priorities — yours to keep whether you sign or not."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Transition"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Run in parallel with your current provider for thirty days."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Steady state"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "A named engineer, a monthly review, and quarterly documentation."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "The assessment report was more useful than the last two years of our previous provider."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Finance Director"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "They handed over every credential in our name on day one. Unheard of."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Finance Director"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "Fifteen-minute response, honoured, at 6.40 on a Friday evening."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Finance Director"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#2F6FA8"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#275B8A"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#2F6FA8"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#101720"
+        }
+    },
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
+    }
+}

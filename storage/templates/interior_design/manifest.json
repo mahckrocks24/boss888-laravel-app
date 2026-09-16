@@ -371,7 +371,7 @@
     "business_tagline": {
       "type": "text",
       "label": "Business Tagline",
-      "default": "Interior Design \u00b7 Dubai"
+      "default": "Interior Design · Dubai"
     },
     "meta_description": {
       "type": "text",
@@ -401,7 +401,7 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Interior Design \u00b7 Fit-Out \u00b7 Joinery"
+      "default": "Interior Design · Fit-Out · Joinery"
     },
     "hero_title": {
       "type": "html",
@@ -426,7 +426,7 @@
     "hero_image": {
       "type": "image",
       "label": "Hero Image",
-      "default": "images/hero-interior.jpg"
+      "default": "/storage/builder-heroes/interior_design.jpg"
     },
     "stat_1_value": {
       "type": "text",
@@ -486,7 +486,7 @@
     "about_text_2": {
       "type": "text",
       "label": "About Paragraph 2",
-      "default": "Our work moves across private residences, restaurants, and retail \u2014 held together by a belief that good design is calm, durable, and honest to its materials."
+      "default": "Our work moves across private residences, restaurants, and retail — held together by a belief that good design is calm, durable, and honest to its materials."
     },
     "about_text_3": {
       "type": "text",
@@ -646,7 +646,7 @@
     "service_6_text": {
       "type": "text",
       "label": "Service 6 Text",
-      "default": "One point of contact and one fixed price \u2014 from brief through to handover, programme, cost, and quality managed for you."
+      "default": "One point of contact and one fixed price — from brief through to handover, programme, cost, and quality managed for you."
     },
     "service_6_tag_1": {
       "type": "text",
@@ -796,7 +796,7 @@
     "process_2_text": {
       "type": "text",
       "label": "Step 2 Text",
-      "default": "Layouts, moodboards, 3D views, and material samples \u2014 presented until every decision feels right."
+      "default": "Layouts, moodboards, 3D views, and material samples — presented until every decision feels right."
     },
     "process_3_title": {
       "type": "text",
@@ -816,7 +816,7 @@
     "process_4_text": {
       "type": "text",
       "label": "Step 4 Text",
-      "default": "Styling, snagging, and an aftercare pack \u2014 so the space feels complete the moment you move in."
+      "default": "Styling, snagging, and an aftercare pack — so the space feels complete the moment you move in."
     },
     "testimonials_eyebrow": {
       "type": "text",
@@ -831,7 +831,7 @@
     "testimonial_1_quote": {
       "type": "text",
       "label": "Testimonial 1 Quote",
-      "default": "They read the brief precisely and delivered something more refined than we had imagined \u2014 quietly, on time, on budget."
+      "default": "They read the brief precisely and delivered something more refined than we had imagined — quietly, on time, on budget."
     },
     "testimonial_1_author": {
       "type": "text",
@@ -861,7 +861,7 @@
     "testimonial_3_quote": {
       "type": "text",
       "label": "Testimonial 3 Quote",
-      "default": "A true partnership. They think like owners \u2014 every pound spent justifies itself in how the space performs day to day."
+      "default": "A true partnership. They think like owners — every pound spent justifies itself in how the space performs day to day."
     },
     "testimonial_3_author": {
       "type": "text",
@@ -936,7 +936,7 @@
     "cta_banner_subtitle": {
       "type": "text",
       "label": "CTA Banner Subtitle",
-      "default": "A free 45-minute consultation \u2014 we visit the site, talk through the brief, and share first thoughts."
+      "default": "A free 45-minute consultation — we visit the site, talk through the brief, and share first thoughts."
     },
     "cta_banner_cta": {
       "type": "text",
@@ -976,7 +976,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Office Hours",
-      "default": "Sun\u2013Thu \u00b7 9am\u20136pm"
+      "default": "Sun–Thu · 9am–6pm"
     },
     "contact_form_title": {
       "type": "html",
@@ -986,12 +986,12 @@
     "form_submit_text": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Send Enquiry \u2192"
+      "default": "Send Enquiry →"
     },
     "form_success_message": {
       "type": "text",
       "label": "Success Message",
-      "default": "\u2713 Thank you. We'll be in touch within one working day."
+      "default": "✓ Thank you. We'll be in touch within one working day."
     },
     "booking_title": {
       "type": "html",
@@ -1001,7 +1001,7 @@
     "booking_intro": {
       "type": "text",
       "label": "Booking Intro",
-      "default": "A free 45-minute visit to the site \u2014 we discuss the brief, timeline, and indicative budget."
+      "default": "A free 45-minute visit to the site — we discuss the brief, timeline, and indicative budget."
     },
     "booking_cta": {
       "type": "text",
@@ -1021,7 +1021,7 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Copyright",
-      "default": "\u00a9 2026 \u2014 All rights reserved."
+      "default": "© 2026 — All rights reserved."
     },
     "social_instagram": {
       "type": "url",
@@ -1176,7 +1176,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1219,5 +1219,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "bronze",
+    "accent_deep": "bronze_deep",
+    "secondary": null
   }
 }

@@ -3,7 +3,7 @@
   "name": "Fitness & Athletic Club",
   "version": "1.0.0",
   "industry": "gym",
-  "description": "Bold, high-energy template for gyms, personal training studios, and athletic clubs. Dark atmosphere, electric orange accents, condensed athletic type \u2014 built to convert training intent and class sign-ups.",
+  "description": "Bold, high-energy template for gyms, personal training studios, and athletic clubs. Dark atmosphere, electric orange accents, condensed athletic type — built to convert training intent and class sign-ups.",
   "variation": "luxury",
   "preview_image": "preview.jpg",
   "created_at": "2026-04-18",
@@ -409,12 +409,12 @@
     "business_tagline": {
       "type": "text",
       "label": "Tagline",
-      "default": "Strength \u00b7 Conditioning \u00b7 Dubai"
+      "default": "Strength · Conditioning · Dubai"
     },
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "FORGE \u2014 a premium athletic club in Dubai offering group classes, personal training, Olympic lifting, Hyrox programming, and a members-only recovery suite."
+      "default": "FORGE — a premium athletic club in Dubai offering group classes, personal training, Olympic lifting, Hyrox programming, and a members-only recovery suite."
     },
     "canonical_url": {
       "type": "url",
@@ -424,7 +424,7 @@
     "og_image": {
       "type": "image",
       "label": "OG Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "og_locale": {
       "type": "text",
@@ -439,7 +439,7 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Athletic Club \u00b7 Dubai Marina \u00b7 Opened 2014"
+      "default": "Athletic Club · Dubai Marina · Opened 2014"
     },
     "hero_title": {
       "type": "html",
@@ -449,7 +449,7 @@
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "A members-only athletic club in Dubai Marina. Strength, conditioning, Olympic lifting, Hyrox programming \u2014 coached in small groups by athletes who actually compete."
+      "default": "A members-only athletic club in Dubai Marina. Strength, conditioning, Olympic lifting, Hyrox programming — coached in small groups by athletes who actually compete."
     },
     "hero_cta": {
       "type": "text",
@@ -464,12 +464,12 @@
     "hero_image": {
       "type": "image",
       "label": "Hero Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "hero_trust_badge": {
       "type": "text",
       "label": "Hero Trust Badge",
-      "default": "1,200+ Members \u00b7 40+ Classes Weekly \u00b7 Dubai Marina"
+      "default": "1,200+ Members · 40+ Classes Weekly · Dubai Marina"
     },
     "stat_1_value": {
       "type": "text",
@@ -559,7 +559,7 @@
     "service_2_text": {
       "type": "text",
       "label": "Program 2 Text",
-      "default": "Fifty-minute metabolic conditioning \u2014 rowers, assault bikes, sled work, and loaded carries. High output, low injury risk."
+      "default": "Fifty-minute metabolic conditioning — rowers, assault bikes, sled work, and loaded carries. High output, low injury risk."
     },
     "service_2_tag_1": {
       "type": "text",
@@ -584,7 +584,7 @@
     "service_3_text": {
       "type": "text",
       "label": "Program 3 Text",
-      "default": "Dedicated Hyrox programming \u2014 eight stations, race-specific pacing, wall-ball and farmer-carry technique, and simulation races on Saturdays."
+      "default": "Dedicated Hyrox programming — eight stations, race-specific pacing, wall-ball and farmer-carry technique, and simulation races on Saturdays."
     },
     "service_3_tag_1": {
       "type": "text",
@@ -659,7 +659,7 @@
     "service_6_text": {
       "type": "text",
       "label": "Program 6 Text",
-      "default": "Forty-five minute mobility and breathwork classes, plus a members-only recovery suite \u2014 sauna, cold plunge, and NormaTec compression."
+      "default": "Forty-five minute mobility and breathwork classes, plus a members-only recovery suite — sauna, cold plunge, and NormaTec compression."
     },
     "service_6_tag_1": {
       "type": "text",
@@ -689,7 +689,7 @@
     "trainers_intro": {
       "type": "text",
       "label": "Trainers Intro",
-      "default": "Every coach on our floor still competes \u2014 powerlifting, Hyrox, weightlifting, or endurance. You learn from people who still do the thing, not people who used to."
+      "default": "Every coach on our floor still competes — powerlifting, Hyrox, weightlifting, or endurance. You learn from people who still do the thing, not people who used to."
     },
     "trainer_1_name": {
       "type": "text",
@@ -709,7 +709,7 @@
     "trainer_1_image": {
       "type": "image",
       "label": "Trainer 1 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trainer_2_name": {
       "type": "text",
@@ -729,7 +729,7 @@
     "trainer_2_image": {
       "type": "image",
       "label": "Trainer 2 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trainer_3_name": {
       "type": "text",
@@ -749,7 +749,7 @@
     "trainer_3_image": {
       "type": "image",
       "label": "Trainer 3 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trainer_4_name": {
       "type": "text",
@@ -769,7 +769,7 @@
     "trainer_4_image": {
       "type": "image",
       "label": "Trainer 4 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "schedule_eyebrow": {
       "type": "text",
@@ -784,7 +784,7 @@
     "schedule_intro": {
       "type": "text",
       "label": "Schedule Intro",
-      "default": "Typical Wednesday \u2014 full weekly schedule in the member app. Classes capped at twelve."
+      "default": "Typical Wednesday — full weekly schedule in the member app. Classes capped at twelve."
     },
     "session_1_time": {
       "type": "text",
@@ -794,7 +794,7 @@
     "session_1_name": {
       "type": "text",
       "label": "Session 1 Name",
-      "default": "Strength \u2014 Lower Body"
+      "default": "Strength — Lower Body"
     },
     "session_1_trainer": {
       "type": "text",
@@ -854,7 +854,7 @@
     "session_5_name": {
       "type": "text",
       "label": "Session 5 Name",
-      "default": "Strength \u2014 Upper Body"
+      "default": "Strength — Upper Body"
     },
     "session_5_trainer": {
       "type": "text",
@@ -904,7 +904,7 @@
     "trans_1_image": {
       "type": "image",
       "label": "Trans 1 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trans_2_name": {
       "type": "text",
@@ -919,7 +919,7 @@
     "trans_2_image": {
       "type": "image",
       "label": "Trans 2 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trans_3_name": {
       "type": "text",
@@ -929,12 +929,12 @@
     "trans_3_result": {
       "type": "text",
       "label": "Trans 3 Result",
-      "default": "\u221212kg body fat, +5kg muscle"
+      "default": "−12kg body fat, +5kg muscle"
     },
     "trans_3_image": {
       "type": "image",
       "label": "Trans 3 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trans_4_name": {
       "type": "text",
@@ -949,7 +949,7 @@
     "trans_4_image": {
       "type": "image",
       "label": "Trans 4 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trans_5_name": {
       "type": "text",
@@ -964,7 +964,7 @@
     "trans_5_image": {
       "type": "image",
       "label": "Trans 5 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "trans_6_name": {
       "type": "text",
@@ -979,7 +979,7 @@
     "trans_6_image": {
       "type": "image",
       "label": "Trans 6 Image",
-      "default": "/storage/builder-heroes/fitness.jpg"
+      "default": "/storage/builder-heroes/gym.jpg"
     },
     "pricing_eyebrow": {
       "type": "text",
@@ -1029,7 +1029,7 @@
     "plan_1_feature_4": {
       "type": "text",
       "label": "Plan 1 Feature 4",
-      "default": "No contract \u2014 freeze any time"
+      "default": "No contract — freeze any time"
     },
     "plan_1_cta": {
       "type": "text",
@@ -1099,7 +1099,7 @@
     "plan_3_feature_2": {
       "type": "text",
       "label": "Plan 3 Feature 2",
-      "default": "4\u00d7 personal training sessions"
+      "default": "4× personal training sessions"
     },
     "plan_3_feature_3": {
       "type": "text",
@@ -1129,7 +1129,7 @@
     "testimonial_1_quote": {
       "type": "text",
       "label": "Testimonial 1 Quote",
-      "default": "FORGE is the first gym I've walked into where the coaches actually know what they're doing \u2014 I've got stronger and stayed healthy at the same time, for the first time in my training life."
+      "default": "FORGE is the first gym I've walked into where the coaches actually know what they're doing — I've got stronger and stayed healthy at the same time, for the first time in my training life."
     },
     "testimonial_1_author": {
       "type": "text",
@@ -1144,7 +1144,7 @@
     "testimonial_2_quote": {
       "type": "text",
       "label": "Testimonial 2 Quote",
-      "default": "I came in for Hyrox prep and left with a whole new way of training. Jordan's programming got me to sub-70 in my first Pro heat \u2014 and I enjoyed every session."
+      "default": "I came in for Hyrox prep and left with a whole new way of training. Jordan's programming got me to sub-70 in my first Pro heat — and I enjoyed every session."
     },
     "testimonial_2_author": {
       "type": "text",
@@ -1179,7 +1179,7 @@
     "booking_intro": {
       "type": "text",
       "label": "Booking Intro",
-      "default": "Non-members welcome \u2014 your first class is on us. Pick a day, a time, and a programme."
+      "default": "Non-members welcome — your first class is on us. Pick a day, a time, and a programme."
     },
     "booking_cta": {
       "type": "text",
@@ -1204,7 +1204,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "Or walk in \u2014 we're open from 5:30am and the front desk is always happy to show you around the floor."
+      "default": "Or walk in — we're open from 5:30am and the front desk is always happy to show you around the floor."
     },
     "contact_email": {
       "type": "text",
@@ -1224,7 +1224,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Opening Hours",
-      "default": "Open 5:30am \u2013 10pm  \u00b7  7 days"
+      "default": "Open 5:30am – 10pm  ·  7 days"
     },
     "contact_form_title": {
       "type": "html",
@@ -1234,22 +1234,22 @@
     "form_submit_text": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Send Message \u2192"
+      "default": "Send Message →"
     },
     "form_success_message": {
       "type": "text",
       "label": "Success Message",
-      "default": "\u2713 Thanks \u2014 we'll get back to you within one working day."
+      "default": "✓ Thanks — we'll get back to you within one working day."
     },
     "footer_tagline": {
       "type": "text",
       "label": "Footer Tagline",
-      "default": "Strength, conditioning, and mobility \u2014 coached properly."
+      "default": "Strength, conditioning, and mobility — coached properly."
     },
     "footer_text": {
       "type": "text",
       "label": "Footer Copyright",
-      "default": "\u00a9 2026 FORGE Athletic Club. All rights reserved."
+      "default": "© 2026 FORGE Athletic Club. All rights reserved."
     },
     "social_instagram": {
       "type": "url",
@@ -1399,7 +1399,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1442,5 +1442,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "orange",
+    "accent_deep": "orange_deep",
+    "secondary": null
   }
 }

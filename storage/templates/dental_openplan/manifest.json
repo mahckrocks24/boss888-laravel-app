@@ -1,0 +1,558 @@
+{
+    "id": "dental_openplan",
+    "name": "Dental — Open Plan",
+    "industry": "dental",
+    "description": "A dental practice that explains before it treats",
+    "thumbnail": "/storage/builder-heroes/dental.jpg",
+    "category": "health",
+    "version": "1.0.0",
+    "variation": "openplan",
+    "is_active": true,
+    "design": {
+        "generated": "2026-09-10",
+        "generator": "lug-template-generator v1",
+        "palette": "seafoam",
+        "type": "humanist",
+        "scale": "stately",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "stack",
+            "hero": "ledger",
+            "stats": "none",
+            "offers": "column",
+            "story": "measure",
+            "gallery": "strip",
+            "steps": "spine",
+            "tst": "feature",
+            "contact": "stack",
+            "footer": "slab"
+        },
+        "order": [
+            "stats",
+            "story",
+            "offers",
+            "steps",
+            "tst",
+            "gallery",
+            "contact"
+        ]
+    },
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
+            }
+        },
+        {
+            "id": "services",
+            "name": "Services",
+            "elements": {
+                "service_1_title": "#services .offer-card h3"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": []
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Open Plan Dental"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "A dental practice that explains before it treats"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "General, cosmetic and emergency dentistry with written treatment plans, transparent pricing and same-day emergency slots."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://example.com"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_GB"
+        },
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Family dentistry · NHS & private"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "A dentist your children will actually want to go back to"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subheading",
+            "default": "Open-plan reception, no-drill first visits for under-sevens, and evening appointments so the whole family can come after school."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Hero Button",
+            "default": "Book an appointment"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Secondary Button",
+            "default": "Treatments & prices"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Image",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "offers_title": {
+            "type": "text",
+            "label": "Offers Heading",
+            "default": "Treatments"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Offers Subheading",
+            "default": "Prices are published because a price you have to ask for is usually a bad one."
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "Our story"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Heading",
+            "default": "Twenty-six years, four clinicians, one approach"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "We have never run a treatment promotion and we do not have sales targets. Clinicians here are salaried, not paid per item, which removes the single biggest reason patients are sold work they do not need."
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Heading",
+            "default": "The practice"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Heading",
+            "default": "Your first visit"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Heading",
+            "default": "What people say"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Heading",
+            "default": "Book, or ask us something first"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "Reception can give indicative costs over the phone before you book anything."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Opening Hours",
+            "default": "Mon–Fri 8–6 · Sat 9–1 · Emergencies daily"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Book an appointment"
+        },
+        "footer_blurb": {
+            "type": "text",
+            "label": "Footer Blurb",
+            "default": "A dental practice that explains before it treats"
+        },
+        "footer_col_1": {
+            "type": "text",
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
+        },
+        "footer_col_2": {
+            "type": "text",
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Treatments"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "The practice"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Your first visit"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book now"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Examination & hygiene"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "A full examination, X-rays where indicated, and a scale and polish."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£78"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "White fillings"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Composite, colour-matched, with the old material removed under isolation."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "From £145"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Root canal treatment"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Usually a single visit, under a microscope, with rubber dam throughout."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "From £420"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Crowns & bridges"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Digitally scanned, no impression trays, fitted within two weeks."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "From £695"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Implants"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Planned on a CT scan, placed and restored by the same clinician."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "From £2,200"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Emergency appointment"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "Held slots every morning. Pain seen the same day, always."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "£95"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Clinicians are salaried — nobody earns more by treating more"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Every plan is written, itemised and given to you to take away"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Emergency slots held every morning for existing and new patients"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/builder-heroes/dental.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "A full examination"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Forty minutes, including X-rays, soft tissue and a gum assessment."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "A written plan"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Options, costs and what happens if you choose to do nothing."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "You decide"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Take it home. Nothing is booked at the chairside."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Treatment, then review"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Followed up at six weeks, at no additional charge."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "They told me the filling I had been quoted for elsewhere did not need doing. Six years on, it still does not."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Patient"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "Seen the same morning with an abscess, treated properly, and charged the published price."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Patient"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "The first dentist I have had who draws a diagram and waits for you to understand it."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Patient"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#2E8B77"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#267262"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#2E8B77"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#0F1E1C"
+        }
+    },
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
+    }
+}

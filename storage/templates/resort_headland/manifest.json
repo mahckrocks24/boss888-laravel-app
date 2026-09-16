@@ -1,0 +1,563 @@
+{
+    "id": "resort_headland",
+    "name": "Resort — Headland",
+    "industry": "resort",
+    "description": "A coastal resort built around the shoreline, not over it",
+    "thumbnail": "/storage/builder-heroes/resort.jpg",
+    "category": "hospitality",
+    "version": "1.0.0",
+    "variation": "headland",
+    "is_active": true,
+    "design": {
+        "generated": "2026-09-10",
+        "generator": "lug-template-generator v1",
+        "palette": "seafoam",
+        "type": "atelier",
+        "scale": "tall",
+        "radius": "square",
+        "archetypes": {
+            "nav": "float",
+            "hero": "cover",
+            "stats": "none",
+            "offers": "plate",
+            "story": "inset",
+            "gallery": "rail",
+            "steps": "track",
+            "tst": "banner",
+            "contact": "panel",
+            "footer": "mast"
+        },
+        "order": [
+            "gallery",
+            "offers",
+            "story",
+            "stats",
+            "steps",
+            "tst",
+            "contact"
+        ]
+    },
+    "blocks": [
+        {
+            "id": "nav",
+            "name": "Navigation",
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
+        },
+        {
+            "id": "hero",
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
+            }
+        },
+        {
+            "id": "services",
+            "name": "Services",
+            "elements": {
+                "service_1_title": "#services .offer-card h3"
+            }
+        },
+        {
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
+        },
+        {
+            "id": "footer",
+            "name": "Footer",
+            "elements": []
+        }
+    ],
+    "variables": {
+        "business_name": {
+            "type": "text",
+            "label": "Business Name",
+            "default": "Headland"
+        },
+        "business_tagline": {
+            "type": "text",
+            "label": "Tagline",
+            "default": "A coastal resort built around the shoreline, not over it"
+        },
+        "meta_description": {
+            "type": "text",
+            "label": "Meta Description",
+            "default": "Forty-eight rooms and villas on a protected stretch of coast, with a spa, two restaurants and a dive centre."
+        },
+        "canonical_url": {
+            "type": "url",
+            "label": "Canonical URL",
+            "default": "https://example.com"
+        },
+        "og_image": {
+            "type": "image",
+            "label": "OG Image",
+            "default": "/storage/builder-heroes/resort.jpg"
+        },
+        "og_locale": {
+            "type": "text",
+            "label": "OG Locale",
+            "default": "en_GB"
+        },
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
+        },
+        "hero_eyebrow": {
+            "type": "text",
+            "label": "Hero Eyebrow",
+            "default": "Cliff-top · Adults only · Spa"
+        },
+        "hero_title": {
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "Every room faces the sea, and the nearest road is a mile behind you"
+        },
+        "hero_subtitle": {
+            "type": "text",
+            "label": "Hero Subheading",
+            "default": "Twenty-six rooms on the headland, a spa built into the rock, and a restaurant that only cooks what the boats bring in that morning."
+        },
+        "hero_cta": {
+            "type": "text",
+            "label": "Hero Button",
+            "default": "Check dates"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Secondary Button",
+            "default": "Explore the resort"
+        },
+        "hero_image": {
+            "type": "image",
+            "label": "Hero Image",
+            "default": "/storage/builder-heroes/resort.jpg"
+        },
+        "offers_title": {
+            "type": "text",
+            "label": "Offers Heading",
+            "default": "Where you might stay"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Offers Subheading",
+            "default": "Every room faces water. The difference is how much of it you get, and how far you walk."
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "Our story"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Heading",
+            "default": "Nine acres, and a promise about what stays wild"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "When the site was bought there was a plan for a hundred and forty keys. We built forty-eight and gave the rest of the headland back to the scrub. It costs us money every year and it is the reason people come."
+        },
+        "story_image": {
+            "type": "image",
+            "label": "Story Image",
+            "default": "/storage/template-images/resort/gallery_2.jpg"
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Heading",
+            "default": "The coast, the rooms, the water"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Heading",
+            "default": "Planning your stay"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Heading",
+            "default": "What people say"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Heading",
+            "default": "Reservations"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "One team handles rooms, spa and dining, so nothing gets lost between departments."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Opening Hours",
+            "default": "Reservations 8–8 daily · Resort open year round"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Check dates"
+        },
+        "footer_blurb": {
+            "type": "text",
+            "label": "Footer Blurb",
+            "default": "A coastal resort built around the shoreline, not over it"
+        },
+        "footer_col_1": {
+            "type": "text",
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
+        },
+        "footer_col_2": {
+            "type": "text",
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Stay"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "Spa"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Dining"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book a stay"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Garden room"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Ground floor, private terrace, a short path down through the pines."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "From £210"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Sea-view suite"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "A full aspect over the bay, with an outdoor bath on the terrace."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "From £395"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Cliff villa"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Two bedrooms, a private pool, and nobody within sight of it."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "From £680"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Spa journey"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Half a day in the rock pools, two treatments and lunch on the terrace."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "£180"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Dive package"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Four guided dives on the reef, equipment and boat transfer included."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "£340"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Whole-resort hire"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "Every room, both restaurants, and the beach, for three nights."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "On request"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Two thirds of the estate is left unbuilt and replanted"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Fish bought from four local boats, never from a wholesaler"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Ninety per cent of staff live within twenty miles"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/template-images/resort/gallery_1.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/template-images/resort/gallery_2.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/template-images/resort/gallery_3.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/template-images/resort/gallery_4.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
+            "default": "/storage/template-images/resort/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/builder-heroes/resort.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Pick your dates"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "The bay is calmest May to October; the spa is best in winter."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Choose a room"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Or tell us what matters — quiet, steps, a bath, a view — and we will choose."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Arrange the extras"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Transfers, dives, treatments and dinner, all before you arrive."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Arrive and stop"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Check-in happens wherever you are sitting, with a drink in your hand."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "We have been four times. It has not got bigger, louder or worse, which is rare."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Returning guest"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "The dive team took our fourteen-year-old on her first reef dive and she has not stopped talking about it."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Returning guest"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "They kept the headland wild. You feel it the moment you arrive."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Returning guest"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#2E8B77"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#267262"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#2E8B77"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#0F1E1C"
+        }
+    },
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
+    }
+}

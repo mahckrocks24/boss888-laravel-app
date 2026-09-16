@@ -2,7 +2,7 @@
   "id": "cafe",
   "name": "Cafe / Coffee Shop",
   "industry": "cafe",
-  "description": "Artisan cafe / specialty coffee template \u2014 warm editorial hero with reservation form on cream background, stats, 6 menu highlights with origin and price, founder story split, 3 featured specials on espresso cards, 8-image food/ambiance gallery, 4-step how-we-brew process, testimonials, reserve-a-table form, contact, and footer. Built for boutique cafes and coffee shops.",
+  "description": "Artisan cafe / specialty coffee template — warm editorial hero with reservation form on cream background, stats, 6 menu highlights with origin and price, founder story split, 3 featured specials on espresso cards, 8-image food/ambiance gallery, 4-step how-we-brew process, testimonials, reserve-a-table form, contact, and footer. Built for boutique cafes and coffee shops.",
   "thumbnail": "/storage/builder-heroes/cafe.jpg",
   "category": "cafe",
   "blocks": [
@@ -286,7 +286,7 @@
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "Ember & Bean \u2014 Dubai Marina's neighbourhood coffee house. Third-wave beans roasted weekly, croissants laminated in-house, and a warm, plant-filled room to work, read, or linger."
+      "default": "Ember & Bean — Dubai Marina's neighbourhood coffee house. Third-wave beans roasted weekly, croissants laminated in-house, and a warm, plant-filled room to work, read, or linger."
     },
     "canonical_url": {
       "type": "url",
@@ -386,10 +386,10 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Neighbourhood Coffee House \u00b7 Dubai Marina"
+      "default": "Neighbourhood Coffee House · Dubai Marina"
     },
     "hero_title": {
-      "type": "text",
+      "type": "html",
       "label": "Hero Title",
       "default": "Slow Coffee, <span>Warm Room</span>, Good People."
     },
@@ -451,7 +451,7 @@
     "hero_form_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Reserve My Table \u2192"
+      "default": "Reserve My Table →"
     },
     "hero_form_note": {
       "type": "text",
@@ -481,7 +481,7 @@
     "stat_3_value": {
       "type": "text",
       "label": "Stat 3 Value",
-      "default": "4.8\u2605"
+      "default": "4.8★"
     },
     "stat_3_label": {
       "type": "text",
@@ -511,7 +511,7 @@
     "menu_intro": {
       "type": "text",
       "label": "Menu Intro",
-      "default": "Six menu favourites, available most of the week. Rotating specials change daily \u2014 ask the barista, or follow us on Instagram for the morning lineup."
+      "default": "Six menu favourites, available most of the week. Rotating specials change daily — ask the barista, or follow us on Instagram for the morning lineup."
     },
     "menu_1_tag": {
       "type": "text",
@@ -526,7 +526,7 @@
     "menu_1_desc": {
       "type": "text",
       "label": "Menu 1 Desc",
-      "default": "Double shot of our house espresso \u2014 a warm, chocolatey Brazil-Ethiopia blend \u2014 layered over velvety milk. Our most ordered drink, by a wide margin."
+      "default": "Double shot of our house espresso — a warm, chocolatey Brazil-Ethiopia blend — layered over velvety milk. Our most ordered drink, by a wide margin."
     },
     "menu_1_price": {
       "type": "text",
@@ -536,7 +536,7 @@
     "menu_1_origin": {
       "type": "text",
       "label": "Menu 1 Origin",
-      "default": "Brazil \u00b7 Ethiopia blend"
+      "default": "Brazil · Ethiopia blend"
     },
     "menu_2_tag": {
       "type": "text",
@@ -561,7 +561,7 @@
     "menu_2_origin": {
       "type": "text",
       "label": "Menu 2 Origin",
-      "default": "Chelbesa \u00b7 Ethiopia"
+      "default": "Chelbesa · Ethiopia"
     },
     "menu_3_tag": {
       "type": "text",
@@ -601,7 +601,7 @@
     "menu_4_desc": {
       "type": "text",
       "label": "Menu 4 Desc",
-      "default": "Smashed avocado, a drift of sumac, poached egg, and salted chilli oil \u2014 on our house-baked sourdough. Served all day."
+      "default": "Smashed avocado, a drift of sumac, poached egg, and salted chilli oil — on our house-baked sourdough. Served all day."
     },
     "menu_4_price": {
       "type": "text",
@@ -681,7 +681,7 @@
     "story_p1": {
       "type": "text",
       "label": "Story P1",
-      "default": "Ember & Bean started in 2019 with a second-hand espresso machine, one roasted bag of Ethiopian beans, and a very small corner in Marina. We were three friends who'd met while working on the London specialty-coffee scene and had moved home \u2014 homesick not for a city, but for a room where people knew your drink."
+      "default": "Ember & Bean started in 2019 with a second-hand espresso machine, one roasted bag of Ethiopian beans, and a very small corner in Marina. We were three friends who'd met while working on the London specialty-coffee scene and had moved home — homesick not for a city, but for a room where people knew your drink."
     },
     "story_p2": {
       "type": "text",
@@ -691,12 +691,12 @@
     "story_p3": {
       "type": "text",
       "label": "Story P3",
-      "default": "We're a small team of eight. We know most regulars' drinks by name \u2014 and many by face. That's not a policy. It's the only way we know how to make a good coffee shop."
+      "default": "We're a small team of eight. We know most regulars' drinks by name — and many by face. That's not a policy. It's the only way we know how to make a good coffee shop."
     },
     "story_signature": {
       "type": "text",
       "label": "Story Signature",
-      "default": "\u2014 Mira, Samir & Jules"
+      "default": "— Mira, Samir & Jules"
     },
     "story_role": {
       "type": "text",
@@ -791,7 +791,7 @@
     "gallery_intro": {
       "type": "text",
       "label": "Gallery Intro",
-      "default": "Terracotta tiles, a lot of plants, warm low-wattage lamps, and \u2014 yes \u2014 that famous window seat. Here are a few corners we love."
+      "default": "Terracotta tiles, a lot of plants, warm low-wattage lamps, and — yes — that famous window seat. Here are a few corners we love."
     },
     "gallery_1": {
       "type": "image",
@@ -846,7 +846,7 @@
     "process_intro": {
       "type": "text",
       "label": "Process Intro",
-      "default": "Four careful steps between the harvest and the hand-off at our counter. Each takes time \u2014 and it shows in the final taste."
+      "default": "Four careful steps between the harvest and the hand-off at our counter. Each takes time — and it shows in the final taste."
     },
     "step_1_title": {
       "type": "text",
@@ -856,7 +856,7 @@
     "step_1_text": {
       "type": "text",
       "label": "Step 1 Text",
-      "default": "We buy direct from producers in Ethiopia, Colombia, and Yemen \u2014 paying well above fair-trade minimums. Relationships before transactions."
+      "default": "We buy direct from producers in Ethiopia, Colombia, and Yemen — paying well above fair-trade minimums. Relationships before transactions."
     },
     "step_2_title": {
       "type": "text",
@@ -866,7 +866,7 @@
     "step_2_text": {
       "type": "text",
       "label": "Step 2 Text",
-      "default": "Beans are roasted every Tuesday on our in-house Giesen W6A. Light to medium profile \u2014 the way the farmers wanted them tasted."
+      "default": "Beans are roasted every Tuesday on our in-house Giesen W6A. Light to medium profile — the way the farmers wanted them tasted."
     },
     "step_3_title": {
       "type": "text",
@@ -876,7 +876,7 @@
     "step_3_text": {
       "type": "text",
       "label": "Step 3 Text",
-      "default": "Roasted beans rest for 5\u201310 days in vacuum before being ground. It sounds fussy \u2014 but the cup is dramatically cleaner with proper resting."
+      "default": "Roasted beans rest for 5–10 days in vacuum before being ground. It sounds fussy — but the cup is dramatically cleaner with proper resting."
     },
     "step_4_title": {
       "type": "text",
@@ -971,7 +971,7 @@
     "booking_intro": {
       "type": "text",
       "label": "Booking Intro",
-      "default": "We hold a handful of tables each day for reservations \u2014 especially on weekend mornings. Book ahead to guarantee a spot. Walk-ins are always welcome, too."
+      "default": "We hold a handful of tables each day for reservations — especially on weekend mornings. Book ahead to guarantee a spot. Walk-ins are always welcome, too."
     },
     "booking_date_label": {
       "type": "text",
@@ -1006,7 +1006,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Reserve My Table \u2192"
+      "default": "Reserve My Table →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1021,7 +1021,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "We're open seven days a week. Street parking is free after 7pm. If you can't find us, call \u2014 the team will walk you in."
+      "default": "We're open seven days a week. Street parking is free after 7pm. If you can't find us, call — the team will walk you in."
     },
     "contact_email_label": {
       "type": "text",
@@ -1061,7 +1061,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Daily \u00b7 07:00\u201322:00"
+      "default": "Daily · 07:00–22:00"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1071,7 +1071,7 @@
     "contact_cta_text": {
       "type": "text",
       "label": "Contact CTA Text",
-      "default": "Reserve a table ahead of time and we'll keep one of our good seats waiting \u2014 plus have your go-to drink in mind."
+      "default": "Reserve a table ahead of time and we'll keep one of our good seats waiting — plus have your go-to drink in mind."
     },
     "contact_cta_button": {
       "type": "text",
@@ -1166,12 +1166,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Ember & Bean. All rights reserved."
+      "default": "© 2026 Ember & Bean. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms"
+      "default": "Privacy · Terms"
     },
     "social_facebook": {
       "type": "url",
@@ -1249,5 +1249,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "terra",
+    "accent_deep": "terra_deep",
+    "secondary": null
   }
 }

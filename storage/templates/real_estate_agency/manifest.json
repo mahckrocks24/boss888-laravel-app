@@ -2,8 +2,14 @@
   "id": "real_estate_agency",
   "name": "Broker Profile",
   "industry": "real_estate_agency",
-  "description": "Personal brand page for an individual real estate broker. Magazine-editorial meets luxury \u2014 a full-bleed hero portrait, prominent RERA credentials, live listings grid with filter tabs, area-by-area expertise, awards and press mentions, long-form testimonials with property details, and a private-consultation booking form. Mobile-first so brokers can share their link on WhatsApp.",
-  "thumbnail": "/storage/builder-heroes/real_estate_broker.jpg",
+  "catalogue": {
+    "kind": "listings",
+    "label": "Listings",
+    "home_block": "listings",
+    "slots": 6
+  },
+  "description": "Personal brand page for an individual real estate broker. Magazine-editorial meets luxury — a full-bleed hero portrait, prominent RERA credentials, live listings grid with filter tabs, area-by-area expertise, awards and press mentions, long-form testimonials with property details, and a private-consultation booking form. Mobile-first so brokers can share their link on WhatsApp.",
+  "thumbnail": "/storage/builder-heroes/real_estate_agency.jpg",
   "category": "personal_brand",
   "blocks": [
     {
@@ -22,7 +28,7 @@
     },
     {
       "id": "hero",
-      "name": "Hero \u2014 Signature Portrait",
+      "name": "Hero — Signature Portrait",
       "elements": {
         "broker_photo": ".hero-photo-img",
         "hero_eyebrow": ".hero-eyebrow",
@@ -65,7 +71,7 @@
     },
     {
       "id": "about",
-      "name": "About \u2014 Personal Story",
+      "name": "About — Personal Story",
       "elements": {
         "about_eyebrow": "#about .eyebrow",
         "about_quote": ".about-quote",
@@ -435,12 +441,12 @@
     "business_name": {
       "type": "text",
       "label": "Business Name",
-      "default": "James Whitfield"
+      "default": "Whitfield Property"
     },
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "James Whitfield \u2014 Senior Property Consultant at Luxe Properties Dubai. RERA-certified. 127 deals closed. AED 380M+ transacted. Specializing in luxury villas and off-plan investment in Dubai Marina, Palm Jumeirah, and Downtown."
+      "default": "James Whitfield — Senior Property Consultant at Luxe Properties Dubai. RERA-certified. 127 deals closed. AED 380M+ transacted. Specializing in luxury villas and off-plan investment in Dubai Marina, Palm Jumeirah, and Downtown."
     },
     "canonical_url": {
       "type": "url",
@@ -450,7 +456,7 @@
     "og_image": {
       "type": "image",
       "label": "OG Image",
-      "default": "/storage/builder-heroes/real_estate_broker.jpg"
+      "default": "/storage/builder-heroes/real_estate_agency.jpg"
     },
     "og_locale": {
       "type": "text",
@@ -515,12 +521,12 @@
     "broker_photo": {
       "type": "image",
       "label": "Broker Portrait",
-      "default": "/storage/builder-heroes/real_estate_broker.jpg"
+      "default": "/storage/builder-heroes/real_estate_agency.jpg"
     },
     "broker_company_line": {
       "type": "text",
       "label": "Company + RERA",
-      "default": "Luxe Properties Dubai \u00b7 RERA 12345678"
+      "default": "Luxe Properties Dubai · RERA 12345678"
     },
     "nav_1": {
       "type": "text",
@@ -555,12 +561,12 @@
     "nav_cta": {
       "type": "text",
       "label": "Nav CTA",
-      "default": "Book a Call"
+      "default": "Get in touch"
     },
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Real Estate Broker \u00b7 Dubai"
+      "default": "Real Estate Broker · Dubai"
     },
     "hero_cta_primary": {
       "type": "text",
@@ -615,7 +621,7 @@
     "lang_1_flag": {
       "type": "text",
       "label": "Language 1 Flag",
-      "default": "\ud83c\uddec\ud83c\udde7"
+      "default": "🇬🇧"
     },
     "lang_1_name": {
       "type": "text",
@@ -625,7 +631,7 @@
     "lang_2_flag": {
       "type": "text",
       "label": "Language 2 Flag",
-      "default": "\ud83c\udde6\ud83c\uddea"
+      "default": "🇦🇪"
     },
     "lang_2_name": {
       "type": "text",
@@ -635,7 +641,7 @@
     "lang_3_flag": {
       "type": "text",
       "label": "Language 3 Flag",
-      "default": "\ud83c\uddf7\ud83c\uddfa"
+      "default": "🇷🇺"
     },
     "lang_3_name": {
       "type": "text",
@@ -700,12 +706,12 @@
     "about_quote": {
       "type": "text",
       "label": "About Quote",
-      "default": "I don't sell properties. I help people find the home \u2014 or the investment \u2014 that changes the course of the next decade of their life."
+      "default": "I don't sell properties. I help people find the home — or the investment — that changes the course of the next decade of their life."
     },
     "about_quote_author": {
       "type": "text",
       "label": "About Quote Author",
-      "default": "\u2014 James Whitfield, Senior Property Consultant"
+      "default": "— James Whitfield, Senior Property Consultant"
     },
     "about_photo": {
       "type": "image",
@@ -715,17 +721,17 @@
     "about_text_1": {
       "type": "text",
       "label": "About Paragraph 1",
-      "default": "Born in London and raised between Dubai and the UK, I came to the GCC property market in 2018 after a decade in private wealth advisory. What drew me in was the pace \u2014 and what kept me was the people. Real estate in this city is personal. Every family I work with is writing the next chapter of their life on the line."
+      "default": "Born in London and raised between Dubai and the UK, I came to the GCC property market in 2018 after a decade in private wealth advisory. What drew me in was the pace — and what kept me was the people. Real estate in this city is personal. Every family I work with is writing the next chapter of their life on the line."
     },
     "about_text_2": {
       "type": "text",
       "label": "About Paragraph 2",
-      "default": "Today I specialize in luxury villas across Palm Jumeirah and Emirates Hills, off-plan investments in Creek Harbour and Dubai South, and discreet commercial mandates for family offices. I lead all my own deals end-to-end \u2014 no junior handoffs \u2014 and I speak to each of my clients weekly, even three years after close."
+      "default": "Today I specialize in luxury villas across Palm Jumeirah and Emirates Hills, off-plan investments in Creek Harbour and Dubai South, and discreet commercial mandates for family offices. I lead all my own deals end-to-end — no junior handoffs — and I speak to each of my clients weekly, even three years after close."
     },
     "about_text_3": {
       "type": "text",
       "label": "About Paragraph 3",
-      "default": "My philosophy is simple: do right by one client and you earn the next ten for free. After 127 transactions, I've never paid for a lead. Every client arrives through a referral from someone I helped before. That's the standard I hold myself to \u2014 and it's the standard you can expect from me."
+      "default": "My philosophy is simple: do right by one client and you earn the next ten for free. After 127 transactions, I've never paid for a lead. Every client arrives through a referral from someone I helped before. That's the standard I hold myself to — and it's the standard you can expect from me."
     },
     "about_signature": {
       "type": "text",
@@ -735,7 +741,7 @@
     "about_meta": {
       "type": "text",
       "label": "About Meta",
-      "default": "Based in Dubai Marina \u00b7 Speaks English, Arabic, Russian"
+      "default": "Based in Dubai Marina · Speaks English, Arabic, Russian"
     },
     "specialties_eyebrow": {
       "type": "text",
@@ -750,7 +756,7 @@
     "specialties_intro": {
       "type": "text",
       "label": "Specialties Intro",
-      "default": "Most brokers dabble in everything. I focus on six property types \u2014 the ones I know best, the ones where I can consistently get my clients better outcomes than the market average."
+      "default": "Most brokers dabble in everything. I focus on six property types — the ones I know best, the ones where I can consistently get my clients better outcomes than the market average."
     },
     "specialty_1_icon": {
       "type": "text",
@@ -765,7 +771,7 @@
     "specialty_1_range": {
       "type": "text",
       "label": "Specialty 1 Range",
-      "default": "AED 8M \u2013 85M"
+      "default": "AED 8M – 85M"
     },
     "specialty_1_count": {
       "type": "text",
@@ -785,7 +791,7 @@
     "specialty_2_range": {
       "type": "text",
       "label": "Specialty 2 Range",
-      "default": "AED 1.5M \u2013 12M"
+      "default": "AED 1.5M – 12M"
     },
     "specialty_2_count": {
       "type": "text",
@@ -805,7 +811,7 @@
     "specialty_3_range": {
       "type": "text",
       "label": "Specialty 3 Range",
-      "default": "AED 1.2M \u2013 18M"
+      "default": "AED 1.2M – 18M"
     },
     "specialty_3_count": {
       "type": "text",
@@ -825,7 +831,7 @@
     "specialty_4_range": {
       "type": "text",
       "label": "Specialty 4 Range",
-      "default": "AED 10M \u2013 120M"
+      "default": "AED 10M – 120M"
     },
     "specialty_4_count": {
       "type": "text",
@@ -845,7 +851,7 @@
     "specialty_5_range": {
       "type": "text",
       "label": "Specialty 5 Range",
-      "default": "AED 5M \u2013 50M"
+      "default": "AED 5M – 50M"
     },
     "specialty_5_count": {
       "type": "text",
@@ -865,7 +871,7 @@
     "specialty_6_range": {
       "type": "text",
       "label": "Specialty 6 Range",
-      "default": "AED 4M \u2013 45M"
+      "default": "AED 4M – 45M"
     },
     "specialty_6_count": {
       "type": "text",
@@ -930,7 +936,7 @@
     "listing_1_area": {
       "type": "text",
       "label": "Listing 1 Area",
-      "default": "Palm Jumeirah \u00b7 Signature Villa"
+      "default": "Palm Jumeirah · Signature Villa"
     },
     "listing_1_beds": {
       "type": "text",
@@ -975,7 +981,7 @@
     "listing_2_area": {
       "type": "text",
       "label": "Listing 2 Area",
-      "default": "Dubai Marina \u00b7 Marina Gate"
+      "default": "Dubai Marina · Marina Gate"
     },
     "listing_2_beds": {
       "type": "text",
@@ -1020,7 +1026,7 @@
     "listing_3_area": {
       "type": "text",
       "label": "Listing 3 Area",
-      "default": "Creek Harbour \u00b7 Tower Unit"
+      "default": "Creek Harbour · Tower Unit"
     },
     "listing_3_beds": {
       "type": "text",
@@ -1065,7 +1071,7 @@
     "listing_4_area": {
       "type": "text",
       "label": "Listing 4 Area",
-      "default": "Emirates Hills \u00b7 Sector E Mansion"
+      "default": "Emirates Hills · Sector E Mansion"
     },
     "listing_4_beds": {
       "type": "text",
@@ -1110,7 +1116,7 @@
     "listing_5_area": {
       "type": "text",
       "label": "Listing 5 Area",
-      "default": "Downtown \u00b7 Burj Vista"
+      "default": "Downtown · Burj Vista"
     },
     "listing_5_beds": {
       "type": "text",
@@ -1155,7 +1161,7 @@
     "listing_6_area": {
       "type": "text",
       "label": "Listing 6 Area",
-      "default": "JVC \u00b7 Garden Residence"
+      "default": "JVC · Garden Residence"
     },
     "listing_6_beds": {
       "type": "text",
@@ -1190,7 +1196,7 @@
     "areas_intro": {
       "type": "text",
       "label": "Areas Intro",
-      "default": "I know these six communities street-by-street \u2014 the schools, the service fees, the market cycle, and every seller and buyer active in the area right now."
+      "default": "I know these six communities street-by-street — the schools, the service fees, the market cycle, and every seller and buyer active in the area right now."
     },
     "area_1_image": {
       "type": "image",
@@ -1350,12 +1356,12 @@
     "awards_title": {
       "type": "text",
       "label": "Awards Title",
-      "default": "Proof of the Work \u2014 Not Just the Talk"
+      "default": "Proof of the Work — Not Just the Talk"
     },
     "awards_intro": {
       "type": "text",
       "label": "Awards Intro",
-      "default": "Recognition that matters \u2014 issued by independent bodies, earned from client outcomes, and renewed each year through continuous deals and satisfaction scores."
+      "default": "Recognition that matters — issued by independent bodies, earned from client outcomes, and renewed each year through continuous deals and satisfaction scores."
     },
     "award_1_icon": {
       "type": "text",
@@ -1370,17 +1376,17 @@
     "award_1_year": {
       "type": "text",
       "label": "Award 1 Year",
-      "default": "2018 \u2013 Present"
+      "default": "2018 – Present"
     },
     "award_1_issuer": {
       "type": "text",
       "label": "Award 1 Issuer",
-      "default": "Real Estate Regulatory Agency \u00b7 Dubai Land Department"
+      "default": "Real Estate Regulatory Agency · Dubai Land Department"
     },
     "award_2_icon": {
       "type": "text",
       "label": "Award 2 Icon",
-      "default": "\u2605"
+      "default": "★"
     },
     "award_2_name": {
       "type": "text",
@@ -1395,7 +1401,7 @@
     "award_2_issuer": {
       "type": "text",
       "label": "Award 2 Issuer",
-      "default": "Property Finder \u00b7 Annual Agent Rankings"
+      "default": "Property Finder · Annual Agent Rankings"
     },
     "award_3_icon": {
       "type": "text",
@@ -1415,7 +1421,7 @@
     "award_3_issuer": {
       "type": "text",
       "label": "Award 3 Issuer",
-      "default": "Luxe Properties Dubai \u00b7 Annual Awards"
+      "default": "Luxe Properties Dubai · Annual Awards"
     },
     "award_4_icon": {
       "type": "text",
@@ -1435,7 +1441,7 @@
     "award_4_issuer": {
       "type": "text",
       "label": "Award 4 Issuer",
-      "default": "Bayut \u00b7 Verified Broker Reviews"
+      "default": "Bayut · Verified Broker Reviews"
     },
     "award_5_icon": {
       "type": "text",
@@ -1455,7 +1461,7 @@
     "award_5_issuer": {
       "type": "text",
       "label": "Award 5 Issuer",
-      "default": "Dubai Land Department \u00b7 Transaction Records"
+      "default": "Dubai Land Department · Transaction Records"
     },
     "award_6_icon": {
       "type": "text",
@@ -1470,12 +1476,12 @@
     "award_6_year": {
       "type": "text",
       "label": "Award 6 Year",
-      "default": "2022 \u2013 Present"
+      "default": "2022 – Present"
     },
     "award_6_issuer": {
       "type": "text",
       "label": "Award 6 Issuer",
-      "default": "Luxury Portfolio International \u00b7 Certified Member"
+      "default": "Luxury Portfolio International · Certified Member"
     },
     "press_eyebrow": {
       "type": "text",
@@ -1560,17 +1566,17 @@
     "testimonial_1_rating": {
       "type": "text",
       "label": "Testimonial 1 Rating",
-      "default": "\u2605\u2605\u2605\u2605\u2605"
+      "default": "★★★★★"
     },
     "testimonial_1_quote": {
       "type": "text",
       "label": "Testimonial 1 Quote",
-      "default": "We interviewed five brokers before we picked James. He was the only one who told us honestly that the building we wanted had a service-fee problem coming \u2014 and he walked us to a better option. Closed in six weeks, AED 400K under asking."
+      "default": "We interviewed five brokers before we picked James. He was the only one who told us honestly that the building we wanted had a service-fee problem coming — and he walked us to a better option. Closed in six weeks, AED 400K under asking."
     },
     "testimonial_1_property": {
       "type": "text",
       "label": "Testimonial 1 Property",
-      "default": "Purchased 3BR \u00b7 Dubai Marina"
+      "default": "Purchased 3BR · Dubai Marina"
     },
     "testimonial_1_avatar": {
       "type": "text",
@@ -1585,12 +1591,12 @@
     "testimonial_1_nationality": {
       "type": "text",
       "label": "Testimonial 1 Nationality",
-      "default": "\ud83c\udde6\ud83c\uddea UAE Nationals"
+      "default": "🇦🇪 UAE Nationals"
     },
     "testimonial_2_rating": {
       "type": "text",
       "label": "Testimonial 2 Rating",
-      "default": "\u2605\u2605\u2605\u2605\u2605"
+      "default": "★★★★★"
     },
     "testimonial_2_quote": {
       "type": "text",
@@ -1600,7 +1606,7 @@
     "testimonial_2_property": {
       "type": "text",
       "label": "Testimonial 2 Property",
-      "default": "Purchased 2BR \u00b7 Downtown Dubai"
+      "default": "Purchased 2BR · Downtown Dubai"
     },
     "testimonial_2_avatar": {
       "type": "text",
@@ -1615,22 +1621,22 @@
     "testimonial_2_nationality": {
       "type": "text",
       "label": "Testimonial 2 Nationality",
-      "default": "\ud83c\uddf7\ud83c\uddfa Investor \u00b7 Geneva"
+      "default": "🇷🇺 Investor · Geneva"
     },
     "testimonial_3_rating": {
       "type": "text",
       "label": "Testimonial 3 Rating",
-      "default": "\u2605\u2605\u2605\u2605\u2605"
+      "default": "★★★★★"
     },
     "testimonial_3_quote": {
       "type": "text",
       "label": "Testimonial 3 Quote",
-      "default": "We sold our Palm villa through James after a prior agent sat on it for 11 months. He priced it right, produced a proper campaign in 48 hours, and brought us three qualified offers in the first week. Exchanged at AED 28.5M \u2014 on budget, on schedule."
+      "default": "We sold our Palm villa through James after a prior agent sat on it for 11 months. He priced it right, produced a proper campaign in 48 hours, and brought us three qualified offers in the first week. Exchanged at AED 28.5M — on budget, on schedule."
     },
     "testimonial_3_property": {
       "type": "text",
       "label": "Testimonial 3 Property",
-      "default": "Sold 5BR Villa \u00b7 Palm Jumeirah"
+      "default": "Sold 5BR Villa · Palm Jumeirah"
     },
     "testimonial_3_avatar": {
       "type": "text",
@@ -1645,7 +1651,7 @@
     "testimonial_3_nationality": {
       "type": "text",
       "label": "Testimonial 3 Nationality",
-      "default": "\ud83c\uddee\ud83c\uddf3 Family Office \u00b7 Mumbai"
+      "default": "🇮🇳 Family Office · Mumbai"
     },
     "process_eyebrow": {
       "type": "text",
@@ -1660,7 +1666,7 @@
     "process_intro": {
       "type": "text",
       "label": "Process Intro",
-      "default": "Some things don't scale. This process is one of them. I personally handle every step \u2014 from the first conversation to the handover of keys."
+      "default": "Some things don't scale. This process is one of them. I personally handle every step — from the first conversation to the handover of keys."
     },
     "step_1_title": {
       "type": "text",
@@ -1670,7 +1676,7 @@
     "step_1_text": {
       "type": "text",
       "label": "Step 1 Text",
-      "default": "We start with a private 45-minute conversation. I take time to understand what you actually want, what you can comfortably afford, and where compromise is okay \u2014 or not."
+      "default": "We start with a private 45-minute conversation. I take time to understand what you actually want, what you can comfortably afford, and where compromise is okay — or not."
     },
     "step_2_title": {
       "type": "text",
@@ -1680,7 +1686,7 @@
     "step_2_text": {
       "type": "text",
       "label": "Step 2 Text",
-      "default": "I curate 4 \u2013 6 shortlisted options \u2014 including off-market listings you won't find anywhere else. Every property comes with a full data pack: comps, service fees, rental yields, and risks."
+      "default": "I curate 4 – 6 shortlisted options — including off-market listings you won't find anywhere else. Every property comes with a full data pack: comps, service fees, rental yields, and risks."
     },
     "step_3_title": {
       "type": "text",
@@ -1690,7 +1696,7 @@
     "step_3_text": {
       "type": "text",
       "label": "Step 3 Text",
-      "default": "Once you've picked the property, I negotiate hard \u2014 with full transparency on my commission. My clients average 4 \u2013 8% below first-ask, and I document every concession in writing."
+      "default": "Once you've picked the property, I negotiate hard — with full transparency on my commission. My clients average 4 – 8% below first-ask, and I document every concession in writing."
     },
     "step_4_title": {
       "type": "text",
@@ -1700,7 +1706,7 @@
     "step_4_text": {
       "type": "text",
       "label": "Step 4 Text",
-      "default": "I personally supervise the DLD transfer, key handover, and snag inspection. After close, I stay in touch \u2014 weekly for the first month, then quarterly for as long as you own the property."
+      "default": "I personally supervise the DLD transfer, key handover, and snag inspection. After close, I stay in touch — weekly for the first month, then quarterly for as long as you own the property."
     },
     "booking_eyebrow": {
       "type": "text",
@@ -1715,7 +1721,7 @@
     "booking_intro": {
       "type": "text",
       "label": "Booking Intro",
-      "default": "Book a private consultation \u2014 no obligation, no pressure. Tell me what you're looking for and I'll come to our first call with three shortlisted options."
+      "default": "Book a private consultation — no obligation, no pressure. Tell me what you're looking for and I'll come to our first call with three shortlisted options."
     },
     "booking_property_type_label": {
       "type": "text",
@@ -1805,12 +1811,12 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "You reach me \u2014 not a junior, not a call center. Every message gets a personal response from me within two hours during business hours."
+      "default": "You reach me — not a junior, not a call center. Every message gets a personal response from me within two hours during business hours."
     },
     "contact_photo": {
       "type": "image",
       "label": "Contact Photo",
-      "default": "/storage/builder-heroes/real_estate_broker.jpg"
+      "default": "/storage/builder-heroes/real_estate_agency.jpg"
     },
     "contact_trust_badge": {
       "type": "text",
@@ -1870,7 +1876,7 @@
     "contact_office_label": {
       "type": "text",
       "label": "Contact Office Label",
-      "default": "Office \u00b7 RERA 12345678"
+      "default": "Office · RERA 12345678"
     },
     "contact_office": {
       "type": "text",
@@ -1880,12 +1886,12 @@
     "contact_map_placeholder": {
       "type": "text",
       "label": "Contact Map Placeholder",
-      "default": "Google Maps \u2014 Luxe Properties Dubai \u00b7 DIFC"
+      "default": "Google Maps — Luxe Properties Dubai · DIFC"
     },
     "ticker_1": {
       "type": "text",
       "label": "Ticker 1",
-      "default": "\u2605 4.9 Client Rating"
+      "default": "★ 4.9 Client Rating"
     },
     "ticker_2": {
       "type": "text",
@@ -1910,7 +1916,7 @@
     "footer_logo": {
       "type": "text",
       "label": "Footer Logo",
-      "default": "James Whitfield"
+      "default": "Whitfield Property"
     },
     "footer_tagline": {
       "type": "text",
@@ -1995,17 +2001,17 @@
     "footer_rera_disclaimer": {
       "type": "text",
       "label": "RERA Disclaimer",
-      "default": "RERA Disclaimer \u2014 This website is operated by James Whitfield, licensed broker with the Dubai Real Estate Regulatory Agency (RERA License 12345678) under Luxe Properties Dubai. All properties listed are subject to availability and verification. Listing prices and availability are accurate at the time of publication and may change without notice. No offer or contract is formed by the use of this website. All transactions are subject to Dubai Land Department regulations."
+      "default": "RERA Disclaimer — This website is operated by James Whitfield, licensed broker with the Dubai Real Estate Regulatory Agency (RERA License 12345678) under Luxe Properties Dubai. All properties listed are subject to availability and verification. Listing prices and availability are accurate at the time of publication and may change without notice. No offer or contract is formed by the use of this website. All transactions are subject to Dubai Land Department regulations."
     },
     "footer_copyright": {
       "type": "text",
       "label": "Footer Copyright",
-      "default": "\u00a9 2026 James Whitfield \u00b7 Luxe Properties Dubai. All rights reserved."
+      "default": "© 2026 James Whitfield · Luxe Properties Dubai. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Cookie Policy \u00b7 RERA 12345678"
+      "default": "Privacy · Terms · Cookie Policy · RERA 12345678"
     },
     "social_facebook": {
       "type": "url",
@@ -2095,7 +2101,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -2105,7 +2111,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -2148,5 +2154,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "gold",
+    "accent_deep": "gold_deep",
+    "secondary": null
   }
 }

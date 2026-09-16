@@ -3,7 +3,7 @@
   "name": "Medical Clinic",
   "version": "1.0.0",
   "industry": "medical_clinic",
-  "description": "Multi-specialty medical clinic template \u2014 emerald greens, calm sage, friendly clinical voice. Built for general practice, family medicine, and same-day specialist consultations.",
+  "description": "Multi-specialty medical clinic template — emerald greens, calm sage, friendly clinical voice. Built for general practice, family medicine, and same-day specialist consultations.",
   "variation": "luxury",
   "preview_image": "preview.jpg",
   "created_at": "2026-04-18",
@@ -364,12 +364,12 @@
     "business_tagline": {
       "type": "text",
       "label": "Tagline",
-      "default": "Family Medicine \u00b7 Dubai"
+      "default": "Family Medicine · Dubai"
     },
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "Greenleaf Medical \u2014 a family-run private clinic in Dubai offering general practice, health checks, vaccinations, women's health, and same-day specialist consultations."
+      "default": "Greenleaf Medical — a family-run private clinic in Dubai offering general practice, health checks, vaccinations, women's health, and same-day specialist consultations."
     },
     "canonical_url": {
       "type": "url",
@@ -389,12 +389,12 @@
     "nav_cta": {
       "type": "text",
       "label": "Nav CTA",
-      "default": "Book Consultation"
+      "default": "Book now"
     },
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Family Medicine \u00b7 Dubai"
+      "default": "Family Medicine · Dubai"
     },
     "hero_title": {
       "type": "html",
@@ -424,7 +424,7 @@
     "hero_trust_badge": {
       "type": "text",
       "label": "Hero Trust Badge",
-      "default": "DHA Licensed \u00b7 ISO 9001 \u00b7 Same-Day Appointments \u00b7 Direct Billing"
+      "default": "DHA Licensed · ISO 9001 · Same-Day Appointments · Direct Billing"
     },
     "stat_1_value": {
       "type": "text",
@@ -459,7 +459,7 @@
     "stat_4_value": {
       "type": "text",
       "label": "Stat 4 Value",
-      "default": "4.9\u2605"
+      "default": "4.9★"
     },
     "stat_4_label": {
       "type": "text",
@@ -479,7 +479,7 @@
     "services_intro": {
       "type": "text",
       "label": "Services Intro",
-      "default": "All under one roof \u2014 general practice, paediatrics, women's health, men's health, mental health, and chronic disease management."
+      "default": "All under one roof — general practice, paediatrics, women's health, men's health, mental health, and chronic disease management."
     },
     "service_1_title": {
       "type": "text",
@@ -589,7 +589,7 @@
     "service_5_text": {
       "type": "text",
       "label": "Service 5 Text",
-      "default": "Newborn checks through to adolescence \u2014 vaccinations, developmental assessments, and a quiet, child-friendly waiting space."
+      "default": "Newborn checks through to adolescence — vaccinations, developmental assessments, and a quiet, child-friendly waiting space."
     },
     "service_5_tag_1": {
       "type": "text",
@@ -644,7 +644,7 @@
     "doctors_intro": {
       "type": "text",
       "label": "Doctors Intro",
-      "default": "A small, stable team of family doctors \u2014 each holding a minimum of ten years' experience and dedicated to longer appointments and continuity of care."
+      "default": "A small, stable team of family doctors — each holding a minimum of ten years' experience and dedicated to longer appointments and continuity of care."
     },
     "doctor_1_name": {
       "type": "text",
@@ -774,7 +774,7 @@
     "process_2_text": {
       "type": "text",
       "label": "Step 2 Text",
-      "default": "A thirty-minute appointment as standard \u2014 long enough to listen, examine properly, and discuss options without rushing."
+      "default": "A thirty-minute appointment as standard — long enough to listen, examine properly, and discuss options without rushing."
     },
     "process_3_title": {
       "type": "text",
@@ -809,12 +809,12 @@
     "testimonial_1_quote": {
       "type": "text",
       "label": "Testimonial 1 Quote",
-      "default": "Dr. Rahman took the time to actually listen \u2014 the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
+      "default": "Dr. Rahman took the time to actually listen — the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
     },
     "testimonial_1_author": {
       "type": "text",
       "label": "Testimonial 1 Author",
-      "default": "Hana Y. \u2014 Dubai Marina"
+      "default": "Hana Y. — Dubai Marina"
     },
     "testimonial_1_condition": {
       "type": "text",
@@ -844,7 +844,7 @@
     "testimonial_3_author": {
       "type": "text",
       "label": "Testimonial 3 Author",
-      "default": "Roberto P. \u2014 JLT"
+      "default": "Roberto P. — JLT"
     },
     "testimonial_3_condition": {
       "type": "text",
@@ -939,7 +939,7 @@
     "cta_banner_subtitle": {
       "type": "text",
       "label": "CTA Banner Subtitle",
-      "default": "Book online in two minutes \u2014 morning, afternoon, or evening slots available every day of the week."
+      "default": "Book online in two minutes — morning, afternoon, or evening slots available every day of the week."
     },
     "cta_banner_cta": {
       "type": "text",
@@ -979,7 +979,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Opening Hours",
-      "default": "Mon\u2013Sat \u00b7 8am\u20138pm  \u00b7  Sun \u00b7 10am\u20134pm"
+      "default": "Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm"
     },
     "contact_emergency": {
       "type": "text",
@@ -994,12 +994,12 @@
     "form_submit_text": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Request Callback \u2192"
+      "default": "Request Callback →"
     },
     "form_success_message": {
       "type": "text",
       "label": "Success Message",
-      "default": "\u2713 Thank you. Reception will call you back within thirty minutes."
+      "default": "✓ Thank you. Reception will call you back within thirty minutes."
     },
     "booking_title": {
       "type": "html",
@@ -1024,12 +1024,12 @@
     "footer_tagline": {
       "type": "text",
       "label": "Footer Tagline",
-      "default": "Medical Clinic \u2014 Family Medicine \u00b7 Dubai."
+      "default": "Medical Clinic — Family Medicine · Dubai."
     },
     "footer_text": {
       "type": "text",
       "label": "Footer Copyright",
-      "default": "\u00a9 2026 Greenleaf Medical. All rights reserved."
+      "default": "© 2026 Greenleaf Medical. All rights reserved."
     },
     "social_facebook": {
       "type": "url",
@@ -1129,7 +1129,7 @@
     "blog_intro": {
       "type": "text",
       "label": "Blog Intro",
-      "default": "Practical guides, expert opinion, and behind-the-scenes notes \u2014 written by our team."
+      "default": "Practical guides, expert opinion, and behind-the-scenes notes — written by our team."
     },
     "blog_post_1_title": {
       "type": "text",
@@ -1139,7 +1139,7 @@
     "blog_post_1_excerpt": {
       "type": "text",
       "label": "Post 1 Excerpt",
-      "default": "A short walk-through of the first visit \u2014 from arrival to follow-up \u2014 so you know exactly what to expect."
+      "default": "A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect."
     },
     "blog_post_1_url": {
       "type": "url",
@@ -1154,7 +1154,7 @@
     "blog_post_2_excerpt": {
       "type": "text",
       "label": "Post 2 Excerpt",
-      "default": "The questions that should be standard \u2014 but rarely are. Use this as a checklist before any consultation."
+      "default": "The questions that should be standard — but rarely are. Use this as a checklist before any consultation."
     },
     "blog_post_2_url": {
       "type": "url",
@@ -1169,7 +1169,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why a thirty-minute consultation isn't a luxury \u2014 it's the bare minimum for thoughtful care."
+      "default": "Why a thirty-minute consultation isn't a luxury — it's the bare minimum for thoughtful care."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1179,7 +1179,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "Read More \u2192"
+      "default": "Read More →"
     }
   },
   "social_fields": [
@@ -1222,5 +1222,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "medical_blue",
+    "accent_deep": null,
+    "secondary": "sage"
   }
 }

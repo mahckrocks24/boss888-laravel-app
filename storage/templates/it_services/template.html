@@ -265,6 +265,7 @@ footer{background:var(--void);padding:80px 0 32px;border-top:1px solid var(--pan
   .section{padding:72px 0}
   .hero{padding:72px 0 48px}
 }
+figure{margin:0}
 </style>
 </head>
 <body>
@@ -575,10 +576,10 @@ footer{background:var(--void);padding:80px 0 32px;border-top:1px solid var(--pan
       <div class="footer-col">
         <h4>product</h4>
         <ul>
-          <li><a href="#features">Features</a></li>
+          <li><a href="#features">Services</a></li>
           <li><a href="#pricing">Pricing</a></li>
-          <li><a href="#">Docs</a></li>
-          <li><a href="#blog">Blog</a></li>
+          <li><a href="#contact">Support</a></li>
+          <li><a href="#blog">Insights</a></li>
           <li><a href="/blog">Blog</a></li>
         </ul>
       </div>
@@ -621,8 +622,7 @@ function handleContactSubmit(form,e){
     phone:     fd.get('phone') || '',
     message:   fd.get('message') || ''
   };
-  if (fd.get('company')) data.message = '[Company: ' + fd.get('company') + ']
-' + data.message;
+  if (fd.get('company')) data.message = '[Company: ' + fd.get('company') + ']\n' + data.message;
   fetch('/api/public/contact/' + subdomain, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -633,8 +633,6 @@ function handleContactSubmit(form,e){
   }).catch(function(){
     alert('Network error — please try again.');
   });
-  return false;
-},4000);
   return false;
 }
 </script>

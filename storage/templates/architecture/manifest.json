@@ -2,7 +2,7 @@
   "id": "architecture",
   "name": "Architecture Studio",
   "industry": "architecture",
-  "description": "Editorial-grade white-and-graphite architecture template with copper accents, oversized Helvetica display type, and a generous 9-project masonry portfolio. Boutique studio feel \u2014 suited to residential villas, commercial fit-outs, hospitality, urban planning. Six-service 3\u00d72 grid, 5-step design process, 6 award badges (AIA/RIBA/IIDA/LEED/WAF/Dezeen), 4 named partners, 3 testimonials, and a serious Start-a-Project booking form with budget, timeline and brief.",
+  "description": "Editorial-grade white-and-graphite architecture template with copper accents, oversized Helvetica display type, and a generous 9-project masonry portfolio. Boutique studio feel — suited to residential villas, commercial fit-outs, hospitality, urban planning. Six-service 3×2 grid, 5-step design process, 6 award badges (AIA/RIBA/IIDA/LEED/WAF/Dezeen), 4 named partners, 3 testimonials, and a serious Start-a-Project booking form with budget, timeline and brief.",
   "thumbnail": "/storage/builder-heroes/architecture.jpg",
   "category": "design",
   "blocks": [
@@ -406,17 +406,17 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Architecture \u00b7 Interiors \u00b7 Dubai"
+      "default": "Architecture · Interiors · Dubai"
     },
     "hero_title": {
-      "type": "text",
+      "type": "html",
       "label": "Hero Title",
       "default": "Quiet buildings, considered in every <em>detail</em>."
     },
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "A boutique twelve-person practice based in Alserkal Avenue, Dubai. We design residential villas, commercial fit-outs, and hospitality interiors across the UAE and wider GCC \u2014 always in close collaboration with our clients, craftsmen and the landscape."
+      "default": "A boutique twelve-person practice based in Alserkal Avenue, Dubai. We design residential villas, commercial fit-outs, and hospitality interiors across the UAE and wider GCC — always in close collaboration with our clients, craftsmen and the landscape."
     },
     "hero_trust_1": {
       "type": "text",
@@ -476,7 +476,7 @@
     "hero_form_note": {
       "type": "text",
       "label": "Form Note",
-      "default": "Personally reviewed by a partner \u2014 replies within two business days."
+      "default": "Personally reviewed by a partner — replies within two business days."
     },
     "stat_1_value": {
       "type": "text",
@@ -531,7 +531,7 @@
     "projects_intro": {
       "type": "text",
       "label": "Projects Intro",
-      "default": "Nine projects we're particularly proud of \u2014 a mix of private villas, urban interventions, commercial fit-outs and hospitality. Each is the result of long conversations with clients, contractors, landscape and light."
+      "default": "Nine projects we're particularly proud of — a mix of private villas, urban interventions, commercial fit-outs and hospitality. Each is the result of long conversations with clients, contractors, landscape and light."
     },
     "project_1_category": {
       "type": "text",
@@ -546,7 +546,7 @@
     "project_1_location": {
       "type": "text",
       "label": "Project 1 Location",
-      "default": "Emirates Hills, Dubai \u00b7 2024"
+      "default": "Emirates Hills, Dubai · 2024"
     },
     "project_2_category": {
       "type": "text",
@@ -561,7 +561,7 @@
     "project_2_location": {
       "type": "text",
       "label": "Project 2 Location",
-      "default": "DIFC, Dubai \u00b7 2023"
+      "default": "DIFC, Dubai · 2023"
     },
     "project_3_category": {
       "type": "text",
@@ -576,7 +576,7 @@
     "project_3_location": {
       "type": "text",
       "label": "Project 3 Location",
-      "default": "Liwa, Abu Dhabi \u00b7 2024"
+      "default": "Liwa, Abu Dhabi · 2024"
     },
     "project_4_category": {
       "type": "text",
@@ -591,7 +591,7 @@
     "project_4_location": {
       "type": "text",
       "label": "Project 4 Location",
-      "default": "Al Barari, Dubai \u00b7 2023"
+      "default": "Al Barari, Dubai · 2023"
     },
     "project_5_category": {
       "type": "text",
@@ -601,12 +601,12 @@
     "project_5_title": {
       "type": "text",
       "label": "Project 5 Title",
-      "default": "Alserkal Cultural Quarter \u2014 Masterplan"
+      "default": "Alserkal Cultural Quarter — Masterplan"
     },
     "project_5_location": {
       "type": "text",
       "label": "Project 5 Location",
-      "default": "Al Quoz, Dubai \u00b7 2022"
+      "default": "Al Quoz, Dubai · 2022"
     },
     "project_6_category": {
       "type": "text",
@@ -621,7 +621,7 @@
     "project_6_location": {
       "type": "text",
       "label": "Project 6 Location",
-      "default": "Al Ain, UAE \u00b7 2022"
+      "default": "Al Ain, UAE · 2022"
     },
     "project_7_category": {
       "type": "text",
@@ -636,7 +636,7 @@
     "project_7_location": {
       "type": "text",
       "label": "Project 7 Location",
-      "default": "d3 Design District, Dubai \u00b7 2023"
+      "default": "d3 Design District, Dubai · 2023"
     },
     "project_8_category": {
       "type": "text",
@@ -651,7 +651,7 @@
     "project_8_location": {
       "type": "text",
       "label": "Project 8 Location",
-      "default": "Sharjah \u00b7 2024"
+      "default": "Sharjah · 2024"
     },
     "project_9_category": {
       "type": "text",
@@ -666,7 +666,7 @@
     "project_9_location": {
       "type": "text",
       "label": "Project 9 Location",
-      "default": "Jumeirah, Dubai \u00b7 2025"
+      "default": "Jumeirah, Dubai · 2025"
     },
     "services_eyebrow": {
       "type": "text",
@@ -681,7 +681,7 @@
     "services_intro": {
       "type": "text",
       "label": "Services Intro",
-      "default": "Six disciplines, one studio. We draw every project through architecture, landscape, and interior \u2014 so the detail at 1:1 is consistent with the idea at 1:500."
+      "default": "Six disciplines, one studio. We draw every project through architecture, landscape, and interior — so the detail at 1:1 is consistent with the idea at 1:500."
     },
     "service_1_icon": {
       "type": "text",
@@ -696,7 +696,7 @@
     "service_1_text": {
       "type": "text",
       "label": "Service 1 Text",
-      "default": "Private villas, commercial buildings, hospitality and cultural work \u2014 from concept through tender and construction administration. Always led personally by one of the three partners."
+      "default": "Private villas, commercial buildings, hospitality and cultural work — from concept through tender and construction administration. Always led personally by one of the three partners."
     },
     "service_2_icon": {
       "type": "text",
@@ -726,7 +726,7 @@
     "service_3_text": {
       "type": "text",
       "label": "Service 3 Text",
-      "default": "In-house landscape architecture \u2014 courtyards, roof gardens, desert planting schemes. We design landscape from day one of every project, never as an afterthought."
+      "default": "In-house landscape architecture — courtyards, roof gardens, desert planting schemes. We design landscape from day one of every project, never as an afterthought."
     },
     "service_4_icon": {
       "type": "text",
@@ -741,7 +741,7 @@
     "service_4_text": {
       "type": "text",
       "label": "Service 4 Text",
-      "default": "Residential and commercial interiors, including bespoke joinery, lighting schemes and art curation. Our interiors team works alongside the architects \u2014 not sequentially \u2014 so the building and the room are one thought."
+      "default": "Residential and commercial interiors, including bespoke joinery, lighting schemes and art curation. Our interiors team works alongside the architects — not sequentially — so the building and the room are one thought."
     },
     "service_5_icon": {
       "type": "text",
@@ -756,7 +756,7 @@
     "service_5_text": {
       "type": "text",
       "label": "Service 5 Text",
-      "default": "Ten-year relationships with our engineering consultants in Dubai and London. Complex structures \u2014 long spans, cantilevers, exposed concrete \u2014 detailed in the office, not outsourced."
+      "default": "Ten-year relationships with our engineering consultants in Dubai and London. Complex structures — long spans, cantilevers, exposed concrete — detailed in the office, not outsourced."
     },
     "service_6_icon": {
       "type": "text",
@@ -771,7 +771,7 @@
     "service_6_text": {
       "type": "text",
       "label": "Service 6 Text",
-      "default": "LEED and Estidama accredited team members on every job. Passive strategies, local materials, embodied-carbon accounting \u2014 treated as design constraints, not add-ons."
+      "default": "LEED and Estidama accredited team members on every job. Passive strategies, local materials, embodied-carbon accounting — treated as design constraints, not add-ons."
     },
     "process_eyebrow": {
       "type": "text",
@@ -786,7 +786,7 @@
     "process_intro": {
       "type": "text",
       "label": "Process Intro",
-      "default": "Every project runs through the same five-stage arc. You're in the room at every stage \u2014 our approvals are recorded, not assumed."
+      "default": "Every project runs through the same five-stage arc. You're in the room at every stage — our approvals are recorded, not assumed."
     },
     "step_1_title": {
       "type": "text",
@@ -796,7 +796,7 @@
     "step_1_text": {
       "type": "text",
       "label": "Step 1 Text",
-      "default": "Two to three long conversations, a site visit, a reading of the constraints. We leave with a written brief \u2014 the document we all come back to for three years."
+      "default": "Two to three long conversations, a site visit, a reading of the constraints. We leave with a written brief — the document we all come back to for three years."
     },
     "step_2_title": {
       "type": "text",
@@ -826,7 +826,7 @@
     "step_4_text": {
       "type": "text",
       "label": "Step 4 Text",
-      "default": "Weekly site presence from a partner \u2014 never an intern. We detail in the office, we supervise on site. Shop drawings are checked by the same person who drew the concept."
+      "default": "Weekly site presence from a partner — never an intern. We detail in the office, we supervise on site. Shop drawings are checked by the same person who drew the concept."
     },
     "step_5_title": {
       "type": "text",
@@ -836,7 +836,7 @@
     "step_5_text": {
       "type": "text",
       "label": "Step 5 Text",
-      "default": "Handover, a 12-month snagging period, and a proper architectural photo shoot. We stay in touch \u2014 many of our clients have come back for second and third projects."
+      "default": "Handover, a 12-month snagging period, and a proper architectural photo shoot. We stay in touch — many of our clients have come back for second and third projects."
     },
     "awards_title": {
       "type": "text",
@@ -916,7 +916,7 @@
     "team_intro": {
       "type": "text",
       "label": "Team Intro",
-      "default": "A deliberately small team \u2014 one that lets the partners stay close to every drawing and every site visit. Each project is led personally by one partner, with a named architect, a landscape lead, and an interiors lead."
+      "default": "A deliberately small team — one that lets the partners stay close to every drawing and every site visit. Each project is led personally by one partner, with a named architect, a landscape lead, and an interiors lead."
     },
     "member_1_image": {
       "type": "image",
@@ -931,7 +931,7 @@
     "member_1_role": {
       "type": "text",
       "label": "Member 1 Role",
-      "default": "Founding Partner \u00b7 Architect"
+      "default": "Founding Partner · Architect"
     },
     "member_1_bio": {
       "type": "text",
@@ -951,7 +951,7 @@
     "member_2_role": {
       "type": "text",
       "label": "Member 2 Role",
-      "default": "Partner \u00b7 Head of Urbanism"
+      "default": "Partner · Head of Urbanism"
     },
     "member_2_bio": {
       "type": "text",
@@ -971,7 +971,7 @@
     "member_3_role": {
       "type": "text",
       "label": "Member 3 Role",
-      "default": "Partner \u00b7 Interior Design"
+      "default": "Partner · Interior Design"
     },
     "member_3_bio": {
       "type": "text",
@@ -991,7 +991,7 @@
     "member_4_role": {
       "type": "text",
       "label": "Member 4 Role",
-      "default": "Associate \u00b7 Landscape"
+      "default": "Associate · Landscape"
     },
     "member_4_bio": {
       "type": "text",
@@ -1026,12 +1026,12 @@
     "testimonial_1_result": {
       "type": "text",
       "label": "Testimonial 1 Result",
-      "default": "Ghaf House \u00b7 2024"
+      "default": "Ghaf House · 2024"
     },
     "testimonial_2_quote": {
       "type": "text",
       "label": "Testimonial 2 Quote",
-      "default": "We hired them for the DIFC fit-out because they felt rigorous. They delivered something materially considered and completely on budget \u2014 which in this industry is almost unheard of."
+      "default": "We hired them for the DIFC fit-out because they felt rigorous. They delivered something materially considered and completely on budget — which in this industry is almost unheard of."
     },
     "testimonial_2_author": {
       "type": "text",
@@ -1081,7 +1081,7 @@
     "booking_intro": {
       "type": "text",
       "label": "Booking Intro",
-      "default": "We take on roughly twelve new projects a year \u2014 a mix of residential, commercial, and hospitality work across the UAE and GCC. Send us the brief. A partner personally reads every enquiry and responds within two business days."
+      "default": "We take on roughly twelve new projects a year — a mix of residential, commercial, and hospitality work across the UAE and GCC. Send us the brief. A partner personally reads every enquiry and responds within two business days."
     },
     "booking_project_label": {
       "type": "text",
@@ -1141,7 +1141,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "We're in a converted warehouse in Alserkal Avenue. Visitors welcome by appointment \u2014 the coffee is good and the library is better."
+      "default": "We're in a converted warehouse in Alserkal Avenue. Visitors welcome by appointment — the coffee is good and the library is better."
     },
     "contact_email_label": {
       "type": "text",
@@ -1181,7 +1181,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Mon\u2013Fri, by appointment"
+      "default": "Mon–Fri, by appointment"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1286,12 +1286,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Foliage Studio FZ-LLC. All rights reserved."
+      "default": "© 2026 Foliage Studio FZ-LLC. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Cookies"
+      "default": "Privacy · Terms · Cookies"
     },
     "social_facebook": {
       "type": "url",
@@ -1381,7 +1381,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1391,7 +1391,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1434,5 +1434,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "copper",
+    "accent_deep": "copper_deep",
+    "secondary": null
   }
 }

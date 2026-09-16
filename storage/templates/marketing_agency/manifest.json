@@ -2,7 +2,7 @@
   "id": "marketing_agency",
   "name": "Marketing Agency",
   "industry": "marketing_agency",
-  "description": "Results-focused digital marketing agency template \u2014 bold hero with lead capture, service grid covering SEO/Paid/Social/Web/Content/Email, proven-results strip, real client case studies with metrics, three-tier pricing, team, testimonials, and a full Book-Free-Strategy-Call booking form. Built for agencies selling to SMBs.",
+  "description": "Results-focused digital marketing agency template — bold hero with lead capture, service grid covering SEO/Paid/Social/Web/Content/Email, proven-results strip, real client case studies with metrics, three-tier pricing, team, testimonials, and a full Book-Free-Strategy-Call booking form. Built for agencies selling to SMBs.",
   "thumbnail": "/storage/builder-heroes/marketing_agency.jpg",
   "category": "agency",
   "blocks": [
@@ -457,7 +457,7 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Digital Marketing \u00b7 Dubai"
+      "default": "Digital Marketing · Dubai"
     },
     "hero_title": {
       "type": "text",
@@ -467,7 +467,7 @@
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "We help SMBs in Dubai scale with data-driven SEO, paid ads, social media, and conversion-optimized websites. Average client grows 3.4\u00d7 in 12 months."
+      "default": "We help SMBs in Dubai scale with data-driven SEO, paid ads, social media, and conversion-optimized websites. Average client grows 3.4× in 12 months."
     },
     "hero_trust_1": {
       "type": "text",
@@ -487,7 +487,7 @@
     "hero_trust_4": {
       "type": "text",
       "label": "Trust 4",
-      "default": "4.9\u2605 on Clutch"
+      "default": "4.9★ on Clutch"
     },
     "hero_form_eyebrow": {
       "type": "text",
@@ -502,7 +502,7 @@
     "hero_form_sub": {
       "type": "text",
       "label": "Form Sub",
-      "default": "Tell us about your business \u2014 we'll send back a 20-page audit within 48 hours with immediate wins."
+      "default": "Tell us about your business — we'll send back a 20-page audit within 48 hours with immediate wins."
     },
     "hero_form_name_label": {
       "type": "text",
@@ -522,7 +522,7 @@
     "hero_form_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Send My Free Audit \u2192"
+      "default": "Send My Free Audit →"
     },
     "hero_form_note": {
       "type": "text",
@@ -542,7 +542,7 @@
     "stat_2_value": {
       "type": "text",
       "label": "Stat 2 Value",
-      "default": "3.4\u00d7"
+      "default": "3.4×"
     },
     "stat_2_label": {
       "type": "text",
@@ -582,7 +582,7 @@
     "services_intro": {
       "type": "text",
       "label": "Services Intro",
-      "default": "Six disciplines. One integrated team. Every lever that matters for your growth \u2014 handled in-house by senior specialists."
+      "default": "Six disciplines. One integrated team. Every lever that matters for your growth — handled in-house by senior specialists."
     },
     "service_1_icon": {
       "type": "text",
@@ -597,7 +597,7 @@
     "service_1_text": {
       "type": "text",
       "label": "Service 1 Text",
-      "default": "Rank higher on Google for the keywords that actually drive revenue. Technical SEO, content, and authority-building \u2014 measured in pipeline, not impressions."
+      "default": "Rank higher on Google for the keywords that actually drive revenue. Technical SEO, content, and authority-building — measured in pipeline, not impressions."
     },
     "service_1_link": {
       "type": "text",
@@ -617,7 +617,7 @@
     "service_2_text": {
       "type": "text",
       "label": "Service 2 Text",
-      "default": "Google Ads, Meta Ads, LinkedIn, TikTok. Creative + targeting + bidding that compounds \u2014 we manage budgets from AED 5K to AED 500K/month."
+      "default": "Google Ads, Meta Ads, LinkedIn, TikTok. Creative + targeting + bidding that compounds — we manage budgets from AED 5K to AED 500K/month."
     },
     "service_2_link": {
       "type": "text",
@@ -637,7 +637,7 @@
     "service_3_text": {
       "type": "text",
       "label": "Service 3 Text",
-      "default": "Content strategy, production, community, and paid social. Instagram, TikTok, LinkedIn \u2014 turned into a measurable customer acquisition channel."
+      "default": "Content strategy, production, community, and paid social. Instagram, TikTok, LinkedIn — turned into a measurable customer acquisition channel."
     },
     "service_3_link": {
       "type": "text",
@@ -677,7 +677,7 @@
     "service_5_text": {
       "type": "text",
       "label": "Service 5 Text",
-      "default": "Blog, case studies, thought leadership, and lead-magnet assets. Built to rank, built to convert, and signed off by senior editors \u2014 not interns."
+      "default": "Blog, case studies, thought leadership, and lead-magnet assets. Built to rank, built to convert, and signed off by senior editors — not interns."
     },
     "service_5_link": {
       "type": "text",
@@ -697,7 +697,7 @@
     "service_6_text": {
       "type": "text",
       "label": "Service 6 Text",
-      "default": "Lifecycle email, abandoned-cart recovery, nurture sequences, and sales automation. Klaviyo, HubSpot, ActiveCampaign \u2014 wired end-to-end with attribution."
+      "default": "Lifecycle email, abandoned-cart recovery, nurture sequences, and sales automation. Klaviyo, HubSpot, ActiveCampaign — wired end-to-end with attribution."
     },
     "service_6_link": {
       "type": "text",
@@ -717,7 +717,7 @@
     "process_intro": {
       "type": "text",
       "label": "Process Intro",
-      "default": "No black boxes. Every campaign starts with a deep audit and ends with a transparent report. Here's the repeatable playbook behind our 3.4\u00d7 average ROI lift."
+      "default": "No black boxes. Every campaign starts with a deep audit and ends with a transparent report. Here's the repeatable playbook behind our 3.4× average ROI lift."
     },
     "step_1_title": {
       "type": "text",
@@ -727,7 +727,7 @@
     "step_1_text": {
       "type": "text",
       "label": "Step 1 Text",
-      "default": "We dig into your analytics, competitors, and funnel. You get a 20-page audit with everything we found \u2014 even if you don't hire us."
+      "default": "We dig into your analytics, competitors, and funnel. You get a 20-page audit with everything we found — even if you don't hire us."
     },
     "step_2_title": {
       "type": "text",
@@ -747,7 +747,7 @@
     "step_3_text": {
       "type": "text",
       "label": "Step 3 Text",
-      "default": "Campaigns live inside 10 business days. Weekly standups, biweekly reporting, and a shared Slack channel \u2014 so you always know what's happening."
+      "default": "Campaigns live inside 10 business days. Weekly standups, biweekly reporting, and a shared Slack channel — so you always know what's happening."
     },
     "step_4_title": {
       "type": "text",
@@ -757,7 +757,7 @@
     "step_4_text": {
       "type": "text",
       "label": "Step 4 Text",
-      "default": "Once the unit economics work, we pour fuel on what's winning and quietly retire what isn't. Most clients 2\u20135\u00d7 spend within 6 months."
+      "default": "Once the unit economics work, we pour fuel on what's winning and quietly retire what isn't. Most clients 2–5× spend within 6 months."
     },
     "case_eyebrow": {
       "type": "text",
@@ -777,7 +777,7 @@
     "case_1_client": {
       "type": "text",
       "label": "Case 1 Client",
-      "default": "FITNESS BRAND \u00b7 DUBAI"
+      "default": "FITNESS BRAND · DUBAI"
     },
     "case_1_title": {
       "type": "text",
@@ -807,7 +807,7 @@
     "case_1_metric_3_value": {
       "type": "text",
       "label": "Case 1 Metric 3",
-      "default": "4.2\u00d7"
+      "default": "4.2×"
     },
     "case_1_metric_3_label": {
       "type": "text",
@@ -817,7 +817,7 @@
     "case_2_client": {
       "type": "text",
       "label": "Case 2 Client",
-      "default": "E-COMMERCE \u00b7 ABU DHABI"
+      "default": "E-COMMERCE · ABU DHABI"
     },
     "case_2_title": {
       "type": "text",
@@ -827,7 +827,7 @@
     "case_2_metric_1_value": {
       "type": "text",
       "label": "Case 2 Metric 1",
-      "default": "9.3\u00d7"
+      "default": "9.3×"
     },
     "case_2_metric_1_label": {
       "type": "text",
@@ -837,7 +837,7 @@
     "case_2_metric_2_value": {
       "type": "text",
       "label": "Case 2 Metric 2",
-      "default": "3.1\u00d7"
+      "default": "3.1×"
     },
     "case_2_metric_2_label": {
       "type": "text",
@@ -857,7 +857,7 @@
     "case_3_client": {
       "type": "text",
       "label": "Case 3 Client",
-      "default": "B2B SERVICES \u00b7 RIYADH"
+      "default": "B2B SERVICES · RIYADH"
     },
     "case_3_title": {
       "type": "text",
@@ -1017,7 +1017,7 @@
     "plan_2_desc": {
       "type": "text",
       "label": "Plan 2 Desc",
-      "default": "The sweet spot. Most SMBs pick this plan \u2014 it scales reliably."
+      "default": "The sweet spot. Most SMBs pick this plan — it scales reliably."
     },
     "plan_2_currency": {
       "type": "text",
@@ -1202,7 +1202,7 @@
     "member_3_bio": {
       "type": "text",
       "label": "Member 3 Bio",
-      "default": "11 years in organic search. Has taken 40+ SMBs from page 5 to page 1 \u2014 and kept them there."
+      "default": "11 years in organic search. Has taken 40+ SMBs from page 5 to page 1 — and kept them there."
     },
     "member_4_image": {
       "type": "image",
@@ -1272,7 +1272,7 @@
     "testimonial_2_result": {
       "type": "text",
       "label": "Testimonial 2 Result",
-      "default": "ROAS 3.8\u00d7"
+      "default": "ROAS 3.8×"
     },
     "testimonial_3_quote": {
       "type": "text",
@@ -1292,7 +1292,7 @@
     "testimonial_3_result": {
       "type": "text",
       "label": "Testimonial 3 Result",
-      "default": "Revenue 2\u00d7"
+      "default": "Revenue 2×"
     },
     "booking_eyebrow": {
       "type": "text",
@@ -1352,7 +1352,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Confirm Strategy Call \u2192"
+      "default": "Confirm Strategy Call →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1407,7 +1407,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Sun\u2013Thu, 09:00\u201318:00 GST"
+      "default": "Sun–Thu, 09:00–18:00 GST"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1512,12 +1512,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Momentum Digital. All rights reserved."
+      "default": "© 2026 Momentum Digital. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Cookies"
+      "default": "Privacy · Terms · Cookies"
     },
     "social_facebook": {
       "type": "url",
@@ -1607,7 +1607,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1617,7 +1617,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1660,5 +1660,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "orange",
+    "accent_deep": "orange_deep",
+    "secondary": null
   }
 }

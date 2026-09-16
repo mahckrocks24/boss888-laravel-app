@@ -3,7 +3,7 @@
   "name": "Cleaning Services",
   "industry": "home_services",
   "description": "Bright, trust-building cleaning company template with hero lead form, six cleaning service cards, four trust pillars, four-step booking process, three-tier pricing, parent testimonials, trust-badge strip, and a full quote-request booking form. Built for residential and commercial cleaning businesses in MENA.",
-  "thumbnail": "/storage/builder-heroes/cleaning.jpg",
+  "thumbnail": "/storage/builder-heroes/home_services.jpg",
   "category": "services",
   "blocks": [
     {
@@ -326,7 +326,7 @@
     "og_image": {
       "type": "image",
       "label": "OG Image",
-      "default": "/storage/builder-heroes/cleaning.jpg"
+      "default": "/storage/builder-heroes/home_services.jpg"
     },
     "og_locale": {
       "type": "text",
@@ -336,7 +336,7 @@
     "hero_image": {
       "type": "image",
       "label": "Hero Background",
-      "default": "/storage/builder-heroes/cleaning.jpg"
+      "default": "/storage/builder-heroes/home_services.jpg"
     },
     "white": {
       "type": "color",
@@ -421,7 +421,7 @@
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "Vetted, uniformed cleaners with eco-friendly supplies. Homes, offices, deep cleans, and move-in/move-outs across Dubai \u2014 from AED 150/visit. 100% satisfaction guaranteed."
+      "default": "Vetted, uniformed cleaners with eco-friendly supplies. Homes, offices, deep cleans, and move-in/move-outs across Dubai — from AED 150/visit. 100% satisfaction guaranteed."
     },
     "hero_trust_1": {
       "type": "text",
@@ -441,7 +441,7 @@
     "hero_trust_4": {
       "type": "text",
       "label": "Trust 4",
-      "default": "4.9\u2605 on Google"
+      "default": "4.9★ on Google"
     },
     "hero_form_eyebrow": {
       "type": "text",
@@ -456,7 +456,7 @@
     "hero_form_sub": {
       "type": "text",
       "label": "Form Sub",
-      "default": "Tell us your name, number, and where you are \u2014 we'll text you a flat-rate quote within 1 hour. No obligations."
+      "default": "Tell us your name, number, and where you are — we'll text you a flat-rate quote within 1 hour. No obligations."
     },
     "hero_form_name_label": {
       "type": "text",
@@ -476,7 +476,7 @@
     "hero_form_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Text Me a Quote \u2192"
+      "default": "Text Me a Quote →"
     },
     "hero_form_note": {
       "type": "text",
@@ -496,7 +496,7 @@
     "stat_2_value": {
       "type": "text",
       "label": "Stat 2 Value",
-      "default": "4.9\u2605"
+      "default": "4.9★"
     },
     "stat_2_label": {
       "type": "text",
@@ -536,7 +536,7 @@
     "services_intro": {
       "type": "text",
       "label": "Services Intro",
-      "default": "From a quick weekly tidy to a full post-construction reset, our trained crews are ready \u2014 fully insured, fully supplied, and always on time."
+      "default": "From a quick weekly tidy to a full post-construction reset, our trained crews are ready — fully insured, fully supplied, and always on time."
     },
     "service_1_icon": {
       "type": "text",
@@ -551,7 +551,7 @@
     "service_1_text": {
       "type": "text",
       "label": "Service 1 Text",
-      "default": "Regular apartment and villa cleaning. Kitchens, bathrooms, floors, dusting \u2014 all the essentials, done right. Weekly, biweekly, or one-off."
+      "default": "Regular apartment and villa cleaning. Kitchens, bathrooms, floors, dusting — all the essentials, done right. Weekly, biweekly, or one-off."
     },
     "service_1_link": {
       "type": "text",
@@ -591,7 +591,7 @@
     "service_3_text": {
       "type": "text",
       "label": "Service 3 Text",
-      "default": "Floor-to-ceiling reset. Inside cabinets, behind appliances, grout, vents, upholstery. For homes that need a fresh start \u2014 seasonal or annual."
+      "default": "Floor-to-ceiling reset. Inside cabinets, behind appliances, grout, vents, upholstery. For homes that need a fresh start — seasonal or annual."
     },
     "service_3_link": {
       "type": "text",
@@ -651,7 +651,7 @@
     "service_6_text": {
       "type": "text",
       "label": "Service 6 Text",
-      "default": "Sofa shampooing, mattress steam, carpet deep-clean, curtain wash, window washing at height. Ask us \u2014 we probably do it."
+      "default": "Sofa shampooing, mattress steam, carpet deep-clean, curtain wash, window washing at height. Ask us — we probably do it."
     },
     "service_6_link": {
       "type": "text",
@@ -671,12 +671,12 @@
     "why_intro": {
       "type": "text",
       "label": "Why Intro",
-      "default": "We're not the cheapest option \u2014 we're the one that won't cost you a cancelled handover inspection, a damaged sofa, or a second visit to fix what wasn't done."
+      "default": "We're not the cheapest option — we're the one that won't cost you a cancelled handover inspection, a damaged sofa, or a second visit to fix what wasn't done."
     },
     "why_1_icon": {
       "type": "text",
       "label": "Why 1 Icon",
-      "default": "\u2713"
+      "default": "✓"
     },
     "why_1_title": {
       "type": "text",
@@ -691,7 +691,7 @@
     "why_2_icon": {
       "type": "text",
       "label": "Why 2 Icon",
-      "default": "\u267b"
+      "default": "♻"
     },
     "why_2_title": {
       "type": "text",
@@ -701,12 +701,12 @@
     "why_2_text": {
       "type": "text",
       "label": "Why 2 Text",
-      "default": "Non-toxic, EU-certified cleaning supplies safe for kids, pets, asthma sufferers \u2014 and kind to Dubai's water system."
+      "default": "Non-toxic, EU-certified cleaning supplies safe for kids, pets, asthma sufferers — and kind to Dubai's water system."
     },
     "why_3_icon": {
       "type": "text",
       "label": "Why 3 Icon",
-      "default": "\u2605"
+      "default": "★"
     },
     "why_3_title": {
       "type": "text",
@@ -721,7 +721,7 @@
     "why_4_icon": {
       "type": "text",
       "label": "Why 4 Icon",
-      "default": "\u26a1"
+      "default": "⚡"
     },
     "why_4_title": {
       "type": "text",
@@ -731,7 +731,7 @@
     "why_4_text": {
       "type": "text",
       "label": "Why 4 Text",
-      "default": "No hourly surprises. You approve the quote, you know the number. Extras discussed up front \u2014 never tacked on at the door."
+      "default": "No hourly surprises. You approve the quote, you know the number. Extras discussed up front — never tacked on at the door."
     },
     "process_eyebrow": {
       "type": "text",
@@ -756,7 +756,7 @@
     "step_1_text": {
       "type": "text",
       "label": "Step 1 Text",
-      "default": "Send us your details via the form, WhatsApp, or a phone call. Takes 2 minutes \u2014 no account required."
+      "default": "Send us your details via the form, WhatsApp, or a phone call. Takes 2 minutes — no account required."
     },
     "step_2_title": {
       "type": "text",
@@ -766,7 +766,7 @@
     "step_2_text": {
       "type": "text",
       "label": "Step 2 Text",
-      "default": "We send a flat-rate quote within 1 hour. Approve and we lock your crew + time slot \u2014 often same or next day."
+      "default": "We send a flat-rate quote within 1 hour. Approve and we lock your crew + time slot — often same or next day."
     },
     "step_3_title": {
       "type": "text",
@@ -786,7 +786,7 @@
     "step_4_text": {
       "type": "text",
       "label": "Step 4 Text",
-      "default": "Walk through with our team lead. If anything's off, we fix it on the spot. Then you pay \u2014 not a dirham before."
+      "default": "Walk through with our team lead. If anything's off, we fix it on the spot. Then you pay — not a dirham before."
     },
     "pricing_eyebrow": {
       "type": "text",
@@ -801,7 +801,7 @@
     "pricing_intro": {
       "type": "text",
       "label": "Pricing Intro",
-      "default": "Packages designed for Dubai apartments and villas. All supplies included. Pick your size, pick your frequency \u2014 done."
+      "default": "Packages designed for Dubai apartments and villas. All supplies included. Pick your size, pick your frequency — done."
     },
     "plan_1_name": {
       "type": "text",
@@ -866,7 +866,7 @@
     "plan_2_desc": {
       "type": "text",
       "label": "Plan 2 Desc",
-      "default": "For 2\u20133 BR apartments and townhouses. Most booked."
+      "default": "For 2–3 BR apartments and townhouses. Most booked."
     },
     "plan_2_currency": {
       "type": "text",
@@ -1031,7 +1031,7 @@
     "testimonial_3_quote": {
       "type": "text",
       "label": "Testimonial 3 Quote",
-      "default": "We have a 40-person office in JLT. They clean it every evening, never leave a mess, never miss a day. Invoices are clean, communication is clean \u2014 it's all just clean."
+      "default": "We have a 40-person office in JLT. They clean it every evening, never leave a mess, never miss a day. Invoices are clean, communication is clean — it's all just clean."
     },
     "testimonial_3_author": {
       "type": "text",
@@ -1061,7 +1061,7 @@
     "certs_intro": {
       "type": "text",
       "label": "Certs Intro",
-      "default": "Licensed, insured, and audited. We take cleaning seriously \u2014 and the paperwork to prove it."
+      "default": "Licensed, insured, and audited. We take cleaning seriously — and the paperwork to prove it."
     },
     "cert_1": {
       "type": "text",
@@ -1156,7 +1156,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Get My Free Quote \u2192"
+      "default": "Get My Free Quote →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1211,7 +1211,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Sat\u2013Thu, 07:00\u201320:00 GST"
+      "default": "Sat–Thu, 07:00–20:00 GST"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1316,12 +1316,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Sparkle Pro Cleaning. All rights reserved."
+      "default": "© 2026 Sparkle Pro Cleaning. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Cookies"
+      "default": "Privacy · Terms · Cookies"
     },
     "social_facebook": {
       "type": "url",
@@ -1411,7 +1411,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1421,7 +1421,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1464,5 +1464,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "sky",
+    "accent_deep": "sky_deep",
+    "secondary": "green"
   }
 }

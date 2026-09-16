@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:locale" content="{{og_locale}}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#374039; --deep:#121A14; --tint:#F1F4F0;
+  /* brand colours are template variables so Arthur, the editor and the design layer can move them */
+  --accent:{{accent_color}}; --brand:{{primary_color}}; --brand-deep:{{primary_deep}}; --brand-2:{{secondary_color}};
+  --line:#DDE3DA; --paper:#FFFFFF;
+  --display:"Cormorant Garamond", Georgia, serif; --body:"Jost", system-ui, sans-serif; --dw:600; --tr:0.01em; --tt:none;
+  --h1:clamp(2.9rem, 6.2vw, 5.2rem); --h2:clamp(1.9rem, 3.4vw, 3rem); --pad:124px; --max:1200px; --r:0px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+figure{margin:0}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4{font-family:var(--display);font-weight:var(--dw);letter-spacing:var(--tr);
+  color:var(--deep);margin:0 0 .5em;line-height:1.1;text-wrap:balance}
+h1{font-size:var(--h1)} h2{font-size:var(--h2)} h3{font-size:1.22rem;line-height:1.3}
+p{margin:0 0 1em}
+section{padding:var(--pad) 24px}
+.shell{max-width:var(--max);margin:0 auto;width:100%}
+.eyebrow{font:600 11.5px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);display:block;margin-bottom:18px}
+.lede{font-size:1.12rem;color:var(--ink);opacity:.86;max-width:62ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.55em;
+  font:600 14.5px/1 var(--body);letter-spacing:.01em;padding:17px 30px;border-radius:var(--r);
+  background:var(--brand);color:#fff;border:1px solid var(--brand);transition:.18s ease}
+.btn:hover{background:var(--brand-deep);border-color:var(--brand-deep)}
+.btn-ghost{background:transparent;color:var(--deep);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--deep);filter:none}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+.tint{background:var(--tint)}
+.dark{background:var(--deep);color:rgba(255,255,255,.76)}
+.dark h1,.dark h2,.dark h3{color:#fff}
+.dark .rule{background:rgba(255,255,255,.14)}
+.dark .btn-ghost{color:#fff;border-color:rgba(255,255,255,.3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.nav-float{position:absolute;top:22px;left:0;right:0;z-index:40;padding:0 24px}
+.nav-float .inner{display:flex;align-items:center;gap:30px;height:64px;padding:0 12px 0 22px;
+  background:rgba(255,255,255,.93);backdrop-filter:blur(12px);border:1px solid var(--line);
+  border-radius:var(--r);box-shadow:0 10px 34px -22px rgba(0,0,0,.5)}
+.nav-float .logo{display:flex;align-items:center;gap:10px;font:600 16px/1 var(--display);color:var(--deep);margin-right:auto}
+.nav-float .brand-mark{height:30px;width:auto}
+.nav-float .nav-links{display:flex;align-items:center;gap:24px}
+.nav-float .nav-link{font:500 14px/1 var(--body);color:var(--ink)}
+.nav-float .nav-link:hover{color:var(--accent)}
+.nav-float .nav-cta{font:600 13.5px/1 var(--body);padding:11px 20px;border-radius:calc(var(--r) - 1px);
+  background:var(--deep);color:#fff}
+@media (max-width:860px){.nav-float{top:12px}.nav-float .inner{height:56px}}
+.hero-cover{position:relative;padding:0;min-height:clamp(560px,88vh,860px);display:grid;align-items:end;
+  background:var(--deep);overflow:hidden}
+.hero-cover .hero-bg{position:absolute;inset:0}
+.hero-cover .hero-bg img{width:100%;height:100%;object-fit:cover;opacity:.8}
+.hero-cover .hero-veil{position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(var(--hero-rgb,17,20,28),.92) 8%,rgba(var(--hero-rgb,17,20,28),.28) 60%,rgba(var(--hero-rgb,17,20,28),.55))}
+.hero-cover .hero-inner{position:relative;padding:0 24px clamp(56px,7vw,96px);width:100%}
+.hero-cover .hero-copy{max-width:800px}
+.hero-cover h1{color:#fff;margin-bottom:20px}
+.hero-cover .eyebrow{color:#fff;opacity:.72}
+.hero-cover p{color:rgba(255,255,255,.86);font-size:1.14rem;max-width:60ch}
+.hero-cover .hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}
+.hero-cover .btn-ghost{color:#fff;border-color:rgba(255,255,255,.45)}
+@media (max-width:860px){.hero-cover{min-height:auto;padding-top:140px}}
+.story-inset{padding:0 0 var(--pad)}
+.story-inset .shot{aspect-ratio:5/2;overflow:hidden}
+.story-inset .shot img{width:100%;height:100%;object-fit:cover}
+.story-inset .panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);
+  max-width:820px;margin:clamp(-100px,-8vw,-64px) auto 0;position:relative;
+  padding:clamp(34px,4vw,56px);box-shadow:0 24px 60px -40px rgba(0,0,0,.45)}
+.story-inset ul{list-style:none;margin:24px 0 0;padding:0;display:grid;
+  grid-template-columns:repeat(3,1fr);gap:20px}
+.story-inset li{font-size:.94rem;padding-top:14px;border-top:2px solid var(--accent)}
+@media (max-width:860px){
+  .story-inset .shot{aspect-ratio:3/2}
+  .story-inset .panel{margin:-48px 18px 0}
+  .story-inset ul{grid-template-columns:1fr;gap:12px}
+}
+.offer-ledger{padding:var(--pad) 24px}
+.offer-ledger .head{text-align:center;max-width:660px;margin:0 auto clamp(48px,5vw,72px)}
+.offer-ledger .head .lede{margin-left:auto;margin-right:auto}
+.offer-ledger .grid{display:grid;grid-template-columns:1fr 1fr;gap:0 clamp(44px,5vw,88px)}
+.offer-ledger .row{padding:22px 0;border-bottom:1px solid var(--line)}
+.offer-ledger .top{display:flex;align-items:baseline;gap:14px}
+.offer-ledger h3{margin:0;font-size:1.08rem;white-space:nowrap}
+.offer-ledger .dots{flex:1;border-bottom:1px dotted var(--line);transform:translateY(-4px)}
+.offer-ledger .meta{font:600 1.02rem/1 var(--display);color:var(--accent)}
+.offer-ledger p{margin:7px 0 0;font-size:.93rem;opacity:.78}
+@media (max-width:860px){.offer-ledger .grid{grid-template-columns:1fr}.offer-ledger h3{white-space:normal}}
+.gal-rail{padding:var(--pad) 0}
+.gal-rail .head{padding:0 24px;max-width:var(--max);margin:0 auto clamp(34px,4vw,52px)}
+.gal-rail .grid{display:flex;gap:16px;overflow-x:auto;padding:0 24px 12px;scroll-snap-type:x mandatory;
+  scrollbar-width:thin}
+.gal-rail .cell{flex:0 0 clamp(260px,30vw,420px);aspect-ratio:3/4;overflow:hidden;border-radius:var(--r);
+  margin:0;scroll-snap-align:start;background:var(--tint)}
+.gal-rail .cell img{width:100%;height:100%;object-fit:cover}
+@media (max-width:860px){.gal-rail .cell{flex-basis:76vw;aspect-ratio:4/5}}
+.stat-inline{padding:calc(var(--pad) * .55) 24px;background:var(--tint)}
+.stat-inline .grid{display:flex;flex-wrap:wrap;gap:14px 46px;align-items:baseline;justify-content:center}
+.stat-inline .cell{display:flex;align-items:baseline;gap:11px}
+.stat-inline b{font:var(--dw) 1.65rem/1 var(--display);color:var(--accent)}
+.stat-inline span{font-size:.95rem;color:var(--ink)}
+@media (max-width:860px){.stat-inline .grid{gap:12px 26px;justify-content:flex-start}}
+.tst-banner{padding:var(--pad) 24px;background:var(--deep);color:rgba(255,255,255,.8);text-align:center}
+.tst-banner h2{color:#fff;margin-bottom:clamp(36px,4vw,56px)}
+.tst-banner .lead blockquote{margin:0 auto 20px;max-width:22ch;
+  font:var(--dw) clamp(1.5rem,3vw,2.4rem)/1.3 var(--display);color:#fff;letter-spacing:var(--tr)}
+.tst-banner .who{font:600 14px/1.4 var(--body);color:#fff}
+.tst-banner .role{display:block;font-weight:400;font-size:12.5px;color:rgba(255,255,255,.6);margin-top:4px}
+.tst-banner .grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(26px,3vw,52px);
+  margin-top:clamp(44px,5vw,72px);padding-top:36px;border-top:1px solid rgba(255,255,255,.15);text-align:left}
+.tst-banner .grid blockquote{margin:0 0 12px;font-size:.98rem;line-height:1.6;color:rgba(255,255,255,.78)}
+@media (max-width:860px){.tst-banner .grid{grid-template-columns:1fr;gap:24px}}
+.step-spine{padding:var(--pad) 24px}
+.step-spine .grid{display:grid;grid-template-columns:.5fr 1fr;gap:clamp(34px,5vw,80px);align-items:start}
+.step-spine .list{border-left:1px solid var(--line);padding-left:clamp(26px,3vw,44px)}
+.step-spine .cell{position:relative;padding-bottom:34px}
+.step-spine .cell:last-child{padding-bottom:0}
+.step-spine .cell::before{content:"";position:absolute;left:calc(-1 * clamp(26px,3vw,44px) - 4px);
+  top:9px;width:7px;height:7px;background:var(--accent)}
+.step-spine .num{font:600 11.5px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--accent);display:block;margin-bottom:9px}
+.step-spine h3{margin-bottom:7px}
+.step-spine p{margin:0;font-size:.96rem;opacity:.83}
+@media (max-width:860px){.step-spine .grid{grid-template-columns:1fr;gap:28px}}
+.cform{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.cform label{display:flex;flex-direction:column;gap:7px;font:500 12.5px/1 var(--body);
+  letter-spacing:.05em;text-transform:uppercase;color:var(--ink)}
+.cform label.wide{grid-column:1 / -1}
+.cform input,.cform select,.cform textarea{font:400 15px/1.4 var(--body);color:var(--deep);
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:13px 14px;width:100%}
+.cform input:focus,.cform select:focus,.cform textarea:focus{outline:none;border-color:var(--accent)}
+.cform textarea{resize:vertical}
+.cform button{grid-column:1 / -1;justify-self:start;margin-top:4px}
+@media (max-width:640px){.cform{grid-template-columns:1fr}}.cdetails{margin:0;display:grid;gap:20px}
+.cdetails dt{font:600 11px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;
+  color:var(--accent);margin-bottom:6px}
+.cdetails dd{margin:0;font-size:1rem}.ct-panel{padding:var(--pad) 24px;background:var(--deep);color:rgba(255,255,255,.78)}
+.ct-panel h2{color:#fff}
+.ct-panel .grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(36px,4.5vw,72px);align-items:center}
+.ct-panel .cdetails{margin-top:32px}
+.ct-panel .cdetails dd{color:rgba(255,255,255,.86)}
+.ct-panel .card{background:var(--paper);border-radius:var(--r);padding:clamp(30px,3.6vw,44px)}
+.ct-panel .card .cform label{color:var(--ink)}
+@media (max-width:860px){.ct-panel .grid{grid-template-columns:1fr;gap:34px}}
+.ft-mast{background:var(--deep);color:rgba(255,255,255,.66);padding:clamp(60px,7vw,92px) 24px 0;overflow:hidden}
+.ft-mast .grid{display:grid;grid-template-columns:1.2fr .6fr .6fr .8fr;gap:clamp(26px,3.4vw,52px);
+  padding-bottom:clamp(44px,5vw,66px)}
+.ft-mast p{font-size:.94rem;max-width:36ch}
+.ft-mast h4{font:600 11px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;
+  color:rgba(255,255,255,.48);margin-bottom:14px}
+.ft-mast .col a{display:block;font-size:.94rem;padding:5px 0;color:rgba(255,255,255,.76)}
+.ft-mast .col a:hover{color:#fff}
+.ft-mast .social{display:flex;flex-direction:column;gap:8px;font-size:.94rem}
+.ft-mast .wordmark{font:var(--dw) clamp(3rem,13vw,10rem)/.9 var(--display);letter-spacing:-.04em;
+  color:rgba(255,255,255,.09);white-space:nowrap;overflow:hidden;text-overflow:clip;
+  border-top:1px solid rgba(255,255,255,.12);padding-top:26px}
+.ft-mast .legal{padding:18px 0 24px;font-size:.84rem;color:rgba(255,255,255,.45)}
+@media (max-width:860px){.ft-mast .grid{grid-template-columns:1fr 1fr;gap:26px}}
+@media (max-width:520px){.ft-mast .grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<a class="sr" href="#services">Skip to content</a>
+<div style="position:relative"><nav class="nav-float" data-block="nav"><div class="inner shell">
+  <a class="logo" href="#top">
+  <img class="brand-mark" src="{{logo_img_src}}" alt="" data-field="logo_url">
+  <span class="brand-text" style="{{logo_text_display}}" data-field="business_name">{{business_name}}</span>
+</a>
+  <div class="nav-links"><a class="nav-link" href="#services" data-field="nav_1">{{nav_1}}</a><a class="nav-link" href="#about" data-field="nav_2">{{nav_2}}</a><a class="nav-link" href="#gallery" data-field="nav_3">{{nav_3}}</a><a class="nav-link" href="#process" data-field="nav_4">{{nav_4}}</a><a class="nav-cta" href="#contact" data-field="nav_cta">{{nav_cta}}</a></div>
+</div></nav><section class="hero-cover" data-block="hero" id="top" style="--hero-rgb:{{hero_overlay_rgb}}">
+  <div class="hero-bg"><img src="{{hero_image}}" alt="{{business_name}}" data-field="hero_image" loading="eager"></div>
+  <div class="hero-veil" aria-hidden="true"></div>
+  <div class="hero-inner"><div class="shell"><div class="hero-copy">
+    <span class="eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+    <h1 data-field="hero_title">{{hero_title}}</h1>
+    <p data-field="hero_subtitle">{{hero_subtitle}}</p>
+    <div class="hero-actions">
+      <a class="btn" href="#contact" data-field="hero_cta">{{hero_cta}}</a>
+      <a class="btn btn-ghost" href="#services" data-field="hero_cta_2">{{hero_cta_2}}</a>
+    </div>
+  </div></div></div>
+</section></div>
+<section class="story-inset" data-block="about" id="about">
+<figure class="shot"><img src="{{story_image}}" alt="" data-field="story_image" loading="lazy"></figure>
+<div class="panel">
+  <span class="eyebrow" data-field="story_eyebrow">{{story_eyebrow}}</span>
+  <h2 data-field="story_title">{{story_title}}</h2>
+  <p data-field="story_body">{{story_body}}</p>
+  <ul><li data-field="story_point_1">{{story_point_1}}</li><li data-field="story_point_2">{{story_point_2}}</li><li data-field="story_point_3">{{story_point_3}}</li></ul>
+</div>
+</section>
+<section class="offer-ledger" data-block="services" id="services">
+<div class="shell head">
+  <h2 data-field="offers_title">{{offers_title}}</h2>
+  <p class="lede" data-field="offers_subtitle">{{offers_subtitle}}</p>
+</div><div class="shell grid"><div class="row offer-card">
+  <div class="top">
+    <h3 data-field="service_1_title">{{service_1_title}}</h3>
+    <span class="dots" aria-hidden="true"></span>
+    <span class="meta" data-field="service_1_price">{{service_1_price}}</span>
+  </div>
+  <p data-field="service_1_text">{{service_1_text}}</p>
+</div><div class="row offer-card">
+  <div class="top">
+    <h3 data-field="service_2_title">{{service_2_title}}</h3>
+    <span class="dots" aria-hidden="true"></span>
+    <span class="meta" data-field="service_2_price">{{service_2_price}}</span>
+  </div>
+  <p data-field="service_2_text">{{service_2_text}}</p>
+</div><div class="row offer-card">
+  <div class="top">
+    <h3 data-field="service_3_title">{{service_3_title}}</h3>
+    <span class="dots" aria-hidden="true"></span>
+    <span class="meta" data-field="service_3_price">{{service_3_price}}</span>
+  </div>
+  <p data-field="service_3_text">{{service_3_text}}</p>
+</div><div class="row offer-card">
+  <div class="top">
+    <h3 data-field="service_4_title">{{service_4_title}}</h3>
+    <span class="dots" aria-hidden="true"></span>
+    <span class="meta" data-field="service_4_price">{{service_4_price}}</span>
+  </div>
+  <p data-field="service_4_text">{{service_4_text}}</p>
+</div><div class="row offer-card">
+  <div class="top">
+    <h3 data-field="service_5_title">{{service_5_title}}</h3>
+    <span class="dots" aria-hidden="true"></span>
+    <span class="meta" data-field="service_5_price">{{service_5_price}}</span>
+  </div>
+  <p data-field="service_5_text">{{service_5_text}}</p>
+</div><div class="row offer-card">
+  <div class="top">
+    <h3 data-field="service_6_title">{{service_6_title}}</h3>
+    <span class="dots" aria-hidden="true"></span>
+    <span class="meta" data-field="service_6_price">{{service_6_price}}</span>
+  </div>
+  <p data-field="service_6_text">{{service_6_text}}</p>
+</div></div>
+</section>
+<section class="gal-rail" data-block="gallery" id="gallery">
+<div class="head"><h2 data-field="gallery_title">{{gallery_title}}</h2></div><div class="grid"><figure class="cell"><img src="{{gallery_1}}" alt="" data-field="gallery_1" loading="lazy"></figure><figure class="cell"><img src="{{gallery_2}}" alt="" data-field="gallery_2" loading="lazy"></figure><figure class="cell"><img src="{{gallery_3}}" alt="" data-field="gallery_3" loading="lazy"></figure><figure class="cell"><img src="{{gallery_4}}" alt="" data-field="gallery_4" loading="lazy"></figure><figure class="cell"><img src="{{gallery_5}}" alt="" data-field="gallery_5" loading="lazy"></figure><figure class="cell"><img src="{{gallery_6}}" alt="" data-field="gallery_6" loading="lazy"></figure></div>
+</section>
+<section class="stat-inline" data-block="stats"><div class="shell grid">
+  <div class="cell"><b data-field="stat_1_value">{{stat_1_value}}</b><span data-field="stat_1_label">{{stat_1_label}}</span></div>
+  <div class="cell"><b data-field="stat_2_value">{{stat_2_value}}</b><span data-field="stat_2_label">{{stat_2_label}}</span></div>
+  <div class="cell"><b data-field="stat_3_value">{{stat_3_value}}</b><span data-field="stat_3_label">{{stat_3_label}}</span></div>
+  <div class="cell"><b data-field="stat_4_value">{{stat_4_value}}</b><span data-field="stat_4_label">{{stat_4_label}}</span></div>
+</div></section>
+<section class="tst-banner" data-block="testimonials" id="testimonials">
+<div class="shell"><h2 data-field="testimonials_title">{{testimonials_title}}</h2><div class="lead testimonial_1-card"><blockquote data-field="testimonial_1_quote">{{testimonial_1_quote}}</blockquote><div class="who"><span data-field="testimonial_1_name">{{testimonial_1_name}}</span><span class="role" data-field="testimonial_1_role">{{testimonial_1_role}}</span></div></div><div class="grid"><div class="testimonial_2-card">
+  <blockquote data-field="testimonial_2_quote">{{testimonial_2_quote}}</blockquote>
+  <div class="who"><span data-field="testimonial_2_name">{{testimonial_2_name}}</span>
+    <span class="role" data-field="testimonial_2_role">{{testimonial_2_role}}</span></div>
+</div><div class="testimonial_3-card">
+  <blockquote data-field="testimonial_3_quote">{{testimonial_3_quote}}</blockquote>
+  <div class="who"><span data-field="testimonial_3_name">{{testimonial_3_name}}</span>
+    <span class="role" data-field="testimonial_3_role">{{testimonial_3_role}}</span></div>
+</div></div></div>
+</section>
+<section class="step-spine" data-block="process" id="process">
+<div class="shell grid"><h2 data-field="steps_title">{{steps_title}}</h2><div class="list"><div class="cell"><span class="num">Step 01</span>
+  <h3 data-field="step_1_title">{{step_1_title}}</h3>
+  <p data-field="step_1_body">{{step_1_body}}</p></div><div class="cell"><span class="num">Step 02</span>
+  <h3 data-field="step_2_title">{{step_2_title}}</h3>
+  <p data-field="step_2_body">{{step_2_body}}</p></div><div class="cell"><span class="num">Step 03</span>
+  <h3 data-field="step_3_title">{{step_3_title}}</h3>
+  <p data-field="step_3_body">{{step_3_body}}</p></div><div class="cell"><span class="num">Step 04</span>
+  <h3 data-field="step_4_title">{{step_4_title}}</h3>
+  <p data-field="step_4_body">{{step_4_body}}</p></div></div></div>
+</section>
+<section class="ct-panel" data-block="contact" id="contact">
+<div class="shell grid"><div><h2 data-field="contact_title">{{contact_title}}</h2><p class="lede" data-field="contact_subtitle">{{contact_subtitle}}</p><dl class="cdetails">
+  <div><dt>Call</dt><dd><a href="tel:{{contact_phone}}" data-field="contact_phone">{{contact_phone}}</a></dd></div>
+  <div><dt>Email</dt><dd><a href="mailto:{{contact_email}}" data-field="contact_email">{{contact_email}}</a></dd></div>
+  <div><dt>Visit</dt><dd data-field="contact_address">{{contact_address}}</dd></div>
+  <div><dt>Open</dt><dd data-field="contact_hours">{{contact_hours}}</dd></div>
+</dl></div><div class="card"><form class="cform" method="post" action="#" novalidate>
+  <label><span>Name</span><input type="text" name="name" autocomplete="name" required></label>
+  <label><span>Email</span><input type="email" name="email" autocomplete="email" required></label>
+  <label><span>Phone</span><input type="tel" name="phone" autocomplete="tel"></label>
+  <label class="wide"><span>Which service?</span><select name="service"><option>General enquiry</option></select></label>
+  <label class="wide"><span>Message</span><textarea name="message" rows="4"></textarea></label>
+  <button class="btn" type="submit" data-field="contact_cta">{{contact_cta}}</button>
+</form></div></div>
+</section>
+<footer class="ft-mast" data-block="footer">
+<div class="shell grid">
+  <div><p data-field="footer_blurb">{{footer_blurb}}</p></div>
+  <div class="col"><h4 data-field="footer_col_1">{{footer_col_1}}</h4><a href="#services" data-field="nav_1">{{nav_1}}</a><a href="#about" data-field="nav_2">{{nav_2}}</a><a href="#gallery" data-field="nav_3">{{nav_3}}</a><a href="#process" data-field="nav_4">{{nav_4}}</a></div>
+  <div class="col"><h4 data-field="footer_col_2">{{footer_col_2}}</h4>
+    <a href="tel:{{contact_phone}}" data-field="contact_phone">{{contact_phone}}</a>
+    <a href="mailto:{{contact_email}}" data-field="contact_email">{{contact_email}}</a></div>
+  <div><h4>Follow</h4><div class="social">
+  <a href="{{social_facebook}}" data-field="social_facebook" aria-label="Facebook">Facebook</a>
+  <a href="{{social_instagram}}" data-field="social_instagram" aria-label="Instagram">Instagram</a>
+  <a href="{{social_linkedin}}" data-field="social_linkedin" aria-label="LinkedIn">LinkedIn</a>
+  <a href="{{social_x}}" data-field="social_x" aria-label="X">X</a>
+</div></div>
+</div>
+<div class="shell wordmark" data-field="business_name">{{business_name}}</div>
+<div class="shell legal">&copy; <span data-field="business_name">{{business_name}}</span>. <span data-field="footer_legal">{{footer_legal}}</span></div>
+</footer>
+</body>
+</html>

@@ -2,7 +2,7 @@
   "id": "pet_services",
   "name": "Pet Services",
   "industry": "pet_services",
-  "description": "Full-service pet care template \u2014 friendly orange/teal palette with Nunito rounded display and Inter body, welcoming hero, six services (Vet Care, Grooming, Boarding, Training, Daycare, Pet Shop), four trust pillars, team of vets and groomers, happy-pet gallery, breeds-served trust strip, pet-owner testimonials, and a warm Appointment booking form. Built for Dubai pet clinics, groomers, and boarding facilities.",
+  "description": "Full-service pet care template — friendly orange/teal palette with Nunito rounded display and Inter body, welcoming hero, six services (Vet Care, Grooming, Boarding, Training, Daycare, Pet Shop), four trust pillars, team of vets and groomers, happy-pet gallery, breeds-served trust strip, pet-owner testimonials, and a warm Appointment booking form. Built for Dubai pet clinics, groomers, and boarding facilities.",
   "thumbnail": "/storage/builder-heroes/pet_services.jpg",
   "category": "pets",
   "blocks": [
@@ -296,7 +296,7 @@
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "Pawsome Care is Dubai's favourite full-service pet clinic in Al Quoz \u2014 veterinary care, professional grooming, boarding, training, daycare, and a fully stocked pet shop all under one roof."
+      "default": "Pawsome Care is Dubai's favourite full-service pet clinic in Al Quoz — veterinary care, professional grooming, boarding, training, daycare, and a fully stocked pet shop all under one roof."
     },
     "canonical_url": {
       "type": "url",
@@ -391,7 +391,7 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Al Quoz \u00b7 Since 2015"
+      "default": "Al Quoz · Since 2015"
     },
     "hero_title": {
       "type": "text",
@@ -401,7 +401,7 @@
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "Pawsome Care is a full-service pet destination in Al Quoz \u2014 veterinary clinic, professional grooming, boarding, daycare, training, and pet shop. One roof, one team, every service your furry family needs."
+      "default": "Pawsome Care is a full-service pet destination in Al Quoz — veterinary clinic, professional grooming, boarding, daycare, training, and pet shop. One roof, one team, every service your furry family needs."
     },
     "hero_cta_primary": {
       "type": "text",
@@ -431,7 +431,7 @@
     "hero_trust_4": {
       "type": "text",
       "label": "Trust 4",
-      "default": "4.9\u2605 on Google"
+      "default": "4.9★ on Google"
     },
     "stat_1_value": {
       "type": "text",
@@ -486,7 +486,7 @@
     "services_intro": {
       "type": "text",
       "label": "Services Intro",
-      "default": "From a wiggly puppy's first vaccination to a senior cat's regular check-up \u2014 we cover every chapter of your pet's life in one friendly Al Quoz location."
+      "default": "From a wiggly puppy's first vaccination to a senior cat's regular check-up — we cover every chapter of your pet's life in one friendly Al Quoz location."
     },
     "service_1_icon": {
       "type": "text",
@@ -521,7 +521,7 @@
     "service_2_text": {
       "type": "text",
       "label": "Service 2 Text",
-      "default": "Full grooming from AED 120. De-matting, breed-specific cuts, nail trim, ear cleaning, and luxury spa packages \u2014 all in a stress-free, fear-free environment."
+      "default": "Full grooming from AED 120. De-matting, breed-specific cuts, nail trim, ear cleaning, and luxury spa packages — all in a stress-free, fear-free environment."
     },
     "service_2_link": {
       "type": "text",
@@ -561,7 +561,7 @@
     "service_4_text": {
       "type": "text",
       "label": "Service 4 Text",
-      "default": "Puppy school, basic obedience, behavioural rehab, and private 1:1 sessions. All force-free, reward-based methods \u2014 certified IMDT trainers."
+      "default": "Puppy school, basic obedience, behavioural rehab, and private 1:1 sessions. All force-free, reward-based methods — certified IMDT trainers."
     },
     "service_4_link": {
       "type": "text",
@@ -621,12 +621,12 @@
     "why_us_intro": {
       "type": "text",
       "label": "Why Us Intro",
-      "default": "We are not the biggest clinic in Dubai \u2014 but we might be the most loved. Here is what our pet parents tell us, over and over."
+      "default": "We are not the biggest clinic in Dubai — but we might be the most loved. Here is what our pet parents tell us, over and over."
     },
     "pillar_1_icon": {
       "type": "text",
       "label": "Pillar 1 Icon",
-      "default": "\u2665"
+      "default": "♥"
     },
     "pillar_1_title": {
       "type": "text",
@@ -641,7 +641,7 @@
     "pillar_2_icon": {
       "type": "text",
       "label": "Pillar 2 Icon",
-      "default": "\u26a1"
+      "default": "⚡"
     },
     "pillar_2_title": {
       "type": "text",
@@ -651,12 +651,12 @@
     "pillar_2_text": {
       "type": "text",
       "label": "Pillar 2 Text",
-      "default": "Panic at 2am? Call our emergency line and speak to an on-call vet immediately. Clinic opens within 30 minutes for genuine emergencies \u2014 no exceptions."
+      "default": "Panic at 2am? Call our emergency line and speak to an on-call vet immediately. Clinic opens within 30 minutes for genuine emergencies — no exceptions."
     },
     "pillar_3_icon": {
       "type": "text",
       "label": "Pillar 3 Icon",
-      "default": "\ud83d\ude90"
+      "default": "🚐"
     },
     "pillar_3_title": {
       "type": "text",
@@ -671,7 +671,7 @@
     "pillar_4_icon": {
       "type": "text",
       "label": "Pillar 4 Icon",
-      "default": "\ud83d\udcf1"
+      "default": "📱"
     },
     "pillar_4_title": {
       "type": "text",
@@ -681,7 +681,7 @@
     "pillar_4_text": {
       "type": "text",
       "label": "Pillar 4 Text",
-      "default": "Full vaccination history, prescription refills, grooming photos, and boarding webcam access \u2014 all in a single app. Your pet's life, one tap away."
+      "default": "Full vaccination history, prescription refills, grooming photos, and boarding webcam access — all in a single app. Your pet's life, one tap away."
     },
     "team_eyebrow": {
       "type": "text",
@@ -696,7 +696,7 @@
     "team_intro": {
       "type": "text",
       "label": "Team Intro",
-      "default": "Twelve pet-obsessed humans from four continents. Everyone on our team was picked for one reason \u2014 a genuine, slightly-over-the-top love of animals."
+      "default": "Twelve pet-obsessed humans from four continents. Everyone on our team was picked for one reason — a genuine, slightly-over-the-top love of animals."
     },
     "member_1_image": {
       "type": "image",
@@ -711,7 +711,7 @@
     "member_1_role": {
       "type": "text",
       "label": "Member 1 Role",
-      "default": "Clinic Director \u00b7 DVM"
+      "default": "Clinic Director · DVM"
     },
     "member_1_bio": {
       "type": "text",
@@ -731,7 +731,7 @@
     "member_2_role": {
       "type": "text",
       "label": "Member 2 Role",
-      "default": "Senior Vet \u00b7 Surgery"
+      "default": "Senior Vet · Surgery"
     },
     "member_2_bio": {
       "type": "text",
@@ -751,7 +751,7 @@
     "member_3_role": {
       "type": "text",
       "label": "Member 3 Role",
-      "default": "Head Groomer \u00b7 IPG Certified"
+      "default": "Head Groomer · IPG Certified"
     },
     "member_3_bio": {
       "type": "text",
@@ -771,7 +771,7 @@
     "member_4_role": {
       "type": "text",
       "label": "Member 4 Role",
-      "default": "Head Trainer \u00b7 IMDT Cert"
+      "default": "Head Trainer · IMDT Cert"
     },
     "member_4_bio": {
       "type": "text",
@@ -791,7 +791,7 @@
     "gallery_intro": {
       "type": "text",
       "label": "Gallery Intro",
-      "default": "A tiny wall of fame \u2014 just a handful of the thousands of furry friends who have trusted us with their wag, purr, and occasional zoomies."
+      "default": "A tiny wall of fame — just a handful of the thousands of furry friends who have trusted us with their wag, purr, and occasional zoomies."
     },
     "gallery_1_image": {
       "type": "image",
@@ -801,7 +801,7 @@
     "gallery_1_caption": {
       "type": "text",
       "label": "Gallery 1 Caption",
-      "default": "Mango \u00b7 Golden Retriever"
+      "default": "Mango · Golden Retriever"
     },
     "gallery_2_image": {
       "type": "image",
@@ -811,7 +811,7 @@
     "gallery_2_caption": {
       "type": "text",
       "label": "Gallery 2 Caption",
-      "default": "Luna \u00b7 Maine Coon"
+      "default": "Luna · Maine Coon"
     },
     "gallery_3_image": {
       "type": "image",
@@ -821,7 +821,7 @@
     "gallery_3_caption": {
       "type": "text",
       "label": "Gallery 3 Caption",
-      "default": "Biscuit \u00b7 French Bulldog"
+      "default": "Biscuit · French Bulldog"
     },
     "gallery_4_image": {
       "type": "image",
@@ -831,7 +831,7 @@
     "gallery_4_caption": {
       "type": "text",
       "label": "Gallery 4 Caption",
-      "default": "Pearl \u00b7 Persian Cat"
+      "default": "Pearl · Persian Cat"
     },
     "gallery_5_image": {
       "type": "image",
@@ -841,7 +841,7 @@
     "gallery_5_caption": {
       "type": "text",
       "label": "Gallery 5 Caption",
-      "default": "Rocky \u00b7 Rescue Mix"
+      "default": "Rocky · Rescue Mix"
     },
     "gallery_6_image": {
       "type": "image",
@@ -851,7 +851,7 @@
     "gallery_6_caption": {
       "type": "text",
       "label": "Gallery 6 Caption",
-      "default": "Kiwi \u00b7 Cockatiel"
+      "default": "Kiwi · Cockatiel"
     },
     "breeds_title": {
       "type": "text",
@@ -911,7 +911,7 @@
     "testimonial_1_quote": {
       "type": "text",
       "label": "Testimonial 1 Quote",
-      "default": "Mango had never sat still for grooming until Princess took over. Now he walks in wagging. Honestly no idea what magic she uses \u2014 but it works every time."
+      "default": "Mango had never sat still for grooming until Princess took over. Now he walks in wagging. Honestly no idea what magic she uses — but it works every time."
     },
     "testimonial_1_author": {
       "type": "text",
@@ -1046,7 +1046,7 @@
     "contact_title": {
       "type": "text",
       "label": "Contact Title",
-      "default": "Come say hi \u2014 we love visitors."
+      "default": "Come say hi — we love visitors."
     },
     "contact_intro": {
       "type": "text",
@@ -1091,7 +1091,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Open 7 days \u00b7 08:00\u201321:00 \u00b7 24/7 emergency line"
+      "default": "Open 7 days · 08:00–21:00 · 24/7 emergency line"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1101,7 +1101,7 @@
     "contact_cta_text": {
       "type": "text",
       "label": "Contact CTA Text",
-      "default": "Skip the phone queue. Book online in under sixty seconds \u2014 we will confirm within the hour and send a WhatsApp reminder the morning of your visit."
+      "default": "Skip the phone queue. Book online in under sixty seconds — we will confirm within the hour and send a WhatsApp reminder the morning of your visit."
     },
     "contact_cta_button": {
       "type": "text",
@@ -1116,7 +1116,7 @@
     "footer_tagline": {
       "type": "text",
       "label": "Footer Tagline",
-      "default": "Dubai's favourite full-service pet destination. Veterinary clinic, grooming salon, boarding hotel, daycare, training, and pet shop \u2014 all in one friendly Al Quoz location."
+      "default": "Dubai's favourite full-service pet destination. Veterinary clinic, grooming salon, boarding hotel, daycare, training, and pet shop — all in one friendly Al Quoz location."
     },
     "social_1": {
       "type": "text",
@@ -1196,12 +1196,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Pawsome Care Veterinary Services LLC. All rights reserved."
+      "default": "© 2026 Pawsome Care Veterinary Services LLC. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 MOCCAE Licence"
+      "default": "Privacy · Terms · MOCCAE Licence"
     },
     "social_facebook": {
       "type": "url",
@@ -1291,7 +1291,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1301,7 +1301,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1344,5 +1344,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "orange",
+    "accent_deep": "orange_deep",
+    "secondary": "teal"
   }
 }

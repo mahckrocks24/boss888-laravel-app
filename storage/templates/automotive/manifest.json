@@ -2,7 +2,7 @@
   "id": "automotive",
   "name": "Automotive Dealership",
   "industry": "automotive",
-  "description": "Premium pre-owned / luxury dealership template \u2014 cinematic hero with test-drive form, stats, 6-card inventory grid with make/model/year/mileage/engine/price, authorized-brands strip, 4-step buy process, 3 featured vehicles, 3-tier financing plans, testimonials, test-drive booking form, contact, and footer. Tuned for luxury and performance dealerships.",
+  "description": "Premium pre-owned / luxury dealership template — cinematic hero with test-drive form, stats, 6-card inventory grid with make/model/year/mileage/engine/price, authorized-brands strip, 4-step buy process, 3 featured vehicles, 3-tier financing plans, testimonials, test-drive booking form, contact, and footer. Tuned for luxury and performance dealerships.",
   "thumbnail": "/storage/builder-heroes/automotive.jpg",
   "category": "automotive",
   "blocks": [
@@ -350,7 +350,7 @@
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "Apex Motors \u2014 Dubai's premier destination for certified pre-owned luxury and performance vehicles. BMW, Mercedes, Porsche, and more."
+      "default": "Apex Motors — Dubai's premier destination for certified pre-owned luxury and performance vehicles. BMW, Mercedes, Porsche, and more."
     },
     "canonical_url": {
       "type": "url",
@@ -445,7 +445,7 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Certified Pre-Owned \u00b7 Dubai"
+      "default": "Certified Pre-Owned · Dubai"
     },
     "hero_title": {
       "type": "text",
@@ -510,12 +510,12 @@
     "hero_form_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Request Callback \u2192"
+      "default": "Request Callback →"
     },
     "hero_form_note": {
       "type": "text",
       "label": "Form Note",
-      "default": "We'll never share your details. No sales pressure \u2014 guaranteed."
+      "default": "We'll never share your details. No sales pressure — guaranteed."
     },
     "stat_1_value": {
       "type": "text",
@@ -540,7 +540,7 @@
     "stat_3_value": {
       "type": "text",
       "label": "Stat 3 Value",
-      "default": "4.9\u2605"
+      "default": "4.9★"
     },
     "stat_3_label": {
       "type": "text",
@@ -570,7 +570,7 @@
     "inventory_intro": {
       "type": "text",
       "label": "Inventory Intro",
-      "default": "Hand-picked, independently inspected, and ready to drive. Every vehicle below is available for a test drive today \u2014 no appointment needed until 6pm."
+      "default": "Hand-picked, independently inspected, and ready to drive. Every vehicle below is available for a test drive today — no appointment needed until 6pm."
     },
     "vehicle_1_image": {
       "type": "image",
@@ -980,7 +980,7 @@
     "step_2_text": {
       "type": "text",
       "label": "Step 2 Text",
-      "default": "Book a 30-minute test drive \u2014 any car, any time during showroom hours. A specialist will walk you through every feature."
+      "default": "Book a 30-minute test drive — any car, any time during showroom hours. A specialist will walk you through every feature."
     },
     "step_3_title": {
       "type": "text",
@@ -1110,7 +1110,7 @@
     "plan_1_term": {
       "type": "text",
       "label": "Plan 1 Term",
-      "default": "APR from \u00b7 12 to 60 months"
+      "default": "APR from · 12 to 60 months"
     },
     "plan_1_feature_1": {
       "type": "text",
@@ -1155,7 +1155,7 @@
     "plan_2_term": {
       "type": "text",
       "label": "Plan 2 Term",
-      "default": "APR from \u00b7 24 to 48 months"
+      "default": "APR from · 24 to 48 months"
     },
     "plan_2_feature_1": {
       "type": "text",
@@ -1205,7 +1205,7 @@
     "plan_3_term": {
       "type": "text",
       "label": "Plan 3 Term",
-      "default": "Effective APR \u00b7 36 months standard"
+      "default": "Effective APR · 36 months standard"
     },
     "plan_3_feature_1": {
       "type": "text",
@@ -1260,7 +1260,7 @@
     "testimonial_1_company": {
       "type": "text",
       "label": "Testimonial 1 Company",
-      "default": "BMW M4 Competition \u00b7 Feb 2026"
+      "default": "BMW M4 Competition · Feb 2026"
     },
     "testimonial_1_result": {
       "type": "text",
@@ -1280,7 +1280,7 @@
     "testimonial_2_company": {
       "type": "text",
       "label": "Testimonial 2 Company",
-      "default": "Range Rover \u00b7 Repeat Customer"
+      "default": "Range Rover · Repeat Customer"
     },
     "testimonial_2_result": {
       "type": "text",
@@ -1300,7 +1300,7 @@
     "testimonial_3_company": {
       "type": "text",
       "label": "Testimonial 3 Company",
-      "default": "Porsche 911 \u00b7 Jan 2026"
+      "default": "Porsche 911 · Jan 2026"
     },
     "testimonial_3_result": {
       "type": "text",
@@ -1360,7 +1360,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Book Test Drive \u2192"
+      "default": "Book Test Drive →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1375,7 +1375,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "Our Sheikh Zayed Road showroom houses 45+ vehicles on permanent display. Walk in anytime during opening hours \u2014 coffee's on us."
+      "default": "Our Sheikh Zayed Road showroom houses 45+ vehicles on permanent display. Walk in anytime during opening hours — coffee's on us."
     },
     "contact_email_label": {
       "type": "text",
@@ -1415,7 +1415,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Sat\u2013Thu, 09:00\u201321:00 \u00b7 Fri 15:00\u201321:00"
+      "default": "Sat–Thu, 09:00–21:00 · Fri 15:00–21:00"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1520,12 +1520,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Apex Motors. All rights reserved."
+      "default": "© 2026 Apex Motors. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Dealer License"
+      "default": "Privacy · Terms · Dealer License"
     },
     "social_facebook": {
       "type": "url",
@@ -1615,7 +1615,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1625,7 +1625,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1668,5 +1668,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "red",
+    "accent_deep": "red_deep",
+    "secondary": null
   }
 }

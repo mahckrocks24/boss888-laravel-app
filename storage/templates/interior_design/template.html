@@ -78,6 +78,9 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
   padding: 0.9rem 2.5rem;
 }
 .nav-logo { font-family: var(--fh); font-size: 1.3rem; font-weight: 500; color: var(--carbon); letter-spacing: 0.02em; }
+/* Over the hero photograph the bar is transparent, so its text is chalk; once it scrolls onto its light background it is carbon again (2026-09-11). */
+#main-nav:not(.scrolled) .nav-logo, #main-nav:not(.scrolled) .nav-links a { color: var(--chalk); }
+#main-nav:not(.scrolled) .nav-burger { color: var(--chalk); }
 .nav-links { display: flex; gap: 2.5rem; list-style: none; }
 .nav-links a { font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--carbon); font-weight: 500; transition: color .2s; }
 .nav-links a:hover { color: var(--bronze); }
@@ -315,6 +318,7 @@ footer { background: var(--carbon); color: var(--chalk); padding: 5rem 2.5rem 3r
   .booking-form, .contact-form { grid-template-columns: 1fr; }
   .booking-form .form-field.full, .contact-form .form-field.full { grid-column: auto; }
 }
+figure{margin:0}
 </style>
 </head>
 <body>

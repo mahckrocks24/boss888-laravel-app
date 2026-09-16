@@ -2,8 +2,8 @@
   "id": "hotel",
   "name": "Hospitality / Resort",
   "industry": "hotel",
-  "description": "Boutique 5-star resort / hotel template \u2014 editorial hero with availability form on ivory background, stats, 6 room types with amenities and rates, 8-amenity grid, 3 dining venues, 4 signature experiences, 8-photo gallery, testimonials, reserve-your-stay booking form, contact, and footer. Built for boutique hotels and premium resorts.",
-  "thumbnail": "/storage/builder-heroes/hospitality.jpg",
+  "description": "Boutique 5-star resort / hotel template — editorial hero with availability form on ivory background, stats, 6 room types with amenities and rates, 8-amenity grid, 3 dining venues, 4 signature experiences, 8-photo gallery, testimonials, reserve-your-stay booking form, contact, and footer. Built for boutique hotels and premium resorts.",
+  "thumbnail": "/storage/builder-heroes/hotel.jpg",
   "category": "hospitality",
   "blocks": [
     {
@@ -340,7 +340,7 @@
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "The Coral Resort \u2014 an intimate boutique 5-star retreat on Dubai's Jumeirah coastline. 48 seaview suites, three signature restaurants, and a private beach."
+      "default": "The Coral Resort — an intimate boutique 5-star retreat on Dubai's Jumeirah coastline. 48 seaview suites, three signature restaurants, and a private beach."
     },
     "canonical_url": {
       "type": "url",
@@ -350,7 +350,7 @@
     "og_image": {
       "type": "image",
       "label": "OG Image",
-      "default": "/storage/builder-heroes/hospitality.jpg"
+      "default": "/storage/builder-heroes/hotel.jpg"
     },
     "og_locale": {
       "type": "text",
@@ -360,7 +360,7 @@
     "hero_image": {
       "type": "image",
       "label": "Hero Background",
-      "default": "/storage/builder-heroes/hospitality.jpg"
+      "default": "/storage/builder-heroes/hotel.jpg"
     },
     "ivory": {
       "type": "color",
@@ -435,17 +435,17 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Boutique Five-Star \u00b7 Jumeirah, Dubai"
+      "default": "Boutique Five-Star · Jumeirah, Dubai"
     },
     "hero_title": {
-      "type": "text",
+      "type": "html",
       "label": "Hero Title",
       "default": "Quiet Luxury, <span>by the Sea</span>"
     },
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "An intimate 48-suite retreat on one of Dubai's last stretches of private coastline. No chain-hotel energy, no endless lobbies \u2014 just exceptional service, curated cuisine, and the sea at your doorstep."
+      "default": "An intimate 48-suite retreat on one of Dubai's last stretches of private coastline. No chain-hotel energy, no endless lobbies — just exceptional service, curated cuisine, and the sea at your doorstep."
     },
     "hero_trust_1": {
       "type": "text",
@@ -500,7 +500,7 @@
     "hero_form_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Check Availability \u2192"
+      "default": "Check Availability →"
     },
     "hero_form_note": {
       "type": "text",
@@ -520,7 +520,7 @@
     "stat_2_value": {
       "type": "text",
       "label": "Stat 2 Value",
-      "default": "4.9\u2605"
+      "default": "4.9★"
     },
     "stat_2_label": {
       "type": "text",
@@ -560,7 +560,7 @@
     "rooms_intro": {
       "type": "text",
       "label": "Rooms Intro",
-      "default": "Every suite faces the water. Every villa has a private garden. No two are identical \u2014 they were designed individually, with local craftsmanship and slow-travel in mind."
+      "default": "Every suite faces the water. Every villa has a private garden. No two are identical — they were designed individually, with local craftsmanship and slow-travel in mind."
     },
     "room_1_image": {
       "type": "image",
@@ -575,12 +575,12 @@
     "room_1_size": {
       "type": "text",
       "label": "Room 1 Size",
-      "default": "55 sqm \u00b7 Sleeps 2"
+      "default": "55 sqm · Sleeps 2"
     },
     "room_1_desc": {
       "type": "text",
       "label": "Room 1 Desc",
-      "default": "Floor-to-ceiling windows opening to a private balcony over the Arabian Gulf. Our entry-level suite \u2014 quietly luxurious, never excessive."
+      "default": "Floor-to-ceiling windows opening to a private balcony over the Arabian Gulf. Our entry-level suite — quietly luxurious, never excessive."
     },
     "room_1_amenity_1": {
       "type": "text",
@@ -620,7 +620,7 @@
     "room_2_size": {
       "type": "text",
       "label": "Room 2 Size",
-      "default": "85 sqm \u00b7 Sleeps 2"
+      "default": "85 sqm · Sleeps 2"
     },
     "room_2_desc": {
       "type": "text",
@@ -665,12 +665,12 @@
     "room_3_size": {
       "type": "text",
       "label": "Room 3 Size",
-      "default": "140 sqm \u00b7 Sleeps 3"
+      "default": "140 sqm · Sleeps 3"
     },
     "room_3_desc": {
       "type": "text",
       "label": "Room 3 Desc",
-      "default": "Single-storey villa with a private palm-fringed garden, outdoor shower, and a daybed pavilion \u2014 perfect for long, slow weekends."
+      "default": "Single-storey villa with a private palm-fringed garden, outdoor shower, and a daybed pavilion — perfect for long, slow weekends."
     },
     "room_3_amenity_1": {
       "type": "text",
@@ -710,7 +710,7 @@
     "room_4_size": {
       "type": "text",
       "label": "Room 4 Size",
-      "default": "175 sqm \u00b7 Sleeps 3"
+      "default": "175 sqm · Sleeps 3"
     },
     "room_4_desc": {
       "type": "text",
@@ -755,12 +755,12 @@
     "room_5_size": {
       "type": "text",
       "label": "Room 5 Size",
-      "default": "210 sqm \u00b7 Sleeps 4"
+      "default": "210 sqm · Sleeps 4"
     },
     "room_5_desc": {
       "type": "text",
       "label": "Room 5 Desc",
-      "default": "A two-bedroom villa designed for families \u2014 with a secondary room for children, a full kitchen, and a shaded play terrace."
+      "default": "A two-bedroom villa designed for families — with a secondary room for children, a full kitchen, and a shaded play terrace."
     },
     "room_5_amenity_1": {
       "type": "text",
@@ -800,7 +800,7 @@
     "room_6_size": {
       "type": "text",
       "label": "Room 6 Size",
-      "default": "320 sqm \u00b7 Sleeps 4"
+      "default": "320 sqm · Sleeps 4"
     },
     "room_6_desc": {
       "type": "text",
@@ -845,7 +845,7 @@
     "amenities_intro": {
       "type": "text",
       "label": "Amenities Intro",
-      "default": "Eight thoughtfully considered amenities \u2014 chosen for quality, not quantity. From the spa to the cellar, every space has purpose."
+      "default": "Eight thoughtfully considered amenities — chosen for quality, not quantity. From the spa to the cellar, every space has purpose."
     },
     "amenity_1_icon": {
       "type": "text",
@@ -860,7 +860,7 @@
     "amenity_1_text": {
       "type": "text",
       "label": "A1 Text",
-      "default": "A 1,100-sqm award-winning spa \u2014 including hammam, float room, and six treatment suites."
+      "default": "A 1,100-sqm award-winning spa — including hammam, float room, and six treatment suites."
     },
     "amenity_2_icon": {
       "type": "text",
@@ -920,7 +920,7 @@
     "amenity_5_text": {
       "type": "text",
       "label": "A5 Text",
-      "default": "Supervised activities for ages 4\u201312 daily, designed by a certified early-years specialist."
+      "default": "Supervised activities for ages 4–12 daily, designed by a certified early-years specialist."
     },
     "amenity_6_icon": {
       "type": "text",
@@ -980,7 +980,7 @@
     "dining_intro": {
       "type": "text",
       "label": "Dining Intro",
-      "default": "Each restaurant stands on its own. Non-guests travel from across the city to dine with us \u2014 reservations essential."
+      "default": "Each restaurant stands on its own. Non-guests travel from across the city to dine with us — reservations essential."
     },
     "dining_1_tag": {
       "type": "text",
@@ -995,7 +995,7 @@
     "dining_1_hours": {
       "type": "text",
       "label": "D1 Hours",
-      "default": "Dinner \u00b7 7pm\u201311pm \u00b7 Closed Mondays"
+      "default": "Dinner · 7pm–11pm · Closed Mondays"
     },
     "dining_1_text": {
       "type": "text",
@@ -1015,12 +1015,12 @@
     "dining_2_hours": {
       "type": "text",
       "label": "D2 Hours",
-      "default": "All day \u00b7 6:30am\u201311pm"
+      "default": "All day · 6:30am–11pm"
     },
     "dining_2_text": {
       "type": "text",
       "label": "D2 Text",
-      "default": "Mediterranean and Asian all-day dining. Famous breakfast buffet, lunch \u00e0 la carte, and a weekly Friday brunch served under the dome."
+      "default": "Mediterranean and Asian all-day dining. Famous breakfast buffet, lunch à la carte, and a weekly Friday brunch served under the dome."
     },
     "dining_3_tag": {
       "type": "text",
@@ -1035,12 +1035,12 @@
     "dining_3_hours": {
       "type": "text",
       "label": "D3 Hours",
-      "default": "Bar \u00b7 5pm\u20131am \u00b7 21+"
+      "default": "Bar · 5pm–1am · 21+"
     },
     "dining_3_text": {
       "type": "text",
       "label": "D3 Text",
-      "default": "A dimly-lit, 28-seat cocktail lounge \u2014 with a menu built around salt, smoke, and sea. Live jazz on Thursday and Saturday nights."
+      "default": "A dimly-lit, 28-seat cocktail lounge — with a menu built around salt, smoke, and sea. Live jazz on Thursday and Saturday nights."
     },
     "exp_eyebrow": {
       "type": "text",
@@ -1055,7 +1055,7 @@
     "exp_intro": {
       "type": "text",
       "label": "Exp Intro",
-      "default": "Four signature experiences built around the Coral \u2014 each bookable via the concierge, and designed to stay with you long after you leave."
+      "default": "Four signature experiences built around the Coral — each bookable via the concierge, and designed to stay with you long after you leave."
     },
     "exp_1_num": {
       "type": "text",
@@ -1085,7 +1085,7 @@
     "exp_2_text": {
       "type": "text",
       "label": "E2 Text",
-      "default": "A five-course tasting menu prepared in front of you by Chef Rania \u2014 8 seats, one evening a week."
+      "default": "A five-course tasting menu prepared in front of you by Chef Rania — 8 seats, one evening a week."
     },
     "exp_3_num": {
       "type": "text",
@@ -1100,7 +1100,7 @@
     "exp_3_text": {
       "type": "text",
       "label": "E3 Text",
-      "default": "An overnight stay in a luxury Bedouin-style camp in the Al Maha reserve \u2014 stargazing, saffron tea, falcons at dawn."
+      "default": "An overnight stay in a luxury Bedouin-style camp in the Al Maha reserve — stargazing, saffron tea, falcons at dawn."
     },
     "exp_4_num": {
       "type": "text",
@@ -1130,7 +1130,7 @@
     "gallery_intro": {
       "type": "text",
       "label": "Gallery Intro",
-      "default": "A few still moments from the resort \u2014 though nothing truly captures a place like walking through it yourself."
+      "default": "A few still moments from the resort — though nothing truly captures a place like walking through it yourself."
     },
     "gallery_1": {
       "type": "image",
@@ -1195,7 +1195,7 @@
     "testimonial_1_company": {
       "type": "text",
       "label": "Testimonial 1 Company",
-      "default": "Garden Villa \u00b7 Feb 2026"
+      "default": "Garden Villa · Feb 2026"
     },
     "testimonial_1_result": {
       "type": "text",
@@ -1215,7 +1215,7 @@
     "testimonial_2_company": {
       "type": "text",
       "label": "Testimonial 2 Company",
-      "default": "Coral Suite \u00b7 Jan 2026"
+      "default": "Coral Suite · Jan 2026"
     },
     "testimonial_2_result": {
       "type": "text",
@@ -1235,7 +1235,7 @@
     "testimonial_3_company": {
       "type": "text",
       "label": "Testimonial 3 Company",
-      "default": "Beach Pool Villa \u00b7 Mar 2026"
+      "default": "Beach Pool Villa · Mar 2026"
     },
     "testimonial_3_result": {
       "type": "text",
@@ -1300,7 +1300,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Reserve Your Stay \u2192"
+      "default": "Reserve Your Stay →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1315,7 +1315,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "Whether you're booking a first visit, planning a celebration, or just curious about what's in season \u2014 our concierge is always on the line."
+      "default": "Whether you're booking a first visit, planning a celebration, or just curious about what's in season — our concierge is always on the line."
     },
     "contact_email_label": {
       "type": "text",
@@ -1355,7 +1355,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "24 hours \u00b7 Seven days a week"
+      "default": "24 hours · Seven days a week"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1460,12 +1460,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 The Coral Resort. All rights reserved."
+      "default": "© 2026 The Coral Resort. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Cookie Policy"
+      "default": "Privacy · Terms · Cookie Policy"
     },
     "social_facebook": {
       "type": "url",
@@ -1555,7 +1555,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1565,7 +1565,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1608,5 +1608,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "teal",
+    "accent_deep": "teal_deep",
+    "secondary": "gold"
   }
 }

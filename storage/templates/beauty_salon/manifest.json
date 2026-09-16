@@ -3,7 +3,7 @@
   "name": "Beauty & Wellness Studio",
   "version": "1.0.0",
   "industry": "beauty_salon",
-  "description": "Soft-luxe template for beauty salons, spas, and wellness studios. Blush tones, rose-gold accents, serif headings \u2014 built to present a considered service menu and convert appointment intent.",
+  "description": "Soft-luxe template for beauty salons, spas, and wellness studios. Blush tones, rose-gold accents, serif headings — built to present a considered service menu and convert appointment intent.",
   "variation": "luxury",
   "preview_image": "preview.jpg",
   "created_at": "2026-04-18",
@@ -361,17 +361,17 @@
     "business_name": {
       "type": "text",
       "label": "Studio Name",
-      "default": "Atelier Soir\u00e9e"
+      "default": "Atelier Soirée"
     },
     "business_tagline": {
       "type": "text",
       "label": "Tagline",
-      "default": "Beauty Studio \u00b7 Dubai"
+      "default": "Beauty Studio · Dubai"
     },
     "meta_description": {
       "type": "text",
       "label": "Meta Description",
-      "default": "Atelier Soir\u00e9e \u2014 a private beauty studio in Dubai specialising in couture hair colour, bespoke facials, and hand-finished manicures, by appointment only."
+      "default": "Atelier Soirée — a private beauty studio in Dubai specialising in couture hair colour, bespoke facials, and hand-finished manicures, by appointment only."
     },
     "canonical_url": {
       "type": "url",
@@ -381,7 +381,7 @@
     "og_image": {
       "type": "image",
       "label": "OG Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "og_locale": {
       "type": "text",
@@ -391,12 +391,12 @@
     "nav_cta": {
       "type": "text",
       "label": "Nav CTA",
-      "default": "Book Appointment"
+      "default": "Book now"
     },
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "By Appointment \u00b7 Dubai Marina"
+      "default": "By Appointment · Dubai Marina"
     },
     "hero_title": {
       "type": "html",
@@ -406,7 +406,7 @@
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "A six-chair studio in Dubai Marina \u2014 couture hair, bespoke facials, and hand-finished manicures, taught and delivered by a close team we have trained ourselves."
+      "default": "A six-chair studio in Dubai Marina — couture hair, bespoke facials, and hand-finished manicures, taught and delivered by a close team we have trained ourselves."
     },
     "hero_cta": {
       "type": "text",
@@ -421,12 +421,12 @@
     "hero_image": {
       "type": "image",
       "label": "Hero Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "hero_trust_badge": {
       "type": "text",
       "label": "Trust Badge",
-      "default": "By Appointment \u00b7 Organic Product \u00b7 Six Seats"
+      "default": "By Appointment · Organic Product · Six Seats"
     },
     "stat_1_value": {
       "type": "text",
@@ -461,7 +461,7 @@
     "stat_4_value": {
       "type": "text",
       "label": "Stat 4",
-      "default": "4.9\u2605"
+      "default": "4.9★"
     },
     "stat_4_label": {
       "type": "text",
@@ -481,7 +481,7 @@
     "services_intro": {
       "type": "text",
       "label": "Menu Intro",
-      "default": "A short, curated list. Every service is individually timed and begins with a fifteen-minute consultation \u2014 we would rather do six things beautifully than forty things adequately."
+      "default": "A short, curated list. Every service is individually timed and begins with a fifteen-minute consultation — we would rather do six things beautifully than forty things adequately."
     },
     "service_1_title": {
       "type": "text",
@@ -521,7 +521,7 @@
     "service_2_text": {
       "type": "text",
       "label": "S2 Text",
-      "default": "Dry-cut consultation, shape, and finish \u2014 tailored to how you style at home, not to a trend. Scalp massage on arrival, always."
+      "default": "Dry-cut consultation, shape, and finish — tailored to how you style at home, not to a trend. Scalp massage on arrival, always."
     },
     "service_2_price": {
       "type": "text",
@@ -581,7 +581,7 @@
     "service_4_text": {
       "type": "text",
       "label": "S4 Text",
-      "default": "Natural nail care \u2014 no acrylics, no gels, no drills. Cuticle work, strengthening base, and hand massage with cold-pressed oil."
+      "default": "Natural nail care — no acrylics, no gels, no drills. Cuticle work, strengthening base, and hand massage with cold-pressed oil."
     },
     "service_4_price": {
       "type": "text",
@@ -611,7 +611,7 @@
     "service_5_text": {
       "type": "text",
       "label": "S5 Text",
-      "default": "Event, bridal, and photography makeup. Skin-first approach \u2014 long-wear formulations that still read natural in daylight and on camera."
+      "default": "Event, bridal, and photography makeup. Skin-first approach — long-wear formulations that still read natural in daylight and on camera."
     },
     "service_5_price": {
       "type": "text",
@@ -641,7 +641,7 @@
     "service_6_text": {
       "type": "text",
       "label": "S6 Text",
-      "default": "Diagnostic scalp scan, steam treatment, and a course of in-room formulations \u2014 recommended quarterly and ahead of any colour service."
+      "default": "Diagnostic scalp scan, steam treatment, and a course of in-room formulations — recommended quarterly and ahead of any colour service."
     },
     "service_6_price": {
       "type": "text",
@@ -676,7 +676,7 @@
     "team_intro": {
       "type": "text",
       "label": "Team Intro",
-      "default": "Six senior stylists, each with a decade or more of client work behind them \u2014 and every treatment on our menu is delivered personally, not handed to an assistant."
+      "default": "Six senior stylists, each with a decade or more of client work behind them — and every treatment on our menu is delivered personally, not handed to an assistant."
     },
     "team_1_name": {
       "type": "text",
@@ -701,7 +701,7 @@
     "team_1_image": {
       "type": "image",
       "label": "Team 1 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "team_2_name": {
       "type": "text",
@@ -721,12 +721,12 @@
     "team_2_bio": {
       "type": "text",
       "label": "Team 2 Bio",
-      "default": "Eleven years \u2014 specialist in curl cutting and dry-cut technique for mixed-texture hair."
+      "default": "Eleven years — specialist in curl cutting and dry-cut technique for mixed-texture hair."
     },
     "team_2_image": {
       "type": "image",
       "label": "Team 2 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "team_3_name": {
       "type": "text",
@@ -746,12 +746,12 @@
     "team_3_bio": {
       "type": "text",
       "label": "Team 3 Bio",
-      "default": "CIDESCO qualified. Trained under Dr. Haut in Paris \u2014 focus on skin barrier repair and manual lymphatic drainage."
+      "default": "CIDESCO qualified. Trained under Dr. Haut in Paris — focus on skin barrier repair and manual lymphatic drainage."
     },
     "team_3_image": {
       "type": "image",
       "label": "Team 3 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "team_4_name": {
       "type": "text",
@@ -771,12 +771,12 @@
     "team_4_bio": {
       "type": "text",
       "label": "Team 4 Bio",
-      "default": "Thirteen years \u2014 known for restorative manicures and a no-gel, no-drill philosophy."
+      "default": "Thirteen years — known for restorative manicures and a no-gel, no-drill philosophy."
     },
     "team_4_image": {
       "type": "image",
       "label": "Team 4 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "gallery_eyebrow": {
       "type": "text",
@@ -806,7 +806,7 @@
     "gallery_1_image": {
       "type": "image",
       "label": "G1 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "gallery_2_title": {
       "type": "text",
@@ -821,7 +821,7 @@
     "gallery_2_image": {
       "type": "image",
       "label": "G2 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "gallery_3_title": {
       "type": "text",
@@ -836,7 +836,7 @@
     "gallery_3_image": {
       "type": "image",
       "label": "G3 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "gallery_4_title": {
       "type": "text",
@@ -851,7 +851,7 @@
     "gallery_4_image": {
       "type": "image",
       "label": "G4 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "gallery_5_title": {
       "type": "text",
@@ -866,7 +866,7 @@
     "gallery_5_image": {
       "type": "image",
       "label": "G5 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "gallery_6_title": {
       "type": "text",
@@ -881,7 +881,7 @@
     "gallery_6_image": {
       "type": "image",
       "label": "G6 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "brands_eyebrow": {
       "type": "text",
@@ -901,7 +901,7 @@
     "brand_2_name": {
       "type": "text",
       "label": "Brand 2",
-      "default": "K\u00e9rastase"
+      "default": "Kérastase"
     },
     "brand_3_name": {
       "type": "text",
@@ -946,12 +946,12 @@
     "testimonial_1_quote": {
       "type": "text",
       "label": "T1 Quote",
-      "default": "Lila is the first colourist in Dubai who has genuinely listened to what I wanted \u2014 and my colour has finally stopped getting more orange every season. I would not go anywhere else."
+      "default": "Lila is the first colourist in Dubai who has genuinely listened to what I wanted — and my colour has finally stopped getting more orange every season. I would not go anywhere else."
     },
     "testimonial_1_author": {
       "type": "text",
       "label": "T1 Author",
-      "default": "Maria L. \u2014 Dubai Marina"
+      "default": "Maria L. — Dubai Marina"
     },
     "testimonial_1_service": {
       "type": "text",
@@ -966,7 +966,7 @@
     "testimonial_2_author": {
       "type": "text",
       "label": "T2 Author",
-      "default": "Cl\u00e9mence R. \u2014 Paris & Dubai"
+      "default": "Clémence R. — Paris & Dubai"
     },
     "testimonial_2_service": {
       "type": "text",
@@ -981,7 +981,7 @@
     "testimonial_3_author": {
       "type": "text",
       "label": "T3 Author",
-      "default": "Amira K. \u2014 JLT"
+      "default": "Amira K. — JLT"
     },
     "testimonial_3_service": {
       "type": "text",
@@ -1001,7 +1001,7 @@
     "blog_intro": {
       "type": "text",
       "label": "Blog Intro",
-      "default": "Skin, hair, and nail notes from the team \u2014 evidence-first, no trend-chasing, updated monthly."
+      "default": "Skin, hair, and nail notes from the team — evidence-first, no trend-chasing, updated monthly."
     },
     "blog_1_category": {
       "type": "text",
@@ -1021,7 +1021,7 @@
     "blog_1_image": {
       "type": "image",
       "label": "B1 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "blog_2_category": {
       "type": "text",
@@ -1036,12 +1036,12 @@
     "blog_2_excerpt": {
       "type": "text",
       "label": "B2 Excerpt",
-      "default": "Lila on what actually changes in the hair cortex \u2014 and why the trade-offs aren't what most people think."
+      "default": "Lila on what actually changes in the hair cortex — and why the trade-offs aren't what most people think."
     },
     "blog_2_image": {
       "type": "image",
       "label": "B2 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "blog_3_category": {
       "type": "text",
@@ -1061,7 +1061,7 @@
     "blog_3_image": {
       "type": "image",
       "label": "B3 Image",
-      "default": "/storage/builder-heroes/beauty.jpg"
+      "default": "/storage/builder-heroes/beauty_salon.jpg"
     },
     "blog_cta": {
       "type": "text",
@@ -1101,7 +1101,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "We're tucked quietly above a boutique on Marina Walk \u2014 please call ahead rather than walking in."
+      "default": "We're tucked quietly above a boutique on Marina Walk — please call ahead rather than walking in."
     },
     "contact_email": {
       "type": "text",
@@ -1121,7 +1121,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Tue\u2013Sun \u00b7 10am\u20138pm  \u00b7  Mon closed"
+      "default": "Tue–Sun · 10am–8pm  ·  Mon closed"
     },
     "contact_form_title": {
       "type": "html",
@@ -1131,12 +1131,12 @@
     "form_submit_text": {
       "type": "text",
       "label": "Submit",
-      "default": "Send Message \u2192"
+      "default": "Send Message →"
     },
     "form_success_message": {
       "type": "text",
       "label": "Success",
-      "default": "\u2713 Thank you. We'll be in touch within the hour during opening times."
+      "default": "✓ Thank you. We'll be in touch within the hour during opening times."
     },
     "footer_tagline": {
       "type": "text",
@@ -1146,7 +1146,7 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Copyright",
-      "default": "\u00a9 2026 Atelier Soir\u00e9e. All rights reserved."
+      "default": "© 2026 Atelier Soirée. All rights reserved."
     },
     "social_instagram": {
       "type": "url",
@@ -1274,5 +1274,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "rose",
+    "accent_deep": "rose_deep",
+    "secondary": null
   }
 }

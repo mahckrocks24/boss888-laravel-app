@@ -2,7 +2,7 @@
   "id": "consulting",
   "name": "Consulting",
   "industry": "consulting",
-  "description": "Senior-partner-led management consultancy template \u2014 serif-led navy/gold design with strategy-first hero, six practice services (Strategy, Operations, HR, Finance, Digital, Risk), a four-step diagnostic methodology, ROI-quantified case studies, senior team, client logo strip, and a Strategy Session booking form. Built for MENA and global consultancies selling to CEOs and boards.",
+  "description": "Senior-partner-led management consultancy template — serif-led navy/gold design with strategy-first hero, six practice services (Strategy, Operations, HR, Finance, Digital, Risk), a four-step diagnostic methodology, ROI-quantified case studies, senior team, client logo strip, and a Strategy Session booking form. Built for MENA and global consultancies selling to CEOs and boards.",
   "thumbnail": "/storage/builder-heroes/consulting.jpg",
   "category": "professional-services",
   "blocks": [
@@ -398,7 +398,7 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Management Consulting \u00b7 Dubai"
+      "default": "Management Consulting · Dubai"
     },
     "hero_title": {
       "type": "text",
@@ -493,7 +493,7 @@
     "services_intro": {
       "type": "text",
       "label": "Services Intro",
-      "default": "We keep the firm focused. Six disciplines where we have genuine partner-grade depth \u2014 no drive-by consulting in fields we do not know better than you do."
+      "default": "We keep the firm focused. Six disciplines where we have genuine partner-grade depth — no drive-by consulting in fields we do not know better than you do."
     },
     "service_1_icon": {
       "type": "text",
@@ -508,7 +508,7 @@
     "service_1_text": {
       "type": "text",
       "label": "Service 1 Text",
-      "default": "Corporate strategy, market entry, growth plans, M&A diligence, and portfolio reviews. Board-ready work backed by primary research \u2014 not decks cobbled together from public sources."
+      "default": "Corporate strategy, market entry, growth plans, M&A diligence, and portfolio reviews. Board-ready work backed by primary research — not decks cobbled together from public sources."
     },
     "service_1_link": {
       "type": "text",
@@ -588,7 +588,7 @@
     "service_5_text": {
       "type": "text",
       "label": "Service 5 Text",
-      "default": "ERP modernization, data platforms, AI enablement, and cloud migration. We work vendor-agnostic \u2014 our job is the business outcome, not a software license."
+      "default": "ERP modernization, data platforms, AI enablement, and cloud migration. We work vendor-agnostic — our job is the business outcome, not a software license."
     },
     "service_5_link": {
       "type": "text",
@@ -628,7 +628,7 @@
     "methodology_intro": {
       "type": "text",
       "label": "Methodology Intro",
-      "default": "Four phases \u2014 every engagement, regardless of size. You will know the answer by the end of phase one, not at the end of the project."
+      "default": "Four phases — every engagement, regardless of size. You will know the answer by the end of phase one, not at the end of the project."
     },
     "step_1_title": {
       "type": "text",
@@ -638,7 +638,7 @@
     "step_1_text": {
       "type": "text",
       "label": "Step 1 Text",
-      "default": "Two weeks of interviews, data analysis, and field observation. At the end you get an honest read of where the business actually stands \u2014 strengths, fault lines, and the two or three moves that matter."
+      "default": "Two weeks of interviews, data analysis, and field observation. At the end you get an honest read of where the business actually stands — strengths, fault lines, and the two or three moves that matter."
     },
     "step_2_title": {
       "type": "text",
@@ -648,7 +648,7 @@
     "step_2_text": {
       "type": "text",
       "label": "Step 2 Text",
-      "default": "The strategic answer, the operating-model changes, and the financial case \u2014 co-designed with your leadership team so the recommendations feel like theirs, not ours."
+      "default": "The strategic answer, the operating-model changes, and the financial case — co-designed with your leadership team so the recommendations feel like theirs, not ours."
     },
     "step_3_title": {
       "type": "text",
@@ -668,7 +668,7 @@
     "step_4_text": {
       "type": "text",
       "label": "Step 4 Text",
-      "default": "Quarterly partner check-ins for a full year. We stay accountable to the result \u2014 not to the invoice we already cashed."
+      "default": "Quarterly partner check-ins for a full year. We stay accountable to the result — not to the invoice we already cashed."
     },
     "case_eyebrow": {
       "type": "text",
@@ -688,7 +688,7 @@
     "case_1_client": {
       "type": "text",
       "label": "Case 1 Client",
-      "default": "FAMILY CONGLOMERATE \u00b7 UAE"
+      "default": "FAMILY CONGLOMERATE · UAE"
     },
     "case_1_title": {
       "type": "text",
@@ -708,7 +708,7 @@
     "case_1_metric_2_value": {
       "type": "text",
       "label": "Case 1 Metric 2",
-      "default": "4.2\u00d7"
+      "default": "4.2×"
     },
     "case_1_metric_2_label": {
       "type": "text",
@@ -728,7 +728,7 @@
     "case_2_client": {
       "type": "text",
       "label": "Case 2 Client",
-      "default": "HEALTHCARE GROUP \u00b7 KSA"
+      "default": "HEALTHCARE GROUP · KSA"
     },
     "case_2_title": {
       "type": "text",
@@ -758,7 +758,7 @@
     "case_2_metric_3_value": {
       "type": "text",
       "label": "Case 2 Metric 3",
-      "default": "3.1\u00d7"
+      "default": "3.1×"
     },
     "case_2_metric_3_label": {
       "type": "text",
@@ -768,7 +768,7 @@
     "case_3_client": {
       "type": "text",
       "label": "Case 3 Client",
-      "default": "FINTECH SCALE-UP \u00b7 ABU DHABI"
+      "default": "FINTECH SCALE-UP · ABU DHABI"
     },
     "case_3_title": {
       "type": "text",
@@ -793,12 +793,12 @@
     "case_3_metric_2_label": {
       "type": "text",
       "label": "Case 3 Metric 2 Label",
-      "default": "Diligence \u2192 Close"
+      "default": "Diligence → Close"
     },
     "case_3_metric_3_value": {
       "type": "text",
       "label": "Case 3 Metric 3",
-      "default": "2.6\u00d7"
+      "default": "2.6×"
     },
     "case_3_metric_3_label": {
       "type": "text",
@@ -818,7 +818,7 @@
     "team_intro": {
       "type": "text",
       "label": "Team Intro",
-      "default": "Twenty-plus years each. All have run P&Ls, not just slide decks. You can pick up the phone and call them \u2014 and they answer."
+      "default": "Twenty-plus years each. All have run P&Ls, not just slide decks. You can pick up the phone and call them — and they answer."
     },
     "member_1_image": {
       "type": "image",
@@ -833,7 +833,7 @@
     "member_1_role": {
       "type": "text",
       "label": "Member 1 Role",
-      "default": "Managing Partner \u00b7 Strategy"
+      "default": "Managing Partner · Strategy"
     },
     "member_1_bio": {
       "type": "text",
@@ -853,7 +853,7 @@
     "member_2_role": {
       "type": "text",
       "label": "Member 2 Role",
-      "default": "Partner \u00b7 Operations & Digital"
+      "default": "Partner · Operations & Digital"
     },
     "member_2_bio": {
       "type": "text",
@@ -873,7 +873,7 @@
     "member_3_role": {
       "type": "text",
       "label": "Member 3 Role",
-      "default": "Partner \u00b7 Finance & M&A"
+      "default": "Partner · Finance & M&A"
     },
     "member_3_bio": {
       "type": "text",
@@ -893,7 +893,7 @@
     "member_4_role": {
       "type": "text",
       "label": "Member 4 Role",
-      "default": "Partner \u00b7 HR & Governance"
+      "default": "Partner · HR & Governance"
     },
     "member_4_bio": {
       "type": "text",
@@ -958,7 +958,7 @@
     "testimonial_1_quote": {
       "type": "text",
       "label": "Testimonial 1 Quote",
-      "default": "Summit did in ten weeks what two other firms could not do in a year. The partner was on the ground every Thursday \u2014 not just at steerco."
+      "default": "Summit did in ten weeks what two other firms could not do in a year. The partner was on the ground every Thursday — not just at steerco."
     },
     "testimonial_1_author": {
       "type": "text",
@@ -978,7 +978,7 @@
     "testimonial_2_quote": {
       "type": "text",
       "label": "Testimonial 2 Quote",
-      "default": "Senior, honest, and operationally credible. The team could sit with my CFO and have a conversation at the same level \u2014 that is rare in this market."
+      "default": "Senior, honest, and operationally credible. The team could sit with my CFO and have a conversation at the same level — that is rare in this market."
     },
     "testimonial_2_author": {
       "type": "text",
@@ -998,7 +998,7 @@
     "testimonial_3_quote": {
       "type": "text",
       "label": "Testimonial 3 Quote",
-      "default": "Best investment we made before Series B. They fixed our controls, our cap table, and our story \u2014 and the round closed 20% over target."
+      "default": "Best investment we made before Series B. They fixed our controls, our cap table, and our story — and the round closed 20% over target."
     },
     "testimonial_3_author": {
       "type": "text",
@@ -1078,7 +1078,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Confirm Strategy Session \u2192"
+      "default": "Confirm Strategy Session →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1093,7 +1093,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "We read every email ourselves and reply within one business day \u2014 partners only, no gatekeepers."
+      "default": "We read every email ourselves and reply within one business day — partners only, no gatekeepers."
     },
     "contact_email_label": {
       "type": "text",
@@ -1133,7 +1133,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Sun\u2013Thu, 09:00\u201318:00 GST"
+      "default": "Sun–Thu, 09:00–18:00 GST"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1238,12 +1238,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Summit Advisors Ltd. All rights reserved."
+      "default": "© 2026 Summit Advisors Ltd. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Ethics"
+      "default": "Privacy · Terms · Ethics"
     },
     "social_facebook": {
       "type": "url",
@@ -1333,7 +1333,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1343,7 +1343,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1386,5 +1386,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "gold",
+    "accent_deep": "gold_deep",
+    "secondary": null
   }
 }

@@ -86,8 +86,8 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 /* ── HERO ─────────────────────────────────────────────────── */
 .hero { position: relative; min-height: 92vh; display: flex; align-items: center; overflow: hidden; background: var(--chalk-soft); }
 .hero-media { position: absolute; inset: 0; z-index: 0; }
-.hero-media img { width: 100%; height: 100%; object-fit: cover; opacity: 0.28; }
-.hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(255,255,255,.92) 0%, rgba(255,255,255,.75) 55%, rgba(255,255,255,.45) 100%); z-index: 1; pointer-events: none; }
+.hero-media img { width: 100%; height: 100%; object-fit: cover; opacity: 1; }
+.hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(255,255,255,.94) 0%, rgba(255,255,255,.86) 34%, rgba(255,255,255,.55) 52%, rgba(255,255,255,.12) 74%, rgba(255,255,255,0) 100%); z-index: 1; pointer-events: none; }
 .hero-inner { position: relative; z-index: 2; max-width: 1240px; margin: 0 auto; padding: 0 2.5rem; width: 100%; }
 .hero-eyebrow { font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 1.3rem; }
 .hero-h1 { font-family: var(--fh); font-size: clamp(2.6rem, 5vw, 4.4rem); line-height: 1.08; font-weight: 500; color: var(--carbon); letter-spacing: -0.02em; margin-bottom: 1.6rem; max-width: 17ch; }
@@ -294,6 +294,13 @@ footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; 
   .contact-right { padding: 2rem 1.5rem; }
   .footer-inner { grid-template-columns: 1fr; gap: 2rem; }
 }
+
+/* MOBILE HERO OFFSET (2026-09-11): the nav is fixed; on small screens the hero must start below it, not centre under it. */
+@media (max-width: 820px) {
+  .hero { min-height: auto; align-items: flex-start; }
+  .hero-inner { padding-top: 112px; padding-bottom: 64px; }
+}
+figure{margin:0}
 </style>
 </head>
 <body>
@@ -306,7 +313,7 @@ footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; 
     <li><a href="#doctors">Categories</a></li>
     <li><a href="#process">Best Sellers</a></li>
     <li><a href="#gallery">Story</a></li>
-    <li><a href="#contact">Cart</a></li>
+    <li><a href="#contact">Contact</a></li>
         <li><a href="/blog">Blog</a></li>
   </ul>
   <a href="#booking" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>

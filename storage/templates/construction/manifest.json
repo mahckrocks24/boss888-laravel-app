@@ -2,7 +2,7 @@
   "id": "construction",
   "name": "Construction Company",
   "industry": "construction",
-  "description": "Industrial-grade construction contractor template \u2014 steel-and-orange heavy hero with quote form, six core service disciplines (Civil, MEP, Fit-Out, Renovation, PM, Maintenance), six-project portfolio grid with values, five-step project process, certification strip, four-person leadership team, client testimonials, and a full quote-request booking form. Built for mid-market GCs in MENA.",
+  "description": "Industrial-grade construction contractor template — steel-and-orange heavy hero with quote form, six core service disciplines (Civil, MEP, Fit-Out, Renovation, PM, Maintenance), six-project portfolio grid with values, five-step project process, certification strip, four-person leadership team, client testimonials, and a full quote-request booking form. Built for mid-market GCs in MENA.",
   "thumbnail": "/storage/builder-heroes/construction.jpg",
   "category": "trades",
   "blocks": [
@@ -411,7 +411,7 @@
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "Licensed UAE General Contractor \u00b7 Since 2009"
+      "default": "Licensed UAE General Contractor · Since 2009"
     },
     "hero_title": {
       "type": "text",
@@ -476,7 +476,7 @@
     "hero_form_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Request Site Visit \u2192"
+      "default": "Request Site Visit →"
     },
     "hero_form_note": {
       "type": "text",
@@ -536,7 +536,7 @@
     "services_intro": {
       "type": "text",
       "label": "Services Intro",
-      "default": "Six disciplines under one roof. Civil works to MEP, fit-outs to long-term maintenance \u2014 managed by senior engineers with decades in UAE construction."
+      "default": "Six disciplines under one roof. Civil works to MEP, fit-outs to long-term maintenance — managed by senior engineers with decades in UAE construction."
     },
     "service_1_icon": {
       "type": "text",
@@ -571,7 +571,7 @@
     "service_2_text": {
       "type": "text",
       "label": "Service 2 Text",
-      "default": "Mechanical, electrical, plumbing \u2014 designed and installed in-house. Fully coordinated BIM models so nothing clashes on site. Trakhees and DEWA approvals managed."
+      "default": "Mechanical, electrical, plumbing — designed and installed in-house. Fully coordinated BIM models so nothing clashes on site. Trakhees and DEWA approvals managed."
     },
     "service_2_link": {
       "type": "text",
@@ -591,7 +591,7 @@
     "service_3_text": {
       "type": "text",
       "label": "Service 3 Text",
-      "default": "High-end office, retail, F&B, and clinic fit-outs. Joinery, partition, flooring, ceiling, finishes \u2014 delivered against approved shop drawings and tight handover dates."
+      "default": "High-end office, retail, F&B, and clinic fit-outs. Joinery, partition, flooring, ceiling, finishes — delivered against approved shop drawings and tight handover dates."
     },
     "service_3_link": {
       "type": "text",
@@ -611,7 +611,7 @@
     "service_4_text": {
       "type": "text",
       "label": "Service 4 Text",
-      "default": "Villa extensions, fa\u00e7ade refresh, kitchen/bath remodels, and full turnkey renovations. Minimal disruption scheduling for occupied homes."
+      "default": "Villa extensions, façade refresh, kitchen/bath remodels, and full turnkey renovations. Minimal disruption scheduling for occupied homes."
     },
     "service_4_link": {
       "type": "text",
@@ -631,7 +631,7 @@
     "service_5_text": {
       "type": "text",
       "label": "Service 5 Text",
-      "default": "Owner's rep and PM-as-a-service. Cost control, schedule oversight, contractor coordination, and weekly executive reports \u2014 for clients running their own projects."
+      "default": "Owner's rep and PM-as-a-service. Cost control, schedule oversight, contractor coordination, and weekly executive reports — for clients running their own projects."
     },
     "service_5_link": {
       "type": "text",
@@ -681,7 +681,7 @@
     "project_1_cat": {
       "type": "text",
       "label": "Project 1 Category",
-      "default": "RESIDENTIAL \u00b7 VILLA"
+      "default": "RESIDENTIAL · VILLA"
     },
     "project_1_title": {
       "type": "text",
@@ -696,7 +696,7 @@
     "project_1_value": {
       "type": "text",
       "label": "Project 1 Value",
-      "default": "AED 24M \u00b7 14 months"
+      "default": "AED 24M · 14 months"
     },
     "project_2_image": {
       "type": "image",
@@ -706,7 +706,7 @@
     "project_2_cat": {
       "type": "text",
       "label": "Project 2 Category",
-      "default": "COMMERCIAL \u00b7 FIT-OUT"
+      "default": "COMMERCIAL · FIT-OUT"
     },
     "project_2_title": {
       "type": "text",
@@ -716,12 +716,12 @@
     "project_2_desc": {
       "type": "text",
       "label": "Project 2 Desc",
-      "default": "22,000 sqft premium office fit-out. Executive suites, partner boardroom, open-plan associate floors \u2014 delivered in 9 weeks."
+      "default": "22,000 sqft premium office fit-out. Executive suites, partner boardroom, open-plan associate floors — delivered in 9 weeks."
     },
     "project_2_value": {
       "type": "text",
       "label": "Project 2 Value",
-      "default": "AED 6.2M \u00b7 9 weeks"
+      "default": "AED 6.2M · 9 weeks"
     },
     "project_3_image": {
       "type": "image",
@@ -731,7 +731,7 @@
     "project_3_cat": {
       "type": "text",
       "label": "Project 3 Category",
-      "default": "INDUSTRIAL \u00b7 WAREHOUSE"
+      "default": "INDUSTRIAL · WAREHOUSE"
     },
     "project_3_title": {
       "type": "text",
@@ -746,7 +746,7 @@
     "project_3_value": {
       "type": "text",
       "label": "Project 3 Value",
-      "default": "AED 38M \u00b7 18 months"
+      "default": "AED 38M · 18 months"
     },
     "project_4_image": {
       "type": "image",
@@ -756,7 +756,7 @@
     "project_4_cat": {
       "type": "text",
       "label": "Project 4 Category",
-      "default": "HOSPITALITY \u00b7 FIT-OUT"
+      "default": "HOSPITALITY · FIT-OUT"
     },
     "project_4_title": {
       "type": "text",
@@ -766,12 +766,12 @@
     "project_4_desc": {
       "type": "text",
       "label": "Project 4 Desc",
-      "default": "120-cover premium F&B fit-out. Full kitchen, cold rooms, bar, fa\u00e7ade \u2014 delivered overnight shifts to preserve mall trading hours."
+      "default": "120-cover premium F&B fit-out. Full kitchen, cold rooms, bar, façade — delivered overnight shifts to preserve mall trading hours."
     },
     "project_4_value": {
       "type": "text",
       "label": "Project 4 Value",
-      "default": "AED 4.1M \u00b7 11 weeks"
+      "default": "AED 4.1M · 11 weeks"
     },
     "project_5_image": {
       "type": "image",
@@ -781,7 +781,7 @@
     "project_5_cat": {
       "type": "text",
       "label": "Project 5 Category",
-      "default": "RENOVATION \u00b7 VILLA"
+      "default": "RENOVATION · VILLA"
     },
     "project_5_title": {
       "type": "text",
@@ -791,12 +791,12 @@
     "project_5_desc": {
       "type": "text",
       "label": "Project 5 Desc",
-      "default": "1980s villa fully restored. New MEP, fa\u00e7ade, interior, pool, landscaping \u2014 occupied-home scheduling with family in residence."
+      "default": "1980s villa fully restored. New MEP, façade, interior, pool, landscaping — occupied-home scheduling with family in residence."
     },
     "project_5_value": {
       "type": "text",
       "label": "Project 5 Value",
-      "default": "AED 5.8M \u00b7 8 months"
+      "default": "AED 5.8M · 8 months"
     },
     "project_6_image": {
       "type": "image",
@@ -806,7 +806,7 @@
     "project_6_cat": {
       "type": "text",
       "label": "Project 6 Category",
-      "default": "HEALTHCARE \u00b7 FIT-OUT"
+      "default": "HEALTHCARE · FIT-OUT"
     },
     "project_6_title": {
       "type": "text",
@@ -816,12 +816,12 @@
     "project_6_desc": {
       "type": "text",
       "label": "Project 6 Desc",
-      "default": "8,500 sqft DHA-compliant dental clinic with 6 treatment rooms, lab, X-ray, and recovery \u2014 full MEP + specialized medical gases."
+      "default": "8,500 sqft DHA-compliant dental clinic with 6 treatment rooms, lab, X-ray, and recovery — full MEP + specialized medical gases."
     },
     "project_6_value": {
       "type": "text",
       "label": "Project 6 Value",
-      "default": "AED 3.4M \u00b7 14 weeks"
+      "default": "AED 3.4M · 14 weeks"
     },
     "process_eyebrow": {
       "type": "text",
@@ -836,7 +836,7 @@
     "process_intro": {
       "type": "text",
       "label": "Process Intro",
-      "default": "We run every project the same way \u2014 from AED 500K renovation to AED 40M build. Predictable process, transparent reporting, on-schedule handover."
+      "default": "We run every project the same way — from AED 500K renovation to AED 40M build. Predictable process, transparent reporting, on-schedule handover."
     },
     "step_1_title": {
       "type": "text",
@@ -866,7 +866,7 @@
     "step_3_text": {
       "type": "text",
       "label": "Step 3 Text",
-      "default": "We handle Dubai Municipality, Trakhees, DEWA, Civil Defense. You stay informed \u2014 never stuck in authority back-and-forth."
+      "default": "We handle Dubai Municipality, Trakhees, DEWA, Civil Defense. You stay informed — never stuck in authority back-and-forth."
     },
     "step_4_title": {
       "type": "text",
@@ -886,7 +886,7 @@
     "step_5_text": {
       "type": "text",
       "label": "Step 5 Text",
-      "default": "Commissioning, authority sign-offs, 1-year snag warranty, AMC option. We don't disappear after the final invoice \u2014 we follow up."
+      "default": "Commissioning, authority sign-offs, 1-year snag warranty, AMC option. We don't disappear after the final invoice — we follow up."
     },
     "certs_eyebrow": {
       "type": "text",
@@ -901,7 +901,7 @@
     "certs_intro": {
       "type": "text",
       "label": "Certs Intro",
-      "default": "We hold every license a UAE contractor needs, plus international quality and safety standards \u2014 audited annually."
+      "default": "We hold every license a UAE contractor needs, plus international quality and safety standards — audited annually."
     },
     "cert_1": {
       "type": "text",
@@ -946,7 +946,7 @@
     "team_intro": {
       "type": "text",
       "label": "Team Intro",
-      "default": "Our leadership team has run over AED 1.8 billion in UAE projects combined. Every major decision passes through a named owner \u2014 never a faceless committee."
+      "default": "Our leadership team has run over AED 1.8 billion in UAE projects combined. Every major decision passes through a named owner — never a faceless committee."
     },
     "member_1_image": {
       "type": "image",
@@ -1026,7 +1026,7 @@
     "member_4_bio": {
       "type": "text",
       "label": "Member 4 Bio",
-      "default": "QS + commercial lead. MRICS. Known for tight BOQ discipline \u2014 no nasty variation-order surprises mid-project."
+      "default": "QS + commercial lead. MRICS. Known for tight BOQ discipline — no nasty variation-order surprises mid-project."
     },
     "testimonials_eyebrow": {
       "type": "text",
@@ -1156,7 +1156,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Request a Quote \u2192"
+      "default": "Request a Quote →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1211,7 +1211,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Sun\u2013Thu, 08:00\u201318:00 GST"
+      "default": "Sun–Thu, 08:00–18:00 GST"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1236,7 +1236,7 @@
     "footer_tagline": {
       "type": "text",
       "label": "Footer Tagline",
-      "default": "UAE general contractor since 2009. Residential, commercial, MEP, and renovation \u2014 delivered on time, to specification, with senior engineers in charge."
+      "default": "UAE general contractor since 2009. Residential, commercial, MEP, and renovation — delivered on time, to specification, with senior engineers in charge."
     },
     "social_1": {
       "type": "text",
@@ -1316,12 +1316,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Vertex Construction LLC. All rights reserved."
+      "default": "© 2026 Vertex Construction LLC. All rights reserved."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Trade License"
+      "default": "Privacy · Terms · Trade License"
     },
     "social_facebook": {
       "type": "url",
@@ -1411,7 +1411,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1421,7 +1421,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1464,5 +1464,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "orange",
+    "accent_deep": "orange_deep",
+    "secondary": null
   }
 }

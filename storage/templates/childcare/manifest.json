@@ -2,7 +2,7 @@
   "id": "childcare",
   "name": "Childcare & Nursery",
   "industry": "childcare",
-  "description": "Friendly, warm childcare and nursery template \u2014 soft yellow + sky + coral palette with rounded Nunito typography, hero with warm photo, six age-graded programs, four safety/learning trust pillars, four-educator staff grid, six-image facilities gallery, four curriculum pillars, parent testimonials, and a full schedule-a-visit booking form. Built for premium bilingual early-years centers.",
+  "description": "Friendly, warm childcare and nursery template — soft yellow + sky + coral palette with rounded Nunito typography, hero with warm photo, six age-graded programs, four safety/learning trust pillars, four-educator staff grid, six-image facilities gallery, four curriculum pillars, parent testimonials, and a full schedule-a-visit booking form. Built for premium bilingual early-years centers.",
   "thumbnail": "/storage/builder-heroes/childcare.jpg",
   "category": "education",
   "blocks": [
@@ -397,12 +397,12 @@
     "nav_cta": {
       "type": "text",
       "label": "Nav CTA",
-      "default": "Schedule a Visit"
+      "default": "Book now"
     },
     "hero_eyebrow": {
       "type": "text",
       "label": "Hero Eyebrow",
-      "default": "KHDA-Approved \u00b7 Bilingual EN / AR \u00b7 Jumeirah"
+      "default": "KHDA-Approved · Bilingual EN / AR · Jumeirah"
     },
     "hero_title": {
       "type": "text",
@@ -412,7 +412,7 @@
     "hero_subtitle": {
       "type": "text",
       "label": "Hero Subtitle",
-      "default": "A warm, play-based early-years nursery in the heart of Jumeirah. Infant care through KG \u2014 taught in English and Arabic by degree-qualified educators your family will come to love."
+      "default": "A warm, play-based early-years nursery in the heart of Jumeirah. Infant care through KG — taught in English and Arabic by degree-qualified educators your family will come to love."
     },
     "hero_cta_primary": {
       "type": "text",
@@ -497,7 +497,7 @@
     "programs_intro": {
       "type": "text",
       "label": "Programs Intro",
-      "default": "From tiny-toes infant care to a confident KG graduate ready for Year 1 \u2014 every program balances play, discovery, language, and lots of cuddles."
+      "default": "From tiny-toes infant care to a confident KG graduate ready for Year 1 — every program balances play, discovery, language, and lots of cuddles."
     },
     "program_1_icon": {
       "type": "text",
@@ -507,7 +507,7 @@
     "program_1_age": {
       "type": "text",
       "label": "Program 1 Age",
-      "default": "3\u201318 MONTHS"
+      "default": "3–18 MONTHS"
     },
     "program_1_title": {
       "type": "text",
@@ -532,7 +532,7 @@
     "program_2_age": {
       "type": "text",
       "label": "Program 2 Age",
-      "default": "18M\u20132.5Y"
+      "default": "18M–2.5Y"
     },
     "program_2_title": {
       "type": "text",
@@ -557,7 +557,7 @@
     "program_3_age": {
       "type": "text",
       "label": "Program 3 Age",
-      "default": "2.5\u20133.5Y"
+      "default": "2.5–3.5Y"
     },
     "program_3_title": {
       "type": "text",
@@ -567,7 +567,7 @@
     "program_3_text": {
       "type": "text",
       "label": "Program 3 Text",
-      "default": "The year children fall in love with learning. Phonics, early numeracy, storytelling, and art \u2014 all delivered through beautifully-structured play."
+      "default": "The year children fall in love with learning. Phonics, early numeracy, storytelling, and art — all delivered through beautifully-structured play."
     },
     "program_3_link": {
       "type": "text",
@@ -582,7 +582,7 @@
     "program_4_age": {
       "type": "text",
       "label": "Program 4 Age",
-      "default": "3.5\u20135Y"
+      "default": "3.5–5Y"
     },
     "program_4_title": {
       "type": "text",
@@ -592,7 +592,7 @@
     "program_4_text": {
       "type": "text",
       "label": "Program 4 Text",
-      "default": "Ready for big school. Structured literacy, mathematical thinking, science, and Arabic literacy \u2014 on a learning path aligned with the EYFS and MoE frameworks."
+      "default": "Ready for big school. Structured literacy, mathematical thinking, science, and Arabic literacy — on a learning path aligned with the EYFS and MoE frameworks."
     },
     "program_4_link": {
       "type": "text",
@@ -607,7 +607,7 @@
     "program_5_age": {
       "type": "text",
       "label": "Program 5 Age",
-      "default": "AGES 5\u20138"
+      "default": "AGES 5–8"
     },
     "program_5_title": {
       "type": "text",
@@ -617,7 +617,7 @@
     "program_5_text": {
       "type": "text",
       "label": "Program 5 Text",
-      "default": "Homework support, creative clubs, and unwind time \u2014 14:30 to 18:00 pickup. Includes a healthy afternoon snack and outdoor play every day."
+      "default": "Homework support, creative clubs, and unwind time — 14:30 to 18:00 pickup. Includes a healthy afternoon snack and outdoor play every day."
     },
     "program_5_link": {
       "type": "text",
@@ -632,7 +632,7 @@
     "program_6_age": {
       "type": "text",
       "label": "Program 6 Age",
-      "default": "AGES 3\u20138"
+      "default": "AGES 3–8"
     },
     "program_6_title": {
       "type": "text",
@@ -642,7 +642,7 @@
     "program_6_text": {
       "type": "text",
       "label": "Program 6 Text",
-      "default": "Week-long themed camps during all school breaks. Swimming, cooking, dance, field trips \u2014 so you can work (or rest) with peace of mind."
+      "default": "Week-long themed camps during all school breaks. Swimming, cooking, dance, field trips — so you can work (or rest) with peace of mind."
     },
     "program_6_link": {
       "type": "text",
@@ -692,7 +692,7 @@
     "why_2_text": {
       "type": "text",
       "label": "Why 2 Text",
-      "default": "EYFS + MoE-aligned curriculum. Play-based, research-backed, and delivered by degree-qualified educators \u2014 not minders."
+      "default": "EYFS + MoE-aligned curriculum. Play-based, research-backed, and delivered by degree-qualified educators — not minders."
     },
     "why_3_icon": {
       "type": "text",
@@ -722,7 +722,7 @@
     "why_4_text": {
       "type": "text",
       "label": "Why 4 Text",
-      "default": "Language, emotional, physical, social, and creative \u2014 we develop all five. Weekly updates and termly portfolios so you see every milestone."
+      "default": "Language, emotional, physical, social, and creative — we develop all five. Weekly updates and termly portfolios so you see every milestone."
     },
     "staff_eyebrow": {
       "type": "text",
@@ -737,7 +737,7 @@
     "staff_intro": {
       "type": "text",
       "label": "Staff Intro",
-      "default": "Every lead teacher has a degree in early-years education and an average of 11 years in the classroom. Low staff turnover means the same familiar faces \u2014 year after year."
+      "default": "Every lead teacher has a degree in early-years education and an average of 11 years in the classroom. Low staff turnover means the same familiar faces — year after year."
     },
     "staff_1_image": {
       "type": "image",
@@ -772,7 +772,7 @@
     "staff_2_role": {
       "type": "text",
       "label": "Staff 2 Role",
-      "default": "Lead Teacher \u00b7 KG"
+      "default": "Lead Teacher · KG"
     },
     "staff_2_bio": {
       "type": "text",
@@ -817,7 +817,7 @@
     "staff_4_bio": {
       "type": "text",
       "label": "Staff 4 Bio",
-      "default": "Paediatric first-aid trained. Montessori-certified. The warmest hands in our youngest room \u2014 and the patience of a saint."
+      "default": "Paediatric first-aid trained. Montessori-certified. The warmest hands in our youngest room — and the patience of a saint."
     },
     "facilities_eyebrow": {
       "type": "text",
@@ -907,7 +907,7 @@
     "curriculum_intro": {
       "type": "text",
       "label": "Curriculum Intro",
-      "default": "We follow the British EYFS framework alongside the UAE Ministry of Education standards for Arabic \u2014 the best of both worlds in one daily routine."
+      "default": "We follow the British EYFS framework alongside the UAE Ministry of Education standards for Arabic — the best of both worlds in one daily routine."
     },
     "pillar_1_num": {
       "type": "text",
@@ -952,7 +952,7 @@
     "pillar_3_text": {
       "type": "text",
       "label": "Pillar 3 Text",
-      "default": "Numbers, shapes, patterns, nature walks, and weekly science experiments. Curiosity first \u2014 formal learning follows naturally."
+      "default": "Numbers, shapes, patterns, nature walks, and weekly science experiments. Curiosity first — formal learning follows naturally."
     },
     "pillar_4_num": {
       "type": "text",
@@ -967,7 +967,7 @@
     "pillar_4_text": {
       "type": "text",
       "label": "Pillar 4 Text",
-      "default": "Dance, music, art, drama, and daily outdoor play. Bodies move, hands create, imaginations fly \u2014 every single day."
+      "default": "Dance, music, art, drama, and daily outdoor play. Bodies move, hands create, imaginations fly — every single day."
     },
     "testimonials_eyebrow": {
       "type": "text",
@@ -1002,7 +1002,7 @@
     "testimonial_2_quote": {
       "type": "text",
       "label": "Testimonial 2 Quote",
-      "default": "The bilingual program is exactly what we wanted. Our son speaks Arabic with his grandparents now \u2014 and started Year 1 confident, curious, and ahead in phonics. Worth every dirham."
+      "default": "The bilingual program is exactly what we wanted. Our son speaks Arabic with his grandparents now — and started Year 1 confident, curious, and ahead in phonics. Worth every dirham."
     },
     "testimonial_2_author": {
       "type": "text",
@@ -1022,7 +1022,7 @@
     "testimonial_3_quote": {
       "type": "text",
       "label": "Testimonial 3 Quote",
-      "default": "We moved to Dubai and were terrified about nursery. Ms. Amira spent 45 minutes with us on a tour \u2014 no pressure, no sales. We signed up the same day. Best decision of our move."
+      "default": "We moved to Dubai and were terrified about nursery. Ms. Amira spent 45 minutes with us on a tour — no pressure, no sales. We signed up the same day. Best decision of our move."
     },
     "testimonial_3_author": {
       "type": "text",
@@ -1102,7 +1102,7 @@
     "booking_submit": {
       "type": "text",
       "label": "Submit Button",
-      "default": "Schedule My Visit \u2192"
+      "default": "Schedule My Visit →"
     },
     "contact_eyebrow": {
       "type": "text",
@@ -1117,7 +1117,7 @@
     "contact_intro": {
       "type": "text",
       "label": "Contact Intro",
-      "default": "Our admissions team replies to every enquiry within 1 business day. You can also WhatsApp us directly \u2014 we love a chat about the small humans in your life."
+      "default": "Our admissions team replies to every enquiry within 1 business day. You can also WhatsApp us directly — we love a chat about the small humans in your life."
     },
     "contact_email_label": {
       "type": "text",
@@ -1157,7 +1157,7 @@
     "contact_hours": {
       "type": "text",
       "label": "Hours",
-      "default": "Sun\u2013Thu, 07:30\u201318:00 GST"
+      "default": "Sun–Thu, 07:30–18:00 GST"
     },
     "contact_cta_title": {
       "type": "text",
@@ -1167,7 +1167,7 @@
     "contact_cta_text": {
       "type": "text",
       "label": "Contact CTA Text",
-      "default": "Book a 45-minute personal tour. No pressure, no sales pitch \u2014 just a real look at how your child could spend their days."
+      "default": "Book a 45-minute personal tour. No pressure, no sales pitch — just a real look at how your child could spend their days."
     },
     "contact_cta_button": {
       "type": "text",
@@ -1262,12 +1262,12 @@
     "footer_text": {
       "type": "text",
       "label": "Footer Text",
-      "default": "\u00a9 2026 Little Lanterns Nursery. All rights reserved. KHDA License 20145."
+      "default": "© 2026 Little Lanterns Nursery. All rights reserved. KHDA License 20145."
     },
     "footer_legal": {
       "type": "text",
       "label": "Footer Legal",
-      "default": "Privacy \u00b7 Terms \u00b7 Safeguarding Policy"
+      "default": "Privacy · Terms · Safeguarding Policy"
     },
     "social_facebook": {
       "type": "url",
@@ -1357,7 +1357,7 @@
     "blog_post_3_excerpt": {
       "type": "text",
       "label": "Post 3 Excerpt",
-      "default": "Why patience and care isn't a luxury \u2014 it's the bare minimum."
+      "default": "Why patience and care isn't a luxury — it's the bare minimum."
     },
     "blog_post_3_url": {
       "type": "url",
@@ -1367,7 +1367,7 @@
     "blog_cta": {
       "type": "text",
       "label": "Blog CTA",
-      "default": "View All Posts \u2192"
+      "default": "View All Posts →"
     }
   },
   "social_fields": [
@@ -1410,5 +1410,10 @@
   "blog": {
     "enabled": true,
     "posts_per_page": 6
+  },
+  "color_roles": {
+    "accent": "coral",
+    "accent_deep": null,
+    "secondary": "yellow"
   }
 }
