@@ -52,7 +52,11 @@ class ArthurDelegationTest extends TestCase
         $d = BuilderCapabilities::describe('pet_services');
         $this->assertStringContainsString('Sarah asks Arthur, she never builds herself', $d);
         $this->assertStringContainsString('booking', $d);
-        $this->assertLessThan(2000, strlen($d), 'must stay small enough for every prompt');
+        // RISK-0180(3), 2026-09-16: 2000 was set on 09-14 when describe() was 1,292 chars; the 09-15 capability lines
+        // (colour scope, elements, section ops, catalogue, tracking) took it to 2,374 on purpose. The only runtime size gate
+        // is RuntimeClient::LARGE_PROMPT_CHARS (8000) on system+prompt, and Sarah's tool-schema prompt is already 35.7k, so
+        // this is a growth guard, not a lane limit. 3000 keeps ~26% headroom (about two more capability lines) before it asks again.
+        $this->assertLessThan(3000, strlen($d), 'must stay small enough for every prompt');
     }
 
     public function test_template_chrome_export_nav_link_and_section_splice_on_a_fake_site(): void
