@@ -103,6 +103,39 @@ class CreativeService
      * will send, so the user can confirm/adjust before spending a credit. wsId comes
      * from the caller (JWT/middleware), NEVER from params (tenancy invariant, Unit T).
      */
+    /** RFC-0009 P1: a preview token lives this long; after that the customer previews again. */
+    public const PREVIEW_TTL_SECONDS = 1800;
+
+    private static function previewKey(int $wsId, string $token): string
+    {
+        return 'studio:plan:' . $wsId . ':' . preg_replace('/[^a-f0-9-]/i', '', $token);
+    }
+
+    /**
+     * RFC-0009 P1: everything that shaped a preview, normalised, plus one fingerprint over it.
+     * The same function runs at preview time and at generate time; any difference means the
+     * customer's approval no longer applies and a new preview is required.
+     */
+    private function previewBinding(int $wsId, string $prompt, array $params, array $ctx): array
+    {
+        $brand = $ctx['brand'] ?? \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId);
+        $b = [
+            'workspace_id'            => $wsId,
+            'prompt'                  => $prompt, // byte-exact, untrimmed beyond the caller's own trim
+            'aspect_ratio'            => strtolower(trim((string) ($params['aspect_ratio'] ?? ''))),
+            'style'                   => (string) ($params['style'] ?? 'natural'),
+            'quality'                 => (string) ($params['quality'] ?? 'auto'),
+            'include_text_preference' => (string) ($params['include_text_preference'] ?? 'auto'),
+            'platform'                => (string) ($params['platform'] ?? ''),
+            'asset_type'              => (string) ($params['asset_type'] ?? 'social_post'),
+            'dimensions'              => $params['dimensions'] ?? null,
+            'brand_sha'               => sha1(json_encode($brand, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)),
+            'subject_sha'             => sha1(json_encode($ctx['subject_reference'] ?? null)),
+        ];
+        $b['fingerprint'] = sha1(json_encode($b, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+        return $b;
+    }
+
     public function planPreview(int $wsId, array $params): array
     {
         $prompt = trim((string) ($params['prompt'] ?? ''));
@@ -137,11 +170,34 @@ class CreativeService
             $aspect = $__sizeToAr[$size];
         }
 
+        // RFC-0009 P1 (2026-09-16): the preview IS the provider-bound prompt. Bind everything that
+        // shaped it — workspace, exact request, settings, brand context — to a short-lived token;
+        // generateImage() consumes the SAME compiled prompt when the token is presented and valid,
+        // and refuses (preview_required) instead of silently re-planning when anything changed.
+        $compiled['size'] = $size;
+        $bp['aspect_ratio'] = $aspect ?: ($bp['aspect_ratio'] ?? '');
+        $planToken = (string) \Illuminate\Support\Str::uuid();
+        $binding   = $this->previewBinding($wsId, $prompt, $params, $plan['context'] ?? []);
+        \Illuminate\Support\Facades\Cache::put(self::previewKey($wsId, $planToken), [
+            'workspace_id' => $wsId,
+            'binding'      => $binding,
+            'blueprint'    => $bp,
+            'compiled'     => $compiled,
+            'reasoning'    => ['model' => $plan['reasoning']['model'] ?? null, 'fallback' => $plan['reasoning']['fallback'] ?? false],
+            'created_at'   => now()->toIso8601String(),
+        ], self::PREVIEW_TTL_SECONDS);
+
         return [
             'success'         => true,
             'billable'        => false,
             'credits'         => 0,
             'enhanced_prompt' => (string) ($compiled['provider_prompt'] ?? ''),
+            'plan_token'      => $planToken,
+            'plan_expires_in' => self::PREVIEW_TTL_SECONDS,
+            'plan_binding'    => $binding['fingerprint'],
+            'flags'           => array_values((array) ($compiled['flags'] ?? [])),
+            'unverified_claims' => array_values((array) ($compiled['unverified_claims'] ?? [])),
+            'exact_text_missing' => array_values((array) ($compiled['exact_text_missing'] ?? [])),
             'size'            => $size,
             'quality'         => (string) ($compiled['quality'] ?? 'medium'),
             'summary'         => [
@@ -194,18 +250,41 @@ class CreativeService
         // and returns a structured ImageBlueprint; typography is decided
         // per-request (none / separate_overlay / baked_in) instead of always
         // stripping text. Same intelligence the Studio path uses.
-        $plan     = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->plan([
-            'source'      => $params['source'] ?? ($articleId ? 'blog' : 'creative'),
-            'platform'    => $params['platform'] ?? null,
-            'asset_type'  => $params['asset_type'] ?? ($articleId ? 'featured_image' : 'social_post'),
-            'workspace_id'=> $wsId,
-            'article_id'  => $articleId,
-            'user_prompt' => $prompt,
-            'requested_dimensions' => $params['dimensions'] ?? null,
-            'requested_quality'    => $params['quality'] ?? 'auto',
-            'include_text_preference' => $params['include_text_preference'] ?? 'auto',
-            'style'       => $params['style'] ?? 'natural',
-        ]);
+        // RFC-0009 P1 (2026-09-16): a customer who approved a preview gets EXACTLY that compiled
+        // prompt. With a plan_token we never re-plan: the cached plan is used when its binding
+        // (workspace, byte-exact prompt, settings, brand/subject context) still matches, otherwise
+        // the call is refused with preview_required and the caller must preview again. Without a
+        // token (agents, chained steps, API callers that never previewed) the original single-plan
+        // path runs as before.
+        $planToken   = trim((string) ($params['plan_token'] ?? ''));
+        $previewUsed = false;
+        if ($planToken !== '') {
+            $cached = \Illuminate\Support\Facades\Cache::get(self::previewKey($wsId, $planToken));
+            if (! is_array($cached) || (int) ($cached['workspace_id'] ?? 0) !== $wsId) {
+                return ['success' => false, 'error' => 'Your preview has expired or is not valid here. Tap Enhance to preview again before generating.', 'code' => 'PREVIEW_REQUIRED', 'reason' => 'expired_or_foreign'];
+            }
+            $now = $this->previewBinding($wsId, $prompt, $params, ['brand' => \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, []), 'subject_reference' => $cached['blueprint']['_context']['subject_reference'] ?? null]);
+            $was = $cached['binding'] ?? [];
+            if (($now['fingerprint'] ?? 'a') !== ($was['fingerprint'] ?? 'b')) {
+                $changed = array_values(array_filter(array_keys($now), fn ($k) => $k !== 'fingerprint' && ($now[$k] ?? null) !== ($was[$k] ?? null)));
+                return ['success' => false, 'error' => 'Your request or settings changed since the preview. Tap Enhance to preview the new version before generating.', 'code' => 'PREVIEW_REQUIRED', 'reason' => 'stale', 'changed' => $changed];
+            }
+            $plan = ['blueprint' => $cached['blueprint'], 'compiled' => $cached['compiled'], 'reasoning' => $cached['reasoning'] ?? []];
+            $previewUsed = true;
+        } else {
+            $plan = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->plan([
+                'source'      => $params['source'] ?? ($articleId ? 'blog' : 'creative'),
+                'platform'    => $params['platform'] ?? null,
+                'asset_type'  => $params['asset_type'] ?? ($articleId ? 'featured_image' : 'social_post'),
+                'workspace_id'=> $wsId,
+                'article_id'  => $articleId,
+                'user_prompt' => $prompt,
+                'requested_dimensions' => $params['dimensions'] ?? null,
+                'requested_quality'    => $params['quality'] ?? 'auto',
+                'include_text_preference' => $params['include_text_preference'] ?? 'auto',
+                'style'       => $params['style'] ?? 'natural',
+            ]);
+        }
         $blueprint      = $plan['blueprint'];
         $compiled       = $plan['compiled'];
         $enhancedPrompt = $compiled['provider_prompt'];
@@ -236,6 +315,10 @@ class CreativeService
             'metadata'     => [
                 'original_prompt' => $prompt,
                 'enhanced'        => true,
+                'preview_bound'   => $previewUsed,                       // RFC-0009 P1: generated from the approved preview
+                'plan_token'      => $previewUsed ? $planToken : null,
+                'provider_prompt_sha' => sha1((string) $enhancedPrompt),  // what the provider was actually sent
+                'assembly_flags'  => $compiled['flags'] ?? [],
                 'reasoning_model' => $plan['reasoning']['model'] ?? null,
                 'reasoning_fallback' => $plan['reasoning']['fallback'] ?? false,
                 'platform'        => $blueprint['platform'] ?? null,
@@ -367,6 +450,8 @@ class CreativeService
                     'article_id'         => $articleId,
                     'featured_image_url' => $result['url'],
                     'featured_image_alt' => isset($altText) ? $altText : null,
+                    'preview_bound'      => $previewUsed,                     // RFC-0009 P1
+                    'provider_prompt_sha' => sha1((string) $enhancedPrompt),
                 ]));
             }
 

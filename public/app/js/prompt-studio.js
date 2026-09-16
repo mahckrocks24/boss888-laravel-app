@@ -255,6 +255,12 @@
       (aspect ? '<div class="ps-enh-row"><b>Aspect</b>' + esc(aspect) + (size ? ' · ' + esc(size) : '') + '</div>' : '') +
       (tagsHtml ? '<div class="ps-tags">' + tagsHtml + '</div>' : '') +
       (palette ? '<div class="ps-swatches">' + palette + '</div>' : '') +
+      // RFC-0009: honest state of the preview — bound to this exact request, or not.
+      (planTokenFor((S.prompt || '').trim())
+        ? '<div class="ps-enh-row ps-enh-bound"><b>Bound</b>Generate uses exactly this preview.</div>'
+        : '<div class="ps-enh-row ps-enh-bound"><b>Changed</b>Your request differs from this preview — Enhance again to bind it.</div>') +
+      ((e.flags || []).indexOf('logo_requested_no_logo_asset') >= 0 ? '<div class="ps-enh-row"><b>Note</b>No logo file is in your brand kit yet, so no logo can be drawn.</div>' : '') +
+      ((e.exact_text_missing || []).length ? '<div class="ps-enh-row"><b>Note</b>Your quoted text was not carried verbatim: ' + esc(e.exact_text_missing.join(' · ')) + '</div>' : '') +
       '</div>';
   }
 
@@ -271,6 +277,11 @@
         S.prompt = input.value;
         input.style.height = 'auto';
         input.style.height = Math.min(120, input.scrollHeight) + 'px';
+        // RFC-0009 P1: keep the preview-binding note truthful while the customer types (no full re-render).
+        var bound = document.querySelector('.ps-enh-bound');
+        if (bound) bound.innerHTML = planTokenFor((S.prompt || '').trim())
+          ? '<b>Bound</b>Generate uses exactly this preview.'
+          : '<b>Changed</b>Your request differs from this preview — Enhance again to bind it.';
       });
       input.addEventListener('focus', function () { box && box.classList.add('focused'); });
       input.addEventListener('blur', function () { box && box.classList.remove('focused'); });
@@ -315,12 +326,23 @@
       body: JSON.stringify({ prompt: p, aspect_ratio: currentAspect().ar })
     }).then(function (r) {
       S.busy = false;
-      if (r && r.success) { S.enh = r; }
+      if (r && r.success) {
+        S.enh = r;
+        // RFC-0009 P1 (2026-09-16): the preview token binds THIS prompt + aspect to the exact
+        // compiled prompt the server previewed. Generate sends it only while both are unchanged.
+        S.planToken = r.plan_token || null; S.planPrompt = p; S.planAspect = currentAspect().ar;
+      }
       else { S.error = (r && r.error === 'prompt_required') ? 'Type a description first.' : 'Could not enhance the prompt.'; }
       render();
     }).catch(function (err) {
       S.busy = false; S.error = 'Enhance failed (' + (err.status || 'network') + ').'; render();
     });
+  }
+
+  // RFC-0009 P1: the token is valid for exactly the previewed request; anything else means the
+  // customer must preview again — the server enforces the same rule (PREVIEW_REQUIRED).
+  function planTokenFor(p) {
+    return (S.planToken && S.planPrompt === p && S.planAspect === currentAspect().ar) ? S.planToken : null;
   }
 
   // The EngineKernel wraps every service result in an envelope
@@ -340,13 +362,17 @@
     if (!p) { S.error = 'Type a description first.'; render(); return; }
     S.genPrompt = p; // remembered so "Make another" can produce a fresh variation
     S.busy = true; S.busyKind = 'generate'; S.error = null; S.imageUrl = null; render();
+    var tok = planTokenFor(p);
+    var body = { prompt: p, aspect_ratio: currentAspect().ar };
+    if (tok) body.plan_token = tok; // RFC-0009 P1: generate exactly what was previewed
     jfetch('/creative/generate/image', {
       method: 'POST',
-      body: JSON.stringify({ prompt: p, aspect_ratio: currentAspect().ar })
+      body: JSON.stringify(body)
     }).then(function (r) {
       // Gate rejection (NO_CREDITS / PLAN_GATED) — surface the real message.
       if (r && r.success === false) { S.busy = false; S.error = friendlyErr(r) || 'Generation was blocked.'; render(); return; }
       var d = unwrap(r);
+      if (d && d.code === 'PREVIEW_REQUIRED') { S.busy = false; S.planToken = null; S.enh = null; S.error = d.error || 'Please preview again before generating.'; render(); return; }
       if (d && d.success === false) { S.busy = false; S.error = friendlyErr(d) || 'Generation failed.'; render(); return; }
       var url = pickUrl(d), assetId = pickId(d);
       if (url) { onImage(url, assetId); return; }
