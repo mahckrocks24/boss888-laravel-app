@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 
 /**
  * ImageIntelligenceService — THE single canonical image-generation orchestrator
- * for Level Up Growth. Every entry point (Studio, Creative, SEO, blog,
+ * for LevelUpGrowth. Every entry point (Studio, Creative, SEO, blog,
  * campaign, social, automation) calls generate($context).
  *
  * Flow: context resolution → LLM reasoning (ImageBlueprint) → prompt compiler
@@ -55,7 +55,7 @@ class ImageIntelligenceService
     {
         $ctx = $this->resolveContext($context);
         $reason = $this->reasoner->reason($ctx);
-        $blueprint = $reason['blueprint'];
+        $blueprint = $this->attachCompilerContext($reason['blueprint'], $ctx);
         $compiled = $this->compiler->compile($blueprint);
         return ['context' => $ctx, 'reasoning' => $reason, 'blueprint' => $blueprint, 'compiled' => $compiled];
     }
@@ -73,7 +73,7 @@ class ImageIntelligenceService
 
         // 1) LLM reasoning → ImageBlueprint
         $reason = $this->reasoner->reason($ctx);
-        $blueprint = $reason['blueprint'];
+        $blueprint = $this->attachCompilerContext($reason['blueprint'], $ctx);
 
         // 2) compile provider request + typography enforcement
         $compiled = $this->compiler->compile($blueprint);
@@ -256,30 +256,24 @@ class ImageIntelligenceService
         // (only brand fields are extracted). The two brand stores are NOT merged
         // and stored kit data is never mutated (resolve() is read-only).
         $overrides = $this->extractBrandOverrides($c);
-        $brand = [];
-        try {
-            $kit     = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId);
-            $branded = empty($kit['is_neutral']);
-            if ($branded || $overrides) {
-                // per-field: explicit override wins; else workspace value (branded
-                // only — a neutral workspace never leaks its neutral-default grays).
-                $val = function (string $kitKey) use ($kit, $overrides, $branded) {
-                    if (array_key_exists($kitKey, $overrides)) return $overrides[$kitKey];
-                    return $branded ? ($kit[$kitKey] ?? null) : null;
-                };
-                $colors = array_values(array_filter([$val('primary_color'), $val('secondary_color'), $val('accent_color')]));
-                $brand = array_filter([
-                    'brand_name'    => $val('brand_name'),
-                    'colors'        => $colors,
-                    'heading_font'  => $val('heading_font'),
-                    'body_font'     => $val('body_font'),
-                    'logo_url'      => $val('logo_url'),
-                    'visual_style'  => $val('visual_style'),
-                    'voice'         => $val('voice'),
-                    'tone'          => $val('tone'),
-                ]);
-            }
-        } catch (\Throwable $e) { /* neutral brand */ }
+        // RFC-0009 P3 (2026-09-16): the field mapping above now lives in ONE place —
+        // BrandContextForCreative — so the image path (here) and the video path
+        // (BlueprintService::getVideoBlueprint) cannot drift apart again. Behaviour is
+        // identical to the previous inline block (same precedence, same keys).
+        $brand = \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, $overrides);
+
+        // RFC-0009 P4/P5 — facts the compiler needs to guard the prompt without rewriting intent:
+        //   has_logo        — a real logo asset exists in the brand kit (a null logo_url used to be
+        //                     dropped by array_filter, so the reasoner was never told "no logo").
+        //   logo_requested  — the customer's own words asked for a logo (never strip those).
+        //   exact_text      — quoted strings in the request: verbatim customer copy.
+        $userPrompt = (string) ($c['user_prompt'] ?? '');
+        $hasLogo = is_string($brand['logo_url'] ?? null) && trim($brand['logo_url']) !== '';
+        $logoRequested = (bool) preg_match('/\blogo\b/i', $userPrompt);
+        $exactText = [];
+        if (preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{1,80})["\x{201C}\x{201D}]|\x27([^\x27]{2,80})\x27/u', $userPrompt, $m)) {
+            foreach (array_merge($m[1], $m[2]) as $t) { $t = trim($t); if ($t !== '') { $exactText[] = $t; } }
+        }
 
         return array_merge([
             'source'      => 'studio',
@@ -289,7 +283,22 @@ class ImageIntelligenceService
             'requested_quality' => 'auto',
             'include_text_preference' => 'auto',
             'language'    => 'en',
-        ], $c, ['brand' => $brand, 'workspace_id' => $wsId]);
+        ], $c, ['brand' => $brand, 'workspace_id' => $wsId, 'has_logo' => $hasLogo, 'logo_requested' => $logoRequested, 'exact_text' => array_values(array_unique($exactText))]);
+    }
+
+    /**
+     * RFC-0009: carry the grounding facts the compiler enforces (has_logo, logo_requested, exact_text)
+     * on the blueprint itself, so compile() stays a pure function of its input and the same facts
+     * travel with a cached preview (P1). Prefixed with '_' — never part of the LLM contract.
+     */
+    private function attachCompilerContext(array $blueprint, array $ctx): array
+    {
+        $blueprint['_context'] = [
+            'has_logo'       => (bool) ($ctx['has_logo'] ?? false),
+            'logo_requested' => (bool) ($ctx['logo_requested'] ?? false),
+            'exact_text'     => array_values((array) ($ctx['exact_text'] ?? [])),
+        ];
+        return $blueprint;
     }
 
     /**

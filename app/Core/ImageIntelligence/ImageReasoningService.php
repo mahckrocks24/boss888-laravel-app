@@ -85,7 +85,7 @@ class ImageReasoningService
 
         $brandJson = $hasBrand ? json_encode($brand, JSON_UNESCAPED_SLASHES) : 'NONE (no brand kit configured — use a sensible neutral strategy and set brand_application to note that no brand context was available)';
 
-        $system = "You are Arthur, Level Up Growth's senior AI creative director and image prompt engineer. "
+        $system = "You are Arthur, LevelUpGrowth's senior AI creative director and image prompt engineer. "
             . "You transform a short customer request into a rigorous, production-ready IMAGE BLUEPRINT for the OpenAI gpt-image-1 model. "
             . "You reason about intent, destination platform, audience, campaign objective, brand, composition, subject matter, historical/factual accuracy, lighting, colour, and typography. "
             . "You NEVER pass the user's sentence through unchanged. You output STRICT JSON only — no prose, no markdown.\n\n"
@@ -103,6 +103,14 @@ class ImageReasoningService
             . "- 'none': no text at all. Use for SEO/blog featured images, visual-only requests, or when platform strategy calls for no embedded copy.\n"
             . "gpt-image-1 CANNOT reliably render long or multi-line text — never choose baked_in for more than a few words.\n"
             . "For the provider_prompt: if mode is 'separate_overlay' or 'none', you MUST instruct the model to include NO text/letters/words and to reserve clean negative space; if 'baked_in', embed the exact short headline in quotes.\n\n"
+            // RFC-0009 P4/P5 (2026-09-16): grounding and fidelity rules. The customer's intent is never
+            // rewritten; what cannot be verified is flagged (UNVERIFIED:) for the caller to resolve.
+            . "GROUNDING RULES:\n"
+            . "- LOGO: if has_logo is false there is NO logo asset — never mention, place, or describe a logo, emblem, watermark or brand mark. If has_logo is true you may reference the brand logo. If the customer asked for a logo but has_logo is false, keep their request in provider_prompt exactly and add 'UNVERIFIED: logo requested but no logo asset in the brand kit' to historical_or_factual_constraints.\n"
+            . "- CLAIMS: never invent facts, numbers, statistics, revenue, awards, rankings, testimonials, guarantees or product claims. Claims the customer stated verbatim are kept verbatim. Any claim you would add and cannot verify from the request or brand_kit goes into historical_or_factual_constraints prefixed 'UNVERIFIED: ' instead of the prompt.\n"
+            . "- PEOPLE: never invent a real or named person's appearance, wardrobe, age or setting; describe named people only by the facts given.\n"
+            . "- EXACT TEXT: every string listed under exact_text is the customer's own copy — carry each one verbatim (same words, spelling, capitalisation, punctuation) into typography_strategy.headline or supporting_copy; never paraphrase or 'improve' it.\n"
+            . "- NAMES: use the brand_name exactly as given in brand_kit.\n\n"
             . "Respond with ONLY this JSON object (all fields required):\n"
             . '{"intent":"","subject":"","audience":"","platform":"","asset_type":"","aspect_ratio":"","dimensions":{"width":0,"height":0},"composition":"","scene":"","visual_hierarchy":"","lighting":"","mood":"","color_palette":[],"brand_application":"","historical_or_factual_constraints":[],"negative_constraints":[],"typography_strategy":{"mode":"","reason":"","headline":"","supporting_copy":[],"placement":"","style":""},"provider_prompt":"","quality":"","reasoning_summary":""}';
 
@@ -116,6 +124,9 @@ class ImageReasoningService
             . "- include_text_preference: {$textPref}\n"
             . "- language: {$lang}\n"
             . "- brand_kit: {$brandJson}\n"
+            . "- has_logo: " . (! empty($c['has_logo']) ? 'true' : 'false') . "\n"
+            . "- logo_requested_by_customer: " . (! empty($c['logo_requested']) ? 'true' : 'false') . "\n"
+            . "- exact_text: " . json_encode(array_values((array) ($c['exact_text'] ?? [])), JSON_UNESCAPED_UNICODE) . "\n"
             . ($assetType === 'featured_image' || $source === 'seo' || $source === 'blog'
                 ? "- NOTE: this is an SEO/blog featured image — do NOT bake in text unless explicitly requested; prefer mode 'none' or 'separate_overlay'.\n"
                 : "")

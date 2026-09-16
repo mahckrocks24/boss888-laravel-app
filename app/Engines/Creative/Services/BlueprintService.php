@@ -455,14 +455,30 @@ EOT;
      */
     public function getVideoBlueprint(int $wsId, string $prompt, array $context = []): array
     {
-        $brand    = $this->cims->buildBrandContext($wsId);
-        $identity = $this->cims->getBrandIdentity($wsId);
-        $duration = $context['duration'] ?? 10;
-        $scenes   = max(1, (int) round($duration / 5));
+        // RFC-0009 P3 (2026-09-16): video reads the SAME authoritative brand context as images
+        // (BrandContextForCreative over the canonical kit, ADR-0014). The creative_brand_identities
+        // row, when a workspace has one, is an explicit override layer on top — never a fallback
+        // that invents "professional / professional" for a workspace without a row (EV-1054).
+        $overrides = [];
+        try {
+            $row = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->first();
+            if ($row) {
+                foreach (['voice', 'tone', 'visual_style'] as $k) {
+                    if (! empty($row->{$k})) { $overrides[$k] = (string) $row->{$k}; }
+                }
+            }
+        } catch (\Throwable $e) { /* no override layer */ }
+        $brandArr = \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, $overrides);
+        $brand    = \App\Core\Brand\BrandContextForCreative::toProse($brandArr);
+        $duration = (int) ($context['duration'] ?? 10);
+        // RFC-0009 P6: the scene count is decided by ONE rule, shared with ScenePlannerService
+        // (round(duration/5), clamped, then the launch cap) — the blueprint used to say 2 while the
+        // planner was capped to 1.
+        $scenes   = ScenePlannerService::sceneCountFor($duration);
 
         $styleAdditions = [];
-        if (!empty($identity['visual_style'])) {
-            $styleAdditions[] = $identity['visual_style'];
+        if (!empty($brandArr['visual_style'])) {
+            $styleAdditions[] = $brandArr['visual_style'];
         }
         $styleStr = implode(', ', $styleAdditions);
 
@@ -474,6 +490,8 @@ EOT;
             'scene_count'     => $scenes,
             'aspect_ratio'    => $context['aspect_ratio'] ?? '16:9',
             'brand_context'   => $brand,
+            'brand'           => $brandArr,
+            'has_logo'        => is_string($brandArr['logo_url'] ?? null) && trim($brandArr['logo_url']) !== '',
             'workspace_id'    => $wsId,
             'confidence'      => 0.8,
         ];

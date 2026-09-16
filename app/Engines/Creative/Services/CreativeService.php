@@ -392,7 +392,13 @@ class CreativeService
             'duration'    => $params['duration'] ?? 10,
             'style'       => $videoBp['style_additions'] ?? '',
             'aspect_ratio'=> $params['aspect_ratio'] ?? '16:9',
+            'brand_context' => $videoBp['brand_context'] ?? '',
+            'has_logo'    => (bool) ($videoBp['has_logo'] ?? false),
         ]);
+        // RFC-0009 P6: the planner's output is the single truth for the scene count; the blueprint
+        // predicted with the same rule, and the asset records what was actually planned.
+        $videoBp['scene_count_planned'] = count($scenes);
+        $videoBp['scene_duration_total'] = (int) array_sum(array_map(fn ($s) => (int) ($s['duration'] ?? 0), $scenes));
 
         // D2/D3 (2026-08-13) — carry the originating task AND the requested aspect
         // onto the asset. task_id is what lets the Orchestrator link this asset to
@@ -405,7 +411,7 @@ class CreativeService
             'prompt'       => $prompt,
             'task_id'      => $params['task_id'] ?? null,
             'aspect_ratio' => $params['aspect_ratio'] ?? '16:9',
-            'metadata'     => ['scene_count' => count($scenes), 'duration' => $params['duration'] ?? 10],
+            'metadata'     => ['scene_count' => count($scenes), 'scene_count_predicted' => $videoBp['scene_count'] ?? null, 'scene_duration_total' => $videoBp['scene_duration_total'], 'duration' => $params['duration'] ?? 10, 'brand_context' => $videoBp['brand_context'] ?? null],
         ]);
         $assetId = $asset['asset_id'];
 

@@ -58,15 +58,55 @@ class ScenePlannerService
      * Break a high-level video prompt into a scene plan.
      * Returns an array of scene objects, each with its own focused prompt.
      */
+    /**
+     * RFC-0009 P6 (2026-09-16): the ONE scene-count rule, shared with BlueprintService so the
+     * video blueprint and the scene plan can never disagree (round(duration/5), 1..6, then the
+     * launch cap). Public because the blueprint reads it.
+     */
+    public static function sceneCountFor(int|float $duration): int
+    {
+        $n = max(1, min(6, (int) round($duration / 5)));
+        return min($n, self::MAX_LAUNCH_SCENES);
+    }
+
+    /**
+     * RFC-0009 P6: make the planner's scenes internally consistent with the request — the
+     * requested total duration is the truth; scene durations are redistributed to sum to it
+     * (last scene absorbs the remainder) and indices are re-numbered. Nothing about the
+     * scenes' content is touched. Deterministic; pure.
+     */
+    public static function normaliseScenes(array $scenes, int $duration): array
+    {
+        $scenes = array_values(array_filter($scenes, fn ($s) => is_array($s) && trim((string) ($s['prompt'] ?? '')) !== ''));
+        if (! $scenes) return [];
+        $n = count($scenes);
+        $given = array_map(fn ($s) => max(0, (float) ($s['duration'] ?? 0)), $scenes);
+        $sum = array_sum($given);
+        if ($sum <= 0) { $given = array_fill(0, $n, $duration / $n); $sum = $duration; }
+        $out = []; $acc = 0.0;
+        foreach ($scenes as $i => $s) {
+            $d = ($i === $n - 1) ? max(1, $duration - $acc) : max(1, round($given[$i] / $sum * $duration));
+            $acc += $d;
+            $s['index'] = $i + 1; $s['duration'] = (int) round($d);
+            $out[] = $s;
+        }
+        return $out;
+    }
+
     public function planScenes(string $prompt, array $options = []): array
     {
-        $duration   = $options['duration'] ?? 15;
+        $duration   = (int) ($options['duration'] ?? 15);
         $style      = $options['style'] ?? '';
-        $sceneCount = max(1, min(6, (int) round($duration / 5)));
-        // Launch constraint: collapse to a single scene (see MAX_LAUNCH_SCENES).
-        $sceneCount = min($sceneCount, self::MAX_LAUNCH_SCENES);
+        $sceneCount = self::sceneCountFor($duration);
 
-        $systemPrompt = "You are a video director. Break the given concept into {$sceneCount} distinct video scenes. Return ONLY valid JSON — no markdown, no explanation.";
+        // RFC-0009 P3/P4 (2026-09-16): the planner receives the same authoritative brand context
+        // as the image path, and the same grounding rules — no invented logos, no invented facts.
+        $brandContext = trim((string) ($options['brand_context'] ?? ''));
+        $hasLogo      = (bool) ($options['has_logo'] ?? false);
+        $systemPrompt = "You are a video director. Break the given concept into {$sceneCount} distinct video scenes. Return ONLY valid JSON — no markdown, no explanation. "
+            . "GROUNDING RULES: use only the facts in the concept and the brand context; never invent metrics, revenue figures, awards, testimonials, product claims or people's appearance. "
+            . ($hasLogo ? "A brand logo asset exists and may be shown. " : "There is NO logo asset — never depict, mention or place a logo or watermark. ")
+            . "Keep any quoted customer text verbatim.";
 
         $userPrompt = <<<EOT
 Break this video into {$sceneCount} scenes:
@@ -74,6 +114,7 @@ Break this video into {$sceneCount} scenes:
 Concept: {$prompt}
 Total duration: {$duration} seconds
 Visual style: {$style}
+Brand context: {$brandContext}
 
 Return a JSON object with a "scenes" array. Each scene must have:
 - index: integer (1-based)
@@ -99,7 +140,10 @@ EOT;
             ], 800);
 
             if (($result['success'] ?? false) && is_array($result['parsed'] ?? null) && !empty($result['parsed']['scenes'])) {
-                return $result['parsed']['scenes'];
+                // RFC-0009 P6: the model may return more or fewer scenes than asked; keep its content,
+                // make the durations add up to the request, and let the caller record count(scenes).
+                $norm = self::normaliseScenes((array) $result['parsed']['scenes'], $duration);
+                if ($norm) return $norm;
             }
         } catch (\Throwable $e) {
             Log::warning('ScenePlannerService::planScenes runtime call failed', ['error' => $e->getMessage()]);

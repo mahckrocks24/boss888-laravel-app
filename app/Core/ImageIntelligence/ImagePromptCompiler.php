@@ -50,8 +50,41 @@ class ImagePromptCompiler
         $__colors = array_values(array_filter(array_map('strval', (array) ($bp['color_palette'] ?? []))));
         if ($__colors) { $parts[] = 'Colour palette: ' . implode(', ', array_slice($__colors, 0, 5)); }
         if (($v = trim((string) ($bp['brand_application'] ?? ''))) !== '') { $parts[] = $v; }
-        $prompt = implode('. ', array_filter($parts));
+        // RFC-0009 P5 (2026-09-16): every part is trimmed of its own trailing full stop before the
+        // '. ' join — the LLM's provider_prompt usually ends in '.', and joining it produced '..'
+        // (EV-1054). The part ORDER above is the contract (pinned by CompilerAssemblyTest).
+        $parts = array_values(array_filter(array_map(fn ($p) => rtrim(trim((string) $p), " ."), $parts), fn ($p) => $p !== ''));
+        $prompt = implode('. ', $parts);
+        if ($prompt !== '') { $prompt .= '.'; }
         if ($prompt === '') { $prompt = $llmPrompt; } // absolute fallback — never send empty
+
+        // RFC-0009 P4 (2026-09-16): factual grounding flags — never rewrite the customer's intent,
+        // only remove what the MODEL invented and say so. `has_logo` is resolved from the brand kit
+        // (ImageIntelligenceService::resolveContext); `logo_requested` is true when the customer's
+        // own words asked for one. An invented logo (no asset, not requested) is dropped from the
+        // prompt and audited; a requested logo without an asset is KEPT and flagged so the caller
+        // can tell the customer instead of silently drawing a placeholder.
+        $flags   = [];
+        $hasLogo = (bool) ($bp['_context']['has_logo'] ?? false);
+        $logoReq = (bool) ($bp['_context']['logo_requested'] ?? false);
+        if (! $hasLogo && preg_match('/\b(logo|watermark)\b/i', $prompt)) {
+            if ($logoReq) {
+                $flags[] = 'logo_requested_no_logo_asset';
+            } else {
+                $stripped = preg_replace('/(?:^|(?<=\. ))[^.]*\b(?:logo|watermark)\b[^.]*\.?/i', '', $prompt);
+                $stripped = trim(preg_replace('/\s{2,}/', ' ', (string) $stripped));
+                if ($stripped !== '' && stripos($stripped, 'logo') === false && stripos($stripped, 'watermark') === false) {
+                    $prompt = rtrim($stripped, " .") . '.';
+                    $flags[] = 'logo_clause_removed';
+                } else {
+                    $flags[] = 'logo_clause_present_unresolved';
+                }
+            }
+        }
+        // Unsupported claims are surfaced, not rewritten: the reasoner is told to put anything it
+        // could not verify into historical_or_factual_constraints prefixed 'UNVERIFIED:'.
+        $unverified = array_values(array_filter(array_map('strval', (array) ($bp['historical_or_factual_constraints'] ?? [])), fn ($c) => stripos($c, 'UNVERIFIED:') === 0));
+        if ($unverified) { $flags[] = 'unverified_claims'; }
         // Fold blueprint negative_constraints into the sent prompt (compile() previously
         // dropped them; only compileFromBrief surfaced them). These genuinely steer the model.
         $__neg = array_values(array_filter(array_map('strval', (array) ($bp['negative_constraints'] ?? []))));
@@ -88,6 +121,19 @@ class ImagePromptCompiler
             ];
         }
 
+        // RFC-0009 P5 — exact-text FIDELITY (ours) is separate from text RENDERING (the provider's).
+        // Every quoted string the customer typed must survive verbatim: in the sent prompt for
+        // baked_in, or in the overlay copy for separate_overlay (drawn by Studio's typography
+        // layer). A miss is flagged, never patched by rewriting the customer's words.
+        $exactText = array_values(array_filter(array_map('strval', (array) ($bp['_context']['exact_text'] ?? []))));
+        $exactMissing = [];
+        foreach ($exactText as $t) {
+            $inPrompt  = stripos($prompt, $t) !== false;
+            $inOverlay = $overlay && (stripos((string) $overlay['headline'], $t) !== false || stripos(implode("\n", $overlay['supporting_copy']), $t) !== false);
+            if (! $inPrompt && ! $inOverlay) { $exactMissing[] = $t; }
+        }
+        if ($exactMissing) { $flags[] = 'exact_text_missing'; }
+
         return [
             'provider_prompt' => $prompt,
             'size'            => $this->size($bp),
@@ -96,6 +142,12 @@ class ImagePromptCompiler
             'model'           => (string) ($bp['model'] ?? 'gpt-image-1'),
             'typography'      => $ts,
             'overlay'         => $overlay,
+            // RFC-0009 audit: what the compiler decided, for the caller and the ledger of intent.
+            'assembly_version'    => 'rfc0009-v1',
+            'flags'               => $flags,
+            'unverified_claims'   => $unverified,
+            'exact_text'          => $exactText,
+            'exact_text_missing'  => $exactMissing,
         ];
     }
 
