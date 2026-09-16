@@ -109,8 +109,10 @@ class ImageReasoningService
             . "- LOGO: if has_logo is false there is NO logo asset — never mention, place, or describe a logo, emblem, watermark or brand mark. If has_logo is true you may reference the brand logo. If the customer asked for a logo but has_logo is false, keep their request in provider_prompt exactly and add 'UNVERIFIED: logo requested but no logo asset in the brand kit' to historical_or_factual_constraints.\n"
             . "- CLAIMS: never invent facts, numbers, statistics, revenue, awards, rankings, testimonials, guarantees or product claims. Claims the customer stated verbatim are kept verbatim. Any claim you would add and cannot verify from the request or brand_kit goes into historical_or_factual_constraints prefixed 'UNVERIFIED: ' instead of the prompt.\n"
             . "- PEOPLE: never invent a real or named person's appearance, wardrobe, age or setting; describe named people only by the facts given.\n"
+            . "- PLATFORM AGENT (when subject_reference is present): the subject is a real LevelUpGrowth agent with an approved portrait. Refer to her ONLY by the facts in subject_reference.prompt_facts (name, title, role); do NOT describe her face, hair, skin, gender presentation, clothing or body. Keep her the focal point exactly as the customer asked. If subject_reference.reference_supported is false, do not claim likeness — represent her by name and role and let the composition carry the message; set brand_application to mention that the agent is identified by name/role.\n"
             . "- EXACT TEXT: every string listed under exact_text is the customer's own copy — carry each one verbatim (same words, spelling, capitalisation, punctuation) into typography_strategy.headline or supporting_copy; never paraphrase or 'improve' it.\n"
-            . "- NAMES: use the brand_name exactly as given in brand_kit.\n\n"
+            . "- NAMES: use the brand_name exactly as given in brand_kit.\n"
+            . "- REQUESTED COPY: if headline_requested is true (the customer asked for a headline, caption, tagline or slogan) and gave no text, you MUST write one — short, on-brand, with no factual claim or number — into typography_strategy.headline; a requested headline is copy to write, not a fact to invent. Choose baked_in only if it is a few words; otherwise separate_overlay with the headline filled in.\n\n"
             . "Respond with ONLY this JSON object (all fields required):\n"
             . '{"intent":"","subject":"","audience":"","platform":"","asset_type":"","aspect_ratio":"","dimensions":{"width":0,"height":0},"composition":"","scene":"","visual_hierarchy":"","lighting":"","mood":"","color_palette":[],"brand_application":"","historical_or_factual_constraints":[],"negative_constraints":[],"typography_strategy":{"mode":"","reason":"","headline":"","supporting_copy":[],"placement":"","style":""},"provider_prompt":"","quality":"","reasoning_summary":""}';
 
@@ -126,7 +128,11 @@ class ImageReasoningService
             . "- brand_kit: {$brandJson}\n"
             . "- has_logo: " . (! empty($c['has_logo']) ? 'true' : 'false') . "\n"
             . "- logo_requested_by_customer: " . (! empty($c['logo_requested']) ? 'true' : 'false') . "\n"
+            . "- headline_requested: " . (! empty($c['headline_requested']) ? 'true' : 'false') . "\n"
             . "- exact_text: " . json_encode(array_values((array) ($c['exact_text'] ?? [])), JSON_UNESCAPED_UNICODE) . "\n"
+            . (is_array($c['subject_reference'] ?? null)
+                ? "- subject_reference: " . json_encode(array_intersect_key($c['subject_reference'], array_flip(['kind', 'name', 'title', 'prompt_facts', 'reference_supported'])), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n"
+                : "")
             . ($assetType === 'featured_image' || $source === 'seo' || $source === 'blog'
                 ? "- NOTE: this is an SEO/blog featured image — do NOT bake in text unless explicitly requested; prefer mode 'none' or 'separate_overlay'.\n"
                 : "")

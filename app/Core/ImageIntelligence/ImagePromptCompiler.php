@@ -40,8 +40,18 @@ class ImagePromptCompiler
             || (stripos($llmPrompt, 'no text') !== false || stripos($llmPrompt, 'no words') !== false || stripos($llmPrompt, 'no letters') !== false)
             && stripos($llmPrompt, 'composition') === false && stripos($llmPrompt, 'lighting') === false;
         $parts = [];
+        // RFC-0009 P2: a named platform agent is identified by her registry facts, first, verbatim.
+        // No appearance is ever composed here; likeness is promised only when a reference can travel.
+        $subj = is_array($bp['_context']['subject_reference'] ?? null) ? $bp['_context']['subject_reference'] : null;
+        if ($subj && ! empty($subj['prompt_facts'])) {
+            $parts[] = 'The person shown is ' . $subj['prompt_facts'] . ' — identify her by name and role only; do not invent her appearance'
+                . (! empty($subj['reference_supported']) && ! empty($subj['portrait_url']) ? '; match the reference portrait exactly' : '');
+        }
         if (! $llmIsThin) { $parts[] = $llmPrompt; }
-        if (($v = trim((string) ($bp['subject'] ?? ''))) !== '')          { $parts[] = $v; }
+        if (($v = trim((string) ($bp['subject'] ?? ''))) !== '') {
+            // the reasoner echoes the identity facts as the subject — say them once
+            if (! $subj || strcasecmp(rtrim($v, " ."), rtrim((string) ($subj['prompt_facts'] ?? ''), " .")) !== 0) { $parts[] = $v; }
+        }
         if (($v = trim((string) ($bp['composition'] ?? ''))) !== '')      { $parts[] = 'Composition: ' . $v; }
         if (($v = trim((string) ($bp['scene'] ?? ''))) !== '')            { $parts[] = 'Scene: ' . $v; }
         if (($v = trim((string) ($bp['visual_hierarchy'] ?? ''))) !== '') { $parts[] = 'Visual hierarchy: ' . $v; }
@@ -133,6 +143,8 @@ class ImagePromptCompiler
             if (! $inPrompt && ! $inOverlay) { $exactMissing[] = $t; }
         }
         if ($exactMissing) { $flags[] = 'exact_text_missing'; }
+        // A headline the customer asked for must exist somewhere: baked into the prompt or in the overlay copy.
+        if (! empty($bp['_context']['headline_requested']) && trim((string) ($ts['headline'] ?? '')) === '') { $flags[] = 'headline_requested_missing'; }
 
         return [
             'provider_prompt' => $prompt,
@@ -148,6 +160,9 @@ class ImagePromptCompiler
             'unverified_claims'   => $unverified,
             'exact_text'          => $exactText,
             'exact_text_missing'  => $exactMissing,
+            // RFC-0009 P2: identity as resolved from the registry, and the truthful capability state.
+            'subject_identity'    => $subj ? array_intersect_key($subj, array_flip(['kind', 'slug', 'name', 'title', 'portrait_url', 'portrait_authorised', 'reference_supported', 'limitation'])) : null,
+            'reference_images'    => ($subj && ! empty($subj['reference_supported']) && ! empty($subj['portrait_url'])) ? [$subj['portrait_url']] : [],
         ];
     }
 

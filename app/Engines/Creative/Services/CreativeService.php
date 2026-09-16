@@ -198,6 +198,8 @@ class CreativeService
             'flags'           => array_values((array) ($compiled['flags'] ?? [])),
             'unverified_claims' => array_values((array) ($compiled['unverified_claims'] ?? [])),
             'exact_text_missing' => array_values((array) ($compiled['exact_text_missing'] ?? [])),
+            'subject_identity' => $compiled['subject_identity'] ?? null,   // RFC-0009 P2: who she is, and what the provider can/cannot do
+            'reference_images' => array_values((array) ($compiled['reference_images'] ?? [])),
             'size'            => $size,
             'quality'         => (string) ($compiled['quality'] ?? 'medium'),
             'summary'         => [

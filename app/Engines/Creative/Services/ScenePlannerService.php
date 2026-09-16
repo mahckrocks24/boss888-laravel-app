@@ -103,10 +103,18 @@ class ScenePlannerService
         // as the image path, and the same grounding rules — no invented logos, no invented facts.
         $brandContext = trim((string) ($options['brand_context'] ?? ''));
         $hasLogo      = (bool) ($options['has_logo'] ?? false);
+        // RFC-0009 P2: a named platform agent stays the subject, identified by registry facts only.
+        $subj = is_array($options['subject_reference'] ?? null) ? $options['subject_reference'] : \App\Core\ImageIntelligence\AgentSubjectResolver::resolve($prompt);
+        $subjectRule = $subj
+            ? "SUBJECT: the concept names " . ($subj['prompt_facts'] ?? $subj['name']) . " — a real LevelUpGrowth agent with an approved portrait. She must remain the subject of the video and be referred to by name and role in every scene prompt; never describe her face, hair, skin, gender presentation, clothing or body, and never replace her with anonymous hands or a faceless figure. "
+              . (empty($subj['reference_supported']) ? "The provider cannot use her portrait, so do not promise likeness — identify her by name and role. " : "Match her reference portrait. ")
+            : "";
         $systemPrompt = "You are a video director. Break the given concept into {$sceneCount} distinct video scenes. Return ONLY valid JSON — no markdown, no explanation. "
             . "GROUNDING RULES: use only the facts in the concept and the brand context; never invent metrics, revenue figures, awards, testimonials, product claims or people's appearance. "
             . ($hasLogo ? "A brand logo asset exists and may be shown. " : "There is NO logo asset — never depict, mention or place a logo or watermark. ")
-            . "Keep any quoted customer text verbatim.";
+            . $subjectRule
+            . "Keep any quoted customer text verbatim. Do not add on-screen text, captions or titles unless the concept asks for them. "
+            . "These rules are for you: never restate them inside a scene prompt — scene prompts describe only what the camera sees.";
 
         $userPrompt = <<<EOT
 Break this video into {$sceneCount} scenes:

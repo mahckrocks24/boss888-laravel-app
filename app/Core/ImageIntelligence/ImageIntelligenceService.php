@@ -270,6 +270,8 @@ class ImageIntelligenceService
         $userPrompt = (string) ($c['user_prompt'] ?? '');
         $hasLogo = is_string($brand['logo_url'] ?? null) && trim($brand['logo_url']) !== '';
         $logoRequested = (bool) preg_match('/\blogo\b/i', $userPrompt);
+        // A requested headline/caption/tagline is copy the customer wants WRITTEN — not an invented fact.
+        $headlineRequested = (bool) preg_match('/\b(headline|caption|tagline|slogan|title text)\b/i', $userPrompt);
         $exactText = [];
         if (preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{1,80})["\x{201C}\x{201D}]|\x27([^\x27]{2,80})\x27/u', $userPrompt, $m)) {
             foreach (array_merge($m[1], $m[2]) as $t) { $t = trim($t); if ($t !== '') { $exactText[] = $t; } }
@@ -283,7 +285,9 @@ class ImageIntelligenceService
             'requested_quality' => 'auto',
             'include_text_preference' => 'auto',
             'language'    => 'en',
-        ], $c, ['brand' => $brand, 'workspace_id' => $wsId, 'has_logo' => $hasLogo, 'logo_requested' => $logoRequested, 'exact_text' => array_values(array_unique($exactText))]);
+        ], $c, ['brand' => $brand, 'workspace_id' => $wsId, 'has_logo' => $hasLogo, 'logo_requested' => $logoRequested, 'headline_requested' => $headlineRequested, 'exact_text' => array_values(array_unique($exactText)),
+            // RFC-0009 P2: a platform agent named in the request is a real identity (registry + DEC-0055 portrait), never invented.
+            'subject_reference' => AgentSubjectResolver::resolve($userPrompt)]);
     }
 
     /**
@@ -294,9 +298,11 @@ class ImageIntelligenceService
     private function attachCompilerContext(array $blueprint, array $ctx): array
     {
         $blueprint['_context'] = [
-            'has_logo'       => (bool) ($ctx['has_logo'] ?? false),
-            'logo_requested' => (bool) ($ctx['logo_requested'] ?? false),
-            'exact_text'     => array_values((array) ($ctx['exact_text'] ?? [])),
+            'has_logo'          => (bool) ($ctx['has_logo'] ?? false),
+            'logo_requested'    => (bool) ($ctx['logo_requested'] ?? false),
+            'headline_requested' => (bool) ($ctx['headline_requested'] ?? false),
+            'exact_text'        => array_values((array) ($ctx['exact_text'] ?? [])),
+            'subject_reference' => $ctx['subject_reference'] ?? null,
         ];
         return $blueprint;
     }

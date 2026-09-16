@@ -261,6 +261,8 @@
         : '<div class="ps-enh-row ps-enh-bound"><b>Changed</b>Your request differs from this preview — Enhance again to bind it.</div>') +
       ((e.flags || []).indexOf('logo_requested_no_logo_asset') >= 0 ? '<div class="ps-enh-row"><b>Note</b>No logo file is in your brand kit yet, so no logo can be drawn.</div>' : '') +
       ((e.exact_text_missing || []).length ? '<div class="ps-enh-row"><b>Note</b>Your quoted text was not carried verbatim: ' + esc(e.exact_text_missing.join(' · ')) + '</div>' : '') +
+      // RFC-0009 P2: a named platform agent — say who was resolved and, truthfully, what the provider can do with it.
+      (e.subject_identity && e.subject_identity.name ? '<div class="ps-enh-row"><b>Who</b>' + esc(e.subject_identity.name + (e.subject_identity.title ? ', ' + e.subject_identity.title : '')) + (e.subject_identity.limitation ? ' — ' + esc(e.subject_identity.limitation) : '') + '</div>' : '') +
       '</div>';
   }
 
