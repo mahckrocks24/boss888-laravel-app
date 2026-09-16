@@ -23,7 +23,8 @@ final class BuilderEditPromotion
     // An edit to an existing page: an edit verb + a page/section noun (NOT a blog article).
     private const EDIT = '/\b(change|update|edit|rewrite|revise|reword|replace|set|tweak|improve|shorten|lengthen|fix|make)\b[^.!?]*\b(headline|hero|sub-?title|tagline|title|heading|cta|call to action|button|copy|wording|text|section|paragraph|homepage|home page|landing page|about page|services page|contact page|pricing page|the page)\b/i';
     // Adding a new page: add/create + "page".
-    private const ADD = '/\b(add|create|build|set up|make)\b[^.!?]*\bpage\b/i';
+    // ARTHUR DELEGATION (2026-09-06): pages AND sections/rows/elements (booking, calendar, faq, pricing…) all go to Arthur.
+    private const ADD = '/\b(add|create|build|set up|make|insert|include|put|need|want)\b[^.!?]*\b(page|section|row|block|element|strip|booking|appointment|calendar|events?|faq|pricing|testimonials?|reviews?|gallery|team|map|stats)\b/i';
     // Colour / typography / theme — Arthur's applyStyleColors path, NOT the section editor.
     // edit_page_with_arthur only edits sections_json (copy/structure); routing a palette
     // change there silently no-ops (F-ARTHUR-C-COLOR). No chat colour tool exists yet
@@ -103,19 +104,22 @@ final class BuilderEditPromotion
             }
         }
 
-        // 2. STYLE (colour/typography) — no working chat tool yet; decline honestly
-        // rather than route to the section editor (which no-ops). Unit I builds this.
+        // 2. STYLE (colour / typography / gradients) — Arthur applies these on the live site since
+        // 2026-09-11. This used to decline, which was honest when applyStyleColors had no caller and
+        // is a falsehood now. Same road as an add or an edit: ask Arthur and report what he did.
         if ($intent['type'] === 'style') {
-            return ['handled' => true, 'executed' => false, 'ambiguous' => false,
-                    'reply' => "Colour and typography changes for {$siteName} are made through the site's design settings — I can't apply those from chat yet, so I won't pretend I did. I can edit any page copy, hero, CTA or section through Arthur right now."];
+            $r = $svc->executeToolCall('builder.ask_arthur',
+                    ['website_id' => $siteId, 'request' => $intent['command']], $wsId, $slug, ['workspace_id' => $wsId]);
+            return self::replyFrom(is_array($r) ? $r : [], "change the design of {$siteName}", $wsId);
         }
 
         // 2b. ADD a page.
         if ($intent['type'] === 'add') {
             $tpl = $intent['page_template'] ?: 'about';
-            $r = $svc->executeToolCall('builder.add_page_from_template',
-                    ['website_id' => $siteId, 'page_template' => $tpl], $wsId, $slug, ['workspace_id' => $wsId]);
-            return self::replyFrom(is_array($r) ? $r : [], "add the {$tpl} page to {$siteName}", $wsId);
+            $r = $svc->executeToolCall('builder.ask_arthur',
+                    ['website_id' => $siteId, 'request' => $intent['command']], $wsId, $slug, ['workspace_id' => $wsId]);
+            $what = is_array($r) && !empty($r['plan']['label']) ? 'add ' . $r['plan']['label'] . " to {$siteName}" : "add that to {$siteName}";
+            return self::replyFrom(is_array($r) ? $r : [], $what, $wsId);
         }
 
         // 3. EDIT an existing page — resolve page_id.
@@ -134,9 +138,24 @@ final class BuilderEditPromotion
         }
         if (!$page) $page = $pages->first();
 
-        $r = $svc->executeToolCall('builder.edit_page_with_arthur',
-                ['page_id' => (int) $page->id, 'command' => $intent['command']], $wsId, $slug, ['workspace_id' => $wsId]);
+        $r = $svc->executeToolCall('builder.ask_arthur',
+                ['website_id' => $siteId, 'request' => $intent['command']], $wsId, $slug, ['workspace_id' => $wsId]);
         return self::replyFrom(is_array($r) ? $r : [], "update the {$page->title} page on {$siteName}", $wsId);
+    }
+
+    /** EV-1038 (2026-09-15): the customer's own words go to Arthur as they are — he reads the site; Sarah only resolves WHICH site. */
+    public static function promoteRaw(ToolSchemaService $svc, int $wsId, string $ownerMessage, string $slug): array
+    {
+        $siteId = null; $siteName = null;
+        try { $named = $svc->websiteNamesMentioned($wsId, $ownerMessage); if (count($named) === 1) { $siteId = (int) $named[0]['id']; $siteName = (string) $named[0]['name']; } } catch (\Throwable) {}
+        $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->get(['id', 'name']);
+        if ($siteId === null) {
+            if ($sites->count() === 1) { $siteId = (int) $sites[0]->id; $siteName = (string) $sites[0]->name; }
+            elseif ($sites->count() > 1) { return ['handled' => true, 'executed' => false, 'ambiguous' => true, 'reply' => 'You have more than one website (' . $sites->pluck('name')->implode(', ') . '). Which one should I make this change on?']; }
+            else { return ['handled' => true, 'executed' => false, 'ambiguous' => false, 'reply' => "You don't have a website yet to edit — say the word and I'll generate one first."]; }
+        }
+        $r = $svc->executeToolCall('builder.ask_arthur', ['website_id' => $siteId, 'request' => $ownerMessage], $wsId, $slug, ['workspace_id' => $wsId]);
+        return self::replyFrom(is_array($r) ? $r : [], "make that change on {$siteName}", $wsId);
     }
 
     private static function replyFrom(array $r, string $what, int $wsId = 0): array
