@@ -1,0 +1,594 @@
+{
+ "generated": "2026-09-14T11:26:22.155Z",
+ "count": 84,
+ "items": [
+  {
+   "slug": "aesthetic_ledger",
+   "name": "Aesthetic — Ledger",
+   "industry": "aesthetic_clinic",
+   "industry_label": "Aesthetic Clinic",
+   "file": "templates/aesthetic_ledger.webp"
+  },
+  {
+   "slug": "aesthetic_quiet",
+   "name": "Aesthetic — Quiet",
+   "industry": "aesthetic_clinic",
+   "industry_label": "Aesthetic Clinic",
+   "file": "templates/aesthetic_quiet.webp"
+  },
+  {
+   "slug": "aesthetic_studio",
+   "name": "Aesthetic — Studio",
+   "industry": "aesthetic_clinic",
+   "industry_label": "Aesthetic Clinic",
+   "file": "templates/aesthetic_studio.webp"
+  },
+  {
+   "slug": "aesthetic_clinic",
+   "name": "Aesthetic Clinic",
+   "industry": "aesthetic_clinic",
+   "industry_label": "Aesthetic Clinic",
+   "file": "templates/aesthetic_clinic.webp"
+  },
+  {
+   "slug": "architecture_plan",
+   "name": "Architecture — Plan",
+   "industry": "architecture",
+   "industry_label": "Architecture",
+   "file": "templates/architecture_plan.webp"
+  },
+  {
+   "slug": "architecture",
+   "name": "Architecture Studio",
+   "industry": "architecture",
+   "industry_label": "Architecture",
+   "file": "templates/architecture.webp"
+  },
+  {
+   "slug": "auto_ramp",
+   "name": "Automotive — Ramp",
+   "industry": "automotive",
+   "industry_label": "Automotive",
+   "file": "templates/auto_ramp.webp"
+  },
+  {
+   "slug": "automotive",
+   "name": "Automotive Dealership",
+   "industry": "automotive",
+   "industry_label": "Automotive",
+   "file": "templates/automotive.webp"
+  },
+  {
+   "slug": "barbershop",
+   "name": "Barbershop",
+   "industry": "barbershop",
+   "industry_label": "Barbershop",
+   "file": "templates/barbershop.webp"
+  },
+  {
+   "slug": "barber_chairs",
+   "name": "Barbershop — Chairs",
+   "industry": "barbershop",
+   "industry_label": "Barbershop",
+   "file": "templates/barber_chairs.webp"
+  },
+  {
+   "slug": "barber_corner",
+   "name": "Barbershop — Corner",
+   "industry": "barbershop",
+   "industry_label": "Barbershop",
+   "file": "templates/barber_corner.webp"
+  },
+  {
+   "slug": "barber_lather",
+   "name": "Barbershop — Lather",
+   "industry": "barbershop",
+   "industry_label": "Barbershop",
+   "file": "templates/barber_lather.webp"
+  },
+  {
+   "slug": "beauty_salon",
+   "name": "Beauty & Wellness Studio",
+   "industry": "beauty_salon",
+   "industry_label": "Beauty Salon",
+   "file": "templates/beauty_salon.webp"
+  },
+  {
+   "slug": "salon_atelier",
+   "name": "Salon — Atelier",
+   "industry": "beauty_salon",
+   "industry_label": "Beauty Salon",
+   "file": "templates/salon_atelier.webp"
+  },
+  {
+   "slug": "salon_quiethour",
+   "name": "Salon — Quiet Hour",
+   "industry": "beauty_salon",
+   "industry_label": "Beauty Salon",
+   "file": "templates/salon_quiethour.webp"
+  },
+  {
+   "slug": "salon_treatment",
+   "name": "Salon — Treatment",
+   "industry": "beauty_salon",
+   "industry_label": "Beauty Salon",
+   "file": "templates/salon_treatment.webp"
+  },
+  {
+   "slug": "cafe_arch",
+   "name": "Café — Arch",
+   "industry": "cafe",
+   "industry_label": "Cafe",
+   "file": "templates/cafe_arch.webp"
+  },
+  {
+   "slug": "cafe_press",
+   "name": "Café — Press",
+   "industry": "cafe",
+   "industry_label": "Cafe",
+   "file": "templates/cafe_press.webp"
+  },
+  {
+   "slug": "cafe",
+   "name": "Cafe / Coffee Shop",
+   "industry": "cafe",
+   "industry_label": "Cafe",
+   "file": "templates/cafe.webp"
+  },
+  {
+   "slug": "catering_brief",
+   "name": "Catering — Brief",
+   "industry": "catering",
+   "industry_label": "Catering",
+   "file": "templates/catering_brief.webp"
+  },
+  {
+   "slug": "catering_marquee",
+   "name": "Catering — Marquee",
+   "industry": "catering",
+   "industry_label": "Catering",
+   "file": "templates/catering_marquee.webp"
+  },
+  {
+   "slug": "catering_service",
+   "name": "Catering — Service",
+   "industry": "catering",
+   "industry_label": "Catering",
+   "file": "templates/catering_service.webp"
+  },
+  {
+   "slug": "childcare",
+   "name": "Childcare & Nursery",
+   "industry": "childcare",
+   "industry_label": "Childcare",
+   "file": "templates/childcare.webp"
+  },
+  {
+   "slug": "nursery_keyperson",
+   "name": "Nursery — Key Person",
+   "industry": "childcare",
+   "industry_label": "Childcare",
+   "file": "templates/nursery_keyperson.webp"
+  },
+  {
+   "slug": "construction_site",
+   "name": "Construction — Site",
+   "industry": "construction",
+   "industry_label": "Construction",
+   "file": "templates/construction_site.webp"
+  },
+  {
+   "slug": "construction",
+   "name": "Construction Company",
+   "industry": "construction",
+   "industry_label": "Construction",
+   "file": "templates/construction.webp"
+  },
+  {
+   "slug": "consultant_profile",
+   "name": "Consultant — Profile",
+   "industry": "consulting",
+   "industry_label": "Consulting",
+   "file": "templates/consultant_profile.webp"
+  },
+  {
+   "slug": "consulting",
+   "name": "Consulting",
+   "industry": "consulting",
+   "industry_label": "Consulting",
+   "file": "templates/consulting.webp"
+  },
+  {
+   "slug": "consulting_partner",
+   "name": "Consulting — Partner",
+   "industry": "consulting",
+   "industry_label": "Consulting",
+   "file": "templates/consulting_partner.webp"
+  },
+  {
+   "slug": "dental_chair",
+   "name": "Dental — Chair",
+   "industry": "dental",
+   "industry_label": "Dental",
+   "file": "templates/dental_chair.webp"
+  },
+  {
+   "slug": "dental_openplan",
+   "name": "Dental — Open Plan",
+   "industry": "dental",
+   "industry_label": "Dental",
+   "file": "templates/dental_openplan.webp"
+  },
+  {
+   "slug": "dental_practice",
+   "name": "Dental — Practice",
+   "industry": "dental",
+   "industry_label": "Dental",
+   "file": "templates/dental_practice.webp"
+  },
+  {
+   "slug": "dental",
+   "name": "Dental Practice",
+   "industry": "dental",
+   "industry_label": "Dental",
+   "file": "templates/dental.webp"
+  },
+  {
+   "slug": "shop_batch",
+   "name": "Online Shop — Batch",
+   "industry": "ecommerce",
+   "industry_label": "Ecommerce",
+   "file": "templates/shop_batch.webp"
+  },
+  {
+   "slug": "shop_maker",
+   "name": "Online Shop — Maker",
+   "industry": "ecommerce",
+   "industry_label": "Ecommerce",
+   "file": "templates/shop_maker.webp"
+  },
+  {
+   "slug": "shop_workshop",
+   "name": "Online Shop — Workshop",
+   "industry": "ecommerce",
+   "industry_label": "Ecommerce",
+   "file": "templates/shop_workshop.webp"
+  },
+  {
+   "slug": "real_estate_agency",
+   "name": "Broker Profile",
+   "industry": "real_estate_agency",
+   "industry_label": "Estate Agency",
+   "file": "templates/real_estate_agency.webp"
+  },
+  {
+   "slug": "estate_frontage",
+   "name": "Estate Agency — Frontage",
+   "industry": "real_estate_agency",
+   "industry_label": "Estate Agency",
+   "file": "templates/estate_frontage.webp"
+  },
+  {
+   "slug": "realtor_profile",
+   "name": "Realtor — Portfolio",
+   "industry": "real_estate_agency",
+   "industry_label": "Estate Agency",
+   "file": "templates/realtor_profile.webp"
+  },
+  {
+   "slug": "event_venue",
+   "name": "Events & Weddings",
+   "industry": "event_venue",
+   "industry_label": "Event Venue",
+   "file": "templates/event_venue.webp"
+  },
+  {
+   "slug": "venue_exclusive",
+   "name": "Venue — Exclusive Use",
+   "industry": "event_venue",
+   "industry_label": "Event Venue",
+   "file": "templates/venue_exclusive.webp"
+  },
+  {
+   "slug": "gym",
+   "name": "Fitness & Athletic Club",
+   "industry": "gym",
+   "industry_label": "Gym",
+   "file": "templates/gym.webp"
+  },
+  {
+   "slug": "gym_platform",
+   "name": "Gym — Platform",
+   "industry": "gym",
+   "industry_label": "Gym",
+   "file": "templates/gym_platform.webp"
+  },
+  {
+   "slug": "rental_almanac",
+   "name": "Holiday Lets — Almanac",
+   "industry": "short_term_rental",
+   "industry_label": "Holiday Lets",
+   "file": "templates/rental_almanac.webp"
+  },
+  {
+   "slug": "rental_coastline",
+   "name": "Holiday Lets — Coastline",
+   "industry": "short_term_rental",
+   "industry_label": "Holiday Lets",
+   "file": "templates/rental_coastline.webp"
+  },
+  {
+   "slug": "rental_keyhouse",
+   "name": "Holiday Lets — Keyhouse",
+   "industry": "short_term_rental",
+   "industry_label": "Holiday Lets",
+   "file": "templates/rental_keyhouse.webp"
+  },
+  {
+   "slug": "home_services",
+   "name": "Cleaning Services",
+   "industry": "home_services",
+   "industry_label": "Home Services",
+   "file": "templates/home_services.webp"
+  },
+  {
+   "slug": "trades_window",
+   "name": "Home Services — Window",
+   "industry": "home_services",
+   "industry_label": "Home Services",
+   "file": "templates/trades_window.webp"
+  },
+  {
+   "slug": "hotel",
+   "name": "Hospitality / Resort",
+   "industry": "hotel",
+   "industry_label": "Hotel",
+   "file": "templates/hotel.webp"
+  },
+  {
+   "slug": "hotel_terrace",
+   "name": "Hotel — Terrace",
+   "industry": "hotel",
+   "industry_label": "Hotel",
+   "file": "templates/hotel_terrace.webp"
+  },
+  {
+   "slug": "interior_design",
+   "name": "Interior Design & Fit-Out",
+   "industry": "interior_design",
+   "industry_label": "Interior Design",
+   "file": "templates/interior_design.webp"
+  },
+  {
+   "slug": "interiors_scheme",
+   "name": "Interiors — Scheme",
+   "industry": "interior_design",
+   "industry_label": "Interior Design",
+   "file": "templates/interiors_scheme.webp"
+  },
+  {
+   "slug": "it_uptime",
+   "name": "IT Services — Uptime",
+   "industry": "it_services",
+   "industry_label": "IT Services",
+   "file": "templates/it_uptime.webp"
+  },
+  {
+   "slug": "it_services",
+   "name": "Technology / SaaS",
+   "industry": "it_services",
+   "industry_label": "IT Services",
+   "file": "templates/it_services.webp"
+  },
+  {
+   "slug": "agency_pipeline",
+   "name": "Agency — Pipeline",
+   "industry": "marketing_agency",
+   "industry_label": "Marketing Agency",
+   "file": "templates/agency_pipeline.webp"
+  },
+  {
+   "slug": "marketing_agency",
+   "name": "Marketing Agency",
+   "industry": "marketing_agency",
+   "industry_label": "Marketing Agency",
+   "file": "templates/marketing_agency.webp"
+  },
+  {
+   "slug": "medical_atrium",
+   "name": "Medical — Atrium",
+   "industry": "medical_clinic",
+   "industry_label": "Medical Clinic",
+   "file": "templates/medical_atrium.webp"
+  },
+  {
+   "slug": "medical_consulting",
+   "name": "Medical — Consulting",
+   "industry": "medical_clinic",
+   "industry_label": "Medical Clinic",
+   "file": "templates/medical_consulting.webp"
+  },
+  {
+   "slug": "medical_rounds",
+   "name": "Medical — Rounds",
+   "industry": "medical_clinic",
+   "industry_label": "Medical Clinic",
+   "file": "templates/medical_rounds.webp"
+  },
+  {
+   "slug": "medical_clinic",
+   "name": "Medical Clinic",
+   "industry": "medical_clinic",
+   "industry_label": "Medical Clinic",
+   "file": "templates/medical_clinic.webp"
+  },
+  {
+   "slug": "news_channel",
+   "name": "News Channel",
+   "industry": "news_channel",
+   "industry_label": "Newsroom",
+   "file": "templates/news_channel.webp"
+  },
+  {
+   "slug": "news_desk",
+   "name": "Newsroom — Desk",
+   "industry": "news_channel",
+   "industry_label": "Newsroom",
+   "file": "templates/news_desk.webp"
+  },
+  {
+   "slug": "courses_cohort",
+   "name": "Courses — Cohort",
+   "industry": "online_courses",
+   "industry_label": "Online Courses",
+   "file": "templates/courses_cohort.webp"
+  },
+  {
+   "slug": "courses_studio",
+   "name": "Courses — Studio",
+   "industry": "online_courses",
+   "industry_label": "Online Courses",
+   "file": "templates/courses_studio.webp"
+  },
+  {
+   "slug": "courses_syllabus",
+   "name": "Courses — Syllabus",
+   "industry": "online_courses",
+   "industry_label": "Online Courses",
+   "file": "templates/courses_syllabus.webp"
+  },
+  {
+   "slug": "pet_services",
+   "name": "Pet Services",
+   "industry": "pet_services",
+   "industry_label": "Pet Services",
+   "file": "templates/pet_services.webp"
+  },
+  {
+   "slug": "pets_daycare",
+   "name": "Pet Services — Day Care",
+   "industry": "pet_services",
+   "industry_label": "Pet Services",
+   "file": "templates/pets_daycare.webp"
+  },
+  {
+   "slug": "resort_dune",
+   "name": "Resort — Dune",
+   "industry": "resort",
+   "industry_label": "Resort",
+   "file": "templates/resort_dune.webp"
+  },
+  {
+   "slug": "resort_headland",
+   "name": "Resort — Headland",
+   "industry": "resort",
+   "industry_label": "Resort",
+   "file": "templates/resort_headland.webp"
+  },
+  {
+   "slug": "resort_reef",
+   "name": "Resort — Reef",
+   "industry": "resort",
+   "industry_label": "Resort",
+   "file": "templates/resort_reef.webp"
+  },
+  {
+   "slug": "restaurant_atrium",
+   "name": "Restaurant — Atrium",
+   "industry": "restaurant",
+   "industry_label": "Restaurant",
+   "file": "templates/restaurant_atrium.webp"
+  },
+  {
+   "slug": "restaurant_counter",
+   "name": "Restaurant — Counter",
+   "industry": "restaurant",
+   "industry_label": "Restaurant",
+   "file": "templates/restaurant_counter.webp"
+  },
+  {
+   "slug": "restaurant_larder",
+   "name": "Restaurant — Larder",
+   "industry": "restaurant",
+   "industry_label": "Restaurant",
+   "file": "templates/restaurant_larder.webp"
+  },
+  {
+   "slug": "retail_counterpoint",
+   "name": "Retail — Counterpoint",
+   "industry": "retail_shop",
+   "industry_label": "Retail Shop",
+   "file": "templates/retail_counterpoint.webp"
+  },
+  {
+   "slug": "retail_index",
+   "name": "Retail — Index",
+   "industry": "retail_shop",
+   "industry_label": "Retail Shop",
+   "file": "templates/retail_index.webp"
+  },
+  {
+   "slug": "retail_shopfront",
+   "name": "Retail — Shopfront",
+   "industry": "retail_shop",
+   "industry_label": "Retail Shop",
+   "file": "templates/retail_shopfront.webp"
+  },
+  {
+   "slug": "training_center",
+   "name": "Education",
+   "industry": "training_center",
+   "industry_label": "Training Centre",
+   "file": "templates/training_center.webp"
+  },
+  {
+   "slug": "training_yard",
+   "name": "Training — Yard",
+   "industry": "training_center",
+   "industry_label": "Training Centre",
+   "file": "templates/training_yard.webp"
+  },
+  {
+   "slug": "travel_atlas",
+   "name": "Travel — Atlas",
+   "industry": "travel_agency",
+   "industry_label": "Travel Agency",
+   "file": "templates/travel_atlas.webp"
+  },
+  {
+   "slug": "travel_compass",
+   "name": "Travel — Compass",
+   "industry": "travel_agency",
+   "industry_label": "Travel Agency",
+   "file": "templates/travel_compass.webp"
+  },
+  {
+   "slug": "travel_meridian",
+   "name": "Travel — Meridian",
+   "industry": "travel_agency",
+   "industry_label": "Travel Agency",
+   "file": "templates/travel_meridian.webp"
+  },
+  {
+   "slug": "tutoring_bridge",
+   "name": "Tutoring — Bridge",
+   "industry": "tutoring",
+   "industry_label": "Tutoring",
+   "file": "templates/tutoring_bridge.webp"
+  },
+  {
+   "slug": "tutoring_chapter",
+   "name": "Tutoring — Chapter",
+   "industry": "tutoring",
+   "industry_label": "Tutoring",
+   "file": "templates/tutoring_chapter.webp"
+  },
+  {
+   "slug": "tutoring_desk",
+   "name": "Tutoring — Desk",
+   "industry": "tutoring",
+   "industry_label": "Tutoring",
+   "file": "templates/tutoring_desk.webp"
+  }
+ ]
+}

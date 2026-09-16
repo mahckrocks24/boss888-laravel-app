@@ -104,3 +104,9 @@ storage/backups/
 # authoritative builder/studio templates (source, unconventionally under storage/)
 !storage/templates/
 !storage/templates/**
+
+# DEC-0056 A (2026-09-16): the marketing site is a build output. tools/marketing-build.php renders marketing-next/src into
+# public/marketing-next/{dist,dist-root} and one internal page into marketing-next/internal-dist. Rebuild with --dist=<scratch>
+# and diff before touching the served paths (RISK-0181).
+public/marketing-next/
+marketing-next/internal-dist/
