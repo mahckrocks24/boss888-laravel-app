@@ -26,7 +26,7 @@ class ArthurDelegationTest extends TestCase
     public function test_pricing_is_declared_once_and_quoted_in_plans(): void
     {
         $p = BuilderCapabilities::pricing();
-        $this->assertSame(['page', 'section', 'text_edit', 'style', 'draft'], array_keys($p)); // style 2026-09-11, draft DEC-0045
+        $this->assertSame(['page', 'section', 'text_edit', 'style', 'draft', 'catalogue', 'inline', 'image_replace', 'logo', 'palette', 'layout', 'section_move', 'section_toggle', 'element_move', 'element_align', 'element_size', 'element_effect', 'tracking', 'export', 'undo'], array_keys($p)); // style 2026-09-11, draft DEC-0045, editor actions 2026-09-15 (RISK-0180 part 2)
         $this->assertSame($p['page'], BuilderCapabilities::classify('add a booking page', 'pet_services')['credits']);
         $this->assertSame($p['section'], BuilderCapabilities::classify('add a faq section', 'pet_services')['credits']);
         $this->assertSame($p['text_edit'], BuilderCapabilities::classify('rewrite the hero headline', 'pet_services')['credits']);
