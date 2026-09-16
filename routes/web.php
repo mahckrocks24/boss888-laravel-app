@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -59,6 +60,121 @@ Route::prefix('admin')->group(function () {
     // here (web group). Those groups disagree about cookie encryption, which is
     // why bootstrap/app.php exempts lu_admin_at from EncryptCookies. Remove that
     // exemption and every request below becomes an infinite redirect to login.
+// ── Template design gallery (2026-09-10, Owner) ───────────────────────────────────────────────
+// "I need to see all of the templates and tell you exactly what is nice and not and needs replaced."
+// A table of names cannot answer that, so this renders every template live, side by side, with the
+// forensic flags that explain why several of them look the same.
+// Registered BEFORE the /{slug?} catch-all below, which would otherwise swallow both paths.
+
+// Replacement for the /admin/template-preview/{slug} and /admin/template-gallery route bodies.
+// Two changes over the first version:
+//   1. The preview seeds the manifest's own defaults before rendering. render() only substitutes
+//      the variables it is handed, so the previous gallery was showing the Owner near-blank pages
+//      with the layout but none of the words — which is not something you can judge a design on.
+//   2. The gallery groups by INDUSTRY, because the question in front of the Owner is "which of the
+//      three restaurant designs do I keep", not "here are ninety-one cards in signature order".
+
+Route::middleware(\App\Http\Middleware\AdminSessionIdentity::class)
+    ->get('/template-preview/{slug}', function (string $slug) {
+        if (! preg_match('/^[a-z0-9_]{1,40}$/', $slug)) { abort(404); }
+        $svc = app(\App\Engines\Builder\Services\TemplateService::class);
+        $manifest = $svc->getManifest($slug);
+        if (! $manifest) { abort(404); }
+
+        // Seed every declared default, then overlay one neutral business so the copy does not
+        // flatter one template over another where it matters (the name on the door).
+        $vars = [];
+        foreach (($manifest['variables'] ?? []) as $key => $spec) {
+            $vars[$key] = is_array($spec) ? (string) ($spec['default'] ?? '') : (string) $spec;
+        }
+        $vars = array_merge($vars, [
+            'business_name' => 'Northgate & Co', 'logo' => 'Northgate & Co', 'city' => 'Bristol',
+            'location' => 'Bristol', 'phone' => '0117 496 0100', 'contact_phone' => '0117 496 0100',
+            'email' => 'hello@northgate.example', 'contact_email' => 'hello@northgate.example',
+            'contact_address' => '14 Colston Yard, Bristol BS1 5BD',
+        ]);
+
+        $html = $svc->render($slug, $vars);
+        return response($html)->header('Content-Type', 'text/html; charset=UTF-8')
+            ->header('X-Robots-Tag', 'noindex, nofollow');
+    })->name('admin.template.preview');
+
+Route::middleware(\App\Http\Middleware\AdminSessionIdentity::class)
+    ->get('/template-gallery', function (\Illuminate\Http\Request $request) {
+        $root = storage_path('templates');
+        $rows = [];
+        foreach (glob($root . '/*', GLOB_ONLYDIR) as $dir) {
+            $slug = basename($dir);
+            $tpl = $dir . '/template.html';
+            if (! is_file($tpl)) { continue; }
+            $html = (string) file_get_contents($tpl);
+            $man = is_file($dir . '/manifest.json')
+                ? (json_decode((string) file_get_contents($dir . '/manifest.json'), true) ?: []) : [];
+
+            // Structural signature — the set of CSS class names, order-independent. Two templates
+            // with the same signature are the same design wearing different words.
+            preg_match_all('/\.([a-z][a-z0-9_-]{2,})\s*\{/i', $html, $cls);
+            $classes = array_values(array_unique($cls[1] ?? []));
+            sort($classes);
+
+            preg_match_all('/data-field="([a-z0-9_]+)"/i', $html, $f);
+            preg_match_all('/data-block="([a-z0-9_]+)"/i', $html, $b);
+
+            $design = $man['design'] ?? null;
+            $rows[$slug] = [
+                'slug' => $slug,
+                'name' => $man['name'] ?? $slug,
+                'industry' => $man['industry'] ?? $slug,
+                'variation' => $man['variation'] ?? '',
+                'desc' => $man['description'] ?? '',
+                'sig' => substr(sha1(implode(',', $classes)), 0, 10),
+                'kb' => round(strlen($html) / 1024, 1),
+                'fields' => count(array_unique($f[1] ?? [])),
+                'blocks' => count(array_unique($b[1] ?? [])),
+                'medical' => preg_match_all('/\b(medical|doctor|patient|dental|clinic|hygienist)\b/i', $html),
+                'cert' => substr_count($html, 'cert-check'),
+                'new' => isset($design['generator']),
+                // Only ACTIVE templates are offered to customers; the gallery shows both.
+                'active' => array_key_exists('is_active', $man) ? (bool) $man['is_active'] : true,
+                'archetypes' => $design['archetypes'] ?? null,
+                'palette' => $design['palette'] ?? null,
+                'type' => $design['type'] ?? null,
+            ];
+        }
+        $bySig = [];
+        foreach ($rows as $s => $r) { $bySig[$r['sig']][] = $s; }
+        foreach ($rows as $s => $r) {
+            $rows[$s]['group'] = $bySig[$r['sig']];
+            $rows[$s]['clone'] = count($bySig[$r['sig']]) > 1;
+        }
+
+        $filter = (string) $request->query('show', 'all');   // all | new | original | clones
+        $rows = array_filter($rows, function ($r) use ($filter) {
+            return match ($filter) {
+                'new' => $r['new'], 'original' => ! $r['new'], 'clones' => $r['clone'], default => true,
+            };
+        });
+
+        // Grouped by industry, clones first inside each group: the decision the Owner is making is
+        // per industry — which of these designs do we keep for a restaurant.
+        $byIndustry = [];
+        foreach ($rows as $r) { $byIndustry[$r['industry']][] = $r; }
+        ksort($byIndustry);
+        foreach ($byIndustry as $k => $g) {
+            usort($g, fn($a, $b) => [$b['clone'], $a['slug']] <=> [$a['clone'], $b['slug']]);
+            $byIndustry[$k] = $g;
+        }
+
+        $distinct = count(array_unique(array_column($rows, 'sig')));
+        $cloneGroups = count(array_filter($bySig, fn($g) => count($g) > 1));
+        $medicalOnNonMedical = count(array_filter($rows, fn($r) => $r['medical'] > 20
+            && ! in_array($r['industry'], ['dental', 'medical_clinic', 'aesthetic_clinic'], true)));
+        $newCount = count(array_filter($rows, fn($r) => $r['new']));
+
+        return view('admin.template-gallery', compact(
+            'rows', 'byIndustry', 'distinct', 'cloneGroups', 'medicalOnNonMedical', 'newCount', 'filter'));
+    })->name('admin.template.gallery');
+
     Route::middleware(\App\Http\Middleware\AdminSessionIdentity::class)
         ->get('/{slug?}', [\App\Http\Controllers\Admin\AdminPageController::class, 'show'])
         ->where('slug', '.*')->name('admin.page');
@@ -329,6 +445,13 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
         $embedHost = strtolower($parsed['host'] ?? '');
     }
     if ($embedHost === '') return $reject('no_origin');
+    // F-CB-B1 (2026-09-06): only the workspace's own sites (and platform previews) may embed its widget. A stranger's
+    // page gets nothing and the allow-list is never touched — the Origin allow-list is the boundary, so it must not be
+    // self-service. Proven live: a foreign origin got itself allow-listed on ws 999993 and opened sessions.
+    if (! app(\App\Engines\Chatbot\Services\ChatbotWidgetTokenService::class)->hostBelongsToWorkspace($wsId, $embedHost)) {
+        \Illuminate\Support\Facades\Log::info('[chatbot] loader refused a foreign embed host', ['ws' => $wsId, 'host' => $embedHost, 'ip' => $r->ip()]);
+        return $reject('host_not_allowed');
+    }
 
     // Token policy: the chatbot widget token is PUBLIC by design (it ships
     // in the script tag). Domain allowlist + revocation are the security
@@ -401,7 +524,13 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
         $embedHostForLookup = strtolower($parsedH['host'] ?? '');
     }
     $websiteForWs = null;
-    if ($embedHostForLookup !== '' && ! in_array($embedHostForLookup, ['levelupgrowth.io', 'www.levelupgrowth.io', 'staging.levelupgrowth.io'], true)) {
+    // 2026-09-14: the page says which website it is (w=), and that beats any host or recency guess.
+    if ($cbWebsiteId > 0) {
+        $websiteForWs = \Illuminate\Support\Facades\DB::table('websites')
+            ->where('id', $cbWebsiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')
+            ->first(['id', 'name', 'template_variables']);
+    }
+    if (! $websiteForWs && $embedHostForLookup !== '' && ! in_array($embedHostForLookup, ['levelupgrowth.io', 'www.levelupgrowth.io', 'staging.levelupgrowth.io'], true)) {
         $websiteForWs = \Illuminate\Support\Facades\DB::table('websites')
             ->where('workspace_id', $wsId)
             ->where(function ($q) use ($embedHostForLookup) {
@@ -510,7 +639,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
       '<div id="lu-cb-feed" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;font-size:13px;line-height:1.5"></div>' +
       '<div style="padding:10px;border-top:1px solid '+bd+';display:flex;gap:8px">' +
         '<input id="lu-cb-input" placeholder="Type a message…" style="flex:1;background:transparent;border:1px solid '+bd+';border-radius:8px;color:'+fg+';padding:9px 12px;font-size:13px;font-family:inherit;outline:none">' +
-        '<button id="lu-cb-send" style="background:'+COLOR+';color:'+FGON+';border:none;border-radius:8px;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer">Send</button>' +
+        '<button id="lu-cb-send" aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;flex:0 0 38px;padding:0;background:'+COLOR+';color:'+FGON+';border:none;border-radius:10px;cursor:pointer"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>' +
       '</div>';
     document.body.appendChild(panel);
     bubble.style.display = 'none';
@@ -624,6 +753,10 @@ Route::get('/templates/{industry}/preview', function (string $industry) {
         foreach (($manifest['variables'] ?? []) as $k => $v) $vars[$k] = $v['default'] ?? '';
         $svc = app(\App\Engines\Builder\Services\TemplateService::class);
         $rendered = $svc->render($industry, $vars);
+        // PREVIEW PARITY (2026-09-11): a customer's export gets the phone menu and the mobile-safety guard at
+        // deploy; the preview must show the same page or a phone-width judgement is made on a fiction.
+        $rendered = \App\Engines\Builder\Support\ResponsiveNav::inject($rendered);
+        if (method_exists($svc, 'injectMobileSafetyPublic')) { $rendered = $svc->injectMobileSafetyPublic($rendered); }
 
         if ($raw) {
             return $rendered;
@@ -837,3 +970,10 @@ Route::get('/plugin-connect', function (\Illuminate\Http\Request $r) {
         'site_url'     => (string) $r->query('site_url', ''),
     ]);
 })->name('plugin.connect');
+
+// CUTOVER (2026-09-10) — the rebuilt marketing site is served at the root from
+// routes/marketing-next.php. Included LAST on purpose: Laravel's RouteCollection keys on
+// method+uri and OVERWRITES, so for a URI defined in both places the LAST registration wins.
+// Included first, every legacy page below silently re-claimed / and /pricing. Deleting these
+// five lines is the complete rollback: the legacy routes above are untouched.
+if (file_exists(__DIR__ . '/marketing-next.php')) { require __DIR__ . '/marketing-next.php'; }

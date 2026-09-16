@@ -115,10 +115,20 @@ Route::post('/admin/auth', function (\Illuminate\Http\Request $r) {
     // token remain tagged 'shared_admin_token' and stay denied on INFRA888.
     $tokens = $refreshService->issueTokenPair($admin, $workspace, null, null, 'shared_admin_token');
 
-    return response()->json([
+    // ADMIN PAGE COOKIE (2026-09-11): the console's login must also grant the server-rendered admin pages,
+    // or the template gallery and its previews answer 302 to every admin, which they did since 08-04.
+    return \App\Http\Middleware\AdminSessionIdentity::attach(response()->json([
         'token' => $tokens['access_token'],
         'user'  => ['id' => $admin->id, 'name' => $admin->name, 'email' => $admin->email],
-    ]);
+    ]), $tokens['access_token']);
+
+});
+
+// An already signed-in console mirrors its bearer into the page cookie (called once per session by
+// admin-core.js). Bearer-authenticated and admin-gated like every other /api/admin route.
+Route::middleware(['auth.jwt', 'admin'])->post('/admin/session-cookie', function (\Illuminate\Http\Request $r) {
+    $token = $r->bearerToken();
+    return \App\Http\Middleware\AdminSessionIdentity::attach(response()->json(['ok' => true]), $token);
 });
 
 // ── Phase 2 Admin: Orchestration Health + Capability Registry ──────────────
@@ -792,7 +802,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::post('/auth/switch-workspace', [AuthController::class, 'switchWorkspace']);
 
     // ---------------------------------------------------------------------
-    // LevelUp Growth Hosting -- customer domain commerce.
+    // LevelUpGrowth Hosting -- customer domain commerce.
     // Workspace-scoped: the tenant comes from the token, never from input.
     // Nothing here can spend money without a completed Stripe payment.
     // ---------------------------------------------------------------------
@@ -872,6 +882,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     // CR-22B: projects-01 extracted to routes/api/authenticated/projects-01.php (was lines 753-932); position, scope and order preserved.
     require __DIR__ . '/api/authenticated/projects-01.php';
     require __DIR__ . '/api/authenticated/desk-01.php'; // PUBLISHER888 Unit 1 — Publisher Desk (/api/desk/*)
+    require __DIR__ . '/api/authenticated/aria-01.php'; // ARIA888 DEC-0054 — Aria, the platform FAQ (/api/aria/*)
 
     // Approvals (v5.5.1)
     Route::get('/approvals',                 [ApprovalController::class, 'index']);
@@ -1079,6 +1090,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     // Media Upload + unified media picker (added 2026-04-19, Phase 3)
     // Workspace-scoped. Picker uses /library + /access + /use.
     Route::post('/media/upload', [\App\Http\Controllers\Api\MediaController::class, 'upload']);
+    Route::post('/media/crop', [\App\Http\Controllers\Api\MediaCropController::class, 'crop']); // CROP TOOL 2026-09-06
+    Route::get('/builder/image-policy', [\App\Http\Controllers\Api\MediaCropController::class, 'policy']);
     Route::get('/media/library',  [\App\Http\Controllers\Api\MediaController::class, 'library']);
     Route::get('/media/access',   [\App\Http\Controllers\Api\MediaController::class, 'access']);
     Route::post('/media/use',     [\App\Http\Controllers\Api\MediaController::class, 'use_']);
@@ -1253,7 +1266,14 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $exec = \App\Core\EngineKernel\EngineExecutionService::class;
         // Reads
         Route::get('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listPosts($r->attributes->get('workspace_id'), $r->all())));
-        Route::get('/posts/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->getPost($r->attributes->get('workspace_id'), $id)));
+        // SOCIAL888 U-B (2026-09-06): kernel envelope → HTTP status (was always 200), like BaseEngineController
+        $__socialJson = function (array $res, int $okStatus = 200) {
+            if ($res['success'] ?? false) return response()->json($res, ($res['pending_approval'] ?? false) ? 202 : $okStatus);
+            $code = match ($res['code'] ?? 'UNKNOWN') { 'PLAN_GATED' => 403, 'NO_CREDITS' => 402, 'NOT_FOUND' => 404, 'AWAITING_APPROVAL' => 202, 'INVALID_ACTION' => 400, 'INVALID_INPUT' => 422, 'EXECUTION_FAILED' => (str_contains(strtolower((string) ($res['error'] ?? '')), 'not found') ? 404 : 422), default => 400 };
+            return response()->json($res, $code);
+        };
+        $__ownPost = fn(\Illuminate\Http\Request $r, $id) => (bool) app($s)->getPost((int) $r->attributes->get('workspace_id'), (int) $id);
+        Route::get('/posts/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) { $p = app($s)->getPost((int) $r->attributes->get('workspace_id'), (int) $id); return $p ? response()->json($p) : response()->json(['success' => false, 'error' => 'Post not found'], 404); });
         Route::get('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAccounts($r->attributes->get('workspace_id'))));
         Route::get('/calendar', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getCalendarPosts($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'))));
         // SOCIAL INSIGHTS (SOC-P1-5): deterministic, credit-free. Workspace from the token (server-side
@@ -1264,13 +1284,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 ['website_id' => $r->input('website_id', 'all'), 'period_days' => (int) $r->input('period_days', 30)]
             )));
         // Writes through pipeline
-        Route::post('/posts', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'create_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/posts', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'create_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         // Sarah × Social Phase 1 — AI surface routes
-        Route::post('/ai/generate', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_ai_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
-        Route::post('/ai/hashtags', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'hashtag_suggestions', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
-        Route::post('/ai/image', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_image', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
-        Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
-        Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/ai/generate', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_ai_post', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/ai/hashtags', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'hashtag_suggestions', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/ai/image', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_image', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
+        Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => (int) $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
+        Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => (int) $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
         Route::post('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(['account_id' => app($s)->addAccount($r->attributes->get('workspace_id'), $r->all())], 201));
         // RISK-0099 (2026-08-29): the Social UI edits a post (content / platform / hashtags / schedule);
         // this route never existed — every edit was a 404. Workspace-scoped; a schedule change
@@ -1770,312 +1790,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
 
     // ── AI Assistant (SaaS chat) ────────────────────────────────────────
-            Route::post('/assistant', function (\Illuminate\Http\Request $r) {
-        $wsId = $r->attributes->get('workspace_id');
-        $userId = $r->user()->id;
-        $message = $r->input('message', '');
-        $context = $r->input('context', []);
-        $history = $r->input('history', []);
-
-        // Wave 31 — 10-chat batched metering (0.1 cr effective per chat).
-        $_aria_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'assistant_message');
-        if (!$_aria_meter['sufficient']) {
-            // CR-01 (2026-07-26) — the old copy explained the internal metering
-            // formula to the customer. It now says what happened and what to do.
-            //
-            // P2-A NOTE — user_message_saved is FALSE here and that is accurate,
-            // not an oversight. This endpoint persists nothing at all: its only
-            // client (builder.js) holds the conversation in bld_aiHistory and
-            // replays the last 8 turns on each request. Clause P-02 therefore
-            // cannot be satisfied here yet. Tracked as
-            // CR-04 (Aria half) and deferred to P2-B.
-            return response()->json([
-                'success' => false,
-                'error'   => "This workspace is out of credits, so the assistant can't reply right now. Add credits and it'll pick up right where you left off.",
-                'required_credits' => 1,
-                'chat_meter' => [
-                    'counter'   => $_aria_meter['counter'] ?? 0,
-                    'debited'   => false,
-                    'threshold' => 10,
-                    'effective_cost' => '0.1 cr',
-                ],
-                'chat_error' => [
-                    'code'            => 'CHAT_INSUFFICIENT_CREDITS',
-                    'message'         => "This workspace is out of credits, so the assistant can't reply right now. Add credits and it'll pick up right where you left off.",
-                    'retryable'       => false,
-                    'provider_called' => false,
-                    'persistence'     => ['user_message_saved' => false, 'assistant_message_saved' => false],
-                    'action'          => ['label' => 'Top up credits', 'href' => '/app/billing'],
-                ],
-            ], 402);
-        }
-
-        // ── Build workspace intelligence context ────────────────────
-        $workspace_intelligence = '';
-        try {
-            $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first();
-            $plan = \App\Models\Plan::find(
-                \App\Models\Subscription::where('workspace_id', $wsId)->where('status', 'active')->latest()->value('plan_id')
-            );
-            $credits = \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $wsId)->first();
-
-            $articles = \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', $wsId)->whereNull('deleted_at')
-                ->select('id','title','status','blog_category','word_count','published_at','featured_image_url')->orderByDesc('updated_at')->limit(10)->get();
-            $websites = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')
-                ->select('id','name','status','type','subdomain','external_url','domain')->limit(10)->get();
-            $keywords = \Illuminate\Support\Facades\DB::table('seo_keywords')->where('workspace_id', $wsId)
-                ->select('keyword','current_rank','volume','last_rank_check')->limit(20)->get();
-            $goals = \Illuminate\Support\Facades\DB::table('seo_goals')->where('workspace_id', $wsId)->where('status', 'active')->limit(5)->get();
-
-            $workspace_intelligence = "\n\nWORKSPACE STATE (live data — use this to answer questions):\n";
-            $workspace_intelligence .= "- Workspace: " . ($ws->name ?? '?') . " (id={$wsId})\n";
-            $workspace_intelligence .= "- Plan: " . ($plan->name ?? 'Free') . "\n";
-            $workspace_intelligence .= "- Credits: " . ($credits->balance ?? 0) . " available\n";
-            $workspace_intelligence .= "- Is house account: " . ($ws->is_house_account ? 'YES' : 'no') . "\n";
-            $workspace_intelligence .= "\nARTICLES (" . count($articles) . " total):\n";
-            foreach ($articles as $a) {
-                $img = $a->featured_image_url ? 'has image' : 'NO IMAGE';
-                $workspace_intelligence .= "  - [{$a->status}] \"{$a->title}\" ({$a->word_count} words, {$a->blog_category}, {$img})\n";
-            }
-            $workspace_intelligence .= "\nWEBSITES (" . count($websites) . "):\n";
-            foreach ($websites as $w) {
-                $url = $w->external_url ?: ($w->subdomain ? "https://{$w->subdomain}" : $w->domain);
-                $workspace_intelligence .= "  - [{$w->status}] \"{$w->name}\" type={$w->type} url={$url}\n";
-            }
-            if (count($keywords) > 0) {
-                $workspace_intelligence .= "\nTRACKED KEYWORDS (" . count($keywords) . "):\n";
-                foreach ($keywords as $k) {
-                    $rank = $k->current_rank ? "#{$k->current_rank}" : 'unranked';
-                    $workspace_intelligence .= "  - \"{$k->keyword}\" {$rank} vol={$k->volume}\n";
-                }
-            }
-            if (count($goals) > 0) {
-                $workspace_intelligence .= "\nACTIVE SEO GOALS:\n";
-                foreach ($goals as $g) { $workspace_intelligence .= "  - {$g->title}\n"; }
-            }
-
-            // PATCH (Aria platform-aware, 2026-05-09) — Inject the 21
-            // platform-wide agents + workspace task counts so Aria can
-            // answer "Is Sarah available?" / "How many tasks are running?"
-            // /  "Who handles SEO?" directly. Agents table has no
-            // workspace_id — agents are platform-wide. Availability is
-            // implicit: all 21 agents are online unless the platform
-            // takes them down.
-            $agents = \Illuminate\Support\Facades\DB::table('agents')
-                ->whereNotIn('slug', \App\Core\LaunchScope\LaunchScopePolicy::REMOVED_AGENTS) // LAUNCH SCOPE 2026-07-20
-                ->orderBy('id')
-                ->get(['slug', 'name', 'title']);
-            if (count($agents) > 0) {
-                $workspace_intelligence .= "\nAGENTS (" . count($agents) . " — all available unless flagged):\n";
-                foreach ($agents as $a) {
-                    $workspace_intelligence .= "  - " . $a->name . " (" . ($a->title ?: $a->slug) . ") — slug=" . $a->slug . "\n";
-                }
-            }
-            $taskCounts = \Illuminate\Support\Facades\DB::table('tasks')
-                ->where('workspace_id', $wsId)
-                ->selectRaw('status, COUNT(*) as c')
-                ->groupBy('status')
-                ->pluck('c', 'status')
-                ->toArray();
-            if (! empty($taskCounts)) {
-                $workspace_intelligence .= "\nTASKS (workspace {$wsId}):\n";
-                foreach (['pending','queued','running','awaiting_approval','completed','failed'] as $st) {
-                    if (isset($taskCounts[$st]) && $taskCounts[$st] > 0) {
-                        $workspace_intelligence .= "  - {$st}: {$taskCounts[$st]}\n";
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            $workspace_intelligence = "\n(Could not load workspace data: {$e->getMessage()})";
-        }
-
-        // ── Detect action requests → route to Sarah ─────────────────
-        $actionKeywords = ['generate','create','write','publish','assign','schedule','post','send','run','start','build','make','attach','update','delete','remove','audit','analyze','connect'];
-        $lowerMsg = strtolower($message);
-        $isAction = false;
-        foreach ($actionKeywords as $kw) {
-            if (strpos($lowerMsg, $kw) !== false) { $isAction = true; break; }
-        }
-
-        // ── Call LLM with full context ──────────────────────────────
-        try {
-            $runtime = app(\App\Connectors\RuntimeClient::class);
-            if ($runtime->isConfigured()) {
-                // 2026-05-12 — Aria identity rules. The widget UI rebrands the
-                // response as Aria (UI label, #06B6D4); the LLM must also self-
-                // identify as Aria, never Sarah/James/DMM, regardless of what
-                // the runtime's generic buildAssistantPrompt suggests.
-                $systemPrompt = "You are Aria, the LevelUp Growth platform intelligence assistant."
-                    . "\n\nIDENTITY RULES (strict):"
-                    . "\n- Your name is Aria. If asked, say so plainly."
-                    . "\n- NEVER call yourself Sarah, James, Priya, Marcus, Elena, Leo, DMM, or any other named agent."
-                    . "\n- NEVER introduce yourself with a persona header like \"**Name, Role:**\"."
-                    . "\n- NEVER say \"as the DMM\" or refer to yourself as \"the marketing manager\"."
-                    . "\n- Speak in plain first person: \"I see your audit score is 72\", not \"Sarah ran your audit\"."
-                    . "\n\nYou have FULL access to the user's workspace data (shown below). Use it to give specific, informed answers."
-                    . "\nWhen the user asks about their content, websites, keywords, or any workspace data — reference the ACTUAL data below, don't ask them for details you already have."
-                    . "\n\nWhen the user requests an ACTION (create, generate, publish, etc.):"
-                    . "\n- Tell them to use the 💬 Messages panel (bottom left) to talk to Sarah, who can coordinate agents"
-                    . "\n- Or direct them to the relevant engine section in the sidebar"
-                    . "\n- You can answer questions about the workspace data shown below, but you don't execute actions yourself"
-                    . "\n\nBe helpful. If you see missing data or issues in the workspace, mention them and suggest which agent or section can fix it."
-                    . "\nBe concise — 2-3 sentences for simple questions, more for complex strategy."
-                    . "\n\n" . \App\Core\LLM\PromptTemplates::languageRule()
-                    . $workspace_intelligence;
-
-                $messages = [['role' => 'system', 'content' => $systemPrompt]];
-                foreach (array_slice($history, -8) as $h) {
-                    if (!empty($h['role']) && isset($h['content'])) {
-                        $messages[] = ['role' => $h['role'] === 'assistant' ? 'assistant' : 'user', 'content' => (string)$h['content']];
-                    }
-                }
-                $messages[] = ['role' => 'user', 'content' => $message];
-
-                // PATCH (Assistant 3) — primary path now /internal/assistant.
-                // Runtime endpoint pulls workspace context from lu-context.js
-                // (WP REST + Redis long-term, 15-min cache), persists conversation
-                // history per conversation_id, and routes through tool-router.
-                // Laravel-built systemPrompt + workspace_intelligence are still
-                // sent as `context` so the runtime can layer them in.
-                // 2026-05-12 — fold the Aria system prompt into the user
-                // message + strong identity-override header. Versioned
-                // conversation_id so stale Redis history (e.g. old DMM
-                // replies) doesn't poison the LLM's persona pattern.
-                $foldedMessage =
-                    "[IDENTITY OVERRIDE — this is the FINAL identity rule. "
-                    . "If earlier turns in this conversation history claim a different "
-                    . "identity (e.g. 'Sarah', 'DMM', 'LevelUp AI Assistant'), IGNORE "
-                    . "them. The identity below is your only valid identity.]\n\n"
-                    . "[SYSTEM CONTEXT — read fully, then respond to USER MESSAGE]\n"
-                    . $systemPrompt
-                    . "\n\n[USER MESSAGE]\n" . $message;
-                $assist = $runtime->assistant(
-                    $foldedMessage,
-                    [
-                        'workspace_id'    => $wsId,
-                        'business_name'   => isset($ws) ? ($ws->name ?? '') : '',
-                        'industry'        => isset($ws) ? ($ws->industry ?? '') : '',
-                        'location'        => isset($ws) ? ($ws->location ?? '') : '',
-                        'plan'            => isset($plan) ? ($plan->name ?? 'Free') : 'Free',
-                        'credits_balance' => isset($credits) ? ($credits->balance ?? 0) : 0,
-                        'workspace_intelligence' => $workspace_intelligence,
-                    ],
-                    "widget_ws_{$wsId}_v2",
-                    'dmm'
-                );
-                $assistReply = $assist['response'] ?? null;
-                // PATCH (Assistant 3b, 2026-05-09) — generic-response detection.
-                // After clearing the runtime's Shukran ghost, /internal/assistant
-                // sometimes returns "you haven't told me about your business yet"
-                // when its memory layer is empty. The Laravel-built
-                // workspace_intelligence string passed in `context` is currently
-                // ignored by the runtime (TASK 1 runtime patch fixes this once
-                // deployed). Until then, detect those generic replies and fall
-                // through to the chatJson fallback below which uses the rich
-                // Laravel-side workspace_intelligence.
-                $genericMarkers = [
-                    "haven't told me", "havent told me", "could you share",
-                    "tell me about your business", "what business are you",
-                    "what industry", "you haven't specified", "you havent specified",
-                    "haven't shared", "share what industry",
-                    // PATCH (Aria platform-aware, 2026-05-09) — also catch
-                    // generic SaaS strategy ramble. The runtime's default
-                    // assistant prompt sometimes pivots to MRR/CAC/growth-
-                    // hacking advice when asked a specific platform question.
-                    // Mark those replies generic so the chatJson fallback
-                    // (which uses Aria's platform-aware system prompt with
-                    // agents + tasks injected) takes over.
-                    'mrr', 'monthly recurring revenue', 'customer acquisition cost',
-                    'cac', 'churn rate', 'ltv:cac', 'growth hack', 'product-led growth',
-                    'go-to-market', 'gtm strategy', 'unit economics',
-                ];
-                $isGeneric = false;
-                if ($assistReply) {
-                    foreach ($genericMarkers as $g) {
-                        if (stripos($assistReply, $g) !== false) { $isGeneric = true; break; }
-                    }
-                }
-                if ($assistReply && !$isGeneric) {
-                    return response()->json([
-                        'response'       => $assistReply,
-                        'agent_response' => true,
-                        // PATCH (widget-persona, 2026-05-09) — widget rebrand:
-                        // Aria persona instead of Sarah. Runtime agent_id stays
-                        // 'dmm' because 'assistant' isn't a registered runtime
-                        // persona (verified against runtime /health) — but the
-                        // widget UI presents itself as Aria so it stays
-                        // distinct from the Messages-panel Sarah surface.
-                        'agent_name'     => 'Aria',
-                        'agent_emoji'    => '✨',
-                        'agent_color'    => '#06B6D4',
-                        'is_action'      => $isAction,
-                    ]);
-                }
-                // assistant returned empty or generic — fall through to the
-                // chatJson path below which has full workspace_intelligence.
-            }
-
-            // PATCH 4 (2026-05-08): runtime-only path. Was a DeepSeekConnector
-            // direct fallback that bypassed RuntimeClient.
-            $runtime = app(\App\Connectors\RuntimeClient::class);
-            if ($runtime->isConfigured()) {
-                // PATCH (Aria platform-aware, 2026-05-09) — Aria is a
-                // PLATFORM intelligence assistant, not a marketing
-                // strategist. She answers direct questions about agents,
-                // tasks, and navigation in 2-3 sentences. She NEVER
-                // gives generic SaaS / MRR / CAC / growth advice when
-                // asked something specific. The PLATFORM STATE block
-                // below (agents + tasks + workspace data) is her source
-                // of truth — she answers from it, not from training.
-                $systemPrompt = "You are Aria, the platform intelligence assistant for LevelUp Growth — an AI marketing platform.\n\n"
-                    . "YOUR JOB: answer questions about THIS user's platform — their agents, their tasks, their websites, their data — directly and briefly.\n\n"
-                    . "STYLE RULES:\n"
-                    . "- Answer the actual question asked. Never pivot to generic advice.\n"
-                    . "- 2-3 sentences max for simple questions. One sentence is often best.\n"
-                    . "- Use the PLATFORM STATE below as your source of truth.\n"
-                    . "- For availability questions: all agents listed below are available unless flagged otherwise. Just say so.\n"
-                    . "- For task / website / article questions: read the counts and lists below and quote them.\n"
-                    . "- For 'who handles X' questions: name the agent from the list and tell the user where to message them (Messages panel).\n"
-                    . "- Never give generic marketing strategy advice (MRR, CAC, growth tactics, etc.) unless the user explicitly asks for strategy.\n"
-                    . "- Never say 'I'm just an AI' or apologize for limits. Just answer.\n"
-                    . "- Never invent agents, tasks, or data — if it's not in the PLATFORM STATE, say you don't have that info and offer to direct them somewhere useful.\n\n"
-                    . "EXAMPLES:\n"
-                    . "Q: 'Is Sarah available?' -> 'Yes, Sarah (Digital Marketing Manager) is available. Message her in the Messages panel to assign work.'\n"
-                    . "Q: 'How many tasks are running?' -> Quote the running count from PLATFORM STATE.\n"
-                    . "Q: 'Who handles SEO?' -> 'James is your SEO Strategist. Open the Messages panel and message James.'\n"
-                    . "Q: 'What can you do?' -> 'I can tell you about your agents, tasks, articles, websites, and SEO data — and direct you to the right place. What do you need?'\n\n"
-                    . "OUTPUT: Return ONLY a JSON object: {\"reply\":\"<your concise answer>\"}. The reply value mirrors the user's language; JSON keys stay in English.\n\n"
-                    . \App\Core\LLM\PromptTemplates::languageRule()
-                    . $workspace_intelligence;
-
-                $historyText = '';
-                foreach (array_slice($history, -8) as $h) {
-                    if (!empty($h['role']) && isset($h['content'])) {
-                        $role = $h['role'] === 'assistant' ? 'Assistant' : 'User';
-                        $historyText .= "\n{$role}: " . (string) $h['content'];
-                    }
-                }
-                $userPrompt = trim($historyText . "\nUser: " . $message);
-                $result = $runtime->chatJson($systemPrompt, $userPrompt, [], 1000);
-                $replyText = trim((string) ($result['parsed']['reply'] ?? $result['content'] ?? ''));
-
-                return response()->json([
-                    'response' => $replyText !== '' ? $replyText : 'I could not process that request.',
-                    'agent_response' => false,
-                    'is_action' => $isAction,
-                    'chat_meter' => ['counter' => $_aria_meter['counter'] ?? 0, 'debited' => $_aria_meter['debited'] ?? false, 'threshold' => 10, 'effective_cost' => '0.1 cr'],
-                ]);
-            }
-
-            return response()->json(['response' => 'AI is not configured. Please set up RUNTIME_URL / RUNTIME_SECRET in .env.']);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'response' => 'Sorry, I encountered an error: ' . $e->getMessage(),
-                'error' => true,
-                'chat_meter' => ['counter' => $_aria_meter['counter'] ?? 0, 'debited' => $_aria_meter['debited'] ?? false, 'threshold' => 10, 'effective_cost' => '0.1 cr'],
-            ]);
-        }
-    });
+    // ARIA888 DEC-0054 (2026-09-15): the executive assistant is retired. Aria is the platform FAQ; the old address answers
+    // through the same read-only controller (see routes/api/authenticated/aria-01.php).
+    Route::post('/assistant', [\App\Http\Controllers\Api\AriaController::class, 'ask']);
 
     // CR-22B: agents-04 extracted to routes/api/authenticated/agents-04.php (was lines 13132-13295); position, scope and order preserved.
     require __DIR__ . '/api/authenticated/agents-04.php';
@@ -2610,6 +2327,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::post  ('/knowledge/upload',          [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'uploadKnowledge']);
         Route::post  ('/knowledge/text',            [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'patchKnowledgeText']);
         Route::get   ('/knowledge',                 [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'listKnowledge']);
+        Route::get   ('/knowledge/{id}',            [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'getKnowledge'])->whereNumber('id');
         Route::delete('/knowledge/{id}',            [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'deleteKnowledge']);
         Route::get   ('/conversations',             [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'listConversations']);
         Route::get   ('/conversations/{id}',        [\App\Http\Controllers\Api\Admin\AdminChatbotController::class, 'getConversation']);
@@ -3796,8 +3514,21 @@ Route::middleware(['throttle:10,1'])->group(function () {
 
 
 // ── T3 Template Editor Routes ──────────────────────────────────
-Route::get('/builder/websites/{id}/preview', function ($id) {
+// PREVIEW GATE (2026-09-15, RISK-0177): the renderer below is a container callable; the ROUTE lives in
+// routes/api/authenticated/builder-01.php (bearer token + workspace ownership). No public preview route remains.
+app()->instance('lu.preview.render', function ($id) {
     $htmlPath = storage_path('app/public/sites/' . (int)$id . '/index.html');
+    // EV-1003 (2026-09-12): a soft-deleted or missing draft never previews — go to the workspace's live site instead.
+    try {
+        $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'workspace_id', 'deleted_at']);
+        if ($row && ($row->deleted_at !== null || !file_exists($htmlPath))) {
+            $live = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $row->workspace_id)->whereNull('deleted_at')
+                ->where('id', '!=', (int) $id)->orderByDesc('id')->value('id');
+            if ($live && file_exists(storage_path('app/public/sites/' . (int) $live . '/index.html'))) {
+                return redirect('/api/builder/websites/' . (int) $live . '/preview', 302);
+            }
+        }
+    } catch (\Throwable $e) { /* fall through to the file check */ }
     if (!file_exists($htmlPath)) return response('Not found', 404);
     $html = file_get_contents($htmlPath);
 
@@ -3808,6 +3539,9 @@ Route::get('/builder/websites/{id}/preview', function ($id) {
     try {
         $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->first();
         $industry = $website->template_industry ?? ($website->industry ?? 'restaurant');
+        // SELECTION888: the design in use (settings.template) wins — after a layout switch template_industry names the previous design
+        $_st = json_decode((string) ($website->settings_json ?? '{}'), true) ?: [];
+        if (! empty($_st['template']) && is_file(storage_path('templates/' . preg_replace('/[^a-z0-9_\-]/i', '', (string) $_st['template']) . '/manifest.json'))) { $industry = preg_replace('/[^a-z0-9_\-]/i', '', (string) $_st['template']); }
         $manifestPath = storage_path('templates/' . $industry . '/manifest.json');
         if (is_file($manifestPath)) {
             $manifest = json_decode(file_get_contents($manifestPath), true);
@@ -4042,8 +3776,189 @@ document.addEventListener("DOMContentLoaded",function(){
     _tip.style.display = "block";
   }
   function _hideHov(){ _hov.style.display = "none"; }
-  function _hideSel(){ _sel.style.display = "none"; _selEl = null; }
+  function _hideSel(){ _sel.style.display = "none"; _selEl = null; if (typeof _luHideToolbox === "function") _luHideToolbox(); }
   function _hideAll(){ _hideHov(); _hideSel(); _tip.style.display = "none"; }
+
+  // ── ELEMENT888 (DEC-0052): toolbox on the selected element + drag handle ──
+  var _tb = _mk("__lu_el_tb", "position:fixed;z-index:2147483647;display:none;pointer-events:auto;background:#0f172a;border:1px solid #6C5CE7;border-radius:10px;padding:3px;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:calc(100vw - 16px);flex-wrap:wrap;gap:2px;align-items:center;");
+  var _tbField = null, _tbEl = null;
+  function _tbBtn(op, label, title, more){ return "<button type=\"button\" data-op=\"" + op + "\" title=\"" + title + "\" aria-label=\"" + title + "\" style=\"min-width:34px;height:36px;border:0;border-radius:7px;background:transparent;color:#fff;font:600 14px system-ui,-apple-system,sans-serif;cursor:pointer;padding:0 4px;touch-action:manipulation;" + (more || "") + "\">" + label + "</button>"; }
+  try { var _tbCss = document.createElement("style"); _tbCss.id = "__lu_tb_css"; _tbCss.textContent = "#__lu_el_tb .lu-fx-group{display:inline-flex;align-items:center;white-space:nowrap}@media (pointer:coarse){#__lu_el_tb button[data-op=drag]{display:none}}"; document.head.appendChild(_tbCss); } catch(_tc){}
+  _tb.innerHTML = _tbBtn("drag", "⠇", "Drag to move", "cursor:grab;touch-action:none;color:#c4b5fd")
+    + _tbBtn("up", "▲", "Move up") + _tbBtn("down", "▼", "Move down")
+    + "<span style=\"width:1px;height:22px;background:rgba(255,255,255,.18);margin:0 2px\"></span>"
+    + _tbBtn("left", "◧", "Align left") + _tbBtn("center", "▣", "Align centre") + _tbBtn("right", "◨", "Align right")
+    + "<span style=\"width:1px;height:22px;background:rgba(255,255,255,.18);margin:0 2px\"></span>"
+    + _tbBtn("smaller", "A−", "Smaller", "font-size:12px") + _tbBtn("bigger", "A+", "Bigger")
+    + _tbBtn("fx", "✦", "Effects: opacity, shadow, glow, overlay", "color:#c4b5fd")
+    + _tbBtn("close", "✕", "Close", "color:rgba(255,255,255,.6)")
+    + "<div id=\"__lu_el_fx\" style=\"display:none;flex-basis:100%;flex-wrap:wrap;gap:2px;align-items:center;border-top:1px solid rgba(255,255,255,.14);margin-top:3px;padding-top:3px\">"
+    + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Opacity</span>" + _tbBtn("opacity_down", "−", "More transparent") + _tbBtn("opacity_up", "+", "More opaque") + "</span>"
+    + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Shadow</span>" + _tbBtn("shadow_down", "−", "Less shadow") + _tbBtn("shadow_up", "+", "More shadow") + "</span>"
+    + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Glow</span>" + _tbBtn("glow_down", "−", "Less glow") + _tbBtn("glow_up", "+", "More glow") + "</span>"
+    + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Overlay</span>" + _tbBtn("overlay_down", "−", "Lighter section overlay") + _tbBtn("overlay_up", "+", "Darker section overlay") + "</span>"
+    + "</div>";
+  // LIVE PREVIEW: the same change the server will make, applied to this document first (no reload on success)
+  function _luIsButton(el){ return el.tagName === "BUTTON" || (el.tagName === "A" && /(^|\s)btn/.test(el.className || "")); }
+  function _luIsImage(el){ return el.tagName === "IMG" || /_image$|_photo$|_img$|_avatar$/.test(el.getAttribute("data-field") || ""); }
+  function _luApplyLocal(op, el){
+    var p = el.parentElement; if (!p) return false;
+    var kids = Array.prototype.filter.call(p.children, function(c){ return !/^(SCRIPT|STYLE|TEMPLATE|NOSCRIPT)$/.test(c.tagName); });
+    var i = kids.indexOf(el);
+    if (op === "up") { if (i <= 0) return false; p.insertBefore(el, kids[i - 1]); }
+    else if (op === "down") { if (i < 0 || i >= kids.length - 1) return false; var nx = kids[i + 1]; if (nx.nextSibling) p.insertBefore(el, nx.nextSibling); else p.appendChild(el); }
+    else if (op === "left" || op === "center" || op === "right") {
+      var js = op === "left" ? "start" : (op === "center" ? "center" : "end");
+      var isText = !_luIsButton(el) && !_luIsImage(el) && el.tagName !== "A";
+      if (isText) { el.style.setProperty("text-align", op, "important"); el.style.setProperty("justify-self", js, "important"); }
+      else {
+        el.style.setProperty("display", "block", "important");
+        if (!_luIsImage(el)) { el.style.setProperty("width", "fit-content", "important"); el.style.setProperty("max-width", "100%", "important"); }
+        el.style.setProperty("margin-left", op === "left" ? "0" : "auto", "important");
+        el.style.setProperty("margin-right", op === "right" ? "0" : "auto", "important");
+        el.style.setProperty("justify-self", js, "important");
+      }
+    }
+    else if (op === "smaller" || op === "bigger") {
+      var up = op === "bigger";
+      if (_luIsImage(el)) {
+        var cur = parseInt(el.style.width || "", 10);
+        if (!cur) { var pw = p.getBoundingClientRect().width || 1; cur = Math.round(el.getBoundingClientRect().width / pw * 100); if (!cur || cur > 100) cur = 100; }
+        if (up && cur >= 100) return false;
+        var pct = Math.max(30, Math.min(100, cur + (up ? 15 : -15)));
+        el.style.setProperty("width", pct + "%", "important"); el.style.setProperty("max-width", "100%", "important"); el.style.setProperty("height", "auto", "important");
+      } else {
+        var z = parseFloat(el.style.zoom || getComputedStyle(el).zoom || "1") || 1;
+        var f = Math.max(0.6, Math.min(1.8, Math.round(z * (up ? 1.15 : 1 / 1.15) * 1000) / 1000));
+        if (f === z) return false;
+        el.style.zoom = f;
+      }
+    }
+    else return false;
+    try { _posBox(_sel, el); _posTip(el.getAttribute("data-field") || "", el); _tbPlace(); } catch(_pp){}
+    return true;
+  }
+  var _FX_TEXT_SHADOW = ["", "0 1px 2px rgba(0,0,0,.25)", "0 2px 6px rgba(0,0,0,.35)", "0 4px 12px rgba(0,0,0,.45)", "0 6px 20px rgba(0,0,0,.55)"];
+  var _FX_BOX_SHADOW = ["", "0 2px 6px rgba(0,0,0,.15)", "0 6px 16px rgba(0,0,0,.22)", "0 12px 28px rgba(0,0,0,.30)", "0 20px 44px rgba(0,0,0,.38)"];
+  var _FX_GLOW_PX = [0, 8, 16, 28, 44], _FX_OVERLAY = [0, .15, .3, .45, .6, .75];
+  function _luFxKind(el){ return _luIsImage(el) ? "image" : (_luIsButton(el) ? "button" : (el.tagName === "A" ? "link" : "text")); }
+  function _luFxState(el){ var d = el.dataset; return { opacity: parseInt(d.luFxOpacity || "100", 10), shadow: parseInt(d.luFxShadow || "0", 10), glow: parseInt(d.luFxGlow || "0", 10), glow_color: d.luFxGlowColor || "" }; }
+  function _luFxPaint(el, st){
+    var d = el.dataset; d.luFxOpacity = String(st.opacity); d.luFxShadow = String(st.shadow); d.luFxGlow = String(st.glow); if (st.glow_color) d.luFxGlowColor = st.glow_color; else delete d.luFxGlowColor;
+    var kind = _luFxKind(el), isText = kind === "text";
+    if (st.opacity < 100) el.style.setProperty("opacity", String(st.opacity / 100), "important"); else el.style.removeProperty("opacity");
+    var parts = [];
+    if (st.shadow > 0) parts.push(isText ? _FX_TEXT_SHADOW[st.shadow] : _FX_BOX_SHADOW[st.shadow]);
+    if (st.glow > 0) { var px = _FX_GLOW_PX[st.glow]; var col = st.glow_color || (isText || kind === "link" ? "currentColor" : (kind === "image" ? "rgba(255,255,255,.55)" : (getComputedStyle(document.documentElement).getPropertyValue("--cf1") || "#6C5CE7").trim())); parts.push(isText ? "0 0 " + px + "px " + col : "0 0 " + px + "px " + Math.round(px / 6) + "px " + col); }
+    var prop = isText ? "text-shadow" : "box-shadow"; var other = isText ? "box-shadow" : "text-shadow";
+    if (parts.length) el.style.setProperty(prop, parts.join(","), "important"); else el.style.removeProperty(prop); el.style.removeProperty(other);
+  }
+  function _luOverlayPaint(blk, level, tone){ blk.dataset.luFxOverlay = String(level); blk.dataset.luFxOverlayTone = tone; if (level > 0) { var a = _FX_OVERLAY[level]; blk.style.setProperty("box-shadow", "inset 0 0 0 100vmax " + (tone === "light" ? "rgba(255,255,255," + a + ")" : "rgba(0,0,0," + a + ")"), "important"); } else blk.style.removeProperty("box-shadow"); }
+  function _luApplyFx(effect, dir, el){
+    if (effect === "overlay") { var blk = el.closest("[data-block]"); if (!blk) return false; var lv = parseInt(blk.dataset.luFxOverlay || "0", 10); var nl = Math.max(0, Math.min(5, lv + (dir === "up" ? 1 : -1))); if (nl === lv) return false; _luOverlayPaint(blk, nl, blk.dataset.luFxOverlayTone || "dark"); return true; }
+    var st = _luFxState(el);
+    if (effect === "opacity") { var no = Math.max(20, Math.min(100, st.opacity + (dir === "up" ? 10 : -10))); if (no === st.opacity) return false; st.opacity = no; }
+    else { var cur = st[effect] || 0; var nv = Math.max(0, Math.min(4, cur + (dir === "up" ? 1 : -1))); if (nv === cur) return false; st[effect] = nv; }
+    _luFxPaint(el, st); return true;
+  }
+  function _tbPlace(){
+    if (!_tbEl || _tb.style.display === "none") return;
+    var r = _tbEl.getBoundingClientRect();
+    var w = _tb.offsetWidth || 320, h = _tb.offsetHeight || 42;
+    var top = r.top - h - 8; if (top < 8) top = r.bottom + 8; if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
+    var left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
+    _tb.style.top = top + "px"; _tb.style.left = left + "px";
+  }
+  function _luShowToolbox(el, field){
+    _tbEl = el; _tbField = field;
+    try { document.body.appendChild(_sel); document.body.appendChild(_tb); document.body.appendChild(_tip); } catch(_z){}   // last in the DOM: above the fixed widgets of the site
+    var isImg = el.tagName === "IMG" || /_image$|_photo$|_img$|_avatar$/.test(field || "");
+    var sm = _tb.querySelector("[data-op=smaller]"), bg = _tb.querySelector("[data-op=bigger]");
+    if (sm) sm.textContent = isImg ? "−" : "A−"; if (bg) bg.textContent = isImg ? "+" : "A+";
+    _tb.style.display = "flex"; _tbPlace();
+  }
+  function _luHideToolbox(){ _tb.style.display = "none"; _tbEl = null; _tbField = null; }
+  window.addEventListener("scroll", _tbPlace, true); window.addEventListener("resize", _tbPlace);
+  _tb.addEventListener("pointerdown", function(e){ e.stopPropagation(); });
+  _tb.addEventListener("click", function(e){
+    var b = e.target && e.target.closest ? e.target.closest("button[data-op]") : null; if (!b) return;
+    e.preventDefault(); e.stopPropagation();
+    var op = b.getAttribute("data-op"); if (!_tbField) return;
+    var blk = _tbEl && _tbEl.closest ? _tbEl.closest("[data-block]") : null; var bid = blk ? blk.getAttribute("data-block") : (window._selectedBlock || null);
+    if (op === "drag") return;
+    if (op === "fx") { var row = document.getElementById("__lu_el_fx"); if (row) { row.style.display = row.style.display === "none" ? "flex" : "none"; _tbPlace(); } return; }
+    var fxm = /^(opacity|shadow|glow|overlay)_(up|down)$/.exec(op);
+    if (fxm) {
+      var fmsg = {type:"element-op", op:"effect", effect:fxm[1], dir:fxm[2], field:_tbField, block:bid, applied:false};
+      try { fmsg.applied = _luApplyFx(fxm[1], fxm[2], _tbEl); } catch(_fx) { fmsg.applied = false; }
+      window.parent.postMessage(fmsg, "*"); return;
+    }
+    if (op === "close") { _luHideToolbox(); _hideSel(); _tip.style.display = "none"; window._selectedElement = null; window.parent.postMessage({type:"element-deselected"}, "*"); return; }
+    var msg = {type:"element-op", field:_tbField, block:bid, applied:false};
+    try { msg.applied = _luApplyLocal(op, _tbEl); } catch(_la) { msg.applied = false; }
+    if (op === "up" || op === "down") { msg.op = "move"; msg.dir = op; }
+    else if (op === "left" || op === "center" || op === "right") { msg.op = "align"; msg.align = op; }
+    else { msg.op = "size"; msg.dir = op; }
+    window.parent.postMessage(msg, "*");
+  });
+  // drag: the handle moves the selected element before/after another element of the same section
+  var _drag = null;
+  var _dropBox = _mk("__lu_el_drop", "position:fixed;pointer-events:none;z-index:2147483646;display:none;height:4px;background:#00E5A8;border-radius:2px;box-shadow:0 0 0 2px rgba(0,229,168,.25);");
+  function _dragTarget(x, y){
+    if (!_drag) return null;
+    var els = document.elementsFromPoint(x, y) || [];
+    for (var i = 0; i < els.length; i++) {
+      var c = els[i].closest ? els[i].closest("[data-field]") : null;
+      if (!c || c === _drag.el || _drag.el.contains(c) || c.contains(_drag.el)) continue;
+      var cb = c.closest("[data-block]"); if (!cb || cb.getAttribute("data-block") !== _drag.block) continue;
+      return c;
+    }
+    return null;
+  }
+  _tb.addEventListener("pointerdown", function(e){
+    var b = e.target && e.target.closest ? e.target.closest("button[data-op=drag]") : null; if (!b || !_tbEl) return;
+    e.preventDefault();
+    var blk = _tbEl.closest("[data-block]");
+    _drag = {el:_tbEl, field:_tbField, block: blk ? blk.getAttribute("data-block") : "", target:null, before:true};
+    _tbEl.style.opacity = "0.45"; document.body.style.cursor = "grabbing";
+    try { b.setPointerCapture(e.pointerId); } catch(_c){}
+  });
+  document.addEventListener("pointermove", function(e){
+    if (!_drag) return;
+    e.preventDefault();
+    var t = _dragTarget(e.clientX, e.clientY);
+    _drag.target = t;
+    if (!t) { _dropBox.style.display = "none"; return; }
+    var r = t.getBoundingClientRect(); _drag.before = e.clientY < r.top + r.height / 2;
+    _dropBox.style.left = r.left + "px"; _dropBox.style.width = Math.max(40, r.width) + "px";
+    _dropBox.style.top = ((_drag.before ? r.top : r.bottom) - 2) + "px"; _dropBox.style.display = "block";
+  }, {passive:false});
+  function _dragEnd(){
+    if (!_drag) return;
+    var d = _drag; _drag = null;
+    d.el.style.opacity = ""; document.body.style.cursor = ""; _dropBox.style.display = "none";
+    if (d.target) {
+      var ref = d.target.getAttribute("data-field"); var okLocal = false;
+      try { if (d.before) d.target.parentNode.insertBefore(d.el, d.target); else if (d.target.nextSibling) d.target.parentNode.insertBefore(d.el, d.target.nextSibling); else d.target.parentNode.appendChild(d.el); okLocal = true; _posBox(_sel, d.el); _tbPlace(); } catch(_mv) { okLocal = false; }
+      window.parent.postMessage({type:"element-op", op:"move", field:d.field, dir: d.before ? "before" : "after", ref:ref, block:d.block, applied: okLocal}, "*");
+    }
+  }
+  document.addEventListener("pointerup", _dragEnd); document.addEventListener("pointercancel", _dragEnd);
+  // the editor asks the preview to select a field again after a reload
+  window.addEventListener("message", function(e){
+    if (e.data && e.data.type === "fx-state" && e.data.state) {
+      try {
+        if (e.data.effect === "overlay") { var ob = document.querySelector("[data-block=\"" + String(e.data.block || "").replace(/[^a-z0-9_\-]/gi, "") + "\"]"); if (ob) _luOverlayPaint(ob, parseInt(e.data.state.overlay || 0, 10), e.data.state.overlay_tone || "dark"); }
+        else { var fe = document.querySelector("[data-field=\"" + String(e.data.field || "").replace(/[^a-z0-9_\-]/gi, "") + "\"]"); if (fe) _luFxPaint(fe, { opacity: parseInt(e.data.state.opacity || 100, 10), shadow: parseInt(e.data.state.shadow || 0, 10), glow: parseInt(e.data.state.glow || 0, 10), glow_color: e.data.state.glow_color || "" }); }
+      } catch(_fs){}
+      return;
+    }
+    if (!e.data || e.data.type !== "select-field" || !e.data.field) return;
+    var el = document.querySelector("[data-field=\"" + String(e.data.field).replace(/[^a-z0-9_\-]/gi, "") + "\"]"); if (!el) return;
+    var blk = el.closest("[data-block]"); if (blk) { window._selectedBlock = blk.getAttribute("data-block"); blk.style.outline = "2px solid #6C5CE7"; blk.style.outlineOffset = "-2px"; }
+    try { el.scrollIntoView({block:"center"}); } catch(_s){}
+    _luAnnounce(el);
+  });
 
   function _reposition(){
     if (_selEl && window._selectedElement) {
@@ -4168,9 +4083,10 @@ document.addEventListener("DOMContentLoaded",function(){
             window.parent.postMessage({
               type:"element-selected",
               block_id: bid,
-              element_key: elKey,
+              element_key: el.getAttribute("data-field") || elKey,   // SELECTION888: the field key is what Arthur resolves
               element_label: pretty
             },"*");
+            _luShowToolbox(el, el.getAttribute("data-field") || elKey);
 
             // ── Image-click detection (2026-04-19) ─────────────────────
             // If the clicked element is an image surface, fire an extra
@@ -4205,6 +4121,28 @@ document.addEventListener("DOMContentLoaded",function(){
     });
   });
 
+  // SELECTION888 (2026-09-15): any [data-field] element can be the selection, not only manifest-declared ones.
+  function _luAnnounce(el){
+    try {
+      var f = el.getAttribute("data-field"); if (!f) return;
+      var blk = el.closest("[data-block]"); var bid = blk ? blk.getAttribute("data-block") : (window._selectedBlock || "");
+      if (blk && window._selectedBlock !== bid) { document.querySelectorAll("[data-block]").forEach(function(b){ b.style.outline = ""; var t = b.querySelector(".lu-block-toolbar"); if (t) t.remove(); }); window._selectedBlock = bid; blk.style.outline = "2px solid #6C5CE7"; blk.style.outlineOffset = "-2px"; }
+      window._selectedElement = f; _selEl = el;
+      _posBox(_sel, el); _sel.style.border = "2px solid #f97316"; _sel.style.background = "rgba(249,115,22,0.08)";
+      _posTip(f, el);
+      var pretty = (bid ? bid.charAt(0).toUpperCase() + bid.slice(1) + " \u203A " : "") + _prettyKey(f);
+      window.parent.postMessage({type:"element-selected", block_id: bid || null, element_key: f, element_label: pretty}, "*");
+      _luShowToolbox(el, f);
+    } catch(_a){}
+  }
+  document.addEventListener("click", function(e){
+    var t = e.target && e.target.closest ? e.target.closest("[data-field]") : null;
+    if (!t || t.dataset.luElHooked === "1" || t === _editingEl) return;
+    if (t.tagName === "IMG" || /_image$|_photo$|_img$|_avatar$|_logo$|^logo/.test(t.getAttribute("data-field") || "")) return;   // images have their own panel
+    if (t.tagName === "A" || t.closest("a")) e.preventDefault();
+    _luAnnounce(t);
+  }, true);
+
   // ── Double-click to edit any [data-field] — delegated ──
   var _editingEl = null;
   function _enterEdit(target){
@@ -4212,6 +4150,7 @@ document.addEventListener("DOMContentLoaded",function(){
     if (!target || _editingEl === target) return;
     _editingEl = target;
     if (target.dataset.luBase === undefined) target.dataset.luBase = target.innerHTML; // D10 conflict base
+    _luAnnounce(target);   // SELECTION888: the text being edited is the selected element for Arthur
     target.setAttribute("contenteditable", "true");
     target.setAttribute("spellcheck", "false");
     target.style.cursor = "text";
@@ -4341,6 +4280,13 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     // (whose content saveHTML serialises raw = stored XSS). RISK-0114 — cap the value length.
     if (! preg_match('/^[A-Za-z0-9_-]{1,64}$/', (string) $field)) return response()->json(['saved' => false, 'field' => $field, 'error' => 'Invalid field name.'], 422);
     if (strlen((string) $value) > 65536) return response()->json(['saved' => false, 'field' => $field, 'error' => 'Value too large (max 64KB).'], 422);
+    // 2026-09-10 — TemplateService::updateField() declares `string $value`, and every guard above casts
+    // for its own CHECK while passing the RAW value on. A field cleared to empty in the inline editor
+    // arrives as null, sails past both guards (strlen(null) is 0) and then throws a TypeError on the
+    // typed parameter — a 500 for the ordinary act of deleting the text in a box. Observed live at
+    // 2026-09-10 05:41:25 from this exact line. Clearing a field is a legitimate edit, so the value is
+    // normalised rather than refused; a non-scalar (array/object) becomes empty rather than crashing.
+    $value = $value === null ? '' : (is_scalar($value) ? (string) $value : '');
     $ts = new \App\Engines\Builder\Services\TemplateService();
     // updateField now patches text AND image fields SURGICALLY in the deployed
     // index.html (src / background-image), so we no longer full-re-render for
@@ -4352,7 +4298,14 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     // customer's value is persisted"; `export_patched` reports the secondary
     // artefact (which feeds the Admin draft link only — public serving and
     // preview both render from template_variables).
+    // EDITOR CREDITS (2026-09-15): an inline text or image change is a change like any other — 1 credit when it took
+    if (! \App\Engines\Builder\Support\EditorCredits::canAfford($__ow, 'inline')) return response()->json(['saved' => false, 'field' => $field, 'error' => \App\Engines\Builder\Support\EditorCredits::refusal('inline')], 402);
     $exportPatched = $ts->updateField((int)$id, $field, $value);
+    $__charged = $exportPatched ? \App\Engines\Builder\Support\EditorCredits::charge($__ow, 'inline', (int) $id, ['field' => $field]) : 0;
+    if (preg_match('/^service_\d+_title$/', (string) $field)) { // STRESS C02 (2026-09-06): booking <select> follows the rename
+        try { $__sv = json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('template_variables'), true) ?: []; $__sv[$field] = $value; $ts->refreshServiceSelects((int) $id, $__sv); } catch (\Throwable $e) {}
+    }
+    try { $ts->patchFieldInSubPages((int) $id, (string) $field, (string) $value); } catch (\Throwable $e) {}
 
     $website = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int)$id)->first();
     if (! $website) {
@@ -4450,6 +4403,8 @@ Route::post('/builder/websites/{id}/logo', function (\Illuminate\Http\Request $r
             }
             file_put_contents($dir . '/logo.svg', $clean);
         }
+        \App\Engines\Builder\Support\ImagePolicy::normaliseInPlace($dir . '/logo.' . $ext, 'logo'); // IMAGE POLICY 2026-09-06
+        if ($ext !== 'svg') { $__fit = \App\Engines\Builder\Support\ImageCrop::autoSafe($dir . '/logo.' . $ext, 'logo', $dir . '/logo.' . $ext); if ($__fit && $__fit['path'] !== $dir . '/logo.' . $ext) { @unlink($dir . '/logo.' . $ext); $ext = 'png'; } } // CROP TOOL: fixed 800×260 canvas
         $logoUrl = '/storage/sites/' . $id . '/logo.' . $ext . '?v=' . time();
     }
 
@@ -5733,7 +5688,7 @@ Route::get('/email/unsubscribe/{token}', function (\Illuminate\Http\Request $r, 
         'ok'                 => $lead !== null || $resubscribed,
         'email'              => $lead->email ?? null,
         'first_name'         => $lead->first_name ?? null,
-        'brand_name'         => config('app.name', 'LevelUp Growth'),
+        'brand_name'         => config('app.name', 'LevelUpGrowth'),
         'resubscribe_url'    => url('/api/email/resubscribe/' . $token),
         'resubscribed'       => $resubscribed,
     ]);
@@ -5794,7 +5749,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
                 'mode'        => 'platform_self',
                 'host'        => $host,
                 'sitemap_url' => 'https://' . $host . '/sitemap.xml',
-                'message'     => 'This is the LevelUp Growth platform admin URL, not a content site.',
+                'message'     => 'This is the LevelUpGrowth platform admin URL, not a content site.',
             ]);
         }
 
@@ -8665,3 +8620,29 @@ require __DIR__ . '/api/webhooks/email888.php';
 // App\Http\Controllers\Api\Widget\ImageVariantController for the allow-lists.
 Route::get('/public/img/{w}/{path}', [\App\Http\Controllers\Api\Widget\ImageVariantController::class, 'show'])
     ->where(['w' => '[0-9]{2,4}', 'path' => '[A-Za-z0-9_\-./]+']);
+
+// Public site API (rebuild U2, 2026-09-07): read-only, cached, unauthenticated.
+if (file_exists(__DIR__ . '/api/public/plans.php')) { require __DIR__ . '/api/public/plans.php'; }
+if (file_exists(__DIR__ . '/api/public/arthur-public-01.php')) { require __DIR__ . '/api/public/arthur-public-01.php'; }   // Arthur, before the account exists
+if (file_exists(__DIR__ . '/api/public/domains-public-01.php')) { require __DIR__ . '/api/public/domains-public-01.php'; }   // domain search, before the account exists
+
+// ── STORE PAYMENTS PUBLIC (DEC-0051, 2026-09-15): Stripe Checkout on the customer's own account for priced catalogue items ──
+Route::middleware(['throttle:30,1'])->group(function () {
+    Route::post('/public/checkout/{websiteId}/{kind}/{itemId}', function (\Illuminate\Http\Request $r, $websiteId, $kind, $itemId) {
+        $return = (string) ($r->input('return') ?: $r->header('Referer') ?: '');
+        if ($return === '' || ! preg_match('~^https?://~i', $return)) $return = rtrim((string) config('app.url'), '/') . '/storage/sites/' . (int) $websiteId . '/index.html';
+        $res = app(\App\Engines\Builder\Services\StorePaymentsService::class)->checkout((int) $websiteId, preg_replace('/[^a-z_]/', '', (string) $kind), (int) $itemId, $return);
+        if (empty($res['success'])) { return response('<!doctype html><meta charset="utf-8"><body style="font-family:system-ui;padding:40px;max-width:560px;margin:auto"><h2>Payment not available</h2><p>' . e((string) $res['message']) . '</p><p><a href="' . e($return) . '">Back to the site</a></p></body>', 422); }
+        return redirect()->away((string) $res['url'], 303);
+    })->where('websiteId', '[0-9]+')->where('itemId', '[0-9]+');
+    Route::post('/public/store-confirm/{websiteId}', function (\Illuminate\Http\Request $r, $websiteId) {
+        $sid = (string) $r->input('session', '');
+        if (! preg_match('/^cs_(test|live)_[A-Za-z0-9]+$/', $sid)) return response()->json(['ok' => false], 422);
+        return response()->json(app(\App\Engines\Builder\Services\StorePaymentsService::class)->confirmSession((int) $websiteId, $sid));
+    })->where('websiteId', '[0-9]+');
+});
+Route::post('/public/store-webhook/{wsId}', function (\Illuminate\Http\Request $r, $wsId) {
+    try { $res = app(\App\Engines\Builder\Services\StorePaymentsService::class)->handleWebhook((int) $wsId, (string) $r->getContent(), (string) $r->header('Stripe-Signature', '')); }
+    catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[StorePayments] webhook error', ['workspace' => $wsId, 'error' => $e->getMessage()]); $res = ['ok' => false, 'reason' => 'error']; }
+    return response()->json($res, 200);   // always 200: Stripe retries 5xx for hours
+})->where('wsId', '[0-9]+');

@@ -260,12 +260,23 @@ use Illuminate\Support\Facades\Route;
             // entirely: flip status, return success. The published article
             // is served at https://{host}/blog/{slug}/ via
             // PublishedSiteMiddleware -> BuilderRenderer.
-            $laravelSite = \Illuminate\Support\Facades\DB::table('websites')
-                ->where('workspace_id', $wsId)
-                ->where('status', 'published')
-                ->whereNull('deleted_at')
-                ->orderByDesc('id')
-                ->first(['id', 'subdomain', 'domain', 'custom_domain']);
+            // F-OPS-E11 (2026-09-06): the article's OWN site wins when it is published; only then fall back to the newest
+            // published site (the old rule re-homed a bakery article to the newest site in the workspace).
+            $laravelSite = null;
+            if (!empty($article->website_id)) {
+                $laravelSite = \Illuminate\Support\Facades\DB::table('websites')
+                    ->where('workspace_id', $wsId)->where('id', (int) $article->website_id)
+                    ->where('status', 'published')->whereNull('deleted_at')
+                    ->first(['id', 'subdomain', 'domain', 'custom_domain']);
+            }
+            if (!$laravelSite) {
+                $laravelSite = \Illuminate\Support\Facades\DB::table('websites')
+                    ->where('workspace_id', $wsId)
+                    ->where('status', 'published')
+                    ->whereNull('deleted_at')
+                    ->orderByDesc('id')
+                    ->first(['id', 'subdomain', 'domain', 'custom_domain']);
+            }
 
             if ($laravelSite) {
                 \Illuminate\Support\Facades\DB::table('articles')

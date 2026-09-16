@@ -249,6 +249,35 @@ use Illuminate\Support\Facades\Route;
         $agent = \App\Models\Agent::where('slug', $slug)->first();
         if (!$agent) return response()->json(['error' => 'Agent not found'], 404);
 
+        // ── CHAT888 U-C F-CHAT-C2 (2026-09-06) — IDEMPOTENCY ON THE MAIN DOOR ──────
+        // Placed BEFORE persistence and metering: a duplicate submission (double-click, network retry, two tabs)
+        // replays the original ack — no second stored message, no second meter tick, no second runtime run.
+        // Opt-in by `idempotency_key` (legacy clients unchanged); surface s1_agent_messages in CHAT_IDEMPOTENCY_SURFACES.
+        $__ikey = trim((string) $r->input('idempotency_key', ''));
+        $__irec = null; $__isvc = null;
+        if ($__ikey !== '' && \App\Core\Chat\ChatIdempotencyGate::enabledFor('s1_agent_messages')) {
+            try {
+                $__isvc = app(\App\Core\Chat\ChatIdempotencyService::class);
+                $__ictx = ['workspace_id' => (int) $wsId, 'user_id' => $r->user()?->id, 'surface' => 's1_agent_messages', 'agent_id' => (string) $slug,
+                    'conversation_type' => 'agent', 'conversation_id' => 'ws' . (int) $wsId . ':' . $slug, 'content' => (string) $content,
+                    'attachment_ids' => array_map(fn($a) => (int) ($a['media_id'] ?? 0), (array) ($__att['meta'] ?? [])),
+                    'idempotency_key' => $__ikey, 'client_message_id' => $r->input('client_message_id')];
+                $__ictx['request_fingerprint'] = \App\Core\Chat\ChatRequestFingerprint::compute($__ictx);
+                $__acq = $__isvc->acquire($__ictx);
+                $__cid = (string) ($__acq['correlation_id'] ?? '');
+                if (($__acq['state'] ?? '') === 'replay') {
+                    $__b = is_array($__acq['response']['body'] ?? null) ? $__acq['response']['body'] : ['success' => false, 'error' => 'Duplicate request', 'code' => $__acq['error_code'] ?? 'CHAT_CONVERSATION_CONFLICT'];
+                    $__b['idempotent_replay'] = true; $__b['correlation_id'] = $__cid;
+                    \Illuminate\Support\Facades\Log::info('chat.idempotency.replay', ['surface' => 's1_agent_messages', 'correlation_id' => $__cid, 'workspace_id' => $wsId]);
+                    return response()->json($__b, (int) ($__acq['response']['status'] ?? 200));
+                }
+                if (in_array($__acq['state'] ?? '', ['conflict', 'in_progress'], true)) {
+                    return response()->json(['success' => false, 'code' => 'CHAT_CONVERSATION_CONFLICT', 'retryable' => ($__acq['state'] === 'in_progress'), 'correlation_id' => $__cid,
+                        'error' => $__acq['state'] === 'conflict' ? 'This idempotency key was already used for a different message.' : 'An identical request is already being processed.'], 409);
+                }
+                if (($__acq['state'] ?? '') === 'acquired' && !empty($__acq['record'])) { $__irec = (int) $__acq['record']->id; $__isvc->markProcessing($__irec); }
+            } catch (\Throwable $__ie) { \Illuminate\Support\Facades\Log::warning('chat.idempotency.s1_unavailable', ['err' => $__ie->getMessage()]); $__irec = null; }
+        }
         // ── INCIDENT FIX 2026-07-26 — PERSIST BEFORE METERING ──────────────
         // The credit meter used to run here, BEFORE the message was written.
         // A refused chat therefore returned 402 without ever storing what the
@@ -258,15 +287,6 @@ use Illuminate\Support\Facades\Route;
         // The user's own words are not the platform's to discard because of a
         // billing state. Persist first; meter second. A stored-but-unanswered
         // message is recoverable; a discarded one is not.
-        // ── SARAH888 PHASE 1A SLICE 1 — MESSAGE CORRELATION (F1-D02) ────────
-        // The originating user message id used to be thrown away here: this was
-        // insert(), not insertGetId(). Nothing downstream could therefore bind a
-        // reply to the question that caused it, so the SPA fell back to "newest
-        // agent row with id > ack_id" — which attaches a late reply to whatever
-        // question happens to be on screen. In the F1 stress test that produced
-        // a systematic one-turn lag: turn 123 answered turn 120, turn 138
-        // answered turn 136. Capturing the id is the root fix; every row written
-        // for this turn now carries the envelope built below.
         $userMessageId = null;
         try {
             $userMessageId = (int) \Illuminate\Support\Facades\DB::table('agent_messages')->insertGetId([
@@ -294,6 +314,15 @@ use Illuminate\Support\Facades\Route;
                 'exception'    => $e->getMessage(),
             ]);
         }
+        // ── SARAH888 PHASE 1A SLICE 1 — MESSAGE CORRELATION (F1-D02) ────────
+        // The originating user message id used to be thrown away here: this was
+        // insert(), not insertGetId(). Nothing downstream could therefore bind a
+        // reply to the question that caused it, so the SPA fell back to "newest
+        // agent row with id > ack_id" — which attaches a late reply to whatever
+        // question happens to be on screen. In the F1 stress test that produced
+        // a systematic one-turn lag: turn 123 answered turn 120, turn 138
+        // answered turn 136. Capturing the id is the root fix; every row written
+        // for this turn now carries the envelope built below.
 
         // The correlation envelope for THIS turn. Every agent row written below
         // — ack, router reply, LLM reply, credit refusal, crash row — merges
@@ -434,6 +463,7 @@ $withCorr = function (array $meta) use ($corr) {
                 'updated_at'    => now(),
             ]);
 
+            if ($__irec && $__isvc) { try { $__isvc->markFailed($__irec, 'CHAT_INSUFFICIENT_CREDITS', false, ['status' => 402, 'body' => ['success' => false, 'reason' => 'insufficient_credits', 'message_saved' => true, 'required_credits' => 1]]); } catch (\Throwable $__ie) {} }
             return response()->json([
                 'success' => false,
                 'error'   => "This workspace is out of credits, so {$agentName} can't reply right now. "
@@ -514,6 +544,7 @@ $withCorr = function (array $meta) use ($corr) {
                 // pipeline below still executes and persists the final
                 // reply to agent_messages.
                 if (ob_get_level() > 0) { @ob_end_clean(); }
+                if ($__irec && $__isvc) { try { $__isvc->markCompleted($__irec, ['body' => $ackResponse, 'status' => 200]); } catch (\Throwable $__ie) {} } // CHAT888: a replay returns this same ack
                 $ackJson = json_encode($ackResponse);
                 @header('X-Accel-Buffering: no');
                 @header('Connection: close');
@@ -531,7 +562,7 @@ $withCorr = function (array $meta) use ($corr) {
                 // function that checks if a 'final' row was written;
                 // if not, insert an error row so the SPA's poll terminates
                 // with a visible error instead of silent timeout.
-                register_shutdown_function(function () use ($wsId, $slug, $agent, $earlyAckMessageId, $corr) {
+                register_shutdown_function(function () use ($wsId, $slug, $agent, $earlyAckMessageId, $corr, $_meter) {
                     try {
                         // ── SLICE 1A.4 — CORRELATION-SCOPED CRASH NET ──────────
                         // This used to take the NEWEST agent row after the ack id
@@ -574,6 +605,12 @@ $withCorr = function (array $meta) use ($corr) {
                             \Illuminate\Support\Facades\Log::error('[AgentChat] two-phase pipeline crashed, error row persisted', [
                                 'ws' => $wsId, 'slug' => $slug, 'last_php_error' => $lastErr,
                             ]);
+                            // CHAT888 U-K F-CHAT-K1 (2026-09-06): this turn ticked the meter's 10th-chat debit before the runtime ran —
+                            // no answer was produced, so the credit goes back (0 for the nine unbilled turns).
+                            if (!empty($_meter['debited'])) {
+                                try { app(\App\Core\Billing\CreditService::class)->credit((int) $wsId, 1, 'agent_message_refund_crash', null, ['execution_id' => $corr['execution_id'] ?? null]); }
+                                catch (\Throwable $refErr) { \Illuminate\Support\Facades\Log::warning('[AgentChat] crash refund failed', ['ws' => $wsId, 'err' => $refErr->getMessage()]); }
+                            }
                         }
                     } catch (\Throwable $shutErr) {
                         \Illuminate\Support\Facades\Log::critical('[AgentChat] shutdown safety net itself crashed', [
@@ -657,9 +694,12 @@ $withCorr = function (array $meta) use ($corr) {
                 if ($__imgUrl !== '' && !preg_match('#^https?://#', $__imgUrl)) { $__imgUrl = rtrim((string) config('app.url'), '/') . '/' . ltrim($__imgUrl, '/'); }
                 if ($__imgUrl !== '') {
                     $visionResult = app(\App\Connectors\RuntimeClient::class)->visionAnalyze("Analyze this image in the context of: {$content}", '', $__imgUrl);
-                    if ($visionResult['success'] ?? false) { $visionContext .= "\n\n[The user attached an image \"{$__img['name']}\". Vision analysis: " . ($visionResult['analysis'] ?? '') . "]"; }
+                    if ($visionResult['success'] ?? false) { $visionContext .= "\n\n[The user attached an image \"{$__img['name']}\" (media_id {$__img['media_id']}). Vision analysis: " . ($visionResult['analysis'] ?? '') . "]"; }
                 }
             } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[AgentChat] Vision (attachment) failed: ' . $e->getMessage()); }
+        }
+        if (!empty($__att['images'])) { // FILE HAND-OFF 2026-09-06: every attached image is addressable by media_id
+            $visionContext .= "\n\n[Attached image files (pass these media_id values to builder.ask_arthur in `attachments` when they are for the website): " . implode(', ', array_map(fn($i) => '"' . $i['name'] . '" media_id ' . $i['media_id'], $__att['images'])) . ']';
         }
         if (!empty($__att['context'])) { $visionContext .= $__att['context']; }
 
@@ -760,13 +800,13 @@ $withCorr = function (array $meta) use ($corr) {
                     $__qcScope = $__qc->scope((int) $wsId, (string) $content);
                     $__qcReply = $__qc->describe($__qcScope);
                     if ($__qcScope['tasks']->count() > 0) { $__qc->remember((int) $wsId, $__qcScope, (string) $content); } else { $__qc->forget((int) $wsId); }
-                } elseif (\App\Core\Sarah888\DraftPublishing::asks($content)) {
+                } elseif (!\App\Core\Sarah888\SocialTurn::is($content) && \App\Core\Sarah888\DraftPublishing::asks($content)) { // F-SOC-F1: social turns are not article publishing
                     // PUBLISH-1: "publish the drafts" — what goes live, what it means, then a yes. Failed tasks never block this.
                     $__dp = app(\App\Core\Sarah888\DraftPublishing::class);
                     $__dpScope = $__dp->scope((int) $wsId);
                     $__qcReply = $__dp->describe((int) $wsId, $__dpScope);
                     if ($__dpScope['ready']->count() + $__dpScope['missing']->count() > 0) { $__dp->remember((int) $wsId, $__dpScope, (string) $content); } else { $__dp->forget((int) $wsId); }
-                } elseif (\App\Core\Sarah888\ImageGeneration::asks($content) || \App\Core\Sarah888\ImageGeneration::isRefinement((int) $wsId, $content)) {
+                } elseif (!\App\Core\Sarah888\SocialTurn::is($content) && (\App\Core\Sarah888\ImageGeneration::asks($content) || \App\Core\Sarah888\ImageGeneration::isRefinement((int) $wsId, $content))) { // F-SOC-F1: "schedule that Facebook post" is not an image refinement
                     // IMAGE-1 (2026-09-03): "generate an image of X" — state it + the cost, then a yes.
                     // Deterministic: turn 2's yes runs it without a second approval, so no repeat-confirmation.
                     $__ig = app(\App\Core\Sarah888\ImageGeneration::class);
@@ -801,11 +841,19 @@ $withCorr = function (array $meta) use ($corr) {
                 $__notACount = '/\b(revenue|money|sales|income|profit|earnings?|roi|turnover|'
                               . 'traffic|visitors?|sessions?|clicks?|impressions?|conversions?|'
                               . 'ctr|bounce|engagement|spend|spent|budget|cost|costs|credits?)\b/';
+                if (!\App\Core\Sarah888\SocialTurn::is($content)) // F-SOC-F1: social post counts are the social engine's, not the article router's
                 if (preg_match('/\b(how many|number of|count of|how much)\b.*\b(article|articles|post|posts|blog|content|page|pages|published|drafts?)\b/', $c)
                     && ! preg_match($__notACount, $c)) {
-                    $pub = (int) DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->count();
-                    $drf = (int) DB::table('articles')->where('workspace_id', $wsId)->where('status', 'draft')->count();
-                    $routerReply = "You have {$pub} published article" . ($pub === 1 ? '' : 's')
+                    // F-OPS-F3 (2026-09-06): a named website scopes the count (was always the workspace total)
+                    $__namedSite = null;
+                    try { $__named = app(\App\Core\Orchestration\ToolSchemaService::class)->websiteNamesMentioned((int) $wsId, (string) $content); if (count($__named) === 1) $__namedSite = $__named[0]; } catch (\Throwable) { $__namedSite = null; }
+                    $__artQ = fn() => DB::table('articles')->where('workspace_id', $wsId)->when($__namedSite, fn($q) => $q->where('website_id', (int) $__namedSite['id']));
+                    $pub = (int) $__artQ()->where('status', 'published')->count();
+                    $drf = (int) $__artQ()->where('status', 'draft')->count();
+                    if ($__namedSite) { $countMissingImgs = (int) $__artQ()->whereIn('status', ['published', 'draft'])->where(function ($w) { $w->whereNull('featured_image_url')->orWhere('featured_image_url', ''); })->count(); }
+                    if ($__namedSite && $pub + $drf === 0) { $routerReply = e((string) $__namedSite['name']) . " has no articles yet. Say \"write an article for " . e((string) $__namedSite['name']) . "\" and Priya will draft one."; }
+                    else
+                    $routerReply = ($__namedSite ? e((string) $__namedSite['name']) . ' has' : 'You have') . " {$pub} published article" . ($pub === 1 ? '' : 's')
                         . ($drf > 0 ? " and {$drf} draft" . ($drf === 1 ? '' : 's') : '') . ". "
                         . ($countMissingImgs > 0
                             ? "{$countMissingImgs} of them still need a featured image — just say \"add the missing images\" and I'll generate them."
@@ -833,7 +881,7 @@ $withCorr = function (array $meta) use ($corr) {
                 // traffic/visitors (a different subject that happens to mention a site).
                 elseif (preg_match('/\b(websites?|sites?)\b/', $c)
                         && preg_match('/\b(how many|number of|count of|which|what|list|show|do i have|do we have|have i got)\b/', $c)
-                        && ! preg_match('/\b(build|create|make|new|add|delete|remove|publish|connect|domain|traffic|visitors?|sessions?|revenue|rank|ranking)\b/', $c)) {
+                        && ! preg_match('/\b(build|create|make|new|add|delete|remove|publish|connect|domain|traffic|visitors?|sessions?|revenue|rank|ranking|chat ?bot|chat widget|live chat|domains?|hosted|hosting|registrar|registered)\b/', $c)) { // F-CB-F2 / F-I-F1: chatbot, domain and hosting questions are not the site list
                     $__sites = DB::table('websites')
                         ->where('workspace_id', $wsId)->whereNull('deleted_at')
                         ->orderBy('id')->get(['id', 'name', 'status', 'subdomain', 'custom_domain']);
@@ -1450,10 +1498,10 @@ $withCorr = function (array $meta) use ($corr) {
             $identityBlock .= "" 
                 // DEC-0028 (2026-08-25) / RISK-0099 (2026-08-29): SOCIAL IS IN THE PRODUCT. This block
                 // was the fifth un-mirrored launch-scope layer — Sarah told a paying customer "Social
-                // media posting and management aren't part of the current LevelUp Growth product" and
+                // media posting and management aren't part of the current LevelUpGrowth product" and
                 // queued an unrequested blog article instead (task 31824). Email marketing stays out.
                 // Every existing conversation carries the old refusal ("Social media posting isn't part
-                // of the current LevelUp Growth product") — the folded history reproduced it verbatim
+                // of the current LevelUpGrowth product") — the folded history reproduced it verbatim
                 // even after the rules changed (ws 999993, 12:04 UTC). The rule below outranks history.
                 . "HISTORY OVERRIDE (SOCIAL): if earlier messages in this conversation — including your "
                 . "own — said that social media posting, scheduling or Marcus were not part of the product, "
@@ -2073,6 +2121,17 @@ $withCorr = function (array $meta) use ($corr) {
                         [$__rp, $__rc] = \App\Core\Sarah888\ReadToolPromotion::targetByName($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, $__ri['params'], (string) ($__siteUrlIn ?? ''));
                         $__rr = $toolSchemaSvc->executeToolCall($__ri['tool'], $__rp, (int) $wsId, $slug, $__rc);
                         $__rrText = \App\Core\Sarah888\ReadToolPromotion::render(is_array($__rr) ? $__rr : []);
+                        if ($__ri['tool'] === 'social.list_posts' && !empty($__rr['success']) && $__rrText !== '') { // F-SOC-F5d: counts by status first
+                            $__sd = json_decode(json_encode($__rr['data'] ?? []), true) ?: []; // Collections/stdClass → arrays (same normalisation as render())
+                            $__sp = is_array($__sd['posts'] ?? null) ? $__sd['posts'] : (array_is_list($__sd) ? $__sd : []);
+                            $__sc = []; foreach ($__sp as $__p) { $__st = (string) (is_array($__p) ? ($__p['status'] ?? '') : ($__p->status ?? '')); if ($__st !== '') $__sc[$__st] = ($__sc[$__st] ?? 0) + 1; }
+                            if ($__sp) { $__parts = []; foreach (['draft', 'scheduled', 'published', 'failed'] as $__st) $__parts[] = ($__sc[$__st] ?? 0) . ' ' . $__st; foreach ($__sc as $__st => $__nn) if (!in_array($__st, ['draft', 'scheduled', 'published', 'failed'], true)) $__parts[] = $__nn . ' ' . $__st;
+                                $__rrText = count($__sp) . ' social post' . (count($__sp) === 1 ? '' : 's') . ' — ' . implode(', ', $__parts) . ".\n" . preg_replace('/^\d+ items?:\n/u', '', $__rrText); }
+                        }
+                        if ($__ri['tool'] === 'social.get_queue' && !empty($__rr['success']) && empty($__rr['data'])) { // F-SOC-F5b: empty queue, said plainly
+                            $__dq = (int) \Illuminate\Support\Facades\DB::table('social_posts')->where('workspace_id', (int) $wsId)->where('status', 'draft')->count();
+                            $__rrText = 'Nothing is scheduled in the social queue right now.' . ($__dq > 0 ? ' You have ' . $__dq . ' draft' . ($__dq === 1 ? '' : 's') . ' waiting — say which to schedule and when.' : '');
+                        }
                         if ($__rrText !== '') {
                             $assist = ['response' => $__rrText, 'create_tasks' => [], 'tool_calls' => [], 'requires_sarah' => false, 'reasoning_path' => true, 'read_lane' => $__ri['tool'], 'read_executed' => !empty($__rr['success'])];
                             \Illuminate\Support\Facades\Log::info('[Sarah888] read lane executed (DEC-0029)', ['ws' => $wsId, 'tool' => $__ri['tool'], 'success' => !empty($__rr['success']), 'code' => $__rr['code'] ?? null]);
@@ -2791,6 +2850,11 @@ $withCorr = function (array $meta) use ($corr) {
                         if (str_contains($m, 'cadence') || str_contains($m, 'cap')) {
                             return "it would exceed this month's plan limit";
                         }
+                        if (str_contains($m, 'ask_first_proposed')) { // F-SOC-F3: this is the approval gate working, not a fault
+                            return preg_match('/proposal #(\d+)/i', $e->getMessage(), $pm)
+                                ? "it needs your approval first — it's waiting as proposal #{$pm[1]}, nothing created or charged"
+                                : "it needs your approval first — nothing has been created or charged";
+                        }
                         // Default — never leak the raw error. It is logged above for the team.
                         return 'a temporary system issue (logged for the team)';
                     };
@@ -2887,6 +2951,17 @@ $withCorr = function (array $meta) use ($corr) {
                     }
 
                     $ctIndex = 0;
+                    // EV-1045 (2026-09-16): content work needs a website. Resolve it once per request (named in the
+                    // message, the only site, or the site the app has open); on a multi-site workspace with nothing
+                    // to go on, HOLD the content tasks and ask — never write for nobody.
+                    $__ct = ['site' => null, 'sites' => [], 'named' => [], 'reason' => 'none'];
+                    try { $__ct = \App\Core\Sarah888\ContentTarget::resolve((int) $wsId, (string) $__ownerMessage, (string) $__siteUrlIn); } catch (\Throwable) {}
+                    $__contentHold = false;
+                    if ($__ct['site'] === null && count($__ct['sites']) > 1) {
+                        foreach ($createTasks as $__c) { if (is_array($__c) && strtolower((string) ($__c['action'] ?? '')) === 'write_article') { $__contentHold = true; break; } }
+                    }
+                    $__contentSkipped = 0;
+                    $__reqItemByAction = [];
                     foreach ($createTasks as $createTask) {
                     $ctIndex++;
                     // TM-1 (REPORT-0027): a READ emitted without an `agent` was dropped by the agent gate
@@ -3337,9 +3412,16 @@ $withCorr = function (array $meta) use ($corr) {
                                     (string) $content
                                 );
 
+                            // EV-1045: content tasks carry the resolved website, or wait for the answer.
+                            if (in_array((string) $taskAction, \App\Core\Sarah888\ContentTarget::CONTENT_ACTIONS, true)) {
+                                if ($__contentHold) { $__contentSkipped++; continue; }
+                                if ($__ct['site'] !== null && empty($payload['website_id'])) { $payload['website_id'] = (int) $__ct['site']['id']; }
+                            }
+                            $__reqItemByAction[(string) $taskAction] = ($__reqItemByAction[(string) $taskAction] ?? 0) + 1;
                             $createPayload = [
                                 'engine'           => $taskEngine,
                                 'action'           => $taskAction,
+                                'request_item'     => $__reqItemByAction[(string) $taskAction],   // EV-1045: N articles are N tasks
                                 'source'           => 'agent',
                                 'priority'         => 'normal',
                                 'assigned_agents'  => [$taskAgent],
@@ -3507,6 +3589,14 @@ $withCorr = function (array $meta) use ($corr) {
                             $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $createPayload);
                             // Record by position for downstream depends_on references.
                             $createdTaskIds[$ctIndex] = $newTask->id;
+                            // EV-1045: an idempotent hit is an EXISTING task, not a new one — count it as skipped, never as started.
+                            if (!$newTask->wasRecentlyCreated) {
+                                $taskSummaryDeduped++;
+                                $taskSummaryDedupedTitles[] = mb_substr($taskDesc ?? $taskAction, 0, 70);
+                                if (!empty($__heldThisTask)) { array_pop($__spendHeld); $__heldThisTask = false; }
+                                \Illuminate\Support\Facades\Log::info('[SarahChat] idempotent hit — existing task reused', ['task_id' => $newTask->id, 'action' => $taskAction]);
+                                continue;
+                            }
                             if ($taskAction === 'write_article') $__batchWriteTaskId = (int) $newTask->id; // CONTENT-1
                             // progress_message isn't in the TaskService whitelist — set after.
                             $newTask->update(['progress_message' => $taskDesc]);
@@ -3542,6 +3632,11 @@ $withCorr = function (array $meta) use ($corr) {
                         }
                     }
                     } // end foreach createTasks
+                    // EV-1045: nothing was written for nobody — the reply is the question, not the model's promise.
+                    if (!empty($__contentHold) && $__contentSkipped > 0) {
+                        $reply = \App\Core\Sarah888\ContentTarget::askWhich($__ct['sites'], $__ct['named']);
+                        \Illuminate\Support\Facades\Log::info('[Sarah888] content tasks held — website not resolved', ['ws' => $wsId, 'skipped' => $__contentSkipped, 'sites' => count($__ct['sites'])]);
+                    }
 
                     // 2026-05-24 FIX 49 — persist user-stated cadence preferences.
                     // Sarah's prompt only emits these when user used commit
@@ -3690,6 +3785,38 @@ $withCorr = function (array $meta) use ($corr) {
                         // pass 3 (2026-09-02): the read has been done, so "I'll proceed with listing its pages. Shall I go ahead?"
                         // is stale — strip promises when nothing else was queued, then show what the lookup returned.
                         if ((int) $taskSummaryCreated === 0) {
+                            // SARAH → ARTHUR PROMOTION (EV-1038, 2026-09-15): a website edit asked in plain words ("move the hero eyebrow below
+                            // the title", "give the title a blue glow", "mark the bungalow as sold") becomes Arthur's task THIS turn. When the
+                            // runtime answered with prose but no builder task, queue it deterministically (review-gated, like any ask_arthur)
+                            // and say so — never "I'll apply it" with nothing behind it.
+                            try {
+                                $__hasBuilderTask = false;
+                                foreach ((array) ($assist['create_tasks'] ?? []) as $__t) { if (is_array($__t) && (($__t['engine'] ?? '') === 'builder' || str_contains((string) ($__t['action'] ?? ''), 'arthur'))) { $__hasBuilderTask = true; break; } }
+                                foreach ((array) ($assist['tool_calls'] ?? []) as $__t) { if (is_array($__t) && str_contains((string) json_encode($__t), 'ask_arthur')) { $__hasBuilderTask = true; break; } }
+                                if (isset($__turnShape) && is_array($__turnShape) && !empty($__turnShape['site_edit']) && !$__hasBuilderTask && trim((string) $__ownerMessage) !== '') {
+                                    $__pr = \App\Core\Sarah888\BuilderEditPromotion::promoteRaw($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, (string) $slug);
+                                    if (!empty($__pr['handled']) && !empty($__pr['reply'])) { $reply = (string) $__pr['reply']; \Illuminate\Support\Facades\Log::info('[Sarah888] site edit promoted to Arthur', ['ws' => $wsId, 'executed' => !empty($__pr['executed']), 'ambiguous' => !empty($__pr['ambiguous'])]); }
+                                }
+                            } catch (\Throwable $__pe) { \Illuminate\Support\Facades\Log::warning('[Sarah888] site edit promotion failed: ' . $__pe->getMessage()); }
+                            // EV-1038: the site-edit reply is the record, not prose — the approval Arthur is waiting on, by id.
+                            $__siteEditReply = null;
+                            try {
+                                if (isset($__turnShape) && is_array($__turnShape) && !empty($__turnShape['site_edit'])) {
+                                    $__ap = \Illuminate\Support\Facades\DB::table('approvals')->where('workspace_id', (int) $wsId)->where('capability_key', 'builder.ask_arthur')->where('status', 'pending')->where('created_at', '>=', now()->subMinutes(3))->orderByDesc('id')->first(['id', 'data_json']);
+                                    if ($__ap) {
+                                        $__apd = json_decode((string) ($__ap->data_json ?? '{}'), true) ?: [];
+                                        $__apSite = (int) ($__apd['website_id'] ?? $__apd['params']['website_id'] ?? $__apd['input']['website_id'] ?? 0);
+                                        $__apName = $__apSite > 0 ? (string) \Illuminate\Support\Facades\DB::table('websites')->where('id', $__apSite)->value('name') : '';
+                                        $__ask = trim(rtrim(trim((string) $__ownerMessage), '.!'));
+                                        $__siteEditReply = 'I have asked Arthur to ' . lcfirst($__ask) . ($__apName !== '' && stripos($__ask, $__apName) === false ? ' on ' . $__apName : '') . '. It is waiting for your approval (request #' . (int) $__ap->id . ') — approve it in the review queue and Arthur applies it right away; Undo puts it back.';
+                                    }
+                                }
+                            } catch (\Throwable $__sre) { $__siteEditReply = null; }
+                            if ($__siteEditReply === null && !empty($__hasBuilderTask) && isset($__turnShape) && is_array($__turnShape) && !empty($__turnShape['site_edit'])) {
+                                $__ask = trim(rtrim(trim((string) $__ownerMessage), '.!'));
+                                $__siteEditReply = 'I have asked Arthur to ' . lcfirst($__ask) . '. It is waiting for your approval in the review queue — approve it and Arthur applies it right away; Undo puts it back.';
+                            }
+
                             try { $reply = app(\App\Core\Sarah888\UnfulfilledPromiseGuard::class)->validate((string) $reply, false)['reply']; } catch (\Throwable) {}
                             if ($reply === \App\Core\Sarah888\UnfulfilledPromiseGuard::NOTHING_RAN) $reply = '';
                         }
@@ -3879,8 +4006,10 @@ $withCorr = function (array $meta) use ($corr) {
                 }
             } catch (\Throwable) { $__recentActions = []; $__recentSpecialists = []; }
 
-            $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents, $__recentActions, $__recentSpecialists);
-            $reply = $__cv['reply'];
+            if (empty($assist['read_lane'])) { // F-SOC-F5d: read-lane replies are rendered data, not claims
+                $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents, $__recentActions, $__recentSpecialists);
+                $reply = $__cv['reply'];
+            }
             // W6 — truthfulness guard on the agent bubble. The launch-scope rule lives in
             // Sarah's prompt, but a prompt is probabilistic: she still told a user
             // "social media isn't connected here - Marcus can't publish there", which frames
@@ -4000,9 +4129,11 @@ $withCorr = function (array $meta) use ($corr) {
                     }
                 } catch (\Throwable $__upgErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] UnfulfilledPromiseGuard failed: ' . $__upgErr->getMessage()); }
 
-                $__cg = app(\App\Core\Sarah888\CompletionGuard::class)
-                    ->validate((string) $reply, (int) $wsId, $__verified);
-                $reply = $__cg['reply'];
+                if (empty($assist['read_lane'])) { // F-SOC-F5c: a read-lane reply is rendered from tool data — never a model completion claim
+                    $__cg = app(\App\Core\Sarah888\CompletionGuard::class)
+                        ->validate((string) $reply, (int) $wsId, $__verified);
+                    $reply = $__cg['reply'];
+                }
                 // ── PHASE 1J — SELF-REPORT GATE ───────────────────────────
                 // F1-D09 survived Phase 1D and came back verbatim in Phase 1H:
                 // "Today, no changes have been made that affect the data in
@@ -4070,9 +4201,11 @@ $withCorr = function (array $meta) use ($corr) {
                 // the platform's own workspace. Nothing crossed the tenancy boundary in the query layer - she
                 // invented consecutive numbers - but the owner was still shown another tenant's ids as fact.
                 try {
-                    $__aig = app(\App\Core\Sarah888\ArticleIdClaimGuard::class)
-                        ->validate((string) $reply, (int) $wsId);
-                    $reply = $__aig['reply'];
+                    if (!\App\Core\Sarah888\SocialTurn::is((string) $content)) { // F-SOC-F1b: article-id truth is not for social turns
+                        $__aig = app(\App\Core\Sarah888\ArticleIdClaimGuard::class)
+                            ->validate((string) $reply, (int) $wsId);
+                        $reply = $__aig['reply'];
+                    }
                 } catch (\Throwable $__aigErr) {
                     \Illuminate\Support\Facades\Log::warning(
                         '[Sarah888] ArticleIdClaimGuard failed: ' . $__aigErr->getMessage(), ['ws' => $wsId]
@@ -4091,14 +4224,14 @@ $withCorr = function (array $meta) use ($corr) {
 
                 // TR-1 (REPORT-0027): a search/analytics number invented when NO source is connected is
                 // fabrication by definition. MeasurementGuard strips it (and only that case); fails open.
-                try {
+                try { if (!empty($assist['read_lane'])) throw new \RuntimeException('read-lane'); // F-CB-F2: a read-lane reply's numbers come from a tool — grounded by definition
                     $__mg = app(\App\Core\Sarah888\MeasurementGuard::class)->sanitize((string) $reply, (int) $wsId);
                     if (!empty($__mg['stripped'])) {
                         \Illuminate\Support\Facades\Log::info('[Sarah888] MeasurementGuard stripped ungrounded metrics (TR-1)', ['ws' => $wsId, 'n' => count($__mg['stripped'])]);
                     }
                     $reply = $__mg['reply'];
                 } catch (\Throwable $__mgErr) {
-                    \Illuminate\Support\Facades\Log::warning('[Sarah888] MeasurementGuard failed: ' . $__mgErr->getMessage(), ['ws' => $wsId]);
+                    if ($__mgErr->getMessage() !== 'read-lane') \Illuminate\Support\Facades\Log::warning('[Sarah888] MeasurementGuard failed: ' . $__mgErr->getMessage(), ['ws' => $wsId]);
                 }
 
                 // TR-2 (REPORT-0027): a claim of having researched something EXTERNAL (competitors, market,
@@ -4230,13 +4363,15 @@ $withCorr = function (array $meta) use ($corr) {
         // The rule and the reasoning live in SupersededTurnGuard, where they can be tested; a route closure
         // cannot be. See Chef Red's thread of 2026-09-01, where two late replies landed under an answer the
         // publish router had already given and repeated the same list of drafts three times.
+        // CHAT888 U-L F-CHAT-L1 (2026-09-06): a superseded reply is no longer DROPPED (that left no final row and the crash
+        // net then wrote "Hit a snag" under a perfectly good question). It is kept, labelled with the question it answers,
+        // and flagged in metadata so the SPA can render it quietly.
+        $__superseded = false;
         if (app(\App\Core\Sarah888\SupersededTurnGuard::class)
                 ->isSuperseded((int) $wsId, (int) ($userMessageId ?? 0))) {
-            return response()->json([
-                'success' => true,
-                'superseded' => true,
-                'message' => 'A newer message was already answered; this reply was not shown.',
-            ]);
+            $__superseded = true;
+            $__q = trim(preg_replace('/\s+/', ' ', (string) $content));
+            if ($__q !== '') { $reply = 'Answering your earlier message ("' . mb_substr($__q, 0, 70) . (mb_strlen($__q) > 70 ? '…' : '') . '"): ' . ltrim((string) $reply); }
         }
 
         try {
@@ -4247,8 +4382,10 @@ $withCorr = function (array $meta) use ($corr) {
                 'requires_sarah'    => $requiresSarah,
                 'sarah_context'     => $sarahContext,
                 'ack_message_id'    => $earlyAckMessageId,
+                'superseded'        => $__superseded,
             ];
             if (! empty($__ia['attachments'])) { $reply = $__ia['text']; $__finalMeta['attachments'] = $__ia['attachments']; }
+            if (!empty($__siteEditReply)) { $reply = $__siteEditReply; $__finalMeta['site_edit'] = true; }   // EV-1038
             $finalMessageId = (int) \Illuminate\Support\Facades\DB::table('agent_messages')->insertGetId([
                 'workspace_id'  => $wsId,
                 'agent_slug'    => $slug,
