@@ -3857,7 +3857,7 @@ $withCorr = function (array $meta) use ($corr) {
                                         $__ask = trim(rtrim(trim((string) $__ownerMessage), '.!'));
                                         $__apCost = '';   // RISK-0189: the applicable cost, or "not free" when it is not yet known — never silent
                                         try { $__apT = $__ap->task_id ? \Illuminate\Support\Facades\DB::table('tasks')->where('id', (int) $__ap->task_id)->first(['credit_cost', 'payload_json']) : null; if ($__apT) { $__apP = json_decode((string) ($__apT->payload_json ?? ''), true) ?: []; $__apCost = ' (' . \App\Engines\Builder\Support\ArthurCostEstimate::describe((int) $__apT->credit_cost, $__apP['credit_estimate'] ?? null) . ')'; } } catch (\Throwable) { $__apCost = ''; }
-                                        $__siteEditReply = 'I have asked Arthur to ' . lcfirst($__ask) . ($__apName !== '' && stripos($__ask, $__apName) === false ? ' on ' . $__apName : '') . $__apCost . '. It is waiting for your approval (request #' . (int) $__ap->id . ') — approve it in the review queue and Arthur applies it right away; Undo puts it back.';
+                                        $__siteEditReply = 'I have asked Arthur to ' . lcfirst($__ask) . ($__apName !== '' && stripos($__ask, $__apName) === false ? ' on ' . $__apName : '') . $__apCost . '. It is waiting for your approval in your review queue — approve it there and Arthur applies it right away; Undo puts it back.';
                                     }
                                 }
                             } catch (\Throwable $__sre) { $__siteEditReply = null; }
@@ -4080,6 +4080,8 @@ $withCorr = function (array $meta) use ($corr) {
             if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\SessionLedgerFacts::guard((string) $reply, (int) $wsId); } catch (\Throwable) {} }
             // RISK-0189 (2026-09-17): a stated credit balance is the ledger's figure at reply time, never one remembered from the thread
             if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\CreditBalanceFacts::guard((string) $reply, (int) $wsId); } catch (\Throwable) {} }
+            // Owner 2026-09-18: internal row numbers never reach the customer — last guard, after every other rewrite
+            if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\InternalIdLeakGuard::apply((string) $reply, (int) $wsId)['reply']; } catch (\Throwable) {} }
 
             // ── SARAH888 PHASE 1C SLICE 1C.3 — DENIAL GUARD ──────────────
             // Third guard in this chain, and here for the same reason as the

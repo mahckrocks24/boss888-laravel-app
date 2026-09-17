@@ -227,9 +227,12 @@ class AgentClaimValidator
         // When work WAS queued this turn but a claim about it could not be backed (an unengaged specialist named), the
         // truthful line is that the unbacked part is not running — never that nothing was queued.
         $honestQueued = "That part isn't in hand — only the work I actually started this turn is running.";
-        if ($strippedClaims > 0) {
-            $line = $isDmm ? ($didQueue ? $honestQueued : $honest) : $honest;
-            $out = $out === '' ? $line : rtrim($out, " \t") . ' ' . $line;
+        // Owner, 2026-09-18 (ws 2, "How's everything going?"): the model added "The two articles are queued for publishing…",
+        // the strip removed it, and the footer "I haven't queued that yet" pointed at a sentence the customer never saw.
+        // A removed false claim needs no replacement while the reply still says something; the footer stands in only
+        // when the claim WAS the reply.
+        if ($strippedClaims > 0 && $out === '') {
+            $out = $isDmm ? ($didQueue ? $honestQueued : $honest) : $honest;
         }
 
         Log::warning('[AgentClaim] stripped unverified completion claim', [

@@ -178,8 +178,9 @@ final class BuilderEditPromotion
                     if ($t) { $p = json_decode((string) ($t->payload_json ?? ''), true) ?: []; $costNote = '. It will use ' . \App\Engines\Builder\Support\ArthurCostEstimate::describe((int) $t->credit_cost, $p['credit_estimate'] ?? null); }
                 }
             } catch (\Throwable) { $costNote = ''; }
-            $reply = "I've prepared Arthur to {$what}. It's ready for your approval" . ($aidReal ? " (request #{$aid})" : '') . $costNote
-                   . " — approve it in your review queue and Arthur will apply the change with a before/after snapshot for undo.";
+            // Owner 2026-09-18: no internal ids in prose — the customer finds the request in the review queue, not by number.
+            $reply = "I've prepared Arthur to {$what}. It's ready for your approval" . ($aidReal ? " in your review queue" : '') . $costNote
+                   . " — approve it there and Arthur will apply the change with a before/after snapshot for undo.";
             return ['handled' => true, 'executed' => false, 'ambiguous' => false, 'reply' => $reply];
         }
         if ($ok) {

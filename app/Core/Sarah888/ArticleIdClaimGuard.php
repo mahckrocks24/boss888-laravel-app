@@ -177,7 +177,8 @@ class ArticleIdClaimGuard
         if ($ready->isEmpty()) {
             $truth = $done . 'There are no drafts left ready to publish in this workspace.';
         } else {
-            $list = $ready->map(fn ($a) => '#' . $a->id . ' "' . mb_strimwidth((string) $a->title, 0, 48, '…') . '"')
+            // Owner 2026-09-18: the number is ours, the title is theirs — the customer has no surface that shows article ids
+            $list = $ready->map(fn ($a) => '"' . mb_strimwidth((string) $a->title, 0, 48, '…') . '"')
                 ->implode(', ');
             $truth = $done . 'The earliest drafts ready to publish are ' . $list . '.';
         }
