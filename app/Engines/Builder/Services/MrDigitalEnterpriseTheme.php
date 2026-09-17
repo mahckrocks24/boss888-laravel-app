@@ -86,7 +86,7 @@ class MrDigitalEnterpriseTheme
     public function headExtras(array $website, ?array $page = null, ?array $article = null, ?array $job = null): string
     {
         $this->boot([], $website);
-        $name = (string) ($website['name'] ?? 'MR Digital');
+        $name = (string) ($website['name'] ?? 'MR Systems');
         $out = '<meta name="theme-color" content="' . $this->e($this->brand['primary']) . '">' . "\n"
              . $this->faviconLinks() // FAV-1
              . '<meta name="color-scheme" content="light dark">' . "\n"
@@ -204,7 +204,7 @@ class MrDigitalEnterpriseTheme
             if ($bits) $meta .= '<div class="md-cs-meta"><span>' . implode('</span><span>', $bits) . '</span></div>';
             if (!empty($cs['representative'])) $meta .= '<p class="md-rep">Representative engagement: composed from typical work of this kind, not a named client. Results shown are indicative of this engagement type.</p>';
         }
-        $byline = '<div class="md-byline">' . ($author !== '' ? '<span>' . $this->e($author) . '</span>' : '<span>' . $this->e((string) ($website['name'] ?? 'MR Digital')) . '</span>')
+        $byline = '<div class="md-byline">' . ($author !== '' ? '<span>' . $this->e($author) . '</span>' : '<span>' . $this->e((string) ($website['name'] ?? 'MR Systems')) . '</span>')
             . ($when ? '<span><time datetime="' . $this->e($when->toIso8601String()) . '">' . $this->e($when->copy()->setTimezone($tz)->format('j M Y')) . '</time></span>' : '')
             . '<span>' . $read . ' min read</span></div>';
         $related = $isCase
@@ -249,7 +249,7 @@ class MrDigitalEnterpriseTheme
     // ─── chrome ─────────────────────────────────────────────────────────────
     private function logoHtml(?array $h, array $website): string
     {
-        $name = $this->e((string) ($h['logo_text'] ?? $website['name'] ?? 'MR Digital'));
+        $name = $this->e((string) ($h['logo_text'] ?? $website['name'] ?? 'MR Systems'));
         $logo = $this->url((string) ($h['logo_url'] ?? ''), '');
         if ($logo !== '') return '<a class="md-logo" href="/" aria-label="' . $name . ' home"><img src="' . $logo . '" alt="' . $name . '"></a>';
         $initials = mb_strtoupper(mb_substr(preg_replace('/[^A-Za-z]/', '', (string) ($h['logo_text'] ?? $website['name'] ?? 'MR')), 0, 2));
@@ -317,7 +317,7 @@ class MrDigitalEnterpriseTheme
             foreach ((array) ($c['links'] ?? []) as $l) { if (!is_array($l)) continue; $li .= '<li><a href="' . $this->url((string) ($l['url'] ?? '#')) . '">' . $this->e((string) ($l['label'] ?? '')) . '</a></li>'; }
             $cols .= '<div><h4>' . $this->e((string) ($c['heading'] ?? '')) . '</h4><ul>' . $li . '</ul></div>';
         }
-        $name = $this->e((string) ($website['name'] ?? 'MR Digital'));
+        $name = $this->e((string) ($website['name'] ?? 'MR Systems'));
         $tag = $this->e((string) ($f['tagline'] ?? ''));
         $addr = trim((string) ($f['address'] ?? '')); $email = trim((string) ($f['email'] ?? '')); $phone = trim((string) ($f['phone'] ?? ''));
         $addrHtml = ($addr !== '' || $email !== '' || $phone !== '') ? '<div class="md-addr">' . $name . ' Inc.<br>' . $this->e($addr) . ($email !== '' || $phone !== '' ? '<br>' . $this->e($email) . ($email !== '' && $phone !== '' ? ' · ' : '') . $this->e($phone) : '') . '</div>' : '';
