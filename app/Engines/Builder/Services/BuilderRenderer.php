@@ -1792,7 +1792,16 @@ HTML;
 
         // Favicon — generated SVG from brand color + initial
         $faviconSvg = urlencode("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='{$primary}'/><text y='.88em' x='50' font-size='65' font-family='system-ui' font-weight='700' fill='white' text-anchor='middle' dominant-baseline='auto'>{$initial}</text></svg>");
-        $metaHtml .= "    <link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml,{$faviconSvg}\">\n";
+        // MRDIGITAL888 FAV-1 (2026-09-17) — settings_json.favicon_url (same-origin path or https) replaces the letter fallback.
+        $__favSet = $website['settings_json'] ?? '{}'; if (is_string($__favSet)) $__favSet = json_decode($__favSet, true) ?: [];
+        $__fav = $this->safeUrl((string) ($__favSet['favicon_url'] ?? ''), '');
+        if ($__fav !== '') {
+            $__favType = str_ends_with(strtolower($__fav), '.svg') ? 'image/svg+xml' : (str_ends_with(strtolower($__fav), '.ico') ? 'image/x-icon' : 'image/png');
+            $metaHtml .= "    <link rel=\"icon\" type=\"{$__favType}\" href=\"{$__fav}\">
+";
+        } else {
+            $metaHtml .= "    <link rel=\"icon\" type=\"image/svg+xml\" href=\"data:image/svg+xml,{$faviconSvg}\">\n";
+        }
 
         // JSON-LD Schema
         $schema = [

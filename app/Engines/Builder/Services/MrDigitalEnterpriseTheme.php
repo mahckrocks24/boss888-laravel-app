@@ -88,6 +88,7 @@ class MrDigitalEnterpriseTheme
         $this->boot([], $website);
         $name = (string) ($website['name'] ?? 'MR Digital');
         $out = '<meta name="theme-color" content="' . $this->e($this->brand['primary']) . '">' . "\n"
+             . $this->faviconLinks() // FAV-1
              . '<meta name="color-scheme" content="light dark">' . "\n"
              . '<meta property="og:locale" content="' . $this->e((string) ($this->settings['og_locale'] ?? 'en_CA')) . '">' . "\n";
         $org = ['@context' => 'https://schema.org', '@type' => 'ProfessionalService', 'name' => $name, 'url' => $this->siteUrl() . '/',
@@ -117,6 +118,19 @@ class MrDigitalEnterpriseTheme
                 ['@type' => 'ListItem', 'position' => 2, 'name' => (string) ($page['title'] ?? $slug), 'item' => $this->siteUrl() . '/' . $slug]]];
         }
         foreach ($graph as $g) $out .= '<script type="application/ld+json">' . json_encode($g, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . '</script>' . "\n";
+        return $out;
+    }
+
+    /** FAV-1 — icon set from settings_json (favicon_url, favicon_png_url, apple_touch_icon_url, manifest_url); the SVG icon itself is emitted by the renderer shell. */
+    private function faviconLinks(): string
+    {
+        $s = $this->settings; $out = '';
+        $png = $this->url((string) ($s['favicon_png_url'] ?? ''), ''); if ($png !== '') $out .= '<link rel="icon" type="image/png" sizes="32x32" href="' . $png . '">' . "
+";
+        $apple = $this->url((string) ($s['apple_touch_icon_url'] ?? ''), ''); if ($apple !== '') $out .= '<link rel="apple-touch-icon" sizes="180x180" href="' . $apple . '">' . "
+";
+        $man = $this->url((string) ($s['manifest_url'] ?? ''), ''); if ($man !== '') $out .= '<link rel="manifest" href="' . $man . '">' . "
+";
         return $out;
     }
 
