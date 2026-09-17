@@ -1334,6 +1334,17 @@ function _t3CheckImageDims(url, rec, proceed) {
   img.src = url;
 }
 
+// RISK-0185 (2026-09-17): a text-logo design has no [data-field="logo_url"] element — the renderer draws the logo
+// image inside the textual logo element (TemplateService::applyLogoImage). The targeted DOM update cannot reach
+// it, so after a logo change on such a design the preview is re-rendered from the saved state.
+function _t3ReloadIfNoLogoSlot() {
+  try {
+    var f = document.getElementById('t3-preview');
+    var doc = f && f.contentDocument;
+    if (doc && !doc.querySelector('[data-field="logo_url"]')) _t3ReloadPreview();
+  } catch (_e) { _t3ReloadPreview(); }
+}
+
 // Targeted DOM update via postMessage to the preview iframe.
 // No cross-origin concerns, no contentDocument access, no silent failures.
 // Iframe handles its own DOM update via a matching listener injected in api.php.
@@ -1366,7 +1377,8 @@ function _t3ReplaceImage(websiteId, field, url) {
       if (typeof showToast === 'function') showToast('Saved, but the live page could not be updated for this element. Please refresh the preview and try again.', 'error');
       return;
     }
-    if (typeof showToast === 'function') showToast(url ? 'Image updated' : 'Image removed', 'success');
+    if (field === 'logo_url' || (d && d.redirected_from)) _t3ReloadIfNoLogoSlot();   // RISK-0185
+    if (typeof showToast === 'function') showToast(url ? (field === 'logo_url' ? 'Logo updated' : 'Image updated') : (field === 'logo_url' ? 'Logo removed' : 'Image removed'), 'success');
   }).catch(function(err){
     if (typeof showToast === 'function') showToast('Save failed: ' + err.message, 'error');
     console.error('[t3 image replace]', err);
@@ -1410,6 +1422,7 @@ function _t3LogoFileChosen(ev) {
       return;
     }
     _t3UpdateImageInIframe('logo_url', d.logo_url || '');
+    _t3ReloadIfNoLogoSlot();   // RISK-0185: text-logo designs draw the logo inside the text element — re-render to show it
     if (typeof showToast === 'function') showToast('Logo uploaded', 'success');
   }).catch(function(err){
     if (typeof showToast === 'function') showToast('Upload failed: ' + err.message, 'error');

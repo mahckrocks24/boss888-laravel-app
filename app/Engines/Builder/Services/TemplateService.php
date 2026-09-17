@@ -1526,11 +1526,11 @@ class TemplateService
             $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['name', 'template_variables']);
             $tvL = json_decode((string) ($w->template_variables ?? '{}'), true) ?: [];
             $alt = (string) ($w->name ?? ''); $text = (string) ($tvL['logo'] ?? $alt);
-            $new = self::applyLogoImage($html, $value, $alt, $text);
+            $new = self::applyLogoSlot(self::applyLogoImage($html, $value, $alt, $text), $value);   // RISK-0185: both logo shapes
             $changed = $new !== $html;
             if ($changed) { ftruncate($fp, 0); rewind($fp); fwrite($fp, $new); fflush($fp); }
             flock($fp, LOCK_UN); fclose($fp);
-            foreach (glob(dirname($path) . '/*/index.html') ?: [] as $sub) { $h = (string) file_get_contents($sub); $n = self::applyLogoImage($h, $value, $alt, $text); if ($n !== $h) file_put_contents($sub, $n); }
+            foreach (glob(dirname($path) . '/*/index.html') ?: [] as $sub) { $h = (string) file_get_contents($sub); $n = self::applyLogoSlot(self::applyLogoImage($h, $value, $alt, $text), $value); if ($n !== $h) file_put_contents($sub, $n); }
             return $changed;
         }
 
@@ -1973,6 +1973,26 @@ class TemplateService
             }, $html) ?? $html;
         }
         return $html;
+    }
+
+    /**
+     * RISK-0185 (2026-09-17): designs WITH an <img data-field="logo_url"> slot render it from logo_img_src and hide
+     * the brand text beside it with logo_text_display. The STRESS C33 export patch above only knew the text-logo
+     * shape, so on these designs an upload reached template_variables (preview) but never the export (published
+     * page). Patch the slot the way render() would: src = url or the transparent 1x1, and the text element that
+     * follows the slot shown only while there is no logo.
+     */
+    public static function applyLogoSlot(string $html, string $url): string
+    {
+        if (! str_contains($html, 'data-field="logo_url"')) return $html;
+        $placeholder = 'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%2F%3E';
+        $src = $url === '' ? $placeholder : e($url);
+        $html = preg_replace_callback('/<img\b[^>]*\bdata-field="logo_url"[^>]*>/', function ($m) use ($src) {
+            $tag = preg_replace('/\bsrc="[^"]*"/', 'src="' . $src . '"', $m[0], 1, $n);
+            return $n ? $tag : preg_replace('/^<img\b/', '<img src="' . $src . '"', $m[0]);
+        }, $html) ?? $html;
+        $display = $url === '' ? 'display:block' : 'display:none';
+        return preg_replace('/(<img\b[^>]*\bdata-field="logo_url"[^>]*>\s*<[a-z]+\b[^>]*\bstyle=")display:(?:none|block)/i', '$1' . $display, $html) ?? $html;
     }
 
     /** STRESS C02 (2026-09-06): rebuild the service/people <select>s from the current variables after an inline rename. */

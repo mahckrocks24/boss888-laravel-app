@@ -3649,10 +3649,17 @@ document.addEventListener("DOMContentLoaded",function(){
       ev.stopPropagation();
       var field = imgEl.getAttribute("data-field");
       if (!field) return;
+      // RISK-0185 (2026-09-17): a TEXTUAL brand-logo field (logo / header_logo / nav_logo / footer_logo — the set
+      // TemplateService::applyLogoImage renders) is a DOOR to the one logo-image field, logo_url. Sending its own
+      // name made the editor open the generic Image panel and PUT the picture\'s path into the brand text.
+      var textField = null;
+      if (imgEl.tagName !== "IMG" && /^(logo|header_logo|nav_logo|footer_logo)$/.test(field)) { textField = field; field = "logo_url"; }
       var blockEl = imgEl.closest("[data-block]");
       var block = blockEl ? blockEl.getAttribute("data-block") : "global";
       var currentSrc = "";
-      if (imgEl.tagName === "IMG") {
+      if (textField) {
+        var _li = imgEl.querySelector("img.lu-logo-img"); currentSrc = _li ? (_li.currentSrc || _li.getAttribute("src") || "") : "";
+      } else if (imgEl.tagName === "IMG") {
         currentSrc = imgEl.currentSrc || imgEl.src || imgEl.getAttribute("src") || "";
       } else {
         var bg = (window.getComputedStyle(imgEl).backgroundImage || "");
@@ -3666,6 +3673,7 @@ document.addEventListener("DOMContentLoaded",function(){
         type: "image-clicked",
         websiteId: ' . (int)$id . ',
         field: field,
+        text_field: textField,
         block: block,
         currentSrc: currentSrc,
         recommended: recommended,
@@ -4280,6 +4288,16 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     // (whose content saveHTML serialises raw = stored XSS). RISK-0114 — cap the value length.
     if (! preg_match('/^[A-Za-z0-9_-]{1,64}$/', (string) $field)) return response()->json(['saved' => false, 'field' => $field, 'error' => 'Invalid field name.'], 422);
     if (strlen((string) $value) > 65536) return response()->json(['saved' => false, 'field' => $field, 'error' => 'Value too large (max 64KB).'], 422);
+    // RISK-0185 (2026-09-17): a storage path is never brand copy. An image value aimed at a textual brand-logo field
+    // (logo / header_logo / nav_logo / footer_logo) is the customer choosing a logo IMAGE — it belongs in logo_url, the
+    // one field the renderer (logo_img_src / applyLogoImage) and the export patch (updateField) know how to draw.
+    // An image value aimed at any other text-typed field is refused rather than printed on the page.
+    $__redirectedFrom = null;
+    if (\App\Engines\Builder\Support\LogoFieldSemantics::looksLikeImage((string) $value)
+        && ! \App\Engines\Builder\Support\LogoFieldSemantics::isImageField((int) $id, (string) $field)) {
+        if (\App\Engines\Builder\Support\LogoFieldSemantics::isTextualBrandLogo((string) $field)) { $__redirectedFrom = $field; $field = 'logo_url'; }
+        else return response()->json(['saved' => false, 'field' => $field, 'error' => 'That field holds text, not an image. Click the picture you want to change instead.'], 422);
+    }
     // 2026-09-10 — TemplateService::updateField() declares `string $value`, and every guard above casts
     // for its own CHECK while passing the RAW value on. A field cleared to empty in the inline editor
     // arrives as null, sails past both guards (strlen(null) is 0) and then throws a TypeError on the
@@ -4342,6 +4360,7 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     return response()->json([
         'saved'          => true,
         'field'          => $field,
+        'redirected_from' => $__redirectedFrom,
         'export_patched' => (bool) $exportPatched,
         'degraded'       => ! $exportPatched,
     ]);
