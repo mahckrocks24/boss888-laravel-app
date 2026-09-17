@@ -530,7 +530,7 @@ class Orchestrator
                                         $imgTxt  = ($idx && $idx->has_featured_image) ? 'with a featured image' : 'image still finishing';
                                         $linkTxt = ($idx && $idx->internal_link_count !== null)
                                             ? ((int) $idx->internal_link_count . ' internal links') : 'internal links added';
-                                        $msg = "Your article \"{$art->title}\" is ready — {$imgTxt}, {$linkTxt}. You'll find it in your drafts.";
+                                        $msg = \App\Core\Sarah888\CompletionReport::forArticle((int) $root->id, (string) $art->title, $imgTxt, $linkTxt);
                                     }
                                 }
                             }

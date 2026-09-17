@@ -27,6 +27,10 @@ class DraftPublishing
         $t = mb_strtolower($text);
         if (!preg_match('/\b(publish|push\b.{0,30}\blive|make\b.{0,30}\blive|go live with|go live)\b/', $t)) return false;
         if (preg_match('/["“”]/', $t)) return false;                       // a quoted title → the single-article path
+        // RISK-0186 (2026-09-17): "write one article about X and publish it on Y" is an order to CREATE content (the publish
+        // step stays gated on the owner's go-ahead once the draft exists) — not a request to publish what is already drafted
+        // (EV-1056: it was answered "There are no drafts to publish" and nothing was written).
+        if (preg_match('/\b(write|draft|create|produce|prepare|compose|generate|author)\b[^.?!]{0,80}\b(article|articles|post|posts|blog|piece|pieces|content|guide)\b[^.?!]{0,120}\b(publish|live)\b/', $t)) return false;
         // PUBLISH-3: a negation before the verb is the opposite request — "don't publish yet", "hold off publishing".
         if (preg_match('/\b(don\'?t|do not|never|stop|hold off|not)\b[^.?!]{0,24}\b(publish|live)\b/', $t)) return false;
         if (preg_match('/\b(drafts?|articles?|posts?|them|them all|all of them|everything|the rest|the lot|pending ones|ready ones)\b/', $t)) return true;

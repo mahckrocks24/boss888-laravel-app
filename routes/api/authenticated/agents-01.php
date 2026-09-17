@@ -1372,10 +1372,15 @@ $withCorr = function (array $meta) use ($corr) {
                 $c = (int) ($done7['completed'] ?? 0);
                 $f = (int) ($done7['failed'] ?? 0);
                 $x = (int) ($done7['cancelled'] ?? 0);
+                // RISK-0186 (2026-09-17): a task the specialist finished but Sarah's QA REJECTED (SARAH-QA-1 keeps the verdict on the
+                // row, status stays completed) is not a success — the tally names them, so "nothing recorded as rejected" cannot be said
+                // while a rejected draft sits on a website (EV-1058).
+                $qaRej = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('created_at', '>=', now()->subDays(7))
+                    ->where('status', 'completed')->whereIn('qa_status', ['rejected', 'needs_owner'])->count();
                 $openTotal = (int) $open->sum();
                 $openDetail = $openTotal ? ' (' . $open->map(fn($n, $s) => "{$n} {$s}")->implode(', ') . ')' : '';
                 $taskActivityBlock = "\nTASK ACTIVITY (AUTHORITATIVE — use THESE exact numbers for any \"how many tasks\" question; do NOT count platform.list_tasks rows, that is only a sample and undercounts):\n"
-                    . "Last 7 days: {$c} completed, {$f} failed" . ($x ? ", {$x} cancelled" : '') . ".\n"
+                    . "Last 7 days: {$c} completed, {$f} failed" . ($x ? ", {$x} cancelled" : '') . ($qaRej ? " — of the completed, {$qaRej} did NOT pass QA (rejected or awaiting the owner): count them as not accepted, never as finished work" : '') . ".\n"
                     . "Currently open right now: {$openTotal}{$openDetail}.\n"
                     . "RULE: If the user asks \"how many tasks (completed/failed/done)\" WITHOUT naming a longer period, your FIRST sentence must directly state the last-7-days numbers and the words \"in the last 7 days\" — e.g. \"In the last 7 days we've completed {$c} tasks ({$f} failed).\" Answer the count FIRST, before any recommendation or strategy. Do NOT dodge the question with article/keyword talk.\n"
                     . "RULE: Only if the user EXPLICITLY names a longer period (\"this month\", \"since the beginning\", \"all time\", \"in total ever\") do you give that span instead — call get_task_status with window=\"30d\" or \"all\" and report THAT number. Never volunteer the all-time total unprompted.\n\n";
@@ -2957,7 +2962,13 @@ $withCorr = function (array $meta) use ($corr) {
                     $__ct = ['site' => null, 'sites' => [], 'named' => [], 'reason' => 'none'];
                     try { $__ct = \App\Core\Sarah888\ContentTarget::resolve((int) $wsId, (string) $__ownerMessage, (string) $__siteUrlIn); } catch (\Throwable) {}
                     $__contentHold = false;
-                    if ($__ct['site'] === null && count($__ct['sites']) > 1) {
+                    // RISK-0186 (2026-09-17): several sites named → each task is bound from the owner's own clause (never the
+                    // open site); a piece that cannot be placed is held and asked about by title.
+                    $__contentPerTask = ($__ct['reason'] ?? '') === 'multiple_named';
+                    $__contentUnplaced = [];
+                    $__boundSiteByPos = [];   // RISK-0186: position → website_id, so a chain child inherits its article's site
+                    $__lastBoundSite = null;
+                    if ($__ct['site'] === null && count($__ct['sites']) > 1 && ! $__contentPerTask) {
                         foreach ($createTasks as $__c) { if (is_array($__c) && strtolower((string) ($__c['action'] ?? '')) === 'write_article') { $__contentHold = true; break; } }
                     }
                     $__contentSkipped = 0;
@@ -3416,6 +3427,32 @@ $withCorr = function (array $meta) use ($corr) {
                             if (in_array((string) $taskAction, \App\Core\Sarah888\ContentTarget::CONTENT_ACTIONS, true)) {
                                 if ($__contentHold) { $__contentSkipped++; continue; }
                                 if ($__ct['site'] !== null && empty($payload['website_id'])) { $payload['website_id'] = (int) $__ct['site']['id']; }
+                                // RISK-0186: the owner named several sites — this piece goes where THEIR sentence puts it, or nowhere yet.
+                                if ($__contentPerTask) {
+                                    $__bind = \App\Core\Sarah888\ContentTarget::bindTask((string) $__ownerMessage, $__ct['named'], $payload);
+                                    $__namedIdsCT = array_map(fn ($n) => (int) ($n['id'] ?? 0), $__ct['named']);
+                                    // a chain child (meta, featured image, links) belongs to the article it depends on — same site, no question
+                                    $__inherit = null;
+                                    if ((string) $taskAction !== 'write_article') {
+                                        foreach ((array) ($createTask['depends_on'] ?? []) as $__dp) { if (isset($__boundSiteByPos[(int) $__dp])) { $__inherit = $__boundSiteByPos[(int) $__dp]; break; } }
+                                        if ($__inherit === null && $__bind['site'] === null) $__inherit = $__lastBoundSite;
+                                    }
+                                    if (!empty($payload['website_id']) && in_array((int) $payload['website_id'], $__namedIdsCT, true) && $__bind['site'] === null) {
+                                        // the model pinned one of the named sites and the words do not contradict it — keep it
+                                    } elseif ($__bind['site'] !== null) {
+                                        $payload['website_id'] = (int) $__bind['site']['id'];
+                                    } elseif ($__inherit !== null) {
+                                        $payload['website_id'] = (int) $__inherit; $__bind['reason'] = 'inherited_from_article';
+                                    } else {
+                                        \Illuminate\Support\Facades\Log::warning('[Sarah888] RISK-0186 content task held — several sites named, piece not placed by the owner\'s words', ['ws' => $wsId, 'action' => $taskAction, 'title' => (string) ($payload['title'] ?? ''), 'reason' => $__bind['reason'], 'scores' => $__bind['scores']]);
+                                        $__contentUnplaced[] = (string) ($payload['title'] ?? $taskAction);
+                                        $__contentSkipped++;
+                                        continue;
+                                    }
+                                    \Illuminate\Support\Facades\Log::info('[Sarah888] RISK-0186 content task bound', ['ws' => $wsId, 'action' => $taskAction, 'website_id' => (int) $payload['website_id'], 'reason' => $__bind['reason'], 'scores' => $__bind['scores']]);
+                                    $__boundSiteByPos[(int) $ctIndex] = (int) $payload['website_id'];
+                                    if ((string) $taskAction === 'write_article') $__lastBoundSite = (int) $payload['website_id'];
+                                }
                             }
                             $__reqItemByAction[(string) $taskAction] = ($__reqItemByAction[(string) $taskAction] ?? 0) + 1;
                             $createPayload = [
@@ -3636,6 +3673,16 @@ $withCorr = function (array $meta) use ($corr) {
                     if (!empty($__contentHold) && $__contentSkipped > 0) {
                         $reply = \App\Core\Sarah888\ContentTarget::askWhich($__ct['sites'], $__ct['named']);
                         \Illuminate\Support\Facades\Log::info('[Sarah888] content tasks held — website not resolved', ['ws' => $wsId, 'skipped' => $__contentSkipped, 'sites' => count($__ct['sites'])]);
+                        // RISK-0186 (2026-09-17): the owner's one-line answer ("Put it on QA Signup Bakery.") completes THIS
+                        // request — arm the same P6-g key the builder clarify path arms, so the answer is not read as a bare
+                        // statement (EV-1056: it was, every task was refused, and the reply still said "Queued both").
+                        try { \Illuminate\Support\Facades\Cache::put(\App\Core\Sarah888\SpendPolicy::pendingClarifyKey((int) $wsId), ['action' => 'write_article', 'asked_at' => time(), 'owner_text' => (string) $content], now()->addMinutes(15)); } catch (\Throwable) {}
+                    } elseif (!empty($__contentUnplaced)) {
+                        // RISK-0186: several sites named, at least one piece could not be placed — ask about that piece; what
+                        // was placed has been created and the summary below says so.
+                        $__askLines = array_map(fn ($t) => \App\Core\Sarah888\ContentTarget::askWhichFor($t, $__ct['named']), array_slice($__contentUnplaced, 0, 3));
+                        $reply = trim((string) $reply) === '' ? implode(' ', $__askLines) : (string) $reply . "\n\n" . implode(' ', $__askLines);
+                        try { \Illuminate\Support\Facades\Cache::put(\App\Core\Sarah888\SpendPolicy::pendingClarifyKey((int) $wsId), ['action' => 'write_article', 'asked_at' => time(), 'owner_text' => (string) $content], now()->addMinutes(15)); } catch (\Throwable) {}
                     }
 
                     // 2026-05-24 FIX 49 — persist user-stated cadence preferences.
@@ -4007,7 +4054,10 @@ $withCorr = function (array $meta) use ($corr) {
             } catch (\Throwable) { $__recentActions = []; $__recentSpecialists = []; }
 
             if (empty($assist['read_lane'])) { // F-SOC-F5d: read-lane replies are rendered data, not claims
-                $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents, $__recentActions, $__recentSpecialists);
+                // RISK-0186: the credits this turn actually queued, from the ledger of created tasks (null = nothing / unknown)
+                $__queuedCost = null;
+                try { $__qids = array_values(array_filter(array_map('intval', $createdTaskIds ?? []))); if ($__qids) $__queuedCost = (int) DB::table('tasks')->whereIn('id', $__qids)->sum('credit_cost'); } catch (\Throwable) { $__queuedCost = null; }
+                $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents, $__recentActions, $__recentSpecialists, $__queuedCost);
                 $reply = $__cv['reply'];
             }
             // W6 — truthfulness guard on the agent bubble. The launch-scope rule lives in

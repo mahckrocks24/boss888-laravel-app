@@ -59,6 +59,12 @@ class AgentClaimValidator
         // the grammatical subject is.
         '/\b(is|are|was|were|has been|have been|got|gets)\s+(already\s+|now\s+)?(queued|in the queue|scheduled|awaiting execution|in progress|underway|in flight|being handled|being processed|lined up)\b/i',
         '/\balready (queued|scheduled|in progress|underway|in flight|being handled)\b/i',
+        // RISK-0186 (2026-09-17): a SUBJECT-LESS claim slipped past every pattern above — "Queued both — the sourdough
+        // piece … and the morning vinyasa article …" while every task creation had been refused (EV-1056). A sentence
+        // that opens with the verb, or says both/all/everything are queued, is a queue claim like any other.
+        '/^\W*(?:answering[^:]{0,120}:\s*)?(?:both\s+|all\s+|everything\s+|(?:the\s+)?(?:articles?|pieces?|drafts?|tasks?|jobs?|work)\s+)?(queued|scheduled|kicked off|launched|started|running|underway|in the queue|in progress|set up|lined up)\b/i',
+        '/\b(both|all (?:two|three|four|of them|of these|of it)|everything|each one|the (?:two|three|four))\s+(?:is |are |now |already |as drafts )*(queued|scheduled|in the queue|running|underway|in progress|in flight|going out|set up|lined up)\b/i',
+        '/\b(going out|goes out|is going|are going)\s+(?:as|to)\s+(?:a\s+)?(full job|draft|drafts|the queue|the team|priya|james)\b/i',
         // Named-specialist attribution: "queued/assigned/handed/asked/tasked <Specialist>" — a claim that a
         // named specialist is on the job. Verified per-specialist against who was actually engaged this turn.
         '/\b(queued|assigned|handed|asked|told|briefed|tasked|delegated|looped in|brought in|pulled in)\b[^.!?\n]{0,20}\b(james|priya|elena|marcus|max|nora|alex|diana|ryan|sofia|leo|maya|chris|zara|tyler|zoe|jordan|kai|vera)\b/i',
@@ -90,7 +96,49 @@ class AgentClaimValidator
         return array_values(array_unique($found));
     }
 
-    public function validate(string $reply, int $wsId, string $slug, bool $didQueue = false, array $engagedAgents = [], array $recentActions = [], array $recentSpecialists = []): array
+    /**
+     * RISK-0186 (2026-09-17): a sentence that CORRECTS an earlier claim ("I told you I'd queued … the queue shows
+     * neither", "no task was actually created", "that wasn't queued") is the truth arriving — it is never a claim
+     * and is never stripped, whatever verbs it contains (EV-1056: the guard removed the correction and kept the claim).
+     */
+    private const CORRECTION_PATTERNS = [
+        '/\b(correct myself|correction|I was wrong|that was wrong|I misspoke|I misstated|to be accurate|to correct|I have to correct|I need to correct|I must correct|I said .{0,80}\bbut\b|I told you .{0,120}\b(but|and)\b.{0,80}\b(not|neither|never|no\b|nothing|isn.?t|wasn.?t|aren.?t|weren.?t|hasn.?t|haven.?t|didn.?t|shows|show)\b)/i',
+        '/\b(no task|no tasks|no work|no job|nothing|none of (?:it|them|that|those))\b[^.!?\n]{0,40}\b(was|were|has been|had been|have been|is|are|got)\s+(actually\s+|really\s+|ever\s+)?(queued|created|started|scheduled|kicked off|running|in flight|in progress|underway)\b/i',
+        '/\b(queue|ledger|task list|tasks table|record)\s+shows?\s+(neither|nothing|no\b|none|zero|0)\b/i',
+        '/\b(exist|exists|existed)\s+(only\s+)?as\s+(a\s+)?(commitments?|promises?|intentions?)\b/i',
+        '/\b(it|that|this|they|these|those|neither|the (?:tasks?|articles?|pieces?|work|jobs?|drafts?))\s+(?:was|were|is|are|has|have|had)?\s*(?:not|never|n.t)\s+(?:actually\s+|really\s+|ever\s+)?(queued|created|started|scheduled|kicked off|running|in flight)\b/i',
+    ];
+
+    /**
+     * RISK-0186 (2026-09-17): a figure of credits the model attaches to THIS turn's work ("3 credits apiece, so 6 off
+     * your 24", "this will use 6 credits") is a claim about the ledger. It is kept only when work was queued this
+     * turn AND the number is the ledger's own sum (the route appends the ledger line itself); otherwise it is stripped.
+     */
+    private const COST_CLAIM_PATTERNS = [
+        '/\b\d+\s*(credits?|cr)\b[^.!?\n]{0,80}\b(apiece|each|per (?:article|piece|post|task|job)|off your|off the|in total|all told|to run|to start|to queue|for (?:both|all|these|those|this|the (?:two|three|four)))\b/i',
+        '/\b(uses?|using|costs?|costing|charge[sd]?|charging|reserv(?:e|ed|ing)|debit(?:ed|ing)?|comes? to|call it|so that.?s|that.?s|total(?:s|ling)?)\b[^.!?\n]{0,40}\b\d+\s*(credits?|cr)\b/i',
+        '/\b\d+\s*(credits?|cr)\b[^.!?\n]{0,40}\b(off your \d+|from your \d+|of your \d+)\b/i',
+        // "These two come to about 6." — a spend figure with the unit left implicit is still a spend figure
+        '/\b(comes?|came|adds? up|works? out|amounts?)\s+to\s+(?:about\s+|roughly\s+|around\s+)?\d+\b/i',
+        '/\b(about|roughly|around|call it)\s+\d+\s+(?:credits?|cr|each|apiece|in total|all told)\b/i',
+    ];
+
+    public static function isCorrection(string $sentence): bool
+    {
+        foreach (self::CORRECTION_PATTERNS as $rx) { if (preg_match($rx, $sentence)) return true; }
+        return false;
+    }
+
+    public static function isCostClaim(string $sentence): bool
+    {
+        foreach (self::COST_CLAIM_PATTERNS as $rx) { if (preg_match($rx, $sentence)) return true; }
+        return false;
+    }
+
+    /**
+     * @param  ?int  $queuedCost  ledger sum (tasks.credit_cost) of the tasks THIS turn created; null = unknown
+     */
+    public function validate(string $reply, int $wsId, string $slug, bool $didQueue = false, array $engagedAgents = [], array $recentActions = [], array $recentSpecialists = [], ?int $queuedCost = null): array
     {
         if (trim($reply) === '') {
             return ['reply' => $reply, 'stripped' => []];
@@ -98,7 +146,7 @@ class AgentClaimValidator
 
         $slug     = strtolower(trim($slug));
         $isDmm    = $this->isDelegator($slug);
-        $stripped = [];
+        $stripped = []; $strippedClaims = 0;   // RISK-0186: the "not queued" footer belongs to a stripped QUEUE claim, never to a stripped cost figure
         $engaged  = array_values(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $engagedAgents)));
         $recentSpec = array_values(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $recentSpecialists)));
 
@@ -106,6 +154,15 @@ class AgentClaimValidator
         $sentences = preg_split('/(?<=[.!?])\s+|\n+/', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $kept = [];
         foreach ($sentences as $sentence) {
+            // RISK-0186: a correction is the truth, not a claim — keep it whole.
+            if ($isDmm && self::isCorrection($sentence)) { $kept[] = trim($sentence); continue; }
+            // RISK-0186: a credit figure for this turn's work stands only on the ledger.
+            if ($isDmm && self::isCostClaim($sentence)) {
+                $nums = array_map('intval', preg_match_all('/\b(\d+)\b/', $sentence, $mm) ? $mm[1] : []);   // every figure in the sentence; the ledger sum must be one of them
+                $backed = $didQueue && $queuedCost !== null && in_array((int) $queuedCost, $nums, true);
+                if ($backed) { $kept[] = trim($sentence); } else { $stripped[] = trim($sentence); }
+                continue;
+            }
             $isClaim = false;
             foreach (self::CLAIM_PATTERNS as $rx) {
                 if (preg_match($rx, $sentence)) { $isClaim = true; break; }
@@ -137,7 +194,7 @@ class AgentClaimValidator
                     $keep = $didQueue || $this->matchesRecentAction($sentence, $recentActions);
                 }
             }
-            if ($keep) { $kept[] = trim($sentence); } else { $stripped[] = trim($sentence); }
+            if ($keep) { $kept[] = trim($sentence); } else { $stripped[] = trim($sentence); $strippedClaims++; }
         }
 
         if (empty($stripped)) {
@@ -156,7 +213,9 @@ class AgentClaimValidator
             ? "I haven't queued that yet — say the word and I'll set it running."
             : "I can't queue or run that myself — that needs Sarah to assign it. Want me to pass it to her?";
 
-        $out = $out === '' ? $honest : rtrim($out, " \t") . ' ' . $honest;
+        // RISK-0186 (2026-09-17): say "not queued" only when a queue claim was removed AND nothing was queued this turn — EV-1056 saw this
+        // footer land on a turn that had stripped a correction, and today on a turn that had only lost a cost figure while 10 tasks ran.
+        if ($strippedClaims > 0 && ! $didQueue) { $out = $out === '' ? $honest : rtrim($out, " 	") . ' ' . $honest; }
 
         Log::warning('[AgentClaim] stripped unverified completion claim', [
             'workspace_id' => $wsId,

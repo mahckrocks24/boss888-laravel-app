@@ -96,9 +96,17 @@ class ImageGeneration
         // A concrete change request ("hyperrealistic", "more X", "brighter", "instead") — a refinement even
         // if it opens with "make it" (which the confirm-detector would otherwise swallow).
         if (self::asks($text)) { return false; } // a clear NEW-image request is not a refinement
+        // F-CB-F1 (2026-09-07): a QUESTION, or a turn about another domain, is never an image refinement unless it names an image.
+        $__img = (bool) preg_match('/\b(image|images|picture|photo|logo|banner|graphic|illustration|artwork|visual|thumbnail)\b/', $t);
+        if (!$__img && (preg_match('/^(what|which|how|where|when|who|why)\b/', $t) || preg_match('/^(is|are|was|were|do|does|did|can|could|should|will|has|have)\s+(you|we|i|they|there|my|our|the|this|that|any|it\s+(true|possible|live|working|set up))\b/', $t) || str_ends_with($t, '?'))) { return false; } // a question, not an instruction ("do it again" is an instruction)
+        if (!$__img && preg_match('/\b(chatbot|chat widget|live chat|email|newsletter|article|blog|lead|leads|booking|invoice|domain|hosting|seo|keyword|website|site|page|campaign|calendar|task|captions?|rule|rules|policy|from now on|going forward|social)\b/', $t)) { return false; }
+        // RISK-0186 (2026-09-17): a website EDIT handed to Arthur ("Ask Arthur to change the hero headline on QA Harbour Yoga to: …") is not a
+        // refinement of the last image, however recent that image is (EV-1058: it was offered as a 2-credit image regeneration).
+        if (!$__img && preg_match('/\b(arthur|headline|hero|tagline|subtitle|strapline|cta|button|section|footer|nav|navigation|menu)\b/', $t)) { return false; }
         $hasChange = self::changeFrom($text) !== ''
             || (bool) preg_match('/\b(more|less|brighter|darker|bigger|smaller|change|turn it|instead|but make|but with|without|hyper\w*|realist\w*|photoreal\w*|cartoon|anime|render|style|version)\b/', $t);
-        $refers = (bool) preg_match('/\b(it|that|this one|the image|the picture|the photo|the one|same|version|again|you (sent|made|generated|created))\b/', $t);
+        $refers = (bool) preg_match('/\b(the image|the picture|the photo|that image|this image|same image|the one you (sent|made|generated|created)|you (sent|made|generated|created))\b/', $t)
+            || ($hasChange && (bool) preg_match('/\b(it|that|this one|the one|same|version|again)\b/', $t)); // F-CB-F1: a bare pronoun/"again" only counts with a change cue
         if (! $hasChange && ! $refers) { return false; }
         // A BARE confirm/decline (no change, no reference-with-instruction) is not a refinement.
         if (! $hasChange && (self::confirms($t) || self::declines($t))) { return false; }
