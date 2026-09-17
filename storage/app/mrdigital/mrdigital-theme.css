@@ -270,3 +270,42 @@
 .md-sdet-fig{margin-top:16px;aspect-ratio:4/3;border-radius:4px;overflow:hidden;background:var(--md-bg-inset)}.md-sdet-fig img{width:100%;height:100%;object-fit:cover;display:block}
 .md-gen-fig{aspect-ratio:3/2;border-radius:4px;overflow:hidden;margin-bottom:20px;background:var(--md-bg-inset)}.md-gen-fig img{width:100%;height:100%;object-fit:cover;display:block}
 @media (max-width:900px){.md-phero-grid{grid-template-columns:1fr}}
+/* UI-1 — scrollers, dialogue boxes, modals, dropdowns follow the site CSS */
+html{scrollbar-width:thin;scrollbar-color:#4A6FA5 #E9EEF5}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-track{background:#E9EEF5}::-webkit-scrollbar-thumb{background:#4A6FA5;border-radius:0;border:2px solid #E9EEF5}::-webkit-scrollbar-thumb:hover{background:#12294F}::-webkit-scrollbar-corner{background:#E9EEF5}
+.md-root [style*="overflow"],.md-art-body .md-prose pre,.md-modal-body{scrollbar-width:thin;scrollbar-color:#4A6FA5 var(--md-bg-inset)}
+/* dropdown */
+.md-dd{position:relative;display:flex;align-items:center}.md-dd>.md-link::after{content:"";display:inline-block;width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg);margin:0 0 3px 8px;opacity:.7}
+.md-dd-menu{position:absolute;top:calc(100% + 8px);left:0;min-width:280px;background:var(--md-bg-alt);border:1px solid var(--md-rule);border-top:2px solid var(--md-accent);border-radius:0 0 4px 4px;box-shadow:var(--md-shadow);padding:8px;display:none;z-index:50}
+.md-dd.is-open>.md-dd-menu,.md-dd:hover>.md-dd-menu,.md-dd:focus-within>.md-dd-menu{display:grid}
+.md-dd-menu a{display:grid;grid-template-columns:34px 1fr;gap:10px;align-items:center;padding:9px 10px;border-radius:3px;color:var(--md-ink);text-decoration:none!important;font-size:14px}
+.md-dd-menu a:hover,.md-dd-menu a:focus-visible{background:var(--md-bg-inset)}.md-dd-menu a .md-code{color:var(--md-accent)}
+.md-dd-menu .md-dd-all{grid-template-columns:1fr;border-top:1px solid var(--md-rule);margin-top:6px;padding-top:12px;font-family:var(--md-fh);font-weight:600}
+@media (max-width:960px){.md-dd{flex-direction:column;align-items:stretch}.md-dd>.md-link::after{display:none}.md-dd-menu{position:static;display:grid;min-width:0;border:0;border-left:2px solid var(--md-rule);border-radius:0;box-shadow:none;padding:0 0 4px 12px;margin:0 0 6px 12px}.md-dd-menu .md-dd-all{display:none}}
+/* modal */
+.md-veil{position:fixed;inset:0;background:rgba(6,18,42,.72);backdrop-filter:blur(3px);z-index:2147483000;display:flex;align-items:center;justify-content:center;padding:16px}
+.md-veil[hidden]{display:none}
+.md-modal{background:var(--md-bg-alt);color:var(--md-ink);width:min(560px,100%);max-height:calc(100vh - 32px);border:1px solid var(--md-rule);border-top:3px solid var(--md-accent);border-radius:4px;box-shadow:0 30px 80px -30px rgba(0,0,0,.6);display:flex;flex-direction:column;font-family:var(--md-fb)}
+.md-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 24px 0}
+.md-modal-head h3{font-family:var(--md-fh);font-size:22px;font-weight:600;margin-top:8px}
+.md-modal-x{background:none;border:1px solid var(--md-rule-strong);border-radius:3px;width:34px;height:34px;color:var(--md-ink);cursor:pointer;font-size:18px;line-height:1;flex:none}.md-modal-x:hover{background:var(--md-bg-inset)}
+.md-modal-body{padding:16px 24px 24px;overflow-y:auto}.md-modal-body p{color:var(--md-ink-2);font-size:15px}
+.md-modal .md-frow{margin-top:14px}.md-modal .md-submit{margin-top:18px}
+.md-modal .md-next{margin-top:10px}
+
+/* Chatbot888 dialogue box → site CSS (the loader inline-styles it and mounts OUTSIDE .md-root, so literal palette values) */
+#lu-cb-bubble{border-radius:50%!important;background:#0A1A33!important;border:2px solid #7FA6E0!important;box-shadow:0 18px 40px -24px rgba(10,26,51,.6)!important;font-size:0!important}
+#lu-cb-bubble::after{content:"MR";font:700 13px/1 Archivo,system-ui,sans-serif;color:#fff;letter-spacing:.02em}
+#lu-cb-panel{border-radius:4px!important;border:1px solid #CBD5E3!important;border-top:3px solid #2458D6!important;font-family:"IBM Plex Sans",system-ui,sans-serif!important;box-shadow:0 30px 80px -30px rgba(0,0,0,.6)!important;background:#FFFFFF!important;color:#0B1730!important}
+#lu-cb-panel>div:first-child{background:#0A1A33!important;padding:14px 18px!important;color:#fff!important}
+#lu-cb-panel>div:first-child>div:first-child{font:600 15px/1.2 Archivo,system-ui,sans-serif!important;letter-spacing:-.01em}
+#lu-cb-panel>div:first-child>div:first-child::after{content:" · MR Digital";font:400 11px/1 "IBM Plex Mono",monospace;letter-spacing:.1em;text-transform:uppercase;opacity:.75;margin-left:6px}
+#lu-cb-close{border:1px solid rgba(255,255,255,.35)!important;border-radius:3px!important;width:28px;height:28px;font-size:16px!important;color:#fff!important}
+#lu-cb-feed{font-family:"IBM Plex Sans",system-ui,sans-serif!important;font-size:14px!important;padding:16px!important;gap:10px!important;background:#F5F7FB!important;scrollbar-width:thin;scrollbar-color:#4A6FA5 #E9EEF5}
+#lu-cb-feed>div{border-radius:3px!important;padding:10px 12px!important;line-height:1.5!important}
+#lu-cb-feed>div[style*="flex-start"]{background:#FFFFFF!important;border:1px solid #CBD5E3!important;color:#0B1730!important}
+#lu-cb-feed>div[style*="flex-end"]{background:#0A1A33!important;color:#fff!important}
+#lu-cb-panel>div:last-child{border-top:1px solid #CBD5E3!important;padding:12px!important;background:#FFFFFF!important}
+#lu-cb-input{border:1px solid #9FB0C8!important;border-radius:3px!important;font:14px "IBM Plex Sans",system-ui,sans-serif!important;color:#0B1730!important;background:#F5F7FB!important;padding:10px 12px!important}
+#lu-cb-input:focus{outline:2px solid #2458D6!important;border-color:#2458D6!important}
+#lu-cb-send{border-radius:3px!important;background:#0A1A33!important;color:#fff!important}

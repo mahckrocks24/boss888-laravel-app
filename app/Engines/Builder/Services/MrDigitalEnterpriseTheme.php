@@ -140,7 +140,7 @@ class MrDigitalEnterpriseTheme
     private function shell(?array $h, ?array $f, array $website, string $current, string $main): string
     {
         return $this->head() . '<div class="md-root" data-md-base="' . $this->e($this->base) . '">' . $this->chrome($h, $website, $current)
-            . "\n<main id=\"md-main\" tabindex=\"-1\">\n" . $main . "\n</main>\n" . $this->footer($f, $website) . '</div>' . $this->js();
+            . "\n<main id=\"md-main\" tabindex=\"-1\">\n" . $main . "\n</main>\n" . $this->footer($f, $website) . $this->modals($website) . '</div>' . $this->js();
     }
 
     public function renderArticle(array $article, array $website): string
@@ -246,12 +246,21 @@ class MrDigitalEnterpriseTheme
     private function chrome(?array $h, array $website, string $current): string
     {
         $links = '';
+        $children = $this->childPages($website); // UI-1: nested pages (services/x) become a site-styled dropdown under their parent link
         foreach ((array) ($h['nav_links'] ?? []) as $l) {
             if (!is_array($l)) continue;
             $u = $this->url((string) ($l['url'] ?? ''), '#'); $lab = $this->e((string) ($l['label'] ?? ''));
             if ($lab === '') continue;
             $cur = (trim($u, '/') === $current || ($current === 'article' && trim($u, '/') === $this->base) || ($current === 'case-study' && trim($u, '/') === $this->csBase)) ? ' aria-current="page"' : '';
-            $links .= '<a class="md-link" href="' . $u . '"' . $cur . '>' . $lab . '</a>';
+            $kids = $children[trim(html_entity_decode($u, ENT_QUOTES), '/')] ?? [];
+            if ($kids) {
+                $menu = ''; $n = 0;
+                foreach ($kids as $k) { $n++; $menu .= '<a role="menuitem" href="/' . $this->e($k->slug) . '"><span class="md-code">' . sprintf('%02d', $n) . '</span><span>' . $this->e($k->title) . '</span></a>'; }
+                $menu .= '<a class="md-dd-all" href="' . $u . '">All ' . strtolower($lab) . ' →</a>';
+                $links .= '<div class="md-dd"><a class="md-link" href="' . $u . '"' . $cur . ' aria-haspopup="true" aria-expanded="false" data-md="dd">' . $lab . '</a><div class="md-dd-menu" role="menu" aria-label="' . $lab . '">' . $menu . '</div></div>';
+            } else {
+                $links .= '<a class="md-link" href="' . $u . '"' . $cur . '>' . $lab . '</a>';
+            }
         }
         $ctaT = $this->e((string) ($h['cta_text'] ?? ''));
         if ($ctaT !== '') $links .= '<a class="md-btn md-nav-cta" href="' . $this->url((string) ($h['cta_url'] ?? '/contact'), '/contact') . '">' . $ctaT . ' <span class="md-arr">→</span></a>';
@@ -266,6 +275,23 @@ class MrDigitalEnterpriseTheme
             . '<header class="md-top"><div class="md-top-in">' . $this->logoHtml($h, $website)
             . '<button type="button" class="md-toggle" data-md="toggle" aria-expanded="false" aria-controls="md-links">MENU</button>'
             . '<nav class="md-links" id="md-links" aria-label="Primary">' . $links . '</nav></div></header>';
+    }
+
+    /** UI-1 — published pages one level under a parent slug, keyed by parent (services => [services/custom-software, …]). */
+    private function childPages(array $website): array
+    {
+        $out = [];
+        try { foreach (DB::table('pages')->where('website_id', (int) ($website['id'] ?? 0))->where('status', 'published')->where('slug', 'like', '%/%')->orderBy('position')->get(['slug', 'title']) as $p) { $out[strtok((string) $p->slug, '/')][] = $p; } } catch (Throwable) {}
+        return $out;
+    }
+
+    /** UI-1 — site-styled modal shell: discovery-call brief (any page) + confirmation; opened by JS. */
+    private function modals(array $website): string
+    {
+        $sub = $this->e($this->sub()); $wid = (int) ($website['id'] ?? 0);
+        return '<div class="md-veil" id="md-veil" hidden><div class="md-modal" role="dialog" aria-modal="true" aria-labelledby="md-modal-title" tabindex="-1"><div class="md-modal-head"><div><p class="md-eyebrow" id="md-modal-eyebrow">Discovery call</p><h3 id="md-modal-title">Book a 45-minute discovery call</h3></div><button type="button" class="md-modal-x" data-md="modal-close" aria-label="Close">×</button></div>'
+            . '<div class="md-modal-body" id="md-modal-body"><form id="md-disc" data-sub="' . $sub . '" data-wid="' . $wid . '" novalidate><p>A principal engineer, not a salesperson. Tell us who you are and what to prepare for.</p><div class="md-frow"><div class="md-field"><label for="md-d-name">Full name</label><input id="md-d-name" name="name" autocomplete="name" required></div><div class="md-field"><label for="md-d-email">Work email</label><input id="md-d-email" name="email" type="email" autocomplete="email" required></div><div class="md-field"><label for="md-d-org">Organisation</label><input id="md-d-org" name="organisation" autocomplete="organization"></div><div class="md-field"><label for="md-d-phone">Phone (optional)</label><input id="md-d-phone" name="phone" type="tel" autocomplete="tel"></div><div class="md-field md-full"><label for="md-d-brief">What should we prepare for?</label><textarea id="md-d-brief" name="brief"></textarea></div></div><div class="md-submit"><p class="md-fine">Handled under PIPEDA; no marketing lists.</p><button class="md-btn" type="submit">Request the call <span class="md-arr">→</span></button></div><div class="md-msg" id="md-disc-msg" role="status"></div></form>'
+            . '<div id="md-done" hidden><p>Thank you. A named principal will acknowledge within one business day, Pacific Time.</p><div class="md-next"><p class="md-eyebrow">What happens next</p><ol><li><b>01</b><span><strong>Acknowledgement</strong> within one business day.</span></li><li><b>02</b><span><strong>Discovery call</strong>, 45 minutes, with the people who would deliver.</span></li><li><b>03</b><span><strong>Scope note</strong> within five business days.</span></li></ol></div><div class="md-submit"><span></span><button type="button" class="md-btn md-ghost" data-md="modal-close">Close</button></div></div></div></div></div>';
     }
 
     private function footer(?array $f, array $website): string
@@ -665,7 +691,20 @@ d.querySelectorAll('[data-md-group]').forEach(function(g){var multi=g.getAttribu
 var f=d.getElementById('md-rfp');if(f){var m=d.getElementById('md-rfp-msg');f.addEventListener('submit',function(e){e.preventDefault();var fd=new FormData(f),g=function(k){return (fd.get(k)||'').toString().trim()};var name=g('name')||g('firstname'),email=g('email');if(!name||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){m.textContent='Please enter your name and a valid work email.';m.className='md-msg is-err';return}
 var lines=[];f.querySelectorAll('.md-field').forEach(function(fl){var grp=fl.getAttribute('data-md-group');if(grp){var vals=[];fl.querySelectorAll('.md-opt[aria-pressed="true"]').forEach(function(o){vals.push(o.getAttribute('data-v'))});if(vals.length)lines.push(fl.getAttribute('data-label')+': '+vals.join(', '));return}var inp=fl.querySelector('input,textarea');if(!inp||['name','firstname','email','phone'].indexOf(inp.name)>=0)return;var v=inp.value.trim();if(v)lines.push((fl.querySelector('label')||{}).textContent+': '+v)});
 var msg=lines.join('\n')||'Contact request';var b=f.querySelector('button[type="submit"]');b.disabled=true;m.className='md-msg';m.textContent='Sending…';
-fetch('/api/public/contact/'+encodeURIComponent(f.getAttribute('data-sub')),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({firstname:name,name:name,email:email,phone:g('phone'),message:msg.slice(0,1900),source:f.getAttribute('data-source')||'website_form',website_id:parseInt(f.getAttribute('data-wid')||'0',10),company:g('organisation')})}).then(function(r){if(!r.ok)throw 0;m.textContent=m.getAttribute('data-ok');f.reset();f.querySelectorAll('.md-opt').forEach(function(o){o.setAttribute('aria-pressed','false')})}).catch(function(){m.textContent='Something went wrong. Please email us directly.';m.className='md-msg is-err'}).finally(function(){b.disabled=false})})}})();</script>
+fetch('/api/public/contact/'+encodeURIComponent(f.getAttribute('data-sub')),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({firstname:name,name:name,email:email,phone:g('phone'),message:msg.slice(0,1900),source:f.getAttribute('data-source')||'website_form',website_id:parseInt(f.getAttribute('data-wid')||'0',10),company:g('organisation')})}).then(function(r){if(!r.ok)throw 0;m.textContent=m.getAttribute('data-ok');f.reset();f.querySelectorAll('.md-opt').forEach(function(o){o.setAttribute('aria-pressed','false')});if(window.__mdModal)window.__mdModal.open('done','Brief sent','Request received')}).catch(function(){m.textContent='Something went wrong. Please email us directly.';m.className='md-msg is-err'}).finally(function(){b.disabled=false})})}// UI-1 — dropdowns (touch/keyboard toggle; hover/focus handled in CSS)
+d.addEventListener('click',function(e){var t=e.target.closest('[data-md="dd"]');if(t&&(window.matchMedia('(hover: none)').matches||e.detail===0)){var dd=t.parentNode,o=!dd.classList.contains('is-open');if(o)e.preventDefault();d.querySelectorAll('.md-dd.is-open').forEach(function(x){x.classList.remove('is-open');x.querySelector('[data-md="dd"]').setAttribute('aria-expanded','false')});if(o){dd.classList.add('is-open');t.setAttribute('aria-expanded','true')}return}if(!e.target.closest('.md-dd'))d.querySelectorAll('.md-dd.is-open').forEach(function(x){x.classList.remove('is-open');x.querySelector('[data-md="dd"]').setAttribute('aria-expanded','false')})});
+// UI-1 — modal (site-styled dialogue; never a native dialog/alert)
+var veil=d.getElementById('md-veil'),last=null;
+function mOpen(mode,title,eye){if(!veil)return;var frm=d.getElementById('md-disc'),done=d.getElementById('md-done');frm.hidden=mode==='done';done.hidden=mode!=='done';d.getElementById('md-modal-title').textContent=title||(mode==='done'?'Request received':'Book a 45-minute discovery call');d.getElementById('md-modal-eyebrow').textContent=eye||(mode==='done'?'Thank you':'Discovery call');last=d.activeElement;veil.hidden=false;d.body.style.overflow='hidden';var f=veil.querySelector(mode==='done'?'[data-md="modal-close"]':'input');setTimeout(function(){(f||veil.querySelector('.md-modal')).focus()},30)}
+function mClose(){if(!veil||veil.hidden)return;veil.hidden=true;d.body.style.overflow='';if(last&&last.focus)last.focus()}
+window.__mdModal={open:mOpen,close:mClose};
+if(veil){veil.addEventListener('click',function(e){if(e.target===veil||e.target.closest('[data-md="modal-close"]'))mClose()});
+d.addEventListener('keydown',function(e){if(veil.hidden)return;if(e.key==='Escape')mClose();if(e.key==='Tab'){var fs=veil.querySelectorAll('a[href],button:not([disabled]),input,textarea,[tabindex]:not([tabindex="-1"])'),v=[].filter.call(fs,function(x){return x.offsetParent!==null});if(!v.length)return;var a=v[0],z=v[v.length-1];if(e.shiftKey&&d.activeElement===a){z.focus();e.preventDefault()}else if(!e.shiftKey&&d.activeElement===z){a.focus();e.preventDefault()}}});
+d.addEventListener('click',function(e){var a=e.target.closest('a[href*="intent=discovery"],[data-md-modal="discovery"]');if(!a)return;e.preventDefault();mOpen('discovery')});
+var df=d.getElementById('md-disc'),dm=d.getElementById('md-disc-msg');
+df.addEventListener('submit',function(e){e.preventDefault();var fd=new FormData(df),g=function(k){return (fd.get(k)||'').toString().trim()};if(!g('name')||!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(g('email'))){dm.textContent='Please enter your name and a valid work email.';dm.className='md-msg is-err';return}var b=df.querySelector('button[type="submit"]');b.disabled=true;dm.className='md-msg';dm.textContent='Sending…';var msg='DISCOVERY CALL REQUEST\nOrganisation: '+g('organisation')+'\nPrepare for: '+g('brief');
+fetch('/api/public/contact/'+encodeURIComponent(df.getAttribute('data-sub')),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({firstname:g('name'),name:g('name'),email:g('email'),phone:g('phone'),message:msg.slice(0,1900),source:'discovery',website_id:parseInt(df.getAttribute('data-wid')||'0',10),company:g('organisation')})}).then(function(r){if(!r.ok)throw 0;df.reset();dm.textContent='';mOpen('done','Request received','Thank you')}).catch(function(){dm.textContent='Something went wrong. Please email us directly.';dm.className='md-msg is-err'}).finally(function(){b.disabled=false})})}
+})();</script>
 JS;
     }
 }
