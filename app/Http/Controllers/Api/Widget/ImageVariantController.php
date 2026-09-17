@@ -25,7 +25,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class ImageVariantController
 {
     public const WIDTHS = [320, 480, 640, 800, 1080, 1200, 1600];
-    private const ROOTS  = ['ai-images', 'uploads', 'media', 'builder-heroes', 'sites', 'logos', 'creative'];
+    private const ROOTS  = ['ai-images', 'uploads', 'media', 'builder-heroes', 'sites', 'logos', 'creative', 'template-images', 'blog']; // MRDIGITAL888 IMG-1 (2026-09-17): platform library folders
     private const MAX_SOURCE_BYTES = 25 * 1024 * 1024;
 
     public function show(Request $request, int $w, string $path)

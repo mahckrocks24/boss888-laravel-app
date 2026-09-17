@@ -354,7 +354,10 @@ class MrDigitalEnterpriseTheme
         $isHome = ($page['slug'] ?? 'home') === 'home' || !empty($sec['ledger']);
         if (!$isHome || !empty($sec['breadcrumb'])) {
             $crumb = '<nav class="md-crumb" aria-label="Breadcrumb"><a href="/">Home</a><span>/</span><span>' . $this->e((string) ($page['title'] ?? $sec['heading'] ?? '')) . '</span></nav>';
-            return '<div class="md-phero"><div class="md-wrap">' . $crumb . ($eye !== '' ? '<p class="md-eyebrow" style="margin-top:14px">' . $eye . '</p>' : '') . '<h1>' . $h . '</h1>' . ($sub !== '' ? '<p class="md-lede">' . $sub . '</p>' : '') . $ctas . '</div></div>';
+            $side = $this->img((string) ($sec['image'] ?? ''), (string) ($sec['image_alt'] ?? $sec['heading'] ?? ''), 'lead'); // IMG-1: optional side image
+            $inner = $crumb . ($eye !== '' ? '<p class="md-eyebrow" style="margin-top:14px">' . $eye . '</p>' : '') . '<h1>' . $h . '</h1>' . ($sub !== '' ? '<p class="md-lede">' . $sub . '</p>' : '') . $ctas;
+            if ($side !== '') return '<div class="md-phero md-phero--img"><div class="md-wrap md-phero-grid"><div>' . $inner . '</div><div class="md-phero-fig">' . $side . '</div></div></div>';
+            return '<div class="md-phero"><div class="md-wrap">' . $inner . '</div></div>';
         }
         $ledger = '';
         $L = is_array($sec['ledger'] ?? null) ? $sec['ledger'] : [];
@@ -364,7 +367,10 @@ class MrDigitalEnterpriseTheme
             $ledger = '<aside class="md-ledger" aria-label="' . $this->e((string) ($L['caption'] ?? 'Engagement standards')) . '"><div class="md-cap"><span>' . $this->e((string) ($L['caption'] ?? 'Engagement standards')) . '</span><i>● Current</i></div><dl>' . $rows . '</dl>'
                 . (!empty($L['footnote']) ? '<div class="md-foot">' . $this->e($L['footnote']) . '</div>' : '') . '</aside>';
         }
-        return '<div class="md-panel md-hero"><div class="md-wrap md-hero-grid' . ($ledger === '' ? ' md-single' : '') . '"><div>' . ($eye !== '' ? '<p class="md-eyebrow">' . $eye . '</p>' : '') . '<h1>' . $h . '</h1>' . ($sub !== '' ? '<p class="md-lede">' . $sub . '</p>' : '') . $ctas . '</div>' . $ledger . '</div></div>';
+        $bg = $this->url((string) ($sec['background_image'] ?? ''), ''); // IMG-1
+        $bgHtml = ''; $heroCls = '';
+        if ($bg !== '') { $ov = max(.5, min(.97, (float) ($sec['overlay_opacity'] ?? .86))); $bgHtml = '<div class="md-hero-bg" aria-hidden="true"><img src="' . $this->e(Img::variantUrl(html_entity_decode($bg, ENT_QUOTES), 1600)) . '" alt="" fetchpriority="high" decoding="async"><div class="md-hero-veil" style="opacity:' . $ov . '"></div></div>'; $heroCls = ' md-hero--img'; }
+        return '<div class="md-panel md-hero' . $heroCls . '">' . $bgHtml . '<div class="md-wrap md-hero-grid' . ($ledger === '' ? ' md-single' : '') . '"><div>' . ($eye !== '' ? '<p class="md-eyebrow">' . $eye . '</p>' : '') . '<h1>' . $h . '</h1>' . ($sub !== '' ? '<p class="md-lede">' . $sub . '</p>' : '') . $ctas . '</div>' . $ledger . '</div></div>';
     }
 
     private function logoWall(array $sec): string
@@ -397,11 +403,13 @@ class MrDigitalEnterpriseTheme
             $tags = ''; foreach ((array) ($it['stack'] ?? $it['tags'] ?? []) as $t) $tags .= '<li>' . $this->e((string) $t) . '</li>';
             if ($layout === 'detail') {
                 $eng = ''; foreach ((array) ($it['engagements'] ?? []) as $g) $eng .= '<li>' . $this->e((string) $g) . '</li>';
-                $cards .= '<article id="' . $this->e($slug ?: $this->slugify($title)) . '"><div><span class="md-code">' . $code . '</span><h3>' . ($link !== '' ? '<a href="' . $link . '" style="color:inherit">' . $title . '</a>' : $title) . '</h3></div>'
+                $dimg = $this->img((string) ($it['image'] ?? ''), (string) ($it['image_alt'] ?? $title)); // IMG-1
+                $cards .= '<article id="' . $this->e($slug ?: $this->slugify($title)) . '"><div><span class="md-code">' . $code . '</span><h3>' . ($link !== '' ? '<a href="' . $link . '" style="color:inherit">' . $title . '</a>' : $title) . '</h3>' . ($dimg !== '' ? '<div class="md-sdet-fig">' . $dimg . '</div>' : '') . '</div>'
                     . '<div><p>' . $desc . '</p>' . ($tags !== '' ? '<ul class="md-tags">' . $tags . '</ul>' : '') . '</div>'
                     . '<div>' . ($eng !== '' ? '<h4>Typical engagements</h4><ul class="md-dash">' . $eng . '</ul>' : '') . '</div></article>';
             } else {
-                $cards .= '<article><span class="md-code">' . $code . ' · ' . mb_strtoupper($this->e((string) ($it['short'] ?? ''))) . '</span><h3>' . $title . '</h3><p>' . $desc . '</p>' . ($tags !== '' ? '<ul class="md-tags">' . $tags . '</ul>' : '')
+                $cimg = $this->img((string) ($it['image'] ?? ''), (string) ($it['image_alt'] ?? $title)); // IMG-1
+                $cards .= '<article>' . ($cimg !== '' ? '<div class="md-svc-fig">' . $cimg . '</div>' : '') . '<span class="md-code">' . $code . ' · ' . mb_strtoupper($this->e((string) ($it['short'] ?? ''))) . '</span><h3>' . $title . '</h3><p>' . $desc . '</p>' . ($tags !== '' ? '<ul class="md-tags">' . $tags . '</ul>' : '')
                     . ($link !== '' ? '<a class="md-more" href="' . $link . '">Explore →</a>' : '') . '</article>';
             }
         }
@@ -573,7 +581,9 @@ class MrDigitalEnterpriseTheme
         $prose = ($h !== '' ? '<p class="md-eyebrow" style="margin-bottom:14px">' . $h . '</p>' : '') . '<div class="md-prose">' . $this->contentToHtml($content) . '</div>';
         $facts = '';
         foreach ((array) ($sec['facts'] ?? []) as $f) if (is_array($f)) $facts .= '<div><dt>' . $this->e((string) ($f['label'] ?? '')) . '</dt><dd>' . $this->e((string) ($f['value'] ?? '')) . '</dd></div>';
-        if ($facts !== '') return $this->sec('<div class="md-two"><div>' . $prose . '</div><dl class="md-facts">' . $facts . '</dl></div>');
+        $gimg = $this->img((string) ($sec['image'] ?? ''), (string) ($sec['image_alt'] ?? $sec['heading'] ?? ''), 'lead'); // IMG-1
+        if ($facts !== '') return $this->sec('<div class="md-two"><div>' . $prose . '</div><div>' . ($gimg !== '' ? '<div class="md-gen-fig">' . $gimg . '</div>' : '') . '<dl class="md-facts">' . $facts . '</dl></div></div>');
+        if ($gimg !== '') return $this->sec('<div class="md-two"><div>' . $prose . '</div><div class="md-gen-fig">' . $gimg . '</div></div>');
         return $this->sec('<div style="max-width:760px">' . $prose . '</div>');
     }
 
