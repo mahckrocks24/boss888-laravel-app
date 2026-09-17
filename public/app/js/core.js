@@ -7287,7 +7287,8 @@ function _cmdcRenderApprovals(list, total) {
       : _cmdcEsc(a.label);
     var metaBits = [_cmdcEsc(a.time_ago)];
     if (isBatch) metaBits.push(n + ' ' + (a.action || 'tasks'));
-    if (totalCr) metaBits.push(totalCr + ' cr total');
+    if (a.task && a.task.credit_cost_known === false) metaBits.push('credits set on execution — not free');   // RISK-0189
+    else if (totalCr) metaBits.push(totalCr + ' cr total');
     if (orphan)  metaBits.push('<span style="color:var(--am);opacity:.8">no attached task</span>');
     return '<div class="cmd-approval-row" data-id="' + a.id + '" data-batch="' + (a.batch_id||'') + '" data-count="' + n + '">' +
       '<div class="cmd-approval-head">' + orb + '<div class="cmd-approval-label">' + labelText + '</div></div>' +

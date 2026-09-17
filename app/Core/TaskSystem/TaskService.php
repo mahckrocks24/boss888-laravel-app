@@ -187,6 +187,16 @@ class TaskService
         // narrower override; category is now the primary authority).
         $approvalMode = $this->capabilityMap->getApprovalMode($action);
         $creditCost = $data['credit_cost'] ?? $this->capabilityMap->getCreditCost($action);
+        // RISK-0189 (2026-09-17): the capability map prices ask_arthur at 0 because Arthur decides the real action when he
+        // runs — so the approval card said "Uses no credits" for a 1-credit edit (EV-1056/EV-1058). Read the request through
+        // the classifier and registry Arthur charges from; a kind whose charge is set elsewhere is recorded as UNKNOWN (never
+        // free). The ledger still governs the actual debit at execution.
+        // The disclosure lives on the PAYLOAD only: tasks.credit_cost stays the capability map's 0 for ask_arthur, because
+        // Arthur's executor is what reserves and commits the real charge — a figure here would be reserved a second time
+        // by the task ledger (seen once on ws 1000053 during the RISK-0189 re-certification, then corrected).
+        if ($action === 'ask_arthur' && ! isset($data['credit_cost']) && is_array($data['payload'] ?? null)) {
+            $data['payload']['credit_estimate'] = \App\Engines\Builder\Support\ArthurCostEstimate::forRequest((string) ($data['payload']['request'] ?? ''));
+        }
 
         // 2026-05-27 Phase 4 — category is the primary authority for default
         // approval routing. Per the masterplan's 7-category taxonomy:
@@ -492,13 +502,18 @@ class TaskService
         // new bucket) still create their own task. Non-billable / no-user_request
         // tasks keep the payload-based key unchanged.
         $__req = is_array($payload) ? trim((string) ($payload['user_request'] ?? '')) : '';
+        // EV-1045 (2026-09-16): the request key above made every task of one action in ONE request the same task —
+        // "Let's write 5 articles" created one write_article and returned it four more times (the chat counted 30
+        // things, the ledger charged one). The caller now passes `request_item`, the ordinal of this action within
+        // the request; a double-submit still collides (same ordinals), five distinct articles no longer do.
+        $__item = isset($data['request_item']) && (int) $data['request_item'] > 0 ? ':item' . (int) $data['request_item'] : '';
         if (($data['idempotency_key'] ?? null)) {
             $idemKey = $data['idempotency_key'];
         } elseif ((int) $creditCost > 0 && $__req !== '') {
             $__norm = mb_strtolower(trim(preg_replace('/\s+/', ' ', $__req)));
-            $idemKey = hash('sha256', "{$workspaceId}:{$action}:req:{$__norm}:" . intdiv(time(), 300));
+            $idemKey = hash('sha256', "{$workspaceId}:{$action}:req:{$__norm}{$__item}:" . intdiv(time(), 300));
         } else {
-            $idemKey = hash('sha256', "{$workspaceId}:{$action}:" . json_encode($payloadForHash));
+            $idemKey = hash('sha256', "{$workspaceId}:{$action}:" . json_encode($payloadForHash) . $__item);
         }
 
         // v1.4.4 (2026-05-30) — batched approvals. Caller (Sarah's chat loop
@@ -681,6 +696,19 @@ class TaskService
 
     public function markCompleted(Task $task, ?array $result = null): void
     {
+        // SARAH-QA-1 (2026-09-06): nothing is accepted without Sarah's QA — and the verdict is on the row BEFORE the
+        // status flips to completed, so no reader ever sees "completed" without a verdict. Never throws.
+        $__qa = null;
+        try {
+            $__gate = app(\App\Core\Sarah888\SarahQaGate::class);
+            $__payload = is_array($task->payload_json) ? $task->payload_json : (json_decode((string) $task->payload_json, true) ?: []);
+            $__qa = $__gate->review((int) $task->workspace_id, (string) $task->action, $__payload, is_array($result) ? $result : []);
+        } catch (\Throwable $__qaErr) {
+            \Illuminate\Support\Facades\Log::warning('[SarahQA] gate failed: ' . $__qaErr->getMessage(), ['task' => $task->id]);
+            $__qa = ['verdict' => \App\Core\Sarah888\SarahQaGate::NEEDS_OWNER, 'checks' => [], 'reasons' => ['QA could not run: ' . mb_substr($__qaErr->getMessage(), 0, 160)], 'deliverable' => null];
+        }
+        try { \Illuminate\Support\Facades\DB::table('tasks')->where('id', $task->id)->update(['qa_status' => $__qa['verdict'], 'qa_json' => json_encode($__qa), 'qa_reviewed_at' => now()]); } catch (\Throwable) {}
+
         $task->update([
             'status' => 'completed',
             'result_json' => $result,
@@ -692,9 +720,26 @@ class TaskService
             'progress_message' => 'Completed: ' . str_replace('_', ' ', (string) $task->action),
         ]);
 
+        try {
+            if (in_array($__qa['verdict'], [\App\Core\Sarah888\SarahQaGate::REJECTED, \App\Core\Sarah888\SarahQaGate::NEEDS_OWNER], true)) {
+                $__d = $__qa['deliverable'] ?? null;
+                if ($__d && $__d['kind'] === 'article') { // keep it a draft, mark it, so bulk publish leaves it out
+                    $__a = \Illuminate\Support\Facades\DB::table('articles')->where('id', (int) $__d['id'])->first(['brief_json', 'status']);
+                    $__b = json_decode((string) ($__a->brief_json ?? ''), true) ?: []; $__b['qa'] = ['status' => $__qa['verdict'], 'reasons' => $__qa['reasons'], 'task_id' => $task->id, 'at' => now()->toIso8601String()];
+                    \Illuminate\Support\Facades\DB::table('articles')->where('id', (int) $__d['id'])->update(['brief_json' => json_encode($__b), 'status' => $__a && $__a->status === 'published' ? 'published' : 'draft']);
+                    // RISK-0189 (2026-09-17): out of the link graph too — the index row and any pending suggestion pointing at it
+                    // (a draft is indexed when written, before this verdict exists). Inserted links are not touched here.
+                    try { $__wd = \App\Engines\SEO\Support\LinkTargetEligibility::withdrawArticle((int) $task->workspace_id, (int) $__d['id']); \Illuminate\Support\Facades\Log::info('[SarahQA] RISK-0189 rejected draft withdrawn from the link graph', ['task' => $task->id, 'article' => (int) $__d['id']] + $__wd); } catch (\Throwable $__wdErr) { \Illuminate\Support\Facades\Log::warning('[SarahQA] link-graph withdrawal failed: ' . $__wdErr->getMessage(), ['task' => $task->id]); }
+                }
+                $this->notifications->send($task->workspace_id, 'task', \App\Core\Notifications\NotificationTypes::SARAH_QA_REJECTED, ['task_id' => $task->id, 'action' => $task->action, 'verdict' => $__qa['verdict'], 'reasons' => $__qa['reasons'], 'deliverable' => $__d]);
+                \Illuminate\Support\Facades\Log::info('[SarahQA] task not accepted', ['task' => $task->id, 'ws' => $task->workspace_id, 'verdict' => $__qa['verdict'], 'reasons' => $__qa['reasons']]);
+            }
+        } catch (\Throwable $__qaErr2) { \Illuminate\Support\Facades\Log::warning('[SarahQA] post-verdict step failed: ' . $__qaErr2->getMessage(), ['task' => $task->id]); }
+
         $this->notifications->send($task->workspace_id, 'task', 'task.completed', [
             'task_id' => $task->id,
             'action' => $task->action,
+            'qa_status' => $__qa['verdict'] ?? null,
         ]);
     }
 

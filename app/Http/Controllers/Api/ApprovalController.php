@@ -162,6 +162,24 @@ class ApprovalController
             return response()->json(['error' => 'not_pending', 'status' => $row->status], 409);
         }
 
+        // RISK-0189 (2026-09-17): the approval binds the cost the owner SAW. The card sends expected_credit_cost (a figure, or
+        // "unknown"); if the task's cost or its known-ness has moved since the card was drawn, refuse and hand back the current
+        // disclosure so the card can redraw — stale cost information never authorises a spend.
+        if ($request->has('expected_credit_cost') && $row->task_id) {
+            $__t = DB::table('tasks')->where('id', (int) $row->task_id)->first(['credit_cost', 'payload_json']);
+            if ($__t) {
+                $__p = json_decode((string) ($__t->payload_json ?? ''), true) ?: [];
+                $__known = ! (isset($__p['credit_estimate']['known']) && $__p['credit_estimate']['known'] === false);
+                $__current = $__known ? \App\Engines\Builder\Support\ArthurCostEstimate::disclosed((int) $__t->credit_cost, $__p['credit_estimate'] ?? null) : 'unknown';
+                $__expected = $request->input('expected_credit_cost');
+                $__expected = $__expected === 'unknown' ? 'unknown' : (int) $__expected;
+                if ($__expected !== $__current) {
+                    return response()->json(['error' => 'stale_cost', 'message' => 'The credit cost of this request changed since it was shown — please look again before approving.',
+                        'expected' => $__expected, 'current' => $__current, 'credit_note' => \App\Engines\Builder\Support\ArthurCostEstimate::describe((int) $__t->credit_cost, $__p['credit_estimate'] ?? null)], 409);
+                }
+            }
+        }
+
         // 2026-06-30 — proposal-linked approval: delegate to the proactive engine,
         // which reserves credits + creates and runs the task(s), then mark the
         // mirrored approval row approved.
@@ -527,6 +545,12 @@ class ApprovalController
                 'payload'       => $payload,
                 'payload_keys'  => is_array($payload) ? array_slice(array_keys($payload), 0, 8) : [],
                 'credit_cost'   => (int) ($r->credit_cost ?? 0),
+                // RISK-0189: false when the task recorded that its cost is decided at execution (ask_arthur kinds priced by a
+                // studio or not yet classifiable) — the UI must not call such a task free.
+                'credit_cost_known' => ! (is_array($payload) && isset($payload['credit_estimate']['known']) && $payload['credit_estimate']['known'] === false),
+                // credit_disclosed: the figure the owner approves — the estimate when the task carries one, else the task's own cost
+                'credit_disclosed' => \App\Engines\Builder\Support\ArthurCostEstimate::disclosed((int) ($r->credit_cost ?? 0), is_array($payload) ? ($payload['credit_estimate'] ?? null) : null),
+                'credit_note'   => \App\Engines\Builder\Support\ArthurCostEstimate::describe((int) ($r->credit_cost ?? 0), is_array($payload) ? ($payload['credit_estimate'] ?? null) : null),
                 'priority'      => $r->priority ?: 'normal',
                 'status'        => $r->task_status,
                 'assigned_agents' => $agents,

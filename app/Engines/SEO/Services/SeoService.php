@@ -678,6 +678,9 @@ class SeoService
         foreach ($pages as $candidate) {
             if (in_array($candidate->url, $existingTargets, true)) { continue; }
             if ((int) ($candidate->word_count ?? 0) < 100) { continue; }
+            // RISK-0189 (2026-09-17): a draft Sarah's QA rejected is not a destination, however well its title scores (EV-1058: the
+            // misplaced yoga article on the bakery site was offered to — and linked from — two bakery articles).
+            if (! \App\Engines\SEO\Support\LinkTargetEligibility::isEligibleTarget($wsId, (string) $candidate->url)) { continue; }
 
             $candidateTokens = $this->tokenize(
                 ($candidate->title ?? '') . ' '
@@ -1148,8 +1151,9 @@ class SeoService
         $limit = max(1, min(50, (int) ($params['limit'] ?? 25)));
         $orphanQ = fn() => DB::table('seo_content_index')->where('workspace_id', $wsId)
             ->where('inbound_links', 0)->where('word_count', '>', 100);
-        $before = (clone $orphanQ())->count();
-        $orphanUrls = (clone $orphanQ())->pluck('url')->toArray();
+        // RISK-0189: a QA-rejected draft is not an orphan to rescue — it must stay unlinked until it is rewritten or moved.
+        $orphanUrls = array_values(array_filter((clone $orphanQ())->pluck('url')->toArray(), fn ($u) => \App\Engines\SEO\Support\LinkTargetEligibility::isEligibleTarget($wsId, (string) $u)));
+        $before = count($orphanUrls);
         if (empty($orphanUrls)) {
             return ['success' => true, 'orphans_before' => 0, 'orphans_after' => 0, 'applied' => 0,
                     'credits_charged' => 0, 'message' => 'No orphan pages to fix — internal linking is healthy.'];
@@ -1284,6 +1288,14 @@ class SeoService
         }
         if (! empty($link->status) && $link->status === 'dismissed') {
             return ['success' => false, 'error' => 'dismissed', 'message' => 'This link suggestion was previously dismissed.'];
+        }
+        // RISK-0189 (2026-09-17): the target is checked again at the moment of insertion — a suggestion made before the QA
+        // verdict (or by any other path) must not land afterwards. Nothing is written; the suggestion is dismissed for good.
+        $__elig = \App\Engines\SEO\Support\LinkTargetEligibility::assess($wsId, (string) ($link->target_url ?? ''));
+        if (! $__elig['eligible']) {
+            DB::table('seo_links')->where('id', $linkId)->update(['status' => 'dismissed', 'updated_at' => now()]);
+            \Illuminate\Support\Facades\Log::info('[SeoService] RISK-0189 link target ineligible — suggestion dismissed', ['ws' => $wsId, 'link' => $linkId, 'target' => $link->target_url ?? null, 'reason' => $__elig['reason']]);
+            return ['success' => false, 'error' => 'target_ineligible', 'message' => 'That page is not accepted content (' . $__elig['reason'] . '), so it cannot be linked to.', 'reason' => $__elig['reason']];
         }
 
         $sourceUrl = (string) ($link->source_url ?? '');

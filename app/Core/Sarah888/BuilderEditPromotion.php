@@ -168,7 +168,17 @@ final class BuilderEditPromotion
             $aid = $r['approval_id'] ?? null;
             $aidReal = $aid !== null && DB::table('approvals')->where('id', (int) $aid)
                 ->when($wsId > 0, fn ($q) => $q->where('workspace_id', $wsId))->exists();
-            $reply = "I've prepared Arthur to {$what}. It's ready for your approval" . ($aidReal ? " (request #{$aid})" : '')
+            // RISK-0189 (2026-09-17): the cost the owner will approve is said here, from the task row (ArthurCostEstimate) — a
+            // figure when the classifier knows it, "not free" when it does not; never silent, never "no credits".
+            $costNote = '';
+            try {
+                if ($aidReal) {
+                    $tid = (int) DB::table('approvals')->where('id', (int) $aid)->value('task_id');
+                    $t = $tid ? DB::table('tasks')->where('id', $tid)->first(['credit_cost', 'payload_json']) : null;
+                    if ($t) { $p = json_decode((string) ($t->payload_json ?? ''), true) ?: []; $costNote = '. It will use ' . \App\Engines\Builder\Support\ArthurCostEstimate::describe((int) $t->credit_cost, $p['credit_estimate'] ?? null); }
+                }
+            } catch (\Throwable) { $costNote = ''; }
+            $reply = "I've prepared Arthur to {$what}. It's ready for your approval" . ($aidReal ? " (request #{$aid})" : '') . $costNote
                    . " — approve it in your review queue and Arthur will apply the change with a before/after snapshot for undo.";
             return ['handled' => true, 'executed' => false, 'ambiguous' => false, 'reply' => $reply];
         }

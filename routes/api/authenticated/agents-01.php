@@ -3855,7 +3855,9 @@ $withCorr = function (array $meta) use ($corr) {
                                         $__apSite = (int) ($__apd['website_id'] ?? $__apd['params']['website_id'] ?? $__apd['input']['website_id'] ?? 0);
                                         $__apName = $__apSite > 0 ? (string) \Illuminate\Support\Facades\DB::table('websites')->where('id', $__apSite)->value('name') : '';
                                         $__ask = trim(rtrim(trim((string) $__ownerMessage), '.!'));
-                                        $__siteEditReply = 'I have asked Arthur to ' . lcfirst($__ask) . ($__apName !== '' && stripos($__ask, $__apName) === false ? ' on ' . $__apName : '') . '. It is waiting for your approval (request #' . (int) $__ap->id . ') — approve it in the review queue and Arthur applies it right away; Undo puts it back.';
+                                        $__apCost = '';   // RISK-0189: the applicable cost, or "not free" when it is not yet known — never silent
+                                        try { $__apT = $__ap->task_id ? \Illuminate\Support\Facades\DB::table('tasks')->where('id', (int) $__ap->task_id)->first(['credit_cost', 'payload_json']) : null; if ($__apT) { $__apP = json_decode((string) ($__apT->payload_json ?? ''), true) ?: []; $__apCost = ' (' . \App\Engines\Builder\Support\ArthurCostEstimate::describe((int) $__apT->credit_cost, $__apP['credit_estimate'] ?? null) . ')'; } } catch (\Throwable) { $__apCost = ''; }
+                                        $__siteEditReply = 'I have asked Arthur to ' . lcfirst($__ask) . ($__apName !== '' && stripos($__ask, $__apName) === false ? ' on ' . $__apName : '') . $__apCost . '. It is waiting for your approval (request #' . (int) $__ap->id . ') — approve it in the review queue and Arthur applies it right away; Undo puts it back.';
                                     }
                                 }
                             } catch (\Throwable $__sre) { $__siteEditReply = null; }
@@ -4056,7 +4058,13 @@ $withCorr = function (array $meta) use ($corr) {
             if (empty($assist['read_lane'])) { // F-SOC-F5d: read-lane replies are rendered data, not claims
                 // RISK-0186: the credits this turn actually queued, from the ledger of created tasks (null = nothing / unknown)
                 $__queuedCost = null;
-                try { $__qids = array_values(array_filter(array_map('intval', $createdTaskIds ?? []))); if ($__qids) $__queuedCost = (int) DB::table('tasks')->whereIn('id', $__qids)->sum('credit_cost'); } catch (\Throwable) { $__queuedCost = null; }
+                try {
+                    $__qids = array_values(array_filter(array_map('intval', $createdTaskIds ?? [])));
+                    if (! $__qids) { // the site-edit promotion creates its task outside createTasks — this turn's ask_arthur tasks count too
+                        $__qids = DB::table('tasks')->where('workspace_id', $wsId)->where('action', 'ask_arthur')->where('created_at', '>=', now()->subSeconds(25))->pluck('id')->map(fn ($i) => (int) $i)->all();
+                    }
+                    if ($__qids) { $__queuedCost = 0; foreach (DB::table('tasks')->whereIn('id', $__qids)->get(['credit_cost', 'payload_json']) as $__qt) { $__qp = json_decode((string) ($__qt->payload_json ?? ''), true) ?: []; $__queuedCost += \App\Engines\Builder\Support\ArthurCostEstimate::disclosed((int) $__qt->credit_cost, $__qp['credit_estimate'] ?? null); } }
+                } catch (\Throwable) { $__queuedCost = null; }
                 $__cv = app(\App\Core\Integrity\AgentClaimValidator::class)->validate($reply, $wsId, $slug, $__didQueue, $__engagedAgents, $__recentActions, $__recentSpecialists, $__queuedCost);
                 $reply = $__cv['reply'];
             }

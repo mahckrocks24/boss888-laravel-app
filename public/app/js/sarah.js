@@ -317,10 +317,13 @@
     (acts || []).forEach(function (a) { var b = document.createElement('button'); b.type = 'button'; b.className = 'sh-btn' + (a.kind ? ' ' + a.kind : ''); b.textContent = a.label; b.addEventListener('click', function () { a.run(b, el); }); actsEl.appendChild(b); });
     return el;
   }
-  function decide(approvalId, action, reason, btn, el) {
+  function decide(approvalId, action, reason, btn, el, shownCost) {
     var buttons = el.querySelectorAll('button'); buttons.forEach(function (b) { b.disabled = true; }); btn.textContent = action === 'approve' ? 'Approving…' : 'Sending…';
-    api('POST', 'approvals/' + approvalId + '/' + action, reason ? { reason: reason } : {}).then(function (r) {
+    var body = reason ? { reason: reason } : {};
+    if (action === 'approve' && shownCost !== undefined) body.expected_credit_cost = shownCost;   // RISK-0189: approve the cost you saw
+    api('POST', 'approvals/' + approvalId + '/' + action, body).then(function (r) {
       var d = r.json || {};
+      if (r.status === 409 && d.error === 'stale_cost') { showToast(d.message + (d.credit_note ? ' Now: ' + d.credit_note + '.' : ''), 'warning'); loadRail(); return; }
       if (r.ok && (d.success !== false) && !d.error) {
         el.classList.remove('appr'); el.classList.add(action === 'approve' ? 'book' : 'fail');
         el.querySelector('.acts').innerHTML = '<span class="d">' + (action === 'approve' ? 'Approved — your team is on it.' : 'Rejected — nothing will run.') + '</span>';
@@ -335,12 +338,14 @@
   function approvalItem(a) {
     var t = a.task || {}; var eng = t.engine || 'system';
     var title = t.label || humanTitle(t.action || a.title || 'Something needs your OK');
-    var cost = t.credit_cost ? (t.credit_cost + (t.credit_cost === 1 ? ' credit' : ' credits')) : 'no credits';
+    // RISK-0189: a cost the task could not establish is never shown as free; the note comes from the server
+    var cost = t.credit_note ? t.credit_note : (t.credit_cost_known === false ? 'credits set when Arthur applies it — not free' : (t.credit_cost ? (t.credit_cost + (t.credit_cost === 1 ? ' credit' : ' credits')) : 'no credits'));
+    var shownCost = t.credit_cost_known === false ? 'unknown' : (t.credit_disclosed != null ? t.credit_disclosed : (t.credit_cost || 0));
     var desc = (t.description ? t.description + ' · ' : '') + 'Uses ' + cost + (a.time_ago ? ' · asked ' + a.time_ago : '');
     var who = t.agent && t.agent.name ? t.agent.name : (t.primary_agent ? AGENT_NAMES[t.primary_agent] || t.primary_agent : null);
     var link = deepLink(eng, t.payload || {}, t.id);
     var acts = [
-      { label: 'Approve', kind: 'primary', run: function (b, el) { decide(a.id, 'approve', null, b, el); } },
+      { label: 'Approve', kind: 'primary', run: function (b, el) { decide(a.id, 'approve', null, b, el, shownCost); } },
       { label: 'Reject', kind: 'danger', run: function (b, el) {
           var box = el.querySelector('.sh-reason'); if (!box) {
             box = document.createElement('textarea'); box.className = 'sh-reason'; box.rows = 2; box.placeholder = 'Why not? (Sarah learns from this)'; box.setAttribute('aria-label', 'Reason for rejecting'); el.querySelector('.body').insertBefore(box, el.querySelector('.acts')); box.focus(); b.textContent = 'Confirm reject'; return; }
