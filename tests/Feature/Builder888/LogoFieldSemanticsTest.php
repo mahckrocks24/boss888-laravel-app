@@ -35,6 +35,10 @@ class LogoFieldSemanticsTest extends TestCase
         foreach ($this->sites as $id) {
             $dir = storage_path('app/public/sites/' . $id);
             foreach (glob($dir . '/*') ?: [] as $f) { if (is_file($f)) @unlink($f); }
+            // RISK-0189 firewall: updateField() keeps RISK-0107 backups under .history — a leftover directory at a low id later made
+            // another suite's renderer site look static. Leave nothing behind.
+            foreach (glob($dir . '/.history/*') ?: [] as $f) { if (is_file($f)) @unlink($f); }
+            @rmdir($dir . '/.history');
             @rmdir($dir);
         }
         parent::tearDown();
