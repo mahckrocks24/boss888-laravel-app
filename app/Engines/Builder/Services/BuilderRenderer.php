@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 class BuilderRenderer
 {
     use EditorialSections; // KABAYAN888 G2 — editorial section renderers (generic fallbacks)
+    use EnterpriseSections; // MRDIGITAL888 G2 — logo_wall / process_steps / case_studies (generic fallbacks)
 
     public function renderWebsite(string $subdomain, string $slug = 'home'): ?string
     {
@@ -284,6 +285,11 @@ class BuilderRenderer
             // v1.4.4 Phase D-2 (2026-05-30)
             'booking_form'    => $this->renderBookingForm($sec, $brand),
             'events_calendar' => $this->renderEventsCalendar($sec, $brand),
+            // TRIP PLANNER QUIZ (2026-09-06) — ported from the AMG travel site; inline 4-step inquiry in the site's palette
+            'travel_quiz'     => \App\Engines\Builder\Support\TravelQuizElement::render(
+                array_merge(['business_name' => (string) ($website['name'] ?? 'our team')], $sec), $brand, (string) config('app.url'),
+                'lq' . (int) ($website['id'] ?? 0) . substr(md5(json_encode($sec)), 0, 4)
+            ),
             // v1.4.4 Phase D-3 (2026-05-30)
             'grid'             => $this->renderGrid($sec, $brand),
             'filter_bar'       => $this->renderFilterBar($sec, $brand),
@@ -304,6 +310,10 @@ class BuilderRenderer
             'newsletter_signup' => $this->renderNewsletterSignup($sec, $brand, $website),
             'ad_slot'           => $this->renderAdSlot($sec, $brand, $website),
             'jobs_board'        => $this->renderJobsBoard($sec, $brand, $website), // KABAYAN888 JOBS-1
+            // MRDIGITAL888 G2 (2026-09-17) — enterprise types (EnterpriseSections trait)
+            'logo_wall'         => $this->renderLogoWall($sec, $brand),
+            'process_steps'     => $this->renderProcessSteps($sec, $brand),
+            'case_studies'      => $this->renderCaseStudies($sec, $brand, $website),
             default            => $this->renderGeneric($sec, $brand),
         };
     }
@@ -380,7 +390,9 @@ class BuilderRenderer
         foreach (($sec['items'] ?? []) as $it) {
             $title = e($it['title'] ?? $it['heading'] ?? $it['name'] ?? '');
             $desc  = e($it['description'] ?? $it['text'] ?? $it['body'] ?? '');
-            $icon  = e($it['icon'] ?? '•');
+            // An icon we authored is inline SVG and passes through; a character supplied per-site is escaped.
+            $__ic  = (string) ($it['icon'] ?? '');
+            $icon  = $__ic === '' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.5"/></svg>' : (str_starts_with($__ic, '<svg ') ? $__ic : e($__ic));
             $cards .= "<div style=\"background:#fff;border:1px solid rgba(0,0,0,.07);border-radius:16px;padding:32px;border-top:3px solid {$brand['accent']}\"><span style=\"font-size:32px;display:block;margin-bottom:12px\">{$icon}</span><h3 style=\"color:#1a1a2e;font-size:20px;margin-bottom:8px\">{$title}</h3><p style=\"color:#5a5f72;font-size:14px;line-height:1.6;margin:0\">{$desc}</p></div>";
         }
         $grid = "<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px\">{$cards}</div>";
@@ -609,7 +621,7 @@ class BuilderRenderer
     <div style=\"padding:20px 22px;display:flex;flex-direction:column;gap:8px;flex:1\">
       <div style=\"font-size:11px;font-weight:700;color:{$primary};letter-spacing:.4px;text-transform:uppercase\">{$date}" . ($time ? " · {$time}" : '') . "</div>
       <h3 style=\"margin:0;font-size:18px;font-weight:700\">{$title}</h3>" .
-      ($loc ? "<div style=\"font-size:13px;color:#6b7280\">📍 {$loc}</div>" : '') .
+      ($loc ? "<div style=\"font-size:13px;color:#6b7280;display:flex;align-items:center;gap:6px\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z\"/><circle cx=\"12\" cy=\"10\" r=\"2.6\"/></svg> {$loc}</div>" : '') .
       ($desc ? "<p style=\"margin:8px 0 0;color:#4b5563;font-size:14px;line-height:1.6;flex:1\">{$desc}</p>" : '') . "
       <a href=\"{$ctaU}\" style=\"margin-top:14px;align-self:flex-start;padding:8px 16px;background:{$primary};color:{$onPrimary};text-decoration:none;border-radius:6px;font-size:14px;font-weight:600\">{$ctaT}</a>
     </div>
@@ -866,7 +878,7 @@ HTML;
 
         $cardsHtml = '';
         foreach ($items as $item) {
-            $icon = $item['icon'] ?? '⭐';
+            $icon = $item['icon'] ?? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 4 2.5 5.1 5.5.8-4 3.9.9 5.6L12 16.8 7.1 19.4l.9-5.6-4-3.9 5.5-.8Z"/></svg>';
             $title = e($item['heading'] ?? $item['title'] ?? '');
             $text = e($item['text'] ?? $item['description'] ?? '');
             $cardsHtml .= "<div style=\"background:{$cardBg};border:{$cardBorder};border-radius:16px;padding:32px;border-top:3px solid {$brand['accent']}\"><span style=\"font-size:36px;display:block;margin-bottom:16px\">{$icon}</span><h3 style=\"color:{$headColor};font-size:20px;margin-bottom:8px\">{$title}</h3><p style=\"color:{$textColor};font-size:14px;line-height:1.6;margin:0\">{$text}</p></div>";
@@ -1225,9 +1237,9 @@ HTML;
             $list .= "
     <div style=\"padding:18px;border:1px solid #eef0f4;border-radius:12px;background:#fff;margin-bottom:12px\">
       <div style=\"font-size:16px;font-weight:700;margin-bottom:6px;color:#111827\">{$name}</div>" .
-        ($addr  ? "<div style=\"font-size:13px;color:#4b5563;margin-bottom:4px\">📍 {$addr}</div>"  : '') .
-        ($phone ? "<div style=\"font-size:13px;color:#4b5563;margin-bottom:4px\">📞 <a href=\"tel:" . preg_replace('/[^0-9+]/', '', $phone) . "\" style=\"color:{$primary};text-decoration:none\">{$phone}</a></div>" : '') .
-        ($hours ? "<div style=\"font-size:13px;color:#6b7280\">🕒 {$hours}</div>" : '') . "
+        ($addr  ? "<div style=\"font-size:13px;color:#4b5563;margin-bottom:4px;display:flex;align-items:center;gap:6px\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z\"/><circle cx=\"12\" cy=\"10\" r=\"2.6\"/></svg> {$addr}</div>"  : '') .
+        ($phone ? "<div style=\"font-size:13px;color:#4b5563;margin-bottom:4px\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6.5 3.5h3l1.5 4-2 1.4a12 12 0 0 0 6.1 6.1l1.4-2 4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 5.7 2 2 0 0 1 6.5 3.5Z\"/></svg> <a href=\"tel:" . preg_replace('/[^0-9+]/', '', $phone) . "\" style=\"color:{$primary};text-decoration:none\">{$phone}</a></div>" : '') .
+        ($hours ? "<div style=\"font-size:13px;color:#6b7280;display:flex;align-items:center;gap:6px\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M12 7.5V12l3 1.8\"/></svg> {$hours}</div>" : '') . "
     </div>";
         }
 
@@ -1825,6 +1837,12 @@ HTML;
         $chatbotScript = '';
         $headExtra = (string) ($seo['head_extra'] ?? ''); // KABAYAN888 UX-1
 
+        $revealFailsafe = \App\Engines\Builder\Services\TemplateService::revealFailsafeHtml();
+        $mobileSafe = \App\Engines\Builder\Services\TemplateService::mobileSafetyHtml(); // 2026-09-07: no page may scroll sideways on a phone
+        // DESIGN-STYLE LAYER: honour the customer's style/fonts on the live-served page too.
+        $tvRaw = $website['template_variables'] ?? null;
+        $tv = is_string($tvRaw) ? (json_decode($tvRaw, true) ?: []) : (is_array($tvRaw) ? $tvRaw : []);
+        $designStyleLayer = \App\Engines\Builder\Support\DesignStyle::layer($tv['design_style'] ?? null, $tv['font_display'] ?? null, $tv['font_body'] ?? null, ['accent' => $tv['accent_color'] ?? null, 'secondary' => $tv['secondary_color'] ?? null, 'primary' => $tv['primary_color'] ?? null]);
         return <<<HTML
 <!DOCTYPE html>
 <html lang="en">
@@ -1848,10 +1866,13 @@ input,textarea,select{font-family:inherit}
   section{padding:60px 16px!important}
 }
 </style>
+{$designStyleLayer}
+{$mobileSafe}
 </head>
 <body>
 {$content}
 {$chatbotScript}
+{$revealFailsafe}
 </body>
 </html>
 HTML;

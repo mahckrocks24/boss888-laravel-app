@@ -129,7 +129,9 @@ class ArthurEditService
         $wrapped = is_array($raw) && isset($raw['sections']) && is_array($raw['sections']);
         $schemaVersion = $wrapped ? ($raw['schemaVersion'] ?? 1) : 1;
         $sections = $wrapped ? $raw['sections'] : (is_array($raw) ? $raw : []);
-        $currentJson = json_encode($sections, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+        // MRDIGITAL888 ARTHUR-IDX (a) (2026-09-17) — label every section with its 0-based index so the model
+        // copies it instead of counting (it was off by one on an 11-section page).
+        $currentJson = json_encode(array_map(fn ($s, $i) => ['_index' => $i] + (is_array($s) ? $s : ['value' => $s]), $sections, array_keys($sections)), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $websiteId = (int) ($page->website_id ?? 0);
         $styleVarsHint = $this->availableStyleVars($websiteId);
 
@@ -156,7 +158,8 @@ Current sections (flat shape — fields live directly on the section object):
 Rules:
 - Respond ONLY with valid JSON matching the response schema below.
 - Maximum {$maxActions} actions per response.
-- section_index is 0-based.
+- section_index is 0-based: copy the `_index` shown on the section you mean (never count).
+- Only top-level fields can be updated; items inside arrays (steps[], items[], tiers[]) cannot be edited by index yet — say so in the reply instead of pretending.
 - Allowed ops: {$allowedOps}
 - Allowed section types: {$allowedTypes}
 - For update_text / update_field: provide section_index, field, value.
@@ -299,6 +302,11 @@ PROMPT;
         $__changed = ($sync['is_static'] ? ($sync['applied'] > 0) : ($applied > 0)) || ((int) ($style['applied'] ?? 0) > 0) || ((int) ($contactSync['applied'] ?? 0) > 0);
         if (! $__changed) {
             $reply = 'I could not find anything to change for that, so nothing on your site was updated (and you were not charged). Tell me exactly what to change and where, and I will do it.';
+        } elseif ($errors !== []) {
+            // MRDIGITAL888 ARTHUR-IDX (b) — never report a refused action as done.
+            $__plain = array_map(fn ($e) => preg_replace('/^Field \'([^\']+)\' not allowed on type \'([^\']+)\'$/', 'the $2 section has no editable field "$1"', (string) $e), $errors);
+            $reply = rtrim($reply, " .") . '. One change could not be applied: ' . implode('; ', array_unique($__plain)) . '.';
+            if (count($errors) > 1) $reply = str_replace('One change could not be applied', count($errors) . ' changes could not be applied', $reply);
         }
 
         return [

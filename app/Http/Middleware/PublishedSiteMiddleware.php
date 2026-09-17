@@ -179,7 +179,7 @@ class PublishedSiteMiddleware
         }
 
         // T3.2 Phase 4 — Blog gating: Growth+ plans only.
-        // Workspace 1 (platform's own LevelUp Growth content) is exempt.
+        // Workspace 1 (platform's own LevelUpGrowth content) is exempt.
         // Triggers on /blog or /blog/<anything>; if the workspace plan does
         // not include content_writing, render404 (don't expose tenant's
         // blog content publicly when their plan doesn't pay for it).
@@ -279,7 +279,14 @@ class PublishedSiteMiddleware
             }
             // KABAYAN888 G7a (2026-09-03) — /news/{slug} is an article path too (magazine
             // sites set settings_json.article_base = 'news'); /blog/{slug} keeps working.
-            if (preg_match('#^(?:blog|news)/([a-z0-9\-]+)/?$#i', $path, $bm)) {
+            // MRDIGITAL888 G3a (2026-09-17) — the article path also honours settings_json.article_base
+            // (e.g. 'insights') and case_study_base (default 'case-studies'); /blog and /news keep working.
+            $__mdSet = $website->settings_json ?? '{}'; if (is_string($__mdSet)) $__mdSet = json_decode($__mdSet, true) ?: [];
+            $__mdBases = ['blog', 'news'];
+            foreach (['article_base', 'case_study_base'] as $__k) { $__v = strtolower(trim((string) ($__mdSet[$__k] ?? ''))); if (preg_match('/^[a-z0-9\-]{1,40}$/', $__v)) $__mdBases[] = $__v; }
+            if (!empty($__mdSet['case_study_base']) || ($__mdSet['theme'] ?? '') === 'mrdigital-enterprise') $__mdBases[] = 'case-studies';
+            $__mdBases = array_values(array_unique($__mdBases));
+            if (preg_match('#^(?:' . implode('|', array_map('preg_quote', $__mdBases)) . ')/([a-z0-9\-]+)/?$#i', $path, $bm)) {
                 $articleSlug = $bm[1];
                 $dynHtml = $this->renderDynamicArticlePage(
                     (int) ($website->workspace_id ?? 0),
@@ -321,12 +328,15 @@ class PublishedSiteMiddleware
                 // through to $next — that serves the PLATFORM blog SPA and leaks the
                 // platform brand ("LevelUpGrowth Blog") onto the tenant's domain.
                 // Send the visitor to the tenant's OWN on-brand blog index instead.
-                return redirect('/blog', 302)->header('X-Served-By', 'blog-article-not-found');
+                // MRDIGITAL888 G3b — send to the section the visitor was in (/insights, /case-studies), else /blog.
+                $__mdBack = '/' . (preg_match('#^([a-z0-9\-]+)/#i', $path, $__bb) && in_array(strtolower($__bb[1]), $__mdBases, true) ? strtolower($__bb[1]) : 'blog');
+                return redirect($__mdBack, 302)->header('X-Served-By', 'blog-article-not-found');
             }
         }
 
         // Validate slug format (only single-segment slugs reach BuilderRenderer)
-        if (!preg_match('/^[a-z0-9\-]+$/', $slug)) {
+        // MRDIGITAL888 G3c (2026-09-17) — one nested level (services/custom-software) is a valid page slug.
+        if (!preg_match('/^[a-z0-9\-]+(?:\/[a-z0-9\-]+)?$/', $slug)) {
             return $next($request);
         }
 
@@ -387,7 +397,11 @@ class PublishedSiteMiddleware
     private function injectMobileNav(string $html): string
     {
         // MOBILE-4: one source of truth, shared with the static-export writer so both paths emit the same rule.
-        return \App\Engines\Builder\Support\ResponsiveNav::inject($html);
+        // MOBILE SAFETY (2026-09-07): injected at serve time so every ALREADY-published
+        // site gets it without rewriting its files. Idempotent by <style id>.
+        return \App\Engines\Builder\Services\TemplateService::injectMobileSafety(
+            \App\Engines\Builder\Support\ResponsiveNav::inject($html)
+        );
     }
 
     private function injectAccentContrast(string $html): string
@@ -594,7 +608,10 @@ class PublishedSiteMiddleware
             $list = $cardLimit > 0 ? $articles->take($cardLimit) : $articles;
             foreach ($list as $a) {
                 $c = $tpl;
-                $c = preg_replace('#href="/blog/[^"]*"#i', 'href="/blog/' . e($a->slug) . '"', $c, 1);
+                // The card template is one anchor; its first href IS the card link. Matching only
+                // href="/blog/…" failed on generated sites, where that placeholder resolves to the bare
+                // blog link, and left every card pointing at the index it was already on.
+                $c = preg_replace('#href="[^"]*"#i', 'href="/blog/' . e($a->slug) . '"', $c, 1);
                 $c = preg_replace_callback('#(<h3[^>]*class="[^"]*blog-card-title[^"]*"[^>]*>).*?(</h3>)#is',
                     fn($mm) => $mm[1] . e((string) $a->title) . $mm[2], $c, 1);
                 $c = preg_replace_callback('#(<p[^>]*class="[^"]*blog-card-excerpt[^"]*"[^>]*>).*?(</p>)#is',
@@ -1553,7 +1570,7 @@ HTML;
             ->where('status', 'published')
             ->whereNotNull('slug')
             ->orderByDesc('published_at')
-            ->get(['slug', 'updated_at', 'published_at']);
+            ->get(['slug', 'updated_at', 'published_at', 'blog_category']);
 
         $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
         $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
@@ -1577,7 +1594,9 @@ HTML;
         foreach ($articles as $article) {
             $slug = trim((string) $article->slug, '/');
             if ($slug === '') continue;
-            $loc = "https://{$canonHost}/{$__base}/" . $slug;
+            $__cat = strtolower(str_replace(' ', '-', (string) ($article->blog_category ?? ''))); // MRDIGITAL888 G3d
+            $__b = in_array($__cat, ['case-studies', 'case-study'], true) ? (preg_match('/^[a-z0-9\-]{1,40}$/', (string) ($__set['case_study_base'] ?? '')) ? $__set['case_study_base'] : 'case-studies') : $__base;
+            $loc = "https://{$canonHost}/{$__b}/" . $slug;
             $ref = $article->published_at ?: $article->updated_at;
             $lastmod = $ref ? date('Y-m-d', strtotime($ref)) : date('Y-m-d');
             $xml .= "  <url>\n    <loc>{$loc}</loc>\n    <lastmod>{$lastmod}</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n";

@@ -23,6 +23,7 @@ final class ThemeRegistry
     private const THEMES = [
         'amg-travel'   => AmgTravelTheme::class,
         'kabayan-news' => KabayanNewsTheme::class,
+        'mrdigital-enterprise' => MrDigitalEnterpriseTheme::class, // MRDIGITAL888 G1 (2026-09-17)
     ];
 
     public static function resolve(?string $key): ?object

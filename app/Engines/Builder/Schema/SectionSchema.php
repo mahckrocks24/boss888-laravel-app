@@ -96,6 +96,10 @@ class SectionSchema
         // events_calendar: upcoming events / classes / shows. Industries:
         // event_venue, training_center, online_courses, hotel, resort,
         // cafe, restaurant, gym (class schedule), news_channel.
+        // TRIP PLANNER QUIZ (2026-09-06) — four-step trip inquiry (what / details / stay & budget / contact) → public contact lead
+        'travel_quiz' => [
+            'optional' => ['heading', 'subheading', 'business_name', 'options', 'occasions', 'budget_options', 'currency', 'contact_methods', 'submit_label', 'success_title', 'success_body', 'reference_prefix', 'note'],
+        ],
         'events_calendar' => [
             'optional' => [
                 'heading', 'subheading', 'body',
@@ -249,6 +253,22 @@ class SectionSchema
         // KABAYAN888 JOBS-1 (2026-09-04) — job portal board, data-backed (job_listings at render time)
         'jobs_board' => [
             'optional' => ['eyebrow', 'heading', 'subheading', 'category', 'city', 'country', 'employment_type', 'limit', 'layout', 'show_filters', 'show_post_form', 'cta_text', 'cta_url', 'hide_when_empty'],
+        ],
+        // ─── MRDIGITAL888 G2 (2026-09-17) — enterprise / corporate types ──────
+        // logo_wall + process_steps carry presentation only; case_studies is
+        // data-backed (published articles in blog_category 'case-studies', KPIs
+        // from brief_json.case_study). Renderers: BuilderRenderer (EnterpriseSections
+        // trait, generic) + MrDigitalEnterpriseTheme. Arthur-editable by contract.
+        'logo_wall' => [
+            'required' => ['items'],
+            'optional' => ['heading', 'style', 'hide_when_empty'],
+        ],
+        'process_steps' => [
+            'required' => ['steps'],
+            'optional' => ['heading', 'subheading', 'numbered'],
+        ],
+        'case_studies' => [
+            'optional' => ['heading', 'subheading', 'limit', 'layout', 'practice', 'sector', 'show_filters', 'filter_by', 'hide_when_empty', 'empty_text', 'cta_text', 'cta_url'],
         ],
     ];
 
