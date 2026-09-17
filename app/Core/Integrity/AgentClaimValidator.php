@@ -149,6 +149,15 @@ class AgentClaimValidator
         $stripped = []; $strippedClaims = 0;   // RISK-0186: the "not queued" footer belongs to a stripped QUEUE claim, never to a stripped cost figure
         $engaged  = array_values(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $engagedAgents)));
         $recentSpec = array_values(array_filter(array_map(fn ($a) => strtolower(trim((string) $a)), $recentSpecialists)));
+        // EV-1045 (2026-09-16): a WEBSITE called "Sofia Alvarez" is not the specialist Sofia. "Queued — Priya's writing
+        // two pieces for Sofia Alvarez" was stripped as an unbacked claim about Sofia (twice on the QA workspace,
+        // once on the Owner's). Website names are blanked before specialist names are read from a sentence.
+        $siteNames = [];
+        try {
+            foreach (\Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->pluck('name') as $__n) {
+                $__n = trim((string) $__n); if (mb_strlen($__n) >= 3) $siteNames[] = $__n;
+            }
+        } catch (\Throwable) { $siteNames = []; }
 
         // Split into sentences; decide keep vs strip per claim.
         $sentences = preg_split('/(?<=[.!?])\s+|\n+/', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -182,7 +191,7 @@ class AgentClaimValidator
             //    so a fabricated claim with no matching real task is still stripped — RISK-0123 preserved).
             $keep = false;
             if ($isDmm) {
-                $named   = $this->namedSpecialists($sentence);
+                $named   = $this->namedSpecialists($siteNames ? str_ireplace($siteNames, ' ', $sentence) : $sentence);
                 $backers = array_values(array_unique(array_merge($engaged, $recentSpec)));
                 if ($named !== []) {
                     if ($backers !== []) {
@@ -215,7 +224,13 @@ class AgentClaimValidator
 
         // RISK-0186 (2026-09-17): say "not queued" only when a queue claim was removed AND nothing was queued this turn — EV-1056 saw this
         // footer land on a turn that had stripped a correction, and today on a turn that had only lost a cost figure while 10 tasks ran.
-        if ($strippedClaims > 0 && ! $didQueue) { $out = $out === '' ? $honest : rtrim($out, " 	") . ' ' . $honest; }
+        // When work WAS queued this turn but a claim about it could not be backed (an unengaged specialist named), the
+        // truthful line is that the unbacked part is not running — never that nothing was queued.
+        $honestQueued = "That part isn't in hand — only the work I actually started this turn is running.";
+        if ($strippedClaims > 0) {
+            $line = $isDmm ? ($didQueue ? $honestQueued : $honest) : $honest;
+            $out = $out === '' ? $line : rtrim($out, " \t") . ' ' . $line;
+        }
 
         Log::warning('[AgentClaim] stripped unverified completion claim', [
             'workspace_id' => $wsId,

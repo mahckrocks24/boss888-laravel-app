@@ -30,7 +30,10 @@ class AgentClaimAttributionTest extends TestCase
         // A task exists this turn (didQueue) but James was NOT engaged — the attribution is invented.
         $r = $this->v()->validate('James is inserting the internal links now.', 1, 'sarah', true, ['elena']);
         $this->assertNotEmpty($r['stripped']);
-        $this->assertStringContainsString("haven't queued", $r['reply']);
+        // RISK-0186 (2026-09-17): work WAS queued this turn, so "I haven't queued that yet" would itself be a false statement —
+        // the footer says the unbacked part is not in hand, and only the started work is running.
+        $this->assertStringContainsString("isn't in hand", $r['reply']);
+        $this->assertStringNotContainsString("haven't queued", $r['reply']);
     }
 
     public function test_generic_queue_claim_is_kept_when_work_exists(): void
