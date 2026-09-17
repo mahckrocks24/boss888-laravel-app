@@ -4078,6 +4078,8 @@ $withCorr = function (array $meta) use ($corr) {
             // RISK-0143 (2026-09-07, DEC-0042): a completed, charged session is never denied; a running one is never called done or
             // charged; a RECONCILING record is never resolved by the model — the correction is appended in full view (EV-0923).
             if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\SessionLedgerFacts::guard((string) $reply, (int) $wsId); } catch (\Throwable) {} }
+            // RISK-0189 (2026-09-17): a stated credit balance is the ledger's figure at reply time, never one remembered from the thread
+            if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\CreditBalanceFacts::guard((string) $reply, (int) $wsId); } catch (\Throwable) {} }
 
             // ── SARAH888 PHASE 1C SLICE 1C.3 — DENIAL GUARD ──────────────
             // Third guard in this chain, and here for the same reason as the
