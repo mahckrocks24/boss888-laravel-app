@@ -245,7 +245,9 @@ class ForensicRemediationTest extends TestCase
         $reply = "I recommend we publish article #999999 next.";
         $r = app(ArticleIdClaimGuard::class)->validate($reply, $ws);
         $this->assertTrue($r['corrected']);
-        $this->assertStringContainsString('#' . $draft, $r['reply'], 'a publishing sentence is replaced by what is actually ready');
+        // Owner 2026-09-18: drafts are named by title — internal numbers never reach the customer
+        $this->assertStringContainsString('"' . mb_strimwidth((string) DB::table('articles')->where('id', $draft)->value('title'), 0, 48, '…') . '"', $r['reply'], 'a publishing sentence is replaced by what is actually ready');
+        $this->assertDoesNotMatchRegularExpression('/#\d+/', $r['reply']);
     }
 
     /*──────────────────────────── fixtures */

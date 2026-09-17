@@ -63,7 +63,9 @@ class ReofferPublishedGuardTest extends TestCase
         $this->assertTrue($r['corrected'], 'an offer to redo finished work must not reach the owner');
         $this->assertStringNotContainsString('I recommend we publish', $r['reply']);
         $this->assertStringContainsString('already published', $r['reply']);
-        $this->assertStringContainsString('#' . $draft, $r['reply'], 'and it names what IS still ready');
+        // Owner 2026-09-18: by title, never by number
+        $this->assertStringContainsString('"' . mb_strimwidth((string) DB::table('articles')->where('id', $draft)->value('title'), 0, 48, '…') . '"', $r['reply'], 'and it names what IS still ready');
+        $this->assertDoesNotMatchRegularExpression('/#\d+/', $r['reply']);
     }
 
     /** The half of the rule that must not over-reach: a true completion report keeps its numbers. */

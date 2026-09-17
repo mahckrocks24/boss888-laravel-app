@@ -170,7 +170,10 @@ class ArticleIdClaimGuard
         if ($alreadyLive) {
             sort($alreadyLive);
             $n = count($alreadyLive);
-            $done = ($n === 1 ? 'Article #' . $alreadyLive[0] . ' is' : 'Articles #' . implode(', #', $alreadyLive) . ' are')
+            // Owner 2026-09-18: name them by title, never by number
+            $liveTitles = DB::table('articles')->where('workspace_id', $wsId)->whereIn('id', $alreadyLive)->orderBy('id')->pluck('title')
+                ->map(fn ($t) => '"' . mb_strimwidth((string) $t, 0, 48, '…') . '"')->implode(', ');
+            $done = ($n === 1 ? $liveTitles . ' is' : $liveTitles . ' are')
                   . ' already published — that work is done. ';
         }
 
