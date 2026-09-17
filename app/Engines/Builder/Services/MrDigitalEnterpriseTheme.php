@@ -253,7 +253,7 @@ class MrDigitalEnterpriseTheme
         $logo = $this->url((string) ($h['logo_url'] ?? ''), '');
         if ($logo !== '') return '<a class="md-logo" href="/" aria-label="' . $name . ' home"><img src="' . $logo . '" alt="' . $name . '"></a>';
         $initials = mb_strtoupper(mb_substr(preg_replace('/[^A-Za-z]/', '', (string) ($h['logo_text'] ?? $website['name'] ?? 'MR')), 0, 2));
-        $tag = $this->e((string) ($this->settings['logo_tagline'] ?? 'Enterprise Systems'));
+        $tag = $this->e((string) ($this->settings['logo_tagline'] ?? 'Enterprise Solutions'));
         return '<a class="md-logo" href="/" aria-label="' . $name . ' home"><span class="md-mark">' . $this->e($initials) . '</span><span class="md-word">' . $name . '<small>' . $tag . '</small></span></a>';
     }
 
