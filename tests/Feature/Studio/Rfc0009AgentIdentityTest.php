@@ -16,8 +16,18 @@ use Tests\TestCase;
  */
 class Rfc0009AgentIdentityTest extends TestCase
 {
+    /**
+     * RISK-0187 (2026-09-17): this test OWNS its Sarah fixture. Three Sarah suites insert a bare `agents` row (slug,
+     * role, no title / avatar_url) into the persistent test database, and "insert only if missing" then asserted
+     * against whatever the previous suite left behind — green in one order, red in another. The registry shape the
+     * resolver needs is written explicitly, so the result no longer depends on who ran first.
+     */
     private function sarah(): object
     {
+        $fixture = ['name' => 'Sarah', 'title' => 'Digital Marketing Manager', 'description' => 'Lead agent.', 'avatar_url' => '/img/agents/sarah.webp', 'updated_at' => now()];
+        if (DB::table('agents')->where('slug', 'sarah')->exists()) {
+            DB::table('agents')->where('slug', 'sarah')->update($fixture);
+        }
         $row = DB::table('agents')->where('slug', 'sarah')->first(['slug', 'name', 'title', 'avatar_url']);
         if (! $row) {
             DB::table('agents')->insert(['slug' => 'sarah', 'name' => 'Sarah', 'title' => 'Digital Marketing Manager', 'description' => 'Lead agent.', 'avatar_url' => '/img/agents/sarah.webp', 'created_at' => now(), 'updated_at' => now()]);

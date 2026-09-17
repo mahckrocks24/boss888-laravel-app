@@ -45,7 +45,20 @@ class LegacyImageDriftCharacterizationTest extends TestCase
         $planPos = strpos($src, '->plan(', $fnPos);
         $this->assertNotFalse($iiPos, 'LEGACY: Creative888 delegated its image reasoning to ImageIntelligence.');
         $this->assertNotFalse($planPos);
-        $this->assertLessThan(3000, $iiPos - $fnPos, 'II call is within generateImage().');
+        // RISK-0187 (2026-09-17): the invariant is that the delegation happens INSIDE generateImage() — not within an
+        // arbitrary character budget of its first line (RFC-0009 a0e8ce7 put the plan-token consumption block first and
+        // the 3,000-character window broke while the delegation stood). The method body is bounded by brace matching.
+        $bodyStart = strpos($src, '{', $fnPos);
+        $this->assertNotFalse($bodyStart);
+        $depth = 0; $bodyEnd = null;
+        for ($i = $bodyStart, $n = strlen($src); $i < $n; $i++) {
+            if ($src[$i] === '{') $depth++;
+            elseif ($src[$i] === '}' && --$depth === 0) { $bodyEnd = $i; break; }
+        }
+        $this->assertNotNull($bodyEnd, 'generateImage() has a closed body');
+        $this->assertGreaterThan($bodyStart, $iiPos, 'II reference is inside generateImage()');
+        $this->assertLessThan($bodyEnd, $iiPos, 'II reference is inside generateImage(), before its closing brace');
+        $this->assertLessThan($bodyEnd, $planPos, 'the ->plan( call is inside generateImage()');
     }
 
     /** #6 ImageReasoningService independently prompts an LLM as a creative director (Arthur). */
