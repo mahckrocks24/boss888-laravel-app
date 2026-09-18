@@ -1154,5 +1154,17 @@
     "accent": "gold",
     "accent_deep": "gold_deep",
     "secondary": null
+  },
+  "palette_scheme": "dark",
+  "palette_roles": {
+    "gold": "accent",
+    "gold_deep": "accent_deep",
+    "midnight": "bg",
+    "midnight_soft": "surface",
+    "cream": "text",
+    "cream_soft": "muted",
+    "pearl": "text",
+    "muted": "muted",
+    "divider": "line"
   }
 }

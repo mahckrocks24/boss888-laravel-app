@@ -2159,5 +2159,17 @@
     "accent": "gold",
     "accent_deep": "gold_deep",
     "secondary": null
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "gold": "accent",
+    "gold_deep": "accent_deep",
+    "whatsapp_green": "keep",
+    "charcoal": "text",
+    "charcoal_soft": "dark",
+    "white": "bg",
+    "warm_grey": "surface2",
+    "cream": "surface",
+    "divider": "muted"
   }
 }

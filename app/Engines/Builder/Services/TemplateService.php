@@ -333,6 +333,10 @@ class TemplateService
             if ($add !== '') { $html = str_ireplace('</head>', $add . "\n</head>", $html); }
         }
 
+        // PALETTE ROLES (Owner 2026-09-18): the roles block every design reads — bg/surface/text/muted/line/dark
+        // and what to write on each brand colour — derived from the site's colours with contrast maths.
+        $html = \App\Engines\Builder\Support\PaletteRoles::injectBlock($html, $variables, is_array($mf ?? null) ? $mf : []);
+
         $html = self::injectRevealFailsafe($html);
         $html = self::injectMobileSafety($html);
 

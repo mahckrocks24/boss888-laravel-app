@@ -1158,5 +1158,18 @@
         "accent": "cyan",
         "accent_deep": null,
         "secondary": "violet"
+    },
+    "palette_scheme": "dark",
+    "palette_roles": {
+        "cyan": "accent",
+        "violet": "secondary",
+        "danger": "keep",
+        "success": "keep",
+        "void": "bg",
+        "void_soft": "surface",
+        "panel": "surface2",
+        "panel_border": "line",
+        "ink": "text",
+        "muted": "muted"
     }
 }

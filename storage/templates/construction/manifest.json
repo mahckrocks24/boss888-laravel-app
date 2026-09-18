@@ -1469,5 +1469,15 @@
     "accent": "orange",
     "accent_deep": "orange_deep",
     "secondary": null
+  },
+  "palette_scheme": "dark",
+  "palette_roles": {
+    "orange": "accent",
+    "orange_deep": "accent_deep",
+    "steel": "bg",
+    "steel_soft": "surface",
+    "chalk": "text",
+    "warm_grey": "muted",
+    "divider": "line"
   }
 }

@@ -40,10 +40,10 @@ h1,h2,h3,h4{font-family:'Inter',sans-serif;font-weight:700;color:var(--ink);line
 .h-display{font-size:clamp(44px,5.8vw,80px);line-height:1.04}
 .h-section{font-size:clamp(34px,4.2vw,56px)}
 .h-sub{font-size:clamp(20px,2.2vw,28px)}
-.eyebrow{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.14em;color:var(--sky);margin-bottom:16px;display:inline-block;text-transform:uppercase}
+.eyebrow{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.14em;color:var(--lu-accent-text, var(--sky));margin-bottom:16px;display:inline-block;text-transform:uppercase}
 
 .btn{display:inline-flex;align-items:center;gap:10px;font-size:15px;font-weight:600;padding:15px 28px;border-radius:10px;transition:all .2s ease;cursor:pointer;border:2px solid transparent;letter-spacing:-0.01em}
-.btn-primary{background:var(--sky);color:#fff;border-color:var(--sky);box-shadow:0 4px 16px rgba(14,165,233,0.25)}
+.btn-primary{background:var(--sky);color:var(--lu-on-accent, #fff);border-color:var(--sky);box-shadow:0 4px 16px rgba(14,165,233,0.25)}
 .btn-primary:hover{background:var(--sky-deep);border-color:var(--sky-deep);transform:translateY(-2px);box-shadow:0 10px 28px rgba(14,165,233,0.35)}
 .btn-ghost{background:transparent;color:var(--ink);border-color:var(--divider)}
 .btn-ghost:hover{border-color:var(--ink)}
@@ -58,7 +58,7 @@ nav .logo::before{content:'';width:14px;height:14px;background:var(--sky);border
 .nav-links{display:flex;gap:30px;align-items:center}
 .nav-links a{font-size:14px;color:var(--muted);font-weight:500;transition:color .2s ease}
 .nav-links a:hover{color:var(--ink)}
-.nav-cta{background:var(--green);color:#fff!important;padding:11px 22px;border-radius:8px;font-weight:600;font-size:14px;transition:all .2s ease;box-shadow:0 4px 12px rgba(22,163,74,0.3)}
+.nav-cta{background:var(--green);color:var(--lu-on-secondary, #fff)!important;padding:11px 22px;border-radius:8px;font-weight:600;font-size:14px;transition:all .2s ease;box-shadow:0 4px 12px rgba(22,163,74,0.3)}
 .nav-cta:hover{background:var(--green-deep);transform:translateY(-1px);box-shadow:0 6px 20px rgba(22,163,74,0.4)}
 
 /* Hero */
@@ -66,22 +66,22 @@ nav .logo::before{content:'';width:14px;height:14px;background:var(--sky);border
 .hero::before{content:'';position:absolute;top:-180px;right:-160px;width:640px;height:640px;background:radial-gradient(circle at center,rgba(14,165,233,0.18) 0%,transparent 60%);pointer-events:none;z-index:0}
 .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.15fr 1fr;gap:64px;align-items:center}
 .hero-title{font-size:clamp(42px,5.4vw,72px);color:var(--ink);line-height:1.04;letter-spacing:-0.03em;margin-bottom:22px;font-weight:800}
-.hero-title span{color:var(--sky)}
+.hero-title span{color:var(--lu-accent-text, var(--sky))}
 .hero-subtitle{font-size:18px;line-height:1.65;color:var(--muted);margin-bottom:32px;max-width:560px}
 .hero-trust{display:flex;gap:24px;flex-wrap:wrap;margin-top:30px;padding-top:28px;border-top:1px solid var(--divider)}
 .hero-trust-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-weight:600}
-.hero-trust-item::before{content:'✓';color:var(--green);font-weight:800;font-size:15px}
+.hero-trust-item::before{content:'✓';color:var(--lu-secondary-text, var(--green));font-weight:800;font-size:15px}
 
 /* Hero quote form */
-.hero-form{background:#fff;border:1px solid var(--divider);border-radius:18px;padding:34px;box-shadow:0 24px 60px rgba(15,23,42,0.08)}
-.hero-form-eyebrow{font-size:12px;font-weight:700;letter-spacing:0.14em;color:var(--green);margin-bottom:10px;text-transform:uppercase}
+.hero-form{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:18px;padding:34px;box-shadow:0 24px 60px rgba(15,23,42,0.08)}
+.hero-form-eyebrow{font-size:12px;font-weight:700;letter-spacing:0.14em;color:var(--lu-secondary-text, var(--green));margin-bottom:10px;text-transform:uppercase}
 .hero-form-title{font-size:24px;font-weight:700;color:var(--ink);margin-bottom:8px;letter-spacing:-0.02em}
 .hero-form-sub{font-size:14px;color:var(--muted);margin-bottom:22px;line-height:1.55}
 .hero-form form{display:flex;flex-direction:column;gap:14px}
 .hero-form label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:0.02em;text-transform:uppercase}
 .hero-form input{width:100%;padding:14px 16px;background:var(--light-grey);border:1px solid var(--divider);border-radius:10px;font-size:14px;color:var(--ink);font-family:'Inter',sans-serif;transition:all .2s ease}
 .hero-form input:focus{outline:none;border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,0.12)}
-.hero-form button{width:100%;background:var(--sky);color:#fff;border:none;padding:15px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s ease;margin-top:6px}
+.hero-form button{width:100%;background:var(--sky);color:var(--lu-on-accent, #fff);border:none;padding:15px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s ease;margin-top:6px}
 .hero-form button:hover{background:var(--sky-deep);transform:translateY(-1px);box-shadow:0 8px 24px rgba(14,165,233,0.35)}
 .hero-form-note{font-size:12px;color:var(--muted);text-align:center;margin-top:12px}
 
@@ -89,7 +89,7 @@ nav .logo::before{content:'';width:14px;height:14px;background:var(--sky);border
 .results{padding:60px 0;background:var(--light-grey);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px}
 .result-item{text-align:center}
-.result-value{font-size:52px;line-height:1;color:var(--sky);margin-bottom:10px;letter-spacing:-0.035em;font-weight:800}
+.result-value{font-size:52px;line-height:1;color:var(--lu-accent-text, var(--sky));margin-bottom:10px;letter-spacing:-0.035em;font-weight:800}
 .result-label{font-size:14px;color:var(--muted);font-weight:500;letter-spacing:0.02em}
 
 .section{padding:110px 0}
@@ -99,40 +99,40 @@ nav .logo::before{content:'';width:14px;height:14px;background:var(--sky);border
 
 /* Services */
 .services-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.service{background:#fff;border:1px solid var(--divider);border-radius:16px;padding:34px;transition:all .3s ease;position:relative;overflow:hidden}
+.service{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:16px;padding:34px;transition:all .3s ease;position:relative;overflow:hidden}
 .service::before{content:'';position:absolute;top:0;left:0;width:100%;height:3px;background:var(--sky);transform:scaleX(0);transform-origin:left;transition:transform .3s ease}
 .service:hover{border-color:var(--sky);transform:translateY(-4px);box-shadow:0 20px 50px rgba(14,165,233,0.12)}
 .service:hover::before{transform:scaleX(1)}
-.service-icon{width:52px;height:52px;border-radius:12px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:22px;color:var(--sky);font-size:22px;font-weight:800}
+.service-icon{width:52px;height:52px;border-radius:12px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);display:flex;align-items:center;justify-content:center;margin-bottom:22px;color:var(--lu-accent-text, var(--sky));font-size:22px;font-weight:800}
 .service h3{font-size:21px;margin-bottom:12px;color:var(--ink);font-weight:700;letter-spacing:-0.02em}
 .service p{font-size:15px;color:var(--muted);line-height:1.65;margin-bottom:18px}
-.service-link{font-size:13px;color:var(--sky);font-weight:700;letter-spacing:0.02em;display:inline-flex;align-items:center;gap:6px;transition:gap .2s ease}
+.service-link{font-size:13px;color:var(--lu-accent-text, var(--sky));font-weight:700;letter-spacing:0.02em;display:inline-flex;align-items:center;gap:6px;transition:gap .2s ease}
 .service:hover .service-link{gap:10px}
 .service-link::after{content:'→'}
 
 /* Why Us */
 .why-us{background:var(--light-grey);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
-.why-card{background:#fff;border:1px solid var(--divider);border-radius:16px;padding:32px;transition:all .25s ease}
+.why-card{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:16px;padding:32px;transition:all .25s ease}
 .why-card:hover{border-color:var(--green);transform:translateY(-3px);box-shadow:0 14px 36px rgba(22,163,74,0.08)}
-.why-icon{width:48px;height:48px;border-radius:12px;background:rgba(22,163,74,0.1);display:flex;align-items:center;justify-content:center;color:var(--green);font-size:22px;font-weight:800;margin-bottom:18px}
+.why-icon{width:48px;height:48px;border-radius:12px;background:rgba(22,163,74,0.1);display:flex;align-items:center;justify-content:center;color:var(--lu-secondary-text, var(--green));font-size:22px;font-weight:800;margin-bottom:18px}
 .why-card h3{font-size:19px;margin-bottom:10px;color:var(--ink);font-weight:700;letter-spacing:-0.015em}
 .why-card p{font-size:14px;color:var(--muted);line-height:1.6}
 
 /* Process */
-.process{background:#fff}
+.process{background:var(--lu-bg, #fff)}
 .process-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:32px;counter-reset:step}
 .process-step{counter-increment:step;padding:28px 0}
-.process-step::before{content:counter(step,decimal-leading-zero);font-size:44px;color:var(--sky);font-weight:800;margin-bottom:14px;display:block;letter-spacing:-0.03em;line-height:1}
+.process-step::before{content:counter(step,decimal-leading-zero);font-size:44px;color:var(--lu-accent-text, var(--sky));font-weight:800;margin-bottom:14px;display:block;letter-spacing:-0.03em;line-height:1}
 .process-step h3{font-size:21px;margin-bottom:10px;color:var(--ink);font-weight:700}
 .process-step p{font-size:14.5px;color:var(--muted);line-height:1.6}
 
 /* Pricing */
 .pricing{background:var(--light-grey);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:1160px;margin:0 auto}
-.plan{background:#fff;border:1px solid var(--divider);border-radius:18px;padding:42px 34px;position:relative;transition:all .3s ease;display:flex;flex-direction:column}
+.plan{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:18px;padding:42px 34px;position:relative;transition:all .3s ease;display:flex;flex-direction:column}
 .plan.featured{border-color:var(--sky);box-shadow:0 0 0 1px var(--sky),0 20px 50px rgba(14,165,233,0.15);transform:scale(1.02)}
-.plan.featured::before{content:'MOST POPULAR';position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--sky);color:#fff;font-size:11px;font-weight:700;padding:6px 16px;border-radius:20px;letter-spacing:0.12em}
+.plan.featured::before{content:'MOST POPULAR';position:absolute;top:-14px;left:50%;transform:translateX(-50%);background:var(--sky);color:var(--lu-on-accent, #fff);font-size:11px;font-weight:700;padding:6px 16px;border-radius:20px;letter-spacing:0.12em}
 .plan-name{font-size:20px;color:var(--ink);margin-bottom:8px;font-weight:700;letter-spacing:-0.01em}
 .plan-desc{font-size:13.5px;color:var(--muted);margin-bottom:22px;line-height:1.55}
 .plan-price-row{display:flex;align-items:baseline;gap:6px;margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--divider)}
@@ -141,63 +141,63 @@ nav .logo::before{content:'';width:14px;height:14px;background:var(--sky);border
 .plan-period{font-size:14px;color:var(--muted)}
 .plan-features{list-style:none;margin-bottom:28px;flex:1}
 .plan-features li{font-size:14px;color:var(--ink);padding:8px 0;display:flex;align-items:center;gap:10px;line-height:1.4}
-.plan-features li::before{content:'✓';color:var(--green);font-weight:800;font-size:15px;flex-shrink:0}
+.plan-features li::before{content:'✓';color:var(--lu-secondary-text, var(--green));font-weight:800;font-size:15px;flex-shrink:0}
 .plan-cta{display:block;text-align:center;width:100%;padding:14px 22px;border-radius:10px;font-size:14px;font-weight:700;transition:all .2s ease;border:2px solid var(--divider);background:transparent;color:var(--ink);cursor:pointer}
 .plan-cta:hover{border-color:var(--ink)}
-.plan.featured .plan-cta{background:var(--sky);color:#fff;border-color:var(--sky);box-shadow:0 4px 16px rgba(14,165,233,0.25)}
+.plan.featured .plan-cta{background:var(--sky);color:var(--lu-on-accent, #fff);border-color:var(--sky);box-shadow:0 4px 16px rgba(14,165,233,0.25)}
 .plan.featured .plan-cta:hover{background:var(--sky-deep);border-color:var(--sky-deep);box-shadow:0 8px 24px rgba(14,165,233,0.4)}
 
 /* Testimonials */
 .testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.testimonial{background:#fff;border:1px solid var(--divider);border-radius:16px;padding:38px;display:flex;flex-direction:column}
-.testimonial-quote::before{content:'"';font-size:56px;color:var(--sky);line-height:0;display:block;margin-bottom:18px;font-weight:800}
+.testimonial{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:16px;padding:38px;display:flex;flex-direction:column}
+.testimonial-quote::before{content:'"';font-size:56px;color:var(--lu-accent-text, var(--sky));line-height:0;display:block;margin-bottom:18px;font-weight:800}
 .testimonial-quote{font-size:16.5px;color:var(--ink);line-height:1.6;margin-bottom:26px;font-weight:400;flex:1}
 .testimonial-author{font-size:15px;color:var(--ink);font-weight:700;margin-bottom:4px;letter-spacing:-0.01em}
 .testimonial-company{font-size:13px;color:var(--muted);margin-bottom:12px}
-.testimonial-result{display:inline-block;font-size:12px;color:var(--green);background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);padding:6px 12px;border-radius:6px;font-weight:700;letter-spacing:0.02em}
+.testimonial-result{display:inline-block;font-size:12px;color:var(--lu-secondary-text, var(--green));background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.25);padding:6px 12px;border-radius:6px;font-weight:700;letter-spacing:0.02em}
 
 /* Certifications */
 .certs{background:var(--light-grey);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .certs-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:18px;align-items:center}
-.cert-logo{text-align:center;font-size:15px;color:var(--muted);font-weight:700;opacity:0.85;transition:all .25s ease;letter-spacing:-0.01em;padding:22px 14px;border:1px solid var(--divider);border-radius:12px;background:#fff}
-.cert-logo:hover{opacity:1;color:var(--sky);border-color:var(--sky);transform:translateY(-2px)}
+.cert-logo{text-align:center;font-size:15px;color:var(--muted);font-weight:700;opacity:0.85;transition:all .25s ease;letter-spacing:-0.01em;padding:22px 14px;border:1px solid var(--divider);border-radius:12px;background:var(--lu-bg, #fff)}
+.cert-logo:hover{opacity:1;color:var(--lu-accent-text, var(--sky));border-color:var(--sky);transform:translateY(-2px)}
 
 /* Booking */
-.booking{position:relative;overflow:hidden;padding:110px 0;background:#fff}
+.booking{position:relative;overflow:hidden;padding:110px 0;background:var(--lu-bg, #fff)}
 .booking::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:900px;background:radial-gradient(circle at center,rgba(14,165,233,0.08) 0%,transparent 60%);pointer-events:none}
 .booking-inner{position:relative;z-index:2;max-width:740px;margin:0 auto;text-align:center}
 .booking-intro{font-size:18px;color:var(--muted);line-height:1.7;margin-top:20px;margin-bottom:44px}
 .booking-form{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;background:var(--light-grey);border:1px solid var(--divider);border-radius:18px;padding:42px}
 .booking-form .full{grid-column:span 2}
 .booking-form label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
-.booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:14px 16px;background:#fff;border:1px solid var(--divider);border-radius:10px;font-size:14px;color:var(--ink);font-family:'Inter',sans-serif;transition:all .2s ease}
+.booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:14px 16px;background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:10px;font-size:14px;color:var(--ink);font-family:'Inter',sans-serif;transition:all .2s ease}
 .booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--sky);box-shadow:0 0 0 3px rgba(14,165,233,0.12)}
-.booking-submit{width:100%;background:var(--green);color:#fff;border:none;padding:16px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s ease;margin-top:8px}
+.booking-submit{width:100%;background:var(--green);color:var(--lu-on-secondary, #fff);border:none;padding:16px;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s ease;margin-top:8px}
 .booking-submit:hover{background:var(--green-deep);transform:translateY(-1px);box-shadow:0 10px 28px rgba(22,163,74,0.35)}
 
 /* Contact */
 .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
 .contact-info-item{display:flex;gap:18px;align-items:flex-start;margin-bottom:28px;padding-bottom:28px;border-bottom:1px solid var(--divider)}
 .contact-info-item:last-child{border-bottom:none}
-.contact-info-icon{width:44px;height:44px;border-radius:10px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--sky);flex-shrink:0;font-weight:800}
+.contact-info-icon{width:44px;height:44px;border-radius:10px;background:rgba(14,165,233,0.1);border:1px solid rgba(14,165,233,0.2);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--lu-accent-text, var(--sky));flex-shrink:0;font-weight:800}
 .contact-info-label{font-size:12px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:6px;font-weight:700}
 .contact-info-value{font-size:16px;color:var(--ink);font-weight:500;line-height:1.5}
 
 /* Footer */
-footer{background:var(--ink);color:#D9E2EC;padding:58px 0 30px}
+footer{background:var(--ink);color:var(--lu-on-dark, #D9E2EC);padding:58px 0 30px}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:46px}
 .footer-logo{font-size:22px;color:#fff;font-weight:800;letter-spacing:-0.02em;margin-bottom:16px;display:flex;align-items:center;gap:10px}
 .footer-logo::before{content:'';width:12px;height:12px;background:var(--sky);border-radius:50%}
-.footer-tagline{font-size:14px;color:#94A3B8;line-height:1.6;margin-bottom:20px;max-width:320px}
+.footer-tagline{font-size:14px;color:var(--lu-on-dark, #94A3B8);line-height:1.6;margin-bottom:20px;max-width:320px}
 .footer-socials{display:flex;gap:10px}
-.footer-social{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;font-weight:700;transition:all .2s ease}
-.footer-social:hover{border-color:var(--sky);color:var(--sky)}
+.footer-social{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;color:var(--lu-on-dark, #94A3B8);font-size:13px;font-weight:700;transition:all .2s ease}
+.footer-social:hover{border-color:var(--sky);color:var(--lu-accent-text, var(--sky))}
 .footer-col-title{font-size:14px;color:#fff;font-weight:700;margin-bottom:18px;letter-spacing:-0.01em}
 .footer-col ul{list-style:none}
 .footer-col li{margin-bottom:10px}
-.footer-col a{font-size:13.5px;color:#94A3B8;transition:color .2s ease}
-.footer-col a:hover{color:var(--sky)}
-.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:26px;border-top:1px solid rgba(255,255,255,0.08);font-size:13px;color:#94A3B8}
+.footer-col a{font-size:13.5px;color:var(--lu-on-dark, #94A3B8);transition:color .2s ease}
+.footer-col a:hover{color:var(--lu-accent-text, var(--sky))}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:26px;border-top:1px solid rgba(255,255,255,0.08);font-size:13px;color:var(--lu-on-dark, #94A3B8)}
 
 @media(max-width:980px){
   .hero-grid{grid-template-columns:1fr;gap:48px}
@@ -642,18 +642,18 @@ figure{margin:0}
 
 <!-- Footer -->
 <!-- ═══ CONTACT (Phase 9E retrofit) ═══ -->
-<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:var(--lu-bg, #fff);">
   <div class="container" style="max-width:720px;margin:0 auto;">
     <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
     <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
     <form class="contact-form" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
-        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
       </div>
-      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:var(--lu-bg, #fff);"></textarea>
       <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
       <div id="contact-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
       <div id="contact-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
@@ -697,15 +697,15 @@ async function handleContactSubmit(e) {
     <h2 data-field="blog_title" style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);">{{blog_title}}</h2>
     <p class="section-subtitle" data-field="blog_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">{{blog_intro}}</p>
     <div class="blog-grid" id="blog-posts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
-      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_1_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_1_title}}</h3>
         <p data-field="blog_post_1_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_1_excerpt}}</p>
       </a>
-      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_2_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_2_title}}</h3>
         <p data-field="blog_post_2_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_2_excerpt}}</p>
       </a>
-      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_3_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_3_title}}</h3>
         <p data-field="blog_post_3_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_3_excerpt}}</p>
       </a>

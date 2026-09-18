@@ -38,16 +38,16 @@ a{color:inherit;text-decoration:none}
 
 /* Typography */
 h1,h2,h3,h4{font-family:'Fraunces',serif;font-weight:300;color:var(--cream);line-height:1.02;letter-spacing:-0.015em}
-h1 em,h2 em,h3 em{font-style:italic;font-weight:400;color:var(--gold)}
+h1 em,h2 em,h3 em{font-style:italic;font-weight:400;color:var(--lu-accent-text, var(--gold))}
 .h-display{font-size:clamp(56px,7.5vw,118px)}
 .h-section{font-size:clamp(44px,5.6vw,86px)}
 .h-sub{font-size:clamp(28px,3.4vw,46px)}
-.eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.28em;color:var(--gold);margin-bottom:24px;display:inline-block}
+.eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.28em;color:var(--lu-accent-text, var(--gold));margin-bottom:24px;display:inline-block}
 .eyebrow::before{content:'— ';opacity:0.8}
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;text-transform:uppercase;letter-spacing:0.22em;padding:18px 36px;transition:all .25s ease;cursor:pointer;border:1px solid transparent}
-.btn-primary{background:var(--gold);color:var(--midnight);border-color:var(--gold)}
+.btn-primary{background:var(--gold);color:var(--lu-on-accent, var(--midnight));border-color:var(--gold)}
 .btn-primary:hover{background:var(--gold-deep);border-color:var(--gold-deep)}
 .btn-ghost{background:transparent;color:var(--cream);border-color:var(--cream)}
 .btn-ghost:hover{background:var(--cream);color:var(--midnight)}
@@ -58,21 +58,21 @@ nav .inner{display:flex;justify-content:space-between;align-items:center}
 nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(--cream);letter-spacing:-0.005em;font-style:italic}
 .nav-links{display:flex;gap:40px;align-items:center}
 .nav-links a{font-size:12px;text-transform:uppercase;letter-spacing:0.22em;color:var(--cream);opacity:0.75;font-weight:500;transition:all .2s ease}
-.nav-links a:hover{opacity:1;color:var(--gold)}
-.nav-cta{background:var(--gold);color:var(--midnight)!important;padding:14px 26px;font-size:11px;letter-spacing:0.22em;opacity:1!important;transition:background .25s ease}
-.nav-cta:hover{background:var(--gold-deep);color:var(--midnight)!important}
+.nav-links a:hover{opacity:1;color:var(--lu-accent-text, var(--gold))}
+.nav-cta{background:var(--gold);color:var(--lu-on-accent, var(--midnight))!important;padding:14px 26px;font-size:11px;letter-spacing:0.22em;opacity:1!important;transition:background .25s ease}
+.nav-cta:hover{background:var(--gold-deep);color:var(--lu-on-accent, var(--midnight))!important}
 
 /* Hero — full bleed with cream title over deep image */
 .hero{position:relative;min-height:94vh;display:flex;align-items:flex-end;overflow:hidden;background:var(--midnight)}
 .hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:brightness(0.58)}
 .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(30,21,51,0.2) 0%,rgba(30,21,51,0.1) 40%,rgba(30,21,51,0.85) 100%);z-index:1}
 .hero-inner{position:relative;z-index:2;width:100%;padding:0 64px 112px;max-width:1320px;margin:0 auto}
-.hero-eyebrow{font-size:11px;letter-spacing:0.32em;text-transform:uppercase;font-weight:500;color:var(--gold);margin-bottom:40px;display:block}
+.hero-eyebrow{font-size:11px;letter-spacing:0.32em;text-transform:uppercase;font-weight:500;color:var(--lu-accent-text, var(--gold));margin-bottom:40px;display:block}
 .hero-title{font-family:'Fraunces',serif;font-size:clamp(64px,9.5vw,152px);color:var(--cream);font-weight:300;line-height:0.95;letter-spacing:-0.025em;margin-bottom:36px;max-width:960px}
-.hero-title em{color:var(--gold);font-style:italic;font-weight:400}
+.hero-title em{color:var(--lu-accent-text, var(--gold));font-style:italic;font-weight:400}
 .hero-subtitle{font-size:18px;line-height:1.65;color:var(--cream);opacity:0.88;max-width:600px;margin-bottom:52px;font-weight:300}
 .hero-ctas{display:flex;gap:16px;flex-wrap:wrap}
-.hero-cta{background:var(--gold);color:var(--midnight);padding:20px 40px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;display:inline-block;transition:all .25s ease;border:1px solid var(--gold)}
+.hero-cta{background:var(--gold);color:var(--lu-on-accent, var(--midnight));padding:20px 40px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;display:inline-block;transition:all .25s ease;border:1px solid var(--gold)}
 .hero-cta:hover{background:var(--gold-deep);border-color:var(--gold-deep)}
 .hero-cta-secondary{background:transparent;color:var(--cream);padding:20px 40px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;display:inline-block;border:1px solid var(--cream);transition:all .25s ease}
 .hero-cta-secondary:hover{background:var(--cream);color:var(--midnight)}
@@ -82,7 +82,7 @@ nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
 .stat{text-align:center;padding:24px;border-right:1px solid var(--divider)}
 .stat:last-child{border-right:none}
-.stat-value{font-family:'Fraunces',serif;font-size:64px;font-weight:300;line-height:1;color:var(--gold);margin-bottom:12px;letter-spacing:-0.02em;font-style:italic}
+.stat-value{font-family:'Fraunces',serif;font-size:64px;font-weight:300;line-height:1;color:var(--lu-accent-text, var(--gold));margin-bottom:12px;letter-spacing:-0.02em;font-style:italic}
 .stat-label{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--muted);font-weight:500}
 
 /* Section */
@@ -108,7 +108,7 @@ nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(
 .event-img{aspect-ratio:3/4;overflow:hidden;background:var(--midnight-soft);margin-bottom:20px;position:relative}
 .event-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease,filter .5s ease}
 .event:hover .event-img img{transform:scale(1.04);filter:brightness(1.05)}
-.event-type{font-size:10.5px;text-transform:uppercase;letter-spacing:0.28em;color:var(--gold);margin-bottom:8px;display:inline-block;font-weight:500}
+.event-type{font-size:10.5px;text-transform:uppercase;letter-spacing:0.28em;color:var(--lu-accent-text, var(--gold));margin-bottom:8px;display:inline-block;font-weight:500}
 .event-name{font-family:'Fraunces',serif;font-size:22px;color:var(--cream);font-weight:400;margin-bottom:6px;letter-spacing:-0.01em}
 .event-venue{font-size:13px;color:var(--muted);font-weight:300}
 
@@ -119,21 +119,21 @@ nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(
 .exp:last-child{border-right:none}
 .exp h3{font-size:28px;margin-bottom:20px;font-family:'Fraunces',serif;font-weight:300;color:var(--cream);letter-spacing:-0.01em}
 .exp p{font-size:15px;color:var(--cream);opacity:0.78;line-height:1.7;margin-bottom:28px;font-weight:300}
-.exp-detail{font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--gold);padding-top:20px;border-top:1px solid var(--divider);letter-spacing:0.01em}
+.exp-detail{font-family:'Fraunces',serif;font-style:italic;font-size:15px;color:var(--lu-accent-on-dark, var(--gold));padding-top:20px;border-top:1px solid var(--divider);letter-spacing:0.01em}
 
 /* Team */
 .team-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:48px}
 .member-img{aspect-ratio:3/4;overflow:hidden;background:var(--midnight-soft);margin-bottom:24px}
 .member-img img{width:100%;height:100%;object-fit:cover;filter:grayscale(0.15)}
 .member-name{font-family:'Fraunces',serif;font-size:28px;color:var(--cream);margin-bottom:6px;font-weight:400;letter-spacing:-0.01em}
-.member-title{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--gold);font-weight:500;margin-bottom:14px}
+.member-title{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--lu-accent-text, var(--gold));font-weight:500;margin-bottom:14px}
 .member-bio{font-size:14.5px;color:var(--cream);opacity:0.78;line-height:1.65;font-weight:300}
 
 /* Venues */
 .venues{background:var(--midnight-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .venues-row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--divider);border-radius:2px;overflow:hidden;margin-top:48px}
 .venue{padding:36px 20px;text-align:center;border-right:1px solid var(--divider);border-bottom:1px solid var(--divider);font-family:'Fraunces',serif;font-style:italic;font-size:20px;color:var(--cream);font-weight:400;transition:all .2s ease;letter-spacing:-0.005em;background:var(--midnight)}
-.venue:hover{background:var(--midnight-soft);color:var(--gold)}
+.venue:hover{background:var(--midnight-soft);color:var(--lu-accent-on-dark, var(--gold))}
 .venue:nth-child(4n){border-right:none}
 .venue:nth-last-child(-n+4){border-bottom:none}
 
@@ -152,10 +152,10 @@ nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(
 /* Testimonials */
 .testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:56px}
 .testimonial{border-top:1px solid var(--divider);padding-top:40px}
-.testimonial::before{content:'"';font-family:'Fraunces',serif;font-size:56px;color:var(--gold);line-height:0;display:block;margin-bottom:24px;font-style:italic;font-weight:400}
+.testimonial::before{content:'"';font-family:'Fraunces',serif;font-size:56px;color:var(--lu-accent-text, var(--gold));line-height:0;display:block;margin-bottom:24px;font-style:italic;font-weight:400}
 .testimonial-quote{font-family:'Fraunces',serif;font-size:20px;line-height:1.55;color:var(--cream);margin-bottom:28px;font-weight:300;letter-spacing:-0.005em}
 .testimonial-author{font-size:14px;color:var(--cream);font-weight:500;margin-bottom:4px}
-.testimonial-event{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--gold);font-weight:500}
+.testimonial-event{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--lu-accent-text, var(--gold));font-weight:500}
 
 /* Blog */
 .blog{background:var(--midnight-soft)}
@@ -166,11 +166,11 @@ nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(
 .blog-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .5s ease}
 .blog-card:hover .blog-card-img img{transform:scale(1.04)}
 .blog-card-body{padding:32px;flex:1;display:flex;flex-direction:column}
-.blog-category{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--gold);font-weight:500;margin-bottom:16px;display:inline-block}
+.blog-category{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--lu-accent-text, var(--gold));font-weight:500;margin-bottom:16px;display:inline-block}
 .blog-card-title{font-family:'Fraunces',serif;font-size:24px;color:var(--cream);line-height:1.2;margin-bottom:16px;font-weight:400;letter-spacing:-0.01em}
 .blog-excerpt{font-size:14.5px;color:var(--cream);opacity:0.75;line-height:1.65;flex:1;font-weight:300}
 .blog-cta-row{text-align:center;margin-top:72px}
-.link-accent{color:var(--gold);border-bottom:1px solid var(--gold);padding-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:0.22em;font-weight:500;transition:all .2s ease}
+.link-accent{color:var(--lu-accent-text, var(--gold));border-bottom:1px solid var(--gold);padding-bottom:4px;font-size:12px;text-transform:uppercase;letter-spacing:0.22em;font-weight:500;transition:all .2s ease}
 .link-accent:hover{color:var(--cream);border-color:var(--cream)}
 
 /* Booking */
@@ -180,15 +180,15 @@ nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(
 .booking-intro{font-size:17px;color:var(--cream);opacity:0.78;line-height:1.75;margin-top:24px;margin-bottom:56px;font-weight:300}
 .booking-form{display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:left;background:var(--midnight-soft);border:1px solid var(--divider);padding:48px}
 .booking-form .full{grid-column:span 2}
-.booking-form label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.24em;color:var(--gold);font-weight:500;margin-bottom:10px}
+.booking-form label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:0.24em;color:var(--lu-accent-on-dark, var(--gold));font-weight:500;margin-bottom:10px}
 .booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:16px 20px;background:var(--midnight);border:1px solid var(--divider);font-size:14px;color:var(--cream);font-family:'Inter',sans-serif;transition:border-color .2s ease}
 .booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--gold)}
 .time-slots{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
 .time-slots label{display:inline-flex;align-items:center;cursor:pointer;border:1px solid var(--divider);padding:11px 18px;font-size:12px;color:var(--cream);opacity:0.75;margin:0;transition:all .2s ease;background:var(--midnight);text-transform:none;letter-spacing:0.04em;font-weight:400}
-.time-slots label:hover{border-color:var(--gold);color:var(--gold);opacity:1}
+.time-slots label:hover{border-color:var(--gold);color:var(--lu-accent-on-dark, var(--gold));opacity:1}
 .time-slots input{display:none}
-.time-slots label:has(input:checked){background:var(--gold);color:var(--midnight);border-color:var(--gold);opacity:1;font-weight:500}
-.booking-form button{margin-top:16px;grid-column:span 2;justify-self:center;background:var(--gold);color:var(--midnight);border:none;padding:20px 44px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:all .25s ease}
+.time-slots label:has(input:checked){background:var(--gold);color:var(--lu-on-accent, var(--midnight));border-color:var(--gold);opacity:1;font-weight:500}
+.booking-form button{margin-top:16px;grid-column:span 2;justify-self:center;background:var(--gold);color:var(--lu-on-accent, var(--midnight));border:none;padding:20px 44px;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:all .25s ease}
 .booking-form button:hover{background:var(--gold-deep)}
 .booking-success{display:none;padding:24px;background:rgba(217,166,77,0.08);border:1px solid rgba(217,166,77,0.3);text-align:left;font-size:14px;color:var(--cream);grid-column:span 2}
 .booking-form.submitted .booking-success{display:block}
@@ -200,14 +200,14 @@ nav .logo{font-family:'Fraunces',serif;font-size:26px;font-weight:400;color:var(
 .contact-details-list{margin-top:8px}
 .contact-detail{padding:22px 0;border-bottom:1px solid var(--divider)}
 .contact-detail:last-child{border-bottom:none}
-.contact-label{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--gold);font-weight:500;margin-bottom:6px}
+.contact-label{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--lu-accent-text, var(--gold));font-weight:500;margin-bottom:6px}
 .contact-value{font-size:17px;color:var(--cream);font-weight:400}
 .contact-form-title{margin-bottom:32px}
 .contact-form{display:grid;gap:20px}
 .contact-form input,.contact-form textarea{width:100%;padding:16px 20px;background:var(--midnight);border:1px solid var(--divider);font-size:14px;color:var(--cream);font-family:'Inter',sans-serif;transition:border-color .2s ease}
 .contact-form input:focus,.contact-form textarea:focus{outline:none;border-color:var(--gold)}
 .contact-form textarea{resize:vertical;min-height:140px}
-.form-submit{background:var(--gold);color:var(--midnight);padding:18px 40px;border:none;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:background .25s ease;justify-self:start}
+.form-submit{background:var(--gold);color:var(--lu-on-accent, var(--midnight));padding:18px 40px;border:none;font-size:12px;letter-spacing:0.22em;text-transform:uppercase;font-weight:500;cursor:pointer;transition:background .25s ease;justify-self:start}
 .form-submit:hover{background:var(--gold-deep)}
 .form-success{display:none;padding:20px;background:rgba(217,166,77,0.08);border:1px solid rgba(217,166,77,0.3);font-size:14px;color:var(--cream)}
 .contact-form.submitted .form-success{display:block}
@@ -217,16 +217,16 @@ footer{background:var(--midnight);color:var(--cream);padding:96px 0 40px;border-
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr;gap:80px;margin-bottom:64px}
 .footer-brand{font-family:'Fraunces',serif;font-size:36px;margin-bottom:20px;color:var(--cream);font-weight:400;font-style:italic;letter-spacing:-0.005em}
 .footer-tagline{font-size:15px;color:var(--cream);opacity:0.7;line-height:1.7;max-width:360px;font-weight:300}
-.footer-col h4{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--gold);margin-bottom:24px;font-family:'Inter',sans-serif;font-weight:500}
+.footer-col h4{font-size:11px;text-transform:uppercase;letter-spacing:0.26em;color:var(--lu-accent-text, var(--gold));margin-bottom:24px;font-family:'Inter',sans-serif;font-weight:500}
 .footer-col ul{list-style:none}
 .footer-col li{margin-bottom:12px}
 .footer-col a{font-size:14px;color:var(--cream);opacity:0.7;transition:all .2s ease;font-weight:300}
-.footer-col a:hover{opacity:1;color:var(--gold)}
+.footer-col a:hover{opacity:1;color:var(--lu-accent-text, var(--gold))}
 .footer-bottom{border-top:1px solid var(--divider);padding-top:32px;display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
 .footer-text{font-size:13px;color:var(--cream);opacity:0.6;font-weight:300}
 .footer-socials{display:flex;gap:28px}
 .footer-socials a{font-size:11px;text-transform:uppercase;letter-spacing:0.22em;color:var(--cream);opacity:0.7;transition:all .2s ease;font-weight:500}
-.footer-socials a:hover{opacity:1;color:var(--gold)}
+.footer-socials a:hover{opacity:1;color:var(--lu-accent-text, var(--gold))}
 
 /* Reveal */
 .reveal{opacity:0;transform:translateY(24px);transition:all .8s cubic-bezier(.2,.7,.3,1)}
@@ -268,6 +268,26 @@ footer{background:var(--midnight);color:var(--cream);padding:96px 0 40px;border-
   .hero{min-height:72vh}
 }
 figure{margin:0}
+
+/* lug-scope */
+.services .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+body .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.signature .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.venues .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.blog .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.contact .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.hero .hero-eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.stats .stat-value{color:var(--lu-accent-on-dark, var(--gold))}
+.stats .stat-label{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .72)}
+body .event-type{color:var(--lu-accent-on-dark, var(--gold))}
+body .event-venue{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .72)}
+body .member-title{color:var(--lu-accent-on-dark, var(--gold))}
+body .testimonial-event{color:var(--lu-accent-on-dark, var(--gold))}
+.blog-card .blog-category{color:var(--lu-accent-on-dark, var(--gold))}
+.blog .link-accent{color:var(--lu-accent-on-dark, var(--gold))}
+.contact .contact-label{color:var(--lu-accent-on-dark, var(--gold))}
+footer .footer-col h4{color:var(--lu-accent-on-dark, var(--gold))}
+/* /lug-scope */
 </style>
 </head>
 <body>

@@ -794,6 +794,18 @@ class ArthurService
             }
         }
 
+        // PALETTE ROLES (Owner 2026-09-18): the palette is the whole site. Every neutral the manifest names
+        // (paper, ink, muted, line, the dark section …) is painted from roles derived with contrast maths, so a
+        // palette switch repaints backgrounds and text, not only the accent. Theme bg/text ride along when the
+        // colours came from a named theme; otherwise the roles derive them.
+        $__roles = \App\Engines\Builder\Support\PaletteRoles::derive(
+            ['primary' => $primary, 'secondary' => $secondary, 'accent' => $accent, 'bg' => $colors['bg'] ?? null, 'text' => $colors['text'] ?? null],
+            (string) ($manifest['palette_scheme'] ?? 'light')
+        );
+        \App\Engines\Builder\Support\PaletteRoles::paintManifestVars($variables, $manifest, $__roles);
+        $variables['palette_bg']   = $colors['bg']   ?? $variables['palette_bg']   ?? null;
+        $variables['palette_text'] = $colors['text'] ?? $variables['palette_text'] ?? null;
+
         // Ensure the canonical trio is explicitly set for downstream CSS
         // regardless of whether the template's manifest declares them.
         if ($primary)       $variables['primary_color']   = $primary;
@@ -2553,6 +2565,14 @@ PROMPT;
         if ($isStatic) {
             $vars = $this->themeVarsForSite($websiteId, $site, $settings, $theme);
             if ($vars === []) { return ['success' => false, 'error' => 'no_palette_vars', 'message' => 'This design does not expose a colour palette I can switch.']; }
+            // PALETTE ROLES (Owner 2026-09-18): the exported page's hard-coded colours become role variables (once,
+            // idempotent) and the roles block is written into it, so the switch repaints the whole site.
+            $__manifest = $this->siteManifest($site, $settings);
+            $__roles = \App\Engines\Builder\Support\PaletteRoles::derive($theme, (string) ($__manifest['palette_scheme'] ?? 'light'));
+            $vars = \App\Engines\Builder\Support\PaletteRoles::siteVarsForRoles($vars, $__manifest, $__roles, self::siteColorVars($websiteId));
+            // the --lu-* roles ride along for the hover preview only; on apply the roles block is rewritten whole
+            $vars = array_filter($vars, fn ($k) => ! str_starts_with((string) $k, '--lu-'), ARRAY_FILTER_USE_KEY);
+            \App\Engines\Builder\Support\PaletteRoles::normaliseExport($websiteId, $__roles, $__manifest);
             $res = $editor->applyStyleColors($websiteId, $vars);
             if ((int) ($res['applied'] ?? 0) === 0) {
                 return ['success' => false, 'error' => 'not_applied', 'message' => 'The palette did not match any colour on this site.', 'missed' => $res['missed'] ?? []];
@@ -2615,6 +2635,11 @@ PROMPT;
                 if (isset($have[$cf . 't'])) { $vars[$cf . 't'] = self::shiftLightness((string) $theme[$role], 1); }
             }
         }
+        // the hover preview paints the same thing apply writes: the design's neutrals and the --lu-* roles
+        // (on_accent, accent_text, …) the normalised CSS reads, so what the customer sees on hover is what they get
+        $__roles = \App\Engines\Builder\Support\PaletteRoles::derive($theme, (string) ($manifest['palette_scheme'] ?? 'light'));
+        $vars = \App\Engines\Builder\Support\PaletteRoles::siteVarsForRoles($vars, $manifest, $__roles, $have);
+        foreach (\App\Engines\Builder\Support\PaletteRoles::cssVars($__roles) as $k => $v) { $vars[$k] = $v; }
         return $vars;
     }
 

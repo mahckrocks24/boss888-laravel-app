@@ -43,9 +43,9 @@ img { max-width: 100%; display: block; }
 a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; color: var(--carbon); }
 .section { padding: 6.5rem 2rem; max-width: 1240px; margin: 0 auto; }
-.eyebrow { font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--rose); font-weight: 500; margin-bottom: 1rem; }
+.eyebrow { font-size: 0.7rem; letter-spacing: 0.24em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 500; margin-bottom: 1rem; }
 .section-h2 { font-family: var(--fh); font-size: clamp(2.1rem, 3.6vw, 3.2rem); font-weight: 400; line-height: 1.15; color: var(--carbon); margin-bottom: 1.3rem; letter-spacing: -0.005em; }
-.section-h2 em { font-style: italic; color: var(--rose); font-weight: 500; }
+.section-h2 em { font-style: italic; color: var(--lu-accent-text, var(--rose)); font-weight: 500; }
 .reveal { opacity: 0; transform: translateY(16px); transition: opacity .85s cubic-bezier(.2,.8,.2,1), transform .85s cubic-bezier(.2,.8,.2,1); }
 .reveal.visible { opacity: 1; transform: none; }
 .reveal-delay-1 { transition-delay: .08s; } .reveal-delay-2 { transition-delay: .16s; } .reveal-delay-3 { transition-delay: .24s; } .reveal-delay-4 { transition-delay: .32s; }
@@ -56,8 +56,8 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .nav-logo { font-family: var(--fh); font-size: 1.35rem; font-weight: 500; color: var(--carbon); letter-spacing: 0.01em; }
 .nav-links { display: flex; gap: 2.2rem; list-style: none; }
 .nav-links a { font-size: 0.8rem; letter-spacing: 0.06em; color: var(--carbon); font-weight: 400; transition: color .2s; }
-.nav-links a:hover { color: var(--rose); }
-.nav-cta { display: inline-block; padding: 0.8rem 1.5rem; background: var(--rose); color: #fff; font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; border-radius: 100px; transition: background .2s, transform .2s; }
+.nav-links a:hover { color: var(--lu-accent-text, var(--rose)); }
+.nav-cta { display: inline-block; padding: 0.8rem 1.5rem; background: var(--rose); color: var(--lu-on-accent, #fff); font-size: 0.74rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; border-radius: 100px; transition: background .2s, transform .2s; }
 .nav-cta:hover { background: var(--rose-deep); transform: translateY(-1px); }
 .nav-burger { display: none; background: none; border: none; padding: 0; cursor: pointer; }
 .nav-burger span { display: block; width: 24px; height: 1.5px; background: var(--carbon); margin: 5px 0; }
@@ -68,22 +68,22 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .hero-media img { width: 100%; height: 100%; object-fit: cover; opacity: 1; }
 .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(245,230,224,.94) 0%, rgba(245,230,224,.86) 34%, rgba(245,230,224,.55) 52%, rgba(245,230,224,.12) 74%, rgba(245,230,224,0) 100%); z-index: 1; pointer-events: none; }
 .hero-inner { position: relative; z-index: 2; max-width: 1240px; margin: 0 auto; padding: 0 2.5rem; width: 100%; }
-.hero-eyebrow { font-size: 0.78rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--rose); font-weight: 500; margin-bottom: 1.3rem; }
+.hero-eyebrow { font-size: 0.78rem; letter-spacing: 0.28em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 500; margin-bottom: 1.3rem; }
 .hero-h1 { font-family: var(--fh); font-size: clamp(2.6rem, 5.5vw, 5rem); line-height: 1.05; font-weight: 400; color: var(--carbon); letter-spacing: -0.02em; margin-bottom: 1.7rem; max-width: 15ch; }
-.hero-h1 em { font-style: italic; color: var(--rose); font-weight: 500; }
+.hero-h1 em { font-style: italic; color: var(--lu-accent-text, var(--rose)); font-weight: 500; }
 .hero-sub { font-size: 1.1rem; color: var(--carbon-soft); max-width: 50ch; margin-bottom: 2.2rem; line-height: 1.7; }
 .hero-actions { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 2rem; }
-.btn-primary { display: inline-block; padding: 1rem 2rem; background: var(--rose); color: #fff; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 100px; transition: background .2s, transform .2s; }
+.btn-primary { display: inline-block; padding: 1rem 2rem; background: var(--rose); color: var(--lu-on-accent, #fff); font-size: 0.82rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 100px; transition: background .2s, transform .2s; }
 .btn-primary:hover { background: var(--rose-deep); transform: translateY(-1px); }
-.btn-ghost { display: inline-block; padding: 1rem 2rem; border: 1px solid var(--rose); color: var(--rose); font-size: 0.82rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 100px; transition: background .2s, color .2s; }
-.btn-ghost:hover { background: var(--rose); color: #fff; }
+.btn-ghost { display: inline-block; padding: 1rem 2rem; border: 1px solid var(--rose); color: var(--lu-accent-text, var(--rose)); font-size: 0.82rem; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; border-radius: 100px; transition: background .2s, color .2s; }
+.btn-ghost:hover { background: var(--rose); color: var(--lu-on-accent, #fff); }
 .hero-trust { font-size: 0.76rem; color: var(--warm-grey); letter-spacing: 0.08em; }
 
 /* STATS */
 .stats-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; padding: 3.5rem 2.5rem; background: var(--chalk-soft); }
 .stat-item { padding: 1rem 2rem; border-right: 1px solid var(--divider); }
 .stat-item:last-child { border-right: none; }
-.stat-num { display: block; font-family: var(--fh); font-size: clamp(2.2rem, 3.6vw, 3rem); font-weight: 500; color: var(--rose); line-height: 1; margin-bottom: 0.4rem; }
+.stat-num { display: block; font-family: var(--fh); font-size: clamp(2.2rem, 3.6vw, 3rem); font-weight: 500; color: var(--lu-accent-text, var(--rose)); line-height: 1; margin-bottom: 0.4rem; }
 .stat-label { display: block; font-size: 0.72rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--warm-grey); font-weight: 500; }
 
 /* SERVICES MENU */
@@ -95,11 +95,11 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .service-card:hover { background: var(--chalk-soft); padding-left: 1.5rem; padding-right: 1.5rem; }
 .service-left { display: flex; flex-direction: column; gap: 0.6rem; }
 .service-title { font-family: var(--fh); font-size: 1.6rem; font-weight: 500; color: var(--carbon); letter-spacing: -0.005em; }
-.service-duration { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--rose); font-weight: 500; }
+.service-duration { font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 500; }
 .service-desc { font-size: 0.92rem; color: var(--carbon-soft); line-height: 1.65; margin-top: 0.2rem; max-width: 60ch; }
 .service-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
-.service-tag { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rose); padding: 0.25rem 0.7rem; border: 1px solid var(--divider); font-weight: 500; border-radius: 100px; }
-.service-price { font-family: var(--fh); font-size: 1.5rem; font-weight: 500; color: var(--rose); text-align: right; white-space: nowrap; }
+.service-tag { font-size: 0.66rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); padding: 0.25rem 0.7rem; border: 1px solid var(--divider); font-weight: 500; border-radius: 100px; }
+.service-price { font-family: var(--fh); font-size: 1.5rem; font-weight: 500; color: var(--lu-accent-text, var(--rose)); text-align: right; white-space: nowrap; }
 
 /* TEAM */
 .team { background: var(--chalk-soft); padding: 7rem 2.5rem; }
@@ -112,9 +112,9 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .team-photo { aspect-ratio: 3/4; overflow: hidden; background: var(--chalk-soft); }
 .team-photo img { width: 100%; height: 100%; object-fit: cover; }
 .team-info { padding: 1.3rem 1.3rem 1.6rem; }
-.team-specialty { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--rose); font-weight: 600; margin-bottom: 0.5rem; }
+.team-specialty { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 600; margin-bottom: 0.5rem; }
 .team-name { font-family: var(--fh); font-size: 1.3rem; font-weight: 500; color: var(--carbon); margin-bottom: 0.15rem; }
-.team-role { font-family: var(--fh); font-style: italic; font-size: 0.9rem; color: var(--rose); margin-bottom: 0.8rem; }
+.team-role { font-family: var(--fh); font-style: italic; font-size: 0.9rem; color: var(--lu-accent-text, var(--rose)); margin-bottom: 0.8rem; }
 .team-bio { font-size: 0.86rem; color: var(--carbon-soft); line-height: 1.55; }
 
 /* GALLERY */
@@ -146,10 +146,10 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .testimonial-slide { position: absolute; inset: 0; opacity: 0; transition: opacity .55s; display: flex; flex-direction: column; justify-content: center; }
 .testimonial-slide.active { opacity: 1; position: relative; }
 .testimonial-quote { font-family: var(--fh); font-style: italic; font-size: clamp(1.3rem, 2vw, 1.6rem); line-height: 1.5; color: var(--carbon); margin-bottom: 1.8rem; max-width: 46ch; margin-left: auto; margin-right: auto; font-weight: 400; }
-.testimonial-quote::before { content: '"'; color: var(--rose); margin-right: 0.1em; }
-.testimonial-quote::after { content: '"'; color: var(--rose); margin-left: 0.1em; }
+.testimonial-quote::before { content: '"'; color: var(--lu-accent-text, var(--rose)); margin-right: 0.1em; }
+.testimonial-quote::after { content: '"'; color: var(--lu-accent-text, var(--rose)); margin-left: 0.1em; }
 .testimonial-author { font-size: 0.9rem; color: var(--carbon); font-weight: 500; letter-spacing: 0.02em; }
-.testimonial-service { font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rose); margin-top: 0.3rem; font-weight: 600; }
+.testimonial-service { font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); margin-top: 0.3rem; font-weight: 600; }
 .testimonial-dots { display: flex; gap: 0.5rem; justify-content: center; margin-top: 1.8rem; }
 .testimonial-dot { width: 28px; height: 2px; background: var(--divider); border: none; padding: 0; cursor: pointer; transition: background .3s; border-radius: 1px; }
 .testimonial-dot.active { background: var(--rose); }
@@ -165,14 +165,14 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .blog-image img { width: 100%; height: 100%; object-fit: cover; transition: transform .5s; }
 .blog-card:hover .blog-image img { transform: scale(1.04); }
 .blog-body { padding: 1.4rem 1.5rem 1.7rem; display: flex; flex-direction: column; flex: 1; }
-.blog-category { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--rose); font-weight: 600; margin-bottom: 0.7rem; }
+.blog-category { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 600; margin-bottom: 0.7rem; }
 .blog-title { font-family: var(--fh); font-size: 1.22rem; font-weight: 500; color: var(--carbon); line-height: 1.3; margin-bottom: 0.7rem; letter-spacing: -0.005em; }
 .blog-excerpt { font-size: 0.9rem; color: var(--carbon-soft); line-height: 1.6; margin-bottom: 1.2rem; flex: 1; }
-.blog-link { font-size: 0.8rem; color: var(--rose); font-weight: 600; margin-top: auto; transition: color .2s; }
-.blog-link:hover { color: var(--rose-deep); }
+.blog-link { font-size: 0.8rem; color: var(--lu-accent-text, var(--rose)); font-weight: 600; margin-top: auto; transition: color .2s; }
+.blog-link:hover { color: var(--lu-accent-text, var(--rose-deep)); }
 .blog-cta-wrap { text-align: center; margin-top: 3rem; }
-.blog-cta-btn { display: inline-block; padding: 0.9rem 1.8rem; border: 1px solid var(--rose); color: var(--rose); font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; transition: background .2s, color .2s; border-radius: 100px; }
-.blog-cta-btn:hover { background: var(--rose); color: #fff; }
+.blog-cta-btn { display: inline-block; padding: 0.9rem 1.8rem; border: 1px solid var(--rose); color: var(--lu-accent-text, var(--rose)); font-size: 0.78rem; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 500; transition: background .2s, color .2s; border-radius: 100px; }
+.blog-cta-btn:hover { background: var(--rose); color: var(--lu-on-accent, #fff); }
 
 /* BOOKING */
 .booking-section { padding: 6rem 2.5rem; max-width: 780px; margin: 0 auto; }
@@ -186,7 +186,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .booking-slot:has(input:checked) { border-color: var(--rose); background: rgba(183,110,121,0.08); }
 .booking-slot-label { font-size: 0.88rem; color: var(--carbon); font-weight: 500; }
 .booking-slot-time { font-size: 0.7rem; color: var(--warm-grey); margin-top: 0.2rem; }
-.booking-submit { grid-column: 1 / -1; padding: 1rem 2rem; background: var(--rose); color: #fff; border: none; border-radius: 100px; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background .2s; font-family: inherit; }
+.booking-submit { grid-column: 1 / -1; padding: 1rem 2rem; background: var(--rose); color: var(--lu-on-accent, #fff); border: none; border-radius: 100px; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background .2s; font-family: inherit; }
 .booking-submit:hover { background: var(--rose-deep); }
 
 /* CONTACT */
@@ -194,19 +194,19 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .contact-intro { font-size: 1rem; color: var(--carbon-soft); line-height: 1.7; margin-bottom: 2rem; max-width: 44ch; }
 .contact-info { display: flex; flex-direction: column; gap: 1.3rem; margin-bottom: 1.5rem; }
 .contact-item { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 1rem; border-bottom: 1px solid var(--divider); }
-.contact-item-label { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--rose); font-weight: 600; }
+.contact-item-label { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 600; }
 .contact-item-value { font-size: 1rem; color: var(--carbon); }
 .contact-right { background: var(--chalk-soft); padding: 2.5rem 2.2rem; border-radius: 16px; }
 .contact-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
 .form-field { display: flex; flex-direction: column; gap: 0.4rem; }
 .form-field.full { grid-column: 1 / -1; }
-.form-field label { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--rose); font-weight: 600; }
+.form-field label { font-size: 0.7rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 600; }
 .form-field input, .form-field select, .form-field textarea { padding: 0.85rem 1rem; background: var(--chalk); border: 1px solid var(--divider); color: var(--carbon); font-family: inherit; font-size: 0.95rem; border-radius: 10px; transition: border-color .2s; }
 .form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline: none; border-color: var(--rose); }
 .form-field textarea { min-height: 110px; resize: vertical; }
-.form-submit { grid-column: 1 / -1; padding: 1rem 2rem; background: var(--rose); color: #fff; border: none; border-radius: 100px; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background .2s; font-family: inherit; }
+.form-submit { grid-column: 1 / -1; padding: 1rem 2rem; background: var(--rose); color: var(--lu-on-accent, #fff); border: none; border-radius: 100px; font-size: 0.82rem; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: background .2s; font-family: inherit; }
 .form-submit:hover { background: var(--rose-deep); }
-#form-success { grid-column: 1 / -1; color: var(--rose); font-size: 0.9rem; margin-top: 1rem; font-family: var(--fh); font-style: italic; }
+#form-success { grid-column: 1 / -1; color: var(--lu-accent-text, var(--rose)); font-size: 0.9rem; margin-top: 1rem; font-family: var(--fh); font-style: italic; }
 
 /* FOOTER */
 footer { background: var(--carbon); color: var(--chalk); padding: 4.5rem 2.5rem 2.5rem; }
@@ -214,13 +214,13 @@ footer { background: var(--carbon); color: var(--chalk); padding: 4.5rem 2.5rem 
 .footer-brand { max-width: 36ch; }
 .footer-logo { font-family: var(--fh); font-size: 1.45rem; font-weight: 500; color: var(--chalk); margin-bottom: 0.8rem; }
 .footer-tagline { font-size: 0.93rem; color: rgba(245,230,224,0.75); line-height: 1.65; font-family: var(--fh); font-style: italic; }
-.footer-col h4 { font-family: var(--fb); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--rose); font-weight: 600; margin-bottom: 1rem; }
+.footer-col h4 { font-family: var(--fb); font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--lu-accent-text, var(--rose)); font-weight: 600; margin-bottom: 1rem; }
 .footer-links { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
 .footer-links a { font-size: 0.92rem; color: rgba(245,230,224,0.7); transition: color .2s; }
-.footer-links a:hover { color: var(--rose); }
+.footer-links a:hover { color: var(--lu-accent-text, var(--rose)); }
 .footer-social { display: flex; gap: 1rem; margin-top: 0.5rem; }
 .footer-social a { font-size: 0.82rem; letter-spacing: 0.1em; color: rgba(245,230,224,0.7); transition: color .2s; }
-.footer-social a:hover { color: var(--rose); }
+.footer-social a:hover { color: var(--lu-accent-text, var(--rose)); }
 .footer-copy { text-align: center; padding-top: 2rem; font-size: 0.8rem; color: rgba(245,230,224,0.5); }
 
 @media (max-width: 900px) {
@@ -247,6 +247,10 @@ footer { background: var(--carbon); color: var(--chalk); padding: 4.5rem 2.5rem 
   .hero-inner { padding-top: 112px; padding-bottom: 64px; }
 }
 figure{margin:0}
+
+/* lug-scope */
+footer .footer-col h4{color:var(--lu-accent-on-dark, var(--rose))}
+/* /lug-scope */
 </style>
 </head>
 <body>
@@ -428,18 +432,18 @@ figure{margin:0}
 </section>
 
 <!-- ═══ CONTACT (Phase 9E retrofit — canonical form) ═══ -->
-<section class="section contact-canonical" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+<section class="section contact-canonical" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:var(--lu-bg, #fff);">
   <div class="container" style="max-width:720px;margin:0 auto;">
     <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
     <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
     <form class="contact-form-canonical" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
-        <input type="text"  name="firstname" placeholder="Your Name"     required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="tel"   name="phone"     placeholder="Phone Number"           class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="text"  name="subject"   placeholder="Subject"                class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="firstname" placeholder="Your Name"     required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="tel"   name="phone"     placeholder="Phone Number"           class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="text"  name="subject"   placeholder="Subject"                class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
       </div>
-      <textarea name="message" placeholder="Your message..." rows="5" required class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <textarea name="message" placeholder="Your message..." rows="5" required class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:var(--lu-bg, #fff);"></textarea>
       <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
       <div id="contact-canonical-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
       <div id="contact-canonical-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>

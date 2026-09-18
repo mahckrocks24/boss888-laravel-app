@@ -1439,5 +1439,15 @@
     "accent": "copper",
     "accent_deep": "copper_deep",
     "secondary": null
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "copper": "accent",
+    "copper_deep": "accent_deep",
+    "white": "bg",
+    "graphite": "text",
+    "graphite_soft": "muted",
+    "light_grey": "surface",
+    "divider": "line"
   }
 }

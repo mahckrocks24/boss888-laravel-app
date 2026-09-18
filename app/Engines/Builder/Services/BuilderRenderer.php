@@ -1981,14 +1981,16 @@ HTML;
         return '';
     }
 
-        private function isLight(string $hex): bool
+        /**
+     * "Light" here means: dark text belongs on it. Decided by contrast, not by brightness — a mid gold or coral
+     * (brightness ~125) reads as "dark" to a brightness test and gets white text at 3.9:1; white must reach
+     * PaletteRoles::AA on the colour, otherwise the text is dark (DEC-0061, 2026-09-18).
+     */
+    private function isLight(string $hex): bool
     {
         $hex = ltrim($hex, '#');
         if (strlen($hex) === 3) $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
-        if (strlen($hex) !== 6) return true; // default to light for unknown colors
-        $r = hexdec(substr($hex, 0, 2));
-        $g = hexdec(substr($hex, 2, 2));
-        $b = hexdec(substr($hex, 4, 2));
-        return ($r * 0.299 + $g * 0.587 + $b * 0.114) > 160;
+        if (strlen($hex) !== 6 || ! ctype_xdigit($hex)) return true; // default to light for unknown colors
+        return \App\Engines\Builder\Support\ColorTheme::contrast('#FFFFFF', '#' . $hex) < \App\Engines\Builder\Support\PaletteRoles::AA;
     }
 }

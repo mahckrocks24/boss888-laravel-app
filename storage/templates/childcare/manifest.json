@@ -1415,5 +1415,15 @@
     "accent": "coral",
     "accent_deep": null,
     "secondary": "yellow"
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "yellow": "secondary_soft",
+    "yellow_soft": "surface",
+    "sky": "primary",
+    "sky_deep": "primary_deep",
+    "coral": "accent",
+    "white": "bg",
+    "divider": "line"
   }
 }

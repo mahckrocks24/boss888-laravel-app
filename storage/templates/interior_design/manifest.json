@@ -1224,5 +1224,18 @@
     "accent": "bronze",
     "accent_deep": "bronze_deep",
     "secondary": null
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "bronze": "accent",
+    "bronze_deep": "accent_deep",
+    "chalk": "bg",
+    "chalk_soft": "surface",
+    "carbon": "text",
+    "carbon_soft": "muted",
+    "warm_grey": "muted",
+    "warm_grey_deep": "muted",
+    "divider": "line",
+    "accent_muted": "accent_soft"
   }
 }

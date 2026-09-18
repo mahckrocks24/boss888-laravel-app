@@ -38,7 +38,7 @@ h1,h2,h3,h4{font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-seri
 .h-display{font-size:clamp(54px,7vw,104px);line-height:1;font-weight:200;letter-spacing:-0.045em}
 .h-section{font-size:clamp(36px,4.8vw,64px);font-weight:300;letter-spacing:-0.04em}
 .h-sub{font-size:clamp(22px,2.4vw,30px)}
-.eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;color:var(--copper);margin-bottom:22px;display:inline-block;text-transform:uppercase}
+.eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;color:var(--lu-accent-text, var(--copper));margin-bottom:22px;display:inline-block;text-transform:uppercase}
 
 .btn{display:inline-flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;font-size:14px;font-weight:500;padding:16px 30px;border-radius:0;transition:all .25s ease;cursor:pointer;border:1px solid transparent;letter-spacing:0.06em;text-transform:uppercase}
 .btn-primary{background:var(--graphite);color:var(--white);border-color:var(--graphite)}
@@ -61,14 +61,14 @@ nav .logo::before{content:'';width:10px;height:10px;background:var(--copper);bor
 .hero{padding:120px 0 130px;position:relative;overflow:hidden;background-image:linear-gradient(rgba(255,255,255,0.72) 0%,rgba(255,255,255,0.56) 50%,rgba(255,255,255,0.82) 100%),url('{{hero_image}}');background-size:cover;background-position:center;background-color:var(--light-grey)}
 .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.2fr 1fr;gap:72px;align-items:center}
 .hero-title{font-size:clamp(52px,7vw,108px);color:var(--graphite);line-height:1;letter-spacing:-0.05em;margin-bottom:30px;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-weight:200}
-.hero-title em{font-style:italic;color:var(--copper);font-weight:300}
+.hero-title em{font-style:italic;color:var(--lu-accent-text, var(--copper));font-weight:300}
 .hero-subtitle{font-size:19px;line-height:1.65;color:var(--graphite-soft);margin-bottom:40px;max-width:560px;font-weight:400}
 .hero-trust{display:flex;gap:32px;flex-wrap:wrap;margin-top:40px;padding-top:32px;border-top:1px solid var(--divider)}
 .hero-trust-item{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--graphite-soft);font-weight:500;letter-spacing:0.04em;text-transform:uppercase}
-.hero-trust-item::before{content:'—';color:var(--copper);font-weight:700}
+.hero-trust-item::before{content:'—';color:var(--lu-accent-text, var(--copper));font-weight:700}
 
 .hero-form{background:var(--white);border:1px solid var(--divider);border-radius:0;padding:44px;box-shadow:0 24px 64px rgba(45,45,45,0.08)}
-.hero-form-eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;color:var(--copper);margin-bottom:14px;text-transform:uppercase}
+.hero-form-eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.22em;color:var(--lu-accent-text, var(--copper));margin-bottom:14px;text-transform:uppercase}
 .hero-form-title{font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:30px;font-weight:300;color:var(--graphite);margin-bottom:10px;letter-spacing:-0.025em;line-height:1.15}
 .hero-form-sub{font-size:14px;color:var(--graphite-soft);margin-bottom:28px;line-height:1.6}
 .hero-form form{display:flex;flex-direction:column;gap:16px}
@@ -99,8 +99,8 @@ nav .logo::before{content:'';width:10px;height:10px;background:var(--copper);bor
 .project:nth-child(5){grid-column:span 2}
 .project:hover{background:var(--graphite)}
 .project:hover .project-category,.project:hover h3,.project:hover .project-location{color:var(--white)}
-.project:hover .project-category{color:var(--copper)}
-.project-category{font-size:11px;color:var(--copper);font-weight:600;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:12px;transition:color .3s ease}
+.project:hover .project-category{color:var(--lu-accent-on-dark, var(--copper))}
+.project-category{font-size:11px;color:var(--lu-accent-text, var(--copper));font-weight:600;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:12px;transition:color .3s ease}
 .project h3{font-size:24px;color:var(--graphite);font-weight:300;margin-bottom:8px;letter-spacing:-0.02em;line-height:1.2;transition:color .3s ease;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
 .project-location{font-size:13px;color:var(--graphite-soft);font-weight:400;letter-spacing:0.02em;transition:color .3s ease}
 
@@ -110,8 +110,8 @@ nav .logo::before{content:'';width:10px;height:10px;background:var(--copper);bor
 .service{background:var(--white);padding:48px 40px;border-right:1px solid var(--divider);border-bottom:1px solid var(--divider);transition:background .3s ease;position:relative}
 .service:hover{background:var(--graphite)}
 .service:hover h3,.service:hover p,.service:hover .service-icon{color:var(--white)}
-.service:hover .service-icon{color:var(--copper)}
-.service-icon{font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:36px;color:var(--copper);font-weight:200;margin-bottom:24px;letter-spacing:-0.03em;line-height:1;transition:color .3s ease}
+.service:hover .service-icon{color:var(--lu-accent-on-dark, var(--copper))}
+.service-icon{font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:36px;color:var(--lu-accent-text, var(--copper));font-weight:200;margin-bottom:24px;letter-spacing:-0.03em;line-height:1;transition:color .3s ease}
 .service h3{font-size:22px;margin-bottom:14px;color:var(--graphite);font-weight:400;letter-spacing:-0.02em;transition:color .3s ease;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
 .service p{font-size:15px;color:var(--graphite-soft);line-height:1.65;transition:color .3s ease}
 
@@ -119,7 +119,7 @@ nav .logo::before{content:'';width:10px;height:10px;background:var(--copper);bor
 .process{background:var(--white)}
 .process-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:36px;counter-reset:step;position:relative}
 .process-step{counter-increment:step;padding:36px 0;position:relative}
-.process-step::before{content:counter(step,decimal-leading-zero);font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:52px;color:var(--copper);font-weight:200;margin-bottom:20px;display:block;letter-spacing:-0.04em;line-height:1}
+.process-step::before{content:counter(step,decimal-leading-zero);font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:52px;color:var(--lu-accent-text, var(--copper));font-weight:200;margin-bottom:20px;display:block;letter-spacing:-0.04em;line-height:1}
 .process-step h3{font-size:20px;margin-bottom:12px;color:var(--graphite);font-weight:400;letter-spacing:-0.015em;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
 .process-step p{font-size:14px;color:var(--graphite-soft);line-height:1.7}
 
@@ -129,7 +129,7 @@ nav .logo::before{content:'';width:10px;height:10px;background:var(--copper);bor
 .awards-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:0;align-items:stretch;border-top:1px solid var(--divider);border-left:1px solid var(--divider)}
 .award{text-align:center;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:18px;color:var(--graphite);font-weight:300;padding:40px 16px;border-right:1px solid var(--divider);border-bottom:1px solid var(--divider);background:var(--white);letter-spacing:0.02em;transition:all .3s ease;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
 .award:hover{background:var(--graphite);color:var(--white)}
-.award:hover .award-year{color:var(--copper)}
+.award:hover .award-year{color:var(--lu-accent-on-dark, var(--copper))}
 .award-name{font-size:19px;font-weight:300;letter-spacing:-0.01em}
 .award-year{font-size:11px;color:var(--graphite-soft);letter-spacing:0.12em;text-transform:uppercase;font-weight:500;transition:color .3s ease;font-family:'Inter',sans-serif}
 @media(max-width:900px){.awards-grid{grid-template-columns:repeat(2,1fr)}}
@@ -142,35 +142,35 @@ nav .logo::before{content:'';width:10px;height:10px;background:var(--copper);bor
 .member-photo{width:100%;aspect-ratio:3/4;background:var(--light-grey);border:1px solid var(--divider);background-size:cover;background-position:center;margin-bottom:22px;filter:grayscale(100%);transition:filter .3s ease}
 .member:hover .member-photo{filter:grayscale(0%)}
 .member h3{font-size:20px;margin-bottom:4px;color:var(--graphite);font-weight:400;letter-spacing:-0.015em;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
-.member-role{font-size:12px;color:var(--copper);font-weight:600;margin-bottom:14px;letter-spacing:0.14em;text-transform:uppercase}
+.member-role{font-size:12px;color:var(--lu-accent-text, var(--copper));font-weight:600;margin-bottom:14px;letter-spacing:0.14em;text-transform:uppercase}
 .member-bio{font-size:14px;color:var(--graphite-soft);line-height:1.6}
 
 /* Testimonials */
 .testimonials{background:var(--light-grey);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:40px}
 .testimonial{background:var(--white);border:1px solid var(--divider);padding:48px;display:flex;flex-direction:column}
-.testimonial-quote::before{content:'"';font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:72px;color:var(--copper);line-height:0;display:block;margin-bottom:28px;font-weight:300}
+.testimonial-quote::before{content:'"';font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:72px;color:var(--lu-accent-text, var(--copper));line-height:0;display:block;margin-bottom:28px;font-weight:300}
 .testimonial-quote{font-size:17px;color:var(--graphite);line-height:1.65;margin-bottom:32px;font-weight:400;flex:1;font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif}
 .testimonial-author{font-size:15px;color:var(--graphite);font-weight:500;margin-bottom:4px;letter-spacing:-0.01em}
 .testimonial-company{font-size:13px;color:var(--graphite-soft);margin-bottom:16px}
-.testimonial-result{display:inline-block;font-size:11px;color:var(--copper);border:1px solid var(--copper);padding:6px 14px;border-radius:0;font-weight:600;letter-spacing:0.12em;text-transform:uppercase}
+.testimonial-result{display:inline-block;font-size:11px;color:var(--lu-accent-text, var(--copper));border:1px solid var(--copper);padding:6px 14px;border-radius:0;font-weight:600;letter-spacing:0.12em;text-transform:uppercase}
 
 /* Booking */
 .booking{position:relative;overflow:hidden;padding:140px 0;background:var(--graphite);color:var(--white)}
 .booking h2{color:var(--white)}
-.booking .eyebrow{color:var(--copper)}
+.booking .eyebrow{color:var(--lu-accent-on-dark, var(--copper))}
 .booking-inner{position:relative;z-index:2;max-width:740px;margin:0 auto;text-align:center}
-.booking-intro{font-size:18px;color:rgba(255,255,255,0.7);line-height:1.75;margin-top:24px;margin-bottom:56px}
+.booking-intro{font-size:18px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.7);line-height:1.75;margin-top:24px;margin-bottom:56px}
 .booking-form{display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:left;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:0;padding:48px}
 .booking-form .full{grid-column:span 2}
-.booking-form label{display:block;font-size:11px;color:rgba(255,255,255,0.62);margin-bottom:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase}
+.booking-form label{display:block;font-size:11px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.62);margin-bottom:10px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase}
 .booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:14px 0;background:transparent;border:none;border-bottom:1px solid rgba(255,255,255,0.2);border-radius:0;font-size:15px;color:var(--white);font-family:'Inter',sans-serif;transition:border-color .2s ease}
-.booking-form input::placeholder,.booking-form textarea::placeholder{color:rgba(255,255,255,0.4)}
+.booking-form input::placeholder,.booking-form textarea::placeholder{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
 .booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-bottom-color:var(--copper)}
 .booking-form select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,rgba(255,255,255,0.5) 50%),linear-gradient(135deg,rgba(255,255,255,0.5) 50%,transparent 50%);background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:30px}
 .booking-form select option{background:var(--graphite);color:var(--white)}
 .booking-form textarea{min-height:110px;resize:vertical;padding:14px 0}
-.booking-submit{width:100%;background:var(--copper);color:var(--white);border:none;padding:18px;border-radius:0;font-size:13px;font-weight:500;cursor:pointer;transition:all .25s ease;font-family:'Inter',sans-serif;margin-top:14px;letter-spacing:0.16em;text-transform:uppercase}
+.booking-submit{width:100%;background:var(--copper);color:var(--lu-on-accent, var(--white));border:none;padding:18px;border-radius:0;font-size:13px;font-weight:500;cursor:pointer;transition:all .25s ease;font-family:'Inter',sans-serif;margin-top:14px;letter-spacing:0.16em;text-transform:uppercase}
 .booking-submit:hover{background:var(--copper-deep)}
 
 /* Contact */
@@ -178,7 +178,7 @@ nav .logo::before{content:'';width:10px;height:10px;background:var(--copper);bor
 .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start}
 .contact-info-item{display:flex;gap:22px;align-items:flex-start;margin-bottom:34px;padding-bottom:34px;border-bottom:1px solid var(--divider)}
 .contact-info-item:last-child{border-bottom:none}
-.contact-info-icon{width:44px;height:44px;border-radius:50%;background:transparent;border:1px solid var(--copper);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--copper);flex-shrink:0;font-weight:500}
+.contact-info-icon{width:44px;height:44px;border-radius:50%;background:transparent;border:1px solid var(--copper);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--lu-accent-text, var(--copper));flex-shrink:0;font-weight:500}
 .contact-info-label{font-size:11px;color:var(--graphite-soft);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:8px;font-weight:600}
 .contact-info-value{font-size:16px;color:var(--graphite);font-weight:400;line-height:1.55}
 
@@ -190,12 +190,12 @@ footer{background:var(--graphite);color:var(--white);padding:80px 0 40px}
 .footer-tagline{font-size:14px;color:rgba(255,255,255,0.62);line-height:1.7;margin-bottom:24px;max-width:340px}
 .footer-socials{display:flex;gap:12px}
 .footer-social{width:40px;height:40px;border-radius:50%;background:transparent;border:1px solid rgba(255,255,255,0.16);display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.7);font-size:12px;font-weight:500;transition:all .2s ease;letter-spacing:0.04em}
-.footer-social:hover{border-color:var(--copper);color:var(--copper)}
+.footer-social:hover{border-color:var(--copper);color:var(--lu-accent-text, var(--copper))}
 .footer-col-title{font-family:-apple-system,"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:13px;color:var(--white);font-weight:500;margin-bottom:22px;letter-spacing:0.14em;text-transform:uppercase}
 .footer-col ul{list-style:none}
 .footer-col li{margin-bottom:12px}
 .footer-col a{font-size:14px;color:rgba(255,255,255,0.62);transition:color .2s ease}
-.footer-col a:hover{color:var(--copper)}
+.footer-col a:hover{color:var(--lu-accent-text, var(--copper))}
 .footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:32px;border-top:1px solid rgba(255,255,255,0.1);font-size:12px;color:rgba(255,255,255,0.5);letter-spacing:0.04em}
 
 @media(max-width:980px){
@@ -210,6 +210,14 @@ footer{background:var(--graphite);color:var(--white);padding:80px 0 40px}
   .awards-grid{grid-template-columns:repeat(2,1fr)}
 }
 figure{margin:0}
+
+/* lug-scope */
+.booking .eyebrow{color:var(--lu-accent-on-dark, var(--copper))}
+footer .footer-tagline{color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.62)}
+footer .footer-social{color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.7)}
+footer .footer-col a{color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.62)}
+footer .footer-bottom{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+/* /lug-scope */
 </style>
 </head>
 <body data-template="architecture">
@@ -648,18 +656,18 @@ figure{margin:0}
 
 <!-- Footer -->
 <!-- ═══ CONTACT (Phase 9E retrofit) ═══ -->
-<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:var(--lu-bg, #fff);">
   <div class="container" style="max-width:720px;margin:0 auto;">
     <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
     <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
     <form class="contact-form" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
-        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
       </div>
-      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:var(--lu-bg, #fff);"></textarea>
       <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
       <div id="contact-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
       <div id="contact-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
@@ -703,15 +711,15 @@ async function handleContactSubmit(e) {
     <h2 data-field="blog_title" style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);">{{blog_title}}</h2>
     <p class="section-subtitle" data-field="blog_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">{{blog_intro}}</p>
     <div class="blog-grid" id="blog-posts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
-      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_1_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_1_title}}</h3>
         <p data-field="blog_post_1_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_1_excerpt}}</p>
       </a>
-      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_2_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_2_title}}</h3>
         <p data-field="blog_post_2_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_2_excerpt}}</p>
       </a>
-      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_3_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_3_title}}</h3>
         <p data-field="blog_post_3_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_3_excerpt}}</p>
       </a>

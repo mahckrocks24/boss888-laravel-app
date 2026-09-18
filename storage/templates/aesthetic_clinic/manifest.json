@@ -1227,5 +1227,18 @@
     "accent": "medical_blue",
     "accent_deep": null,
     "secondary": "sage"
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "medical_blue": "accent",
+    "medical_deep": "accent_deep",
+    "sage": "secondary",
+    "sage_soft": "secondary_soft",
+    "chalk": "bg",
+    "chalk_soft": "surface",
+    "carbon": "text",
+    "carbon_soft": "muted",
+    "warm_grey": "muted",
+    "divider": "line"
   }
 }

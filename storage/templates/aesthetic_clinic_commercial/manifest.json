@@ -1,9 +1,9 @@
 {
     "id": "aesthetic_clinic_commercial",
-    "name": "Aesthetic Clinic \u2014 Commercial",
+    "name": "Aesthetic Clinic — Commercial",
     "version": "1.0.0",
     "industry": "aesthetic_clinic_commercial",
-    "description": "Luxury aesthetic medical clinic template \u2014 premium violet palette, spa-like atmosphere, before/after focus. Built for injectables, laser, body contouring, and skin clinics.",
+    "description": "Luxury aesthetic medical clinic template — premium violet palette, spa-like atmosphere, before/after focus. Built for injectables, laser, body contouring, and skin clinics.",
     "variation": "commercial",
     "preview_image": "preview.jpg",
     "created_at": "2026-04-18",
@@ -364,12 +364,12 @@
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Luxury Aesthetic Medicine \u00b7 Dubai"
+            "default": "Luxury Aesthetic Medicine · Dubai"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Maison Aesthetic \u2014 a luxury aesthetic medical clinic in Dubai offering Botox, fillers, laser, skin treatments, and body contouring delivered by board-certified physicians."
+            "default": "Maison Aesthetic — a luxury aesthetic medical clinic in Dubai offering Botox, fillers, laser, skin treatments, and body contouring delivered by board-certified physicians."
         },
         "canonical_url": {
             "type": "url",
@@ -394,7 +394,7 @@
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Luxury Aesthetic Medicine \u00b7 Dubai"
+            "default": "Luxury Aesthetic Medicine · Dubai"
         },
         "hero_title": {
             "type": "html",
@@ -404,7 +404,7 @@
         "hero_subtitle": {
             "type": "text",
             "label": "Hero Subtitle",
-            "default": "A doctor-led aesthetic clinic where every treatment is planned, performed, and reviewed by a board-certified physician \u2014 never a technician. Injectables, energy-based devices, surgical referrals, and bespoke skin programmes in one private suite."
+            "default": "A doctor-led aesthetic clinic where every treatment is planned, performed, and reviewed by a board-certified physician — never a technician. Injectables, energy-based devices, surgical referrals, and bespoke skin programmes in one private suite."
         },
         "hero_cta": {
             "type": "text",
@@ -424,7 +424,7 @@
         "hero_trust_badge": {
             "type": "text",
             "label": "Hero Trust Badge",
-            "default": "Doctor-Led \u00b7 DHA Licensed \u00b7 Authentic Brands \u00b7 Discreet Suites"
+            "default": "Doctor-Led · DHA Licensed · Authentic Brands · Discreet Suites"
         },
         "stat_1_value": {
             "type": "text",
@@ -459,7 +459,7 @@
         "stat_4_value": {
             "type": "text",
             "label": "Stat 4 Value",
-            "default": "4.9\u2605"
+            "default": "4.9★"
         },
         "stat_4_label": {
             "type": "text",
@@ -479,7 +479,7 @@
         "services_intro": {
             "type": "text",
             "label": "Services Intro",
-            "default": "Every treatment in our menu is delivered or supervised by a physician with formal aesthetic medicine training \u2014 no nurses, no technicians, no compromise."
+            "default": "Every treatment in our menu is delivered or supervised by a physician with formal aesthetic medicine training — no nurses, no technicians, no compromise."
         },
         "service_1_title": {
             "type": "text",
@@ -489,7 +489,7 @@
         "service_1_text": {
             "type": "text",
             "label": "Service 1 Text",
-            "default": "Botulinum toxin micro-dosing for a refreshed, expressive look \u2014 placement mapped to your facial anatomy, never frozen."
+            "default": "Botulinum toxin micro-dosing for a refreshed, expressive look — placement mapped to your facial anatomy, never frozen."
         },
         "service_1_tag_1": {
             "type": "text",
@@ -514,7 +514,7 @@
         "service_2_text": {
             "type": "text",
             "label": "Service 2 Text",
-            "default": "Hyaluronic acid filler for cheeks, lips, jawline, and tear troughs \u2014 only Allergan, Galderma, and Teoxane brands used."
+            "default": "Hyaluronic acid filler for cheeks, lips, jawline, and tear troughs — only Allergan, Galderma, and Teoxane brands used."
         },
         "service_2_tag_1": {
             "type": "text",
@@ -539,7 +539,7 @@
         "service_3_text": {
             "type": "text",
             "label": "Service 3 Text",
-            "default": "Picosure, Fraxel, IPL, and laser hair removal \u2014 full pigment correction, resurfacing, and vascular work in one suite."
+            "default": "Picosure, Fraxel, IPL, and laser hair removal — full pigment correction, resurfacing, and vascular work in one suite."
         },
         "service_3_tag_1": {
             "type": "text",
@@ -589,7 +589,7 @@
         "service_5_text": {
             "type": "text",
             "label": "Service 5 Text",
-            "default": "CoolSculpting, EmSculpt Neo, and radio-frequency body sculpting \u2014 clinically proven, non-surgical fat reduction and muscle toning."
+            "default": "CoolSculpting, EmSculpt Neo, and radio-frequency body sculpting — clinically proven, non-surgical fat reduction and muscle toning."
         },
         "service_5_tag_1": {
             "type": "text",
@@ -614,7 +614,7 @@
         "service_6_text": {
             "type": "text",
             "label": "Service 6 Text",
-            "default": "PRP, exosome therapy, and surgical FUE consultations for hair thinning and pattern hair loss \u2014 discreet, evidence-based pathways."
+            "default": "PRP, exosome therapy, and surgical FUE consultations for hair thinning and pattern hair loss — discreet, evidence-based pathways."
         },
         "service_6_tag_1": {
             "type": "text",
@@ -774,7 +774,7 @@
         "process_2_text": {
             "type": "text",
             "label": "Step 2 Text",
-            "default": "A thirty-minute appointment as standard \u2014 long enough to listen, examine properly, and discuss options without rushing."
+            "default": "A thirty-minute appointment as standard — long enough to listen, examine properly, and discuss options without rushing."
         },
         "process_3_title": {
             "type": "text",
@@ -809,12 +809,12 @@
         "testimonial_1_quote": {
             "type": "text",
             "label": "Testimonial 1 Quote",
-            "default": "Dr. Rahman took the time to actually listen \u2014 the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
+            "default": "Dr. Rahman took the time to actually listen — the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
         },
         "testimonial_1_author": {
             "type": "text",
             "label": "Testimonial 1 Author",
-            "default": "Hana Y. \u2014 Dubai Marina"
+            "default": "Hana Y. — Dubai Marina"
         },
         "testimonial_1_condition": {
             "type": "text",
@@ -844,7 +844,7 @@
         "testimonial_3_author": {
             "type": "text",
             "label": "Testimonial 3 Author",
-            "default": "Roberto P. \u2014 JLT"
+            "default": "Roberto P. — JLT"
         },
         "testimonial_3_condition": {
             "type": "text",
@@ -939,7 +939,7 @@
         "cta_banner_subtitle": {
             "type": "text",
             "label": "CTA Banner Subtitle",
-            "default": "Book online in two minutes \u2014 morning, afternoon, or evening slots available every day of the week."
+            "default": "Book online in two minutes — morning, afternoon, or evening slots available every day of the week."
         },
         "cta_banner_cta": {
             "type": "text",
@@ -979,7 +979,7 @@
         "contact_hours": {
             "type": "text",
             "label": "Opening Hours",
-            "default": "Mon\u2013Sat \u00b7 8am\u20138pm  \u00b7  Sun \u00b7 10am\u20134pm"
+            "default": "Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm"
         },
         "contact_emergency": {
             "type": "text",
@@ -994,12 +994,12 @@
         "form_submit_text": {
             "type": "text",
             "label": "Submit Button",
-            "default": "Request Callback \u2192"
+            "default": "Request Callback →"
         },
         "form_success_message": {
             "type": "text",
             "label": "Success Message",
-            "default": "\u2713 Thank you. Reception will call you back within thirty minutes."
+            "default": "✓ Thank you. Reception will call you back within thirty minutes."
         },
         "booking_title": {
             "type": "html",
@@ -1024,12 +1024,12 @@
         "footer_tagline": {
             "type": "text",
             "label": "Footer Tagline",
-            "default": "Aesthetic Clinic \u2014 Luxury Aesthetic Medicine \u00b7 Dubai."
+            "default": "Aesthetic Clinic — Luxury Aesthetic Medicine · Dubai."
         },
         "footer_text": {
             "type": "text",
             "label": "Footer Copyright",
-            "default": "\u00a9 2026 Maison Aesthetic. All rights reserved."
+            "default": "© 2026 Maison Aesthetic. All rights reserved."
         },
         "social_facebook": {
             "type": "url",
@@ -1129,7 +1129,7 @@
         "blog_intro": {
             "type": "text",
             "label": "Blog Intro",
-            "default": "Practical guides, expert opinion, and behind-the-scenes notes \u2014 written by our team."
+            "default": "Practical guides, expert opinion, and behind-the-scenes notes — written by our team."
         },
         "blog_post_1_title": {
             "type": "text",
@@ -1139,7 +1139,7 @@
         "blog_post_1_excerpt": {
             "type": "text",
             "label": "Post 1 Excerpt",
-            "default": "A short walk-through of the first visit \u2014 from arrival to follow-up \u2014 so you know exactly what to expect."
+            "default": "A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect."
         },
         "blog_post_1_url": {
             "type": "url",
@@ -1154,7 +1154,7 @@
         "blog_post_2_excerpt": {
             "type": "text",
             "label": "Post 2 Excerpt",
-            "default": "The questions that should be standard \u2014 but rarely are. Use this as a checklist before any consultation."
+            "default": "The questions that should be standard — but rarely are. Use this as a checklist before any consultation."
         },
         "blog_post_2_url": {
             "type": "url",
@@ -1169,7 +1169,7 @@
         "blog_post_3_excerpt": {
             "type": "text",
             "label": "Post 3 Excerpt",
-            "default": "Why a thirty-minute consultation isn't a luxury \u2014 it's the bare minimum for thoughtful care."
+            "default": "Why a thirty-minute consultation isn't a luxury — it's the bare minimum for thoughtful care."
         },
         "blog_post_3_url": {
             "type": "url",
@@ -1179,7 +1179,7 @@
         "blog_cta": {
             "type": "text",
             "label": "Blog CTA",
-            "default": "Read More \u2192"
+            "default": "Read More →"
         }
     },
     "social_fields": [
@@ -1228,5 +1228,18 @@
         "accent_deep": null,
         "secondary": "sage"
     },
-    "is_active": true
+    "is_active": true,
+    "palette_scheme": "light",
+    "palette_roles": {
+        "medical_blue": "accent",
+        "medical_deep": "accent_deep",
+        "sage": "secondary",
+        "sage_soft": "secondary_soft",
+        "chalk": "bg",
+        "chalk_soft": "surface",
+        "carbon": "text",
+        "carbon_soft": "muted",
+        "warm_grey": "muted",
+        "divider": "line"
+    }
 }

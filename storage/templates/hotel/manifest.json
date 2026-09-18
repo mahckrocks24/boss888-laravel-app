@@ -1613,5 +1613,15 @@
     "accent": "teal",
     "accent_deep": "teal_deep",
     "secondary": "gold"
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "teal": "primary",
+    "teal_deep": "primary_text",
+    "gold": "secondary",
+    "ivory": "bg",
+    "ivory_soft": "surface",
+    "warm_grey": "muted",
+    "divider": "line"
   }
 }

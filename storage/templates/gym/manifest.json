@@ -1447,5 +1447,18 @@
     "accent": "orange",
     "accent_deep": "orange_deep",
     "secondary": null
+  },
+  "palette_scheme": "dark",
+  "palette_roles": {
+    "orange": "accent",
+    "orange_deep": "accent_deep",
+    "chalk": "text",
+    "chalk_soft": "muted",
+    "carbon": "bg",
+    "carbon_soft": "surface",
+    "carbon_card": "surface2",
+    "warm_grey": "muted",
+    "divider": "line",
+    "accent_muted": "accent_soft"
   }
 }

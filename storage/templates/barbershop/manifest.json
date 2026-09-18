@@ -1279,5 +1279,17 @@
         "accent": "rose",
         "accent_deep": "rose_deep",
         "secondary": null
+    },
+    "palette_scheme": "light",
+    "palette_roles": {
+        "rose": "accent",
+        "rose_deep": "accent_deep",
+        "chalk": "bg",
+        "chalk_soft": "surface",
+        "carbon": "text",
+        "carbon_soft": "muted",
+        "warm_grey": "muted",
+        "divider": "line",
+        "accent_muted": "accent_soft"
     }
 }

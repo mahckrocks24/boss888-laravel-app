@@ -1254,5 +1254,16 @@
     "accent": "terra",
     "accent_deep": "terra_deep",
     "secondary": null
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "terra": "accent",
+    "terra_deep": "accent_deep",
+    "cream": "bg",
+    "cream_soft": "surface",
+    "espresso": "text",
+    "espresso_soft": "muted",
+    "warm_grey": "muted",
+    "divider": "line"
   }
 }

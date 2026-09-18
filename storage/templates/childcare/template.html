@@ -40,11 +40,11 @@ h1,h2,h3,h4{font-family:'Nunito',sans-serif;font-weight:800;color:var(--ink);lin
 .h-display{font-size:clamp(44px,5.8vw,80px);line-height:1.06}
 .h-section{font-size:clamp(34px,4.4vw,58px)}
 .h-sub{font-size:clamp(22px,2.4vw,30px)}
-.eyebrow{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.12em;color:var(--coral);margin-bottom:16px;display:inline-block;text-transform:uppercase}
+.eyebrow{font-family:'Inter',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.12em;color:var(--lu-accent-text, var(--coral));margin-bottom:16px;display:inline-block;text-transform:uppercase}
 
 .btn{display:inline-flex;align-items:center;gap:10px;font-family:'Nunito',sans-serif;font-size:15px;font-weight:700;padding:15px 28px;border-radius:28px;transition:all .2s ease;cursor:pointer;border:2px solid transparent;letter-spacing:-0.005em}
-.btn-primary{background:var(--coral);color:#fff;border-color:var(--coral);box-shadow:0 4px 16px rgba(249,115,22,0.25)}
-.btn-primary:hover{background:#EA580C;border-color:#EA580C;transform:translateY(-2px);box-shadow:0 10px 28px rgba(249,115,22,0.35)}
+.btn-primary{background:var(--coral);color:var(--lu-on-accent, #fff);border-color:var(--coral);box-shadow:0 4px 16px rgba(249,115,22,0.25)}
+.btn-primary:hover{background:var(--lu-accent, #EA580C);border-color:var(--lu-accent, #EA580C);transform:translateY(-2px);box-shadow:0 10px 28px rgba(249,115,22,0.35)}
 .btn-ghost{background:transparent;color:var(--ink);border-color:var(--divider)}
 .btn-ghost:hover{border-color:var(--ink)}
 .btn::after{content:'→';transition:transform .2s ease}
@@ -57,26 +57,26 @@ nav .logo::before{content:'';width:24px;height:24px;background:var(--yellow);bor
 .nav-links{display:flex;gap:30px;align-items:center}
 .nav-links a{font-size:14px;color:var(--muted);font-weight:600;transition:color .2s ease}
 .nav-links a:hover{color:var(--ink)}
-.nav-cta{background:var(--coral);color:#fff!important;padding:11px 22px;border-radius:28px;font-weight:700;font-size:14px;transition:all .2s ease;box-shadow:0 4px 12px rgba(249,115,22,0.3)}
-.nav-cta:hover{background:#EA580C;transform:translateY(-1px);box-shadow:0 6px 20px rgba(249,115,22,0.4)}
+.nav-cta{background:var(--coral);color:var(--lu-on-accent, #fff)!important;padding:11px 22px;border-radius:28px;font-weight:700;font-size:14px;transition:all .2s ease;box-shadow:0 4px 12px rgba(249,115,22,0.3)}
+.nav-cta:hover{background:var(--lu-accent, #EA580C);transform:translateY(-1px);box-shadow:0 6px 20px rgba(249,115,22,0.4)}
 
-.hero{padding:96px 0 110px;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--yellow-soft) 0%,#FEF3C7 50%,#FEF9C3 100%)}
+.hero{padding:96px 0 110px;position:relative;overflow:hidden;background:linear-gradient(135deg,var(--yellow-soft) 0%,var(--lu-surface, #FEF3C7) 50%,var(--lu-surface, #FEF9C3) 100%)}
 .hero::before{content:'';position:absolute;top:-140px;right:-120px;width:520px;height:520px;background:radial-gradient(circle at center,rgba(14,165,233,0.2) 0%,transparent 60%);pointer-events:none;z-index:0}
 .hero::after{content:'';position:absolute;bottom:-100px;left:-100px;width:420px;height:420px;background:radial-gradient(circle at center,rgba(249,115,22,0.15) 0%,transparent 60%);pointer-events:none;z-index:0}
 .hero-grid{position:relative;z-index:2;display:grid;grid-template-columns:1.1fr 1fr;gap:60px;align-items:center}
 .hero-image-wrap{aspect-ratio:4/5;border-radius:40px;background-size:cover;background-position:center;background-color:var(--white);box-shadow:0 32px 80px rgba(30,41,59,0.18);overflow:hidden;border:6px solid var(--white)}
 .hero-title{font-family:'Nunito',sans-serif;font-size:clamp(44px,5.8vw,76px);color:var(--ink);line-height:1.06;letter-spacing:-0.02em;margin-bottom:22px;font-weight:800}
-.hero-title span{color:var(--coral)}
+.hero-title span{color:var(--lu-accent-text, var(--coral))}
 .hero-subtitle{font-size:18px;line-height:1.7;color:var(--muted);margin-bottom:36px;max-width:560px}
 .hero-ctas{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:38px}
 .hero-trust{display:flex;gap:22px;flex-wrap:wrap;margin-top:30px;padding-top:28px;border-top:1px solid var(--divider)}
 .hero-trust-item{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted);font-weight:700}
-.hero-trust-item::before{content:'✓';color:var(--sky);font-weight:800;font-size:15px;background:rgba(14,165,233,0.1);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
+.hero-trust-item::before{content:'✓';color:var(--lu-primary-text, var(--sky));font-weight:800;font-size:15px;background:rgba(14,165,233,0.1);border-radius:50%;width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center}
 
 .results{padding:64px 0;background:var(--white);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .results-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:40px}
 .result-item{text-align:center}
-.result-value{font-family:'Nunito',sans-serif;font-size:56px;line-height:1;color:var(--sky);margin-bottom:10px;letter-spacing:-0.03em;font-weight:800}
+.result-value{font-family:'Nunito',sans-serif;font-size:56px;line-height:1;color:var(--lu-primary-text, var(--sky));margin-bottom:10px;letter-spacing:-0.03em;font-weight:800}
 .result-label{font-size:14px;color:var(--muted);font-weight:600}
 
 .section{padding:110px 0}
@@ -86,74 +86,74 @@ nav .logo::before{content:'';width:24px;height:24px;background:var(--yellow);bor
 
 /* Programs */
 .programs-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.program{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:34px;transition:all .3s ease;position:relative;overflow:hidden}
+.program{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:24px;padding:34px;transition:all .3s ease;position:relative;overflow:hidden}
 .program:hover{border-color:var(--coral);transform:translateY(-4px);box-shadow:0 20px 50px rgba(249,115,22,0.12)}
 .program-icon{width:60px;height:60px;border-radius:50%;background:var(--yellow);display:flex;align-items:center;justify-content:center;margin-bottom:22px;color:var(--coral);font-family:'Nunito',sans-serif;font-size:24px;font-weight:800}
-.program-age{display:inline-block;font-size:11px;color:var(--sky);background:rgba(14,165,233,0.1);padding:5px 12px;border-radius:20px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px;text-transform:uppercase}
+.program-age{display:inline-block;font-size:11px;color:var(--lu-primary-text, var(--sky));background:rgba(14,165,233,0.1);padding:5px 12px;border-radius:20px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px;text-transform:uppercase}
 .program h3{font-size:22px;margin-bottom:12px;color:var(--ink);font-weight:800;letter-spacing:-0.015em}
 .program p{font-size:15px;color:var(--muted);line-height:1.7;margin-bottom:18px}
-.program-link{font-size:13px;color:var(--coral);font-weight:700;letter-spacing:0.02em;display:inline-flex;align-items:center;gap:6px;transition:gap .2s ease}
+.program-link{font-size:13px;color:var(--lu-accent-text, var(--coral));font-weight:700;letter-spacing:0.02em;display:inline-flex;align-items:center;gap:6px;transition:gap .2s ease}
 .program:hover .program-link{gap:10px}
 .program-link::after{content:'→'}
 
 /* Why Us */
 .why-us{background:var(--yellow-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .why-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:26px}
-.why-card{background:#fff;border-radius:24px;padding:32px;transition:all .3s ease;border:1px solid var(--divider)}
+.why-card{background:var(--lu-bg, #fff);border-radius:24px;padding:32px;transition:all .3s ease;border:1px solid var(--divider)}
 .why-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(30,41,59,0.1)}
-.why-icon{width:56px;height:56px;border-radius:50%;background:var(--sky);display:flex;align-items:center;justify-content:center;color:#fff;font-family:'Nunito',sans-serif;font-size:22px;font-weight:800;margin-bottom:18px}
+.why-icon{width:56px;height:56px;border-radius:50%;background:var(--sky);display:flex;align-items:center;justify-content:center;color:var(--lu-on-primary, #fff);font-family:'Nunito',sans-serif;font-size:22px;font-weight:800;margin-bottom:18px}
 .why-card:nth-child(2) .why-icon{background:var(--coral)}
 .why-card:nth-child(3) .why-icon{background:#16A34A}
-.why-card:nth-child(4) .why-icon{background:#9333EA}
+.why-card:nth-child(4) .why-icon{background:var(--lu-accent, #9333EA)}
 .why-card h3{font-size:19px;margin-bottom:10px;color:var(--ink);font-weight:800;letter-spacing:-0.01em}
 .why-card p{font-size:14.5px;color:var(--muted);line-height:1.7}
 
 /* Staff */
 .staff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
-.staff-card{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:32px 24px;text-align:center;transition:all .3s ease}
+.staff-card{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:24px;padding:32px 24px;text-align:center;transition:all .3s ease}
 .staff-card:hover{border-color:var(--coral);transform:translateY(-3px);box-shadow:0 14px 40px rgba(249,115,22,0.1)}
 .staff-photo{width:120px;height:120px;border-radius:50%;margin:0 auto 20px;background:var(--yellow-soft);border:4px solid var(--white);background-size:cover;background-position:center;box-shadow:0 4px 12px rgba(30,41,59,0.1)}
 .staff-card h3{font-size:18px;margin-bottom:4px;color:var(--ink);font-weight:800;letter-spacing:-0.01em}
-.staff-role{font-size:13px;color:var(--coral);font-weight:700;margin-bottom:14px;letter-spacing:0.02em}
+.staff-role{font-size:13px;color:var(--lu-accent-text, var(--coral));font-weight:700;margin-bottom:14px;letter-spacing:0.02em}
 .staff-bio{font-size:13.5px;color:var(--muted);line-height:1.65}
 
 /* Facilities */
 .facilities{background:var(--yellow-soft);border-top:1px solid var(--divider);border-bottom:1px solid var(--divider)}
 .facilities-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
-.facility{aspect-ratio:4/3;border-radius:20px;background-size:cover;background-position:center;background-color:#fff;border:1px solid var(--divider);position:relative;overflow:hidden;transition:transform .3s ease}
+.facility{aspect-ratio:4/3;border-radius:20px;background-size:cover;background-position:center;background-color:var(--lu-bg, #fff);border:1px solid var(--divider);position:relative;overflow:hidden;transition:transform .3s ease}
 .facility:hover{transform:scale(1.02)}
 .facility::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 50%,rgba(30,41,59,0.7))}
 .facility-caption{position:absolute;bottom:20px;left:20px;z-index:2;color:#fff;font-family:'Nunito',sans-serif;font-size:17px;font-weight:700;letter-spacing:-0.01em}
 
 /* Curriculum */
 .curriculum-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
-.pillar{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:34px;text-align:center;transition:all .3s ease}
+.pillar{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:24px;padding:34px;text-align:center;transition:all .3s ease}
 .pillar:hover{border-color:var(--sky);transform:translateY(-3px);box-shadow:0 14px 36px rgba(14,165,233,0.1)}
-.pillar-num{font-family:'Nunito',sans-serif;font-size:42px;color:var(--sky);font-weight:800;margin-bottom:14px;line-height:1}
+.pillar-num{font-family:'Nunito',sans-serif;font-size:42px;color:var(--lu-primary-text, var(--sky));font-weight:800;margin-bottom:14px;line-height:1}
 .pillar h3{font-size:19px;margin-bottom:10px;color:var(--ink);font-weight:800;letter-spacing:-0.01em}
 .pillar p{font-size:14px;color:var(--muted);line-height:1.7}
 
 /* Testimonials */
 .testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.testimonial{background:#fff;border:1px solid var(--divider);border-radius:24px;padding:38px;display:flex;flex-direction:column;position:relative}
-.testimonial-quote::before{content:'"';font-family:'Nunito',sans-serif;font-size:72px;color:var(--coral);line-height:0;display:block;margin-bottom:22px;font-weight:800}
+.testimonial{background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:24px;padding:38px;display:flex;flex-direction:column;position:relative}
+.testimonial-quote::before{content:'"';font-family:'Nunito',sans-serif;font-size:72px;color:var(--lu-accent-text, var(--coral));line-height:0;display:block;margin-bottom:22px;font-weight:800}
 .testimonial-quote{font-size:16px;color:var(--ink);line-height:1.7;margin-bottom:26px;font-weight:500;flex:1}
 .testimonial-author{font-family:'Nunito',sans-serif;font-size:16px;color:var(--ink);font-weight:800;margin-bottom:4px;letter-spacing:-0.01em}
 .testimonial-company{font-size:13px;color:var(--muted);margin-bottom:14px;font-weight:500}
-.testimonial-result{display:inline-block;font-size:12px;color:var(--coral);background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.25);padding:6px 14px;border-radius:20px;font-weight:700;letter-spacing:0.02em}
+.testimonial-result{display:inline-block;font-size:12px;color:var(--lu-accent-text, var(--coral));background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.25);padding:6px 14px;border-radius:20px;font-weight:700;letter-spacing:0.02em}
 
 /* Booking */
-.booking{position:relative;overflow:hidden;padding:110px 0;background:linear-gradient(135deg,var(--yellow-soft) 0%,#FEF9C3 100%)}
+.booking{position:relative;overflow:hidden;padding:110px 0;background:linear-gradient(135deg,var(--yellow-soft) 0%,var(--lu-surface, #FEF9C3) 100%)}
 .booking::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:900px;background:radial-gradient(circle at center,rgba(14,165,233,0.08) 0%,transparent 60%);pointer-events:none}
 .booking-inner{position:relative;z-index:2;max-width:740px;margin:0 auto;text-align:center}
 .booking-intro{font-size:18px;color:var(--muted);line-height:1.8;margin-top:20px;margin-bottom:48px}
-.booking-form{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;background:#fff;border:1px solid var(--divider);border-radius:28px;padding:44px;box-shadow:0 24px 60px rgba(30,41,59,0.1)}
+.booking-form{display:grid;grid-template-columns:1fr 1fr;gap:18px;text-align:left;background:var(--lu-bg, #fff);border:1px solid var(--divider);border-radius:28px;padding:44px;box-shadow:0 24px 60px rgba(30,41,59,0.1)}
 .booking-form .full{grid-column:span 2}
 .booking-form label{display:block;font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase}
 .booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:14px 16px;background:var(--yellow-soft);border:1px solid var(--divider);border-radius:14px;font-size:14px;color:var(--ink);font-family:'Inter',sans-serif;transition:all .2s ease;font-weight:500}
-.booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--sky);background:#fff;box-shadow:0 0 0 3px rgba(14,165,233,0.15)}
-.booking-submit{width:100%;background:var(--coral);color:#fff;border:none;padding:17px;border-radius:28px;font-size:15px;font-weight:800;cursor:pointer;transition:all .2s ease;font-family:'Nunito',sans-serif;margin-top:8px;letter-spacing:-0.005em}
-.booking-submit:hover{background:#EA580C;transform:translateY(-1px);box-shadow:0 10px 28px rgba(249,115,22,0.35)}
+.booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--sky);background:var(--lu-bg, #fff);box-shadow:0 0 0 3px rgba(14,165,233,0.15)}
+.booking-submit{width:100%;background:var(--coral);color:var(--lu-on-accent, #fff);border:none;padding:17px;border-radius:28px;font-size:15px;font-weight:800;cursor:pointer;transition:all .2s ease;font-family:'Nunito',sans-serif;margin-top:8px;letter-spacing:-0.005em}
+.booking-submit:hover{background:var(--lu-accent, #EA580C);transform:translateY(-1px);box-shadow:0 10px 28px rgba(249,115,22,0.35)}
 
 /* Contact */
 .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:start}
@@ -164,20 +164,20 @@ nav .logo::before{content:'';width:24px;height:24px;background:var(--yellow);bor
 .contact-info-value{font-size:16px;color:var(--ink);font-weight:600;line-height:1.55}
 
 /* Footer */
-footer{background:var(--ink);color:#CBD5E1;padding:60px 0 32px;border-top:6px solid var(--yellow)}
+footer{background:var(--ink);color:var(--lu-on-dark, #CBD5E1);padding:60px 0 32px;border-top:6px solid var(--yellow)}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:48px}
 .footer-logo{font-family:'Nunito',sans-serif;font-size:24px;color:#fff;font-weight:800;letter-spacing:-0.015em;margin-bottom:16px;display:flex;align-items:center;gap:12px}
 .footer-logo::before{content:'';width:20px;height:20px;background:var(--yellow);border-radius:50%;box-shadow:inset 0 0 0 3px var(--coral)}
-.footer-tagline{font-size:14px;color:#94A3B8;line-height:1.7;margin-bottom:20px;max-width:320px}
+.footer-tagline{font-size:14px;color:var(--lu-on-dark, #94A3B8);line-height:1.7;margin-bottom:20px;max-width:320px}
 .footer-socials{display:flex;gap:10px}
-.footer-social{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:#94A3B8;font-size:13px;font-weight:700;transition:all .2s ease}
-.footer-social:hover{background:var(--coral);color:#fff}
+.footer-social{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;color:var(--lu-on-dark, #94A3B8);font-size:13px;font-weight:700;transition:all .2s ease}
+.footer-social:hover{background:var(--coral);color:var(--lu-on-accent, #fff)}
 .footer-col-title{font-family:'Nunito',sans-serif;font-size:15px;color:#fff;font-weight:800;margin-bottom:18px;letter-spacing:-0.01em}
 .footer-col ul{list-style:none}
 .footer-col li{margin-bottom:10px}
-.footer-col a{font-size:14px;color:#94A3B8;transition:color .2s ease}
-.footer-col a:hover{color:var(--yellow)}
-.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid rgba(255,255,255,0.1);font-size:13px;color:#94A3B8}
+.footer-col a{font-size:14px;color:var(--lu-on-dark, #94A3B8);transition:color .2s ease}
+.footer-col a:hover{color:var(--lu-secondary-text, var(--yellow))}
+.footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid rgba(255,255,255,0.1);font-size:13px;color:var(--lu-on-dark, #94A3B8)}
 
 @media(max-width:980px){
   .hero-grid{grid-template-columns:1fr;gap:40px}
@@ -601,18 +601,18 @@ figure{margin:0}
 
 <!-- Footer -->
 <!-- ═══ CONTACT (Phase 9E retrofit) ═══ -->
-<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:var(--lu-bg, #fff);">
   <div class="container" style="max-width:720px;margin:0 auto;">
     <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
     <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
     <form class="contact-form" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
-        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
       </div>
-      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:var(--lu-bg, #fff);"></textarea>
       <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
       <div id="contact-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
       <div id="contact-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
@@ -656,15 +656,15 @@ async function handleContactSubmit(e) {
     <h2 data-field="blog_title" style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);">{{blog_title}}</h2>
     <p class="section-subtitle" data-field="blog_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">{{blog_intro}}</p>
     <div class="blog-grid" id="blog-posts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
-      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_1_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_1_title}}</h3>
         <p data-field="blog_post_1_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_1_excerpt}}</p>
       </a>
-      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_2_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_2_title}}</h3>
         <p data-field="blog_post_2_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_2_excerpt}}</p>
       </a>
-      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_3_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_3_title}}</h3>
         <p data-field="blog_post_3_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_3_excerpt}}</p>
       </a>

@@ -791,5 +791,15 @@
     "accent": "primary_color",
     "accent_deep": null,
     "secondary": "secondary_color"
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "primary_color": "primary",
+    "secondary_color": "secondary",
+    "accent_color": "accent",
+    "bg_color": "bg",
+    "ink_color": "text",
+    "muted_color": "muted",
+    "border_color": "line"
   }
 }

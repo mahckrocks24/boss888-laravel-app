@@ -46,9 +46,9 @@ a { color: inherit; text-decoration: none; }
 h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; color: var(--carbon); }
 
 .section { padding: 6.5rem 2rem; max-width: 1240px; margin: 0 auto; }
-.eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 1rem; }
+.eyebrow { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--lu-accent-text, var(--medical)); font-weight: 600; margin-bottom: 1rem; }
 .section-h2 { font-size: clamp(2rem, 3.2vw, 2.8rem); line-height: 1.18; font-weight: 500; color: var(--carbon); margin-bottom: 1.2rem; letter-spacing: -0.01em; }
-.section-h2 em { font-style: italic; color: var(--medical); font-weight: 500; }
+.section-h2 em { font-style: italic; color: var(--lu-accent-text, var(--medical)); font-weight: 500; }
 
 .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.8s cubic-bezier(.2,.8,.2,1), transform 0.8s cubic-bezier(.2,.8,.2,1); }
 .reveal.visible { opacity: 1; transform: none; }
@@ -72,10 +72,10 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .nav-logo { font-family: var(--fh); font-size: 1.3rem; font-weight: 600; color: var(--carbon); letter-spacing: -0.005em; }
 .nav-links { display: flex; gap: 2.25rem; list-style: none; }
 .nav-links a { font-size: 0.85rem; color: var(--carbon-soft); font-weight: 500; transition: color .2s; }
-.nav-links a:hover { color: var(--medical); }
+.nav-links a:hover { color: var(--lu-accent-text, var(--medical)); }
 .nav-cta {
   display: inline-block; padding: 0.75rem 1.4rem;
-  background: var(--medical); color: #fff;
+  background: var(--medical); color: var(--lu-on-accent, #fff);
   font-size: 0.82rem; font-weight: 600; letter-spacing: -0.005em;
   border-radius: 8px; transition: background .2s, transform .2s;
 }
@@ -89,14 +89,14 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .hero-media img { width: 100%; height: 100%; object-fit: cover; opacity: 1; }
 .hero-overlay { position: absolute; inset: 0; background: linear-gradient(to right, rgba(255,255,255,.94) 0%, rgba(255,255,255,.86) 34%, rgba(255,255,255,.55) 52%, rgba(255,255,255,.12) 74%, rgba(255,255,255,0) 100%); z-index: 1; pointer-events: none; }
 .hero-inner { position: relative; z-index: 2; max-width: 1240px; margin: 0 auto; padding: 0 2.5rem; width: 100%; }
-.hero-eyebrow { font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 1.3rem; }
+.hero-eyebrow { font-size: 0.78rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lu-accent-text, var(--medical)); font-weight: 600; margin-bottom: 1.3rem; }
 .hero-h1 { font-family: var(--fh); font-size: clamp(2.6rem, 5vw, 4.4rem); line-height: 1.08; font-weight: 500; color: var(--carbon); letter-spacing: -0.02em; margin-bottom: 1.6rem; max-width: 17ch; }
-.hero-h1 em { font-style: italic; color: var(--medical); font-weight: 500; }
+.hero-h1 em { font-style: italic; color: var(--lu-accent-text, var(--medical)); font-weight: 500; }
 .hero-sub { font-size: 1.1rem; color: var(--carbon-soft); max-width: 52ch; margin-bottom: 2.2rem; line-height: 1.6; }
 .hero-actions { display: flex; gap: 0.9rem; flex-wrap: wrap; margin-bottom: 2rem; }
 .btn-primary {
   display: inline-block; padding: 1rem 1.8rem;
-  background: var(--medical); color: #fff;
+  background: var(--medical); color: var(--lu-on-accent, #fff);
   font-size: 0.9rem; font-weight: 600; border-radius: 10px;
   transition: background .2s, transform .2s;
 }
@@ -107,7 +107,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
   font-size: 0.9rem; font-weight: 600; border-radius: 10px;
   transition: border-color .2s, color .2s;
 }
-.btn-ghost:hover { border-color: var(--medical); color: var(--medical); }
+.btn-ghost:hover { border-color: var(--medical); color: var(--lu-accent-text, var(--medical)); }
 .hero-trust { font-size: 0.78rem; color: var(--warm-grey); letter-spacing: 0.02em; }
 
 /* ── STATS ────────────────────────────────────────────────── */
@@ -120,7 +120,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 }
 .stat-item { padding: 1rem 2rem; border-right: 1px solid var(--divider); text-align: left; }
 .stat-item:last-child { border-right: none; }
-.stat-num { display: block; font-family: var(--fh); font-size: clamp(2rem, 3.2vw, 2.8rem); font-weight: 500; color: var(--medical); line-height: 1; margin-bottom: 0.4rem; }
+.stat-num { display: block; font-family: var(--fh); font-size: clamp(2rem, 3.2vw, 2.8rem); font-weight: 500; color: var(--lu-accent-text, var(--medical)); line-height: 1; margin-bottom: 0.4rem; }
 .stat-label { display: block; font-size: 0.78rem; color: var(--warm-grey); font-weight: 500; }
 
 /* ── SERVICES ─────────────────────────────────────────────── */
@@ -130,11 +130,11 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .service-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem; }
 .service-card { background: var(--chalk); border: 1px solid var(--divider); border-radius: 12px; padding: 2rem 1.8rem; transition: border-color .2s, box-shadow .25s, transform .25s; }
 .service-card:hover { border-color: var(--medical); box-shadow: 0 12px 32px rgba(30,111,191,0.08); transform: translateY(-2px); }
-.service-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--sage-soft); display: flex; align-items: center; justify-content: center; color: var(--medical-deep); font-size: 22px; margin-bottom: 1.2rem; font-weight: 600; }
+.service-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--sage-soft); display: flex; align-items: center; justify-content: center; color: var(--lu-accent-text, var(--medical-deep)); font-size: 22px; margin-bottom: 1.2rem; font-weight: 600; }
 .service-title { font-family: var(--fh); font-size: 1.35rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.7rem; }
 .service-desc { font-size: 0.92rem; color: var(--carbon-soft); line-height: 1.6; margin-bottom: 1.2rem; }
 .service-tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-.service-tag { font-size: 0.7rem; color: var(--medical); padding: 0.25rem 0.65rem; background: var(--sage-soft); border-radius: 20px; font-weight: 500; }
+.service-tag { font-size: 0.7rem; color: var(--lu-accent-text, var(--medical)); padding: 0.25rem 0.65rem; background: var(--sage-soft); border-radius: 20px; font-weight: 500; }
 
 /* ── DOCTORS ──────────────────────────────────────────────── */
 .doctors { background: var(--chalk-soft); padding: 7rem 2.5rem; border-top: 1px solid var(--divider); }
@@ -147,7 +147,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .doctor-photo { aspect-ratio: 1/1; overflow: hidden; background: var(--sage-soft); }
 .doctor-photo img { width: 100%; height: 100%; object-fit: cover; }
 .doctor-info { padding: 1.25rem 1.25rem 1.5rem; }
-.doctor-specialty { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-bottom: 0.5rem; }
+.doctor-specialty { font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--lu-accent-text, var(--medical)); font-weight: 600; margin-bottom: 0.5rem; }
 .doctor-name { font-family: var(--fh); font-size: 1.15rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.15rem; }
 .doctor-role { font-size: 0.82rem; color: var(--warm-grey); margin-bottom: 0.8rem; font-weight: 500; }
 .doctor-bio { font-size: 0.85rem; color: var(--carbon-soft); line-height: 1.55; }
@@ -157,7 +157,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .process-hdr { margin-bottom: 3.5rem; max-width: 640px; }
 .process-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2rem; position: relative; }
 .process-step { position: relative; padding: 2rem 1.5rem 1.5rem; background: var(--chalk); border: 1px solid var(--divider); border-radius: 12px; }
-.process-num { font-family: var(--fh); font-style: italic; font-size: 2.2rem; font-weight: 500; color: var(--medical); line-height: 1; margin-bottom: 0.8rem; }
+.process-num { font-family: var(--fh); font-style: italic; font-size: 2.2rem; font-weight: 500; color: var(--lu-accent-text, var(--medical)); line-height: 1; margin-bottom: 0.8rem; }
 .process-title { font-family: var(--fh); font-size: 1.2rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.6rem; }
 .process-desc { font-size: 0.9rem; color: var(--carbon-soft); line-height: 1.6; }
 
@@ -169,7 +169,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .testimonial-slide.active { opacity: 1; position: relative; }
 .testimonial-quote { font-family: var(--fh); font-style: italic; font-size: clamp(1.25rem, 1.9vw, 1.55rem); line-height: 1.5; color: var(--carbon); margin-bottom: 1.8rem; max-width: 44ch; margin-left: auto; margin-right: auto; }
 .testimonial-author { font-size: 0.88rem; color: var(--carbon); font-weight: 600; }
-.testimonial-condition { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--medical); font-weight: 600; margin-top: 0.25rem; }
+.testimonial-condition { font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lu-accent-text, var(--medical)); font-weight: 600; margin-top: 0.25rem; }
 .testimonial-dots { display: flex; gap: 0.4rem; justify-content: center; margin-top: 1.5rem; }
 .testimonial-dot { width: 24px; height: 3px; background: var(--divider); border: none; padding: 0; cursor: pointer; border-radius: 2px; transition: background .3s; }
 .testimonial-dot.active { background: var(--medical); }
@@ -183,20 +183,20 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .cert-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .cert-item { background: var(--chalk); border: 1px solid var(--divider); border-radius: 10px; padding: 1.4rem 1.3rem; display: flex; gap: 1rem; align-items: flex-start; transition: border-color .2s; }
 .cert-item:hover { border-color: var(--sage); }
-.cert-check { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--sage-soft); color: var(--medical-deep); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
+.cert-check { flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%; background: var(--sage-soft); color: var(--lu-accent-text, var(--medical-deep)); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; }
 .cert-body { flex: 1; }
 .cert-name { font-size: 0.98rem; font-weight: 600; color: var(--carbon); margin-bottom: 0.25rem; }
 .cert-desc { font-size: 0.82rem; color: var(--carbon-soft); line-height: 1.5; }
 
 /* ── CTA BANNER ───────────────────────────────────────────── */
-.cta-banner { background: var(--medical); color: #fff; padding: 5rem 2.5rem; text-align: center; }
+.cta-banner { background: var(--medical); color: var(--lu-on-accent, #fff); padding: 5rem 2.5rem; text-align: center; }
 .cta-banner-inner { max-width: 720px; margin: 0 auto; }
-.cta-eyebrow { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--sage-soft); font-weight: 600; margin-bottom: 1rem; }
-.cta-title { font-family: var(--fh); font-size: clamp(1.9rem, 3.2vw, 2.6rem); font-weight: 500; color: #fff; line-height: 1.15; margin-bottom: 1rem; }
-.cta-subtitle { font-size: 1rem; color: rgba(255,255,255,.92); max-width: 48ch; margin: 0 auto 1.8rem; line-height: 1.6; }
+.cta-eyebrow { font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--lu-on-accent, var(--sage-soft)); font-weight: 600; margin-bottom: 1rem; }
+.cta-title { font-family: var(--fh); font-size: clamp(1.9rem, 3.2vw, 2.6rem); font-weight: 500; color: var(--lu-on-accent, #fff); line-height: 1.15; margin-bottom: 1rem; }
+.cta-subtitle { font-size: 1rem; color: var(--lu-on-accent, rgba(255,255,255,.92)); max-width: 48ch; margin: 0 auto 1.8rem; line-height: 1.6; }
 .cta-button {
   display: inline-block; padding: 1rem 2rem;
-  background: #fff; color: var(--medical-deep);
+  background: var(--lu-bg, #fff); color: var(--lu-accent-text, var(--medical-deep));
   font-size: 0.9rem; font-weight: 600; border-radius: 10px;
   transition: transform .2s, background .2s;
 }
@@ -209,7 +209,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .contact-item { display: flex; flex-direction: column; gap: 0.3rem; padding-bottom: 1rem; border-bottom: 1px solid var(--divider); }
 .contact-item-label { font-size: 0.68rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--warm-grey); font-weight: 600; }
 .contact-item-value { font-size: 1rem; color: var(--carbon); }
-.contact-emergency { background: var(--sage-soft); color: var(--medical-deep); padding: 0.9rem 1.2rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; border-left: 3px solid var(--medical); }
+.contact-emergency { background: var(--sage-soft); color: var(--lu-accent-text, var(--medical-deep)); padding: 0.9rem 1.2rem; border-radius: 8px; font-size: 0.85rem; line-height: 1.5; border-left: 3px solid var(--medical); }
 
 .contact-right { background: var(--chalk-soft); padding: 2.5rem 2.2rem; border-radius: 14px; border: 1px solid var(--divider); }
 .contact-form { display: grid; grid-template-columns: 1fr 1fr; gap: 0.9rem; }
@@ -231,14 +231,14 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .form-submit {
   grid-column: 1 / -1;
   padding: 1rem 2rem;
-  background: var(--medical); color: #fff;
+  background: var(--medical); color: var(--lu-on-accent, #fff);
   border: none; border-radius: 10px;
   font-size: 0.9rem; font-weight: 600;
   cursor: pointer; transition: background .2s, transform .2s;
   font-family: inherit;
 }
 .form-submit:hover { background: var(--medical-deep); transform: translateY(-1px); }
-#form-success { grid-column: 1 / -1; color: var(--medical); font-size: 0.9rem; margin-top: 1rem; font-weight: 500; }
+#form-success { grid-column: 1 / -1; color: var(--lu-accent-text, var(--medical)); font-size: 0.9rem; margin-top: 1rem; font-weight: 500; }
 
 /* ── BOOKING ──────────────────────────────────────────────── */
 .booking-section { padding: 6rem 2.5rem; max-width: 780px; margin: 0 auto; }
@@ -255,7 +255,7 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .booking-submit {
   grid-column: 1 / -1;
   padding: 1rem 2rem;
-  background: var(--medical); color: #fff;
+  background: var(--medical); color: var(--lu-on-accent, #fff);
   border: none; border-radius: 10px;
   font-size: 0.9rem; font-weight: 600;
   cursor: pointer; transition: background .2s;
@@ -264,18 +264,18 @@ h1, h2, h3, h4 { font-family: var(--fh); font-weight: 500; line-height: 1.15; co
 .booking-submit:hover { background: var(--medical-deep); }
 
 /* ── FOOTER ───────────────────────────────────────────────── */
-footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; }
+footer { background: var(--carbon); color: var(--lu-on-dark, #fff); padding: 4.5rem 2.5rem 2.5rem; }
 .footer-inner { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 3rem; padding-bottom: 2.5rem; border-bottom: 1px solid rgba(255,255,255,.08); }
 .footer-brand { max-width: 32ch; }
 .footer-logo { font-family: var(--fh); font-size: 1.4rem; font-weight: 600; color: #fff; margin-bottom: 0.8rem; }
 .footer-tagline { font-size: 0.9rem; color: rgba(255,255,255,.55); line-height: 1.6; }
-.footer-col h4 { font-family: var(--fb); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--sage); font-weight: 600; margin-bottom: 0.9rem; }
+.footer-col h4 { font-family: var(--fb); font-size: 0.72rem; letter-spacing: 0.14em; text-transform: uppercase; color: var(--lu-secondary-text, var(--sage)); font-weight: 600; margin-bottom: 0.9rem; }
 .footer-links { list-style: none; display: flex; flex-direction: column; gap: 0.55rem; }
 .footer-links a { font-size: 0.9rem; color: rgba(255,255,255,.55); transition: color .2s; }
 .footer-links a:hover { color: #fff; }
 .footer-social { display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 0.4rem; }
 .footer-social a { font-size: 0.82rem; color: rgba(255,255,255,.55); transition: color .2s; }
-.footer-social a:hover { color: var(--sage); }
+.footer-social a:hover { color: var(--lu-secondary-text, var(--sage)); }
 .footer-copy { text-align: center; padding-top: 2rem; font-size: 0.8rem; color: rgba(255,255,255,.45); }
 
 /* ── Responsive ───────────────────────────────────────────── */
@@ -301,6 +301,15 @@ footer { background: var(--carbon); color: #fff; padding: 4.5rem 2.5rem 2.5rem; 
   .hero-inner { padding-top: 112px; padding-bottom: 64px; }
 }
 figure{margin:0}
+
+/* lug-scope */
+footer .footer-logo{color:var(--lu-on-dark, #fff)}
+footer .footer-tagline{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+footer .footer-col h4{color:var(--lu-secondary-on-dark, var(--sage))}
+footer .footer-links a{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+footer .footer-social a{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+footer .footer-copy{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+/* /lug-scope */
 </style>
 </head>
 <body>
@@ -626,24 +635,24 @@ figure{margin:0}
     </a>
   </div>
   <div style="margin-top:2rem;text-align:center;">
-    <a href="/blog" class="blog-cta" data-field="blog_cta" style="display:inline-block;padding:0.9rem 1.6rem;border:1px solid var(--medical,#0F172A);color:var(--medical,#0F172A);font-size:0.92rem;font-weight:600;border-radius:10px;transition:background .2s,color .2s;">{{blog_cta}}</a>
+    <a href="/blog" class="blog-cta" data-field="blog_cta" style="display:inline-block;padding:0.9rem 1.6rem;border:1px solid var(--medical,#0F172A);color:var(--lu-accent-text, var(--medical,#0F172A));font-size:0.92rem;font-weight:600;border-radius:10px;transition:background .2s,color .2s;">{{blog_cta}}</a>
   </div>
 </section>
 
 <!-- ═══ CONTACT (Phase 9E retrofit — canonical form) ═══ -->
-<section class="section contact-canonical" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+<section class="section contact-canonical" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:var(--lu-bg, #fff);">
   <div class="container" style="max-width:720px;margin:0 auto;">
     <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
     <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
     <form class="contact-form-canonical" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
-        <input type="text"  name="firstname" placeholder="Your Name"     required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="tel"   name="phone"     placeholder="Phone Number"           class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="text"  name="subject"   placeholder="Subject"                class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="firstname" placeholder="Your Name"     required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="tel"   name="phone"     placeholder="Phone Number"           class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="text"  name="subject"   placeholder="Subject"                class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
       </div>
-      <textarea name="message" placeholder="Your message..." rows="5" required class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
-      <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
+      <textarea name="message" placeholder="Your message..." rows="5" required class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:var(--lu-bg, #fff);"></textarea>
+      <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:var(--lu-on-accent, #fff);font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
       <div id="contact-canonical-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
       <div id="contact-canonical-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
     </form>

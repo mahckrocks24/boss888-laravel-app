@@ -42,15 +42,15 @@ h1,h2,h3,h4{font-family:'Cormorant Garamond',serif;font-weight:500;color:var(--c
 .h-display{font-size:clamp(56px,7vw,96px);line-height:1.0;letter-spacing:-0.025em}
 .h-section{font-size:clamp(40px,4.6vw,64px);letter-spacing:-0.015em}
 .h-sub{font-size:clamp(24px,2.6vw,34px)}
-.eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.26em;color:var(--gold);margin-bottom:18px;display:inline-flex;align-items:center;gap:16px;text-transform:uppercase}
+.eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.26em;color:var(--lu-accent-text, var(--gold));margin-bottom:18px;display:inline-flex;align-items:center;gap:16px;text-transform:uppercase}
 .eyebrow::before{content:'';display:inline-block;width:38px;height:1px;background:var(--gold)}
 
 /* Buttons */
 .btn{display:inline-flex;align-items:center;gap:10px;font-family:'Inter',sans-serif;font-size:13px;font-weight:600;padding:15px 30px;border-radius:2px;transition:all .25s ease;cursor:pointer;border:1px solid transparent;letter-spacing:0.08em;text-transform:uppercase}
-.btn-gold{background:var(--gold);color:var(--white);border-color:var(--gold)}
+.btn-gold{background:var(--gold);color:var(--lu-on-accent, var(--white));border-color:var(--gold)}
 .btn-gold:hover{background:var(--gold-deep);border-color:var(--gold-deep);transform:translateY(-1px)}
 .btn-ghost{background:transparent;color:var(--white);border-color:rgba(255,255,255,0.35)}
-.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+.btn-ghost:hover{border-color:var(--gold);color:var(--lu-accent-text, var(--gold))}
 .btn-ghost-dark{background:transparent;color:var(--charcoal);border-color:var(--charcoal)}
 .btn-ghost-dark:hover{background:var(--charcoal);color:var(--white)}
 .btn-whatsapp{background:var(--whatsapp);color:var(--white);border-color:var(--whatsapp);padding:10px 18px;font-size:12px}
@@ -65,12 +65,12 @@ h1,h2,h3,h4{font-family:'Cormorant Garamond',serif;font-weight:500;color:var(--c
 nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:22px 0;transition:background .3s ease, box-shadow .3s ease;background:transparent}
 nav.scrolled{background:var(--charcoal);box-shadow:0 2px 20px rgba(0,0,0,0.15)}
 nav .inner{display:flex;justify-content:space-between;align-items:center}
-nav .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--gold);letter-spacing:-0.01em}
+nav .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;color:var(--lu-accent-text, var(--gold));letter-spacing:-0.01em}
 .nav-links{display:flex;gap:32px;align-items:center}
 .nav-links a.nav-link{font-size:12px;color:rgba(255,255,255,0.85);font-weight:500;letter-spacing:0.12em;text-transform:uppercase;transition:color .2s ease}
-.nav-links a.nav-link:hover{color:var(--gold)}
+.nav-links a.nav-link:hover{color:var(--lu-accent-text, var(--gold))}
 .nav-actions{display:flex;gap:10px;align-items:center}
-.nav-cta{background:var(--gold);color:var(--white)!important;padding:10px 20px;border-radius:2px;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;transition:background .2s ease}
+.nav-cta{background:var(--gold);color:var(--lu-on-accent, var(--white))!important;padding:10px 20px;border-radius:2px;font-size:12px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;transition:background .2s ease}
 .nav-cta:hover{background:var(--gold-deep)}
 
 /* Hero — full viewport split layout */
@@ -80,16 +80,16 @@ nav .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;
 .hero-photo-img::after{content:'';position:absolute;inset:0;background:linear-gradient(110deg,transparent 60%,rgba(28,28,30,0.3) 100%);pointer-events:none}
 .hero-content{display:flex;flex-direction:column;justify-content:center;padding:90px 72px 60px;position:relative}
 .hero-content::before{content:'';position:absolute;top:25%;right:-180px;width:360px;height:360px;background:radial-gradient(circle at center,rgba(201,148,58,0.12) 0%,transparent 65%);pointer-events:none}
-.hero-eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.26em;color:var(--gold);margin-bottom:24px;display:inline-flex;align-items:center;gap:16px;text-transform:uppercase;position:relative;z-index:2}
+.hero-eyebrow{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.26em;color:var(--lu-accent-text, var(--gold));margin-bottom:24px;display:inline-flex;align-items:center;gap:16px;text-transform:uppercase;position:relative;z-index:2}
 .hero-eyebrow::before{content:'';display:inline-block;width:38px;height:1px;background:var(--gold)}
 .hero-name{font-family:'Cormorant Garamond',serif;font-size:clamp(56px,5.6vw,80px);font-weight:500;line-height:1;letter-spacing:-0.025em;color:var(--white);margin-bottom:14px;position:relative;z-index:2}
 .hero-title{font-size:17px;color:rgba(255,255,255,0.75);font-weight:400;margin-bottom:8px;letter-spacing:0.02em;position:relative;z-index:2}
-.hero-company{font-size:14px;color:var(--gold);font-weight:500;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:44px;position:relative;z-index:2}
+.hero-company{font-size:14px;color:var(--lu-accent-text, var(--gold));font-weight:500;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:44px;position:relative;z-index:2}
 .hero-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-bottom:42px;padding:26px 0;border-top:1px solid rgba(255,255,255,0.12);border-bottom:1px solid rgba(255,255,255,0.12);position:relative;z-index:2}
 .hero-stat{padding:0 16px;border-right:1px solid rgba(255,255,255,0.08)}
 .hero-stat:first-child{padding-left:0}
 .hero-stat:last-child{border-right:none;padding-right:0}
-.hero-stat-value{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--gold);font-weight:600;line-height:1;margin-bottom:4px;letter-spacing:-0.02em}
+.hero-stat-value{font-family:'Cormorant Garamond',serif;font-size:30px;color:var(--lu-accent-text, var(--gold));font-weight:600;line-height:1;margin-bottom:4px;letter-spacing:-0.02em}
 .hero-stat-label{font-size:10px;color:rgba(255,255,255,0.55);font-weight:500;letter-spacing:0.1em;text-transform:uppercase}
 .hero-ctas{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:32px;position:relative;z-index:2}
 .hero-languages{display:flex;gap:20px;flex-wrap:wrap;position:relative;z-index:2;margin-top:12px;padding-top:24px;border-top:1px solid rgba(255,255,255,0.08)}
@@ -101,57 +101,57 @@ nav .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;
 .stats-strip-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;position:relative}
 .stats-strip-item{text-align:center;padding:0 16px;border-right:1px solid rgba(201,148,58,0.18)}
 .stats-strip-item:last-child{border-right:none}
-.stats-strip-value{font-family:'Cormorant Garamond',serif;font-size:52px;color:var(--gold);font-weight:600;line-height:1;margin-bottom:10px;letter-spacing:-0.02em}
-.stats-strip-label{font-size:11px;color:rgba(255,255,255,0.6);font-weight:500;letter-spacing:0.16em;text-transform:uppercase}
+.stats-strip-value{font-family:'Cormorant Garamond',serif;font-size:52px;color:var(--lu-accent-on-dark, var(--gold));font-weight:600;line-height:1;margin-bottom:10px;letter-spacing:-0.02em}
+.stats-strip-label{font-size:11px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62);font-weight:500;letter-spacing:0.16em;text-transform:uppercase}
 
 /* Section common */
 .section{padding:140px 0}
 .section-head{max-width:820px;margin-bottom:80px}
 .section-head.center{margin-left:auto;margin-right:auto;text-align:center}
-.section-intro{font-size:18px;color:rgba(28,28,30,0.7);line-height:1.75;max-width:680px;margin-top:26px;font-weight:400}
+.section-intro{font-size:18px;color:var(--lu-muted, rgba(28,28,30,0.7));line-height:1.75;max-width:680px;margin-top:26px;font-weight:400}
 
 /* About — editorial split */
 .about{background:var(--cream);padding:140px 0}
 .about-grid{display:grid;grid-template-columns:1fr 1fr;gap:90px;align-items:center}
 .about-quote-wrap{padding-right:20px}
-.about-quote{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(30px,3.2vw,44px);color:var(--gold-deep);line-height:1.25;font-weight:500;letter-spacing:-0.01em;position:relative;padding-left:32px}
-.about-quote::before{content:'"';position:absolute;left:-8px;top:-16px;font-size:120px;color:var(--gold);line-height:0.9;opacity:0.7;font-weight:600}
-.about-quote-author{font-family:'Inter',sans-serif;font-style:normal;font-size:12px;color:var(--gold-deep);font-weight:600;letter-spacing:0.24em;text-transform:uppercase;margin-top:30px;padding-left:32px}
+.about-quote{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:clamp(30px,3.2vw,44px);color:var(--lu-accent-text, var(--gold-deep));line-height:1.25;font-weight:500;letter-spacing:-0.01em;position:relative;padding-left:32px}
+.about-quote::before{content:'"';position:absolute;left:-8px;top:-16px;font-size:120px;color:var(--lu-accent-text, var(--gold));line-height:0.9;opacity:0.7;font-weight:600}
+.about-quote-author{font-family:'Inter',sans-serif;font-style:normal;font-size:12px;color:var(--lu-accent-text, var(--gold-deep));font-weight:600;letter-spacing:0.24em;text-transform:uppercase;margin-top:30px;padding-left:32px}
 .about-right{display:flex;flex-direction:column;gap:26px}
 .about-photo{width:100%;aspect-ratio:4/5;background-size:cover;background-position:center;border-radius:2px;margin-bottom:8px}
 .about-text{font-size:16px;color:var(--charcoal);line-height:1.8;font-weight:400}
-.about-signature{font-family:'Dancing Script',cursive;font-size:38px;color:var(--gold-deep);line-height:1;padding-top:12px;border-top:1px solid rgba(28,28,30,0.1);margin-top:14px}
-.about-meta{font-size:12px;color:rgba(28,28,30,0.55);letter-spacing:0.12em;text-transform:uppercase;font-weight:500;margin-top:8px}
+.about-signature{font-family:'Dancing Script',cursive;font-size:38px;color:var(--lu-accent-text, var(--gold-deep));line-height:1;padding-top:12px;border-top:1px solid rgba(28,28,30,0.1);margin-top:14px}
+.about-meta{font-size:12px;color:var(--lu-muted, rgba(28,28,30,0.55));letter-spacing:0.12em;text-transform:uppercase;font-weight:500;margin-top:8px}
 
 /* Specialties */
 .specialties{background:var(--white)}
 .specialties-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(28,28,30,0.08);border:1px solid rgba(28,28,30,0.08)}
 .specialty{background:var(--white);padding:44px 36px;transition:all .25s ease;position:relative}
 .specialty:hover{background:var(--cream);transform:translateY(-1px)}
-.specialty-icon{width:54px;height:54px;border-radius:2px;background:var(--charcoal);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:600;margin-bottom:24px}
+.specialty-icon{width:54px;height:54px;border-radius:2px;background:var(--charcoal);color:var(--lu-accent-on-dark, var(--gold));display:flex;align-items:center;justify-content:center;font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:600;margin-bottom:24px}
 .specialty-name{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--charcoal);font-weight:600;margin-bottom:10px;letter-spacing:-0.01em}
-.specialty-range{font-size:14px;color:var(--gold-deep);font-weight:500;margin-bottom:14px;letter-spacing:0.02em}
-.specialty-count{font-size:12px;color:rgba(28,28,30,0.55);letter-spacing:0.1em;text-transform:uppercase;font-weight:500}
+.specialty-range{font-size:14px;color:var(--lu-accent-text, var(--gold-deep));font-weight:500;margin-bottom:14px;letter-spacing:0.02em}
+.specialty-count{font-size:12px;color:var(--lu-muted, rgba(28,28,30,0.55));letter-spacing:0.1em;text-transform:uppercase;font-weight:500}
 
 /* Listings — portfolio grid */
 .listings{background:var(--cream)}
 .listings-tabs{display:flex;gap:4px;justify-content:center;margin-bottom:56px;flex-wrap:wrap}
 .listing-tab{padding:10px 22px;background:transparent;border:1px solid rgba(28,28,30,0.2);color:var(--charcoal);font-size:12px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;cursor:pointer;transition:all .2s ease;border-radius:2px;font-family:'Inter',sans-serif}
-.listing-tab.active,.listing-tab:hover{background:var(--charcoal);color:var(--gold);border-color:var(--charcoal)}
+.listing-tab.active,.listing-tab:hover{background:var(--charcoal);color:var(--lu-accent-on-dark, var(--gold));border-color:var(--charcoal)}
 .listings-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px}
 .listing{background:var(--white);border:1px solid rgba(28,28,30,0.08);overflow:hidden;transition:all .3s ease;display:flex;flex-direction:column}
 .listing:hover{transform:translateY(-4px);box-shadow:0 16px 42px rgba(28,28,30,0.1)}
 .listing-img{aspect-ratio:4/3;background-size:cover;background-position:center;position:relative}
-.listing-badge{position:absolute;top:14px;left:14px;background:var(--charcoal);color:var(--gold);font-size:10px;font-weight:600;letter-spacing:0.14em;padding:6px 12px;border-radius:2px;text-transform:uppercase}
+.listing-badge{position:absolute;top:14px;left:14px;background:var(--charcoal);color:var(--lu-accent-on-dark, var(--gold));font-size:10px;font-weight:600;letter-spacing:0.14em;padding:6px 12px;border-radius:2px;text-transform:uppercase}
 .listing-body{padding:26px;flex:1;display:flex;flex-direction:column}
 .listing-price{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--charcoal);font-weight:600;margin-bottom:6px;letter-spacing:-0.01em}
-.listing-price-currency{font-size:14px;color:rgba(28,28,30,0.5);font-weight:500;margin-left:2px}
-.listing-area{font-size:13px;color:var(--gold-deep);font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:14px}
-.listing-specs{display:flex;gap:18px;font-size:13px;color:rgba(28,28,30,0.7);margin-bottom:22px;padding-top:14px;border-top:1px solid rgba(28,28,30,0.08);margin-top:auto}
+.listing-price-currency{font-size:14px;color:var(--lu-muted, rgba(28,28,30,0.5));font-weight:500;margin-left:2px}
+.listing-area{font-size:13px;color:var(--lu-accent-text, var(--gold-deep));font-weight:500;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:14px}
+.listing-specs{display:flex;gap:18px;font-size:13px;color:var(--lu-muted, rgba(28,28,30,0.7));margin-bottom:22px;padding-top:14px;border-top:1px solid rgba(28,28,30,0.08);margin-top:auto}
 .listing-spec{display:flex;flex-direction:column;gap:2px}
 .listing-spec-value{font-weight:600;color:var(--charcoal)}
-.listing-spec-label{font-size:11px;color:rgba(28,28,30,0.5);letter-spacing:0.04em;text-transform:uppercase}
-.listing-cta{display:inline-flex;align-items:center;gap:8px;color:var(--gold-deep);font-size:12px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;padding-top:10px;border-top:1px solid rgba(28,28,30,0.06);margin-top:10px}
+.listing-spec-label{font-size:11px;color:var(--lu-muted, rgba(28,28,30,0.5));letter-spacing:0.04em;text-transform:uppercase}
+.listing-cta{display:inline-flex;align-items:center;gap:8px;color:var(--lu-accent-text, var(--gold-deep));font-size:12px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;padding-top:10px;border-top:1px solid rgba(28,28,30,0.06);margin-top:10px}
 .listing-cta::after{content:'→';transition:transform .2s ease}
 .listing:hover .listing-cta::after{transform:translateX(4px)}
 
@@ -163,10 +163,10 @@ nav .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;
 .area:hover .area-img{transform:scale(1.04)}
 .area-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(28,28,30,0.88) 100%);display:flex;flex-direction:column;justify-content:flex-end;padding:34px 30px;color:var(--white)}
 .area-name{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:600;letter-spacing:-0.015em;margin-bottom:6px;color:var(--white)}
-.area-price{font-size:13px;color:var(--gold);font-weight:500;letter-spacing:0.02em;margin-bottom:18px}
+.area-price{font-size:13px;color:var(--lu-accent-text, var(--gold));font-weight:500;letter-spacing:0.02em;margin-bottom:18px}
 .area-stats{display:flex;justify-content:space-between;align-items:center;padding-top:18px;border-top:1px solid rgba(255,255,255,0.18);font-size:12px}
 .area-deals{color:rgba(255,255,255,0.75);letter-spacing:0.06em;text-transform:uppercase;font-weight:500}
-.area-link{color:var(--gold);font-weight:600;letter-spacing:0.12em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
+.area-link{color:var(--lu-accent-text, var(--gold));font-weight:600;letter-spacing:0.12em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px}
 .area-link::after{content:'→'}
 
 /* Awards */
@@ -175,61 +175,61 @@ nav .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;
 .awards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.08);margin-top:20px}
 .award{background:var(--charcoal);padding:44px 36px;transition:all .3s ease;display:flex;flex-direction:column;gap:18px}
 .award:hover{background:var(--charcoal-soft);box-shadow:0 0 30px rgba(201,148,58,0.12) inset}
-.award-icon{width:54px;height:54px;border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:700;border-radius:2px}
+.award-icon{width:54px;height:54px;border:1px solid var(--gold);color:var(--lu-accent-on-dark, var(--gold));display:flex;align-items:center;justify-content:center;font-size:22px;font-family:'Cormorant Garamond',serif;font-weight:700;border-radius:2px}
 .award-name{font-family:'Cormorant Garamond',serif;font-size:24px;color:var(--white);font-weight:600;letter-spacing:-0.01em;line-height:1.2}
-.award-year{font-size:11px;color:var(--gold);letter-spacing:0.18em;text-transform:uppercase;font-weight:600}
-.award-issuer{font-size:13px;color:rgba(255,255,255,0.55);font-weight:400;line-height:1.5}
+.award-year{font-size:11px;color:var(--lu-accent-on-dark, var(--gold));letter-spacing:0.18em;text-transform:uppercase;font-weight:600}
+.award-issuer{font-size:13px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62);font-weight:400;line-height:1.5}
 
 /* Press */
 .press{background:var(--charcoal-soft);padding:100px 0;color:var(--white)}
 .press-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-top:50px}
 .press-card{background:var(--charcoal);border:1px solid rgba(201,148,58,0.12);padding:34px 30px;transition:all .3s ease;display:flex;flex-direction:column;gap:16px}
 .press-card:hover{border-color:var(--gold);transform:translateY(-2px)}
-.press-publication{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--gold);font-weight:600;letter-spacing:-0.01em}
+.press-publication{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--lu-accent-on-dark, var(--gold));font-weight:600;letter-spacing:-0.01em}
 .press-headline{font-size:16px;color:var(--white);line-height:1.5;font-weight:500;flex:1}
-.press-date{font-size:11px;color:rgba(255,255,255,0.5);letter-spacing:0.14em;text-transform:uppercase;font-weight:500}
-.press-link{font-size:12px;color:var(--gold);font-weight:600;letter-spacing:0.14em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;padding-top:14px;border-top:1px solid rgba(201,148,58,0.15)}
+.press-date{font-size:11px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62);letter-spacing:0.14em;text-transform:uppercase;font-weight:500}
+.press-link{font-size:12px;color:var(--lu-accent-on-dark, var(--gold));font-weight:600;letter-spacing:0.14em;text-transform:uppercase;display:inline-flex;align-items:center;gap:6px;padding-top:14px;border-top:1px solid rgba(201,148,58,0.15)}
 .press-link::after{content:'→'}
 
 /* Testimonials */
 .testimonials{background:var(--cream)}
 .testimonials-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:32px}
 .testimonial{background:var(--white);padding:48px 40px;border:1px solid rgba(28,28,30,0.08);display:flex;flex-direction:column;gap:22px}
-.testimonial-rating{color:var(--gold);font-size:16px;letter-spacing:3px}
+.testimonial-rating{color:var(--lu-accent-text, var(--gold));font-size:16px;letter-spacing:3px}
 .testimonial-quote{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--charcoal);line-height:1.5;font-weight:500;font-style:italic;letter-spacing:-0.005em;flex:1}
-.testimonial-property-tag{display:inline-block;font-size:11px;color:var(--gold-deep);background:rgba(201,148,58,0.1);border:1px solid rgba(201,148,58,0.3);padding:6px 12px;border-radius:2px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;align-self:flex-start}
+.testimonial-property-tag{display:inline-block;font-size:11px;color:var(--lu-accent-text, var(--gold-deep));background:rgba(201,148,58,0.1);border:1px solid rgba(201,148,58,0.3);padding:6px 12px;border-radius:2px;font-weight:600;letter-spacing:0.14em;text-transform:uppercase;align-self:flex-start}
 .testimonial-author-row{display:flex;align-items:center;gap:16px;padding-top:20px;border-top:1px solid rgba(28,28,30,0.08)}
-.testimonial-avatar{width:52px;height:52px;border-radius:50%;background-size:cover;background-position:center;background-color:var(--charcoal);color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.testimonial-avatar{width:52px;height:52px;border-radius:50%;background-size:cover;background-position:center;background-color:var(--charcoal);color:var(--lu-accent-on-dark, var(--gold));font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .testimonial-author{font-family:'Cormorant Garamond',serif;font-size:19px;color:var(--charcoal);font-weight:600}
-.testimonial-nationality{font-size:12px;color:rgba(28,28,30,0.55);letter-spacing:0.08em;margin-top:2px}
+.testimonial-nationality{font-size:12px;color:var(--lu-muted, rgba(28,28,30,0.55));letter-spacing:0.08em;margin-top:2px}
 
 /* Process */
 .process{background:var(--white)}
 .process-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;position:relative;margin-top:60px}
 .process-steps::before{content:'';position:absolute;top:28px;left:8%;right:8%;height:1px;background:linear-gradient(90deg,transparent,var(--gold) 20%,var(--gold) 80%,transparent);opacity:0.4}
 .process-step{text-align:center;position:relative;z-index:2}
-.process-step-num{width:58px;height:58px;border-radius:50%;background:var(--white);border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin:0 auto 28px;box-shadow:0 0 0 8px var(--white)}
+.process-step-num{width:58px;height:58px;border-radius:50%;background:var(--white);border:1px solid var(--gold);color:var(--lu-accent-text, var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:600;margin:0 auto 28px;box-shadow:0 0 0 8px var(--white)}
 .process-step h3{font-size:22px;margin-bottom:14px;color:var(--charcoal);font-weight:600;letter-spacing:-0.01em}
-.process-step p{font-size:15px;color:rgba(28,28,30,0.7);line-height:1.65}
+.process-step p{font-size:15px;color:var(--lu-muted, rgba(28,28,30,0.7));line-height:1.65}
 
 /* Booking */
 .booking{background:var(--charcoal);color:var(--white);padding:140px 0;position:relative;overflow:hidden}
 .booking::before{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:900px;height:900px;background:radial-gradient(circle at center,rgba(201,148,58,0.1) 0%,transparent 60%);pointer-events:none}
 .booking h2{color:var(--white)}
 .booking-inner{position:relative;z-index:2;max-width:820px;margin:0 auto;text-align:center}
-.booking-intro{font-size:19px;color:rgba(255,255,255,0.72);line-height:1.7;margin-top:24px;margin-bottom:60px;font-weight:400}
+.booking-intro{font-size:19px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.72);line-height:1.7;margin-top:24px;margin-bottom:60px;font-weight:400}
 .booking-form{display:grid;grid-template-columns:1fr 1fr;gap:20px;text-align:left;background:var(--charcoal-soft);border:1px solid rgba(201,148,58,0.25);padding:52px;margin-bottom:36px}
 .booking-form .full{grid-column:span 2}
-.booking-form label{display:block;font-size:11px;color:rgba(255,255,255,0.55);margin-bottom:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;font-family:'Inter',sans-serif}
+.booking-form label{display:block;font-size:11px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62);margin-bottom:10px;font-weight:600;letter-spacing:0.18em;text-transform:uppercase;font-family:'Inter',sans-serif}
 .booking-form input,.booking-form select,.booking-form textarea{width:100%;padding:16px 18px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.14);border-radius:2px;font-size:14px;color:var(--white);font-family:'Inter',sans-serif;transition:all .2s ease}
 .booking-form input:focus,.booking-form select:focus,.booking-form textarea:focus{outline:none;border-color:var(--gold);background:rgba(0,0,0,0.45)}
 .booking-form textarea{resize:vertical;min-height:100px}
 .booking-form select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,rgba(201,148,58,0.7) 50%),linear-gradient(135deg,rgba(201,148,58,0.7) 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 15px) 50%;background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:44px}
-.booking-submit{display:inline-block;background:var(--gold);color:var(--white);border:none;padding:17px 56px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s ease;font-family:'Inter',sans-serif;letter-spacing:0.14em;text-transform:uppercase;border-radius:2px}
+.booking-submit{display:inline-block;background:var(--gold);color:var(--lu-on-accent, var(--white));border:none;padding:17px 56px;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s ease;font-family:'Inter',sans-serif;letter-spacing:0.14em;text-transform:uppercase;border-radius:2px}
 .booking-submit:hover{background:var(--gold-deep);transform:translateY(-1px)}
-.booking-direct{display:flex;gap:30px;justify-content:center;flex-wrap:wrap;font-size:13px;color:rgba(255,255,255,0.7);letter-spacing:0.06em}
+.booking-direct{display:flex;gap:30px;justify-content:center;flex-wrap:wrap;font-size:13px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.7);letter-spacing:0.06em}
 .booking-direct-item{display:inline-flex;align-items:center;gap:10px}
-.booking-direct-item a{color:var(--gold);font-weight:600}
+.booking-direct-item a{color:var(--lu-accent-on-dark, var(--gold));font-weight:600}
 
 /* Contact */
 .contact{background:var(--white);padding:140px 0}
@@ -238,34 +238,34 @@ nav .logo{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:600;
 .contact-list{display:flex;flex-direction:column;gap:28px;margin-top:32px}
 .contact-item{display:flex;gap:20px;align-items:flex-start;padding-bottom:24px;border-bottom:1px solid rgba(28,28,30,0.08)}
 .contact-item:last-of-type{border-bottom:none;padding-bottom:0}
-.contact-icon{width:44px;height:44px;border:1px solid var(--gold);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:16px;font-family:'Cormorant Garamond',serif;font-weight:700;flex-shrink:0;border-radius:2px}
-.contact-label{font-size:11px;color:rgba(28,28,30,0.55);letter-spacing:0.18em;text-transform:uppercase;font-weight:600;margin-bottom:4px}
+.contact-icon{width:44px;height:44px;border:1px solid var(--gold);color:var(--lu-accent-text, var(--gold));display:flex;align-items:center;justify-content:center;font-size:16px;font-family:'Cormorant Garamond',serif;font-weight:700;flex-shrink:0;border-radius:2px}
+.contact-label{font-size:11px;color:var(--lu-muted, rgba(28,28,30,0.55));letter-spacing:0.18em;text-transform:uppercase;font-weight:600;margin-bottom:4px}
 .contact-value{font-size:16px;color:var(--charcoal);font-weight:500;line-height:1.5}
-.contact-trust{display:inline-flex;align-items:center;gap:10px;background:rgba(201,148,58,0.1);color:var(--gold-deep);padding:10px 20px;border-radius:2px;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-top:24px;border:1px solid rgba(201,148,58,0.25)}
+.contact-trust{display:inline-flex;align-items:center;gap:10px;background:rgba(201,148,58,0.1);color:var(--lu-accent-text, var(--gold-deep));padding:10px 20px;border-radius:2px;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;margin-top:24px;border:1px solid rgba(201,148,58,0.25)}
 .contact-trust::before{content:'✓';font-weight:700}
-.contact-map{margin-top:28px;aspect-ratio:2/1;background:var(--cream);border:1px solid rgba(28,28,30,0.1);display:flex;align-items:center;justify-content:center;color:rgba(28,28,30,0.4);font-size:13px;letter-spacing:0.08em}
+.contact-map{margin-top:28px;aspect-ratio:2/1;background:var(--cream);border:1px solid rgba(28,28,30,0.1);display:flex;align-items:center;justify-content:center;color:var(--lu-muted, rgba(28,28,30,0.4));font-size:13px;letter-spacing:0.08em}
 
 /* Social proof ticker */
 .ticker{background:var(--charcoal);padding:32px 0;overflow:hidden;border-top:1px solid rgba(201,148,58,0.15);border-bottom:1px solid rgba(201,148,58,0.15)}
 .ticker-track{display:flex;gap:60px;white-space:nowrap;animation:tickerScroll 40s linear infinite}
-.ticker-item{display:inline-flex;align-items:center;gap:14px;font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;color:var(--gold);letter-spacing:-0.01em}
-.ticker-item::before{content:'✦';color:var(--gold-deep);font-size:18px}
+.ticker-item{display:inline-flex;align-items:center;gap:14px;font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:500;color:var(--lu-accent-on-dark, var(--gold));letter-spacing:-0.01em}
+.ticker-item::before{content:'✦';color:var(--lu-accent-on-dark, var(--gold-deep));font-size:18px}
 @keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 /* Footer */
-footer{background:var(--charcoal);color:rgba(255,255,255,0.6);padding:80px 0 40px;border-top:1px solid rgba(201,148,58,0.12)}
+footer{background:var(--charcoal);color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62);padding:80px 0 40px;border-top:1px solid rgba(201,148,58,0.12)}
 .footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:50px;margin-bottom:56px}
-.footer-logo{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--gold);font-weight:600;margin-bottom:18px}
+.footer-logo{font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--lu-accent-text, var(--gold));font-weight:600;margin-bottom:18px}
 .footer-tagline{font-size:14px;color:rgba(255,255,255,0.55);line-height:1.7;margin-bottom:22px;max-width:380px}
 .footer-socials{display:flex;gap:10px}
-.footer-social{width:36px;height:36px;border-radius:50%;border:1px solid rgba(201,148,58,0.3);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;transition:all .2s ease;font-family:'Cormorant Garamond',serif}
-.footer-social:hover{background:var(--gold);color:var(--charcoal);border-color:var(--gold)}
-.footer-col-title{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--gold);font-weight:600;margin-bottom:22px;letter-spacing:-0.005em}
+.footer-social{width:36px;height:36px;border-radius:50%;border:1px solid rgba(201,148,58,0.3);color:var(--lu-accent-text, var(--gold));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;transition:all .2s ease;font-family:'Cormorant Garamond',serif}
+.footer-social:hover{background:var(--gold);color:var(--lu-on-accent, var(--charcoal));border-color:var(--gold)}
+.footer-col-title{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--lu-accent-text, var(--gold));font-weight:600;margin-bottom:22px;letter-spacing:-0.005em}
 .footer-col ul{list-style:none}
 .footer-col li{margin-bottom:10px}
 .footer-col a{font-size:13px;color:rgba(255,255,255,0.6);transition:color .2s ease}
-.footer-col a:hover{color:var(--gold)}
-.footer-rera{font-size:12px;color:rgba(255,255,255,0.4);line-height:1.7;padding:22px;background:var(--charcoal-soft);border-left:2px solid var(--gold);margin-bottom:32px}
+.footer-col a:hover{color:var(--lu-accent-text, var(--gold))}
+.footer-rera{font-size:12px;color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62);line-height:1.7;padding:22px;background:var(--charcoal-soft);border-left:2px solid var(--gold);margin-bottom:32px}
 .footer-bottom{display:flex;justify-content:space-between;align-items:center;padding-top:24px;border-top:1px solid rgba(255,255,255,0.08);font-size:12px;color:rgba(255,255,255,0.4)}
 
 /* Responsive */
@@ -287,6 +287,27 @@ footer{background:var(--charcoal);color:rgba(255,255,255,0.6);padding:80px 0 40p
   .nav-links a.nav-link{display:none}
 }
 figure{margin:0}
+
+/* lug-scope */
+.awards .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.press .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.booking .eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.hero .hero-eyebrow{color:var(--lu-accent-on-dark, var(--gold))}
+.hero .hero-title{color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.75)}
+.hero .hero-company{color:var(--lu-accent-on-dark, var(--gold))}
+.hero .hero-stat-value{color:var(--lu-accent-on-dark, var(--gold))}
+.hero .hero-stat-label{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+.hero .hero-language{color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.7)}
+.area .area-price{color:var(--lu-accent-on-dark, var(--gold))}
+.area .area-deals{color:rgba(var(--lu-on-dark-rgb, 255,255,255), 0.75)}
+.area .area-link{color:var(--lu-accent-on-dark, var(--gold))}
+footer .footer-logo{color:var(--lu-accent-on-dark, var(--gold))}
+footer .footer-tagline{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+footer .footer-social{color:var(--lu-accent-on-dark, var(--gold))}
+footer .footer-col-title{color:var(--lu-accent-on-dark, var(--gold))}
+footer .footer-col a{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+footer .footer-bottom{color:rgba(var(--lu-on-dark-rgb, 255,255,255), .62)}
+/* /lug-scope */
 </style>
 </head>
 <body data-template="real_estate_broker">
@@ -946,18 +967,18 @@ figure{margin:0}
 
 <!-- Footer -->
 <!-- ═══ CONTACT (Phase 9E retrofit) ═══ -->
-<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:#fff;">
+<section class="section contact" id="contact-form" data-block="contact_form" style="padding:5rem 1.5rem;background:var(--lu-bg, #fff);">
   <div class="container" style="max-width:720px;margin:0 auto;">
     <h2 style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);text-align:center;">Get In Touch</h2>
     <p class="section-subtitle" style="max-width:60ch;margin:0 auto 2.5rem;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;text-align:center;">We'd love to hear from you.</p>
     <form class="contact-form" onsubmit="handleContactSubmit(event)" style="display:flex;flex-direction:column;gap:1rem;">
       <div class="form-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
-        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
-        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:#fff;">
+        <input type="text"  name="firstname" placeholder="Your Name"   required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="email" name="email"     placeholder="Email Address" required class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="tel"   name="phone"     placeholder="Phone Number"          class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
+        <input type="text"  name="subject"   placeholder="Subject"              class="form-input" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--lu-bg, #fff);">
       </div>
-      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:#fff;"></textarea>
+      <textarea name="message" placeholder="Your message..." rows="5" class="form-input form-textarea" style="padding:0.85rem 1rem;border:1px solid var(--divider,#E2E8F0);border-radius:8px;font-size:0.95rem;font-family:inherit;resize:vertical;min-height:140px;background:var(--lu-bg, #fff);"></textarea>
       <button type="submit" class="btn-primary" style="display:inline-block;padding:1rem 1.8rem;background:var(--medical,#0F172A);color:#fff;font-size:0.95rem;font-weight:600;border:none;border-radius:10px;cursor:pointer;transition:background .2s,transform .2s;align-self:flex-start;">Send Message</button>
       <div id="contact-success" style="display:none;color:#15803D;margin-top:0.5rem;font-size:0.92rem;">✓ Message sent successfully — we'll be in touch shortly.</div>
       <div id="contact-error"   style="display:none;color:#B91C1C;margin-top:0.5rem;font-size:0.92rem;">Something went wrong. Please try again or email us directly.</div>
@@ -1001,15 +1022,15 @@ async function handleContactSubmit(e) {
     <h2 data-field="blog_title" style="font-size:clamp(1.8rem,3vw,2.4rem);font-weight:500;line-height:1.18;margin-bottom:0.8rem;color:var(--carbon,#0F172A);">{{blog_title}}</h2>
     <p class="section-subtitle" data-field="blog_intro" style="max-width:60ch;color:var(--carbon-soft,#475569);font-size:1.05rem;line-height:1.6;margin-bottom:2.5rem;">{{blog_intro}}</p>
     <div class="blog-grid" id="blog-posts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;">
-      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_1_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_1_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_1_title}}</h3>
         <p data-field="blog_post_1_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_1_excerpt}}</p>
       </a>
-      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_2_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_2_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_2_title}}</h3>
         <p data-field="blog_post_2_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_2_excerpt}}</p>
       </a>
-      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:#fff;border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
+      <a href="{{blog_post_3_url}}" class="blog-card" style="display:block;padding:1.75rem;background:var(--lu-bg, #fff);border:1px solid var(--divider,#E2E8F0);border-radius:14px;text-decoration:none;color:inherit;transition:transform .2s,border-color .2s;">
         <h3 data-field="blog_post_3_title" style="font-size:1.2rem;font-weight:500;color:var(--carbon,#0F172A);margin-bottom:0.6rem;line-height:1.3;">{{blog_post_3_title}}</h3>
         <p data-field="blog_post_3_excerpt" style="font-size:0.92rem;color:var(--carbon-soft,#475569);line-height:1.55;">{{blog_post_3_excerpt}}</p>
       </a>

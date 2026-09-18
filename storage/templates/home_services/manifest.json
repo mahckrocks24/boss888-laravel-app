@@ -1469,5 +1469,15 @@
     "accent": "sky",
     "accent_deep": "sky_deep",
     "secondary": "green"
+  },
+  "palette_scheme": "light",
+  "palette_roles": {
+    "sky": "accent",
+    "sky_deep": "accent_deep",
+    "green": "secondary",
+    "green_deep": "accent_deep",
+    "white": "bg",
+    "light_grey": "surface",
+    "divider": "line"
   }
 }
