@@ -200,6 +200,8 @@
     + '.wsv2-agent:active{cursor:grabbing}'
     + '.wsv2-agent.selected{border-color:rgba(108,92,231,.3);box-shadow:0 0 0 2px var(--pg),0 8px 32px rgba(0,0,0,.4)}'
     + '.wsv2-agent.dragging{opacity:.85;z-index:100;cursor:grabbing}'
+    + '.wsv2-agent,.wsv2-task-node{-webkit-touch-callout:none}'
+    + '.wsv2-agent img,.wsv2-agent .orb,.wsv2-agent .orb *,.wsv2-agent svg{-webkit-user-drag:none;user-select:none;pointer-events:none}'
     /* head row — mirrors .an-top */
     + '.wsv2-agent-head{display:flex;align-items:center;gap:9px;margin-bottom:10px}'
     + '.wsv2-agent .orb{flex-shrink:0}'
@@ -1002,6 +1004,24 @@
         box.style.height = Math.abs(c.y - STATE.lasso.startY) + 'px';
       }
     }, { passive: false });
+
+    // Owner 2026-09-18 (phone): the browser CANCELS a touch it takes over — a long press on the portrait
+    // starts a native image drag / context menu, a system gesture or a tab switch interrupts — and then
+    // touchend never comes. Without this the drag stayed active: every later swipe moved the card instead
+    // of scrolling, the canvas stayed locked (touch-action:none) and the page looked broken.
+    function endAllGestures() {
+      if (STATE.taskDrag.active) endTaskDrag();
+      if (STATE.drag.active) endAgentDrag();
+      if (STATE.lasso.active) endLasso(canvas);
+      lockCanvasTouchScroll(false);
+    }
+    document.addEventListener('touchcancel', endAllGestures);
+    window.addEventListener('blur', endAllGestures);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) endAllGestures(); });
+    // A long press on a card must not open the browser's image/link menu mid-gesture.
+    canvas.addEventListener('contextmenu', function (e) {
+      if (e.target.closest('.wsv2-agent') || e.target.closest('.wsv2-task-node')) e.preventDefault();
+    });
 
     document.addEventListener('touchend', function (e) {
       if (STATE.taskDrag.active) {
