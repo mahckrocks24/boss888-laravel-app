@@ -64,19 +64,22 @@ class ScheduledFollowupJob implements ShouldQueue
         // mobile event poller (which now reads role IN ['assistant','agent'])
         // both surface it live.
         $messageId = null;
+        // Owner 2026-09-18 — a follow-up reaches the customer as Sarah, whoever was asked to remember it.
+        $voice = \App\Core\Agents\SarahVoice::relay($this->agentSlug, (string) $agent->name, $body, [
+            'phase'    => 'final',
+            'followup' => true,
+            'mode'     => $isLiteral ? 'literal' : 'status',
+            'note'     => $this->note,
+        ]);
+        $body = $voice['content'];
         try {
             $messageId = DB::table('agent_messages')->insertGetId([
                 'workspace_id'  => $this->workspaceId,
-                'agent_slug'    => $this->agentSlug,
-                'sender'        => $agent->name,
+                'agent_slug'    => $voice['slug'],
+                'sender'        => $voice['sender'],
                 'content'       => $body,
                 'role'          => 'agent',
-                'metadata_json' => json_encode([
-                    'phase'    => 'final',
-                    'followup' => true,
-                    'mode'     => $isLiteral ? 'literal' : 'status',
-                    'note'     => $this->note,
-                ]),
+                'metadata_json' => json_encode($voice['metadata']),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -90,9 +93,9 @@ class ScheduledFollowupJob implements ShouldQueue
             app(\App\Core\Notifications\PushDispatcherService::class)->dispatchAgentReply(
                 $this->userId,
                 $this->workspaceId,
-                $this->agentSlug,
+                $voice['slug'],
                 $body,
-                $this->agentSlug,                 // conversation_id == agent slug (per-agent thread)
+                $voice['slug'],                 // conversation_id == agent slug (per-agent thread)
                 $messageId ? (int) $messageId : null,
             );
         } catch (\Throwable $e) {

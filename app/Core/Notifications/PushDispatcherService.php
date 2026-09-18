@@ -118,10 +118,14 @@ class PushDispatcherService
             }
 
             // ── Resolve agent display name ──
-            $agentName = $this->resolveAgentName($agentSlug);
+            // Owner 2026-09-18 — every push comes from Sarah. A direct reply in a specialist's own thread keeps
+            // its thread (conversation_id) but is announced by Sarah with the specialist named in the body.
+            $agentName = \App\Core\Agents\SarahVoice::NAME;
+            $__specialist = $agentSlug !== \App\Core\Agents\SarahVoice::SLUG ? $this->resolveAgentName($agentSlug) : null;
 
             // ── Build the notification body ──
             $body = $this->humanizeForPush($rawContent);
+            if ($__specialist !== null) { $body = $__specialist . ': ' . $body; }
 
             $messages = array_map(function ($token) use ($agentName, $body, $conversationId, $agentSlug, $messageId, $workspaceId) {
                 return [
@@ -185,7 +189,7 @@ class PushDispatcherService
     {
         try {
             // W6: a push must never read as a removed agent messaging you.
-            if (\App\Core\LaunchScope\AgentDirectory::isRemoved($slug)) return 'LevelUp Growth';
+            if (\App\Core\LaunchScope\AgentDirectory::isRemoved($slug)) return 'LevelUpGrowth';
             $row = DB::table('agents')->where('slug', $slug)->first(['name']);
             if ($row && $row->name) return $row->name;
         } catch (\Throwable $e) { /* fall through */ }

@@ -48,11 +48,18 @@ class AgentMessageService
             return null;
         }
 
+        // Owner 2026-09-18 — the customer hears from Sarah only. A specialist's proactive message lands in
+        // Sarah's thread, under her name, with the specialist named inside it (SarahVoice). The slug validated
+        // above is kept in the metadata so nothing about who did the work is lost.
+        $voice     = SarahVoice::relay($agentSlug, (string) $agent->name, $content, $metadata);
+        $agentSlug = $voice['slug'];
+        $content   = $voice['content'];
+        $metadata  = $voice['metadata'];
         try {
             $id = DB::table('agent_messages')->insertGetId([
                 'workspace_id'  => $wsId,
                 'agent_slug'    => $agentSlug,
-                'sender'        => $agent->name,
+                'sender'        => $voice['sender'],
                 'content'       => mb_substr($content, 0, 65535),
                 'role'          => 'agent',
                 'metadata_json' => empty($metadata) ? null : json_encode($metadata, JSON_UNESCAPED_UNICODE),
