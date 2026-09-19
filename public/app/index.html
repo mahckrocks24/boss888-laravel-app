@@ -2590,7 +2590,7 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
   try {
     var _cur = (typeof currentView !== 'undefined') ? currentView : null;
     var _basicViews = ['sarah','attention','results','website','customers','account','aria','approvals','command','websites','crm','settings','billing','calendar','reports'];
-    if ((!opts.skipServer || opts.fromServer) && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav('workspace'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link
+    if ((!opts.skipServer || opts.fromServer) && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav(typeof window._luAdvancedHome === 'function' ? window._luAdvancedHome() : 'command'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link. REPORT-0061 B3: Advanced lands on Command Center
   } catch (e) {}
   if (mode === 'basic') document.body.classList.add('lu-mode-basic');
   else                  document.body.classList.remove('lu-mode-basic');
@@ -2961,7 +2961,7 @@ window.luSwipeToClose = luSwipeToClose;
     </div>
     <div class="sb-nav">
       <!-- P1-U2 (2026-08-30): Basic home — Sarah. Supporting Basic views are secondary; Advanced keeps the full nav. -->
-      <button type="button" class="nav-item nav-sarah" onclick="nav('sarah')" id="ni-sarah" data-basic="1"><span class="ni" aria-hidden="true"></span>Sarah</button>
+      <button type="button" class="nav-item nav-sarah" onclick="nav('sarah')" id="ni-sarah"><!-- REPORT-0061 B3 (2026-09-19): Sarah heads Advanced too --><span class="ni" aria-hidden="true"></span>Sarah</button>
       <div class="nav-sub" data-basic="1">When you need to look</div>
       <button type="button" class="nav-item" onclick="nav('attention')" id="ni-attention" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l7 12H3z"/><path d="M10 8v3M10 13.5h.01"/></svg></span>Needs attention<span class="cmd-nav-badge" id="ni-attention-badge" style="margin-left:auto;display:none"></span></button>
       <button type="button" class="nav-item" onclick="nav('results')" id="ni-results" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4-5 3 3 4-6 3 4"/><path d="M3 17h14"/></svg></span>Results</button>
@@ -2977,11 +2977,13 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('projects')" id="ni-projects" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Projects</button>
       <button type="button" class="nav-item" onclick="nav('command')" id="ni-command" data-feature="ai_agents" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Command Center<span id="cmd-nav-badge-approvals" class="cmd-nav-badge">0</span></button>
       <button type="button" class="nav-item" onclick="nav('approvals')" id="ni-approvals" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/><path d="M16 13l2 2 3-3" transform="translate(-5 0)"/><circle cx="16" cy="15" r="1.5"/></svg></span>Review Queue<span id="nav-approval-badge" class="cmd-nav-badge">0</span></button>
+      <button type="button" class="nav-item" onclick="nav('results')" id="ni-results-adv" data-nav-view="results" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4-5 3 3 4-6 3 4"/><path d="M3 17h14"/></svg></span>Results</button><!-- REPORT-0061 B3 (Owner 2026-09-19): the performance page in Advanced too — same view as Basic -->
       <button type="button" class="nav-item" onclick="nav('queue')" id="ni-queue" data-admin-only="true" style="display:none" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/><circle cx="16" cy="14" r="2.5"/><path d="M15 13.5l1 1 2-2"/></svg></span>Worker Queue</button>
       <!-- /* b24b-more-moves */ -->
       <div class="nav-section">Team</div>
       <button type="button" class="nav-item" onclick="nav('agents')" id="ni-agents" data-feature="ai_agents" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7" r="3"/><path d="M4 18c0-3.314 2.686-6 6-6s6 2.686 6 6"/><circle cx="15.5" cy="6" r="2"/><path d="M17.5 12c1 .5 1.5 1.5 1.5 2.5"/></svg></span>Agents</button>
-            <button type="button" class="nav-item" onclick="nav('messages')" id="ni-messages" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 5H2v9a1 1 0 001 1h12l3 2V5z"/><path d="M6 9h8M6 11.5h5"/></svg></span>Messages</button>
+            <!-- REPORT-0061 B3 (2026-09-19): "Messages" left the menu — under DEC-0060 the only conversation is Sarah, who now heads the menu.
+                 The view (#view-messages) and /app/messages are kept for notification deep links. -->
       <div class="nav-section">Publishing</div>
       <!-- REPORT-0061 B2/G (2026-09-19): the "Website Wizard" item is gone — building a website has ONE door, Websites › New website
            (Arthur's wizard, wsShowCreate). The homepage widget hand-off and onboarding still open the wizard directly. -->
@@ -4766,7 +4768,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=b1-20260919"></script>
+<script defer src="/app/js/core.js?v=b3-20260919"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>

@@ -901,7 +901,8 @@ window._luRouter = (function () {
   // workspace is the default landing — pushes to /app/ rather than
   // /app/workspace so the URL stays clean on first load.
   // P1-U2: the default landing depends on the mode — Basic lands on Sarah, Advanced on the workspace canvas.
-  var DEFAULT_VIEW = (function(){ try { return localStorage.getItem('lu_visibility_mode') === 'advanced' ? 'workspace' : 'sarah'; } catch (e) { return 'sarah'; } })();
+  // REPORT-0061 B3 (2026-09-19): Advanced lands on Command Center (Workspace for a plan without the AI team, decided once the plan is known)
+  var DEFAULT_VIEW = (function(){ try { return localStorage.getItem('lu_visibility_mode') === 'advanced' ? 'command' : 'sarah'; } catch (e) { return 'sarah'; } })();
   var BASE = '/app/';
 
   function enabled() {
@@ -964,6 +965,7 @@ window._luRouter = (function () {
   function parseInitial() {
     return pathToView(window.location.pathname);
   }
+  window._luAdvancedHome = function () { var f = window._luPlanFeatures; return (f && f.ai_agents === false) ? 'workspace' : 'command'; };
   // popstate handler — back/forward triggers a nav with silent:true so we
   // don't re-push the URL we just landed on. Tail is passed through so
   // /app/write/176 → /app/write transition (or vice versa) re-opens or
@@ -1199,6 +1201,7 @@ async function nav(view, opts){
   }
   el.classList.add('active');
   var ni=document.getElementById('ni-'+(_requested||view));if(ni)ni.classList.add('active');
+  document.querySelectorAll('.nav-item[data-nav-view="'+(_requested||view)+'"]').forEach(function(b){ b.classList.add('active'); });   // B3: a second menu entry for the same view (Results in Advanced)
   currentView=_requested||view;
   // v5.7.19 (2026-05-31) — Phase 1.0 URL routing. Push the URL after the
   // view has been resolved (so unknown views never pollute history), and
@@ -6526,6 +6529,8 @@ async function _checkTrialStatus() {
 
     // ── NAV GATING: show/hide nav items based on plan features ──
     var features = (s.plan && s.plan.features) ? s.plan.features : {};
+    window._luPlanFeatures = features;   // B3: the Advanced home reads it (Command Center needs the AI team)
+    try { if (typeof currentView !== 'undefined' && currentView === 'command' && features.ai_agents === false && typeof nav === 'function') nav('workspace'); } catch (_e) {}
     document.querySelectorAll('[data-feature]').forEach(function(el) {
       var feat = el.getAttribute('data-feature');
       // 2026-05-12 — In embed mode (WP plugin iframe), force-show Pipeline
