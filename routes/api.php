@@ -1565,7 +1565,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                     'description' => $t->progress_message ?? ('Execute ' . $t->action),
                     'engine'      => $t->engine,
                     'action'      => $t->action,
-                    'status'      => $kanbanMap[$t->status] ?? 'backlog',
+                    // A2 (2026-09-19): Completed on the board = WorkspaceMetrics.tasks_done — QA-rejected work goes to Review
+                    'status'      => ($t->status === 'completed' && ($t->qa_status ?? null) === 'rejected') ? 'review' : ($kanbanMap[$t->status] ?? 'backlog'),
+                    'declined'    => ($t->approval_status ?? null) === 'rejected',
+                    'qa_rejected' => ($t->qa_status ?? null) === 'rejected',
                     'priority'    => $t->priority ?? 'normal',
                     'source'      => $t->source,
                     'credit_cost' => $t->credit_cost,
@@ -1848,18 +1851,11 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ->get()
             ->groupBy('agent_key');
         $catSvc = app(\App\Core\TaskSystem\TaskCategoryService::class);
-        $taskStats = \App\Models\Task::where('workspace_id', $wsId)
-            ->selectRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(assigned_agents_json, '$[0]')), engine) as agent_key, status, count(*) as cnt, sum(credit_cost) as credits")
-            ->groupBy('agent_key', 'status')
-            ->get()
-            ->groupBy('agent_key');
-        // Get delegation stats per agent
-        $delegationStats = \Illuminate\Support\Facades\DB::table('agent_delegations')
-            ->where('workspace_id', $wsId)
-            ->selectRaw("to_agent as agent_id, status, count(*) as cnt")
-            ->groupBy('to_agent', 'status')
-            ->get()
-            ->groupBy('agent_id');
+        // A2 (2026-09-19): one definition of every task/agent count — App\Core\Metrics\WorkspaceMetrics. The
+        // same buckets feed the Workspace canvas, the Command Center cards and this page, so they agree by
+        // construction; blocked, declined and QA-rejected work are their own buckets, never 'upcoming' or 'failed'.
+        $metrics = app(\App\Core\Metrics\WorkspaceMetrics::class);
+        $buckets = $metrics->agentBuckets($wsId);
         // Get last activity per agent from audit_logs
         $lastActive = \Illuminate\Support\Facades\DB::table('audit_logs')
             ->where('workspace_id', $wsId)
@@ -1869,64 +1865,17 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ->pluck('last_at', 'etype')
             ->toArray();
 
-        $result = $agents->map(function($a) use ($taskStats, $delegationStats, $lastActive, $wsId) {
+        $result = $agents->map(function($a) use ($buckets, $lastActive, $wsId, $enabledSlugs) {   // A2: `enabled` was always false — $enabledSlugs never reached the closure
             $slug = $a->slug;
-            // Check tasks assigned to this agent or tasks in this agent's engine
-            $stats = $taskStats->get($slug, collect());
-            $delegations = $delegationStats->get($a->id, collect());
-            $pending = 0; $executing = 0; $completed = 0; $failed = 0; $degraded = 0; $blocked = 0; $totalCredits = 0;
-            foreach ($stats as $s) {
-                $totalCredits += (int)$s->credits;
-                match($s->status) {
-                    // 2026-05-25 — 'blocked' is now its OWN bucket. Was previously
-                    // bundled into 'pending' which over-counted upcoming work on
-                    // cards (blocked = waiting on external dependency / rate limit,
-                    // NOT the same as queued-to-run). User-facing distinction matters.
-                    'pending','queued','awaiting_approval' => $pending += $s->cnt,
-                    'blocked' => $blocked += $s->cnt,
-                    'running','verifying' => $executing += $s->cnt,
-                    'completed' => $completed += $s->cnt,
-                    'failed','cancelled' => $failed += $s->cnt,
-                    // Wave 38a — degraded counted as its own bucket AND folded
-                    // into failed for the rollup totals (success_rate denominator).
-                    'degraded' => (function() use (&$degraded, &$failed, $s) { $degraded += $s->cnt; $failed += $s->cnt; })(),
-                    default => null,
-                };
-            }
-            foreach ($delegations as $d) {
-                match($d->status) {
-                    'pending' => $pending += $d->cnt,
-                    'in_progress' => $executing += $d->cnt,
-                    'completed' => $completed += $d->cnt,
-                    'failed' => $failed += $d->cnt,
-                    default => null,
-                };
-            }
-            // Wave 38d — Sarah (and other DMMs) don't execute, they delegate.
-            // Her dashboard counts must reflect tasks SHE CREATED (delegated),
-            // not tasks where she's the assignee.
-            $isOrchestrator = ($slug === 'sarah' || $a->is_dmm ?? false);
-            if ($isOrchestrator) {
-                $delegatedQ = \App\Models\Task::where('workspace_id', $wsId)
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')");
-                // Wave 38d — replace per-agent stats with delegation rollup.
-                // 2026-05-25 — split blocked out of pending (separate bucket).
-                $pending = (clone $delegatedQ)->whereIn('status', ['pending','queued','awaiting_approval'])->count();
-                $blocked = (clone $delegatedQ)->where('status', 'blocked')->count();
-                $executing = (clone $delegatedQ)->whereIn('status', ['running','verifying'])->count();
-                $completed = (clone $delegatedQ)->where('status', 'completed')->count();
-                $failed = (clone $delegatedQ)->whereIn('status', ['failed','cancelled','degraded'])->count();
-                $total = $completed + $failed;
-                $successRate = $total > 0 ? round(($completed / $total) * 100) : 0;
-            } else {
-                $total = $completed + $failed;
-                $successRate = $total > 0 ? round(($completed / $total) * 100) : 0;
-            }
-
+            $b = $buckets[$slug] ?? ['ongoing' => 0, 'upcoming' => 0, 'blocked' => 0, 'completed' => 0, 'failed' => 0, 'declined' => 0, 'qa_rejected' => 0, 'success_rate' => 0, 'total' => 0, 'credits' => 0];
+            $pending = $b['upcoming']; $blocked = $b['blocked']; $executing = $b['ongoing']; $completed = $b['completed'];
+            $failed = $b['failed']; $declined = $b['declined']; $qaRejected = $b['qa_rejected']; $degraded = 0;
+            $totalCredits = $b['credits']; $successRate = $b['success_rate'];
+            $isOrchestrator = ($slug === 'sarah' || ($a->is_dmm ?? false));
             // Recent tasks for this agent
             $recentTasks = ($isOrchestrator
                 ? \App\Models\Task::where('workspace_id', $wsId)
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')")
+                    ->where(function ($q) use ($slug) { $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) LIKE 'sarah%'")->orWhereRaw('JSON_CONTAINS(assigned_agents_json, ?)', ['"' . $slug . '"']); })
                     ->orderByDesc('created_at')
                     ->limit(10)
                     ->get()
@@ -2004,6 +1953,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 'executing' => $executing,
                 'completed' => $completed,
                 'failed' => $failed,
+                'declined' => $declined,
+                'qa_rejected' => $qaRejected,
                 'degraded' => isset($degraded) ? (int) $degraded : 0,
                 'total_credits' => $totalCredits,
                 'success_rate' => $successRate,
@@ -2013,10 +1964,26 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             ];
         });
 
+        // A2: Arthur has no `agents` row but is on every roster surface — credit him with the builder work.
+        if (!$result->contains('agent_id', 'arthur') && isset($buckets['arthur'])) {
+            $ab = $buckets['arthur'];
+            $result->push([
+                'agent_id' => 'arthur', 'name' => 'Arthur', 'title' => 'Website Builder', 'description' => null,
+                'enabled' => true, 'is_orchestrator' => false,
+                'pending' => $ab['upcoming'], 'blocked' => $ab['blocked'], 'executing' => $ab['ongoing'], 'completed' => $ab['completed'],
+                'failed' => $ab['failed'], 'declined' => $ab['declined'], 'qa_rejected' => $ab['qa_rejected'], 'degraded' => 0,
+                'total_credits' => $ab['credits'], 'success_rate' => $ab['success_rate'], 'last_active' => $lastActive['builder'] ?? null,
+                'recent_tasks' => [], 'recent_exec' => [],
+            ]);
+        }
+        $counts = $metrics->taskCounts($wsId) + $metrics->agentCounts($wsId);
         return response()->json(['agents' => $result, 'stats' => [
-            'total_agents' => $agents->count(),
-            'active_tasks' => $result->sum('executing'),
-            'total_completed' => $result->sum('completed'),
+            'total_agents' => $counts['agents_roster'],
+            'agents_enabled' => $counts['agents_enabled'],
+            'agents_active_30d' => $counts['agents_active_30d'],
+            'active_tasks' => $counts['tasks_running'],
+            'total_completed' => $counts['tasks_done'],
+            'tasks' => $counts,
         ]]);
     });
     Route::get("/activity/feed", function (\Illuminate\Http\Request $r) {

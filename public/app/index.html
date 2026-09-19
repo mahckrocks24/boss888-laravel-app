@@ -3306,8 +3306,8 @@ window.luSwipeToClose = luSwipeToClose;
         <!-- Header -->
         <div class="proj-hdr">
           <div>
-            <div class="proj-title">Projects</div>
-            <div class="proj-sub">Execution layer — drag tasks across columns as work progresses.</div>
+            <div class="proj-title">Task board</div><!-- A2: this board is TASKS by stage, not the projects listed above -->
+            <div class="proj-sub">Every task in this workspace by stage — Completed here is the same count as "Tasks Done" on the Command Center. Drag tasks across columns as work progresses.</div>
           </div>
           <div class="proj-controls">
             <div class="proj-view-toggle">
@@ -3479,7 +3479,7 @@ window.luSwipeToClose = luSwipeToClose;
         <!-- ROW 1 — 4 KPI cards -->
         <div id="cmd-kpis" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
           <div class="cmd-kpi" data-key="tasks">
-            <div class="cmd-kpi-label">Tasks Done</div>
+            <div class="cmd-kpi-label">Tasks Done</div><!-- A2: completed tasks in this workspace, QA-rejected excluded (WorkspaceMetrics) -->
             <div class="cmd-kpi-value" id="cmd-kpi-tasks">—</div>
             <div class="cmd-kpi-meta" id="cmd-kpi-tasks-meta">&nbsp;</div>
           </div>
@@ -4142,7 +4142,7 @@ window.luSwipeToClose = luSwipeToClose;
 <!-- P4-U1: retired view previews removed (was dead: no nav, no loader, or launch-scope blocked). -->
     <div id="view-agents" class="view" style="display:none">
       <div class="agents-view">
-        <div class="av-hdr"><div class="av-title">Agent Profiles</div><div class="av-sub">Your AI marketing team. Click any agent to view their profile, tasks and messages.</div></div>
+        <div class="av-hdr"><div class="av-title">Agent Profiles</div><div class="av-sub">Your whole AI marketing team — every specialist, whether or not they are enabled on this workspace yet. Counts are each agent's own tasks here (Done = completed, QA-rejected excluded). Click any agent to view their profile, tasks and messages.</div></div>
         <div class="av-grid" id="av-grid"></div>   <!-- AVATAR888 DEC-0055: rendered from the agent registry (agent-avatars.js) -->
       </div>
     </div>
@@ -4765,7 +4765,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=a1-20260919"></script>
+<script defer src="/app/js/core.js?v=a2b-20260919"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>

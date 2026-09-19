@@ -39,92 +39,14 @@ class WorkspaceStateController
             $agents = Agent::where('slug', 'sarah')->get();
         }
 
-        // v1.0.9 — count multi-assignee tasks for EVERY assignee.
-        // Previous SQL pulled only assigned_agents_json[0], so a task assigned
-        // to [sarah,james,priya] only credited sarah. Now we iterate in PHP
-        // and increment each agent's bucket once per task, deduped by task id.
-        $allTasks = Task::where('workspace_id', $wsId)
-            ->get(['id', 'status', 'assigned_agents_json', 'engine']);
+        // A2 (2026-09-19): the buckets come from App\Core\Metrics\WorkspaceMetrics — the same definitions the
+        // Command Center and the Agents page read, so the three surfaces agree by construction.
+        $buckets = app(\App\Core\Metrics\WorkspaceMetrics::class)->agentBuckets($wsId);
 
-        $bucketIds = []; // slug => bucket => [task_id, ...]
-        foreach ($allTasks as $t) {
-            $assignees = $this->decodeAssigned($t->assigned_agents_json);
-            if (empty($assignees)) {
-                // Legacy fallback for older tasks with no assigned_agents_json:
-                // use engine name as the "agent_key" (matches v1 dashboard behavior).
-                $assignees = [$t->engine];
-            }
-            $bucket = match ($t->status) {
-                'pending', 'queued', 'awaiting_approval' => 'pending',
-                'blocked'                                => 'blocked',
-                'running', 'verifying'                   => 'executing',
-                'completed'                              => 'completed',
-                'failed', 'cancelled', 'degraded'        => 'failed',
-                default                                  => null,
-            };
-            if (!$bucket) continue;
-            foreach ($assignees as $slug) {
-                if (!isset($bucketIds[$slug])) {
-                    $bucketIds[$slug] = ['pending'=>[],'blocked'=>[],'executing'=>[],'completed'=>[],'failed'=>[]];
-                }
-                $bucketIds[$slug][$bucket][] = $t->id;
-            }
-        }
-
-        // Orchestrator (Sarah) ALSO counts tasks she delegated via her chat —
-        // those may have her in assignees OR not. We union by task id to avoid
-        // double-counting when she's explicitly assigned to a task she created.
-        $orchestratorSlugs = ['sarah'];
-        foreach ($orchestratorSlugs as $orchSlug) {
-            $delegated = Task::where('workspace_id', $wsId)
-                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')")
-                ->get(['id', 'status']);
-            if (!isset($bucketIds[$orchSlug])) {
-                $bucketIds[$orchSlug] = ['pending'=>[],'blocked'=>[],'executing'=>[],'completed'=>[],'failed'=>[]];
-            }
-            foreach ($delegated as $t) {
-                $bucket = match ($t->status) {
-                    'pending', 'queued', 'awaiting_approval' => 'pending',
-                    'blocked'                                => 'blocked',
-                    'running', 'verifying'                   => 'executing',
-                    'completed'                              => 'completed',
-                    'failed', 'cancelled', 'degraded'        => 'failed',
-                    default                                  => null,
-                };
-                if ($bucket) $bucketIds[$orchSlug][$bucket][] = $t->id;
-            }
-        }
-
-        $delegationStats = DB::table('agent_delegations')
-            ->where('workspace_id', $wsId)
-            ->selectRaw('to_agent as agent_id, status, count(*) as cnt')
-            ->groupBy('to_agent', 'status')
-            ->get()
-            ->groupBy('agent_id');
-
-        $agentList = $agents->map(function ($a) use ($bucketIds, $delegationStats) {
+        $agentList = $agents->map(function ($a) use ($buckets) {
             $slug = $a->slug;
-            $b = $bucketIds[$slug] ?? ['pending'=>[],'blocked'=>[],'executing'=>[],'completed'=>[],'failed'=>[]];
-            // Dedup by task id (a multi-assignee task counts once per agent
-            // but the orchestrator union above could insert duplicates).
-            $pending   = count(array_unique($b['pending']));
-            $blocked   = count(array_unique($b['blocked']));
-            $executing = count(array_unique($b['executing']));
-            $completed = count(array_unique($b['completed']));
-            $failed    = count(array_unique($b['failed']));
-
-            // Add agent_delegations rows (separate stream, no task-id overlap).
-            $delegations = $delegationStats->get($a->id, collect());
-            foreach ($delegations as $d) {
-                match ($d->status) {
-                    'pending'     => $pending += $d->cnt,
-                    'in_progress' => $executing += $d->cnt,
-                    'completed'   => $completed += $d->cnt,
-                    'failed'      => $failed += $d->cnt,
-                    default       => null,
-                };
-            }
-
+            $b = $buckets[$slug] ?? ['ongoing' => 0, 'upcoming' => 0, 'blocked' => 0, 'completed' => 0, 'failed' => 0, 'declined' => 0, 'qa_rejected' => 0, 'success_rate' => 0, 'total' => 0, 'credits' => 0];
+            $pending = $b['upcoming']; $blocked = $b['blocked']; $executing = $b['ongoing']; $completed = $b['completed']; $failed = $b['failed'];
             $isOrchestrator = ($slug === 'sarah');
 
             return [

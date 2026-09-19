@@ -1226,7 +1226,7 @@ async function nav(view, opts){
   if(view==='account')    { var _acr=document.getElementById('account-root'); if(_acr && typeof window.basicAccountLoad==='function') window.basicAccountLoad(_acr); }
   if(view==='aria')       { var _arr=document.getElementById('aria-root'); if(_arr && typeof window.ariaLoad==='function') window.ariaLoad(_arr); }   /* ARIA888 DEC-0054 */
   if(view==='reports')    loadReports();
-  if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); }
+  if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); if (typeof loadProjects === 'function') { try { loadProjects(); } catch (_e) {} } }   // A2: the task board below the list was never loaded (showed 0 everywhere)
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
   // P4-U1: mentions view retired.
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
@@ -3285,6 +3285,8 @@ async function loadAgentStats(){
         blocked:   a.blocked || 0,
         completed: a.completed || 0,
         failed:    a.failed || 0,
+        declined:  a.declined || 0,        // A2 (2026-09-19): WorkspaceMetrics buckets
+        qa_rejected: a.qa_rejected || 0,
         success_rate: a.success_rate || 0,
       };
       var ongoing = document.getElementById('av-ongoing-' + uiId);
@@ -7176,12 +7178,25 @@ function _cmdcRenderAll(d, isPoll) {
   }
   if (sub) {
     var when = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
-    var agentsN = (d.stats && d.stats.active_agents) || (d.agents || []).length;
-    sub.textContent = when + ' · ' + agentsN + ' agent' + (agentsN === 1 ? '' : 's') + ' on your workspace';
+    // A2 (2026-09-19): the number is "agents enabled on this workspace" (WorkspaceMetrics.agents_enabled) — the
+    // Agents page lists the whole roster, so the label says which of the two this is.
+    var agentsN = (d.stats && (d.stats.agents_enabled != null ? d.stats.agents_enabled : d.stats.active_agents)) || (d.agents || []).length;
+    var rosterN = d.stats && d.stats.agents_roster;
+    sub.textContent = when + ' · ' + agentsN + (rosterN ? ' of ' + rosterN : '') + ' agent' + (agentsN === 1 && !rosterN ? '' : 's') + ' enabled on your workspace';
   }
 
   // KPIs
-  _cmdcKpi('tasks',    d.stats.tasks_completed, (d.stats.tasks_today > 0 ? '<strong>+' + d.stats.tasks_today + '</strong> today' : (d.stats.tasks_this_week > 0 ? '+' + d.stats.tasks_this_week + ' this week' : 'No activity yet')));
+  // A2 (2026-09-19): "Tasks done" = completed tasks in this workspace, QA-rejected excluded (WorkspaceMetrics.tasks_done).
+  // Declined and QA-rejected work is named on the tile instead of disappearing into the count.
+  var _tMeta = (d.stats.tasks_today > 0 ? '<strong>+' + d.stats.tasks_today + '</strong> today' : (d.stats.tasks_this_week > 0 ? '+' + d.stats.tasks_this_week + ' this week' : 'No activity yet'));
+  var _tExtra = [];
+  if ((d.stats.tasks_running || 0) > 0) _tExtra.push(d.stats.tasks_running + ' running');
+  if ((d.stats.tasks_pending || 0) > 0) _tExtra.push(d.stats.tasks_pending + ' queued');
+  if ((d.stats.tasks_blocked || 0) > 0) _tExtra.push(d.stats.tasks_blocked + ' blocked');
+  if ((d.stats.tasks_declined || 0) > 0) _tExtra.push(d.stats.tasks_declined + ' declined');
+  if ((d.stats.tasks_qa_rejected || 0) > 0) _tExtra.push(d.stats.tasks_qa_rejected + ' QA-rejected');
+  _cmdcKpi('tasks',    d.stats.tasks_completed, _tMeta + (_tExtra.length ? ' · ' + _tExtra.join(' · ') : ''));
+  var _tTile = document.querySelector('#cmd-kpis .cmd-kpi[data-key="tasks"]'); if (_tTile) _tTile.title = 'Completed tasks in this workspace (QA-rejected work excluded)';
   _cmdcKpi('content',  d.stats.articles_published, (d.stats.articles_total > d.stats.articles_published ? (d.stats.articles_total - d.stats.articles_published) + ' in draft' : (d.stats.articles_total === 0 ? 'Priya hasn\'t written yet' : 'All published')));
   _cmdcKpi('leads',    d.stats.leads_captured, (d.stats.leads_this_week > 0 ? '<strong>+' + d.stats.leads_this_week + '</strong> this week' : (d.stats.leads_captured === 0 ? 'No leads captured yet' : 'No new this week')));
   _cmdcKpi('keywords', d.stats.keywords_tracked, (d.stats.keywords_tracked === 0 ? 'James hasn\'t tracked any yet' : 'Tracked by James daily'));
@@ -7406,7 +7421,7 @@ function _cmdcRenderAgents(list) {
   var el = document.getElementById('cmd-agents');
   var count = document.getElementById('cmd-agents-count');
   if (!el) return;
-  if (count) count.textContent = list.length ? (list.length + ' active') : '';
+  if (count) count.textContent = list.length ? (list.length + ' enabled') : '';   // A2: enabled on this workspace (not "active")
   if (!list.length) {
     el.innerHTML = '<div class="cmd-empty">Your team activates after onboarding. <a href="javascript:void(0)" onclick="nav(\'agents\')" style="color:var(--p)">Complete setup →</a></div>';
     return;
@@ -7428,6 +7443,7 @@ function _cmdcRenderAgents(list) {
       // queued/pending only, not blocked).
       var bits = live.ongoing + ' ongoing · ' + live.upcoming + ' pending';
       if ((live.blocked || 0) > 0) bits += ' · ' + live.blocked + ' blocked';
+      if ((live.declined || 0) > 0) bits += ' · ' + live.declined + ' declined';   // A2: the customer said no — not a failure
       bits += ' · ' + live.completed + ' done';
       metaBits.push(bits);
     } else {

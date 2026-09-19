@@ -41,16 +41,16 @@ class DashboardController
                 // audit_logs use task.* prefix so any engine-prefix filter
                 // mis-credits Sarah for all task work. Read tasks table
                 // directly by who actually owns the work.
+                // A2 (2026-09-19): the same crediting rule as WorkspaceMetrics — every assignee, plus everything
+                // Sarah originated (created_via sarah*), plus builder work for Arthur.
                 $isOrchestrator = ((bool) $a->is_dmm) || $a->slug === 'sarah';
-                if ($isOrchestrator) {
-                    $tq = DB::table('tasks')
-                        ->where('workspace_id', $wsId)
-                        ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) IN ('sarah_chat', 'sarah_proactive')");
-                } else {
-                    $tq = DB::table('tasks')
-                        ->where('workspace_id', $wsId)
-                        ->whereRaw('JSON_CONTAINS(assigned_agents_json, ?)', ['"' . $a->slug . '"']);
-                }
+                $tq = DB::table('tasks')
+                    ->where('workspace_id', $wsId)
+                    ->where(function ($q) use ($a, $isOrchestrator) {
+                        $q->whereRaw('JSON_CONTAINS(assigned_agents_json, ?)', ['"' . $a->slug . '"']);
+                        if ($isOrchestrator) $q->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload_json, '$.created_via')) LIKE 'sarah%'");
+                        if ($a->slug === 'arthur') $q->orWhere('engine', 'builder');
+                    });
                 $weeklyCount = (clone $tq)->where('created_at', '>=', $weekAgo)->count();
                 $last = (clone $tq)
                     ->orderByDesc(DB::raw('COALESCE(completed_at, started_at, created_at)'))
@@ -133,15 +133,26 @@ class DashboardController
         // RES-1 (2026-08-30): "Tasks done" must count COMPLETED TASKS, not audit-log rows. audit_logs holds
         // every execution/audit event (11,347 rows vs 1,968 completed tasks on ws 2) — presenting it as
         // "tasks done" turned execution records into a performance figure.
-        $doneQ = fn() => DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'completed');
-        $auditTotal = $doneQ()->count();
-        $auditWeek  = $doneQ()->where(DB::raw('COALESCE(completed_at, updated_at)'), '>=', $weekAgo)->count();
-        $auditToday = $doneQ()->whereDate(DB::raw('COALESCE(completed_at, updated_at)'), today())->count();
+        // A2 (2026-09-19): every task/agent count comes from App\Core\Metrics\WorkspaceMetrics — the one place the
+        // definitions live (tasks_done excludes QA-rejected work; declined work is its own bucket). The Workspace
+        // canvas, the Agents page and this dashboard read the same numbers.
+        $metrics = app(\App\Core\Metrics\WorkspaceMetrics::class);
+        $taskCounts  = $metrics->taskCounts($wsId);
+        $agentCounts = $metrics->agentCounts($wsId);
 
         $stats = [
-            'tasks_completed'        => $auditTotal,
-            'tasks_this_week'        => $auditWeek,
-            'tasks_today'            => $auditToday,
+            'tasks_completed'        => $taskCounts['tasks_done'],
+            'tasks_this_week'        => $taskCounts['tasks_done_week'],
+            'tasks_today'            => $taskCounts['tasks_done_today'],
+            'tasks_running'          => $taskCounts['tasks_running'],
+            'tasks_pending'          => $taskCounts['tasks_pending'],
+            'tasks_blocked'          => $taskCounts['tasks_blocked'],
+            'tasks_declined'         => $taskCounts['tasks_declined'],
+            'tasks_failed'           => $taskCounts['tasks_failed'],
+            'tasks_qa_rejected'      => $taskCounts['tasks_qa_rejected'],
+            'agents_enabled'         => $agentCounts['agents_enabled'],
+            'agents_roster'          => $agentCounts['agents_roster'],
+            'agents_active_30d'      => $agentCounts['agents_active_30d'],
             'activity_events'        => DB::table('audit_logs')->where('workspace_id', $wsId)->count(),
             'articles_published'     => DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->whereNull('deleted_at')->count(),
             'articles_total'         => DB::table('articles')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
@@ -151,7 +162,7 @@ class DashboardController
             'keywords_tracked'       => DB::table('seo_keywords')->where('workspace_id', $wsId)->count(),
             'designs_created'        => DB::table('studio_designs')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
             // W6 launch scope: emails_sent / campaigns_total removed.
-            'active_agents'          => DB::table('workspace_agents')->where('workspace_id', $wsId)->where('enabled', true)->count(),
+            'active_agents'          => $agentCounts['agents_enabled'],   // kept for old clients: = agents_enabled
             'websites_total'         => DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->count(),
             'websites_published'     => DB::table('websites')->where('workspace_id', $wsId)->where('status', 'published')->whereNull('deleted_at')->count(),
         ];
