@@ -83,6 +83,13 @@ class PaletteRolesTest extends TestCase
         $this->assertSame($roles['text'], $vars['chalk']);
         $this->assertSame($roles['line'], $vars['divider']);
         $this->assertArrayNotHasKey('orange', $written, 'the accent stays the brand painter\'s');
+        // a fresh Arthur build has no named theme: the painter must never leave a NULL variable behind
+        // (BuilderGenerationDTO refuses it and every new build 422'd — caught by the widget journey, 2026-09-19)
+        $svc = app(\App\Engines\Builder\Services\ArthurService::class);
+        $m = new \ReflectionMethod($svc, 'applyBrandColors'); $m->setAccessible(true);
+        $fresh = $vars; unset($fresh['palette_bg'], $fresh['palette_text']);
+        $m->invokeArgs($svc, [&$fresh, $manifest, ['primary' => '#1F5F8B', 'secondary' => '#5AA9E6', 'accent' => '#F2A541']]);
+        foreach ($fresh as $k => $v) $this->assertIsString($v, "variable $k must be a string after the brand painter, got " . gettype($v));
 
         $html = app(\App\Engines\Builder\Services\TemplateService::class)->render('cafe_arch', ['business_name' => 'T', 'primary_color' => $theme['primary'], 'secondary_color' => $theme['secondary'], 'accent_color' => $theme['accent'], 'palette' => 'coral_reef']);
         $this->assertStringContainsString('<style id="lug-palette-roles"', $html);

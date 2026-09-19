@@ -803,8 +803,10 @@ class ArthurService
             (string) ($manifest['palette_scheme'] ?? 'light')
         );
         \App\Engines\Builder\Support\PaletteRoles::paintManifestVars($variables, $manifest, $__roles);
-        $variables['palette_bg']   = $colors['bg']   ?? $variables['palette_bg']   ?? null;
-        $variables['palette_text'] = $colors['text'] ?? $variables['palette_text'] ?? null;
+        // only ever a string: BuilderGenerationDTO refuses a NULL variable, and a fresh build has no named theme
+        // (caught by the widget journey on 2026-09-19 — every new build 422'd on "palette_bg is NULL")
+        if (isset($colors['bg']))   $variables['palette_bg']   = (string) $colors['bg'];
+        if (isset($colors['text'])) $variables['palette_text'] = (string) $colors['text'];
 
         // Ensure the canonical trio is explicitly set for downstream CSS
         // regardless of whether the template's manifest declares them.
