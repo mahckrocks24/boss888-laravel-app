@@ -96,12 +96,14 @@
     if (state.websites && !force) { return Promise.resolve(state.websites); }
     // RISK-0192 (2026-09-19): without a token the answer can only be 401 — it cost one anonymous rate-limit hit
     // and one refresh attempt on every boot. Ask once the session exists; ready() re-asks.
-    var _hasToken = false;
-    try { _hasToken = !!localStorage.getItem('lu_token'); } catch (e) {}
-    if (!_hasToken) { state.websites = null; return Promise.resolve([]); }
+    var _token = null;
+    try { _token = localStorage.getItem('lu_token'); } catch (e) {}
+    if (!_token) { state.websites = null; return Promise.resolve([]); }
+    // this file loads before core.js defines window.authHeader — the token itself is the header until then
+    var _headers = (typeof window.authHeader === 'function') ? window.authHeader() : { 'Authorization': 'Bearer ' + _token, 'Accept': 'application/json' };
 
     state.loading = fetch(window.location.origin + '/api/website-context', {
-      headers: (typeof window.authHeader === 'function') ? window.authHeader() : {},
+      headers: _headers,
       credentials: 'include'
     })
       // 2026-09-10: a 401 means "we have not been told yet", NOT "this business has no websites".
