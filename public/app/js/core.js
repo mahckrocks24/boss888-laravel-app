@@ -907,7 +907,7 @@ window._luRouter = (function () {
     command:    'Command Center',
     crm:        'CRM',
     seo:        'SEO',
-    write:      'Articles',
+    write:      'Write',
     blog:       'Blog',
     marketing:  'Marketing',
     social:     'Social',
@@ -917,7 +917,7 @@ window._luRouter = (function () {
     builder:    'Builder',
     websites:   'Websites',
     agents:     'Agents',
-    approvals:  'Approvals',
+    approvals:  'Review Queue',
     automation: 'Automation',
     billing:    'Plan & billing',
     chatbot:    'Chatbot',
@@ -7859,7 +7859,7 @@ function _billRender(status, plans) {
         '<div>' +
           (status.stripe_customer_id
             ? '<button class="aq-btn aq-btn-approve" onclick="_billOpenPortal()">Manage billing →</button>'
-            : '<span style="font-size:11px;color:var(--t3)">No Stripe customer yet</span>') +
+            : '<span style="font-size:11px;color:var(--t3)">Your billing account opens when you choose a paid plan</span>') +   // C1: no vendor names (DEC-0047)
         '</div>' +
       '</div>' +
       (creditLimit > 0 ? (
@@ -7909,7 +7909,7 @@ function _billPlanFeatures(p) {
   var f = p.features_json || {};
   if (+p.max_websites)    items.push((+p.max_websites) + ' website' + (+p.max_websites === 1 ? '' : 's'));
   if (f.custom_domain)    items.push('Custom domain');
-  else                    items.push('LevelUp subdomain');
+  else                    items.push('LevelUpGrowth web address');   // C1: one-word brand (EV-0989)
   if (p.ai_access === 'full') {
     items.push('Sarah + specialist AI agents');
     items.push('All AI tools (SEO, content, images, video, social, chatbot)'); // zz: video + social are AI tools from $49 up (ADR-0012)

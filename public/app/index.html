@@ -3072,7 +3072,7 @@ window.luSwipeToClose = luSwipeToClose;
           <div style="width:480px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);padding:32px;box-shadow:0 24px 80px rgba(0,0,0,.5)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:22px">
               <img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">
-              <div><strong style="font-family:var(--fh);font-size:13px;color:var(--t1);display:block">Strategy Room</strong><span style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">AI Marketing Command Center</span></div>
+              <div><strong style="font-family:var(--fh);font-size:13px;color:var(--t1);display:block">Strategy Room</strong><span style="font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Your AI marketing team</span></div>
             </div>
             <div style="font-family:var(--fh);font-size:20px;font-weight:800;color:var(--t1);margin-bottom:5px">Launch a Meeting</div>
             <div style="font-size:12px;color:var(--t2);margin-bottom:20px;line-height:1.6">Your AI marketing team will brief, debate and produce a concrete action plan with tasks auto-assigned.</div>
@@ -3746,10 +3746,7 @@ window.luSwipeToClose = luSwipeToClose;
               <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Credits Remaining</label>
               <div id="st-ws-credits" style="font-size:14px;font-weight:700;color:var(--ac)">—</div>
             </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Platform Version</label>
-              <div style="font-size:14px;color:var(--t2)">3.4.4</div>
-            </div>
+            <!-- REPORT-0061 C1 (2026-09-20): the internal platform version is not a customer fact — removed -->
           </div>
         </div>
 
@@ -4668,6 +4665,12 @@ window.luLoadWorkspaceProfile=async function(){
   if(Array.isArray(svc)) svc=svc.join(', ');
   var set=function(id,v){var el=document.getElementById(id); if(el&&!el.value&&v!=null&&v!=='') el.value=String(v);};
   set('st-industry',w.industry); set('st-location',w.location); set('st-biz-desc',w.goal); set('st-services',svc);
+  /* REPORT-0061 C2 (2026-09-20): the workspace name and the profile badge used to sit on "—" / "Loading…" forever */
+  var nm=document.getElementById('st-ws-name'); if(nm) nm.textContent=String(w.business_name||w.name||'').trim()||'Not set yet';
+  var complete=!!(w.industry&&(Array.isArray(w.services_json)?w.services_json.length:(svc&&String(svc).trim())));
+  var badge=document.getElementById('ws-profile-badge'); if(badge){ badge.textContent=complete?'Complete':'Incomplete'; badge.style.color=complete?'var(--ac)':'var(--am)'; badge.style.borderColor=complete?'rgba(0,229,168,.35)':'rgba(245,158,11,.4)'; badge.style.background=complete?'rgba(0,229,168,.08)':'rgba(245,158,11,.08)'; }
+  var gate=document.getElementById('ws-profile-gate'); if(gate) gate.style.display=complete?'none':'';
+  var miss=document.getElementById('ws-missing-fields'); if(miss){ var m=[]; if(!w.industry) m.push('Industry'); if(!(Array.isArray(w.services_json)?w.services_json.length:(svc&&String(svc).trim()))) m.push('Services'); miss.textContent=m.length?('Missing: '+m.join(', ')):''; }
  }catch(e){}
 };
 window.saveWorkspaceProfile=async function(){var get=function(id){var el=document.getElementById(id);return el?String(el.value||'').trim():'';};
@@ -4796,7 +4799,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=b5c-20260920"></script>
+<script defer src="/app/js/core.js?v=c1-20260920"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
@@ -4978,7 +4981,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 
 <script defer src="/app/js/messages-ui.js?v=av2-20260915"></script>
 <script defer src="/app/js/sarah.js?v=r189b-20260917"></script>
-<script defer src="/app/js/basic.js?v=r189-20260917"></script>
+<script defer src="/app/js/basic.js?v=c1-20260920"></script>
 <script defer src="/app/js/aria.js?v=av1-20260915"></script>
 <script defer src="/app/js/arthur-chat.js?v=av1-20260915"></script>
 <script defer src="/app/js/chatbot-spa.js?v=kblib-20260910"></script>

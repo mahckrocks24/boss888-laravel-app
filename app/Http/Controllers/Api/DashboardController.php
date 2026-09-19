@@ -344,16 +344,26 @@ class DashboardController
         // regardless of which agent did the work. Use the real agent name +
         // the underlying action stored in metadata_json.action.
         if ($engine === 'task') {
+            // REPORT-0061 C1 (2026-09-20): plain words, no internal action names — "Sarah delegated ask arthur to Sarah"
+            // read as a bug to a customer. Builder work is Arthur's whoever the assignee is; every other action gets a
+            // customer phrase from the table, else a humanised verb phrase.
+            $rawAction = is_array($meta) && !empty($meta['action']) ? (string) $meta['action'] : '';
             $worker = $agentName ?: 'A specialist';
-            $innerAction = is_array($meta) && !empty($meta['action'])
-                ? ucfirst(str_replace('_', ' ', (string) $meta['action']))
-                : 'a task';
+            $phrases = [
+                'ask_arthur' => 'update the website', 'write_article' => 'write an article', 'generate_meta' => 'write page descriptions',
+                'link_suggestions' => 'suggest internal links', 'insert_link' => 'add internal links', 'run_audit' => 'run an SEO audit',
+                'deep_audit' => 'run a technical SEO audit', 'track_keywords' => 'track keyword rankings', 'generate_image' => 'create an image',
+                'generate_video' => 'create a video', 'create_post' => 'draft a social post', 'publish_article' => 'publish an article',
+                'improve_draft' => 'improve a draft', 'generate_outline' => 'outline an article', 'serp_analysis' => 'analyse the search results',
+            ];
+            $what = $phrases[$rawAction] ?? ($rawAction !== '' ? lcfirst(str_replace('_', ' ', $rawAction)) : 'a task');
+            if ($rawAction === 'ask_arthur' || (is_array($meta) && (($meta['engine'] ?? '') === 'builder'))) $worker = 'Arthur';
             return match ($action) {
-                'created'           => "Sarah delegated " . lcfirst($innerAction) . " to {$worker}",
-                'executed'          => "{$worker} completed " . lcfirst($innerAction),
-                'execution_failed'  => "{$worker} failed at " . lcfirst($innerAction),
-                'cancelled'         => "{$worker} cancelled " . lcfirst($innerAction),
-                default             => "{$worker} {$action} " . lcfirst($innerAction),
+                'created'           => "Sarah asked {$worker} to {$what}",
+                'executed'          => "{$worker} finished: {$what}",
+                'execution_failed'  => "{$worker} could not {$what}",
+                'cancelled'         => "{$worker} stopped: {$what}",
+                default             => "{$worker}: {$what}",
             };
         }
 

@@ -92,7 +92,8 @@
         pend.forEach(function (e) { s2.appendChild(bookingRow(e)); });
 
         var failed = Array.isArray(rs[4].json && (rs[4].json.tasks || rs[4].json)) ? (rs[4].json.tasks || rs[4].json) : [];
-        failed = failed.filter(function (t) { return t && t.status === 'failed'; }).slice(0, 5);
+        // REPORT-0061 C1 (2026-09-20): a task the customer DECLINED is not "something went wrong" — it sits in Review Queue › Declined
+        failed = failed.filter(function (t) { return t && t.status === 'failed' && t.approval_status !== 'rejected' && !/^Rejected:/i.test(String(t.progress_message || '')); }).slice(0, 5);
         if (failed.length) { var s3 = sec('Something went wrong', failed.length, 'Work that stopped. Ask Sarah to try again, or open it in Advanced.'); body.appendChild(s3);
           failed.forEach(function (t) { var agents = t.assigned_agents_json || t.assigned_agents || []; if (typeof agents === 'string') { try { agents = JSON.parse(agents); } catch (e) { agents = []; } } var name = agents[0] || ({ social: 'marcus', seo: 'james', write: 'priya', crm: 'elena', builder: 'arthur' })[t.engine] || null;
             var act = humanAction(t.action || ''); var why = String(t.progress_message || t.error_message || '').replace(/^Failed:\s*/i, '').replace(new RegExp('^' + String(t.action || '').replace(/_/g, ' ') + '$', 'i'), '');
