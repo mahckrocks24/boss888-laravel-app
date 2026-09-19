@@ -830,6 +830,15 @@ class TemplateService
         $doc = \App\Engines\Builder\Support\ResponsiveNav::inject($doc);
         $doc = \App\Engines\Builder\Support\SiteScripts::inject($doc, $websiteId);
         $doc = $this->applyElementOps($websiteId, $doc);   // ELEMENT888: nav/footer element moves live on every page
+        // RISK-0191 U1 (2026-09-19): the page body speaks the roles (idempotent — fragments rendered through the roles
+        // are unchanged) and the roles block is present even when the home's head predates it.
+        try {
+            $ctx = $this->rolesForSite($websiteId);
+            if (($ctx['roles'] ?? []) !== []) {
+                $doc = \App\Engines\Builder\Support\PaletteRoles::roleifyRegions($doc, $ctx['roles'], $ctx['brand'])['html'];
+                if (! str_contains($doc, 'id="lug-palette-roles"')) $doc = \App\Engines\Builder\Support\PaletteRoles::injectBlock($doc, [], $ctx['manifest'], $ctx['roles']);
+            }
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] deployPage roles: ' . $e->getMessage()); }
         $dir = storage_path("app/public/sites/{$websiteId}/{$slug}");
         if (!is_dir($dir)) mkdir($dir, 0755, true);
         $path = $dir . '/index.html';
@@ -1130,9 +1139,91 @@ class TemplateService
         return ['success' => true, 'html' => $out, 'message' => 'moved the ' . str_replace('_', ' ', $block) . ' section ' . $where];
     }
 
+    /**
+     * RISK-0191 U1 (2026-09-19): the palette roles, brand hexes and manifest of ONE site — what a rendered section or
+     * page needs to speak the site's roles. Read from the row; never guessed.
+     * @return array{roles:array<string,string>, brand:array<string,string>, manifest:array}
+     */
+    public function rolesForSite(int $websiteId): array
+    {
+        $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json', 'template_variables', 'template_industry']);
+        if (!$w) return ['roles' => [], 'brand' => [], 'manifest' => []];
+        $s  = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+        $tv = json_decode((string) ($w->template_variables ?: '{}'), true) ?: [];
+        $manifest = [];
+        foreach ([(string) ($s['template'] ?? ''), (string) ($s['industry'] ?? ''), (string) ($w->template_industry ?? '')] as $cand) {
+            if ($cand === '') continue;
+            $m = $this->getManifest($cand);
+            if (is_array($m)) { $manifest = $m; break; }
+        }
+        $brand = [];
+        foreach (['primary', 'secondary', 'accent'] as $r) { $h = $tv[$r . '_color'] ?? $s[$r . '_color'] ?? null; if (is_string($h) && preg_match('/^#[0-9a-f]{6}$/i', $h)) $brand[$r] = $h; }
+        return ['roles' => \App\Engines\Builder\Support\PaletteRoles::forVariables($tv, $manifest), 'brand' => $brand, 'manifest' => $manifest];
+    }
+
+    /**
+     * RISK-0191 U1 (2026-09-19): the compatibility path for sections stored before the roles — each stored fragment
+     * that does not carry the data-lu-roles mark is converted once (its literal colours become role variables with
+     * the current hex as fallback; content and structure untouched) and written back in place. Repeatable: a
+     * converted fragment is skipped by its mark, and conversion never adds or removes a section. A fragment the
+     * converter cannot mark (no wrapper) is left as it was and reported.
+     * @return array{converted:int, kept:int, skipped:string[]}
+     */
+    public function roleifyStoredSections(int $websiteId, ?array $ctx = null): array
+    {
+        $out = ['converted' => 0, 'kept' => 0, 'skipped' => []];
+        try {
+            $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json']);
+            if (!$w) return $out;
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+            $list = is_array($s['arthur_sections'] ?? null) ? $s['arthur_sections'] : [];
+            if ($list === []) return $out;
+            $mark = \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK;
+            $changed = false;
+            foreach ($list as $i => $sec) {
+                $frag = (string) ($sec['html'] ?? '');
+                if ($frag === '' || str_contains($frag, $mark . '=')) { $out['kept']++; continue; }
+                $ctx = $ctx ?? $this->rolesForSite($websiteId);
+                if (($ctx['roles'] ?? []) === []) { $out['skipped'][] = (string) ($sec['type'] ?? '?') . ': no roles for this site'; continue; }
+                $r = \App\Engines\Builder\Support\PaletteRoles::roleifyRegions($frag, $ctx['roles'], $ctx['brand']);
+                if ($r['regions'] === 0 || ! str_contains($r['html'], $mark . '=')) { $out['skipped'][] = (string) ($sec['type'] ?? '?') . ': no added_* wrapper to mark'; continue; }
+                // content is never changed by the conversion — prove it before writing
+                $visible = fn (string $h) => strip_tags((string) preg_replace('/<(style|script)\b[^>]*>.*?<\/\1>/is', '', $h));
+                if ($visible($r['html']) !== $visible($frag)) { $out['skipped'][] = (string) ($sec['type'] ?? '?') . ': text differs after conversion'; continue; }
+                $list[$i]['html'] = $r['html'];
+                $list[$i]['roles_version'] = \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK_VERSION;
+                $out['converted']++; $changed = true;
+            }
+            if ($changed) {
+                $s['arthur_sections'] = array_values($list);
+                \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($s)]);
+            }
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] roleifyStoredSections: ' . $e->getMessage()); }
+        return $out;
+    }
+
+    /**
+     * RISK-0191 U1: an export that still carries pre-roles added sections (no mark) gets them converted in place, and
+     * the stored fragments with them, so an edit repaints the site it touches — and only that site. Cheap when there
+     * is nothing to do (one substring test).
+     */
+    public function roleifyLegacyAddedBlocks(int $websiteId, string $html): string
+    {
+        if (! str_contains($html, 'data-block="added_')) return $html;
+        $mark = \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK;
+        if (preg_match_all('/<section\b[^>]*data-block="added_/i', $html) === preg_match_all('/<section\b[^>]*' . $mark . '=/i', $html)) return $html;
+        try {
+            $ctx = $this->rolesForSite($websiteId);
+            if (($ctx['roles'] ?? []) === []) return $html;
+            $this->roleifyStoredSections($websiteId, $ctx);
+            return \App\Engines\Builder\Support\PaletteRoles::roleifyRegions($html, $ctx['roles'], $ctx['brand'])['html'];
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] roleifyLegacyAddedBlocks: ' . $e->getMessage()); return $html; }
+    }
+
     private function reapplyStoredSections(int $websiteId, string $html): string
     {
         try {
+            $this->roleifyStoredSections($websiteId);   // RISK-0191 U1: pre-roles fragments acquire the roles before they are put back
             $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json']);
             if (!$w) return $html;
             $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
@@ -1364,6 +1455,7 @@ class TemplateService
         // DURABLE ADDITIONS (2026-09-06): Arthur-spliced sections are stored in settings_json.arthur_sections; put back any
         // that a re-render from variables dropped (idempotent — skipped when the block is already present).
         $html = $this->reapplyStoredSections($websiteId, $html);
+        $html = $this->roleifyLegacyAddedBlocks($websiteId, $html);   // RISK-0191 U1: a block spliced before the roles is repainted on deploy
         $html = $this->applySectionOps($websiteId, $html);   // remembered section moves (DEC-0051)
         $html = $this->applyElementOps($websiteId, $html);   // remembered element moves (ELEMENT888, DEC-0052)
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
@@ -1662,6 +1754,7 @@ class TemplateService
             }
 
             $new = $this->restoreUtf8Entities($dom->saveHTML());
+            $new = $this->roleifyLegacyAddedBlocks($websiteId, $new);   // RISK-0191 U1: "when next edited"
             rewind($fp);
             ftruncate($fp, 0);
             fwrite($fp, $new);

@@ -2253,8 +2253,9 @@ PROMPT;
         $brand    = ['primary' => $tv['primary_color'] ?? '#6C5CE7', 'secondary' => $tv['secondary_color'] ?? '#00E5A8', 'accent' => $tv['accent_color'] ?? '#F4F7FB'];
         $html = $this->adoptTemplateTypography($renderer->renderSection($sec, $brand, (array) $site));
         if (trim($html) === '') { return ['success' => false, 'error' => 'render_empty']; }
+        $html = $this->roleifyForSite($html, $websiteId, $brand);   // RISK-0191 U1
         $html = preg_replace('/(<section\b[^>]*\s)id="(?:booking|contact|services|team|gallery|testimonials|hero|faq|pricing)"/i', '$1data-old-id="$2"', $html) ?? $html;
-        $html = '<section data-block="added_video_embed" id="lu-video_embed" style="padding:24px 0;scroll-margin-top:100px">' . $html . '</section>';
+        $html = '<section data-block="added_video_embed" id="lu-video_embed" ' . \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK . '="' . \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK_VERSION . '" style="padding:24px 0;scroll-margin-top:100px">' . $html . '</section>';
         try { $this->templates->removeSplicedSection($websiteId, 'video_embed'); } catch (\Throwable $e) {}   // replace, never stack
         $this->templates->rememberSpliced($websiteId, 'video_embed', $html, 'contact', 'before');
         $placed = $this->templates->spliceSectionIntoHome($websiteId, $html, 'contact', 'before') !== null;
@@ -2574,6 +2575,7 @@ PROMPT;
             $vars = \App\Engines\Builder\Support\PaletteRoles::siteVarsForRoles($vars, $__manifest, $__roles, self::siteColorVars($websiteId));
             // the --lu-* roles ride along for the hover preview only; on apply the roles block is rewritten whole
             $vars = array_filter($vars, fn ($k) => ! str_starts_with((string) $k, '--lu-'), ARRAY_FILTER_USE_KEY);
+            app(TemplateService::class)->roleifyStoredSections($websiteId);   // RISK-0191 U1: pre-roles stored sections convert on a palette change
             \App\Engines\Builder\Support\PaletteRoles::normaliseExport($websiteId, $__roles, $__manifest);
             $res = $editor->applyStyleColors($websiteId, $vars);
             if ((int) ($res['applied'] ?? 0) === 0) {
@@ -5983,13 +5985,16 @@ PROMPT;
                         'message' => 'I can embed YouTube and Vimeo links, or a direct .mp4/.webm file — that link is not one of those, so nothing was added.'];
                 }
                 $html = $this->adoptTemplateTypography($html);
+                // RISK-0191 U1 (2026-09-19): the section speaks the site's palette roles (var(--lu-*, current hex)) —
+                // light or dark scheme alike — and the stored fragment carries them, so a later palette switch repaints it.
+                $html = $this->roleifyForSite($html, $websiteId, $brand);
                 $blockId = 'added_' . $type;
                 // Wrap, don't rewrite: the rendered markup keeps its own ids (self-initialising elements such as the trip
                 // quiz look themselves up by id). Any id the renderer emitted that collides with a template block is
                 // neutralised, and OUR anchor lives on the wrapper.
                 $html = preg_replace('/(<section\b[^>]*\s)id="(?:booking|contact|services|team|gallery|testimonials|hero|faq|pricing)"/i', '$1data-old-id="$2"', $html) ?? $html;
                 // VISUAL QA 2026-09-06: clears the sticky nav when reached from the menu (template sections carry ~110px top padding)
-                $html = '<section data-block="' . e($blockId) . '" id="lu-' . e($type) . '" style="padding:24px 0;scroll-margin-top:100px">' . $html . '</section>';
+                $html = '<section data-block="' . e($blockId) . '" id="lu-' . e($type) . '" ' . \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK . '="' . \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK_VERSION . '" style="padding:24px 0;scroll-margin-top:100px">' . $html . '</section>';
                 $placed = false;
                 if ($isStatic) {
                     $this->templates->rememberSpliced($websiteId, $type, $html, (string) ($plan['anchor'] ?? 'contact'), (string) ($plan['where'] ?? 'before'));
@@ -7045,9 +7050,20 @@ PROMPT;
             $type = (string) ($sec['type'] ?? '');
             if (in_array($type, ['header', 'footer'], true)) continue;
             $frag = $renderer->renderSection($sec, $brand, $site);
-            $out .= $this->adoptTemplateTypography($frag) . "\n";
+            // RISK-0191 U1 (2026-09-19): an added page's sections speak the site's palette roles like the home's
+            $out .= $this->roleifyForSite($this->adoptTemplateTypography($frag), (int) ($site['id'] ?? 0), $brand) . "\n";
         }
         return $out;
+    }
+
+    /** RISK-0191 U1: a rendered fragment's literal colours → the site's role variables (PaletteRoles::roleifyRendered). */
+    private function roleifyForSite(string $html, int $websiteId, array $brand): string
+    {
+        try {
+            $ctx = $websiteId > 0 ? app(TemplateService::class)->rolesForSite($websiteId) : ['roles' => []];
+            if (($ctx['roles'] ?? []) === []) return $html;
+            return \App\Engines\Builder\Support\PaletteRoles::roleifyRendered($html, $ctx['roles'], $brand + ($ctx['brand'] ?? []));
+        } catch (\Throwable $e) { Log::warning('[Arthur] roleifyForSite: ' . $e->getMessage()); return $html; }
     }
 
     /** Strip inline font-family so the template's own typography (and the DesignStyle layer) cascades into the new markup. */
