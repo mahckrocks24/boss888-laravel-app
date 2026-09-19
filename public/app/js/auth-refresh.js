@@ -87,6 +87,9 @@
       body: JSON.stringify({ refresh_token: localStorage.getItem('lu_refresh_token') || '' }),
       cache: 'no-store'
     }).then(function (r) {
+      // RISK-0192 (2026-09-19): a 429 / 5xx here is a throttled or unwell minute, not a dead session — the caller
+      // keeps its 401 and the next one may try again after a short pause instead of the 30 s dead-session cooldown
+      if (r.status === 429 || r.status >= 500) { var e = new Error('HTTP ' + r.status); e.transient = true; throw e; }
       if (!r.ok) { throw new Error('HTTP ' + r.status); }
       return r.json();
     }).then(function (d) {
@@ -97,7 +100,8 @@
       console.info('[luAuth] access token renewed after 401');
       return true;
     }).catch(function (e) {
-      lastFailureAt = Date.now();
+      // a transient failure backs off for 3 s; a rejected token keeps the full cooldown
+      lastFailureAt = (e && e.transient) ? Date.now() - COOLDOWN_MS + 3000 : Date.now();
       stats.failed++;
       console.warn('[luAuth] refresh failed, leaving the 401 to the caller:', e && e.message);
       return false;

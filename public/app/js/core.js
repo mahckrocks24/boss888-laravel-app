@@ -5537,6 +5537,34 @@ document.addEventListener('DOMContentLoaded', function() { window.luDefer(async 
 // Runs once on boot. Fail-safe: if fetch fails, existing hardcoded
 // tokens continue to work (no visual change).
 // ═══════════════════════════════════════════════════════════════════
+// RISK-0192 — session renewal at boot, classified: {expired} for 401/422/403 (the server rejected the token),
+// {transient, reason} for 429/5xx/network after three tries, {} when renewed.
+async function _luBootRefresh(refreshToken) {
+  var delays = [1000, 2000, 4000], reason = '';
+  for (var attempt = 0; attempt <= delays.length; attempt++) {
+    try {
+      var r = await fetch(_luBase + '/api/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+        cache: 'no-store',
+      });
+      if (r.status === 401 || r.status === 422 || r.status === 403) return { expired: true };
+      if (r.ok) {
+        var d = await r.json();
+        if (d && d.access_token) localStorage.setItem('lu_token', d.access_token);
+        if (d && d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token);
+        return {};
+      }
+      reason = 'HTTP ' + r.status;
+    } catch (e) {
+      reason = 'network';
+    }
+    if (attempt < delays.length) await new Promise(function (res) { setTimeout(res, delays[attempt]); });
+  }
+  return { transient: true, reason: reason };
+}
+
 ;(async function _luBootTokens() {
   try {
     var r = await fetch(window.luApi + 'design-tokens', { headers: authHeader() });
@@ -5967,21 +5995,18 @@ async function _appBootstrap() {
 
   var refreshToken = localStorage.getItem('lu_refresh_token');
   if (!refreshToken) { _renderLogin(); return; }
-  try {
-    var r = await fetch(_luBase + '/api/auth/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-      cache: 'no-store',
-    });
-    if (!r.ok) throw new Error('expired');
-    var d = await r.json();
-    if (d.access_token) localStorage.setItem('lu_token', d.access_token);
-    if (d.refresh_token) localStorage.setItem('lu_refresh_token', d.refresh_token);
-  } catch(_) {
+  // RISK-0192 (2026-09-19): only the server SAYING the session is over ends it. A 429 (throttled minute), a 5xx or a
+  // dropped connection is a transient — retried with back-off (1 s, 2 s, 4 s); if it still will not answer, the
+  // customer enters with the access token they already hold and the 401 interceptor renews it once the server
+  // answers again. Before this, `if (!r.ok) throw` sent every one of those to the login card with the tokens wiped.
+  var _boot = await _luBootRefresh(refreshToken);
+  if (_boot.expired) {
     localStorage.removeItem('lu_token');
     _renderLogin();
     return;
+  }
+  if (_boot.transient) {
+    console.warn('[LU] session renewal unavailable at boot (' + _boot.reason + '); continuing with the held token');
   }
 
   // 2026-09-10 — a visitor handed over by the marketing hero has ALREADY had this conversation:
