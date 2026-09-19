@@ -567,11 +567,29 @@ return Application::configure(basePath: dirname(__DIR__))
 
 
         $middleware->prepend(\App\Http\Middleware\PublishedSiteMiddleware::class);
-        // Run BEFORE PublishedSite so request()->ip() resolves to the real
-        // client (CF-Connecting-IP / X-Forwarded-For) rather than the
-        // Cloudflare edge node, which is what per-IP throttling +
-        // audit logs need.
-        $middleware->prepend(\App\Http\Middleware\TrustProxies::class);
+        // RISK-0192 (2026-09-19): the trusted proxies are configured on the FRAMEWORK's own TrustProxies (position 3 of
+        // the global stack), the only way Laravel 11 honours them. The previous App\Http\Middleware\TrustProxies was
+        // prepended in front of it and then undone by it (the framework class resets the trusted list to [] when
+        // nothing is configured here), so request()->ip() was the Cloudflare edge node for every visitor: the api rate
+        // limiter, the login limiter, Traffic Defense, sessions.ip_address and traffic_logs.ip were all keyed on ~15
+        // edge IPs shared by everyone. Ranges = https://www.cloudflare.com/ips/ (22, verified identical 2026-09-19).
+        // A request that reaches the origin without passing Cloudflare is not trusted and its forwarded headers are
+        // ignored — the client is the connecting address.
+        $middleware->trustProxies(
+            at: [
+                // IPv4
+                '103.21.244.0/22', '103.22.200.0/22', '103.31.4.0/22', '104.16.0.0/13', '104.24.0.0/14',
+                '108.162.192.0/18', '131.0.72.0/22', '141.101.64.0/18', '162.158.0.0/15', '172.64.0.0/13',
+                '173.245.48.0/20', '188.114.96.0/20', '190.93.240.0/20', '197.234.240.0/22', '198.41.128.0/17',
+                // IPv6
+                '2400:cb00::/32', '2405:8100::/32', '2405:b500::/32', '2606:4700::/32', '2803:f800::/32',
+                '2a06:98c0::/29', '2c0f:f248::/32',
+            ],
+            headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT
+                | \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO,
+        );
         $middleware->append(\App\Http\Middleware\CorsMiddleware::class);
         $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
         // OWNER RULE 2026-09-14: no vendor name or raw provider error ever reaches a customer-facing API response.
