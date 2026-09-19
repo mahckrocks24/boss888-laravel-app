@@ -94,13 +94,25 @@
   function load(force) {
     if (state.loading && !force) { return state.loading; }
     if (state.websites && !force) { return Promise.resolve(state.websites); }
+    // RISK-0192 (2026-09-19): without a token the answer can only be 401 — it cost one anonymous rate-limit hit
+    // and one refresh attempt on every boot. Ask once the session exists; ready() re-asks.
+    var _hasToken = false;
+    try { _hasToken = !!localStorage.getItem('lu_token'); } catch (e) {}
+    if (!_hasToken) { state.websites = null; return Promise.resolve([]); }
 
     state.loading = fetch(window.location.origin + '/api/website-context', {
       headers: (typeof window.authHeader === 'function') ? window.authHeader() : {},
       credentials: 'include'
     })
-      .then(function (r) { return r.ok ? r.json() : { success: false }; })
+      // 2026-09-10: a 401 means "we have not been told yet", NOT "this business has no websites".
+      // The SPA calls this while its own login card is still up, so the first two attempts of every
+      // session were unauthenticated; the empty array they produced was then CACHED and returned to
+      // every later caller, so the context stayed null for the whole session until a reload. With the
+      // picker gone this is the only mechanism left for ?w= deep links, so an unauthenticated answer
+      // is now left unrecorded and the next ready() re-asks.
+      .then(function (r) { return r.ok ? r.json() : { success: false, unauth: (r.status === 401 || r.status === 419) }; })
       .then(function (j) {
+        if (j && j.unauth) { state.websites = null; return []; }
         state.websites = (j && j.success && Array.isArray(j.websites)) ? j.websites : [];
         if (j && j.workspace_id) { state.workspaceId = parseInt(j.workspace_id, 10); }
         resolveInitial();
