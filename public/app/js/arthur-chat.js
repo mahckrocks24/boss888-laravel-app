@@ -1182,7 +1182,8 @@ window.wsPreviewSite = function(websiteId) {
 
 
 // ── Website Wizard menu — 2-option picker ─────────────────────────────────
-// Triggered by sidebar nav item #ni-wizard (onclick="_bldShowTemplatePicker()").
+// Opened by the homepage-widget landing (index.html) when no brief is attached; the sidebar item that used to call it
+// was retired in REPORT-0061 B2 (2026-09-19) — Websites › New website (wsShowCreate) is the one door.
 // Option 1: Build with Arthur  → window.wsShowCreate()
 // Option 2: Use Existing Website → wsShowConnectModal()
 window._bldShowTemplatePicker = function() {
