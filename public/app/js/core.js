@@ -893,7 +893,7 @@ window._luRouter = (function () {
     messages:   'Messages',
     projects:   'Projects',
     queue:      'Queue',
-    reports:    'Reports',
+    reports:    'Strategy Room · History',
     settings:   'Settings',
     tools:      'Tools',
   };
@@ -1230,7 +1230,7 @@ async function nav(view, opts){
   if(view==='account')    { var _acr=document.getElementById('account-root'); if(_acr && typeof window.basicAccountLoad==='function') window.basicAccountLoad(_acr); }
   if(view==='aria')       { var _arr=document.getElementById('aria-root'); if(_arr && typeof window.ariaLoad==='function') window.ariaLoad(_arr); }   /* ARIA888 DEC-0054 */
   if(view==='reports')    loadReports();
-  if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); if (typeof loadProjects === 'function') { try { loadProjects(); } catch (_e) {} } }   // A2: the task board below the list was never loaded (showed 0 everywhere)
+  if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); if (typeof loadProjects === 'function') { try { loadProjects(); } catch (_e) {} } var _pp=(opts&&opts.tail&&['board','history'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'projects'; if (typeof projShowPanel==='function') projShowPanel(_pp); }   // A2: the board loads; B4: Projects · Task board · History panels, /app/projects/history
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); if (opts && opts.tail && ['websites','domains','email'].indexOf(String(opts.tail).toLowerCase()) !== -1) window.__infraDesiredTab = String(opts.tail).toLowerCase();   /* B1: /app/infrastructure/domains */ var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
   // P4-U1: mentions view retired.
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
@@ -3939,53 +3939,27 @@ async function put(url, data) {
 
 // ── Reports ────────────────────────────────────────────────────────────────
 let rptTab='meetings';
-async function loadReports(){
-  var grid=document.getElementById('rv-grid');
-  grid.innerHTML=`
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:1px">
-      <button class="tab ${rptTab==='meetings'?'active':''}" onclick="rptTab='meetings';loadReports()" style="display:inline-flex;align-items:center;gap:6px">${window.icon('more',14)} Meetings</button>
-      ${window._luIsAdmin?'<button class="tab ${rptTab===\'executions\'?\'active\':\'\'}" onclick="rptTab=\'executions\';loadReports()">'+window.icon("ai",14)+' Executions</button>':''}
-      ${window._luIsAdmin?'<button class="tab ${rptTab===\'decisions\'?\'active\':\'\'}" onclick="rptTab=\'decisions\';loadReports()">'+window.icon("tag",14)+' Decisions</button>':''}
-      <button class="tab ${rptTab==='tasks'?'active':''}" onclick="rptTab='tasks';loadReports()" style="display:inline-flex;align-items:center;gap:6px">${window.icon('more',14)} Tasks</button>
-      <button class="tab ${rptTab==='categories'?'active':''}" onclick="rptTab='categories';loadReports()" style="display:inline-flex;align-items:center;gap:6px">${window.icon('tag',14)} Categories</button>
-    </div>
-    <div id="rpt-content" style="min-height:200px"><div style="text-align:center;padding:40px;color:var(--t3)">Loading…</div></div>
-  `;
-  var box=document.getElementById('rpt-content');
-  try{
-    if(rptTab==='meetings'){
-      var h=await get(API+'history');
-      if(!h||!h.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon" style="color:var(--t3)">'+window.icon('more',32)+'</div><div class="rv-empty-text">No meeting history yet.</div></div>';return;}
-      box.innerHTML='<div class="rv-cards-grid">'+h.map(m=>`<div class="rv-card" onclick="showSummary('${esc(m.id)}','${esc(m.topic)}','${esc(m.date)}','${encodeURIComponent(m.summary||'')}')"><div class="rv-card-date">${new Date(m.date).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</div><div class="rv-card-topic">${esc(m.topic)}</div><div class="rv-card-preview">${esc((m.summary||'').slice(0,200))}</div></div>`).join('')+'</div>';
-    }
-    else if(rptTab==='executions'){
-      var d=await get(API+'exec/history?limit=50');
-      var rows=d.history||[];
-      if(!rows.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon">'+window.icon("ai",14)+'</div><div class="rv-empty-text">No executions recorded yet.</div></div>';return;}
-      box.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+rows.map(r=>{
-        var ok=parseInt(r.success);var dt=window._luParseTs(r.created_at);
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
-          <div style="font-size:16px">${ok?''+window.icon("check",14)+'':''+window.icon("close",14)+''}</div>
-          <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(LU_humanize(r.tool_id))}</div><div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.duration_ms||0}ms · ${r.mode||'?'}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,100))+'</div>':''}</div>
-          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}</div>
-          <div style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;color:var(--t2)">${esc((r.result_summary||'').slice(0,80))}</div>
-        </div>`;
-      }).join('')+'</div>';
-    }
-    else if(rptTab==='decisions'){
-      var d=await get(API+'decisions?limit=50');
-      var rows=d.decisions||[];
-      if(!rows.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon">'+window.icon("tag",14)+'</div><div class="rv-empty-text">No decisions recorded yet.</div></div>';return;}
-      box.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+rows.map(r=>{
-        var st=r.status;var sc=st==='approved'?'var(--ac)':st==='rejected'?'#F87171':st==='proposed'?'var(--am)':'var(--t3)';
-        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${sc};min-width:60px">${st}</div>
-          <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.title)}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,120))+'</div>':''}<div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.decision_type}</div></div>
-          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${window._luParseTs(r.created_at).toLocaleDateString()}</div>
-        </div>`;
-      }).join('')+'</div>';
-    }
-    else if(rptTab==='tasks'){
+let projPanel='projects';
+// REPORT-0061 B4 (2026-09-20): Projects · Task board · History — one page, one panel visible; /app/projects/history deep-links the history
+function projShowPanel(which){
+  projPanel = (which === 'board' || which === 'history') ? which : 'projects';
+  var root=document.getElementById('projects-root'), wrap=document.querySelector('#view-projects .proj-wrap'), hist=document.getElementById('proj-history');
+  if(root) root.style.display = projPanel==='projects' ? '' : 'none';
+  if(wrap) wrap.style.display = projPanel==='board' ? 'flex' : 'none';
+  if(hist) hist.style.display = projPanel==='history' ? '' : 'none';
+  document.querySelectorAll('#proj-tabs [data-proj-panel]').forEach(function(b){ var on=b.getAttribute('data-proj-panel')===projPanel; b.classList.toggle('active', on); b.setAttribute('aria-selected', on?'true':'false'); });
+  if(projPanel==='history' && hist && !hist.dataset.loaded){ hist.dataset.loaded='1'; loadProjectHistory(); }
+  if(projPanel==='board' && typeof loadProjects==='function'){ try{ loadProjects(); }catch(_e){} }
+  try{ if(window._luRouter && window._luRouter.pushView) window._luRouter.pushView('projects', projPanel==='projects' ? null : projPanel); }catch(_e){}
+}
+async function loadProjectHistory(){
+  var hist=document.getElementById('proj-history'); if(!hist) return;
+  hist.innerHTML='<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1);margin-bottom:4px">History</div><div style="font-size:12px;color:var(--t3);margin-bottom:16px">Every task your team has run in this workspace, newest first, and how the work was spread across categories.</div><div id="proj-history-tasks" style="margin-bottom:24px"><div style="color:var(--t3);padding:20px;text-align:center">Loading…</div></div><div id="proj-history-cats"></div>';
+  try { await _luRenderTaskHistory(document.getElementById('proj-history-tasks')); } catch(e){ var b=document.getElementById('proj-history-tasks'); if(b) b.innerHTML='<div class="rv-empty"><div class="rv-empty-text">Task history could not be loaded right now.</div></div>'; }
+  try { await _luRenderWorkDistribution(document.getElementById('proj-history-cats')); } catch(e){ var c=document.getElementById('proj-history-cats'); if(c) c.innerHTML=''; }
+}
+async function _luRenderTaskHistory(box){
+  if(!box) return;
       // RES-2 (2026-08-30): the workspace comes from the session (the old ?wsId=1 was ignored server-side);
       // tasks carry action/progress_message/assigned_agents_json, not title/agent_id — render those.
       var d=await get(API+'tasks');
@@ -4005,7 +3979,9 @@ async function loadReports(){
         </div>`;
       }).join('')+'</div>';
     }
-    else if(rptTab==='categories'){
+
+async function _luRenderWorkDistribution(box){
+  if(!box) return;
       // 2026-05-27 — Phase 2: Work distribution + credit spend by category.
       // Pulls /api/workspace/state (which we already extended to include
       // category) and aggregates client-side. No new endpoint needed.
@@ -4091,6 +4067,52 @@ async function loadReports(){
           }).join('')
         + '</div></div>';
       box.innerHTML = distHtml + researchHtml + successHtml;
+    }
+
+async function loadReports(){
+  if(['meetings','executions','decisions'].indexOf(rptTab)===-1) rptTab='meetings';   // B4: tasks/categories moved to Projects › History
+  var grid=document.getElementById('rv-grid');
+  grid.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;border-bottom:1px solid var(--bd);padding-bottom:1px">
+      <button class="tab ${rptTab==='meetings'?'active':''}" onclick="rptTab='meetings';loadReports()" style="display:inline-flex;align-items:center;gap:6px">${window.icon('more',14)} Meetings</button>
+      ${window._luIsAdmin?'<button class="tab ${rptTab===\'executions\'?\'active\':\'\'}" onclick="rptTab=\'executions\';loadReports()">'+window.icon("ai",14)+' Executions</button>':''}
+      ${window._luIsAdmin?'<button class="tab ${rptTab===\'decisions\'?\'active\':\'\'}" onclick="rptTab=\'decisions\';loadReports()">'+window.icon("tag",14)+' Decisions</button>':''}
+    </div>
+    <div id="rpt-content" style="min-height:200px"><div style="text-align:center;padding:40px;color:var(--t3)">Loading…</div></div>
+  `;
+  var box=document.getElementById('rpt-content');
+  try{
+    if(rptTab==='meetings'){
+      var h=await get(API+'history');
+      if(!h||!h.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon" style="color:var(--t3)">'+window.icon('more',32)+'</div><div class="rv-empty-text">No meeting history yet.</div></div>';return;}
+      box.innerHTML='<div class="rv-cards-grid">'+h.map(m=>`<div class="rv-card" onclick="showSummary('${esc(m.id)}','${esc(m.topic)}','${esc(m.date)}','${encodeURIComponent(m.summary||'')}')"><div class="rv-card-date">${new Date(m.date).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'})}</div><div class="rv-card-topic">${esc(m.topic)}</div><div class="rv-card-preview">${esc((m.summary||'').slice(0,200))}</div></div>`).join('')+'</div>';
+    }
+    else if(rptTab==='executions'){
+      var d=await get(API+'exec/history?limit=50');
+      var rows=d.history||[];
+      if(!rows.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon">'+window.icon("ai",14)+'</div><div class="rv-empty-text">No executions recorded yet.</div></div>';return;}
+      box.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+rows.map(r=>{
+        var ok=parseInt(r.success);var dt=window._luParseTs(r.created_at);
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
+          <div style="font-size:16px">${ok?''+window.icon("check",14)+'':''+window.icon("close",14)+''}</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(LU_humanize(r.tool_id))}</div><div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.duration_ms||0}ms · ${r.mode||'?'}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,100))+'</div>':''}</div>
+          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${dt.toLocaleDateString()} ${dt.toLocaleTimeString()}</div>
+          <div style="font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;color:var(--t2)">${esc((r.result_summary||'').slice(0,80))}</div>
+        </div>`;
+      }).join('')+'</div>';
+    }
+    else if(rptTab==='decisions'){
+      var d=await get(API+'decisions?limit=50');
+      var rows=d.decisions||[];
+      if(!rows.length){box.innerHTML='<div class="rv-empty"><div class="rv-empty-icon">'+window.icon("tag",14)+'</div><div class="rv-empty-text">No decisions recorded yet.</div></div>';return;}
+      box.innerHTML='<div style="display:flex;flex-direction:column;gap:6px">'+rows.map(r=>{
+        var st=r.status;var sc=st==='approved'?'var(--ac)':st==='rejected'?'#F87171':st==='proposed'?'var(--am)':'var(--t3)';
+        return `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border:1px solid var(--bd);border-radius:8px">
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:${sc};min-width:60px">${st}</div>
+          <div style="flex:1"><div style="font-size:12px;font-weight:600;color:var(--t1)">${esc(r.title)}</div>${r.rationale?'<div style="font-size:10px;color:var(--t2);margin-top:2px">'+esc(r.rationale.slice(0,120))+'</div>':''}<div style="font-size:10px;color:var(--t3)">${esc(r.agent_id)} · ${r.decision_type}</div></div>
+          <div style="font-size:10px;color:var(--t3);white-space:nowrap">${window._luParseTs(r.created_at).toLocaleDateString()}</div>
+        </div>`;
+      }).join('')+'</div>';
     }
   }catch(e){box.innerHTML='<div style="color:#F87171;padding:20px">Error loading: '+esc(e.message)+'</div>';}
 }

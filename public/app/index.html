@@ -2973,7 +2973,7 @@ window.luSwipeToClose = luSwipeToClose;
       <!-- /* b24-sidebar-reorganized */ -->
       <div class="nav-section">Workspace</div>
       <button type="button" class="nav-item" onclick="nav('workspace')" id="ni-workspace" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Workspace</button>
-      <button type="button" class="nav-item" onclick="nav('meeting')" id="ni-meeting" data-feature="meeting_room" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a6 6 0 016 6c0 2.5-1.5 4.7-3.7 5.7L12 17H8l-.3-3.3C5.5 12.7 4 10.5 4 8a6 6 0 016-6z"/><path d="M8 17h4M9 19h2"/></svg></span>Strategy Room</button>
+      <button type="button" class="nav-item" onclick="nav('meeting')" id="ni-meeting" data-nav-view="reports" data-feature="meeting_room" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a6 6 0 016 6c0 2.5-1.5 4.7-3.7 5.7L12 17H8l-.3-3.3C5.5 12.7 4 10.5 4 8a6 6 0 016-6z"/><path d="M8 17h4M9 19h2"/></svg></span>Strategy Room</button>
       <button type="button" class="nav-item" onclick="nav('projects')" id="ni-projects" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Projects</button>
       <button type="button" class="nav-item" onclick="nav('command')" id="ni-command" data-feature="ai_agents" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Command Center<span id="cmd-nav-badge-approvals" class="cmd-nav-badge">0</span></button>
       <button type="button" class="nav-item" onclick="nav('approvals')" id="ni-approvals" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/><path d="M16 13l2 2 3-3" transform="translate(-5 0)"/><circle cx="16" cy="15" r="1.5"/></svg></span>Review Queue<span id="nav-approval-badge" class="cmd-nav-badge">0</span></button>
@@ -3017,7 +3017,8 @@ window.luSwipeToClose = luSwipeToClose;
       
       
       <!-- REMOVED: Campaigns (ni-campaigns) — v5.5.2 — duplicate of Marketing engine's Campaigns tab (same /marketing/campaigns data, Marketing tab has richer UI). Router redirects nav('campaigns') → nav('marketing'). -->
-      <button type="button" class="nav-item" onclick="nav('reports')" id="ni-reports" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h8l4 4v12a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z"/><path d="M12 2v4h4"/><path d="M6 10h8M6 13h5"/></svg></span>Reports &amp; History</button>
+      <!-- REPORT-0061 B4 (2026-09-20): "Reports & History" left the menu — it was the meeting archive + task history. Meetings live under
+           Strategy Room › History (#view-reports, /app/reports), tasks and categories under Projects › History. -->
       <!-- Tool Registry removed from app sidebar 2026-04-21 — admin-only feature, accessed via /admin/ panel -->
             <button type="button" class="nav-item" onclick="nav('billing')" id="ni-billing" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16M5 13h3"/></svg></span>Billing</button>
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-settings" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg></span>Settings</button>
@@ -3060,6 +3061,11 @@ window.luSwipeToClose = luSwipeToClose;
     <div id="view-meeting" class="view" style="display:none">
       <div class="meeting-view">
         <!-- Start overlay inside meeting view -->
+        <!-- REPORT-0061 B4 (2026-09-20): Strategy Room = Launch · History (the meeting archive that used to be "Reports & History") -->
+        <div class="lu-view-tabs" id="mtg-tabs" role="tablist" aria-label="Strategy Room" style="display:flex;gap:2px;padding:14px 24px 0;border-bottom:1px solid var(--bd);background:var(--bg)">
+          <button type="button" role="tab" aria-selected="true" class="tab active" onclick="nav('meeting')">Launch</button>
+          <button type="button" role="tab" aria-selected="false" class="tab" onclick="rptTab='meetings';nav('reports')">History</button>
+        </div>
         <div id="mtg-start-screen" style="flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg)">
           <div style="width:480px;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rx);padding:32px;box-shadow:0 24px 80px rgba(0,0,0,.5)">
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:22px">
@@ -3304,7 +3310,14 @@ window.luSwipeToClose = luSwipeToClose;
     <!-- ── PROJECTS ── -->
     <div id="view-infrastructure" class="view" style="display:none"><div id="infrastructure-root"></div></div>
     <div id="view-projects" class="view" style="display:none">
+      <!-- REPORT-0061 B4 (2026-09-20): one page, three panels — Projects (list), Task board (stages), History (task history + work distribution, from the old Reports & History) -->
+      <div class="lu-view-tabs" id="proj-tabs" role="tablist" aria-label="Projects" style="display:flex;gap:2px;padding:14px 24px 0;border-bottom:1px solid var(--bd);flex-shrink:0">
+        <button type="button" role="tab" data-proj-panel="projects" class="tab active" onclick="projShowPanel('projects')">Projects</button>
+        <button type="button" role="tab" data-proj-panel="board" class="tab" onclick="projShowPanel('board')">Task board</button>
+        <button type="button" role="tab" data-proj-panel="history" class="tab" onclick="projShowPanel('history')">History</button>
+      </div>
       <div id="projects-root" style="flex:1;overflow-y:auto;padding:24px"></div>
+      <div id="proj-history" style="display:none;flex:1;overflow-y:auto;padding:24px"></div>
       <div class="proj-wrap">
         <!-- Header -->
         <div class="proj-hdr">
@@ -3451,8 +3464,12 @@ window.luSwipeToClose = luSwipeToClose;
     <div id="view-reports" class="view" style="display:none;overflow-y:auto;">
       <div class="reports-view">
         <div class="rv-hdr">
-          <div class="rv-title">Reports &amp; History</div>
-          <div class="rv-sub">Meeting summaries and action plans from all strategy sessions.</div>
+          <div class="lu-view-tabs" role="tablist" aria-label="Strategy Room" style="display:flex;gap:2px;margin-bottom:14px">
+            <button type="button" role="tab" aria-selected="false" class="tab" onclick="nav('meeting')">Launch</button>
+            <button type="button" role="tab" aria-selected="true" class="tab active" onclick="rptTab='meetings';nav('reports')">History</button>
+          </div>
+          <div class="rv-title">Strategy Room · History</div>
+          <div class="rv-sub">Meeting summaries and action plans from every strategy session. Task history lives under Projects › History.</div>
         </div>
         <div class="rv-grid" id="rv-grid">
           <div class="rv-empty"><div class="rv-empty-icon"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><circle cx="5" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg></div><div class="rv-empty-text">No meeting history yet.<br>Complete a strategy session to see summaries here.</div></div>
@@ -4768,7 +4785,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=b3-20260919"></script>
+<script defer src="/app/js/core.js?v=b4-20260920"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
