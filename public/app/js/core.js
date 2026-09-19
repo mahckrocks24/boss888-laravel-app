@@ -853,6 +853,7 @@ window._luRouter = (function () {
   var URL_ALIASES = {
     strategy: 'command',  // proposals + Sarah's strategies surface here
     builder: 'websites', manualedit: 'studio', marketing: 'workspace', automation: 'workspace', mentions: 'workspace', tools: 'workspace', blog: 'write', creative: 'studio',
+    hosting: 'infrastructure',   // REPORT-0061 B1 (2026-09-19): the menu says Hosting; /app/infrastructure/{websites|domains|email} opens a tab
   };
 
   // v5.7.23 (2026-05-31) — per-view human titles for document.title.
@@ -868,7 +869,7 @@ window._luRouter = (function () {
     account:    'Account',
     aria:       'Aria',
     workspace:  'Workspace',
-    infrastructure: 'Infrastructure',
+    infrastructure: 'Hosting',
     command:    'Command Center',
     crm:        'CRM',
     seo:        'SEO',
@@ -1227,7 +1228,7 @@ async function nav(view, opts){
   if(view==='aria')       { var _arr=document.getElementById('aria-root'); if(_arr && typeof window.ariaLoad==='function') window.ariaLoad(_arr); }   /* ARIA888 DEC-0054 */
   if(view==='reports')    loadReports();
   if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); if (typeof loadProjects === 'function') { try { loadProjects(); } catch (_e) {} } }   // A2: the task board below the list was never loaded (showed 0 everywhere)
-  if(view==='infrastructure') { await luLoadEngine('infrastructure'); var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
+  if(view==='infrastructure') { await luLoadEngine('infrastructure'); if (opts && opts.tail && ['websites','domains','email'].indexOf(String(opts.tail).toLowerCase()) !== -1) window.__infraDesiredTab = String(opts.tail).toLowerCase();   /* B1: /app/infrastructure/domains */ var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
   // P4-U1: mentions view retired.
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
   if(view==='workspace')  {loadTasks();drawCanvas();drawZones(); if(typeof loadAgentStats==='function') loadAgentStats();}

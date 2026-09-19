@@ -3007,9 +3007,9 @@ window.luSwipeToClose = luSwipeToClose;
             
             
       <div class="nav-section">Hosting</div>
-      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosted Sites</button>
-      <button type="button" class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('domains'):nav('infrastructure'))" id="ni-infra-domains" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c1.9 2 3 4.7 3 7.5s-1.1 5.5-3 7.5c-1.9-2-3-4.7-3-7.5s1.1-5.5 3-7.5z"/></svg></span>Domains</button>
-      <button type="button" class="nav-item" onclick="(window.infraOpenTab?infraOpenTab('email'):nav('infrastructure'))" id="ni-infra-email" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5 7-5"/></svg></span>Email Accounts</button>
+      <!-- REPORT-0061 B1 (2026-09-19): Hosted Sites / Domains / Email Accounts were three sidebar buttons for the tabs of ONE
+           view. One item now; the tabs are in the page (infrastructure.js), deep links /app/infrastructure/domains|email keep working. -->
+      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosting</button>
       <div class="nav-section">Data</div>
       
       
@@ -4540,7 +4540,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=brand-20260911',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=brand-20260911'}};
+  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=brand-20260911',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=b1-20260919'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4765,7 +4765,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=a2b-20260919"></script>
+<script defer src="/app/js/core.js?v=b1-20260919"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>

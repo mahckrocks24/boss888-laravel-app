@@ -1,5 +1,5 @@
 /**
- * LevelUp Growth Infrastructure — customer SPA module.
+ * LevelUpGrowth Infrastructure — customer SPA module.
  *
  * Phase 3B adds the ENTERPRISE INTELLIGENCE INTERFACE on top of the Phase 1D
  * hosting request workflow. It consumes the six real, workspace-scoped
@@ -496,31 +496,32 @@
   function renderYourWebsites(sites, entitlement) {
     sites = sites || [];
 
+    // REPORT-0061 B1/G (2026-09-19): building a website has ONE door — Websites › New website (Arthur's wizard). Hosting
+    // keeps "bring in a website you host elsewhere" and shows every site by its HOSTING state.
     var actions =
       (isPlatformAdmin() ? headerBtn('Operations', 'id="infra-ops-entry" title="Internal control plane (admin)"') : '') +
-      headerBtn('Create website', 'id="infra-create-website"') +
       headerBtn('Add existing website', 'id="infra-add-existing" aria-label="Bring in a website you host elsewhere"', 'primary');
 
     if (!sites.length) {
       return pageShell({
         breadcrumb: [{ label: 'Hosting' }, { label: 'Websites' }],
-        title: 'Websites',
-        desc: 'Build, launch, connect and manage every website in this workspace.',
+        title: 'Websites on hosting',
+        desc: 'Address, SSL, domain and email for every website in this workspace. Build and publish from Websites.',
         actions: actions,
         body: enterpriseEmpty(ICONS.hosting, 'No websites yet',
-          'Create a website with LevelUp and it goes live automatically — hosting, SSL and your address are all handled for you.',
-          [{ label: 'Create website', id: 'infra-create-website-2', primary: true }, { label: 'Add existing website', id: 'infra-add-existing-2' }])
+          'Build a website under Websites and it goes live here automatically — hosting, SSL and your address are all handled for you.',
+          [{ label: 'Go to Websites', id: 'infra-create-website-2', primary: true }, { label: 'Add existing website', id: 'infra-add-existing-2' }])
       });
     }
 
-    // Summary strip — real, derivable data only (Managed omitted: not per-site reliable).
+    // Summary strip — hosting facts only (build/publish stats belong to Websites).
     var live = sites.filter(function (s) { return siteIsLive(s); }).length;
     var custom = sites.filter(function (s) { return s.custom_domain && Number(s.domain_verified) === 1; }).length;
+    var elsewhere = sites.filter(function (s) { return siteOrigin(s) === 'external'; }).length;
     var strip = metricStrip([
-      { label: 'Total websites', value: sites.length },
       { label: 'Live', value: live, tone: live ? 'var(--ac)' : 'var(--t1)' },
-      { label: 'Draft', value: sites.length - live },
-      { label: 'Custom domains', value: custom }
+      { label: 'Custom domains', value: custom },
+      { label: 'Hosted elsewhere', value: elsewhere }
     ]);
 
     var native = sites.filter(function (s) { return siteOrigin(s) === 'native'; });
@@ -533,8 +534,8 @@
 
     return pageShell({
       breadcrumb: [{ label: 'Hosting' }, { label: 'Websites' }],
-      title: 'Websites',
-      desc: 'Build, launch, connect and manage every website in this workspace.',
+      title: 'Websites on hosting',
+      desc: 'Address, SSL, domain and email for every website in this workspace. Build and publish from Websites.',
       actions: actions,
       body: strip + '<div style="display:flex;flex-direction:column;gap:var(--sp-3);">' + list + '</div>'
     });
@@ -961,7 +962,8 @@
     renderCurrentView();
   }
   function openBuilder() {
-    if (typeof window.nav === 'function') { window.nav('builder'); }
+    // B1/G: the one door — the Websites page (its "New website" opens Arthur's wizard)
+    if (typeof window.nav === 'function') { window.nav('websites'); }
   }
   function openDetail(id) {
     _detailTab = 'overview';
@@ -1904,8 +1906,8 @@
       '</div>' +
       '<dl style="display:grid;grid-template-columns:auto 1fr;gap:8px var(--sp-5);margin:var(--sp-5) 0 0;font:400 13px var(--fb);">' +
         defRow('Management mode', modeTag(a.management_mode) +
-          (a.management_mode === 'adopted' ? ' <span style="color:var(--t3);font-size:12px;">observed, not provisioned by LevelUp Growth</span>' :
-           a.management_mode === 'managed_externally' ? ' <span style="color:var(--t3);font-size:12px;">not managed by LevelUp Growth</span>' : '')) +
+          (a.management_mode === 'adopted' ? ' <span style="color:var(--t3);font-size:12px;">observed, not provisioned by LevelUpGrowth</span>' :
+           a.management_mode === 'managed_externally' ? ' <span style="color:var(--t3);font-size:12px;">not managed by LevelUpGrowth</span>' : '')) +
         defRow('Lifecycle', esc(a.lifecycle_state || '—')) +
         defRow('Health', HEALTH_LABEL[a.health_state] || 'Unknown') +
         defRow('Last observed', esc(a.health_checked_at ? fmtTime(a.health_checked_at) + ' (' + fmtAgo(a.health_checked_at) + ')' : 'Not yet observed')) +
@@ -2194,9 +2196,27 @@
   // while inside the admin Operations surface (nested body).
   var _bodyId = 'infra-body';
 
+  // REPORT-0061 B1 (2026-09-19): the customer plane is ONE page with three tabs — Websites · Domains · Email — drawn
+  // above every list-level surface (the sidebar used to carry the tabs as three separate items).
+  var CUSTOMER_TABS = [{ key: 'websites', label: 'Websites' }, { key: 'domains', label: 'Domains' }, { key: 'email', label: 'Email' }];
+  function customerTabStrip() {
+    if (_bodyId !== 'infra-body' || !_view || _view.name !== 'list') { return ''; }
+    if (['websites', 'domains', 'email'].indexOf(INFRA_TAB) === -1) { return ''; }
+    return '<div role="tablist" aria-label="Hosting" class="infra-customer-tabs" style="display:flex;gap:2px;border-bottom:1px solid var(--bd);margin-bottom:var(--sp-6);overflow-x:auto;">' +
+      CUSTOMER_TABS.map(function (t) {
+        var on = INFRA_TAB === t.key;
+        return '<button type="button" role="tab" aria-selected="' + (on ? 'true' : 'false') + '" data-infra-tab="' + t.key + '" class="infra-hbtn" style="background:none;border:none;border-bottom:2px solid ' + (on ? 'var(--p)' : 'transparent') + ';color:' + (on ? 'var(--t1)' : 'var(--t2)') + ';font:600 13px var(--fb);padding:10px 14px;cursor:pointer;white-space:nowrap;">' + esc(t.label) + '</button>';
+      }).join('') + '</div>';
+  }
+  function switchCustomerTab(tab) {
+    if (['websites', 'domains', 'email'].indexOf(tab) === -1) { return; }
+    INFRA_TAB = tab; _view = { name: 'list', operationId: null, assetId: null };
+    try { if (window._luRouter && typeof window._luRouter.pushView === 'function') { window._luRouter.pushView('infrastructure', tab === 'websites' ? null : tab); } } catch (_e) {}
+    renderCurrentView();
+  }
   function paintBody(html) {
     var el = document.getElementById(_bodyId) || document.getElementById('infra-body');
-    if (el) { el.innerHTML = html; }
+    if (el) { el.innerHTML = customerTabStrip() + html; }
   }
 
   // Delegated: any element with .infra-open-asset opens that asset's drill-down.
@@ -2664,6 +2684,8 @@
     // #infra-body, so every surface aligns. The root is just a full-width host.
     _bodyId = 'infra-body';
     root.innerHTML = '<div id="infra-body" style="padding:var(--sp-6) var(--sp-8);">' + loadingState() + '</div>';
+    var bodyEl = document.getElementById('infra-body');
+    if (bodyEl && !bodyEl.__luTabsBound) { bodyEl.__luTabsBound = true; bodyEl.addEventListener('click', function (e) { var t = e.target && e.target.closest ? e.target.closest('[data-infra-tab]') : null; if (t) { e.preventDefault(); switchCustomerTab(t.getAttribute('data-infra-tab')); } }); }
 
     // Entitlement drives included/upgrade framing; fetched quietly.
     req('GET', 'infrastructure/overview')
@@ -2683,7 +2705,7 @@
   // loads the engine bundle and calls infraLoad(), which reads __infraDesiredTab.
   window.infraOpenTab = function (tab) {
     window.__infraDesiredTab = tab;
-    if (typeof window.nav === 'function') { window.nav('infrastructure'); }
+    if (typeof window.nav === 'function') { window.nav('infrastructure', { tail: (tab && tab !== 'websites') ? tab : null }); }
     else { window.infraLoad(); }
     // pp (2026-08-30): when the Hosting view is already mounted, nav() does not call infraLoad() again and
     // the requested tab was never applied — force a reload that consumes __infraDesiredTab.
