@@ -8186,7 +8186,11 @@ Route::middleware(['auth.jwt'])->group(function () {
     Route::middleware(['auth.jwt'])->group(function () {
         Route::post('/projects/from-meeting/{meetingId}/ratify', function (\Illuminate\Http\Request $r, $meetingId) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $userId = (int) $user->id;
             $opts = $r->only(['duration_days','budget_credits','channels','kpi_count','milestone_count','name_override','goal_override']);
             $svc = app(\App\Core\Projects\ProjectFromMeetingService::class);
@@ -8196,7 +8200,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::post('/projects/{id}/persist-proposal', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $kpis = $r->input('kpis', []);
             $milestones = $r->input('milestones', []);
             if (!is_array($kpis) || !is_array($milestones)) {
@@ -8212,7 +8220,11 @@ Route::middleware(['auth.jwt'])->group(function () {
     Route::middleware(['auth.jwt'])->group(function () {
         Route::post('/projects/{id}/dispose', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $userId = (int) $user->id;
             $outcome = (string) $r->input('outcome', '');
             $opts = $r->only(['weights', 'evidence', 'skip_narrative', 'replace']);
@@ -8223,7 +8235,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::get('/projects/{id}/outcome', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Core\Projects\ProjectDispositionService::class);
             $res = $svc->get($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 404);
@@ -8234,41 +8250,65 @@ Route::middleware(['auth.jwt'])->group(function () {
     Route::middleware(['auth.jwt'])->group(function () {
         Route::get('/projects', function (\Illuminate\Http\Request $r) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Core\Projects\ProjectReadService::class);
             $opts = $r->only(['status','source_type','owner_user_id','q','sort','dir','page','per_page']);
             return response()->json($svc->list($wsId, $opts));
         });
         Route::get('/projects/{id}', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Core\Projects\ProjectReadService::class);
             $res = $svc->single($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 404);
         });
         Route::get('/projects/{id}/milestones', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $status = $r->query('status');
             $ms = app(\App\Core\Projects\MilestoneService::class);
             return response()->json($ms->listForProject($wsId, (int) $id, $status));
         });
         Route::get('/projects/{id}/kpis', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $ks = app(\App\Core\Projects\KpiService::class);
             return response()->json($ks->listForProject($wsId, (int) $id));
         });
         Route::get('/projects/{id}/timeline', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Core\Projects\ProjectReadService::class);
             $res = $svc->timeline($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 404);
         });
         Route::get('/projects/{id}/publish-queue', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Core\Projects\ProjectReadService::class);
             $res = $svc->publishQueue($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 404);
@@ -8280,7 +8320,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         // ── Project create / update ───────────────────────────
         Route::post('/projects', function (\Illuminate\Http\Request $r) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $data = $r->only(['name','goal','description','source_type','source_meeting_id',
                 'planned_start_at','planned_end_at','budget_credits','metadata']);
             // Direct creation: stamp owner + default to source_type='direct'
@@ -8291,7 +8335,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::patch('/projects/{id}', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $data = $r->only(['name','goal','description','planned_start_at','planned_end_at',
                 'budget_credits','metadata']);
             $res = app(\App\Core\Projects\ProjectService::class)->update($wsId, (int) $id, $data);
@@ -8301,7 +8349,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         // ── Milestones ────────────────────────────────────────
         Route::post('/projects/{id}/milestones', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $data = $r->only(['title','description','target_date','order_index',
                 'success_criteria','notes']);
             $res = app(\App\Core\Projects\MilestoneService::class)
@@ -8310,7 +8362,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::patch('/projects/{id}/milestones/{mid}', function (\Illuminate\Http\Request $r, $id, $mid) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $data = $r->only(['title','description','target_date','order_index',
                 'success_criteria','notes']);
             $res = app(\App\Core\Projects\MilestoneService::class)
@@ -8319,7 +8375,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::post('/projects/{id}/milestones/{mid}/achieve', function (\Illuminate\Http\Request $r, $id, $mid) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $evidence = $r->input('evidence', []);
             if (!is_array($evidence)) $evidence = ['notes' => (string) $evidence];
             $res = app(\App\Core\Projects\MilestoneService::class)
@@ -8330,7 +8390,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         // ── KPIs ──────────────────────────────────────────────
         Route::post('/projects/{id}/kpis', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $data = $r->only(['name','description','target_value','current_value',
                 'unit','direction','measurement_source','order_index','metadata']);
             $res = app(\App\Core\Projects\KpiService::class)
@@ -8339,7 +8403,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::post('/projects/{id}/kpis/{kid}/measure', function (\Illuminate\Http\Request $r, $id, $kid) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $value = $r->input('value');
             if (!is_numeric($value)) {
                 return response()->json(['success' => false, 'error' => 'value must be numeric'], 422);
@@ -8355,7 +8423,11 @@ Route::middleware(['auth.jwt'])->group(function () {
     Route::middleware(['auth.jwt'])->group(function () {
         Route::post('/mentions/scan-now/{watchlistId}', function (\Illuminate\Http\Request $r, $watchlistId) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $opts = $r->only(['max_results', 'skip_sentiment', 'agent_slug']);
             $opts['user_id']   = (int) $user->id;
             $opts['scan_type'] = 'manual';
@@ -8369,42 +8441,66 @@ Route::middleware(['auth.jwt'])->group(function () {
     Route::middleware(['auth.jwt'])->group(function () {
         Route::get('/mentions/stats', function (\Illuminate\Http\Request $r) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
             $opts = $r->only(['trend_days']);
             return response()->json($svc->stats($wsId, $opts));
         });
         Route::get('/mentions/scan-runs', function (\Illuminate\Http\Request $r) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
             $opts = $r->only(['watchlist_id','scan_type','since','page','per_page']);
             return response()->json($svc->listScanRuns($wsId, $opts));
         });
         Route::get('/mentions/watchlist', function (\Illuminate\Http\Request $r) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
             $opts = $r->only(['is_active','scope','q']);
             return response()->json($svc->listWatchlist($wsId, $opts));
         });
         Route::get('/mentions/watchlist/{id}', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
             $res = $svc->singleWatchlist($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 404);
         });
         Route::get('/mentions', function (\Illuminate\Http\Request $r) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
             $opts = $r->only(['status','sentiment','priority','source_type','source_domain','watchlist_id','q','since','sort','dir','page','per_page']);
             return response()->json($svc->list($wsId, $opts));
         });
         Route::get('/mentions/{id}', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Engines\Mention\Services\MentionReadService::class);
             $res = $svc->single($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 404);
@@ -8416,7 +8512,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         // Mention triage
         Route::patch('/mentions/{id}/status', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $svc = app(\App\Engines\Mention\Services\MentionTriageService::class);
             $status = (string) $r->input('status', '');
             $notes  = $r->input('notes');
@@ -8427,7 +8527,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         // Watchlist mutations
         Route::post('/mentions/watchlist', function (\Illuminate\Http\Request $r) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $limits = app(\App\Engines\Mention\Services\MentionPlanLimits::class);
             $wls    = app(\App\Engines\Mention\Services\WatchlistService::class);
             $cap = $limits->watchlistCapFor($wsId);
@@ -8448,7 +8552,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::patch('/mentions/watchlist/{id}', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $wls = app(\App\Engines\Mention\Services\WatchlistService::class);
             $data = $r->only(['term','label','scope','priority','variants','negative_keywords','metadata']);
             $res = $wls->update($wsId, (int) $id, $data);
@@ -8456,7 +8564,11 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::post('/mentions/watchlist/{id}/activate', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $limits = app(\App\Engines\Mention\Services\MentionPlanLimits::class);
             $wls    = app(\App\Engines\Mention\Services\WatchlistService::class);
             // Re-activating an existing row must respect the active-term cap
@@ -8477,14 +8589,22 @@ Route::middleware(['auth.jwt'])->group(function () {
         });
         Route::post('/mentions/watchlist/{id}/deactivate', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $res = app(\App\Engines\Mention\Services\WatchlistService::class)
                 ->deactivate($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 422);
         });
         Route::delete('/mentions/watchlist/{id}', function (\Illuminate\Http\Request $r, $id) {
             $user = $r->user();
-            $wsId = (int) ($user->workspace_id ?? 1);
+            // RISK-0193 (2026-09-19): users has no workspace_id column - the old `$user->workspace_id ?? 1` resolved every
+            // customer to workspace 1 (the house account). The request's workspace is the trusted attribute set by
+            // JwtAuthMiddleware from the signed token (membership re-checked per request); missing context fails closed.
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) return response()->json(['success' => false, 'error' => 'no_workspace'], 403);
             $res = app(\App\Engines\Mention\Services\WatchlistService::class)
                 ->delete($wsId, (int) $id);
             return response()->json($res, !empty($res['success']) ? 200 : 404);
