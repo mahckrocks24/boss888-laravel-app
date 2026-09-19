@@ -192,7 +192,7 @@
         var external = isWp || /^https?:\/\//.test(String(sd.external_url || '')) && !sub;
         var s1 = sec(sd.name || sd.title || 'Website', null); body.appendChild(s1);
         var head = document.createElement('div'); head.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;align-items:center';
-        head.innerHTML = '<span class="bs-tag ' + (live ? 'ok' : 'warn') + '">' + (live ? 'Live' : 'Draft') + '</span>' + (isWp ? '<span class="bs-tag">WordPress</span>' : '<span class="bs-tag">Built with LevelUp</span>') + (sd.page_count ? '<span class="bs-tag">' + sd.page_count + ' pages</span>' : '') + (addr ? '<span class="bs-sub" style="margin:0">' + esc(addr) + '</span>' : '');
+        head.innerHTML = '<span class="bs-tag ' + (live ? 'ok' : 'warn') + '">' + (live ? 'Live' : 'Draft') + '</span>' + (isWp ? '<span class="bs-tag">WordPress</span>' : '<span class="bs-tag">Built with LevelUpGrowth</span>') + (sd.page_count ? '<span class="bs-tag">' + sd.page_count + ' pages</span>' : '') + (addr ? '<span class="bs-sub" style="margin:0">' + esc(addr) + '</span>' : '');
         s1.appendChild(head);
         var a = document.createElement('div'); a.className = 'bs-acts'; s1.appendChild(a);
         if (addr) a.appendChild(btn('Open website', 'quiet', function () { window.open(/^https?:/.test(addr) ? addr : 'https://' + addr, '_blank', 'noopener'); }));

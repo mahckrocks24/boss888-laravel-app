@@ -458,7 +458,7 @@
   }
 
   function originBadge(origin, platform) {
-    var label = origin === 'native' ? 'Built with LevelUp'
+    var label = origin === 'native' ? 'Built with LevelUpGrowth'
       : (PLATFORM_LABEL[String(platform).toLowerCase()] || 'External site');
     var tone = origin === 'native' ? 'var(--p)' : 'var(--bl)';
     return '<span style="display:inline-flex;align-items:center;gap:6px;font:600 11px var(--fb);color:' + tone + ';' +

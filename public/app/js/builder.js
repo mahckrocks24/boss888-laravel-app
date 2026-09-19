@@ -849,8 +849,11 @@ function wsRenderGrid(){
       else if (s.subdomain) _liveUrlBtn = 'https://' + (String(s.subdomain).indexOf('.') === -1 ? s.subdomain + '.levelupgrowth.io' : s.subdomain);
       else _liveUrlBtn = '/storage/sites/' + s.id + '/index.html';
 
+      // D (2026-09-20): a published site can be taken offline from here — there was no unpublish control anywhere in the
+      // customer app (only delete). Two clicks, site CSS, no native dialog.
       var _publishOrView = _isPub
         ? `<a href="${bld_escH(_liveUrlBtn)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="ct-btn primary" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">View ↗</a>`
+          + `<button class="ct-btn" id="ws-offline-${s.id}" onclick="event.stopPropagation();wsTakeOffline(${s.id})" title="Unpublish — the address stops serving until you publish again" style="font-size:11px;padding:4px 10px">Take offline</button>`
         : `<button class="ct-btn primary" onclick="wsShowPublish(${s.id})" style="font-size:11px;padding:4px 10px">Publish</button>`;
 
       actions=`<button class="ct-btn" onclick="wsOpenSite(${s.id})" style="font-size:11px;padding:4px 10px">Edit</button>`
@@ -2501,6 +2504,22 @@ async function wsDelete(siteId){
   }
 }
 
+var wsPubTarget = wsPubTarget || null;   // D (2026-09-20): was never declared — a click on the modal button before the modal threw ReferenceError
+// D (2026-09-20): unpublish from the Websites list. First click asks, second click within 6 s does it.
+async function wsTakeOffline(siteId){
+  var b=document.getElementById('ws-offline-'+siteId); if(!b) return;
+  if(b.dataset.armed!=='1'){ b.dataset.armed='1'; b.textContent='Confirm: take offline'; b.style.color='#F87171'; setTimeout(function(){ if(b.dataset.armed==='1'){ b.dataset.armed='0'; b.textContent='Take offline'; b.style.color=''; } }, 6000); return; }
+  b.disabled=true; b.textContent='Taking offline…';
+  try{
+    var r=await fetch(API+'builder/websites/'+siteId+'/unpublish',{method:'POST',headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'}});
+    var d=await r.json().catch(function(){return {};});
+    if(r.ok && d.success!==false && !d.error){
+      var site=wsSites?wsSites.find(function(x){return x.id===siteId;}):null; if(site){site.status='draft';site.publish_state='unpublished';}
+      showToast('Website taken offline. Publish again whenever you are ready.','success');
+      if(typeof wsUpdateStats==='function')wsUpdateStats(); if(typeof wsRenderGrid==='function')wsRenderGrid();
+    } else { showToast(d.error||d.message||'Could not take the website offline.','error'); b.disabled=false; b.dataset.armed='0'; b.textContent='Take offline'; b.style.color=''; }
+  }catch(e){ showToast('Could not take the website offline: '+e.message,'error'); b.disabled=false; b.dataset.armed='0'; b.textContent='Take offline'; b.style.color=''; }
+}
 function wsShowPublish(siteId){
   const site=wsSites.find(s=>s.id===siteId);if(!site)return;
   wsPubTarget={type:'site',id:siteId};
