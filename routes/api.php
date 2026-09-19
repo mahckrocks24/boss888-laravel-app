@@ -74,7 +74,8 @@ use App\Http\Controllers\Api\ManualExecutionController;
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::middleware('throttle:10,5')->post('/login', [AuthController::class, 'login']);
-    Route::post('/refresh', [AuthController::class, 'refresh']);
+    // RISK-0192 (2026-09-19): renewal has its own limiter (see AppServiceProvider), never the general api bucket
+    Route::post('/refresh', [AuthController::class, 'refresh'])->withoutMiddleware('throttle:api')->middleware('throttle:refresh');
     Route::middleware('throttle:5,15')->post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });

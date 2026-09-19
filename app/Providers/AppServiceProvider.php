@@ -97,8 +97,41 @@ class AppServiceProvider extends ServiceProvider
         // app). Fails CLOSED, no config kill switch — see the class docblock.
         \App\Core\Safety\DestructiveArtisanGuard::register();
 
+        // RISK-0192 (2026-09-19) — who a request belongs to, decided BEFORE route middleware runs (throttle:api is in
+        // the api group; JwtAuthMiddleware sets the user later, so $request->user() is always null here and the old
+        // closure keyed everyone by IP — the Cloudflare edge's, until bootstrap/app.php trusted the proxies).
+        //   authenticated (a bearer that decodes)  → per user,   240/min: the shell's own polling is 46/min on the
+        //                                             Sarah view + 19 per boot; three tabs fit, a script does not
+        //   API key (embeds, WordPress bridge)       → per key,    240/min
+        //   anonymous                                → per real IP, 60/min (unchanged)
+        // The bearer is only DECODED (HS256 signature + expiry, no database); an invalid or expired one is anonymous.
         \Illuminate\Support\Facades\RateLimiter::for("api", function (\Illuminate\Http\Request $request) {
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            $bearer = $request->bearerToken();
+            if (is_string($bearer) && $bearer !== '') {
+                try {
+                    $sub = app(\App\Core\Auth\RefreshTokenService::class)->decodeAccessToken($bearer)->sub ?? null;
+                    if ($sub !== null && $sub !== '') {
+                        return \Illuminate\Cache\RateLimiting\Limit::perMinute(240)->by('u:' . $sub);
+                    }
+                } catch (\Throwable $e) { /* not ours, or expired: anonymous */ }
+            }
+            $apiKey = (string) $request->header('X-API-KEY', '');
+            if ($apiKey !== '') {
+                return \Illuminate\Cache\RateLimiting\Limit::perMinute(240)->by('k:' . substr(hash('sha256', $apiKey), 0, 32));
+            }
+            return \Illuminate\Cache\RateLimiting\Limit::perMinute(60)->by('ip:' . $request->ip());
+        });
+
+        // RISK-0192 — POST /api/auth/refresh has its own budget, outside the general bucket, so a throttled minute
+        // of polling can never make the session renewal itself fail: 20/min per refresh token (one boot = one
+        // refresh; a token is single-use, so this is the replay window's own headroom) and 120/min per real IP
+        // (an office of twenty customers booting six times a minute). Measured: 5 × F5 in 68 s = 5, 6 tabs = 6.
+        \Illuminate\Support\Facades\RateLimiter::for("refresh", function (\Illuminate\Http\Request $request) {
+            $token = (string) $request->input('refresh_token', '');
+            return [
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(120)->by('rip:' . $request->ip()),
+                \Illuminate\Cache\RateLimiting\Limit::perMinute(20)->by('rt:' . substr(hash('sha256', $token), 0, 32)),
+            ];
         });
 
         // Register middleware alias
