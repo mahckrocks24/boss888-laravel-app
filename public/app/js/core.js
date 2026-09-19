@@ -630,6 +630,7 @@ async function loadWorkerQueue() {
   el.innerHTML = '<div style="padding:24px"><h2 style="font-family:var(--fh);font-size:20px;margin:0 0 16px;color:var(--t1)">Worker Queue</h2><div style="text-align:center;padding:40px;color:var(--t3)"><div class="spinner"></div></div></div>';
   try {
     var qr = await _luFetch('GET', '/system/queue');
+    if (qr.status === 403) { el.innerHTML = ''; if (typeof nav === 'function') nav('projects'); return; }   // A1: not an administrator
     var qd = await safeJson(qr);
     var tr = await _luFetch('GET', '/tasks?limit=50');
     var td = await safeJson(tr);
@@ -1172,6 +1173,10 @@ async function nav(view, opts){
   // Basic name; the panel and its objects are the same ones Advanced shows.
   // P3: the Basic surfaces are real views now (basic.js). _requested is kept for nav highlighting/URL.
   var _requested = view;
+  // A1 (2026-09-19): the Worker Queue is platform diagnostics; a customer asking for it (deep link, old bookmark)
+  // lands on their own work instead. The server is the real boundary (/api/system/queue is admin-only) — this only
+  // spares the customer a 403 and an empty page.
+  if (view === 'queue' && !window._luIsAdmin) { view = 'projects'; _requested = 'projects'; }
   if (typeof window.sarahUnload === 'function' && view !== 'sarah') { try { window.sarahUnload(); } catch (_e) {} }
   document.querySelectorAll('.view').forEach(v=>{
     v.classList.remove('active');

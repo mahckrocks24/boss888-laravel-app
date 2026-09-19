@@ -905,7 +905,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
     // System (protected)
     Route::get('/system/engines', [SystemController::class, 'engines']);
-    Route::get('/system/queue', [SystemController::class, 'queue']);
+    // A1 (REPORT-0061, 2026-09-19): the worker queue is platform diagnostics — engine/action identifiers, worker
+    // timings, retry — not a customer surface. Platform administrators only (is_platform_admin, the canonical gate);
+    // customers see their own work on Projects and the Review Queue.
+    Route::get('/system/queue', [SystemController::class, 'queue'])->middleware('admin');
     Route::get('/system/connectors', [SystemController::class, 'connectors']);
 
     // Manual Execution (Phase 2)
