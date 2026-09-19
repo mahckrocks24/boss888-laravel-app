@@ -353,6 +353,7 @@ textarea,input{font-family:var(--fb);}
    in-page surfaces obey the same two rules. Basic = the Sarah operating environment, not a smaller dashboard. */
 html[data-mode="basic"] [data-adv="1"]{display:none !important}
 html[data-mode="advanced"] [data-basic="1"]{display:none !important}
+.lu-set-hidden{display:none !important}   /* REPORT-0061 B5: Settings cards on the other tabs */
 html[data-mode="basic"] .sb-nav .nav-section{display:none}
 /* semantic, keyboard-operable nav (buttons) */
 .sb-nav .nav-item{min-height:44px;background:none;border:0;width:calc(100% - 16px);text-align:left;font-family:inherit}
@@ -2938,7 +2939,7 @@ window.luSwipeToClose = luSwipeToClose;
       <img src="/img/logo-icon-40.png" class="sb-lm-img" alt="" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">
       <div class="sb-brand-text"><strong>LevelUpGrowth</strong><span>AI OS Platform</span></div>
     </div>
-    <div id="sb-credit-widget" style="padding:8px 10px;border-bottom:1px solid var(--bd);display:none">
+    <div id="sb-credit-widget" role="button" tabindex="0" title="Plan, credits and billing" onclick="nav('billing')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();nav('billing');}" style="padding:8px 10px;border-bottom:1px solid var(--bd);display:none;cursor:pointer">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">
           <span style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">Credits</span>
           <span id="sb-plan-badge" style="font-size:9px;font-weight:700;color:var(--p);background:var(--ps);border-radius:4px;padding:1px 6px">—</span>
@@ -3020,7 +3021,8 @@ window.luSwipeToClose = luSwipeToClose;
       <!-- REPORT-0061 B4 (2026-09-20): "Reports & History" left the menu — it was the meeting archive + task history. Meetings live under
            Strategy Room › History (#view-reports, /app/reports), tasks and categories under Projects › History. -->
       <!-- Tool Registry removed from app sidebar 2026-04-21 — admin-only feature, accessed via /admin/ panel -->
-            <button type="button" class="nav-item" onclick="nav('billing')" id="ni-billing" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16M5 13h3"/></svg></span>Billing</button>
+            <!-- REPORT-0061 B5 (2026-09-20): "Billing" left the menu — plan, credits, invoices and the portal live under Settings › Plan & billing
+                 (nav('billing') and /app/billing open that tab; the Basic Account page and the credits widget land there too). -->
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-settings" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="2.5"/><path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/></svg></span>Settings</button>
       <div class="nav-section">Help</div>
       <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
@@ -3669,6 +3671,15 @@ window.luSwipeToClose = luSwipeToClose;
           <h2 style="font-family:var(--fh);font-size:22px;font-weight:800;color:var(--t1);margin-bottom:4px">Settings</h2>
           <p style="color:var(--t2);font-size:13px">Your profile, your business, your brand and your plan.</p>
         </div>
+        <!-- REPORT-0061 B5 (2026-09-20): one Settings page, five tabs. Cards are tagged data-set-tab at load (core.js _luSettingsTabs). -->
+        <div class="lu-view-tabs" id="set-tabs" role="tablist" aria-label="Settings" style="display:flex;gap:2px;border-bottom:1px solid var(--bd);margin-bottom:18px;overflow-x:auto">
+          <button type="button" role="tab" data-set-tab-btn="profile" class="tab active" onclick="setShowTab('profile')">Profile</button>
+          <button type="button" role="tab" data-set-tab-btn="business" class="tab" onclick="setShowTab('business')">Business</button>
+          <button type="button" role="tab" data-set-tab-btn="brand" class="tab" onclick="setShowTab('brand')">Brand</button>
+          <button type="button" role="tab" data-set-tab-btn="team" class="tab" onclick="setShowTab('team')">Team</button>
+          <button type="button" role="tab" data-set-tab-btn="billing" class="tab" onclick="setShowTab('billing')">Plan &amp; billing</button>
+        </div>
+        <div id="set-billing-host" data-set-tab="billing" style="display:none"></div>
 
         <!-- ── GOVERNANCE: Workspace Intelligence Profile ── -->
         <div id="ws-profile-gate" style="display:none;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:var(--rg);padding:16px;margin-bottom:16px">
@@ -4785,7 +4796,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
 <script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=b4-20260920"></script>
+<script defer src="/app/js/core.js?v=b5c-20260920"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>

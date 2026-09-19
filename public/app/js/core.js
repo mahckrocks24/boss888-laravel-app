@@ -499,6 +499,40 @@ function luLogout() {
   window.location.replace(window.location.pathname + window.location.search);
 }
 
+// REPORT-0061 B5 (2026-09-20): Settings › Profile · Business · Brand · Team · Plan & billing. The cards keep their markup and
+// scripts; they are tagged by what they are about, one tab is visible at a time, and the old Billing page's plan cards are
+// hosted inside the Plan & billing tab so upgrade/portal/invoices stay exactly as they were.
+var setTab = 'profile';
+function _luSettingsTabs(){
+  var view = document.getElementById('view-settings'); if (!view) return;
+  var wrap = view.firstElementChild; if (!wrap || wrap.dataset.tabbed) return;
+  wrap.dataset.tabbed = '1';
+  var tabOf = function (el) {
+    var id = el.id || ''; var txt = (el.textContent || '').replace(/\s+/g, ' ').slice(0, 600);   // textContent: innerText is empty while a card is display:none
+    if (id === 'set-billing-host' || el.querySelector('#billing-plan-name')) return 'billing';
+    if (id === 'agent-team-section') return 'team';
+    if (id === 'apk-section' || /Your Profile|Change Password/.test(txt)) return 'profile';
+    if (el.querySelector('#brand-primary')) return 'brand';
+    return 'business';   // Workspace, intelligence profile, connected accounts, WordPress, internal blocks
+  };
+  Array.prototype.forEach.call(wrap.children, function (el) {
+    if (el.id === 'set-tabs' || el.tagName === 'SCRIPT') return;
+    if (el === wrap.firstElementChild) return;   // the header
+    if (!el.getAttribute('data-set-tab')) el.setAttribute('data-set-tab', tabOf(el));
+  });
+  // the Billing page's content moves in (ids untouched, loadBilling keeps working)
+  var host = document.getElementById('set-billing-host'), bill = document.getElementById('bill-root');
+  if (host && bill && bill.parentElement !== host) { host.appendChild(bill); bill.style.padding = '0'; bill.style.maxWidth = 'none'; }
+}
+function setShowTab(tab, silent){
+  setTab = ['profile','business','brand','team','billing'].indexOf(tab) !== -1 ? tab : 'profile';
+  var view = document.getElementById('view-settings'); if (!view) return;
+  // a class, not inline style: the cards' own scripts set style.display when their data arrives and must not resurface a card on another tab
+  view.querySelectorAll('[data-set-tab]').forEach(function (el) { el.classList.toggle('lu-set-hidden', el.getAttribute('data-set-tab') !== setTab); });
+  view.querySelectorAll('[data-set-tab-btn]').forEach(function (b) { var on = b.getAttribute('data-set-tab-btn') === setTab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
+  if (setTab === 'billing' && typeof window.loadBilling === 'function') { try { window.loadBilling(); } catch (_e) {} }
+  if (!silent) { try { if (window._luRouter && window._luRouter.pushView) window._luRouter.pushView('settings', setTab === 'profile' ? null : setTab); } catch (_e) {} }
+}
 function loadSettings() {
   var el = document.getElementById("view-settings");
   if (!el) return;
@@ -885,7 +919,7 @@ window._luRouter = (function () {
     agents:     'Agents',
     approvals:  'Approvals',
     automation: 'Automation',
-    billing:    'Billing',
+    billing:    'Plan & billing',
     chatbot:    'Chatbot',
     manualedit: 'Edit',
     mentions:   'Mentions',
@@ -1180,6 +1214,7 @@ async function nav(view, opts){
   // lands on their own work instead. The server is the real boundary (/api/system/queue is admin-only) — this only
   // spares the customer a 403 and an empty page.
   if (view === 'queue' && !window._luIsAdmin) { view = 'projects'; _requested = 'projects'; }
+  if (view === 'billing') { view = 'settings'; _requested = 'settings'; opts = Object.assign({}, opts, { tail: 'billing' }); }   // REPORT-0061 B5: Billing is Settings › Plan & billing
   if (typeof window.sarahUnload === 'function' && view !== 'sarah') { try { window.sarahUnload(); } catch (_e) {} }
   document.querySelectorAll('.view').forEach(v=>{
     v.classList.remove('active');
@@ -1238,7 +1273,7 @@ async function nav(view, opts){
   if(view==='agents')     { if (window.luRenderAgentsGrid) { try { luRenderAgentsGrid(); } catch (_e) {} } loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
-  if(view==='settings') { loadSettings(); try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} } /* P1R-6/7 */
+  if(view==='settings') { loadSettings(); try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} try{ _luSettingsTabs(); setShowTab((opts&&opts.tail&&['profile','business','brand','team','billing'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'profile', true); }catch(e){} } /* P1R-6/7; B5 tabs */
   if(view==='builder') {
     // Builder engine loaded via builder-spa.js (injected by builder plugin)
     if (typeof _bldPrefetchDynamic === 'function') _bldPrefetchDynamic();
