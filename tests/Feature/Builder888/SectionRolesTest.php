@@ -61,7 +61,8 @@ class SectionRolesTest extends TestCase
 
     private function visible(string $html): string
     {
-        return strip_tags((string) preg_replace('~<(style|script)\b[^>]*>.*?</\1>~is', '', $html));
+        // U3 (2026-09-20): an entity and its character are the same text (&#10003; and ✓) — the field pass restores UTF-8
+        return html_entity_decode(strip_tags((string) preg_replace('~<(style|script)\b[^>]*>.*?</\1>~is', '', $html)), ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     /** Colour literals outside var() fallbacks, per declaration of a colour property. */

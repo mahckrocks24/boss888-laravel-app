@@ -1179,20 +1179,36 @@ class TemplateService
             $list = is_array($s['arthur_sections'] ?? null) ? $s['arthur_sections'] : [];
             if ($list === []) return $out;
             $mark = \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK;
-            $changed = false;
+            $changed = false; $mirror = [];
+            $visible = fn (string $h) => html_entity_decode(strip_tags((string) preg_replace('/<(style|script)\b[^>]*>.*?<\/\1>/is', '', $h)), ENT_QUOTES | ENT_HTML5, 'UTF-8');   // an entity and its character are the same text
             foreach ($list as $i => $sec) {
-                $frag = (string) ($sec['html'] ?? '');
-                if ($frag === '' || str_contains($frag, $mark . '=')) { $out['kept']++; continue; }
-                $ctx = $ctx ?? $this->rolesForSite($websiteId);
-                if (($ctx['roles'] ?? []) === []) { $out['skipped'][] = (string) ($sec['type'] ?? '?') . ': no roles for this site'; continue; }
-                $r = \App\Engines\Builder\Support\PaletteRoles::roleifyRegions($frag, $ctx['roles'], $ctx['brand']);
-                if ($r['regions'] === 0 || ! str_contains($r['html'], $mark . '=')) { $out['skipped'][] = (string) ($sec['type'] ?? '?') . ': no added_* wrapper to mark'; continue; }
+                $frag = (string) ($sec['html'] ?? ''); $type = (string) preg_replace('/[^a-z0-9_]/', '', (string) ($sec['type'] ?? ''));
+                $needRoles = $frag !== '' && ! str_contains($frag, $mark . '=');
+                $needFields = $frag !== '' && $type !== '' && ! preg_match('/data-field="added_' . preg_quote($type, '/') . '_\d+"/', $frag);   // U3
+                if ($frag === '' || (! $needRoles && ! $needFields)) { $out['kept']++; continue; }
+                $new = $frag;
+                if ($needRoles) {
+                    $ctx = $ctx ?? $this->rolesForSite($websiteId);
+                    if (($ctx['roles'] ?? []) === []) { $out['skipped'][] = $type . ': no roles for this site'; continue; }
+                    $r = \App\Engines\Builder\Support\PaletteRoles::roleifyRegions($new, $ctx['roles'], $ctx['brand']);
+                    if ($r['regions'] === 0 || ! str_contains($r['html'], $mark . '=')) { $out['skipped'][] = $type . ': no added_* wrapper to mark'; continue; }
+                    $new = $r['html'];
+                }
+                if ($needFields) {
+                    // U3 compatibility: a section stored before the field ids gets them once, texts mirrored — content untouched
+                    $a = \App\Engines\Builder\Support\AddedSectionFields::assign($new, $type);
+                    if ($a['count'] > 0) { $new = $a['html']; foreach ($a['values'] as $k => $v) $mirror[$k] = $v; }
+                }
                 // content is never changed by the conversion — prove it before writing
-                $visible = fn (string $h) => strip_tags((string) preg_replace('/<(style|script)\b[^>]*>.*?<\/\1>/is', '', $h));
-                if ($visible($r['html']) !== $visible($frag)) { $out['skipped'][] = (string) ($sec['type'] ?? '?') . ': text differs after conversion'; continue; }
-                $list[$i]['html'] = $r['html'];
-                $list[$i]['roles_version'] = \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK_VERSION;
+                if ($visible($new) !== $visible($frag)) { $out['skipped'][] = $type . ': text differs after conversion'; continue; }
+                $list[$i]['html'] = $new;
+                if ($needRoles) $list[$i]['roles_version'] = \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK_VERSION;
                 $out['converted']++; $changed = true;
+            }
+            if ($mirror !== []) {
+                $tv = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables') ?: '{}'), true) ?: [];
+                foreach ($mirror as $k => $v) { if (! array_key_exists($k, $tv)) $tv[$k] = $v; }
+                \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
             }
             if ($changed) {
                 $s['arthur_sections'] = array_values($list);
@@ -1211,13 +1227,67 @@ class TemplateService
     {
         if (! str_contains($html, 'data-block="added_')) return $html;
         $mark = \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK;
-        if (preg_match_all('/<section\b[^>]*data-block="added_/i', $html) === preg_match_all('/<section\b[^>]*' . $mark . '=/i', $html)) return $html;
+        $allMarked = preg_match_all('/<section\b[^>]*data-block="added_/i', $html) === preg_match_all('/<section\b[^>]*' . $mark . '=/i', $html);
+        // U3: an added block without field ids on the page is converted from the (now field-bearing) stored fragment
+        preg_match_all('/data-block="added_([a-z0-9_]+)"/', $html, $tm); $unfielded = [];
+        foreach (array_unique($tm[1]) as $t) { if (! preg_match('/data-field="added_' . preg_quote($t, '/') . '_\d+"/', $html)) $unfielded[] = $t; }
+        if ($allMarked && $unfielded === []) return $html;
         try {
             $ctx = $this->rolesForSite($websiteId);
             if (($ctx['roles'] ?? []) === []) return $html;
             $this->roleifyStoredSections($websiteId, $ctx);
-            return \App\Engines\Builder\Support\PaletteRoles::roleifyRegions($html, $ctx['roles'], $ctx['brand'])['html'];
+            if (! $allMarked) $html = \App\Engines\Builder\Support\PaletteRoles::roleifyRegions($html, $ctx['roles'], $ctx['brand'])['html'];
+            if ($unfielded !== []) {
+                $s = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: [];
+                foreach ((array) ($s['arthur_sections'] ?? []) as $sec) {
+                    $t = (string) ($sec['type'] ?? ''); if (! in_array($t, $unfielded, true)) continue;
+                    $stored = (string) ($sec['html'] ?? ''); $onPage = \App\Engines\Builder\Support\AddedSectionFields::extractBlock($html, $t);
+                    if ($onPage !== null && $stored !== '' && preg_match('/data-field="added_' . preg_quote($t, '/') . '_\d+"/', $stored)) $html = str_replace($onPage, $stored, $html);
+                }
+            }
+            return $html;
         } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] roleifyLegacyAddedBlocks: ' . $e->getMessage()); return $html; }
+    }
+
+    /**
+     * U3 (2026-09-20): an inline / Arthur edit of an `added_{type}_{n}` field is written into the export by updateField;
+     * the stored fragment (what a redeploy puts back) is refreshed from the export's block so the edit survives a
+     * layout switch or any re-render. One type, one block, nothing else in settings_json is touched.
+     */
+    public function syncAddedFieldToStored(int $websiteId, string $fieldId, string $exportHtml): void
+    {
+        if (! preg_match('/^added_([a-z0-9_]+)_\d+$/', $fieldId, $m)) return;
+        try {
+            $type = $m[1];
+            $block = \App\Engines\Builder\Support\AddedSectionFields::extractBlock($exportHtml, $type);
+            if ($block === null) return;
+            $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->first(['settings_json']);
+            if (!$w) return;
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+            $list = is_array($s['arthur_sections'] ?? null) ? $s['arthur_sections'] : [];
+            $changed = false;
+            foreach ($list as $i => $sec) { if ((string) ($sec['type'] ?? '') === $type && ($sec['html'] ?? '') !== $block) { $list[$i]['html'] = $block; $changed = true; } }
+            if ($changed) { $s['arthur_sections'] = array_values($list); \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($s)]); }
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] syncAddedFieldToStored: ' . $e->getMessage()); }
+    }
+
+    /**
+     * U3 (2026-09-20): when a customer opens a website for editing, an added block that predates the field ids (or the
+     * roles) is brought up to date on the home export from its stored fragment — so the first double-click already
+     * works. One site, one file, only when something is missing; a site with nothing to do reads the file and stops.
+     */
+    public function refreshHomeAddedBlocks(int $websiteId): bool
+    {
+        $path = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (! is_file($path)) return false;
+        $html = (string) @file_get_contents($path);
+        if ($html === '' || ! str_contains($html, 'data-block="added_')) return false;
+        $new = $this->roleifyLegacyAddedBlocks($websiteId, $html);
+        if ($new === $html) return false;
+        $fp = @fopen($path, 'r+'); if ($fp === false) return false;
+        if (! flock($fp, LOCK_EX)) { fclose($fp); return false; }
+        ftruncate($fp, 0); rewind($fp); fwrite($fp, $new); fflush($fp); flock($fp, LOCK_UN); fclose($fp);
+        return true;
     }
 
     private function reapplyStoredSections(int $websiteId, string $html): string
@@ -1640,6 +1710,11 @@ class TemplateService
         if (! flock($fp, LOCK_EX)) { fclose($fp); return false; }
 
         $original = stream_get_contents($fp);   // RISK-0107 — pre-edit content, for backup
+        // U3 (2026-09-20): an added_* field aimed at a block that still lacks its field ids on the export — refresh the
+        // block from its stored fragment first, so the edit lands on the page rather than only in template_variables.
+        if (str_starts_with($fieldId, 'added_') && ! str_contains((string) $original, 'data-field="' . $fieldId . '"') && str_contains((string) $original, 'data-block="added_')) {
+            $original = $this->roleifyLegacyAddedBlocks($websiteId, (string) $original);
+        }
         $dom = new \DOMDocument();
         libxml_use_internal_errors(true);
         @$dom->loadHTML(
@@ -1755,6 +1830,7 @@ class TemplateService
 
             $new = $this->restoreUtf8Entities($dom->saveHTML());
             $new = $this->roleifyLegacyAddedBlocks($websiteId, $new);   // RISK-0191 U1: "when next edited"
+            $this->syncAddedFieldToStored($websiteId, $fieldId, $new);   // U3: the stored fragment keeps the edit
             rewind($fp);
             ftruncate($fp, 0);
             fwrite($fp, $new);

@@ -2254,6 +2254,7 @@ PROMPT;
         $html = $this->adoptTemplateTypography($renderer->renderSection($sec, $brand, (array) $site));
         if (trim($html) === '') { return ['success' => false, 'error' => 'render_empty']; }
         $html = $this->roleifyForSite($html, $websiteId, $brand);   // RISK-0191 U1
+        $__asf = \App\Engines\Builder\Support\AddedSectionFields::assign($html, 'video_embed'); $html = $__asf['html']; $this->mirrorAddedFieldValues($websiteId, $__asf['values']);   // U3
         $html = preg_replace('/(<section\b[^>]*\s)id="(?:booking|contact|services|team|gallery|testimonials|hero|faq|pricing)"/i', '$1data-old-id="$2"', $html) ?? $html;
         $html = '<section data-block="added_video_embed" id="lu-video_embed" ' . \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK . '="' . \App\Engines\Builder\Support\PaletteRoles::RENDERED_MARK_VERSION . '" style="padding:24px 0;scroll-margin-top:100px">' . $html . '</section>';
         try { $this->templates->removeSplicedSection($websiteId, 'video_embed'); } catch (\Throwable $e) {}   // replace, never stack
@@ -2576,6 +2577,7 @@ PROMPT;
             // the --lu-* roles ride along for the hover preview only; on apply the roles block is rewritten whole
             $vars = array_filter($vars, fn ($k) => ! str_starts_with((string) $k, '--lu-'), ARRAY_FILTER_USE_KEY);
             app(TemplateService::class)->roleifyStoredSections($websiteId);   // RISK-0191 U1: pre-roles stored sections convert on a palette change
+            app(TemplateService::class)->refreshHomeAddedBlocks($websiteId);   // U3: added blocks on the export carry their field ids (before normalising, so they take the new fallbacks)
             \App\Engines\Builder\Support\PaletteRoles::normaliseExport($websiteId, $__roles, $__manifest);
             $res = $editor->applyStyleColors($websiteId, $vars);
             if ((int) ($res['applied'] ?? 0) === 0) {
@@ -5796,6 +5798,8 @@ PROMPT;
     {
         // DEC-0046: one history snapshot per request, deduplicated, so Undo and Versions cover every Arthur change.
         try { app(TemplateService::class)->snapshotToHistory($websiteId, 'arthur_request'); } catch (\Throwable $e) {}
+        // U3 (2026-09-20): added blocks on the export carry their field ids before Arthur reads it (copy edits target them).
+        try { app(TemplateService::class)->refreshHomeAddedBlocks($websiteId); } catch (\Throwable $e) {}
         $caps = \App\Engines\Builder\Support\BuilderCapabilities::class;
         $site = DB::table('websites')->where('id', $websiteId)->whereNull('deleted_at')->first();
         if (!$site || (int) $site->workspace_id !== $wsId) {
@@ -6009,6 +6013,10 @@ PROMPT;
                 // RISK-0191 U1 (2026-09-19): the section speaks the site's palette roles (var(--lu-*, current hex)) —
                 // light or dark scheme alike — and the stored fragment carries them, so a later palette switch repaints it.
                 $html = $this->roleifyForSite($html, $websiteId, $brand);
+                // U3 (2026-09-20): stable field ids (added_{type}_{n}) + the texts in template_variables — the added section is
+                // editable like the template's own blocks (inline, Arthur copy edits, element ops)
+                $__asf = \App\Engines\Builder\Support\AddedSectionFields::assign($html, $type);
+                $html = $__asf['html']; $this->mirrorAddedFieldValues($websiteId, $__asf['values']);
                 $blockId = 'added_' . $type;
                 // Wrap, don't rewrite: the rendered markup keeps its own ids (self-initialising elements such as the trip
                 // quiz look themselves up by id). Any id the renderer emitted that collides with a template block is
@@ -7075,6 +7083,17 @@ PROMPT;
             $out .= $this->roleifyForSite($this->adoptTemplateTypography($frag), (int) ($site['id'] ?? 0), $brand) . "\n";
         }
         return $out;
+    }
+
+    /** U3: the texts of an added section live in template_variables under their field ids, like every template field. */
+    private function mirrorAddedFieldValues(int $websiteId, array $values): void
+    {
+        if ($values === [] || $websiteId <= 0) return;
+        try {
+            $tv = json_decode((string) (DB::table('websites')->where('id', $websiteId)->value('template_variables') ?: '{}'), true) ?: [];
+            foreach ($values as $k => $v) { if (preg_match('/^added_[a-z0-9_]+_\d+$/', (string) $k)) $tv[$k] = (string) $v; }
+            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+        } catch (\Throwable $e) { Log::warning('[Arthur] mirrorAddedFieldValues: ' . $e->getMessage()); }
     }
 
     /** RISK-0191 U1: a rendered fragment's literal colours → the site's role variables (PaletteRoles::roleifyRendered). */

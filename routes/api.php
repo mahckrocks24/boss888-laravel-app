@@ -3489,6 +3489,8 @@ Route::middleware(['throttle:10,1'])->group(function () {
 // routes/api/authenticated/builder-01.php (bearer token + workspace ownership). No public preview route remains.
 app()->instance('lu.preview.render', function ($id) {
     $htmlPath = storage_path('app/public/sites/' . (int)$id . '/index.html');
+    // U3 (2026-09-20): opening a site in the editor brings its added sections up to date (field ids, palette roles)
+    try { app(\App\Engines\Builder\Services\TemplateService::class)->refreshHomeAddedBlocks((int) $id); } catch (\Throwable $e) {}
     // EV-1003 (2026-09-12): a soft-deleted or missing draft never previews — go to the workspace's live site instead.
     try {
         $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'workspace_id', 'deleted_at']);
