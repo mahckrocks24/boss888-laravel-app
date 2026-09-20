@@ -373,7 +373,12 @@ use Illuminate\Support\Facades\Route;
             $wid = (int) $r->query('website_id', 0);
             if ($wid > 0) {
                 $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $wid)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
-                if ($w) { $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: []; $industry = (string) ($s['template'] ?? $s['industry'] ?? $w->template_industry ?? '') ?: null;
+                if ($w) { $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
+                    // CATALOGUE VERIFICATION (2026-09-20): settings.template is a DESIGN (cafe_arch, courses_studio …) since the
+                    // 2026-09-10 variants; the catalogue is keyed by the design's industry family, or a site built on a variant
+                    // lost every industry page (menu, events, listings, before/after …) and the industry-only sections in the pickers.
+                    $industry = (string) ($s['template'] ?? $s['industry'] ?? $w->template_industry ?? '') ?: null;
+                    if ($industry !== null) { $industry = app(\App\Engines\Builder\Services\TemplateService::class)->industryOf($industry) ?: $industry; }
                     $existing = \Illuminate\Support\Facades\DB::table('pages')->where('website_id', $wid)->pluck('slug')->toArray(); }
             }
             $isStatic = $wid > 0 && is_file(storage_path('app/public/sites/' . $wid . '/index.html'));
