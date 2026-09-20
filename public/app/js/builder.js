@@ -1686,7 +1686,7 @@ async function _t3ArthurSend(websiteId) {
       if (feed) {
         var _qid = 'q_' + Date.now();
         feed.innerHTML += '<div id="' + _qid + '" style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid var(--p)"><div style="color:var(--t1);font-size:13px;line-height:1.5">' + bld_escH(d.message) + '</div>'
-          + ((d.options && d.options.length) ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + d.options.map(function (o) { return '<button type="button" class="lu-btn lu-btn--sm" data-arthur-opt="' + bld_escH(o) + '">' + bld_escH(o) + '</button>'; }).join('') + '</div>' : '') + '</div>';
+          + ((d.options && d.options.length) ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + d.options.map(function (o) { return '<button type="button" class="lu-btn lu-btn--sm" style="white-space:normal;text-align:left;height:auto;line-height:1.35;max-width:100%" data-arthur-opt="' + bld_escH(o) + '">' + bld_escH(o) + '</button>'; }).join('') + '</div>' : '') + '</div>';
         var _q = document.getElementById(_qid);
         if (_q) { _q.querySelectorAll('[data-arthur-opt]').forEach(function (b) { b.addEventListener('click', function () { var i = document.getElementById('t3-arthur-input'); if (i) { i.value = b.getAttribute('data-arthur-opt'); _t3ArthurSend(websiteId); } }); }); _q.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       }

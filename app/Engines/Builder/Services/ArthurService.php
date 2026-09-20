@@ -5900,6 +5900,13 @@ PROMPT;
         if ($plan['kind'] === 'video')      { return $this->generateSiteVideo($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv, (string) $industry, $ctx); }
         if ($plan['kind'] === 'overlay')    { return $this->overlayTextOnSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv); }
         if ($plan['kind'] === 'image_edit') { return $this->editSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv, $ctx); }
+        if ($plan['kind'] === 'clarify') {
+            // RISK-0195 (2026-09-20): section or page — ask, never guess and charge
+            return ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => (string) ($plan['question'] ?? 'Section on the home page, or a separate page?'),
+                'options' => array_map(fn ($o) => is_array($o) ? ($o['label'] ?? '') : (string) $o, (array) ($plan['options'] ?? [])),
+                'option_messages' => array_map(fn ($o) => is_array($o) ? ($o['message'] ?? '') : (string) $o, (array) ($plan['options'] ?? []))];
+        }
         if ($plan['kind'] === 'unsupported' && preg_match('/\bblog\b/i', $request)) {
             $hasBlog = is_file(storage_path("app/public/sites/{$websiteId}/blog/index.html"));
             return ['success' => false, 'code' => 'BLOG_VIA_WRITE', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
@@ -8245,7 +8252,15 @@ PROMPT;
                 }
                 return $res;
             default:
-                // section_add, section_remove, page_add, image, video, overlay, image_edit, logo: the classic executors, with explicit wording
+                // section_add, section_remove, page_add, image, video, overlay, image_edit, logo: the classic executors, with explicit wording.
+                // RISK-0195 (2026-09-20): for an addition the customer's OWN words decide section vs page — the model's
+                // rewrite ("… to the home page") made every shared-name section a page. The rewrite is used only when the
+                // customer's words cannot be read at all (a synonym the classifier does not know).
+                if (in_array($intent['intent'], ['section_add', 'page_add'], true)) {
+                    $own = \App\Engines\Builder\Support\BuilderCapabilities::classify($request, $industry ?: null);
+                    if ($own['kind'] === 'unsupported' && $normalized !== '') $request = $normalized;
+                    return null;
+                }
                 if ($normalized !== '') $request = $normalized;
                 return null;
         }

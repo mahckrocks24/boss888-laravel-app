@@ -47,7 +47,9 @@ final class BuilderCapabilities
 
     /** Words that mean "a whole page" vs "a row on an existing page". */
     private const PAGE_WORDS    = '/\b(page|pages|landing page|subpage|sub-page)\b/i';
-    private const SECTION_WORDS = '/\b(section|sections|row|rows|block|blocks|element|elements|strip|widget|module|area)\b/i';
+    private const SECTION_WORDS = '/\b(section|sections|row|rows|block|blocks|element|elements|strip|widget|module|area|form|table|grid|banner)\b/i';
+    /** RISK-0195 (2026-09-20): "to the home page", "on the page" say WHERE, not WHAT — stripped before PAGE_WORDS is tested. */
+    private const PAGE_LOCATION = '/\b(to|on|onto|into|of|in|at|for|from)\s+(?:the\s+|my\s+|your\s+|this\s+|that\s+|same\s+)?(?:home\s*|front\s*|landing\s*|main\s*|index\s*)?page\b/i';
     private const EDIT_WORDS    = '/\b(change|update|edit|rewrite|revise|reword|replace|tweak|improve|shorten|lengthen|fix|rename|swap|correct)\b/i';
     private const REMOVE_WORDS  = '/\b(remove|delete|hide|take (?:out|off|down)|get rid of)\b/i';
     /**
@@ -192,8 +194,12 @@ final class BuilderCapabilities
         $out = ['kind' => 'unsupported', 'page' => null, 'section' => null, 'anchor' => null, 'where' => null, 'label' => '', 'credits' => 0, 'reason' => ''];
         if ($r === '') { $out['reason'] = 'empty request'; return $out; }
 
-        $wantsPage    = (bool) preg_match(self::PAGE_WORDS, $r);
+        // RISK-0195 (2026-09-20): a location phrase ("… section to the home page") is not a request for a page. The
+        // intent step's normalised sentence always carries one, and it turned every FAQ/pricing/contact/services/team/
+        // gallery SECTION into a 5-credit PAGE. An explicit section noun wins outright.
+        $rDeliverable = preg_replace(self::PAGE_LOCATION, ' ', $r) ?? $r;
         $wantsSection = (bool) preg_match(self::SECTION_WORDS, $r);
+        $wantsPage    = (bool) preg_match(self::PAGE_WORDS, $rDeliverable) && ! $wantsSection;
         $isRemove     = (bool) preg_match(self::REMOVE_WORDS, $r);
         $isEdit       = (bool) preg_match(self::EDIT_WORDS, $r) && !preg_match('/\b(add|create|insert|include|put|new)\b/', $r);
 
@@ -273,10 +279,24 @@ final class BuilderCapabilities
             $out['kind'] = 'edit'; $out['credits'] = self::pricing()['text_edit']; $out['label'] = 'copy edit'; return $out;
         }
 
-        // Decide page vs section. Explicit "page" wins; explicit section words win; otherwise a section if we
-        // have a section type (cheaper, stays on home), else a page.
+        // Decide page vs section. Explicit "page" wins; explicit section words win. RISK-0195: when the customer named
+        // neither and the thing exists as BOTH a section and a page (faq, pricing, contact, services, team, gallery),
+        // Arthur asks — a guess would build the wrong thing and charge the wrong amount.
         if ($wantsPage && $pageSlug !== null) {
             return self::asPage($out, $pageSlug, $industry);
+        }
+        if (! $wantsPage && ! $wantsSection && $pageSlug !== null && $secType !== null
+            && isset(self::sections($industry)[$secType]) && isset(self::pages($industry)[$pageSlug])) {
+            $secLabel = self::SECTIONS[$secType]['label']; $pageLabel = self::pages($industry)[$pageSlug]['label'];
+            $out['kind'] = 'clarify'; $out['section'] = $secType; $out['page'] = $pageSlug; $out['credits'] = 0;
+            $out['label'] = $secLabel;
+            $out['question'] = "Do you want a {$secLabel} section on the home page, or a separate {$pageLabel} page?";
+            $out['options'] = [
+                ['label' => 'Add ' . (preg_match('/^[aeiou]/i', $secLabel) ? 'an' : 'a') . " {$secLabel} section (" . self::pricing()['section'] . ' credits)', 'message' => "add a {$secLabel} section" . ($out['anchor'] ? " {$out['where']} the {$out['anchor']}" : '')],
+                ['label' => 'Add ' . (preg_match('/^[aeiou]/i', $pageLabel) ? 'an' : 'a') . " {$pageLabel} page (" . self::pricing()['page'] . ' credits)', 'message' => "add a {$pageLabel} page"],
+            ];
+            $out['reason'] = 'section or page — the customer named neither';
+            return $out;
         }
         if ($secType !== null && !isset(self::sections($industry)[$secType])) {
             $out['kind'] = 'unsupported'; $out['section'] = $secType;
