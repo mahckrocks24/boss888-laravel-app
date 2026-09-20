@@ -1398,13 +1398,13 @@ class ArthurService
                 ->whereNotNull('url')
                 ->where('url', '!=', '')
                 ->whereRaw('JSON_CONTAINS(tags, ?)', ['"' . $industry . '"'])
-                ->limit(15)
+                ->limit(24)
                 ->pluck('url')->toArray();
             foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
 
             // Tier 2 — platform-asset images tagged with this industry FAMILY (EV-1000: the exact-name match found
             // nothing for a design variant such as estate_frontage)
-            if (count($pool) < 15) {
+            if (count($pool) < 24) {
                 $rows = \Illuminate\Support\Facades\DB::table('media')
                     ->where('is_platform_asset', 1)
                     ->where('asset_type', 'image')
@@ -1412,7 +1412,7 @@ class ArthurService
                     ->where('url', '!=', '')
                     ->where(function ($q) use ($tags) { foreach ($tags as $t) $q->orWhere('tags', 'like', '%"' . $t . '%'); })
                     ->orderByRaw(self::tagPriorityOrder($tags))
-                    ->limit(15)->pluck('url')->toArray();
+                    ->limit(24)->pluck('url')->toArray();
                 foreach ($rows as $u) if ($u && !in_array($u, $pool, true)) $pool[] = $u;
             }
 
