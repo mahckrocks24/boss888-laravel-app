@@ -24,10 +24,27 @@ final class ScaleGuard
         'marketing_agency', 'medical_clinic', 'news_channel', 'online_courses', 'pet_services', 'real_estate_agency', 'resort', 'restaurant', 'retail_shop',
         'short_term_rental', 'training_center', 'travel_agency', 'tutoring'];
 
+    /** Variants whose only excess is the hero headline (42–46px on a phone, 67–79px on desktop): the headline alone is capped. */
+    public const HERO_SLUGS = ['aesthetic_quiet', 'barber_lather', 'catering_marquee', 'hotel_terrace', 'interiors_scheme', 'resort_headland', 'restaurant_atrium', 'venue_exclusive',
+        'consultant_profile', 'courses_studio', 'gym_platform', 'medical_atrium', 'resort_dune', 'salon_atelier', 'travel_atlas', 'aesthetic_studio', 'barber_corner', 'estate_frontage',
+        'medical_rounds', 'realtor_profile', 'rental_coastline', 'resort_reef', 'restaurant_larder', 'retail_shopfront', 'salon_treatment', 'shop_maker', 'travel_compass'];
+
     public static function applies(?string $designSlug): bool
     {
         $s = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $designSlug));
-        return $s !== '' && in_array($s, self::SLUGS, true);
+        return $s !== '' && (in_array($s, self::SLUGS, true) || in_array($s, self::HERO_SLUGS, true));
+    }
+
+    public static function heroOnly(?string $designSlug): bool
+    {
+        $s = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $designSlug));
+        return in_array($s, self::HERO_SLUGS, true);
+    }
+
+    public static function heroCss(): string
+    {
+        $h = '[data-block="hero"] h1,[data-block="hero"] .hero-title,[data-block="hero"] .h-display';
+        return '<style id="' . self::ID . '">/* LU scale guard (hero) 2026-09-20 */@media (max-width:640px){' . $h . '{font-size:clamp(30px,8.6vw,38px)!important;line-height:1.08!important}}@media (min-width:641px){' . $h . '{font-size:clamp(44px,4.8vw,64px)!important;line-height:1.04!important}}</style>';
     }
 
     /** Every content block: a data-block that is not the nav or the footer. */
@@ -84,7 +101,7 @@ final class ScaleGuard
     public static function inject(string $html, ?string $designSlug): string
     {
         if (!self::applies($designSlug) || str_contains($html, 'id="' . self::ID . '"')) return $html;
-        $css = self::css();
+        $css = self::heroOnly($designSlug) ? self::heroCss() : self::css();
         if (stripos($html, '</head>') !== false) return preg_replace('#</head>#i', $css . '</head>', $html, 1);
         if (stripos($html, '</body>') !== false) return preg_replace('#</body>#i', $css . '</body>', $html, 1);
         return $html . $css;
