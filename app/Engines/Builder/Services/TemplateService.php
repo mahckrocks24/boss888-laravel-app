@@ -828,6 +828,7 @@ class TemplateService
         $doc = '<!doctype html><html lang="' . e($c['lang']) . '">' . $head . '<body>'
              . $toHome($c['nav']) . '<main data-lu-page="' . e($slug) . '">' . $bodyHtml . '</main>' . $toHome($c['footer']) . $offset . '</body></html>';
         $doc = \App\Engines\Builder\Support\ResponsiveNav::inject($doc);
+        $doc = \App\Engines\Builder\Support\ScaleGuard::inject($doc, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20
         $doc = \App\Engines\Builder\Support\SiteScripts::inject($doc, $websiteId);
         $doc = $this->applyElementOps($websiteId, $doc);   // ELEMENT888: nav/footer element moves live on every page
         // RISK-0191 U1 (2026-09-19): the page body speaks the roles (idempotent — fragments rendered through the roles
@@ -1507,6 +1508,12 @@ class TemplateService
         $alt = implode('|', array_map(fn($n) => preg_quote($n, '/'), $personas));
         return preg_replace('/placeholder="(?:Dr\.?\s+)?(?:' . $alt . ')[^"]*"/iu', 'placeholder="Your name"', $html) ?? $html;
     }
+    /** The design a website was built on (settings.template), for the scale guard. */
+    public function designSlugOf(int $websiteId): string
+    {
+        try { $s = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: []; return (string) ($s['template'] ?? $s['industry'] ?? ''); } catch (\Throwable $e) { return ''; }
+    }
+
     public function deploy(int $websiteId, string $html): string
     {
         // RISK-0101 — never ship placeholder blog cards that link nowhere. When the
@@ -1530,6 +1537,7 @@ class TemplateService
         $html = $this->applyElementOps($websiteId, $html);   // remembered element moves (ELEMENT888, DEC-0052)
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
         $html = self::injectMobileSafety($html);
+        $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20
         $html = \App\Engines\Builder\Support\SiteScripts::inject($html, $websiteId);   // forms → CRM, tracking ids (DEC-0051)
         // STATIC-EXPORT BLOG LINK (2026-09-05): the export is browsed under /storage/sites/{id}/,
         // so a root-absolute "/blog" hits the PLATFORM blog, not this site's. Make blog nav links

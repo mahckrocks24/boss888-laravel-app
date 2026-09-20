@@ -4231,6 +4231,8 @@ document.addEventListener("DOMContentLoaded",function(){
 });
 </script>';
     $html = str_replace('</body>', $editScript . '</body>', $html);
+    // SCALE GUARD (2026-09-20, Owner): the editor preview shows the same scale the live site is served with.
+    try { $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, app(\App\Engines\Builder\Services\TemplateService::class)->designSlugOf((int) $id)); } catch (\Throwable $e) {}
     return response($html)->header('Content-Type', 'text/html');
 });
 

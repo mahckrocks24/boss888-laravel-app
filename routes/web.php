@@ -757,6 +757,7 @@ Route::get('/templates/{industry}/preview', function (string $industry) {
         // deploy; the preview must show the same page or a phone-width judgement is made on a fiction.
         $rendered = \App\Engines\Builder\Support\ResponsiveNav::inject($rendered);
         if (method_exists($svc, 'injectMobileSafetyPublic')) { $rendered = $svc->injectMobileSafetyPublic($rendered); }
+        $rendered = \App\Engines\Builder\Support\ScaleGuard::inject($rendered, $industry);   // SCALE GUARD 2026-09-20
 
         if ($raw) {
             return $rendered;

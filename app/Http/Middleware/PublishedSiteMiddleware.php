@@ -249,6 +249,9 @@ class PublishedSiteMiddleware
                     $html = $this->injectFormLabels($html);
                     $html = $this->injectAccentContrast($html);
                     $html = $this->injectMobileNav($html);
+                    // SCALE GUARD (2026-09-20, Owner): the original base designs render too large at every width — the
+                    // guard is injected at serve time so every live site on one gets it without rewriting its files.
+                    try { $__scSet = $website->settings_json ?? '{}'; if (is_string($__scSet)) $__scSet = json_decode($__scSet, true) ?: []; $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, (string) ($__scSet['template'] ?? $__scSet['industry'] ?? $website->template_industry ?? '')); } catch (\Throwable $e) {}
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
