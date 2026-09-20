@@ -194,7 +194,10 @@ class AdminTemplatesController
             if (is_array($manifest)) {
                 $originalName = $manifest['name'] ?? ucwords(str_replace('_', ' ', $industry));
                 $manifest['id']        = $dstIndustry;
-                $manifest['industry']  = $dstIndustry;
+                // CATALOGUE VERIFICATION (2026-09-20): a clone is a DESIGN of the same industry, not a new industry. Since design
+                // variants (2026-09-10) key on manifest.industry, writing the directory name here put the clone outside its
+                // family: no page catalogue for it, absent from the Layout switcher, its own pill in the gallery.
+                $manifest['industry']  = (string) ($manifest['industry'] ?? $industry) ?: $industry;
                 $manifest['name']      = $originalName . ' — Commercial';
                 $manifest['variation'] = 'commercial';
                 $manifest['is_active'] = true;
