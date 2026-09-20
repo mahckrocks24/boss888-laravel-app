@@ -997,6 +997,10 @@ function _wsShowTemplateEditor(site) {
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
       '<button type="button" id="t3-site-btn" onclick="wsOpenSitePanel(' + wsId + ')" title="Tracking ids, download the site, domain" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Site</button>' +
       '<button type="button" id="t3-catalogue-btn" hidden onclick="wsOpenCatalogue(' + wsId + ')" title="What you sell — listings, services and prices, menu; each kind gets its own page" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Listings</button>' +
+      // CATALOGUE VERIFICATION (2026-09-20): a template site opens straight into this editor, so the page and section catalogues
+      // (+ Add Page / + Add Section in the Pages state) were never on screen for it. Same pickers, from the toolbar.
+      '<button type="button" id="t3-add-page-btn" onclick="wsAddPageToSite()" title="Add a page from the catalogue for your industry (5 credits)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">+ Page</button>' +
+      '<button type="button" id="t3-add-section-btn" onclick="wsAddSectionToSite()" title="Add a section to the home page from the catalogue (2 credits)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">+ Section</button>' +
       '<button type="button" id="t3-layout-btn" onclick="wsOpenLayouts(' + wsId + ')" title="Switch to another layout of this design family — preview is free" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Layout</button>' +
       '<button type="button" onclick="wsOpenPalettes(' + wsId + ')" title="Colour palettes — hover to preview, click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
@@ -2427,7 +2431,8 @@ async function wsAddSectionToSite() {
   var anchors = blocks.filter(function (b) { return b !== 'nav' && b !== 'header'; });
   var old = document.getElementById('ws-section-picker'); if (old) old.remove();
   var ov = document.createElement('div'); ov.id = 'ws-section-picker';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:var(--z-critical,9999);background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+  // CATALOGUE VERIFICATION (2026-09-20): the editor is a fixed layer at z-index 9000; --z-critical is 999, so the picker opened BEHIND it
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
   var cards = sections.map(function (sc) {
     var dis = present[sc.type] ? ' disabled' : '';
     return '<button type="button" class="ws-sp-card"' + dis + ' data-type="' + bld_escH(sc.type) + '" data-label="' + bld_escH(sc.label) + '" style="text-align:left;border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--s1);color:var(--t1);cursor:' + (present[sc.type] ? 'default;opacity:.55' : 'pointer') + ';display:flex;flex-direction:column;gap:6px;min-width:0">' +
@@ -2485,7 +2490,7 @@ async function wsAddPageToSite() {
   var price = (lib && lib.pricing && lib.pricing.page) ? lib.pricing.page : 5;
   var old = document.getElementById('ws-page-picker'); if (old) old.remove();
   var ov = document.createElement('div'); ov.id = 'ws-page-picker';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:var(--z-critical,9999);background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:20px';   // above the editor (9000) — CATALOGUE VERIFICATION 2026-09-20
   var cards = pages.map(function (p) {
     var dis = p.exists ? ' disabled' : '';
     return '<button type="button" class="ws-pp-card"' + dis + ' data-slug="' + bld_escH(p.slug) + '" style="text-align:left;border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--s1);color:var(--t1);cursor:' + (p.exists ? 'not-allowed;opacity:.5' : 'pointer') + ';display:flex;flex-direction:column;gap:6px">' +
