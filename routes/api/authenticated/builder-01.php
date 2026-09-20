@@ -202,7 +202,16 @@ use Illuminate\Support\Facades\Route;
             return $page ? response()->json($page) : response()->json(['error' => 'Page not found'], 404);
         });
         // Writes through pipeline
-        Route::post('/websites', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'create_website', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
+        Route::post('/websites', function (\Illuminate\Http\Request $r) use ($exec) {
+            $in = $r->all();
+            // CATALOGUE VERIFICATION (2026-09-20): a house theme (ThemeRegistry: amg-travel, kabayan-news, mrdigital-enterprise) is not a
+            // customer catalogue entry. A raw create carrying settings.theme = 'kabayan-news' gave any workspace the house design;
+            // only the house account (admin user 1) may name one — everyone else gets the palette default.
+            if (is_array($in['settings'] ?? null) && isset($in['settings']['theme'])
+                && in_array(strtolower(trim((string) $in['settings']['theme'])), \App\Engines\Builder\Services\ThemeRegistry::keys(), true)
+                && (int) ($r->user()?->id ?? 0) !== 1) { unset($in['settings']['theme']); }
+            return response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'create_website', $in, ['user_id' => $r->user()?->id, 'source' => 'manual']), 201);
+        });
         // PATCH (publish-flow-fix, 2026-05-09) — duplicate publish route
         // removed. The closure version at /builder/websites/{id}/publish
         // (line ~5430) is now the canonical publish endpoint — it gates
