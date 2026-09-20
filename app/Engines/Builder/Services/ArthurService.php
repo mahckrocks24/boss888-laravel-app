@@ -5602,6 +5602,10 @@ PROMPT;
             if (is_string($cur) && $cur !== '' && $cur !== $def) continue; // filled
             if (preg_match('/name|author|signature|broker|agent|partner|founder|owner|byline|member|manager|attorney|realtor/i', $k)) {
                 $variables[$k] = '';
+            } elseif (preg_match($personnelKey, (string) $k) && preg_match('/_(bio|credential|qualification|specialty|speciality)$/i', (string) $k)) {
+                // EV-1077 (2026-09-20): the name above became the "Team Member" placeholder, so the biography must not keep the
+                // design's demo copy ("Fourteen years in luxury events — the last ten at Aurora" shipped on the Owner's live site).
+                $variables[$k] = '';
             } elseif (preg_match('/tagline|meta|subtitle|description/i', $k)) {
                 $variables[$k] = $name . ' — ' . ucfirst($copyIndustry) . ' in ' . $location . '.';
             } elseif (preg_match('/phone|email|address|whatsapp|hours|opening|legal|canonical|price|fee|_value$|_number$|licen[cs]e|registration|vat|tax/i', $k)) {
