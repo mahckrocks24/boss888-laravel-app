@@ -91,6 +91,7 @@ class ArthurEditService
             // VARIANTS (2026-09-11): resolve a design directory to its declared industry before classifying.
             $industryEarly = app(\App\Engines\Builder\Services\TemplateService::class)->industryOf((string) ($settingsEarly['template'] ?? $settingsEarly['industry'] ?? ''));
             $planEarly = \App\Engines\Builder\Support\BuilderCapabilities::classify($userMessage, $industryEarly ?: null);
+            if (is_array($context['plan'] ?? null)) { $planEarly = ['kind' => 'section'] + $planEarly; }   // U2: the picker's explicit plan is always a section addition
             // STRESS C12/C15/C17 (2026-09-06): every kind goes through handleSiteRequest — copy edits reach the real text
             // fields, removals remove what Arthur added, unsupported requests get the honest capability message. The
             // 6-section stub below is for renderer (sections) sites only.
@@ -100,6 +101,8 @@ class ArthurEditService
                 $r = app(ArthurService::class)->handleSiteRequest((int) $siteRow->workspace_id, $websiteIdEarly, $userMessage, [
                     'agent_slug' => $context['agent_slug'] ?? 'editor', 'user_id' => $context['user_id'] ?? null,
                     'selected' => $context['selected'] ?? null,   // SELECTION888
+                    '_plan' => is_array($context['plan'] ?? null) ? $context['plan'] : null,   // U2: explicit plan from the picker
+                    '_no_brain' => is_array($context['plan'] ?? null),
                 ]);
                 $freshRaw = json_decode((string) (DB::table('pages')->where('id', $pageId)->value('sections_json') ?: '[]'), true) ?: [];
                 $freshSections = is_array($freshRaw) && isset($freshRaw['sections']) ? $freshRaw['sections'] : (is_array($freshRaw) ? $freshRaw : []);

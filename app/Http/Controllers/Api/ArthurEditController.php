@@ -42,8 +42,21 @@ class ArthurEditController
             return response()->json(['error' => 'Page not found'], 404);
         }
 
+        // U2 (2026-09-20): the section picker sends an explicit plan {section, anchor, where} — a click, not a chat
+        // message: no chat meter, no intent model, no re-parsing of words. Validated here against the catalogue.
+        $explicitPlan = null;
+        if (is_array($request->input('plan'))) {
+            $pl = $request->input('plan');
+            $secType = (string) preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($pl['section'] ?? '')));
+            if ($secType === '' || ! isset(\App\Engines\Builder\Support\BuilderCapabilities::SECTIONS[$secType])) {
+                return response()->json(['success' => false, 'error' => 'unknown_section', 'message' => 'That section is not one Arthur can add.'], 422);
+            }
+            $explicitPlan = ['section' => $secType,
+                'anchor' => (string) preg_replace('/[^a-z0-9_\-]/', '', strtolower((string) ($pl['anchor'] ?? 'contact'))) ?: 'contact',
+                'where'  => (($pl['where'] ?? 'before') === 'after') ? 'after' : 'before'];
+        }
         // CHAT METER (2026-09-15): every chat message counts — 1 credit per 10, on every chat surface of the platform.
-        $__meter = app(\App\Core\Billing\CreditService::class)->meterChat($wsId, 'arthur_message');
+        $__meter = $explicitPlan ? ['sufficient' => true, 'debited' => false] : app(\App\Core\Billing\CreditService::class)->meterChat($wsId, 'arthur_message');
         if (empty($__meter['sufficient'])) {
             return response()->json(['error' => 'insufficient_credits', 'required_credits' => 1, 'message' => 'Not enough credits to chat — 1 credit covers 10 messages. Add credits under Billing to continue.'], 402);
         }
@@ -74,6 +87,7 @@ class ArthurEditController
             'selected'       => 'nullable|array',
             'selected.block' => 'nullable|string|max:80',
             'selected.field' => 'nullable|string|max:120',
+            'plan'           => 'nullable|array',
         ]);
 
         // A2 (2026-06-24) — meter Arthur prompt edits at 1 credit per block edit
@@ -102,7 +116,7 @@ class ArthurEditController
                 sectionIndex: $validated['section_index'] ?? null,
                 // 2026-09-14: the requester travels with the request — the kernel auto-approves review-tier studio
                 // actions (video, image edits) only for a direct user action carrying user_id.
-                context:      ['subdomain' => $page->subdomain ?? null, 'selected' => $validated['selected'] ?? null,
+                context:      ['subdomain' => $page->subdomain ?? null, 'selected' => $validated['selected'] ?? null, 'plan' => $explicitPlan,
                                'user_id'   => (int) ($request->attributes->get('user_id') ?? optional($request->user())->id ?? 0) ?: null],
             );
             if (!empty($result['delegated'])) {

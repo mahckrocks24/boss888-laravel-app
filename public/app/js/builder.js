@@ -2398,6 +2398,83 @@ async function _wsPageEditorReload() {
 
 // ADD PAGE PICKER (2026-09-06): the page templates Arthur can add for THIS site, with previews and prices, in site CSS.
 // Arthur adds the page from the template in the site's palette (builder/create → ask_arthur). No free-text page names.
+// ── SECTION PICKER (REPORT-0062 U2, 2026-09-20) ───────────────────────────────────────────────────────────────
+// The same catalogue Arthur uses (/builder/library → sections, priced), the same creation path (arthur-edit with an
+// explicit plan — no words to parse, no chat meter), the same U1 palette roles. Sections go on the HOME page (the only
+// page the splicer places into today — said on the sheet, not hidden); the customer picks the section, the anchor
+// block and the side.
+var _WS_SECTION_HELP = {
+  travel_quiz: 'A four-question trip planner that sends you a quote request.', booking_form: 'Appointment or reservation requests with a date and time.',
+  events_calendar: 'Upcoming classes, sessions and events.', pricing: 'Plans or packages side by side with what each includes.',
+  faq: 'Common questions and your answers.', testimonials: 'Quotes from happy customers.', team: 'The people behind the business.',
+  gallery: 'A grid of your photos.', stats: 'A strip of numbers you are proud of.', features: 'Why customers choose you, in a grid.',
+  services: 'What you offer, in a grid.', map: 'Where to find you.', trust_signals: 'Badges, guarantees and accreditations.',
+  contact_form: 'A message form that lands in your CRM.', video_embed: 'A YouTube, Vimeo or direct video.', cta: 'A banner with one call to action.'
+};
+var _WS_ANCHOR_LABELS = { hero: 'Top (after the hero)', services: 'Services', about: 'About', team: 'Team', gallery: 'Gallery', testimonials: 'Testimonials', pricing: 'Pricing', stats: 'Numbers', booking: 'Booking', contact: 'Contact', blog: 'Blog', why_us: 'Why us', process: 'Process', menu_highlights: 'Menu', footer: 'Bottom (before the footer)' };
+async function wsAddSectionToSite() {
+  if (!wsCurrentSite) return;
+  var hdr = {'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json'};
+  var lib = null, home = '';
+  try { var lr = await fetch(API + 'builder/library?website_id=' + wsCurrentSite.id, { headers: hdr }); lib = await lr.json(); } catch (e) { lib = null; }
+  try { var hr = await fetch('/storage/sites/' + wsCurrentSite.id + '/index.html?t=' + Date.now(), { cache: 'no-store' }); if (hr.ok) home = await hr.text(); } catch (e) { home = ''; }
+  var sections = (lib && Array.isArray(lib.sections)) ? lib.sections : [];
+  if (!sections.length) { showToast('No sections are available for this website yet.', 'warning'); return; }
+  if (!home) { showToast('This website has no home page to add a section to yet.', 'warning'); return; }
+  var price = (lib && lib.pricing && lib.pricing.section) ? lib.pricing.section : 2;
+  var present = {}; (home.match(/data-block="added_([a-z0-9_]+)"/g) || []).forEach(function (m) { present[m.replace(/.*added_/, '').replace(/"/, '')] = true; });
+  var blocks = []; (home.match(/<section\b[^>]*data-block="([a-z0-9_\-]+)"/g) || []).forEach(function (m) { var b = (m.match(/data-block="([^"]+)"/) || [])[1]; if (b && !/^added_/.test(b) && blocks.indexOf(b) === -1) blocks.push(b); });
+  var anchors = blocks.filter(function (b) { return b !== 'nav' && b !== 'header'; });
+  var old = document.getElementById('ws-section-picker'); if (old) old.remove();
+  var ov = document.createElement('div'); ov.id = 'ws-section-picker';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:var(--z-critical,9999);background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px';
+  var cards = sections.map(function (sc) {
+    var dis = present[sc.type] ? ' disabled' : '';
+    return '<button type="button" class="ws-sp-card"' + dis + ' data-type="' + bld_escH(sc.type) + '" data-label="' + bld_escH(sc.label) + '" style="text-align:left;border:1px solid var(--bd);border-radius:12px;padding:14px;background:var(--s1);color:var(--t1);cursor:' + (present[sc.type] ? 'default;opacity:.55' : 'pointer') + ';display:flex;flex-direction:column;gap:6px;min-width:0">' +
+      '<div style="font-weight:700;font-size:14px">' + bld_escH(sc.label) + (present[sc.type] ? ' <span style="font-size:11px;color:var(--t3)">· already on the home page</span>' : '') + '</div>' +
+      '<div style="font-size:12px;color:var(--t3);line-height:1.4">' + bld_escH(_WS_SECTION_HELP[sc.type] || '') + '</div>' +
+      '<div style="font-size:11px;color:var(--t2);margin-top:2px">' + price + ' credits</div></button>';
+  }).join('');
+  var anchorOpts = anchors.map(function (a) { return '<option value="' + bld_escH(a) + '">' + bld_escH(_WS_ANCHOR_LABELS[a] || a.replace(/_/g, ' ')) + '</option>'; }).join('') + '<option value="footer">' + _WS_ANCHOR_LABELS.footer + '</option>';
+  ov.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;width:min(920px,100%);max-height:90vh;display:flex;flex-direction:column;overflow:hidden">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--bd)"><div><div style="font-weight:700;color:var(--t1)">Add a section to ' + bld_escH(wsCurrentSite.title || wsCurrentSite.name || 'your site') + '</div>' +
+      '<div style="font-size:12px;color:var(--t3);margin-top:2px">Pick a section, choose where it goes on the <strong style="color:var(--t2)">home page</strong>, and Arthur writes it for your business in your palette. ' + price + ' credits each — charged only when it is placed.</div></div>' +
+      '<button type="button" id="ws-sp-close" aria-label="Close" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer;line-height:1">✕</button></div>' +
+    '<div style="overflow:auto;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px" id="ws-sp-grid">' + cards + '</div>' +
+    '<div style="padding:12px 20px;border-top:1px solid var(--bd);display:flex;flex-wrap:wrap;gap:10px;align-items:center">' +
+      '<div id="ws-sp-chosen" style="font-size:13px;color:var(--t1);font-weight:600;flex:1 1 160px;min-width:0">Choose a section above</div>' +
+      '<label style="font-size:12px;color:var(--t3);display:flex;align-items:center;gap:6px">Place it <select id="ws-sp-where" class="ct-select" style="background:var(--bg);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:6px 8px"><option value="after">after</option><option value="before">before</option></select>' +
+      '<select id="ws-sp-anchor" class="ct-select" style="background:var(--bg);border:1px solid var(--bd);border-radius:6px;color:var(--t1);padding:6px 8px;max-width:180px">' + anchorOpts + '</select></label>' +
+      '<button type="button" class="ct-btn primary" id="ws-sp-add" disabled style="min-height:36px">Add section · ' + price + ' credits</button></div>' +
+    '<div id="ws-sp-status" role="status" style="padding:8px 20px 12px;font-size:12px;color:var(--t3);min-height:18px"></div></div>';
+  document.body.appendChild(ov);
+  var chosen = null;
+  ov.addEventListener('click', function (e) { if (e.target === ov || e.target.id === 'ws-sp-close') ov.remove(); });
+  ov.querySelectorAll('.ws-sp-card:not([disabled])').forEach(function (b) {
+    b.addEventListener('click', function () {
+      ov.querySelectorAll('.ws-sp-card').forEach(function (x) { x.style.borderColor = 'var(--bd)'; });
+      b.style.borderColor = 'var(--p)'; chosen = { type: b.getAttribute('data-type'), label: b.getAttribute('data-label') };
+      document.getElementById('ws-sp-chosen').textContent = chosen.label; document.getElementById('ws-sp-add').disabled = false;
+    });
+  });
+  document.getElementById('ws-sp-add').addEventListener('click', async function () {
+    if (!chosen) return;
+    var st = document.getElementById('ws-sp-status'), btn = document.getElementById('ws-sp-add');
+    var anchor = document.getElementById('ws-sp-anchor').value, where = document.getElementById('ws-sp-where').value;
+    btn.disabled = true; btn.textContent = 'Adding…'; st.textContent = 'Arthur is writing the ' + chosen.label + ' for your business…';
+    try {
+      var pr = await fetch(API + 'builder/pages?website_id=' + wsCurrentSite.id, { headers: hdr }); var pj = await pr.json();
+      var pages = (pj && (pj.pages || pj)) || []; var homePage = pages.find(function (pg) { return pg.is_homepage == 1 || pg.slug === 'home'; }) || pages[0];
+      if (!homePage) throw new Error('No home page record');
+      var r = await fetch('/api/builder/pages/' + homePage.id + '/arthur-edit', { method: 'POST', headers: Object.assign({'Content-Type': 'application/json'}, hdr),
+        body: JSON.stringify({ message: 'add a ' + chosen.label + ' section ' + where + ' the ' + anchor, plan: { section: chosen.type, anchor: anchor, where: where } }) });
+      var d = await r.json();
+      var ok = r.ok && d && d.success === true;
+      if (ok) { showToast(d.reply || d.message || (chosen.label + ' added.'), 'success'); ov.remove(); wsOpenSite(wsCurrentSite.id); }
+      else { st.textContent = (d && (d.reply || d.message || d.error)) || ('Arthur could not add the ' + chosen.label + '.'); if (r.status === 402) st.textContent += ' Add credits under Settings › Plan & billing.'; btn.disabled = false; btn.textContent = 'Add section · ' + price + ' credits'; }
+    } catch (e) { st.textContent = 'Failed: ' + e.message; btn.disabled = false; btn.textContent = 'Add section · ' + price + ' credits'; }
+  });
+}
 async function wsAddPageToSite() {
   if (!wsCurrentSite) return;
   var hdr = {'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json'};

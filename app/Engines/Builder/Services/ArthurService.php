@@ -5845,6 +5845,20 @@ PROMPT;
             } catch (\Throwable $e) { Log::warning('[Arthur] catalogue branch failed: ' . $e->getMessage()); }
         }
         $plan     = $caps::classify($request, $industry ?: null);
+        // U2 (2026-09-20): the section picker names the section, the anchor and the side — no words to parse. The
+        // catalogue still decides whether the type is offered to this industry (unsupported → honest refusal, no charge).
+        if (is_array($ctx['_plan'] ?? null) && ! empty($ctx['_plan']['section'])) {
+            $secType = (string) $ctx['_plan']['section'];
+            $offered = $caps::sections($industry ?: null);
+            if (isset($offered[$secType])) {
+                $plan = ['kind' => 'section', 'page' => null, 'section' => $secType, 'anchor' => (string) ($ctx['_plan']['anchor'] ?? 'contact'), 'where' => (string) ($ctx['_plan']['where'] ?? 'before'),
+                    'label' => $offered[$secType]['label'], 'credits' => (int) $offered[$secType]['credits'], 'reason' => 'explicit plan (section picker)'];
+            } else {
+                $plan = ['kind' => 'unsupported', 'page' => null, 'section' => $secType, 'anchor' => null, 'where' => null, 'label' => '', 'credits' => 0,
+                    'reason' => "the '" . ($caps::SECTIONS[$secType]['label'] ?? $secType) . "' section is not offered to " . ($industry ?: 'this') . ' sites'];
+            }
+            $ctx['_clause'] = true;   // one unit, never split
+        }
         // STRESS C19 (2026-09-06): "change X and add Y" — run each clause, report both, sum the credits.
         if (empty($ctx['_clause'])) {
             $clauses = self::splitClauses($request);
