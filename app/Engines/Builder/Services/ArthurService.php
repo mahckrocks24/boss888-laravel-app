@@ -2326,6 +2326,10 @@ PROMPT;
             $m = json_decode((string) @file_get_contents($mf), true);
             if (! is_array($m)) { continue; }
             if (array_key_exists('is_active', $m) && ! $m['is_active'] && $slug !== $current) { continue; }
+            // CATALOGUE VERIFICATION (2026-09-20): the nine clone bases (one file under nine names, CLONE_OVERRIDE /
+            // TemplateSelector::CLONES) are never offered at creation — the Layout switcher must not offer them either,
+            // unless the site already sits on one (then it stays listed as the current design).
+            if (isset(self::CLONE_OVERRIDE[$slug]) && $slug !== $current) { continue; }
             $ind = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($m['industry'] ?? $slug)));
             if ($ind !== $industry) { continue; }
             $copy = self::layoutCopyKeys($m);
