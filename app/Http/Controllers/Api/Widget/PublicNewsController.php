@@ -44,7 +44,7 @@ class PublicNewsController
             ->where('status', 'published')
             ->whereNull('deleted_at')
             ->whereIn('type', ['news', 'blog_post', 'article']);
-        if ($wid > 0) { $q->where(function ($w) use ($wid) { $w->where('website_id', $wid)->orWhereNull('website_id'); }); }
+        \App\Engines\Builder\Support\ArticleScope::forWebsite($q, (int) $website->workspace_id, $wid);   // RISK-0198
         if ($category !== '' && $category !== 'all') {
             $q->where(function ($w) use ($category) {
                 $w->where('blog_category', $category)->orWhereRaw('LOWER(REPLACE(blog_category, " ", "-")) = ?', [strtolower($category)]);

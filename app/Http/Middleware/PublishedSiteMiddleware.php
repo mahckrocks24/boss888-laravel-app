@@ -549,6 +549,17 @@ class PublishedSiteMiddleware
         return $out;
     }
 
+    /**
+     * RISK-0198 (2026-09-20): an article belongs to ONE website. One with no website (NULL — written before websites were
+     * targeted, or by an older batch) belongs to the workspace's FIRST website only, never to every site of the workspace:
+     * the Owner's event-venue site (911, ws 2) showed and served Chef Red's 8 unbound articles and advertised all 194 in
+     * its sitemap. Single-website workspaces (the majority) are unchanged.
+     */
+    public static function articleWebsiteScope($q, int $workspaceId, int $websiteId): void
+    {
+        \App\Engines\Builder\Support\ArticleScope::forWebsite($q, $workspaceId, $websiteId);
+    }
+
     private function injectDynamicBlogPosts(string $html, int $workspaceId, int $cardLimit = 0, bool $blogCardOnly = false, int $websiteId = 0): string
     {
         if ($workspaceId <= 0) return $html;
@@ -560,7 +571,7 @@ class PublishedSiteMiddleware
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
                 // CONTENT-2: an article belongs to ONE website of the workspace (NULL = legacy/unassigned).
-                ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
+                ->where(fn ($q) => self::articleWebsiteScope($q, $workspaceId, $websiteId))
                 ->orderByDesc('published_at')
                 ->orderByDesc('id')
                 ->get(['id', 'title', 'slug', 'featured_image_url', 'meta_description', 'excerpt', 'blog_category', 'word_count', 'content', 'published_at']);
@@ -920,7 +931,7 @@ class PublishedSiteMiddleware
                 ->where('slug', $slug)
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
-                ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
+                ->where(fn ($q) => self::articleWebsiteScope($q, $workspaceId, $websiteId))
                 ->first(['id', 'title', 'slug', 'content', 'featured_image_url', 'featured_image_alt',
                          'meta_title', 'meta_description', 'seo_json', 'jsonld_json',
                          'blog_category', 'word_count', 'published_at', 'updated_at']);
@@ -1091,7 +1102,7 @@ class PublishedSiteMiddleware
                 ->where('workspace_id', $workspaceId)
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
-                ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } });
+                ->where(fn ($q) => self::articleWebsiteScope($q, $workspaceId, $websiteId));
             if ($excludeSlug) $q->where('slug', '!=', $excludeSlug);
             $related = $q->orderByDesc('published_at')
                 ->orderByDesc('id')
@@ -1568,7 +1579,10 @@ HTML;
         $articles = DB::table('articles')
             ->where('workspace_id', $website->workspace_id)
             ->where('status', 'published')
+            ->whereNull('deleted_at')
             ->whereNotNull('slug')
+            // RISK-0198 (2026-09-20): a sitemap lists only the articles this website serves — not every article of the workspace
+            ->where(fn ($q) => self::articleWebsiteScope($q, (int) $website->workspace_id, (int) $website->id))
             ->orderByDesc('published_at')
             ->get(['slug', 'updated_at', 'published_at', 'blog_category']);
 

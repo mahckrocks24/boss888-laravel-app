@@ -369,7 +369,7 @@ class MrDigitalEnterpriseTheme
     {
         $wsId = (int) ($website['workspace_id'] ?? 0); $wid = (int) ($website['id'] ?? 0);
         $q = DB::table('articles')->where('workspace_id', $wsId)
-            ->where(function ($q) use ($wid) { if ($wid > 0) { $q->where('website_id', $wid)->orWhereNull('website_id'); } })
+            ->where(fn ($q) => \App\Engines\Builder\Support\ArticleScope::forWebsite($q, $wsId, $wid))   // RISK-0198
             ->where('is_marketing_blog', 1)->where('status', 'published')->whereNull('deleted_at');
         $cat = trim((string) ($o['category'] ?? ''));
         if ($cat !== '' && strtolower($cat) !== 'all') $q->where(function ($w) use ($cat) { $w->where('blog_category', $cat)->orWhere('blog_category', str_replace('-', ' ', $cat))->orWhereRaw('LOWER(REPLACE(blog_category, " ", "-")) = ?', [strtolower($cat)]); });

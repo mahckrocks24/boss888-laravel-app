@@ -165,7 +165,7 @@ class BuilderRenderer
             ->where('workspace_id', $website->workspace_id)
             ->where('slug', $slug)->where('status', 'published')
             ->where('is_marketing_blog', 1)->whereNull('deleted_at')
-            ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
+            ->where(fn ($q) => \App\Engines\Builder\Support\ArticleScope::forWebsite($q, (int) $website->workspace_id, $websiteId))   // RISK-0198
             ->first();
         if (!$article) return null;
 
@@ -1706,7 +1706,7 @@ HTML;
         $websiteId   = (int) ($website['id'] ?? 0);
         $articles = DB::table('articles')
             ->where('workspace_id', $workspaceId)
-            ->where(function ($q) use ($websiteId) { if ($websiteId > 0) { $q->where('website_id', $websiteId)->orWhereNull('website_id'); } })
+            ->where(fn ($q) => \App\Engines\Builder\Support\ArticleScope::forWebsite($q, (int) $workspaceId, $websiteId))   // RISK-0198
             ->where('is_marketing_blog', 1)
             ->where('status', 'published')
             ->whereNull('deleted_at')

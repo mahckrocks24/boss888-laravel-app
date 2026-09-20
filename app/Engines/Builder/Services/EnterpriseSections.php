@@ -51,7 +51,7 @@ trait EnterpriseSections
     {
         $wsId = (int) ($website['workspace_id'] ?? 0); $wid = (int) ($website['id'] ?? 0);
         $q = DB::table('articles')->where('workspace_id', $wsId)
-            ->where(function ($q) use ($wid) { if ($wid > 0) { $q->where('website_id', $wid)->orWhereNull('website_id'); } })
+            ->where(fn ($q) => \App\Engines\Builder\Support\ArticleScope::forWebsite($q, $wsId, $wid))   // RISK-0198
             ->where('is_marketing_blog', 1)->where('status', 'published')->whereNull('deleted_at')
             ->whereRaw('LOWER(REPLACE(blog_category, " ", "-")) IN ("case-studies", "case-study")');
         if ($excludeId > 0) $q->where('id', '!=', $excludeId);
