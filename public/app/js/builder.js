@@ -2511,7 +2511,7 @@ async function wsAddPageToSite() {
           body: JSON.stringify({ website_id: wsCurrentSite.id, type: 'page', page_template: slug, title: slug.replace(/_/g, ' '), request: 'add a ' + slug.replace(/_/g, ' ') + ' page' }) });
         var d = await r.json();
         var ok = d && (d.success === true || (d.result && d.result.success === true));
-        var msg = (d && (d.message || (d.result && d.result.message))) || (ok ? 'Page added' : 'Arthur could not add that page');
+        var msg = (d && (d.message || (d.result && d.result.message) || (d.data && d.data.message) /* CATALOGUE VERIFICATION 2026-09-20: Arthur's own answer ("already live at /events/") travels in data.message */)) || (ok ? 'Page added' : 'Arthur could not add that page');
         if (ok) { showToast(msg, 'success'); ov.remove(); wsOpenSite(wsCurrentSite.id); }
         else { if (st) st.textContent = msg; ov.querySelectorAll('.ws-pp-card').forEach(function (x) { if (!x.dataset.exists) x.disabled = false; }); }
       } catch (e) { if (st) st.textContent = 'Failed: ' + e.message; }
