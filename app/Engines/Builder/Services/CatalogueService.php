@@ -887,6 +887,11 @@ class CatalogueService
     {
         $t = strtolower($text);
         if (preg_match('/\b(section|block|heading|headline|subtitle|eyebrow|intro|paragraph|colou?r|font|image|photo|picture|icon|layout|button|page background|gradient|text|wording|copy|title|label|link|menu link|nav)\b/', $t)) return null;
+        // CATALOGUE VERIFICATION (2026-09-20): "add a portfolio page", "add a menu page", "add an events page" are PAGE requests
+        // (the page picker's own wording) — they used to become a project/dish/event called "Page" and cost a credit. A location
+        // phrase ("add a cardamom bun to the menu page") is stripped first so an item aimed at a page still reads as an item.
+        $tp = preg_replace('/\b(to|on|onto|into|of|in|at|for|from|under)\s+(?:the\s+|my\s+|your\s+|this\s+|that\s+)?(?:[a-z\-\/]+\s+){0,3}pages?\b/', ' ', $t) ?? $t;
+        if (preg_match('/\b(add|create|make|build|new|need|want)\b.{0,40}\bpages?\b/', $tp)) return null;
         // A catalogue INTENT, not merely a catalogue word: "Change Browse Properties to Check Properties" is a text edit
         // that happens to contain "properties" (Raymundo Realty, 2026-09-14). Only these shapes are catalogue commands:
         $intent = '(add|list|create|post|put up|publish|remove|delete|take down|withdraw|hide|unhide|mark|flag|rename|reprice|sold out|back on|under offer)';

@@ -34,7 +34,7 @@ final class BuilderCapabilities
         'faq'             => ['label' => 'FAQ',                          'synonyms' => ['faq', 'faqs', 'questions', 'q&a']],
         'testimonials'    => ['label' => 'Testimonials / reviews',       'synonyms' => ['testimonial', 'testimonials', 'reviews', 'what clients say']],
         'team'            => ['label' => 'Team',                         'synonyms' => ['team', 'staff', 'our people', 'doctors', 'trainers', 'instructors']],
-        'gallery'         => ['label' => 'Photo gallery',                'synonyms' => ['gallery', 'photos', 'portfolio', 'our work', 'before and after']],
+        'gallery'         => ['label' => 'Photo gallery',                'synonyms' => ['gallery', 'photos', 'portfolio', 'our work', 'before and after', 'transformations']],
         'stats'           => ['label' => 'Numbers / stats strip',        'synonyms' => ['stats', 'statistics', 'numbers', 'achievements', 'milestones']],
         'features'        => ['label' => 'Features / benefits grid',     'synonyms' => ['features', 'benefits', 'why us', 'why choose', 'highlights', 'usp']],
         'services'        => ['label' => 'Services grid',                'synonyms' => ['services', 'what we do', 'offerings', 'treatments']],
@@ -197,6 +197,9 @@ final class BuilderCapabilities
         // RISK-0195 (2026-09-20): a location phrase ("… section to the home page") is not a request for a page. The
         // intent step's normalised sentence always carries one, and it turned every FAQ/pricing/contact/services/team/
         // gallery SECTION into a 5-credit PAGE. An explicit section noun wins outright.
+        // CATALOGUE VERIFICATION (2026-09-20): "before/after", "before and after", "before-after", "before after" name the
+        // Before / After page (or the gallery section) — not a position. Folded to one token before the position parse.
+        $r = preg_replace('/\bbefore\s*(?:\/|-|&|and|\+)?\s*afters?\b/', 'transformations', $r) ?? $r;
         $rDeliverable = preg_replace(self::PAGE_LOCATION, ' ', $r) ?? $r;
         $wantsSection = (bool) preg_match(self::SECTION_WORDS, $r);
         $wantsPage    = (bool) preg_match(self::PAGE_WORDS, $rDeliverable) && ! $wantsSection;
