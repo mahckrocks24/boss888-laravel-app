@@ -1436,6 +1436,11 @@ class ArthurService
     private function injectImagesToTemplate(array &$variables, array $manifest, array $pool, ?string $heroDefaultUrl, bool $logoUploadOptIn): void
     {
         if (empty($manifest['variables'])) return;
+        // EV-1077: the hero itself is tagged with the industry and came back as pool[0] — a second copy of the hero in the
+        // first service card and again wherever the pool wrapped. The hero is the hero; the pool is everything else.
+        $heroNow = (string) ($variables['hero_image'] ?? '');
+        $others = array_values(array_filter($pool, fn($u) => $u !== $heroDefaultUrl && $u !== $heroNow && !str_contains((string) $u, '/builder-heroes/')));
+        if ($others !== []) $pool = $others;
 
         // Build the ordered list of slots that still need filling.
         $needFill = [];
@@ -1447,12 +1452,17 @@ class ArthurService
             // DEFAULT TEAM AVATARS (2026-09-06): a person slot never takes a room/gallery photo from the pool — render() gives it an avatar.
             if (\App\Engines\Builder\Services\TemplateService::personSlotFor((string) $varKey) !== null) continue;
             $current = $variables[$varKey] ?? '';
+            // EV-1077: the manifest ships every image slot defaulted to the industry hero (/storage/builder-heroes/…); that
+            // placeholder is empty by definition, whether or not the floor lookup above found the same URL. A design's own
+            // shipped photo (a portrait design's story_image under /storage/template-images/…) is real content and stays.
+            $manifestDefault = is_array($varSpec) ? (string) ($varSpec['default'] ?? '') : '';
+            $isPlaceholder = $manifestDefault !== '' && $current === $manifestDefault && str_contains($manifestDefault, '/builder-heroes/');
             $isFloor = ($current === '' || $current === null
-                || ($heroDefaultUrl && $current === $heroDefaultUrl));
+                || ($heroDefaultUrl && $current === $heroDefaultUrl) || $isPlaceholder);
             // hero_image specifically is allowed to keep the hero floor —
             // it's the most prominent image and the floor IS the right
             // industry hero. Only fill OTHER image vars from the pool.
-            if ($varKey === 'hero_image' && $current === $heroDefaultUrl) continue;
+            if ($varKey === 'hero_image' && ($current === $heroDefaultUrl || $isPlaceholder)) continue;
             if ($isFloor) $needFill[] = $varKey;
         }
 
@@ -3655,6 +3665,13 @@ PROMPT;
                     ->where('asset_type', 'hero')
                     ->where('industry', 'default')
                     ->first();
+            }
+            // RISK-0168 root cause (2026-09-20, EV-1077): there is no 'default' row, so a "borrowed" build (the customer's
+            // words did not keyword-match the design the selector chose — 55 of 112 live sites) left $heroDefaultUrl NULL;
+            // every image slot then held the manifest's hero path, was judged "already filled", and the pool was never
+            // applied — 23 copies of one photograph. The design's own industry hero is the floor when nothing else is.
+            if (!$defaultRow) {
+                $defaultRow = DB::table('builder_default_assets')->where('asset_type', 'hero')->where('industry', $heroIndustry)->first();
             }
             if ($defaultRow && !empty($defaultRow->url)) {
                 $heroDefaultUrl = $defaultRow->url;
