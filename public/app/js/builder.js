@@ -1910,6 +1910,7 @@ async function wsOpenSite(siteId){
     var res = await r.json();
     var pages = bld_ensureArray(res.pages ?? res);
     wsRenderSitePages(pages, siteId);
+    try { _wsPagesCatalogueBtn(siteId); } catch (_e) {}   // CAT-1 (2026-09-21): renderer sites manage their catalogue (Packages …) from the Pages view
     // Kick off live-resolve for any skeleton pages
     _wsLiveResolve(pages, siteId);
   } catch(e) {
@@ -4432,3 +4433,22 @@ window.wsOpenSitePanel = async function (siteId) {
     finally { b.disabled = false; }
   });
 };
+
+/* CATALOGUE888 CAT-1 (2026-09-21) — builder/renderer sites open the Pages view, not the template editor, so the
+   catalogue button (Listings / Packages / Menu …) was unreachable for them. Same gate as the editor: the site's
+   GET /catalogue decides; the button opens the same panel. */
+async function _wsPagesCatalogueBtn(siteId) {
+  var old = document.getElementById('ws-pages-cat-btn'); if (old) old.remove();
+  var host = document.querySelector('#ws-site-pages > div:first-child > div:last-child'); if (!host) return;
+  try {
+    var r = await fetch(API + 'builder/websites/' + siteId + '/catalogue', { headers: _t3CatAuth(), cache: 'no-store' });
+    if (!r.ok) return;
+    var d = await r.json(); var kinds = _t3CatKinds(d); if (!kinds.length) return;
+    window._t3CatalogueData = d;
+    var b = document.createElement('button'); b.type = 'button'; b.id = 'ws-pages-cat-btn'; b.className = 'ct-btn';
+    b.textContent = kinds.length === 1 ? d.catalogues[kinds[0]].label : 'Catalogue';
+    b.title = 'Manage what this site sells — changes show on the live site right away';
+    b.onclick = function () { wsOpenCatalogue(siteId); };
+    host.insertBefore(b, host.firstChild);
+  } catch (_e) {}
+}
