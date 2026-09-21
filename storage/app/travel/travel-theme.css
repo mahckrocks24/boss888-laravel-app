@@ -776,5 +776,5 @@ input[data-datepick]{cursor:pointer}
 .hero h1,h1,h2{hyphens:manual;-webkit-hyphens:manual}
 /* real logo: the wordmark is inside the image, so hide the text name; keep it for text-only brands */
 .brand__logo{height:54px!important;width:auto;max-width:320px}.brand__logo + span{display:none}
-.hero__seal img{border-radius:50%;background:#fff;box-shadow:var(--shadow-md);padding:6px}
+.hero__seal img{border-radius:0;background:transparent;box-shadow:none;padding:0}
 @media (max-width:420px){.brand__logo{height:36px!important;max-width:200px}}
