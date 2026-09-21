@@ -778,3 +778,6 @@ input[data-datepick]{cursor:pointer}
 .brand__logo{height:54px!important;width:auto;max-width:320px}.brand__logo + span{display:none}
 .hero__seal img{border-radius:0;background:transparent;box-shadow:none;padding:0}
 @media (max-width:420px){.brand__logo{height:36px!important;max-width:200px}}
+/* off-canvas menu: never visible when closed (its content can be taller than the slide on short viewports), and not part of desktop at all */
+.mobile-nav:not(.is-open){visibility:hidden;pointer-events:none}.mobile-nav{overflow:auto;transition:transform .35s ease,visibility 0s linear .35s}.mobile-nav.is-open{visibility:visible;transition:transform .35s ease,visibility 0s}
+@media (min-width:981px){.mobile-nav{display:none!important}}
