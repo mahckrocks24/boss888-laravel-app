@@ -170,6 +170,23 @@ final class CatalogueKinds
             'nouns' => 'session|sessions|slot|slots|timetable|schedule|class time|class times',
             'industries' => [],
         ],
+        // SGTRAVEL CAT-1 (2026-09-21) — travel packages: the travel vertical's catalogue (renderer sites read it at render time).
+        'package' => [
+            'family' => 'package', 'families' => ['package', 'trip', 'tour'], 'plural' => 'Packages', 'singular' => 'package', 'page_slug' => 'packages', 'detail_prefix' => 'package',
+            'pages' => 'index', 'cta' => 'Book now', 'enquiry_source' => 'booking_inquiry',
+            'statuses' => ['active' => 'Available', 'sold_out' => 'Sold out', 'hidden' => 'Hidden'], 'open' => ['active', 'sold_out'], 'closed' => [], 'default_status' => 'active',
+            'closed_label' => '', 'closed_family_default' => '',
+            'attrs' => [
+                ['key' => 'nights', 'label' => 'Length (e.g. 3N / 4D)', 'type' => 'text', 'from' => ['nights', 'duration', 'days']],
+                ['key' => 'destination', 'label' => 'Destination(s)', 'type' => 'text', 'from' => ['destination', 'location']],
+                ['key' => 'departure', 'label' => 'Departs from (e.g. Manila · Muscat)', 'type' => 'text', 'from' => ['departure', 'from']],
+                ['key' => 'dates', 'label' => 'Travel dates / validity', 'type' => 'text', 'from' => ['dates', 'validity']],
+                ['key' => 'inclusions', 'label' => 'Inclusions (one per line)', 'type' => 'textarea', 'from' => ['inclusions', 'includes']],
+                ['key' => 'exclusions', 'label' => 'Exclusions (one per line)', 'type' => 'textarea', 'from' => ['exclusions', 'excludes']],
+            ],
+            'nouns' => 'package|packages|tour|tours|trip|trips|itinerary|itineraries|holiday|holidays|cruise|cruises|getaway|getaways',
+            'industries' => [],
+        ],
         'project' => [
             'family' => 'project', 'families' => ['project', 'portfolio', 'case'], 'plural' => 'Projects', 'singular' => 'project', 'page_slug' => 'projects', 'detail_prefix' => 'project',
             'pages' => 'index+detail', 'cta' => 'See project', 'enquiry_source' => 'project_enquiry',

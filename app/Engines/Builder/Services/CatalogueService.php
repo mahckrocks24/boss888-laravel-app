@@ -77,6 +77,33 @@ class CatalogueService
         return '';
     }
 
+    /**
+     * SGTRAVEL CAT-1 (2026-09-21) — renderer-path sites (settings_json.theme + pages.sections_json) have no template design
+     * or variable slots; they declare the kinds they carry in settings_json.catalogue = {kind: {enabled, currency, slots}}. The
+     * theme reads catalogue_items at render time, so there is nothing to project — sync() only clears the page cache.
+     */
+    private function rendererSpecs(object $site, array $settings): array
+    {
+        if (empty($settings['theme']) || ! is_array($settings['catalogue'] ?? null)) return [];
+        $out = [];
+        foreach ($settings['catalogue'] as $kind => $ls) {
+            $def = CatalogueKinds::get((string) $kind); if (! $def || ! is_array($ls)) continue;
+            $labels = CatalogueKinds::labels((string) $kind, (string) ($site->template_industry ?? ''));
+            $out[$kind] = [
+                'kind' => $kind, 'design' => 'renderer:' . $settings['theme'], 'industry' => (string) ($site->template_industry ?? ''), 'family' => $def['family'], 'renderer' => true,
+                'label' => $labels['plural'], 'singular' => $labels['singular'], 'page_slug' => (string) ($ls['page_slug'] ?? $labels['page_slug']), 'nouns' => $labels['nouns'],
+                'detail_prefix' => $def['detail_prefix'], 'pages' => 'index', 'cta' => $def['cta'], 'enquiry_source' => $def['enquiry_source'],
+                'home_block' => '', 'slots' => max(1, (int) ($ls['slots'] ?? 3)), 'suffixes' => ['title', 'text', 'price', 'image', 'badge', 'cta'], 'style' => 'card',
+                'closed' => null, 'closed_label' => $def['closed_label'],
+                'statuses' => $def['statuses'], 'open' => $def['open'], 'closed_statuses' => $def['closed'], 'default_status' => $def['default_status'],
+                'attrs' => $def['attrs'], 'title_from' => (array) ($def['title_from'] ?? []),
+                'enabled' => ! (isset($ls['enabled']) && $ls['enabled'] === false), 'seeded_at' => $ls['seeded_at'] ?? now()->toDateTimeString(),
+                'currency' => (string) ($ls['currency'] ?? 'USD'),
+            ];
+        }
+        return $out;
+    }
+
     /** Every catalogue this website's design carries, keyed by kind, with the per-site switch folded in. */
     public function specs(int $websiteId, ?object $site = null): array
     {
@@ -84,7 +111,7 @@ class CatalogueService
         if (! $site) return [];
         $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
         $design = $this->designOf($site, $settings);
-        if ($design === '') return [];
+        if ($design === '') return $this->rendererSpecs($site, $settings); // SGTRAVEL CAT-1 renderer specs
         $manifest = json_decode((string) @file_get_contents(storage_path("templates/{$design}/manifest.json")), true) ?: [];
         $vars = is_array($manifest['variables'] ?? null) ? $manifest['variables'] : [];
         $industry = (string) ($manifest['industry'] ?? '');
@@ -566,6 +593,12 @@ class CatalogueService
     public function sync(int $websiteId, ?string $onlyKind = null, string $reason = 'catalogue'): array
     {
         $site = $this->site($websiteId);
+        if ($site && ! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) {
+            // SGTRAVEL CAT-1 renderer cache — the theme reads the rows at render time; just drop the cached pages.
+            $sub = str_replace('.levelupgrowth.io', '', (string) ($site->subdomain ?? ''));
+            foreach (DB::table('pages')->where('website_id', $websiteId)->pluck('slug') as $slug) \Illuminate\Support\Facades\Cache::forget("published_site:{$sub}:{$slug}");
+            return ['synced' => true, 'renderer' => true];
+        }
         if (! $site || ! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) return ['synced' => false];
         $specs = $this->enabledSpecs($websiteId, $site);
         if ($onlyKind !== null) $specs = array_intersect_key($specs, [$onlyKind => 1]);

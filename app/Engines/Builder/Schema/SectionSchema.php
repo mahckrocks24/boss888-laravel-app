@@ -121,6 +121,8 @@ class SectionSchema
                 'columns',               // int 2-4 (defaults to 3)
                 'style',                 // 'card' | 'media' | 'compact'
                 'cta_text', 'cta_url',
+                'eyebrow', 'variant',    // travel-friendly: destinations | packages | reviews
+                'source', 'limit', 'hide_when_empty', 'empty_text', // SGTRAVEL CAT-1: source=catalogue reads catalogue_items (kind package) at render time
             ],
         ],
         // filter_bar: client-side filter chips that target a grid by id.

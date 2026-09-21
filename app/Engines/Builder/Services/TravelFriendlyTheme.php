@@ -2,6 +2,7 @@
 
 namespace App\Engines\Builder\Services;
 
+
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -16,11 +17,13 @@ class TravelFriendlyTheme
     /** SGTRAVEL T1 (2026-09-21) — site settings (colours, contact, social) drive everything AMG hard-coded. */
     private array $settings = [];
     private string $siteName = '';
+    private int $siteId = 0; // SGTRAVEL CAT-1
     private function bootSettings(array $website): void
     {
         $s = $website['settings_json'] ?? []; if (is_string($s)) $s = json_decode($s, true) ?: [];
         $this->settings = is_array($s) ? $s : [];
         $this->siteName = (string) ($website['name'] ?? 'Travel & Tours');
+        $this->siteId = (int) ($website['id'] ?? 0); // SGTRAVEL CAT-1
     }
     private function set(string $k, string $d = ''): string { $v = trim((string) ($this->settings[$k] ?? '')); return $v !== '' ? $v : $d; }
     private function col(string $k, string $d): string { $v = trim((string) ($this->settings[$k] ?? '')); return preg_match('/^#[0-9a-fA-F]{6}$/', $v) ? $v : $d; }
@@ -383,6 +386,26 @@ HTML;
 HTML;
     }
 
+    /** SGTRAVEL CAT-1 — package rows from the catalogue engine (kind `package`), shaped like the section's items. */
+    private function cataloguePackages(int $websiteId, int $limit = 0): array
+    {
+        if ($websiteId <= 0) return [];
+        $q = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', 'package')->whereNull('deleted_at')->whereIn('status', ['active', 'sold_out'])
+            ->orderByDesc('featured')->orderBy('sort_order')->orderBy('id');
+        if ($limit > 0) $q->limit($limit);
+        $svc = app(CatalogueService::class); $tones = ['tone-navy', 'tone-emerald', 'tone-silver']; $out = []; $i = 0;
+        foreach ($q->get() as $r) {
+            $a = json_decode((string) ($r->attrs_json ?: '{}'), true) ?: []; $photos = json_decode((string) ($r->photos_json ?: '[]'), true) ?: []; $feat = json_decode((string) ($r->features_json ?: '[]'), true) ?: [];
+            $hl = $feat ?: array_values(array_filter(array_map('trim', preg_split('/\r?\n/', (string) ($a['inclusions'] ?? '')))));
+            if (! empty($a['destination'])) array_unshift($hl, (string) $a['destination']);
+            // price_label is the engine's TEXT price ("Inquire for fare"); a numeric price renders as "from $1,566 pp"
+            $price = $r->price !== null ? 'from ' . $svc->priceText((object) array_merge((array) $r, ['price_label' => null]), false) . ' pp' : ((string) ($r->price_label ?: 'Inquire for fare'));
+            $out[] = ['tone' => $tones[$i++ % 3], 'image' => (string) ($photos[0] ?? ''), 'title' => (string) $r->title, 'nights' => (string) ($a['nights'] ?? ''), 'price' => $r->status === 'sold_out' ? 'Sold out' : $price,
+                'highlights' => array_slice($hl, 0, 4), 'sold_out' => $r->status === 'sold_out', 'summary' => (string) ($r->summary ?? ''), 'slug' => (string) $r->slug];
+        }
+        return $out;
+    }
+
     private function packages(array $g): string
     {
         $eyebrow = $this->e($g['eyebrow'] ?? 'Sample packages');
@@ -390,6 +413,8 @@ HTML;
         $sub = $this->e($g['subheading'] ?? '');
         $subHtml = $sub ? "<p class=\"lead\">{$sub}</p>" : '';
         $items = is_array($g['items'] ?? null) ? $g['items'] : [];
+        if (($g['source'] ?? '') === 'catalogue') $items = $this->cataloguePackages($this->siteId, (int) ($g['limit'] ?? 0)); // SGTRAVEL CAT-1 catalogue-backed packages
+        if ($items === [] && ($g['source'] ?? '') === 'catalogue') return ! empty($g['hide_when_empty']) ? '' : '<section class="section" id="packages"><div class="wrap"><div class="shead"><span class="eyebrow">' . $this->e($g['eyebrow'] ?? 'Packages') . '</span><h2>' . $this->e($g['heading'] ?? '') . '</h2><p class="lead">' . $this->e($g['empty_text'] ?? 'New packages are being prepared — message us for the current offers.') . '</p></div></div></section>';
         $check = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4 10-10"/></svg>';
         $cards = ''; $i = 0;
         foreach ($items as $it) {

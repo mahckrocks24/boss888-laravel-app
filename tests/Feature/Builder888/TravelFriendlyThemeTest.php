@@ -66,4 +66,17 @@ class TravelFriendlyThemeTest extends TestCase
         $this->assertStringNotContainsString('<script>alert(1)', $html);
         $this->assertStringContainsString('--sky:#1B6FC4', $html);
     }
+    /** SGTRAVEL CAT-1 — the package kind exists, renderer sites declaring it get a spec, and grid sections may read the catalogue. */
+    public function test_package_catalogue_kind_and_renderer_spec(): void
+    {
+        $def = \App\Engines\Builder\Support\CatalogueKinds::get('package');
+        $this->assertNotNull($def);
+        $this->assertSame('Packages', $def['plural']);
+        $this->assertContains('sold_out', $def['open'], 'sold-out packages stay visible with a badge');
+        $this->assertSame(['nights', 'destination', 'departure', 'dates', 'inclusions', 'exclusions'], array_column($def['attrs'], 'key'));
+        foreach (['source', 'limit', 'hide_when_empty', 'variant'] as $f) $this->assertContains($f, SectionSchema::allowedFieldsFor('grid'));
+        $theme = new TravelFriendlyTheme();
+        $html = $theme->renderBody([['type' => 'grid', 'variant' => 'packages', 'source' => 'catalogue', 'heading' => 'Packages', 'empty_text' => 'Coming soon.']], [], $this->site(), ['slug' => 'packages']);
+        $this->assertStringContainsString('Coming soon.', $html, 'catalogue-backed grid renders its empty state when the site has no rows');
+    }
 }
