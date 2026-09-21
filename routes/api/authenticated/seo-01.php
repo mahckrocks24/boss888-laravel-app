@@ -1486,7 +1486,7 @@ use Illuminate\Support\Facades\Route;
         Route::get('/knowledge', function (\Illuminate\Http\Request $r) {
             $wsId = (int) $r->attributes->get('workspace_id');
             return response()->json(
-                app(\App\Engines\SEO\Services\SeoService::class)->getKnowledge($wsId)
+                app(\App\Engines\SEO\Services\SeoService::class)->getKnowledge($wsId, (string) ($r->query('site_url') ?? ''))
             );
         });
 
@@ -3873,6 +3873,11 @@ use Illuminate\Support\Facades\Route;
                       ->on('a.workspace_id', '=', 'sci.workspace_id');
                 })
                 ->where('sci.workspace_id', $wsId)
+                // 2026-09-21 (Owner): the Pages tab lists the SELECTED website's pages, not every website's
+                ->when((string) ($r->query('site_url') ?? '') !== '', function ($x) use ($r) {
+                    $h = \App\Engines\SEO\Support\SiteScope::hostFromUrl((string) $r->query('site_url'));
+                    if ($h !== '') { $x->where('sci.url', 'like', \App\Engines\SEO\Support\SiteScope::likeFor($h)); }
+                })
                 ->select(
                     'sci.*',
                     // Wave 15 (2026-05-18) — fields the Pages-tab CTAs need.

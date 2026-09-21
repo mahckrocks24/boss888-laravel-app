@@ -247,6 +247,8 @@ class SeoService
             $payload = json_decode($cached->report_json, true) ?: [];
             $payload['_cached']    = true;
             $payload['_cached_at'] = (string) $cached->created_at;
+            $payload['no_charge']  = true; // F-OPS-D9: a cache hit did no work — the kernel releases the reservation
+            $payload['no_charge_reason'] = 'cached report';
             return $payload;
         }
 
@@ -649,7 +651,8 @@ class SeoService
             ->get(['url', 'title', 'h1', 'authority_score', 'word_count',
                    'meta_description', 'intent']);
         if ($pages->isEmpty()) {
-            return ['generated' => 0, 'suggestions' => []];
+            // F-OPS-C3: nothing indexed to link to — no work done, no charge (kernel releases the reservation)
+            return ['generated' => 0, 'suggestions' => [], 'no_charge' => true, 'no_charge_reason' => 'no indexed content to link', 'message' => 'No pages are indexed for this site yet, so there is nothing to link. Run an SEO crawl or publish content first.'];
         }
 
         $sourcePage = $sourceUrl
@@ -805,6 +808,9 @@ class SeoService
             'generated' => count($suggestions),
         ]);
 
+        if ($suggestions === []) { // F-OPS-C3: pages exist but nothing linkable was produced — no charge
+            return ['generated' => 0, 'suggestions' => [], 'no_charge' => true, 'no_charge_reason' => 'no linkable pages found', 'message' => 'No link opportunities were found between the indexed pages yet.'];
+        }
         return ['generated' => count($suggestions), 'suggestions' => $suggestions];
     }
 
@@ -1912,8 +1918,11 @@ class SeoService
             $host = \App\Engines\SEO\Support\SiteScope::hostFromUrl((string) $filters['site_url']);
             if ($host !== '') {
                 $like = '%//' . $host . '%';
-                $q->where(function ($x) use ($like) {
-                    $x->where('target_url', 'like', $like)->orWhereNull('target_url');
+                // 2026-09-21: an untargeted keyword is the FIRST website's, not every website's (RISK-0198 rule)
+                $primary = \App\Engines\SEO\Support\SiteScope::isPrimaryHost($wsId, $host);
+                $q->where(function ($x) use ($like, $primary) {
+                    $x->where('target_url', 'like', $like);
+                    if ($primary) { $x->orWhereNull('target_url')->orWhere('target_url', ''); }
                 });
             }
         }
@@ -1986,9 +1995,13 @@ class SeoService
      *   top_issues          [{type, count}]
      *   summary             ?string           short human one-liner
      */
-    public function getKnowledge(int $wsId): array
+    public function getKnowledge(int $wsId, ?string $siteUrl = null): array
     {
+        // 2026-09-21 (Owner): the Overview's content/keyword health is the SELECTED website's, not the workspace's
+        $host = $siteUrl ? \App\Engines\SEO\Support\SiteScope::hostFromUrl($siteUrl) : '';
+        $like = $host !== '' ? \App\Engines\SEO\Support\SiteScope::likeFor($host) : null;
         $sci = DB::table('seo_content_index')->where('workspace_id', $wsId);
+        if ($like) { $sci->where('url', 'like', $like); }
 
         $totalPages   = (clone $sci)->count();
         $scoredAvg    = (clone $sci)->whereNotNull('content_score')->avg('content_score');
@@ -2006,6 +2019,10 @@ class SeoService
         $keywordRanks = DB::table('seo_keywords')
             ->where('workspace_id', $wsId)
             ->where('status', 'tracking')
+            ->when($like, function ($q) use ($like, $wsId, $host) {
+                $primary = \App\Engines\SEO\Support\SiteScope::isPrimaryHost($wsId, $host);
+                $q->where(function ($x) use ($like, $primary) { $x->where('target_url', 'like', $like); if ($primary) { $x->orWhereNull('target_url')->orWhere('target_url', ''); } });
+            })
             ->orderByDesc('volume')
             ->limit(8)
             ->get(['keyword', 'current_rank', 'previous_rank'])
@@ -2064,8 +2081,10 @@ class SeoService
 
         $keywords = DB::table('seo_keywords')->where('workspace_id', $wsId)->where('status', 'tracking');
         if ($like) {
-            $keywords = $keywords->where(function ($q) use ($like) {
-                $q->where('target_url', 'like', $like)->orWhereNull('target_url');
+            $primary = \App\Engines\SEO\Support\SiteScope::isPrimaryHost($wsId, $host);   // 2026-09-21: untargeted = first site's
+            $keywords = $keywords->where(function ($q) use ($like, $primary) {
+                $q->where('target_url', 'like', $like);
+                if ($primary) { $q->orWhereNull('target_url')->orWhere('target_url', ''); }
             });
         }
         $audits = DB::table('seo_audits')->where('workspace_id', $wsId);
@@ -2870,10 +2889,15 @@ class SeoService
                 if ($host) { $url = 'https://' . preg_replace('#^https?://#', '', rtrim((string) $host, '/')) . '/blog/' . ltrim($article->slug, '/'); }
             }
             if ($url === null && !empty($article->wp_post_id)) { return; }
+            // EV-1045 (2026-09-16): an article bound to a site that has no host yet (a draft site) is not on the web —
+            // it was being indexed under the workspace's legacy site_url, i.e. ANOTHER site's host (and a doubled one:
+            // "b4-bakery-ot3.levelupgrowth.io.levelupgrowth.io"). No host, no row; the publish path indexes it later.
+            if ($url === null && $websiteId > 0) { return; }
             if ($url === null) {
                 $siteUrl = DB::table('seo_settings')->where('workspace_id', $wsId)
                     ->where('key', 'site_url')->value('value');
                 if (!$siteUrl) { return; }
+                $siteUrl = preg_replace('/(\.levelupgrowth\.io)+/', '.levelupgrowth.io', (string) $siteUrl);   // a stored doubled suffix must not reach the index
                 $url = rtrim($siteUrl, '/') . '/' . ltrim($article->slug, '/');
             }
 

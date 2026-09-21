@@ -1665,6 +1665,10 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     if (!bar) return;
     bar.style.display = 'flex';
     bar.innerHTML = '<span style="color:var(--lgse-t3,#9CA3AF);font-size:11px">Loading sites…</span>';
+    // 2026-09-21 (Owner: Chef Red's stats on every website): every GET waits for this before it is scoped — the Overview
+    // used to fire six unscoped calls 50 ms after /sites was asked, and workspace-wide data filled the page.
+    window._lgseSitesSettled = false;
+    window._lgseSitesReady = new Promise(function (resolve) { window._lgseSitesResolve = function () { window._lgseSitesSettled = true; resolve(); }; });
 
     // Direct fetch — bypass the api() wrapper since _withSiteScope is a chicken-and-egg here.
     var token = localStorage.getItem('lu_token') || '';
@@ -1692,7 +1696,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         // stick, so a recomputed default is never mistaken for the customer's own choice.
       }
       lgseRenderSiteBar();
+      if (window._lgseSitesResolve) window._lgseSitesResolve();
     }).catch(function () {
+      if (window._lgseSitesResolve) window._lgseSitesResolve();
       bar.innerHTML = '<span style="color:#F87171;font-size:11px">Site picker failed to load</span>';
     });
   }
@@ -1776,6 +1782,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // is selected. Mutating methods can opt-in by including site_url in body.
   function api(method, path, body) {
     if (String(method).toUpperCase() === 'GET') {
+      if (!_isEmbedMode() && !(window._lgseActiveSiteUrl || '').trim() && window._lgseSitesReady && !window._lgseSitesSettled) {
+        return window._lgseSitesReady.then(function () { return api(method, path, body); });   // scoped once the site is known
+      }
       path = _withSiteScope(path);
     } else if (body && typeof body === 'object' && !Array.isArray(body) && !_isEmbedMode()) {
       var u = (window._lgseActiveSiteUrl || '').trim();
@@ -2811,9 +2820,11 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     // in without the user having to find the modal. Waits 2s for
     // loadOverviewData / loadSiteList to settle.
     setTimeout(function () {
-      var siteUrl = window._lgseActiveSite || window._LGSC_SITE_URL;
-      var sites   = window._lgseSites || [];
-      if (siteUrl && sites.length === 0 && !window._lgseAutoAuditFired
+      // 2026-09-21 (Owner: switching websites started an audit): only a workspace with ONE website and NO audit for it.
+      // _lgseSites was a variable only a finished audit ever set, so the old check was true on every switch.
+      var siteUrl = (window._lgseActiveSiteUrl || window._LGSC_SITE_URL || '').trim();
+      var known   = window._lgseSiteList || [];
+      if (siteUrl && known.length <= 1 && window._lgseLastAuditsCount === 0 && !window._lgseAutoAuditFired
           && typeof window.lgseDoRunAudit === 'function') {
         window._lgseAutoAuditFired = true;
         if (typeof window.showToast === 'function') {
@@ -2894,6 +2905,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var indexed = results[3]; var keywords = results[4]; var orphans = results[5];
 
       var auditsArr = (audits && (audits.audits || audits.data)) || (Array.isArray(audits) ? audits : []);
+      window._lgseLastAuditsCount = auditsArr.length;   // the auto-audit gate reads this, not a stale variable
       // UX-018: placeholder audits (url not an http(s) URL, e.g. "sourdough_pre_order_url")
       // must never feed the gauge, issues strip or trend. First VALID audit is `latest`.
       auditsArr = auditsArr.filter(function (a) {

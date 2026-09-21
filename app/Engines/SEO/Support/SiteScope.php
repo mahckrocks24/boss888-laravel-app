@@ -45,4 +45,34 @@ class SiteScope
         $host = (string) parse_url($url, PHP_URL_HOST);
         return strtolower(trim($host));
     }
+
+    /** The host a websites row answers to — the same derivation the /seo/sites picker uses. */
+    public static function hostOfWebsite(object $row): string
+    {
+        $host = '';
+        if (! empty($row->custom_domain))      $host = $row->custom_domain;
+        elseif (! empty($row->domain))         $host = $row->domain;
+        elseif (! empty($row->subdomain))      $host = str_contains((string) $row->subdomain, '.') ? (string) $row->subdomain : $row->subdomain . '.levelupgrowth.io';
+        return strtolower(preg_replace('#^www\.#', '', trim((string) $host)));
+    }
+
+    /**
+     * 2026-09-21 (Owner: Chef Red's stats on every website). Is $host the workspace's FIRST website? Rows that name no
+     * site (keywords with no target_url) belong to that site only — the rule ArticleScope set for articles (RISK-0198).
+     */
+    public static function isPrimaryHost(int $wsId, string $host): bool
+    {
+        $host = strtolower(preg_replace('#^www\.#', '', trim($host)));
+        if ($host === '') return false;
+        $id = \App\Engines\Builder\Support\ArticleScope::primaryWebsite($wsId);
+        if ($id <= 0) return true;   // a workspace with no website: nothing to hide behind
+        $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->first(['custom_domain', 'domain', 'subdomain']);
+        return $row ? self::hostOfWebsite($row) === $host : false;
+    }
+
+    /** LIKE pattern for a host inside a stored URL. */
+    public static function likeFor(string $host): string
+    {
+        return '%//' . strtolower(preg_replace('#^www\.#', '', trim($host))) . '%';
+    }
 }
