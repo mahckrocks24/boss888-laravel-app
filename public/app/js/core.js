@@ -512,7 +512,6 @@ function _luSettingsTabs(){
     if (id === 'set-billing-host' || el.querySelector('#billing-plan-name')) return 'billing';
     if (id === 'agent-team-section') return 'team';
     if (id === 'apk-section' || /Your Profile|Change Password/.test(txt)) return 'profile';
-    if (el.querySelector('#brand-primary')) return 'brand';
     return 'business';   // Workspace, intelligence profile, connected accounts, WordPress, internal blocks
   };
   Array.prototype.forEach.call(wrap.children, function (el) {
@@ -525,7 +524,8 @@ function _luSettingsTabs(){
   if (host && bill && bill.parentElement !== host) { host.appendChild(bill); bill.style.padding = '0'; bill.style.maxWidth = 'none'; }
 }
 function setShowTab(tab, silent){
-  setTab = ['profile','business','brand','team','billing'].indexOf(tab) !== -1 ? tab : 'profile';
+  if (tab === 'brand') tab = 'business';   // Owner 2026-09-21: the Brand tab is retired; old links land on Business
+  setTab = ['profile','business','team','billing'].indexOf(tab) !== -1 ? tab : 'profile';
   var view = document.getElementById('view-settings'); if (!view) return;
   // a class, not inline style: the cards' own scripts set style.display when their data arrives and must not resurface a card on another tab
   view.querySelectorAll('[data-set-tab]').forEach(function (el) { el.classList.toggle('lu-set-hidden', el.getAttribute('data-set-tab') !== setTab); });

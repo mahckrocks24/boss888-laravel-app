@@ -3704,19 +3704,20 @@ window.luSwipeToClose = luSwipeToClose;
       <div style="padding:28px;max-width:860px;width:100%;margin:0 auto">
         <div style="margin-bottom:28px">
           <h2 style="font-family:var(--fh);font-size:22px;font-weight:800;color:var(--t1);margin-bottom:4px">Settings</h2>
-          <p style="color:var(--t2);font-size:13px">Your profile, your business, your brand and your plan.</p>
+          <p style="color:var(--t2);font-size:13px">Your profile, your business, your team and your plan.</p>
         </div>
         <!-- REPORT-0061 B5 (2026-09-20): one Settings page, five tabs. Cards are tagged data-set-tab at load (core.js _luSettingsTabs). -->
         <div class="lu-view-tabs" id="set-tabs" role="tablist" aria-label="Settings" style="display:flex;gap:2px;border-bottom:1px solid var(--bd);margin-bottom:18px;overflow-x:auto">
           <button type="button" role="tab" data-set-tab-btn="profile" class="tab active" onclick="setShowTab('profile')">Profile</button>
           <button type="button" role="tab" data-set-tab-btn="business" class="tab" onclick="setShowTab('business')">Business</button>
-          <button type="button" role="tab" data-set-tab-btn="brand" class="tab" onclick="setShowTab('brand')">Brand</button>
+          <!-- Owner 2026-09-21: Brand tab retired — each website's look is set in its editor; the brand kit Studio, emails and social use lives in Studio › Brand. -->
           <button type="button" role="tab" data-set-tab-btn="team" class="tab" onclick="setShowTab('team')">Team</button>
           <button type="button" role="tab" data-set-tab-btn="billing" class="tab" onclick="setShowTab('billing')">Plan &amp; billing</button>
         </div>
         <div id="set-billing-host" data-set-tab="billing" style="display:none"></div>
 
         <!-- ── GOVERNANCE: Workspace Intelligence Profile ── -->
+        <div data-set-tab="business" class="lu-set-note" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:14px 18px;margin-bottom:16px;font-size:12.5px;color:var(--t2);line-height:1.5">Looking for colours, fonts or a logo? Each website sets its own look in its <a href="/app/websites" onclick="if(window.nav){nav('websites');return false;}" style="color:var(--p);font-weight:600">editor</a>. The brand kit Sarah's team uses for images, emails and social posts lives in <a href="/app/studio" onclick="if(window.nav){nav('studio');return false;}" style="color:var(--p);font-weight:600">Studio › Brand</a>.</div>
         <div id="ws-profile-gate" style="display:none;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:var(--rg);padding:16px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
             <span style="font-size:18px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 3L2 17h16L10 3z"/><path d="M10 9v4M10 14.5v.5"/></svg></span>
@@ -3851,7 +3852,7 @@ window.luSwipeToClose = luSwipeToClose;
         <!-- Execution Policy — RETIRED FROM CUSTOMER UI (P1R-1, 2026-08-31): no real backend (GET /api/policy is an
              empty stub, no write route). Markup + handlers preserved for future per-tool auto-execution product work;
              flip data-internal off only when the capability exists. -->
-        <div data-internal="execution-policy" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
+        <div data-internal="execution-policy" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-was-adv="1">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:3px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Execution Policy</div>
@@ -3932,7 +3933,7 @@ window.luSwipeToClose = luSwipeToClose;
              its save path died with builder.js.removed-* and the restored profile save deliberately never submits
              secrets. A secret-collecting form with no working save must not be visible. Preserved for future work;
              the functional apk-section / WordPress sections below are separate and untouched. -->
-        <div data-internal="fb-app-credentials" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-adv="1">
+        <div data-internal="fb-app-credentials" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px" data-was-adv="1">
           <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Connected Accounts</div>
           <div style="font-size:11px;font-weight:700;color:var(--pu);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Social OAuth</div>
           
@@ -3959,8 +3960,8 @@ window.luSwipeToClose = luSwipeToClose;
         </div>
 
         <!-- Danger Zone -->
-        <!-- ── Brand Settings ── -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
+        <!-- ── Brand Settings ── RETIRED 2026-09-21 (Owner): colours/fonts per website live in the editor; the creative brand kit lives in Studio › Brand. -->
+        <div data-internal="brand-retired" hidden style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
           <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Brand Identity</div>
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
             <div>
@@ -4083,7 +4084,7 @@ window.luSwipeToClose = luSwipeToClose;
         </script>
 
         <!-- ── Agent Team Builder ── -->
-        <div id="agent-team-section" data-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px;display:none">
+        <div id="agent-team-section" data-was-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px;display:none">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--t1)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><circle cx="5" cy="10" r="1"/><circle cx="10" cy="10" r="1"/><circle cx="15" cy="10" r="1"/></svg> Your AI Agent Team</div>
@@ -4180,15 +4181,15 @@ window.luSwipeToClose = luSwipeToClose;
         </script>
 
         <!-- Businesses section (BIZ-1) — populated by window._renderBusinesses(); hides itself when there is only one -->
-        <div id="biz-section" data-adv="1" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+        <div id="biz-section" data-was-adv="1" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
         <!-- API Keys section — populated by window._renderApiKeys() -->
-        <div id="apk-section" data-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+        <div id="apk-section" data-was-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
         <!-- WordPress Sites section — populated by window._renderWpSites() -->
-        <div id="wps-section" data-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+        <div id="wps-section" data-was-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
-        <div style="background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:var(--rg);padding:20px" data-adv="1">
+        <div style="background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:var(--rg);padding:20px" data-was-adv="1">
           <div style="font-size:13px;font-weight:700;color:var(--rd);margin-bottom:14px">Danger Zone</div>
           <div style="display:flex;gap:10px">
             <button class="btn btn-outline" style="border-color:rgba(248,113,113,.3);color:var(--rd)" onclick="showToast('Contact support to reset workspace data.','warning')">Reset Workspace Data</button>
@@ -4688,6 +4689,7 @@ window.luGroupSettings=function(){
   });
   GROUPS.forEach(function(g){
    if(!kids.some(function(c){return c.style.order==String(g.order+1);})) return;   // no cards in this group
+   if(document.getElementById('set-tabs')) return;   // Owner 2026-09-21: the tabs name the groups; no stray headings
    var h=document.createElement('div'); h.className='lu-settings-group'; h.textContent=g.label;
    h.style.cssText='order:'+g.order+';font:600 11.5px var(--fb);letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:18px 2px 2px';
    wrap.appendChild(h);
@@ -4842,7 +4844,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-responsive.js?v=r199m-20260921"></script>
 <script defer src="/app/js/lu-select.js?v=r199m-20260921"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=c8-20260921"></script>
+<script defer src="/app/js/core.js?v=c9-20260921"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
