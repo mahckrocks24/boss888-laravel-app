@@ -714,6 +714,7 @@ function bld_executeAiTool(tc) {
 
 
 async function wsLoadSites(){
+  if (!window._luPolicyLoaded && window.LuAPI && LuAPI.refreshPolicy) { window._luPolicyLoaded = 1; try { LuAPI.refreshPolicy(); } catch (_e) {} }
   try{
     // GET lu/v1/websites — Core endpoint reading lu_websites table
     const r=await fetch(API+'websites',{headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'}});
@@ -3357,7 +3358,8 @@ document.addEventListener('keydown', function(e) {
   async function _loadPolicy() {
     try { const r = await bld_get(API+'policy?_t='+Date.now()); _policyCache = {}; (r.policies||[]).forEach(p => _policyCache[p.tool_id] = p); } catch(e) { _policyCache = null; }
   }
-  _loadPolicy(); // fire on init
+  // perf 2026-09-21: loaded when the Websites view opens (wsLoadSites -> LuAPI.refreshPolicy), not on every page boot;
+  // until then _policyAllows falls back to the hardcoded safe set (the conservative answer).
   LuAPI.refreshPolicy = _loadPolicy; // expose globally for savePolicies
 
   function _policyAutoOk(toolId) {

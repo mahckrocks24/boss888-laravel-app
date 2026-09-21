@@ -518,7 +518,7 @@ function _msgInit(){ _msgCreateFloater(); }
 function _msgStartPolling(){
   if(_msg.pollTimer) return;
   _msgPollUnread();
-  _msg.pollTimer=setInterval(function(){ if(!document.hidden) _msgPollUnread(); },10000);
+  _msg.pollTimer=setInterval(function(){ if(!document.hidden) _msgPollUnread(); },30000);   // perf 2026-09-21: was 10 s
   _msg.threadTimer=setInterval(function(){ if(_msg.open && !document.hidden) _msgRefreshOpenThread(); },5000);
 }
 function _msgStopPolling(){ if(_msg.pollTimer){clearInterval(_msg.pollTimer);_msg.pollTimer=null;} if(_msg.threadTimer){clearInterval(_msg.threadTimer);_msg.threadTimer=null;} }

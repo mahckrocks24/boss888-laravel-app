@@ -3390,12 +3390,15 @@ window.luDefer = window.luDefer || function (fn) {
   else { setTimeout(run, 1500); }
 };
 document.addEventListener('DOMContentLoaded', function () {
+  // perf 2026-09-21: these are the Workspace canvas's loads; they used to fire on EVERY page boot (currentView defaults
+  // to 'workspace' before the router has navigated), twice — and nav() loads them again for the canvas itself.
+  var _canvasOn = function () { var v = document.getElementById('view-workspace'); return !!(v && v.classList.contains('active') && getComputedStyle(v).display !== 'none'); };
   function bootWorkspace() {
     console.log('[bootstrap] firing initial workspace data load + agent-node loader');
     try { document.dispatchEvent(new CustomEvent('lu:bootstrap-complete')); } catch (e) {}
     try { if (typeof window._loadWorkspaceAgents === 'function') window._loadWorkspaceAgents(); } catch (e) { console.error('[bootstrap] _loadWorkspaceAgents threw:', e); }
-    window.luDefer(function () { try { if (typeof loadAgentStats === 'function') loadAgentStats(); } catch (e) { console.error('[bootstrap] loadAgentStats threw:', e); } });
-    window.luDefer(function () { try { if (typeof loadTasks === 'function') loadTasks(); } catch (e) { console.error('[bootstrap] loadTasks threw:', e); } });
+    window.luDefer(function () { if (!_canvasOn()) return; try { if (typeof loadAgentStats === 'function') loadAgentStats(); } catch (e) { console.error('[bootstrap] loadAgentStats threw:', e); } });
+    window.luDefer(function () { if (!_canvasOn()) return; try { if (typeof loadTasks === 'function') loadTasks(); } catch (e) { console.error('[bootstrap] loadTasks threw:', e); } });
   }
   setTimeout(bootWorkspace, 400);
 
@@ -3429,7 +3432,7 @@ document.addEventListener('DOMContentLoaded', function () {
       console.warn('[bootstrap] no .agent-node at 2s — retrying _loadWorkspaceAgents');
       try { if (typeof window._loadWorkspaceAgents === 'function') window._loadWorkspaceAgents(); } catch (e) {}
     }
-    if (!window._agentStatsData) {
+    if (!window._agentStatsData && _canvasOn()) {
       console.warn('[bootstrap] _agentStatsData still empty at 2s — retrying loadAgentStats');
       try { if (typeof loadAgentStats === 'function') loadAgentStats(); } catch (e) {}
     }
@@ -4484,7 +4487,7 @@ function prefill(text){var ta=document.getElementById('cmd-input');ta.value=text
 let execMode = 'approval'; // 'approval' or 'autopilot'
 
 // Fetch mode from server on load
-;window.luDefer(function(){(async function(){try{var r=await get(API+'exec/mode');execMode=r.mode||'approval';_updateModeUI();}catch(e){}})();});
+;window.luDefer(function(){setTimeout(function(){(async function(){try{var r=await get(API+'exec/mode');execMode=r.mode||'approval';_updateModeUI();}catch(e){}})();},15000);});   // perf 2026-09-21: out of the boot burst
 
 function _updateModeUI(){
   // Badge removed per user request — mode still functional via Settings
@@ -6076,7 +6079,21 @@ async function _appBootstrap() {
   // dropped connection is a transient — retried with back-off (1 s, 2 s, 4 s); if it still will not answer, the
   // customer enters with the access token they already hold and the 401 interceptor renews it once the server
   // answers again. Before this, `if (!r.ok) throw` sent every one of those to the login card with the tokens wiped.
-  var _boot = await _luBootRefresh(refreshToken);
+  // perf 2026-09-21 (EV-1084): an access token with more than two minutes left enters the app NOW; the boot renewal runs
+  // behind it and only a server "expired" answer sends the customer to the login card — the same outcome as before, a
+  // moment later. That takes the renewal round trip (0.7–4.5 s on a loaded box) off every cold load's critical path.
+  // A missing or nearly-expired token waits for the renewal exactly as before. RISK-0192's classification is unchanged.
+  var _expMs = 0; try { if (token !== 'refresh-pending') _expMs = (JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0) * 1000; } catch (_e) { _expMs = 0; }
+  var _boot;
+  if (_expMs - Date.now() > 120000) {
+    _boot = {};
+    _luBootRefresh(refreshToken).then(function (res) {
+      if (res && res.expired) { localStorage.removeItem('lu_token'); localStorage.removeItem('lu_refresh_token'); window.location.replace(window.location.pathname + window.location.search); }
+      else if (res && res.transient) { console.warn('[LU] session renewal unavailable at boot (' + res.reason + '); continuing with the held token'); }
+    }).catch(function () {});
+  } else {
+    _boot = await _luBootRefresh(refreshToken);
+  }
   if (_boot.expired) {
     localStorage.removeItem('lu_token');
     _renderLogin();
@@ -6617,7 +6634,7 @@ async function _checkTrialStatus() {
       if (cachedUser) {
         try { isAdmin = JSON.parse(cachedUser).is_platform_admin; } catch(_) {}
       }
-      if (!isAdmin) {
+      if (!cachedUser) {   // perf 2026-09-21: was !isAdmin — every non-admin customer re-fetched /auth/me on every 30 s credit poll
         // Fallback: check from auth/me only if not cached
         var meR = await _luFetch('GET', '/auth/me');
         if (meR.ok) {
@@ -7619,6 +7636,8 @@ function _cmdcIsCommandView() {
   return v && v.classList.contains('active');
 }
 async function _cmdcRefreshApprovalCount() {
+  if (Date.now() - (window._luApprovalCountAt || 0) < 15000) return;   // perf 2026-09-21: the boot kick and the Command Center's kick both fired within seconds
+  window._luApprovalCountAt = Date.now();
   try {
     var r = await _luFetch('GET', '/approvals/count');
     if (!r.ok) return;
