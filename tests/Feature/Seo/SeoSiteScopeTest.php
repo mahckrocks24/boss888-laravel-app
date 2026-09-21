@@ -22,15 +22,15 @@ class SeoSiteScopeTest extends TestCase
         parent::setUp();
         $uid = (int) DB::table('users')->min('id');
         $this->ws = (int) DB::table('workspaces')->insertGetId(['name' => 'seo-scope-test', 'slug' => 'seo-scope-test-' . uniqid(), 'created_by' => $uid, 'created_at' => now(), 'updated_at' => now()]);
-        $this->first = (int) DB::table('websites')->insertGetId(['workspace_id' => $this->ws, 'name' => 'First', 'slug' => 'scope-first-' . uniqid(), 'subdomain' => 'scope-first.levelupgrowth.io', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
-        $this->second = (int) DB::table('websites')->insertGetId(['workspace_id' => $this->ws, 'name' => 'Second', 'slug' => 'scope-second-' . uniqid(), 'subdomain' => 'scope-second.levelupgrowth.io', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
+        $this->first = (int) DB::table('websites')->insertGetId(['workspace_id' => $this->ws, 'name' => 'First', 'subdomain' => 'scope-first.levelupgrowth.io', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
+        $this->second = (int) DB::table('websites')->insertGetId(['workspace_id' => $this->ws, 'name' => 'Second', 'subdomain' => 'scope-second.levelupgrowth.io', 'status' => 'published', 'created_at' => now(), 'updated_at' => now()]);
         DB::table('seo_keywords')->insert([
             ['workspace_id' => $this->ws, 'keyword' => 'untargeted', 'target_url' => null, 'status' => 'tracking', 'volume' => 10, 'created_at' => now(), 'updated_at' => now()],
             ['workspace_id' => $this->ws, 'keyword' => 'second only', 'target_url' => 'https://scope-second.levelupgrowth.io/x', 'status' => 'tracking', 'volume' => 5, 'created_at' => now(), 'updated_at' => now()],
         ]);
         DB::table('seo_content_index')->insert([
-            ['workspace_id' => $this->ws, 'website_id' => $this->first, 'url' => 'https://scope-first.levelupgrowth.io/a', 'title' => 'A', 'content_score' => 40, 'word_count' => 500, 'inbound_links' => 1, 'created_at' => now(), 'updated_at' => now()],
-            ['workspace_id' => $this->ws, 'website_id' => $this->second, 'url' => 'https://scope-second.levelupgrowth.io/b', 'title' => 'B', 'content_score' => 90, 'word_count' => 500, 'inbound_links' => 1, 'created_at' => now(), 'updated_at' => now()],
+            ['workspace_id' => $this->ws, 'website_id' => $this->first, 'url' => 'https://scope-first.levelupgrowth.io/a', 'url_hash' => sha1('https://scope-first.levelupgrowth.io/a'), 'title' => 'A', 'content_score' => 40, 'word_count' => 500, 'inbound_links' => 1, 'created_at' => now(), 'updated_at' => now()],
+            ['workspace_id' => $this->ws, 'website_id' => $this->second, 'url' => 'https://scope-second.levelupgrowth.io/b', 'url_hash' => sha1('https://scope-second.levelupgrowth.io/b'), 'title' => 'B', 'content_score' => 90, 'word_count' => 500, 'inbound_links' => 1, 'created_at' => now(), 'updated_at' => now()],
         ]);
         ArticleScope::reset();
     }
