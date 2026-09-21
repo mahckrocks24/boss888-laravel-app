@@ -3308,6 +3308,9 @@ async function loadAgentStats(){
     }
     _agentStatsFails = 0;
     var agents = d.agents || [];
+    // Owner 2026-09-21: the Agents page lists the agents enabled on this workspace; the registry stays behind a toggle.
+    window._luEnabledAgents = agents.filter(function (a) { return a && a.enabled; }).map(function (a) { return a.agent_id; });
+    if (window.luRenderAgentsGrid) { try { luRenderAgentsGrid(true); } catch (_e) {} }
 
     // 2026-05-25 — publish per-agent stats globally so the drawer + workspace
     // command center can read the SAME source the agent grid card uses.
@@ -6951,10 +6954,9 @@ function _aqCardHtml(it) {
       + '✨ Meeting #' + mt.id + ' · ' + mtTitle + '</span>';
   }
 
+  // Owner 2026-09-21: the raw payload field names (title, article_id, created_via, execution_id…) were shown as chips on
+  // every Review Queue card — a debugging leftover and an internal-id leak (EV-1060). Nothing of the payload is shown.
   var payloadBits = '';
-  if (task && Array.isArray(task.payload_keys) && task.payload_keys.length) {
-    payloadBits = '<div class="aq-card-payload">' + task.payload_keys.map(function(k){ return '<code>' + _cmdcEsc(k) + '</code>'; }).join('') + '</div>';
-  }
 
   var actions = '';
   if (isPending) {

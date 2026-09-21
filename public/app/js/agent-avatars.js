@@ -64,23 +64,41 @@
 (function () {
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]; }); }
   var TEAM = { dmm: 'Leadership', builder: 'Website', seo: 'Search', content: 'Content', social: 'Social', crm: 'Customers' };
-  window.luRenderAgentsGrid = function () {
-    var g = document.getElementById('av-grid'); if (!g || g.dataset.built === '1' || typeof window.luWorkforce !== 'function') return;
+  /* Owner 2026-09-21: only the agents enabled on THIS workspace are the team (window._luEnabledAgents, from
+     /api/agents/dashboard via loadAgentStats); everyone else waits behind one "More specialists" toggle. Until the
+     enabled list is known the grid shows a one-line placeholder rather than the whole registry (no 12-then-5 flash). */
+  window.luRenderAgentsGrid = function (force) {
+    var g = document.getElementById('av-grid'); if (!g || (!force && g.dataset.built === '1') || typeof window.luWorkforce !== 'function') return;
+    var enabled = window._luEnabledAgents;
+    if (!enabled) { g.dataset.built = '0'; g.innerHTML = '<div style="grid-column:1/-1;color:var(--t3);font-size:12px">Loading your team…</div>'; return; }
     g.dataset.built = '1';
-    var html = '', lastTeam = null;
-    window.luWorkforce().forEach(function (a) {
+    var html = '', lastTeam = null, more = 0, moreHtml = '';
+    var card = function (a) {
       var ui = a.slug === 'sarah' ? 'dmm' : a.slug;
-      var team = TEAM[a.category] || a.category;
-      if (team !== lastTeam) { html += '<div class="av-team" style="grid-column:1/-1;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700;margin:' + (lastTeam ? '10px' : '0') + ' 0 -4px">' + esc(team) + '</div>'; lastTeam = team; }
       var open = a.slug === 'arthur' ? "window.nav&&nav('websites')" : "openAgentDrawer('" + ui + "')";
-      html += '<div class="av-card" onclick="' + open + '" data-agent="' + esc(a.slug) + '">'
+      return '<div class="av-card" onclick="' + open + '" data-agent="' + esc(a.slug) + '">'
         + '<div class="av-card-top"><div class="av-card-av" style="background:transparent;border:none">' + window.luAvatar(a.slug, 'md') + '</div>'
         + '<div><div class="av-card-name" style="color:var(--t1)">' + esc(a.name) + '</div><div class="av-card-role">' + esc(a.title) + '</div></div></div>'
         + '<div class="av-card-stats"><div class="av-stat"><div class="av-stat-val" id="av-ongoing-' + ui + '">—</div><div class="av-stat-lbl">Ongoing</div></div>'
         + '<div class="av-stat"><div class="av-stat-val" id="av-upcoming-' + ui + '">—</div><div class="av-stat-lbl">Upcoming</div></div>'
         + '<div class="av-stat"><div class="av-stat-val" id="av-completed-' + ui + '">—</div><div class="av-stat-lbl">Done</div></div></div>'
         + '<div class="av-card-expertise">' + esc((a.skills || []).join(' · ')) + '</div></div>';
+    };
+    window.luWorkforce().forEach(function (a) {
+      var on = a.slug === 'sarah' || enabled.indexOf(a.slug) >= 0;
+      if (!on) { more++; moreHtml += card(a); return; }
+      var team = TEAM[a.category] || a.category;
+      if (team !== lastTeam) { html += '<div class="av-team" style="grid-column:1/-1;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);font-weight:700;margin:' + (lastTeam ? '10px' : '0') + ' 0 -4px">' + esc(team) + '</div>'; lastTeam = team; }
+      html += card(a);
     });
+    if (more) {
+      var label = function (o) { return (o ? 'Hide ' : 'Show ') + more + ' more specialist' + (more === 1 ? '' : 's') + ' you can enable'; };
+      html += '<div style="grid-column:1/-1;margin-top:8px"><button type="button" class="ct-btn" id="av-more-btn" aria-expanded="false" aria-controls="av-more">' + label(false) + '</button></div>'
+        + '<div id="av-more" class="av-grid" style="grid-column:1/-1;display:none">' + moreHtml + '</div>';
+    }
     g.innerHTML = html;
+    var btn = document.getElementById('av-more-btn');
+    if (btn) { btn.addEventListener('click', function () { var m = document.getElementById('av-more'); var open = m.style.display === 'none'; m.style.display = open ? 'grid' : 'none'; btn.setAttribute('aria-expanded', open ? 'true' : 'false'); btn.textContent = (open ? 'Hide ' : 'Show ') + more + ' more specialist' + (more === 1 ? '' : 's') + ' you can enable'; }); }
+    if (typeof window.updateNodeCounts === 'function') { try { window.updateNodeCounts(); } catch (e) {} }
   };
 })();
