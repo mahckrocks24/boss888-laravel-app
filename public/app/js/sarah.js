@@ -118,6 +118,9 @@
       /* ATTACH-1: the composer library inserts its own paperclip next to the textarea — Sarah has one attach control, the plus. */
       '.sh-compose .lu-att-paperclip{display:none !important}',
       '.sh-hint{max-width:920px;margin:6px auto 0;font-size:11.5px;color:var(--t2);text-align:center}',
+      '.sh-min{margin-left:auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}',
+      '.sh-min:hover{color:var(--t1);border-color:var(--p)}.sh-min:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
+      '.sh-top .sh-ctx{margin-left:auto}.sh-top .sh-ctx+.sh-min{margin-left:0}',
       '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:none;overflow:visible}',
       /* RAIL-3: one horizontal snap strip at every width — fixed-width cards, swipe/scroll for the rest. */
       '.sh-rail-track{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;margin:0 -16px;padding:0 16px 8px;scroll-padding:0 16px}',
@@ -166,6 +169,8 @@
             '<div class="sh-who"><div class="sh-name">Sarah</div><div class="sh-role">Your digital marketing manager</div></div>' +
             /* WS-PICK-REMOVE (2026-08-31): a label, not a switch. Sarah works across everything the user owns. */
             '<div class="sh-ctx" id="sh-ctx" title="The business Sarah is working for"><span aria-hidden="true">◎</span><b id="sh-ctx-name">…</b></div>' +
+            /* Owner 2026-09-21: a close button minimises Sarah — back to where the customer came from (the floater brings her back). */
+            '<button type="button" class="sh-min" id="sh-min" aria-label="Minimize Sarah" title="Minimize" onclick="sarahMinimize()"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button>' +
           '</div>' +
           '<div class="sh-brief" id="sh-brief" aria-label="Today at a glance"></div>' +
           '<div class="sh-rail" id="sh-rail" aria-label="Needs your attention" hidden></div>' +
@@ -209,6 +214,12 @@
     loadContext(); loadBriefing(); loadRail(); loadThread(); startEvents();
   };
   window.sarahUnload = function () { stopEvents(); };
+  /* Minimise: the view the customer came from; otherwise the mode's home (Command Center in Advanced, Needs your OK in Basic). */
+  window.sarahMinimize = function () {
+    var prev = window._luPrevView, basic = document.documentElement.getAttribute('data-mode') === 'basic';
+    var target = (prev && prev !== 'sarah') ? prev : (basic ? 'attention' : 'command');
+    if (typeof window.nav === 'function') { window.nav(target); } else { location.href = '/app/' + target; }
+  };
 
   /* ── Context + briefing (grounded, never invented) ─────────────────────────────────────────── */
   /* WS-PICK-REMOVE (2026-08-31): the workspace picker that lived here is gone — the Owner never asked for it. */

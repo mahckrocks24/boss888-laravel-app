@@ -1237,6 +1237,7 @@ async function nav(view, opts){
   el.classList.add('active');
   var ni=document.getElementById('ni-'+(_requested||view));if(ni)ni.classList.add('active');
   document.querySelectorAll('.nav-item[data-nav-view="'+(_requested||view)+'"]').forEach(function(b){ b.classList.add('active'); });   // B3: a second menu entry for the same view (Results in Advanced)
+  if(currentView!==(_requested||view)) window._luPrevView=currentView; // Sarah's minimise returns here
   currentView=_requested||view;
   // v5.7.19 (2026-05-31) — Phase 1.0 URL routing. Push the URL after the
   // view has been resolved (so unknown views never pollute history), and

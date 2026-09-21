@@ -73,8 +73,6 @@
   /* a long placeholder is one clipped line, not two lines cut in half */
   [id^="view-"] textarea::placeholder,[id^="view-"] input::placeholder{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  /* the floating orb never sits on the last row of a view */
-  [id^="view-"]{padding-bottom:88px}
 }
 
 /* ---- narrow laptops (the Owner's 1008px window at 150%) --------------------------------------------------- */
