@@ -22,7 +22,9 @@
   function narrow() { return w.innerWidth <= NARROW; }
   function xScroller(el) { var p = el.parentElement; while (p && p !== d.body) { var cs = w.getComputedStyle(p); if (/auto|scroll/.test(cs.overflowX)) { return p; } p = p.parentElement; } return null; }
   function wrapTables(root) {
-    var ts = root.querySelectorAll ? root.querySelectorAll('table') : [];
+    /* the added node may itself be the table, or a row inside one (an engine that rewrites tbody) */
+    var ts = root.querySelectorAll ? Array.prototype.slice.call(root.querySelectorAll('table')) : [];
+    var own = root.tagName === 'TABLE' ? root : (root.closest ? root.closest('table') : null); if (own && ts.indexOf(own) < 0) { ts.push(own); }
     for (var i = 0; i < ts.length; i++) {
       var t = ts[i];
       if (t.closest('.lu-tscroll') || t.closest('[data-lu-nowrap]')) { continue; }
@@ -36,7 +38,11 @@
   function tracks(cs) { var g = cs.gridTemplateColumns; if (!g || g === 'none') { return 0; } return g.trim().split(/\s+/).filter(function (x) { return x !== '/'; }).length; }
   function strips(root) {
     var isNarrow = narrow();
-    var els = root.querySelectorAll ? root.querySelectorAll('.lu-hstrip, .lu-stack, [style*="grid-template-columns"], [class*="grid"], [class*="kpi"], [class*="stats"], [class*="metrics"], [class*="cards"]') : [];
+    var SEL = '.lu-hstrip, .lu-stack, [style*="grid-template-columns"], [class*="grid"], [class*="kpi"], [class*="stats"], [class*="metrics"], [class*="cards"]';
+    var els = root.querySelectorAll ? Array.prototype.slice.call(root.querySelectorAll(SEL)) : [];
+    if (root.matches && root.matches(SEL)) { els.push(root); }
+    /* a card added to a grid: re-read the grid it landed in */
+    if (root.parentElement && root.parentElement.matches && root.parentElement.matches(SEL) && els.indexOf(root.parentElement) < 0) { els.push(root.parentElement); }
     for (var i = 0; i < els.length; i++) {
       var e = els[i];
       if (e.offsetParent === null) { continue; } /* not laid out: another view or a closed panel */
@@ -78,11 +84,15 @@
   function start() {
     run([d.body]);
     new MutationObserver(function (muts) {
+      /* added content is treated INSIDE the observer callback (a microtask, before the next paint): the customer never
+         sees the desktop arrangement flash before the phone one. Only view switches and resizes are debounced. */
+      var added = [];
       for (var i = 0; i < muts.length; i++) {
         var m = muts[i];
-        if (m.type === 'childList') { for (var k = 0; k < m.addedNodes.length; k++) { var n = m.addedNodes[k]; if (n.nodeType === 1 && !n.closest('.lu-sel-menu, .lucp')) { queue.push(n); } } }
+        if (m.type === 'childList') { for (var k = 0; k < m.addedNodes.length; k++) { var n = m.addedNodes[k]; if (n.nodeType === 1 && !n.closest('.lu-sel-menu, .lucp')) { added.push(n); } } }
         else if (m.target && m.target.id && m.target.id.indexOf('view-') === 0) { queue.push(m.target); } /* a view shown or hidden */
       }
+      if (added.length) { run(added); }
       if (queue.length) { schedule(); }
     }).observe(d.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class', 'hidden'] });
     w.addEventListener('resize', function () { schedule(); });

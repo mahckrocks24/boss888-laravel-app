@@ -83,16 +83,12 @@ try{
   });
 }catch(e){}
 
+/* Owner 2026-09-21: the floater is Sarah and opens Sarah — never the all-agents modal, in Advanced too. The modal
+   code below is kept only for the /app/messages page it shares helpers with; nothing calls _msgCreateModal any more. */
 window._msgToggle=function(){
-  _msg.open=!_msg.open;
-  var modal=document.getElementById('lu-msg-modal');
-  if(!modal){_msgCreateModal();modal=document.getElementById('lu-msg-modal');}
-  if(_msg.open){
-    modal.style.display='flex';
-    _msgLoadConversations();
-  }else{
-    modal.style.display='none';
-  }
+  _msg.open=false;
+  var modal=document.getElementById('lu-msg-modal'); if(modal) modal.style.display='none';
+  if(typeof window.nav==='function'){ window.nav('sarah'); } else { location.href='/app/sarah'; }
 }
 
 // ── Modal ──────────────────────────────────────────────────────────────────

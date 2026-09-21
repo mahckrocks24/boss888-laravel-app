@@ -240,8 +240,8 @@
   function start() {
     scan(d.body);
     new MutationObserver(function (muts) {
-      for (var i = 0; i < muts.length; i++) { var m = muts[i]; for (var k = 0; k < m.addedNodes.length; k++) { var n = m.addedNodes[k]; if (n.nodeType === 1 && !n.closest('.lu-sel, .lu-sel-menu, .lu-color, .lucp')) { queue.push(n); } } }
-      if (queue.length) { schedule(); }
+      /* enhanced inside the callback (a microtask, before paint): no native box flashes before the listbox */
+      for (var i = 0; i < muts.length; i++) { var m = muts[i]; for (var k = 0; k < m.addedNodes.length; k++) { var n = m.addedNodes[k]; if (n.nodeType === 1 && n.isConnected && !n.closest('.lu-sel, .lu-sel-menu, .lu-color, .lucp')) { scan(n); } } }
     }).observe(d.body, { childList: true, subtree: true });
   }
   if (d.readyState === 'loading') { d.addEventListener('DOMContentLoaded', start); } else { start(); }
