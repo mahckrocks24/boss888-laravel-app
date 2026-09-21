@@ -267,6 +267,10 @@ class SectionSchema
             'required' => ['steps'],
             'optional' => ['heading', 'subheading', 'numbered'],
         ],
+        // SGTRAVEL T2 (2026-09-21) — /book page: a card that opens the travel inquiry drawer (travel-friendly theme)
+        'booking_wizard' => [
+            'optional' => ['heading', 'body', 'cta_text'],
+        ],
         'case_studies' => [
             'optional' => ['heading', 'subheading', 'limit', 'layout', 'practice', 'sector', 'show_filters', 'filter_by', 'hide_when_empty', 'empty_text', 'cta_text', 'cta_url'],
         ],

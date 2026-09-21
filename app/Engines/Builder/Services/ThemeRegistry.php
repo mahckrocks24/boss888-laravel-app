@@ -24,6 +24,7 @@ final class ThemeRegistry
         'amg-travel'   => AmgTravelTheme::class,
         'kabayan-news' => KabayanNewsTheme::class,
         'mrdigital-enterprise' => MrDigitalEnterpriseTheme::class, // MRDIGITAL888 G1 (2026-09-17)
+        'travel-friendly' => TravelFriendlyTheme::class, // SGTRAVEL T1 (2026-09-21) — AMG Friendly design, brand-driven
     ];
 
     public static function resolve(?string $key): ?object
