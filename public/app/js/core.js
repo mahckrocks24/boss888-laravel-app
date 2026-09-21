@@ -2629,7 +2629,7 @@ function _acStartEventPoll(drawerSlug){
       if(window._agentChatPollFails>=5){ console.warn('[AgentChat] live event poll disabled after 5 failures'); _acStopEventPoll(); }
     }
   };
-  window._agentChatEventTimer = setInterval(tick, 2500);
+  window._agentChatEventTimer = setInterval(tick, window._luPollMs || 5000);   // perf 2026-09-21: the served poll interval (config/chat.php), 5 s
   tick();
 }
 function _acStopEventPoll(){
@@ -3113,7 +3113,7 @@ async function sendAgentMessage(quickAction, overrideMessage){
       // 2026-06-15 — register the ack row id so the always-on event poller
       // (/api/agent/events) dedups it and never double-renders this turn.
       try{ if(ackId && window._agentChatRendered && window._agentChatRendered[currentAgent]) window._agentChatRendered[currentAgent].add(String(ackId)); }catch(_e){}
-      var pollIntervalMs = d.poll_interval_ms || 2500;
+      var pollIntervalMs = d.poll_interval_ms || 5000; window._luPollMs = pollIntervalMs;
       var maxPolls = Math.ceil(90000 / pollIntervalMs); // 90s safety cap
       var polls = 0;
       var pollHandle = null;

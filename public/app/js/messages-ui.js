@@ -246,7 +246,7 @@ function _msgTwoPhase(feed, resp, uiSlug, opts){
 
   // Phase 2 — bounded poll for the final row (same cadence/cap as core.js).
   var ackId    = resp.ack_message_id || 0;
-  var everyMs  = resp.poll_interval_ms || 2500;
+  var everyMs  = resp.poll_interval_ms || 5000;
   var maxPolls = Math.ceil(90000 / everyMs);
   var polls    = 0;
   var key      = uiSlug + ':' + ackId;

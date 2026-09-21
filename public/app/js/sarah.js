@@ -16,7 +16,7 @@
   'use strict';
   var SLUG = 'dmm';                       // Sarah's UI slug (server maps dmm → sarah)
   var CONV = 'sarah';                     // conversation id used by /agent/events
-  var POLL_MS = 2500, POLL_MAX_MS = 90000;
+  var POLL_MS = window._luPollMs || 5000, POLL_MAX_MS = 90000;   // perf 2026-09-21: 5 s, served by config/chat.php
   var S = { root: null, feed: null, input: null, sendBtn: null, cursor: null, evTimer: null, evFails: 0,
             rendered: {}, activePoll: null, lastFacts: null, orchestration: null, mounted: false };
 
@@ -507,6 +507,7 @@
         S.lastAgentText = String(d.ack).trim(); S.lastAgentAt = Date.now();
         /* DEC-0030: a complex turn shows ONE truthful working strip (from the ack's work_state); a simple turn keeps the bare dot. */
         if (d.work_state) { showWorking(d.work_state); } else { showOrch(null); }
+        if (d.poll_interval_ms) { window._luPollMs = d.poll_interval_ms; }
         pollFinal(ackId, d.poll_interval_ms || POLL_MS); return;
       }
       if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); S.lastAgentText = String(d.reply).trim(); S.lastAgentAt = Date.now(); if (d.id) { S.rendered[String(d.id)] = 1; if (+d.id > (S.lastMid || 0)) S.lastMid = +d.id; } }
