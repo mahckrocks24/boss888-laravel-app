@@ -46,7 +46,9 @@
 
   var CHEV = '<svg class="lu-sel-chev" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 8l5 5 5-5"/></svg>';
   var open = null; /* { sel, btn, menu } */
-  var COPY = ['font-size', 'font-weight', 'font-family', 'letter-spacing', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-left-radius', 'border-bottom-right-radius', 'color', 'background-color', 'border-top-color', 'border-top-width', 'border-top-style', 'min-height', 'height'];
+  /* geometry only: colours are the shell's tokens (Owner 2026-09-21: a white listbox on the dark SEO page — the select's own
+     colour tokens were unresolved at enhance time and the browser default was copied) */
+  var COPY = ['font-size', 'font-weight', 'font-family', 'letter-spacing', 'padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'border-top-left-radius', 'border-top-right-radius', 'border-bottom-left-radius', 'border-bottom-right-radius', 'border-top-width', 'border-top-style', 'min-height', 'height'];
 
   function skip(sel) {
     return sel.multiple || sel.size > 1 || sel.getAttribute('data-native') === '1' || sel.closest('.lu-sel, .luc-lb') || sel.__luSel;

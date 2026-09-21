@@ -469,7 +469,10 @@
       S.feed.innerHTML = ''; S.rendered = {};
       if (!arr.length) { S.feed.appendChild(renderEmpty()); return; }
       arr.forEach(function (m) { if (m.is_ack) return; S.feed.appendChild(bubble(m)); if (m.id) { S.rendered[String(m.id)] = 1; if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; } });
-      S.feed.scrollTop = S.feed.scrollHeight;
+      // Owner 2026-09-21: the history used to animate from the oldest message to the newest (scroll-behavior:smooth on the
+      // feed). The first paint is the latest message: jump without animation; smooth stays for messages that arrive later.
+      S.feed.style.scrollBehavior = 'auto'; S.feed.scrollTop = S.feed.scrollHeight;
+      requestAnimationFrame(function () { S.feed.scrollTop = S.feed.scrollHeight; requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); });
     }).catch(function () { S.feed.innerHTML = '<div class="sh-card fail">Couldn\'t load the conversation — <button type="button" class="sh-btn" onclick="sarahLoad(document.getElementById(\'sarah-root\'))">try again</button></div>'; });
   }
 

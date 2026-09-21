@@ -98,14 +98,19 @@ window.crmLoad = async function(el) {
 
     el.innerHTML = loadingCard(300);
 
-    var dash    = await _crmGet('/dashboard').catch(function(e){console.warn('[LuCRM] dash:',e.message);return null;});
-    var stages  = await _crmGet('/pipeline/stages').catch(function(){return [];});
-    var leads   = await _crmGet('/leads').catch(function(){return {leads:[]};});
-    var contacts= await _crmGet('/contacts').catch(function(){return {contacts:[]};});  // PATCH 10 Fix 8
-    var modules = await _crmGet('/modules').catch(function(){return {};});
-    var settings= await _crmGet('/settings').catch(function(){return {};});
-    var tasks   = await _crmGet('/tasks?status=pending').catch(function(){return {tasks:[]};});
-    var appts   = await _crmGet('/appointments?upcoming=1').catch(function(){return {appointments:[]};});
+    // Owner 2026-09-21 ("CRM page takes 10 sec"): the eight loads ran one after another (3.8 s -> 18.7 s on a phone).
+    // They are independent; ask for all of them at once.
+    var _all = await Promise.all([
+      _crmGet('/dashboard').catch(function(e){console.warn('[LuCRM] dash:',e.message);return null;}),
+      _crmGet('/pipeline/stages').catch(function(){return [];}),
+      _crmGet('/leads').catch(function(){return {leads:[]};}),
+      _crmGet('/contacts').catch(function(){return {contacts:[]};}),  // PATCH 10 Fix 8
+      _crmGet('/modules').catch(function(){return {};}),
+      _crmGet('/settings').catch(function(){return {};}),
+      _crmGet('/tasks?status=pending').catch(function(){return {tasks:[]};}),
+      _crmGet('/appointments?upcoming=1').catch(function(){return {appointments:[]};})
+    ]);
+    var dash = _all[0], stages = _all[1], leads = _all[2], contacts = _all[3], modules = _all[4], settings = _all[5], tasks = _all[6], appts = _all[7];
 
     _crm.dash     = dash;
     _crm.stages   = Array.isArray(stages) ? stages : [];
@@ -198,7 +203,7 @@ function _crmRender(el) {
 
     el.innerHTML =
         '<div style="padding:24px;min-height:100%;box-sizing:border-box">' +
-            '<div class="page-header" style="margin-top:10px"><div class="page-header-left"><h1>CRM</h1></div></div>' +
+            '<div class="page-header" style="margin-top:10px"><div class="page-header-left"><h1>Clients</h1></div></div>' +
             '<div class="crm-tab-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--bd);padding-bottom:16px">'+tabsHtml+'</div>' +
             body +
         '</div>';
