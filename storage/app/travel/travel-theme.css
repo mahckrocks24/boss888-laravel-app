@@ -781,3 +781,6 @@ input[data-datepick]{cursor:pointer}
 /* off-canvas menu: never visible when closed (its content can be taller than the slide on short viewports), and not part of desktop at all */
 .mobile-nav:not(.is-open){visibility:hidden;pointer-events:none}.mobile-nav{overflow:auto;transition:transform .35s ease,visibility 0s linear .35s}.mobile-nav.is-open{visibility:visible;transition:transform .35s ease,visibility 0s}
 @media (min-width:981px){.mobile-nav{display:none!important}}
+/* phone: bigger logo (the burger is the only other thing in the bar) */
+@media (max-width:980px){.brand__logo{height:60px!important;max-width:min(300px,calc(100vw - 120px))}.site-head__inner{height:84px}}
+@media (max-width:420px){.brand__logo{height:56px!important;max-width:calc(100vw - 110px)}}
