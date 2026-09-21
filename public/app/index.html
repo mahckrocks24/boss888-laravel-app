@@ -3002,10 +3002,10 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('attention')" id="ni-attention" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l7 12H3z"/><path d="M10 8v3M10 13.5h.01"/></svg></span>Needs attention<span class="cmd-nav-badge" id="ni-attention-badge" style="margin-left:auto;display:none"></span></button>
       <!-- Owner 2026-09-21: Results removed — it duplicated the Command Center; nav('results') lands there. -->
       <button type="button" class="nav-item" onclick="nav('websites')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Websites</button>
-      <button type="button" class="nav-item" onclick="nav('customers')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Customers</button>
+      <button type="button" class="nav-item" onclick="nav('crm')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Clients</button>
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Settings</button>
       <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
-      <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced')" id="ni-advanced" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
+      <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced'); if (window.nav) nav('command');" id="ni-advanced" data-basic="1" title="Open the Command Center in Advanced"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
       <!-- /* b24-sidebar-reorganized */ -->
       <div class="nav-section">Workspace</div>
       <button type="button" class="nav-item" onclick="nav('workspace')" id="ni-workspace" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Workspace</button>
@@ -3028,7 +3028,7 @@ window.luSwipeToClose = luSwipeToClose;
       <!-- REMOVED: Review Queue (ni-previews) — v5.5.2 — legacy "Action Previews" (Phase 6.5) reading /api/previews which references non-existent `previews` table. Canonical Review Queue is ni-approvals → /api/approvals. Router redirects nav('previews') → nav('approvals'). -->
     <div class="nav-section">Engines</div>
             <button type="button" class="nav-item" onclick="nav('crm')" id="ni-crm" data-adv="1">
-        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6" r="3"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7"/></svg></span>CRM</button>
+        <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6" r="3"/><path d="M3 18c0-3.866 3.134-7 7-7s7 3.134 7 7"/></svg></span>Clients</button>
             <button type="button" class="nav-item" onclick="nav('seo')" id="ni-seo" data-feature="seo_suite" data-adv="1">
         <span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="9" r="5.5"/><path d="M17 17l-3.5-3.5"/><path d="M7 9h4M9 7v4"/></svg></span>SEO</button>
             <button type="button" class="nav-item" onclick="nav('write')" id="ni-write" data-feature="content_writing" data-adv="1">
@@ -4605,7 +4605,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=1.0.1-p0e',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=onepicker-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920'}};
+  engineUrls: {crm:'/app/js/crm.js?v=clients2-20260921',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4823,9 +4823,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<script defer src="/app/js/agent-avatars.js?v=team2-20260921"></script>
-<script defer src="/app/js/orb.js?v=av1-20260915"></script>
-<script defer src="/app/js/lu-attach-composer.js?v=attach3-20260830"></script>
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=6d67ed5095"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
@@ -4835,30 +4833,15 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
      resolves ?w= deep links and auto-selects the single site of a one-site business, which is every
      workspace bar fourteen. Do not reintroduce a selector here. -->
 <script src="/app/js/website-context.js?v=r192b-20260919"></script>
-<script defer src="/app/js/lu-controls.js?v=luc-20260910"></script>
-<script defer src="/app/js/lu-colorpicker.js?v=arthur-i-20260903"></script>
 <!-- RISK-0199 (2026-09-21): the shell inside the screen on a phone or a narrow window; every dropdown, colour picker,
      modal and scroller is the site's own CSS (Owner rule). lu-responsive.js marks tables/KPI rows, lu-mobile.css lays them out,
      lu-select.js upgrades every <select> and input[type=color]. -->
-<link rel="stylesheet" href="/app/css/lu-mobile.css?v=r199m-20260921">
-<script defer src="/app/js/lu-responsive.js?v=r199m-20260921"></script>
-<script defer src="/app/js/lu-select.js?v=r199m-20260921"></script>
+<link rel="stylesheet" href="/app/css/lu-mobile.css?v=r199m2-20260921">
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=c11-20260921"></script>
-<script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
-<script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
-<script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
-<script defer src="/app/js/prompt-studio.js?v=rfc9c-20260916"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=contrast2-20260908">
-<script defer src="/app/js/onboarding.js?v=login-20260911"></script>
 <!-- EV-1043 (2026-09-15): onboarding-interview.js retired — Sarah introduces herself inside her own thread, never on a separate screen. -->
 <!-- Phase 3 (2026-04-19): global media picker — window.openMediaPicker(opts, cb) -->
-<script defer src="/app/js/media-picker.js?v=brand-20260911"></script>
-<script defer src="/app/js/lu-crop.js?v=crop2-20260906"></script>
-<script defer src="/app/js/domains-commerce.js?v=brand-20260911"></script>
-<script defer src="/app/js/business-email.js?v=brand-20260911"></script>
 <!-- v5.0.1 swap 2026-04-10: old builder.js loads first to provide websites view + non-renderer logic; v5 loads second and overrides editor renderer chain via function declaration hoisting. -->
-<script defer src="/app/js/builder.js?v=cat4-20260921"></script>
 
 
 
@@ -5024,12 +5007,6 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 
 <!-- JS in core.js -->
 
-<script defer src="/app/js/messages-ui.js?v=poll30-20260921"></script>
-<script defer src="/app/js/sarah.js?v=poll5-20260921"></script>
-<script defer src="/app/js/basic.js?v=c1b-20260920"></script>
-<script defer src="/app/js/aria.js?v=av1-20260915"></script>
-<script defer src="/app/js/arthur-chat.js?v=av1-20260915"></script>
-<script defer src="/app/js/chatbot-spa.js?v=kblib-20260910"></script>
 
 <script>
 /* Block left-edge swipe → browser back. Only the leftmost 20px catches it,

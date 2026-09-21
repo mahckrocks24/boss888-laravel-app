@@ -899,13 +899,13 @@ window._luRouter = (function () {
     attention:  'Needs attention',
     results:    'Results',
     website:    'Website',
-    customers:  'Customers',
+    customers:  'Clients',
     account:    'Account',
     aria:       'Aria',
     workspace:  'Workspace',
     infrastructure: 'Hosting',
     command:    'Command Center',
-    crm:        'CRM',
+    crm:        'Clients',
     seo:        'SEO',
     write:      'Write',
     blog:       'Blog',
@@ -1219,6 +1219,7 @@ async function nav(view, opts){
   // Basic's Website page is the same Websites page Advanced has.
   if (view === 'results') { view = 'command'; _requested = 'command'; }
   if (view === 'website') { view = 'websites'; _requested = 'websites'; }
+  if (view === 'customers') { view = 'crm'; _requested = 'crm'; }   // Owner 2026-09-21: Basic opens the CRM engine, both called Clients
   if (view === 'account') { view = 'settings'; _requested = 'settings'; }   // Owner 2026-09-21: Basic's Account duplicated Settings
   if (typeof window.sarahUnload === 'function' && view !== 'sarah') { try { window.sarahUnload(); } catch (_e) {} }
   document.querySelectorAll('.view').forEach(v=>{
