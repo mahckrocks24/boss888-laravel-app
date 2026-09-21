@@ -2471,7 +2471,30 @@ html:not([data-theme="light"]) .aq-tab.active .aq-tab-count{color:#9C8FFF}
 .aq-age-fresh{background:rgba(0,229,168,.12);color:var(--ac)}
 .aq-age-warn{background:rgba(245,158,11,.12);color:var(--am)}
 .aq-age-old{background:rgba(248,113,113,.14);color:var(--rd)}
-.aq-card-actions{display:flex;gap:6px}
+.aq-card-actions{display:flex;gap:8px;margin-left:auto;flex:none}
+/* Review Queue cards (Owner 2026-09-21): one aligned row of chips, a clamped description, a footer whose buttons never
+   wrap; on a phone the two buttons share one full-width row under the age chip. */
+.aq-card{padding:14px 16px 12px}
+.aq-card-head{align-items:center;gap:10px;margin-bottom:8px}
+.aq-checkbox{margin-top:0;accent-color:var(--p)}
+.aq-card-title{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.aq-card-sub{gap:6px;row-gap:6px;margin-top:6px}
+.aq-card-sub>*{white-space:nowrap}
+.aq-credits{font-size:10.5px;color:var(--t3);background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:1px 8px;font-weight:600}
+.aq-card-desc{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;padding-left:0;margin:4px 0 12px}
+.aq-card-foot{padding-left:0;flex-wrap:wrap;gap:10px;align-items:center}
+.aq-age{white-space:nowrap;line-height:1.6;flex:none}
+.aq-btn{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;padding:0 16px;min-height:38px;line-height:1}
+#aq-tabs{overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#aq-tabs::-webkit-scrollbar{display:none}
+#aq-tabs .aq-tab{white-space:nowrap;flex:0 0 auto}
+@media (max-width:640px){
+  .aq-card{padding:14px}
+  .aq-card-foot{flex-direction:column;align-items:stretch;gap:10px}
+  .aq-card-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-left:0;width:100%}
+  .aq-btn{width:100%;min-height:42px}
+  .aq-age{align-self:flex-start}
+}
 .aq-btn{font-size:12px;font-weight:600;padding:7px 14px;border-radius:7px;border:1px solid transparent;cursor:pointer;transition:all 120ms}
 .aq-btn-approve{background:var(--p);color:#fff;border-color:var(--p)}
 .aq-btn-approve:hover{filter:brightness(1.1)}
@@ -4808,11 +4831,11 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <!-- RISK-0199 (2026-09-21): the shell inside the screen on a phone or a narrow window; every dropdown, colour picker,
      modal and scroller is the site's own CSS (Owner rule). lu-responsive.js marks tables/KPI rows, lu-mobile.css lays them out,
      lu-select.js upgrades every <select> and input[type=color]. -->
-<link rel="stylesheet" href="/app/css/lu-mobile.css?v=r199l-20260921">
-<script defer src="/app/js/lu-responsive.js?v=r199l-20260921"></script>
-<script defer src="/app/js/lu-select.js?v=r199l-20260921"></script>
+<link rel="stylesheet" href="/app/css/lu-mobile.css?v=r199m-20260921">
+<script defer src="/app/js/lu-responsive.js?v=r199m-20260921"></script>
+<script defer src="/app/js/lu-select.js?v=r199m-20260921"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=c4-20260921"></script>
+<script defer src="/app/js/core.js?v=c5-20260921"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>

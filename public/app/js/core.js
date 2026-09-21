@@ -6925,7 +6925,7 @@ function _aqCardHtml(it) {
   }
   var engineChip = '<span class="aq-engine-badge" style="background:' + _badgeBg + ';color:' + _badgeInk + '">' + _cmdcEsc(engineBadge.name) + '</span>';
   var agentLine  = '<span class="aq-agent-line"><span style="width:6px;height:6px;border-radius:50%;background:' + agent.color + '"></span>' + _cmdcEsc(agent.name) + '</span>';
-  var creditLine = task && task.credit_cost ? '<span style="font-size:11px;color:var(--t3)">· ' + task.credit_cost + ' credits</span>' : '';
+  var creditLine = task && task.credit_cost ? '<span class="aq-credits">' + task.credit_cost + ' credit' + (Number(task.credit_cost) === 1 ? '' : 's') + '</span>' : '';
   // 2026-05-27 — meeting-origin chip: surface Strategy Room source so the user
   // can mentally connect this approval to the meeting that produced it. Click
   // opens a transcript modal via window._aqOpenMeetingModal.

@@ -98,3 +98,9 @@ html.lu-booting #lu-messages-floater,html.lu-booting #sarah-orb,html.lu-booting 
   #sb-credit-widget{flex:0 0 auto!important;height:auto!important;max-height:none!important;min-height:auto!important;overflow:visible}
   #sb-mode-toggle{margin-top:12px}
 }
+
+/* ---- the Sarah floater sits bottom-right whenever the sidebar is a drawer (≤1023px) instead of 228px from the left,
+        where it floated over the content of a laptop window ---- */
+@media (max-width:1023px){
+  #lu-messages-floater{left:auto!important;right:16px!important;bottom:calc(20px + var(--safe-bottom,0px))!important}
+}
