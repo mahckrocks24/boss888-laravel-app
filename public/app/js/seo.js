@@ -1646,6 +1646,20 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // Wave 16 (2026-05-19), restored 2026-08-31 (SEO-SITEBAR-1). Site-list fetch + dropdown render + switcher.
   // This bar picks a WEBSITE inside the current business. It must never list or switch workspaces: a workspace is
   // the business boundary, and offering other businesses here showed customers websites that were not theirs.
+  // Pick the workspace's primary website to default to: the oldest (lowest numeric id) site.
+  // /api/seo/sites returns newest-first, so list[0] is the most recent — a poor default when a
+  // side site was added after the main one. Overridable + persisted via the picker.
+  function _lgseDefaultSiteUrl(list) {
+    if (!list || !list.length) return '';
+    var best = list[0], bestId = Infinity;
+    list.forEach(function (w) {
+      var m = String(w.id || '').match(/(\d+)/);
+      var n = m ? parseInt(m[1], 10) : Infinity;
+      if (n < bestId) { bestId = n; best = w; }
+    });
+    return String((best || list[0]).url || '');
+  }
+
   function lgseLoadSites() {
     var bar = document.getElementById('lgse-site-bar');
     if (!bar) return;
@@ -1669,8 +1683,13 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       var cur = (window._lgseActiveSiteUrl || '').trim();
       var known = list.some(function (w) { return String(w.url) === cur; });
       if (!cur || !known) {
-        window._lgseActiveSiteUrl = String(list[0].url || '');
-        try { _persistActiveSite(window._lgseActiveSiteUrl); } catch (e) {}
+        // BUGFIX (2026-09-04): default to the OLDEST website (lowest id = the business's
+        // original/primary site), not list[0] — /api/seo/sites returns newest-first, which made a
+        // recently-added side site (e.g. "Miyguel") the default while the SEO data belonged to the
+        // main site (e.g. "Chef Red"). Overridable + persisted via the picker below.
+        window._lgseActiveSiteUrl = _lgseDefaultSiteUrl(list);
+        // Do NOT persist an auto-default — only a deliberate switch (lgseSwitchSite) should
+        // stick, so a recomputed default is never mistaken for the customer's own choice.
       }
       lgseRenderSiteBar();
     }).catch(function () {
@@ -1710,6 +1729,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   // current tab so its data refreshes with the new scope.
   window.lgseSwitchSite = function (url) {
     window._lgseActiveSiteUrl = url || '';
+    window._lgseActiveSite = url || ''; // the Audit Center reads this one
     _persistActiveSite(url || '');
     var meta = document.getElementById('lgse-site-bar-meta');
     if (meta) meta.textContent = 'Switching to ' + url + '…';
@@ -1929,7 +1949,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           + '<span style="font-size:20px;color:#A78BFA">&#128172;</span>'
           + '<div style="flex:1">'
             + '<div style="font-size:16px;font-weight:700;color:#fff">SEO AI Assistant</div>'
-            + '<div style="font-size:12px;color:#6B7280">Powered by LevelUp Growth</div>'
+            + '<div style="font-size:12px;color:#6B7280">Powered by LevelUpGrowth</div>'
           + '</div>'
           + '<button onclick="window._lgseDrawerClose()"'
             + ' style="background:none;border:none;color:#6B7280;font-size:18px;cursor:pointer;padding:4px">&times;</button>'
@@ -1962,7 +1982,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
             + '<button onclick="window._lgseDrawerSend()"'
               + ' style="background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;'
               + 'border:none;border-radius:10px;padding:10px 16px;'
-              + 'font-size:13px;font-weight:600;cursor:pointer;align-self:flex-end">Send</button>'
+              + 'align-self:flex-end;display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>'
           + '</div>'
           + '<div style="font-size:11px;color:#4B5563;margin-top:8px;text-align:center">'
             + 'Responses based on your real workspace data'
@@ -2674,8 +2694,8 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
               + 'style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:10px 14px;color:var(--lgse-t1);font-size:14px;resize:none;outline:none;font-family:inherit" '
               + 'placeholder="Ask anything about your SEO…" maxlength="2000"></textarea>'
             + '<button onclick="_lgseAssistantSend()" '
-              + 'style="background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;border:none;border-radius:10px;padding:10px 20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap">'
-              + 'Send'
+              + 'aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer">'
+              + '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>'
             + '</button>'
           + '</div>'
         + '</div>'
@@ -2805,14 +2825,24 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     }, 2000);
   }
 
+  // A score's colour is the score, not its category: 80+ good, 60-79 fair, under 60 poor, grey when unknown.
+  // Before this, Technical was always red and SERP always green, so a 96 read as a failure and a 14 as a pass.
+  function dimColor(val) {
+    if (val === null || val === undefined || isNaN(parseInt(val, 10))) return '#6B7280';
+    var v = parseInt(val, 10);
+    if (v >= 80) return '#10B981';
+    if (v >= 60) return '#F59E0B';
+    return '#EF4444';
+  }
+
   function dimCard(id, label, hint, color) {
     return '<div style="background:var(--lgse-bg2);border:1px solid var(--lgse-border);border-radius:12px;padding:12px;display:flex;align-items:center;gap:10px">'
       + '<div style="position:relative;width:48px;height:48px;flex-shrink:0">'
         + '<svg width="48" height="48" viewBox="0 0 48 48" style="transform:rotate(-90deg)">'
           + '<circle fill="none" stroke="#1e2235" stroke-width="5" cx="24" cy="24" r="18"/>'
-          + '<circle fill="none" stroke="' + color + '" stroke-width="5" stroke-linecap="round" cx="24" cy="24" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1" id="dim-r-' + id + '"/>'
+          + '<circle fill="none" stroke="#6B7280" stroke-width="5" stroke-linecap="round" cx="24" cy="24" r="18" stroke-dasharray="113.1" stroke-dashoffset="113.1" id="dim-r-' + id + '"/>'
         + '</svg>'
-        + '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--lgse-mono);font-size:12px;font-weight:700;color:' + color + '" id="dim-n-' + id + '">0</div>'
+        + '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-family:var(--lgse-mono);font-size:12px;font-weight:700;color:#6B7280" id="dim-n-' + id + '">—</div>'
       + '</div>'
       + '<div>'
         + '<div style="font-size:11px;font-weight:600;color:var(--lgse-t1);margin-bottom:2px">' + esc(label) + '</div>'
@@ -2834,11 +2864,16 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     // (and not the overall audit score, which is the bug we're fixing).
     if (val === null || val === undefined || isNaN(parseInt(val, 10))) {
       num.textContent = '—';
+      num.style.color = dimColor(null);
+      ring.style.stroke = dimColor(null);
       ring.style.transition = 'stroke-dashoffset .3s ease-out';
       ring.style.strokeDashoffset = circ;
       return;
     }
     val = Math.max(0, Math.min(100, parseInt(val, 10)));
+    var c = dimColor(val);
+    num.style.color = c;
+    ring.style.stroke = c;
     setTimeout(function () {
       ring.style.transition = 'stroke-dashoffset .9s ease-out';
       ring.style.strokeDashoffset = circ - (val / 100) * circ;
@@ -3103,6 +3138,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
 
   // P0-AUD-FIX3: site-selector strip rendered above the audit list.
   function renderSiteSelector(selectedUrl) {
+    // 2026-09-21 (Owner): the site bar above the tabs is THE website picker. When it is on the page the Audit Center
+    // shows no second one; it follows the bar (see lgseSwitchSite). The selector below remains for the embed, which has no bar.
+    if (document.getElementById('lgse-site-bar')) return '';
     var sites = (window._lgseSiteList && window._lgseSiteList.length) ? window._lgseSiteList : (window._lgseSites || []);
     if (sites.length === 0) return '';
     if (sites.length === 1) {
@@ -3122,6 +3160,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
   }
 
   function renderAudit(el) {
+    if (window._lgseActiveSiteUrl) window._lgseActiveSite = window._lgseActiveSiteUrl; // the bar's choice is the audit's site
     el.innerHTML =
       renderSiteSelector(window._lgseActiveSite)
       + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
@@ -10425,7 +10464,7 @@ window._lgseDrawerSend = function () {
           +     '<div style="flex:1;min-width:240px">'
           +       '<div style="font-size:9px;font-weight:600;color:#8B5CF6;text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px">XML Sitemap · platform host</div>'
           +       '<div style="font-size:11.5px;color:var(--lgse-t2);line-height:1.6">'
-          +         esc(d.message || 'This host is the LevelUp Growth platform admin URL, not a content site. Switch to a tenant site in the dropdown above.')
+          +         esc(d.message || 'This host is the LevelUpGrowth platform admin URL, not a content site. Switch to a tenant site in the dropdown above.')
           +       '</div>'
           +     '</div>'
           +     '<div style="flex-shrink:0">'
