@@ -1174,9 +1174,30 @@ $withCorr = function (array $meta) use ($corr) {
         // to that one site instead of the entire workspace.
         $activeSiteUrl = $__siteUrlIn; // CHEF-RED-1: captured at the top; $r is shadowed by then
         if ($activeSiteUrl !== '') {
-            $brandFactsBlock .= "- Currently active website (user's selected SEO scope): {$activeSiteUrl}\n";
-            $brandFactsBlock .= "  → Anchor your strategy, audits, and delegations to THIS site. Do not reference the user's other workspace sites unless the user asks.\n";
+            $brandFactsBlock .= "- Website last selected in the SEO engine: {$activeSiteUrl}\n";
+            // Owner 2026-09-21: this line used to say "anchor everything here, do not reference the other sites" — which is why
+            // Sarah reported on the first website without asking. With several websites the selection is a hint, not an answer.
+            $brandFactsBlock .= "  → With ONE website, anchor your strategy, audits and delegations to it. With SEVERAL websites (see YOUR OWNER'S WEBSITES), treat it only as the LIKELY meaning of 'my website' and CONFIRM the name before reporting status or proposing work.\n";
         }
+        // ESTATE (Owner 2026-09-21): the owner's websites, by name, as ground truth — and the rule that "my website" without
+        // a name is a question, not a guess. Lives here because the analytical composer keeps this block and strikes the rest.
+        try {
+            $__estateSites = \App\Core\Sarah888\ContentTarget::sites((int) $wsId);
+            if (count($__estateSites) === 1) {
+                $brandFactsBlock .= "- YOUR OWNER'S WEBSITE: " . $__estateSites[0]['name'] . " — " . (($__estateSites[0]['domain'] ?: $__estateSites[0]['subdomain']) ?: 'no domain yet') . ". One website only: never ask which.\n";
+            } elseif (count($__estateSites) > 1) {
+                $__estateCounts = \Illuminate\Support\Facades\DB::table('articles')->where('workspace_id', (int) $wsId)->whereNull('deleted_at')->whereNotNull('website_id')->selectRaw('website_id, COUNT(*) c')->groupBy('website_id')->pluck('c', 'website_id');
+                $__estateLines = [];
+                foreach (array_slice($__estateSites, 0, 12) as $__es) {
+                    $__ec = (int) ($__estateCounts[$__es['id']] ?? 0);
+                    $__estateLines[] = '    • ' . $__es['name'] . ' — ' . (($__es['domain'] ?: $__es['subdomain']) ?: 'no domain yet') . ' (' . ($__ec > 0 ? $__ec . ' article' . ($__ec === 1 ? '' : 's') : 'nothing written yet') . ')';
+                }
+                if (count($__estateSites) > 12) { $__estateLines[] = '    • … and ' . (count($__estateSites) - 12) . ' more'; }
+                $brandFactsBlock .= "- YOUR OWNER'S WEBSITES (" . count($__estateSites) . " — this owner runs SEVERAL businesses/websites in this workspace):\n" . implode("\n", $__estateLines) . "\n"
+                    . "  HARD RULE — WHICH WEBSITE: when the message says 'my website', 'my site', 'the site', 'the blog', 'my pages', 'my content' or 'how is it going' WITHOUT naming one of these, do NOT assume and do NOT report on the first or the selected one — reply with ONE short question naming the websites (names, not URLs; the 12 above at most) and asking which one they mean, before any status, finding or proposal. "
+                    . "When a website IS named, use it and say its name back in your first sentence. When the request plainly covers all of them ('all my websites', 'across the portfolio'), answer for all, grouped by website name.\n";
+            }
+        } catch (\Throwable $__estateErr) { /* the facts block stands without the roster */ }
         $brandFactsBlock .= "Rule: if the user mis-spells the business name or domain, USE the correct spelling above. Never echo a typo.\n\n";
 
         $formatRules = "FORMAT YOUR RESPONSES:\n"
