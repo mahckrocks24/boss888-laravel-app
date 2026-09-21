@@ -1215,6 +1215,11 @@ async function nav(view, opts){
   // spares the customer a 403 and an empty page.
   if (view === 'queue' && !window._luIsAdmin) { view = 'projects'; _requested = 'projects'; }
   if (view === 'billing') { view = 'settings'; _requested = 'settings'; opts = Object.assign({}, opts, { tail: 'billing' }); }   // REPORT-0061 B5: Billing is Settings › Plan & billing
+  // Owner 2026-09-21: Results duplicated the Command Center — it is the Command Center now (old links and bookmarks land there);
+  // Basic's Website page is the same Websites page Advanced has.
+  if (view === 'results') { view = 'command'; _requested = 'command'; }
+  if (view === 'website') { view = 'websites'; _requested = 'websites'; }
+  if (view === 'account') { view = 'settings'; _requested = 'settings'; }   // Owner 2026-09-21: Basic's Account duplicated Settings
   if (typeof window.sarahUnload === 'function' && view !== 'sarah') { try { window.sarahUnload(); } catch (_e) {} }
   document.querySelectorAll('.view').forEach(v=>{
     v.classList.remove('active');
@@ -6965,9 +6970,13 @@ function _aqCardHtml(it) {
       '<button class="aq-btn aq-btn-approve" onclick="_aqApprove(' + it.id + ')"' + (it.is_orphan ? ' disabled title="Orphan approvals cannot be approved — reject or expire"' : '') + '>Approve →</button>' +
       '</div>';
   } else {
-    // Read-only footer
-    var decidedAgo = it.decided_at ? ' · ' + _cmdcEsc(window._luParseTs(it.decided_at).toLocaleString()) : '';
-    actions = '<div style="font-size:11.5px;color:var(--t3)">' + _cmdcEsc(it.status) + decidedAgo + '</div>';
+    // Read-only footer: a status chip with a short date; the age chip goes neutral (overdue means nothing once decided)
+    var _dt = it.decided_at ? window._luParseTs(it.decided_at) : null;
+    var decidedAgo = _dt ? ' · ' + _cmdcEsc(_dt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) + ', ' + _dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })) : '';
+    var _st = String(it.status || ''); _st = _st.charAt(0).toUpperCase() + _st.slice(1);
+    var _stCls = it.status === 'approved' ? 'aq-status-ok' : (it.status === 'rejected' ? 'aq-status-no' : 'aq-status-mute');
+    actions = '<span class="aq-status ' + _stCls + '">' + _cmdcEsc(_st) + decidedAgo + '</span>';
+    ageCls = 'aq-age-mute';
   }
 
   var selCheckbox = isPending && !it.is_orphan ? '<input type="checkbox" class="aq-checkbox" data-id="' + it.id + '" onchange="_aqToggleSelect(' + it.id + ',this.checked)"' + (_aqState.selected.has(it.id) ? ' checked' : '') + '>' : '<span style="width:16px;flex-shrink:0"></span>';

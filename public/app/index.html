@@ -2471,6 +2471,12 @@ html:not([data-theme="light"]) .aq-tab.active .aq-tab-count{color:#9C8FFF}
 .aq-age-fresh{background:rgba(0,229,168,.12);color:var(--ac)}
 .aq-age-warn{background:rgba(245,158,11,.12);color:var(--am)}
 .aq-age-old{background:rgba(248,113,113,.14);color:var(--rd)}
+.aq-age-mute{background:var(--s2);color:var(--t3)}
+.aq-status{font-size:11px;padding:2px 10px;border-radius:10px;font-weight:600;white-space:nowrap;margin-left:auto}
+.aq-status-ok{background:rgba(0,229,168,.12);color:var(--ac)}
+.aq-status-no{background:rgba(248,113,113,.14);color:var(--rd)}
+.aq-status-mute{background:var(--s2);color:var(--t3)}
+@media (max-width:640px){.aq-status{margin-left:0;align-self:flex-start}}
 .aq-card-actions{display:flex;gap:8px;margin-left:auto;flex:none}
 /* Review Queue cards (Owner 2026-09-21): one aligned row of chips, a clamped description, a footer whose buttons never
    wrap; on a phone the two buttons share one full-width row under the age chip. */
@@ -2994,10 +3000,10 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item nav-sarah" onclick="nav('sarah')" id="ni-sarah"><!-- REPORT-0061 B3 (2026-09-19): Sarah heads Advanced too --><span class="ni" aria-hidden="true"></span>Sarah</button>
       <div class="nav-sub" data-basic="1">When you need to look</div>
       <button type="button" class="nav-item" onclick="nav('attention')" id="ni-attention" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l7 12H3z"/><path d="M10 8v3M10 13.5h.01"/></svg></span>Needs attention<span class="cmd-nav-badge" id="ni-attention-badge" style="margin-left:auto;display:none"></span></button>
-      <button type="button" class="nav-item" onclick="nav('results')" id="ni-results" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4-5 3 3 4-6 3 4"/><path d="M3 17h14"/></svg></span>Results</button>
-      <button type="button" class="nav-item" onclick="nav('website')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Website</button>
+      <!-- Owner 2026-09-21: Results removed — it duplicated the Command Center; nav('results') lands there. -->
+      <button type="button" class="nav-item" onclick="nav('websites')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Websites</button>
       <button type="button" class="nav-item" onclick="nav('customers')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Customers</button>
-      <button type="button" class="nav-item" onclick="nav('account')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Account</button>
+      <button type="button" class="nav-item" onclick="nav('settings')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Settings</button>
       <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
       <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced')" id="ni-advanced" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
       <!-- /* b24-sidebar-reorganized */ -->
@@ -3007,7 +3013,7 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('projects')" id="ni-projects" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Projects</button>
       <button type="button" class="nav-item" onclick="nav('command')" id="ni-command" data-feature="ai_agents" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Command Center<span id="cmd-nav-badge-approvals" class="cmd-nav-badge">0</span></button>
       <button type="button" class="nav-item" onclick="nav('approvals')" id="ni-approvals" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/><path d="M16 13l2 2 3-3" transform="translate(-5 0)"/><circle cx="16" cy="15" r="1.5"/></svg></span>Review Queue<span id="nav-approval-badge" class="cmd-nav-badge">0</span></button>
-      <button type="button" class="nav-item" onclick="nav('results')" id="ni-results-adv" data-nav-view="results" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 15l4-5 3 3 4-6 3 4"/><path d="M3 17h14"/></svg></span>Results</button><!-- REPORT-0061 B3 (Owner 2026-09-19): the performance page in Advanced too — same view as Basic -->
+      <!-- Owner 2026-09-21: Results (Advanced) removed — the Command Center is the report. -->
       <button type="button" class="nav-item" onclick="nav('queue')" id="ni-queue" data-admin-only="true" style="display:none" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/><circle cx="16" cy="14" r="2.5"/><path d="M15 13.5l1 1 2-2"/></svg></span>Worker Queue</button>
       <!-- /* b24b-more-moves */ -->
       <div class="nav-section">Team</div>
@@ -4674,6 +4680,7 @@ window.luGroupSettings=function(){
   ];
   kids.forEach(function(c,i){
    if(i===0){c.style.order=0;return;}                       // the page title stays first
+   if(c.id==='set-tabs'){c.style.order=1;return;}          // Owner 2026-09-21: the tab strip stays under the title, never sinks below the cards
    if(c.getAttribute('data-internal')){c.style.order=99;return;}
    var t=headOf(c), g=null;
    for(var k=0;k<GROUPS.length;k++){ if(GROUPS[k].match(c,t)){g=GROUPS[k];break;} }
@@ -4835,7 +4842,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <script defer src="/app/js/lu-responsive.js?v=r199m-20260921"></script>
 <script defer src="/app/js/lu-select.js?v=r199m-20260921"></script>
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
-<script defer src="/app/js/core.js?v=c5-20260921"></script>
+<script defer src="/app/js/core.js?v=c8-20260921"></script>
 <script defer src="/app/js/manualedit-aiedit.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-aiedit-entry.js?v=p0c-20260830"></script>
 <script defer src="/app/js/studio-overlay-spike.js?v=0.9.0-resize"></script>
