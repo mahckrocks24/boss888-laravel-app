@@ -104,3 +104,18 @@ html.lu-booting #lu-messages-floater,html.lu-booting #sarah-orb,html.lu-booting 
 @media (max-width:1023px){
   #lu-messages-floater{left:auto!important;right:16px!important;bottom:calc(20px + var(--safe-bottom,0px))!important}
 }
+
+/* EDITOR BAR 821-1120px (2026-09-21): between MOBILE-6 (<=820 wraps) and the desktop, the nowrap bar clipped Publish
+   ("Pu" at 1008). Same trims as the phone rule (tip hidden, name truncated, compact buttons), and the bar itself is a
+   CSS horizontal strip so nothing can ever be cut off, whatever the button count. */
+@media (min-width: 821px) and (max-width: 1120px) {
+  #template-editor-view .pe-bar { flex-wrap: nowrap !important; overflow-x: auto; overflow-y: hidden; gap: 8px !important; padding: 0 10px !important;
+    scrollbar-width: thin; scrollbar-color: var(--sb-thumb, rgba(255,255,255,.22)) transparent; }
+  #template-editor-view .pe-bar::-webkit-scrollbar { height: 6px; }
+  #template-editor-view .pe-bar::-webkit-scrollbar-thumb { background: var(--sb-thumb, rgba(255,255,255,.22)); border-radius: 99px; }
+  #template-editor-view .pe-bar::-webkit-scrollbar-track { background: transparent; }
+  #template-editor-view .pe-bar > * { flex-shrink: 0; }
+  #template-editor-view .pe-bar-title { flex: 0 1 200px; min-width: 90px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #template-editor-view .pe-bar-hint, #template-editor-view .pe-bar-spacer { display: none !important; }
+  #template-editor-view .pe-bar button { padding: 6px 10px !important; font-size: 12px !important; white-space: nowrap; }
+}
