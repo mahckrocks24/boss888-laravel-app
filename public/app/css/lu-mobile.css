@@ -82,3 +82,19 @@
 
 /* ---- the Sarah floater opens Sarah (Owner 2026-09-21) — on her own view it is redundant and sat on her composer ---- */
 body:has(#view-sarah.active) #lu-messages-floater{display:none!important}
+
+/* ---- Command Center KPI row keeps its 2x2 on a phone (designed in index.html), never a strip ---- */
+@media (max-width:767px){
+  #cmd-kpis{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;overflow:visible;contain:none;padding-bottom:0;gap:10px}
+  #cmd-kpis>*{width:auto!important;flex:none!important}
+}
+
+/* ---- boot veil: nothing floats above it while the logo pulses (the floater and the orb sat on top and "blinked") ---- */
+html.lu-booting #lu-messages-floater,html.lu-booting #sarah-orb,html.lu-booting [id*="orb-"],html.lu-booting .ai-fab,html.lu-booting [id*="ai-fab"],html.lu-booting #lu-msg-modal{visibility:hidden!important;animation:none!important}
+
+/* ---- the drawer's credits block keeps its full height so "of N monthly limit" never runs into the mode switch ---- */
+@media (max-width:767px){
+  /* a flex item of the sidebar column: the 44px touch min-height let it shrink below its three rows */
+  #sb-credit-widget{flex:0 0 auto!important;height:auto!important;max-height:none!important;min-height:auto!important;overflow:visible}
+  #sb-mode-toggle{margin-top:12px}
+}
