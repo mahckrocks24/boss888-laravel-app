@@ -110,7 +110,7 @@
   try { console.log('[LGSC] Global fetch interceptor active, ws=' + lgscWs); } catch (_) {}
 })();
 </script>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1,interactive-widget=resizes-content"><!-- KB-2 (Owner 2026-09-22, Samsung Fold inner screen): the on-screen keyboard shrinks the page at ANY width instead of covering forms -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
@@ -1579,6 +1579,7 @@ img:not([loading]) {
   /* Sentences of help have no room here, and both are repeated in the panel below the preview. */
   .pe-bar-hint { display: none !important; }
   /* Comfortable targets, and no button may be clipped mid-word. */
+  /* TIP-1 / KB-2 rules live here on purpose: this block is the editor's phone rules */
   .pe-bar button { min-height: 36px; white-space: nowrap; }
   /* TIP-1 (Owner 2026-09-22): once its tips are dismissed the Arthur feed is empty - it must not stay as a blank white box */
   #t3-arthur-feed:empty { display: none !important; }
@@ -2608,6 +2609,16 @@ html:not([data-theme="light"]) .aq-tab.active .aq-tab-count{color:#9C8FFF}
    moves the class to <body> and drops the preload class. */
 html.lu-mode-basic-preload .sb-nav .nav-section{display:none}
 html.lu-mode-basic-preload [data-adv="1"]{display:none !important}
+</style>
+<style id="lu-kb-css">
+/* KB-2 (Owner 2026-09-22): keyboard-aware at ANY width (Samsung Fold inner screen ~900px is treated as a tablet by every
+   phone rule). core.js sets html.lu-kb-open and --lu-kb (keyboard height that the layout did NOT absorb: ~0 on Android with
+   interactive-widget=resizes-content, the real height on iOS). Fixed bottom furniture rises by it; dialogs shrink by it. */
+html.lu-kb-open .ai-panel,html.lu-kb-open .ai-fab,html.lu-kb-open .exec-toast{transform:translateY(calc(-1 * var(--lu-kb,0px)))}
+html.lu-kb-open .selection-toolbar{transform:translate(-50%,calc(-1 * var(--lu-kb,0px)))}
+html.lu-kb-open .lu-dlg-overlay,html.lu-kb-open .bz-ov,html.lu-kb-open #t3-link-ov,html.lu-kb-open #t3-link-sheet{padding-bottom:calc(16px + var(--lu-kb,0px))}
+html.lu-kb-open .lu-dlg,html.lu-kb-open .lu-dlg.bz-dlg{max-height:calc(100vh - 32px - var(--lu-kb,0px))!important}
+html.lu-kb-open .pe-composer,html.lu-kb-open #sarah-composer,html.lu-kb-open .chat-composer{padding-bottom:calc(8px + var(--lu-kb,0px))}
 </style>
 </head>
 <body>
@@ -4811,7 +4822,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=022476f9b8"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=ac96868642"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

@@ -8538,3 +8538,34 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
   sweep();
   new MutationObserver(function (ms) { ms.forEach(function (m) { m.addedNodes && m.addedNodes.forEach(function (n) { if (n.nodeType === 1) { if (n.matches && n.matches('input[type="password"]')) decorate(n); else sweep(n); } }); }); }).observe(document.documentElement, { childList: true, subtree: true });
 })();
+
+/* KB-2 (Owner 2026-09-22): keyboard-aware at ANY screen width. Android honours the viewport directive (the layout shrinks,
+   so --lu-kb stays ~0); iOS and any browser that overlays the keyboard get --lu-kb = the covered height. Either way the
+   focused field is brought into the VISIBLE area, so a chat box or a form is never left under the keyboard. */
+(function () {
+  if (!window.visualViewport || window.__luKbInstalled) return; window.__luKbInstalled = true;
+  var vv = window.visualViewport, root = document.documentElement, t = null, lastFocus = null;
+  function kbHeight() { return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)); }
+  function isField(el) { return !!(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)); }
+  function reveal(el) {
+    if (!isField(el) || el.ownerDocument !== document) return;
+    try {
+      var r = el.getBoundingClientRect(), top = vv.offsetTop, bottom = vv.offsetTop + vv.height;
+      if (r.bottom > bottom - 12 || r.top < top + 12) {
+        var sc = el.closest('[style*="overflow"], .lu-dlg, .bz-dlg, .pe-side, #t3-arthur-feed, .agent-drawer, .lu-drawer');
+        if (sc && sc !== document.body && sc.scrollHeight > sc.clientHeight) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        else { window.scrollBy({ top: r.top - top - Math.max(80, vv.height / 2 - r.height / 2), behavior: 'smooth' }); }
+      }
+    } catch (_e) {}
+  }
+  function apply() {
+    var kb = kbHeight(), open = (window.innerHeight - vv.height) > 120 || kb > 120;
+    if (open) { root.classList.add('lu-kb-open'); root.style.setProperty('--lu-kb', kb + 'px'); reveal(lastFocus || document.activeElement); }
+    else { root.classList.remove('lu-kb-open'); root.style.removeProperty('--lu-kb'); }
+  }
+  function later() { clearTimeout(t); t = setTimeout(apply, 80); }
+  vv.addEventListener('resize', later); vv.addEventListener('scroll', later);
+  document.addEventListener('focusin', function (e) { lastFocus = e.target; setTimeout(function () { if (root.classList.contains('lu-kb-open')) reveal(e.target); }, 350); }, true);
+  document.addEventListener('focusout', function () { lastFocus = null; later(); }, true);
+  apply();
+})();

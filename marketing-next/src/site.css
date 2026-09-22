@@ -1342,7 +1342,6 @@ main,footer{position:relative;z-index:1}   /* not .site-header: it is sticky at 
   /* KB-1 (Owner 2026-09-22): with the keyboard open the panel follows the VISIBLE viewport - Android via the meta
      (interactive-widget=resizes-content makes 100dvh shrink), iOS via --ax-vvh/--ax-vvt kept by site.js - so the
      composer at its foot is never under the keyboard. */
-  #ax.ax-tall{bottom:auto;top:calc(64px + var(--ax-vvt,0px));height:var(--ax-vvh,calc(100dvh - 64px))}
   #ax.ax-tall #arthur-modal{height:100%}
   #ax.ax-tall .lu-arthur-modal{height:100%!important;max-height:none!important;border-radius:0}
   /* A fixed body is the only reliable page lock on a phone; overflow:hidden alone leaves touch scrolling.
@@ -1843,3 +1842,8 @@ html.ax-active #cb888-bubble,html.ax-active #cb888-panel,html.ax-active #cb888-b
 @media (max-width:760px){
   .hero-mr #ax.panel{margin-left:-12px;margin-right:-12px}
 }
+
+/* KB-2 (Owner 2026-09-22): at ANY width, while the keyboard is up, the expanded chat panel follows the visible viewport and a
+   fixed-bottom toast rises above the keyboard. html.kb-open + --kb/--ax-vvh/--ax-vvt are kept by site.js. */
+html.kb-open #ax.ax-tall{bottom:auto;top:calc(64px + var(--ax-vvt,0px));height:var(--ax-vvh,calc(100dvh - 64px))}
+html.kb-open .ax-toast{bottom:calc(26px + var(--kb,0px))}

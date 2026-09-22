@@ -1204,21 +1204,42 @@
   } catch (e) {}
 })();
 
-/* KB-1 (Owner 2026-09-22): keyboard-aware chat panel. Android honours interactive-widget=resizes-content; iOS does not,
-   so the visual viewport drives --ax-vvh (height below the 64px bar) and --ax-vvt (how far the page was pushed up). */
+/* KB-1 / KB-2 (Owner 2026-09-22, then "on samsung fold devices when the inside screen is open ... keyboard blocks any chat form or
+   forms"): keyboard-aware at ANY width. The Fold's inner screen (~900 CSS px) is treated as a tablet by every phone rule, so this
+   keys on the VISUAL viewport, not on width. Android honours interactive-widget=resizes-content (the layout shrinks, --kb ~ 0);
+   iOS overlays the keyboard (--kb = covered height). The expanded phone panel follows --ax-vvh/--ax-vvt; every focused field
+   is brought into the visible area with window scrolling (site.js wraps Element.scrollIntoView for the wizard, so it is not used). */
 (function () {
-  var host = document.getElementById('ax'); if (!host || !window.visualViewport) return;
-  var vv = window.visualViewport, root = document.documentElement, t = null;
-  function apply() {
-    var open = host.classList.contains('ax-tall');
-    var kb = (window.innerHeight - vv.height) > 120;   // a real keyboard, not the browser chrome hiding
-    if (open && kb) { root.style.setProperty('--ax-vvh', Math.max(220, Math.round(vv.height - 64)) + 'px'); root.style.setProperty('--ax-vvt', Math.round(vv.offsetTop) + 'px'); }
-    else { root.style.removeProperty('--ax-vvh'); root.style.removeProperty('--ax-vvt'); }
+  if (!window.visualViewport) return;
+  var vv = window.visualViewport, root = document.documentElement, host = document.getElementById('ax'), t = null, lastFocus = null;
+  function kbHeight() { return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)); }
+  function isField(el) { return !!(el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)); }
+  function reveal(el) {
+    if (!isField(el)) return;
+    try {
+      var r = el.getBoundingClientRect(), top = vv.offsetTop, bottom = vv.offsetTop + vv.height;
+      if (r.bottom > bottom - 12 || r.top < top + 12) {
+        var sc = el.closest('.lu-arthur-modal, #ax, .lu-sheet, form');
+        if (sc && sc.scrollHeight > sc.clientHeight + 4 && getComputedStyle(sc).overflowY !== 'visible') { sc.scrollTop += (r.top - (top + vv.height / 2)); }
+        else { window.scrollBy({ top: r.top - top - Math.max(80, vv.height / 2 - r.height / 2), behavior: 'smooth' }); }
+      }
+    } catch (_e) {}
   }
-  function later() { clearTimeout(t); t = setTimeout(apply, 60); }
+  function apply() {
+    var kb = kbHeight(), open = (window.innerHeight - vv.height) > 120 || kb > 120;
+    if (open) {
+      root.classList.add('kb-open'); root.style.setProperty('--kb', kb + 'px');
+      if (host && host.classList.contains('ax-tall')) { root.style.setProperty('--ax-vvh', Math.max(220, Math.round(vv.height - 64)) + 'px'); root.style.setProperty('--ax-vvt', Math.round(vv.offsetTop) + 'px'); }
+      reveal(lastFocus || document.activeElement);
+    } else {
+      root.classList.remove('kb-open'); root.style.removeProperty('--kb'); root.style.removeProperty('--ax-vvh'); root.style.removeProperty('--ax-vvt');
+    }
+  }
+  function later() { clearTimeout(t); t = setTimeout(apply, 80); }
   vv.addEventListener('resize', later); vv.addEventListener('scroll', later);
-  document.addEventListener('focusin', later, true); document.addEventListener('focusout', later, true);
-  new MutationObserver(later).observe(host, { attributes: true, attributeFilter: ['class'] });
+  document.addEventListener('focusin', function (e) { lastFocus = e.target; setTimeout(function () { if (root.classList.contains('kb-open')) reveal(e.target); }, 350); }, true);
+  document.addEventListener('focusout', function () { lastFocus = null; later(); }, true);
+  if (host) new MutationObserver(later).observe(host, { attributes: true, attributeFilter: ['class'] });
   apply();
 })();
 
