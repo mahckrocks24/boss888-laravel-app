@@ -24,7 +24,7 @@ class TrialService
 {
     private const TRIAL_DAYS    = 3;
     private const TRIAL_CREDITS = 50;
-    private const TRIAL_PLAN    = 'growth';  // plan slug that trial mimics
+    private const TRIAL_PLAN    = 'ai-lite';  // TRIAL-1 (Owner 2026-09-22): the trial IS the $49 tier - every AI Lite inclusion (chatbot, AI features, Sarah + 5 agents), until 50 credits are spent or 3 days pass
 
     public function __construct(
         private CreditService $credits,
@@ -152,10 +152,23 @@ class TrialService
     {
         $ws = Workspace::find($wsId);
         if (!$ws || !$ws->trial_started_at) return false;
+        // TRIAL-1 (Owner 2026-09-22): the trial ends when EITHER limit is reached - 3 days, or the 50 trial credits are spent.
+        if (now()->gte(\Carbon\Carbon::parse($ws->trial_started_at)->addDays(self::TRIAL_DAYS))) return true;
+        try {
+            $bal = $this->credits->getBalance($wsId);
+            if ((float) ($bal['balance'] ?? 0) <= 0) return true;
+        } catch (\Throwable $e) { /* a ledger hiccup never ends a trial early */ }
+        return false;
+    }
 
-        return now()->gte(
-            \Carbon\Carbon::parse($ws->trial_started_at)->addDays(self::TRIAL_DAYS)
-        );
+    /** TRIAL-1: why the trial is over, for messages. */
+    public function trialEndReason(int $wsId): ?string
+    {
+        $ws = Workspace::find($wsId);
+        if (!$ws || !$ws->trial_started_at) return null;
+        if (now()->gte(\Carbon\Carbon::parse($ws->trial_started_at)->addDays(self::TRIAL_DAYS))) return 'days';
+        try { if ((float) ($this->credits->getBalance($wsId)['balance'] ?? 0) <= 0) return 'credits'; } catch (\Throwable $e) {}
+        return null;
     }
 
     public function hasHadTrial(int $wsId): bool
@@ -286,15 +299,13 @@ class TrialService
      */
     public function processExpiredTrials(): int
     {
-        $cutoff = now()->subDays(self::TRIAL_DAYS);
-
-        // Find workspaces with active trial subscriptions that have passed expiry
+        // TRIAL-1 (Owner 2026-09-22): every trialing workspace is checked against BOTH limits (3 days, 50 credits).
         $expired = Workspace::whereNotNull('trial_started_at')
-            ->where('trial_started_at', '<', $cutoff)
             ->whereHas('subscription', function ($q) {
                 $q->where('status', 'trialing');
             })
-            ->get();
+            ->get()
+            ->filter(fn ($ws) => $this->isTrialExpired((int) $ws->id));
 
         $count = 0;
         foreach ($expired as $ws) {

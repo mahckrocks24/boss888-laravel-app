@@ -120,6 +120,17 @@ class Subscription extends Model
     public static function entitledPlanFor(int $wsId): ?Plan
     {
         $sub  = self::entitledFor($wsId);
+        // TRIAL-1 (Owner 2026-09-22): a trial that has spent its 50 credits or passed 3 days is Free from this moment,
+        // whatever the hourly sweep has got to; the downgrade is persisted here so every later reader agrees.
+        if ($sub && $sub->status === 'trialing') {
+            try {
+                $trials = app(\App\Core\Billing\TrialService::class);
+                if ($trials->isTrialExpired((int) $sub->workspace_id)) {
+                    try { $trials->expireTrial((int) $sub->workspace_id); } catch (\Throwable $e) {}
+                    return Plan::where('slug', 'free')->first();
+                }
+            } catch (\Throwable $e) { /* never let a trial check break entitlement */ }
+        }
         $plan = $sub ? Plan::find($sub->plan_id) : null;
 
         // An archived failed build falls through to the free plan like any unsubscribed workspace;
