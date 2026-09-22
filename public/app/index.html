@@ -2626,7 +2626,7 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
   // P1-U2: if the current view is not part of the mode we just entered, land on that mode's home.
   try {
     var _cur = (typeof currentView !== 'undefined') ? currentView : null;
-    var _basicViews = ['sarah','attention','results','website','customers','account','aria','approvals','command','websites','crm','settings','billing','calendar','reports'];
+    var _basicViews = ['sarah','attention','results','website','customers','account','aria','approvals','command','websites','crm','settings','billing','calendar','reports','catalogue'];   // Owner 2026-09-22: the Catalogue is a Basic tool too ("exposed outside too on both Basic and Advanced")
     if ((!opts.skipServer || opts.fromServer) && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav(typeof window._luAdvancedHome === 'function' ? window._luAdvancedHome() : 'command'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link. REPORT-0061 B3: Advanced lands on Command Center
   } catch (e) {}
   if (mode === 'basic') document.body.classList.add('lu-mode-basic');
@@ -4092,7 +4092,7 @@ window.luSwipeToClose = luSwipeToClose;
           window._renderAgentTeam=function(){
             var d=_teamData; if(!d)return;
               var sub=document.getElementById('agent-team-sub');
-              sub.textContent=d.plan_name+' plan — '+d.selected_ids.length+' of '+(d.max_agents+1)+' agents selected (Sarah + '+d.max_agents+' '+d.agent_level+'-level specialists)';
+              sub.textContent=d.plan_name+' plan — '+d.selected_ids.length+' of '+(d.max_agents+1)+' agents selected (Sarah + '+d.max_agents+' '+(d.agent_level?d.agent_level+'-level ':'')+'specialists)';   /* TEAM-2: no level requirement on this plan -> no "null-level" */
               var grid=document.getElementById('agent-team-grid');
               var saveBtn=document.getElementById('agent-team-save-btn');
               // Sarah card (always selected, can't remove)
@@ -4136,8 +4136,14 @@ window.luSwipeToClose = luSwipeToClose;
               var d=await r.json();
               if(d.error){
                 if(typeof showToast==='function')showToast(d.error,'error');
+                /* TEAM-2 (Owner 2026-09-22): a rejected save used to leave the card "Active" while the server said no - the
+                   agent never reached the workspace canvas. Say it inline and reload the team from the server (the truth). */
+                var m=document.getElementById('agent-team-msg'); if(m){m.textContent=d.error;m.style.color='var(--rd)';m.style.display='block';}
+                try{ await window._loadAgentTeam(); }catch(_e){}
               }else{
                 if(typeof showToast==='function')showToast('Agent team updated! '+d.count+' agents active.','success');
+                var m2=document.getElementById('agent-team-msg'); if(m2){m2.style.display='none';}
+                try{ await window._loadAgentTeam(); }catch(_e){}
               }
             }catch(e){if(typeof showToast==='function')showToast('Failed to save team.','error');}
             btn.disabled=false;btn.textContent='Save Team';

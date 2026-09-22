@@ -1026,9 +1026,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $levelHierarchy = ['senior' => 3, 'specialist' => 2, 'junior' => 1];
         $minLevel = $levelHierarchy[$agentLevel] ?? 1;
 
-        // Validate: don't exceed max
-        if (count($agentIds) > $maxAgents) {
-            return response()->json(['error' => "Your {$rules['plan_name']} plan allows {$maxAgents} agents. You selected " . count($agentIds) . "."], 422);
+        // Validate: don't exceed max. TEAM-2 (Owner 2026-09-22): the plan's agent_count EXCLUDES Sarah (2 / 5 / 10 specialists;
+        // Sarah is always on the team and the Team tab counts her out too). Counting her here made a Pro workspace top out
+        // at Sarah + 4: the fifth specialist went Active in Settings and was rejected with a 422, so it never reached the canvas.
+        $__sarahIdForCap = (int) (\App\Models\Agent::where('slug', 'sarah')->value('id') ?? 0);
+        $__specialists = array_values(array_filter(array_map('intval', (array) $agentIds), fn ($id) => $id !== $__sarahIdForCap));
+        if (count($__specialists) > $maxAgents) {
+            return response()->json(['error' => "Your {$rules['plan_name']} plan allows {$maxAgents} specialists alongside Sarah. You selected " . count($__specialists) . "."], 422);
         }
 
         // Validate: all agents must be at or above plan level
