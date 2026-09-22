@@ -3500,18 +3500,19 @@ app()->instance('lu.preview.render', function ($id) {
     $htmlPath = storage_path('app/public/sites/' . (int)$id . '/index.html');
     // U3 (2026-09-20): opening a site in the editor brings its added sections up to date (field ids, palette roles)
     try { app(\App\Engines\Builder\Services\TemplateService::class)->refreshHomeAddedBlocks((int) $id); } catch (\Throwable $e) {}
-    // EV-1003 (2026-09-12): a soft-deleted or missing draft never previews — go to the workspace's live site instead.
+    // PREVIEW-2 (Owner 2026-09-22): a preview is NEVER another website. EV-1003 used to redirect a missing page to the
+    // workspace's newest other site, so the Owner's Chef Red editor silently showed Sky Gonzales Events (site 3 -> 911):
+    // image clicks and links then acted on the wrong site. Legacy sites keep their page in home.html - serve that.
+    // A soft-deleted site or a page that is not rendered at all answers 404 with a reason the editor can show.
     try {
-        $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'workspace_id', 'deleted_at']);
-        if ($row && ($row->deleted_at !== null || !file_exists($htmlPath))) {
-            $live = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $row->workspace_id)->whereNull('deleted_at')
-                ->where('id', '!=', (int) $id)->orderByDesc('id')->value('id');
-            if ($live && file_exists(storage_path('app/public/sites/' . (int) $live . '/index.html'))) {
-                return redirect('/api/builder/websites/' . (int) $live . '/preview', 302);
-            }
-        }
+        $row = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'deleted_at']);
+        if ($row && $row->deleted_at !== null) { return response('This website was deleted.', 404)->header('X-LU-Preview-Missing', 'deleted'); }
     } catch (\Throwable $e) { /* fall through to the file check */ }
-    if (!file_exists($htmlPath)) return response('Not found', 404);
+    if (!file_exists($htmlPath)) {
+        $legacy = storage_path('app/public/sites/' . (int)$id . '/home.html');
+        if (file_exists($legacy)) { $htmlPath = $legacy; }
+        else { return response('This page has not been rendered yet.', 404)->header('X-LU-Preview-Missing', 'unrendered'); }
+    }
     $html = file_get_contents($htmlPath);
 
     // Load element map from the template's manifest so the iframe script
@@ -3542,6 +3543,7 @@ app()->instance('lu.preview.render', function ($id) {
 
     $editScript = '<script>
 document.addEventListener("DOMContentLoaded",function(){
+  if(!document.querySelector("[data-field]")){try{window.parent.postMessage({type:"editor-empty"},"*");}catch(_){}}   // PREVIEW-2: a page with nothing selectable says so instead of showing nothing
   var _elementsByBlock = ' . $elementsJson . ';
   var _imageDims = ' . $imageDimsJson . ';
   window._selectedBlock = null;

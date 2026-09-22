@@ -368,6 +368,15 @@ use Illuminate\Support\Facades\Route;
                 \Illuminate\Support\Facades\Log::warning("[Builder] preview render failed", ["page_id" => (int) $id, "error" => $e->getMessage()]);
                 return response()->json(["error" => "Preview render failed"], 500);
             }
+            // PREVIEW-2 (Owner 2026-09-22): the page editor shows a READ-ONLY render (no click-to-edit markers, sandboxed frame).
+            // Without this guard a link or button click navigated the sandboxed frame into an error page, and an image click
+            // gave no sign of why nothing happened. The guard stops navigation and tells the editor the page is read-only.
+            $__guard = '<script>(function(){function p(m){try{window.parent.postMessage(m,"*");}catch(_){}}'
+                . 'document.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target.closest("a,button,input[type=submit],form"):null;if(t){e.preventDefault();e.stopPropagation();p({type:"editor-readonly-click"});}},true);'
+                . 'document.addEventListener("submit",function(e){e.preventDefault();e.stopPropagation();},true);'
+                . 'document.addEventListener("DOMContentLoaded",function(){p({type:"editor-empty",readonly:true});});'
+                . '})();</script>';
+            $html = (stripos($html, '</body>') !== false) ? preg_replace('#</body>#i', $__guard . '</body>', $html, 1) : $html . $__guard;
             return response()->json(["preview_html" => $html, "page_id" => (int) $id]);
         });
         // LIBRARY (2026-09-06): the ONE capability manifest for the editor — pages (with preview URLs), sections, prices, limits.
