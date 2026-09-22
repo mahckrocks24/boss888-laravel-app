@@ -96,7 +96,9 @@ class BusinessContext
         if (in_array($mode, ['named', 'sticky', 'default'], true) && ! empty($ctx['business'])) {
             $b = $ctx['business']; $p = $resolver->profile($wsId, (int) $b->id);
             $out .= "- ACTIVE BUSINESS FOR THIS TURN: {$b->name}" . ($mode === 'sticky' ? ' (the business this conversation has been about; say its name in your first sentence so a wrong assumption is easy to correct)' : ($mode === 'default' ? ' (the default — the message did not concern a business)' : ' (the owner named it)')) . "\n";
-            foreach (['industry' => 'Industry', 'location' => 'Location', 'tone' => 'Tone', 'target_audience' => 'Target audience', 'differentiators' => 'Differentiators', 'pricing_anchor' => 'Pricing'] as $k => $label) { if (! empty($p[$k])) { $out .= "    {$label}: " . (is_array($p[$k]) ? implode(', ', $p[$k]) : $p[$k]) . "\n"; } }
+            foreach (['industry' => 'Industry', 'location' => 'Location', 'tone' => 'Tone', 'target_audience' => 'Target audience', 'differentiators' => 'Differentiators'] as $k => $label) { if (! empty($p[$k])) { $out .= "    {$label}: " . (is_array($p[$k]) ? implode(', ', $p[$k]) : $p[$k]) . "\n"; } }
+            // The model read a bare "Pricing:" label as a price list it did not have (one probe of two): say what the line is.
+            if (! empty($p['pricing_anchor'])) { $out .= "    PRICES {$b->name} CHARGES (ground truth — when the owner asks about prices, rates, fees or cost, answer from this line; never say you have no record of them): " . $p['pricing_anchor'] . "\n"; }
             if (! empty($p['services'])) { $out .= '    Services: ' . implode(', ', array_slice((array) $p['services'], 0, 12)) . "\n"; }
             $out .= "  HARD RULE — ONE BUSINESS: answer for {$b->name} only. Never carry another business's name, domain, services, prices, tone or audience into this answer unless the owner names it.\n";
         } elseif ($mode === 'portfolio') {

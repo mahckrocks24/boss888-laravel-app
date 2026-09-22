@@ -101,7 +101,7 @@ class BusinessContextTest extends TestCase
         $block = BusinessContext::promptBlock($c, app(BusinessProfileResolver::class), $this->ws);
         $this->assertStringContainsString("YOUR OWNER'S BUSINESSES (3", $block);
         $this->assertStringContainsString('ACTIVE BUSINESS FOR THIS TURN: Boss Mac Gym', $block);
-        $this->assertStringContainsString('Pricing: $49/month', $block);
+        $this->assertStringContainsString('PRICES Boss Mac Gym CHARGES', $block); $this->assertStringContainsString('$49/month', $block);
         $this->assertStringNotContainsString('private chef', substr($block, strpos($block, 'ACTIVE BUSINESS')), 'the chef profile stays out of the gym turn');
     }
 
