@@ -267,46 +267,7 @@
       var a2 = document.createElement('div'); a2.className = 'bs-acts'; s2.appendChild(a2);
       a2.appendChild(btn('Save', 'primary', function (b) { b.disabled = true; api('PUT', 'workspace/settings', { business_name: document.getElementById('ac-biz').value, industry: document.getElementById('ac-ind').value, location: document.getElementById('ac-loc').value, timezone: document.getElementById('ac-tz').value }).then(function (r) { b.disabled = false; if (r.ok) showToast('Saved — Sarah will use this from now on.', 'success'); else showToast("Couldn't save: " + ((r.json && (r.json.message || r.json.error)) || r.status), 'error'); }); }));
       a2.appendChild(btn('Tell Sarah more about my business', 'quiet', function () { askSarah('Here is more about my business: '); }));
-      // BIZ-2: the businesses this account owns. Only shown when there is more than one — and switching is always
-      // an explicit click, never automatic (INC-0004).
-      try {
-        var wsList = (rs[4] && rs[4].json && (rs[4].json.workspaces || rs[4].json.data)) || [];
-        if (Array.isArray(wsList) && wsList.length > 1) {
-          var curId = parseInt(w.id || 0, 10) || 0;
-          var s2b = sec('Your businesses', null, 'Switching changes the business you are working in everywhere — Sarah, your websites and your data.');
-          body.appendChild(s2b);
-          wsList.forEach(function (bw) {
-            var bid = parseInt(bw.id || bw.workspace_id, 10) || 0; if (!bid) return;
-            var row = document.createElement('div'); row.className = 'bs-acts';
-            row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--bd)';
-            var nm = document.createElement('div');
-            nm.style.cssText = 'flex:1;min-width:0;font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-            nm.textContent = bw.business_name || bw.name || ('Business ' + bid);
-            row.appendChild(nm);
-            if (bid === curId) {
-              var here = document.createElement('span');
-              here.style.cssText = 'font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap';
-              here.textContent = "You're here";
-              row.appendChild(here);
-            } else {
-              row.appendChild(btn('Switch', 'quiet', function (b) {
-                b.disabled = true; b.textContent = 'Switching…';
-                if (typeof window._switchBusiness === 'function') { window._switchBusiness(bid, b); return; }
-                fetch('/api/auth/switch-workspace', { method: 'POST', headers: { Authorization: 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ workspace_id: bid }), cache: 'no-store' })
-                  .then(function (x) { return x.json(); }).then(function (dd) {
-                    if (dd && dd.access_token) {
-                      localStorage.setItem('lu_token', dd.access_token);
-                      if (dd.refresh_token) localStorage.setItem('lu_refresh_token', dd.refresh_token);
-                      try { localStorage.setItem('lu_workspace_id', String(dd.current_workspace_id || bid)); } catch (e) {}
-                      location.reload();
-                    } else { b.disabled = false; b.textContent = 'Switch'; }
-                  }).catch(function () { b.disabled = false; b.textContent = 'Switch'; });
-              }));
-            }
-            s2b.appendChild(row);
-          });
-        }
-      } catch (e) {}
+      // BIZ-2 RETIRED (Owner 2026-09-22): the multi-workspace switcher is gone — one workspace, many website profiles, one Sarah, no switching.
       // Brand
       var s3 = sec('Your brand', null, 'Colours Arthur and Studio use on your website and images.'); body.appendChild(s3); var f3 = document.createElement('div'); f3.className = 'bs-2'; s3.appendChild(f3);
       f3.innerHTML = ['primary_color', 'secondary_color', 'accent_color'].map(function (k, i) { return '<div class="bs-field"><label for="ac-' + k + '">' + ['Main colour', 'Second colour', 'Highlight colour'][i] + '</label><div class="bs-swatch"><input id="ac-' + k + '" type="color" value="' + esc(brand[k] || '#6C5CE7') + '" style="width:64px;min-height:44px;padding:4px"><span id="ac-' + k + '-v" class="bs-sub" style="margin:0">' + esc(brand[k] || '') + '</span></div></div>'; }).join('');

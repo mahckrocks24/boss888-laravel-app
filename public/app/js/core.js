@@ -8142,41 +8142,11 @@ function _billCheckReturnFlags() {
 // ═══════════════════════════════════════════════════════════════════════════
 // BIZ-1 (2026-08-31): the businesses this account belongs to, and the one it is currently working in.
 // Switching changes the workspace for the WHOLE app, so it is stated plainly and never happens on its own.
-window._renderBusinesses = async function _renderBusinesses(el) {
-  if (!el) return;
-  try {
-    var r = await _luFetch('GET', '/workspaces');
-    var d = await r.json();
-    var list = (d && (d.workspaces || d.data)) || [];
-    if (!Array.isArray(list) || list.length < 2) { el.style.display = 'none'; return; }   // one business needs no switcher
-    var cur = 0;
-    try {
-      var rs = await _luFetch('GET', '/workspace/status');
-      var ds = await rs.json();
-      cur = parseInt((ds && ds.workspace && ds.workspace.id) || 0, 10) || 0;
-    } catch (_) {}
-    var rows = list.map(function (w) {
-      var id = parseInt(w.id || w.workspace_id, 10) || 0;
-      var name = w.business_name || w.name || ('Business ' + id);
-      var here = (id === cur);
-      return '<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--bd)">'
-        + '<div style="flex:1;min-width:0">'
-        +   '<div style="font-size:13px;font-weight:600;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _cmdcEsc(name) + '</div>'
-        +   (w.plan ? '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + _cmdcEsc(String(w.plan)) + ' plan</div>' : '')
-        + '</div>'
-        + (here
-            ? '<span style="font-size:11px;font-weight:700;color:var(--ac);white-space:nowrap">You are here</span>'
-            : '<button type="button" class="btn btn-outline" style="font-size:12px;padding:6px 14px;white-space:nowrap" onclick="_switchBusiness(' + id + ',this)">Switch</button>')
-        + '</div>';
-    }).join('');
-    el.style.display = '';
-    el.innerHTML = '<div style="padding:24px">'
-      + '<h3 style="font:700 18px Manrope,sans-serif;color:var(--t1);margin:0 0 6px">Your businesses</h3>'
-      + '<p style="font:400 13px Inter,sans-serif;color:var(--t3);margin:0 0 4px">'
-      +   'Switching changes the business you are working in everywhere — Sarah, your websites, SEO and all your data.'
-      + '</p>' + rows + '</div>';
-  } catch (e) { el.style.display = 'none'; }
-};
+// RFC-0011 (Owner 2026-09-22): the multi-workspace business SWITCHER is RETIRED. One workspace holds many
+// website profiles; there is one Sarah for all of them and no switching. Kept as a hide-only stub so the
+// caller (loadSettings) does not error; #biz-section stays hidden. The /workspaces + /auth/switch-workspace
+// routes are untouched.
+window._renderBusinesses = function _renderBusinesses(el) { if (el) { el.style.display = 'none'; el.innerHTML = ''; } };
 
 window._switchBusiness = async function _switchBusiness(wsId, btn) {
   wsId = parseInt(wsId, 10); if (!wsId) return;
