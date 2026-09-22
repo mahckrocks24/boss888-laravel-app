@@ -121,7 +121,7 @@ use Illuminate\Support\Facades\Route;
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
         Route::post('/websites/{id}/elements/{op}', function (\Illuminate\Http\Request $r, $id, $op) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
-            if (! in_array($op, ['move', 'align', 'size', 'effect', 'link'], true)) return response()->json(['success' => false, 'message' => 'Unknown operation'], 422);   // LINK-1
+            if (! in_array($op, ['move', 'align', 'size', 'effect', 'link', 'fit'], true)) return response()->json(['success' => false, 'message' => 'Unknown operation'], 422);   // LINK-1
             $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) $r->input('field', ''));
             $blockIn = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) $r->input('block', ''));
             if ($field === '' && ! ($op === 'effect' && $blockIn !== '')) return response()->json(['success' => false, 'message' => 'Which element?'], 422);
@@ -135,10 +135,12 @@ use Illuminate\Support\Facades\Route;
                 $res = app(\App\Engines\Builder\Services\ArthurService::class)->effectElement((int) $id, $field, (string) $r->input('effect', ''), (string) $r->input('dir', 'up'), $v, $r->input('color') !== null ? (string) $r->input('color') : null, $blockIn);
             } elseif ($op === 'align') {
                 $res = app(\App\Engines\Builder\Services\ArthurService::class)->alignElement((int) $id, $field, strtolower((string) $r->input('align', '')));
+            } elseif ($op === 'fit') {   // IMAGE-FIT-1: fill / whole picture + focal point
+                $res = app(\App\Engines\Builder\Services\ArthurService::class)->fitElement((int) $id, $field, (string) $r->input('fit', ''), (string) $r->input('pos', ''));
             } elseif ($op === 'link') {   // LINK-1: where this element goes when clicked
                 $res = app(\App\Engines\Builder\Services\TemplateService::class)->linkElement((int) $id, $field, (string) $r->input('href', ''), filter_var($r->input('new_tab', false), FILTER_VALIDATE_BOOLEAN));
             } else {
-                $res = app(\App\Engines\Builder\Services\ArthurService::class)->sizeElement((int) $id, $field, strtolower((string) $r->input('dir', 'bigger')) === 'smaller' ? 'smaller' : 'bigger');
+                $res = app(\App\Engines\Builder\Services\ArthurService::class)->sizeElement((int) $id, $field, strtolower((string) $r->input('dir', 'bigger')) === 'smaller' ? 'smaller' : 'bigger', false, ($r->input('pct') !== null && $r->input('pct') !== '') ? (int) $r->input('pct') : null);   // IMAGE-FIT-1: exact width from the slider
             }
             if (empty($res['success'])) return response()->json(['success' => false, 'message' => (string) ($res['message'] ?? 'That did not work.')], 422);
             $cost = 0;

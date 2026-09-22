@@ -57,7 +57,7 @@ class ArthurService
     }
 
     /** Size one element: text/buttons by zoom (60–180 %), images by width % of their column (30–100 %). dir = bigger | smaller. */
-    public function sizeElement(int $websiteId, string $field, string $dir, bool $big = false): array
+    public function sizeElement(int $websiteId, string $field, string $dir, bool $big = false, ?int $pctIn = null): array
     {
         $info = $this->elementInfo($websiteId, $field);
         if ($info === null) return ['success' => false, 'message' => 'I could not find that element on the page.'];
@@ -69,11 +69,12 @@ class ArthurService
         if ($info['kind'] === 'image') {
             $pct = 100;
             if (isset($extras[$key]) && preg_match('/width:(\d+)%/', (string) $extras[$key], $wm)) $pct = (int) $wm[1];
-            if ($up && $pct >= 100) return ['success' => false, 'message' => ucfirst($label) . ' already fills its space — a photo cannot grow past its column. I can make it smaller, or switch to a layout with a larger photo.'];
+            if ($pctIn === null && $up && $pct >= 100) return ['success' => false, 'message' => ucfirst($label) . ' already fills its space — a photo cannot grow past its column. I can make it smaller, or switch to a layout with a larger photo.'];
             $step = $big ? 25 : 15;
-            $pct = max(30, min(100, $pct + ($up ? $step : -$step)));
+            // IMAGE-FIT-1 (Owner 2026-09-22): the toolbox slider sends the exact width; the +/- steps stay for chat
+            $pct = $pctIn !== null ? max(30, min(100, (int) $pctIn)) : max(30, min(100, $pct + ($up ? $step : -$step)));
             $css = "{$s}{width:{$pct}%!important;max-width:100%!important;height:auto!important}";
-            $said = 'made ' . $label . ($up ? ' bigger' : ' smaller') . " (now {$pct}% of its space)";
+            $said = $pctIn !== null ? ('set ' . $label . " to {$pct}% of its space") : ('made ' . $label . ($up ? ' bigger' : ' smaller') . " (now {$pct}% of its space)");
         } else {
             $current = 1.0;
             if (isset($extras[$key]) && preg_match('/zoom:([\d.]+)/', (string) $extras[$key], $zm)) $current = (float) $zm[1];
@@ -88,6 +89,38 @@ class ArthurService
         DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
         return ['success' => true, 'message' => $said];
     }
+    /* ═══════════════════ IMAGE-FIT-1 (Owner 2026-09-22) — how a picture sits in its frame ═══════════════════
+     * "image resizing is very limited too. there is no option to adjust fit or crop". fit = cover (fill the frame, the
+     * edges may be trimmed) | contain (the whole picture, letterboxed); pos = the focal point kept in view, as CSS
+     * object-position ('50% 50%', 'top left' …). Written as design_extras CSS like align/size, snapshotted for Undo. */
+    public function fitElement(int $websiteId, string $field, string $fit = '', string $pos = ''): array
+    {
+        $info = $this->elementInfo($websiteId, $field);
+        if ($info === null) return ['success' => false, 'message' => 'I could not find that element on the page.'];
+        if ($info['kind'] !== 'image') return ['success' => false, 'message' => 'Fit and focus are for pictures — pick a photo.'];
+        $fit = strtolower(trim($fit)); $fit = ['fill' => 'cover', 'crop' => 'cover', 'whole' => 'contain', 'fit' => 'contain'][$fit] ?? $fit;
+        if ($fit !== '' && ! in_array($fit, ['cover', 'contain'], true)) return ['success' => false, 'message' => 'Fill the frame, or show the whole picture?'];
+        $pos = strtolower(trim($pos));
+        $named = ['center' => '50% 50%', 'centre' => '50% 50%', 'middle' => '50% 50%', 'top' => '50% 0%', 'bottom' => '50% 100%', 'left' => '0% 50%', 'right' => '100% 50%',
+                  'top left' => '0% 0%', 'top right' => '100% 0%', 'bottom left' => '0% 100%', 'bottom right' => '100% 100%', 'left top' => '0% 0%', 'right top' => '100% 0%', 'left bottom' => '0% 100%', 'right bottom' => '100% 100%'];
+        if ($pos !== '' && isset($named[$pos])) $pos = $named[$pos];
+        if ($pos !== '' && ! preg_match('/^\d{1,3}% \d{1,3}%$/', $pos)) return ['success' => false, 'message' => 'Which part should stay in view — top, bottom, left, right, centre, or a corner?'];
+        if ($fit === '' && $pos === '') return ['success' => false, 'message' => 'Fill the frame or show the whole picture, and which part should stay in view?'];
+        $tv = json_decode((string) DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
+        $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+        $key = 'fit_field_' . $info['field']; $s = '[data-field="' . $info['field'] . '"]:not(.lu-x)';
+        $curFit = 'cover'; $curPos = '50% 50%';
+        if (isset($extras[$key])) { if (preg_match('/object-fit:(cover|contain)/', (string) $extras[$key], $m1)) $curFit = $m1[1]; if (preg_match('/object-position:(\d{1,3}% \d{1,3}%)/', (string) $extras[$key], $m2)) $curPos = $m2[1]; }
+        if ($fit === '') $fit = $curFit; if ($pos === '') $pos = $curPos;
+        $css = "{$s} img,img{$s}{object-fit:{$fit}!important;object-position:{$pos}!important}";
+        try { $this->templates->snapshotToHistory($websiteId, 'element_fit'); } catch (\Throwable $e) {}
+        if (! self::writeDesignExtras($websiteId, [$key => $css], $tv)) return ['success' => false, 'message' => 'I could not write that change to the page.'];
+        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        $label = 'the ' . str_replace(['_', '-'], ' ', $info['field']);
+        $posName = array_search($pos, $named, true) ?: $pos;
+        return ['success' => true, 'message' => 'set ' . $label . ' to ' . ($fit === 'cover' ? 'fill its frame' : 'show the whole picture') . ', keeping the ' . $posName . ' in view', 'state' => ['fit' => $fit, 'pos' => $pos]];
+    }
+
     /* ═══════════════════ EFFECTS888 (2026-09-15) — opacity, shadow, glow of one element; dark/light overlay on a section ═══════════════════ */
 
     private const FX_TEXT_SHADOW = ['', '0 1px 2px rgba(0,0,0,.25)', '0 2px 6px rgba(0,0,0,.35)', '0 4px 12px rgba(0,0,0,.45)', '0 6px 20px rgba(0,0,0,.55)'];
@@ -8215,6 +8248,18 @@ PROMPT;
                 return $base + ['success' => true, 'kind' => 'element', 'applied' => 1, 'actions_applied' => 1, 'credits' => $cost, 'message' => 'Done — I ' . $res['message'] . " on {$site->name}." . ($cost > 0 ? " {$cost} credit" . ($cost === 1 ? '' : 's') . '.' : '') . ' Undo puts it back.'];
             }
             case 'element_move':
+            case 'element_fit': {   // IMAGE-FIT-1: fill the frame / whole picture, and which part stays in view
+                $el = is_array($intent['element'] ?? null) ? $intent['element'] : [];
+                $sel = is_array($ctx['selected'] ?? null) ? $ctx['selected'] : [];
+                $fld = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($el['field'] ?? '')); if ($fld === '') $fld = (string) ($sel['field'] ?? '');
+                if ($fld === '') return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which picture? Tap it in the preview, or tell me where it is.', 'options' => []];
+                if (! \App\Engines\Builder\Support\EditorCredits::canAfford($wsId, 'element_align')) return $base + ['success' => false, 'code' => 'INSUFFICIENT_CREDITS', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal('element_align', $wsId)];
+                $res = $this->fitElement($websiteId, $fld, (string) ($el['fit'] ?? ''), (string) ($el['focus'] ?? ($el['pos'] ?? '')));
+                if (empty($res['success'])) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => (string) $res['message'], 'options' => []];
+                $cost = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'element_align', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$res['message']]]);
+                Log::info('[Arthur] element op', ['website' => $websiteId, 'action' => 'element_fit', 'field' => $fld, 'change' => $res['message']]);
+                return $base + ['success' => true, 'kind' => 'element', 'applied' => 1, 'actions_applied' => 1, 'credits' => $cost, 'message' => 'Done - I ' . $res['message'] . " on {$site->name}." . ($cost > 0 ? " {$cost} credit" . ($cost === 1 ? '' : 's') . '.' : '')];
+            }
             case 'element_link': {   // LINK-1 (Owner 2026-09-22): where a button, link or text goes when clicked - the same op the toolbox uses
                 $el = is_array($intent['element'] ?? null) ? $intent['element'] : [];
                 $sel = is_array($ctx['selected'] ?? null) ? $ctx['selected'] : [];

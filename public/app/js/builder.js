@@ -1155,13 +1155,22 @@ var _t3PendingFields = {};
 // ELEMENT888 (DEC-0052): the preview toolbox / drag handle asks for a move, alignment or size change
 async function _t3ElementOp(d) {
   if (d && d.op === 'link' && d.href_chosen === undefined) { _t3LinkDialog(d); return; }   // LINK-1
+  if (d && d.op === 'crop') { _t3CropCurrent(d); return; }   // IMAGE-FIT-1
   var f = document.getElementById('t3-preview'); var m = /websites\/(\d+)\/preview/.exec((f && f.src) || '');
   var siteId = window._t3PreviewSiteId || (f && f.getAttribute('data-site')) || (m ? m[1] : null);
   if (!siteId || !d || !d.field || !d.op) return;
   var body = { field: d.field };
-  if (d.op === 'link') { body.href = String(d.href_chosen == null ? '' : d.href_chosen); body.new_tab = d.new_tab ? 1 : 0; } else if (d.op === 'move') { body.dir = d.dir; if (d.ref) body.ref = d.ref; } else if (d.op === 'align') { body.align = d.align; } else if (d.op === 'effect') { body.effect = d.effect; body.dir = d.dir; if (d.block) body.block = d.block; if (d.value != null) body.value = d.value; if (d.color) body.color = d.color; } else { body.dir = d.dir; }
+  if (d.op === 'fit') { if (d.fit) body.fit = d.fit; if (d.pos) body.pos = d.pos; } else if (d.op === 'size' && d.pct != null) { body.pct = parseInt(d.pct, 10); body.dir = 'bigger'; }   // IMAGE-FIT-1
+  else   if (d.op === 'link') { body.href = String(d.href_chosen == null ? '' : d.href_chosen); body.new_tab = d.new_tab ? 1 : 0; } else if (d.op === 'move') { body.dir = d.dir; if (d.ref) body.ref = d.ref; } else if (d.op === 'align') { body.align = d.align; } else if (d.op === 'effect') { body.effect = d.effect; body.dir = d.dir; if (d.block) body.block = d.block; if (d.value != null) body.value = d.value; if (d.color) body.color = d.color; } else { body.dir = d.dir; }
   var feed = document.getElementById('t3-arthur-feed');
-  var note = function (text, colour) { if (!feed) return; feed.innerHTML += '<div style="background:var(--s2);border-left:3px solid ' + colour + ';border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0">' + bld_escH(text) + '</div>'; feed.scrollTop = feed.scrollHeight; };
+  // IMAGE-FIT-1 / Owner 2026-09-22: successive toolbox adjustments update ONE note instead of stacking a bubble per click
+  var note = function (text, colour) {
+    if (!feed) return;
+    var last = feed.lastElementChild;
+    if (last && last.getAttribute('data-elnote') === String(d.field || '')) { last.style.borderLeftColor = colour; last.textContent = text; }
+    else { var n = document.createElement('div'); n.setAttribute('data-elnote', String(d.field || '')); n.style.cssText = 'background:var(--s2);border-left:3px solid ' + colour + ';border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0'; n.textContent = text; feed.appendChild(n); }
+    try { feed.scrollTop = feed.scrollHeight; } catch (_s) {}
+  };
   try {
     var r = await fetch('/api/builder/websites/' + siteId + '/elements/' + d.op, { method: 'POST', headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(body) });
     var j = null; try { j = await r.json(); } catch (_j) { j = null; }
@@ -1254,6 +1263,26 @@ function _t3LinkDialog(d) {
   ov.querySelectorAll('.t3-link-pick').forEach(function (b) { b.onclick = function () { inp.value = b.getAttribute('data-href') || ''; inp.focus(); }; });
   document.addEventListener('keydown', onKey, true);
   setTimeout(function () { try { inp.focus(); inp.select(); } catch (_e) {} }, 30);
+}
+
+// IMAGE-FIT-1 (Owner 2026-09-22): "there is no option to adjust fit or crop". Crop from the toolbox: the existing fixed-frame
+// crop tool (lu-crop.js) opens on the picture that is already in place, and the result goes through the same replace a
+// library pick uses. Fit / focus / width live in the toolbox row and post element-op fit / size.
+async function _t3CropCurrent(d) {
+  var f = document.getElementById('t3-preview');
+  var siteId = window._t3PreviewSiteId || (f && f.getAttribute('data-site')) || null;
+  var feed = document.getElementById('t3-arthur-feed');
+  var say = function (t, c) { if (!feed) return; var n = document.createElement('div'); n.style.cssText = 'background:var(--s2);border-left:3px solid ' + (c || '#F59E0B') + ';border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0'; n.textContent = t; feed.appendChild(n); };
+  if (!siteId || !d.field) { say('Which picture? Tap it in the preview first.'); return; }
+  if (!window.luCrop || typeof window.luCrop.open !== 'function') { say('The crop tool is still loading. Give it a second and try again.'); return; }
+  var src = String(d.currentSrc || '');
+  if (!src || /^data:/i.test(src)) { say('This picture has no file I can crop yet - choose or generate one first.'); return; }
+  var slot = null; try { slot = await window.luCrop.slotFor(d.field); } catch (_e) { slot = null; }
+  window.luCrop.open({ url: src, media_id: null, field: d.field, slot: slot }, function (res) {
+    if (!res || !res.url) return;
+    if (typeof _t3ReplaceImage === 'function') { _t3ReplaceImage(parseInt(siteId, 10), d.field, res.url); }
+    else { say('Cropped, but the editor could not place it. Reload and try again.'); }
+  });
 }
 
 // ── Builder image click-to-replace panel (2026-04-19) ──────────

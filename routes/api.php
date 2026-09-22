@@ -3790,15 +3790,27 @@ document.addEventListener("DOMContentLoaded",function(){
     + _tbBtn("smaller", "A−", "Smaller", "font-size:12px") + _tbBtn("bigger", "A+", "Bigger")
     + _tbBtn("link", "🔗", "Link: where this goes when clicked", "font-size:14px")   // LINK-1
     + _tbBtn("fx", "✦", "Effects: opacity, shadow, glow, overlay", "color:#c4b5fd")
+    + _tbBtn("img", "🖼", "Picture: fit, focus, width, crop", "color:#c4b5fd")   // IMAGE-FIT-1
     + _tbBtn("close", "✕", "Close", "color:rgba(255,255,255,.6)")
     + "<div id=\"__lu_el_fx\" style=\"display:none;flex-basis:100%;flex-wrap:wrap;gap:2px;align-items:center;border-top:1px solid rgba(255,255,255,.14);margin-top:3px;padding-top:3px\">"
     + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Opacity</span>" + _tbBtn("opacity_down", "−", "More transparent") + _tbBtn("opacity_up", "+", "More opaque") + "</span>"
     + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Shadow</span>" + _tbBtn("shadow_down", "−", "Less shadow") + _tbBtn("shadow_up", "+", "More shadow") + "</span>"
     + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Glow</span>" + _tbBtn("glow_down", "−", "Less glow") + _tbBtn("glow_up", "+", "More glow") + "</span>"
     + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Overlay</span>" + _tbBtn("overlay_down", "−", "Lighter section overlay") + _tbBtn("overlay_up", "+", "Darker section overlay") + "</span>"
+    + "</div>"
+    // IMAGE-FIT-1 (Owner 2026-09-22): how a picture sits in its frame - fill or whole, which part stays in view, exact width, crop
+    + "<div id=\"__lu_el_img\" style=\"display:none;flex-basis:100%;flex-wrap:wrap;gap:4px;align-items:center;border-top:1px solid rgba(255,255,255,.14);margin-top:3px;padding-top:3px\">"
+    + "<span class=\"lu-fx-group\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Fit</span>" + _tbBtn("fit_cover", "Fill", "Fill the frame (edges may be trimmed)", "font-size:11px;padding:0 8px") + _tbBtn("fit_contain", "Whole", "Show the whole picture", "font-size:11px;padding:0 8px") + "</span>"
+    + "<span class=\"lu-fx-group\" style=\"display:inline-grid;grid-template-columns:repeat(3,26px);gap:2px;align-items:center\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px;grid-column:1/-1\">Keep in view</span>"
+    +   _tbBtn("focus_tl", "◤", "Top left", "min-width:26px;height:26px;font-size:11px") + _tbBtn("focus_t", "▲", "Top", "min-width:26px;height:26px;font-size:11px") + _tbBtn("focus_tr", "◥", "Top right", "min-width:26px;height:26px;font-size:11px")
+    +   _tbBtn("focus_l", "◀", "Left", "min-width:26px;height:26px;font-size:11px") + _tbBtn("focus_c", "●", "Centre", "min-width:26px;height:26px;font-size:11px") + _tbBtn("focus_r", "▶", "Right", "min-width:26px;height:26px;font-size:11px")
+    +   _tbBtn("focus_bl", "◣", "Bottom left", "min-width:26px;height:26px;font-size:11px") + _tbBtn("focus_b", "▼", "Bottom", "min-width:26px;height:26px;font-size:11px") + _tbBtn("focus_br", "◢", "Bottom right", "min-width:26px;height:26px;font-size:11px") + "</span>"
+    + "<span class=\"lu-fx-group\" style=\"display:inline-flex;align-items:center;gap:6px\"><span style=\"font:600 10px system-ui,sans-serif;color:rgba(255,255,255,.55);padding:0 4px\">Width</span><input id=\"__lu_el_w\" type=\"range\" min=\"30\" max=\"100\" step=\"5\" value=\"100\" aria-label=\"Picture width\" style=\"width:110px;accent-color:#c4b5fd\"><span id=\"__lu_el_wv\" style=\"font:600 11px system-ui,sans-serif;color:#fff;min-width:34px\">100%</span></span>"
+    + _tbBtn("crop", "✂ Crop", "Crop this picture to its frame", "font-size:11px;padding:0 8px")
     + "</div>";
   // LIVE PREVIEW: the same change the server will make, applied to this document first (no reload on success)
   function _luIsButton(el){ return el.tagName === "BUTTON" || (el.tagName === "A" && /(^|\s)btn/.test(el.className || "")); }
+  function _luImgOf(el){ if (!el) return null; if (el.tagName === "IMG") return el; return el.querySelector ? el.querySelector("img") : null; }   // IMAGE-FIT-1
   function _luIsImage(el){ return el.tagName === "IMG" || /_image$|_photo$|_img$|_avatar$/.test(el.getAttribute("data-field") || ""); }
   function _luApplyLocal(op, el){
     var p = el.parentElement; if (!p) return false;
@@ -3873,6 +3885,7 @@ document.addEventListener("DOMContentLoaded",function(){
     try { document.body.appendChild(_sel); document.body.appendChild(_tb); document.body.appendChild(_tip); } catch(_z){}   // last in the DOM: above the fixed widgets of the site
     var isImg = el.tagName === "IMG" || /_image$|_photo$|_img$|_avatar$/.test(field || "");
     try { var _lb = _tb.querySelector("button[data-op=\"link\"]"); if (_lb) _lb.style.display = isImg ? "none" : ""; } catch(_lk) {}   // LINK-1: pictures carry no link here
+    try { var _ib = _tb.querySelector("button[data-op=\"img\"]"); if (_ib) _ib.style.display = isImg ? "" : "none"; var _ir = document.getElementById("__lu_el_img"); if (_ir) { _ir.style.display = "none"; var _im = _luImgOf(el); var _w = document.getElementById("__lu_el_w"), _wv = document.getElementById("__lu_el_wv"); if (_im && _w) { var _cur = parseInt((_im.style.width || "").replace("%", ""), 10); if (!(_cur >= 30 && _cur <= 100)) _cur = 100; _w.value = _cur; if (_wv) _wv.textContent = _cur + "%"; } } } catch(_ig) {}   // IMAGE-FIT-1
     var sm = _tb.querySelector("[data-op=smaller]"), bg = _tb.querySelector("[data-op=bigger]");
     if (sm) sm.textContent = isImg ? "−" : "A−"; if (bg) bg.textContent = isImg ? "+" : "A+";
     _tb.style.display = "flex"; _tbPlace();
@@ -3880,6 +3893,8 @@ document.addEventListener("DOMContentLoaded",function(){
   function _luHideToolbox(){ _tb.style.display = "none"; _tbEl = null; _tbField = null; }
   window.addEventListener("scroll", _tbPlace, true); window.addEventListener("resize", _tbPlace);
   _tb.addEventListener("pointerdown", function(e){ e.stopPropagation(); });
+  _tb.addEventListener("input", function(e){ if (!e.target || e.target.id !== "__lu_el_w") return; var v = parseInt(e.target.value, 10); var wv = document.getElementById("__lu_el_wv"); if (wv) wv.textContent = v + "%"; var im = _luImgOf(_tbEl); if (im) { im.style.setProperty("width", v + "%", "important"); im.style.setProperty("max-width", "100%", "important"); im.style.setProperty("height", "auto", "important"); } });   // IMAGE-FIT-1
+  _tb.addEventListener("change", function(e){ if (!e.target || e.target.id !== "__lu_el_w" || !_tbField) return; var v = parseInt(e.target.value, 10); var blk2 = _tbEl && _tbEl.closest ? _tbEl.closest("[data-block]") : null; window.parent.postMessage({type:"element-op", op:"size", pct:v, field:_tbField, block:(blk2 ? blk2.getAttribute("data-block") : null), applied:true}, "*"); });
   _tb.addEventListener("click", function(e){
     var b = e.target && e.target.closest ? e.target.closest("button[data-op]") : null; if (!b) return;
     e.preventDefault(); e.stopPropagation();
@@ -3887,6 +3902,11 @@ document.addEventListener("DOMContentLoaded",function(){
     var blk = _tbEl && _tbEl.closest ? _tbEl.closest("[data-block]") : null; var bid = blk ? blk.getAttribute("data-block") : (window._selectedBlock || null);
     if (op === "drag") return;
     if (op === "fx") { var row = document.getElementById("__lu_el_fx"); if (row) { row.style.display = row.style.display === "none" ? "flex" : "none"; _tbPlace(); } return; }
+    if (op === "img") { var irow = document.getElementById("__lu_el_img"); if (irow) { irow.style.display = irow.style.display === "none" ? "flex" : "none"; _tbPlace(); } return; }   // IMAGE-FIT-1
+    if (op === "fit_cover" || op === "fit_contain") { var fit = op === "fit_cover" ? "cover" : "contain"; var im1 = _luImgOf(_tbEl); if (im1) im1.style.setProperty("object-fit", fit, "important"); window.parent.postMessage({type:"element-op", op:"fit", fit:fit, field:_tbField, block:bid, applied:!!im1}, "*"); return; }
+    var fm = /^focus_(tl|t|tr|l|c|r|bl|b|br)$/.exec(op);
+    if (fm) { var posMap = {tl:"0% 0%", t:"50% 0%", tr:"100% 0%", l:"0% 50%", c:"50% 50%", r:"100% 50%", bl:"0% 100%", b:"50% 100%", br:"100% 100%"}; var pos = posMap[fm[1]]; var im2 = _luImgOf(_tbEl); if (im2) { im2.style.setProperty("object-position", pos, "important"); if (!im2.style.objectFit) im2.style.setProperty("object-fit", "cover", "important"); } window.parent.postMessage({type:"element-op", op:"fit", pos:pos, field:_tbField, block:bid, applied:!!im2}, "*"); return; }
+    if (op === "crop") { var im3 = _luImgOf(_tbEl); window.parent.postMessage({type:"element-op", op:"crop", field:_tbField, block:bid, applied:false, currentSrc:(im3 ? (im3.currentSrc || im3.src || "") : "")}, "*"); return; }
     if (op === "link") {   // LINK-1: the parent shows the link dialog, then posts the op back through /elements/link
       var _la = _tbEl && _tbEl.tagName === "A" ? _tbEl : (_tbEl && _tbEl.querySelector ? _tbEl.querySelector("a[href]") : null);
       window.parent.postMessage({type:"element-op", op:"link", field:_tbField, block:bid, applied:false, href:(_la ? (_la.getAttribute("href") || "") : ""), target:(_la ? (_la.getAttribute("target") || "") : ""), kind:_luFxKind(_tbEl), text:((_tbEl && _tbEl.textContent) || "").replace(/\s+/g, " ").trim().slice(0, 60)}, "*");
