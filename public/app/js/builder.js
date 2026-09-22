@@ -734,10 +734,10 @@ async function wsLoadSites(){
     }
     console.log('[wsLoadSites] parsed', wsSites.length, 'site(s):', wsSites.map(function(s){return s && (s.id+':'+(s.name||s.title||'?'));}).join(', '));
     if (_wsResp && _wsResp.usage && typeof _luUpdateWebsiteUsage === 'function') _luUpdateWebsiteUsage(_wsResp.usage);
-    wsUpdateStats(); wsRenderGrid();
+    wsUpdateStats(); if (document.getElementById('template-editor-view')) { window._wsSitesStale = true; } else { wsRenderGrid(); }   /* PUB-1: never rebuild the grid under an open editor */
   }catch(e){
     console.error('[wsLoadSites]',e);
-    wsSites=[]; wsUpdateStats(); wsRenderGrid();
+    wsSites=[]; wsUpdateStats(); if (document.getElementById('template-editor-view')) { window._wsSitesStale = true; } else { wsRenderGrid(); }   /* PUB-1: never rebuild the grid under an open editor */
   }
 }
 
@@ -1071,6 +1071,7 @@ async function _wsTplBindPage(websiteId) {
 }
 
 async function wsCloseTemplateEditor() {
+  if (window._wsSitesStale) { window._wsSitesStale = false; try { if (typeof wsLoadSites === 'function') setTimeout(wsLoadSites, 0); } catch (_e) {} }   // PUB-1
   // DEC-0046: the ONE confirmation in this editor. Arthur, palette and undo changes are already on the site
   // (Undo and Versions put them back); only inline text edits can still be pending, and those are what the
   // customer is asked about. Nothing pending: leave silently.
@@ -1187,7 +1188,8 @@ async function _t3ElementOp(d) {
   } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); if (d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); } }
 }
 
-function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "editor-readonly-click") {   // PREVIEW-2: a link/button in a read-only preview does nothing but say so
+function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "link-longpress") { _t3LinkSheet(e.data); return; }   // LONGPRESS-1
+  if (e.data.type === "editor-readonly-click") {   // PREVIEW-2: a link/button in a read-only preview does nothing but say so
     var now0 = Date.now(); if (!window._t3RoToastAt || now0 - window._t3RoToastAt > 4000) { window._t3RoToastAt = now0; if (typeof showToast === 'function') showToast('This preview is read-only. Ask Arthur to change this page.', 'info'); }
     return;
   }
@@ -1283,6 +1285,48 @@ async function _t3CropCurrent(d) {
     if (typeof _t3ReplaceImage === 'function') { _t3ReplaceImage(parseInt(siteId, 10), d.field, res.url); }
     else { say('Cropped, but the editor could not place it. Reload and try again.'); }
   });
+}
+
+// LONGPRESS-1 (Owner 2026-09-22): the preview never navigates, so a long-press on a link or menu item asks what to do.
+function _t3PagePill(page) {
+  var bar = document.querySelector('#template-editor-view .pe-bar'); if (!bar) return;
+  var pill = document.getElementById('t3-page-pill');
+  if (!page) { if (pill) pill.remove(); return; }
+  if (!pill) { pill = document.createElement('button'); pill.type = 'button'; pill.id = 't3-page-pill'; pill.style.cssText = 'background:var(--ps,rgba(108,92,231,.14));border:1px solid var(--p,#6C5CE7);color:var(--t1);padding:5px 12px;border-radius:999px;cursor:pointer;font-size:12px;font-family:var(--fb);white-space:nowrap'; pill.onclick = function () { _t3LoadPreview(window._t3PreviewSiteId, null, ''); }; var back = bar.querySelector('button'); if (back && back.nextSibling) bar.insertBefore(pill, back.nextSibling); else bar.appendChild(pill); }
+  pill.textContent = '◀ Home page · editing ' + page.replace(/[-_]/g, ' ');
+  pill.title = 'You are editing the ' + page + ' page. Click to go back to the home page.';
+}
+function _t3LinkSheet(d) {
+  try { var o = document.getElementById('t3-link-sheet'); if (o) o.remove(); } catch (_e) {}
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  var href = String(d.href || '').trim(); var siteId = window._t3PreviewSiteId;
+  var isHash = /^#/.test(href), isExt = /^https?:\/\//i.test(href) && !/levelupgrowth\.io\/api\/builder\//.test(href), isMail = /^(mailto|tel):/i.test(href);
+  var page = '';
+  if (!isHash && !isExt && !isMail && href) { page = href.replace(/^https?:\/\/[^/]+/i, '').replace(/^\/api\/builder\/websites\/\d+\/preview\/?/i, '').replace(/^\/+|\/+$/g, '').replace(/[?#].*$/, ''); }
+  var label = d.text ? '“' + d.text.slice(0, 40) + '”' : (href || 'this link');
+  var btn = function (role, txt, primary) { return '<button type="button" data-role="' + role + '" style="display:block;width:100%;text-align:left;min-height:46px;padding:0 16px;border-radius:10px;font:600 14px var(--fb,sans-serif);cursor:pointer;margin-top:8px;background:' + (primary ? 'var(--p,#6C5CE7)' : 'var(--s2,#1E2230)') + ';color:' + (primary ? '#fff' : 'var(--t1,#E8EDF5)') + ';border:1px solid ' + (primary ? 'transparent' : 'var(--bd2,rgba(255,255,255,.13))') + '">' + txt + '</button>'; };
+  var ov = document.createElement('div'); ov.id = 't3-link-sheet';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.5);display:flex;align-items:flex-end;justify-content:center;padding:12px;font-family:var(--fb,system-ui,sans-serif)';
+  ov.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--s1,#171A21);border:1px solid var(--bd2,rgba(255,255,255,.13));border-radius:16px;width:100%;max-width:440px;padding:16px 16px 14px;box-shadow:0 24px 64px rgba(0,0,0,.6);color:var(--t1,#E8EDF5)">'
+    + '<div style="font:700 14px var(--fh,sans-serif);margin-bottom:2px">' + esc(label) + '</div>'
+    + '<div style="font-size:12px;color:var(--t3,#8B97B0);word-break:break-all">' + esc(href || 'no link yet') + '</div>'
+    + (page && !isHash ? btn('go', '→ Go to the ' + esc(page.replace(/[-_]/g, ' ')) + ' page (edit it here)', true) : '')
+    + (page === '' && !isHash && !isExt && !isMail && href === '' ? '' : '')
+    + (isHash ? btn('scroll', '↓ Scroll to that section', true) : '')
+    + (isExt || isMail ? btn('open', '↗ Open in a new tab', true) : '')
+    + (d.field ? btn('edit', '✎ Edit where this link goes') : '')
+    + btn('cancel', 'Cancel')
+    + '</div>';
+  document.body.appendChild(ov);
+  var close = function () { try { ov.remove(); } catch (_e) {} };
+  ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
+  ov.querySelectorAll('[data-role]').forEach(function (b) { b.onclick = function () {
+    var r = b.getAttribute('data-role'); close();
+    if (r === 'go') { _t3LoadPreview(siteId, null, page); }
+    else if (r === 'scroll') { try { document.getElementById('t3-preview').contentWindow.postMessage({ type: 'scroll-to', hash: href }, '*'); } catch (_s) {} }
+    else if (r === 'open') { try { window.open(href, '_blank', 'noopener'); } catch (_o) {} }
+    else if (r === 'edit') { _t3LinkDialog({ op: 'link', field: d.field, href: href, text: d.text, kind: 'link' }); }
+  }; });
 }
 
 // ── Builder image click-to-replace panel (2026-04-19) ──────────
@@ -3062,8 +3106,16 @@ window._luConfirmSubdomain = async function (websiteId) {
     var url = pubD.url || ('https://' + slug + '.levelupgrowth.io');
     showToast('Website published! ' + url, 'success', { duration: 8000 });
 
-    // Refresh the websites grid + any open editor's status
-    if (typeof wsLoadSites === 'function') wsLoadSites();
+    // PUB-1 (Owner 2026-09-22): a first publish from INSIDE the editor used to call wsLoadSites(), which rebuilt the
+    // Websites grid and took the open editor down with it. In the editor: update the record in place, keep the editor,
+    // reload the preview and show the live link. From the list: refresh the grid as before.
+    var _edOpen = !!document.getElementById('template-editor-view') || !!window._t3PreviewSiteId;
+    if (_edOpen) {
+      try { var _rec = (Array.isArray(window.wsSites) ? wsSites : []).find(function (x) { return x && x.id === websiteId; }); if (_rec) { _rec.status = 'published'; _rec.publish_state = 'published'; _rec.subdomain = _rec.subdomain || slug; _rec.live_url = url; } } catch (_r) {}
+      try { var _ps = document.getElementById('t3-pub-status') || document.getElementById('pub-status'); if (_ps) { _ps.style.display = 'flex'; _ps.innerHTML = '<span>✓</span><a href="' + encodeURI(String(url)) + '" target="_blank" rel="noopener" style="color:var(--ac);text-decoration:none">Live ↗</a>'; } } catch (_p) {}
+      try { if (typeof _t3ReloadPreview === 'function') _t3ReloadPreview(); } catch (_q) {}
+      try { window._wsSitesStale = true; } catch (_z) {}   // the list refreshes when the editor closes
+    } else if (typeof wsLoadSites === 'function') { wsLoadSites(); }
   } catch (e) {
     status.textContent = 'Network error: ' + (e && e.message ? e.message : 'unknown');
     status.style.color = '#f87171';
@@ -4023,12 +4075,15 @@ async function _t3ConfirmTier4(websiteId, btn, confirmAction, confirmData) {
 /* ══════════════ DEC-0046 (2026-09-13) — palettes, undo, exit choice, preview reload ══════════════ */
 // PREVIEW GATE (2026-09-15): the preview is fetched with the bearer token and written into the iframe (srcdoc); a <base>
 // keeps relative links resolving as they did when the iframe pointed at the preview URL. Nothing token-bearing is in a URL.
-async function _t3LoadPreview(siteId, iframe) {
+async function _t3LoadPreview(siteId, iframe, page) {
   iframe = iframe || document.getElementById('t3-preview'); if (!iframe || !siteId) return;
   window._t3PreviewSiteId = siteId;
+  if (page === undefined) page = window._t3PreviewPage || '';   // LONGPRESS-1: a reload keeps the page that is open
+  page = String(page || '').replace(/^\/+|\/+$/g, ''); window._t3PreviewPage = page;
+  try { _t3PagePill(page); } catch (_pp) {}
   var seq = (window._t3PreviewSeq = (window._t3PreviewSeq || 0) + 1);
   try {
-    var r = await fetch('/api/builder/websites/' + siteId + '/preview', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'text/html' }, cache: 'no-store' });
+    var r = await fetch('/api/builder/websites/' + siteId + '/preview' + (page ? '/' + page : ''), { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'text/html' }, cache: 'no-store' });
     if (seq !== window._t3PreviewSeq) return;   // a newer load won
     if (!r.ok) { iframe.srcdoc = '<div style="font:14px/1.5 system-ui,sans-serif;padding:28px;color:#334">' + (r.status === 401 || r.status === 403 ? 'Please sign in again to see this preview.' : (r.status === 404 ? ((r.headers.get('X-LU-Preview-Missing') === 'deleted') ? 'This website was deleted.' : (r.headers.get('X-LU-Preview-Missing') === 'unrendered') ? 'This page has not been rendered yet. Ask Arthur to rebuild it, or publish it from Websites.' : 'This preview is available to members of its workspace only.') : 'The preview could not be loaded (HTTP ' + r.status + ').')) + '</div>'; return; }
     var html = await r.text();

@@ -3496,8 +3496,13 @@ Route::middleware(['throttle:10,1'])->group(function () {
 // ── T3 Template Editor Routes ──────────────────────────────────
 // PREVIEW GATE (2026-09-15, RISK-0177): the renderer below is a container callable; the ROUTE lives in
 // routes/api/authenticated/builder-01.php (bearer token + workspace ownership). No public preview route remains.
-app()->instance('lu.preview.render', function ($id) {
-    $htmlPath = storage_path('app/public/sites/' . (int)$id . '/index.html');
+app()->instance('lu.preview.render', function ($id, $page = '') {
+    // LONGPRESS-1 (Owner 2026-09-22): the editor can show a sub-page of the site (about/, blog/...) with the same editing script.
+    $page = trim((string) preg_replace('#[^a-z0-9_\-/]#i', '', (string) $page), '/');
+    if ($page !== '' && (str_contains($page, '..') || ! is_file(storage_path('app/public/sites/' . (int)$id . '/' . $page . '/index.html')))) {
+        return response('That page is not part of this website.', 404)->header('X-LU-Preview-Missing', 'nopage');
+    }
+    $htmlPath = storage_path('app/public/sites/' . (int)$id . ($page !== '' ? '/' . $page : '') . '/index.html');
     // U3 (2026-09-20): opening a site in the editor brings its added sections up to date (field ids, palette roles)
     try { app(\App\Engines\Builder\Services\TemplateService::class)->refreshHomeAddedBlocks((int) $id); } catch (\Throwable $e) {}
     // PREVIEW-2 (Owner 2026-09-22): a preview is NEVER another website. EV-1003 used to redirect a missing page to the
@@ -3550,6 +3555,18 @@ document.addEventListener("DOMContentLoaded",function(){
   document.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("a[href],button,input[type=submit],input[type=image],area[href]"):null;if(t){e.preventDefault();}}catch(_){}},true);
   document.addEventListener("submit",function(e){try{e.preventDefault();}catch(_){}},true);
   document.addEventListener("auxclick",function(e){try{var t=e.target&&e.target.closest?e.target.closest("a[href],area[href]"):null;if(t){e.preventDefault();}}catch(_){}},true);
+  // LONGPRESS-1 (Owner 2026-09-22): "user should be given option to navigate on links and menu items once longpressed".
+  // Navigation is blocked in the preview, so a long-press on a link or menu item asks the editor what to do (go to the page,
+  // scroll to the section, open in a new tab, edit the link). A normal tap still selects the element.
+  (function(){ var lpT=null, lpEl=null, lpX=0, lpY=0, lpFired=false;
+    function cancel(){ if(lpT){clearTimeout(lpT);lpT=null;} lpEl=null; }
+    document.addEventListener("pointerdown",function(e){ if(e.button&&e.button!==0) return; var a=e.target&&e.target.closest?e.target.closest("a[href],[data-field$=\"_link\"],[data-field^=\"nav_\"] a, nav a"):null; if(!a) return; lpEl=a; lpX=e.clientX; lpY=e.clientY; lpFired=false; lpT=setTimeout(function(){ lpFired=true; try{ if(navigator.vibrate) navigator.vibrate(12); }catch(_v){} var f=a.closest?a.closest("[data-field]"):null; var r=a.getBoundingClientRect(); try{ window.parent.postMessage({type:"link-longpress", href:a.getAttribute("href")||"", text:((a.textContent||"").replace(/\s+/g," ").trim().slice(0,60)), field:f?f.getAttribute("data-field"):null, rect:{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height}}, "*"); }catch(_p){} }, 550); }, true);
+    document.addEventListener("pointermove",function(e){ if(lpT && (Math.abs(e.clientX-lpX)>8 || Math.abs(e.clientY-lpY)>8)) cancel(); }, true);
+    document.addEventListener("pointerup",cancel,true); document.addEventListener("pointercancel",cancel,true);
+    document.addEventListener("click",function(e){ if(lpFired){ lpFired=false; e.preventDefault(); e.stopPropagation(); } }, true);   // the release after a long-press is not a tap
+    document.addEventListener("contextmenu",function(e){ var a=e.target&&e.target.closest?e.target.closest("a[href]"):null; if(a) e.preventDefault(); }, true);   // no native menu over the gesture
+    window.addEventListener("message",function(e){ var d=e.data||{}; if(d.type==="scroll-to" && d.hash){ try{ var t=document.getElementById(String(d.hash).replace(/^#/,"")) || document.querySelector(String(d.hash)); if(t) t.scrollIntoView({behavior:"smooth",block:"start"}); }catch(_s){} } });
+  })();
   var _elementsByBlock = ' . $elementsJson . ';
   var _imageDims = ' . $imageDimsJson . ';
   window._selectedBlock = null;

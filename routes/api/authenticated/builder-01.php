@@ -118,6 +118,12 @@ use Illuminate\Support\Facades\Route;
             if (! $w || (int) $w->workspace_id !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'not_found'], 404);
             return app('lu.preview.render')((int) $id);
         });
+        // LONGPRESS-1: a sub-page of the site in the editor (same renderer, same editing script)
+        Route::get('/websites/{id}/preview/{page}', function (\Illuminate\Http\Request $r, $id, $page) {
+            $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'workspace_id']);
+            if (! $w || (int) $w->workspace_id !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'not_found'], 404);
+            return app('lu.preview.render')((int) $id, (string) $page);
+        })->where('page', '[A-Za-z0-9_\-/]+');
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
         Route::post('/websites/{id}/elements/{op}', function (\Illuminate\Http\Request $r, $id, $op) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
