@@ -3544,6 +3544,12 @@ app()->instance('lu.preview.render', function ($id) {
     $editScript = '<script>
 document.addEventListener("DOMContentLoaded",function(){
   if(!document.querySelector("[data-field]")){try{window.parent.postMessage({type:"editor-empty"},"*");}catch(_){}}   // PREVIEW-2: a page with nothing selectable says so instead of showing nothing
+  // PREVIEW-3 (Owner 2026-09-22, phone screenshot): a CTA button/link/form in the preview navigated the iframe itself to the
+  // base URL (/api/builder/websites/{id}/preview), which has no bearer token, so the frame showed {"error":"Unauthorized"}.
+  // Nothing inside an editor preview may navigate. preventDefault only - propagation stays so element selection still works.
+  document.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("a[href],button,input[type=submit],input[type=image],area[href]"):null;if(t){e.preventDefault();}}catch(_){}},true);
+  document.addEventListener("submit",function(e){try{e.preventDefault();}catch(_){}},true);
+  document.addEventListener("auxclick",function(e){try{var t=e.target&&e.target.closest?e.target.closest("a[href],area[href]"):null;if(t){e.preventDefault();}}catch(_){}},true);
   var _elementsByBlock = ' . $elementsJson . ';
   var _imageDims = ' . $imageDimsJson . ';
   window._selectedBlock = null;
