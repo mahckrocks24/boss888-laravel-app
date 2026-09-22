@@ -265,6 +265,9 @@ class AuthService
                 'email' => $user->email,
                 'name' => $user->name,
                 'is_platform_admin' => (bool) $user->is_platform_admin,
+                // RFC-0011 U8 (enterprise Profile tab): real read-only identity facts (role is derived client-side from workspaces + current_workspace_id).
+                'email_verified' => $user->email_verified_at !== null,
+                'created_at' => optional($user->created_at)->toIso8601String(),
             ],
             'workspaces' => $workspaces->map(fn ($ws) => [
                 'id' => $ws->id,
@@ -291,6 +294,9 @@ class AuthService
                 'email' => $user->email,
                 'name' => $user->name,
                 'is_platform_admin' => (bool) $user->is_platform_admin,
+                // RFC-0011 U8 (enterprise Profile tab): real read-only identity facts (role is derived client-side from workspaces + current_workspace_id).
+                'email_verified' => $user->email_verified_at !== null,
+                'created_at' => optional($user->created_at)->toIso8601String(),
             ],
             'workspaces' => $workspaces->map(fn ($ws) => [
                 'id' => $ws->id,

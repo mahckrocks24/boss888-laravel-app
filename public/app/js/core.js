@@ -567,6 +567,8 @@ async function _settingsFillCredits() {
     var planName = (s.plan && (s.plan.plan_name || s.plan.plan_slug)) ? String(s.plan.plan_name || s.plan.plan_slug) : '';
     var apply = function () {
       if (wsCr) wsCr.textContent = txt;
+      var _cb = document.getElementById("pf-credit-bar");
+      if (_cb) { var _pct = lim > 0 ? Math.max(0, Math.min(100, Math.round(bal / lim * 100))) : (bal > 0 ? 100 : 0); _cb.style.width = _pct + "%"; _cb.style.background = (lim > 0 && _pct < 15) ? "var(--am)" : "var(--ac)"; }
       if (bill) bill.textContent = txt;
       if (wsPl && planName) wsPl.textContent = planName.charAt(0).toUpperCase() + planName.slice(1) + (s.is_trial ? ' (trial)' : '');
     };
@@ -576,17 +578,65 @@ async function _settingsFillCredits() {
   } catch (e) {}
 }
 
+// RFC-0011 U8 (2026-09-22): enterprise Profile tab helpers.
+window.pfToggleEye = function (id, btn) {
+  var el = document.getElementById(id); if (!el) return;
+  var show = el.type === "password"; el.type = show ? "text" : "password";
+  if (btn) btn.textContent = show ? "HIDE" : "SHOW";
+};
+window.pfPwStrength = function () {
+  var np = (document.getElementById("prof-new-pw") || {}).value || "";
+  var cp = (document.getElementById("prof-conf-pw") || {}).value || "";
+  var reqs = { len: np.length >= 8, case: /[a-z]/.test(np) && /[A-Z]/.test(np), num: /\d/.test(np), match: np.length > 0 && np === cp };
+  var box = document.getElementById("pf-reqs");
+  if (box) Array.prototype.forEach.call(box.querySelectorAll("span[data-req]"), function (sp) {
+    var ok = !!reqs[sp.getAttribute("data-req")];
+    sp.classList.toggle("ok", ok);
+    var b = sp.querySelector("b"); if (b) b.textContent = ok ? "✓" : "·";
+  });
+  var score = 0;
+  if (np.length >= 8) score++; if (np.length >= 12) score++;
+  if (/[a-z]/.test(np) && /[A-Z]/.test(np)) score++;
+  if (/\d/.test(np)) score++; if (/[^A-Za-z0-9]/.test(np)) score++;
+  if (np.length === 0) score = 0; if (score > 4) score = 4;
+  var bar = document.getElementById("pf-meter-bar");
+  if (bar) {
+    bar.style.width = [0, 25, 50, 75, 100][score] + "%";
+    bar.style.background = ["var(--bd)", "#ef4444", "#f59e0b", "#eab308", "var(--ac)"][score];
+  }
+};
 async function _populateProfileFields() {
   try {
     var r = await _luFetch("GET", "/auth/me");
     var d = await r.json();
-    if (d && d.user) {
-      var nameEl = document.getElementById("prof-name");
-      var emailEl = document.getElementById("prof-email");
-      if (nameEl) nameEl.value = d.user.name || "";
-      if (emailEl) emailEl.value = d.user.email || "";
+    var u = d && d.user; if (!u) return;
+    var nameEl = document.getElementById("prof-name");
+    var emailEl = document.getElementById("prof-email");
+    if (nameEl) nameEl.value = u.name || "";
+    if (emailEl) emailEl.value = u.email || "";
+    var nm = (u.name || "").trim(), em = (u.email || "").trim();
+    var hn = document.getElementById("pf-hero-name"); if (hn) hn.textContent = nm || "Your profile";
+    var he = document.getElementById("pf-hero-email"); if (he) he.textContent = em || "—";
+    var av = document.getElementById("pf-avatar");
+    if (av) {
+      var src = (nm || em), parts = src.split(/\s+/).filter(Boolean);
+      var ini = parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]) : src.slice(0, 2);
+      av.textContent = (ini || "?").toUpperCase();
+      var h = 0; for (var i = 0; i < src.length; i++) { h = (h * 31 + src.charCodeAt(i)) | 0; }
+      var hue = Math.abs(h) % 360;
+      av.style.background = "linear-gradient(135deg,hsl(" + hue + ",60%,52%),hsl(" + ((hue + 40) % 360) + ",62%,45%))";
     }
-  } catch(e) { console.warn("[LU] Failed to load profile:", e); }
+    var ev = document.getElementById("pf-email-verif");
+    if (ev) { ev.textContent = u.email_verified ? "Verified" : "Unverified"; ev.className = "pf-pill " + (u.email_verified ? "ok" : "warn"); ev.hidden = false; }
+    var role = "";
+    try { var cw = d.current_workspace_id; var ws = (d.workspaces || []).filter(function (w) { return w.id === cw; })[0] || (d.workspaces || [])[0]; role = ws && ws.role ? String(ws.role) : ""; } catch (e) {}
+    var roleLabel = role ? role.charAt(0).toUpperCase() + role.slice(1) : "";
+    var rp = document.getElementById("pf-role"); if (rp && roleLabel) { rp.textContent = roleLabel; rp.hidden = false; }
+    var rv = document.getElementById("pf-role-v"); if (rv && roleLabel) rv.textContent = roleLabel;
+    var ad = document.getElementById("pf-admin"); if (ad && u.is_platform_admin) ad.hidden = false;
+    var ms = document.getElementById("pf-member");
+    if (ms && u.created_at) { try { var dt = new Date(u.created_at); if (!isNaN(dt.getTime())) { ms.textContent = "Member since " + dt.toLocaleDateString(undefined, { month: "short", year: "numeric" }); ms.hidden = false; } } catch (e) {} }
+  } catch (e) { console.warn("[LU] Failed to load profile:", e); }
 }
 
 async function saveProfile() {

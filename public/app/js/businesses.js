@@ -38,7 +38,25 @@ window.LU_LOADED_ENGINES['businesses'] = true;
       + '.bz-form .full{grid-column:1/-1}'
       + '.bz-sitelist{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto;padding:0 22px 8px;font-size:12px;color:var(--t2)}'
       + '.bz-sitelist label{display:flex;align-items:center;gap:8px}'
-      + '@media (max-width:767px){.bz-form{grid-template-columns:1fr}#businesses-section .bz-grid{grid-template-columns:1fr}}';
+      + '.bz-form label{font-weight:600}'
+      + '.bz-form .bz-sec{grid-column:1/-1;font:700 10.5px var(--fb);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin:6px 0 -2px;padding-top:6px;border-top:1px solid var(--bd)}'
+      + '.bz-form .bz-sec.first{border-top:0;padding-top:0;margin-top:0}'
+      + '.bz-form input:focus,.bz-form textarea:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--ps,rgba(108,92,231,.18))}'
+      + '.lu-dlg.bz-dlg{display:flex;flex-direction:column;overflow:hidden;max-width:600px;width:calc(100% - 24px)}'
+      + '.bz-dlg .lu-dlg-head{flex:0 0 auto}'
+      + '.bz-dlg .lu-dlg-body{flex:0 0 auto}'
+      + '.bz-dlg .bz-form{flex:1 1 auto;overflow-y:auto;padding-top:6px;padding-bottom:16px}'
+      + '.bz-dlg .lu-dlg-foot{flex:0 0 auto;position:sticky;bottom:0;background:var(--s1);box-shadow:0 -8px 18px -10px rgba(0,0,0,.55)}'
+      + '@media (max-width:767px){'
+      +   '.bz-form{grid-template-columns:1fr;padding-left:16px;padding-right:16px}'
+      +   '#businesses-section .bz-grid{grid-template-columns:1fr}'
+      +   '.bz-form input,.bz-form textarea{font-size:16px;padding:12px 12px;border-radius:10px}'
+      +   '.lu-dlg.bz-dlg{width:100%;max-width:none;max-height:calc(100dvh - 32px)}'
+      +   '.bz-dlg .lu-dlg-head{padding-left:16px;padding-right:16px;padding-top:18px}'
+      +   '.bz-dlg .lu-dlg-body{padding-left:16px;padding-right:16px}'
+      +   '.bz-dlg .lu-dlg-foot{padding:12px 16px 14px}'
+      +   '.bz-dlg .lu-dlg-btn{flex:1 1 auto;min-width:120px;min-height:46px}'
+      + '}';
     document.head.appendChild(st);
   }
 
@@ -73,14 +91,16 @@ window.LU_LOADED_ENGINES['businesses'] = true;
   function form(b) {
     var ov = document.createElement('div'); ov.className = 'lu-dlg-overlay';
     var v = function (k) { return b ? esc(b[k] || '') : ''; };
-    ov.innerHTML = '<div class="lu-dlg" role="dialog" aria-modal="true" aria-labelledby="bz-t" style="max-width:640px;width:calc(100% - 24px)">'
+    ov.innerHTML = '<div class="lu-dlg bz-dlg" role="dialog" aria-modal="true" aria-labelledby="bz-t">'
       + '<div class="lu-dlg-head" id="bz-t">' + (b ? 'Edit ' + esc(b.name) : 'Add a business') + '</div>'
       + '<div class="lu-dlg-body">' + (b ? 'What Sarah and the engines know about this business.' : 'A second business in this workspace: its own profile, its own websites, its own memory — no switching.') + '</div>'
       + '<div class="bz-form">'
+      + '<div class="bz-sec first">Identity</div>'
       + '<label class="full">Name<input id="bz-name" value="' + v('name') + '" placeholder="e.g. Boss Mac Gym"></label>'
       + '<label>Industry<input id="bz-industry" value="' + v('industry') + '" placeholder="e.g. gym"></label>'
       + '<label>Location<input id="bz-location" value="' + v('location') + '" placeholder="e.g. Jersey City, NJ"></label>'
       + '<label class="full">Services (comma separated)<input id="bz-services" value="' + esc((b && b.services || []).join(', ')) + '" placeholder="e.g. Memberships, Personal training"></label>'
+      + '<div class="bz-sec">How Sarah talks about it</div>'
       + '<label class="full">Prices Sarah may quote<input id="bz-pricing" value="' + v('pricing_anchor') + '" placeholder="e.g. $49/month, personal training $60/session"></label>'
       + '<label>Tone<input id="bz-tone" value="' + v('tone') + '" placeholder="e.g. energetic, plain"></label>'
       + '<label>Target audience<input id="bz-audience" value="' + v('target_audience') + '" placeholder="e.g. busy professionals 25–45"></label>'

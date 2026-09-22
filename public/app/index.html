@@ -3725,62 +3725,121 @@ window.luSwipeToClose = luSwipeToClose;
         <div id="businesses-section" data-set-tab="business"></div>
         <!-- RFC-0011 U7 (Owner 2026-09-22): the "Workspace Intelligence Profile Incomplete" gate is RETIRED. The Strategy Room resolves the business from the topic and runs across all website profiles like Sarah; there is no workspace-level profile to complete. -->
 
-        <!-- Your Profile -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
-          <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Your Profile</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-            <div>
-              <label for="prof-name" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Name</label>
-              <input id="prof-name" type="text" placeholder="Your name" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label for="prof-email" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Email</label>
-              <input id="prof-email" type="email" placeholder="your@email.com" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-            <button onclick="saveProfile()" style="background:var(--p);border:none;color:#fff;border-radius:var(--r);padding:9px 22px;font-size:13px;font-weight:600;font-family:var(--fh);cursor:pointer">Save Profile</button>
-            <span id="prof-save-msg" style="font-size:12px;color:var(--t3)"></span>
-          </div>
-          <div style="border-top:1px solid var(--bd);padding-top:16px;margin-top:4px">
-            <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Change Password</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px">
-              <div>
-                <label for="prof-cur-pw" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Current Password</label>
-                <input id="prof-cur-pw" type="password" placeholder="Current password" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
+        <!-- Your Profile (enterprise Profile tab, RFC-0011 U8 2026-09-22) — "Your Profile"/"Change Password" text kept so tab auto-classify still reads 'profile' -->
+        <style id="pf-styles">
+          #view-settings .pf-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:22px;margin-bottom:16px}
+          #view-settings .pf-hd{display:flex;align-items:center;gap:8px;font:700 13px var(--fh);color:var(--t1);margin-bottom:4px}
+          #view-settings .pf-hd svg{width:16px;height:16px;color:var(--p);flex:0 0 auto}
+          #view-settings .pf-sub{font-size:11.5px;color:var(--t3);margin:0 0 18px 24px;line-height:1.5}
+          #view-settings .pf-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+          #view-settings .pf-grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+          #view-settings .pf-field{display:flex;flex-direction:column;gap:6px;min-width:0}
+          #view-settings .pf-field>label{font:700 11px var(--fb);letter-spacing:.06em;text-transform:uppercase;color:var(--t3)}
+          #view-settings .pf-inp{width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:10px 12px;font-size:13px;box-sizing:border-box;transition:border-color .15s,box-shadow .15s}
+          #view-settings .pf-inp:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--ps,rgba(108,92,231,.18))}
+          #view-settings .pf-inp.pf-bad{border-color:var(--rd,#ef4444)}
+          #view-settings .pf-btn{background:var(--p);border:none;color:#fff;border-radius:var(--r);padding:10px 22px;font:600 13px var(--fh);cursor:pointer;transition:filter .15s,opacity .15s}
+          #view-settings .pf-btn:hover{filter:brightness(1.08)}
+          #view-settings .pf-btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+          #view-settings .pf-btn.pf-amber{background:var(--am);color:#1a1205}
+          #view-settings .pf-pw-wrap{position:relative}
+          #view-settings .pf-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--t3);cursor:pointer;padding:6px 8px;font:700 10px var(--fb);letter-spacing:.05em}
+          #view-settings .pf-eye:hover{color:var(--t1)}
+          #view-settings .pf-meter{height:5px;border-radius:99px;background:var(--s2);overflow:hidden;margin-top:12px}
+          #view-settings .pf-meter i{display:block;height:100%;width:0;border-radius:99px;background:var(--bd);transition:width .25s,background .25s}
+          #view-settings .pf-reqs{display:flex;flex-wrap:wrap;gap:7px 16px;margin-top:11px}
+          #view-settings .pf-reqs span{font-size:11px;color:var(--t3);display:inline-flex;align-items:center;gap:6px;transition:color .15s}
+          #view-settings .pf-reqs span.ok{color:var(--ac)}
+          #view-settings .pf-reqs b{width:14px;height:14px;border-radius:50%;border:1.5px solid currentColor;display:inline-flex;align-items:center;justify-content:center;font-size:9px;line-height:1;font-weight:900;flex:0 0 auto}
+          #view-settings .pf-pill{display:inline-flex;align-items:center;gap:5px;font:700 10.5px var(--fb);letter-spacing:.04em;padding:4px 11px;border-radius:99px;border:1px solid var(--bd);color:var(--t2);background:var(--s2);white-space:nowrap}
+          #view-settings .pf-pill.ok{color:var(--ac);border-color:color-mix(in srgb,var(--ac) 40%,transparent)}
+          #view-settings .pf-pill.warn{color:var(--am);border-color:color-mix(in srgb,var(--am) 45%,transparent)}
+          #view-settings .pf-avatar{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 22px var(--fh);color:#fff;flex:0 0 auto;letter-spacing:.02em;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+          #view-settings .pf-hero{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+          #view-settings .pf-hero-main{min-width:0;flex:1 1 220px}
+          #view-settings .pf-stat label{font:700 11px var(--fb);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:6px}
+          #view-settings .pf-stat .v{font-size:14px;color:var(--t1);font-weight:600}
+          #view-settings .pf-usebar{height:6px;border-radius:99px;background:var(--s2);overflow:hidden;margin-top:9px}
+          #view-settings .pf-usebar i{display:block;height:100%;width:0;background:var(--ac);border-radius:99px;transition:width .3s}
+          #view-settings .pf-link{color:var(--p);font-weight:600;font-size:12px;text-decoration:none;white-space:nowrap}
+          #view-settings .pf-link:hover{text-decoration:underline}
+          @media (max-width:640px){#view-settings .pf-grid2,#view-settings .pf-grid3{grid-template-columns:1fr}#view-settings .pf-card{padding:18px}}
+        </style>
+
+        <!-- Identity -->
+        <div class="pf-card" data-set-tab="profile">
+          <div class="pf-hero">
+            <div class="pf-avatar" id="pf-avatar" style="background:linear-gradient(135deg,var(--p),#8b5cf6)">&middot;</div>
+            <div class="pf-hero-main">
+              <div id="pf-hero-name" style="font:700 18px var(--fh);color:var(--t1);line-height:1.2;overflow:hidden;text-overflow:ellipsis">Your Profile</div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px">
+                <span id="pf-hero-email" style="font-size:13px;color:var(--t2);overflow:hidden;text-overflow:ellipsis">&mdash;</span>
+                <span id="pf-email-verif" class="pf-pill" hidden></span>
               </div>
-              <div>
-                <label for="prof-new-pw" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">New Password</label>
-                <input id="prof-new-pw" type="password" placeholder="New password (min 8 chars)" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
+              <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:11px">
+                <span id="pf-role" class="pf-pill" hidden></span>
+                <span id="pf-admin" class="pf-pill" hidden style="border-color:var(--p);color:var(--p)">Platform admin</span>
+                <span id="pf-member" class="pf-pill" hidden></span>
               </div>
-              <div>
-                <label for="prof-conf-pw" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Confirm Password</label>
-                <input id="prof-conf-pw" type="password" placeholder="Confirm new password" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:10px">
-              <button onclick="changePassword()" style="background:var(--am);border:none;color:#fff;border-radius:var(--r);padding:9px 22px;font-size:13px;font-weight:600;font-family:var(--fh);cursor:pointer">Change Password</button>
-              <span id="prof-pw-msg" style="font-size:12px;color:var(--t3)"></span>
             </div>
           </div>
         </div>
-        <!-- Workspace Info (read-only stats) -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
-          <div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Workspace</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Workspace Name</label>
-              <div id="st-ws-name" style="font-size:14px;color:var(--t1)">—</div>
+
+        <!-- Personal details -->
+        <div class="pf-card" data-set-tab="profile">
+          <div class="pf-hd"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="6.5" r="3.2"/><path d="M4 16.5c0-2.8 2.7-4.5 6-4.5s6 1.7 6 4.5"/></svg>Personal details</div>
+          <p class="pf-sub">The name and email your teammates and Sarah&rsquo;s team see. Your email is where account notices are sent.</p>
+          <div class="pf-grid2" style="margin-bottom:16px">
+            <div class="pf-field"><label for="prof-name">Full name</label><input id="prof-name" type="text" class="pf-inp" placeholder="Your name" autocomplete="name"></div>
+            <div class="pf-field"><label for="prof-email">Email</label><input id="prof-email" type="email" class="pf-inp" placeholder="you@company.com" autocomplete="email"></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <button class="pf-btn" onclick="saveProfile()">Save changes</button>
+            <span id="prof-save-msg" style="font-size:12px;color:var(--t3)"></span>
+          </div>
+        </div>
+
+        <!-- Change Password -->
+        <div class="pf-card" data-set-tab="profile">
+          <div class="pf-hd"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="12" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>Password &amp; security</div>
+          <p class="pf-sub">Use a strong, unique password. You&rsquo;ll need your current password to set a new one.</p>
+          <div class="pf-grid3" style="margin-bottom:2px">
+            <div class="pf-field"><label for="prof-cur-pw">Current password</label>
+              <div class="pf-pw-wrap"><input id="prof-cur-pw" type="password" class="pf-inp" placeholder="Current password" autocomplete="current-password" style="padding-right:52px"><button type="button" class="pf-eye" onclick="pfToggleEye('prof-cur-pw',this)">SHOW</button></div>
             </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Plan</label>
-              <div id="st-ws-plan" style="font-size:14px;color:var(--pu)">—</div>
+            <div class="pf-field"><label for="prof-new-pw">New password</label>
+              <div class="pf-pw-wrap"><input id="prof-new-pw" type="password" class="pf-inp" placeholder="At least 8 characters" autocomplete="new-password" oninput="pfPwStrength()" style="padding-right:52px"><button type="button" class="pf-eye" onclick="pfToggleEye('prof-new-pw',this)">SHOW</button></div>
             </div>
-            <div>
-              <label style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Credits Remaining</label>
-              <div id="st-ws-credits" style="font-size:14px;font-weight:700;color:var(--ac)">—</div>
+            <div class="pf-field"><label for="prof-conf-pw">Confirm new password</label>
+              <div class="pf-pw-wrap"><input id="prof-conf-pw" type="password" class="pf-inp" placeholder="Re-enter new password" autocomplete="new-password" oninput="pfPwStrength()" style="padding-right:52px"><button type="button" class="pf-eye" onclick="pfToggleEye('prof-conf-pw',this)">SHOW</button></div>
             </div>
-            <!-- REPORT-0061 C1 (2026-09-20): the internal platform version is not a customer fact — removed -->
+          </div>
+          <div class="pf-meter"><i id="pf-meter-bar"></i></div>
+          <div class="pf-reqs" id="pf-reqs">
+            <span data-req="len"><b>&middot;</b>8+ characters</span>
+            <span data-req="case"><b>&middot;</b>Upper &amp; lowercase</span>
+            <span data-req="num"><b>&middot;</b>A number</span>
+            <span data-req="match"><b>&middot;</b>Passwords match</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap">
+            <button class="pf-btn pf-amber" onclick="changePassword()">Update password</button>
+            <span id="prof-pw-msg" style="font-size:12px;color:var(--t3)"></span>
+          </div>
+        </div>
+
+        <!-- Account & plan -->
+        <div class="pf-card" data-set-tab="profile">
+          <div class="pf-hd"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17V5.5A1.5 1.5 0 0 1 5.5 4h6A1.5 1.5 0 0 1 13 5.5V17"/><path d="M13 9h1.5A1.5 1.5 0 0 1 16 10.5V17"/><path d="M3 17h14M7 7h3M7 10h3M7 13h3"/></svg>Account</div>
+          <p class="pf-sub">The workspace this profile is signed in to. Plans and credits are managed in Plan &amp; billing.</p>
+          <div class="pf-grid3">
+            <div class="pf-stat"><label>Workspace</label><div class="v" id="st-ws-name">&mdash;</div></div>
+            <div class="pf-stat"><label>Your role</label><div class="v" id="pf-role-v" style="color:var(--pu)">&mdash;</div></div>
+            <div class="pf-stat"><label>Plan</label><div class="v" id="st-ws-plan" style="color:var(--pu)">&mdash;</div></div>
+          </div>
+          <div style="margin-top:18px">
+            <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font:700 11px var(--fb);letter-spacing:.06em;text-transform:uppercase;color:var(--t3)">Credits remaining</span><a href="/app/settings/billing" onclick="if(window.setShowTab){setShowTab('billing');return false;}" class="pf-link" style="margin-left:auto">Manage plan &rarr;</a></div>
+            <div class="v" id="st-ws-credits" style="font-size:20px;font-weight:800;color:var(--ac);margin-top:4px">&mdash;</div>
+            <div class="pf-usebar"><i id="pf-credit-bar"></i></div>
           </div>
         </div>
 
@@ -4523,7 +4582,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=cat4-20260922',businesses:'/app/js/businesses.js?v=u6-20260922'}};
+  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=cat4-20260922',businesses:'/app/js/businesses.js?v=u8c-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4742,7 +4801,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=2c494a86ac"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=2e97e0a5a5"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
