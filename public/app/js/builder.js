@@ -1229,7 +1229,7 @@ function _t3ShowImagePanel(info) {
     panel.innerHTML =
       '<div style="font-size:12px;color:var(--t2,rgba(255,255,255,0.65));margin-right:6px">Image:</div>' +
       '<button type="button" id="t3-img-choose" style="' + primaryCss + '">Choose Image</button>' +
-      '<button type="button" id="t3-img-url" style="' + btnCss + '">Paste URL</button>' +
+      '<button type="button" id="t3-img-gen" style="' + btnCss + '">\u2728 Generate with AI</button>' +   // IMG-AI (Owner 2026-09-22): was "Paste URL"
       '<button type="button" id="t3-img-remove" style="' + dangerCss + '">Remove</button>' +
       '<button type="button" id="t3-img-close" style="' + btnCss + 'padding:6px 10px" title="Close">&times;</button>';
   }
@@ -1238,7 +1238,7 @@ function _t3ShowImagePanel(info) {
   _t3ImgPanelEl = panel;
 
   document.getElementById('t3-img-choose').onclick = _t3ImgChoose;
-  if (!isLogo) document.getElementById('t3-img-url').onclick = _t3ImgPasteUrl;
+  if (!isLogo) document.getElementById('t3-img-gen').onclick = _t3ImgGenerate;   // IMG-AI
   if (isLogo) {
     document.getElementById('t3-img-upload').onclick = _t3LogoUpload;
     document.getElementById('t3-img-file').onchange  = _t3LogoFileChosen;
@@ -1287,6 +1287,83 @@ function _t3ImgChoose() {
       _t3ReplaceImage(info.websiteId, info.field, finalUrl);
     });
   });
+}
+
+// IMG-AI (Owner 2026-09-22): generate the picture for this placement with the platform's own image pipeline.
+// One app dialog (the shell's dialog classes, never a native prompt): description + style → cost stated → generate →
+// preview → "Use this image" runs the fixed-frame crop and the same replace a library pick uses.
+async function _t3ImgGenerate() {
+  var info = _t3ImgPanelInfo;
+  if (!info) return;
+  _t3HideImagePanel();
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  var siteName = ''; try { siteName = (document.querySelector('#template-editor-view .pe-bar-title') || {}).textContent || ''; } catch (_e) {}
+  var slot = null; try { if (window.luCrop && typeof window.luCrop.slotFor === 'function') slot = await window.luCrop.slotFor(info.field); } catch (_e) { slot = null; }
+  var fw = slot && (slot.width || slot.w) ? parseInt(slot.width || slot.w, 10) : 0, fh = slot && (slot.height || slot.h) ? parseInt(slot.height || slot.h, 10) : 0;
+  var spot = String(info.field || '').replace(/_(url|src|image|img)$/i, '').replace(/_/g, ' ').replace(/\d+/g, function (d) { return ' ' + d; }).trim();
+
+  var ov = document.createElement('div'); ov.className = 'lu-dlg-overlay';
+  ov.innerHTML = '<div class="lu-dlg" role="dialog" aria-modal="true" aria-labelledby="t3-gen-t" style="max-width:540px;width:calc(100% - 24px)">'
+    + '<div class="lu-dlg-head" id="t3-gen-t">✨ Generate an image with AI</div>'
+    + '<div class="lu-dlg-body">Describe the picture for ' + (spot ? 'the <b>' + esc(spot) + '</b> spot' : 'this spot') + (siteName ? ' on <b>' + esc(siteName) + '</b>' : '') + '.' + (fw && fh ? ' It will be made to fit ' + fw + '×' + fh + '.' : '') + '</div>'
+    + '<div style="padding:0 22px 6px">'
+    +   '<textarea id="t3-gen-p" rows="3" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:10px;font:inherit;font-size:13px;resize:vertical" placeholder="e.g. a private chef plating a seasonal dish in a bright home kitchen, warm evening light"></textarea>'
+    +   '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap"><label for="t3-gen-s" style="font-size:12px;color:var(--t3)">Style</label><select id="t3-gen-s"><option value="natural">Natural</option><option value="cinematic">Cinematic</option><option value="minimal">Minimal</option><option value="bold">Bold</option><option value="elegant">Elegant</option><option value="editorial">Editorial</option></select></div>'
+    +   '<div id="t3-gen-cost" style="font-size:12px;color:var(--t3);margin-top:8px">Uses 1 credit for a standard image, up to 2 for a higher-quality one — you are charged only for what is actually produced.</div>'
+    +   '<div id="t3-gen-out" style="margin-top:10px"></div>'
+    + '</div>'
+    + '<div class="lu-dlg-foot"><button type="button" class="lu-dlg-btn ghost" data-role="cancel">Cancel</button><button type="button" class="lu-dlg-btn primary" data-role="ok">Generate</button></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  var ta = ov.querySelector('#t3-gen-p'), sel = ov.querySelector('#t3-gen-s'), out = ov.querySelector('#t3-gen-out'), okBtn = ov.querySelector('[data-role=ok]'), cancelBtn = ov.querySelector('[data-role=cancel]');
+  var busy = false, result = null;
+  function close() { if (busy) return; document.removeEventListener('keydown', onKey, true); try { ov.remove(); } catch (_e) {} }
+  function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } }
+  document.addEventListener('keydown', onKey, true);
+  cancelBtn.onclick = close;
+  ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
+  setTimeout(function () { try { ta.focus(); } catch (_e) {} }, 30);
+
+  function useIt() {
+    if (!result || !result.url) return;
+    busy = false; close();
+    _t3CropForField(info, { url: result.url, media_id: result.media_id || null }, function (finalUrl) {
+      _t3ReplaceImage(info.websiteId, info.field, finalUrl);
+    });
+  }
+  okBtn.onclick = async function () {
+    if (result) { useIt(); return; }
+    var prompt = (ta.value || '').trim();
+    if (prompt.length < 4) { out.innerHTML = '<div style="font-size:12px;color:#F59E0B">Say a little more about the picture you want.</div>'; ta.focus(); return; }
+    busy = true; okBtn.disabled = true; cancelBtn.disabled = true; ta.disabled = true; sel.disabled = true;
+    out.innerHTML = '<div class="lu-skel" style="width:100%;height:120px"></div><div style="font-size:12px;color:var(--t3);margin-top:6px">Making your image… this usually takes 20–40 seconds.</div>';
+    try {
+      var body = { prompt: prompt, style: sel.value || 'natural', platform: 'website', asset_type: 'website_image' };
+      if (fw && fh) { body.width = fw; body.height = fh; }
+      var key = 'img-' + (info.websiteId || 0) + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      var r = await fetch(API + 'studio/ai/generate-image', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json', 'Idempotency-Key': key }, _t3CatAuth()), body: JSON.stringify(body) });
+      var j = null; try { j = await r.json(); } catch (_e) { j = null; }
+      if (!r.ok || !j || !j.success || !(j.image_url || j.url)) {
+        var msg = (j && (j.message || j.error)) || ('HTTP ' + r.status);
+        if (r.status === 402) msg = 'Not enough credits for this image.' + (j && j.credits_required ? ' It needs ' + j.credits_required + '.' : '');
+        if (r.status === 403 && j && j.upgrade_required) msg = 'Your plan does not include AI images.';
+        if (r.status === 409) msg = 'That image is already being made — give it a moment and try again.';
+        out.innerHTML = '<div style="font-size:12px;color:#F87171">' + esc(msg) + '</div>';
+        busy = false; okBtn.disabled = false; cancelBtn.disabled = false; ta.disabled = false; sel.disabled = false; return;
+      }
+      result = { url: j.image_url || j.url, media_id: j.media_id || null, asset_id: j.asset_id || null };
+      var credits = (typeof j.credits === 'number') ? j.credits : null;
+      out.innerHTML = '<img src="' + esc(result.url) + '" alt="" style="width:100%;max-height:300px;object-fit:contain;border-radius:8px;background:#0B0D13;display:block">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap"><span style="font-size:12px;color:#00E5A8">Done' + (credits !== null ? ' · ' + credits + ' credit' + (credits === 1 ? '' : 's') : '') + '. It is also in your media library.</span>'
+        + '<button type="button" class="lu-btn lu-btn--sm" id="t3-gen-again">Try another</button></div>';
+      okBtn.textContent = 'Use this image';
+      busy = false; okBtn.disabled = false; cancelBtn.disabled = false; ta.disabled = false; sel.disabled = false;
+      var again = ov.querySelector('#t3-gen-again'); if (again) again.onclick = function () { result = null; okBtn.textContent = 'Generate'; out.innerHTML = ''; ta.focus(); };
+    } catch (e) {
+      out.innerHTML = '<div style="font-size:12px;color:#F87171">The image could not be made: ' + esc(e && e.message || e) + '</div>';
+      busy = false; okBtn.disabled = false; cancelBtn.disabled = false; ta.disabled = false; sel.disabled = false;
+    }
+  };
 }
 
 async function _t3ImgPasteUrl() {
@@ -4166,12 +4243,14 @@ window._t3CatalogueGate = async function (siteId) {
 };
 
 window.wsOpenCatalogue = async function (siteId, kind) {
+  // CAT-2 (Owner 2026-09-22): the Catalogue section hosts this same panel inline (no toggle, no floating stage).
+  var inline = !!(window._luCatalogueMount && document.getElementById('catalogue-mount'));
   var old = document.getElementById('t3-cat');
-  if (old && !kind) { old.remove(); return; }
+  if (old && !kind && !inline) { old.remove(); return; }
   if (old) old.remove();
   var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
   var lay = document.getElementById('t3-lay'); if (lay) lay.remove();
-  var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
+  var stage = inline ? document.getElementById('catalogue-mount') : (document.querySelector('#template-editor-view .pe-stage') || document.body);
   var panel = document.createElement('div');
   panel.id = 't3-cat'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Catalogue');
   panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(520px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r,12px);box-shadow:0 20px 60px rgba(0,0,0,.45);padding:14px 14px 16px;font-family:var(--fb)';

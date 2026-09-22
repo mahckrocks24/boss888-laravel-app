@@ -876,7 +876,7 @@ window._luRouter = (function () {
     calendar:1, chatbot:1, command:1, crm:1,
     meeting:1, messages:1, projects:1, queue:1, reports:1, seo:1,
     settings:1, social:1, studio:1, websites:1, workspace:1,
-    write:1, infrastructure:1,
+    write:1, infrastructure:1, catalogue:1,
   };
 
   // v5.7.23 (2026-05-31) — URL aliases. /app/{alias} resolves to the
@@ -928,6 +928,7 @@ window._luRouter = (function () {
     projects:   'Projects',
     queue:      'Queue',
     reports:    'Strategy Room · History',
+    catalogue:  'Catalogue',   // CAT-2: the engine retitles it by industry word (Properties, Packages, Menu …)
     settings:   'Settings',
     tools:      'Tools',
   };
@@ -1037,7 +1038,7 @@ async function luLoadEngine(engine) {
   _luEngineLoading[engine] = true;
   var urls = (window.LU_CFG && window.LU_CFG.engineUrls) || {};
   var base = (window.LU_CFG && window.LU_CFG.pluginUrl) ? window.LU_CFG.pluginUrl + '/assets/js/' : '';
-  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','automation','projects','mentions','infrastructure'];
+  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','automation','projects','mentions','infrastructure','catalogue'];
   if (lazy.indexOf(engine) === -1) { _luEngineLoading[engine] = false; return; }
   var src = urls[engine] || (base + engine + '.js');
   var isFallback = !urls[engine] && base;
@@ -1098,7 +1099,7 @@ var API=window.LU_CFG.api, NONCE=window.LU_CFG.nonce, BN=window.LU_CFG.bn, BU=wi
 // a lone call, a path outside the allow-list, or any batch failure falls back to the caller's direct fetch.
 window._luBatch = (function () {
   var q = [], timer = null;
-  var ALLOW = /^(workspace\/status|user\/last-chat-workspace|dashboard\/overview|approvals|approvals\/count|calendar\/events|social\/accounts|seo\/gsc\/status|seo\/knowledge|engines|messages\/unread-count|notifications\/unread-count|tasks|crm\/(dashboard|pipeline\/stages|leads|contacts|modules|settings|tasks|appointments))(\?|$)/;
+  var ALLOW = /^(workspace\/status|user\/last-chat-workspace|dashboard\/overview|approvals|approvals\/count|calendar\/events|social\/accounts|seo\/gsc\/status|seo\/knowledge|engines|messages\/unread-count|notifications\/unread-count|tasks|catalogue\/summary|crm\/(dashboard|pipeline\/stages|leads|contacts|modules|settings|tasks|appointments))(\?|$)/;
   function flush() {
     timer = null; var items = q; q = [];
     if (items.length < 2) { items.forEach(function (it) { it.fallback(); }); return; }
@@ -1252,6 +1253,7 @@ async function nav(view, opts){
   if (view === 'customers') { view = 'crm'; _requested = 'crm'; }   // Owner 2026-09-21: Basic opens the CRM engine, both called Clients
   if (view === 'account') { view = 'settings'; _requested = 'settings'; }   // Owner 2026-09-21: Basic's Account duplicated Settings
   if (typeof window.sarahUnload === 'function' && view !== 'sarah') { try { window.sarahUnload(); } catch (_e) {} }
+  if (typeof window.catalogueUnload === 'function' && view !== 'catalogue') { try { window.catalogueUnload(); } catch (_e) {} }   // CAT-2
   document.querySelectorAll('.view').forEach(v=>{
     v.classList.remove('active');
     // SEO view uses visibility (not display:none) to keep iframe alive
@@ -1302,6 +1304,7 @@ async function nav(view, opts){
   if(view==='account')    { var _acr=document.getElementById('account-root'); if(_acr && typeof window.basicAccountLoad==='function') window.basicAccountLoad(_acr); }
   if(view==='aria')       { var _arr=document.getElementById('aria-root'); if(_arr && typeof window.ariaLoad==='function') window.ariaLoad(_arr); }   /* ARIA888 DEC-0054 */
   if(view==='reports')    loadReports();
+  if(view==='catalogue') { await luLoadEngine('catalogue'); for (var _cw = 0; typeof window.catalogueLoad !== 'function' && _cw < 30; _cw++) { await new Promise(function (r) { setTimeout(r, 100); }); } var _cel=document.getElementById('catalogue-root'); if(_cel && typeof window.catalogueLoad==='function') window.catalogueLoad(_cel, { tail: opts.tail || null }); var _cg = String(opts.tail || window._luCatalogueGroup || ''); document.querySelectorAll('.nav-item[data-cat-group]').forEach(function(b){ b.classList.toggle('active', !_cg || b.getAttribute('data-cat-group') === _cg); }); }   // CAT-2
   if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); if (typeof loadProjects === 'function') { try { loadProjects(); } catch (_e) {} } var _pp=(opts&&opts.tail&&['board','history'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'projects'; if (typeof projShowPanel==='function') projShowPanel(_pp); }   // A2: the board loads; B4: Projects · Task board · History panels, /app/projects/history
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); if (opts && opts.tail && ['websites','domains','email'].indexOf(String(opts.tail).toLowerCase()) !== -1) window.__infraDesiredTab = String(opts.tail).toLowerCase();   /* B1: /app/infrastructure/domains */ var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
   // P4-U1: mentions view retired.
@@ -6262,6 +6265,7 @@ function _appEnterDashboard() {
   window.luBg.register('trial', {
     start: function () {
       _checkTrialStatus();
+      if (window._luCatalogueNav) window._luCatalogueNav();   // CAT-2: rides in the same batch as the pollers
       if (!window._luCreditPollTimer) {
         window._luCreditPollTimer = setInterval(function () {
           if (document.visibilityState !== 'hidden') { _checkTrialStatus(); }
@@ -6621,6 +6625,31 @@ window.luSetCreditBalance = function (n) {
 };
 
 // ── Trial credit warning ──────────────────────────────────────────────────────
+// CAT-2 (Owner 2026-09-22): one sidebar entry per industry word the workspace sells (Properties, Packages, Menu …);
+// same-word companies share the entry and pick inside. Entries are cloned from the hidden template per mode.
+window._luCatalogueApplyNav = function (d) {
+  var groups = (d && d.has_catalogue && d.groups) ? d.groups : [];
+  document.querySelectorAll('.nav-item[data-cat-group]').forEach(function (b) { b.remove(); });
+  ['ni-catalogue-basic', 'ni-catalogue'].forEach(function (id) {
+    var tpl = document.getElementById(id); if (!tpl) return;
+    tpl.setAttribute('data-cat-off', '1');
+    var after = tpl;
+    groups.forEach(function (g) {
+      var b = tpl.cloneNode(true);
+      b.removeAttribute('id'); b.removeAttribute('data-cat-off'); b.removeAttribute('data-cat-tpl'); b.classList.remove('active'); // nav() lights the hidden template (its id is ni-catalogue); a clone must not inherit that
+      b.setAttribute('data-cat-group', g.slug);
+      if (window._luCatalogueGroup === g.slug && document.getElementById('view-catalogue') && document.getElementById('view-catalogue').classList.contains('active')) b.classList.add('active');
+      b.title = (g.websites || []).length > 1 ? (g.websites.length + ' companies') : '';
+      var t = b.querySelector('.ni-text'); if (t) t.textContent = g.label || 'Catalogue';
+      b.onclick = function () { nav('catalogue', { tail: g.slug }); };
+      after.insertAdjacentElement('afterend', b); after = b;
+    });
+  });
+};
+window._luCatalogueNav = async function () {
+  try { var r = await _luFetch('GET', '/catalogue/summary'); if (r.ok) window._luCatalogueApplyNav(await r.json()); } catch (_e) {}
+};
+
 async function _checkTrialStatus() {
   try {
     var r = await _luFetch('GET', '/workspace/status');

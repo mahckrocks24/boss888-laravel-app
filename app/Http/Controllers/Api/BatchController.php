@@ -25,7 +25,7 @@ class BatchController
         // Clients / CRM engine boot (crm.js)
         'crm/dashboard', 'crm/pipeline/stages', 'crm/leads', 'crm/contacts', 'crm/modules', 'crm/settings', 'crm/tasks', 'crm/appointments',
         // The shell's own per-page pollers (core.js _luFetch) and Needs attention (basic.js): one tick, one request
-        'approvals/count', 'engines', 'messages/unread-count', 'notifications/unread-count', 'tasks', 'seo/knowledge',
+        'approvals/count', 'engines', 'messages/unread-count', 'notifications/unread-count', 'tasks', 'seo/knowledge', 'catalogue/summary',
     ];
 
     public const MAX = 10;

@@ -18,7 +18,7 @@ final class CatalogueKinds
 {
     public const KINDS = [
         'listing' => [
-            'family' => 'listing', 'plural' => 'Listings', 'singular' => 'listing', 'page_slug' => 'listings', 'detail_prefix' => 'property',
+            'family' => 'listing', 'plural' => 'Properties', 'singular' => 'property', 'page_slug' => 'listings', 'detail_prefix' => 'property',   // CAT-2 (Owner): Properties
             'pages' => 'index+detail', 'cta' => 'View details', 'enquiry_source' => 'listing_enquiry',
             'statuses' => ['for_sale' => 'For Sale', 'to_let' => 'To Let', 'under_offer' => 'Under Offer', 'sold' => 'Sold', 'let' => 'Let', 'withdrawn' => 'Withdrawn'],
             'open' => ['for_sale', 'to_let', 'under_offer'], 'closed' => ['sold', 'let'], 'default_status' => 'for_sale',
@@ -62,7 +62,7 @@ final class CatalogueKinds
                 'resort'           => ['Rooms & rates', 'room', 'rooms', 'room|rooms|suite|suites|villa|villas|rate|rates'],
                 'short_term_rental'=> ['Rentals', 'rental', 'rentals', 'rental|rentals|property|properties|unit|units|apartment|apartments|home|homes'],
                 'gym'              => ['Programmes', 'programme', 'programmes', 'programme|programmes|program|programs|training|workout|workouts'],
-                'travel_agency'    => ['Trips', 'trip', 'trips', 'trip|trips|tour|tours|package|packages|itinerary|itineraries|holiday|holidays'],
+                'travel_agency'    => ['Packages', 'package', 'trips', 'package|packages|trip|trips|tour|tours|itinerary|itineraries|holiday|holidays'],   // CAT-2 (Owner): Packages; the page URL stays /trips/
                 'event_venue'      => ['Packages', 'package', 'packages', 'package|packages|event type|event types|hire|hires'],
                 'childcare'        => ['Programmes', 'programme', 'programmes', 'programme|programmes|program|programs|class|classes|session|sessions'],
                 'pet_services'     => ['Services & prices', 'service', 'services', 'service|services|grooming|walk|walks|boarding'],

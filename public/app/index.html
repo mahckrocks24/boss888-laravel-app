@@ -986,6 +986,7 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 /* Agent drawer */
 .agent-drawer-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:var(--z-topbar);opacity:0;pointer-events:none;transition:opacity .3s}
 .agent-drawer-bg.visible{opacity:1;pointer-events:all}
+.nav-item[data-cat-off="1"]{display:none!important} /* CAT-2: catalogue entries exist only for the words the workspace sells */
 .agent-drawer{position:fixed;top:0;right:0;bottom:0;width:50vw;min-width:480px;background:var(--s1);border-left:1px solid var(--bd);display:flex;flex-direction:column;z-index:var(--z-topbar);transform:translateX(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);box-shadow:-12px 0 60px rgba(0,0,0,.5)}
 .agent-drawer.open{transform:translateX(0)}
 .ad-hdr{padding:22px 24px 0;flex-shrink:0}
@@ -3002,6 +3003,7 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('attention')" id="ni-attention" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l7 12H3z"/><path d="M10 8v3M10 13.5h.01"/></svg></span>Needs attention<span class="cmd-nav-badge" id="ni-attention-badge" style="margin-left:auto;display:none"></span></button>
       <!-- Owner 2026-09-21: Results removed — it duplicated the Command Center; nav('results') lands there. -->
       <button type="button" class="nav-item" onclick="nav('websites')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Websites</button>
+      <button type="button" class="nav-item" id="ni-catalogue-basic" data-basic="1" data-cat-off="1" data-cat-tpl="basic"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 11h6M7 14h3"/></svg></span><span class="ni-text">Catalogue</span></button>
       <button type="button" class="nav-item" onclick="nav('crm')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Clients</button>
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Settings</button>
       <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
@@ -3024,6 +3026,7 @@ window.luSwipeToClose = luSwipeToClose;
       <!-- REPORT-0061 B2/G (2026-09-19): the "Website Wizard" item is gone — building a website has ONE door, Websites › New website
            (Arthur's wizard, wsShowCreate). The homepage widget hand-off and onboarding still open the wizard directly. -->
       <button type="button" class="nav-item" onclick="nav('websites')" id="ni-websites" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</button>
+      <button type="button" class="nav-item" id="ni-catalogue" data-adv="1" data-cat-off="1" data-cat-tpl="adv"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 11h6M7 14h3"/></svg></span><span class="ni-text">Catalogue</span></button>
       <!-- REMOVED: Pending Actions (ni-governance) — v5.5.2 — duplicated Review Queue (same approvals data via /api/governance/pending alias). Router redirects nav('governance') → nav('approvals'). View panel kept for back-compat deep-links. -->
       <!-- REMOVED: Review Queue (ni-previews) — v5.5.2 — legacy "Action Previews" (Phase 6.5) reading /api/previews which references non-existent `previews` table. Canonical Review Queue is ni-approvals → /api/approvals. Router redirects nav('previews') → nav('approvals'). -->
     <div class="nav-section">Engines</div>
@@ -3714,7 +3717,7 @@ window.luSwipeToClose = luSwipeToClose;
           <button type="button" role="tab" data-set-tab-btn="team" class="tab" onclick="setShowTab('team')">Team</button>
           <button type="button" role="tab" data-set-tab-btn="billing" class="tab" onclick="setShowTab('billing')">Plan &amp; billing</button>
         </div>
-        <div id="set-billing-host" data-set-tab="billing" style="display:none"></div>
+        <div id="set-billing-host" data-set-tab="billing"></div><!-- BILL-1: was display:none, which the tab logic never cleared - the real Billing content (bill-root, loadBilling) was never visible; the legacy card stood in for it -->
 
         <!-- ── GOVERNANCE: Workspace Intelligence Profile ── -->
         <div data-set-tab="business" class="lu-set-note" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:14px 18px;margin-bottom:16px;font-size:12.5px;color:var(--t2);line-height:1.5">Looking for colours, fonts or a logo? Each website sets its own look in its <a href="/app/websites" onclick="if(window.nav){nav('websites');return false;}" style="color:var(--p);font-weight:600">editor</a>. The brand kit Sarah's team uses for images, emails and social posts lives in <a href="/app/studio" onclick="if(window.nav){nav('studio');return false;}" style="color:var(--p);font-weight:600">Studio › Brand</a>.</div>
@@ -3877,7 +3880,10 @@ window.luSwipeToClose = luSwipeToClose;
         </div>
 
         <!-- Billing — wired to real data (Fix 4) -->
-        <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
+        <!-- BILL-1 (Owner 2026-09-22): legacy "Billing & Plan" card RETIRED — a duplicate of the real Billing tab whose
+             "Manage Billing" could only fail for a plan set without a Stripe customer ("Billing portal URL not
+             available") and whose "View Invoices" named the vendor (DEC-0047). Kept hidden; the tab is bill-root. -->
+        <div data-internal="billing-legacy-retired" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div style="font-size:13px;font-weight:700;color:var(--t1)">Billing & Plan</div>
             <span id="billing-plan-badge" style="font-size:10px;font-weight:700;color:var(--ac);background:rgba(0,229,168,.1);border:1px solid rgba(0,229,168,.2);border-radius:4px;padding:2px 8px">Loading...</span>
@@ -3896,37 +3902,9 @@ window.luSwipeToClose = luSwipeToClose;
           </div>
         </div>
         <script>
-        // Fix 4: load real billing data from /api/billing/status
-        (function(){
-          async function loadBilling(){
-            try{
-              const t=localStorage.getItem('lu_token')||'';
-              const r=await fetch('/api/billing/status',{headers:{'Authorization':'Bearer '+t,'Accept':'application/json'}});
-              const d=await r.json();
-              document.getElementById('billing-plan-name').textContent=d.plan?.name||d.plan||'Free';
-              document.getElementById('billing-plan-badge').textContent=(d.plan?.name||d.plan||'Free').toUpperCase();
-              document.getElementById('billing-sub-status').textContent=d.subscription?.status||d.status||'active';
-              document.getElementById('billing-credits').textContent=(d.credits?.balance??d.balance??0)+' / '+(d.credits?.limit??d.plan?.credit_limit??0);
-              document.getElementById('billing-renewal').textContent=d.subscription?.current_period_end?new Date(d.subscription.current_period_end).toLocaleDateString():'—';
-            }catch(e){console.warn('[billing] load failed:',e);}
-          }
-          // Load when settings view becomes visible
-          const obs2=new MutationObserver(function(){
-            const v=document.getElementById('view-settings');
-            if(v&&v.style.display!=='none')loadBilling();
-          });
-          const sv=document.getElementById('view-settings');
-          if(sv)obs2.observe(sv,{attributes:true,attributeFilter:['style']});
-        })();
-        window._openBillingPortal=async function(){
-          try{
-            const t=localStorage.getItem('lu_token')||'';
-            const r=await fetch('/api/billing/portal',{headers:{'Authorization':'Bearer '+t,'Accept':'application/json'}});
-            const d=await r.json();
-            if(d.url)window.open(d.url,'_blank');
-            else showToast('Billing portal URL not available.','warning');
-          }catch(e){showToast('Could not open billing portal.','error');}
-        };
+        // BILL-1 (2026-09-22): the legacy card's loader and portal opener are gone with the card; the real Billing tab
+        // (loadBilling) owns the data. Alias kept so nothing that still calls the old name can throw.
+        window._openBillingPortal = function () { if (typeof window._billOpenPortal === 'function') return window._billOpenPortal(); };
         </script>
 
         <!-- API Keys / Connected Accounts (Facebook App ID + Secret) — RETIRED FROM CUSTOMER UI (P1R-1, 2026-08-31):
@@ -4337,6 +4315,10 @@ window.luSwipeToClose = luSwipeToClose;
       </div>
     </div>
 
+    <!-- CAT-2 (Owner 2026-09-22): the catalogue as a section — one sidebar entry per industry word (Properties / Packages / Menu …), a dropdown inside per company; the editor's own panel hosted here -->
+    <div id="view-catalogue" class="view" style="display:none;flex-direction:column">
+      <div id="catalogue-root" style="flex:1;overflow-y:auto"></div>
+    </div>
     <div id="view-crm" class="view" style="display:none;flex-direction:column">
       <div id="crm-root" style="flex:1;overflow-y:auto;padding:24px"></div>
     </div>
@@ -4605,7 +4587,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=batch-20260922',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920'}};
+  engineUrls: {crm:'/app/js/crm.js?v=batch-20260922',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=cat4-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4823,7 +4805,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=48187d9e65"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=2877c94197"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
