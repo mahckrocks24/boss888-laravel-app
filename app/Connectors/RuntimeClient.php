@@ -259,6 +259,7 @@ class RuntimeClient
      */
     public function aiRun(string $task, string $prompt, array $context = [], int $maxTokens = 1200): array
     {
+        $this->snapshot('aiRun:' . $task, '', $prompt, $context);
         // Wave 3 — R9 (2026-05-17). Per AI Assistant Operating Rules: the
         // AI must consult workspace state before generating. If the caller
         // passes workspace_id in context (the new pattern), auto-enrich
@@ -330,6 +331,21 @@ class RuntimeClient
      * @param array  $context    Optional context dict that gets appended as "key: value" lines.
      * @param int    $maxTokens  Default 1200, bump for larger structured outputs.
      */
+    /**
+     * U0 (RFC-0011, 2026-09-22): when the chat route bound 'sarah.snapshot' (QA accounts, X-Sarah-Snapshot header), append
+     * the prompts of this call to storage/app/sarah-snapshots/<label>.txt. No-op otherwise.
+     */
+    private function snapshot(string $kind, string $system, string $user, array $context = []): void
+    {
+        try {
+            if (! app()->bound('sarah.snapshot')) { return; }
+            $label = (string) app('sarah.snapshot');
+            $dir = storage_path('app/sarah-snapshots'); if (! is_dir($dir)) { @mkdir($dir, 0775, true); }
+            $ctx = $context ? json_encode(array_intersect_key($context, array_flip(['workspace_id', 'agent_slug', 'business_id', 'business_name'])), JSON_UNESCAPED_SLASHES) : '';
+            file_put_contents($dir . '/' . $label . '.txt', "=== {$kind} ===\n--- system ---\n{$system}\n--- user ---\n{$user}\n--- context ---\n{$ctx}\n\n", FILE_APPEND);
+        } catch (\Throwable $e) { /* a snapshot never breaks a turn */ }
+    }
+
     public function chatJson(string $system, string $userPrompt, array $context = [], int $maxTokens = 1200): array
     {
         // PATCH (Intel Fix 7) — DeepSeek's `response_format: json_object` rejects
@@ -340,6 +356,7 @@ class RuntimeClient
         if (stripos($system, 'json') === false && stripos($userPrompt, 'json') === false) {
             $system = trim($system) . "\n\nRespond with valid JSON only. No prose, no markdown fences.";
         }
+        $this->snapshot('chatJson', $system, $userPrompt, $context);
 
         try {
             // SF-03: large prompts declare the synthesis workload (see LARGE_PROMPT_CHARS).
@@ -445,6 +462,7 @@ class RuntimeClient
         if (! $this->isConfigured()) {
             return ['response' => null, 'error' => true, 'reason' => 'runtime_not_configured'];
         }
+        $this->snapshot('assistant', (string) json_encode($context, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT), $message, $context);
         try {
             $resp = Http::withHeaders([
                 'X-LevelUp-Secret' => $this->secret,

@@ -225,6 +225,11 @@ use Illuminate\Support\Facades\Route;
         // CHEF-RED-1: request values read ONCE here — $r is shadowed further down (fill result, row loops).
         $__siteUrlIn = trim((string) ($r->input('site_url') ?: $r->header('X-Lgse-Active-Site') ?: ''));
         $__reqUser   = $r->user();
+        // U0 (RFC-0011, 2026-09-22): prompt snapshot for QA accounts only — the prompts handed to the runtime for this turn
+        // are written under storage/app/sarah-snapshots/<label>.txt, so a later change can be proved byte-identical.
+        if (($__snapLabel = (string) $r->header('X-Sarah-Snapshot', '')) !== '' && preg_match('/@example\.(test|com)$/', (string) ($__reqUser->email ?? ''))) {
+            app()->instance('sarah.snapshot', preg_replace('/[^a-z0-9_.-]/i', '_', $__snapLabel));
+        }
         // ATTACH-2 (2026-08-30): uploaded attachments (documents + images) reach Sarah. Validated against this
         // workspace's media rows; documents are read into context; images go through the vision path below.
         $__att = ['meta' => [], 'context' => '', 'images' => []];

@@ -52,6 +52,7 @@ use Illuminate\Support\Facades\Route;
             'goal' => $r->input('goal') ?: $r->input('business_desc'),
             'location' => $r->input('location'),
         ]));
+        \App\Models\Business::syncDefaultFromWorkspace((int) $ws->id); // RFC-0011 U1: the default business mirrors the workspace profile
         if ($tzOk) {
             // timezone is not in Workspace::$fillable — write it directly.
             \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $ws->id)->update(['timezone' => $tz, 'updated_at' => now()]);
@@ -68,6 +69,7 @@ use Illuminate\Support\Facades\Route;
             'goal' => $r->input('goal'),
             'location' => $r->input('location'),
         ]);
+        \App\Models\Business::syncDefaultFromWorkspace((int) $ws->id); // RFC-0011 U1: the default business mirrors the workspace profile
         return response()->json(['success' => true]);
     });
 
