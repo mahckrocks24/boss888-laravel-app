@@ -59,7 +59,7 @@ class AgentMeetingEngine
      */
     public function startMeeting(int $wsId, int $userId, string $goal, array $agentSlugs = [], ?string $reservationRef = null, int $reservedCredits = 0): array
     {
-        $workspace = Workspace::findOrFail($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId) ?? Workspace::findOrFail($wsId); // RFC-0011 U2
 
         // If no agents specified, Sarah selects the team
         if (empty($agentSlugs)) {
@@ -183,7 +183,7 @@ class AgentMeetingEngine
         $phase = $meta['phase'] ?? 'opening';
         $goal = $meta['goal'] ?? '';
         $agentSlugs = $meta['agents'] ?? [];
-        $workspace = Workspace::find($meeting->workspace_id);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $meeting->workspace_id); // RFC-0011 U2
         $tokensUsed = $meta['tokens_used'] ?? 0;
         $roundsCompleted = $meta['rounds_completed'] ?? 0;
 
@@ -302,7 +302,7 @@ class AgentMeetingEngine
         }
 
         $meta = json_decode($meeting->metadata_json, true);
-        $workspace = Workspace::find($meeting->workspace_id);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $meeting->workspace_id); // RFC-0011 U2
         $agentSlugs = $meta['agents'] ?? [];
 
         // Store user message

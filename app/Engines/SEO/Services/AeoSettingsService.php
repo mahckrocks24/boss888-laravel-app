@@ -101,7 +101,7 @@ class AeoSettingsService
     {
         $this->get($wsId); // ensure row exists
 
-        $ws = DB::table('workspaces')->where('id', $wsId)->first(['name', 'business_name', 'industry', 'location']);
+        $ws = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($wsId, null, ['name', 'business_name', 'industry', 'location']); // RFC-0011 U2
         $businessName = $ws->business_name ?? $ws->name ?? 'Site';
         $description = trim((string)($ws->industry ?? '') . ($ws->location ? ' in ' . $ws->location : ''));
 

@@ -121,7 +121,7 @@ class PublicChatbotController
         }
 
         // Workspace fallback — name only, no website-specific color
-        $ws = DB::table('workspaces')->where('id', $workspaceId)->first(['business_name', 'name']);
+        $ws = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($workspaceId, null, ['business_name', 'name']); // RFC-0011 U2
         return [
             'business_name' => (string) ($ws->business_name ?? $ws->name ?? 'this business'),
             'primary_color' => null,

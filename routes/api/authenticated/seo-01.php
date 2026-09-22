@@ -767,7 +767,7 @@ use Illuminate\Support\Facades\Route;
             // 2026-05-28 — Pull canonical author + dates so the LLM doesn't
             // hallucinate ("Shukran UAE" vs the actual "Shukran Group", made-up
             // datePublished, etc.).
-            $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['business_name', 'name']);
+            $ws = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($wsId, null, ['business_name', 'name']); // RFC-0011 U2
             $brandName = (string) ($ws->business_name ?: $ws->name ?: 'Site');
             $publishedAt = $page->created_at
                 ? \Carbon\Carbon::parse($page->created_at)->toDateString()
@@ -895,7 +895,7 @@ use Illuminate\Support\Facades\Route;
                 ]);
             }
 
-            $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['business_name', 'name']);
+            $ws = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($wsId, null, ['business_name', 'name']); // RFC-0011 U2
             $brandName = (string) ($ws->business_name ?: $ws->name ?: 'Site');
             $runtime = app(\App\Connectors\RuntimeClient::class);
             $credits = app(\App\Core\Billing\CreditService::class);

@@ -95,6 +95,16 @@ class WriteService
     // ARTICLES CRUD
     // ═══════════════════════════════════════════════════════
 
+    /** F-QA-2: a meta description from the excerpt or the first sentences — 50–160 chars, no tags. */
+    public static function defaultMetaDescription(string $excerpt, string $content): ?string
+    {
+        $src = trim($excerpt) !== '' ? $excerpt : $content;
+        $t = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags($src))));
+        if ($t === '') return null;
+        if (mb_strlen($t) > 160) { $cut = mb_substr($t, 0, 157); $sp = mb_strrpos($cut, ' '); $t = rtrim($sp !== false && $sp > 80 ? mb_substr($cut, 0, $sp) : $cut, ' ,;:-') . '…'; }
+        return mb_strlen($t) >= 50 ? $t : null;
+    }
+
     public function createArticle(int $wsId, array $data): array
     {
         // Accept both legacy ('body') and new ('content') key names
@@ -130,6 +140,7 @@ class WriteService
 
         $id = DB::table('articles')->insertGetId([
             'workspace_id'      => $wsId,
+            'website_id'        => isset($data['website_id']) && (int) $data['website_id'] > 0 && DB::table('websites')->where('id', (int) $data['website_id'])->where('workspace_id', $wsId)->exists() ? (int) $data['website_id'] : null, // F-OPS-E1: bind to the site (same workspace only)
             'title'             => $data['title'] ?? 'Untitled',
             'slug'              => Str::slug($data['title'] ?? 'untitled') . '-' . Str::random(4),
             'content'           => $content,
@@ -138,6 +149,10 @@ class WriteService
             'blog_category'     => $data['blog_category'] ?? null,
             'is_marketing_blog' => !empty($data['is_marketing_blog']),
             'featured_image_url'=> $data['featured_image_url'] ?? null,
+            // F-QA-2 (2026-09-06): an article is not finished without its SEO metadata — Sarah's QA rejects it otherwise.
+            'meta_title'        => $data['meta_title'] ?? mb_substr(trim((string) ($data['title'] ?? 'Untitled')), 0, 60),
+            'meta_description'  => $data['meta_description'] ?? self::defaultMetaDescription((string) ($data['excerpt'] ?? ''), (string) $content),
+            'focus_keyword'     => $data['focus_keyword'] ?? $data['target_keyword'] ?? $data['keyword'] ?? null,
             'status'            => 'draft',
             // 2026-06-10 — honour a caller-supplied scheduled_at (single OR batch
             // article path). The Pipeline/Calendar tab reads articles.scheduled_at;
@@ -175,8 +190,17 @@ class WriteService
 
     public function updateArticle(int $articleId, array $data, ?int $wsId = null): array
     {
+        // INC-0007 GUARD (2026-09-10): whereNull('deleted_at') was missing here while five other
+        // reads in this same file have it. DB::table() is a raw builder, so it does NOT apply the
+        // SoftDeletes scope: a deleted article was found and updated like any other. The live case
+        // was a pending publish_article approval (id 12348) left behind when article 688 was
+        // soft-deleted in the INC-0007 clean-up — approving that card would have set the removed
+        // article back to status=published, is_marketing_blog=1, which is exactly what makes it
+        // render on chefredraymundo.com. Restore is unaffected: DeskService::restore clears
+        // deleted_at with its own direct update and never routes through here.
         $article = DB::table('articles')->where('id', $articleId)
             ->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))
+            ->whereNull('deleted_at')
             ->first();
         if (!$article) throw new \RuntimeException("Article not found: {$articleId}");
 
@@ -538,9 +562,16 @@ class WriteService
     public function writeArticle(int $wsId, array $params): array
     {
         $topic   = $params['topic'] ?? $params['title'] ?? '';
+        // INC-0007 (2026-09-06): a task title is not an article topic. Rescue "write a post about X" → X; refuse tasks/notes.
+        if (($__t = \App\Core\Sarah888\ArticleTopicGuard::extractTopic((string) $topic)) !== null) $topic = $__t;
+        if (\App\Core\Sarah888\ArticleTopicGuard::looksLikeTask((string) $topic) && trim((string) ($params['target_keyword'] ?? $params['keyword'] ?? '')) === '') {
+            return ['success' => false, 'code' => 'INVALID_INPUT', 'no_charge' => true, 'error' => \App\Core\Sarah888\ArticleTopicGuard::reason((string) $topic) . ' Tell me the subject the article should cover — for example a question your customers ask.'];
+        }
         $type    = $params['type'] ?? 'blog_post';
         $tone    = $params['tone'] ?? 'professional';
-        $length  = $params['length'] ?? 1100;  // Wave 35b: house standard 1000-1200 words
+        // F-OPS-E9b (2026-09-06): accept a named length or a number; never let a string reach the arithmetic below
+        $__len = $params['length'] ?? $params['word_count'] ?? 1100;
+        $length = is_numeric($__len) ? (int) $__len : (['short' => 500, 'medium' => 900, 'long' => 1400, 'brief' => 400][strtolower(trim((string) $__len))] ?? 1100);  // Wave 35b: house standard 1000-1200 words
         $keyword = $params['target_keyword'] ?? $params['keyword'] ?? '';
 
         // ── Creative blueprint (still routes through CreativeService for R5) ─
@@ -718,6 +749,7 @@ class WriteService
             'is_marketing_blog' => $params['is_marketing_blog'] ?? ($type === 'blog_post' || $type === 'blog_article'),
             'user_id'           => $params['user_id'] ?? null,
             'scheduled_at'      => $params['scheduled_at'] ?? null, // 2026-06-10 — batch calendar spread
+            'website_id'        => isset($params['website_id']) && (int) $params['website_id'] > 0 ? (int) $params['website_id'] : null,   // EV-1045: the site the chat resolved
         ]);
 
         $this->engineIntel->recordToolUsage('write', 'write_article', $result['success'] ? 0.8 : 0.3);
@@ -745,6 +777,9 @@ class WriteService
         // /connector/generate-article path stays idempotent because it checks
         // for an existing featured_image_url before its own image step).
         $newArticleId = $article['article_id'] ?? $article['id'] ?? null;
+        if ($newArticleId) { // F-QA-2: the focus keyword the owner asked for, or the topic, never empty
+            try { DB::table('articles')->where('id', (int) $newArticleId)->where(function ($q) { $q->whereNull('focus_keyword')->orWhere('focus_keyword', ''); })->update(['focus_keyword' => mb_substr(trim((string) ($keyword !== '' ? $keyword : $topic)), 0, 120)]); } catch (\Throwable) {}
+        }
         if ($newArticleId && ! empty($params['auto_featured_image'])) {
             $alreadyHasImage = DB::table('articles')->where('id', $newArticleId)->value('featured_image_url');
             if (empty($alreadyHasImage)) {
@@ -1070,8 +1105,8 @@ class WriteService
         }
 
         // Workspace context for the Organization JSON-LD (author/publisher).
-        $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['name', 'business_name']);
-        $businessName = $ws->business_name ?? $ws->name ?? 'LevelUp Growth';
+        $ws = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($wsId, null, ['name', 'business_name']); // RFC-0011 U2
+        $businessName = $ws->business_name ?? $ws->name ?? 'LevelUpGrowth';
         $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
             ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value') ?: 'https://levelupgrowth.io';
 
@@ -1596,9 +1631,13 @@ class WriteService
                 ->first();
             if (!$a) return;
 
-            // Pick the workspace's published website to build a URL. If none,
-            // skip — no URL to anchor the seo_content_index row to.
-            $site = \Illuminate\Support\Facades\DB::table('websites')
+            // EV-1045: the article's OWN website first (a draft on Chef Red was indexed under boss-mac-gym's host);
+            // only an unattached article falls back to the newest published site.
+            $site = null;
+            if (!empty($a->website_id)) {
+                $site = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $a->website_id)->where('workspace_id', $wsId)->whereNull('deleted_at')->first(['subdomain', 'domain', 'custom_domain']);
+            }
+            if (!$site) $site = \Illuminate\Support\Facades\DB::table('websites')
                 ->where('workspace_id', $wsId)
                 ->where('status', 'published')
                 ->whereNull('deleted_at')
@@ -1740,7 +1779,9 @@ class WriteService
             return ['ok' => false, 'wp_post_id' => null, 'url' => null, 'error' => null, 'connected' => false];
         }
         try {
-            $a = \Illuminate\Support\Facades\DB::table('articles')->where('id', $articleId)->where('workspace_id', $wsId)->first();
+            // INC-0007 GUARD (2026-09-10): same missing deleted_at filter as updateArticle above.
+            // Without it a soft-deleted article could be pushed to the customer's WordPress site.
+            $a = \Illuminate\Support\Facades\DB::table('articles')->where('id', $articleId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
             if (!$a) return ['ok' => false, 'wp_post_id' => null, 'url' => null, 'error' => 'article_not_found', 'connected' => true];
             $brief = json_decode($a->brief_json ?? '{}', true) ?: [];
             $tags  = isset($brief['tags']) && is_array($brief['tags']) ? array_values(array_filter(array_map('strval', $brief['tags']))) : [];

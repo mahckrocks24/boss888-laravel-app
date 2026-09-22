@@ -39,7 +39,9 @@ class ChatbotContextBuilder
         }
         $workspaceId = (int) $session->workspace_id;
 
-        $ws = DB::table('workspaces')->where('id', $workspaceId)->first();
+        // RFC-0011 U2: the workspace as the visitor's website's business sees it (identical while the switch is off).
+        $ws = (int) ($session->website_id ?? 0) > 0 ? app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowForWebsite((int) $session->website_id) : app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($workspaceId);
+        if (! $ws) { $ws = DB::table('workspaces')->where('id', $workspaceId)->first(); }
         // INC-0006: the visitor is on one website, and its chatbot row - greeting, business context,
         // timezone - is the one that applies. The session binds that website when it starts; the
         // business-wide default row still covers workspaces that never set a per-site override.
@@ -47,14 +49,14 @@ class ChatbotContextBuilder
             'chatbot_settings', $workspaceId, (int) ($session->website_id ?? 0)
         );
         // /* h2-chatbot */ brand kit via single resolver (was direct creative_brand_identities read)
-        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($workspaceId);
+        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($workspaceId, (int) ($session->website_id ?? 0) > 0 ? (int) (DB::table('websites')->where('id', (int) $session->website_id)->value('business_id') ?? 0) ?: null : null);
 
         // PATCH (per-website chatbot context, 2026-05-09) — workspace 1
         // hosts many tenant subdomains in staging; each tenant is a
         // distinct WEBSITE (websites.name). Resolve the visitor's site
         // from session.page_url's hostname and prefer websites.name as
         // the business identity. Without this, every tenant chatbot
-        // greeted as "LevelUp Growth" (the workspace) instead of the
+        // greeted as "LevelUpGrowth" (the workspace) instead of the
         // actual business the visitor is on.
         // The session binds the website when the visitor opens the widget, which is stronger evidence than
         // re-deriving it from the page URL; fall back to the URL for sessions that predate that binding.

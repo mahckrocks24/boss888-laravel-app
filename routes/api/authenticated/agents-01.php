@@ -635,7 +635,7 @@ $withCorr = function (array $meta) use ($corr) {
         }
 
         // ── Build agent context ──
-        $workspace = \App\Models\Workspace::find($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId); // RFC-0011 U2 (U3 hands the resolved business in)
         // 2026-06-08 — only GENUINELY ACTIVE tasks count as "current". Previously
         // this pulled the newest 10 tasks regardless of status and surfaced the
         // stale "Executing step N of M" progress_message (dropping the real

@@ -34,6 +34,16 @@ class Workspace extends Model
         return $this->lifecycle_state !== self::STATE_ACTIVE;
     }
 
+    /** RFC-0011 U2: set by BusinessProfileResolver::workspaceFor on an overlaid instance — such a view is never saved. */
+    public bool $isBusinessView = false;
+
+    protected static function booted(): void
+    {
+        static::saving(function (Workspace $ws) {
+            if ($ws->isBusinessView) { \Illuminate\Support\Facades\Log::warning('[Business] refused to save a business view of workspace ' . $ws->id); return false; }
+        });
+    }
+
     protected $fillable = [
         'name', 'slug', 'settings_json', 'created_by',
         // Onboarding (migration 200003)

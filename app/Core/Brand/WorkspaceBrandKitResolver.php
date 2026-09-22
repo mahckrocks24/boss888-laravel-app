@@ -37,14 +37,15 @@ class WorkspaceBrandKitResolver
      * @return array Always returns the full shape (never null fields except
      *               logo_url and tagline which are optional).
      */
-    public function resolve(int $workspaceId): array
+    public function resolve(int $workspaceId, ?int $businessId = null): array
     {
         $studio   = DB::table('studio_brand_kits')->where('workspace_id', $workspaceId)->first();
         $creative = DB::table('creative_brand_identities')
             ->where('workspace_id', $workspaceId)
             ->whereNull('deleted_at')
             ->first();
-        $workspace = DB::table('workspaces')->where('id', $workspaceId)->first();
+        // RFC-0011 U2: the workspace row as the given business sees it (identical while the switch is off).
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($workspaceId, $businessId) ?? DB::table('workspaces')->where('id', $workspaceId)->first();
 
         // Determine if this is truly a "neutral" workspace (no brand data at all)
         $hasStudioKit   = $studio !== null;

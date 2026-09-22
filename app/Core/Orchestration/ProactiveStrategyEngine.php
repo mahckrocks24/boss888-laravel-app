@@ -75,7 +75,7 @@ class ProactiveStrategyEngine
      */
     public function onOnboardingComplete(int $wsId, int $userId): array
     {
-        $workspace = Workspace::findOrFail($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId) ?? Workspace::findOrFail($wsId); // RFC-0011 U2
         $balance = $this->credits->getBalance($wsId);
 
         // Estimate what the initial strategy session will cost
@@ -310,7 +310,7 @@ class ProactiveStrategyEngine
             // Default: strategy meeting (covers discovery_strategy_meeting,
             // monthly_30_day_plan, and any legacy/unknown type that should
             // still trigger an agent meeting).
-            $workspace = Workspace::find($wsId);
+            $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId); // RFC-0011 U2
             $goal = $this->buildOnboardingGoal($workspace);
             // RISK-0142 (a) (2026-09-07, DEC-0040): the proposal's reservation travels INTO the meeting and is
             // committed ONCE, by completeMeeting(), when the session finishes (or the customer ends it). It used to
@@ -890,7 +890,7 @@ class ProactiveStrategyEngine
 
     public function dailyCheck(int $wsId): array
     {
-        $workspace = Workspace::find($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId); // RFC-0011 U2
         if (!$workspace || !$workspace->onboarded) return ['skipped' => true];
 
         $actions = [];
@@ -997,7 +997,7 @@ class ProactiveStrategyEngine
      */
     public function weeklyReview(int $wsId): array
     {
-        $workspace = Workspace::find($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId); // RFC-0011 U2
         if (!$workspace || !$workspace->onboarded) return ['skipped' => true];
 
         $weekStart = now()->subWeek();
@@ -1046,7 +1046,7 @@ class ProactiveStrategyEngine
      */
     public function monthlyStrategy(int $wsId, int $userId): array
     {
-        $workspace = Workspace::find($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId); // RFC-0011 U2
         if (!$workspace || !$workspace->onboarded) return ['skipped' => true];
 
         $estimate = $this->estimateInitialSessionCost($workspace);

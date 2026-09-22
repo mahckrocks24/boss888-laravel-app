@@ -101,6 +101,63 @@ class BusinessProfileResolver
         return $out;
     }
 
+    /**
+     * The Workspace model as ONE business sees it: the profile columns (business_name, industry, services_json, goal,
+     * location, brand_color, logo_url) carry that business's row. Switch off, or the default business → the columns
+     * as stored (identical to Workspace::find). The instance is a VIEW: saving it is refused (Workspace::booted).
+     */
+    public function workspaceFor(int $wsId, ?int $businessId = null): ?\App\Models\Workspace
+    {
+        $ws = \App\Models\Workspace::find($wsId);
+        if (! $ws) { return null; }
+        $b = $this->overlayBusiness($wsId, $businessId);
+        if (! $b) { return $ws; }
+        $ws->setRawAttributes(array_merge($ws->getAttributes(), $this->overlayColumns($b)), true);
+        $ws->isBusinessView = true;
+        return $ws;
+    }
+
+    /** The same view for a website: its business, else the workspace default. */
+    public function workspaceForWebsite(int $websiteId): ?\App\Models\Workspace
+    {
+        $w = DB::table('websites')->where('id', $websiteId)->first(['workspace_id', 'business_id']);
+        return $w ? $this->workspaceFor((int) $w->workspace_id, (int) ($w->business_id ?? 0) ?: null) : null;
+    }
+
+    /** The `workspaces` row (stdClass, as DB::table readers use it) with the business's profile columns overlaid. */
+    public function workspaceRowFor(int $wsId, ?int $businessId = null, array $columns = ['*']): ?object
+    {
+        $row = DB::table('workspaces')->where('id', $wsId)->first($columns);
+        if (! $row) { return null; }
+        $b = $this->overlayBusiness($wsId, $businessId);
+        if (! $b) { return $row; }
+        foreach ($this->overlayColumns($b) as $col => $val) { if ($columns === ['*'] || in_array($col, $columns, true) || property_exists($row, $col)) { $row->$col = $val; } }
+        return $row;
+    }
+
+    public function workspaceRowForWebsite(int $websiteId, array $columns = ['*']): ?object
+    {
+        $w = DB::table('websites')->where('id', $websiteId)->first(['workspace_id', 'business_id']);
+        return $w ? $this->workspaceRowFor((int) $w->workspace_id, (int) ($w->business_id ?? 0) ?: null, $columns) : null;
+    }
+
+    /** The business whose columns overlay the workspace — only a NON-default business with the switch on; otherwise none (= the columns). */
+    private function overlayBusiness(int $wsId, ?int $businessId): ?Business
+    {
+        if (! self::enabledFor($wsId) || ! $businessId) { return null; }
+        $b = $this->find($wsId, $businessId);
+        return ($b && ! $b->is_default) ? $b : null;
+    }
+
+    private function overlayColumns(Business $b): array
+    {
+        return [
+            'business_name' => $b->name, 'industry' => $b->industry,
+            'services_json' => is_array($b->services_json) ? json_encode($b->services_json, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $b->services_json,
+            'goal' => $b->goal, 'location' => $b->location, 'brand_color' => $b->brand_color, 'logo_url' => $b->logo_url,
+        ];
+    }
+
     public function forget(int $wsId): void { unset($this->cache['ws'][$wsId], $this->cache['row'][$wsId], $this->cache['mem'][$wsId]); }
 
     private function workspaceRow(int $wsId): ?object

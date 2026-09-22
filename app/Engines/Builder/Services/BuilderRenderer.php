@@ -27,7 +27,7 @@ class BuilderRenderer
         if (!$page) return null;
 
         // /* h2-renderer */ resolver wins over direct creative_brand_identities read
-        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) $website->workspace_id);
+        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) $website->workspace_id, (int) ($website->business_id ?? 0) ?: null); // RFC-0011 U2: the website's business
 
         return $this->renderPage((array) $website, (array) $page, $brand);
     }
@@ -227,7 +227,7 @@ class BuilderRenderer
         try { DB::table('job_listings')->where('id', $job->id)->increment('view_count'); } catch (\Throwable) {}
         $settings = $website->settings_json ?? '{}';
         if (is_string($settings)) $settings = json_decode($settings, true) ?: [];
-        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) $website->workspace_id);
+        $brand = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) $website->workspace_id, (int) ($website->business_id ?? 0) ?: null); // RFC-0011 U2: the website's business
         $tokens = [
             'primary'      => $settings['primary_color']   ?? ($brand['primary_color']   ?? '#1F2937'),
             'secondary'    => $settings['secondary_color'] ?? ($brand['secondary_color'] ?? '#94A3B8'),

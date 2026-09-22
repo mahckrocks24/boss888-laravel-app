@@ -64,7 +64,7 @@ final class InventoryProfileService
 
         $workspaceId = (int) ($website->workspace_id ?? 0);
         $workspace   = $workspaceId > 0
-            ? DB::table('workspaces')->where('id', $workspaceId)->first()
+            ? (app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowForWebsite((int) $websiteId) ?? DB::table('workspaces')->where('id', $workspaceId)->first()) // RFC-0011 U2: the website's business
             : null;
 
         $existing = DB::table('ad_inventory_profiles')->where('website_id', $websiteId)->first();

@@ -43,7 +43,7 @@ class SarahStrategicLayer
      */
     public function assess(int $wsId, string $goal, array $analysis): array
     {
-        $workspace = Workspace::find($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId); // RFC-0011 U2
         $industry = $workspace?->industry;
         $creditBalance = $this->credits->getBalance($wsId);
 
@@ -116,7 +116,7 @@ class SarahStrategicLayer
         $suggestions = [];
 
         $tasks = $plan['tasks'] ?? [];
-        $workspace = Workspace::find($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId); // RFC-0011 U2
 
         // Challenge 1: Too many tasks for the goal
         if (count($tasks) > 10) {

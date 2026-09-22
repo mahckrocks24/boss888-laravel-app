@@ -367,7 +367,7 @@ class SeoAssistantService
 
         // Seed from workspaces table on cold cache.
         if (empty($memory['business_type']) || empty($memory['location'])) {
-            $ws = DB::table('workspaces')->find($wsId);
+            $ws = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($wsId); // RFC-0011 U2
             if ($ws) {
                 if (empty($memory['business_type']) && ! empty($ws->industry)) {
                     $memory['business_type'] = $ws->industry;
@@ -2486,7 +2486,7 @@ class SeoAssistantService
 
     private function buildSystemPrompt(int $wsId, array $memory, array $history, ?array $pending, array $live): string
     {
-        $workspace = DB::table('workspaces')->find($wsId);
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($wsId); // RFC-0011 U2
         $bizName = $workspace->business_name ?? $workspace->name ?? 'this workspace';
 
         $p = [];
