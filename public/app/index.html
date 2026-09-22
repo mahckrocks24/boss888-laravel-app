@@ -1580,6 +1580,8 @@ img:not([loading]) {
   .pe-bar-hint { display: none !important; }
   /* Comfortable targets, and no button may be clipped mid-word. */
   .pe-bar button { min-height: 36px; white-space: nowrap; }
+  /* TIP-1 (Owner 2026-09-22): once its tips are dismissed the Arthur feed is empty - it must not stay as a blank white box */
+  #t3-arthur-feed:empty { display: none !important; }
 }
 
 /* MOBILE-7 (2026-09-01): on a phone the Arthur panel sits UNDER the preview, and its composer is the last
@@ -4809,7 +4811,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=b87fe1d551"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=3b57165bbb"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

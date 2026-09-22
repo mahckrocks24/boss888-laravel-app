@@ -19,7 +19,7 @@ $jsonld = array_merge([[
 <head>
 <script>/* build id + session hint before first paint (2026-09-11/12) */document.documentElement.setAttribute('data-build','<?= substr(md5_file(__DIR__ . '/site.js'), 0, 8) ?>');try{if(localStorage.getItem('lu_token'))document.documentElement.setAttribute('data-lu-session','likely')}catch(e){}</script>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content"><!-- KB-1 (Owner 2026-09-22): the on-screen keyboard shrinks the page instead of covering the Arthur chat box -->
 <title><?= e($title) ?></title>
 <meta name="description" content="<?= e($page['description']) ?>">
 <link rel="canonical" href="<?= e($canonical) ?>">

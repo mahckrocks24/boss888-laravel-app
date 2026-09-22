@@ -1203,3 +1203,51 @@
     }
   } catch (e) {}
 })();
+
+/* KB-1 (Owner 2026-09-22): keyboard-aware chat panel. Android honours interactive-widget=resizes-content; iOS does not,
+   so the visual viewport drives --ax-vvh (height below the 64px bar) and --ax-vvt (how far the page was pushed up). */
+(function () {
+  var host = document.getElementById('ax'); if (!host || !window.visualViewport) return;
+  var vv = window.visualViewport, root = document.documentElement, t = null;
+  function apply() {
+    var open = host.classList.contains('ax-tall');
+    var kb = (window.innerHeight - vv.height) > 120;   // a real keyboard, not the browser chrome hiding
+    if (open && kb) { root.style.setProperty('--ax-vvh', Math.max(220, Math.round(vv.height - 64)) + 'px'); root.style.setProperty('--ax-vvt', Math.round(vv.offsetTop) + 'px'); }
+    else { root.style.removeProperty('--ax-vvh'); root.style.removeProperty('--ax-vvt'); }
+  }
+  function later() { clearTimeout(t); t = setTimeout(apply, 60); }
+  vv.addEventListener('resize', later); vv.addEventListener('scroll', later);
+  document.addEventListener('focusin', later, true); document.addEventListener('focusout', later, true);
+  new MutationObserver(later).observe(host, { attributes: true, attributeFilter: ['class'] });
+  apply();
+})();
+
+/* EYE-1 (Owner 2026-09-22): "add show password eye icon when nominating password on arthur and all sign ups".
+   Every password field on the page - present now or added later (the Arthur sign-up is built on demand) - gets a
+   show/hide eye inside the field. Site CSS, never a native control. */
+(function () {
+  if (window.__luEyeInstalled) return; window.__luEyeInstalled = true;
+  var css = '.lu-eye-wrap{position:relative;display:block}'
+    + '.lu-eye-wrap>input{padding-right:44px!important}'
+    + '.lu-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;background:transparent;cursor:pointer;color:currentColor;opacity:.55;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;padding:0}'
+    + '.lu-eye:hover,.lu-eye:focus-visible{opacity:1;outline:none;background:rgba(127,127,127,.12)}'
+    + '.lu-eye svg{width:20px;height:20px;display:block}'
+    + '.lu-eye .lu-eye-off{display:none}.lu-eye[aria-pressed="true"] .lu-eye-on{display:none}.lu-eye[aria-pressed="true"] .lu-eye-off{display:block}';
+  var st = document.createElement('style'); st.id = 'lu-eye-css'; st.textContent = css; document.head.appendChild(st);
+  var ICON = '<svg class="lu-eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6z"/><circle cx="12" cy="12" r="3"/></svg>'
+    + '<svg class="lu-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a3 3 0 0 0 4.2 4.2"/><path d="M9.9 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1"/><path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a10.7 10.7 0 0 0 4.4-.9"/></svg>';
+  function decorate(inp) {
+    if (!inp || inp.__luEye || inp.type !== 'password' || inp.closest('.lu-eye-wrap')) return;
+    if (inp.parentElement && inp.parentElement.querySelector('.pf-eye')) return;   // Settings already has its own SHOW/HIDE control
+    inp.__luEye = true;
+    var wrap = document.createElement('span'); wrap.className = 'lu-eye-wrap';
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    var b = document.createElement('button'); b.type = 'button'; b.className = 'lu-eye'; b.setAttribute('aria-label', 'Show password'); b.setAttribute('aria-pressed', 'false'); b.tabIndex = -1; b.innerHTML = ICON;
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); });   // keep the caret in the field
+    b.addEventListener('click', function () { var show = inp.type === 'password'; inp.type = show ? 'text' : 'password'; b.setAttribute('aria-pressed', show ? 'true' : 'false'); b.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); try { inp.focus({ preventScroll: true }); } catch (_e) {} });
+    wrap.appendChild(b);
+  }
+  function sweep(root) { try { (root || document).querySelectorAll('input[type="password"]').forEach(decorate); } catch (_e) {} }
+  sweep();
+  new MutationObserver(function (ms) { ms.forEach(function (m) { m.addedNodes && m.addedNodes.forEach(function (n) { if (n.nodeType === 1) { if (n.matches && n.matches('input[type="password"]')) decorate(n); else sweep(n); } }); }); }).observe(document.documentElement, { childList: true, subtree: true });
+})();
