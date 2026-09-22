@@ -2610,6 +2610,11 @@ html:not([data-theme="light"]) .aq-tab.active .aq-tab-count{color:#9C8FFF}
 html.lu-mode-basic-preload .sb-nav .nav-section{display:none}
 html.lu-mode-basic-preload [data-adv="1"]{display:none !important}
 </style>
+<style id="lu-tip-css">
+/* TIP-2 (Owner 2026-09-23): once the tips are dismissed the Arthur feed is empty at ANY width - it collapses and the composer
+   follows the header, instead of a tall blank column (white in the light theme) between the two. TIP-1 had this only for phones. */
+#t3-arthur-feed:empty{display:none!important}
+</style>
 <style id="lu-kb-css">
 /* KB-2 (Owner 2026-09-22): keyboard-aware at ANY width (Samsung Fold inner screen ~900px is treated as a tablet by every
    phone rule). core.js sets html.lu-kb-open and --lu-kb (keyboard height that the layout did NOT absorb: ~0 on Android with
