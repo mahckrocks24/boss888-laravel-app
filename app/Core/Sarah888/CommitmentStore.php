@@ -46,6 +46,7 @@ class CommitmentStore
 
         $id = DB::table('sarah_commitments')->insertGetId([
             'workspace_id'       => $wsId,
+            'business_id'        => $data['business_id'] ?? \App\Core\Business\BusinessHistory::current(), // RFC-0011 U4a
             'conversation_id'    => $data['conversation_id'] ?? null,
             'source_message_id'  => $data['source_message_id'] ?? null,
             'execution_id'       => $data['execution_id'] ?? null,
@@ -299,6 +300,22 @@ class CommitmentStore
     public function renderForPrompt(int $wsId, int $maxLive = 60, ?string $turnText = null): string
     {
         $live = $this->live($wsId);
+        // RFC-0011 U4a: a single-business turn renders that business's commitments (NULL = the default business's);
+        // the others are counted, never listed.
+        $__othersLine = '';
+        if (($__bizId = \App\Core\Business\BusinessHistory::current()) !== null) {
+            try {
+                $__default = app(\App\Core\Business\BusinessProfileResolver::class)->default($wsId);
+                $__isDefault = $__default && (int) $__default->id === (int) $__bizId;
+                $__mine = []; $__others = 0;
+                foreach ($live as $__c) {
+                    $__b = isset($__c->business_id) ? (int) $__c->business_id : 0;
+                    if ($__b === (int) $__bizId || ($__b === 0 && $__isDefault)) { $__mine[] = $__c; } else { $__others++; }
+                }
+                $live = $__mine;
+                if ($__others > 0) { $__othersLine = "Other businesses in this workspace hold {$__others} open commitment" . ($__others === 1 ? '' : 's') . " — not in this turn's scope.\n"; }
+            } catch (\Throwable $e) { /* the full list stands */ }
+        }
 
         // ── CERT-A-D01 — RECENCY DECIDES WHAT IS VISIBLE ────────────────────
         // Certification Pass A reached 100 live commitments against a cap of
@@ -372,7 +389,7 @@ class CommitmentStore
         $pending   = DB::table('sarah_commitments')->where('workspace_id', $wsId)
             ->whereIn('status', self::PENDING)->orderByDesc('id')->limit(8)->get()->all();
 
-        if (!$live && !$cancelled && !$pending) return '';
+        if (!$live && !$cancelled && !$pending) return $__othersLine !== '' ? "COMMITMENTS\n" . $__othersLine : '';
 
         $out = "EXECUTIVE COMMITMENT RECORD (durable, workspace-scoped, and NOT limited to the recent conversation.\n"
              . "This is the source of truth for what the owner has committed to. Trust it over your recollection of chat.\n"
@@ -506,7 +523,7 @@ class CommitmentStore
             foreach ($pending as $c) $out .= '  - ' . $c->title . "\n";
         }
 
-        return $out . "\n";
+        return $out . "\n" . $__othersLine;
     }
 
     /** Stats from the most recent renderForPrompt() call, for frame profiling. */

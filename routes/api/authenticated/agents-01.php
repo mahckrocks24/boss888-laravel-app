@@ -366,6 +366,23 @@ $withCorr = function (array $meta) use ($corr) {
             return json_encode(array_merge($corr, $meta, ['stamped_at' => now()->toIso8601String()]));
         };
 
+        // RFC-0011 U3/U4a (2026-09-22): which BUSINESS this turn is about — several businesses in ONE workspace, the owner
+        // never switches; Sarah resolves it (named / sticky / portfolio / ambiguous → one question). Inert unless the
+        // workspace holds several businesses AND the feature is on for it (config business.profiles / qa_workspaces).
+        $__biz = ['multi' => false, 'mode' => 'single', 'business' => null, 'business_id' => null, 'businesses' => [], 'ask' => null];
+        try {
+            $__biz = app(\App\Core\Business\BusinessContext::class)->resolve((int) $wsId, (string) $__ownerMessage, (string) ($__siteUrlIn ?? ''));
+            if (!empty($__biz['multi'])) {
+                app()->instance('sarah.business_id', $__biz['business_id']);
+                if (isset($userMessageId) && $userMessageId) {
+                    $__umRow = DB::table('agent_messages')->where('id', (int) $userMessageId)->value('metadata_json');
+                    $__umMeta = is_string($__umRow) ? (json_decode($__umRow, true) ?: []) : [];
+                    DB::table('agent_messages')->where('id', (int) $userMessageId)->update(['metadata_json' => json_encode(array_merge($__umMeta, ['business_id' => $__biz['business_id'], 'business_mode' => $__biz['mode']]))]);
+                }
+            }
+        } catch (\Throwable $__bizErr) { \Illuminate\Support\Facades\Log::warning('[Business] context failed: ' . $__bizErr->getMessage(), ['ws' => $wsId]); }
+
+
         // ── SARAH888 — RUNTIME-NATIVE CUTOVER (feature-flagged, default OFF) ────
         //
         // One guarded delegation, deliberately the only change to this file. PathSelector
@@ -442,7 +459,8 @@ $withCorr = function (array $meta) use ($corr) {
             'action' => 'agent.direct_message',
             'entity_type' => 'Agent',
             'metadata_json' => json_encode(['agent_slug' => $slug, 'from' => $from, 'content' => $content,
-                                            'user_message_id' => $userMessageId, 'execution_id' => $execId]),
+                                            'user_message_id' => $userMessageId, 'execution_id' => $execId,
+                                            'business_id' => (!empty($__biz['multi']) ? ($__biz['business_id'] ?? null) : null), 'business_mode' => ($__biz['mode'] ?? null)]), // RFC-0011 U4a
             'created_at' => now(),
         ]);
 
@@ -655,10 +673,13 @@ $withCorr = function (array $meta) use ($corr) {
             ->count();
 
         // ── Conversation history (last 20 messages) ──  2026-06-10 fix-all L1/L8: 10→20 so Sarah can reconcile against more of what she said earlier
-        $history = \Illuminate\Support\Facades\DB::table('audit_logs')
+        $__histQ = \Illuminate\Support\Facades\DB::table('audit_logs')
             ->where('workspace_id', $wsId)
             ->where('action', 'agent.direct_message')
-            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.agent_slug')) = ?", [$slug])
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.agent_slug')) = ?", [$slug]);
+        // RFC-0011 U4a: a single-business turn sees that business's conversation (and rows from before businesses existed)
+        if (!empty($__biz['multi']) && !empty($__biz['business_id']) && in_array($__biz['mode'] ?? '', ['named', 'sticky', 'default'], true)) { \App\Core\Business\BusinessHistory::apply($__histQ, (int) $__biz['business_id']); }
+        $history = $__histQ
             ->orderByDesc('created_at')->limit(20)->get()->reverse()
             ->map(function($row) {
                 $meta = json_decode($row->metadata_json, true);
@@ -1143,24 +1164,10 @@ $withCorr = function (array $meta) use ($corr) {
             \Illuminate\Support\Facades\Log::warning('[Sarah888] AuthorizationBinder failed: ' . $__abErr->getMessage(), ['ws' => $wsId]);
         }
 
-        // RFC-0011 U3 (2026-09-22): which BUSINESS this turn is about — several businesses in ONE workspace, the owner
-        // never switches; Sarah resolves it (named / sticky / portfolio / ambiguous → one question). Inert unless the
-        // workspace holds several businesses AND the feature is on for it (config business.profiles / qa_workspaces).
-        $__biz = ['multi' => false, 'mode' => 'single', 'business' => null, 'business_id' => null, 'businesses' => [], 'ask' => null];
-        try {
-            $__biz = app(\App\Core\Business\BusinessContext::class)->resolve((int) $wsId, (string) $__ownerMessage, (string) ($__siteUrlIn ?? ''));
-            if (!empty($__biz['multi'])) {
-                app()->instance('sarah.business_id', $__biz['business_id']);
-                if (!empty($__biz['business']) && !$__biz['business']->is_default) {
-                    $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $wsId, (int) $__biz['business_id']) ?? $workspace;
-                }
-                if (isset($userMessageId) && $userMessageId) {
-                    $__umRow = DB::table('agent_messages')->where('id', (int) $userMessageId)->value('metadata_json');
-                    $__umMeta = is_string($__umRow) ? (json_decode($__umRow, true) ?: []) : [];
-                    DB::table('agent_messages')->where('id', (int) $userMessageId)->update(['metadata_json' => json_encode(array_merge($__umMeta, ['business_id' => $__biz['business_id'], 'business_mode' => $__biz['mode']]))]);
-                }
-            }
-        } catch (\Throwable $__bizErr) { \Illuminate\Support\Facades\Log::warning('[Business] context failed: ' . $__bizErr->getMessage(), ['ws' => $wsId]); }
+        // RFC-0011 U4a: the business was resolved above (before the audit write and the history read); the workspace view follows it here.
+        if (!empty($__biz['multi']) && !empty($__biz['business']) && !$__biz['business']->is_default) {
+            $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $wsId, (int) $__biz['business_id']) ?? $workspace;
+        }
 
         // PATCH (Sarah brand context, 2026-05-09) — Pull workspace_memory
         // facts and inject as AUTHORITATIVE GROUND TRUTH at the top of
@@ -2287,6 +2294,7 @@ $withCorr = function (array $meta) use ($corr) {
                         'location'      => $workspace->location ?? '',
                         'agent_slug'    => $slug,
                         'business_id'   => $__biz['business_id'] ?? null, // RFC-0011 U3
+                        'memory_scope'  => 'ws' . (int) $wsId . (!empty($__biz['business_id']) ? ':biz' . (int) $__biz['business_id'] : ''), // RFC-0011 U4a: for a runtime that keys memory per scope
                         'business_mode' => $__biz['mode'] ?? 'single',
                         'agent_name'    => $agent->name,
                     ],
@@ -4033,7 +4041,7 @@ $withCorr = function (array $meta) use ($corr) {
             'workspace_id' => $wsId,
             'action' => 'agent.direct_message',
             'entity_type' => 'Agent',
-            'metadata_json' => json_encode(['agent_slug' => $slug, 'from' => $agent->name, 'content' => $reply]),
+            'metadata_json' => json_encode(['agent_slug' => $slug, 'from' => $agent->name, 'content' => $reply, 'business_id' => (!empty($__biz['multi']) ? ($__biz['business_id'] ?? null) : null), 'business_mode' => ($__biz['mode'] ?? null)]), // RFC-0011 U4a
             'created_at' => now(),
         ]);
 
