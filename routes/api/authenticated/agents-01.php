@@ -3056,6 +3056,9 @@ $withCorr = function (array $meta) use ($corr) {
                     $__contentUnplaced = [];
                     $__boundSiteByPos = [];   // RISK-0186: position → website_id, so a chain child inherits its article's site
                     $__lastBoundSite = null;
+                    $__heldPos = [];          // MULTISITE-1: positions held for the owner's answer — their chain children wait too
+                    $__placedArticles = [];   // MULTISITE-1: [title, site] of every article actually started this turn, for an honest reply
+                    $__siteNameById = []; foreach ((array) (($__ct ?? [])['sites'] ?? []) as $__sn) { $__siteNameById[(int) ($__sn['id'] ?? 0)] = (string) ($__sn['name'] ?? ''); }
                     if ($__ct['site'] === null && count($__ct['sites']) > 1 && ! $__contentPerTask) {
                         foreach ($createTasks as $__c) { if (is_array($__c) && strtolower((string) ($__c['action'] ?? '')) === 'write_article') { $__contentHold = true; break; } }
                     }
@@ -3519,27 +3522,41 @@ $withCorr = function (array $meta) use ($corr) {
                                 if ($__contentPerTask) {
                                     $__bind = \App\Core\Sarah888\ContentTarget::bindTask((string) $__ownerMessage, $__ct['named'], $payload);
                                     $__namedIdsCT = array_map(fn ($n) => (int) ($n['id'] ?? 0), $__ct['named']);
-                                    // a chain child (meta, featured image, links) belongs to the article it depends on — same site, no question
-                                    $__inherit = null;
+                                    // a chain child (meta, featured image, links) belongs to the article it depends on — same site, no question.
+                                    // MULTISITE-1 (2026-09-23): that inheritance WINS over clause scoring, and a child whose article is held is held
+                                    // with it — before this the "Cafe Two" meta + image ran alone on the Bakery site and were charged (EV-1107).
+                                    $__inherit = null; $__childOfHeld = false; $__hasParentRef = false;
                                     if ((string) $taskAction !== 'write_article') {
-                                        foreach ((array) ($createTask['depends_on'] ?? []) as $__dp) { if (isset($__boundSiteByPos[(int) $__dp])) { $__inherit = $__boundSiteByPos[(int) $__dp]; break; } }
-                                        if ($__inherit === null && $__bind['site'] === null) $__inherit = $__lastBoundSite;
+                                        foreach ((array) ($createTask['depends_on'] ?? []) as $__dp) {
+                                            $__hasParentRef = true;
+                                            if (isset($__boundSiteByPos[(int) $__dp])) { $__inherit = (int) $__boundSiteByPos[(int) $__dp]; break; }
+                                            if (in_array((int) $__dp, $__heldPos, true)) { $__childOfHeld = true; }
+                                        }
+                                        if ($__inherit === null && ($__childOfHeld || (! $__hasParentRef && $__contentUnplaced !== []))) {
+                                            // its article is waiting for the owner's answer — so is this piece; the article's question covers it
+                                            \Illuminate\Support\Facades\Log::info('[Sarah888] MULTISITE-1 chain child held with its article', ['ws' => $wsId, 'action' => $taskAction, 'title' => (string) ($payload['title'] ?? '')]);
+                                            $__heldPos[] = (int) $ctIndex; $__contentSkipped++;
+                                            continue;
+                                        }
+                                        // no parent reference: its own title naming a site wins, then the article just started (children follow their article in the plan)
+                                        if ($__inherit === null && ! $__hasParentRef && ($__bind['reason'] ?? '') !== 'task_names_site' && $__lastBoundSite !== null) { $__inherit = (int) $__lastBoundSite; }
                                     }
-                                    if (!empty($payload['website_id']) && in_array((int) $payload['website_id'], $__namedIdsCT, true) && $__bind['site'] === null) {
+                                    if ($__inherit !== null) {
+                                        $payload['website_id'] = (int) $__inherit; $__bind['reason'] = 'inherited_from_article';
+                                    } elseif (!empty($payload['website_id']) && in_array((int) $payload['website_id'], $__namedIdsCT, true) && $__bind['site'] === null) {
                                         // the model pinned one of the named sites and the words do not contradict it — keep it
                                     } elseif ($__bind['site'] !== null) {
                                         $payload['website_id'] = (int) $__bind['site']['id'];
-                                    } elseif ($__inherit !== null) {
-                                        $payload['website_id'] = (int) $__inherit; $__bind['reason'] = 'inherited_from_article';
                                     } else {
-                                        \Illuminate\Support\Facades\Log::warning('[Sarah888] RISK-0186 content task held — several sites named, piece not placed by the owner\'s words', ['ws' => $wsId, 'action' => $taskAction, 'title' => (string) ($payload['title'] ?? ''), 'reason' => $__bind['reason'], 'scores' => $__bind['scores']]);
+                                        \Illuminate\Support\Facades\Log::warning('[Sarah888] RISK-0186 content task held — several sites named, piece not placed by the owner\'s words', ['ws' => $wsId, 'action' => $taskAction, 'title' => (string) ($payload['title'] ?? $taskAction), 'reason' => $__bind['reason'], 'scores' => $__bind['scores']]);
                                         $__contentUnplaced[] = (string) ($payload['title'] ?? $taskAction);
+                                        $__heldPos[] = (int) $ctIndex;
                                         $__contentSkipped++;
                                         continue;
                                     }
                                     \Illuminate\Support\Facades\Log::info('[Sarah888] RISK-0186 content task bound', ['ws' => $wsId, 'action' => $taskAction, 'website_id' => (int) $payload['website_id'], 'reason' => $__bind['reason'], 'scores' => $__bind['scores']]);
                                     $__boundSiteByPos[(int) $ctIndex] = (int) $payload['website_id'];
-                                    if ((string) $taskAction === 'write_article') $__lastBoundSite = (int) $payload['website_id'];
+                                    if ((string) $taskAction === 'write_article') { $__lastBoundSite = (int) $payload['website_id']; $__placedArticles[] = ['title' => (string) ($payload['title'] ?? 'the article'), 'site' => (string) ($__siteNameById[(int) $payload['website_id']] ?? 'that website')]; }
                                 }
                             }
                             $__reqItemByAction[(string) $taskAction] = ($__reqItemByAction[(string) $taskAction] ?? 0) + 1;
@@ -3768,8 +3785,11 @@ $withCorr = function (array $meta) use ($corr) {
                     } elseif (!empty($__contentUnplaced)) {
                         // RISK-0186: several sites named, at least one piece could not be placed — ask about that piece; what
                         // was placed has been created and the summary below says so.
-                        $__askLines = array_map(fn ($t) => \App\Core\Sarah888\ContentTarget::askWhichFor($t, $__ct['named']), array_slice($__contentUnplaced, 0, 3));
-                        $reply = trim((string) $reply) === '' ? implode(' ', $__askLines) : (string) $reply . "\n\n" . implode(' ', $__askLines);
+                        // MULTISITE-1 (2026-09-23): the model's promise ("Queued both") never survives a held piece — the reply is what was
+                        // actually started, then ONE question about the rest (EV-1107: the promise went out with two questions under it).
+                        $__startedLines = array_map(fn ($p) => 'Started "' . $p['title'] . '" for ' . $p['site'] . '.', $__placedArticles);
+                        $__ask = \App\Core\Sarah888\ContentTarget::askWhichForMany(array_slice($__contentUnplaced, 0, 3), $__ct['named']);
+                        $reply = trim(($__startedLines ? implode(' ', $__startedLines) . "\n\n" : '') . $__ask);
                         try { \Illuminate\Support\Facades\Cache::put(\App\Core\Sarah888\SpendPolicy::pendingClarifyKey((int) $wsId), ['action' => 'write_article', 'asked_at' => time(), 'owner_text' => (string) $content], now()->addMinutes(15)); } catch (\Throwable) {}
                     }
 

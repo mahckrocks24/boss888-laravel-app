@@ -102,6 +102,19 @@ class ContentTarget
     {
         $t = ' ' . preg_replace('/\s+/', ' ', mb_strtolower(trim($message))) . ' ';
         $t = str_replace(["'", '’'], '', $t);
+        // MULTISITE-1 (2026-09-23): a piece whose OWN title names exactly one of the sites the owner named is placed there.
+        // "Weekend Specials at Fable QA Cafe Two" is the owner's clause restated by the planner, not a guess; before this the
+        // clause scorer alone saw a 2:2 tie and held both articles (EV-1107).
+        $taskTextEarly = ' ' . preg_replace('/\s+/', ' ', mb_strtolower(implode(' ', array_map(fn ($k) => (string) ($payload[$k] ?? ''), ['title', 'topic', 'description', 'target_keyword', 'keyword', 'subject'])))) . ' ';
+        $taskTextEarly = str_replace(["'", '’'], '', $taskTextEarly);
+        $namedInTask = [];
+        foreach ($named as $s) {
+            $name = str_replace(["'", '’'], '', mb_strtolower(trim((string) ($s['name'] ?? ''))));
+            $cands = mb_strlen($name) >= 5 ? [$name] : [];
+            foreach (['subdomain', 'domain'] as $k) { $h = mb_strtolower(trim((string) ($s[$k] ?? ''))); if ($h === '') continue; $label = explode('.', $h)[0]; if (mb_strlen($label) >= 5) $cands[] = str_replace('-', ' ', $label); }
+            foreach (array_unique($cands) as $c) { if ($c !== '' && preg_match('/(^|[^a-z0-9])' . preg_quote($c, '/') . '([^a-z0-9]|$)/u', $taskTextEarly)) { $namedInTask[(int) $s['id']] = $s; break; } }
+        }
+        if (count($namedInTask) === 1) return ['site' => reset($namedInTask), 'reason' => 'task_names_site', 'scores' => []];
         // where does each named site appear? (earliest of its candidate spellings)
         $pos = [];
         foreach ($named as $s) {
@@ -157,6 +170,17 @@ class ContentTarget
         $names = array_map(fn ($s) => (string) $s['name'], $named);
         $list = count($names) > 1 ? implode(', ', array_slice($names, 0, -1)) . ' or ' . end($names) : (string) ($names[0] ?? 'your website');
         return "Before I write \"{$title}\": which website should it go on — {$list}? Tell me the name and I will start it.";
+    }
+
+    /** MULTISITE-1: ONE question for several pieces that could not be placed — not one per piece, never repeated. */
+    public static function askWhichForMany(array $titles, array $named): string
+    {
+        $titles = array_values(array_unique(array_filter(array_map('strval', $titles), fn ($t) => trim($t) !== '')));
+        if (count($titles) <= 1) return self::askWhichFor((string) ($titles[0] ?? 'this piece'), $named);
+        $names = array_map(fn ($s) => (string) $s['name'], $named);
+        $list = count($names) > 1 ? implode(', ', array_slice($names, 0, -1)) . ' or ' . end($names) : (string) ($names[0] ?? 'your website');
+        $q = array_map(fn ($t) => '"' . $t . '"', $titles);
+        return 'Before I write ' . implode(', ', array_slice($q, 0, -1)) . ' and ' . end($q) . ": which website should each go on — {$list}? Tell me the name for each and I will start them.";
     }
 
     /** The question Sarah asks instead of writing for nobody. */
