@@ -43,9 +43,16 @@ function _crmUrl(p) {
 }
 function _crmNonce() { return (window.LU_CFG && '') || ''; }
 async function _crmGet(path) {
-    var res = await fetch(_crmUrl(path), { method:'GET', headers:{ 'Content-Type':'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')} });
-    var body; try { body = await res.json(); } catch(e) { body = {}; }
-    if (!res.ok) throw new Error((body && body.message) || 'HTTP ' + res.status);
+    var headers = { 'Content-Type':'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '') };
+    var direct = async function () {
+        var res = await fetch(_crmUrl(path), { method:'GET', headers: headers });
+        var body; try { body = await res.json(); } catch(e) { body = {}; }
+        return { status: res.status, json: body };
+    };
+    // PERF (2026-09-22): the eight boot reads ride in one /api/batch (see _luBatch in core.js); same body or error back.
+    var r = window._luBatch ? await window._luBatch.get('crm' + path, headers, direct) : await direct();
+    var body = (r.json === null || r.json === undefined) ? {} : r.json;
+    if (r.status < 200 || r.status >= 300) throw new Error((body && body.message) || 'HTTP ' + r.status);
     return body;
 }
 function _e(s) { return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

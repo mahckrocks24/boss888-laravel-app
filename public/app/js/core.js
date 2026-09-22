@@ -1093,6 +1093,36 @@ var API=window.LU_CFG.api, NONCE=window.LU_CFG.nonce, BN=window.LU_CFG.bn, BU=wi
 // WP Admin context:   sends X-WP-Nonce (same as get()/post() helpers)
 // Standalone SPA:     sends X-LevelUp-Token if window.LEVELUP_TOKEN is set
 // Both can coexist — the REST auth filter handles either header.
+// PERF (2026-09-22): GET reads issued in the same tick ride together in ONE /api/batch request (one Laravel boot
+// instead of one per read on the 1-vCPU box). Transparent: callers get exactly what their own fetch would return;
+// a lone call, a path outside the allow-list, or any batch failure falls back to the caller's direct fetch.
+window._luBatch = (function () {
+  var q = [], timer = null;
+  var ALLOW = /^(workspace\/status|user\/last-chat-workspace|dashboard\/overview|approvals|approvals\/count|calendar\/events|social\/accounts|seo\/gsc\/status|seo\/knowledge|engines|messages\/unread-count|notifications\/unread-count|tasks|crm\/(dashboard|pipeline\/stages|leads|contacts|modules|settings|tasks|appointments))(\?|$)/;
+  function flush() {
+    timer = null; var items = q; q = [];
+    if (items.length < 2) { items.forEach(function (it) { it.fallback(); }); return; }
+    var seen = {}; var paths = items.map(function (it) { return it.path; }).filter(function (p) { if (seen[p]) return false; seen[p] = 1; return true; });
+    fetch('/api/batch?' + paths.map(function (p) { return 'paths[]=' + encodeURIComponent(p); }).join('&'), { method: 'GET', headers: items[0].headers })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        var res = j && j.results;
+        items.forEach(function (it) { var one = res && res[it.path]; if (one && typeof one.status === 'number') it.resolve({ status: one.status, json: one.body }); else it.fallback(); });
+      })
+      .catch(function () { items.forEach(function (it) { it.fallback(); }); });
+  }
+  return {
+    // path: without /api/ (query allowed); headers: the caller's auth headers; direct: () => Promise<{status, json}>
+    get: function (path, headers, direct) {
+      return new Promise(function (resolve) {
+        if (!ALLOW.test(path)) { resolve(direct()); return; }
+        q.push({ path: path, headers: headers, resolve: resolve, fallback: function () { resolve(direct()); } });
+        if (!timer) timer = setTimeout(flush, 40); // 40 ms: the shell pollers fire from separate timers a few ms apart
+      });
+    }
+  };
+})();
+
 function authHeader() {
     var h = { 'Accept': 'application/json' };
     // Embed mode (WP Connector iframe): always use API key auth — never JWT.
@@ -6016,6 +6046,23 @@ var _luBase = (function() {
     return window.location.origin;
 })();
 
+// PERF (2026-09-22): shell GETs issued in the same tick (the per-page pollers: approvals/count, engines, unread counts,
+// workspace/status) ride in one /api/batch through _luBatch. A batched 2xx comes back as a Response built from the
+// same JSON; anything else is re-asked directly so callers still see the real status and headers. Embed mode and a
+// non-empty _luBase keep today's path exactly.
+async function _luFetchRaw(method, path, body, headers, opts) {
+  var url = _luBase + '/api' + path;
+  if (method !== 'GET' || body || !window._luBatch || (_luBase && _luBase !== location.origin) || (window._LGSC_EMBED && window._LGSC_EMBED.api_key)) return fetch(url, opts);
+  var rel = String(path).replace(/^\//, '');
+  var direct = function () { return fetch(url, opts).then(function (res) { return { status: res.status, json: null, response: res }; }); };
+  var br = await window._luBatch.get(rel, headers, direct);
+  if (br.response) return br.response;
+  if (br.status >= 200 && br.status < 300) {
+    return new Response(br.json === null || br.json === undefined ? '' : JSON.stringify(br.json), { status: br.status, headers: { 'Content-Type': 'application/json' } });
+  }
+  return fetch(url, opts);
+}
+
 async function _luFetch(method, path, body) {
   var token  = localStorage.getItem('lu_token');
   var nonce  = (window.LU_CFG && window.LU_CFG.nonce) ? window.LU_CFG.nonce : '';
@@ -6031,7 +6078,7 @@ async function _luFetch(method, path, body) {
   }
   var opts = { method: method, headers: headers, cache: 'no-store' };
   if (body) opts.body = JSON.stringify(body);
-  var r = await fetch(_luBase + '/api' + path, opts);
+  var r = await _luFetchRaw(method, path, body, headers, opts);
   if (r.status === 402 || r.status === 403) { try { var _pgd = await r.clone().json(); if (_pgd.code === 'PLAN_GATED' || _pgd.code === 'NO_CREDITS') { showPlanGate(_pgd.error || _pgd.message || 'This feature requires a plan upgrade.'); } } catch(_pge) {} }
   return r;
 }

@@ -12,7 +12,13 @@
   function api(method, path, body) {
     var o = { method: method, headers: hdr() };
     if (body) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
-    return fetch('/api/' + path.replace(/^\//, ''), o).then(function (r) { return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {} return { ok: r.ok, status: r.status, json: j }; }); });
+    var rel = path.replace(/^\//, '');
+    var direct = function () { return fetch('/api/' + rel, o).then(function (r) { return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {} return { ok: r.ok, status: r.status, json: j }; }); }); };
+    // PERF (2026-09-22): reads issued together ride in one /api/batch (see _luBatch in core.js); same shape back.
+    if (method === 'GET' && !body && window._luBatch) {
+      return window._luBatch.get(rel, o.headers, direct).then(function (r) { return { ok: r.status >= 200 && r.status < 300, status: r.status, json: r.json }; });
+    }
+    return direct();
   }
   function ago(ts) { if (!ts) return ''; var d = window._luParseTs ? window._luParseTs(ts) : new Date(String(ts).replace(' ', 'T') + (String(ts).indexOf('Z') > -1 || String(ts).indexOf('+') > -1 ? '' : 'Z')); var m = Math.round((Date.now() - d) / 60000); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; if (m < 1440) return Math.floor(m / 60) + ' h ago'; return Math.floor(m / 1440) + ' d ago'; }
   function when(ts) { if (!ts) return ''; try { return new Date(String(ts).replace(' ', 'T')).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }); } catch (e) { return String(ts); } }

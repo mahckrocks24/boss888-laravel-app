@@ -26,13 +26,27 @@
   function api(method, path, body) {
     var o = { method: method, headers: hdr() };
     if (body) { o.headers['Content-Type'] = 'application/json'; o.body = JSON.stringify(body); }
-    return fetch('/api/' + path.replace(/^\//, ''), o).then(function (r) {
-      return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {} return { ok: r.ok, status: r.status, json: j }; });
-    });
+    var rel = path.replace(/^\//, '');
+    var direct = function () {
+      return fetch('/api/' + rel, o).then(function (r) {
+        return r.text().then(function (t) { var j = null; try { j = t ? JSON.parse(t) : null; } catch (e) {} return { ok: r.ok, status: r.status, json: j }; });
+      });
+    };
+    // PERF (2026-09-22): boot reads issued together ride in one /api/batch (see _luBatch in core.js); same shape back.
+    // Context and briefing paint first and alone (a batch would make the first paint wait for the slowest rail read).
+    if (method === 'GET' && !body && window._luBatch && rel !== 'workspace/status' && rel !== 'dashboard/overview') {
+      return window._luBatch.get(rel, o.headers, direct).then(function (r) { return { ok: r.status >= 200 && r.status < 300, status: r.status, json: r.json }; });
+    }
+    return direct();
   }
   function ago(ts) { if (!ts) return ''; var d = window._luParseTs ? window._luParseTs(ts) : new Date(String(ts).replace(' ', 'T') + 'Z'); var m = Math.round((Date.now() - d) / 60000); if (m < 1) return 'now'; if (m < 60) return m + 'm ago'; if (m < 1440) return Math.floor(m / 60) + 'h ago'; return Math.floor(m / 1440) + 'd ago'; }
   function nearBottom(el) { return el && (el.scrollHeight - (el.scrollTop + el.clientHeight)) < 120; }
-  function stick(el, was) { if (el && was) el.scrollTop = el.scrollHeight; }
+  function stick(el, was) {
+    if (!(el && was)) return;
+    // Boot window (2026-09-22): cards that land in the seconds after the thread's first paint must not glide into view.
+    if (S.bootUntil && Date.now() < S.bootUntil) { el.style.scrollBehavior = 'auto'; el.scrollTop = el.scrollHeight; requestAnimationFrame(function () { el.style.scrollBehavior = ''; }); return; }
+    el.scrollTop = el.scrollHeight;
+  }
 
   /* ── CSS (tokens only; mobile-first) ─────────────────────────────────────────────────────────── */
   function ensureCss() {
@@ -411,7 +425,7 @@
       function updPos() { if (!pos) return; var n = items.length; if (isMin) { pos.textContent = n + (n === 1 ? ' item' : ' items'); return; } if (n < 2) { pos.textContent = ''; return; } var w = (items[0].getBoundingClientRect().width || 1) + 10; var idx = Math.min(n, Math.round(track.scrollLeft / w) + 1); var mobile = window.matchMedia && matchMedia('(max-width:767px)').matches; pos.innerHTML = idx + ' of ' + n + '<span class="swipe"> · ' + (mobile ? 'swipe' : 'scroll') + '</span>'; }
       track.addEventListener('scroll', function () { if (track._t) return; track._t = setTimeout(function () { track._t = null; updPos(); }, 80); }, { passive: true });
       window.addEventListener('resize', updPos); setMin(isMin);
-      try { if (S.feed && S.feed.scrollHeight - S.feed.scrollTop - S.feed.clientHeight < 400) S.feed.scrollTop = S.feed.scrollHeight; } catch (e) {}
+      try { if (S.feed && S.feed.scrollHeight - S.feed.scrollTop - S.feed.clientHeight < 400) { S.feed.style.scrollBehavior = 'auto'; S.feed.scrollTop = S.feed.scrollHeight; requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); } } catch (e) {}  // layout re-stick: instant, never a glide (2026-09-22)
     });
   }
 
@@ -471,6 +485,7 @@
       arr.forEach(function (m) { if (m.is_ack) return; S.feed.appendChild(bubble(m)); if (m.id) { S.rendered[String(m.id)] = 1; if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; } });
       // Owner 2026-09-21: the history used to animate from the oldest message to the newest (scroll-behavior:smooth on the
       // feed). The first paint is the latest message: jump without animation; smooth stays for messages that arrive later.
+      S.bootUntil = Date.now() + 8000;
       S.feed.style.scrollBehavior = 'auto'; S.feed.scrollTop = S.feed.scrollHeight;
       requestAnimationFrame(function () { S.feed.scrollTop = S.feed.scrollHeight; requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); });
     }).catch(function () { S.feed.innerHTML = '<div class="sh-card fail">Couldn\'t load the conversation — <button type="button" class="sh-btn" onclick="sarahLoad(document.getElementById(\'sarah-root\'))">try again</button></div>'; });
