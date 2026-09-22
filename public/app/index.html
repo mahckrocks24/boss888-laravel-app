@@ -4667,6 +4667,7 @@ window.luGroupSettings=function(){
   kids.forEach(function(c,i){
    if(i===0){c.style.order=0;return;}                       // the page title stays first
    if(c.id==='set-tabs'){c.style.order=1;return;}          // Owner 2026-09-21: the tab strip stays under the title, never sinks below the cards
+   if(c.id==='businesses-section'){c.style.order=15;return;}   // RFC-0011 U5b: Your businesses headlines the Business tab, above the workspace profile
    if(c.getAttribute('data-internal')){c.style.order=99;return;}
    var t=headOf(c), g=null;
    for(var k=0;k<GROUPS.length;k++){ if(GROUPS[k].match(c,t)){g=GROUPS[k];break;} }
