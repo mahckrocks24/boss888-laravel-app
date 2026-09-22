@@ -1002,6 +1002,101 @@ class TemplateService
         return ['success' => true, 'message' => $message, 'pages' => $done];
     }
 
+    /* ═══════════════════ LINK-1 (Owner 2026-09-22) — where a button, link or text goes when clicked ═══════════════════
+     * The editor had no way to set a link: element ops were move/align/size/effect and every CTA's href was baked into the
+     * template. linkElement sets the target on one [data-field] element on every page carrying it, snapshots first for Undo,
+     * and remembers the op in settings.element_ops so deploy() replays it on a fresh render. href '' removes the link. */
+    public static function normaliseHref(string $href): ?string
+    {
+        $h = trim($href);
+        if ($h === '' || $h === '#') return '';   // a bare # is no destination = remove the link
+        if (preg_match('/^(javascript|data|vbscript):/i', $h)) return null;
+        if (preg_match('#^https?://[^\s"<>]+$#i', $h)) return $h;
+        if (preg_match('/^(mailto:[^\s"<>]+|tel:\+?[0-9().\-\s]{3,})$/i', $h)) return $h;
+        if (preg_match('/^#[A-Za-z0-9_\-]+$/', $h)) return $h;
+        if (preg_match('#^/?[A-Za-z0-9_\-]+(/[A-Za-z0-9_\-]*)*/?(\#[A-Za-z0-9_\-]+)?(\?[^\s"<>]*)?$#', $h)) return $h;   // a page of this site, e.g. about/ or /blog/
+        if (preg_match('#^[a-z0-9.-]+\.[a-z]{2,}(/[^\s"<>]*)?$#i', $h)) return 'https://' . $h;   // bare domain
+        return null;
+    }
+
+    public function linkElement(int $websiteId, string $field, string $href, bool $newTab = false): array
+    {
+        $field = (string) preg_replace('/[^a-z0-9_\-]/i', '', $field);
+        if ($field === '') return ['success' => false, 'message' => 'Which element should the link go on?'];
+        $norm = self::normaliseHref($href);
+        if ($norm === null) return ['success' => false, 'message' => 'That does not look like a web address. Use a full address (https://...), a page of this site (about/), a section (#contact), an email (mailto:) or a phone (tel:).'];
+        $root = storage_path("app/public/sites/{$websiteId}");
+        if (! is_file("{$root}/index.html")) return ['success' => false, 'message' => 'This site has no page export yet.'];
+        $files = ["{$root}/index.html"];
+        foreach (glob("{$root}/*/index.html") ?: [] as $f) { if (! str_contains($f, '/.history/')) $files[] = $f; }
+        $done = 0; $message = ''; $firstFailure = null;
+        foreach ($files as $f) {
+            $html = (string) @file_get_contents($f);
+            if (! str_contains($html, 'data-field="' . $field . '"')) continue;
+            $r = $this->applyOneLinkOp($html, $field, $norm, $newTab);
+            if (! $r['success']) { $firstFailure = $firstFailure ?? $r; continue; }
+            if ($done === 0) { try { $this->snapshotToHistory($websiteId, 'element_link'); } catch (\Throwable $e) {} }
+            file_put_contents($f, $r['html']);
+            $done++; $message = $r['message'];
+        }
+        if ($done === 0) return $firstFailure ?? ['success' => false, 'message' => 'I could not find that element on the page.'];
+        $settings = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('settings_json') ?: '{}'), true) ?: [];
+        $ops = array_values((array) ($settings['element_ops'] ?? []));
+        $ops[] = ['field' => $field, 'op' => 'link', 'href' => $norm, 'new_tab' => $newTab, 'at' => date('c')];
+        if (count($ops) > 80) $ops = array_slice($ops, -80);
+        $settings['element_ops'] = $ops;
+        \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        return ['success' => true, 'message' => $message, 'pages' => $done, 'href' => $norm];
+    }
+
+    /** The DOM operation: an <a> gets the href; a <button> becomes an <a role=button>; text gets its content wrapped in an <a>
+     *  (or its existing inner link updated). href '' removes: the wrapper is unwrapped, a standalone <a> keeps href="#". */
+    private function applyOneLinkOp(string $html, string $field, string $href, bool $newTab): array
+    {
+        $dom = new \DOMDocument();
+        libxml_use_internal_errors(true);
+        $dom->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+        libxml_clear_errors();
+        $xp = new \DOMXPath($dom);
+        $node = $xp->query('//*[@data-field="' . $field . '"]')->item(0);
+        if (! $node instanceof \DOMElement) return ['success' => false, 'message' => 'I could not find that element on this page.'];
+        $tag = strtolower($node->tagName);
+        if ($tag === 'img') return ['success' => false, 'message' => 'Pictures cannot carry a link here — link the text or button next to it.'];
+        $label = trim((string) preg_replace('/\s+/', ' ', $node->textContent ?? ''));
+        $label = $label !== '' ? '"' . mb_substr($label, 0, 40) . '"' : 'the ' . str_replace(['_', '-'], ' ', $field);
+        $setTarget = function (\DOMElement $a) use ($newTab) {
+            if ($newTab) { $a->setAttribute('target', '_blank'); $a->setAttribute('rel', 'noopener'); }
+            else { $a->removeAttribute('target'); if ($a->getAttribute('rel') === 'noopener') $a->removeAttribute('rel'); }
+        };
+        if ($tag === 'a') {
+            $node->setAttribute('href', $href === '' ? '#' : $href); $setTarget($node);
+        } elseif ($tag === 'button') {
+            if ($href === '') return ['success' => false, 'message' => 'That button has no link to remove.'];
+            $a = $dom->createElement('a');
+            foreach (iterator_to_array($node->attributes) as $attr) { if (! in_array($attr->name, ['type', 'form', 'formaction', 'name', 'value', 'disabled'], true)) $a->setAttribute($attr->name, $attr->value); }
+            $a->setAttribute('href', $href); $a->setAttribute('role', 'button'); $setTarget($a);
+            while ($node->firstChild) $a->appendChild($node->firstChild);
+            $node->parentNode->replaceChild($a, $node);
+        } else {
+            $inner = $xp->query('.//a', $node);
+            if ($href === '') {
+                if ($inner->length === 0) return ['success' => false, 'message' => ucfirst($label) . ' has no link to remove.'];
+                foreach (iterator_to_array($inner) as $a) { $p = $a->parentNode; while ($a->firstChild) $p->insertBefore($a->firstChild, $a); $p->removeChild($a); }
+            } elseif ($inner->length > 0) {
+                foreach (iterator_to_array($inner) as $a) { $a->setAttribute('href', $href); $setTarget($a); }
+            } else {
+                $a = $dom->createElement('a'); $a->setAttribute('href', $href); $a->setAttribute('style', 'color:inherit;text-decoration:inherit'); $setTarget($a);
+                while ($node->firstChild) $a->appendChild($node->firstChild);
+                $node->appendChild($a);
+            }
+        }
+        $out = (string) $dom->saveHTML();
+        $out = (string) preg_replace('/^<\?xml encoding="UTF-8"\?>\s*/', '', $out);
+        $msg = $href === '' ? 'removed the link from ' . $label : 'linked ' . $label . ' to ' . $href . ($newTab ? ' (opens in a new tab)' : '');
+        return ['success' => true, 'html' => $out, 'message' => $msg];
+    }
+
     /** Re-apply remembered element moves to a freshly rendered page (deploy / deployPage). */
     private function applyElementOps(int $websiteId, string $html): string
     {
@@ -1009,7 +1104,9 @@ class TemplateService
         foreach ((array) ($settings['element_ops'] ?? []) as $op) {
             $field = (string) ($op['field'] ?? '');
             if ($field === '' || ! str_contains($html, 'data-field="' . $field . '"')) continue;
-            $r = $this->applyOneElementOp($html, $field, (string) ($op['op'] ?? ''), $op['ref'] ?? null);
+            $r = ((string) ($op['op'] ?? '') === 'link')
+                ? $this->applyOneLinkOp($html, $field, (string) ($op['href'] ?? ''), (bool) ($op['new_tab'] ?? false))   // LINK-1
+                : $this->applyOneElementOp($html, $field, (string) ($op['op'] ?? ''), $op['ref'] ?? null);
             if ($r['success']) $html = $r['html'];
         }
         return $html;

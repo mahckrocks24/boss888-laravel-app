@@ -1154,11 +1154,12 @@ var _t3PendingFields = {};
 
 // ELEMENT888 (DEC-0052): the preview toolbox / drag handle asks for a move, alignment or size change
 async function _t3ElementOp(d) {
+  if (d && d.op === 'link' && d.href_chosen === undefined) { _t3LinkDialog(d); return; }   // LINK-1
   var f = document.getElementById('t3-preview'); var m = /websites\/(\d+)\/preview/.exec((f && f.src) || '');
   var siteId = window._t3PreviewSiteId || (f && f.getAttribute('data-site')) || (m ? m[1] : null);
   if (!siteId || !d || !d.field || !d.op) return;
   var body = { field: d.field };
-  if (d.op === 'move') { body.dir = d.dir; if (d.ref) body.ref = d.ref; } else if (d.op === 'align') { body.align = d.align; } else if (d.op === 'effect') { body.effect = d.effect; body.dir = d.dir; if (d.block) body.block = d.block; if (d.value != null) body.value = d.value; if (d.color) body.color = d.color; } else { body.dir = d.dir; }
+  if (d.op === 'link') { body.href = String(d.href_chosen == null ? '' : d.href_chosen); body.new_tab = d.new_tab ? 1 : 0; } else if (d.op === 'move') { body.dir = d.dir; if (d.ref) body.ref = d.ref; } else if (d.op === 'align') { body.align = d.align; } else if (d.op === 'effect') { body.effect = d.effect; body.dir = d.dir; if (d.block) body.block = d.block; if (d.value != null) body.value = d.value; if (d.color) body.color = d.color; } else { body.dir = d.dir; }
   var feed = document.getElementById('t3-arthur-feed');
   var note = function (text, colour) { if (!feed) return; feed.innerHTML += '<div style="background:var(--s2);border-left:3px solid ' + colour + ';border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0">' + bld_escH(text) + '</div>'; feed.scrollTop = feed.scrollHeight; };
   try {
@@ -1200,6 +1201,59 @@ function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data
     clearTimeout(_t3SaveTimer);
     _t3SaveTimer = setTimeout(_t3FlushSaves, 2000);
   }
+}
+
+// LINK-1 (Owner 2026-09-22): "the editor does not have option to link a button or text". The toolbox's 🔗 posts
+// element-op link; this dialog asks where it should go — a page of this site, a section, a full address, an email or
+// a phone — then re-enters _t3ElementOp with href_chosen, which posts /elements/link (snapshot for Undo, replayed on deploy).
+function _t3LinkDialog(d) {
+  try { var _old = document.getElementById('t3-link-ov'); if (_old) _old.remove(); } catch (_e) {}
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  var picks = [];
+  try {
+    var fr = document.getElementById('t3-preview'); var doc = fr && fr.contentDocument;
+    if (doc) {
+      doc.querySelectorAll('[data-block]').forEach(function (sec) { var id = sec.id || ''; if (!id) return; var label = (sec.getAttribute('data-block') || id).replace(/[_-]/g, ' '); picks.push({ href: '#' + id, label: 'Section: ' + label }); });
+      var seen = {};
+      doc.querySelectorAll('nav a[href], .nav-links a[href]').forEach(function (a) { var h = a.getAttribute('href') || ''; if (!h || /^#/.test(h) || /^(javascript|mailto|tel):/i.test(h) || seen[h]) return; if (/^https?:/i.test(h)) return; seen[h] = 1; picks.push({ href: h, label: 'Page: ' + ((a.textContent || h).replace(/\s+/g, ' ').trim().slice(0, 30)) }); });
+    }
+  } catch (_p) {}
+  var cur = String(d.href || ''); if (cur === '#') cur = '';
+  var what = d.text ? '"' + d.text.slice(0, 40) + '"' : 'this ' + (d.kind || 'element');
+  var ov = document.createElement('div'); ov.id = 't3-link-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;font-family:var(--fb,system-ui,sans-serif)';
+  ov.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="t3-link-t" style="background:var(--s1,#171A21);border:1px solid var(--bd2,rgba(255,255,255,.13));border-radius:var(--rg,14px);width:100%;max-width:520px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.6);color:var(--t1,#E8EDF5)">'
+    + '<div id="t3-link-t" style="padding:20px 22px 6px;font:700 16px var(--fh,sans-serif)">Link ' + esc(what) + '</div>'
+    + '<div style="padding:6px 22px 14px;color:var(--t2,#8B97B0);font-size:13px;line-height:1.5">Where should it go when clicked? A page of this site, a section, a full web address, an email or a phone number.</div>'
+    + '<div style="padding:0 22px 8px;overflow:auto;min-height:0">'
+    +   '<label for="t3-link-href" style="display:block;font:700 11px var(--fb,sans-serif);letter-spacing:.06em;text-transform:uppercase;color:var(--t3,#8B97B0);margin-bottom:6px">Link</label>'
+    +   '<input id="t3-link-href" type="text" value="' + esc(cur) + '" placeholder="https://…, about/, #contact, mailto:you@…, tel:+1…" autocomplete="off" spellcheck="false" style="width:100%;box-sizing:border-box;background:var(--s2,#1E2230);border:1px solid var(--bd2,rgba(255,255,255,.13));border-radius:var(--r,10px);color:var(--t1,#E8EDF5);padding:11px 14px;font-size:16px;font-family:inherit;min-height:44px">'
+    +   (picks.length ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' + picks.slice(0, 14).map(function (pk) { return '<button type="button" class="t3-link-pick" data-href="' + esc(pk.href) + '" style="font:600 12px var(--fb,sans-serif);color:var(--t2,#8B97B0);background:var(--s2,#1E2230);border:1px solid var(--bd,rgba(255,255,255,.1));border-radius:999px;padding:6px 11px;cursor:pointer">' + esc(pk.label) + '</button>'; }).join('') + '</div>' : '')
+    +   '<label style="display:flex;align-items:center;gap:10px;margin-top:14px;font-size:13px;color:var(--t2,#8B97B0);cursor:pointer"><input id="t3-link-nt" type="checkbox"' + (String(d.target || '') === '_blank' ? ' checked' : '') + ' style="width:18px;height:18px"> Open in a new tab</label>'
+    +   '<div id="t3-link-msg" style="font-size:12px;color:#F87171;min-height:16px;margin-top:8px"></div>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:12px 16px 16px;border-top:1px solid var(--bd,rgba(255,255,255,.07))">'
+    +   (cur ? '<button type="button" data-role="remove" style="min-height:44px;padding:0 16px;border-radius:var(--r,10px);font:600 13.5px var(--fb,sans-serif);cursor:pointer;background:transparent;color:#F87171;border:1px solid var(--bd2,rgba(255,255,255,.13));margin-right:auto">Remove link</button>' : '')
+    +   '<button type="button" data-role="cancel" style="min-height:44px;padding:0 18px;border-radius:var(--r,10px);font:600 13.5px var(--fb,sans-serif);cursor:pointer;background:transparent;color:var(--t2,#8B97B0);border:1px solid var(--bd2,rgba(255,255,255,.13))">Cancel</button>'
+    +   '<button type="button" data-role="ok" style="min-height:44px;padding:0 18px;border-radius:var(--r,10px);font:600 13.5px var(--fb,sans-serif);cursor:pointer;background:var(--p,#6C5CE7);color:#fff;border:1px solid transparent">Set link</button>'
+    + '</div></div>';
+  document.body.appendChild(ov);
+  var inp = ov.querySelector('#t3-link-href'), msg = ov.querySelector('#t3-link-msg');
+  var close = function () { document.removeEventListener('keydown', onKey, true); try { ov.remove(); } catch (_e) {} };
+  var onKey = function (e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } if (e.key === 'Enter' && e.target === inp) { e.preventDefault(); go(inp.value); } };
+  var go = function (href) {
+    href = String(href || '').trim();
+    if (href !== '' && /^(javascript|data|vbscript):/i.test(href)) { msg.textContent = 'That kind of link is not allowed.'; return; }
+    close();
+    _t3ElementOp(Object.assign({}, d, { href_chosen: href, new_tab: !!(ov.querySelector('#t3-link-nt') || {}).checked, applied: false }));
+  };
+  ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
+  ov.querySelector('[data-role=cancel]').onclick = close;
+  ov.querySelector('[data-role=ok]').onclick = function () { if (!String(inp.value || '').trim()) { msg.textContent = 'Type a link, or pick one below.'; inp.focus(); return; } go(inp.value); };
+  var rm = ov.querySelector('[data-role=remove]'); if (rm) rm.onclick = function () { go(''); };
+  ov.querySelectorAll('.t3-link-pick').forEach(function (b) { b.onclick = function () { inp.value = b.getAttribute('data-href') || ''; inp.focus(); }; });
+  document.addEventListener('keydown', onKey, true);
+  setTimeout(function () { try { inp.focus(); inp.select(); } catch (_e) {} }, 30);
 }
 
 // ── Builder image click-to-replace panel (2026-04-19) ──────────

@@ -3788,6 +3788,7 @@ document.addEventListener("DOMContentLoaded",function(){
     + _tbBtn("left", "◧", "Align left") + _tbBtn("center", "▣", "Align centre") + _tbBtn("right", "◨", "Align right")
     + "<span style=\"width:1px;height:22px;background:rgba(255,255,255,.18);margin:0 2px\"></span>"
     + _tbBtn("smaller", "A−", "Smaller", "font-size:12px") + _tbBtn("bigger", "A+", "Bigger")
+    + _tbBtn("link", "🔗", "Link: where this goes when clicked", "font-size:14px")   // LINK-1
     + _tbBtn("fx", "✦", "Effects: opacity, shadow, glow, overlay", "color:#c4b5fd")
     + _tbBtn("close", "✕", "Close", "color:rgba(255,255,255,.6)")
     + "<div id=\"__lu_el_fx\" style=\"display:none;flex-basis:100%;flex-wrap:wrap;gap:2px;align-items:center;border-top:1px solid rgba(255,255,255,.14);margin-top:3px;padding-top:3px\">"
@@ -3871,6 +3872,7 @@ document.addEventListener("DOMContentLoaded",function(){
     _tbEl = el; _tbField = field;
     try { document.body.appendChild(_sel); document.body.appendChild(_tb); document.body.appendChild(_tip); } catch(_z){}   // last in the DOM: above the fixed widgets of the site
     var isImg = el.tagName === "IMG" || /_image$|_photo$|_img$|_avatar$/.test(field || "");
+    try { var _lb = _tb.querySelector("button[data-op=\"link\"]"); if (_lb) _lb.style.display = isImg ? "none" : ""; } catch(_lk) {}   // LINK-1: pictures carry no link here
     var sm = _tb.querySelector("[data-op=smaller]"), bg = _tb.querySelector("[data-op=bigger]");
     if (sm) sm.textContent = isImg ? "−" : "A−"; if (bg) bg.textContent = isImg ? "+" : "A+";
     _tb.style.display = "flex"; _tbPlace();
@@ -3885,6 +3887,11 @@ document.addEventListener("DOMContentLoaded",function(){
     var blk = _tbEl && _tbEl.closest ? _tbEl.closest("[data-block]") : null; var bid = blk ? blk.getAttribute("data-block") : (window._selectedBlock || null);
     if (op === "drag") return;
     if (op === "fx") { var row = document.getElementById("__lu_el_fx"); if (row) { row.style.display = row.style.display === "none" ? "flex" : "none"; _tbPlace(); } return; }
+    if (op === "link") {   // LINK-1: the parent shows the link dialog, then posts the op back through /elements/link
+      var _la = _tbEl && _tbEl.tagName === "A" ? _tbEl : (_tbEl && _tbEl.querySelector ? _tbEl.querySelector("a[href]") : null);
+      window.parent.postMessage({type:"element-op", op:"link", field:_tbField, block:bid, applied:false, href:(_la ? (_la.getAttribute("href") || "") : ""), target:(_la ? (_la.getAttribute("target") || "") : ""), kind:_luFxKind(_tbEl), text:((_tbEl && _tbEl.textContent) || "").replace(/\s+/g, " ").trim().slice(0, 60)}, "*");
+      return;
+    }
     var fxm = /^(opacity|shadow|glow|overlay)_(up|down)$/.exec(op);
     if (fxm) {
       var fmsg = {type:"element-op", op:"effect", effect:fxm[1], dir:fxm[2], field:_tbField, block:bid, applied:false};
