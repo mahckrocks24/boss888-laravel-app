@@ -1038,7 +1038,7 @@ async function luLoadEngine(engine) {
   _luEngineLoading[engine] = true;
   var urls = (window.LU_CFG && window.LU_CFG.engineUrls) || {};
   var base = (window.LU_CFG && window.LU_CFG.pluginUrl) ? window.LU_CFG.pluginUrl + '/assets/js/' : '';
-  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','automation','projects','mentions','infrastructure','catalogue'];
+  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','automation','projects','mentions','infrastructure','catalogue','businesses'];
   if (lazy.indexOf(engine) === -1) { _luEngineLoading[engine] = false; return; }
   var src = urls[engine] || (base + engine + '.js');
   var isFallback = !urls[engine] && base;
@@ -1313,7 +1313,7 @@ async function nav(view, opts){
   if(view==='agents')     { if (window.luRenderAgentsGrid) { try { luRenderAgentsGrid(); } catch (_e) {} } loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
-  if(view==='settings') { loadSettings(); try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} try{ _luSettingsTabs(); setShowTab((opts&&opts.tail&&['profile','business','brand','team','billing'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'profile', true); }catch(e){} } /* P1R-6/7; B5 tabs */
+  if(view==='settings') { loadSettings(); (async function(){ try { await luLoadEngine('businesses'); var _bz=document.getElementById('businesses-section'); if(_bz && typeof window.businessesLoad==='function') window.businessesLoad(_bz); } catch(_e) {} })(); /* RFC-0011 U5b */ try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} try{ _luSettingsTabs(); setShowTab((opts&&opts.tail&&['profile','business','brand','team','billing'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'profile', true); }catch(e){} } /* P1R-6/7; B5 tabs */
   if(view==='builder') {
     // Builder engine loaded via builder-spa.js (injected by builder plugin)
     if (typeof _bldPrefetchDynamic === 'function') _bldPrefetchDynamic();

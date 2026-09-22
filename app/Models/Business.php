@@ -37,6 +37,20 @@ class Business extends Model
         });
     }
 
+    /**
+     * RFC-0011 U5a: a website belongs to ONE business — the one named on creation when it is this workspace's, else the
+     * default. Returns the business id written (null when the workspace has no businesses yet).
+     */
+    public static function stampWebsite(int $wsId, int $websiteId, ?int $businessId = null): ?int
+    {
+        $b = null;
+        if ($businessId) { $b = static::where('workspace_id', $wsId)->where('id', $businessId)->first(); }
+        if (! $b) { $b = static::where('workspace_id', $wsId)->where('is_default', true)->first(); }
+        if (! $b) { return null; }
+        DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->update(['business_id' => $b->id]);
+        return (int) $b->id;
+    }
+
     /** A slug unique within the workspace. */
     public static function slugFor(int $wsId, string $name, ?int $ignoreId = null): string
     {

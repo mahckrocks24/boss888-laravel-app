@@ -210,7 +210,10 @@ use Illuminate\Support\Facades\Route;
             if (is_array($in['settings'] ?? null) && isset($in['settings']['theme'])
                 && in_array(strtolower(trim((string) $in['settings']['theme'])), \App\Engines\Builder\Services\ThemeRegistry::keys(), true)
                 && (int) ($r->user()?->id ?? 0) !== 1) { unset($in['settings']['theme']); }
-            return response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'create_website', $in, ['user_id' => $r->user()?->id, 'source' => 'manual']), 201);
+            $__created = app($exec)->execute($r->attributes->get('workspace_id'), 'builder', 'create_website', $in, ['user_id' => $r->user()?->id, 'source' => 'manual']);
+            // RFC-0011 U5a: the new website belongs to the business named in the request (this workspace's), else the default
+            try { $__wid = (int) (is_array($__created) ? ($__created['website_id'] ?? $__created['data']['website_id'] ?? $__created['id'] ?? 0) : 0); if ($__wid > 0) { \App\Models\Business::stampWebsite((int) $r->attributes->get('workspace_id'), $__wid, isset($in['business_id']) ? (int) $in['business_id'] : null); } } catch (\Throwable $__bsErr) { \Illuminate\Support\Facades\Log::warning('[Business] website stamp failed: ' . $__bsErr->getMessage()); }
+            return response()->json($__created, 201);
         });
         // PATCH (publish-flow-fix, 2026-05-09) — duplicate publish route
         // removed. The closure version at /builder/websites/{id}/publish

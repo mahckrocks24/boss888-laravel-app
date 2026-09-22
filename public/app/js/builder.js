@@ -714,6 +714,8 @@ function bld_executeAiTool(tc) {
 
 
 async function wsLoadSites(){
+  // RFC-0011 U5b: the create dialog asks which business a website is for — only when the workspace has several
+  (async function(){ try { var row=document.getElementById('ws-create-biz-row'), sel=document.getElementById('ws-create-biz'); if(!row||!sel) return; var r=await fetch(API+'businesses',{headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'}}); var j=r.ok?await r.json():null; var list=(j&&j.businesses)||[]; if(list.length<2){ row.style.display='none'; return; } sel.innerHTML=list.map(function(b){ return '<option value="'+b.id+'"'+(b.is_default?' selected':'')+'>'+bld_esc(b.name)+(b.is_default?' (default)':'')+'</option>'; }).join(''); row.style.display=''; } catch(_e){} })();
   if (!window._luPolicyLoaded && window.LuAPI && LuAPI.refreshPolicy) { window._luPolicyLoaded = 1; try { LuAPI.refreshPolicy(); } catch (_e) {} }
   try{
     // GET lu/v1/websites — Core endpoint reading lu_websites table
@@ -1913,12 +1915,13 @@ function wsHideCreate(){const m=document.getElementById('ws-create-modal');if(m)
 async function wsCreate(){
   const title=document.getElementById('ws-create-title')?.value.trim();
   const desc=document.getElementById('ws-create-desc')?.value.trim();
+  const bizSel=document.getElementById('ws-create-biz'); const bizRow=document.getElementById('ws-create-biz-row'); const business_id=(bizSel && bizRow && bizRow.style.display!=='none' && bizSel.value) ? parseInt(bizSel.value,10) : null;   // RFC-0011 U5b
   if(!title){showToast('Website name required.','warning');return;}
   const btn=document.getElementById('ws-create-btn');
   btn.textContent='Creating…';btn.disabled=true;
   try{
     // POST lu/v1/websites — Core endpoint that returns {id, title, status}
-    const r=await fetch(API+'websites',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},body:JSON.stringify({title,description:desc,site_config:{created_from:'saas_builder'}})});
+    const r=await fetch(API+'websites',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'},body:JSON.stringify({title,description:desc,business_id,site_config:{created_from:'saas_builder'}})});
     if(!r.ok){
       const eBody = await r.text().catch(()=>'');
       let eMsg;

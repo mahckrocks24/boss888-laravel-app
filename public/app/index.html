@@ -3721,6 +3721,8 @@ window.luSwipeToClose = luSwipeToClose;
 
         <!-- ── GOVERNANCE: Workspace Intelligence Profile ── -->
         <div data-set-tab="business" class="lu-set-note" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:14px 18px;margin-bottom:16px;font-size:12.5px;color:var(--t2);line-height:1.5">Looking for colours, fonts or a logo? Each website sets its own look in its <a href="/app/websites" onclick="if(window.nav){nav('websites');return false;}" style="color:var(--p);font-weight:600">editor</a>. The brand kit Sarah's team uses for images, emails and social posts lives in <a href="/app/studio" onclick="if(window.nav){nav('studio');return false;}" style="color:var(--p);font-weight:600">Studio › Brand</a>.</div>
+        <!-- RFC-0011 U5b: the businesses of this workspace (cards, no switcher) — populated by businesses.js -->
+        <div id="businesses-section" data-set-tab="business"></div>
         <div id="ws-profile-gate" style="display:none;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:var(--rg);padding:16px;margin-bottom:16px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
             <span style="font-size:18px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 3L2 17h16L10 3z"/><path d="M10 9v4M10 14.5v.5"/></svg></span>
@@ -4267,6 +4269,7 @@ window.luSwipeToClose = luSwipeToClose;
           </div>
           <div style="margin-bottom:14px">
             <label for="ws-create-desc" style="font-size:11px;color:var(--t2);display:block;margin-bottom:5px">Description <span style="color:var(--t3)">(optional)</span></label>
+            <div id="ws-create-biz-row" style="display:none;margin-bottom:10px"><label for="ws-create-biz" style="display:block;font-size:11px;color:var(--t3);margin-bottom:4px">Which business is this website for?</label><select id="ws-create-biz" style="width:100%"></select></div>
             <textarea id="ws-create-desc" placeholder="Brief description of this website" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;color:var(--t1);font-size:13px;outline:none;resize:vertical;min-height:60px;box-sizing:border-box;font-family:var(--fb)"></textarea>
           </div>
           <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
@@ -4587,7 +4590,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=batch-20260922',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=cat4-20260922'}};
+  engineUrls: {crm:'/app/js/crm.js?v=u5b-20260922',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=cat4-20260922',businesses:'/app/js/businesses.js?v=u5b-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4805,7 +4808,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=2877c94197"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=cba81996d5"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

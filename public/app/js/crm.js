@@ -156,6 +156,13 @@ window.crmLoad = async function(el) {
     _crm.appointments = (appts&&appts.appointments) ? appts.appointments : [];
 
     console.log('[LuCRM] ready — leads:',_crm.leads.length,' stages:',_crm.stages.length);
+    // RFC-0011 U5b: which business each website belongs to (a chip on the lead card when the workspace has several)
+    _crm.bizByWebsite = {}; _crm.multiBiz = false;
+    try {
+        var _bzr = await fetch('/api/businesses', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' } });
+        if (_bzr.ok) { var _bz = await _bzr.json(); var _list = (_bz && _bz.businesses) || []; _crm.multiBiz = _list.length > 1; _list.forEach(function (b) { (b.websites || []).forEach(function (w) { _crm.bizByWebsite[String(w.id)] = b.name; }); }); }
+    } catch (_e) {}
+    if (typeof _crmRender === 'function') { try { _crmRender(el); } catch (_e) {} }
     try { _crmRender(el); } catch(e) {
         console.error('[LuCRM] render error:',e);
         el.innerHTML='<div style="padding:60px;text-align:center"><div style="color:var(--rd);font-weight:600">'+_e(e.message)+'</div>'+
@@ -349,6 +356,8 @@ function _leadCard(lead, stage) {
 
         // Company
         (lead.company ? '<div style="font-size:11px;color:var(--t3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_e(lead.company)+'</div>' : '') +
+        // RFC-0011 U5b: the business (from the lead's website) when the workspace has several
+        ((_crm.multiBiz && lead.website_id && _crm.bizByWebsite[String(lead.website_id)]) ? '<div style="margin-bottom:6px"><span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--p);background:rgba(108,92,231,.12);border-radius:999px;padding:2px 8px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_e(_crm.bizByWebsite[String(lead.website_id)])+'</span></div>' : '') +
 
         // Source
         (lead.source_website ? '<div style="font-size:11px;color:var(--ac);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_e(lead.source_website)+'</div>' : '') +
