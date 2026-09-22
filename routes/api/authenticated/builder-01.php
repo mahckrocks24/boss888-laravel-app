@@ -329,6 +329,8 @@ use Illuminate\Support\Facades\Route;
         Route::post("/ai", fn() => response()->json(["reply" => "The AI builder assistant has been retired. Use the Strategy Room instead.", "status" => "deprecated"]));
         Route::delete("/websites/{id}", function (\Illuminate\Http\Request $r, $id) use ($s) {
             try {
+                // RFC-0011 (Owner rule): the website's profile is deleted with it
+                try { \App\Models\Business::retireForWebsite((int) $r->attributes->get("workspace_id"), (int) $id); } catch (\Throwable $__be) { \Illuminate\Support\Facades\Log::warning('[Business] delete hook: ' . $__be->getMessage()); }
                 app($s)->deleteWebsite((int)$id, (int)$r->attributes->get("workspace_id"));
             } catch (\RuntimeException $e) {
                 return response()->json(["error" => "Website not found"], 404);

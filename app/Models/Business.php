@@ -38,6 +38,46 @@ class Business extends Model
     }
 
     /**
+     * RFC-0011 (Owner rule 2026-09-22): a PUBLISHED website has exactly one profile. Create it (seeded from the
+     * website) the first time the site is published; a draft has none. Idempotent. Returns the business id, or null
+     * for a draft / missing website. The oldest profile in the workspace is the default (mirrors workspaces.*).
+     */
+    public static function ensureForWebsite(int $wsId, int $websiteId): ?int
+    {
+        $w = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $w || (string) $w->status !== 'published') { return null; }
+        if (! empty($w->business_id) && static::where('workspace_id', $wsId)->where('id', $w->business_id)->exists()) { return (int) $w->business_id; }
+        $name = trim((string) $w->name) ?: ('Website ' . $websiteId);
+        $industry = trim(str_replace('_', ' ', (string) ($w->template_industry ?? '')));
+        $isFirst = ! static::where('workspace_id', $wsId)->where('is_default', true)->exists();
+        $b = new static([
+            'workspace_id' => $wsId, 'name' => mb_substr($name, 0, 160), 'slug' => static::slugFor($wsId, $name),
+            'industry' => $industry !== '' ? mb_substr($industry, 0, 120) : null,
+            'location' => DB::table('workspaces')->where('id', $wsId)->value('location'),
+            'is_default' => $isFirst, 'sort_order' => (int) static::where('workspace_id', $wsId)->max('sort_order') + 1,
+        ]);
+        $isFirst ? $b->save() : $b->saveQuietly();     // only the default mirrors onto workspaces.*
+        DB::table('websites')->where('id', $websiteId)->update(['business_id' => $b->id]);
+        return (int) $b->id;
+    }
+
+    /** The website is being deleted: soft-delete its profile; if it was the default, the oldest remaining becomes default. */
+    public static function retireForWebsite(int $wsId, int $websiteId): void
+    {
+        $bizId = (int) (DB::table('websites')->where('id', $websiteId)->value('business_id') ?? 0);
+        if ($bizId <= 0) { return; }
+        $b = static::where('workspace_id', $wsId)->where('id', $bizId)->first();
+        if (! $b) { return; }
+        DB::table('websites')->where('id', $websiteId)->update(['business_id' => null]);
+        $wasDefault = (bool) $b->is_default;
+        $b->delete();
+        if ($wasDefault) {
+            $next = static::where('workspace_id', $wsId)->orderBy('id')->first();
+            if ($next) { $next->is_default = true; $next->save(); }   // save (not quiet) so the new default mirrors
+        }
+    }
+
+    /**
      * RFC-0011 U5a: a website belongs to ONE business — the one named on creation when it is this workspace's, else the
      * default. Returns the business id written (null when the workspace has no businesses yet).
      */

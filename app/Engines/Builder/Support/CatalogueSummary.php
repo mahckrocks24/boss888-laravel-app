@@ -17,7 +17,7 @@ class CatalogueSummary
 {
     public static function forWorkspace(int $wsId): array
     {
-        $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')
+        $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('status', 'published') // RFC-0011 (Owner rule): drafts are not visible in the engines
             ->orderBy('created_at')->orderBy('id')->get(); // the full row: specs() reads settings_json/template from what it is handed
         if ($sites->isEmpty()) { return ['has_catalogue' => false, 'groups' => [], 'websites' => []]; }
 

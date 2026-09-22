@@ -3270,7 +3270,9 @@ Route::post('/builder/websites/{id}/publish', function (\Illuminate\Http\Request
     \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->update([
         'status' => 'published', 'subdomain' => $subdomain,
         'published_at' => now(), 'updated_at' => now(),
+        // (RFC-0011: a published website gets its profile — hooked just below)
     ]);
+    try { \App\Models\Business::ensureForWebsite((int) $website->workspace_id, (int) $id); } catch (\Throwable $__be) { \Illuminate\Support\Facades\Log::warning('[Business] publish hook: ' . $__be->getMessage()); } // RFC-0011 (Owner rule): 1 published website = 1 profile
 
     \Illuminate\Support\Facades\DB::table('pages')
         ->where('website_id', $id)->update(['status' => 'published', 'updated_at' => now()]);

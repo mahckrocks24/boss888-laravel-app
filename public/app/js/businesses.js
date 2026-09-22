@@ -49,10 +49,7 @@ window.LU_LOADED_ENGINES['businesses'] = true;
       + '<div class="bz-meta">' + esc([b.industry, b.location].filter(Boolean).join(' · ') || 'No industry or location yet') + (b.pricing_anchor ? '<br>' + esc(b.pricing_anchor) : '') + '</div>'
       + '<div class="bz-sites">' + (sites.length ? '<b>' + sites.length + '</b> website' + (sites.length === 1 ? '' : 's') + ': ' + esc(sites.map(function (s) { return s.name; }).slice(0, 3).join(', ')) + (sites.length > 3 ? ' +' + (sites.length - 3) : '') : 'No website yet') + (b.counts && b.counts.leads ? ' · <b>' + b.counts.leads + '</b> enquir' + (b.counts.leads === 1 ? 'y' : 'ies') : '') + '</div>'
       + '<div class="bz-acts">'
-      + '<button type="button" class="lu-btn lu-btn--sm" data-a="edit">Edit</button>'
-      + '<button type="button" class="lu-btn lu-btn--sm" data-a="sites">Websites</button>'
-      + (b.is_default ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="default">Make default</button>')
-      + (b.is_default || sites.length ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="delete" style="color:#F87171">Delete</button>')
+      + '<button type="button" class="lu-btn lu-btn--sm" data-a="edit">Edit profile</button>'
       + '</div></div>';
   }
 
@@ -60,19 +57,15 @@ window.LU_LOADED_ENGINES['businesses'] = true;
     var root = S.root; if (!root) return;
     var d = S.data || { businesses: [] };
     var list = d.businesses || [];
-    root.innerHTML = '<div class="bz-head"><div><div class="bz-title">Your businesses</div><div class="bz-sub">'
+    root.innerHTML = tip() + '<div class="bz-head"><div><div class="bz-title">Your businesses</div><div class="bz-sub">'
       + (list.length > 1 ? 'Several businesses, one workspace. Sarah keeps them apart and asks which one when it isn\'t clear — no switching. The default business is the one the profile below describes.' : 'One business today. Add another when you run more than one — Sarah will keep them apart and ask which one when it isn\'t clear.')
-      + '</div></div><button type="button" class="lu-btn lu-btn--primary lu-btn--sm" data-a="add">+ Add a business</button></div>'
+      + '</div></div></div>'
       + (list.length ? '<div class="bz-grid">' + list.map(card).join('') + '</div>' : '<div class="bz-empty">No business profile yet — add one.</div>')
       + (d.unassigned_websites && d.unassigned_websites.length ? '<div class="bz-empty">' + d.unassigned_websites.length + ' website' + (d.unassigned_websites.length === 1 ? '' : 's') + ' not attached to a business yet: ' + esc(d.unassigned_websites.map(function (s) { return s.name; }).join(', ')) + ' — use Websites on a card to attach.</div>' : '');
-    root.querySelector('[data-a=add]').onclick = function () { form(null); };
     root.querySelectorAll('.bz-card').forEach(function (c) {
       var id = parseInt(c.getAttribute('data-id'), 10); var b = list.filter(function (x) { return x.id === id; })[0];
       var q = function (a) { return c.querySelector('[data-a=' + a + ']'); };
       if (q('edit')) q('edit').onclick = function () { form(b); };
-      if (q('sites')) q('sites').onclick = function () { sites(b); };
-      if (q('default')) q('default').onclick = async function () { if (!(await luConfirm('Make ' + b.name + ' the default business?', 'Its profile becomes the workspace profile Sarah and the engines fall back to.', { okLabel: 'Make default' }))) return; try { await api('POST', '/businesses/' + b.id + '/default'); await load(); showToast(b.name + ' is now the default business.', 'success'); } catch (e) { showToast(e.message, 'error'); } };
-      if (q('delete')) q('delete').onclick = async function () { if (!(await luConfirm('Delete ' + b.name + '?', 'Its profile is removed. Websites are never deleted here.', { okLabel: 'Delete', danger: true }))) return; try { await api('DELETE', '/businesses/' + b.id); await load(); showToast(b.name + ' removed.', 'success'); } catch (e) { showToast(e.message, 'error'); } };
     });
   }
 
@@ -133,6 +126,13 @@ window.LU_LOADED_ENGINES['businesses'] = true;
   async function load() {
     try { S.data = await api('GET', '/businesses'); } catch (e) { S.data = { businesses: [], unassigned_websites: [] }; if (S.root) S.root.innerHTML = '<div class="bz-empty">Could not load businesses: ' + esc(e.message) + '</div>'; return; }
     render();
+  }
+
+  function tip() {
+    try { if (localStorage.getItem('lu_tip_biz') === '1') return ''; } catch (e) {}
+    return '<div id="bz-tip" style="position:relative;background:rgba(108,92,231,.08);border:1px solid rgba(108,92,231,.28);border-radius:12px;padding:12px 40px 12px 14px;margin-bottom:14px;font-size:12.5px;color:var(--t2);line-height:1.55">'
+      + '<b style="color:var(--t1)">How your businesses work.</b> Each website you <b>publish</b> becomes its own business here, with its own profile. Sarah uses these to keep your businesses apart \u2014 ask her about any one by name and she answers for that one only, never mixing them. Delete a website and its profile goes with it. You never switch between them.'
+      + '<button type="button" aria-label="Dismiss" onclick="try{localStorage.setItem(&#39;lu_tip_biz&#39;,&#39;1&#39;)}catch(e){}; var t=document.getElementById(&#39;bz-tip&#39;); if(t) t.remove();" style="position:absolute;top:8px;right:8px;background:none;border:none;color:var(--t3);font-size:18px;line-height:1;cursor:pointer;padding:2px 6px">\u00d7</button></div>';
   }
 
   window.businessesLoad = function (root) { css(); S.root = root; root.innerHTML = '<div class="lu-skel" style="width:40%"></div>'; load(); };

@@ -1015,6 +1015,7 @@ function _wsShowTemplateEditor(site) {
           _bldHint('ax-editor-intro', 'Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. Colours switches the whole palette instantly; Undo puts anything back.', 'margin-top:2px') +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
+          _bldHint('ax-business-profile', 'This website has its own <b>business profile</b> — Sarah uses it to keep this business separate from your others. It is created when you publish the site, and you can edit it under <b>Settings › Business</b>.', 'margin-bottom:8px') +
           _bldHint('ax-editor-try', 'Try: \u201cChange the hero heading to \u2026\u201d, \u201cMake the buttons a gradient from navy to teal\u201d, \u201cMake it more luxurious\u201d or \u201cAdd a testimonials section\u201d.<br>You can also double-click text in the preview, or click an image to swap it.') +
         '</div>' +
         // BUILDER888 (2026-09-01): Arthur edits template sites correctly. ArthurEditService writes each
