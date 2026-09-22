@@ -4223,24 +4223,8 @@ async function launchMeeting(){
   document.getElementById('disc-feed').innerHTML='';
   document.getElementById('mi-body').innerHTML='<div class="mi-ph" id="mi-ph"><div class="mi-ph-icon">'+window.icon("ai",14)+'</div><div class="mi-ph-txt">Intelligence builds as the team discusses.</div></div>';
   try{
-    let r;
-  try {
-    r = await post(API+'meeting/start',{type:selType,topic,businessName:BN,website:BU});
-    // Governance gate: if WP returns 422 (profile incomplete) redirect to Settings
-    if (r && r.error === 'workspace_profile_incomplete') {
-      showToast('Complete your Workspace Intelligence Profile in Settings before starting a meeting.', 'error');
-      setTimeout(() => nav('settings'), 1200);
-      return;
-    }
-  } catch(gateErr) {
-    // 422 may throw in some fetch wrappers
-    if (gateErr?.message?.includes('422') || gateErr?.message?.includes('workspace_profile')) {
-      showToast('Complete your Workspace Intelligence Profile in Settings before starting a meeting.', 'error');
-      setTimeout(() => nav('settings'), 1200);
-      return;
-    }
-    throw gateErr;
-  }
+    // RFC-0011 U7 (Owner 2026-09-22): no workspace-profile gate. Sarah's team resolves the business from the topic and runs across all website profiles.
+    let r = await post(API+'meeting/start',{type:selType,topic,businessName:BN,website:BU});
     mid=r.meeting_id;seen=0;done=false;_redisCount=0;localUserMsgs=[];
     document.getElementById('btn-wrap').disabled=false;
     pollT=setInterval(poll,4000);

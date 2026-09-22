@@ -3723,14 +3723,7 @@ window.luSwipeToClose = luSwipeToClose;
         <div data-set-tab="business" class="lu-set-note" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:14px 18px;margin-bottom:16px;font-size:12.5px;color:var(--t2);line-height:1.5">Looking for colours, fonts or a logo? Each website sets its own look in its <a href="/app/websites" onclick="if(window.nav){nav('websites');return false;}" style="color:var(--p);font-weight:600">editor</a>. The brand kit Sarah's team uses for images, emails and social posts lives in <a href="/app/studio" onclick="if(window.nav){nav('studio');return false;}" style="color:var(--p);font-weight:600">Studio › Brand</a>.</div>
         <!-- RFC-0011 U5b: the businesses of this workspace (cards, no switcher) — populated by businesses.js -->
         <div id="businesses-section" data-set-tab="business"></div>
-        <div id="ws-profile-gate" style="display:none;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.3);border-radius:var(--rg);padding:16px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-            <span style="font-size:18px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 3L2 17h16L10 3z"/><path d="M10 9v4M10 14.5v.5"/></svg></span>
-            <div style="font-size:13px;font-weight:700;color:var(--am)">Workspace Intelligence Profile Incomplete</div>
-          </div>
-          <p style="font-size:12px;color:var(--t2);margin:0 0 10px 28px;line-height:1.6">Industry and Services are required before launching Strategy Meetings. Fill in the profile below and save.</p>
-          <div id="ws-missing-fields" style="margin-left:28px;font-size:11px;color:var(--rd)"></div>
-        </div>
+        <!-- RFC-0011 U7 (Owner 2026-09-22): the "Workspace Intelligence Profile Incomplete" gate is RETIRED. The Strategy Room resolves the business from the topic and runs across all website profiles like Sarah; there is no workspace-level profile to complete. -->
 
         <!-- Your Profile -->
         <div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px;margin-bottom:16px">
@@ -3791,68 +3784,9 @@ window.luSwipeToClose = luSwipeToClose;
           </div>
         </div>
 
-        <!-- ── Workspace Intelligence Profile Form ── -->
-        <div style="background:var(--s1);border:2px solid var(--p);border-radius:var(--rg);padding:22px;margin-bottom:16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:3px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg> Workspace Intelligence Profile</div>
-              <div style="font-size:11px;color:var(--t3)">Required for all AI strategy meetings. Agents use this to generate context-specific recommendations.</div>
-            </div>
-            <span id="ws-profile-badge" style="font-size:10px;font-weight:700;border-radius:20px;padding:3px 10px;border:1px solid">Loading…</span>
-          </div>
-
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-            <div>
-              <label for="st-industry" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Industry <span style="color:var(--rd)">*</span></label>
-              <input id="st-industry" type="text" placeholder="e.g. Furniture & Interior Design" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label for="st-location" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Location / Target Market <span style="color:var(--rd)">*</span></label>
-              <input id="st-location" type="text" placeholder="e.g. UAE, Dubai" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-          </div>
-
-          <div style="margin-bottom:14px">
-            <label for="st-services" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Core Services <span style="color:var(--rd)">*</span> <span style="font-weight:400;color:var(--t3);font-size:10px">(comma-separated)</span></label>
-            <input id="st-services" type="text" placeholder="e.g. custom furniture, luxury furniture, interior design, office fit-out" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-          </div>
-
-          <div style="margin-bottom:14px">
-            <label for="st-biz-desc" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Business Description</label>
-            <textarea id="st-biz-desc" rows="2" placeholder="Short description of what your business does and who you serve…" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;resize:vertical;box-sizing:border-box"></textarea>
-          </div>
-
-          <!-- P1R-6 (2026-08-31): retired from the customer UI — PUT /workspace/settings discards these fields; the
-     platform reads brand voice / audience from workspace_memory instead. Preserved for the product decision. -->
-          <div data-internal="profile-unpersisted" style="display:none;grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-            <div>
-              <label for="st-audience" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Target Audience</label>
-              <input id="st-audience" type="text" placeholder="e.g. High-net-worth homeowners, architects in UAE" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label for="st-brand-voice" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Brand Voice</label>
-              <input id="st-brand-voice" type="text" placeholder="e.g. Premium, sophisticated, craftsmanship-led" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-          </div>
-
-          <!-- P1R-6 (2026-08-31): retired from the customer UI — PUT /workspace/settings discards these fields; the
-     platform reads brand voice / audience from workspace_memory instead. Preserved for the product decision. -->
-          <div data-internal="profile-unpersisted" style="display:none;grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
-            <div>
-              <label for="st-goals" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Business Goals</label>
-              <input id="st-goals" type="text" placeholder="e.g. increase online leads, grow UAE market share" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-            <div>
-              <label for="st-competitors" style="font-size:11px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:6px">Key Competitors <span style="font-weight:400;font-size:10px">(optional)</span></label>
-              <input id="st-competitors" type="text" placeholder="e.g. IKEA UAE, Pan Emirates, Home Centre" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:9px 12px;font-size:13px;box-sizing:border-box">
-            </div>
-          </div>
-
-          <div style="display:flex;align-items:center;gap:10px">
-            <button onclick="saveWorkspaceProfile()" style="background:var(--p);border:none;color:#fff;border-radius:var(--r);padding:9px 22px;font-size:13px;font-weight:600;font-family:var(--fh);cursor:pointer">Save Intelligence Profile</button>
-            <span id="st-profile-save-msg" style="font-size:12px;color:var(--t3)"></span>
-          </div>
-        </div>
+        <!-- RFC-0011 U7 (Owner 2026-09-22): the workspace-level "Workspace Intelligence Profile" form is RETIRED.
+             Each published website carries its own business profile (see #businesses-section above), edited there;
+             Sarah and the Strategy Room read those profiles. There is no single workspace profile to fill in. -->
 
         <!-- Execution Policy — RETIRED FROM CUSTOMER UI (P1R-1, 2026-08-31): no real backend (GET /api/policy is an
              empty stub, no write route). Markup + handlers preserved for future per-tool auto-execution product work;
@@ -4808,7 +4742,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=bbdf987e80"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=2c494a86ac"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

@@ -72,6 +72,26 @@ class BusinessContext
         return array_merge($base, ['mode' => 'default', 'source' => 'not about the business', 'hint' => $hint]);
     }
 
+    /**
+     * RFC-0011 U7 - the multi-business roster block for a caller that already knows the active business id
+     * (the Strategy Room, replayed per phase) rather than a fresh chat message. Empty for a single-business workspace.
+     */
+    public function rosterFor(int $wsId, ?int $businessId = null): string
+    {
+        if (! $this->resolver->isMulti($wsId)) { return ''; }
+        $all = $this->resolver->forWorkspace($wsId);
+        $active = $businessId ? $this->resolver->find($wsId, $businessId) : null;
+        $ctx = [
+            'multi' => true,
+            'businesses' => $all,
+            'mode' => $active ? 'named' : 'portfolio',
+            'business' => $active,
+            'business_id' => $active?->id,
+            'named' => $active ? [$active] : [],
+        ];
+        return self::promptBlock($ctx, $this->resolver, $wsId);
+    }
+
     /** The question Sarah asks instead of guessing. */
     public static function askWhich(array $businesses, ?Business $hint = null): string
     {

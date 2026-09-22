@@ -59,7 +59,14 @@ class AgentMeetingEngine
      */
     public function startMeeting(int $wsId, int $userId, string $goal, array $agentSlugs = [], ?string $reservationRef = null, int $reservedCredits = 0): array
     {
-        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor($wsId) ?? Workspace::findOrFail($wsId); // RFC-0011 U2
+        // RFC-0011 U7 (Owner 2026-09-22): the Strategy Room works like Sarah across MANY business profiles -
+        // it reads which business the topic is about and runs in that profile, and always carries the full
+        // roster so the team keeps the businesses apart. No workspace-level "intelligence profile" gate.
+        $__resolver = app(\App\Core\Business\BusinessProfileResolver::class);
+        $__biz = app(\App\Core\Business\BusinessContext::class)->resolve($wsId, $goal);
+        $__bizId = (($__biz['multi'] ?? false)) ? ($__biz['business_id'] ?? null) : null;
+        $workspace = $__resolver->workspaceFor($wsId, $__bizId ? (int) $__bizId : null) ?? Workspace::findOrFail($wsId); // RFC-0011 U2/U7
+        $workspace->businessRoster = \App\Core\Business\BusinessContext::promptBlock($__biz, $__resolver, $wsId);
 
         // If no agents specified, Sarah selects the team
         if (empty($agentSlugs)) {
@@ -126,6 +133,7 @@ class AgentMeetingEngine
             'total_credits_used' => 0,
             'metadata_json' => json_encode([
                 'goal' => $goal,
+                'business_id' => $__bizId ? (int) $__bizId : null,
                 'agents' => $agentSlugs,
                 'phase' => 'opening',
                 'rounds_completed' => 0,
@@ -137,6 +145,8 @@ class AgentMeetingEngine
                 'reservation_ref' => $reservationRef,
             ]),
         ]);
+
+        if ($__bizId) { try { DB::table('meetings')->where('id', $meeting->id)->update(['business_id' => (int) $__bizId]); } catch (\Throwable $e) {} }
 
         // Add participants
         foreach ($agentSlugs as $slug) {
@@ -183,7 +193,9 @@ class AgentMeetingEngine
         $phase = $meta['phase'] ?? 'opening';
         $goal = $meta['goal'] ?? '';
         $agentSlugs = $meta['agents'] ?? [];
-        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $meeting->workspace_id); // RFC-0011 U2
+        $__bizId = ($meta['business_id'] ?? null) ?: ($meeting->business_id ?? null); // RFC-0011 U7: the business this meeting is about
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $meeting->workspace_id, $__bizId ? (int) $__bizId : null); // RFC-0011 U2/U7
+        $workspace->businessRoster = app(\App\Core\Business\BusinessContext::class)->rosterFor((int) $meeting->workspace_id, $__bizId ? (int) $__bizId : null);
         $tokensUsed = $meta['tokens_used'] ?? 0;
         $roundsCompleted = $meta['rounds_completed'] ?? 0;
 
@@ -302,7 +314,9 @@ class AgentMeetingEngine
         }
 
         $meta = json_decode($meeting->metadata_json, true);
-        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $meeting->workspace_id); // RFC-0011 U2
+        $__bizId = ($meta['business_id'] ?? null) ?: ($meeting->business_id ?? null); // RFC-0011 U7: the business this meeting is about
+        $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $meeting->workspace_id, $__bizId ? (int) $__bizId : null); // RFC-0011 U2/U7
+        $workspace->businessRoster = app(\App\Core\Business\BusinessContext::class)->rosterFor((int) $meeting->workspace_id, $__bizId ? (int) $__bizId : null);
         $agentSlugs = $meta['agents'] ?? [];
 
         // Store user message
@@ -500,7 +514,7 @@ class AgentMeetingEngine
 
         $prompt = "You are Sarah, Digital Marketing Manager, opening a strategy meeting.\n\n" .
             "Team present: {$teamList}\n" .
-            "Client: {$workspace->business_name}\n{$context}\n\n" .
+            "Client: {$workspace->business_name}\n{$context}\n" . ($workspace->businessRoster ?? '') . "\n" .
             ($knowledge ? "Your knowledge:\n{$knowledge}\n\n" : '') .
             "Goal from the client: \"{$goal}\"\n\n" .
             "Open this meeting naturally. State the goal clearly, give relevant business context, " .
@@ -533,7 +547,7 @@ class AgentMeetingEngine
             $prompt = "You are {$agent->name}, {$agent->title}.\n\n" .
                 "You're in a strategy meeting. Sarah just opened with:\n" .
                 "\"{$this->getLastMessageFrom($previousMessages, 'sarah')}\"\n\n" .
-                "Client: {$workspace->business_name} ({$workspace->industry}, {$workspace->location})\n" .
+                "Client: {$workspace->business_name} ({$workspace->industry}, {$workspace->location})\n" . ($workspace->businessRoster ?? '') .
                 "Goal: \"{$goal}\"\n\n" .
                 ($experience ? "Your experience:\n{$experience}\n\n" : '') .
                 ($engineBriefing ? "Your tools & knowledge:\n{$engineBriefing}\n\n" : '') .
@@ -573,7 +587,7 @@ class AgentMeetingEngine
             $experience = $this->agentExperience->buildExperienceContext($agent->id, $workspace->industry);
 
             $prompt = "You are {$agent->name}, {$agent->title}.\n\n" .
-                "Strategy meeting for {$workspace->business_name} ({$workspace->industry}).\n" .
+                "Strategy meeting for {$workspace->business_name} ({$workspace->industry}).\n" . ($workspace->businessRoster ?? '') .
                 "Goal: \"{$goal}\"\n\n" .
                 "Your colleagues just shared their ideas:\n{$othersText}\n\n" .
                 ($experience ? "Your experience:\n{$experience}\n\n" : '') .
@@ -611,7 +625,7 @@ class AgentMeetingEngine
         ));
 
         $prompt = "You are Sarah, Digital Marketing Manager. The team discussion is complete.\n\n" .
-            "Client: {$workspace->business_name} ({$workspace->industry}, {$workspace->location})\n" .
+            "Client: {$workspace->business_name} ({$workspace->industry}, {$workspace->location})\n" . ($workspace->businessRoster ?? '') .
             "Goal: \"{$goal}\"\n\n" .
             "Full meeting transcript:\n{$transcript}\n\n" .
             "Now synthesize everything into a CONCRETE action plan. Your plan must:\n" .
