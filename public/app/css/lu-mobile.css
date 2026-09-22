@@ -119,3 +119,12 @@ html.lu-booting #lu-messages-floater,html.lu-booting #sarah-orb,html.lu-booting 
   #template-editor-view .pe-bar-hint, #template-editor-view .pe-bar-spacer { display: none !important; }
   #template-editor-view .pe-bar button { padding: 6px 10px !important; font-size: 12px !important; white-space: nowrap; }
 }
+
+/* PICKER-1 (Owner 2026-09-22, phone screenshot): the Add-section / Add-page picker cards. On a phone the grid measured each card
+   as padding-only and the description spilled out below the border (desktop is fine). A card is a title, a description and a
+   price; on a phone it keeps a height that fits all three, and the description is clamped to two lines. */
+@media (max-width:767px){
+  .ws-sp-card,.ws-pp-card{min-height:104px!important;height:auto!important;overflow:hidden;display:flex!important;flex-direction:column!important;justify-content:flex-start}
+  .ws-sp-card>div:nth-child(2),.ws-pp-card>div:nth-child(2){display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  #ws-sp-grid{grid-template-columns:1fr!important}
+}
