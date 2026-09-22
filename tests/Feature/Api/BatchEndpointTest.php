@@ -110,7 +110,7 @@ class BatchEndpointTest extends TestCase
         }
         $out = [];
         foreach ($body as $k => $v) {
-            if (is_string($k) && preg_match('/^(generated_at|server_time|timestamp|request_id|now|as_of|cached_at|fetched_at)$/', $k)) {
+            if (is_string($k) && preg_match('/^(generated_at|server_time|timestamp|request_id|now|as_of|cached_at|fetched_at|time_ago|ago|relative_time|humanized|elapsed)$/', $k)) {
                 continue;
             }
             $out[$k] = $this->stable($v);

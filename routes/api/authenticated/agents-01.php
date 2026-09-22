@@ -1143,6 +1143,25 @@ $withCorr = function (array $meta) use ($corr) {
             \Illuminate\Support\Facades\Log::warning('[Sarah888] AuthorizationBinder failed: ' . $__abErr->getMessage(), ['ws' => $wsId]);
         }
 
+        // RFC-0011 U3 (2026-09-22): which BUSINESS this turn is about — several businesses in ONE workspace, the owner
+        // never switches; Sarah resolves it (named / sticky / portfolio / ambiguous → one question). Inert unless the
+        // workspace holds several businesses AND the feature is on for it (config business.profiles / qa_workspaces).
+        $__biz = ['multi' => false, 'mode' => 'single', 'business' => null, 'business_id' => null, 'businesses' => [], 'ask' => null];
+        try {
+            $__biz = app(\App\Core\Business\BusinessContext::class)->resolve((int) $wsId, (string) $__ownerMessage, (string) ($__siteUrlIn ?? ''));
+            if (!empty($__biz['multi'])) {
+                app()->instance('sarah.business_id', $__biz['business_id']);
+                if (!empty($__biz['business']) && !$__biz['business']->is_default) {
+                    $workspace = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceFor((int) $wsId, (int) $__biz['business_id']) ?? $workspace;
+                }
+                if (isset($userMessageId) && $userMessageId) {
+                    $__umRow = DB::table('agent_messages')->where('id', (int) $userMessageId)->value('metadata_json');
+                    $__umMeta = is_string($__umRow) ? (json_decode($__umRow, true) ?: []) : [];
+                    DB::table('agent_messages')->where('id', (int) $userMessageId)->update(['metadata_json' => json_encode(array_merge($__umMeta, ['business_id' => $__biz['business_id'], 'business_mode' => $__biz['mode']]))]);
+                }
+            }
+        } catch (\Throwable $__bizErr) { \Illuminate\Support\Facades\Log::warning('[Business] context failed: ' . $__bizErr->getMessage(), ['ws' => $wsId]); }
+
         // PATCH (Sarah brand context, 2026-05-09) — Pull workspace_memory
         // facts and inject as AUTHORITATIVE GROUND TRUTH at the top of
         // Sarah's system prompt. Without this Sarah ECHOES user typos
@@ -1156,6 +1175,20 @@ $withCorr = function (array $meta) use ($corr) {
                 if (is_string($val) && $val !== '') $brandFacts[$row->key] = $val;
             }
         } catch (\Throwable $e) {}
+        // RFC-0011 U3: in a multi-business workspace the header facts are the ACTIVE business's, never a blend.
+        if (!empty($__biz['multi'])) {
+            $__bizFactKeys = ['business_name', 'industry', 'location', 'services', 'tone', 'target_audience', 'differentiators', 'pricing_anchor', 'domain'];
+            if (!empty($__biz['business'])) {
+                $__bp = app(\App\Core\Business\BusinessProfileResolver::class)->profile((int) $wsId, (int) $__biz['business_id']);
+                foreach (['business_name' => 'name', 'industry' => 'industry', 'location' => 'location', 'services' => 'services', 'tone' => 'tone', 'target_audience' => 'target_audience', 'differentiators' => 'differentiators', 'pricing_anchor' => 'pricing_anchor', 'domain' => 'domain'] as $__fk => $__pk) {
+                    $__pv = $__bp[$__pk] ?? null; if (is_array($__pv)) { $__pv = implode(', ', $__pv); }
+                    if ($__pv !== null && trim((string) $__pv) !== '') { $brandFacts[$__fk] = (string) $__pv; } else { unset($brandFacts[$__fk]); }
+                }
+            } else {
+                foreach ($__bizFactKeys as $__fk) { unset($brandFacts[$__fk]); }
+                $brandFacts['business_name'] = 'several businesses — see YOUR OWNER\'S BUSINESSES below';
+            }
+        }
         $brandFactsBlock = "AUTHORITATIVE WORKSPACE FACTS (these are GROUND TRUTH — use them, never echo back user typos or alternatives):\n";
         $brandFactsBlock .= "- Business name: " . ($brandFacts['business_name'] ?? $workspace->business_name ?? $workspace->name ?? 'this business') . "\n";
         if (! empty($brandFacts['domain']))   $brandFactsBlock .= "- Domain: " . $brandFacts['domain'] . "\n";
@@ -1188,6 +1221,10 @@ $withCorr = function (array $meta) use ($corr) {
         // a name is a question, not a guess. Lives here because the analytical composer keeps this block and strikes the rest.
         try {
             $__estateSites = \App\Core\Sarah888\ContentTarget::sites((int) $wsId);
+            if (!empty($__biz['multi']) && !empty($__biz['business_id'])) { // RFC-0011 U3: only the active business's websites
+                $__bizSiteIds = DB::table('websites')->where('workspace_id', (int) $wsId)->where('business_id', (int) $__biz['business_id'])->whereNull('deleted_at')->pluck('id')->map(fn ($v) => (int) $v)->all();
+                $__estateSites = array_values(array_filter($__estateSites, fn ($__s) => in_array((int) ($__s['id'] ?? 0), $__bizSiteIds, true)));
+            }
             if (count($__estateSites) === 1) {
                 $brandFactsBlock .= "- YOUR OWNER'S WEBSITE: " . $__estateSites[0]['name'] . " — " . (($__estateSites[0]['domain'] ?: $__estateSites[0]['subdomain']) ?: 'no domain yet') . ". One website only: never ask which.\n";
             } elseif (count($__estateSites) > 1) {
@@ -1204,6 +1241,21 @@ $withCorr = function (array $meta) use ($corr) {
             }
         } catch (\Throwable $__estateErr) { /* the facts block stands without the roster */ }
         $brandFactsBlock .= "Rule: if the user mis-spells the business name or domain, USE the correct spelling above. Never echo a typo.\n\n";
+        // RFC-0011 U3: roster of businesses + the active one's profile + the which-business rule; an ambiguous turn is
+        // answered here with ONE question — deterministic, before any model call (the ack has already gone out).
+        if (!empty($__biz['multi'])) {
+            try { $brandFactsBlock .= \App\Core\Business\BusinessContext::promptBlock($__biz, app(\App\Core\Business\BusinessProfileResolver::class), (int) $wsId) . "\n"; } catch (\Throwable $__bpErr) { \Illuminate\Support\Facades\Log::warning('[Business] prompt block failed: ' . $__bpErr->getMessage(), ['ws' => $wsId]); }
+            if (($__biz['mode'] ?? '') === 'ambiguous' && !empty($__biz['ask']) && $isSarah && $useTwoPhase) {
+                DB::table('agent_messages')->insert([
+                    'workspace_id'  => $wsId, 'agent_slug' => $slug, 'sender' => $agent->name,
+                    'content'       => (string) $__biz['ask'], 'role' => 'agent',
+                    'metadata_json' => $withCorr(['phase' => 'final', 'router' => true, 'router_intent' => 'which_business']),
+                    'created_at'    => now(), 'updated_at' => now(),
+                ]);
+                \Illuminate\Support\Facades\Log::info('[Business] asked which business', ['ws' => $wsId, 'businesses' => count($__biz['businesses'] ?? [])]);
+                return;
+            }
+        }
 
         $formatRules = "FORMAT YOUR RESPONSES:\n"
             . "- Use **bold** for section headers\n"
@@ -2138,7 +2190,7 @@ $withCorr = function (array $meta) use ($corr) {
                         $__lt = $runtime->chatJson(
                             \App\Core\Sarah888\MinimumPath::lightSystemPrompt((string) $identityBlock, (string) $brandFactsBlock, (string) ($__voiceRule ?? ''), (string) $history),
                             'User: ' . $__ownerMessage . "\nReply with JSON: {\"reply\":\"...\"}",
-                            ['workspace_id' => $wsId, 'agent_slug' => $slug], 300);
+                            ['workspace_id' => $wsId, 'agent_slug' => $slug, 'business_id' => $__biz['business_id'] ?? null, 'business_mode' => $__biz['mode'] ?? 'single'], 300);
                         $__ltReply = trim((string) (($__lt['parsed']['reply'] ?? null) ?: ($__lt['text'] ?? '')));
                         if (($__lt['success'] ?? false) && $__ltReply !== '' && $__ltReply[0] !== '{') {
                             $assist = ['response' => $__ltReply, 'create_tasks' => [], 'tool_calls' => [], 'requires_sarah' => false, 'reasoning_path' => true, 'light_lane' => true];
@@ -2234,6 +2286,8 @@ $withCorr = function (array $meta) use ($corr) {
                         'industry'      => $workspace->industry ?? '',
                         'location'      => $workspace->location ?? '',
                         'agent_slug'    => $slug,
+                        'business_id'   => $__biz['business_id'] ?? null, // RFC-0011 U3
+                        'business_mode' => $__biz['mode'] ?? 'single',
                         'agent_name'    => $agent->name,
                     ],
                     "agent_chat_ws_{$wsId}_{$slug}_v7",
@@ -3924,6 +3978,7 @@ $withCorr = function (array $meta) use ($corr) {
                         $__costLine = '';
                         try {
                             $__ids = array_values(array_filter(array_map('intval', $createdTaskIds ?? [])));
+                            if ($__ids && !empty($__biz['multi']) && !empty($__biz['business_id'])) { try { DB::table('tasks')->whereIn('id', $__ids)->whereNull('business_id')->update(['business_id' => (int) $__biz['business_id']]); } catch (\Throwable) {} } // RFC-0011 U3
                             if ($__ids) {
                                 $__sum = (int) \Illuminate\Support\Facades\DB::table('tasks')->whereIn('id', $__ids)->sum('credit_cost');
                                 $__costLine = $__sum > 0 ? " This uses {$__sum} credit" . ($__sum === 1 ? '' : 's') . "." : " This doesn't use any credits.";
@@ -4107,6 +4162,7 @@ $withCorr = function (array $meta) use ($corr) {
             // RISK-0189 (2026-09-17): a stated credit balance is the ledger's figure at reply time, never one remembered from the thread
             if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\CreditBalanceFacts::guard((string) $reply, (int) $wsId); } catch (\Throwable) {} }
             // Owner 2026-09-18: internal row numbers never reach the customer — last guard, after every other rewrite
+            if (!empty($__biz['multi'])) { try { $reply = \App\Core\Business\BusinessScopeGuard::apply((string) $reply, $__biz, (int) $wsId)['reply']; } catch (\Throwable $__bsgErr) { \Illuminate\Support\Facades\Log::warning('[Business] scope guard failed: ' . $__bsgErr->getMessage(), ['ws' => $wsId]); } } // RFC-0011 U3
             if ((string) $slug === 'sarah') { try { $reply = \App\Core\Sarah888\InternalIdLeakGuard::apply((string) $reply, (int) $wsId)['reply']; } catch (\Throwable) {} }
 
             // ── SARAH888 PHASE 1C SLICE 1C.3 — DENIAL GUARD ──────────────
