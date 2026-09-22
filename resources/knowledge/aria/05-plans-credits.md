@@ -14,7 +14,7 @@ Links: /pricing/
 You want a site and will run the marketing yourself: Free on the LevelUpGrowth subdomain, Starter on your own domain; both include the CRM and calendar, neither includes ongoing AI. You want Sarah and the workforce running growth: AI Lite is the full platform at its smallest capacity; Growth and Pro add sites, credits and seats. You run several businesses or clients: Agency.
 
 ## Is there a free trial?
-Every new account gets a three-day AI trial with 50 free credits at signup, no card. It starts the moment the account is created, so you can meet Sarah before choosing a plan.
+Every new account gets a three-day AI trial with 50 free credits at signup, no card. It starts the moment the account is created, so you can meet Sarah before choosing a plan. During the trial you have the AI Lite tier itself: the website chatbot, every AI feature, Sarah with her five specialists, image and video generation. The trial ends when the 50 credits are spent or three days pass, whichever comes first; the account then continues on Free until you choose a plan.
 
 ## How do I upgrade, downgrade or cancel?
 From Billing (Advanced) or Account (Basic). Upgrades apply immediately; downgrades apply at the next renewal. Cancel at any time; access continues until the end of the period you paid for, and your data and sites stay accessible for thirty days after cancellation so you can export them.
