@@ -8215,6 +8215,20 @@ PROMPT;
                 return $base + ['success' => true, 'kind' => 'element', 'applied' => 1, 'actions_applied' => 1, 'credits' => $cost, 'message' => 'Done — I ' . $res['message'] . " on {$site->name}." . ($cost > 0 ? " {$cost} credit" . ($cost === 1 ? '' : 's') . '.' : '') . ' Undo puts it back.'];
             }
             case 'element_move':
+            case 'element_link': {   // LINK-1 (Owner 2026-09-22): where a button, link or text goes when clicked - the same op the toolbox uses
+                $el = is_array($intent['element'] ?? null) ? $intent['element'] : [];
+                $sel = is_array($ctx['selected'] ?? null) ? $ctx['selected'] : [];
+                $fld = (string) preg_replace('/[^a-z0-9_\-]/i', '', (string) ($el['field'] ?? '')); if ($fld === '') $fld = (string) ($sel['field'] ?? '');
+                if ($fld === '') return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Which button or text should carry the link? Tap it in the preview, or tell me the words you see on it.', 'options' => []];
+                $href = trim((string) ($el['href'] ?? ''));
+                if ($href === '' && ! preg_match('/\b(remove|unlink|no link|take (off|away) the link)\b/i', $request)) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => 'Where should it go? A page of this site (about/), a section (#contact), a full address (https://...), an email (mailto:) or a phone (tel:).', 'options' => []];
+                if (! \App\Engines\Builder\Support\EditorCredits::canAfford($wsId, 'element_align')) return $base + ['success' => false, 'code' => 'INSUFFICIENT_CREDITS', 'message' => \App\Engines\Builder\Support\EditorCredits::refusal('element_align', $wsId)];
+                $res = $this->templates->linkElement($websiteId, $fld, $href, (bool) ($el['new_tab'] ?? false));
+                if (empty($res['success'])) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => (string) $res['message'], 'options' => []];
+                $cost = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'element_align', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$res['message']]]);
+                Log::info('[Arthur] element op', ['website' => $websiteId, 'action' => 'element_link', 'field' => $fld, 'change' => $res['message']]);
+                return $base + ['success' => true, 'kind' => 'element', 'applied' => 1, 'actions_applied' => 1, 'credits' => $cost, 'message' => 'Done - I ' . $res['message'] . " on {$site->name}." . ($cost > 0 ? " {$cost} credit" . ($cost === 1 ? '' : 's') . '.' : '')];
+            }
             case 'element_align': {
                 // ELEMENT888 (DEC-0052): move / swap / align one element; the model names the field (from FIELDS or the selection)
                 $el = is_array($intent['element'] ?? null) ? $intent['element'] : [];
