@@ -23,6 +23,7 @@ window.LU_LOADED_ENGINES['catalogue'] = true;
       + '#catalogue-root .cat-pick select{min-width:240px}'
       + '#catalogue-root .cat-chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px}'
       + '#catalogue-root .cat-chip{font-size:12px;color:var(--t2);background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:4px 10px}'
+      + '#catalogue-root .cat-tab{cursor:pointer;font:inherit;font-size:12px;line-height:1.3}#catalogue-root .cat-tab:hover{color:var(--t1);border-color:var(--t3)}#catalogue-root .cat-tab.active{color:#fff;background:var(--p);border-color:var(--p)}'
       + '#catalogue-mount{position:relative;min-height:120px}'
       + '#catalogue-mount #t3-cat{position:static!important;width:100%!important;max-width:none!important;max-height:none!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important;box-shadow:none!important;padding:16px!important}'
       + '#catalogue-mount #t3-cat-x{display:none!important}'
@@ -49,7 +50,7 @@ window.LU_LOADED_ENGINES['catalogue'] = true;
     document.querySelectorAll('.nav-item[data-cat-group]').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-cat-group') === g.slug); });
     if (!S.siteId || ids.indexOf(S.siteId) < 0) { var last = recall(g.slug); S.siteId = ids.indexOf(last) >= 0 ? last : ids[0]; }
     var site = siteById(S.siteId); if (!site) { root.innerHTML = '<div class="lu-empty"><b>That website is gone</b></div>'; return; }
-    var kind = (site.kinds || []).filter(function (k) { return k.kind === g.kind; })[0] || site.kinds[0];
+    var kind = (site.kinds || []).filter(function (k) { return k.kind === (S.kind || g.kind); })[0] || site.kinds[0];
     root.innerHTML = '<div class="cat-head"><div><h1 id="cat-title">' + esc(g.label) + '</h1><div class="cat-sub">'
       + (ids.length > 1 ? esc(String(ids.length)) + ' of your websites sell ' + esc(g.label.toLowerCase()) + ' — pick the company; each keeps its own list. Changes show on its live site right away.'
                         : 'Changes show on the live site right away — the home page and the ' + esc(g.label.toLowerCase()) + ' page.')
@@ -58,11 +59,12 @@ window.LU_LOADED_ENGINES['catalogue'] = true;
           ? '<div class="cat-pick"><label for="cat-site">Company</label><select id="cat-site">' + ids.map(function (id) { var s = siteById(id); return s ? '<option value="' + s.id + '"' + (s.id === S.siteId ? ' selected' : '') + '>' + esc(s.name) + '</option>' : ''; }).join('') + '</select></div>'
           : '<div class="cat-pick"><span class="cat-chip">' + esc(site.name) + '</span></div>')
       + '</div>'
-      + '<div class="cat-chips">' + (site.kinds || []).map(function (k) { return '<span class="cat-chip">' + esc(k.label) + ' · ' + k.count + (k.enabled ? '' : ' · off') + '</span>'; }).join('') + (site.host ? '<span class="cat-chip">' + esc(site.host) + '</span>' : '') + '</div>'
+      + '<div class="cat-chips" role="tablist">' + (site.kinds || []).map(function (k) { return '<button type="button" role="tab" class="cat-chip cat-tab' + (kind && k.kind === kind.kind ? ' active' : '') + '" data-kind="' + esc(k.kind) + '" aria-selected="' + (kind && k.kind === kind.kind ? 'true' : 'false') + '">' + esc(k.label) + ' · ' + k.count + (k.enabled ? '' : ' · off') + '</button>'; }).join('') + (site.host ? '<span class="cat-chip">' + esc(site.host) + '</span>' : '') + '</div>'
       + '<div id="catalogue-mount"></div>';
     document.title = g.label + ' · ' + ((window.LU_CFG && window.LU_CFG.bn) || 'LevelUpGrowth');
     var sel = root.querySelector('#cat-site');
-    if (sel) sel.addEventListener('change', function () { S.siteId = parseInt(sel.value, 10) || S.siteId; remember(g.slug, S.siteId); render(root); });
+    if (sel) sel.addEventListener('change', function () { S.siteId = parseInt(sel.value, 10) || S.siteId; S.kind = null; remember(g.slug, S.siteId); render(root); });
+    root.querySelectorAll('.cat-tab[data-kind]').forEach(function (t) { t.onclick = function () { S.kind = t.getAttribute('data-kind'); render(root); }; });
     mount(site, kind ? kind.kind : undefined);
   }
 

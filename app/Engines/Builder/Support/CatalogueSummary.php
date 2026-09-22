@@ -51,19 +51,23 @@ class CatalogueSummary
     }
 
     /**
-     * The Owner's rule: group websites by the WORD their catalogue uses (a site with two kinds sits in two groups).
-     * Each group: slug (URL tail), label (sidebar word), kind, website ids in creation order.
+     * The Owner's rule (2026-09-22, corrected): ONE sidebar entry per INDUSTRY, named by that industry's primary catalogue
+     * word (Real Estate -> Properties, Travel -> Packages). Companies in the same industry share the entry (a picker inside
+     * chooses the company); a site's other catalogue kinds are tabs inside the entry, never extra menu lines. Grouping by
+     * kind-word made one gym spawn Programmes + Memberships + Timetable and four sites became seven lines.
+     * Each group: slug (URL tail = the industry), label (sidebar word), kind (the primary kind), industry, website ids.
      */
     public static function groups(array $websites): array
     {
         $groups = [];
         foreach ($websites as $w) {
-            foreach ($w['kinds'] as $k) {
-                $label = trim((string) $k['label']); if ($label === '') { continue; }
-                $slug = Str::slug($label) ?: (string) $k['kind'];
-                $groups[$slug] ??= ['slug' => $slug, 'label' => $label, 'kind' => (string) $k['kind'], 'websites' => []];
-                if (! in_array((int) $w['id'], $groups[$slug]['websites'], true)) { $groups[$slug]['websites'][] = (int) $w['id']; }
-            }
+            $kinds = $w['kinds'] ?? []; if (! $kinds) { continue; }
+            $primary = $kinds[0];
+            $label = trim((string) ($primary['label'] ?? '')); if ($label === '') { continue; }
+            $industry = trim((string) ($w['industry'] ?? ''));
+            $slug = ($industry !== '' ? Str::slug($industry) : Str::slug($label)) ?: (string) $primary['kind'];
+            $groups[$slug] ??= ['slug' => $slug, 'label' => $label, 'kind' => (string) $primary['kind'], 'industry' => $industry, 'websites' => []];
+            if (! in_array((int) $w['id'], $groups[$slug]['websites'], true)) { $groups[$slug]['websites'][] = (int) $w['id']; }
         }
         return array_values($groups);
     }

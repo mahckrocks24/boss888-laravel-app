@@ -42,11 +42,19 @@ window.LU_LOADED_ENGINES['businesses'] = true;
       + '.bz-form .bz-sec{grid-column:1/-1;font:700 10.5px var(--fb);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin:6px 0 -2px;padding-top:6px;border-top:1px solid var(--bd)}'
       + '.bz-form .bz-sec.first{border-top:0;padding-top:0;margin-top:0}'
       + '.bz-form input:focus,.bz-form textarea:focus{outline:none;border-color:var(--p);box-shadow:0 0 0 3px var(--ps,rgba(108,92,231,.18))}'
-      + '.lu-dlg.bz-dlg{display:flex;flex-direction:column;overflow:hidden;max-width:600px;width:calc(100% - 24px)}'
+      + '.bz-ov{position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;font-family:var(--fb,"DM Sans",system-ui,sans-serif)}'
+      + '.lu-dlg.bz-dlg{display:flex;flex-direction:column;overflow:hidden;max-width:600px;width:calc(100% - 24px);max-height:calc(100vh - 32px);background:var(--s1,#171A21);border:1px solid var(--bd2,rgba(255,255,255,.13));border-radius:var(--rg,14px);box-shadow:0 24px 64px rgba(0,0,0,.6);color:var(--t1,#E8EDF5)}'
+      + '.bz-dlg .lu-dlg-head{padding:20px 22px 6px;font-weight:700;font-size:16px;letter-spacing:-.01em;font-family:var(--fh,"Syne",sans-serif)}'
+      + '.bz-dlg .lu-dlg-body{padding:6px 22px 14px;color:var(--t2,#8B97B0);font-size:13.5px;line-height:1.55}'
+      + '.bz-dlg .lu-dlg-foot{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:12px 16px 16px;border-top:1px solid var(--bd,rgba(255,255,255,.07))}'
+      + '.bz-dlg .lu-dlg-btn{min-height:44px;padding:0 18px;border-radius:var(--r,10px);font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid transparent}'
+      + '.bz-dlg .lu-dlg-btn.ghost{background:transparent;color:var(--t2,#8B97B0);border-color:var(--bd2,rgba(255,255,255,.13))}'
+      + '.bz-dlg .lu-dlg-btn.primary{background:var(--p,#6C5CE7);color:#fff}'
+      + '.bz-dlg .lu-dlg-btn:focus-visible{outline:2px solid var(--p,#6C5CE7);outline-offset:2px}'
       + '.bz-dlg .lu-dlg-head{flex:0 0 auto}'
       + '.bz-dlg .lu-dlg-body{flex:0 0 auto}'
-      + '.bz-dlg .bz-form{flex:1 1 auto;overflow-y:auto;padding-top:6px;padding-bottom:16px}'
-      + '.bz-dlg .lu-dlg-foot{flex:0 0 auto;position:sticky;bottom:0;background:var(--s1);box-shadow:0 -8px 18px -10px rgba(0,0,0,.55)}'
+      + '.bz-dlg .bz-form{flex:1 1 auto;min-height:0;overflow-y:auto;padding-top:6px;padding-bottom:16px}'
+      + '.bz-dlg .lu-dlg-foot{flex:0 0 auto;background:var(--s1);box-shadow:0 -8px 18px -10px rgba(0,0,0,.55)}'
       + '@media (max-width:767px){'
       +   '.bz-form{grid-template-columns:1fr;padding-left:16px;padding-right:16px}'
       +   '#businesses-section .bz-grid{grid-template-columns:1fr}'
@@ -89,7 +97,7 @@ window.LU_LOADED_ENGINES['businesses'] = true;
 
   /* the add/edit form — an app dialog built on the shell's dialog classes (never native) */
   function form(b) {
-    var ov = document.createElement('div'); ov.className = 'lu-dlg-overlay';
+    var ov = document.createElement('div'); ov.className = 'lu-dlg-overlay bz-ov';
     var v = function (k) { return b ? esc(b[k] || '') : ''; };
     ov.innerHTML = '<div class="lu-dlg bz-dlg" role="dialog" aria-modal="true" aria-labelledby="bz-t">'
       + '<div class="lu-dlg-head" id="bz-t">' + (b ? 'Edit ' + esc(b.name) : 'Add a business') + '</div>'
