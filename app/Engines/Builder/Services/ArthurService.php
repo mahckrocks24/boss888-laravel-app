@@ -1986,6 +1986,8 @@ PROMPT;
         $placed = false;
         if ($isStatic) {
             try { $placed = $this->templates->updateField($websiteId, $field, $url); } catch (\Throwable $e) { Log::warning('[Arthur] generated image not placed: ' . $e->getMessage()); }
+            // HERO-BG-1 (2026-09-23): a text-only hero has no slot — the section becomes one (kept on redeploy by the render hook)
+            if (! $placed && $field === 'hero_image') { try { $placed = $this->templates->placeHeroPhotoFallback($websiteId, $url); if ($placed) Log::info('[Arthur] hero photo placed as section background', ['website' => $websiteId]); } catch (\Throwable $e) { Log::warning('[Arthur] hero fallback: ' . $e->getMessage()); } }
         }
         $tv[$field] = $url;
         DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
@@ -5858,6 +5860,14 @@ PROMPT;
         try { app(TemplateService::class)->snapshotToHistory($websiteId, 'arthur_request'); } catch (\Throwable $e) {}
         // U3 (2026-09-20): added blocks on the export carry their field ids before Arthur reads it (copy edits target them).
         try { app(TemplateService::class)->refreshHomeAddedBlocks($websiteId); } catch (\Throwable $e) {}
+        // LOOP-1 (2026-09-23): a re-entry guard. This method calls itself for the classic executors and for clauses; a context
+        // flag that fails to stick (it did — see above) must never cost a customer minutes and an FPM worker for good.
+        $ctx['_depth'] = (int) ($ctx['_depth'] ?? 0) + 1;
+        if ($ctx['_depth'] > 4) {
+            Log::error('[Arthur] re-entry loop cut', ['website' => $websiteId, 'depth' => $ctx['_depth'], 'request' => mb_substr($request, 0, 120)]);
+            return ['success' => false, 'code' => 'LOOP', 'kind' => 'answer', 'method' => 'chat', 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                'message' => 'I went round in circles on that one and stopped before changing or charging anything. Tell me in one line what you want — for example "generate a new hero photo of the dining room".'];
+        }
         $caps = \App\Engines\Builder\Support\BuilderCapabilities::class;
         $site = DB::table('websites')->where('id', $websiteId)->whereNull('deleted_at')->first();
         if (!$site || (int) $site->workspace_id !== $wsId) {
@@ -5892,7 +5902,8 @@ PROMPT;
                 $out = $this->dispatchIntent($wsId, $websiteId, $site, $request, $ctx, $tv, (string) $industry, $intent, $isStatic);
                 if ($out !== null) { $brain->remember($wsId, $websiteId, $ctx, $request, $out, $intent); return $out; }
                 // the classic executors run with the model's explicit wording (sections, pages, images, video …), then the turn is remembered
-                $classic = $this->handleSiteRequest($wsId, $websiteId, $request, $ctx + ['_no_brain' => true]);
+                // LOOP-1 (2026-09-23): array_merge, not `+` — the editor passes '_no_brain' => false and union kept it, so the brain ran again on every re-entry
+                $classic = $this->handleSiteRequest($wsId, $websiteId, $request, array_merge($ctx, ['_no_brain' => true]));
                 $brain->remember($wsId, $websiteId, $ctx, $request, $classic, $intent);
                 return $classic;
             }
@@ -5937,7 +5948,7 @@ PROMPT;
                 $overflow = array_slice($units, self::MAX_UNITS_PER_MESSAGE); $units = array_slice($units, 0, self::MAX_UNITS_PER_MESSAGE);
                 $agg = ['success' => false, 'kind' => 'compound', 'plan' => $plan, 'credits' => 0, 'applied' => 0, 'parts' => [], 'messages' => []];
                 foreach ($units as $clause) {
-                    try { $p = $this->handleSiteRequest($wsId, $websiteId, $clause, $ctx + ['_clause' => true]); }
+                    try { $p = $this->handleSiteRequest($wsId, $websiteId, $clause, array_merge($ctx, ['_clause' => true])); }   // LOOP-1: merge, never union
                     catch (\Throwable $e) { Log::error('[Arthur] compound clause failed', ['clause' => $clause, 'error' => $e->getMessage()]); $p = ['success' => false, 'code' => 'CLAUSE_FAILED', 'message' => 'I could not do "' . mb_substr($clause, 0, 60) . '" — ' . 'please try that one again.']; }
                     $agg['parts'][] = ['request' => $clause, 'success' => (bool) ($p['success'] ?? false), 'code' => $p['code'] ?? null];
                     if ($p['success'] ?? false) { $agg['success'] = true; $agg['applied'] += max(1, (int) ($p['applied'] ?? 1)); }

@@ -1411,6 +1411,45 @@ class TemplateService
         return $html;
     }
 
+    /**
+     * HERO-BG-1 (2026-09-23): a design whose hero has no photo slot (restaurant, gym, real-estate, travel text heroes) still
+     * accepts a hero photo — once template_variables.hero_image is set, the hero section itself becomes the slot:
+     * data-field="hero_image" + an inline cover background (the design's overlay gradient, when it names one and has no
+     * overlay element of its own, keeps the text readable). Idempotent: a design with a real slot, or no photo yet, is untouched.
+     */
+    public function ensureHeroPhotoSlot(int $websiteId, string $html, ?array $tv = null): string
+    {
+        if (str_contains($html, 'data-field="hero_image"')) return $html;
+        if ($tv === null) { $tv = json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: []; }
+        $url = trim((string) ($tv['hero_image'] ?? ''));
+        if ($url === '' || preg_match('/[\s"\\)]/', $url)) return $html;
+        if (! preg_match('/<(section|header|div)\b[^>]*data-block="hero"[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE)
+            && ! preg_match('/<(section|header)\b[^>]*class="[^"]*\bhero\b[^"]*"[^>]*>/i', $html, $m, PREG_OFFSET_CAPTURE)) return $html;
+        $tag = $m[0][0]; $pos = $m[0][1];
+        $new = preg_replace('/^<(\w+)/', '<$1 data-field="hero_image"', $tag, 1);
+        $bg = "background-image:url('" . $url . "');background-size:cover;background-position:center";
+        if (! str_contains($html, 'hero-overlay') && preg_match('/^(\d{1,3}),(\d{1,3}),(\d{1,3})$/', (string) ($tv['hero_overlay_rgb'] ?? ''), $rgb)) {
+            $bg = "background-image:linear-gradient(rgba({$rgb[1]},{$rgb[2]},{$rgb[3]},.55),rgba({$rgb[1]},{$rgb[2]},{$rgb[3]},.55)),url('" . $url . "');background-size:cover;background-position:center";
+        }
+        if (preg_match('/\sstyle="([^"]*)"/i', $new, $sm)) { $new = str_replace($sm[0], ' style="' . rtrim($sm[1], '; ') . ';' . $bg . '"', $new); }
+        else { $new = preg_replace('/>$/', ' style="' . $bg . '">', $new, 1); }
+        return substr($html, 0, $pos) . $new . substr($html, $pos + strlen($tag));
+    }
+
+    /** HERO-BG-1: place a hero photo on the export right now (Arthur's edit-time path); the render hook keeps it on redeploy. */
+    public function placeHeroPhotoFallback(int $websiteId, string $url): bool
+    {
+        $path = storage_path("app/public/sites/{$websiteId}/index.html");
+        if (! is_file($path)) return false;
+        $html = (string) file_get_contents($path);
+        $tv = json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
+        $tv['hero_image'] = $url;
+        $new = $this->ensureHeroPhotoSlot($websiteId, $html, $tv);
+        if ($new === $html) return false;
+        file_put_contents($path, $new);
+        return true;
+    }
+
     private function reapplyPageNavLinks(int $websiteId): void
     {
         try {
@@ -1639,6 +1678,7 @@ class TemplateService
         $html = $this->roleifyLegacyAddedBlocks($websiteId, $html);   // RISK-0191 U1: a block spliced before the roles is repainted on deploy
         $html = $this->applySectionOps($websiteId, $html);   // remembered section moves (DEC-0051)
         $html = $this->applyElementOps($websiteId, $html);   // remembered element moves (ELEMENT888, DEC-0052)
+        $html = $this->ensureHeroPhotoSlot($websiteId, $html);   // HERO-BG-1: a text-only hero carries the placed hero photo as its background
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
         $html = self::injectMobileSafety($html);
         $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20
