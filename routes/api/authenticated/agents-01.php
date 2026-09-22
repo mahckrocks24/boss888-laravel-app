@@ -3059,7 +3059,24 @@ $withCorr = function (array $meta) use ($corr) {
                     $__heldPos = [];          // MULTISITE-1: positions held for the owner's answer — their chain children wait too
                     $__placedArticles = [];   // MULTISITE-1: [title, site] of every article actually started this turn, for an honest reply
                     $__siteNameById = []; foreach ((array) (($__ct ?? [])['sites'] ?? []) as $__sn) { $__siteNameById[(int) ($__sn['id'] ?? 0)] = (string) ($__sn['name'] ?? ''); }
-                    if ($__ct['site'] === null && count($__ct['sites']) > 1 && ! $__contentPerTask) {
+                    // MULTISITE-2 (Owner 2026-09-23 "go"): "for each website" / "all of them" / "both" — the plan is cloned per target site,
+                    // every copy pinned to its site, so the hold and the per-piece binder have nothing left to decide.
+                    $__fanOutSites = [];
+                    try {
+                        $__fanT = \App\Core\Sarah888\FanOut::targets((string) $__ownerMessage, (array) ($__ct['sites'] ?? []), (array) ($__ct['named'] ?? []));
+                        if ($__fanT && is_array($createTasks) && $createTasks) {
+                            $__fanR = \App\Core\Sarah888\FanOut::expand($createTasks, $__fanT);
+                            if (! empty($__fanR['expanded'])) { $createTasks = $__fanR['tasks']; $__fanOutSites = $__fanT; $__contentPerTask = false; }
+                            elseif (($__fanR['reason'] ?? '') === 'planner_already_per_site') {
+                                // the planner already wrote one piece per site ("… for Fable QA Bakery", "… for Fable QA Cafe Two"): place each
+                                // by its own title through the per-piece binder instead of holding the lot behind "which website?"
+                                $__ct['named'] = $__fanT; $__contentPerTask = true; $__fanOutSites = $__fanT;
+                                \Illuminate\Support\Facades\Log::info('[Sarah888] MULTISITE-2 planner already per site — binding each piece by title', ['ws' => $wsId, 'sites' => array_map(fn ($s) => (int) $s['id'], $__fanT)]);
+                            }
+                            else { \Illuminate\Support\Facades\Log::info('[Sarah888] MULTISITE-2 fan-out not applied', ['ws' => $wsId, 'reason' => $__fanR['reason'] ?? '']); }
+                        }
+                    } catch (\Throwable $__fanErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] MULTISITE-2 fan-out failed', ['ws' => $wsId, 'error' => $__fanErr->getMessage()]); }
+                    if ($__ct['site'] === null && count($__ct['sites']) > 1 && ! $__contentPerTask && ! $__fanOutSites) {
                         foreach ($createTasks as $__c) { if (is_array($__c) && strtolower((string) ($__c['action'] ?? '')) === 'write_article') { $__contentHold = true; break; } }
                     }
                     $__contentSkipped = 0;
@@ -3406,7 +3423,7 @@ $withCorr = function (array $meta) use ($corr) {
                                     // guess — strip it (and any page_id) so the deterministic resolver decides from the conversation's
                                     // active target, or asks by website name. (Before: the model sent website_id 452 + page_id 722 on a
                                     // two-site workspace, the edit ran on Cafe Two while the reply asked "which homepage?".)
-                                    if (!empty($payload['website_id']) && count($__wsSites) > 1) {
+                                    if (!empty($payload['website_id']) && count($__wsSites) > 1 && empty($createTask['fanout'])) { // MULTISITE-2: a fan-out copy is pinned on purpose
                                         $__namedIds2 = array_map(fn ($n) => (int) ($n['id'] ?? 0), $__named);
                                         if (!(count($__named) === 1 && in_array((int) $payload['website_id'], $__namedIds2, true))) {
                                             \Illuminate\Support\Facades\Log::info('[Sarah888] RISK-0105 P6-d: model-supplied website_id stripped — several websites, none named by the owner', ['ws' => $wsId, 'website_id' => $payload['website_id'], 'page_id' => $payload['page_id'] ?? null]);
@@ -3984,6 +4001,10 @@ $withCorr = function (array $meta) use ($corr) {
                     }
 
                     // 2026-05-22 FIX 7 (Bug B) — emit ONE summary line per batch.
+                    // MULTISITE-2: say where the work went before the model's text — deterministic, from the sites actually targeted.
+                    if (! empty($__fanOutSites) && $taskSummaryCreated > 0) {
+                        $reply = 'Running this on ' . count($__fanOutSites) . ' websites — ' . \App\Core\Sarah888\FanOut::names($__fanOutSites) . '.' . (trim((string) $reply) !== '' ? "\n\n" . $reply : '');
+                    }
                     if ($taskSummaryCreated > 0 || $taskSummaryFailed > 0 || $taskSummaryDeduped > 0) {
                         $byAgentParts = [];
                         // 2026-05-23 FIX 23 — was `as $agent => $n` which shadowed
