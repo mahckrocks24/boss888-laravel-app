@@ -988,11 +988,11 @@ function _wsShowTemplateEditor(site) {
       '<button onclick="wsCloseTemplateEditor()" style="background:none;border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">\u2190 Back</button>' +
       '<span class="pe-bar-title" style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
       '<span class="pe-bar-spacer" style="flex:1"></span>' +
-      '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
+      '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;flex:0 0 auto">' +   /* DEVTOGGLE-1: never shrinks */
         '<button type="button" id="t3-dev-desktop" onclick="_wsTplSetDevice(\'desktop\')" aria-label="Desktop preview" aria-pressed="true" title="Desktop" style="padding:5px 10px;border:none;background:var(--pu);color:#fff;cursor:pointer;font-size:13px">\uD83D\uDDA5</button>' +
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
-      '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px">Double-click text to edit \u00B7 click an image to replace it \u00B7 your own edits are free \u00B7 changes by Arthur cost 1 credit</span>' +
+      '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Double-click text to edit \u00B7 click an image to replace it \u00B7 your own edits are free \u00B7 changes by Arthur cost 1 credit</span>' +
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
@@ -2492,7 +2492,7 @@ function _wsShowPageEditor(site, pageId) {
         '<span class="pe-bar-title" style="color:var(--t1);font-weight:600;font-size:14px">' + siteName + '</span>' +
         '<span id="pe-page-title" style="color:var(--t3);font-size:12px"></span>' +
         '<span class="pe-bar-spacer" style="flex:1"></span>' +
-        '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden">' +
+        '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;flex:0 0 auto">' +   /* DEVTOGGLE-1: never shrinks */
           devBtn('desktop', 'Desktop', '🖥', true) + devBtn('mobile', 'Mobile', '📱', false) +
         '</div>' +
         '<span id="pe-status" class="pe-bar-hint" style="color:var(--t3);font-size:11px">Changes made by Arthur save automatically</span>' +
