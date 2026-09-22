@@ -4341,6 +4341,14 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     // 2026-09-10 05:41:25 from this exact line. Clearing a field is a legitimate edit, so the value is
     // normalised rather than refused; a non-scalar (array/object) becomes empty rather than crashing.
     $value = $value === null ? '' : (is_scalar($value) ? (string) $value : '');
+    // NAVEDIT-1 (Owner 2026-09-23): the menu label of an added page is edited like any nav link; the page takes the same
+    // name, so a redeploy (which rebuilds menu links from the page title) keeps the customer's wording.
+    if (preg_match('/^nav_page_([a-z0-9-]+)$/', (string) $field, $__np)) {
+        $__lbl = trim(html_entity_decode(strip_tags((string) $value), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($__lbl !== '' && mb_strlen($__lbl) <= 80) {
+            try { \Illuminate\Support\Facades\DB::table('pages')->where('website_id', (int) $id)->where('slug', $__np[1])->update(['title' => $__lbl, 'updated_at' => now()]); } catch (\Throwable $e) {}
+        }
+    }
     $ts = new \App\Engines\Builder\Services\TemplateService();
     // updateField now patches text AND image fields SURGICALLY in the deployed
     // index.html (src / background-image), so we no longer full-re-render for

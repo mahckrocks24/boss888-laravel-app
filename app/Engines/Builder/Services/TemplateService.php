@@ -861,9 +861,16 @@ class TemplateService
         foreach ($files as $file) {
             if (!is_file($file)) continue;
             $html = (string) file_get_contents($file);
-            if (preg_match('/data-page="' . preg_quote($slug, '/') . '"/', $html)) continue; // already linked
+            if (preg_match('/data-page="' . preg_quote($slug, '/') . '"/', $html)) {
+                // already linked. NAVEDIT-1 (2026-09-23): a link injected before this fix has no data-field, so the editor could
+                // not select or edit it — tag it in place, once.
+                $tagged = preg_replace('/<a\b(?![^>]*\bdata-field=)([^>]*\bdata-page="' . preg_quote($slug, '/') . '"[^>]*)>/i', '<a$1 data-field="nav_page_' . e($slug) . '">', $html, -1, $tc);
+                if ($tc > 0 && is_string($tagged) && $tagged !== $html) { file_put_contents($file, $tagged); $n++; }
+                continue;
+            }
             $depth = dirname($file) === $root ? '' : '../';
-            $a = '<a href="' . $depth . e($slug) . '/" class="nav-link lu-page-link" data-page="' . e($slug) . '">' . e($label) . '</a>';
+            // NAVEDIT-1: data-field makes the menu label an editable element like the template's own nav links
+            $a = '<a href="' . $depth . e($slug) . '/" class="nav-link lu-page-link" data-page="' . e($slug) . '" data-field="nav_page_' . e($slug) . '">' . e($label) . '</a>';
             $new = preg_replace_callback('/(<(?:nav|header)\b[^>]*>.*?<\/(?:nav|header)>)/is', function ($m) use ($a, $label, $slug, $depth) {
                 $navHtml = $m[1];
                 // A link with the page's wording already exists (template "Contact" → home #contact): point it at the
@@ -877,7 +884,7 @@ class TemplateService
                 // NAV CAPACITY: 6+ links already → added pages live in a "More" menu (site CSS, no native select)
                 $linkCount = preg_match_all('/<a\b[^>]*class="[^"]*\bnav-link\b[^"]*"[^>]*>/i', $navHtml, $lm) + preg_match_all('/<li\b[^>]*>\s*<a\b/i', $navHtml, $ll);
                 if ($linkCount >= 6) {
-                    $item = '<a href="' . $depth . e($slug) . '/" class="lu-page-link" data-page="' . e($slug) . '">' . e($label) . '</a>';
+                    $item = '<a href="' . $depth . e($slug) . '/" class="lu-page-link" data-page="' . e($slug) . '" data-field="nav_page_' . e($slug) . '">' . e($label) . '</a>';
                     if (preg_match('/<div class="lu-more">.*?<div class="lu-more-menu">/is', $navHtml, $mm, PREG_OFFSET_CAPTURE)) {
                         $pos = $mm[0][1] + strlen($mm[0][0]);
                         return substr($navHtml, 0, $pos) . $item . substr($navHtml, $pos);
