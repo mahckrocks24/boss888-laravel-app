@@ -82,7 +82,7 @@ class BuilderService
             'subdomain'     => $data['subdomain'] ?? null, // Set by customer on first publish
             'status'        => 'draft',
             'template'      => $data['template'] ?? null,
-            'settings_json' => json_encode($data['settings'] ?? ['theme' => 'modern', 'primary_color' => '#6C5CE7', 'secondary_color' => '#00E5A8', 'accent_color' => '#F4F7FB', 'font_heading' => 'Syne', 'font_body' => 'DM Sans']),
+            'settings_json' => json_encode(array_merge($data['settings'] ?? ['theme' => 'modern', 'primary_color' => '#6C5CE7', 'secondary_color' => '#00E5A8', 'accent_color' => '#F4F7FB', 'font_heading' => 'Syne', 'font_body' => 'DM Sans'], trim((string) ($data['description'] ?? '')) !== '' ? ['description' => trim((string) $data['description'])] : [])),
             'seo_json'      => json_encode($data['seo'] ?? []),
             // BUILDER888 P1-6 — the template representation. Additive and
             // optional: every pre-existing caller omits these and is unaffected.
@@ -191,7 +191,7 @@ class BuilderService
             $s->slug = \Illuminate\Support\Str::slug($s->name ?? '');
             $s->page_count = (int) ($pageCounts[$s->id] ?? 0);
             $s->publish_state = $s->published_at ? 'published' : 'draft';
-            $s->description = $s->description ?? '';
+            $s->description = (string) ((json_decode((string) ($s->settings_json ?: '{}'), true) ?: [])['description'] ?? '');   // SITE-ABOUT-1: the card's description lives in settings_json
             return $s;
         })->toArray();
 
@@ -926,6 +926,47 @@ class BuilderService
         ];
     }
 
+    /**
+     * ARTHUR DELEGATION (2026-09-06): append a section to the home page row (before the footer) so the editor and
+     * listings see what Arthur spliced into the static export. Returns false when the site has no home row.
+     */
+    /** Drop the last section of a type from the home page record (the mirror of appendSectionToHomePage). */
+    public function removeLastSectionOfTypeFromHomePage(int $websiteId, string $type): bool
+    {
+        $home = DB::table('pages')->where('website_id', $websiteId)
+            ->where(function ($q) { $q->where('is_homepage', 1)->orWhere('slug', 'home'); })->orderBy('id')->first();
+        if (!$home) return false;
+        $raw = json_decode((string) ($home->sections_json ?: '[]'), true) ?: [];
+        $wrapped = is_array($raw) && isset($raw['sections']) && is_array($raw['sections']);
+        $list = $wrapped ? $raw['sections'] : (is_array($raw) ? $raw : []);
+        $removed = false;
+        for ($i = count($list) - 1; $i >= 0; $i--) { if (($list[$i]['type'] ?? '') === $type) { array_splice($list, $i, 1); $removed = true; break; } }
+        if (!$removed) return false;
+        DB::table('pages')->where('id', $home->id)->update([
+            'sections_json' => json_encode($wrapped ? ['schemaVersion' => $raw['schemaVersion'] ?? 1, 'sections' => array_values($list)] : array_values($list)),
+            'updated_at'    => now(),
+        ]);
+        return true;
+    }
+
+    public function appendSectionToHomePage(int $websiteId, array $section): bool
+    {
+        $home = DB::table('pages')->where('website_id', $websiteId)
+            ->where(function ($q) { $q->where('is_homepage', 1)->orWhere('slug', 'home'); })->orderBy('id')->first();
+        if (!$home) return false;
+        $raw = json_decode((string) ($home->sections_json ?: '[]'), true) ?: [];
+        $wrapped = is_array($raw) && isset($raw['sections']) && is_array($raw['sections']);
+        $list = $wrapped ? $raw['sections'] : (is_array($raw) ? $raw : []);
+        $insertAt = count($list);
+        foreach ($list as $i => $s) { if (($s['type'] ?? '') === 'footer') { $insertAt = $i; break; } }
+        array_splice($list, $insertAt, 0, [$section]);
+        DB::table('pages')->where('id', $home->id)->update([
+            'sections_json' => json_encode($wrapped ? ['schemaVersion' => $raw['schemaVersion'] ?? 1, 'sections' => $list] : $list),
+            'updated_at'    => now(),
+        ]);
+        return true;
+    }
+
     public function deletePage(int $pageId, ?int $wsId = null): void
     {
         if ($wsId !== null && !DB::table('pages')->join('websites', 'websites.id', '=', 'pages.website_id')->where('pages.id', $pageId)->where('websites.workspace_id', $wsId)->exists()) {
@@ -1023,37 +1064,37 @@ class BuilderService
         $lower = strtolower($industry);
         if (str_contains($lower, 'interior') || str_contains($lower, 'design') || str_contains($lower, 'furniture')) {
             return [
-                ['icon' => '🏠', 'title' => 'Bespoke Design Solutions', 'description' => 'Custom interiors tailored to your lifestyle and space.'],
-                ['icon' => '✨', 'title' => 'Premium Materials', 'description' => 'Only the finest materials sourced from trusted suppliers.'],
-                ['icon' => '🎯', 'title' => 'On-Time Delivery', 'description' => 'Projects completed on schedule with meticulous attention to detail.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9.5"/><path d="M9.5 21v-6h5v6"/></svg>', 'title' => 'Bespoke Design Solutions', 'description' => 'Custom interiors tailored to your lifestyle and space.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12l3 6-9 12L3 9Z"/><path d="M3 9h18"/><path d="M9.5 3 8 9l4 12 4-12-1.5-6"/></svg>', 'title' => 'Premium Materials', 'description' => 'Only the finest materials sourced from trusted suppliers.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg>', 'title' => 'On-Time Delivery', 'description' => 'Projects completed on schedule with meticulous attention to detail.'],
             ];
         }
         if (str_contains($lower, 'restaurant') || str_contains($lower, 'food') || str_contains($lower, 'cafe')) {
             return [
-                ['icon' => '👨‍🍳', 'title' => 'Expert Chefs', 'description' => 'Culinary masters crafting memorable dishes daily.'],
-                ['icon' => '🌿', 'title' => 'Fresh Ingredients', 'description' => 'Locally sourced, seasonal ingredients in every dish.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 21h10"/><path d="M7 17.5h10V13a4.5 4.5 0 1 0-2.4-8.3A3.8 3.8 0 0 0 8 5.6 4.2 4.2 0 0 0 7 13Z"/></svg>', 'title' => 'Expert Chefs', 'description' => 'Culinary masters crafting memorable dishes daily.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20c0-8 5-13 16-14 0 10-5 15-13 15H4Z"/><path d="M9 15c2-3 4.5-5 8-6.5"/></svg>', 'title' => 'Fresh Ingredients', 'description' => 'Locally sourced, seasonal ingredients in every dish.'],
                 ['icon' => '⭐', 'title' => 'Award-Winning Service', 'description' => 'Hospitality that keeps guests coming back.'],
             ];
         }
         if (str_contains($lower, 'legal') || str_contains($lower, 'law') || str_contains($lower, 'finance')) {
             return [
-                ['icon' => '⚖️', 'title' => 'Expert Legal Counsel', 'description' => 'Decades of experience protecting your interests.'],
-                ['icon' => '🔒', 'title' => 'Confidential & Secure', 'description' => 'Your privacy is our highest priority.'],
-                ['icon' => '📊', 'title' => 'Proven Results', 'description' => 'Track record of successful outcomes for our clients.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v18"/><path d="M6 7h12"/><path d="M6 7 3 14h6Z"/><path d="M18 7l-3 7h6Z"/><path d="M8 21h8"/></svg>', 'title' => 'Expert Legal Counsel', 'description' => 'Decades of experience protecting your interests.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4.5" y="10" width="15" height="10.5" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>', 'title' => 'Confidential & Secure', 'description' => 'Your privacy is our highest priority.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-4"/><path d="M13 16V8"/><path d="M18 16v-6"/></svg>', 'title' => 'Proven Results', 'description' => 'Track record of successful outcomes for our clients.'],
             ];
         }
         if (str_contains($lower, 'health') || str_contains($lower, 'medical') || str_contains($lower, 'clinic')) {
             return [
-                ['icon' => '🏥', 'title' => 'Expert Medical Team', 'description' => 'Board-certified professionals dedicated to your wellbeing.'],
-                ['icon' => '💚', 'title' => 'Patient-Centered Care', 'description' => 'Personalized treatment plans for every individual.'],
-                ['icon' => '🔬', 'title' => 'Advanced Technology', 'description' => 'State-of-the-art equipment for accurate diagnosis.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="6" width="17" height="13" rx="2"/><path d="M12 9.5v6"/><path d="M9 12.5h6"/><path d="M9 6V4.5h6V6"/></svg>', 'title' => 'Expert Medical Team', 'description' => 'Board-certified professionals dedicated to your wellbeing.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-9.3A4.2 4.2 0 0 1 12 8a4.2 4.2 0 0 1 7 2.7C19 15.6 12 20 12 20Z"/></svg>', 'title' => 'Patient-Centered Care', 'description' => 'Personalized treatment plans for every individual.'],
+                ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3v6.5L4.8 18A2 2 0 0 0 6.6 21h10.8a2 2 0 0 0 1.8-3L14 9.5V3"/><path d="M9 3h6"/><path d="M7.5 15h9"/></svg>', 'title' => 'Advanced Technology', 'description' => 'State-of-the-art equipment for accurate diagnosis.'],
             ];
         }
         // Generic fallback
         return [
             ['icon' => '⭐', 'title' => 'Quality Service', 'description' => 'We deliver excellence in everything we do.'],
-            ['icon' => '⚡', 'title' => 'Fast Delivery', 'description' => 'Quick turnaround without compromising quality.'],
-            ['icon' => '🛡️', 'title' => 'Trusted Team', 'description' => 'Experienced professionals you can rely on.'],
+            ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3 5 13.5h6L11 21l8-10.5h-6L13 3Z"/></svg>', 'title' => 'Fast Delivery', 'description' => 'Quick turnaround without compromising quality.'],
+            ['icon' => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 20 6v6c0 4.5-3.3 7.6-8 9-4.7-1.4-8-4.5-8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg>', 'title' => 'Trusted Team', 'description' => 'Experienced professionals you can rely on.'],
         ];
     }
 

@@ -41,7 +41,9 @@
     hadAgentsOnce: false,  // once true, an empty render must NOT blank the canvas —
                            // a transient empty response triggers a refresh instead
     initialLayoutDone: false,
+    world: { minX: 0, minY: 0, w: 3000, h: 2000 },   // WS-CANVAS-1: the visible world (canvas) around the cards
   };
+  var WORLD_MARGIN = 480;   // WS-CANVAS-1: safe distance kept beyond the farthest card in every direction
 
   // Mobile double-tap thresholds: second tap must arrive within DBL_TAP_MS
   // and within DBL_TAP_PX of the first tap to count.
@@ -132,13 +134,16 @@
       + '<style>' + STYLES + '</style>'
       + '<div class="wsv2-viewport" id="wsv2-viewport">'
       + '  <div class="wsv2-canvas" id="wsv2-canvas" style="width:' + CANVAS_W + 'px;height:' + CANVAS_H + 'px">'
+      + '  <div class="wsv2-world" id="wsv2-world" style="width:' + CANVAS_W + 'px;height:' + CANVAS_H + 'px">'   /* WS-CANVAS-1: the world moves and scales as one */
       + '    <svg class="wsv2-svg" id="wsv2-svg" width="' + CANVAS_W + '" height="' + CANVAS_H + '" viewBox="0 0 ' + CANVAS_W + ' ' + CANVAS_H + '"></svg>'
       + '    <div class="wsv2-zones" id="wsv2-zones"></div>'
       + '    <div class="wsv2-agents" id="wsv2-agents"></div>'
       + '    <div class="wsv2-lasso" id="wsv2-lasso" style="display:none"></div>'
       + '  </div>'
+      + '  </div>'
       + '</div>'
       + '<div class="wsv2-toolbar">'
+      + '  <span class="wsv2-zoom"><button type="button" class="wsv2-btn" onclick="wsv2_zoom(-1)" title="Zoom out (Ctrl + wheel)" aria-label="Zoom out">&minus;</button><button type="button" class="wsv2-btn" id="wsv2-zoom-pct" onclick="wsv2_zoomReset()" title="Back to 100%">100%</button><button type="button" class="wsv2-btn" onclick="wsv2_zoom(1)" title="Zoom in (Ctrl + wheel)" aria-label="Zoom in">+</button></span>'   /* WS-CANVAS-1 */
       + '  <button class="wsv2-btn" onclick="wsv2_resetLayout()" title="Restore radial layout">&#x21bb; Reset Layout</button>'
       + '  <button class="wsv2-btn" onclick="wsv2_fitToScreen()" title="Center view">&#x2316; Center</button>'
       + '  <button class="wsv2-btn" onclick="nav(\'meeting\')">+ New Meeting</button>'
@@ -185,7 +190,8 @@
     +   'background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);'
     +   'background-size:24px 24px;background-position:0 0;'
     +   'transform-origin:0 0}'
-    + '.wsv2-svg{position:absolute;left:0;top:0;pointer-events:none;z-index:1}'
+    + '.wsv2-world{position:absolute;left:0;top:0;transform-origin:0 0}.wsv2-zoom{display:inline-flex;gap:2px}.wsv2-zoom .wsv2-btn{padding:0 9px;min-width:30px;justify-content:center}'   /* WS-CANVAS-1 */
+    + '.wsv2-svg{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:visible}'
     + '.wsv2-svg path{pointer-events:stroke;cursor:pointer}'
     + '.wsv2-zones{position:absolute;inset:0;pointer-events:none;z-index:0}'
     + '.wsv2-zone-overlay{position:absolute;border-radius:16px;pointer-events:none;z-index:0;transition:opacity .3s}'
@@ -313,7 +319,8 @@
         STATE.positions = data.positions || {};
         syncGlobalAgentsMap();
         detectStatusTransitions(prevTasksById);
-        if (!STATE.initialLayoutDone) {
+        var unplaced = STATE.agents.some(function (a) { return !(STATE.overrides[a.slug] || STATE.positions[a.slug]); });   // WS-CANVAS-1: newly added agents
+        if (!STATE.initialLayoutDone || unplaced) {
           computeInitialLayout();
           STATE.initialLayoutDone = true;
         }
@@ -375,6 +382,7 @@
   // ── Render ───────────────────────────────────────────────────────────────
   function render() {
     renderAgents();
+    try { fitCanvas(); } catch (e) {}   // WS-CANVAS-1
     requestAnimationFrame(function () {
       renderZones();
       renderTaskNodes();
@@ -512,9 +520,9 @@
     var dx = (cx - STATE.taskDrag.startX) / scale;
     var dy = (cy - STATE.taskDrag.startY) / scale;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) STATE.taskDrag.moved = true;
-    var nx = Math.max(0, Math.min(CANVAS_W - TN_W, STATE.taskDrag.origX + dx));
-    var ny = Math.max(0, Math.min(CANVAS_H - TN_H, STATE.taskDrag.origY + dy));
+    var nx = STATE.taskDrag.origX + dx, ny = STATE.taskDrag.origY + dy;   // WS-CANVAS-1
     STATE.taskNodePos[STATE.taskDrag.taskId] = { x: nx, y: ny };
+    scheduleFit();
     var el = document.querySelector('.wsv2-task-node[data-task-id="' + STATE.taskDrag.taskId + '"]');
     if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
     requestAnimationFrame(renderLines);
@@ -870,6 +878,7 @@
       box.style.height = '0px';
     });
 
+    viewport.addEventListener('wheel', function (e) { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setZoom((STATE.canvasScale || 1) * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY); }, { passive: false });   // WS-CANVAS-1
     document.addEventListener('mousemove', function (e) {
       if (STATE.taskDrag.active) {
         moveTaskDrag(e.clientX, e.clientY);
@@ -1115,9 +1124,9 @@
     var dx = (cx - STATE.drag.startX) / scale;
     var dy = (cy - STATE.drag.startY) / scale;
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) STATE.drag.moved = true;
-    var nx = Math.max(0, Math.min(CANVAS_W - CARD_W, STATE.drag.origX + dx));
-    var ny = Math.max(0, Math.min(CANVAS_H - CARD_H, STATE.drag.origY + dy));
+    var nx = STATE.drag.origX + dx, ny = STATE.drag.origY + dy;   // WS-CANVAS-1: any direction; the world grows around the card
     STATE.overrides[STATE.drag.slug] = { x: nx, y: ny };
+    scheduleFit();
     var el = document.querySelector('.wsv2-agent[data-slug="' + STATE.drag.slug + '"]');
     if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
     requestAnimationFrame(renderLines);
@@ -1176,14 +1185,48 @@
   function canvasCoords(canvas, clientX, clientY) {
     var cr = canvas.getBoundingClientRect();
     var scale = STATE.canvasScale || 1;
-    return { x: (clientX - cr.left) / scale, y: (clientY - cr.top) / scale };
+    return { x: (clientX - cr.left) / scale + STATE.world.minX, y: (clientY - cr.top) / scale + STATE.world.minY };   // WS-CANVAS-1: world coordinates
   }
+
+  // WS-CANVAS-1: size the scrollable canvas to the cards plus a safe margin, in every direction, at the current zoom.
+  function fitCanvas() {
+    var canvas = document.getElementById('wsv2-canvas'), world = document.getElementById('wsv2-world'), viewport = document.getElementById('wsv2-viewport'), svg = document.getElementById('wsv2-svg');
+    if (!canvas || !world) return;
+    var minX = 0, minY = 0, maxX = CANVAS_W, maxY = CANVAS_H;
+    var add = function (p, w, h) { if (!p) return; minX = Math.min(minX, p.x - WORLD_MARGIN); minY = Math.min(minY, p.y - WORLD_MARGIN); maxX = Math.max(maxX, p.x + w + WORLD_MARGIN); maxY = Math.max(maxY, p.y + h + WORLD_MARGIN); };
+    STATE.agents.forEach(function (a) { add(STATE.overrides[a.slug] || STATE.positions[a.slug], CARD_W, CARD_H); });
+    Object.keys(STATE.taskNodePos).forEach(function (k) { add(STATE.taskNodePos[k], TN_W, TN_H); });
+    var s = STATE.canvasScale || 1, W = STATE.world, dx = (W.minX - minX) * s, dy = (W.minY - minY) * s;
+    W.minX = minX; W.minY = minY; W.w = maxX - minX; W.h = maxY - minY;
+    world.style.width = W.w + 'px'; world.style.height = W.h + 'px';
+    world.style.transform = 'scale(' + s + ') translate(' + (-minX) + 'px,' + (-minY) + 'px)';
+    canvas.style.width = Math.round(W.w * s) + 'px'; canvas.style.height = Math.round(W.h * s) + 'px';
+    if (svg) { svg.setAttribute('width', String(maxX)); svg.setAttribute('height', String(maxY)); svg.setAttribute('viewBox', '0 0 ' + maxX + ' ' + maxY); }
+    if (viewport && (dx || dy)) { viewport.scrollLeft += dx; viewport.scrollTop += dy; }   // growth to the left/top: keep the view where it was
+  }
+  var fitRaf = 0; function scheduleFit() { if (fitRaf) return; fitRaf = requestAnimationFrame(function () { fitRaf = 0; fitCanvas(); }); }
+
+  function setZoom(next, fx, fy) {
+    var viewport = document.getElementById('wsv2-viewport'); if (!viewport) return;
+    next = Math.max(0.35, Math.min(2.5, next));
+    var vr = viewport.getBoundingClientRect();
+    var px = (fx == null) ? viewport.clientWidth / 2 : (fx - vr.left), py = (fy == null) ? viewport.clientHeight / 2 : (fy - vr.top);
+    var old = STATE.canvasScale || 1, wx = (viewport.scrollLeft + px) / old + STATE.world.minX, wy = (viewport.scrollTop + py) / old + STATE.world.minY;   // the world point under the focus
+    STATE.canvasScale = next;
+    fitCanvas();
+    viewport.scrollLeft = (wx - STATE.world.minX) * next - px; viewport.scrollTop = (wy - STATE.world.minY) * next - py;
+    var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(next * 100) + '%';
+  }
+  window.wsv2_fitCanvas = fitCanvas;
+  window.wsv2_zoom = function (dir) { setZoom((STATE.canvasScale || 1) * (dir > 0 ? 1.2 : 1 / 1.2)); };
+  window.wsv2_zoomReset = function () { setZoom(1); };
 
   function centerOnCenter() {
     var viewport = document.getElementById('wsv2-viewport');
     if (!viewport) return;
-    viewport.scrollLeft = (CANVAS_W - viewport.clientWidth) / 2;
-    viewport.scrollTop = (CANVAS_H - viewport.clientHeight) / 2;
+    var s = STATE.canvasScale || 1;   // WS-CANVAS-1: the layout's centre, at the current zoom, in the current world
+    viewport.scrollLeft = (CANVAS_W / 2 - STATE.world.minX) * s - viewport.clientWidth / 2;
+    viewport.scrollTop = (CANVAS_H / 2 - STATE.world.minY) * s - viewport.clientHeight / 2;
   }
 
   // ── Selection ────────────────────────────────────────────────────────────
@@ -1297,17 +1340,18 @@
   window.wsv2_resetLayout = function () {
     STATE.overrides = {};
     STATE.positions = {};
+    STATE.taskNodePos = {};
     STATE.initialLayoutDone = false;
-    computeInitialLayout();
+    computeInitialLayout();   // every agent, including ones added since the last layout
     STATE.initialLayoutDone = true;
+    // WS-CANVAS-1: the reset is the default view again after a reload too - clear the saved positions
+    try { fetch('/api/workspace/agents/positions', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + getToken(), 'X-Workspace-Id': String(getWorkspaceId()) } }).catch(function () {}); } catch (e) {}
     render();
+    setZoom(1);
     setTimeout(centerOnCenter, 100);
   };
   window.wsv2_fitToScreen = function () {
-    STATE.canvasScale = 1;
-    var canvas = document.getElementById('wsv2-canvas');
-    if (canvas) canvas.style.transform = '';
-    centerOnCenter();
+    centerOnCenter();   // WS-CANVAS-1: centre at the current zoom
   };
   window.wsv2_toggleActivity = function () {
     var p = document.getElementById('wsv2-activity');

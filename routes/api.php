@@ -982,6 +982,14 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         ]);
     });
 
+        // WS-CANVAS-1 (Owner 2026-09-23): Reset Layout clears the saved positions, so the default view is the default after a reload too
+        Route::delete('/workspace/agents/positions', function (\Illuminate\Http\Request $r) {
+            $ws = \App\Models\Workspace::findOrFail($r->attributes->get('workspace_id'));
+            $meta = is_array($ws->settings_json) ? $ws->settings_json : ($ws->settings_json ? (json_decode($ws->settings_json, true) ?: []) : []);
+            $meta['agent_positions'] = [];
+            $ws->update(['settings_json' => $meta]);
+            return response()->json(['cleared' => true]);
+        });
         Route::put('/workspace/agents/positions', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         $agentSlug = $r->input('agent');

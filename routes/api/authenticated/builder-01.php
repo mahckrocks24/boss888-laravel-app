@@ -108,7 +108,18 @@ use Illuminate\Support\Facades\Route;
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['error' => 'not_found'], 404);
             $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
             $dom = $w->custom_domain ? ['domain' => $w->custom_domain, 'text' => $w->custom_domain . ($w->domain_verified ? ' — connected' : ' — waiting for DNS / SSL')] : ['domain' => null, 'text' => $w->subdomain ? 'Published at ' . $w->subdomain . '. A custom domain can be connected under Websites → Domain.' : 'No domain yet — set a subdomain to publish, then connect your own domain.'];
-            return response()->json(['tracking' => (array) ($s['tracking'] ?? []), 'domain' => $dom, 'subdomain' => $w->subdomain, 'status' => $w->status]);
+            return response()->json(['tracking' => (array) ($s['tracking'] ?? []), 'domain' => $dom, 'subdomain' => $w->subdomain, 'status' => $w->status, 'about' => ['title' => (string) $w->name, 'description' => (string) ($s['description'] ?? '')]]);   // SITE-ABOUT-1
+        });
+        // SITE-ABOUT-1 (Owner 2026-09-23): the website's name and description - what the Websites card shows - are editable
+        Route::put('/websites/{id}/about', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $title = trim((string) $r->input('title', $w->name)); $desc = trim((string) $r->input('description', ''));
+            if ($title === '' || mb_strlen($title) > 120) return response()->json(['success' => false, 'message' => 'The name needs 1 to 120 characters.'], 422);
+            if (mb_strlen($desc) > 500) return response()->json(['success' => false, 'message' => 'Keep the description under 500 characters.'], 422);
+            $st = json_decode((string) ($w->settings_json ?: '{}'), true) ?: []; if ($desc === '') unset($st['description']); else $st['description'] = $desc;
+            \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $w->id)->update(['name' => $title, 'settings_json' => json_encode($st), 'updated_at' => now()]);   // $w is a plain row, not a model
+            $w->name = $title;
+            return response()->json(['success' => true, 'about' => ['title' => $w->name, 'description' => $desc], 'message' => 'Saved.']);
         });
         // PREVIEW GATE (2026-09-15, RISK-0177): the editor preview is for signed-in members of the site's workspace only.
         // The renderer (inline editing script and all) is app('lu.preview.render'), defined in routes/api.php. A soft-deleted

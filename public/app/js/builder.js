@@ -4633,7 +4633,13 @@ window.wsOpenSitePanel = async function (siteId) {
   catch (e) { body.innerHTML = '<div class="lu-empty"><b>Couldn’t load settings</b>' + bld_escH(e.message) + '</div>'; return; }
   var t = d.tracking || {};
   var inp = function (k, label, ph) { return '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">' + label + '</label><input type="text" data-t="' + k + '" placeholder="' + ph + '" value="' + bld_escH(t[k] || '') + '" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">'; };
-  body.innerHTML = '<div style="font:600 13px var(--fh);color:var(--t1)">Tracking</div><div style="font-size:12px;color:var(--t3)">Paste the ids from your analytics or ads account. They go into every page of the site.</div>'
+  var ab = d.about || {};   // SITE-ABOUT-1
+  body.innerHTML = '<div style="font:600 13px var(--fh);color:var(--t1)">About this website</div><div style="font-size:12px;color:var(--t3)">The name and the short description shown on your Websites list.</div>'
+    + '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">Name</label><input type="text" id="t3-site-title" maxlength="120" value="' + bld_escH(ab.title || '') + '" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:8px 10px;font:inherit;font-size:13px">'
+    + '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">Description</label><textarea id="t3-site-desc" maxlength="500" rows="3" placeholder="One or two lines about this website" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:8px 10px;font:inherit;font-size:13px;resize:vertical">' + bld_escH(ab.description || '') + '</textarea>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-top:10px"><button type="button" class="lu-btn" id="t3-site-about-save">Save</button><span id="t3-site-about-msg" style="font-size:12px;color:var(--t3)"></span></div>'
+    + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
+    + '<div style="font:600 13px var(--fh);color:var(--t1)">Tracking</div><div style="font-size:12px;color:var(--t3)">Paste the ids from your analytics or ads account. They go into every page of the site.</div>'
     + inp('ga4', 'Google Analytics 4 measurement id', 'G-XXXXXXXXXX') + inp('gtm', 'Google Tag Manager container id', 'GTM-XXXXXXX') + inp('meta_pixel', 'Meta (Facebook) pixel id', '1234567890123456') + inp('tiktok_pixel', 'TikTok pixel id', 'C0XXXXXXXXXXXXXXXX')
     + '<div style="display:flex;gap:8px;align-items:center;margin-top:12px"><button type="button" class="lu-btn" id="t3-site-save">Save tracking</button><span id="t3-site-msg" style="font-size:12px;color:var(--t3)"></span></div>'
     + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
@@ -4642,6 +4648,17 @@ window.wsOpenSitePanel = async function (siteId) {
     + '<div style="font:600 13px var(--fh);color:var(--t1)">Payments</div><div id="t3-site-pay" style="font-size:12px;color:var(--t2);margin-top:4px">Loading…</div>'
     + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
     + '<div style="font:600 13px var(--fh);color:var(--t1)">Domain</div><div style="font-size:12px;color:var(--t2);margin-top:4px">' + bld_escH(d.domain && d.domain.text ? d.domain.text : 'No domain connected yet.') + '</div>';
+  body.querySelector('#t3-site-about-save').addEventListener('click', async function () {   // SITE-ABOUT-1
+    var msg = body.querySelector('#t3-site-about-msg'), title = body.querySelector('#t3-site-title').value.trim(), desc = body.querySelector('#t3-site-desc').value.trim(); msg.textContent = 'Saving…';
+    try {
+      var ra = await fetch(API + 'builder/websites/' + siteId + '/about', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ title: title, description: desc }) });
+      var ja = null; try { ja = await ra.json(); } catch (_ja) {}
+      if (!ra.ok || !ja || !ja.success) { msg.textContent = (ja && ja.message) || 'That could not be saved.'; return; }
+      msg.textContent = 'Saved.'; try { var tt = document.querySelector('#template-editor-view .pe-bar-title'); if (tt) tt.textContent = ja.about.title; } catch (_tt) {}
+      try { if (window.wsCurrentSite && Number(window.wsCurrentSite.id) === Number(siteId)) { window.wsCurrentSite.title = ja.about.title; window.wsCurrentSite.description = ja.about.description; } } catch (_cs) {}
+      try { if (typeof window.wsLoadSites === 'function') window.wsLoadSites(); } catch (_ls) {}   // the Websites grid shows the new text next time it is drawn
+    } catch (_e) { msg.textContent = 'The change could not be sent. Please try again.'; }
+  });
   (async function renderPay() {
     var box = body.querySelector('#t3-site-pay'); var st = null;
     try { var rp = await fetch(API + 'builder/store-payments', { headers: auth, cache: 'no-store' }); st = await rp.json(); } catch (e) { box.textContent = 'Could not load payment settings.'; return; }

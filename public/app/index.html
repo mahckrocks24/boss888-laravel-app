@@ -2863,18 +2863,16 @@ function luToggleSidebar() {
 }
 
 /* Close drawer on nav-item tap (mobile only) */
-document.addEventListener('DOMContentLoaded', function () {
-  document.querySelectorAll('.sidebar .nav-item, .sidebar a').forEach(function (el) {
-    el.addEventListener('click', function () {
-      if (window.innerWidth < 1024) {
-        var sidebar = document.querySelector('.sidebar');
-        var overlay = document.getElementById('lu-mob-overlay');
-        if (sidebar) sidebar.classList.remove('mob-open');
-        if (overlay) overlay.classList.remove('show');
-        document.body.style.overflow = '';
-      }
-    });
-  });
+/* SIDEBAR-CLOSE-1 (Owner 2026-09-23): delegated, so items added after boot (the Catalogue entries) close the drawer too */
+document.addEventListener('click', function (e) {
+  if (window.innerWidth >= 1024) return;
+  var hit = e.target && e.target.closest ? e.target.closest('.sidebar .nav-item, .sidebar a') : null;
+  if (!hit) return;
+  var sidebar = document.querySelector('.sidebar');
+  var overlay = document.getElementById('lu-mob-overlay');
+  if (sidebar) sidebar.classList.remove('mob-open');
+  if (overlay) overlay.classList.remove('show');
+  document.body.style.overflow = '';
 });
 
 /* Close on ESC */
@@ -4842,7 +4840,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=87f4741090"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=c12b3d7e0f"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
@@ -5297,7 +5295,7 @@ document.addEventListener('wheel', function(e) {
   }
 }, { passive: false });
 </script>
-  <script src="/app/js/workspace-v2.js?v=r191-20260918" defer></script>
+  <script src="/app/js/workspace-v2.js?v=f24f8e8b67" defer></script>
   <script>
   // v1.4.4 — universal attach composer wiring on the four core chat surfaces.
   // The composer self-detects parent flex-direction and inserts a paperclip
