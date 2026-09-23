@@ -1098,6 +1098,7 @@ async function wsCloseTemplateEditor() {
   var lst = document.getElementById('t3-cat'); if (lst) lst.remove();
   var stp = document.getElementById('t3-site'); if (stp) stp.remove();
   bldCurrentPageId = null;
+  try { if (window.luTour && luTour.active()) luTour.end('replaced'); } catch (_tr) {}   // TOUR-3 (Owner 2026-09-23): the tour lives and dies with the editor
   var v = document.getElementById('template-editor-view');
   if (v) v.remove();
 }
@@ -4868,6 +4869,7 @@ function _t3StartTour(replay) {
   if (document.getElementById('t3-view-ov')) return;   // never over the full-screen preview
   window._t3TourShownThisSession = true;
   luTour.start(_t3TourSteps(), {
+    scope: '#template-editor-view',   // TOUR-3: ends itself the moment the editor is gone
     onFinish: function (kind, last) { if (kind === 'completed' || kind === 'skipped') _t3TourPersist(kind, last); },
     onEvent: function (name, info) { try { if (name === 'started') fetch('/api/user/preferences', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, _t3CatAuth()), body: JSON.stringify({ editor_tour: { version: window._t3TourVersion, last_step: 0, device: (window.matchMedia && window.matchMedia('(max-width:820px)').matches) ? 'mobile' : 'desktop' } }) }); } catch (_e) {} }
   });

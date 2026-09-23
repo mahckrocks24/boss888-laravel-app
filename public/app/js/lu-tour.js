@@ -61,8 +61,10 @@
     return t;
   }
 
+  function scopeGone() { try { return !!(S.opts && S.opts.scope) && !document.querySelector(S.opts.scope); } catch (e) { return false; } }
   function layout() {
     if (!S.active || !S.els) return;
+    if (scopeGone()) { end('replaced'); return; }   // TOUR-3: the surface the tour belongs to has closed
     var step = S.steps[S.i], t = resolveTarget(step), vw = window.innerWidth, vh = window.innerHeight;
     var panes = S.els.panes, ring = S.els.ring, card = S.els.card;
     var free = !!step.waitFor;
@@ -134,6 +136,7 @@
   function end(kind) {
     if (!S.active) return; S.active = false;
     var last = S.i; destroy();
+    try { if (S.mo) { S.mo.disconnect(); S.mo = null; } } catch (e) {}
     document.removeEventListener('keydown', onKey, true); window.removeEventListener('resize', onResize); try { window.visualViewport && window.visualViewport.removeEventListener('resize', onResize); } catch (e) {}
     if (S.waitHandler) { window.removeEventListener('message', S.waitHandler); S.waitHandler = null; }
     emit(kind, { index: last });
@@ -150,6 +153,7 @@
 
   function start(steps, opts) {
     if (S.active) end('replaced');
+    try { if (S.mo) { S.mo.disconnect(); S.mo = null; } if (opts && opts.scope && window.MutationObserver) { S.mo = new MutationObserver(function () { if (S.active && scopeGone()) end('replaced'); }); S.mo.observe(document.body, { childList: true }); } } catch (e) {}   // TOUR-3
     S.steps = (steps || []).filter(Boolean); S.opts = opts || {}; S.i = 0; if (!S.steps.length) return;
     S.active = true; build();
     document.addEventListener('keydown', onKey, true); window.addEventListener('resize', onResize); try { window.visualViewport && window.visualViewport.addEventListener('resize', onResize); } catch (e) {}
