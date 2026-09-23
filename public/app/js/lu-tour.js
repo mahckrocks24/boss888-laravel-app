@@ -127,7 +127,7 @@
     card.querySelectorAll('[data-tour]').forEach(function (b) { b.addEventListener('click', function () { var a = b.getAttribute('data-tour'); if (a === 'next') last ? end('completed') : next(); else if (a === 'back') back(); else skip(); }); });
     var prim = card.querySelector('.primary') || card.querySelector('[data-tour="next"]'); if (prim) setTimeout(function () { try { prim.focus({ preventScroll: true }); } catch (e) {} }, 30);
     if (S.waitHandler) { window.removeEventListener('message', S.waitHandler); S.waitHandler = null; }
-    if (step.waitFor) { S.waitHandler = function (e) { if (e.data && e.data.type === step.waitFor) { window.removeEventListener('message', S.waitHandler); S.waitHandler = null; setTimeout(function () { if (S.active && S.steps[S.i] === step) next(); }, 350); } }; window.addEventListener('message', S.waitHandler); }
+    if (step.waitFor) { S.waitHandler = function (e) { if (e.data && [].concat(step.waitFor).indexOf(e.data.type) !== -1) {   /* TOUR-5: any of the step's signals completes it */ window.removeEventListener('message', S.waitHandler); S.waitHandler = null; setTimeout(function () { if (S.active && S.steps[S.i] === step) next(); }, 350); } }; window.addEventListener('message', S.waitHandler); }
     emit('step', { index: S.i });
     layout();
   }
