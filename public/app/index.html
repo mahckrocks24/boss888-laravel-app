@@ -2757,7 +2757,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // P1R-3 (2026-08-31): 'command' removed — the Command Center exposes specialist agent cards that open the
   // specialist drawer, and Basic must not offer direct specialist interaction. 'settings' removed — in Basic it is
   // rewritten to 'account' below (customer settings), so nobody deep-links into the internal Advanced settings.
-  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog','aria'];   /* ARIA888 DEC-0054: Aria is in both views */
+  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog','aria','catalogue'];   /* CAT-BASIC-1 (Owner 2026-09-23 'Catalogue must be available on Basic view too'): the router's list, not only _basicViews */   /* ARIA888 DEC-0054: Aria is in both views */
   var _origNav = window.nav;
   if (typeof _origNav === 'function') {
     window.nav = function (view) {
@@ -4842,7 +4842,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=e009cdfd31"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=7e2715875f"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

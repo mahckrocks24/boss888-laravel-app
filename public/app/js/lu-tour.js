@@ -20,7 +20,7 @@
       '@supports not (background:color-mix(in srgb,red 50%,transparent)){.lu-tour-card{background:linear-gradient(var(--s1,#171A21),var(--s1,#171A21)) padding-box,linear-gradient(135deg,#A79CFF,#38BDF8 55%,#6C5CE7) border-box}.lu-tour-dots i{background:rgba(139,151,176,.3)}.lu-tour-btn{border-color:rgba(139,151,176,.3);background:var(--s2,#1E2230)}}' +
       '@keyframes luTourIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}' +
       '.lu-tour-card.hero{width:min(420px,calc(100vw - 24px));text-align:center;padding:26px 22px 18px}' +
-      '.lu-tour-badge{width:58px;height:58px;border-radius:17px;margin:0 auto 14px;display:grid;place-items:center;background:linear-gradient(135deg,#6C5CE7,#38BDF8);box-shadow:0 12px 32px rgba(108,92,231,.5),0 0 0 6px rgba(124,92,255,.14);animation:luTourFloat 3s ease-in-out infinite}' +
+      '.lu-tour-badge{width:58px;height:58px;border-radius:17px;margin:0 auto 14px;display:grid;place-items:center;background:#0A0A0A;box-shadow:0 12px 32px rgba(0,0,0,.45),0 0 0 6px rgba(124,92,255,.16),0 0 28px rgba(124,92,255,.35);animation:luTourFloat 3s ease-in-out infinite}' +
       '.lu-tour-badge img{width:32px;height:32px;filter:drop-shadow(0 2px 6px rgba(0,0,0,.35))}' +
       '@keyframes luTourFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}' +
       '.lu-tour-kicker{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--p,#6C5CE7);margin-bottom:6px}' +
