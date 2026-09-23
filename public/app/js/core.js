@@ -184,6 +184,7 @@ function loadingCard(h) {
 
   // luDialog({type:'alert'|'confirm'|'prompt', title, message, okLabel, cancelLabel, danger|destructive,
   //           defaultValue, placeholder, inputType}) → Promise<true|false|string|null>
+  window.luEnsureDialogCss = ensureCss;   // DLGCSS-1: dialogs built outside luDialog() (the editor's) need the same stylesheet
   window.luDialog = function (opts) {
     opts = opts || {};
     ensureCss();

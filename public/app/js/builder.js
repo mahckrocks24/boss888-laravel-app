@@ -1450,6 +1450,7 @@ async function _t3ImgGenerate() {
   var fw = slot && (slot.width || slot.w) ? parseInt(slot.width || slot.w, 10) : 0, fh = slot && (slot.height || slot.h) ? parseInt(slot.height || slot.h, 10) : 0;
   var spot = String(info.field || '').replace(/_(url|src|image|img)$/i, '').replace(/_/g, ' ').replace(/\d+/g, function (d) { return ' ' + d; }).trim();
 
+  try { if (window.luEnsureDialogCss) window.luEnsureDialogCss(); } catch (_dc) {}   // DLGCSS-1
   var ov = document.createElement('div'); ov.className = 'lu-dlg-overlay';
   ov.innerHTML = '<div class="lu-dlg" role="dialog" aria-modal="true" aria-labelledby="t3-gen-t" style="max-width:540px;width:calc(100% - 24px)">'
     + '<div class="lu-dlg-head" id="t3-gen-t">✨ Generate an image with AI</div>'
@@ -4711,7 +4712,7 @@ window._t3OpenSitePreview = function () {
   var ov = document.createElement('div'); ov.id = 't3-view-ov';
   ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0B0D13;display:flex;flex-direction:column';
   ov.innerHTML = '<div style="height:48px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--s1);border-bottom:1px solid var(--bd);color:var(--t1);font-family:var(--fb)">'
-    + '<button type="button" id="t3-view-back" class="lu-btn lu-btn--sm" style="white-space:nowrap">← Back to editor</button>'
+    + '<button type="button" id="t3-view-back" class="lu-btn lu-btn--sm" style="white-space:nowrap">← Back</button>'
     + '<span style="font-weight:600;font-size:13px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Preview · ' + bld_escH(name) + '</span>'
     + '<span id="t3-view-page" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>'
     + '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;flex:0 0 auto"><button type="button" data-view-dev="desktop" aria-pressed="true" title="Desktop" style="padding:5px 10px;border:none;background:var(--pu);color:#fff;cursor:pointer">🖥</button><button type="button" data-view-dev="mobile" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer">📱</button></div>'
@@ -4785,6 +4786,7 @@ function _t3ChatbotLookDialog() {
   ];
   var swatches = ['#6C5CE7', '#0A0A0A', '#1F2937', '#2563EB', '#0D9488', '#16A34A', '#F59E0B', '#DC2626', '#DB2777', '#7C3AED', '#C9A84C', '#FFFFFF'];
   var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  try { if (window.luEnsureDialogCss) window.luEnsureDialogCss(); } catch (_dc) {}   // DLGCSS-1: the dialog was opening unstyled under the editor
   var ov = document.createElement('div'); ov.id = 't3-cbl-ov'; ov.className = 'lu-dlg-overlay';
   ov.innerHTML = '<div class="lu-dlg" role="dialog" aria-modal="true" aria-labelledby="t3-cbl-t" style="max-width:520px;width:calc(100% - 24px)">'
     + '<div class="lu-dlg-head" id="t3-cbl-t">💬 Chat button</div>'
