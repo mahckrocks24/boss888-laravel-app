@@ -3496,7 +3496,7 @@ Route::middleware(['throttle:10,1'])->group(function () {
 // ── T3 Template Editor Routes ──────────────────────────────────
 // PREVIEW GATE (2026-09-15, RISK-0177): the renderer below is a container callable; the ROUTE lives in
 // routes/api/authenticated/builder-01.php (bearer token + workspace ownership). No public preview route remains.
-app()->instance('lu.preview.render', function ($id, $page = '') {
+app()->instance('lu.preview.render', function ($id, $page = '', $mode = '') {   // VIEW-1: mode 'view' = no editing tools
     // LONGPRESS-1 (Owner 2026-09-22): the editor can show a sub-page of the site (about/, blog/...) with the same editing script.
     $page = trim((string) preg_replace('#[^a-z0-9_\-/]#i', '', (string) $page), '/');
     if ($page !== '' && (str_contains($page, '..') || ! is_file(storage_path('app/public/sites/' . (int)$id . '/' . $page . '/index.html')))) {
@@ -3584,7 +3584,9 @@ document.addEventListener("DOMContentLoaded",function(){
       "[data-field=\"logo_url\"]{cursor:pointer;position:relative}" +
       "[data-field=\"logo_url\"]:hover .nav-logo-img,[data-field=\"logo_url\"]:hover .footer-logo-img{border-color:#6C5CE7;background:rgba(108,92,231,0.10);box-shadow:0 0 0 2px rgba(108,92,231,0.18)}" +
       "[data-field=\"logo_url\"]::after{content:\"\\1F3F7 click to add logo\";display:none;position:absolute;top:100%;left:0;background:#6C5CE7;color:#fff;font:600 10px/1.4 system-ui;padding:3px 6px;border-radius:3px;margin-top:6px;white-space:nowrap;pointer-events:none !important;z-index:1}" +
-      "[data-field=\"logo_url\"]:hover::after{display:block}";
+      "[data-field=\"logo_url\"]:hover::after{display:block}" +
+      "img[data-lu-empty=\"1\"]{display:block!important;min-width:72px;min-height:72px;border:1px dashed rgba(108,92,231,0.55);border-radius:6px;background:rgba(108,92,231,0.06);box-sizing:border-box;cursor:pointer}" +   /* IMGRM-1: an emptied picture stays a click target in the editor */
+      "[data-lu-empty=\"1\"]:not(img){outline:1px dashed rgba(108,92,231,0.55);outline-offset:-1px}";
     document.head.appendChild(_luLogoCss);
   } catch(_lc){}
 
@@ -3728,7 +3730,8 @@ document.addEventListener("DOMContentLoaded",function(){
     var els = document.querySelectorAll("[data-field=\"" + field + "\"]");
     els.forEach(function(el) {
       if (el.tagName === "IMG") {
-        el.src = effectiveSrc;
+        el.src = url ? effectiveSrc : placeholder;   // IMGRM-1: mirror the server - no broken icon, a dashed slot instead
+        if (url) { el.removeAttribute("data-lu-empty"); el.style.display = ""; } else { el.setAttribute("data-lu-empty", "1"); }
       } else {
         var innerImg = el.querySelector("img[data-field=\"" + field + "\"], img.nav-logo-img, img.footer-logo-img");
         if (innerImg) {
@@ -4291,7 +4294,16 @@ document.addEventListener("DOMContentLoaded",function(){
   });
 });
 </script>';
-    $html = str_replace('</body>', $editScript . '</body>', $html);
+    // HAMB-1 (2026-09-23): the preview shows the nav build the live site is served with (the block is versioned and replaced)
+    try { $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html); } catch (\Throwable $e) {}
+    if ($mode === 'view') {
+        // VIEW-1 (Owner 2026-09-23): the site as visitors see it - no editing script, no Arthur. Links navigate inside the
+        // preview (the parent re-fetches the page with the bearer), anchors scroll, external links open a new tab, forms are inert.
+        $viewScript = '<script>/* VIEW-1 */(function(){document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("a[href]"):null;if(!a)return;var h=a.getAttribute("href")||"";if(/^#/.test(h)){e.preventDefault();var id=decodeURIComponent(h.slice(1));var el=id?document.getElementById(id):null;if(el){try{el.scrollIntoView({behavior:"smooth",block:"start"});}catch(_s){el.scrollIntoView();}}else{window.scrollTo({top:0,behavior:"smooth"});}return;}if(/^(mailto|tel|sms):/i.test(h))return;e.preventDefault();var abs;try{abs=new URL(h,document.baseURI);}catch(_u){return;}var mine=/\/api\/builder\/websites\/(\d+)\/preview/.exec(abs.pathname);if(/^https?:/i.test(h)&&!mine){window.open(abs.href,"_blank","noopener");return;}var rest=mine?abs.pathname.slice(mine.index+mine[0].length):abs.pathname;var page=rest.replace(/index\.html$/i,"").replace(/^\/+|\/+$/g,"");try{window.parent.postMessage({type:"view-navigate",page:page,hash:abs.hash||""},"*");}catch(_p){}},true);document.addEventListener("submit",function(e){e.preventDefault();},true);})();</script>';
+        $html = str_replace('</body>', $viewScript . '</body>', $html);
+    } else {
+        $html = str_replace('</body>', $editScript . '</body>', $html);
+    }
     // SCALE GUARD (2026-09-20, Owner): the editor preview shows the same scale the live site is served with.
     try { $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, app(\App\Engines\Builder\Services\TemplateService::class)->designSlugOf((int) $id)); } catch (\Throwable $e) {}
     return response($html)->header('Content-Type', 'text/html');

@@ -1417,6 +1417,20 @@ class TemplateService
      * data-field="hero_image" + an inline cover background (the design's overlay gradient, when it names one and has no
      * overlay element of its own, keeps the text readable). Idempotent: a design with a real slot, or no photo yet, is untouched.
      */
+    /** IMGRM-1: what an emptied <img> carries instead of a broken icon. */
+    public const EMPTY_IMAGE_SRC = 'data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%2F%3E';
+
+    /** IMGRM-1: a legacy <img src=""> on an export (removed before this fix) is hidden the same way, on every render. */
+    public function hideEmptyImages(string $html): string
+    {
+        return (string) preg_replace_callback('/<img\b(?![^>]*\bdata-lu-empty=)[^>]*\bsrc=""[^>]*>/i', function ($m) {
+            $tag = str_replace('src=""', 'src="' . self::EMPTY_IMAGE_SRC . '" data-lu-empty="1"', $m[0]);
+            if (preg_match('/\sstyle="([^"]*)"/i', $tag, $sm)) { $tag = str_replace($sm[0], ' style="' . rtrim($sm[1], '; ') . ';display:none/*lu-empty*/"', $tag); }
+            else { $tag = preg_replace('/\s*\/?>$/', ' style="display:none/*lu-empty*/">', $tag, 1); }
+            return $tag;
+        }, $html);
+    }
+
     public function ensureHeroPhotoSlot(int $websiteId, string $html, ?array $tv = null): string
     {
         if (str_contains($html, 'data-field="hero_image"')) return $html;
@@ -1679,6 +1693,7 @@ class TemplateService
         $html = $this->applySectionOps($websiteId, $html);   // remembered section moves (DEC-0051)
         $html = $this->applyElementOps($websiteId, $html);   // remembered element moves (ELEMENT888, DEC-0052)
         $html = $this->ensureHeroPhotoSlot($websiteId, $html);   // HERO-BG-1: a text-only hero carries the placed hero photo as its background
+        $html = $this->hideEmptyImages($html);   // IMGRM-1: no broken-image icons on a served page
         $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
         $html = self::injectMobileSafety($html);
         $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20
@@ -1909,25 +1924,41 @@ class TemplateService
 
         $applyImg = function (\DOMElement $el, string $value) use ($cssUrl, $bgDecl) {
             $done = false;
+            // IMGRM-1 (2026-09-23): an emptied picture is hidden, never a broken icon; the editor shows the slot as a dashed target
+            $empty = trim($value) === '';
+            $imgSrc = $empty ? self::EMPTY_IMAGE_SRC : $value;
+            $mark = function (\DOMElement $n) use ($empty) {
+                $style = (string) $n->getAttribute('style');
+                $style = trim((string) preg_replace('/;?\s*display:none\/\*lu-empty\*\/;?/i', ';', $style), '; ');
+                if ($empty) { $n->setAttribute('data-lu-empty', '1'); $style = ($style !== '' ? $style . ';' : '') . 'display:none/*lu-empty*/'; }
+                else { $n->removeAttribute('data-lu-empty'); }
+                if ($style === '') $n->removeAttribute('style'); else $n->setAttribute('style', $style);
+            };
             if (strtolower($el->nodeName) === 'img') {
-                $el->setAttribute('src', $value);
-                if ($el->hasAttribute('srcset')) $el->setAttribute('srcset', $value);
+                $el->setAttribute('src', $imgSrc);
+                if ($el->hasAttribute('srcset')) { if ($empty) $el->removeAttribute('srcset'); else $el->setAttribute('srcset', $value); }
+                $mark($el);
                 $done = true;
             }
             foreach ($el->getElementsByTagName('img') as $img) {
-                $img->setAttribute('src', $value);
-                if ($img->hasAttribute('srcset')) $img->setAttribute('srcset', $value);
+                $img->setAttribute('src', $imgSrc);
+                if ($img->hasAttribute('srcset')) { if ($empty) $img->removeAttribute('srcset'); else $img->setAttribute('srcset', $value); }
+                $mark($img);
                 $done = true;
             }
             if ($el->hasAttribute('style') && stripos($el->getAttribute('style'), 'background') !== false) {
                 // 2026-09-14: the inline declaration is usually "linear-gradient(wash),url(photo)" — swap the url() inside
                 // the declaration and keep the wash. The old pattern only matched a bare url() and reported success anyway.
                 $styleNow = (string) $el->getAttribute('style');
-                $styleNew = preg_replace_callback('/(background(?:-image)?\s*:\s*)([^;]*)/i', function ($m) use ($cssUrl) {
-                    if (stripos($m[2], 'url(') === false) { return $m[0]; }
-                    return $m[1] . preg_replace('/url\([^)]*\)/i', "url('" . $cssUrl . "')", $m[2]);
+                $styleNew = preg_replace_callback('/(background(?:-image)?\s*:\s*)([^;]*)/i', function ($m) use ($cssUrl, $empty) {   // IMGRM-1: $empty travels into the closure
+                    if (stripos($m[2], 'url(') === false) {
+                        // IMGRM-1: a wrapper emptied earlier reads 'none' - a new photo replaces that token
+                        return (! $empty && preg_match('/(^|[^a-z-])none([^a-z-]|$)/i', $m[2])) ? $m[1] . preg_replace('/(^|[^a-z-])none([^a-z-]|$)/i', "$1url('" . $cssUrl . "')$2", $m[2], 1) : $m[0];
+                    }
+                    return $m[1] . preg_replace('/url\([^)]*\)/i', $empty ? 'none' : "url('" . $cssUrl . "')", $m[2]);   // IMGRM-1: an emptied background keeps its wash, loses the photo
                 }, $styleNow);
                 if (is_string($styleNew) && $styleNew !== $styleNow) { $el->setAttribute('style', $styleNew); $done = true; }
+                if ($done) { if ($empty) $el->setAttribute('data-lu-empty', '1'); else $el->removeAttribute('data-lu-empty'); }   // IMGRM-1: an emptied background wrapper is marked (editor outlines it), its children stay
             }
             // BUILDER888 D4 (2026-08-28) — a background wrapper whose image comes from a CSS
             // class (no inline style) used to fall through to the TEXT branch below, which
@@ -1935,6 +1966,7 @@ class TemplateService
             // form) with the URL string — on the published site, while returning "saved".
             // Any non-<img> element that carries content gets an inline background-image
             // instead (inline wins over the class rule), and its children are preserved.
+            if (! $done && $empty) { $done = true; }   // IMGRM-1: nothing to paint on an emptied wrapper
             if (! $done && ($el->getElementsByTagName('*')->length > 0 || trim((string) $el->textContent) !== '')) {
                 $style = trim((string) $el->getAttribute('style'));
                 if ($style !== '' && ! str_ends_with($style, ';')) $style .= ';';

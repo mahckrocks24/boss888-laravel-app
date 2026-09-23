@@ -116,13 +116,13 @@ use Illuminate\Support\Facades\Route;
         Route::get('/websites/{id}/preview', function (\Illuminate\Http\Request $r, $id) {
             $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'workspace_id']);
             if (! $w || (int) $w->workspace_id !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'not_found'], 404);
-            return app('lu.preview.render')((int) $id);
+            return app('lu.preview.render')((int) $id, '', (string) $r->query('mode', ''));   // VIEW-1
         });
         // LONGPRESS-1: a sub-page of the site in the editor (same renderer, same editing script)
         Route::get('/websites/{id}/preview/{page}', function (\Illuminate\Http\Request $r, $id, $page) {
             $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->first(['id', 'workspace_id']);
             if (! $w || (int) $w->workspace_id !== (int) $r->attributes->get('workspace_id')) return response()->json(['error' => 'not_found'], 404);
-            return app('lu.preview.render')((int) $id, (string) $page);
+            return app('lu.preview.render')((int) $id, (string) $page, (string) $r->query('mode', ''));   // VIEW-1
         })->where('page', '[A-Za-z0-9_\-/]+');
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
         // CLARIFY-X-1 (Owner 2026-09-23): the x on Arthur's question — forget the pending question so the next message starts clean.

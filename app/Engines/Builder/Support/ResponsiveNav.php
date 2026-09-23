@@ -43,15 +43,40 @@ final class ResponsiveNav
      */
     public static function hasOwnMobileNav(string $html): bool
     {
-        foreach (['nav-burger', 'mob-nav', 'hamburger', 'menu-toggle', 'nav-toggle', 'mobile-menu'] as $needle) {
-            if (stripos($html, $needle) !== false) {
-                return true;
-            }
+        $needle = false;
+        foreach (['nav-burger', 'mob-nav', 'hamburger', 'menu-toggle', 'nav-toggle', 'mobile-menu'] as $n) {
+            if (stripos($html, $n) !== false) { $needle = true; break; }
         }
-
-        return false;
+        if (! $needle) {
+            return false;
+        }
+        // DEAD-BURGER (2026-09-05): 14 of 31 templates ship `<button class="nav-burger" onclick="toggleMob()">`
+        // whose toggleMob() ONLY animates the three spans into an X — it opens nothing. The needle test above
+        // treated that as "has its own mobile nav" and we skipped injection, so every mobile visitor got a
+        // hamburger that does nothing and an empty menu. A mobile nav is only "own" when there is a panel
+        // (a .mob-nav / .mobile-menu element) or the toggle function actually opens something.
+        if (preg_match('/(?:class|id)="[^"]*\b(?:mob-nav|mobile-menu|mobile-nav|nav-panel)\b/i', $html)) {
+            return true;
+        }
+        // body = up to the first closing brace (a toggle that opens something has no nested braces either)
+        if (preg_match('/function\s+(?:toggleMob|toggleMenu|toggleNav|toggleBurger)\s*\([^)]*\)\s*\{([^}]*)\}/is', $html, $m)) {
+            return (bool) preg_match('/classList|\.open\b|style\.display|\.hidden\b|aria-expanded|\.active\b/i', $m[1]);
+        }
+        // The needle sits only in CSS or text (news_channel blog pages keep `.nav-burger{}` rules but drop the
+        // button): there is no control at all, so there is no menu on mobile. Inject ours.
+        if (! preg_match('/<(?:button|a|div|span|label)[^>]*\b(?:nav-burger|hamburger|menu-toggle|nav-toggle|burger)\b[^>]*>/i', $html, $b)) {
+            return false;
+        }
+        if (preg_match('/onclick="\s*(\w+)\s*\(/i', $b[0], $h)) {
+            // The burger calls a handler that is not defined anywhere in the page (blog sub-pages copy the nav
+            // markup but not the template script): the click throws and nothing opens. That is a dead burger too.
+            $fn = preg_quote($h[1], '/');
+            return (bool) preg_match('/function\s+' . $fn . '\s*\(|\b' . $fn . '\s*=\s*(?:function|\()/i', $html);
+        }
+        // No inline handler: a script must select the burger and bind it. If nothing in the page does, the
+        // control is inert (blog sub-pages again).
+        return (bool) preg_match('/(?:querySelector(?:All)?|getElementById)\(\s*[\'"](?:#?burger|\.?nav-burger|\.?hamburger|\.?menu-toggle|\.?nav-toggle)\b/i', $html);
     }
-
     public static function css(bool $withNav = true): string
     {
         $bp = self::BREAKPOINT;
@@ -84,9 +109,16 @@ final class ResponsiveNav
 
             . '@media(max-width:' . $bp . 'px){'
             .   '.lu-nav-toggle{display:flex}'
+            // A template's decorative burger (animates only, opens nothing) must not sit next to the working one.
+            .   '.nav-burger,#burger{display:none!important}'
             // The bar itself stays a single row: logo, then the button. It must not wrap any more.
             .   'nav .inner,.nav .inner{position:relative;flex-wrap:nowrap!important;align-items:center;gap:10px}'
             .   'nav .logo,.nav .logo{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+            // LONG-NAME GUARD (2026-09-11): templates without .inner/.logo (the dental-clone family) appended the
+            // toggle to <nav> itself with an unshrinkable logo, pushing the button past the right edge.
+            .   ':is(nav,.nav,header):has(> .lu-nav-toggle){display:flex!important;flex-wrap:nowrap!important;align-items:center;gap:10px;max-width:100%;box-sizing:border-box}'
+            .   ':is(nav,.nav,header):has(> .lu-nav-toggle) > :first-child,nav .nav-logo,.nav .nav-logo,nav .brand,.nav .brand,nav .nav-brand{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'
+            .   '.lu-nav-toggle{flex:0 0 auto!important;margin-left:auto}'
             // The links become a panel under the bar rather than a second and third row inside it.
             .   '.nav-links{display:none!important;position:absolute;top:100%;left:0;right:0;'
             .     'flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;'
@@ -94,6 +126,8 @@ final class ResponsiveNav
             .     'border-top:1px solid rgba(128,128,128,.22);box-shadow:0 14px 34px rgba(0,0,0,.18);'
             .     'padding:8px;gap:2px;margin:0;max-height:72vh;overflow-y:auto;z-index:9999}'
             .   '.lu-nav-open .nav-links{display:flex!important}'
+            // HAMB-1 (2026-09-23): a template's own phone rule (.nav-links a:not(.nav-cta){display:none}) hid every item inside the open panel
+            .   '.lu-nav-open .nav-links>a,.lu-nav-open .nav-links>li,.lu-nav-open .nav-links>li>a,.lu-nav-open .nav-links>.nav-cta{display:flex!important}'
             // Comfortable targets, and a link that is too long wraps instead of forcing the panel wider.
             .   '.nav-links>a,.nav-links>.nav-cta{display:flex;align-items:center;min-height:44px;'
             .     'padding:11px 14px;margin:0;white-space:normal;border-radius:8px;width:auto;text-align:left}'
@@ -101,6 +135,8 @@ final class ResponsiveNav
             // The call-to-action keeps its emphasis but sits in the flow like everything else.
             .   '.nav-links>.nav-cta{margin-top:6px;justify-content:center;text-align:center}'
             . '}'
+            // BTN-1 (2026-09-23): hero call-to-actions that wrap on a phone stack at full width instead of two ragged widths
+            . '@media(max-width:640px){.hero-ctas,.hero-buttons,.hero-actions{flex-direction:column!important;align-items:stretch!important;gap:12px}.hero-ctas>a,.hero-ctas>button,.hero-buttons>a,.hero-buttons>button,.hero-actions>a,.hero-actions>button{width:100%!important;box-sizing:border-box;display:flex;justify-content:center;text-align:center}}'
 
             ;
     }
@@ -190,7 +226,7 @@ final class ResponsiveNav
     }
 
     /** The build this markup carries, so an older one can be recognised and replaced rather than kept. */
-    public const VERSION = 'mobile9d-hamburger';
+    public const VERSION = 'mobile9k-openlinks';   // HAMB-1 + BTN-1: served and previewed exports pick the new block up
 
     /**
      * Append the rules and the toggle before </head>.

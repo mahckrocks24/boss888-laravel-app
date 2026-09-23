@@ -993,6 +993,7 @@ function _wsShowTemplateEditor(site) {
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
       '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Double-click text to edit \u00B7 click an image to replace it \u00B7 your own edits are free \u00B7 changes by Arthur cost 1 credit</span>' +
+      '<button type="button" id="t3-view-btn" onclick="_t3OpenSitePreview()" title="See the website as visitors will \u2014 full screen, no editing tools" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">\uD83D\uDC41 Preview</button>' +   /* VIEW-1 */
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
       '<button onclick="wsSaveAllEdits(' + wsId + ')" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Save</button>' +
@@ -1011,7 +1012,7 @@ function _wsShowTemplateEditor(site) {
       // Arthur sidebar
       '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div class="pe-arthur-name" style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div><button type="button" id="t3-arthur-min" onclick="_t3ArthurMin()" aria-label="Minimise Arthur" title="Minimise Arthur \u2014 more room for the website" style="margin-left:auto;background:none;border:1px solid var(--bd);color:var(--t2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1;padding:0">\u2013</button></div>' +   /* MIN-1 */
           _bldHint('ax-editor-intro', 'Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. Colours switches the whole palette instantly; Undo puts anything back.', 'margin-top:2px') +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
@@ -2509,7 +2510,7 @@ function _wsShowPageEditor(site, pageId) {
       '<div class="pe-main" style="flex:1;display:flex;overflow:hidden">' +
         '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
           '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
-            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">' + window.icon('ai', 18) + '</div><div style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div></div>' +
+            '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">' + window.icon('ai', 18) + '</div><div class="pe-arthur-name" style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div><button type="button" id="t3-arthur-min" onclick="_t3ArthurMin()" aria-label="Minimise Arthur" title="Minimise Arthur \u2014 more room for the website" style="margin-left:auto;background:none;border:1px solid var(--bd);color:var(--t2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1;padding:0">\u2013</button></div>' +   /* MIN-1 */
             '<div style="color:var(--t3);font-size:11px">Describe the change you want on this page</div>' +
           '</div>' +
           '<div id="pe-legacy-banner" role="alert" style="display:none;margin:10px;padding:10px 12px;border-radius:8px;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);color:#FBBF24;font-size:12px;line-height:1.5">' +
@@ -4692,3 +4693,68 @@ async function _wsPagesCatalogueBtn(siteId) {
     host.insertBefore(b, host.firstChild);
   } catch (_e) {}
 }
+
+/* VIEW-1 (Owner 2026-09-23): "How come we do not have a preview in the editor to see the actual website in full and navigate
+   without editing tools and arthur?" A full-screen look at the site rendered without the editing script; links navigate
+   between the site's pages inside the preview, anchors scroll, external links open a new tab. Esc or Back returns to the editor. */
+window._t3OpenSitePreview = function () {
+  var siteId = window._t3PreviewSiteId || null;
+  if (!siteId) { var f0 = document.getElementById('t3-preview'); siteId = f0 ? f0.getAttribute('data-site') : null; }
+  if (!siteId) { if (typeof showToast === 'function') showToast('Open a website first.', 'info'); return; }
+  var old = document.getElementById('t3-view-ov'); if (old) old.remove();
+  var name = ''; try { name = (document.querySelector('#template-editor-view .pe-bar-title, .pe-bar-title') || {}).textContent || ''; } catch (_e) {}
+  var ov = document.createElement('div'); ov.id = 't3-view-ov';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:#0B0D13;display:flex;flex-direction:column';
+  ov.innerHTML = '<div style="height:48px;flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--s1);border-bottom:1px solid var(--bd);color:var(--t1);font-family:var(--fb)">'
+    + '<button type="button" id="t3-view-back" class="lu-btn lu-btn--sm" style="white-space:nowrap">← Back to editor</button>'
+    + '<span style="font-weight:600;font-size:13px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Preview · ' + bld_escH(name) + '</span>'
+    + '<span id="t3-view-page" style="font-size:12px;color:var(--t3);white-space:nowrap"></span>'
+    + '<div role="group" aria-label="Preview device" style="display:flex;border:1px solid var(--bd);border-radius:6px;overflow:hidden;flex:0 0 auto"><button type="button" data-view-dev="desktop" aria-pressed="true" title="Desktop" style="padding:5px 10px;border:none;background:var(--pu);color:#fff;cursor:pointer">🖥</button><button type="button" data-view-dev="mobile" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer">📱</button></div>'
+    + '</div>'
+    + '<div id="t3-view-stage" style="flex:1 1 auto;min-height:0;display:block;position:relative;overflow:hidden;background:#0B0D13"><iframe id="t3-view-frame" title="Website preview" style="display:block;width:100%;height:100%;border:0;background:#fff;margin:0 auto"></iframe></div>';
+  document.body.appendChild(ov);
+  var frame = ov.querySelector('#t3-view-frame');
+  function close() { try { ov.remove(); } catch (_e) {} document.removeEventListener('keydown', onKey, true); window.removeEventListener('message', onMsg); try { window.removeEventListener('resize', onResize); } catch (_r) {} }
+  function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
+  function onMsg(e) { if (!e.data || e.data.type !== 'view-navigate') return; if (frame.contentWindow && e.source !== frame.contentWindow) return; load(e.data.page || '', e.data.hash || ''); }
+  async function load(page, hash) {
+    page = String(page || '').replace(/^\/+|\/+$/g, '');
+    var lbl = ov.querySelector('#t3-view-page'); if (lbl) lbl.textContent = page ? '/' + page + '/' : 'Home';
+    try {
+      var r = await fetch('/api/builder/websites/' + siteId + '/preview' + (page ? '/' + page : '') + '?mode=view', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'text/html' }, cache: 'no-store' });
+      if (!r.ok) { frame.srcdoc = '<div style="font:14px/1.5 system-ui,sans-serif;padding:28px;color:#334">' + (r.status === 404 ? 'That page is not part of this website.' : 'The preview could not be loaded.') + '</div>'; return; }
+      var html = await r.text();
+      var base = location.origin + '/api/builder/websites/' + siteId + '/preview/' + (page ? page + '/' : '');
+      html = /<base\s/i.test(html) ? html.replace(/<base\s[^>]*>/i, '<base href="' + base + '">') : html.replace(/<head([^>]*)>/i, '<head$1><base href="' + base + '">');
+      if (hash) html = html.replace('</body>', '<script>try{var _h=' + JSON.stringify(String(hash).slice(1)) + ';var _el=_h?document.getElementById(decodeURIComponent(_h)):null;if(_el)_el.scrollIntoView();}catch(e){}</script></body>');
+      frame.srcdoc = html;
+    } catch (_e) { frame.srcdoc = '<div style="font:14px/1.5 system-ui,sans-serif;padding:28px;color:#334">The preview could not be loaded. Check your connection and try again.</div>'; }
+  }
+  ov.querySelector('#t3-view-back').onclick = close;
+  // VIEW-1b: lay the page out at the device's real width and scale it to fit the stage - desktop is desktop on a phone too
+  var viewKey = window._t3DeviceKey || 'desktop';
+  function fit(k) {
+    var widths = { desktop: 1280, mobile: 390 }, W = widths[k] || 1280, stage = ov.querySelector('#t3-view-stage'), sw = stage.clientWidth, sh = stage.clientHeight;
+    viewKey = k;
+    if (sw >= W) { frame.style.width = W + 'px'; frame.style.height = '100%'; frame.style.transform = ''; frame.style.transformOrigin = ''; frame.style.margin = '0 auto'; return; }
+    var scale = Math.max(0.2, sw / W);
+    frame.style.width = W + 'px'; frame.style.transformOrigin = 'top left'; frame.style.transform = 'scale(' + scale.toFixed(4) + ')'; frame.style.height = Math.round(sh / scale) + 'px'; frame.style.margin = '0';
+  }
+  function press(k) { ov.querySelectorAll('[data-view-dev]').forEach(function (x) { var on = x.getAttribute('data-view-dev') === k; x.setAttribute('aria-pressed', on ? 'true' : 'false'); x.style.background = on ? 'var(--pu)' : 'transparent'; x.style.color = on ? '#fff' : 'var(--t2)'; }); }
+  ov.querySelectorAll('[data-view-dev]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-view-dev'); press(k); fit(k); }; });
+  var onResize = function () { clearTimeout(ov._fitT); ov._fitT = setTimeout(function () { if (document.body.contains(ov)) fit(viewKey); }, 120); };
+  window.addEventListener('resize', onResize);
+  press(viewKey); setTimeout(function () { fit(viewKey); }, 30);
+  document.addEventListener('keydown', onKey, true); window.addEventListener('message', onMsg);
+  load(window._t3PreviewPage || '', '');
+};
+
+/* MIN-1 (Owner 2026-09-23): "add a minimize button to hide conversation temporarily to show more space in website view".
+   The Arthur panel collapses to a slim strip (a column on desktop, a bar on a phone); the same button restores it. */
+window._t3ArthurMin = function () {
+  var side = document.querySelector('#template-editor-view .pe-side, .pe-side'); if (!side) return;
+  var min = !side.classList.contains('pe-side--min');
+  side.classList.toggle('pe-side--min', min);
+  var b = document.getElementById('t3-arthur-min'); if (b) { b.textContent = min ? '▸' : '–'; b.setAttribute('aria-label', min ? 'Show Arthur' : 'Minimise Arthur'); b.title = min ? 'Show Arthur' : 'Minimise Arthur — more room for the website'; }
+  try { if (window._t3DeviceKey) _t3FitPreview(window._t3DeviceKey); } catch (_e) {}   // the stage just changed width
+};

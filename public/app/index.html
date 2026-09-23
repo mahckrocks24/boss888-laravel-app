@@ -1558,17 +1558,25 @@ img:not([loading]) {
    grows and wraps, the name truncates instead of wrapping, and the prose hints step aside; they are already
    said in the Arthur panel underneath. */
 @media (max-width: 820px) {
+  /* BAR-1 (Owner 2026-09-23): ONE row that scrolls sideways - no wrapping onto a second or third line */
   .pe-bar {
-    height: auto !important;
+    height: 52px !important;
     min-height: 52px;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
     padding: 8px 10px !important;
     gap: 8px !important;
-    align-content: center;
+    align-items: center;
   }
+  .pe-bar::-webkit-scrollbar { display: none; }
+  .pe-bar > * { flex: 0 0 auto !important; }
   /* The name takes what is left of the first row and truncates; it must never push a button off the bar. */
   .pe-bar-title {
-    flex: 1 1 90px;
+    flex: 0 0 auto !important;
+    max-width: 44vw;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -2614,6 +2622,15 @@ html.lu-mode-basic-preload [data-adv="1"]{display:none !important}
 /* TIP-2 (Owner 2026-09-23): once the tips are dismissed the Arthur feed is empty at ANY width - it collapses and the composer
    follows the header, instead of a tall blank column (white in the light theme) between the two. TIP-1 had this only for phones. */
 #t3-arthur-feed:empty{display:none!important}
+/* MIN-1 (Owner 2026-09-23): the Arthur panel minimised - a slim column on desktop, a slim bar on a phone; only the header row stays */
+.pe-side.pe-side--min{width:52px!important;min-width:52px!important;flex:0 0 52px!important}
+.pe-side.pe-side--min > :not(:first-child){display:none!important}
+.pe-side.pe-side--min > :first-child{padding:10px 8px!important;border-bottom:none!important}
+.pe-side.pe-side--min > :first-child > :not(:first-child){display:none!important}
+.pe-side.pe-side--min > :first-child > :first-child{flex-direction:column;gap:6px;margin:0!important}
+.pe-side.pe-side--min .pe-arthur-name{display:none!important}
+.pe-side.pe-side--min #t3-arthur-min{margin-left:0!important}
+@media (max-width: 820px){.pe-side.pe-side--min{width:100%!important;min-width:0!important;flex:0 0 auto!important;max-height:52px!important}.pe-side.pe-side--min > :first-child > :first-child{flex-direction:row}.pe-side.pe-side--min .pe-arthur-name{display:block!important}}
 </style>
 <style id="lu-kb-css">
 /* KB-2 (Owner 2026-09-22): keyboard-aware at ANY width (Samsung Fold inner screen ~900px is treated as a tablet by every
@@ -4827,7 +4844,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=3d76d05d66"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=b67b4bfd41"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
