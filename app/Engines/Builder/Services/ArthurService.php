@@ -1970,10 +1970,13 @@ PROMPT;
         $prompt = trim((string) preg_replace('/\s+(?:for|on|in)\s+the\s+(?:hero|banner|about|gallery)(?:\s+section)?\.?$/i', '', $prompt));
         if ($prompt === '') { $prompt = "{$site->name} — " . str_replace('_', ' ', (string) ($tv['industry'] ?? 'business')) . ' hero image'; }
         try {
+            // SITEBRAND-1 (2026-09-23): the picture belongs to THIS website - its name and palette override the workspace brand
+            $__siteBrand = ['brand_name' => (string) $site->name, 'website_id' => $websiteId];
+            foreach (['primary_color', 'secondary_color', 'accent_color'] as $__ck) { if (preg_match('/^#[0-9a-f]{3,8}$/i', (string) ($tv[$__ck] ?? ''))) $__siteBrand[$__ck] = (string) $tv[$__ck]; }
             $res = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
                 'workspace_id' => $wsId, 'user_prompt' => $prompt, 'source' => 'builder',
                 'asset_type' => 'website_hero', 'platform' => 'web', 'aspect_ratio' => $aspect,
-            ]);
+            ] + $__siteBrand);
         } catch (\Throwable $e) {
             $res = ['success' => false, 'error' => 'exception', 'message' => $e->getMessage()];
         }
