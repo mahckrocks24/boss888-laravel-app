@@ -2642,6 +2642,7 @@ html.lu-kb-open .pe-composer,html.lu-kb-open #sarah-composer,html.lu-kb-open .ch
 </style>
 <style id="lu-mtg-mobile-css">
 /* MEETING-MOBILE-1 (2026-09-23): the Strategy Room on phones - one column, team strip on top, plan as a bottom sheet */
+body:has(#view-meeting.active) .ai-fab{display:none!important}   /* SARAH-FLOATER-1 (Owner 2026-09-23): Sarah is already in the room's chat - no floating chat over the Strategy Room */
 .lu-mtg-phone-only{display:none}
 @media (max-width:767px){
   .lu-mtg-phone-only{display:inline-flex}
