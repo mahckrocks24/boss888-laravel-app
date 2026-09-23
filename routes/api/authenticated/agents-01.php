@@ -679,12 +679,22 @@ $withCorr = function (array $meta) use ($corr) {
             ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.agent_slug')) = ?", [$slug]);
         // RFC-0011 U4a: a single-business turn sees that business's conversation (and rows from before businesses existed)
         if (!empty($__biz['multi']) && !empty($__biz['business_id']) && in_array($__biz['mode'] ?? '', ['named', 'sticky', 'default'], true)) { \App\Core\Business\BusinessHistory::apply($__histQ, (int) $__biz['business_id']); }
-        $history = $__histQ
-            ->orderByDesc('created_at')->limit(20)->get()->reverse()
-            ->map(function($row) {
-                $meta = json_decode($row->metadata_json, true);
-                return ($meta['from'] ?? 'User') . ': ' . ($meta['content'] ?? '');
-            })->implode("\n");
+        $__histRows = $__histQ->orderByDesc('created_at')->limit(20)->get()->map(function ($row) {
+            $meta = json_decode($row->metadata_json, true);
+            return ['t' => (string) $row->created_at, 'line' => ($meta['from'] ?? 'User') . ': ' . ($meta['content'] ?? '')];
+        })->all();
+        // SARAH-YES-1 (Owner 2026-09-23): Sarah's completion reports ("... Want me to draft one?") live in agent_messages, not
+        // audit_logs - the owner read them, so a "Yes" lands on them. They join the history in time order.
+        if (in_array($slug, ['sarah', 'dmm'], true)) {
+            try {
+                $__crRows = \Illuminate\Support\Facades\DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')
+                    ->whereRaw("JSON_EXTRACT(metadata_json, '$.completion_report') = true")->where('created_at', '>=', now()->subDays(3))
+                    ->orderByDesc('id')->limit(6)->get(['content', 'created_at']);
+                foreach ($__crRows as $__cr) { $__histRows[] = ['t' => (string) $__cr->created_at, 'line' => 'Sarah: ' . mb_substr(preg_replace('/\s+/', ' ', (string) $__cr->content), 0, 600)]; }
+            } catch (\Throwable $__crE) {}
+        }
+        usort($__histRows, fn ($a, $b) => strcmp($a['t'], $b['t']));
+        $history = implode("\n", array_map(fn ($r) => $r['line'], array_slice($__histRows, -20)));
 
         $skills = is_array($agent->skills_json) ? $agent->skills_json : json_decode($agent->skills_json ?? '[]', true);
         $isSarah = in_array($slug, ['sarah', 'dmm']);
@@ -2192,14 +2202,16 @@ $withCorr = function (array $meta) use ($corr) {
                 $__socialTurn = (bool) preg_match('/\b(social|instagram|facebook|linkedin|tiktok|twitter|hashtags?|marcus)\b/i', (string) $__ownerMessage); // SF-02 (Laravel half, 2026-09-01): the OWNER'S line, never the folded history — the history mentioned Marcus, so every turn took the 20k-token reasoning path
                 // ── DEC-0029 §5 — MINIMUM EXECUTION PATH (2026-09-02) ───────────────────────────────────────
                 // A2 light lane: a greeting/acknowledgement gets a ~1k-token prompt and one small call.
-                if ($assist === null && \App\Core\Sarah888\MinimumPath::isLightTurn((string) $__ownerMessage, !empty($__att['meta']) || !empty($image), $quickAction)) {
+                if ($assist === null && empty($isConfirmation) && \App\Core\Sarah888\MinimumPath::isLightTurn((string) $__ownerMessage, !empty($__att['meta']) || !empty($image), $quickAction)) {   // SARAH-YES-1: a confirmation is never a light turn
                     try {
                         $__lt = $runtime->chatJson(
                             \App\Core\Sarah888\MinimumPath::lightSystemPrompt((string) $identityBlock, (string) $brandFactsBlock, (string) ($__voiceRule ?? ''), (string) $history),
                             'User: ' . $__ownerMessage . "\nReply with JSON: {\"reply\":\"...\"}",
-                            ['workspace_id' => $wsId, 'agent_slug' => $slug, 'business_id' => $__biz['business_id'] ?? null, 'business_mode' => $__biz['mode'] ?? 'single'], 300);
+                            ['workspace_id' => $wsId, 'agent_slug' => $slug, 'business_id' => $__biz['business_id'] ?? null, 'business_mode' => $__biz['mode'] ?? 'single'], 900);   // SARAH-YES-1: was 300 - a reasoning model spent it thinking and the reply was cut mid-word
                         $__ltReply = trim((string) (($__lt['parsed']['reply'] ?? null) ?: ($__lt['text'] ?? '')));
-                        if (($__lt['success'] ?? false) && $__ltReply !== '' && $__ltReply[0] !== '{') {
+                        $__ltClean = (bool) preg_match('/[.!?\x{2026})\"\']\s*$/u', $__ltReply);   // SARAH-YES-1: a reply that stops mid-sentence is a cut, not an answer
+                        if (($__lt['success'] ?? false) && $__ltReply !== '' && $__ltReply[0] !== '{' && !$__ltClean) { \Illuminate\Support\Facades\Log::warning('[Sarah888] light lane reply looked cut - falling through', ['ws' => $wsId, 'tail' => mb_substr($__ltReply, -40)]); }
+                        if (($__lt['success'] ?? false) && $__ltReply !== '' && $__ltReply[0] !== '{' && $__ltClean) {
                             $assist = ['response' => $__ltReply, 'create_tasks' => [], 'tool_calls' => [], 'requires_sarah' => false, 'reasoning_path' => true, 'light_lane' => true];
                             \Illuminate\Support\Facades\Log::info('[Sarah888] light lane answered (DEC-0029)', ['ws' => $wsId, 'chars' => mb_strlen($__ltReply)]);
                         }
