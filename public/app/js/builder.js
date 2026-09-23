@@ -1343,8 +1343,8 @@ function _t3ShowImagePanel(info) {
   var isLogo = info.field === 'logo_url';
   var panel = document.createElement('div');
   panel.id = 't3-img-panel';
-  var panelW = isLogo ? 320 : 420;
-  panel.style.cssText = 'position:fixed;z-index:99999;background:var(--s1,#1a1a24);border:1px solid var(--s3,rgba(255,255,255,0.12));border-radius:12px;padding:' + (isLogo ? '14px' : '10px') + ';box-shadow:0 12px 40px rgba(0,0,0,0.5);display:flex;flex-direction:' + (isLogo ? 'column' : 'row') + ';gap:' + (isLogo ? '10px' : '8px') + ';align-items:' + (isLogo ? 'stretch' : 'center') + ';font-family:var(--fb,system-ui);color:var(--t1,#fff);min-width:' + panelW + 'px';
+  var panelW = Math.min(isLogo ? 320 : 420, window.innerWidth - 16);   // IMGPANEL-1: never wider than the phone
+  panel.style.cssText = 'position:fixed;z-index:99999;background:var(--s1,#1a1a24);border:1px solid var(--s3,rgba(255,255,255,0.12));border-radius:12px;padding:' + (isLogo ? '14px' : '10px') + ';box-shadow:0 12px 40px rgba(0,0,0,0.5);display:flex;flex-direction:' + (isLogo ? 'column' : 'row') + ';gap:' + (isLogo ? '10px' : '8px') + ';align-items:' + (isLogo ? 'stretch' : 'center') + ';font-family:var(--fb,system-ui);color:var(--t1,#fff);min-width:' + panelW + 'px;max-width:calc(100vw - 16px);box-sizing:border-box;flex-wrap:wrap';   // IMGPANEL-1: buttons wrap on a phone
   var _sc = window._t3PreviewScale || 1;   // DEVICE FIT: rects inside a scaled preview are in its own pixels
   var panelLeft = Math.max(8, Math.min(window.innerWidth - panelW - 8, ir.left + r.left * _sc));
   var panelTop = Math.max(8, Math.min(window.innerHeight - 80, ir.top + r.bottom * _sc + 8));
