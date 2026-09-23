@@ -28,6 +28,10 @@ final class ChatFormat
             $k = "\x00F" . count($fences) . "\x00"; $fences[] = $m[0]; return $k;
         }, $t) ?? $t;
 
+        // 0. SARAH-LEAK-1 (2026-09-23): internal action names never reach the owner - snake_case tokens of plain words
+        //    become words (fix_orphans -> Fix Orphans); nothing inside URLs, paths, addresses, code or key=value survives the lookbehind.
+        $t = preg_replace_callback('/`[^`\n]*`/', function ($m) use (&$fences) { $k = "\x00F" . count($fences) . "\x00"; $fences[] = $m[0]; return $k; }, $t) ?? $t;   // inline code is code too
+        $t = preg_replace_callback('/(?<![\/=.@\w-])([a-z]{3,}(?:_[a-z0-9]{2,}){1,3})(?![\/.@=\w-])/', function ($m) { return ucwords(str_replace('_', ' ', $m[1])); }, $t) ?? $t;
         // 1. Inline numbered items → their own line. "… 1. Foo … 2) Bar" (1-2 digits, . or ), then a capital or
         //    quote/paren). Whitespace before the number guards against decimals ($1.50, 3.9k are never matched).
         $t = preg_replace('/(?<!\d)[ \t]+(\d{1,2})([.)])[ \t]+(?=[A-Z"\'(\[])/u', "\n$1$2 ", $t) ?? $t;

@@ -743,7 +743,7 @@ $withCorr = function (array $meta) use ($corr) {
         $confirmPhrases = ['yes','proceed','go ahead','do it','confirm','ok','okay','sure','go','yes please','yep','yeah','approved','approve'];
         $normConfirm = trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]+/', '', strtolower(trim($content)))));
         $isConfirmation = in_array($normConfirm, $confirmPhrases, true)
-            || (mb_strlen($normConfirm) <= 22 && (bool) preg_match('/^(yes|yeah|yep|ok|okay|sure|confirm|approved?|proceed|go ahead|go for it|do it|please do)\b/', $normConfirm));
+            || (mb_strlen($normConfirm) <= 22 && (bool) preg_match('/^(yes|yeah|yep|ok|okay|sure|confirm|approved?|proceed|go ahead|go for it|go on|go\b|do it|please do|start( it)?|launch it|make it so|green light|ship it)\b/', $normConfirm));   // SARAH-LEAK-1: the Owner's short forms ("go") count
 
         // If confirming, tell Sarah to execute the pending task from conversation history
         if ($isConfirmation && $isSarah) {
@@ -1357,7 +1357,8 @@ $withCorr = function (array $meta) use ($corr) {
                 // queued. A turn that commissions or authorises work is never analytical.
                 $__turnShape = $__spendTurn ?? app(\App\Core\Sarah888\SpendPolicy::class)->assessTurn((string) $__ownerMessage);
                 $__isWorkTurn = !empty($__turnShape['authorized'])
-                    || in_array($__turnShape['classification'] ?? '', ['directive', 'directive-question', 'authorisation'], true);
+                    || in_array($__turnShape['classification'] ?? '', ['directive', 'directive-question', 'authorisation'], true)
+                    || !empty($isConfirmation);   // SARAH-LEAK-1: a confirmation of a pending offer is work, never analysis
                 if ($__isWorkTurn) {
                     \Illuminate\Support\Facades\Log::info('[Sarah888] work/authorisation turn — analytical shape skipped (RISK-0123)', [
                         'ws' => $wsId, 'classification' => $__turnShape['classification'] ?? null,
