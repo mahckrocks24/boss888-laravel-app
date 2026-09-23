@@ -185,6 +185,7 @@
   var STYLES = ''
     + '#view-workspace{position:relative;overflow:hidden;background:#0D0D0F;height:100%;font-family:var(--fb)}'
     + '.wsv2-viewport{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior:contain;background:#0D0D0F}'   /* WS-CANVAS-4: every touch gesture is ours */
+    + '#wsv2-viewport,#wsv2-viewport *{touch-action:none!important}'   /* WS-CANVAS-6 (forensic 2026-09-23): lu-mobile.css sets #wsv2-viewport{touch-action:pan-x pan-y} on phones by ID - the browser was panning and pinch-zooming underneath our handlers; ID + !important wins on every screen */
     + '.wsv2-canvas{position:relative;'
     +   'background:#0D0D0F;'
     +   'background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);'
