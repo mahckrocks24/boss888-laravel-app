@@ -4832,6 +4832,15 @@ function _t3ChatbotLookDialog() {
   ov.querySelector('[data-role=ok]').onclick = function () { save(false); };
   ov.querySelector('[data-role=reset]').onclick = function () { save(true); };
   mark();
+  // CHATBOT-LOOK-2: show what is saved, not the defaults
+  (async function () { try {
+    var r0 = await fetch('/api/builder/websites/' + siteId + '/chatbot-look', { headers: Object.assign({ 'Accept': 'application/json' }, _t3CatAuth()), cache: 'no-store' });
+    var j0 = null; try { j0 = await r0.json(); } catch (_j0) {}
+    var look = (j0 && j0.success && j0.look) ? j0.look : {}; if (!document.body.contains(ov)) return;
+    if (look.color && /^#[0-9a-f]{6}$/i.test(look.color)) { chosenColor = look.color; var hx = ov.querySelector('#t3-cbl-hex'); if (hx) hx.value = look.color; }
+    if (look.icon) { icons.forEach(function (i) { if (i.uri && i.uri === look.icon) chosenIcon = i.k; }); }
+    mark();
+  } catch (_l) {} })();
 }
 
 /* TOUR-1 (RFC-0013, Owner "editor tour go" 2026-09-23): the editor introduces itself once per user - spotlight + coach marks

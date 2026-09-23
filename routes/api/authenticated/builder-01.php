@@ -126,6 +126,14 @@ use Illuminate\Support\Facades\Route;
         })->where('page', '[A-Za-z0-9_\-/]+');
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
         // CHATBOT-LOOK-1 (Owner 2026-09-23): the chat button's icon and colour for THIS website (long-press in the editor).
+        // CHATBOT-LOOK-2 (Owner 2026-09-23): the dialog reads the saved look back before it shows
+        Route::get('/websites/{id}/chatbot-look', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $ws = (int) $r->attributes->get('workspace_id');
+            $row = \Illuminate\Support\Facades\DB::table('chatbot_settings')->where('workspace_id', $ws)->where('website_id', (int) $id)->first();
+            $look = []; if ($row && ! empty($row->look_json)) { $d = json_decode((string) $row->look_json, true); if (is_array($d)) $look = array_filter(['icon' => (string) ($d['icon'] ?? ''), 'color' => (string) ($d['color'] ?? '')], fn ($v) => $v !== ''); }
+            return response()->json(['success' => true, 'look' => (object) $look]);
+        });
         Route::put('/websites/{id}/chatbot-look', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
             $ws = (int) $r->attributes->get('workspace_id');

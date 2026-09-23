@@ -10,6 +10,7 @@
   var leaving = false, asking = false;
   function here() { return location.pathname + location.search + location.hash; }
   function push(st) { try { history.pushState(st, '', here()); } catch (e) {} }
+  function withEdit(id) { try { var u = new URL(location.href); if (id) u.searchParams.set('edit', String(id)); else u.searchParams.delete('edit'); return u.pathname + u.search + u.hash; } catch (e) { return here(); } }
   function editorOpen() { return !!document.getElementById('template-editor-view'); }
 
   function arm() {
@@ -50,11 +51,22 @@
   function wrapEditor() {
     var orig = window._wsShowTemplateEditor;
     if (typeof orig !== 'function' || orig.__luBack) return;
-    var w = function (site) { var r = orig.apply(this, arguments); try { if (!(history.state && history.state.lu === 'editor')) push(EDITOR); } catch (e) {} return r; };
+    var w = function (site) { var r = orig.apply(this, arguments); try { var id = site && (site.id || site); if (!(history.state && history.state.lu === 'editor')) history.pushState(EDITOR, '', withEdit(id)); else history.replaceState(EDITOR, '', withEdit(id)); } catch (e) {} return r; };   // EDITOR-RESUME-1: the editor has an address
     w.__luBack = true; window._wsShowTemplateEditor = w;
   }
 
   window.addEventListener('popstate', onPop);
+  // EDITOR-RESUME-1: strip ?edit when the editor closes; reopen it after a reload that still carries it
+  try { new MutationObserver(function () { try { if (!editorOpen() && /[?&]edit=/.test(location.search)) history.replaceState(history.state, '', withEdit(null)); } catch (e) {} }).observe(document.body || document.documentElement, { childList: true }); } catch (e) {}
+  (function resume() {
+    var id = null; try { id = new URLSearchParams(location.search).get('edit'); } catch (e) {}
+    if (!id || !/^\d+$/.test(id)) return;
+    var tries = 0; (function tick() {
+      if (editorOpen()) return;
+      if (typeof window.wsOpenSite === 'function' && !document.documentElement.classList.contains('lu-booting') && document.body) { try { window.wsOpenSite(parseInt(id, 10)); } catch (e) {} return; }
+      if (++tries < 120) setTimeout(tick, 300);
+    })();
+  })();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { arm(); wrapEditor(); });
   else { arm(); wrapEditor(); }
   setTimeout(wrapEditor, 1500);   // in case the editor script registers later
