@@ -2627,6 +2627,8 @@ html.lu-mode-basic-preload [data-adv="1"]{display:none !important}
 .pe-side.pe-side--min #t3-arthur-feed,.pe-side.pe-side--min [data-bld-hint]{display:none!important}
 @media (max-width: 820px){.pe-side.pe-side--min{max-height:none!important;flex:0 0 auto!important}}
 #t3-arthur-min{margin-left:auto!important}
+/* CHATBOT-LOOK-1b: the app's own Sarah button does not float over the editor - it was mistaken for the site's chat button */
+body:has(#template-editor-view) .ai-fab{display:none!important}
 </style>
 <style id="lu-kb-css">
 /* KB-2 (Owner 2026-09-22): keyboard-aware at ANY width (Samsung Fold inner screen ~900px is treated as a tablet by every

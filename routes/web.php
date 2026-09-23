@@ -575,6 +575,10 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     $greeting    = str_replace(['{{business}}', '{{business_name}}'], $businessName, $rawGreeting);
 
     $color = $primaryColor;
+    // CHATBOT-LOOK-1 (2026-09-23): a look the owner chose for this website's chat button overrides the brand colour and sets the icon
+    $__look = json_decode((string) ($settings->look_json ?? ''), true) ?: [];
+    if (preg_match('/^#[0-9a-f]{6}$/i', (string) ($__look['color'] ?? ''))) $color = (string) $__look['color'];
+    $iconJs = json_encode((string) ($__look['icon'] ?? ''));
     $theme = (string) ($settings->theme ?? 'auto');
 
     // Bootstrap JS — embeds token + greeting; talks to /api/public/chatbot/*
@@ -593,6 +597,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
   var API_BASE = {$apiBaseJs};
   var GREETING = {$greetingJs};
   var COLOR    = {$colorJs};
+  var ICON     = {$iconJs};
   function cbLum(h){h=String(h||'').replace('#','');if(h.length===3){h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];}if(h.length!==6){return 0.5;}var r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;var lf=function(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};return 0.2126*lf(r)+0.7152*lf(g)+0.0722*lf(b);}
   function cbOn(h){var L=cbLum(h);return ((L+0.05)/0.05)>=(1.05/(L+0.05))?'#111111':'#ffffff';}
   var FGON=cbOn(COLOR);
@@ -614,7 +619,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     bubble = document.createElement('div');
     bubble.id = 'lu-cb-bubble';
     bubble.style.cssText = 'position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:'+COLOR+';color:'+FGON+';display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:2147483647;font-size:24px;line-height:1;border:'+(CBLIGHT?'1px solid rgba(0,0,0,.18)':'none')+';transition:transform .15s';
-    bubble.innerHTML = '\u{1F4AC}';
+    bubble.innerHTML = ICON ? '<img src="'+String(ICON).replace(/"/g,'&quot;')+'" alt="" aria-hidden="true" style="width:30px;height:30px;object-fit:contain;display:block;pointer-events:none">' : '\u{1F4AC}';   // CHATBOT-LOOK-1
     bubble.onmouseenter = function(){ bubble.style.transform = 'scale(1.06)'; };
     bubble.onmouseleave = function(){ bubble.style.transform = 'scale(1)'; };
     bubble.onclick = openPanel;
