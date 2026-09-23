@@ -389,6 +389,7 @@
     renderAgents();
     try { fitCanvas(); } catch (e) {}   // WS-CANVAS-1
     requestAnimationFrame(function () {
+      try { layoutTaskNodes(); } catch (e) { console.warn('[wsv2] task placement failed', e); }   // WS-TASKS-1
       renderZones();
       renderTaskNodes();
       renderLines();
@@ -412,6 +413,42 @@
   // agent-to-agent pair lines).
   var TN_W = 140;
   var TN_H = 88;
+  var TN_GAP = 16;   // WS-TASKS-1: clear space a task card keeps from every other card
+  function rectsOverlap(a, b, gap) { return !(a.x + a.w + gap <= b.x || b.x + b.w + gap <= a.x || a.y + a.h + gap <= b.y || b.y + b.h + gap <= a.y); }
+  // WS-TASKS-1: where every visible task card goes this render. Manual positions are kept; the rest never touch another card.
+  function layoutTaskNodes() {
+    if (!STATE.dismissed) STATE.dismissed = loadDismissed();
+    var obstacles = [];
+    STATE.agents.forEach(function (a) { var p = STATE.overrides[a.slug] || STATE.positions[a.slug]; if (p) obstacles.push({ x: p.x, y: p.y, w: CARD_W, h: CARD_H }); });
+    var out = {}, cache = STATE.taskAutoPos || (STATE.taskAutoPos = {});
+    var assigneesOf = function (t) { return effectiveAssignees(t).filter(function (id) { return !!(STATE.overrides[id] || STATE.positions[id]); }); };
+    var visible = STATE.tasks.filter(function (t) {
+      if (STATE.dismissed.has(Number(t.id))) return false;
+      if (['completed', 'failed', 'cancelled', 'degraded'].indexOf(t.status) >= 0) { var doneAt = t.completed_at || t.updated_at; if (doneAt && (Date.now() - new Date(doneAt).getTime()) > AUTO_DISMISS_MS) return false; }
+      if (effectiveAssignees(t).length < 2) return false;
+      return assigneesOf(t).length >= 2;
+    }).sort(function (a, b) { return Number(a.id) - Number(b.id); });
+    visible.forEach(function (t) { var m = STATE.taskNodePos[t.id]; if (m) { out[t.id] = { x: m.x, y: m.y, manual: true }; obstacles.push({ x: m.x, y: m.y, w: TN_W, h: TN_H }); } });
+    visible.forEach(function (t) {
+      if (out[t.id]) return;
+      var ag = assigneesOf(t), sx = 0, sy = 0;
+      ag.forEach(function (id) { var p = STATE.overrides[id] || STATE.positions[id]; sx += p.x + CARD_W / 2; sy += p.y + CARD_H / 2; });
+      var dx = sx / ag.length - TN_W / 2, dy = sy / ag.length - TN_H / 2, key = Math.round(dx) + ',' + Math.round(dy);
+      var free = function (x, y) { var r = { x: x, y: y, w: TN_W, h: TN_H }; for (var i = 0; i < obstacles.length; i++) { if (rectsOverlap(r, obstacles[i], TN_GAP)) return false; } return true; };
+      var c = cache[t.id], pos = null;
+      if (c && c.key === key && free(c.x, c.y)) pos = { x: c.x, y: c.y };
+      if (!pos && free(dx, dy)) pos = { x: dx, y: dy };
+      for (var r = 24; r <= 2400 && !pos; r += 24) {
+        var steps = Math.max(8, Math.min(48, Math.round(r / 12)));
+        for (var k = 0; k < steps && !pos; k++) { var ang = -Math.PI / 2 + (2 * Math.PI * k) / steps; var x = Math.round(dx + r * Math.cos(ang)), y = Math.round(dy + r * Math.sin(ang)); if (free(x, y)) pos = { x: x, y: y }; }
+      }
+      if (!pos) pos = { x: dx, y: dy };
+      cache[t.id] = { x: pos.x, y: pos.y, key: key };
+      out[t.id] = { x: pos.x, y: pos.y, manual: false };
+      obstacles.push({ x: pos.x, y: pos.y, w: TN_W, h: TN_H });
+    });
+    STATE.taskRenderPos = out;
+  }
 
   function renderTaskNodes() {
     var host = document.getElementById('wsv2-agents');
@@ -437,20 +474,8 @@
         }
       }
       var agents = effectiveAssignees(task);
-      if (agents.length < 2) return;
-      var positioned = agents.filter(function (id) { return !!(STATE.overrides[id] || STATE.positions[id]); });
-      if (positioned.length < 2) return;
-
-      var sumX = 0, sumY = 0;
-      positioned.forEach(function (id) {
-        var pos = STATE.overrides[id] || STATE.positions[id];
-        sumX += pos.x + CARD_W / 2;
-        sumY += pos.y + CARD_H / 2;
-      });
-      var cx = sumX / positioned.length - TN_W / 2;
-      var cy = sumY / positioned.length - TN_H / 2;
-      var stored = STATE.taskNodePos[task.id];
-      if (stored) { cx = stored.x; cy = stored.y; }
+      var rp = STATE.taskRenderPos && STATE.taskRenderPos[task.id]; if (!rp) return;   // WS-TASKS-1: placed by layoutTaskNodes
+      var cx = rp.x, cy = rp.y;
 
       var priCls = (task.priority === 'high' || task.priority === 'urgent') ? task.priority
                  : (task.priority === 'low' ? 'low' : 'medium');
@@ -527,6 +552,8 @@
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) STATE.taskDrag.moved = true;
     var nx = STATE.taskDrag.origX + dx, ny = STATE.taskDrag.origY + dy;   // WS-CANVAS-1
     STATE.taskNodePos[STATE.taskDrag.taskId] = { x: nx, y: ny };
+    if (STATE.taskAutoPos) delete STATE.taskAutoPos[STATE.taskDrag.taskId];   // WS-TASKS-1: manual from now on
+    if (STATE.taskRenderPos && STATE.taskRenderPos[STATE.taskDrag.taskId]) STATE.taskRenderPos[STATE.taskDrag.taskId] = { x: nx, y: ny, manual: true };
     scheduleFit();
     var el = document.querySelector('.wsv2-task-node[data-task-id="' + STATE.taskDrag.taskId + '"]');
     if (el) { el.style.left = nx + 'px'; el.style.top = ny + 'px'; }
@@ -762,14 +789,9 @@
       if (agents.length < 2) return;
       var positioned = agents.filter(function (id) { return !!(STATE.overrides[id] || STATE.positions[id]); });
       if (positioned.length < 2) return;
-      var sumX = 0, sumY = 0;
-      positioned.forEach(function (id) {
-        var pos = STATE.overrides[id] || STATE.positions[id];
-        sumX += pos.x + CARD_W / 2;
-        sumY += pos.y + CARD_H / 2;
-      });
-      var cx = sumX / positioned.length;
-      var cy = sumY / positioned.length;
+      var rp = STATE.taskRenderPos && STATE.taskRenderPos[task.id]; if (!rp) return;   // WS-TASKS-1
+      var cx = rp.x + TN_W / 2;
+      var cy = rp.y + TN_H / 2;
       var stored = STATE.taskNodePos[task.id];
       var tnCx = stored ? stored.x + TN_W / 2 : cx;
       var tnCy = stored ? stored.y + TN_H / 2 : cy;
@@ -1250,6 +1272,7 @@
     var add = function (p, w, h) { if (!p) return; maxX = Math.max(maxX, p.x + w + WORLD_MARGIN); maxY = Math.max(maxY, p.y + h + WORLD_MARGIN); };
     STATE.agents.forEach(function (ag) { add(STATE.overrides[ag.slug] || STATE.positions[ag.slug], CARD_W, CARD_H); });
     Object.keys(STATE.taskNodePos).forEach(function (k) { add(STATE.taskNodePos[k], TN_W, TN_H); });
+    Object.keys(STATE.taskRenderPos || {}).forEach(function (k) { add(STATE.taskRenderPos[k], TN_W, TN_H); });   // WS-TASKS-1
     STATE.world.minX = 0; STATE.world.minY = 0; STATE.world.w = maxX; STATE.world.h = maxY;
     world.style.width = maxX + 'px'; world.style.height = maxY + 'px';
     if (svg) { svg.setAttribute('width', String(maxX)); svg.setAttribute('height', String(maxY)); svg.setAttribute('viewBox', '0 0 ' + maxX + ' ' + maxY); }
