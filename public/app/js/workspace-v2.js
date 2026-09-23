@@ -184,7 +184,7 @@
   // --rg, --fh, --p, etc.) so visuals match v1 identically.
   var STYLES = ''
     + '#view-workspace{position:relative;overflow:hidden;background:#0D0D0F;height:100%;font-family:var(--fb)}'
-    + '.wsv2-viewport{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;background:#0D0D0F}'
+    + '.wsv2-viewport{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior:contain;background:#0D0D0F}'   /* WS-CANVAS-4: every touch gesture is ours */
     + '.wsv2-canvas{position:relative;'
     +   'background:#0D0D0F;'
     +   'background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);'
@@ -887,17 +887,32 @@
     viewport.addEventListener('touchstart', function (e) {
       if (e.touches.length !== 2) return;
       endAllGesturesSafe();
-      pinch = { dist: pinchDist(e), scale: STATE.canvasScale || 1 };
+      var m0 = pinchMid(e), a0 = canvasCoords(canvas, m0.x, m0.y);
+      pinch = { dist: pinchDist(e), scale: STATE.canvasScale || 1, ax: a0.x, ay: a0.y };   // the world point between the fingers at the start
       e.preventDefault();
     }, { passive: false });
     viewport.addEventListener('touchmove', function (e) {
       if (!pinch || e.touches.length !== 2) return;
       e.preventDefault();
       var m = pinchMid(e);
-      setZoom(pinch.scale * (pinchDist(e) / pinch.dist), m.x, m.y);
+      setZoomAnchored(pinch.scale * (pinchDist(e) / pinch.dist), pinch.ax, pinch.ay, m.x, m.y);   // that point follows the fingers
     }, { passive: false });
-    viewport.addEventListener('touchend', function (e) { if (pinch && e.touches.length < 2) pinch = null; });
-    viewport.addEventListener('touchcancel', function () { pinch = null; });
+    viewport.addEventListener('touchend', function (e) { if (pinch && e.touches.length < 2) pinch = null; if (e.touches.length === 0) pan = null; });
+    viewport.addEventListener('touchcancel', function () { pinch = null; pan = null; });
+    // WS-CANVAS-4: one finger pans the board (the browser no longer scrolls it natively); cards, task nodes and the lasso keep their double-tap gestures
+    var pan = null;
+    function ownGesture() { return STATE.drag.active || STATE.taskDrag.active || STATE.lasso.active; }
+    viewport.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) { pan = null; return; }
+      if (e.target.closest('.wsv2-toolbar, .wsv2-selection, .wsv2-activity, .wsv2-legend, .wsv2-zoomctl, .wsv2-cta, .wsv2-tn-close')) { pan = null; return; }
+      var t = e.touches[0]; pan = { x: t.clientX, y: t.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop };
+    }, { passive: true });
+    viewport.addEventListener('touchmove', function (e) {
+      if (!pan || pinch || e.touches.length !== 1 || ownGesture()) return;
+      e.preventDefault();
+      var t = e.touches[0];
+      viewport.scrollLeft = pan.sl - (t.clientX - pan.x); viewport.scrollTop = pan.st - (t.clientY - pan.y);
+    }, { passive: false });
     function endAllGesturesSafe() { try { if (STATE.drag.active) endAgentDrag(); if (STATE.taskDrag.active) endTaskDrag(); if (STATE.lasso.active) endLasso(canvas); } catch (e) {} }
     viewport.addEventListener('wheel', function (e) { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setZoom((STATE.canvasScale || 1) * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY); }, { passive: false });   // WS-CANVAS-1
     document.addEventListener('mousemove', function (e) {
@@ -1213,8 +1228,10 @@
   function fitCanvas() {
     var canvas = document.getElementById('wsv2-canvas'), world = document.getElementById('wsv2-world'), viewport = document.getElementById('wsv2-viewport'), svg = document.getElementById('wsv2-svg');
     if (!canvas || !world) return;
-    var minX = 0, minY = 0, maxX = CANVAS_W, maxY = CANVAS_H;
-    var add = function (p, w, h) { if (!p) return; minX = Math.min(minX, p.x - WORLD_MARGIN); minY = Math.min(minY, p.y - WORLD_MARGIN); maxX = Math.max(maxX, p.x + w + WORLD_MARGIN); maxY = Math.max(maxY, p.y + h + WORLD_MARGIN); };
+    var s0 = STATE.canvasScale || 1, vpw = viewport ? viewport.clientWidth : 0, vph = viewport ? viewport.clientHeight : 0;
+    var padX = Math.max(WORLD_MARGIN, Math.ceil(vpw / s0)), padY = Math.max(WORLD_MARGIN, Math.ceil(vph / s0));   // WS-CANVAS-4: at least a viewport of room on every side, so a zoom focus can always stay put
+    var minX = -padX, minY = -padY, maxX = CANVAS_W + padX, maxY = CANVAS_H + padY;
+    var add = function (p, w, h) { if (!p) return; minX = Math.min(minX, p.x - padX); minY = Math.min(minY, p.y - padY); maxX = Math.max(maxX, p.x + w + padX); maxY = Math.max(maxY, p.y + h + padY); };
     STATE.agents.forEach(function (a) { add(STATE.overrides[a.slug] || STATE.positions[a.slug], CARD_W, CARD_H); });
     Object.keys(STATE.taskNodePos).forEach(function (k) { add(STATE.taskNodePos[k], TN_W, TN_H); });
     var s = STATE.canvasScale || 1, W = STATE.world, dx = (W.minX - minX) * s, dy = (W.minY - minY) * s;
@@ -1236,6 +1253,16 @@
     STATE.canvasScale = next;
     fitCanvas();
     viewport.scrollLeft = (wx - STATE.world.minX) * next - px; viewport.scrollTop = (wy - STATE.world.minY) * next - py;
+    var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(next * 100) + '%';
+  }
+  // WS-CANVAS-4b: zoom that keeps a given WORLD point (ax, ay) under a given SCREEN point (fx, fy) - the photo behaviour for a pinch
+  function setZoomAnchored(next, ax, ay, fx, fy) {
+    var viewport = document.getElementById('wsv2-viewport'); if (!viewport) return;
+    next = Math.max(0.35, Math.min(2.5, next));
+    var vr = viewport.getBoundingClientRect();
+    STATE.canvasScale = next;
+    fitCanvas();
+    viewport.scrollLeft = (ax - STATE.world.minX) * next - (fx - vr.left); viewport.scrollTop = (ay - STATE.world.minY) * next - (fy - vr.top);
     var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(next * 100) + '%';
   }
   window.wsv2_fitCanvas = fitCanvas;
