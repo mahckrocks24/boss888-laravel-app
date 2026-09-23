@@ -6741,18 +6741,21 @@ async function _checkTrialStatus() {
 
     // ── ADMIN GATING: check cached user data (no extra API call) ──
     try {
+      // ADMIN-CACHE-1 (Owner 2026-09-23 'Project and Worker Queue point to the same page'): the cached user is only
+      // trusted for the session it was cached in - a phone that once signed in as the platform admin kept revealing the
+      // admin-only Worker Queue to a customer account, whose click then redirected to Projects.
       var cachedUser = localStorage.getItem('lu_user');
+      var sessKey = (localStorage.getItem('lu_token') || '').slice(-16);
+      var cachedKey = localStorage.getItem('lu_user_session') || '';
       var isAdmin = false;
-      if (cachedUser) {
-        try { isAdmin = JSON.parse(cachedUser).is_platform_admin; } catch(_) {}
-      }
-      if (!cachedUser) {   // perf 2026-09-21: was !isAdmin — every non-admin customer re-fetched /auth/me on every 30 s credit poll
-        // Fallback: check from auth/me only if not cached
+      if (cachedUser && cachedKey === sessKey) {
+        try { isAdmin = !!JSON.parse(cachedUser).is_platform_admin; } catch(_) {}
+      } else {   // no cache, or a cache from another session: ask once, then cache for this session
         var meR = await _luFetch('GET', '/auth/me');
         if (meR.ok) {
           var meD = await meR.json();
-          isAdmin = meD.user && meD.user.is_platform_admin;
-          if (meD.user) localStorage.setItem('lu_user', JSON.stringify(meD.user));
+          isAdmin = !!(meD.user && meD.user.is_platform_admin);
+          if (meD.user) { localStorage.setItem('lu_user', JSON.stringify(meD.user)); localStorage.setItem('lu_user_session', sessKey); }
         }
       }
       document.querySelectorAll('[data-admin-only]').forEach(function(el) {
