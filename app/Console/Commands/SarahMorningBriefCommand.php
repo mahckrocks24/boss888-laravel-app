@@ -69,6 +69,8 @@ class SarahMorningBriefCommand extends Command
                 } catch (\Throwable $e) {
                     $last = null;
                 }
+                // NOTIF-1 (2026-09-23): a cache flush must not repeat the day - the date also lives in the workspace's settings
+                if ($last !== $todayLocal) { try { $__st = json_decode((string) ($w->settings_json ?: '{}'), true) ?: []; if ((string) ($__st['last_morning_brief_local_date'] ?? '') === $todayLocal) $last = $todayLocal; } catch (\Throwable $e) {} }
                 if ($last === $todayLocal) {
                     $skipped++;
                     continue;
@@ -125,6 +127,7 @@ class SarahMorningBriefCommand extends Command
                             $tz = $w->timezone ?: 'UTC';
                             $todayLocal = \Carbon\Carbon::now($tz)->toDateString();
                             \Illuminate\Support\Facades\Cache::put("ws:{$w->id}:last_morning_brief_local_date", $todayLocal, now()->addDays(90));
+                            try { $__raw = (string) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $w->id)->value('settings_json') ?: '{}'); $__st = json_decode($__raw, true) ?: []; $__st['last_morning_brief_local_date'] = $todayLocal; \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $w->id)->update(['settings_json' => json_encode($__st)]); } catch (\Throwable $e) {}   // NOTIF-1
                         } catch (\Throwable $e) {}
                     }
                     $ok++;

@@ -123,8 +123,8 @@ class SarahAutoExecuteCommand extends Command
             if ($localNow->hour < self::RUN_AFTER_LOCAL_HOUR) {
                 return; // too early in this workspace's day
             }
-            if (Cache::get($cacheKey) === $localDate) {
-                return; // already ran today
+            if (Cache::get($cacheKey) === $localDate || (string) ($settings['sarah_autoexec_last_local_date'] ?? '') === $localDate) {
+                return; // already ran today (NOTIF-1: the date is also kept in settings_json, so a cache flush cannot re-run the day)
             }
         }
 
@@ -265,21 +265,26 @@ class SarahAutoExecuteCommand extends Command
 
         // ── Nothing to do ────────────────────────────────────────────────
         if (empty($executed) && $readyDrafts === 0) {
-            if (! $dry && ! $force) Cache::put($cacheKey, $localDate, now()->addDays(2));
+            if (! $dry && ! $force) { Cache::put($cacheKey, $localDate, now()->addDays(2)); $this->rememberSetting($wsId, 'sarah_autoexec_last_local_date', $localDate); }
             $this->line("  – ws {$wsId}: nothing eligible (tier={$tier}, cap={$dailyCap}, spent_today={$spentToday})");
             return;
         }
 
         // ── One-time standing-plan announcement, then daily "what I did" ──
         if (! $dry) {
-            $this->announceStandingPlan($wsId, $msg, $tier, $dailyCap);
-            $msg->postAsAgent($wsId, 'sarah', $this->summary($executed, $readyDrafts, $spent), [
-                'kind'           => 'autonomous_execution',
-                'executed'       => count($executed),
-                'ready_publish'  => $readyDrafts,
-                'credits_spent'  => $spent,
-            ]);
+            $announcedNow = $this->announceStandingPlan($wsId, $msg, $tier, $dailyCap);
+            // NOTIF-1: on the day the standing plan is announced and nothing was actually executed, the announcement IS the recap -
+            // two pushes seconds apart saying the same thing was the incident.
+            if (! ($announcedNow && empty($executed))) {
+                $msg->postAsAgent($wsId, 'sarah', $this->summary($executed, $readyDrafts, $spent), [
+                    'kind'           => 'autonomous_execution',
+                    'executed'       => count($executed),
+                    'ready_publish'  => $readyDrafts,
+                    'credits_spent'  => $spent,
+                ]);
+            }
             if (! $force) Cache::put($cacheKey, $localDate, now()->addDays(2));
+            $this->rememberSetting($wsId, 'sarah_autoexec_last_local_date', $localDate);
         }
 
         $this->info("  ✓ ws {$wsId}: ran " . count($executed) . " action(s), {$readyDrafts} draft(s) awaiting publish approval, spent {$spent}cr" . ($dry ? ' [DRY]' : ''));
@@ -326,10 +331,19 @@ class SarahAutoExecuteCommand extends Command
      * she will do X daily for ~Y credits, approve once" consent framing — after
      * this she just runs it; she never re-asks except to publish.
      */
-    private function announceStandingPlan(int $wsId, AgentMessageService $msg, string $tier, int $dailyCap): void
+    private function announceStandingPlan(int $wsId, AgentMessageService $msg, string $tier, int $dailyCap): bool
     {
         $key = "ws:{$wsId}:sarah_plan_announced";
-        if (Cache::get($key)) return;
+        if (Cache::get($key)) return false;
+        // NOTIF-1: the durable memory - the workspace's own settings, and the note already sitting in its message history
+        $settings = json_decode((string) (DB::table('workspaces')->where('id', $wsId)->value('settings_json') ?: '{}'), true) ?: [];
+        $already = ! empty($settings['sarah_plan_announced_at'])
+            || DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('content', 'like', "Quick note on how I'll work from now on%")->exists();
+        if ($already) {
+            Cache::put($key, now()->toDateString(), now()->addDays(365));
+            if (empty($settings['sarah_plan_announced_at'])) $this->rememberSetting($wsId, 'sarah_plan_announced_at', now()->toDateTimeString());
+            return false;
+        }
         $tierName = ucfirst(str_replace('_', ' ', $tier));
         $body = "Quick note on how I'll work from now on — you approved this once, so I won't keep asking:\n\n"
             . "• Every day I'll handle the routine growth work myself — writing articles, on-page SEO, "
@@ -340,6 +354,19 @@ class SarahAutoExecuteCommand extends Command
             . "You'll get a short recap each day of what I got done. If you ever want me to pause, just say so.";
         $msg->postAsAgent($wsId, 'sarah', $body, ['kind' => 'standing_plan']);
         Cache::put($key, now()->toDateString(), now()->addDays(365));
+        $this->rememberSetting($wsId, 'sarah_plan_announced_at', now()->toDateTimeString());
+        return true;
+    }
+
+    /** NOTIF-1: durable per-workspace memory for the once-only and once-a-day facts (settings_json, read-modify-write). */
+    private function rememberSetting(int $wsId, string $key, string $value): void
+    {
+        try {
+            $raw = (string) (DB::table('workspaces')->where('id', $wsId)->value('settings_json') ?: '{}');
+            $settings = json_decode($raw, true) ?: [];
+            $settings[$key] = $value;
+            DB::table('workspaces')->where('id', $wsId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]);
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[SarahAutoExecute] rememberSetting failed', ['ws' => $wsId, 'key' => $key, 'error' => $e->getMessage()]); }
     }
 
     private function summary(array $executed, int $readyDrafts, int $spent): string
