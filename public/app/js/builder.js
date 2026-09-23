@@ -1362,7 +1362,7 @@ function _t3ShowImagePanel(info) {
     panel.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">' +
         '<div style="font-size:14px;font-weight:600;color:var(--t1,#fff)">\uD83C\uDFF7 Website Logo</div>' +
-        '<button type="button" id="t3-img-close" style="' + btnCss + 'padding:4px 8px;font-size:14px" title="Close">&times;</button>' +
+        '<button type="button" id="t3-img-close" aria-label="Close" style="' + btnCss + 'width:36px;height:36px;min-height:36px!important;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:8px;font-size:18px;line-height:1" title="Close">&times;</button>'   /* XBTN-1 */ +
       '</div>' +
       '<button type="button" id="t3-img-choose" style="' + primaryCss + '">\uD83D\uDCF7 Choose from Library</button>' +
       '<button type="button" id="t3-img-upload" style="' + btnCss + '">\u2B06 Upload Logo</button>' +
@@ -1375,7 +1375,7 @@ function _t3ShowImagePanel(info) {
       '<button type="button" id="t3-img-choose" style="' + primaryCss + '">Choose Image</button>' +
       '<button type="button" id="t3-img-gen" style="' + btnCss + '">\u2728 Generate with AI</button>' +   // IMG-AI (Owner 2026-09-22): was "Paste URL"
       '<button type="button" id="t3-img-remove" style="' + dangerCss + '">Remove</button>' +
-      '<button type="button" id="t3-img-close" style="' + btnCss + 'padding:6px 10px" title="Close">&times;</button>';
+      '<button type="button" id="t3-img-close" aria-label="Close" style="' + btnCss + 'width:36px;height:36px;min-height:36px!important;padding:0;display:flex;align-items:center;justify-content:center;flex:0 0 auto;border-radius:8px;font-size:18px;line-height:1" title="Close">&times;</button>'   /* XBTN-1 */;
   }
 
   document.body.appendChild(panel);

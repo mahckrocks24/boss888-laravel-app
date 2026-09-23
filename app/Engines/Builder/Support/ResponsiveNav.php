@@ -84,6 +84,7 @@ final class ResponsiveNav
         return '<style id="' . self::MARKER . '-' . self::VERSION . '">'
             . ($withNav ? self::navCss($bp) : '')
             . self::overflowCss()
+            . self::controlsCss()
             . '</style>';
     }
 
@@ -146,6 +147,58 @@ final class ResponsiveNav
      * their nav and hero on a phone but leave multi-column grids at desktop track counts, which pushes the
      * page wider than the screen.
      */
+    /**
+     * SELECT-1 (2026-09-23, Owner: "Always use templates' css on all websites modals and dropdowns and scrollers").
+     * The dropdown is drawn by the site: the trigger copies the template's own field styling (set by the script from
+     * the select's computed style), the list uses the palette roles, and scrollbars take the accent.
+     */
+    private static function controlsCss(): string
+    {
+        return '.lu-dd{position:relative;display:block;width:100%}'
+            . '.lu-dd-btn{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;cursor:pointer;text-align:left;font:inherit;line-height:1.3}'
+            . '.lu-dd-btn::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);margin-top:-4px;flex:0 0 auto;opacity:.75}'
+            . '.lu-dd.open .lu-dd-btn::after{transform:rotate(-135deg);margin-top:4px}'
+            . '.lu-dd-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:9998;display:none;max-height:min(46vh,320px);overflow-y:auto;margin:0;padding:6px;list-style:none;'
+            .   'background:var(--lu-surface,var(--lu-nav-panel-bg,#fff));color:var(--lu-text,inherit);border:1px solid rgba(128,128,128,.28);border-radius:10px;box-shadow:0 14px 34px rgba(0,0,0,.22)}'
+            . '.lu-dd.open .lu-dd-list{display:block}'
+            . '.lu-dd.up .lu-dd-list{top:auto;bottom:calc(100% + 6px)}'
+            . '.lu-dd-opt{display:flex;align-items:center;min-height:42px;padding:9px 12px;border-radius:7px;cursor:pointer;font:inherit;line-height:1.3;color:inherit}'
+            . '.lu-dd-opt:hover,.lu-dd-opt.active{background:rgba(128,128,128,.14)}'
+            . '.lu-dd-opt[aria-selected="true"]{background:var(--lu-accent,var(--lu-primary,rgba(128,128,128,.22)));color:var(--lu-on-accent,#fff)}'
+            . '.lu-dd-opt[aria-disabled="true"]{opacity:.5;cursor:default}'
+            . '.lu-dd-native{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;border:0!important;opacity:0!important;pointer-events:none!important;left:0;bottom:0}'
+            // scrollbars in the site's colours (the page, the nav panel, the dropdown list)
+            . 'html{scrollbar-width:thin;scrollbar-color:var(--lu-accent,var(--lu-primary,rgba(128,128,128,.6))) transparent}'
+            . '*::-webkit-scrollbar{width:9px;height:9px}*::-webkit-scrollbar-track{background:transparent}'
+            . '*::-webkit-scrollbar-thumb{background:var(--lu-accent,var(--lu-primary,rgba(128,128,128,.6)));border-radius:8px;border:2px solid transparent;background-clip:padding-box}';
+    }
+
+    /** SELECT-1: the script that turns each <select> into a site-styled dropdown. Opt out with data-lu-native. */
+    private static function controlsScript(): string
+    {
+        return 'function luSelects(){try{var sel=document.querySelectorAll("select:not([multiple]):not([data-lu-native]):not([data-lu-dd])");'
+            . 'Array.prototype.forEach.call(sel,function(s){s.setAttribute("data-lu-dd","1");'
+            .   'var cs=getComputedStyle(s),wrap=document.createElement("div");wrap.className="lu-dd";'
+            .   'var btn=document.createElement("button");btn.type="button";btn.className="lu-dd-btn";btn.setAttribute("aria-haspopup","listbox");btn.setAttribute("aria-expanded","false");'
+            .   '["font","color","backgroundColor","borderTop","borderRight","borderBottom","borderLeft","borderRadius","paddingTop","paddingRight","paddingBottom","paddingLeft","minHeight","boxShadow","letterSpacing","textTransform"].forEach(function(k){try{btn.style[k]=cs[k];}catch(e){}});'
+            .   'if(!btn.style.minHeight||btn.style.minHeight==="0px"){btn.style.minHeight=Math.max(44,Math.round(s.getBoundingClientRect().height))+"px";}'
+            .   'var lab=document.createElement("span");lab.className="lu-dd-label";lab.style.cssText="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1 1 auto";btn.appendChild(lab);'
+            .   'var list=document.createElement("ul");list.className="lu-dd-list";list.setAttribute("role","listbox");'
+            .   'function paint(){lab.textContent=(s.options[s.selectedIndex]||{}).text||"";list.innerHTML="";Array.prototype.forEach.call(s.options,function(o,i){var li=document.createElement("li");li.className="lu-dd-opt";li.setAttribute("role","option");li.textContent=o.text;li.setAttribute("aria-selected",i===s.selectedIndex?"true":"false");if(o.disabled){li.setAttribute("aria-disabled","true");}li.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();if(o.disabled)return;s.selectedIndex=i;s.dispatchEvent(new Event("change",{bubbles:true}));s.dispatchEvent(new Event("input",{bubbles:true}));paint();close();btn.focus();});list.appendChild(li);});}'
+            .   'function open(){wrap.classList.add("open");btn.setAttribute("aria-expanded","true");var r=btn.getBoundingClientRect();wrap.classList.toggle("up",(window.innerHeight-r.bottom)<240&&r.top>240);var a=list.querySelector("[aria-selected=true]");if(a){a.classList.add("active");try{a.scrollIntoView({block:"nearest"});}catch(e){}}}'
+            .   'function close(){wrap.classList.remove("open");btn.setAttribute("aria-expanded","false");Array.prototype.forEach.call(list.children,function(li){li.classList.remove("active");});}'
+            .   'btn.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();if(wrap.classList.contains("open"))close();else{document.querySelectorAll(".lu-dd.open").forEach(function(o){o.classList.remove("open");});open();}});'
+            .   'btn.addEventListener("keydown",function(e){var items=Array.prototype.slice.call(list.children),cur=items.indexOf(list.querySelector(".active"));'
+            .     'if(e.key==="ArrowDown"||e.key==="ArrowUp"){e.preventDefault();if(!wrap.classList.contains("open"))open();var n=e.key==="ArrowDown"?Math.min(items.length-1,cur+1):Math.max(0,cur-1);items.forEach(function(li){li.classList.remove("active");});if(items[n]){items[n].classList.add("active");try{items[n].scrollIntoView({block:"nearest"});}catch(x){}}}'
+            .     'else if(e.key==="Enter"||e.key===" "){e.preventDefault();if(wrap.classList.contains("open")){var a=list.querySelector(".active");if(a)a.click();else close();}else open();}'
+            .     'else if(e.key==="Escape"){close();}});'
+            .   's.addEventListener("change",paint);s.classList.add("lu-dd-native");'
+            .   's.parentNode.insertBefore(wrap,s);wrap.appendChild(btn);wrap.appendChild(list);wrap.appendChild(s);paint();'
+            . '});'
+            . 'if(!document.documentElement.hasAttribute("data-lu-dd-doc")){document.documentElement.setAttribute("data-lu-dd-doc","1");document.addEventListener("click",function(e){if(!e.target.closest||!e.target.closest(".lu-dd")){document.querySelectorAll(".lu-dd.open").forEach(function(o){o.classList.remove("open");o.querySelector(".lu-dd-btn").setAttribute("aria-expanded","false");});}},true);}'
+            . '}catch(e){}}';
+    }
+
     private static function overflowCss(): string
     {
         return ''
@@ -222,11 +275,14 @@ final class ResponsiveNav
             .   'window.addEventListener("resize",function(){'
             .     'if(window.innerWidth>' . self::BREAKPOINT . '){setOpen(false);}'
             .   '});'
-            . '});}catch(e){}})();</script>';
+            . '});'
+            . self::controlsScript()
+            . 'ready(luSelects);'
+            . '}catch(e){}})();</script>';
     }
 
     /** The build this markup carries, so an older one can be recognised and replaced rather than kept. */
-    public const VERSION = 'mobile9k-openlinks';   // HAMB-1 + BTN-1: served and previewed exports pick the new block up
+    public const VERSION = 'mobile9l-controls';   // SELECT-1: site-styled dropdowns and scrollbars (HAMB-1/BTN-1 inside)
 
     /**
      * Append the rules and the toggle before </head>.
