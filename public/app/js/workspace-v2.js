@@ -42,6 +42,7 @@
                            // a transient empty response triggers a refresh instead
     initialLayoutDone: false,
     world: { minX: 0, minY: 0, w: 3000, h: 2000 },   // WS-CANVAS-1: the visible world (canvas) around the cards
+    padExtra: { l: 0, t: 0, r: 0, b: 0 },   // WS-CANVAS-8: room added so a committed zoom never lands outside the scroll range
   };
   var WORLD_MARGIN = 480;   // WS-CANVAS-1: safe distance kept beyond the farthest card in every direction
 
@@ -1248,8 +1249,9 @@
     if (!canvas || !world) return;
     var s0 = STATE.canvasScale || 1, vpw = viewport ? viewport.clientWidth : 0, vph = viewport ? viewport.clientHeight : 0;
     var padX = Math.max(WORLD_MARGIN, Math.ceil(vpw / s0)), padY = Math.max(WORLD_MARGIN, Math.ceil(vph / s0));   // WS-CANVAS-4: at least a viewport of room on every side, so a zoom focus can always stay put
-    var minX = -padX, minY = -padY, maxX = CANVAS_W + padX, maxY = CANVAS_H + padY;
-    var add = function (p, w, h) { if (!p) return; minX = Math.min(minX, p.x - padX); minY = Math.min(minY, p.y - padY); maxX = Math.max(maxX, p.x + w + padX); maxY = Math.max(maxY, p.y + h + padY); };
+    var PE = STATE.padExtra || { l: 0, t: 0, r: 0, b: 0 };
+    var minX = -padX - PE.l, minY = -padY - PE.t, maxX = CANVAS_W + padX + PE.r, maxY = CANVAS_H + padY + PE.b;
+    var add = function (p, w, h) { if (!p) return; minX = Math.min(minX, p.x - padX - PE.l); minY = Math.min(minY, p.y - padY - PE.t); maxX = Math.max(maxX, p.x + w + padX + PE.r); maxY = Math.max(maxY, p.y + h + padY + PE.b); };
     STATE.agents.forEach(function (a) { add(STATE.overrides[a.slug] || STATE.positions[a.slug], CARD_W, CARD_H); });
     Object.keys(STATE.taskNodePos).forEach(function (k) { add(STATE.taskNodePos[k], TN_W, TN_H); });
     var s = STATE.canvasScale || 1, W = STATE.world, dx = (W.minX - minX) * s, dy = (W.minY - minY) * s;
@@ -1280,7 +1282,14 @@
     var vr = viewport.getBoundingClientRect();
     STATE.canvasScale = next;
     fitCanvas();
-    viewport.scrollLeft = (ax - STATE.world.minX) * next - (fx - vr.left); viewport.scrollTop = (ay - STATE.world.minY) * next - (fy - vr.top);
+    // WS-CANVAS-8: the landing scroll must exist, or the browser clamps it and the board hops on release - add room first
+    var PE = STATE.padExtra || (STATE.padExtra = { l: 0, t: 0, r: 0, b: 0 }), grew = false;
+    var reqX = (ax - STATE.world.minX) * next - (fx - vr.left), reqY = (ay - STATE.world.minY) * next - (fy - vr.top);
+    var maxX = viewport.scrollWidth - viewport.clientWidth, maxY = viewport.scrollHeight - viewport.clientHeight;
+    if (reqX < 0) { PE.l += Math.ceil(-reqX / next) + 2; grew = true; } else if (reqX > maxX) { PE.r += Math.ceil((reqX - maxX) / next) + 2; grew = true; }
+    if (reqY < 0) { PE.t += Math.ceil(-reqY / next) + 2; grew = true; } else if (reqY > maxY) { PE.b += Math.ceil((reqY - maxY) / next) + 2; grew = true; }
+    if (grew) { fitCanvas(); reqX = (ax - STATE.world.minX) * next - (fx - vr.left); reqY = (ay - STATE.world.minY) * next - (fy - vr.top); }
+    viewport.scrollLeft = reqX; viewport.scrollTop = reqY;
     var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(next * 100) + '%';
   }
   window.wsv2_fitCanvas = fitCanvas;
@@ -1407,6 +1416,7 @@
     STATE.overrides = {};
     STATE.positions = {};
     STATE.taskNodePos = {};
+    STATE.padExtra = { l: 0, t: 0, r: 0, b: 0 };   // WS-CANVAS-8
     STATE.initialLayoutDone = false;
     computeInitialLayout();   // every agent, including ones added since the last layout
     STATE.initialLayoutDone = true;
