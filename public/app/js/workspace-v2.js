@@ -908,8 +908,28 @@
     }, { passive: false });
     function commitPinch() {   // WS-CANVAS-7: one layout, on release
       var pz = pinch; pinch = null; if (!pz) return;
+      var diag = diagOn() ? diagSample('before', pz) : null;
       try { var wEl = document.getElementById('wsv2-world'); if (wEl) wEl.style.willChange = ''; } catch (_w) {}
       setZoomAnchored(pz.s, pz.ax, pz.ay, pz.mid.x, pz.mid.y);
+      if (diag) { diagSample('after', pz, diag); diagShow(diag); requestAnimationFrame(function () { diagSample('frame1', pz, diag); diagShow(diag); requestAnimationFrame(function () { diagSample('frame2', pz, diag); diagShow(diag); setTimeout(function () { diagSample('300ms', pz, diag); diagShow(diag); }, 300); }); }); }
+    }
+    // WS-CANVAS-9: on-device diagnostics for a release hop (?wsdiag=1)
+    function diagOn() { try { if (/[?&]wsdiag=1/.test(location.search)) localStorage.setItem('wsv2_diag', '1'); return localStorage.getItem('wsv2_diag') === '1'; } catch (e) { return false; } }
+    function diagSample(label, pz, acc) {
+      acc = acc || { lines: [] };
+      try {
+        var wEl = document.getElementById('wsv2-world'), wr = wEl.getBoundingClientRect(), m = new DOMMatrix(getComputedStyle(wEl).transform);
+        var sx = wr.left + pz.ax * m.a, sy = wr.top + pz.ay * m.d;
+        var vw = document.getElementById('view-workspace'), main = document.querySelector('.lu-main'), vv = window.visualViewport;
+        acc.lines.push(label + ': anchor@(' + Math.round(sx) + ',' + Math.round(sy) + ') mid(' + Math.round(pz.mid.x) + ',' + Math.round(pz.mid.y) + ') drift(' + Math.round(sx - pz.mid.x) + ',' + Math.round(sy - pz.mid.y) + ')'
+          + ' vp(' + Math.round(viewport.scrollLeft) + ',' + Math.round(viewport.scrollTop) + ') view(' + (vw ? vw.scrollLeft + ',' + vw.scrollTop : '-') + ') main(' + (main ? main.scrollLeft + ',' + main.scrollTop : '-') + ') win(' + Math.round(window.scrollX) + ',' + Math.round(window.scrollY) + ')'
+          + ' vv(' + (vv ? vv.scale.toFixed(2) + ' ' + Math.round(vv.offsetLeft) + ',' + Math.round(vv.offsetTop) : '-') + ') s=' + (m.a).toFixed(3) + ' cv=' + canvas.style.width + 'x' + canvas.style.height + ' pad=' + JSON.stringify(STATE.padExtra || {}));
+      } catch (e) { acc.lines.push(label + ': ' + e); }
+      return acc;
+    }
+    function diagShow(acc) {
+      var box = document.getElementById('wsv2-diag'); if (!box) { box = document.createElement('div'); box.id = 'wsv2-diag'; box.style.cssText = 'position:absolute;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:60;max-width:calc(100% - 80px);background:rgba(0,0,0,.85);color:#9fe870;font:10px/1.35 monospace;padding:6px 8px;border-radius:6px;white-space:pre-wrap;word-break:break-all;pointer-events:none'; (viewport.parentElement || document.body).appendChild(box); }
+      box.textContent = 'WS-CANVAS-9 diag  dpr=' + window.devicePixelRatio + ' inner=' + window.innerWidth + 'x' + window.innerHeight + ' ua=' + (navigator.userAgent.match(/Chrome\/[\d.]+|Safari\/[\d.]+|SamsungBrowser\/[\d.]+/) || [''])[0] + '\n' + acc.lines.join('\n');
     }
     viewport.addEventListener('touchend', function (e) {   // WS-CANVAS-5: when one finger lifts, the other carries on from where it IS, never from where it started
       if (pinch && e.touches.length < 2) commitPinch();
