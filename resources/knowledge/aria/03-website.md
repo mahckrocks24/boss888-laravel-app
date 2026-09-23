@@ -25,6 +25,9 @@ Pages (5 credits each) such as About, Services, Contact, Pricing, Blog, Gallery,
 ## Can Sarah work on several websites at once?
 Yes. In one message, name a website per piece ("a sourdough article for the Bakery and a latte article for the Cafe") and each piece goes to its own site; or say "for each website", "on all my sites" or "both" and the same work runs on every site you have (or the ones you named). Sarah names the sites in her reply. Each piece belongs to one website, nothing goes live without your approval, and if she cannot tell which site a piece is for she asks instead of guessing.
 
+## Is there a tour of the editor? How do I see it again?
+Yes. The first time you open a website in the editor, a short guided tour walks you through it: selecting and editing text, the element toolbox, Arthur, adding pages and sections, layouts and colours, the catalogue (when your site has one), Undo and Versions, Preview, and Publish. To see it again, press the ? button in the editor's toolbar. It works on a phone and on a desktop.
+
 ## Is hosting included?
 Yes. Every site is published on a LevelUpGrowth subdomain with SSL, on infrastructure the platform operates, at no extra cost, on every plan. Managed hosting on your own domain with a dedicated runtime is a separate service that is coming soon and is not included in current plans.
 Links: /product/hosting/

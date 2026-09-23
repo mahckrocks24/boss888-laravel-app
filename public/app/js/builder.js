@@ -993,6 +993,7 @@ function _wsShowTemplateEditor(site) {
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
       '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Double-click text to edit \u00B7 click an image to replace it \u00B7 your own edits are free \u00B7 changes by Arthur cost 1 credit</span>' +
+      '<button type="button" id="t3-tour-btn" onclick="_t3StartTour(true)" aria-label="Take the editor tour" title="Take the tour \u2014 what everything here does" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);width:34px;height:30px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;font-family:var(--fb);flex:0 0 auto">?</button>' +   /* TOUR-1 */
       '<button type="button" id="t3-view-btn" onclick="_t3OpenSitePreview()" title="See the website as visitors will \u2014 full screen, no editing tools" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">\uD83D\uDC41 Preview</button>' +   /* VIEW-1 */
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
       '<button type="button" onclick="wsShowVersions(' + wsId + ')" title="Earlier versions of this website" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Versions</button>' +
@@ -1145,7 +1146,8 @@ function _wsTplSetDevice(key) {
 }
 
 function _t3InitEditing(iframe) {
-  try { _t3FitPreview(window._t3DeviceKey || 'desktop'); } catch (_f) {}   // DEVICE FIT: a phone opens on the true desktop view
+  try { var _dk = window._t3DeviceKey || ((window.matchMedia && window.matchMedia('(max-width:820px)').matches) ? 'mobile' : 'desktop'); if (_dk === 'desktop') _t3FitPreview(_dk); else _wsTplSetDevice(_dk); } catch (_f) {}   // MOBDEFAULT-1 (Owner 2026-09-23): a phone edits the phone layout by default; a desktop opens on desktop
+  try { setTimeout(_t3MaybeTour, 900); } catch (_t) {}   // TOUR-1: the first time this user opens the editor
   if (window._t3Reselect) { var _rf = window._t3Reselect; window._t3Reselect = null; setTimeout(function () { try { iframe.contentWindow.postMessage({ type: 'select-field', field: _rf }, '*'); } catch (_e) {} }, 700); }   // ELEMENT888: keep the element selected after a reload
   if (window._t3LayoutPreviewing) return; // a previewed layout is not the live site: nothing to edit yet
   // Editing is already injected server-side in the preview route
@@ -4827,4 +4829,59 @@ function _t3ChatbotLookDialog() {
   ov.querySelector('[data-role=ok]').onclick = function () { save(false); };
   ov.querySelector('[data-role=reset]').onclick = function () { save(true); };
   mark();
+}
+
+/* TOUR-1 (RFC-0013, Owner "editor tour go" 2026-09-23): the editor introduces itself once per user - spotlight + coach marks
+   (lu-tour.js), device-specific steps, an interactive "try it" step, persistence in users.preferences_json.editor_tour,
+   replay from the ? button. Nothing shows twice; the tour pauses while the phone keyboard is open. */
+window._t3TourVersion = 1;
+function _t3TourSteps() {
+  var mobile = !!(window.matchMedia && window.matchMedia('(max-width:820px)').matches);
+  var site = ((document.querySelector('#template-editor-view .pe-bar-title') || {}).textContent || '').trim() || 'your website';
+  var hasCat = !!document.getElementById('t3-catalogue-btn');
+  var publishBtn = function () { var bs = document.querySelectorAll('#template-editor-view .pe-bar button'); for (var i = 0; i < bs.length; i++) { if (/publish/i.test(bs[i].textContent || '')) return bs[i]; } return null; };
+  return [
+    { title: 'Welcome to your editor', body: 'This is ' + site + '. ' + (mobile ? 'Tap' : 'Click') + ' anything to change it, or tell Arthur what you want in words.' },
+    { target: '#t3-preview', title: mobile ? 'Tap to select, double-tap to edit' : 'Click to select, double-click to edit', body: mobile ? 'Text, buttons and photos are live. Your own edits are free. You are editing the phone layout; the device buttons switch to desktop.' : 'Text, buttons and photos are all live. Your own edits are free.', waitFor: 'element-selected', tryLabel: 'Try it — ' + (mobile ? 'tap' : 'click') + ' a heading or a button' },
+    { target: '#t3-preview', title: 'The toolbox', body: 'On a selected element: move, align, resize, add effects, link it — and for photos fit, focus or crop.' },
+    { target: '#t3-arthur-input', title: 'Arthur, your builder', body: 'Say it in plain words — “make the headline shorter”, “generate a hero photo”. 1 credit per change; the selected element is his context.' + (mobile ? ' The – button folds the history away; the chat field stays.' : ''), placement: 'top' },
+    { target: '#t3-add-page-btn', title: 'Add pages and sections', body: 'Ready templates in this site’s own style, priced before they are added.' },
+    { target: '#t3-layout-btn', title: 'Layouts and colours', body: 'Preview a sibling layout or a palette for free; apply when you like it.' },
+    hasCat ? { target: '#t3-catalogue-btn', title: 'What you sell', body: 'Listings, services, menu items, plans — add, price, mark sold.' } : null,
+    { target: '#t3-undo', title: 'Nothing is final', body: 'Undo puts the last change back; Versions holds every save.' },
+    { target: '#t3-view-btn', title: 'See it as visitors do', body: 'Full screen, no tools, phone or desktop; links work.' },
+    { target: publishBtn, title: 'Go live', body: 'Publishes to your levelupgrowth.io subdomain; connect your own domain later from Site.' },
+    { title: 'You’re set', body: 'Tips: long-press a link to go to that page · Save and exit keeps drafts · the ? button replays this tour · ask Aria anything.' }
+  ];
+}
+function _t3TourKey() { return 'lu_tour_editor_v' + window._t3TourVersion; }
+function _t3TourPersist(kind, lastStep) {
+  var device = (window.matchMedia && window.matchMedia('(max-width:820px)').matches) ? 'mobile' : 'desktop';
+  var rec = { version: window._t3TourVersion, last_step: lastStep || 0, device: device }; rec[kind === 'completed' ? 'done_at' : 'skipped_at'] = new Date().toISOString();
+  try { localStorage.setItem(_t3TourKey(), kind === 'completed' ? 'done' : 'skipped'); } catch (_l) {}
+  try { fetch('/api/user/preferences', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, _t3CatAuth()), body: JSON.stringify({ editor_tour: rec }) }); } catch (_p) {}
+}
+function _t3StartTour(replay) {
+  if (!window.luTour) return;
+  if (document.getElementById('t3-view-ov')) return;   // never over the full-screen preview
+  window._t3TourShownThisSession = true;
+  luTour.start(_t3TourSteps(), {
+    onFinish: function (kind, last) { if (kind === 'completed' || kind === 'skipped') _t3TourPersist(kind, last); },
+    onEvent: function (name, info) { try { if (name === 'started') fetch('/api/user/preferences', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, _t3CatAuth()), body: JSON.stringify({ editor_tour: { version: window._t3TourVersion, last_step: 0, device: (window.matchMedia && window.matchMedia('(max-width:820px)').matches) ? 'mobile' : 'desktop' } }) }); } catch (_e) {} }
+  });
+}
+async function _t3MaybeTour() {
+  try {
+    if (window._t3TourShownThisSession || !window.luTour) return;
+    if (!document.getElementById('template-editor-view') || document.getElementById('t3-view-ov')) return;
+    if (document.querySelector('.lu-dlg-overlay, #t3-img-panel, #t3-cbl-ov')) return;   // never over a dialog
+    var local = null; try { local = localStorage.getItem(_t3TourKey()); } catch (_l) {}
+    if (local === 'done' || local === 'skipped') return;
+    var r = await fetch('/api/auth/me', { headers: Object.assign({ 'Accept': 'application/json' }, _t3CatAuth()), cache: 'no-store' });
+    var d = null; try { d = await r.json(); } catch (_j) {}
+    var t = d && d.preferences && d.preferences.editor_tour;
+    if (t && (t.done_at || t.skipped_at) && (t.version || 1) >= window._t3TourVersion) { try { localStorage.setItem(_t3TourKey(), t.done_at ? 'done' : 'skipped'); } catch (_s) {} return; }
+    if (!document.getElementById('template-editor-view')) return;
+    _t3StartTour(false);
+  } catch (_e) {}
 }

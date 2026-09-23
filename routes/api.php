@@ -669,6 +669,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $data = $r->validate([
             'visibility_mode' => 'sometimes|string|in:basic,advanced',
             'theme'           => 'sometimes|string|in:dark,light,system', // LT-1 (2026-08-30)
+            'editor_tour'     => 'sometimes|array',   // TOUR-1 (RFC-0013): {version, done_at|skipped_at, last_step}
+            'editor_tour.version' => 'sometimes|integer|min:1|max:99', 'editor_tour.done_at' => 'sometimes|nullable|string|max:40', 'editor_tour.skipped_at' => 'sometimes|nullable|string|max:40', 'editor_tour.last_step' => 'sometimes|integer|min:0|max:50', 'editor_tour.device' => 'sometimes|string|in:desktop,mobile',
         ]);
 
         $row = \Illuminate\Support\Facades\DB::table('users')->where('id', $userId)->first(['id','preferences_json']);
@@ -678,7 +680,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $current = is_string($row->preferences_json) ? (json_decode($row->preferences_json, true) ?: []) : [];
         if (! is_array($current)) $current = [];
 
-        $allowed = ['visibility_mode', 'theme'];
+        $allowed = ['visibility_mode', 'theme', 'editor_tour'];
+        if (array_key_exists('editor_tour', $data)) { \Illuminate\Support\Facades\Log::info('[tour] editor', ['user' => $userId, 'ws' => (int) $r->attributes->get('workspace_id'), 'tour' => $data['editor_tour']]); }   // TOUR-1: completion analytics in the log until the platform-events subscriber lands
         foreach ($allowed as $k) {
             if (array_key_exists($k, $data)) {
                 $current[$k] = $data[$k];
