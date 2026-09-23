@@ -42,7 +42,8 @@
                            // a transient empty response triggers a refresh instead
     initialLayoutDone: false,
     world: { minX: 0, minY: 0, w: 3000, h: 2000 },   // WS-CANVAS-1: the visible world (canvas) around the cards
-    padExtra: { l: 0, t: 0, r: 0, b: 0 },   // WS-CANVAS-8: room added so a committed zoom never lands outside the scroll range
+    padExtra: { l: 0, t: 0, r: 0, b: 0 },   // (WS-CANVAS-8, unused since WS-CANVAS-10)
+    view: { tx: 0, ty: 0 },   // WS-CANVAS-10: the board's pan, in screen pixels - the world is translate(tx,ty) scale(s)
   };
   var WORLD_MARGIN = 480;   // WS-CANVAS-1: safe distance kept beyond the farthest card in every direction
 
@@ -134,7 +135,7 @@
     root.innerHTML = ''
       + '<style>' + STYLES + '</style>'
       + '<div class="wsv2-viewport" id="wsv2-viewport">'
-      + '  <div class="wsv2-canvas" id="wsv2-canvas" style="width:' + CANVAS_W + 'px;height:' + CANVAS_H + 'px">'
+      + '  <div class="wsv2-canvas" id="wsv2-canvas" style="width:100%;height:100%">'   /* WS-CANVAS-10: fills the viewport; the world moves inside it */
       + '  <div class="wsv2-world" id="wsv2-world" style="width:' + CANVAS_W + 'px;height:' + CANVAS_H + 'px">'   /* WS-CANVAS-1: the world moves and scales as one */
       + '    <svg class="wsv2-svg" id="wsv2-svg" width="' + CANVAS_W + '" height="' + CANVAS_H + '" viewBox="0 0 ' + CANVAS_W + ' ' + CANVAS_H + '"></svg>'
       + '    <div class="wsv2-zones" id="wsv2-zones"></div>'
@@ -185,7 +186,7 @@
   // --rg, --fh, --p, etc.) so visuals match v1 identically.
   var STYLES = ''
     + '#view-workspace{position:relative;overflow:hidden;background:#0D0D0F;height:100%;font-family:var(--fb)}'
-    + '.wsv2-viewport{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior:contain;overflow-anchor:none;background:#0D0D0F}'   /* WS-CANVAS-4: every touch gesture is ours; WS-CANVAS-7: no scroll anchoring under a gesture */
+    + '.wsv2-viewport{position:absolute;inset:0;overflow:hidden;touch-action:none;overscroll-behavior:contain;background:#0D0D0F}'   /* WS-CANVAS-10: no native scrolling - pan and zoom are one transform */   /* WS-CANVAS-4: every touch gesture is ours; WS-CANVAS-7: no scroll anchoring under a gesture */
     + '#wsv2-viewport,#wsv2-viewport *{touch-action:none!important}'   /* WS-CANVAS-6 (forensic 2026-09-23): lu-mobile.css sets #wsv2-viewport{touch-action:pan-x pan-y} on phones by ID - the browser was panning and pinch-zooming underneath our handlers; ID + !important wins on every screen */
     + '.wsv2-canvas{position:relative;'
     +   'background:#0D0D0F;'
@@ -882,78 +883,51 @@
       box.style.height = '0px';
     });
 
-    // WS-CANVAS-2: pinch to zoom (two fingers) around the fingers' midpoint; one finger keeps panning / dragging
-    var pinch = null;
+    // WS-CANVAS-10: two fingers zoom the transform around the world point that was between them at the start; the
+    // last move is the final state, so lifting the fingers changes nothing. One finger pans the transform.
+    var pinch = null, pan = null;
     function pinchDist(e) { var a = e.touches[0], b = e.touches[1]; return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1; }
     function pinchMid(e) { var a = e.touches[0], b = e.touches[1]; return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 }; }
-    viewport.addEventListener('touchstart', function (e) {
-      if (e.touches.length !== 2) return;
-      endAllGesturesSafe();
-      var m0 = pinchMid(e), a0 = canvasCoords(canvas, m0.x, m0.y);
-      pinch = { dist: pinchDist(e), scale: STATE.canvasScale || 1, ax: a0.x, ay: a0.y, s: STATE.canvasScale || 1, mid: m0 };   // the world point between the fingers at the start
-      try { var wEl0 = document.getElementById('wsv2-world'); if (wEl0) wEl0.style.willChange = 'transform'; } catch (_w) {}
-      e.preventDefault();
-    }, { passive: false });
-    viewport.addEventListener('touchmove', function (e) {
-      if (!pinch || e.touches.length !== 2) return;
-      e.preventDefault();
-      // WS-CANVAS-7: while the fingers are down, only the world's transform moves - no layout, no scroll writes
-      var m = pinchMid(e), sNext = Math.max(0.35, Math.min(2.5, pinch.scale * (pinchDist(e) / pinch.dist)));
-      var wEl = document.getElementById('wsv2-world'); if (!wEl) return;
-      var vr = viewport.getBoundingClientRect(), sl = viewport.scrollLeft, st = viewport.scrollTop, W = STATE.world;
-      var ex = (m.x - vr.left) + sl - (pinch.ax - W.minX) * sNext, ey = (m.y - vr.top) + st - (pinch.ay - W.minY) * sNext;
-      wEl.style.transform = 'translate(' + ex + 'px,' + ey + 'px) scale(' + sNext + ') translate(' + (-W.minX) + 'px,' + (-W.minY) + 'px)';
-      pinch.s = sNext; pinch.mid = m;
-      var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(sNext * 100) + '%';
-    }, { passive: false });
-    function commitPinch() {   // WS-CANVAS-7: one layout, on release
-      var pz = pinch; pinch = null; if (!pz) return;
-      var diag = diagOn() ? diagSample('before', pz) : null;
-      try { var wEl = document.getElementById('wsv2-world'); if (wEl) wEl.style.willChange = ''; } catch (_w) {}
-      setZoomAnchored(pz.s, pz.ax, pz.ay, pz.mid.x, pz.mid.y);
-      if (diag) { diagSample('after', pz, diag); diagShow(diag); requestAnimationFrame(function () { diagSample('frame1', pz, diag); diagShow(diag); requestAnimationFrame(function () { diagSample('frame2', pz, diag); diagShow(diag); setTimeout(function () { diagSample('300ms', pz, diag); diagShow(diag); }, 300); }); }); }
-    }
-    // WS-CANVAS-9: on-device diagnostics for a release hop (?wsdiag=1)
-    function diagOn() { try { if (/[?&]wsdiag=1/.test(location.search)) localStorage.setItem('wsv2_diag', '1'); return localStorage.getItem('wsv2_diag') === '1'; } catch (e) { return false; } }
-    function diagSample(label, pz, acc) {
-      acc = acc || { lines: [] };
-      try {
-        var wEl = document.getElementById('wsv2-world'), wr = wEl.getBoundingClientRect(), m = new DOMMatrix(getComputedStyle(wEl).transform);
-        var sx = wr.left + pz.ax * m.a, sy = wr.top + pz.ay * m.d;
-        var vw = document.getElementById('view-workspace'), main = document.querySelector('.lu-main'), vv = window.visualViewport;
-        acc.lines.push(label + ': anchor@(' + Math.round(sx) + ',' + Math.round(sy) + ') mid(' + Math.round(pz.mid.x) + ',' + Math.round(pz.mid.y) + ') drift(' + Math.round(sx - pz.mid.x) + ',' + Math.round(sy - pz.mid.y) + ')'
-          + ' vp(' + Math.round(viewport.scrollLeft) + ',' + Math.round(viewport.scrollTop) + ') view(' + (vw ? vw.scrollLeft + ',' + vw.scrollTop : '-') + ') main(' + (main ? main.scrollLeft + ',' + main.scrollTop : '-') + ') win(' + Math.round(window.scrollX) + ',' + Math.round(window.scrollY) + ')'
-          + ' vv(' + (vv ? vv.scale.toFixed(2) + ' ' + Math.round(vv.offsetLeft) + ',' + Math.round(vv.offsetTop) : '-') + ') s=' + (m.a).toFixed(3) + ' cv=' + canvas.style.width + 'x' + canvas.style.height + ' pad=' + JSON.stringify(STATE.padExtra || {}));
-      } catch (e) { acc.lines.push(label + ': ' + e); }
-      return acc;
-    }
-    function diagShow(acc) {
-      var box = document.getElementById('wsv2-diag'); if (!box) { box = document.createElement('div'); box.id = 'wsv2-diag'; box.style.cssText = 'position:absolute;right:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:60;max-width:calc(100% - 80px);background:rgba(0,0,0,.85);color:#9fe870;font:10px/1.35 monospace;padding:6px 8px;border-radius:6px;white-space:pre-wrap;word-break:break-all;pointer-events:none'; (viewport.parentElement || document.body).appendChild(box); }
-      box.textContent = 'WS-CANVAS-9 diag  dpr=' + window.devicePixelRatio + ' inner=' + window.innerWidth + 'x' + window.innerHeight + ' ua=' + (navigator.userAgent.match(/Chrome\/[\d.]+|Safari\/[\d.]+|SamsungBrowser\/[\d.]+/) || [''])[0] + '\n' + acc.lines.join('\n');
-    }
-    viewport.addEventListener('touchend', function (e) {   // WS-CANVAS-5: when one finger lifts, the other carries on from where it IS, never from where it started
-      if (pinch && e.touches.length < 2) commitPinch();
-      if (e.touches.length === 1) { var t1 = e.touches[0]; pan = { id: t1.identifier, x: t1.clientX, y: t1.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop }; }
-      else if (e.touches.length === 0) pan = null;
-    });
-    viewport.addEventListener('touchcancel', function () { if (pinch) commitPinch(); pan = null; });
-    // WS-CANVAS-4: one finger pans the board (the browser no longer scrolls it natively); cards, task nodes and the lasso keep their double-tap gestures
-    var pan = null;
     function ownGesture() { return STATE.drag.active || STATE.taskDrag.active || STATE.lasso.active; }
+    function endAllGesturesSafe() { try { if (STATE.drag.active) endAgentDrag(); if (STATE.taskDrag.active) endTaskDrag(); if (STATE.lasso.active) endLasso(canvas); } catch (e) {} }
+    function rebasePan(t) { pan = { id: t.identifier, x: t.clientX, y: t.clientY, tx: STATE.view.tx, ty: STATE.view.ty }; }
     viewport.addEventListener('touchstart', function (e) {
+      if (e.touches.length === 2) {
+        endAllGesturesSafe(); pan = null;
+        var m0 = pinchMid(e), a0 = canvasCoords(canvas, m0.x, m0.y);
+        pinch = { dist: pinchDist(e), scale: STATE.canvasScale || 1, ax: a0.x, ay: a0.y };
+        try { var wEl0 = document.getElementById('wsv2-world'); if (wEl0) wEl0.style.willChange = 'transform'; } catch (_w) {}
+        e.preventDefault(); return;
+      }
       if (e.touches.length !== 1) { pan = null; return; }
       if (e.target.closest('.wsv2-toolbar, .wsv2-selection, .wsv2-activity, .wsv2-legend, .wsv2-zoomctl, .wsv2-cta, .wsv2-tn-close')) { pan = null; return; }
-      var t = e.touches[0]; pan = { id: t.identifier, x: t.clientX, y: t.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop };
-    }, { passive: true });
+      rebasePan(e.touches[0]);
+    }, { passive: false });
     viewport.addEventListener('touchmove', function (e) {
+      if (pinch && e.touches.length === 2) {
+        e.preventDefault();
+        var m = pinchMid(e);
+        setZoomAt(pinch.scale * (pinchDist(e) / pinch.dist), pinch.ax, pinch.ay, m.x, m.y);
+        return;
+      }
       if (pinch || e.touches.length !== 1 || ownGesture()) return;
       var t = e.touches[0];
-      if (!pan || pan.id !== t.identifier) { pan = { id: t.identifier, x: t.clientX, y: t.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop }; return; }   // WS-CANVAS-5: a different finger starts its own pan
+      if (!pan || pan.id !== t.identifier) { rebasePan(t); return; }
       e.preventDefault();
-      viewport.scrollLeft = pan.sl - (t.clientX - pan.x); viewport.scrollTop = pan.st - (t.clientY - pan.y);
+      STATE.view.tx = pan.tx + (t.clientX - pan.x); STATE.view.ty = pan.ty + (t.clientY - pan.y); applyView();
     }, { passive: false });
-    function endAllGesturesSafe() { try { if (STATE.drag.active) endAgentDrag(); if (STATE.taskDrag.active) endTaskDrag(); if (STATE.lasso.active) endLasso(canvas); } catch (e) {} }
-    viewport.addEventListener('wheel', function (e) { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setZoom((STATE.canvasScale || 1) * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY); }, { passive: false });   // WS-CANVAS-1
+    function endPinch() { pinch = null; try { var wEl = document.getElementById('wsv2-world'); if (wEl) wEl.style.willChange = ''; } catch (_w) {} }
+    viewport.addEventListener('touchend', function (e) {
+      if (pinch && e.touches.length < 2) endPinch();
+      if (e.touches.length === 1) rebasePan(e.touches[0]); else if (e.touches.length === 0) pan = null;
+    });
+    viewport.addEventListener('touchcancel', function () { if (pinch) endPinch(); pan = null; });
+    viewport.addEventListener('wheel', function (e) {
+      e.preventDefault();
+      if (e.ctrlKey || e.metaKey) { setZoom((STATE.canvasScale || 1) * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY); return; }
+      var k = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? viewport.clientHeight : 1);
+      panBy(-e.deltaX * k, -e.deltaY * k);   // the wheel pans the board (there is no scrollbar any more)
+    }, { passive: false });
     document.addEventListener('mousemove', function (e) {
       if (STATE.taskDrag.active) {
         moveTaskDrag(e.clientX, e.clientY);
@@ -1257,71 +1231,59 @@
     updateSelectionUI();
   }
 
+  // WS-CANVAS-10: the world is translate(tx,ty) scale(s) inside a clipped viewport. World coordinates come from the
+  // world's own transform; nothing scrolls, so a gesture's last frame is its final state.
   function canvasCoords(canvas, clientX, clientY) {
-    var cr = canvas.getBoundingClientRect();
-    var scale = STATE.canvasScale || 1;
-    return { x: (clientX - cr.left) / scale + STATE.world.minX, y: (clientY - cr.top) / scale + STATE.world.minY };   // WS-CANVAS-1: world coordinates
+    var world = document.getElementById('wsv2-world'), sc = STATE.canvasScale || 1;
+    var r = world ? world.getBoundingClientRect() : canvas.getBoundingClientRect();
+    return { x: (clientX - r.left) / sc, y: (clientY - r.top) / sc };
   }
-
-  // WS-CANVAS-1: size the scrollable canvas to the cards plus a safe margin, in every direction, at the current zoom.
-  function fitCanvas() {
-    var canvas = document.getElementById('wsv2-canvas'), world = document.getElementById('wsv2-world'), viewport = document.getElementById('wsv2-viewport'), svg = document.getElementById('wsv2-svg');
-    if (!canvas || !world) return;
-    var s0 = STATE.canvasScale || 1, vpw = viewport ? viewport.clientWidth : 0, vph = viewport ? viewport.clientHeight : 0;
-    var padX = Math.max(WORLD_MARGIN, Math.ceil(vpw / s0)), padY = Math.max(WORLD_MARGIN, Math.ceil(vph / s0));   // WS-CANVAS-4: at least a viewport of room on every side, so a zoom focus can always stay put
-    var PE = STATE.padExtra || { l: 0, t: 0, r: 0, b: 0 };
-    var minX = -padX - PE.l, minY = -padY - PE.t, maxX = CANVAS_W + padX + PE.r, maxY = CANVAS_H + padY + PE.b;
-    var add = function (p, w, h) { if (!p) return; minX = Math.min(minX, p.x - padX - PE.l); minY = Math.min(minY, p.y - padY - PE.t); maxX = Math.max(maxX, p.x + w + padX + PE.r); maxY = Math.max(maxY, p.y + h + padY + PE.b); };
-    STATE.agents.forEach(function (a) { add(STATE.overrides[a.slug] || STATE.positions[a.slug], CARD_W, CARD_H); });
+  function applyView() {
+    var world = document.getElementById('wsv2-world'); if (!world) return;
+    var v = STATE.view || (STATE.view = { tx: 0, ty: 0 }), sc = STATE.canvasScale || 1;
+    world.style.transform = 'translate(' + v.tx + 'px,' + v.ty + 'px) scale(' + sc + ')';
+    var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(sc * 100) + '%';
+  }
+  function fitCanvas() {   // the world's own box only bounds the SVG lines and the dot grid; cards may sit anywhere
+    var world = document.getElementById('wsv2-world'), svg = document.getElementById('wsv2-svg'); if (!world) return;
+    var maxX = CANVAS_W, maxY = CANVAS_H;
+    var add = function (p, w, h) { if (!p) return; maxX = Math.max(maxX, p.x + w + WORLD_MARGIN); maxY = Math.max(maxY, p.y + h + WORLD_MARGIN); };
+    STATE.agents.forEach(function (ag) { add(STATE.overrides[ag.slug] || STATE.positions[ag.slug], CARD_W, CARD_H); });
     Object.keys(STATE.taskNodePos).forEach(function (k) { add(STATE.taskNodePos[k], TN_W, TN_H); });
-    var s = STATE.canvasScale || 1, W = STATE.world, dx = (W.minX - minX) * s, dy = (W.minY - minY) * s;
-    W.minX = minX; W.minY = minY; W.w = maxX - minX; W.h = maxY - minY;
-    world.style.width = W.w + 'px'; world.style.height = W.h + 'px';
-    world.style.transform = 'scale(' + s + ') translate(' + (-minX) + 'px,' + (-minY) + 'px)';
-    canvas.style.width = Math.round(W.w * s) + 'px'; canvas.style.height = Math.round(W.h * s) + 'px';
+    STATE.world.minX = 0; STATE.world.minY = 0; STATE.world.w = maxX; STATE.world.h = maxY;
+    world.style.width = maxX + 'px'; world.style.height = maxY + 'px';
     if (svg) { svg.setAttribute('width', String(maxX)); svg.setAttribute('height', String(maxY)); svg.setAttribute('viewBox', '0 0 ' + maxX + ' ' + maxY); }
-    if (viewport && (dx || dy)) { viewport.scrollLeft += dx; viewport.scrollTop += dy; }   // growth to the left/top: keep the view where it was
+    applyView();
   }
   var fitRaf = 0; function scheduleFit() { if (fitRaf) return; fitRaf = requestAnimationFrame(function () { fitRaf = 0; fitCanvas(); }); }
 
-  function setZoom(next, fx, fy) {
-    var viewport = document.getElementById('wsv2-viewport'); if (!viewport) return;
+  // zoom so that WORLD point (wx,wy) sits under SCREEN point (fx,fy)
+  function setZoomAt(next, wx, wy, fx, fy) {
+    var canvas = document.getElementById('wsv2-canvas'); if (!canvas) return;
     next = Math.max(0.35, Math.min(2.5, next));
-    var vr = viewport.getBoundingClientRect();
-    var px = (fx == null) ? viewport.clientWidth / 2 : (fx - vr.left), py = (fy == null) ? viewport.clientHeight / 2 : (fy - vr.top);
-    var old = STATE.canvasScale || 1, wx = (viewport.scrollLeft + px) / old + STATE.world.minX, wy = (viewport.scrollTop + py) / old + STATE.world.minY;   // the world point under the focus
+    var cr = canvas.getBoundingClientRect();
     STATE.canvasScale = next;
-    fitCanvas();
-    viewport.scrollLeft = (wx - STATE.world.minX) * next - px; viewport.scrollTop = (wy - STATE.world.minY) * next - py;
-    var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(next * 100) + '%';
+    STATE.view.tx = (fx - cr.left) - wx * next; STATE.view.ty = (fy - cr.top) - wy * next;
+    applyView();
   }
-  // WS-CANVAS-4b: zoom that keeps a given WORLD point (ax, ay) under a given SCREEN point (fx, fy) - the photo behaviour for a pinch
-  function setZoomAnchored(next, ax, ay, fx, fy) {
-    var viewport = document.getElementById('wsv2-viewport'); if (!viewport) return;
-    next = Math.max(0.35, Math.min(2.5, next));
+  function setZoom(next, fx, fy) {   // around a screen point, default the centre of the viewport
+    var viewport = document.getElementById('wsv2-viewport'), canvas = document.getElementById('wsv2-canvas'); if (!viewport || !canvas) return;
     var vr = viewport.getBoundingClientRect();
-    STATE.canvasScale = next;
-    fitCanvas();
-    // WS-CANVAS-8: the landing scroll must exist, or the browser clamps it and the board hops on release - add room first
-    var PE = STATE.padExtra || (STATE.padExtra = { l: 0, t: 0, r: 0, b: 0 }), grew = false;
-    var reqX = (ax - STATE.world.minX) * next - (fx - vr.left), reqY = (ay - STATE.world.minY) * next - (fy - vr.top);
-    var maxX = viewport.scrollWidth - viewport.clientWidth, maxY = viewport.scrollHeight - viewport.clientHeight;
-    if (reqX < 0) { PE.l += Math.ceil(-reqX / next) + 2; grew = true; } else if (reqX > maxX) { PE.r += Math.ceil((reqX - maxX) / next) + 2; grew = true; }
-    if (reqY < 0) { PE.t += Math.ceil(-reqY / next) + 2; grew = true; } else if (reqY > maxY) { PE.b += Math.ceil((reqY - maxY) / next) + 2; grew = true; }
-    if (grew) { fitCanvas(); reqX = (ax - STATE.world.minX) * next - (fx - vr.left); reqY = (ay - STATE.world.minY) * next - (fy - vr.top); }
-    viewport.scrollLeft = reqX; viewport.scrollTop = reqY;
-    var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(next * 100) + '%';
+    if (fx == null || fy == null) { fx = vr.left + viewport.clientWidth / 2; fy = vr.top + viewport.clientHeight / 2; }
+    var w = canvasCoords(canvas, fx, fy);
+    setZoomAt(next, w.x, w.y, fx, fy);
   }
+  function setZoomAnchored(next, ax, ay, fx, fy) { setZoomAt(next, ax, ay, fx, fy); }
+  function panBy(dx, dy) { STATE.view.tx += dx; STATE.view.ty += dy; applyView(); }
   window.wsv2_fitCanvas = fitCanvas;
   window.wsv2_zoom = function (dir) { setZoom((STATE.canvasScale || 1) * (dir > 0 ? 1.2 : 1 / 1.2)); };
   window.wsv2_zoomReset = function () { setZoom(1); };
 
-  function centerOnCenter() {
-    var viewport = document.getElementById('wsv2-viewport');
-    if (!viewport) return;
-    var s = STATE.canvasScale || 1;   // WS-CANVAS-1: the layout's centre, at the current zoom, in the current world
-    viewport.scrollLeft = (CANVAS_W / 2 - STATE.world.minX) * s - viewport.clientWidth / 2;
-    viewport.scrollTop = (CANVAS_H / 2 - STATE.world.minY) * s - viewport.clientHeight / 2;
+  function centerOnCenter() {   // the layout's centre in the middle of the viewport, at the current zoom
+    var viewport = document.getElementById('wsv2-viewport'); if (!viewport) return;
+    var sc = STATE.canvasScale || 1;
+    STATE.view.tx = viewport.clientWidth / 2 - (CANVAS_W / 2) * sc; STATE.view.ty = viewport.clientHeight / 2 - (CANVAS_H / 2) * sc;
+    applyView();
   }
 
   // ── Selection ────────────────────────────────────────────────────────────
