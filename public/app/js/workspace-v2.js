@@ -897,7 +897,11 @@
       var m = pinchMid(e);
       setZoomAnchored(pinch.scale * (pinchDist(e) / pinch.dist), pinch.ax, pinch.ay, m.x, m.y);   // that point follows the fingers
     }, { passive: false });
-    viewport.addEventListener('touchend', function (e) { if (pinch && e.touches.length < 2) pinch = null; if (e.touches.length === 0) pan = null; });
+    viewport.addEventListener('touchend', function (e) {   // WS-CANVAS-5: when one finger lifts, the other carries on from where it IS, never from where it started
+      if (pinch && e.touches.length < 2) pinch = null;
+      if (e.touches.length === 1) { var t1 = e.touches[0]; pan = { id: t1.identifier, x: t1.clientX, y: t1.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop }; }
+      else if (e.touches.length === 0) pan = null;
+    });
     viewport.addEventListener('touchcancel', function () { pinch = null; pan = null; });
     // WS-CANVAS-4: one finger pans the board (the browser no longer scrolls it natively); cards, task nodes and the lasso keep their double-tap gestures
     var pan = null;
@@ -905,12 +909,13 @@
     viewport.addEventListener('touchstart', function (e) {
       if (e.touches.length !== 1) { pan = null; return; }
       if (e.target.closest('.wsv2-toolbar, .wsv2-selection, .wsv2-activity, .wsv2-legend, .wsv2-zoomctl, .wsv2-cta, .wsv2-tn-close')) { pan = null; return; }
-      var t = e.touches[0]; pan = { x: t.clientX, y: t.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop };
+      var t = e.touches[0]; pan = { id: t.identifier, x: t.clientX, y: t.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop };
     }, { passive: true });
     viewport.addEventListener('touchmove', function (e) {
-      if (!pan || pinch || e.touches.length !== 1 || ownGesture()) return;
-      e.preventDefault();
+      if (pinch || e.touches.length !== 1 || ownGesture()) return;
       var t = e.touches[0];
+      if (!pan || pan.id !== t.identifier) { pan = { id: t.identifier, x: t.clientX, y: t.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop }; return; }   // WS-CANVAS-5: a different finger starts its own pan
+      e.preventDefault();
       viewport.scrollLeft = pan.sl - (t.clientX - pan.x); viewport.scrollTop = pan.st - (t.clientY - pan.y);
     }, { passive: false });
     function endAllGesturesSafe() { try { if (STATE.drag.active) endAgentDrag(); if (STATE.taskDrag.active) endTaskDrag(); if (STATE.lasso.active) endLasso(canvas); } catch (e) {} }
