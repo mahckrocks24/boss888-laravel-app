@@ -3565,7 +3565,7 @@ document.addEventListener("DOMContentLoaded",function(){
     document.addEventListener("pointerup",cancel,true); document.addEventListener("pointercancel",cancel,true);
     document.addEventListener("click",function(e){ if(lpFired){ lpFired=false; e.preventDefault(); e.stopPropagation(); } }, true);   // the release after a long-press is not a tap
     document.addEventListener("contextmenu",function(e){ var a=e.target&&e.target.closest?e.target.closest("a[href]"):null; if(a) e.preventDefault(); }, true);   // no native menu over the gesture
-    window.addEventListener("message",function(e){ var d=e.data||{}; if(d.type==="scroll-to" && d.hash){ try{ var t=document.getElementById(String(d.hash).replace(/^#/,"")) || document.querySelector(String(d.hash)); if(t) t.scrollIntoView({behavior:"smooth",block:"start"}); }catch(_s){} } });
+    window.addEventListener("message",function(e){ var d=e.data||{}; if(d.type==="scale"){ window._luPreviewScale=+d.value||1; } if(d.type==="begin-edit"&&d.field){ var _bt=document.querySelector("[data-field=\""+String(d.field).replace(/"/g,"")+"\"]"); if(_bt){ try{ _bt.scrollIntoView({block:"center"}); }catch(_sv){} setTimeout(function(){ try{ _enterEdit(_bt); }catch(_be){} }, 120); } } if(d.type==="scroll-to" && d.hash){ try{ var t=document.getElementById(String(d.hash).replace(/^#/,"")) || document.querySelector(String(d.hash)); if(t) t.scrollIntoView({behavior:"smooth",block:"start"}); }catch(_s){} } });
   })();
   var _elementsByBlock = ' . $elementsJson . ';
   var _imageDims = ' . $imageDimsJson . ';
@@ -4194,6 +4194,7 @@ document.addEventListener("DOMContentLoaded",function(){
     console.log("[edit] _enterEdit called with", target);
     if (!target || _editingEl === target) return;
     _editingEl = target;
+    try { window.parent.postMessage({type:"edit-start", field: target.getAttribute("data-field") || ""}, "*"); } catch(_es){}   // TEXTEDIT-2: the editor freezes the preview fit while a text is live
     if (target.dataset.luBase === undefined) target.dataset.luBase = target.innerHTML; // D10 conflict base
     _luAnnounce(target);   // SELECTION888: the text being edited is the selected element for Arthur
     target.setAttribute("contenteditable", "true");
@@ -4226,6 +4227,7 @@ document.addEventListener("DOMContentLoaded",function(){
     } catch(_e){}
   }
   function _exitEdit(){
+    try { window.parent.postMessage({type:"edit-end"}, "*"); } catch(_ee){}   // TEXTEDIT-2
     if (!_editingEl) return;
     var t = _editingEl;
     t.removeAttribute("contenteditable");
@@ -4266,6 +4268,9 @@ document.addEventListener("DOMContentLoaded",function(){
     if (!target) return;
     e.stopPropagation();
     e.preventDefault();
+    // TEXTEDIT-2: on a touch screen, never edit inside a shrunken desktop preview - ask the editor for the phone view first
+    var _coarse = false; try { _coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch(_mq){}
+    if (_coarse && window._luPreviewScale && window._luPreviewScale < 0.95) { try { window.parent.postMessage({type:"edit-at-scale", field: target.getAttribute("data-field") || ""}, "*"); } catch(_ea){} return; }
     _enterEdit(target, e);   // TEXTEDIT-1: the tap point places the caret
   });
 
