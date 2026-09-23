@@ -139,9 +139,12 @@ class ArthurService
             if ($block === '' && $field !== '' && preg_match('/data-block="([a-z_\-]+)"(?:(?!data-block=).)*?data-field="' . preg_quote($field, '/') . '"/su', $home, $bm)) $block = $bm[1];
             if ($block === '' || ! str_contains($home, 'data-block="' . $block . '"')) return ['success' => false, 'message' => 'Which section should get the overlay?'];
             $key = 'section:' . $block; $info = null;
+        } elseif ($field === '' && $block !== '' && str_contains($home, 'data-block="' . $block . '"')) {
+            // SECTIONFX-1 (2026-09-23): a selected SECTION takes opacity (its background), shadow and glow
+            $key = 'section:' . $block; $info = null;
         } else {
             $info = $this->elementInfo($websiteId, $field);
-            if ($info === null) return ['success' => false, 'message' => 'I could not find that element on the page.'];
+            if ($info === null) return ['success' => false, 'message' => $field === '' && $block === '' ? 'Which element or section? Tap it in the preview, or tell me the words you see on it.' : 'I could not find that element on the page.'];
             $key = $info['field'];
         }
         $this->fxSiteId = $websiteId;
@@ -187,15 +190,56 @@ class ArthurService
         return ['success' => true, 'message' => $said, 'state' => $st];
     }
 
+    /** SECTIONFX-1: the background value a section's own stylesheet gives it (a var() or a plain colour), or null. */
+    private function sectionBackgroundValue(int $websiteId, string $blk): ?string
+    {
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        if ($home === '' || ! preg_match('/<(\w+)\b[^>]*data-block="' . preg_quote($blk, '/') . '"[^>]*>/i', $home, $tm)) return null;
+        $tag = strtolower($tm[1]); $classes = [];
+        if (preg_match('/class="([^"]*)"/i', $tm[0], $cm)) $classes = preg_split('/\s+/', trim($cm[1])) ?: [];
+        if (! preg_match_all('/<style[^>]*>(.*?)<\/style>/is', $home, $sm)) return null;
+        $css = implode("\n", $sm[1]);
+        $cands = ['[data-block="' . $blk . '"]'];
+        foreach ($classes as $c) { if ($c !== '' && ! str_starts_with($c, 'lu-')) $cands[] = '.' . $c; }
+        if (in_array($tag, ['nav', 'header', 'footer', 'aside'], true)) $cands[] = $tag;
+        foreach ($cands as $c) {
+            if (! preg_match_all('/(?:^|[\s,}])' . preg_quote($c, '/') . '\s*\{([^}]*)\}/s', $css, $rules)) continue;
+            foreach ($rules[1] as $body) {
+                if (preg_match('/background(?:-color)?\s*:\s*([^;}]+)/i', $body, $b)) {
+                    $v = trim($b[1]);
+                    if (stripos($v, 'url(') !== false || stripos($v, 'gradient') !== false) continue;
+                    if (preg_match('/^(var\(--[a-z0-9_-]+(?:\s*,\s*[^)]+)?\)|#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\)|[a-z]{3,20})(?:\s*!important)?$/i', $v, $vm)) return $vm[1];
+                }
+            }
+        }
+        return null;
+    }
+
     /** The CSS of one target's effect state (empty when everything is at its default). */
     private function fxRules(string $key, array $st, ?array $info): string
     {
         if ($info === null) {
-            $lvl = (int) ($st['overlay'] ?? 0); if ($lvl <= 0) return '';
-            $blk = substr($key, 8); $alpha = [0, .15, .3, .45, .6, .75][$lvl];
-            $veil = ($st['overlay_tone'] ?? 'dark') === 'light' ? "rgba(255,255,255,{$alpha})" : "rgba(0,0,0,{$alpha})";
+            $blk = substr($key, 8);
             $sel = $blk === 'hero' ? '.hero,[data-block="hero"],header.hero,section.hero' : '[data-block="' . $blk . '"]';
-            return "{$sel}{box-shadow:inset 0 0 0 100vmax {$veil}!important}";
+            $out = [];
+            $lvl = (int) ($st['overlay'] ?? 0);
+            if ($lvl > 0) {
+                $alpha = [0, .15, .3, .45, .6, .75][$lvl];
+                $veil = ($st['overlay_tone'] ?? 'dark') === 'light' ? "rgba(255,255,255,{$alpha})" : "rgba(0,0,0,{$alpha})";
+                $out[] = "{$sel}{box-shadow:inset 0 0 0 100vmax {$veil}!important}";
+            }
+            // SECTIONFX-1: the section's background at the chosen opacity - the colour keeps its hue, the text stays crisp
+            $op = (int) ($st['opacity'] ?? 100);
+            if ($op < 100) {
+                $a = $op / 100; $bg = $this->sectionBackgroundValue((int) ($this->fxSiteId ?? 0), $blk);
+                if ($bg !== null) $out[] = "@supports (color: rgb(from red r g b / 0.5)){{$sel}{background-color:rgb(from {$bg} r g b / {$a})!important;background-image:none!important}}";
+                else $out[] = "{$sel}{opacity:{$a}!important}";
+            }
+            $shadow = (int) ($st['shadow'] ?? 0); $glow = (int) ($st['glow'] ?? 0); $parts = [];
+            if ($shadow > 0) $parts[] = self::FX_BOX_SHADOW[$shadow];
+            if ($glow > 0) { $px = self::FX_GLOW_PX[$glow]; $col = $st['glow_color'] ?? (self::siteColorVars((int) ($this->fxSiteId ?? 0))['--cf1'] ?? '#6C5CE7'); $parts[] = "0 0 {$px}px " . (int) round($px / 6) . "px {$col}"; }
+            if ($parts !== [] && $lvl <= 0) $out[] = "{$sel}{box-shadow:" . implode(',', $parts) . "!important}";
+            return implode('', $out);
         }
         $s = '[data-field="' . $info['field'] . '"]:not(.lu-x)'; $decl = [];
         $op = (int) ($st['opacity'] ?? 100); if ($op < 100) $decl[] = 'opacity:' . ($op / 100) . '!important';
@@ -8289,7 +8333,7 @@ PROMPT;
                 if ($eff !== 'opacity' && preg_match('/\b(a little|a bit|slightly|a touch|somewhat)\b/i', $customerWords)) $val = null;
                 if (preg_match('/\b(remove|no more|get rid|take off|turn off|without)\b/i', $customerWords) && ! preg_match('/\b(less|lighter|weaker)\b/i', $customerWords)) $dirIn = 'none';
                 $el['dir'] = $dirIn;
-                $res = $this->effectElement($websiteId, $eff === 'overlay' ? '' : $fld, $eff, (string) ($el['dir'] ?? 'up'), $val, isset($el['color']) ? (string) $el['color'] : null, $eff === 'overlay' ? ($blk !== '' ? $blk : '') : '');
+                $res = $this->effectElement($websiteId, $eff === 'overlay' ? '' : $fld, $eff, (string) ($el['dir'] ?? 'up'), $val, isset($el['color']) ? (string) $el['color'] : null, $blk);   // SECTIONFX-1: a section is a target for every effect
                 if ($eff === 'overlay' && empty($res['success']) && $blk === '' && $fld !== '') $res = $this->effectElement($websiteId, $fld, 'overlay', (string) ($el['dir'] ?? 'up'), $val, isset($el['color']) ? (string) $el['color'] : null, '');
                 if (empty($res['success'])) return $base + ['success' => false, 'kind' => 'answer', 'code' => 'ANSWER', 'message' => (string) $res['message']];
                 $cost = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'element_effect', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$res['message']]]);
