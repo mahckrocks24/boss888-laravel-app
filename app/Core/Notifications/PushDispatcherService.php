@@ -107,8 +107,10 @@ class PushDispatcherService
                              ->where('sessions.expires_at', '>', now());
                       });
                 })
-                ->pluck('device_tokens.expo_push_token')
+                ->orderByDesc('device_tokens.last_seen_at')
+                ->get(['device_tokens.expo_push_token', 'device_tokens.platform', 'device_tokens.device_label', 'device_tokens.last_seen_at'])
                 ->all();
+            $tokens = self::onePerDevice($tokens, $userId);   // PUSH-DEDUPE-1
 
             if (empty($tokens)) {
                 Log::info('[PushDispatcher] no reachable devices — all registrations signed out', [
@@ -184,6 +186,24 @@ class PushDispatcherService
     }
 
     // ── Helpers ──────────────────────────────────────────────────
+
+    /**
+     * PUSH-DEDUPE-1 (2026-09-23): one push per physical device. Rows arrive newest-seen first; the first token per
+     * (platform, device_label) wins, unlabelled rows are kept as they are (no way to tell them apart). Returns tokens.
+     */
+    public static function onePerDevice(array $rows, ?int $userId = null): array
+    {
+        $seen = []; $keep = []; $skipped = [];
+        foreach ($rows as $r) {
+            $r = (object) $r; $label = trim((string) ($r->device_label ?? ''));
+            if ($label === '') { $keep[] = $r->expo_push_token; continue; }
+            $key = strtolower((string) ($r->platform ?? '')) . '|' . strtolower($label);
+            if (isset($seen[$key])) { $skipped[] = substr((string) $r->expo_push_token, 0, 24); continue; }
+            $seen[$key] = true; $keep[] = $r->expo_push_token;
+        }
+        if ($skipped) { Log::info('[PushDispatcher] duplicate device registrations skipped', ['user_id' => $userId, 'skipped' => $skipped]); }
+        return array_values(array_unique($keep));
+    }
 
     private function resolveAgentName(string $slug): string
     {

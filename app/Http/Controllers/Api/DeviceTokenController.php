@@ -35,6 +35,12 @@ class DeviceTokenController
         // sarah:prune-device-tokens.
         $sessionId   = $request->attributes->get('session_id');
 
+        // PUSH-DEDUPE-1 (2026-09-23): the same device re-registering (re-install, re-login, a new build) replaces its old
+        // token - one registration per (user, platform, device_label); otherwise every push reached that device once per token.
+        if (! empty($data['device_label'])) {
+            DB::table('device_tokens')->where('user_id', $userId)->where('platform', $data['platform'])->where('device_label', $data['device_label'])
+                ->where('expo_push_token', '!=', $data['expo_push_token'])->delete();
+        }
         DB::table('device_tokens')->updateOrInsert(
             ['expo_push_token' => $data['expo_push_token']],
             [
