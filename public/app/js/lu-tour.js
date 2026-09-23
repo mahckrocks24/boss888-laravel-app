@@ -34,7 +34,7 @@
       '.lu-tour-btn{border:1px solid color-mix(in srgb,var(--t3,#8B97B0) 30%,transparent);background:color-mix(in srgb,var(--s2,#1E2230) 70%,transparent);color:var(--t1,#E8EDF5);border-radius:10px;padding:8px 14px;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;min-height:38px;transition:transform .12s ease,box-shadow .12s ease}' +
       '.lu-tour-btn:hover{transform:translateY(-1px)}.lu-tour-btn.primary{background:linear-gradient(135deg,#7C6CF6,#5B8DEF);border-color:transparent;color:#fff;box-shadow:0 8px 22px rgba(108,92,231,.45),inset 0 1px 0 rgba(255,255,255,.18)}.lu-tour-btn.primary:hover{box-shadow:0 10px 28px rgba(108,92,231,.6),inset 0 1px 0 rgba(255,255,255,.18)}' +
       '.lu-tour-btn.ghost{background:none;border-color:transparent;color:var(--t3,#8B97B0)}.lu-tour-btn:focus-visible{outline:2px solid #A79CFF;outline-offset:2px}' +
-      '@media (max-width:820px){.lu-tour-card.dock-top{top:calc(8px + env(safe-area-inset-top))!important;bottom:auto!important}.lu-tour-card{left:8px!important;right:8px!important;width:auto!important;top:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important;max-height:54dvh;overflow:auto;border-radius:20px}.lu-tour-card.hero{padding:22px 18px 16px}}' +
+      '@media (max-width:820px){.lu-tour-card{left:8px!important;right:8px!important;width:auto!important;max-height:54dvh;overflow:auto;border-radius:20px}.lu-tour-card.dock-bottom{top:auto!important;bottom:calc(8px + env(safe-area-inset-bottom))!important}.lu-tour-card.dock-top{top:calc(8px + env(safe-area-inset-top))!important;bottom:auto!important}.lu-tour-card.hero{padding:22px 18px 16px}}' +
       '@media (prefers-reduced-motion:reduce){.lu-tour-ring,.lu-tour-card,.lu-tour-badge,.lu-tour-try::before{animation:none}}' +
       'html.lu-kb-open .lu-tour-pane,html.lu-kb-open .lu-tour-ring,html.lu-kb-open .lu-tour-card{display:none!important}';
     document.head.appendChild(st);
@@ -89,16 +89,19 @@
         var top = (step.placement === 'top' || below + ch > vh - 8) && above >= 8 ? above : Math.min(below, vh - ch - 8);
         var left = Math.min(Math.max(12, x + w / 2 - cw / 2), vw - cw - 12);
         card.style.top = top + 'px'; card.style.left = left + 'px'; card.style.bottom = ''; card.style.visibility = '';
-      } else {   /* TOUR-2e (Owner 2026-09-23 'wizard must move above arthur … it is covering it'): a short target in the bottom band gets the card docked at the top */
-        card.style.top = ''; card.style.left = ''; card.style.display = 'block';
-        var chm = card.offsetHeight, low = (h < vh / 2) && (y + h > vh - chm - 16);
-        card.classList.toggle('dock-top', !!low);
+      } else {   /* TOUR-4 (Owner 2026-09-23 'the tour should be placed closer to the sections it is talking about'): on a phone the card sits right under or right above its target; the docks are the fallback */
+        card.style.left = ''; card.style.display = 'block'; card.classList.remove('dock-top', 'dock-bottom'); card.style.top = ''; card.style.bottom = '';
+        card.style.visibility = 'hidden'; var chm = card.offsetHeight, belowM = y + h + 12, aboveM = y - 12 - chm;
+        if (belowM + chm <= vh - 8) { card.style.top = belowM + 'px'; card.style.bottom = 'auto'; }
+        else if (aboveM >= 8) { card.style.top = aboveM + 'px'; card.style.bottom = 'auto'; }
+        else card.classList.add((h < vh / 2 && y + h > vh - chm - 16) ? 'dock-top' : 'dock-bottom');
+        card.style.visibility = '';
       }
     } else {
       panes[0].style.left = '0'; panes[0].style.top = '0'; panes[0].style.width = vw + 'px'; panes[0].style.height = vh + 'px'; panes[0].style.display = 'block'; panes[0].style.clipPath = ''; panes[0].style.webkitMaskImage = panes[0].style.maskImage = '';
       panes.slice(1).forEach(function (p) { p.style.display = 'none'; }); ring.style.display = 'none';
       var mob = window.matchMedia && window.matchMedia('(max-width:820px)').matches;
-      card.style.display = 'block'; card.classList.remove('dock-top');
+      card.style.display = 'block'; card.classList.remove('dock-top'); card.classList.add('dock-bottom'); card.style.top = ''; card.style.bottom = '';
       if (!mob) { card.style.visibility = 'hidden'; var cw2 = card.offsetWidth, ch2 = card.offsetHeight; card.style.left = Math.max(12, (vw - cw2) / 2) + 'px'; card.style.top = Math.max(12, (vh - ch2) / 2) + 'px'; card.style.bottom = ''; card.style.visibility = ''; }
     }
   }
