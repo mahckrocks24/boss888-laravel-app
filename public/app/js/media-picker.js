@@ -1,5 +1,5 @@
 /**
- * Unified Media Picker — LevelUp Growth
+ * Unified Media Picker — LevelUpGrowth
  * Added 2026-04-19 as part of Phase 3.
  *
  * Public entry point:
@@ -59,6 +59,7 @@
     var ov = document.createElement('div');
     ov.id = MODAL_ID;
     ov.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.72);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px';
+    ov.className = 'lu-mp-overlay';   // MEDIA-1: the phone rule trims its margin
     ov.innerHTML =
       '<style>' + _mpCss() + '</style>' +
       '<div class="lu-mp-shell" onclick="event.stopPropagation()">' +
@@ -391,8 +392,9 @@
           STATE.tab = 'uploads'; STATE.page = 1;
           _mpRerenderTabs();
           await _mpLoadLibrary(false);
-          // Best-effort: find the newest tile and auto-select
-          var first = document.querySelector('.lu-mp-tile[data-media-id]');
+          // Select the file this upload returned (never the first tile: platform assets list ahead of the customer's files)
+          var uploadedId = 0; try { var uj = JSON.parse(xhr.responseText || '{}'); uploadedId = Number((uj.media && uj.media.id) || uj.media_id || uj.id || 0); } catch (e) {}
+          var first = (uploadedId ? document.querySelector('.lu-mp-tile[data-media-id="' + uploadedId + '"]') : null) || document.querySelector('.lu-mp-tile[data-media-id]');
           if (first) {
             var id = Number(first.getAttribute('data-media-id'));
             STATE.selected = [{ id: id }];
@@ -556,7 +558,8 @@
       '.lu-dlg-input{width:100%;margin-top:12px;background:var(--s2,#1E2230);border:1px solid var(--bd,rgba(255,255,255,.13));color:var(--t1,#E8EDF5);padding:10px 14px;border-radius:8px;font-size:14px;font-family:inherit;outline:none}',
       '.lu-dlg-input:focus{border-color:var(--p,#6C5CE7)}',
       '.lu-dlg-foot{display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;background:var(--s1,#171A21);border-top:1px solid var(--bd,rgba(255,255,255,.07))}',
-      '@media (max-width:640px){.lu-mp-grid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}.lu-mp-tabs{padding:10px 12px 0;overflow-x:auto}.lu-mp-tab{white-space:nowrap}}',
+      /* MEDIA-1 (Owner 2026-09-23): on a phone the picker uses the whole screen - slim paddings, two full tiles per row */
+      '@media (max-width:640px){.lu-mp-overlay{padding:6px!important}.lu-mp-shell{width:calc(100% - 12px);max-width:none;max-height:calc(100dvh - 12px);border-radius:12px}.lu-mp-head{padding:12px 12px}.lu-mp-body{padding:10px 10px;min-height:0}.lu-mp-foot{padding:10px 10px;gap:8px}.lu-mp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.lu-mp-tabs{padding:8px 10px 0;overflow-x:auto}.lu-mp-tab{white-space:nowrap;padding:8px 12px}}',
     ].join('');
   }
 

@@ -3560,7 +3560,7 @@ document.addEventListener("DOMContentLoaded",function(){
   // scroll to the section, open in a new tab, edit the link). A normal tap still selects the element.
   (function(){ var lpT=null, lpEl=null, lpX=0, lpY=0, lpFired=false;
     function cancel(){ if(lpT){clearTimeout(lpT);lpT=null;} lpEl=null; }
-    document.addEventListener("pointerdown",function(e){ if(e.button&&e.button!==0) return; var a=e.target&&e.target.closest?e.target.closest("a[href],[data-field$=\"_link\"],[data-field^=\"nav_\"] a, nav a"):null; if(!a) return; lpEl=a; lpX=e.clientX; lpY=e.clientY; lpFired=false; lpT=setTimeout(function(){ lpFired=true; try{ if(navigator.vibrate) navigator.vibrate(12); }catch(_v){} var f=a.closest?a.closest("[data-field]"):null; var r=a.getBoundingClientRect(); try{ window.parent.postMessage({type:"link-longpress", href:a.getAttribute("href")||"", text:((a.textContent||"").replace(/\s+/g," ").trim().slice(0,60)), field:f?f.getAttribute("data-field"):null, rect:{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height}}, "*"); }catch(_p){} }, 550); }, true);
+    document.addEventListener("pointerdown",function(e){ if(e.button&&e.button!==0) return; var a=e.target&&e.target.closest?e.target.closest("a[href],[data-field$=\"_link\"],[data-field^=\"nav_\"] a, nav a, #cb888-bubble"):null; if(!a) return; lpEl=a; lpX=e.clientX; lpY=e.clientY; lpFired=false; lpT=setTimeout(function(){ lpFired=true; try{ if(navigator.vibrate) navigator.vibrate(12); }catch(_v){} if(a.id==="cb888-bubble"){ var rb=a.getBoundingClientRect(); try{ window.parent.postMessage({type:"chatbot-longpress", rect:{left:rb.left,top:rb.top,right:rb.right,bottom:rb.bottom,width:rb.width,height:rb.height}}, "*"); }catch(_cb){} return; } var f=a.closest?a.closest("[data-field]"):null; var r=a.getBoundingClientRect(); try{ window.parent.postMessage({type:"link-longpress", href:a.getAttribute("href")||"", text:((a.textContent||"").replace(/\s+/g," ").trim().slice(0,60)), field:f?f.getAttribute("data-field"):null, rect:{left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height}}, "*"); }catch(_p){} }, 550); }, true);
     document.addEventListener("pointermove",function(e){ if(lpT && (Math.abs(e.clientX-lpX)>8 || Math.abs(e.clientY-lpY)>8)) cancel(); }, true);
     document.addEventListener("pointerup",cancel,true); document.addEventListener("pointercancel",cancel,true);
     document.addEventListener("click",function(e){ if(lpFired){ lpFired=false; e.preventDefault(); e.stopPropagation(); } }, true);   // the release after a long-press is not a tap
@@ -4190,7 +4190,7 @@ document.addEventListener("DOMContentLoaded",function(){
 
   // ── Double-click to edit any [data-field] — delegated ──
   var _editingEl = null;
-  function _enterEdit(target){
+  function _enterEdit(target, ev){
     console.log("[edit] _enterEdit called with", target);
     if (!target || _editingEl === target) return;
     _editingEl = target;
@@ -4211,11 +4211,18 @@ document.addEventListener("DOMContentLoaded",function(){
     _hideHov();
     target.focus();
     try {
-      var range = document.createRange();
-      range.selectNodeContents(target);
-      var s = window.getSelection();
-      s.removeAllRanges();
-      s.addRange(range);
+      var s = window.getSelection(); s.removeAllRanges();
+      var coarse = false; try { coarse = window.matchMedia && window.matchMedia("(pointer:coarse)").matches; } catch(_m){}
+      if (coarse) {
+        // TEXTEDIT-1: a caret where the finger tapped (no ranged selection, so no OS toolbar and no web-search sheet)
+        var range = null;
+        try { if (ev && typeof ev.clientX === "number" && document.caretRangeFromPoint) { range = document.caretRangeFromPoint(ev.clientX, ev.clientY); } } catch(_c){ range = null; }
+        try { if (!range && ev && typeof ev.clientX === "number" && document.caretPositionFromPoint) { var cp = document.caretPositionFromPoint(ev.clientX, ev.clientY); if (cp) { range = document.createRange(); range.setStart(cp.offsetNode, cp.offset); range.collapse(true); } } } catch(_d){ range = null; }
+        if (!range || !target.contains(range.startContainer)) { range = document.createRange(); range.selectNodeContents(target); range.collapse(false); }
+        s.addRange(range);
+      } else {
+        var all = document.createRange(); all.selectNodeContents(target); s.addRange(all);
+      }
     } catch(_e){}
   }
   function _exitEdit(){
@@ -4259,7 +4266,7 @@ document.addEventListener("DOMContentLoaded",function(){
     if (!target) return;
     e.stopPropagation();
     e.preventDefault();
-    _enterEdit(target);
+    _enterEdit(target, e);   // TEXTEDIT-1: the tap point places the caret
   });
 
   document.addEventListener("input", function(e){
@@ -4294,6 +4301,7 @@ document.addEventListener("DOMContentLoaded",function(){
   });
 });
 </script>';
+    $html = str_replace('chatbot-widget.js?v=20260528-color', 'chatbot-widget.js?v=20260923-look', $html);   // CHATBOT-LOOK-1
     // HAMB-1 (2026-09-23): the preview shows the nav build the live site is served with (the block is versioned and replaced)
     try { $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html); } catch (\Throwable $e) {}
     if ($mode === 'view') {

@@ -1955,6 +1955,19 @@ PROMPT;
      * itself on failure; a generated image is placed into the named slot of the static export. A provider refusal is
      * reported as exactly that — never as a change.
      */
+    /** UNDO-1: the editor's Undo, from the chat. */
+    private function undoForChat(int $websiteId, object $site): array
+    {
+        try { $r = $this->templates->undoLatest($websiteId); } catch (\Throwable $e) { $r = ['undone' => false, 'error' => $e->getMessage()]; }
+        if (! empty($r['undone'])) {
+            $left = (int) ($r['remaining'] ?? 0);
+            return ['success' => true, 'kind' => 'undo', 'code' => 'UNDONE', 'applied' => 1, 'actions_applied' => 1, 'credits' => 0, 'reload_preview' => true,
+                'message' => 'Undone — ' . $site->name . ' is back to how it was before the last change.' . ($left > 0 ? ' ' . $left . ' more step' . ($left === 1 ? '' : 's') . ' can be undone.' : ' That was the earliest saved step.')];
+        }
+        return ['success' => false, 'kind' => 'answer', 'code' => 'NOTHING_TO_UNDO', 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+            'message' => 'There is nothing to undo yet — no saved change is waiting on ' . $site->name . '.'];
+    }
+
     /** IMGSEL-1: a field the editor's image walker treats as a picture (an <img data-field> or a picture-named wrapper). */
     private function isImageField(string $field, string $tag = ''): bool
     {
@@ -5901,6 +5914,12 @@ PROMPT;
             return ['success' => false, 'code' => 'NO_FILE', 'applied' => 0, 'actions_applied' => 0,
                 'message' => "I didn't receive the file itself — attach the logo or photos in the chat and ask again, and I'll place them on {$site->name}."];
         }
+        // UNDO-1 (2026-09-23): a bare 'undo' needs no model - revert the last saved change and say so
+        if (preg_match('/^\s*(?:please\s+)?(?:undo|undo that|undo it|undo the last (?:change|edit)|undo last (?:change|edit)|revert(?: that| it| the last change)?|put it back|go back one step)\s*[.!]*\s*$/i', $request)) {
+            $u = $this->undoForChat($websiteId, $site);
+            try { app(ArthurIntentService::class)->remember($wsId, $websiteId, $ctx, $request, $u, ['intent' => 'undo', 'normalized' => 'undo']); } catch (\Throwable $e) {}
+            return $u;
+        }
         // ARTHUR LLM-FIRST (DEC-0050, 2026-09-14, Owner: 'Arthur must be LLM first … must understand full context. he is not a robot'):
         // the model reads the message with the whole site and the conversation, decides one intent or asks; executors act.
         if ($isStatic && empty($ctx['_clause']) && empty($ctx['_no_brain'])) {
@@ -8354,6 +8373,8 @@ PROMPT;
                 DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]);
                 try { \Illuminate\Support\Facades\Artisan::call('sites:inject-scripts', ['--site' => $websiteId]); } catch (\Throwable $e) {}
                 return $base + ['success' => true, 'kind' => 'tracking', 'applied' => 1, 'actions_applied' => 1, 'message' => 'Done — tracking is now on every page of ' . $site->name . ' (' . implode(', ', array_map(fn($k) => ['ga4' => 'Google Analytics', 'gtm' => 'Tag Manager', 'meta_pixel' => 'Meta pixel', 'tiktok_pixel' => 'TikTok pixel'][$k] . ' ' . $cur[$k], array_keys($cur))) . ').'];
+            case 'undo':   // UNDO-1 (2026-09-23): Arthur reverts the last saved change himself
+                return $base + $this->undoForChat($websiteId, $site);
             case 'copy_edit':
                 $changes = is_array($intent['copy'] ?? null) ? $intent['copy'] : [];
                 if ($changes === []) { if ($normalized !== '') $request = $normalized; return null; }   // the copy model will pick the fields

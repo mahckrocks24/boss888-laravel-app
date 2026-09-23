@@ -69,6 +69,10 @@ class PublicChatbotController
         //       the site), not chatbot_settings' shared workspace value.
         $businessName  = $resolved['business_name'];
         $primaryColor  = $resolved['primary_color'] ?: ($settings->primary_color ?: '#6C5CE7');
+        // CHATBOT-LOOK-1 (2026-09-23): a look the owner chose for this website's chat button overrides the brand colour
+        $look = json_decode((string) ($settings->look_json ?? ''), true) ?: [];
+        if (preg_match('/^#[0-9a-f]{6}$/i', (string) ($look['color'] ?? ''))) $primaryColor = (string) $look['color'];
+        $launcherIcon = (string) ($look['icon'] ?? '');
 
         $greeting = $settings->greeting ?: 'Hi! Welcome to {{business}}. How can I help you today?';
         $greeting = str_replace(['{{business}}', '{{business_name}}'], $businessName, $greeting);
@@ -80,6 +84,7 @@ class PublicChatbotController
                 'business_name' => $businessName,
                 'primary_color' => $primaryColor,
                 'theme'         => $settings->theme ?: 'auto',
+                'launcher_icon' => $launcherIcon !== '' ? $launcherIcon : null,   // CHATBOT-LOOK-1
             ],
         ]);
     }

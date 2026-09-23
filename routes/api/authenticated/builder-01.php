@@ -125,6 +125,25 @@ use Illuminate\Support\Facades\Route;
             return app('lu.preview.render')((int) $id, (string) $page, (string) $r->query('mode', ''));   // VIEW-1
         })->where('page', '[A-Za-z0-9_\-/]+');
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
+        // CHATBOT-LOOK-1 (Owner 2026-09-23): the chat button's icon and colour for THIS website (long-press in the editor).
+        Route::put('/websites/{id}/chatbot-look', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $ws = (int) $r->attributes->get('workspace_id');
+            $icon = trim((string) $r->input('icon', '')); $color = trim((string) $r->input('color', ''));
+            if ($icon !== '' && ! preg_match('#^(data:image/svg\+xml;utf8,|data:image/(png|svg\+xml|webp);base64,|https?://|/storage/)#i', $icon)) return response()->json(['success' => false, 'message' => 'That icon is not an image I can use.'], 422);
+            if (strlen($icon) > 6000) return response()->json(['success' => false, 'message' => 'That icon is too large.'], 422);
+            if ($color !== '' && ! preg_match('/^#[0-9a-f]{6}$/i', $color)) return response()->json(['success' => false, 'message' => 'Colour must be a hex value like #1A2B3C.'], 422);
+            $look = array_filter(['icon' => $icon, 'color' => $color], fn ($v) => $v !== '');
+            $row = \Illuminate\Support\Facades\DB::table('chatbot_settings')->where('workspace_id', $ws)->where('website_id', (int) $id)->first();
+            if (! $row) {
+                // no row of its own yet: the website starts from the workspace's chatbot settings, then carries its look
+                $base = \Illuminate\Support\Facades\DB::table('chatbot_settings')->where('workspace_id', $ws)->where('website_id', 0)->first();
+                \Illuminate\Support\Facades\DB::table('chatbot_settings')->insert(['workspace_id' => $ws, 'website_id' => (int) $id, 'enabled' => (int) ($base->enabled ?? 1), 'greeting' => $base->greeting ?? null, 'fallback_email' => $base->fallback_email ?? null, 'primary_color' => $base->primary_color ?? '#6C5CE7', 'theme' => $base->theme ?? 'auto', 'business_hours_json' => $base->business_hours_json ?? null, 'timezone' => $base->timezone ?? 'UTC', 'business_context_text' => $base->business_context_text ?? null, 'look_json' => $look ? json_encode($look) : null, 'created_at' => now(), 'updated_at' => now()]);
+            } else {
+                \Illuminate\Support\Facades\DB::table('chatbot_settings')->where('id', $row->id)->update(['look_json' => $look ? json_encode($look) : null, 'updated_at' => now()]);
+            }
+            return response()->json(['success' => true, 'look' => $look, 'message' => $look ? 'The chat button now wears your choice.' : 'The chat button is back to the site\'s own colour and icon.']);
+        });
         // CLARIFY-X-1 (Owner 2026-09-23): the x on Arthur's question — forget the pending question so the next message starts clean.
         Route::post('/websites/{id}/arthur/dismiss', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);

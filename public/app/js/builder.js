@@ -1012,7 +1012,7 @@ function _wsShowTemplateEditor(site) {
       // Arthur sidebar
       '<div class="pe-side" style="width:300px;background:var(--s1,#161927);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0">' +
         '<div style="padding:14px;border-bottom:1px solid var(--bd)">' +
-          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><div style="width:28px;height:28px;background:var(--p);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px">'+window.icon('ai',18)+'</div><div class="pe-arthur-name" style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div><button type="button" id="t3-arthur-min" onclick="_t3ArthurMin()" aria-label="Minimise Arthur" title="Minimise Arthur \u2014 more room for the website" style="margin-left:auto;background:none;border:1px solid var(--bd);color:var(--t2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1;padding:0">\u2013</button></div>' +   /* MIN-1 */
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><img src="/img/logo-icon-48.png" alt="" aria-hidden="true" style="width:28px;height:28px;border-radius:8px;display:block;flex:0 0 auto"><div class="pe-arthur-name" style="color:var(--t1);font-weight:600;font-size:13px">Arthur</div><button type="button" id="t3-arthur-min" onclick="_t3ArthurMin()" aria-label="Minimise Arthur" title="Minimise Arthur \u2014 more room for the website" style="margin-left:auto;background:none;border:1px solid var(--bd);color:var(--t2);width:26px;height:26px;border-radius:6px;cursor:pointer;font-size:15px;line-height:1;padding:0">\u2013</button></div>' +   /* MIN-1 */
           _bldHint('ax-editor-intro', 'Ask Arthur to rewrite any text, or edit straight in the preview \u2014 double-click text, click an image to swap it. Colours switches the whole palette instantly; Undo puts anything back.', 'margin-top:2px') +
         '</div>' +
         '<div id="t3-arthur-feed" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px">' +
@@ -1189,7 +1189,7 @@ async function _t3ElementOp(d) {
   } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); if (d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); } }
 }
 
-function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "link-longpress") { _t3LinkSheet(e.data); return; }   // LONGPRESS-1
+function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "chatbot-longpress") { _t3ChatbotLookDialog(); return; }   /* CHATBOT-LOOK-1 */  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "link-longpress") { _t3LinkSheet(e.data); return; }   // LONGPRESS-1
   if (e.data.type === "editor-readonly-click") {   // PREVIEW-2: a link/button in a read-only preview does nothing but say so
     var now0 = Date.now(); if (!window._t3RoToastAt || now0 - window._t3RoToastAt > 4000) { window._t3RoToastAt = now0; if (typeof showToast === 'function') showToast('This preview is read-only. Ask Arthur to change this page.', 'info'); }
     return;
@@ -4100,7 +4100,7 @@ async function _t3LoadPreview(siteId, iframe, page) {
 
 function _t3ReloadPreview() {
   // The page editor (renderer sites) rebuilds its preview from the API; the template editor reloads the export.
-  if (typeof window._luPageEditorReloadHook === 'function') { try { window._luPageEditorReloadHook(); return; } catch (_e) {} }
+  if (typeof window._luPageEditorReloadHook === 'function' && !document.getElementById('template-editor-view')) { try { window._luPageEditorReloadHook(); return; } catch (_e) {} }   // UNDO-1: a page-editor hook left behind must not swallow the template editor's reload
   var f = document.getElementById('t3-preview');
   if (!f) return;
   if (window._t3PreviewSiteId) { _t3LoadPreview(window._t3PreviewSiteId, f); return; }   // PREVIEW GATE
@@ -4758,3 +4758,70 @@ window._t3ArthurMin = function () {
   var b = document.getElementById('t3-arthur-min'); if (b) { b.textContent = min ? '▸' : '–'; b.setAttribute('aria-label', min ? 'Show Arthur' : 'Minimise Arthur'); b.title = min ? 'Show Arthur' : 'Minimise Arthur — more room for the website'; }
   try { if (window._t3DeviceKey) _t3FitPreview(window._t3DeviceKey); } catch (_e) {}   // the stage just changed width
 };
+
+/* CHATBOT-LOOK-1 (Owner 2026-09-23): "On Chatbot888 icon, when long pressed on editor, show and add options to change icon
+   and colour". The bubble in the preview posts chatbot-longpress; this dialog offers an icon set and a colour, stored per
+   website; the widget paints them from /config on the live site and in the preview. */
+function _t3ChatbotLookDialog() {
+  var siteId = window._t3PreviewSiteId || ((document.getElementById('t3-preview') || {}).getAttribute ? document.getElementById('t3-preview').getAttribute('data-site') : null);
+  if (!siteId) return;
+  try { var _old = document.getElementById('t3-cbl-ov'); if (_old) _old.remove(); } catch (_e) {}
+  var svg = function (inner) { return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fff">' + inner + '</svg>'); };
+  var icons = [
+    { k: '', label: 'Default', uri: '' },
+    { k: 'dots', label: 'Dots', uri: svg('<path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/><circle cx="8" cy="10" r="1.6" fill="#000" opacity=".55"/><circle cx="12" cy="10" r="1.6" fill="#000" opacity=".55"/><circle cx="16" cy="10" r="1.6" fill="#000" opacity=".55"/>') },
+    { k: 'question', label: 'Help', uri: svg('<path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 15.5a1.25 1.25 0 1 1 0-2.5 1.25 1.25 0 0 1 0 2.5zm1.6-6.2c-.8.5-1 .9-1 1.7h-1.6c0-1.5.5-2.2 1.5-2.8.7-.4 1-.7 1-1.3 0-.7-.6-1.2-1.5-1.2s-1.6.5-1.7 1.4H8.6c.1-1.9 1.5-3.1 3.4-3.1 2 0 3.3 1.1 3.3 2.7 0 1.2-.6 1.9-1.7 2.6z"/>') },
+    { k: 'headset', label: 'Support', uri: svg('<path d="M12 3a8 8 0 0 0-8 8v5a3 3 0 0 0 3 3h1v-7H6v-1a6 6 0 0 1 12 0v1h-2v7h1a3 3 0 0 0 3-3v-5a8 8 0 0 0-8-8z"/><path d="M9 19h6v2H9z"/>') },
+    { k: 'sparkle', label: 'AI', uri: svg('<path d="M12 2l2.2 6.3L20 10l-5.8 1.7L12 18l-2.2-6.3L4 10l5.8-1.7z"/><path d="M19 15l.9 2.4 2.1.6-2.1.6L19 21l-.9-2.4-2.1-.6 2.1-.6z"/>') },
+    { k: 'robot', label: 'Bot', uri: svg('<path d="M11 2h2v3h-2z"/><rect x="4" y="6" width="16" height="12" rx="3"/><circle cx="9" cy="12" r="1.7" fill="#000" opacity=".55"/><circle cx="15" cy="12" r="1.7" fill="#000" opacity=".55"/><path d="M8 20h8v2H8z"/>') },
+    { k: 'phone', label: 'Call', uri: svg('<path d="M6.6 10.8a15 15 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25c1.1.37 2.3.57 3.6.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/>') },
+    { k: 'heart', label: 'Care', uri: svg('<path d="M12 21s-7.5-4.6-9.5-9.4C1.2 8.4 3.3 5 6.8 5c1.9 0 3.4 1 4.2 2.4C11.8 6 13.3 5 15.2 5c3.5 0 5.6 3.4 4.3 6.6C19.5 16.4 12 21 12 21z"/>') },
+    { k: 'mail', label: 'Message', uri: svg('<path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm1 3v1l8 5 8-5V8l-8 5z"/>') }
+  ];
+  var swatches = ['#6C5CE7', '#0A0A0A', '#1F2937', '#2563EB', '#0D9488', '#16A34A', '#F59E0B', '#DC2626', '#DB2777', '#7C3AED', '#C9A84C', '#FFFFFF'];
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
+  var ov = document.createElement('div'); ov.id = 't3-cbl-ov'; ov.className = 'lu-dlg-overlay';
+  ov.innerHTML = '<div class="lu-dlg" role="dialog" aria-modal="true" aria-labelledby="t3-cbl-t" style="max-width:520px;width:calc(100% - 24px)">'
+    + '<div class="lu-dlg-head" id="t3-cbl-t">💬 Chat button</div>'
+    + '<div class="lu-dlg-body">Choose how the chat button looks on this website. Visitors see it on every page.</div>'
+    + '<div style="padding:0 22px 6px">'
+    +   '<div style="font-size:12px;color:var(--t3);margin:6px 0 8px">Icon</div>'
+    +   '<div id="t3-cbl-icons" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px">' + icons.map(function (i) { return '<button type="button" class="lu-btn lu-btn--sm" data-cbl-icon="' + esc(i.k) + '" title="' + esc(i.label) + '" style="height:auto;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px"><span style="width:40px;height:40px;border-radius:50%;background:#6C5CE7;display:flex;align-items:center;justify-content:center">' + (i.uri ? '<img src="' + esc(i.uri) + '" alt="" style="width:24px;height:24px">' : '<svg viewBox="0 0 24 24" width="22" height="22" fill="#fff"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>') + '</span><span style="font-size:10.5px;color:var(--t2)">' + esc(i.label) + '</span></button>'; }).join('') + '</div>'
+    +   '<div style="font-size:12px;color:var(--t3);margin:14px 0 8px">Colour</div>'
+    +   '<div id="t3-cbl-colors" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">' + swatches.map(function (c) { return '<button type="button" data-cbl-color="' + c + '" title="' + c + '" aria-label="' + c + '" style="width:30px;height:30px;border-radius:50%;background:' + c + ';border:2px solid var(--bd);cursor:pointer;padding:0"></button>'; }).join('') + '<input id="t3-cbl-hex" type="text" maxlength="7" placeholder="#RRGGBB" aria-label="Custom colour" style="width:96px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:6px 8px;font:inherit;font-size:13px"></div>'
+    +   '<div style="font-size:11px;color:var(--t3);margin-top:8px">Leave the colour empty to use the site’s own brand colour.</div>'
+    +   '<div id="t3-cbl-out" style="margin-top:8px;font-size:12px"></div>'
+    + '</div>'
+    + '<div class="lu-dlg-foot"><button type="button" class="lu-dlg-btn ghost" data-role="reset">Use site default</button><button type="button" class="lu-dlg-btn ghost" data-role="cancel">Cancel</button><button type="button" class="lu-dlg-btn primary" data-role="ok">Save</button></div>'
+    + '</div>';
+  document.body.appendChild(ov);
+  var chosenIcon = '', chosenColor = '';
+  var mark = function () {
+    ov.querySelectorAll('[data-cbl-icon]').forEach(function (b) { b.style.outline = (b.getAttribute('data-cbl-icon') === chosenIcon) ? '2px solid var(--p)' : ''; });
+    ov.querySelectorAll('[data-cbl-color]').forEach(function (b) { b.style.boxShadow = (b.getAttribute('data-cbl-color').toLowerCase() === chosenColor.toLowerCase() && chosenColor) ? '0 0 0 3px var(--p)' : ''; });
+    ov.querySelectorAll('[data-cbl-icon] > span:first-child').forEach(function (sp) { sp.style.background = chosenColor || '#6C5CE7'; });
+  };
+  ov.querySelectorAll('[data-cbl-icon]').forEach(function (b) { b.onclick = function () { chosenIcon = b.getAttribute('data-cbl-icon'); mark(); }; });
+  ov.querySelectorAll('[data-cbl-color]').forEach(function (b) { b.onclick = function () { chosenColor = b.getAttribute('data-cbl-color'); ov.querySelector('#t3-cbl-hex').value = chosenColor; mark(); }; });
+  ov.querySelector('#t3-cbl-hex').addEventListener('input', function () { var v = this.value.trim(); if (/^#[0-9a-f]{6}$/i.test(v)) { chosenColor = v; mark(); } });
+  function close() { document.removeEventListener('keydown', onKey, true); try { ov.remove(); } catch (_e) {} }
+  function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } }
+  document.addEventListener('keydown', onKey, true);
+  ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
+  ov.querySelector('[data-role=cancel]').onclick = close;
+  async function save(reset) {
+    var out = ov.querySelector('#t3-cbl-out'); out.textContent = 'Saving…';
+    var iconUri = ''; icons.forEach(function (i) { if (i.k === chosenIcon) iconUri = i.uri; });
+    var body = reset ? { icon: '', color: '' } : { icon: iconUri, color: chosenColor };
+    try {
+      var r = await fetch('/api/builder/websites/' + siteId + '/chatbot-look', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, _t3CatAuth()), body: JSON.stringify(body) });
+      var j = null; try { j = await r.json(); } catch (_j) {}
+      if (!r.ok || !j || !j.success) { out.innerHTML = '<span style="color:#F87171">' + esc((j && j.message) || 'That could not be saved.') + '</span>'; return; }
+      if (typeof showToast === 'function') showToast(j.message || 'Saved', 'success');
+      close(); _t3ReloadPreview();
+    } catch (_e) { out.innerHTML = '<span style="color:#F87171">The change could not be sent. Please try again.</span>'; }
+  }
+  ov.querySelector('[data-role=ok]').onclick = function () { save(false); };
+  ov.querySelector('[data-role=reset]').onclick = function () { save(true); };
+  mark();
+}
