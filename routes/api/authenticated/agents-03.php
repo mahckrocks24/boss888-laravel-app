@@ -107,7 +107,7 @@ use Illuminate\Support\Facades\Route;
             $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
             $result = $engine->startMeeting(
                 $r->attributes->get('workspace_id'), $r->user()->id,
-                $r->input('goal'), $r->input('agents', [])
+                $r->input('goal'), $r->input('agents', []), null, 0, ((int) $r->input('business_id') ?: null)   // MEETING-BUSINESS-1
             );
 
             // Wave 87 — auto-advance after opening returns. App->terminating

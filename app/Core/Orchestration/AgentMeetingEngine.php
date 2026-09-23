@@ -57,13 +57,15 @@ class AgentMeetingEngine
      * Start a strategy meeting. Returns meeting ID.
      * Frontend polls for new messages as they come in.
      */
-    public function startMeeting(int $wsId, int $userId, string $goal, array $agentSlugs = [], ?string $reservationRef = null, int $reservedCredits = 0): array
+    public function startMeeting(int $wsId, int $userId, string $goal, array $agentSlugs = [], ?string $reservationRef = null, int $reservedCredits = 0, ?int $businessId = null): array
     {
         // RFC-0011 U7 (Owner 2026-09-22): the Strategy Room works like Sarah across MANY business profiles -
         // it reads which business the topic is about and runs in that profile, and always carries the full
         // roster so the team keeps the businesses apart. No workspace-level "intelligence profile" gate.
         $__resolver = app(\App\Core\Business\BusinessProfileResolver::class);
         $__biz = app(\App\Core\Business\BusinessContext::class)->resolve($wsId, $goal);
+        // MEETING-BUSINESS-1 (Owner 2026-09-23): a business picked on the launch screen pins the room to it; no pick = Sarah decides (U7)
+        if ($businessId) { $__picked = \App\Models\Business::where('workspace_id', $wsId)->whereNull('deleted_at')->find($businessId); if ($__picked) { $__biz = array_merge($__biz, ['multi' => true, 'mode' => 'named', 'business' => $__picked, 'business_id' => (int) $__picked->id, 'named' => [$__picked], 'source' => 'picked']); } }
         $__bizId = (($__biz['multi'] ?? false)) ? ($__biz['business_id'] ?? null) : null;
         $workspace = $__resolver->workspaceFor($wsId, $__bizId ? (int) $__bizId : null) ?? Workspace::findOrFail($wsId); // RFC-0011 U2/U7
         $workspace->businessRoster = \App\Core\Business\BusinessContext::promptBlock($__biz, $__resolver, $wsId);

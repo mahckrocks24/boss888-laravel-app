@@ -57,7 +57,8 @@ use Illuminate\Support\Facades\Route;
         }
         $engine = app(\App\Core\Orchestration\AgentMeetingEngine::class);
         $goal = $r->input('topic', $r->input('goal', 'Strategy discussion'));
-        $result = $engine->startMeeting($_wsId, $r->user()->id, $goal, $r->input('agents', []));
+        $__bizId = (int) $r->input('business_id') ?: null;   // MEETING-BUSINESS-1: the business the user picked (null = Sarah decides)
+        $result = $engine->startMeeting($_wsId, $r->user()->id, $goal, $r->input('agents', []), null, 0, $__bizId);
         if (!empty($result['meeting_id']) && empty($result['error'])) {
             // ss (2026-08-30): the engine's reserve→commit is the ONE charge (no route-level debit — that doubled it).
             $result['credits_charged'] = (int) ($result['credit_cost'] ?? 0);

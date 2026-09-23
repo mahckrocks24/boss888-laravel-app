@@ -1481,6 +1481,7 @@ async function nav(view, opts){
   if(view==='approvals')  loadApprovals();
   if(view==='billing')    loadBilling();
   if(view==='queue')      { if(typeof loadWorkerQueue==='function') loadWorkerQueue(); }
+  if(view==='meeting')    { try { mtgLoadBusinesses(); } catch (_mb) {} }   // MEETING-BUSINESS-1
 
   // Inject policy badges into module action buttons after render (Builder plugin)
   if(typeof _injectModuleBadges==='function') setTimeout(_injectModuleBadges, 500);
@@ -4262,12 +4263,25 @@ function setType(t,el){
   document.querySelectorAll('#type-grid>div').forEach(b=>{b.style.border='1.5px solid var(--bd)';b.style.background='var(--s2)';});
   el.style.border='1.5px solid rgba(108,92,231,.5)';el.style.background='var(--ps)';
 }
+// MEETING-BUSINESS-1: the workspace's businesses in the launch picker; default = the current website's business, else the default business
+async function mtgLoadBusinesses(){
+  var sel=document.getElementById('mtg-biz'); if(!sel) return;
+  try{
+    var d=await get(API+'businesses'); var list=(d&&d.businesses)||[]; if(!list.length){ sel.innerHTML='<option value="">Let Sarah decide from the topic</option>'; return; }
+    var curSite=null; try{ curSite=window.LU_Website&&LU_Website.current?LU_Website.current():null; }catch(_c){}
+    var pick=''; list.forEach(function(b){ if(curSite&&Array.isArray(b.websites)&&b.websites.some(function(w){return Number(w.id)===Number(curSite);})) pick=String(b.id); });
+    if(!pick){ var def=list.filter(function(b){return b.is_default;})[0]||list[0]; pick=String(def.id); }
+    var prev=sel.value; sel.innerHTML=list.map(function(b){ return '<option value="'+b.id+'">'+esc(b.name)+(b.industry?' — '+esc(b.industry):'')+'</option>'; }).join('')+'<option value="">Let Sarah decide from the topic</option>';
+    sel.value=(prev&&list.some(function(b){return String(b.id)===prev;}))?prev:pick;
+  }catch(_e){}
+}
 async function launchMeeting(){
   var topic=document.getElementById('topic-input').value.trim();
   if(!topic){document.getElementById('topic-input').focus();return;}
+  var _bs=document.getElementById('mtg-biz'); var bizId=(_bs&&_bs.value)?parseInt(_bs.value,10):null; var bizName=(bizId&&_bs.options[_bs.selectedIndex])?_bs.options[_bs.selectedIndex].textContent.split(' — ')[0]:null;   // MEETING-BUSINESS-1
   document.getElementById('mtg-start-screen').style.display='none';
   document.getElementById('mtg-active').style.display='flex';
-  document.getElementById('mtg-topic').textContent=topic.length>55?topic.slice(0,55)+'…':topic;
+  document.getElementById('mtg-topic').textContent=(bizName?bizName+' · ':'')+(topic.length>55?topic.slice(0,55)+'…':topic);   // MEETING-BUSINESS-1: the room says which business it is about
   document.getElementById('live-dot').classList.add('on');
   spoken.clear();phaseLog.clear();
   intel.theme='';intel.seo=[];intel.content=[];intel.social=[];intel.funnel=[];
@@ -4275,7 +4289,7 @@ async function launchMeeting(){
   document.getElementById('mi-body').innerHTML='<div class="mi-ph" id="mi-ph"><div class="mi-ph-icon">'+window.icon("ai",14)+'</div><div class="mi-ph-txt">Intelligence builds as the team discusses.</div></div>';
   try{
     // RFC-0011 U7 (Owner 2026-09-22): no workspace-profile gate. Sarah's team resolves the business from the topic and runs across all website profiles.
-    let r = await post(API+'meeting/start',{type:selType,topic,businessName:BN,website:BU});
+    let r = await post(API+'meeting/start',{type:selType,topic,businessName:BN,website:BU,business_id:bizId});   // MEETING-BUSINESS-1
     mid=r.meeting_id;seen=0;done=false;_redisCount=0;localUserMsgs=[];
     document.getElementById('btn-wrap').disabled=false;
     pollT=setInterval(poll,4000);
