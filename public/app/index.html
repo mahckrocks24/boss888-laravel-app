@@ -2640,6 +2640,49 @@ html.lu-kb-open .lu-dlg-overlay,html.lu-kb-open .bz-ov,html.lu-kb-open #t3-link-
 html.lu-kb-open .lu-dlg,html.lu-kb-open .lu-dlg.bz-dlg{max-height:calc(100vh - 32px - var(--lu-kb,0px))!important}
 html.lu-kb-open .pe-composer,html.lu-kb-open #sarah-composer,html.lu-kb-open .chat-composer{padding-bottom:calc(8px + var(--lu-kb,0px))}
 </style>
+<style id="lu-mtg-mobile-css">
+/* MEETING-MOBILE-1 (2026-09-23): the Strategy Room on phones - one column, team strip on top, plan as a bottom sheet */
+.lu-mtg-phone-only{display:none}
+@media (max-width:767px){
+  .lu-mtg-phone-only{display:inline-flex}
+  #mtg-active .mtg-topbar{padding:0 10px}
+  #mtg-active .mtg-topbar-inner{gap:8px;height:44px}
+  #mtg-active .mtg-topic{font-size:13px}
+  #mtg-active .phase-bar .ps{font-size:10px}
+  #mtg-active .mtg-grid{grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto minmax(0,1fr);overflow:hidden}
+  #mtg-active .mtg-agents{flex-direction:row;border-right:0;border-bottom:1px solid var(--bd);min-height:0;max-height:96px}
+  #mtg-active .ma-hdr{display:none}
+  #mtg-active .ma-list{flex-direction:row;overflow-x:auto;overflow-y:hidden;padding:6px 8px;gap:6px;scrollbar-width:none;-webkit-overflow-scrolling:touch;align-items:stretch}
+  #mtg-active .ma-list::-webkit-scrollbar{display:none}
+  #mtg-active .ma-list>*{flex:0 0 auto;max-width:170px;min-width:0}
+  #mtg-active .mtg-discussion{min-width:0;min-height:0}
+  #mtg-active .disc-feed{padding:12px 12px 16px}
+  #mtg-active .cmd-bar{padding:8px 10px;padding-bottom:calc(8px + env(safe-area-inset-bottom))}
+  #mtg-active .cmd-hint{display:none}
+  #mtg-active .mtg-intel{display:none;position:fixed;left:0;right:0;bottom:0;height:72dvh;z-index:120;border-left:0;border-top:1px solid var(--bd);border-radius:18px 18px 0 0;box-shadow:0 -24px 60px rgba(0,0,0,.35)}
+  #mtg-active.show-intel .mtg-intel{display:flex}
+  #mtg-active .mi-hdr{display:flex;align-items:center;gap:8px}
+  #mtg-active .mi-hdr>*:first-child{flex:1;min-width:0}
+  #mtg-intel-close{background:none;border:0;color:var(--t2);font-size:22px;line-height:1;cursor:pointer;padding:2px 6px}
+  #mtg-plan-toggle{height:30px;padding:0 10px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);color:var(--t1);font:600 12px var(--fb);align-items:center;gap:6px;white-space:nowrap}
+  #mtg-intel-backdrop{display:none;position:fixed;inset:0;z-index:119;background:rgba(0,0,0,.35)}
+  #mtg-active.show-intel~#mtg-intel-backdrop,#mtg-active.show-intel #mtg-intel-backdrop{display:block}
+}
+</style>
+<script>
+/* MEETING-MOBILE-1: the phone's Plan button and the sheet's close - injected once the room's markup exists */
+document.addEventListener('DOMContentLoaded', function () {
+  var act = document.getElementById('mtg-active'); if (!act) return;
+  var meta = act.querySelector('.mtg-meta'), hdr = act.querySelector('.mi-hdr');
+  if (meta && !document.getElementById('mtg-plan-toggle')) { var b = document.createElement('button'); b.type = 'button'; b.id = 'mtg-plan-toggle'; b.className = 'lu-mtg-phone-only'; b.setAttribute('aria-controls', 'mi-body'); b.textContent = 'Plan'; meta.appendChild(b); }
+  if (hdr && !document.getElementById('mtg-intel-close')) { var x = document.createElement('button'); x.type = 'button'; x.id = 'mtg-intel-close'; x.className = 'lu-mtg-phone-only'; x.setAttribute('aria-label', 'Close the plan'); x.innerHTML = '&times;'; hdr.appendChild(x); }
+  if (!document.getElementById('mtg-intel-backdrop')) { var bd = document.createElement('div'); bd.id = 'mtg-intel-backdrop'; act.appendChild(bd); }
+  document.addEventListener('click', function (e) {
+    if (e.target.closest('#mtg-plan-toggle')) { act.classList.toggle('show-intel'); return; }
+    if (e.target.closest('#mtg-intel-close') || e.target.closest('#mtg-intel-backdrop')) { act.classList.remove('show-intel'); }
+  });
+});
+</script>
 </head>
 <body>
 <script>
