@@ -618,7 +618,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
   function makeBubble(){
     bubble = document.createElement('div');
     bubble.id = 'lu-cb-bubble';
-    bubble.style.cssText = 'position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:'+COLOR+';color:'+FGON+';display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:2147483647;font-size:24px;line-height:1;border:'+(CBLIGHT?'1px solid rgba(0,0,0,.18)':'none')+';transition:transform .15s';
+    bubble.style.cssText = 'position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:50%;background:'+COLOR+';color:'+FGON+';display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;box-shadow:0 8px 32px rgba(0,0,0,.35);z-index:2147483647;font-size:24px;line-height:1;border:'+(CBLIGHT?'1px solid rgba(0,0,0,.18)':'none')+';transition:transform .15s';
     bubble.innerHTML = ICON ? '<img src="'+String(ICON).replace(/"/g,'&quot;')+'" alt="" aria-hidden="true" style="width:30px;height:30px;object-fit:contain;display:block;pointer-events:none">' : '\u{1F4AC}';   // CHATBOT-LOOK-1
     bubble.onmouseenter = function(){ bubble.style.transform = 'scale(1.06)'; };
     bubble.onmouseleave = function(){ bubble.style.transform = 'scale(1)'; };
