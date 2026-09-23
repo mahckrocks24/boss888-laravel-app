@@ -143,13 +143,13 @@
       + '  </div>'
       + '</div>'
       + '<div class="wsv2-toolbar">'
-      + '  <span class="wsv2-zoom"><button type="button" class="wsv2-btn" onclick="wsv2_zoom(-1)" title="Zoom out (Ctrl + wheel)" aria-label="Zoom out">&minus;</button><button type="button" class="wsv2-btn" id="wsv2-zoom-pct" onclick="wsv2_zoomReset()" title="Back to 100%">100%</button><button type="button" class="wsv2-btn" onclick="wsv2_zoom(1)" title="Zoom in (Ctrl + wheel)" aria-label="Zoom in">+</button></span>'   /* WS-CANVAS-1 */
       + '  <button class="wsv2-btn" onclick="wsv2_resetLayout()" title="Restore radial layout">&#x21bb; Reset Layout</button>'
       + '  <button class="wsv2-btn" onclick="wsv2_fitToScreen()" title="Center view">&#x2316; Center</button>'
       + '  <button class="wsv2-btn" onclick="nav(\'meeting\')">+ New Meeting</button>'
       + '  <button class="wsv2-btn wsv2-btn-primary" onclick="nav(\'meeting\')">Strategy Room</button>'
       + '  <button class="wsv2-btn" onclick="wsv2_toggleActivity()">Activity</button>'
       + '</div>'
+      + '<div class="wsv2-zoomctl" id="wsv2-zoomctl" aria-label="Zoom"><button type="button" class="wsv2-btn" onclick="wsv2_zoom(1)" title="Zoom in (Ctrl + wheel, or pinch)" aria-label="Zoom in">+</button><button type="button" class="wsv2-btn" id="wsv2-zoom-pct" onclick="wsv2_zoomReset()" title="Back to 100%">100%</button><button type="button" class="wsv2-btn" onclick="wsv2_zoom(-1)" title="Zoom out (Ctrl + wheel, or pinch)" aria-label="Zoom out">&minus;</button></div>'   /* WS-CANVAS-2: its own cluster, visible on every screen */
       + '<div class="wsv2-selection" id="wsv2-selection" style="display:none">'
       + '  <span class="wsv2-sel-info" id="wsv2-sel-count">0 agents selected</span>'
       + '  <button class="wsv2-btn wsv2-btn-primary" data-adv="1" onclick="wsv2_assignTask()">+ Assign Task</button>'
@@ -190,7 +190,9 @@
     +   'background-image:radial-gradient(circle,rgba(255,255,255,0.08) 1px,transparent 1px);'
     +   'background-size:24px 24px;background-position:0 0;'
     +   'transform-origin:0 0}'
-    + '.wsv2-world{position:absolute;left:0;top:0;transform-origin:0 0}.wsv2-zoom{display:inline-flex;gap:2px}.wsv2-zoom .wsv2-btn{padding:0 9px;min-width:30px;justify-content:center}'   /* WS-CANVAS-1 */
+    + '.wsv2-world{position:absolute;left:0;top:0;transform-origin:0 0}'
+    + '.wsv2-zoomctl{position:absolute;left:12px;bottom:calc(12px + env(safe-area-inset-bottom));z-index:21;display:flex;flex-direction:column;gap:4px;background:rgba(15,17,23,.85);backdrop-filter:blur(8px);padding:4px;border-radius:var(--r);border:1px solid var(--bd)}'
+    + '.wsv2-zoomctl .wsv2-btn{width:38px;height:38px;padding:0;justify-content:center;font-size:16px;font-weight:700}.wsv2-zoomctl #wsv2-zoom-pct{font-size:10px;font-weight:600;letter-spacing:.02em}'   /* WS-CANVAS-2 */
     + '.wsv2-svg{position:absolute;left:0;top:0;pointer-events:none;z-index:1;overflow:visible}'
     + '.wsv2-svg path{pointer-events:stroke;cursor:pointer}'
     + '.wsv2-zones{position:absolute;inset:0;pointer-events:none;z-index:0}'
@@ -292,7 +294,7 @@
     + '.wsv2-line.flash{animation:wsv2-pulse .6s ease-in-out 0s 3}'
     + '@media (max-width:767px){'
     +   '.wsv2-agent{width:150px;padding:12px}'
-    +   '.wsv2-toolbar{top:8px;right:8px;padding:4px;gap:4px}'
+    +   '.wsv2-toolbar{top:8px;left:8px;right:8px;padding:4px;gap:4px;max-width:calc(100% - 16px);overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;justify-content:flex-start}.wsv2-toolbar::-webkit-scrollbar{display:none}.wsv2-toolbar .wsv2-btn{flex:0 0 auto;white-space:nowrap}'   /* WS-CANVAS-3 (Owner 2026-09-23): one row inside the screen, scrolls sideways */
     +   '.wsv2-btn{height:28px;padding:0 10px;font-size:10px}'
     +   '.wsv2-selection{flex-wrap:wrap;justify-content:center;left:8px;right:8px;transform:none;max-width:none;padding:6px 8px}'
     +   '.wsv2-legend{display:none}'
@@ -878,6 +880,25 @@
       box.style.height = '0px';
     });
 
+    // WS-CANVAS-2: pinch to zoom (two fingers) around the fingers' midpoint; one finger keeps panning / dragging
+    var pinch = null;
+    function pinchDist(e) { var a = e.touches[0], b = e.touches[1]; return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY) || 1; }
+    function pinchMid(e) { var a = e.touches[0], b = e.touches[1]; return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 }; }
+    viewport.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 2) return;
+      endAllGesturesSafe();
+      pinch = { dist: pinchDist(e), scale: STATE.canvasScale || 1 };
+      e.preventDefault();
+    }, { passive: false });
+    viewport.addEventListener('touchmove', function (e) {
+      if (!pinch || e.touches.length !== 2) return;
+      e.preventDefault();
+      var m = pinchMid(e);
+      setZoom(pinch.scale * (pinchDist(e) / pinch.dist), m.x, m.y);
+    }, { passive: false });
+    viewport.addEventListener('touchend', function (e) { if (pinch && e.touches.length < 2) pinch = null; });
+    viewport.addEventListener('touchcancel', function () { pinch = null; });
+    function endAllGesturesSafe() { try { if (STATE.drag.active) endAgentDrag(); if (STATE.taskDrag.active) endTaskDrag(); if (STATE.lasso.active) endLasso(canvas); } catch (e) {} }
     viewport.addEventListener('wheel', function (e) { if (!(e.ctrlKey || e.metaKey)) return; e.preventDefault(); setZoom((STATE.canvasScale || 1) * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY); }, { passive: false });   // WS-CANVAS-1
     document.addEventListener('mousemove', function (e) {
       if (STATE.taskDrag.active) {
