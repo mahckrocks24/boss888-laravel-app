@@ -1077,7 +1077,7 @@ async function wsCloseTemplateEditor() {
   // customer is asked about. Nothing pending: leave silently.
   var pending = 0;
   try { pending = Object.keys(_t3PendingFields).length; } catch (_e) {}
-  if (pending > 0) {
+  { // EXIT-1 (Owner 2026-09-23): always confirm the exit, so nobody leaves wondering whether their work was saved
     var choice = await _t3ExitChoice(pending);
     if (choice === 'stay') return;
     if (choice === 'save') {
@@ -1336,6 +1336,8 @@ var _t3ImgPanelInfo = null;
 function _t3ShowImagePanel(info) {
   _t3HideImagePanel();
   _t3ImgPanelInfo = info;
+  // IMGSEL-1: the clicked picture is the selection Arthur's chat carries ('generate an image' means THIS picture)
+  try { if (info && info.field) { window._t3SelectedElement = info.field; if (info.block) window._t3SelectedBlock = info.block; var _cl0 = document.getElementById('t3-context-label'); if (_cl0) { _cl0.textContent = 'Selected: ' + String(info.field).replace(/_(url|src|image|img)$/i, '').replace(/_/g, ' ') + ' picture'; _cl0.style.color = ''; } var _in0 = document.getElementById('t3-arthur-input'); if (_in0) _in0.placeholder = 'Ask Arthur about this picture…'; } } catch (_e0) {}
   var iframe = document.getElementById('t3-preview');
   if (!iframe) return;
   var ir = iframe.getBoundingClientRect();
@@ -1908,10 +1910,13 @@ async function _t3ArthurSend(websiteId) {
     } else if (d.method === 'clarify') {
       if (feed) {
         var _qid = 'q_' + Date.now();
-        feed.innerHTML += '<div id="' + _qid + '" style="background:var(--s2);padding:10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid var(--p)"><div style="color:var(--t1);font-size:13px;line-height:1.5">' + bld_escH(d.message) + '</div>'
+        feed.innerHTML += '<div id="' + _qid + '" style="position:relative;background:var(--s2);padding:10px 30px 10px 12px;border-radius:8px;margin:4px 0;border-left:3px solid var(--p)"><button type="button" data-arthur-dismiss="1" aria-label="Dismiss this question" title="Never mind" style="position:absolute;top:6px;right:6px;width:22px;height:22px;border:none;background:none;color:var(--t3);font-size:16px;line-height:1;cursor:pointer;border-radius:4px">\u00d7</button><div style="color:var(--t1);font-size:13px;line-height:1.5">' + bld_escH(d.message) + '</div>'   /* CLARIFY-X-1 */
           + ((d.options && d.options.length) ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">' + d.options.map(function (o) { return '<button type="button" class="lu-btn lu-btn--sm" style="white-space:normal;text-align:left;height:auto;line-height:1.35;max-width:100%" data-arthur-opt="' + bld_escH(o) + '">' + bld_escH(o) + '</button>'; }).join('') + '</div>' : '') + '</div>';
         var _q = document.getElementById(_qid);
-        if (_q) { _q.querySelectorAll('[data-arthur-opt]').forEach(function (b) { b.addEventListener('click', function () { var i = document.getElementById('t3-arthur-input'); if (i) { i.value = b.getAttribute('data-arthur-opt'); _t3ArthurSend(websiteId); } }); }); _q.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+        if (_q) { _q.querySelectorAll('[data-arthur-opt]').forEach(function (b) { b.addEventListener('click', function () { var i = document.getElementById('t3-arthur-input'); if (i) { i.value = b.getAttribute('data-arthur-opt'); _t3ArthurSend(websiteId); } }); });
+          // CLARIFY-X-1: the x removes the question and tells Arthur to forget it, so the next message starts clean
+          var _qx = _q.querySelector('[data-arthur-dismiss]'); if (_qx) _qx.addEventListener('click', function () { try { _q.remove(); } catch (_e1) {} try { var _sid = window._t3PreviewSiteId || ((document.getElementById('t3-preview') || {}).getAttribute ? document.getElementById('t3-preview').getAttribute('data-site') : null) || websiteId; fetch('/api/builder/websites/' + _sid + '/arthur/dismiss', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, _t3CatAuth()) }); } catch (_e2) {} });
+          _q.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       }
     } else if (d.method === 'noop') {
       // Not an error — Arthur understood, but nothing on the site changed and nothing was charged.
@@ -4224,12 +4229,13 @@ function _t3ExitChoice(n) {
     ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:20px';
     var box = document.createElement('div');
     box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);padding:20px;width:min(440px,100%);font-family:var(--fb)';
-    box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:6px">Save your edits as a draft?</div>'
-      + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save them as a draft on this website, or leave without them.</div>'
+    // EXIT-1: the copy says exactly what is and is not saved; the primary action is always Save and exit
+    box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:6px">' + (n > 0 ? 'Save your edits before you leave?' : 'Leave the editor?') + '</div>'
+      + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">' + (n > 0 ? 'You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save and exit keeps ' + (n === 1 ? 'it' : 'them') + ' as a draft on this website.' : 'Everything you changed is already saved on this website — Arthur’s changes, colours, layout and your edits. Undo and Versions can put any of it back next time.') + '</div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
       + '<button type="button" class="lu-btn lu-btn--sm" data-c="stay">Keep editing</button>'
-      + '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Leave without saving</button>'
-      + '<button type="button" class="lu-btn lu-btn--sm lu-btn--primary" data-c="save" style="background:var(--p);color:#fff;border-color:var(--p)">Save draft</button>'
+      + (n > 0 ? '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Leave without saving</button>' : '')
+      + '<button type="button" class="lu-btn lu-btn--sm lu-btn--primary" data-c="save" style="background:var(--p);color:#fff;border-color:var(--p)">Save and exit</button>'
       + '</div>';
     ov.appendChild(box); document.body.appendChild(ov);
     function done(v) { try { ov.remove(); } catch (_e) {} document.removeEventListener('keydown', onKey, true); resolve(v); }

@@ -49,6 +49,17 @@ class ArthurIntentService
      *                        colours, addable_pages, addable_sections, abilities
      * @return array|null     the model's decision, or null when the model could not be reached (callers fall back)
      */
+    /** CLARIFY-X-1: forget the question Arthur is waiting on (the customer dismissed it). Returns how many histories were cleared. */
+    public function dismissPending(int $wsId, int $websiteId, array $userIds): int
+    {
+        $n = 0;
+        foreach (array_unique(array_map('intval', $userIds)) as $uid) {
+            $ctx = ['user_id' => $uid]; $h = $this->history($wsId, $websiteId, $ctx);
+            if (! empty($h['pending'])) { $h['pending'] = null; Cache::put($this->key($wsId, $websiteId, $ctx), $h, self::TTL); $n++; }
+        }
+        return $n;
+    }
+
     public function interpret(int $wsId, int $websiteId, object $site, string $request, array $ctx, array $siteCtx): ?array
     {
         $h = $this->history($wsId, $websiteId, $ctx);
@@ -119,6 +130,7 @@ class ArthurIntentService
         if (! empty($c['selected']) && is_array($c['selected'])) {
             $s = $c['selected'];
             if (($s['field'] ?? '') !== '') $b .= "SELECTED ELEMENT (the customer clicked it in the editor; 'this', 'it', 'the selected/highlighted element/text/button', 'here' mean it): field {$s['field']}" . (($s['block'] ?? '') !== '' ? " in section {$s['block']}" : '') . (($s['tag'] ?? '') !== '' ? " (<{$s['tag']}>)" : '') . (($s['text'] ?? '') !== '' ? ' — text ' . json_encode($s['text'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : '') . "\n";
+            if (($s['field'] ?? '') !== '' && (($s['tag'] ?? '') === 'img' || preg_match('/(_image|_photo|_img|_avatar|_picture|^image_\d+$)/i', (string) $s['field']))) $b .= "THE SELECTED ELEMENT IS A PICTURE: a request to generate / create / make / draw a photo, image or picture means THIS picture — intent image, target field {$s['field']}; never ask where it should go.\n";   // IMGSEL-1
             elseif (($s['block'] ?? '') !== '') $b .= "SELECTED SECTION (the customer clicked it in the editor; 'this section', 'it', 'here' mean it): {$s['block']}\n";
         }
         foreach ((array) ($c['catalogues'] ?? []) as $kind => $cat) {

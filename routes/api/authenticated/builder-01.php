@@ -125,6 +125,13 @@ use Illuminate\Support\Facades\Route;
             return app('lu.preview.render')((int) $id, (string) $page);
         })->where('page', '[A-Za-z0-9_\-/]+');
         // ELEMENT888 (DEC-0052, 2026-09-15): the toolbox and the drag handle in the preview — one element moves, aligns or resizes. 1 credit each.
+        // CLARIFY-X-1 (Owner 2026-09-23): the x on Arthur's question — forget the pending question so the next message starts clean.
+        Route::post('/websites/{id}/arthur/dismiss', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $ws = (int) $r->attributes->get('workspace_id'); $uid = (int) ($r->attributes->get('user_id') ?? optional($r->user())->id ?? 0);
+            $n = app(\App\Engines\Builder\Services\ArthurIntentService::class)->dismissPending($ws, (int) $id, [$uid, 0]);
+            return response()->json(['success' => true, 'cleared' => $n]);
+        });
         Route::post('/websites/{id}/elements/{op}', function (\Illuminate\Http\Request $r, $id, $op) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
             if (! in_array($op, ['move', 'align', 'size', 'effect', 'link', 'fit'], true)) return response()->json(['success' => false, 'message' => 'Unknown operation'], 422);   // LINK-1

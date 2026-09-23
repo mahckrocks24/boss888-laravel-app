@@ -1955,16 +1955,24 @@ PROMPT;
      * itself on failure; a generated image is placed into the named slot of the static export. A provider refusal is
      * reported as exactly that — never as a change.
      */
+    /** IMGSEL-1: a field the editor's image walker treats as a picture (an <img data-field> or a picture-named wrapper). */
+    private function isImageField(string $field, string $tag = ''): bool
+    {
+        return $field !== '' && $field !== 'logo_url' && ($tag === 'img' || (bool) preg_match('/(_image|_photo|_img|_avatar|_picture|^image_\d+$)/i', $field));
+    }
+
     private function generateSiteImage(int $wsId, int $websiteId, string $request, object $site, array $plan, bool $isStatic, array $tv): array
     {
         $target = (string) ($plan['target'] ?? 'hero');
+        $selField = (string) ($plan['field'] ?? '');   // IMGSEL-1: the picture the customer clicked
+        $aspect = preg_match('/(member|team|staff|doctor|trainer|stylist|agent|founder|chef|avatar|portrait)/i', $selField) ? '1:1' : (preg_match('/(service|gallery|feature|card|menu|item|project|dish|room|listing)/i', $selField) ? '4:3' : '16:9');
         $prompt = trim((string) preg_replace('/^(?:please\s+)?(?:can you\s+)?(?:generate|create|produce|draw|render|design|make|give me)\s+(?:me\s+)?(?:an?\s+|the\s+)?(?:new\s+|another\s+|different\s+)?(?:ai\s+)?(?:hero\s+|banner\s+|background\s+|about\s+|gallery\s+)?(?:image|photo|picture|visual|illustration|artwork)\s*(?:of|for|showing|with|that shows)?\s*/i', '', $request));
         $prompt = trim((string) preg_replace('/\s+(?:for|on|in)\s+the\s+(?:hero|banner|about|gallery)(?:\s+section)?\.?$/i', '', $prompt));
         if ($prompt === '') { $prompt = "{$site->name} — " . str_replace('_', ' ', (string) ($tv['industry'] ?? 'business')) . ' hero image'; }
         try {
             $res = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class)->generate([
                 'workspace_id' => $wsId, 'user_prompt' => $prompt, 'source' => 'builder',
-                'asset_type' => 'website_hero', 'platform' => 'web', 'aspect_ratio' => '16:9',
+                'asset_type' => 'website_hero', 'platform' => 'web', 'aspect_ratio' => $aspect,
             ]);
         } catch (\Throwable $e) {
             $res = ['success' => false, 'error' => 'exception', 'message' => $e->getMessage()];
@@ -1982,7 +1990,7 @@ PROMPT;
         // Same-origin images go in as a path, never with a host, so the export does not depend on the current domain.
         $pu = parse_url($url);
         if (! empty($pu['path']) && str_starts_with((string) $pu['path'], '/storage/') && (empty($pu['host']) || str_contains((string) $pu['host'], 'levelupgrowth'))) { $url = (string) $pu['path']; }
-        $field = $target === 'about' ? 'about_image' : ($target === 'gallery' ? 'gallery_1_image' : 'hero_image');
+        $field = $selField !== '' ? $selField : ($target === 'about' ? 'about_image' : ($target === 'gallery' ? 'gallery_1_image' : 'hero_image'));   // IMGSEL-1
         $placed = false;
         if ($isStatic) {
             try { $placed = $this->templates->updateField($websiteId, $field, $url); } catch (\Throwable $e) { Log::warning('[Arthur] generated image not placed: ' . $e->getMessage()); }
@@ -1998,7 +2006,7 @@ PROMPT;
                 'message' => "I generated the image (it is in your Media Library) but this design has no {$target} image slot I can put it in. Click any image in the preview to use it there."];
         }
         return ['success' => true, 'kind' => 'image', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $charged, 'url' => $url,
-            'message' => "Done — I generated a new {$target} image for {$site->name} and put it in place." . ($charged > 0 ? " {$charged} credit" . ($charged === 1 ? '' : 's') . ' (image service).' : '')];
+            'message' => "Done — I generated a new " . ($selField !== '' ? str_replace('_', ' ', (string) preg_replace('/_(image|photo|img|avatar|picture)$/i', '', $selField)) . ' picture' : "{$target} image") . " for {$site->name} and put it in place." . ($charged > 0 ? " {$charged} credit" . ($charged === 1 ? '' : 's') . ' (image service).' : '')];
     }
 
 
@@ -5898,6 +5906,13 @@ PROMPT;
             Log::info('[Arthur] selection', ['website' => $websiteId, 'selected' => $ctx['selected'] === null ? 'none' : $ctx['selected']['field'] . '@' . $ctx['selected']['block'] . ' <' . $ctx['selected']['tag'] . '>']);
             try { $brain = app(ArthurIntentService::class); $intent = $brain->interpret($wsId, $websiteId, $site, $request, $ctx, $this->intentContext($wsId, $websiteId, $site, $tv, (string) $industry) + ['selected' => $ctx['selected']]); }
             catch (\Throwable $e) { Log::warning('[Arthur] intent failed, classic path', ['website' => $websiteId, 'error' => $e->getMessage()]); }
+            // IMGSEL-1 (2026-09-23): the customer clicked a picture and asks for a picture — that picture is the target; never ask where.
+            if ($intent !== null && is_array($ctx['selected'] ?? null) && $this->isImageField((string) ($ctx['selected']['field'] ?? ''), (string) ($ctx['selected']['tag'] ?? ''))
+                && preg_match('/\b(generate|create|make|draw|produce|render|design|give me|need|want|get me)\b/i', $request) && preg_match('/\b(image|images|photo|photos|picture|pictures|photograph|visual|graphic|illustration|artwork|banner)\b/i', $request)
+                && in_array((string) ($intent['intent'] ?? ''), ['clarify', 'unsupported', 'answer', 'image'], true)) {
+                $intent = array_merge(is_array($intent) ? $intent : [], ['intent' => 'image', 'confidence' => 0.99, 'normalized' => $request, 'question' => '', 'options' => []]);
+                Log::info('[Arthur] IMGSEL-1: image request aimed at the selected picture', ['website' => $websiteId, 'field' => $ctx['selected']['field']]);
+            }
             if ($intent !== null && $brain !== null) {
                 $out = $this->dispatchIntent($wsId, $websiteId, $site, $request, $ctx, $tv, (string) $industry, $intent, $isStatic);
                 if ($out !== null) { $brain->remember($wsId, $websiteId, $ctx, $request, $out, $intent); return $out; }
@@ -5981,6 +5996,7 @@ PROMPT;
         }
         // IMAGE GENERATION at edit time (DEC-0046 gap closure, 2026-09-14): the image service existed; Builder never called it.
         if ($plan['kind'] === 'image') {
+            if (is_array($ctx['selected'] ?? null) && $this->isImageField((string) ($ctx['selected']['field'] ?? ''), (string) ($ctx['selected']['tag'] ?? ''))) { $plan['field'] = (string) $ctx['selected']['field']; }   // IMGSEL-1
             return $this->generateSiteImage($wsId, $websiteId, $request, $site, $plan, $isStatic, $tv);
         }
         // STUDIO → ARTHUR (2026-09-14): the studio's video, text-on-image and image-edit capabilities, from the chat.
