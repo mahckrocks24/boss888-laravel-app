@@ -184,7 +184,7 @@
   // --rg, --fh, --p, etc.) so visuals match v1 identically.
   var STYLES = ''
     + '#view-workspace{position:relative;overflow:hidden;background:#0D0D0F;height:100%;font-family:var(--fb)}'
-    + '.wsv2-viewport{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior:contain;background:#0D0D0F}'   /* WS-CANVAS-4: every touch gesture is ours */
+    + '.wsv2-viewport{position:absolute;inset:0;overflow:auto;-webkit-overflow-scrolling:touch;touch-action:none;overscroll-behavior:contain;overflow-anchor:none;background:#0D0D0F}'   /* WS-CANVAS-4: every touch gesture is ours; WS-CANVAS-7: no scroll anchoring under a gesture */
     + '#wsv2-viewport,#wsv2-viewport *{touch-action:none!important}'   /* WS-CANVAS-6 (forensic 2026-09-23): lu-mobile.css sets #wsv2-viewport{touch-action:pan-x pan-y} on phones by ID - the browser was panning and pinch-zooming underneath our handlers; ID + !important wins on every screen */
     + '.wsv2-canvas{position:relative;'
     +   'background:#0D0D0F;'
@@ -889,21 +889,33 @@
       if (e.touches.length !== 2) return;
       endAllGesturesSafe();
       var m0 = pinchMid(e), a0 = canvasCoords(canvas, m0.x, m0.y);
-      pinch = { dist: pinchDist(e), scale: STATE.canvasScale || 1, ax: a0.x, ay: a0.y };   // the world point between the fingers at the start
+      pinch = { dist: pinchDist(e), scale: STATE.canvasScale || 1, ax: a0.x, ay: a0.y, s: STATE.canvasScale || 1, mid: m0 };   // the world point between the fingers at the start
+      try { var wEl0 = document.getElementById('wsv2-world'); if (wEl0) wEl0.style.willChange = 'transform'; } catch (_w) {}
       e.preventDefault();
     }, { passive: false });
     viewport.addEventListener('touchmove', function (e) {
       if (!pinch || e.touches.length !== 2) return;
       e.preventDefault();
-      var m = pinchMid(e);
-      setZoomAnchored(pinch.scale * (pinchDist(e) / pinch.dist), pinch.ax, pinch.ay, m.x, m.y);   // that point follows the fingers
+      // WS-CANVAS-7: while the fingers are down, only the world's transform moves - no layout, no scroll writes
+      var m = pinchMid(e), sNext = Math.max(0.35, Math.min(2.5, pinch.scale * (pinchDist(e) / pinch.dist)));
+      var wEl = document.getElementById('wsv2-world'); if (!wEl) return;
+      var vr = viewport.getBoundingClientRect(), sl = viewport.scrollLeft, st = viewport.scrollTop, W = STATE.world;
+      var ex = (m.x - vr.left) + sl - (pinch.ax - W.minX) * sNext, ey = (m.y - vr.top) + st - (pinch.ay - W.minY) * sNext;
+      wEl.style.transform = 'translate(' + ex + 'px,' + ey + 'px) scale(' + sNext + ') translate(' + (-W.minX) + 'px,' + (-W.minY) + 'px)';
+      pinch.s = sNext; pinch.mid = m;
+      var lbl = document.getElementById('wsv2-zoom-pct'); if (lbl) lbl.textContent = Math.round(sNext * 100) + '%';
     }, { passive: false });
+    function commitPinch() {   // WS-CANVAS-7: one layout, on release
+      var pz = pinch; pinch = null; if (!pz) return;
+      try { var wEl = document.getElementById('wsv2-world'); if (wEl) wEl.style.willChange = ''; } catch (_w) {}
+      setZoomAnchored(pz.s, pz.ax, pz.ay, pz.mid.x, pz.mid.y);
+    }
     viewport.addEventListener('touchend', function (e) {   // WS-CANVAS-5: when one finger lifts, the other carries on from where it IS, never from where it started
-      if (pinch && e.touches.length < 2) pinch = null;
+      if (pinch && e.touches.length < 2) commitPinch();
       if (e.touches.length === 1) { var t1 = e.touches[0]; pan = { id: t1.identifier, x: t1.clientX, y: t1.clientY, sl: viewport.scrollLeft, st: viewport.scrollTop }; }
       else if (e.touches.length === 0) pan = null;
     });
-    viewport.addEventListener('touchcancel', function () { pinch = null; pan = null; });
+    viewport.addEventListener('touchcancel', function () { if (pinch) commitPinch(); pan = null; });
     // WS-CANVAS-4: one finger pans the board (the browser no longer scrolls it natively); cards, task nodes and the lasso keep their double-tap gestures
     var pan = null;
     function ownGesture() { return STATE.drag.active || STATE.taskDrag.active || STATE.lasso.active; }
