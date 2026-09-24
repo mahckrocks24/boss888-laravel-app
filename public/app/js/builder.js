@@ -4780,6 +4780,10 @@ window._t3ArthurMin = function () {
   var min = !side.classList.contains('pe-side--min');
   side.classList.toggle('pe-side--min', min);
   var b = document.getElementById('t3-arthur-min'); if (b) { b.textContent = min ? '▸' : '–'; b.setAttribute('aria-label', min ? 'Show Arthur' : 'Minimise Arthur'); b.title = min ? 'Show Arthur' : 'Minimise Arthur — more room for the website'; }
+  // ARTHUR-MIN-1: on a desktop the panel folds into a left-edge rail; the rail's tab brings it back.
+  var rail = side.querySelector('.pe-rail');
+  if (min && !rail) { rail = document.createElement('button'); rail.type = 'button'; rail.className = 'pe-rail'; rail.setAttribute('aria-label', 'Show Arthur'); rail.title = 'Show Arthur'; rail.innerHTML = '<span class="pe-rail-ico" aria-hidden="true">▸</span><span class="pe-rail-txt">Arthur</span>'; rail.addEventListener('click', function () { window._t3ArthurMin(); }); side.appendChild(rail); }
+  if (!min && rail) { rail.remove(); }
   try { if (window._t3DeviceKey) _t3FitPreview(window._t3DeviceKey); } catch (_e) {}   // the stage just changed width
 };
 
