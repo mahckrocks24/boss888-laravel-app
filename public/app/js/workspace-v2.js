@@ -260,6 +260,8 @@
     /* dismiss ✕ — visible only on hover, only on terminal tasks */
     + '.wsv2-tn-close{position:absolute;top:5px;right:5px;width:18px;height:18px;border:none;background:rgba(255,255,255,.06);color:var(--t2);cursor:pointer;border-radius:50%;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .15s,color .15s;padding:0;font-family:var(--fb)}'
     + '.wsv2-task-node:hover .wsv2-tn-close{opacity:.85}'
+    + '.wsv2-task-node.status-completed .wsv2-tn-close,.wsv2-task-node.status-failed .wsv2-tn-close{opacity:.85}'   /* TN-CLOSE-1 (Owner 2026-09-24): a finished card always shows its x - a phone has no hover */
+    + '@media (hover:none),(pointer:coarse){.wsv2-tn-close{opacity:.85;width:26px;height:26px;font-size:16px;top:3px;right:3px}}'
     + '.wsv2-tn-close:hover{background:var(--rd);color:#fff;opacity:1!important}'
     + '.wsv2-task-node .tn-title{font-size:10px;font-weight:700;color:var(--t1);line-height:1.4;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--fb)}'
     + '.wsv2-task-node .tn-assignees{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px}'
