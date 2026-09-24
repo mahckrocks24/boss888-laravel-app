@@ -388,6 +388,7 @@
   function render() {
     renderAgents();
     try { fitCanvas(); } catch (e) {}   // WS-CANVAS-1
+    if (!STATE.fittedOnce && STATE.agents.length) { STATE.fittedOnce = true; try { fitAll(); } catch (e) {} }   // WS-FIT-1: the first view holds the whole team
     requestAnimationFrame(function () {
       try { layoutTaskNodes(); } catch (e) { console.warn('[wsv2] task placement failed', e); }   // WS-TASKS-1
       renderZones();
@@ -928,7 +929,7 @@
     viewport.addEventListener('touchmove', function (e) {
       if (pinch && e.touches.length === 2) {
         e.preventDefault();
-        var m = pinchMid(e);
+        var m = pinchMid(e); STATE.userAdjusted = true;
         setZoomAt(pinch.scale * (pinchDist(e) / pinch.dist), pinch.ax, pinch.ay, m.x, m.y);
         return;
       }
@@ -936,7 +937,7 @@
       var t = e.touches[0];
       if (!pan || pan.id !== t.identifier) { rebasePan(t); return; }
       e.preventDefault();
-      STATE.view.tx = pan.tx + (t.clientX - pan.x); STATE.view.ty = pan.ty + (t.clientY - pan.y); applyView();
+      STATE.userAdjusted = true; STATE.view.tx = pan.tx + (t.clientX - pan.x); STATE.view.ty = pan.ty + (t.clientY - pan.y); applyView();
     }, { passive: false });
     function endPinch() { pinch = null; try { var wEl = document.getElementById('wsv2-world'); if (wEl) wEl.style.willChange = ''; } catch (_w) {} }
     viewport.addEventListener('touchend', function (e) {
@@ -1283,7 +1284,7 @@
   // zoom so that WORLD point (wx,wy) sits under SCREEN point (fx,fy)
   function setZoomAt(next, wx, wy, fx, fy) {
     var canvas = document.getElementById('wsv2-canvas'); if (!canvas) return;
-    next = Math.max(0.35, Math.min(2.5, next));
+    next = Math.max(0.15, Math.min(2.5, next));   // WS-FIT-1: a phone needs to go small enough to hold the whole team
     var cr = canvas.getBoundingClientRect();
     STATE.canvasScale = next;
     STATE.view.tx = (fx - cr.left) - wx * next; STATE.view.ty = (fy - cr.top) - wy * next;
@@ -1297,11 +1298,33 @@
     setZoomAt(next, w.x, w.y, fx, fy);
   }
   function setZoomAnchored(next, ax, ay, fx, fy) { setZoomAt(next, ax, ay, fx, fy); }
-  function panBy(dx, dy) { STATE.view.tx += dx; STATE.view.ty += dy; applyView(); }
+  function panBy(dx, dy) { STATE.userAdjusted = true; STATE.view.tx += dx; STATE.view.ty += dy; applyView(); }
+  window.addEventListener('resize', function () { clearTimeout(STATE.fitTimer); STATE.fitTimer = setTimeout(function () { if (!STATE.userAdjusted && document.getElementById('wsv2-viewport')) fitAll(); }, 150); });   // WS-FIT-1: an orientation change refits until the user takes over
   window.wsv2_fitCanvas = fitCanvas;
-  window.wsv2_zoom = function (dir) { setZoom((STATE.canvasScale || 1) * (dir > 0 ? 1.2 : 1 / 1.2)); };
+  window.wsv2_zoom = function (dir) { STATE.userAdjusted = true; setZoom((STATE.canvasScale || 1) * (dir > 0 ? 1.2 : 1 / 1.2)); };
   window.wsv2_zoomReset = function () { setZoom(1); };
 
+  // WS-FIT-1: every agent card (and task card) inside the viewport, centred, never above 100 %; the legend and the
+  // toolbar are kept clear. Runs on the first render, on Center, after Reset Layout and on a resize until the user
+  // pans or zooms themselves.
+  function fitAll() {
+    var viewport = document.getElementById('wsv2-viewport'); if (!viewport) return;
+    var vw = viewport.clientWidth, vh = viewport.clientHeight; if (!vw || !vh) return;
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    var add = function (p, w, h) { if (!p) return; minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x + w); maxY = Math.max(maxY, p.y + h); };
+    STATE.agents.forEach(function (a) { add(STATE.overrides[a.slug] || STATE.positions[a.slug], CARD_W, CARD_H); });
+    Object.keys(STATE.taskRenderPos || {}).forEach(function (k) { add(STATE.taskRenderPos[k], TN_W, TN_H); });
+    if (!isFinite(minX)) { centerOnCenter(); return; }
+    var mobile = vw < 768, legend = document.querySelector('.wsv2-legend'), legendW = (!mobile && legend && legend.offsetParent) ? legend.offsetWidth + 24 : 0;
+    var pad = { t: mobile ? 64 : 72, r: mobile ? 16 : 32, b: mobile ? 72 : 32, l: (mobile ? 16 : 32) + legendW };
+    var bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
+    var s = Math.max(0.15, Math.min(1, (vw - pad.l - pad.r) / bw, (vh - pad.t - pad.b) / bh));
+    STATE.canvasScale = s;
+    STATE.view.tx = pad.l + ((vw - pad.l - pad.r) - bw * s) / 2 - minX * s;
+    STATE.view.ty = pad.t + ((vh - pad.t - pad.b) - bh * s) / 2 - minY * s;
+    applyView();
+  }
+  window.wsv2_fitAll = fitAll;
   function centerOnCenter() {   // the layout's centre in the middle of the viewport, at the current zoom
     var viewport = document.getElementById('wsv2-viewport'); if (!viewport) return;
     var sc = STATE.canvasScale || 1;
@@ -1428,11 +1451,11 @@
     // WS-CANVAS-1: the reset is the default view again after a reload too - clear the saved positions
     try { fetch('/api/workspace/agents/positions', { method: 'DELETE', headers: { 'Authorization': 'Bearer ' + getToken(), 'X-Workspace-Id': String(getWorkspaceId()) } }).catch(function () {}); } catch (e) {}
     render();
-    setZoom(1);
-    setTimeout(centerOnCenter, 100);
+    STATE.userAdjusted = false; STATE.fittedOnce = true;
+    setTimeout(fitAll, 100);   // WS-FIT-1: the default view after a reset holds the whole team
   };
   window.wsv2_fitToScreen = function () {
-    centerOnCenter();   // WS-CANVAS-1: centre at the current zoom
+    STATE.userAdjusted = false; fitAll();   // WS-FIT-1: Center = the whole team on one screen
   };
   window.wsv2_toggleActivity = function () {
     var p = document.getElementById('wsv2-activity');

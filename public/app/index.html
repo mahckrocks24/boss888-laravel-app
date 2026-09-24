@@ -3084,7 +3084,7 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('crm')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Clients</button>
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Settings</button>
       <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
-      <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced'); if (window.nav) nav('command');" id="ni-advanced" data-basic="1" title="Open the Command Center in Advanced"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
+      <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced'); if (window.nav) nav('workspace');" id="ni-advanced" data-basic="1" title="Open the Command Center in Advanced"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
       <!-- /* b24-sidebar-reorganized */ -->
       <div class="nav-section">Workspace</div>
       <button type="button" class="nav-item" onclick="nav('workspace')" id="ni-workspace" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Workspace</button>
@@ -4885,7 +4885,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=7c62ae9bd5"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=ecbae440a1"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
@@ -5340,7 +5340,7 @@ document.addEventListener('wheel', function(e) {
   }
 }, { passive: false });
 </script>
-  <script src="/app/js/workspace-v2.js?v=ff829b8e41" defer></script>
+  <script src="/app/js/workspace-v2.js?v=4e5800c386" defer></script>
   <script>
   // v1.4.4 — universal attach composer wiring on the four core chat surfaces.
   // The composer self-detects parent flex-direction and inserts a paperclip

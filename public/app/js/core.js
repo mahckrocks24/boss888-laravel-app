@@ -988,7 +988,7 @@ window._luRouter = (function () {
   // /app/workspace so the URL stays clean on first load.
   // P1-U2: the default landing depends on the mode — Basic lands on Sarah, Advanced on the workspace canvas.
   // REPORT-0061 B3 (2026-09-19): Advanced lands on Command Center (Workspace for a plan without the AI team, decided once the plan is known)
-  var DEFAULT_VIEW = (function(){ try { return localStorage.getItem('lu_visibility_mode') === 'advanced' ? 'command' : 'sarah'; } catch (e) { return 'sarah'; } })();
+  var DEFAULT_VIEW = (function(){ try { return localStorage.getItem('lu_visibility_mode') === 'advanced' ? 'workspace' : 'sarah'; } catch (e) { return 'sarah'; } })();
   var BASE = '/app/';
 
   function enabled() {
@@ -1051,7 +1051,7 @@ window._luRouter = (function () {
   function parseInitial() {
     return pathToView(window.location.pathname);
   }
-  window._luAdvancedHome = function () { var f = window._luPlanFeatures; return (f && f.ai_agents === false) ? 'workspace' : 'command'; };
+  window._luAdvancedHome = function () { return 'workspace'; };   // HOME-1 (Owner 2026-09-24): the Workspace is the home of Advanced mode
   // popstate handler — back/forward triggers a nav with silent:true so we
   // don't re-push the URL we just landed on. Tail is passed through so
   // /app/write/176 → /app/write transition (or vice versa) re-opens or
@@ -6650,7 +6650,7 @@ function _obComplete() {
   });
   _appEnterDashboard();
   // Navigate to command center
-  setTimeout(function(){ if (typeof nav === 'function') nav('command'); }, 300);
+  setTimeout(function(){ if (typeof nav === 'function') nav((function(){ try { return localStorage.getItem('lu_visibility_mode') === 'advanced' ? 'workspace' : 'sarah'; } catch (_) { return 'sarah'; } })()); }, 300);   // HOME-1
 }
 
 
