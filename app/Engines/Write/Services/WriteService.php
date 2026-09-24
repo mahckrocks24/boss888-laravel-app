@@ -1286,40 +1286,22 @@ class WriteService
         // ── 2. Build JSON-LD payload ──────────────────────────────────
         $now = now()->toIso8601String();
         $created = $article->created_at ? \Carbon\Carbon::parse($article->created_at)->toIso8601String() : $now;
-        // One Organization node, referenced twice. A url key is present only when
-        // CanonicalSite resolved a real host for this article's website.
-        $organizationNode = ['@type' => 'Organization', 'name' => $businessName];
-        if ($siteUrl) { $organizationNode['url'] = $siteUrl; }
-
-        $jsonld = [
-            '@context' => 'https://schema.org',
-            '@graph' => [
-                [
-                    '@type' => 'Article',
-                    'headline' => $articleTitle,
-                    'description' => $tldr,
-                    'datePublished' => $created,
-                    'dateModified' => $now,
-                    'author' => $organizationNode,
-                    'publisher' => $organizationNode,
-                ],
-            ],
-        ];
-        if (!empty($faqs)) {
-            $jsonld['@graph'][] = [
-                '@type' => 'FAQPage',
-                'mainEntity' => array_map(function ($f) {
-                    return [
-                        '@type' => 'Question',
-                        'name' => $f['q'],
-                        'acceptedAnswer' => [
-                            '@type' => 'Answer',
-                            'text' => $f['a'],
-                        ],
-                    ];
-                }, $faqs),
-            ];
-        }
+        // K5 (2026-09-25) — one CONNECTED graph, composed from canonical truth.
+        // The article used to declare its own anonymous Organization twice, with
+        // no @id, no image and no mainEntityOfPage on any of 202 stored blobs, so
+        // nothing could reference anything. SchemaComposer emits the Article,
+        // WebPage, FAQPage, WebSite and the business entity with stable ids and
+        // has the article point AT the organization rather than restate it. Only
+        // identity facts cleared for publication reach the graph.
+        $articleUrl = $siteUrl ? rtrim($siteUrl, '/') . '/blog/' . ltrim((string) ($article->slug ?? ''), '/') : '';
+        $jsonld = app(\App\Core\Business\SchemaComposer::class)->forArticle((int) $articleId, [
+            'headline' => $articleTitle,
+            'description' => $tldr,
+            'datePublished' => $created,
+            'dateModified' => $now,
+            'url' => $articleUrl,
+            'image' => $article->featured_image_url ?? null,
+        ], $faqs);
 
         // ── 3. Persist everything atomically ──────────────────────────
         \Illuminate\Support\Facades\DB::table('articles')->where('id', $articleId)->update([
