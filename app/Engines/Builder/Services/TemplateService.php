@@ -48,18 +48,46 @@ class TemplateService
              . "img,video,iframe,svg,table{max-width:100%}}</style>\n";
     }
 
+    /**
+     * EMPTY-SLOT-1 (Owner 2026-09-24): a stat whose figure AND label are both empty is not part of this
+     * site, so it must not draw a box. Measured on a live site: three empty chips in the hero. 27 designs
+     * draw this shape and 221 carry stat fields, so it is a library-wide shape, not one template's mistake.
+     *
+     * Its own <style id>, deliberately: every page published before today already carries lug-mobile-safe,
+     * and injectMobileSafety() returns early when it sees that id — so a rule added to THAT block reaches
+     * no existing site at all. This one is guarded separately and therefore lands on pages that already
+     * have the other.
+     *
+     * The condition is strict: both value and label must be empty, matched through the child combinator so
+     * it selects the chip itself and never an ancestor. A stat with a label but no figure is a content
+     * decision and is left alone. The row is hidden only when nothing inside it has any value.
+     */
+    public static function emptySlotSafetyHtml(): string
+    {
+        return "\n<style id=\"lug-empty-slot\">"
+             . "*:has(> [data-field^='stat_'][data-field\$='_value']:empty):has(> [data-field^='stat_'][data-field\$='_label']:empty){display:none}"
+             . ".chips:not(:has([data-field\$='_value']:not(:empty))){display:none}"
+             . "</style>\n";
+    }
+
+    /** Insert one style block before </head> (or </body>, or append), guarded by its own id. */
+    private static function injectStyleOnce(string $html, string $id, string $block): string
+    {
+        if (strpos($html, $id) !== false) return $html;
+        if (stripos($html, '</head>') !== false) {
+            return preg_replace('#</head>#i', $block . '</head>', $html, 1);
+        }
+        if (stripos($html, '</body>') !== false) {
+            return preg_replace('#</body>#i', $block . '</body>', $html, 1);
+        }
+        return $html . $block;
+    }
+
     /** Insert the mobile-safety stylesheet once, before </head> (or before </body>, or append). Idempotent. */
     public static function injectMobileSafety(string $html): string
     {
-        if (strpos($html, 'lug-mobile-safe') !== false) return $html;
-        $ms = self::mobileSafetyHtml();
-        if (stripos($html, '</head>') !== false) {
-            return preg_replace('#</head>#i', $ms . '</head>', $html, 1);
-        }
-        if (stripos($html, '</body>') !== false) {
-            return preg_replace('#</body>#i', $ms . '</body>', $html, 1);
-        }
-        return $html . $ms;
+        $html = self::injectStyleOnce($html, 'lug-mobile-safe', self::mobileSafetyHtml());
+        return self::injectStyleOnce($html, 'lug-empty-slot', self::emptySlotSafetyHtml());
     }
 
     /** Insert the reveal failsafe once, just before </body> (or append if none). Idempotent. */

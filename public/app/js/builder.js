@@ -4159,6 +4159,7 @@ function _t3PaletteRestore() {
 window.wsOpenPalettes = async function (siteId) {
   var old = document.getElementById('t3-pal');
   if (old) { old.remove(); _t3PaletteRestore(); return; }
+  _t3CloseFloating('t3-pal');   // FLOAT-DISMISS-1: one floating surface at a time
   // Both editors: the template editor's stage or the page editor's frame wrap. Appending to <body> put the panel
   // underneath the page editor's fixed view (proven: elementFromPoint returned the iframe).
   var stage = document.querySelector('#template-editor-view .pe-stage') || document.getElementById('pe-frame-wrap') || document.body;
@@ -4282,6 +4283,7 @@ function _t3LayoutEndPreview() {
 window.wsOpenLayouts = async function (siteId) {
   var old = document.getElementById('t3-lay');
   if (old) { old.remove(); return; }
+  _t3CloseFloating('t3-lay');   // FLOAT-DISMISS-1: one floating surface at a time
   var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
   var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
   var panel = document.createElement('div');
@@ -4923,3 +4925,89 @@ async function _t3MaybeTour() {
     _t3StartTour(false);
   } catch (_e) {}
 }
+
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   FLOAT-DISMISS-1 (Owner 2026-09-24) — the palette panel, the layouts panel and the element
+   toolbox close when the user turns to something else. A click in the website counts as turning
+   away; a scroll or a drag does not.
+   ══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+function _t3PreviewDoc() {
+  var f = document.getElementById('t3-preview');
+  try { return (f && f.contentDocument) || null; } catch (e) { return null; }
+}
+
+/* The toolbox is drawn inside the iframe by the preview overlay. Hiding it is enough: the overlay
+   re-shows it on the next selection, so element-to-element clicks still work. */
+window._t3HideToolbox = function () {
+  var d = _t3PreviewDoc(); if (!d) return;
+  try {
+    var tb = d.getElementById('__lu_el_tb'); if (tb) tb.style.display = 'none';
+    var fx = d.getElementById('__lu_el_fx'); if (fx) fx.style.display = 'none';
+  } catch (e) {}
+};
+
+/* Close every floating editor surface except the one named. */
+window._t3CloseFloating = function (except) {
+  if (except !== 't3-pal') {
+    var p = document.getElementById('t3-pal');
+    if (p) { p.remove(); try { _t3PaletteRestore(); } catch (e) {} }
+  }
+  if (except !== 't3-lay') {
+    var l = document.getElementById('t3-lay');
+    if (l) { l.remove(); if (window._t3LayoutPreviewing) { try { _t3LayoutEndPreview(); } catch (e) {} } }
+  }
+  if (except !== 'toolbox') { window._t3HideToolbox(); }
+};
+
+(function () {
+  var MOVE = 8, downAt = null, downInPanel = false;
+
+  function inPanel(t) {
+    try { return !!(t && t.closest && t.closest('#t3-pal,#t3-lay')); } catch (e) { return false; }
+  }
+  /* The buttons that open these panels already toggle them; if an outside-click closed the panel first,
+     the button would immediately reopen it. */
+  function isOpener(t) {
+    try { return !!(t && t.closest && t.closest('#t3-layout-btn,[onclick*="wsOpenPalettes"],[onclick*="wsOpenLayouts"]')); }
+    catch (e) { return false; }
+  }
+
+  function start(e, fromFrame) {
+    downAt = { x: e.clientX, y: e.clientY };
+    downInPanel = fromFrame ? false : (inPanel(e.target) || isOpener(e.target));
+    // A click in the website is how the toolbox is used, so the toolbox is cleared on the way IN and the
+    // overlay re-draws it if the click landed on something selectable.
+    if (fromFrame) { window._t3HideToolbox(); }
+  }
+
+  function end(e) {
+    if (!downAt) return;
+    var moved = Math.abs(e.clientX - downAt.x) + Math.abs(e.clientY - downAt.y);
+    var wasInPanel = downInPanel;
+    downAt = null; downInPanel = false;
+    if (wasInPanel) return;
+    if (moved > MOVE) return;                       // a scroll or a drag, not a click
+    if (!document.getElementById('t3-pal') && !document.getElementById('t3-lay')) return;
+    window._t3CloseFloating(null);
+  }
+
+  function bind(doc, fromFrame) {
+    if (!doc || doc.__t3DismissBound) return;
+    try {
+      doc.__t3DismissBound = 1;
+      doc.addEventListener('pointerdown', function (e) { start(e, fromFrame); }, true);
+      doc.addEventListener('pointerup', end, true);
+    } catch (e) {}
+  }
+
+  bind(document, false);
+  /* The iframe's document arrives after the panel code runs and is replaced on every preview reload, so
+     re-binding is checked periodically rather than once. The guard flag makes it a no-op when unchanged. */
+  setInterval(function () { bind(_t3PreviewDoc(), true); }, 1500);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') { window._t3CloseFloating(null); }
+  });
+})();
