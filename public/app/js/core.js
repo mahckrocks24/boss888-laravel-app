@@ -2942,6 +2942,7 @@ function renderDrawerTasks(id,filter){
   // the agent grid card → numbers always agree. Task LIST below still uses
   // allTasks because /api/tasks returns the recent 50 actual rows.
   window._drawerTaskFilter = filter;
+  var viewingOrchestrator = (id === 'dmm' || id === 'sarah');   // DRAWER-1 (2026-09-24): Sarah's list prefixes delegated work; the definition was lost in a refactor and every render threw
   var stats = (window._agentStatsData && window._agentStatsData[id]) || null;
 
   var nUpcoming = stats ? stats.upcoming  : '—';
@@ -3659,7 +3660,7 @@ function _renderAgentTaskBoard(agentId, allAgents) {
           '<span style="font-size:14px;margin-top:2px">' + icon + '</span>' +
           '<div style="flex:1">' +
             '<div style="font-size:12px;font-weight:600;color:var(--t1)">' + esc(t.title||'') + '</div>' +
-            '<div style="font-size:10px;color:var(--t3)">Created by ' + creator + ' · ' + t.status + (tools.length?' · '+tools.join(', '):'') + (t.duration_ms?' · '+t.duration_ms+'ms':'') + '</div>' +
+            '<div style="font-size:10px;color:var(--t3)">Created by ' + creator + ' · ' + t.status + (tools.length?' · '+tools.map(function (x) { return String(x).replace(/_/g, ' '); }).join(', '):'') + (t.duration_ms?' · '+t.duration_ms+'ms':'') + '</div>' +
             (timeline?'<div style="font-size:9px;color:var(--t3);margin-top:2px">'+timeline+'</div>':'') +
           '</div>' +
           '<div style="font-size:10px;color:var(--t3)">' + (t.created_at?window._luParseTs(t.created_at).toLocaleDateString():'') + '</div>' +
