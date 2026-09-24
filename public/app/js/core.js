@@ -3154,7 +3154,7 @@ async function sendAgentMessage(quickAction, overrideMessage){
     // indicator to a smaller "still working" footer, and poll the GET
     // /agents/{slug}/messages endpoint for the final row (id > ack_message_id
     // with phase='final').
-    if (d && d.pending && d.ack) {
+    if (d && d.pending) {   // ACK-OFF: pending with or without an acknowledgement line
       // Remove the bouncing-dots typing indicator
       var ti0 = document.getElementById('agent-typing-indicator');
       if (ti0) ti0.remove();
@@ -3176,13 +3176,15 @@ async function sendAgentMessage(quickAction, overrideMessage){
       if (myExecutionId)   turnAnchor.setAttribute('data-execution-id', myExecutionId);
       feed.appendChild(turnAnchor);
 
-      // Render the ack as Sarah's first bubble
+      // Render the ack as Sarah's first bubble (ACK-OFF: only if the server still sends one)
+      if (d.ack) {
       var ackDiv = document.createElement('div');
       ackDiv.className = 'msg-from-agent msg-from-agent-ack';
       ackDiv.style.alignSelf = 'flex-start';
       ackDiv.style.opacity = '0.92';
       ackDiv.innerHTML = '<div style="font-size:9px;font-weight:700;color:'+(ag.color||'var(--t2)')+';margin-bottom:3px">'+(d.agent_name||ag.name||currentAgent)+'</div>'+fmt(d.ack)+'<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
       turnAnchor.appendChild(ackDiv);
+      }
 
       // Add a small "still working" footer with continuous pulse
       var workDiv = document.createElement('div');
@@ -3252,6 +3254,9 @@ async function sendAgentMessage(quickAction, overrideMessage){
               }
               if (mine) {
                 delete window._agentChatActivePoll[pollKey];
+                // DOUBLE-1 (Owner 2026-09-24): the live event stream may have drawn this very row a moment earlier —
+                // finish the turn (indicator off) but never draw it a second time.
+                if (typeof _acIsRendered === 'function' && _acIsRendered(currentAgent, String(m.id))) { var w1 = document.getElementById(workDiv.id); if (w1) w1.remove(); return; }
                 // 2026-06-15 — register the final row id so the event poller
                 // dedups it (whichever channel renders first wins).
                 try{ if(window._agentChatRendered && window._agentChatRendered[currentAgent]) window._agentChatRendered[currentAgent].add(String(m.id)); }catch(_e){}

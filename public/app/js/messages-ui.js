@@ -221,7 +221,7 @@ function _msgTwoPhase(feed, resp, uiSlug, opts){
   var big       = !!opts.big;
   var typingId  = opts.typingId  || 'lu-msg-typing';
   var workingId = opts.workingId || 'lu-msg-working';
-  if(!feed || !resp || !resp.pending || !resp.ack) return false;
+  if(!feed || !resp || !resp.pending) return false;   // ACK-OFF: a pending turn no longer carries an acknowledgement line
 
   var t=document.getElementById(typingId); if(t) t.remove();
 
@@ -231,8 +231,8 @@ function _msgTwoPhase(feed, resp, uiSlug, opts){
   var mb   = big ? '10px' : '8px';
   var aname = resp.agent_name || _msg.agent || 'Agent';
 
-  // Phase 1 — the instant acknowledgement.
-  feed.innerHTML += '<div style="display:flex;justify-content:flex-start;margin-bottom:'+mb+'">'
+  // Phase 1 — the instant acknowledgement (ACK-OFF: only if the server still sends one).
+  if (resp.ack) feed.innerHTML += '<div style="display:flex;justify-content:flex-start;margin-bottom:'+mb+'">'
     + '<div style="max-width:80%;padding:'+pad+';border-radius:'+rad+';background:var(--s2);color:var(--t1);'
     + 'font-size:'+fs+';line-height:1.5;border:1px solid var(--bd);opacity:.92">'
     + '<div style="font-size:9px;font-weight:700;color:var(--t3);margin-bottom:3px">'+_msgE(aname)+'</div>'

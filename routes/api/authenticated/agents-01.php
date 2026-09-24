@@ -518,23 +518,17 @@ $withCorr = function (array $meta) use ($corr) {
         $useTwoPhase       = empty($image) && empty($quickAction) && function_exists('fastcgi_finish_request');
         if ($useTwoPhase) {
             try {
-                $ackSvc = app(\App\Core\Agent\AckGeneratorService::class);
-                $earlyAckText = $ackSvc->generate($content, $slug, $agent->name);
-                $insertedId = \Illuminate\Support\Facades\DB::table('agent_messages')->insertGetId([
-                    'workspace_id' => $wsId,
-                    'agent_slug'   => $slug,
-                    'sender'       => $agent->name,
-                    'content'      => $earlyAckText,
-                    'role'         => 'agent',
-                    'metadata_json'=> $withCorr(['is_ack' => true, 'phase' => 'ack']),
-                    'created_at'   => now(),
-                    'updated_at'   => now(),
-                ]);
-                $earlyAckMessageId = (int) $insertedId;
+                // ACK-OFF (Owner 2026-09-24): no acknowledgement bubble any more — the heuristic line ("Hey, Chef!",
+                // "Got it — pulling that up.") answered a "hi" twice and often acknowledged the wrong thing. Nothing is
+                // generated or stored; the client shows its working indicator and polls from the owner's own row.
+                // The two-phase transport itself stays (the reply is still computed after the connection closes).
+                $earlyAckText      = null;
+                $earlyAckMessageId = (int) ($userMessageId ?? 0);
                 $ackResponse = [
                     'sent'             => true,
                     'pending'          => true,
-                    'ack'              => $earlyAckText,
+                    'ack'              => null,
+                    'ack_silent'       => true,
                     'ack_message_id'   => $earlyAckMessageId,
                     'agent_name'       => $agent->name,
                     'chat_meter'       => [

@@ -516,13 +516,13 @@
       var t = document.getElementById('sh-typing'); if (t) t.remove();
       if (r.status === 402) { S.feed.appendChild(card({ type: 'failure_notice', content: (d.message || d.error || 'You are out of credits.'), data: { cta: { label: 'See plans', view: 'account' } } })); return; }
       if (!r.ok) { S.feed.appendChild(card({ type: 'failure_notice', content: 'Sarah couldn\'t take that right now' + (d.message || d.error ? ': ' + (d.message || d.error) : '.') })); return; }
-      if (d.pending && d.ack) {
+      if (d.pending) {   /* ACK-OFF: no acknowledgement line any more; the working strip stands in until the reply */
         /* SYNC-1d: the ack is a real agent_messages row and comes back down the event stream. Register its id (and
            arm the content guard) or it is rendered a second time the moment that event arrives. */
         var ackId = parseInt(d.ack_message_id || 0, 10) || 0;
-        S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null, id: ackId || undefined })); S.feed.scrollTop = S.feed.scrollHeight;
+        if (d.ack) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null, id: ackId || undefined })); S.feed.scrollTop = S.feed.scrollHeight; }
         if (ackId) { S.rendered[String(ackId)] = 1; if (ackId > (S.lastMid || 0)) S.lastMid = ackId; }
-        S.lastAgentText = String(d.ack).trim(); S.lastAgentAt = Date.now();
+        if (d.ack) { S.lastAgentText = String(d.ack).trim(); S.lastAgentAt = Date.now(); }
         /* DEC-0030: a complex turn shows ONE truthful working strip (from the ack's work_state); a simple turn keeps the bare dot. */
         if (d.work_state) { showWorking(d.work_state); } else { showOrch(null); }
         if (d.poll_interval_ms) { window._luPollMs = d.poll_interval_ms; }

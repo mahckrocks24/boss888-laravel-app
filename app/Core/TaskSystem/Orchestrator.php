@@ -80,6 +80,7 @@ class Orchestrator
 
             $duplicate = $this->idempotency->checkDuplicate($idemKey);
             if ($duplicate) {
+                \Illuminate\Support\Facades\DB::table('tasks')->where('id', $task->id)->update(['qa_status' => 'na', 'qa_json' => json_encode(['verdict' => 'na', 'checks' => [], 'reasons' => ['Duplicate execution — Sarah\'s verdict lives on the original task.'], 'deliverable' => null]), 'qa_reviewed_at' => now()]); // SARAH-QA-1
                 $task->update([
                     'status' => 'completed',
                     'result_json' => $duplicate['result'],
@@ -540,6 +541,12 @@ class Orchestrator
                             $seoAssistant = app(\App\Engines\SEO\Services\SeoAssistantService::class);
                             if ($seoAssistant->isWpWorkspace((int) $root->workspace_id)) {
                                 $seoAssistant->pushAssistantNotice((int) $root->workspace_id, $msg);
+                            } elseif (\Illuminate\Support\Facades\DB::table('agent_messages')
+                                    ->where('workspace_id', (int) $root->workspace_id)->where('agent_slug', 'sarah')->where('role', 'agent')
+                                    ->where('content', $msg)->where('created_at', '>=', now()->subSeconds(120))->exists()) {
+                                // DOUBLE-2 (Owner 2026-09-24): a batch of like tasks (three keywords added) posted the same line three
+                                // times in one second. One line per two minutes says it; the tasks are still marked read below.
+                                \Illuminate\Support\Facades\Log::info('[Orchestrator] completion line already posted within 120 s — not repeated', ['ws' => (int) $root->workspace_id, 'root' => $rootId]);
                             } else {
                                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent(
                                     (int) $root->workspace_id, 'sarah', $msg,
@@ -1330,12 +1337,24 @@ class Orchestrator
             // website_id belongs to the task's workspace — the sync twin (EngineExecutionService
             // :830/:838) already does; without it a task with a foreign website_id writes/publishes
             // another workspace's site (cross-tenant).
-            'builder/generate_page'     => function () use ($wsId, $params) {
-                if (! \Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) {
-                    throw new \RuntimeException('Website not found');
-                }
-                return app(\App\Engines\Builder\Services\BuilderService::class)->createPage($params['website_id'], $params);
-            },
+            // ARTHUR DELEGATION (2026-09-06): every page/section addition is Arthur's — templates, palette, priced.
+            // handleSiteRequest tenancy-checks the website itself. Legacy tool params are translated into a request.
+            'builder/ask_arthur'        => fn() => app(\App\Engines\Builder\Services\ArthurService::class)->handleSiteRequest(
+                $wsId, (int) ($params['website_id'] ?? 0),
+                (string) ($params['request'] ?? $params['command'] ?? ''),
+                ['agent_slug' => 'sarah', 'user_id' => $params['user_id'] ?? null, 'dry_run' => !empty($params['dry_run']),
+                 'attachments' => array_values(array_filter(array_map('intval', (array) ($params['attachments'] ?? $params['media_ids'] ?? []))))] // FILE HAND-OFF 2026-09-06
+            ),
+            'builder/add_page_from_template' => fn() => app(\App\Engines\Builder\Services\ArthurService::class)->handleSiteRequest(
+                $wsId, (int) ($params['website_id'] ?? 0),
+                'add a ' . str_replace('_', ' ', (string) ($params['page_template'] ?? 'about')) . ' page',
+                ['agent_slug' => 'sarah', 'user_id' => $params['user_id'] ?? null]
+            ),
+            'builder/generate_page'     => fn() => app(\App\Engines\Builder\Services\ArthurService::class)->handleSiteRequest(
+                $wsId, (int) ($params['website_id'] ?? 0),
+                (string) ($params['request'] ?? (isset($params['page_template']) ? 'add a ' . str_replace('_', ' ', (string) $params['page_template']) . ' page' : 'add a ' . (string) ($params['title'] ?? 'about') . ' page')),
+                ['agent_slug' => 'sarah', 'user_id' => $params['user_id'] ?? null]
+            ),
             'builder/wizard_generate'   => fn() => app(\App\Engines\Builder\Services\ArthurService::class)
                                             ->buildFromChat($wsId, $params['build_data'] ?? $params, $params['logo_url'] ?? null, $params['images'] ?? [], $params['colors'] ?? [], $params['user_id'] ?? null),
             'builder/publish_website'   => function () use ($wsId, $params) {
@@ -1865,6 +1884,7 @@ class Orchestrator
             'builder/create_website'       => 'Website created.',
             'builder/generate_page'        => 'Page generated.',
             'builder/add_page_from_template' => 'New page added from template.',
+            'builder/ask_arthur'           => 'Arthur applied the change.',
             'builder/update_page'          => 'Page updated.',
             'builder/publish_website'      => 'Website published.',
             'builder/publish_builder_page' => 'Page published.',
