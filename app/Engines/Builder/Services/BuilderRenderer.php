@@ -1804,14 +1804,44 @@ HTML;
         }
 
         // JSON-LD Schema
-        $schema = [
-            '@context' => 'https://schema.org',
-            '@type' => 'LocalBusiness',
-            'name' => $siteName,
-            'url' => $siteUrl ?: $pageUrl,
-        ];
-        if ($desc) $schema['description'] = html_entity_decode($desc);
-        $schemaJson = json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG); // B7: block </script> breakout
+        // K5b (2026-09-25) — composed, not hardcoded. This block emitted the same
+        // five fields on every page of every site with @type fixed at
+        // LocalBusiness whatever the business was, so a travel agency, a
+        // restaurant, a news publisher and an IT consultancy all declared
+        // themselves the same kind of thing, none carried an @id, and every page
+        // re-declared the business as a fresh anonymous node. SchemaComposer
+        // emits one connected graph with stable ids, correctly typed, and only
+        // from identity facts cleared for publication.
+        //
+        // $website is this method's own parameter; it is empty on some call
+        // paths, so the id is read defensively and the previous shape is kept as
+        // the fallback. Nothing here may throw: a page must still render if the
+        // composer cannot.
+        $schemaWebsiteId = (int) ($website['id'] ?? 0);
+        $composed = [];
+        if ($schemaWebsiteId > 0) {
+            try {
+                $composed = app(\App\Core\Business\SchemaComposer::class)->forWebsite($schemaWebsiteId, array_filter([
+                    'url' => $pageUrl,
+                    'name' => $fullTitle,
+                    'description' => $desc ? html_entity_decode($desc) : null,
+                ], fn ($v) => $v !== null && $v !== ''));
+            } catch (\Throwable $e) {
+                $composed = [];
+                \Illuminate\Support\Facades\Log::warning('[BuilderRenderer] schema compose failed', ['website_id' => $schemaWebsiteId, 'err' => $e->getMessage()]);
+            }
+        }
+
+        if (! $composed) {
+            $composed = [
+                '@context' => 'https://schema.org',
+                '@type' => 'LocalBusiness',
+                'name' => $siteName,
+                'url' => $siteUrl ?: $pageUrl,
+            ];
+            if ($desc) { $composed['description'] = html_entity_decode($desc); }
+        }
+        $schemaJson = json_encode($composed, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT | JSON_HEX_TAG); // B7: block </script> breakout
         $metaHtml .= "    <script type=\"application/ld+json\">{$schemaJson}</script>\n";
 
         // Wave 45 — page-level Article/FAQPage JSON-LD from aeo_enrich.
