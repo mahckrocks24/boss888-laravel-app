@@ -212,7 +212,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/news_channel.jpg"
+            "default": "/storage/template-images/news_channel/gen-07-a-city-skyline-at-dawn-from-a-rooftop.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -462,32 +462,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/news_channel.jpg"
+            "default": "/storage/template-images/news_channel/gen-01-a-newsroom-of-desks-with-monitors-at-nig.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/news_channel.jpg"
+            "default": "/storage/template-images/news_channel/gen-02-a-broadcast-camera-on-a-pedestal-in-a-st.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/news_channel.jpg"
+            "default": "/storage/template-images/news_channel/gen-03-a-presenter-desk-with-the-studio-lights.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/news_channel.jpg"
+            "default": "/storage/template-images/news_channel/gen-04-a-control-room-with-a-wall-of-screens.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/news_channel.jpg"
+            "default": "/storage/template-images/news_channel/gen-05-a-stack-of-printed-pages-and-a-red-pen.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/news_channel.jpg"
+            "default": "/storage/template-images/news_channel/gen-06-a-radio-booth-with-a-microphone-and-a-cl.jpg"
         },
         "step_1_title": {
             "type": "text",

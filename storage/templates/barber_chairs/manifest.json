@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/barbershop.jpg"
+            "default": "/storage/template-images/barbershop/gen-05-the-waiting-bench-with-newspapers-and-a.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -421,22 +421,22 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/barbershop.jpg"
+            "default": "/storage/template-images/barbershop/gen-01-a-leather-barber-chair-with-a-folded-hot.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/barbershop.jpg"
+            "default": "/storage/template-images/barbershop/gen-02-straight-razors-and-a-badger-brush-on-a.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/barbershop.jpg"
+            "default": "/storage/template-images/barbershop/gen-03-a-striped-pole-outside-a-small-shop-fron.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/barbershop.jpg"
+            "default": "/storage/template-images/barbershop/gen-04-a-row-of-clippers-on-hooks-under-a-mirro.jpg"
         },
         "step_1_title": {
             "type": "text",

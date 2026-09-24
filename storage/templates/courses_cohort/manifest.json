@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/template-images/online_courses/gallery_2.jpg"
+            "default": "/storage/template-images/online_courses/gallery_5.jpg"
         },
         "gallery_title": {
             "type": "text",

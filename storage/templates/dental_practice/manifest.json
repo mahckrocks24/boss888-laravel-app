@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/dental.jpg"
+            "default": "/storage/template-images/dental/gen-05-a-shelf-of-toothbrushes-and-floss-in-the.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -436,22 +436,22 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/dental.jpg"
+            "default": "/storage/template-images/dental/gen-01-the-treatment-chair-with-the-overhead-la.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/dental.jpg"
+            "default": "/storage/template-images/dental/gen-02-a-tray-of-instruments-laid-out-on-a-pape.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/dental.jpg"
+            "default": "/storage/template-images/dental/gen-03-the-reception-window-with-a-jug-of-water.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/dental.jpg"
+            "default": "/storage/template-images/dental/gen-04-an-x-ray-viewer-with-a-panoramic-film.jpg"
         },
         "step_1_title": {
             "type": "text",

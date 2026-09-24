@@ -690,7 +690,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/ecommerce.jpg"
+            "default": "/storage/template-images/ecommerce/gen-01-kraft-boxes-stacked-with-tissue-paper-an.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -715,7 +715,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/ecommerce.jpg"
+            "default": "/storage/template-images/ecommerce/gen-02-a-flat-lay-of-a-candle-a-card-and-twine.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -740,7 +740,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/ecommerce.jpg"
+            "default": "/storage/template-images/ecommerce/gen-03-shelving-with-numbered-bins-in-a-small-w.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/ecommerce.jpg"
+            "default": "/storage/template-images/ecommerce/gen-04-a-parcel-being-taped-on-a-packing-bench.jpg"
         },
         "process_eyebrow": {
             "type": "text",

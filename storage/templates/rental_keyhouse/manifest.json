@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/template-images/short_term_rental/gallery_2.jpg"
+            "default": "/storage/template-images/short_term_rental/gen-02-a-bright-bedroom-with-a-quilt-and-a-wind.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -446,7 +446,7 @@
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/short_term_rental.jpg"
+            "default": "/storage/template-images/short_term_rental/gen-01-a-welcome-basket-on-a-kitchen-counter-wi.jpg"
         },
         "step_1_title": {
             "type": "text",

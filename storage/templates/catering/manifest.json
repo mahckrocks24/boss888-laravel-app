@@ -690,7 +690,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/catering.jpg"
+            "default": "/storage/template-images/catering/gen-01-a-tray-of-canap-s-being-finished-on-a-st.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -715,7 +715,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/catering.jpg"
+            "default": "/storage/template-images/catering/gen-02-a-long-linen-table-set-outdoors-with-gla.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -740,7 +740,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/catering.jpg"
+            "default": "/storage/template-images/catering/gen-03-chafing-dishes-lined-up-on-a-buffet-with.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/catering.jpg"
+            "default": "/storage/template-images/catering/gen-04-a-delivery-van-boot-packed-with-insulate.jpg"
         },
         "process_eyebrow": {
             "type": "text",

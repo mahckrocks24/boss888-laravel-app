@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/home_services.jpg"
+            "default": "/storage/template-images/home_services/gen-05-a-fuse-board-with-the-cover-off-and-a-te.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -436,22 +436,22 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/home_services.jpg"
+            "default": "/storage/template-images/home_services/gen-01-a-boiler-with-a-torch-and-a-tool-roll-on.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/home_services.jpg"
+            "default": "/storage/template-images/home_services/gen-02-a-paint-roller-tray-and-masking-tape-on.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/home_services.jpg"
+            "default": "/storage/template-images/home_services/gen-03-a-tidy-van-interior-with-labelled-drawer.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/home_services.jpg"
+            "default": "/storage/template-images/home_services/gen-04-a-new-tap-being-fitted-spanner-on-the-w.jpg"
         },
         "step_1_title": {
             "type": "text",

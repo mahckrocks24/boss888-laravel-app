@@ -701,7 +701,7 @@
         "team_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-01-a-leather-barber-chair-with-a-folded-hot.jpg"
         },
         "team_2_name": {
             "type": "text",
@@ -726,7 +726,7 @@
         "team_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-04-a-row-of-clippers-on-hooks-under-a-mirro.jpg"
         },
         "team_3_name": {
             "type": "text",
@@ -751,7 +751,7 @@
         "team_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-07-black-and-white-floor-tiles-and-the-base.jpg"
         },
         "team_4_name": {
             "type": "text",
@@ -776,7 +776,7 @@
         "team_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-10-an-old-cash-register-and-a-bowl-of-mints.jpg"
         },
         "gallery_eyebrow": {
             "type": "text",
@@ -806,7 +806,7 @@
         "gallery_1_image": {
             "type": "image",
             "label": "G1 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-02-straight-razors-and-a-badger-brush-on-a.jpg"
         },
         "gallery_2_title": {
             "type": "text",
@@ -821,7 +821,7 @@
         "gallery_2_image": {
             "type": "image",
             "label": "G2 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-05-the-waiting-bench-with-newspapers-and-a.jpg"
         },
         "gallery_3_title": {
             "type": "text",
@@ -836,7 +836,7 @@
         "gallery_3_image": {
             "type": "image",
             "label": "G3 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-08-a-cape-draped-over-a-chair-in-front-of-a.jpg"
         },
         "gallery_4_title": {
             "type": "text",
@@ -851,7 +851,7 @@
         "gallery_4_image": {
             "type": "image",
             "label": "G4 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-11-a-leather-barber-chair-with-a-folded-hot.jpg"
         },
         "gallery_5_title": {
             "type": "text",
@@ -866,7 +866,7 @@
         "gallery_5_image": {
             "type": "image",
             "label": "G5 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-01-a-leather-barber-chair-with-a-folded-hot.jpg"
         },
         "gallery_6_title": {
             "type": "text",
@@ -881,7 +881,7 @@
         "gallery_6_image": {
             "type": "image",
             "label": "G6 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-02-straight-razors-and-a-badger-brush-on-a.jpg"
         },
         "brands_eyebrow": {
             "type": "text",
@@ -1021,7 +1021,7 @@
         "blog_1_image": {
             "type": "image",
             "label": "B1 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-03-a-striped-pole-outside-a-small-shop-fron.jpg"
         },
         "blog_2_category": {
             "type": "text",
@@ -1041,7 +1041,7 @@
         "blog_2_image": {
             "type": "image",
             "label": "B2 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-06-a-bottle-of-bay-rum-and-a-comb-in-a-jar.jpg"
         },
         "blog_3_category": {
             "type": "text",
@@ -1061,7 +1061,7 @@
         "blog_3_image": {
             "type": "image",
             "label": "B3 Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/barbershop/gen-09-the-back-room-with-a-kettle-mugs-and-a.jpg"
         },
         "blog_cta": {
             "type": "text",

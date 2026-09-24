@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-07-the-reception-with-a-vase-of-eucalyptus.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -436,32 +436,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-01-a-nail-station-with-polish-bottles-in-a.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-02-backwash-basins-with-towels-folded-on-th.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-03-a-mirror-framed-with-warm-bulbs-and-a-ch.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-04-a-shelf-of-hair-products-with-a-spray-bo.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-05-a-pedicure-chair-with-a-bowl-and-petals.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-06-a-lash-extension-bed-with-a-lamp-and-twe.jpg"
         },
         "step_1_title": {
             "type": "text",

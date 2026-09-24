@@ -426,7 +426,7 @@
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/resort.jpg"
+            "default": "/storage/template-images/resort/gen-01-an-infinity-pool-at-dawn-with-mist-over.jpg"
         },
         "step_1_title": {
             "type": "text",

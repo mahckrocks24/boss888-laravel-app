@@ -690,7 +690,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/retail_shop.jpg"
+            "default": "/storage/template-images/retail_shop/gen-01-shelves-of-goods-with-handwritten-price.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -715,7 +715,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/retail_shop.jpg"
+            "default": "/storage/template-images/retail_shop/gen-02-a-counter-with-a-till-and-a-bowl-of-swee.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -740,7 +740,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/retail_shop.jpg"
+            "default": "/storage/template-images/retail_shop/gen-03-a-window-display-with-folded-garments.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/retail_shop.jpg"
+            "default": "/storage/template-images/retail_shop/gen-04-a-rail-of-jackets-on-wooden-hangers.jpg"
         },
         "process_eyebrow": {
             "type": "text",

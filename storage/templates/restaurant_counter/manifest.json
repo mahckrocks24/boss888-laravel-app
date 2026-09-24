@@ -436,7 +436,7 @@
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/restaurant.jpg"
+            "default": "/storage/template-images/restaurant/gen-01-the-pass-with-plated-dishes-under-warm-l.jpg"
         },
         "step_1_title": {
             "type": "text",

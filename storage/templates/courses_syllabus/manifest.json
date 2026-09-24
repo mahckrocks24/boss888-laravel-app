@@ -441,7 +441,7 @@
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/online_courses.jpg"
+            "default": "/storage/template-images/online_courses/gen-01-a-ring-light-and-a-laptop-with-slides-on.jpg"
         },
         "step_1_title": {
             "type": "text",

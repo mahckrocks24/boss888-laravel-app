@@ -431,32 +431,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/gym.jpg"
+            "default": "/storage/template-images/gym/gen-01-a-squat-rack-with-plates-stacked-and-cha.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/gym.jpg"
+            "default": "/storage/template-images/gym/gen-02-a-turf-lane-with-a-sled-at-the-end.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/gym.jpg"
+            "default": "/storage/template-images/gym/gen-03-rowing-machines-by-a-large-window.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/gym.jpg"
+            "default": "/storage/template-images/gym/gen-04-kettlebells-in-a-row-by-weight.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/gym.jpg"
+            "default": "/storage/template-images/gym/gen-05-a-boxing-bag-and-gloves-on-a-hook.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/gym.jpg"
+            "default": "/storage/template-images/gym/gen-06-a-stretching-area-with-mats-rolled-up.jpg"
         },
         "step_1_title": {
             "type": "text",

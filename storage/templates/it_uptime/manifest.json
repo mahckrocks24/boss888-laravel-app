@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/it_services.jpg"
+            "default": "/storage/template-images/it_services/gen-05-a-desk-with-two-monitors-and-a-headset.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -421,22 +421,22 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/it_services.jpg"
+            "default": "/storage/template-images/it_services/gen-01-a-server-rack-with-neat-cable-ties-and-b.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/it_services.jpg"
+            "default": "/storage/template-images/it_services/gen-02-a-workshop-bench-with-an-open-laptop-and.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/it_services.jpg"
+            "default": "/storage/template-images/it_services/gen-03-a-monitoring-screen-with-graphs-in-a-dar.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/it_services.jpg"
+            "default": "/storage/template-images/it_services/gen-04-a-stack-of-routers-with-labels.jpg"
         },
         "step_1_title": {
             "type": "text",

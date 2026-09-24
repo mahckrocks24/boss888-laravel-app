@@ -690,7 +690,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/restaurant.jpg"
+            "default": "/storage/template-images/restaurant/gen-01-the-pass-with-plated-dishes-under-warm-l.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -715,7 +715,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/restaurant.jpg"
+            "default": "/storage/template-images/restaurant/gen-02-a-set-table-by-a-window-with-a-candle.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -740,7 +740,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/restaurant.jpg"
+            "default": "/storage/template-images/restaurant/gen-03-a-chalkboard-specials-list-and-a-bar-wit.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/restaurant.jpg"
+            "default": "/storage/template-images/restaurant/gen-04-a-wood-fired-oven-with-a-pizza-peel.jpg"
         },
         "process_eyebrow": {
             "type": "text",

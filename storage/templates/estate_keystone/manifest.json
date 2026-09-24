@@ -228,7 +228,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/real_estate_agency.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-16-a-village-lane-with-stone-cottages.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -478,32 +478,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/real_estate_agency.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-07-a-modern-apartment-balcony-with-the-city.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/real_estate_agency.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-08-a-front-door-painted-navy-with-a-brass-k.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/real_estate_agency.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-09-a-bedroom-with-a-view-over-rooftops.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/real_estate_agency.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-10-an-office-with-property-cards-in-a-windo.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/real_estate_agency.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-11-a-driveway-and-garage-of-a-detached-hous.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/real_estate_agency.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-12-a-loft-conversion-with-skylights.jpg"
         },
         "step_1_title": {
             "type": "text",
@@ -778,7 +778,7 @@
         "listing_2_image": {
             "type": "image",
             "label": "Property 2 Photo",
-            "default": "/storage/template-images/real_estate_agency/gen-05-a-living-room-with-a-bay-window-and-a-ru.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-02-a-kitchen-with-an-island-at-dusk-lights.jpg"
         },
         "listing_3_title": {
             "type": "text",
@@ -813,7 +813,7 @@
         "listing_3_image": {
             "type": "image",
             "label": "Property 3 Photo",
-            "default": "/storage/template-images/real_estate_agency/gen-02-a-kitchen-with-an-island-at-dusk-lights.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-03-keys-on-a-marble-counter-with-a-folder.jpg"
         },
         "listing_4_title": {
             "type": "text",
@@ -848,7 +848,7 @@
         "listing_4_image": {
             "type": "image",
             "label": "Property 4 Photo",
-            "default": "/storage/template-images/real_estate_agency/gen-11-a-driveway-and-garage-of-a-detached-hous.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-04-a-sold-board-outside-a-brick-house.jpg"
         },
         "listing_5_title": {
             "type": "text",
@@ -883,7 +883,7 @@
         "listing_5_image": {
             "type": "image",
             "label": "Property 5 Photo",
-            "default": "/storage/template-images/real_estate_agency/gen-07-a-modern-apartment-balcony-with-the-city.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-05-a-living-room-with-a-bay-window-and-a-ru.jpg"
         },
         "listing_6_title": {
             "type": "text",
@@ -958,7 +958,7 @@
         "portfolio_1_image": {
             "type": "image",
             "label": "Sold 1 Photo",
-            "default": "/storage/template-images/real_estate_agency/gen-04-a-sold-board-outside-a-brick-house.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-13-a-townhouse-facade-with-window-boxes.jpg"
         },
         "portfolio_2_title": {
             "type": "text",
@@ -988,7 +988,7 @@
         "portfolio_2_image": {
             "type": "image",
             "label": "Sold 2 Photo",
-            "default": "/storage/template-images/real_estate_agency/gen-09-a-bedroom-with-a-view-over-rooftops.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-14-an-empty-apartment-with-polished-floors.jpg"
         },
         "portfolio_3_title": {
             "type": "text",
@@ -1018,7 +1018,7 @@
         "portfolio_3_image": {
             "type": "image",
             "label": "Sold 3 Photo",
-            "default": "/storage/template-images/real_estate_agency/gen-08-a-front-door-painted-navy-with-a-brass-k.jpg"
+            "default": "/storage/template-images/real_estate_agency/gen-15-a-bathroom-with-a-freestanding-tub.jpg"
         },
         "primary_color": {
             "type": "color",

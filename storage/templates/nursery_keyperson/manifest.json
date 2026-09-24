@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/childcare.jpg"
+            "default": "/storage/template-images/childcare/gen-01-small-wellington-boots-lined-up-by-the-d.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -436,32 +436,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/childcare.jpg"
+            "default": "/storage/template-images/childcare/facility_1_image.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/childcare.jpg"
+            "default": "/storage/template-images/childcare/facility_2_image.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/childcare.jpg"
+            "default": "/storage/template-images/childcare/facility_3_image.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/childcare.jpg"
+            "default": "/storage/template-images/childcare/facility_4_image.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/childcare.jpg"
+            "default": "/storage/template-images/childcare/facility_5_image.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/childcare.jpg"
+            "default": "/storage/template-images/childcare/facility_6_image.jpg"
         },
         "step_1_title": {
             "type": "text",

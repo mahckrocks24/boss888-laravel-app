@@ -416,22 +416,22 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-01-a-nail-station-with-polish-bottles-in-a.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-02-backwash-basins-with-towels-folded-on-th.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-03-a-mirror-framed-with-warm-bulbs-and-a-ch.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/beauty_salon.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-04-a-shelf-of-hair-products-with-a-spray-bo.jpg"
         },
         "step_1_title": {
             "type": "text",

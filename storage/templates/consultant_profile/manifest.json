@@ -324,7 +324,7 @@
         "story_image": {
             "type": "image",
             "label": "About Photo",
-            "default": "/storage/template-images/portraits/consultant_about.png"
+            "default": "/storage/template-images/consulting/gen-04-a-bookshelf-with-binders-and-a-small-pla.jpg"
         },
         "story_point_1": {
             "type": "text",
@@ -399,7 +399,7 @@
         "portfolio_1_image": {
             "type": "image",
             "label": "Work 1 Image",
-            "default": "/storage/builder-heroes/consulting.jpg"
+            "default": "/storage/template-images/consulting/gen-01-a-whiteboard-with-a-half-erased-flow-dia.jpg"
         },
         "portfolio_2_title": {
             "type": "text",
@@ -419,7 +419,7 @@
         "portfolio_2_image": {
             "type": "image",
             "label": "Work 2 Image",
-            "default": "/storage/builder-heroes/consulting.jpg"
+            "default": "/storage/template-images/consulting/gen-02-a-glass-meeting-room-with-notebooks-and.jpg"
         },
         "portfolio_3_title": {
             "type": "text",
@@ -439,7 +439,7 @@
         "portfolio_3_image": {
             "type": "image",
             "label": "Work 3 Image",
-            "default": "/storage/builder-heroes/consulting.jpg"
+            "default": "/storage/template-images/consulting/gen-03-a-laptop-a-printed-report-and-a-pen-on.jpg"
         },
         "steps_eyebrow": {
             "type": "text",

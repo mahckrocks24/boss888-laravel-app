@@ -431,32 +431,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/construction.jpg"
+            "default": "/storage/template-images/construction/gen-01-a-timber-frame-going-up-with-the-sky-thr.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/construction.jpg"
+            "default": "/storage/template-images/construction/gen-02-a-spirit-level-resting-on-a-windowsill-o.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/construction.jpg"
+            "default": "/storage/template-images/construction/project_1_image.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/construction.jpg"
+            "default": "/storage/template-images/construction/project_2_image.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/construction.jpg"
+            "default": "/storage/template-images/construction/project_3_image.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/construction.jpg"
+            "default": "/storage/template-images/construction/project_4_image.jpg"
         },
         "step_1_title": {
             "type": "text",

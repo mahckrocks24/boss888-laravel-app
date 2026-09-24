@@ -669,7 +669,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Doctor 1 Image",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-01-a-treatment-room-with-a-reclined-bed-and.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -694,7 +694,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Doctor 2 Image",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-02-a-tray-of-sealed-skincare-vials-and-gauz.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -719,7 +719,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Doctor 3 Image",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-03-the-reception-desk-with-an-orchid-and-an.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -744,7 +744,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Doctor 4 Image",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-04-a-laser-device-on-its-cart-beside-a-chai.jpg"
         },
         "process_eyebrow": {
             "type": "text",

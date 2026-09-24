@@ -885,7 +885,7 @@
         "blog_1_image": {
             "type": "image",
             "label": "B1 Image",
-            "default": "/storage/template-images/technology/blog_1_image.jpg"
+            "default": "/storage/template-images/it_services/gen-01-a-server-rack-with-neat-cable-ties-and-b.jpg"
         },
         "blog_2_category": {
             "type": "text",
@@ -910,7 +910,7 @@
         "blog_2_image": {
             "type": "image",
             "label": "B2 Image",
-            "default": "/storage/template-images/technology/blog_2_image.jpg"
+            "default": "/storage/template-images/it_services/gen-02-a-workshop-bench-with-an-open-laptop-and.jpg"
         },
         "blog_3_category": {
             "type": "text",
@@ -935,7 +935,7 @@
         "blog_3_image": {
             "type": "image",
             "label": "B3 Image",
-            "default": "/storage/template-images/technology/blog_3_image.jpg"
+            "default": "/storage/template-images/it_services/gen-03-a-monitoring-screen-with-graphs-in-a-dar.jpg"
         },
         "blog_cta": {
             "type": "text",

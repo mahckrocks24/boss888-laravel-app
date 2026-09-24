@@ -371,32 +371,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-01-a-treatment-room-with-a-reclined-bed-and.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-02-a-tray-of-sealed-skincare-vials-and-gauz.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-03-the-reception-desk-with-an-orchid-and-an.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-04-a-laser-device-on-its-cart-beside-a-chai.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-05-a-shelf-of-clinic-skincare-products-with.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/aesthetic_clinic.jpg"
+            "default": "/storage/template-images/aesthetic_clinic/gen-06-a-corridor-with-frosted-glass-doors-and.jpg"
         },
         "step_1_title": {
             "type": "text",

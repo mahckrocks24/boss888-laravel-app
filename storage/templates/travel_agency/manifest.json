@@ -690,7 +690,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/travel_agency.jpg"
+            "default": "/storage/template-images/travel_agency/gen-01-a-coastal-road-with-the-sea-on-one-side.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -715,7 +715,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/travel_agency.jpg"
+            "default": "/storage/template-images/travel_agency/gen-02-an-old-town-street-with-lanterns-at-dusk.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -740,7 +740,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/travel_agency.jpg"
+            "default": "/storage/template-images/travel_agency/gen-03-brochures-fanned-on-a-desk-with-a-globe.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/travel_agency.jpg"
+            "default": "/storage/template-images/travel_agency/gallery_1.jpg"
         },
         "process_eyebrow": {
             "type": "text",

@@ -426,7 +426,7 @@
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/travel_agency.jpg"
+            "default": "/storage/template-images/travel_agency/gen-01-a-coastal-road-with-the-sea-on-one-side.jpg"
         },
         "step_1_title": {
             "type": "text",

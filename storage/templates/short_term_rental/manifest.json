@@ -690,7 +690,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/short_term_rental.jpg"
+            "default": "/storage/template-images/short_term_rental/gen-01-a-welcome-basket-on-a-kitchen-counter-wi.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -715,7 +715,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/short_term_rental.jpg"
+            "default": "/storage/template-images/short_term_rental/gen-02-a-bright-bedroom-with-a-quilt-and-a-wind.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -740,7 +740,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/short_term_rental.jpg"
+            "default": "/storage/template-images/short_term_rental/gen-03-a-garden-table-with-two-chairs-under-a-t.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/short_term_rental.jpg"
+            "default": "/storage/template-images/short_term_rental/gen-04-a-key-safe-by-a-painted-front-door.jpg"
         },
         "process_eyebrow": {
             "type": "text",

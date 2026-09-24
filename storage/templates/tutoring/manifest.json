@@ -690,7 +690,7 @@
         "doctor_1_image": {
             "type": "image",
             "label": "Team 1 Image",
-            "default": "/storage/builder-heroes/tutoring.jpg"
+            "default": "/storage/template-images/tutoring/gen-01-a-desk-with-exercise-books-pencils-and.jpg"
         },
         "doctor_2_name": {
             "type": "text",
@@ -715,7 +715,7 @@
         "doctor_2_image": {
             "type": "image",
             "label": "Team 2 Image",
-            "default": "/storage/builder-heroes/tutoring.jpg"
+            "default": "/storage/template-images/tutoring/gen-02-a-small-classroom-with-four-desks-and-a.jpg"
         },
         "doctor_3_name": {
             "type": "text",
@@ -740,7 +740,7 @@
         "doctor_3_image": {
             "type": "image",
             "label": "Team 3 Image",
-            "default": "/storage/builder-heroes/tutoring.jpg"
+            "default": "/storage/template-images/tutoring/gen-03-a-study-corner-with-a-shelf-of-textbooks.jpg"
         },
         "doctor_4_name": {
             "type": "text",
@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/builder-heroes/tutoring.jpg"
+            "default": "/storage/template-images/tutoring/gen-04-a-calculator-a-ruler-and-a-worksheet.jpg"
         },
         "process_eyebrow": {
             "type": "text",

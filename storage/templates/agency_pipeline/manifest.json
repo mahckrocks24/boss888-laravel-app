@@ -431,32 +431,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/marketing_agency.jpg"
+            "default": "/storage/template-images/marketing_agency/gen-01-a-wall-of-sticky-notes-in-a-planning-ses.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/marketing_agency.jpg"
+            "default": "/storage/template-images/marketing_agency/gen-02-a-mood-board-of-printed-photos-and-colou.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/marketing_agency.jpg"
+            "default": "/storage/template-images/marketing_agency/gen-03-a-camera-on-a-tripod-pointed-at-a-small.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/marketing_agency.jpg"
+            "default": "/storage/template-images/marketing_agency/gen-04-a-laptop-with-an-analytics-dashboard-bes.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/marketing_agency.jpg"
+            "default": "/storage/template-images/marketing_agency/gen-05-a-whiteboard-with-a-campaign-timeline.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/marketing_agency.jpg"
+            "default": "/storage/template-images/marketing_agency/gen-06-a-shelf-of-printed-brochures-and-a-sampl.jpg"
         },
         "step_1_title": {
             "type": "text",

@@ -431,32 +431,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/medical_clinic.jpg"
+            "default": "/storage/template-images/medical_clinic/gen-01-a-consultation-room-with-a-desk-a-blood.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/medical_clinic.jpg"
+            "default": "/storage/template-images/medical_clinic/gen-02-waiting-area-chairs-in-a-row-by-a-window.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/medical_clinic.jpg"
+            "default": "/storage/template-images/medical_clinic/gen-03-the-reception-window-with-a-sign-in-shee.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/medical_clinic.jpg"
+            "default": "/storage/template-images/medical_clinic/gen-04-a-treatment-couch-with-a-paper-roll.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/medical_clinic.jpg"
+            "default": "/storage/template-images/medical_clinic/gen-05-a-shelf-of-labelled-sample-pots-and-glov.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/medical_clinic.jpg"
+            "default": "/storage/template-images/medical_clinic/gen-06-a-stethoscope-on-a-desk-beside-a-keyboar.jpg"
         },
         "step_1_title": {
             "type": "text",

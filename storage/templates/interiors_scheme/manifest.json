@@ -191,7 +191,7 @@
         "story_image": {
             "type": "image",
             "label": "Story Image",
-            "default": "/storage/builder-heroes/interior_design.jpg"
+            "default": "/storage/template-images/interior_design/gen-07-a-hallway-with-a-runner-and-a-console-ta.jpg"
         },
         "gallery_title": {
             "type": "text",
@@ -406,32 +406,32 @@
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/builder-heroes/interior_design.jpg"
+            "default": "/storage/template-images/interior_design/gen-01-fabric-swatches-and-paint-samples-fanned.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/builder-heroes/interior_design.jpg"
+            "default": "/storage/template-images/interior_design/gen-02-a-styled-living-room-with-a-linen-sofa-a.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/builder-heroes/interior_design.jpg"
+            "default": "/storage/template-images/interior_design/gen-03-a-kitchen-with-oak-cabinets-and-a-stone.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/builder-heroes/interior_design.jpg"
+            "default": "/storage/template-images/interior_design/gen-04-a-joinery-detail-of-a-bookcase-with-bras.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/builder-heroes/interior_design.jpg"
+            "default": "/storage/template-images/interior_design/gen-05-a-bedroom-with-a-headboard-in-green-velv.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/builder-heroes/interior_design.jpg"
+            "default": "/storage/template-images/interior_design/gen-06-a-sample-board-with-tiles-and-a-tap.jpg"
         },
         "step_1_title": {
             "type": "text",
