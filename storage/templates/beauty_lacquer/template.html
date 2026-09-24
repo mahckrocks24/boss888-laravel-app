@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{business_name}} — {{business_tagline}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{business_name}} — {{business_tagline}}">
+<meta property="og:description" content="{{meta_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:locale" content="{{og_locale}}">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#463C36; --deep:#1C1512; --tint:#F8F2EE;
+  /* brand colours are template variables so Arthur, the editor and the design layer can move them */
+  --accent:{{accent_color}}; --brand:{{primary_color}}; --brand-deep:{{primary_deep}}; --brand-2:{{secondary_color}};
+  --line:#EADDD5; --paper:#FFFFFF;
+  --display:"Source Serif 4", Georgia, serif; --body:"Source Sans 3", system-ui, sans-serif; --dw:600; --tr:-0.01em; --tt:none;
+  --h1:clamp(2.6rem, 5.2vw, 4.4rem); --h2:clamp(1.8rem, 3vw, 2.6rem); --pad:112px; --max:1160px; --r:2px;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font:400 17px/1.65 var(--body);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+img{max-width:100%;height:auto;display:block}
+a{color:inherit;text-decoration:none}
+h1,h2,h3,h4{font-family:var(--display);font-weight:var(--dw);letter-spacing:var(--tr);
+  color:var(--deep);margin:0 0 .5em;line-height:1.1;text-wrap:balance}
+h1{font-size:var(--h1)} h2{font-size:var(--h2)} h3{font-size:1.22rem;line-height:1.3}
+p{margin:0 0 1em}
+section{padding:var(--pad) 24px}
+.shell{max-width:var(--max);margin:0 auto;width:100%}
+.eyebrow{font:600 11.5px/1 var(--body);letter-spacing:.16em;text-transform:uppercase;
+  color:var(--lu-accent-text, var(--accent));display:block;margin-bottom:18px}
+.lede{font-size:1.12rem;color:var(--ink);opacity:.86;max-width:62ch}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.55em;
+  font:600 14.5px/1 var(--body);letter-spacing:.01em;padding:17px 30px;border-radius:var(--r);
+  background:var(--brand);color:var(--lu-on-primary, #fff);border:1px solid var(--brand);transition:.18s ease}
+.btn:hover{background:var(--brand-deep);border-color:var(--brand-deep)}
+.btn-ghost{background:transparent;color:var(--deep);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--deep);filter:none}
+.rule{height:1px;background:var(--line);border:0;margin:0}
+.tint{background:var(--tint)}
+.dark{background:var(--deep);color:rgba(var(--lu-on-dark-rgb, 255,255,255), .76)}
+.dark h1,.dark h2,.dark h3{color:var(--lu-on-dark, #fff)}
+.dark .rule{background:rgba(255,255,255,.14)}
+.dark .btn-ghost{color:var(--lu-on-dark, #fff);border-color:rgba(255,255,255,.3)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+::selection{background:var(--accent);color:var(--lu-on-accent, #fff)}
+b,strong{font-weight:600}
+.reveal{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+.reveal.in,.reveal.visible{opacity:1;transform:none}
+.reveal[data-delay="1"]{transition-delay:.08s}.reveal[data-delay="2"]{transition-delay:.16s}.reveal[data-delay="3"]{transition-delay:.24s}
+@media (prefers-reduced-motion:reduce){.reveal{opacity:1;transform:none;transition:none}}
+.head{margin-bottom:clamp(36px,4vw,56px)}
+.btn{box-shadow:0 1px 0 rgba(0,0,0,.04)}
+.btn:active{transform:translateY(1px)}
+figure{margin:0}
+.nav-glass{position:sticky;top:0;z-index:40;padding:14px 24px 0;transition:padding .25s ease}
+.nav-glass .inner{display:flex;align-items:center;gap:32px;height:66px;padding:0 10px 0 22px;border-radius:calc(var(--r) + 4px);
+  background:rgba(255,255,255,.72);backdrop-filter:blur(16px) saturate(1.4);border:1px solid rgba(255,255,255,.7);
+  box-shadow:0 10px 40px -18px rgba(0,0,0,.25);transition:box-shadow .25s ease}
+.nav-glass.is-scrolled .inner{box-shadow:0 18px 50px -20px rgba(0,0,0,.35)}
+.nav-glass .logo{display:flex;align-items:center;gap:11px;font:600 17px/1 var(--display);letter-spacing:var(--tr);color:var(--deep);margin-right:auto}
+.nav-glass .brand-mark{height:30px;width:auto}
+.nav-glass .nav-links{display:flex;align-items:center;gap:6px}
+.nav-glass .nav-link{font:500 14.5px/1 var(--body);color:var(--ink);padding:10px 14px;border-radius:var(--r);transition:background .18s}
+.nav-glass .nav-link:hover{background:var(--tint);color:var(--deep)}
+.nav-glass .nav-cta{font:600 14px/1 var(--body);padding:12px 20px;border-radius:var(--r);background:var(--deep);color:var(--lu-on-dark, #fff);margin-left:8px}
+.nav-glass .nav-cta:hover{background:var(--brand)}
+@media (max-width:860px){.nav-glass{padding:10px 12px 0}.nav-glass .inner{height:60px;gap:14px;padding:0 8px 0 16px}}
+.hero-aurora{position:relative;overflow:hidden;isolation:isolate;
+  padding:clamp(104px,11vw,168px) 24px calc(var(--pad) * 1.15);
+  background:var(--deep);
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 4.5vw),0 100%)}
+/* Three blooms, not one wash: the eye reads depth from their different sizes and softness. */
+.hero-aurora::before{content:"";position:absolute;inset:-25% -10% -10%;z-index:-2;
+  background:
+    radial-gradient(48% 38% at 18% 22%, color-mix(in srgb, var(--accent) 78%, transparent) 0%, transparent 62%),
+    radial-gradient(42% 44% at 82% 14%, color-mix(in srgb, var(--primary, var(--accent)) 60%, transparent) 0%, transparent 60%),
+    radial-gradient(60% 50% at 62% 96%, color-mix(in srgb, var(--accent) 45%, transparent) 0%, transparent 66%);
+  opacity:.85;filter:blur(6px)}
+.hero-aurora::after{content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");background-size:160px 160px;opacity:.10;mix-blend-mode:overlay}
+.hero-aurora .shell{position:relative;z-index:1;max-width:1040px}
+.hero-aurora .eyebrow{color:var(--lu-on-dark, #fff);opacity:.9}
+.hero-aurora h1{color:var(--lu-on-dark, #fff);font-size:clamp(2.6rem,7vw,5.2rem);line-height:.98;letter-spacing:-.025em;margin:14px 0 20px;max-width:16ch}
+.hero-aurora h1 .lit{background:linear-gradient(100deg,#fff 10%,color-mix(in srgb, var(--accent) 35%, #fff) 55%,#fff 92%);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-aurora .lede{color:var(--lu-on-dark, #fff);opacity:.9;max-width:54ch;font-size:clamp(1.02rem,1.5vw,1.2rem)}
+.hero-aurora .hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}
+.hero-aurora .chips{display:flex;flex-wrap:wrap;gap:12px;margin-top:46px}
+.hero-aurora .chip{padding:15px 20px;border-radius:var(--r);
+  background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);
+  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+  box-shadow:0 18px 40px -26px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.22)}
+.hero-aurora .chip b{display:block;font:700 1.45rem/1 var(--display);color:var(--lu-on-dark, #fff);letter-spacing:-.02em}
+.hero-aurora .chip span{font:500 11px/1.3 var(--body);letter-spacing:.13em;text-transform:uppercase;color:var(--lu-on-dark, #fff);opacity:.72}
+@media (max-width:860px){
+  .hero-aurora{padding-top:calc(var(--pad) * .9);clip-path:polygon(0 0,100% 0,100% calc(100% - 8vw),0 100%)}
+  .hero-aurora .chips{gap:9px}
+  .hero-aurora .chip{flex:1 1 calc(50% - 9px)}
+}
+.story-drift{position:relative;overflow:hidden}
+.story-drift .grid{display:grid;grid-template-columns:1fr 1fr;gap:clamp(40px,6vw,88px);align-items:center}
+.story-drift .copy{position:relative;z-index:1}
+.story-drift .copy h2{margin:12px 0 18px}
+.story-drift .copy p{color:var(--ink);opacity:.84;max-width:50ch}
+.story-drift ul{list-style:none;margin:30px 0 0;padding:0;display:grid;gap:11px}
+.story-drift li{position:relative;padding:13px 17px 13px 44px;border-radius:var(--r);
+  background:color-mix(in srgb, var(--accent) 7%, var(--paper));
+  border:1px solid color-mix(in srgb, var(--accent) 18%, var(--line));
+  font-size:.98rem;box-shadow:0 10px 26px -22px rgba(0,0,0,.5)}
+.story-drift li::before{content:"";position:absolute;left:18px;top:50%;width:9px;height:9px;margin-top:-4px;
+  border-radius:2px;transform:rotate(45deg);background:var(--accent);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent)}
+.story-drift .plate{position:relative;border-radius:var(--r);overflow:hidden;aspect-ratio:4/5;
+  box-shadow:0 46px 90px -52px rgba(0,0,0,.72)}
+.story-drift .plate img{width:100%;height:114%;object-fit:cover;will-change:transform}
+/* A wash of the palette behind the plate, sized off the plate, so it reads as light not as a shape. */
+.story-drift .plate-wrap{position:relative}
+.story-drift .plate-wrap::before{content:"";position:absolute;inset:8% -14% -12% 6%;z-index:0;pointer-events:none;
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--accent) 52%, transparent), transparent 74%);
+  filter:blur(26px);opacity:.55}
+.story-drift .plate{z-index:1}
+@media (max-width:860px){
+  .story-drift .grid{grid-template-columns:1fr;gap:34px}
+  .story-drift .plate{aspect-ratio:4/3}
+  .story-drift .plate img{height:108%}
+}
+.offer-stagger{padding:var(--pad) 24px}
+.offer-stagger .head{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:end;
+  margin-bottom:clamp(44px,5vw,68px);padding-bottom:26px;border-bottom:1px solid var(--line)}
+.offer-stagger .head h2{margin:0}
+.offer-stagger .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:clamp(20px,2.4vw,32px)}
+.offer-stagger .cell{border:1px solid var(--line);border-radius:var(--r);padding:clamp(26px,3vw,38px)}
+.offer-stagger .cell:nth-child(1),.offer-stagger .cell:nth-child(4){grid-column:span 4}
+.offer-stagger .cell:nth-child(2),.offer-stagger .cell:nth-child(3),
+.offer-stagger .cell:nth-child(5),.offer-stagger .cell:nth-child(6){grid-column:span 2}
+.offer-stagger .cell:nth-child(1),.offer-stagger .cell:nth-child(4){background:var(--tint);border-color:transparent}
+.offer-stagger h3{margin-bottom:11px}
+.offer-stagger p{font-size:.96rem;opacity:.83;margin-bottom:16px}
+.offer-stagger .meta{font:600 12.5px/1 var(--body);letter-spacing:.08em;text-transform:uppercase;color:var(--lu-accent-text, var(--accent))}
+@media (max-width:980px){
+  .offer-stagger .head{grid-template-columns:1fr;gap:14px}
+  .offer-stagger .grid{grid-template-columns:1fr}
+  .offer-stagger .cell{grid-column:auto !important}
+}
+.gal-masonry{padding:var(--pad) 24px}
+.gal-masonry .head{margin-bottom:clamp(30px,4vw,48px)}
+.gal-masonry .cols{columns:3;column-gap:14px}
+.gal-masonry .g{break-inside:avoid;margin:0 0 14px;border-radius:var(--r);overflow:hidden;background:var(--tint)}
+.gal-masonry .g img{width:100%;display:block;transition:transform .8s ease}
+.gal-masonry .g:hover img{transform:scale(1.04)}
+.gal-masonry .g:nth-child(1) img{aspect-ratio:4/5;object-fit:cover}
+.gal-masonry .g:nth-child(2) img{aspect-ratio:1;object-fit:cover}
+.gal-masonry .g:nth-child(3) img{aspect-ratio:3/4;object-fit:cover}
+.gal-masonry .g:nth-child(4) img{aspect-ratio:4/3;object-fit:cover}
+.gal-masonry .g:nth-child(5) img{aspect-ratio:1;object-fit:cover}
+.gal-masonry .g:nth-child(6) img{aspect-ratio:4/5;object-fit:cover}
+@media (max-width:860px){.gal-masonry .cols{columns:2}}
+.pf-strip{padding:0 24px}
+.pf-strip .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.pf-strip .pf{display:flex;gap:14px;align-items:flex-start;padding:22px 22px 22px 0;font-size:.95rem;color:var(--ink)}
+.pf-strip .pf+.pf{padding-left:22px;border-left:1px solid var(--line)}
+.pf-strip .k{flex:none;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;font:600 12px/1 var(--body);color:var(--lu-on-accent, #fff);background:var(--accent);border-radius:var(--r)}
+@media (max-width:860px){.pf-strip .grid{grid-template-columns:1fr 1fr}.pf-strip .pf:nth-child(3){border-left:0;padding-left:0}}
+@media (max-width:520px){.pf-strip .grid{grid-template-columns:1fr}.pf-strip .pf+.pf{border-left:0;padding-left:0;border-top:1px solid var(--line)}}
+.steps-hz{padding:var(--pad) 24px;background:var(--deep);color:rgba(var(--lu-on-dark-rgb, 255,255,255), .8)}
+.steps-hz .head h2{color:var(--lu-on-dark, #fff)}
+.steps-hz .head{margin-bottom:clamp(36px,4vw,56px)}
+.steps-hz .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-top:1px solid rgba(255,255,255,.18)}
+.steps-hz .step{padding:30px 26px 0 0;border-right:1px solid rgba(255,255,255,.12);margin-right:26px;position:relative}
+.steps-hz .step:last-child{border-right:0;margin-right:0}
+.steps-hz .step::before{content:"";position:absolute;top:-1px;left:0;width:48px;height:2px;background:var(--accent)}
+.steps-hz .n{font:600 11.5px/1 var(--body);letter-spacing:.14em;color:var(--lu-accent-on-dark, var(--accent));display:block;margin-bottom:16px}
+.steps-hz h3{color:var(--lu-on-dark, #fff);font-size:1.15rem;margin-bottom:8px}
+.steps-hz p{font-size:.94rem;color:rgba(var(--lu-on-dark-rgb, 255,255,255), .7);margin:0}
+@media (max-width:860px){.steps-hz .grid{grid-template-columns:1fr 1fr;gap:26px 0}.steps-hz .step:nth-child(even){border-right:0;margin-right:0}}
+@media (max-width:520px){.steps-hz .grid{grid-template-columns:1fr}.steps-hz .step{border-right:0;margin-right:0}}
+.faq-cards{padding:var(--pad) 24px}
+.faq-cards .head{max-width:700px;margin-bottom:clamp(28px,4vw,44px)}
+.faq-cards .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.faq-cards .fq{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:0 24px}
+.faq-cards summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:20px;align-items:center;padding:20px 0;font:600 1rem/1.4 var(--body);color:var(--deep)}
+.faq-cards summary::-webkit-details-marker{display:none}
+.faq-cards summary i{flex:none;width:12px;height:12px;position:relative}
+.faq-cards summary i::before,.faq-cards summary i::after{content:"";position:absolute;background:var(--accent);inset:5px 0;transition:transform .25s ease}
+.faq-cards summary i::after{inset:0 5px}
+.faq-cards .fq[open] summary i::after{transform:scaleY(0)}
+.faq-cards .fq p{margin:0;padding:0 0 20px;font-size:.96rem;opacity:.86}
+@media (max-width:860px){.faq-cards .grid{grid-template-columns:1fr}}
+.tst-wall{padding:var(--pad) 24px;border-top:1px solid var(--line)}
+.tst-wall .head{margin-bottom:clamp(30px,4vw,48px)}
+.tst-wall .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-left:1px solid var(--line)}
+.tst-wall .t{margin:0;padding:8px 30px 8px 30px;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:22px}
+.tst-wall blockquote{margin:0;font:var(--dw) 1.15rem/1.5 var(--display);color:var(--deep);letter-spacing:var(--tr)}
+.tst-wall blockquote::before{content:"\2014";display:block;color:var(--lu-accent-text, var(--accent));margin-bottom:12px}
+.tst-wall figcaption{display:flex;align-items:center;gap:12px;margin-top:auto}
+.tst-wall .av{display:none}
+.tst-wall b{display:block;font:600 .9rem/1.3 var(--body)}
+.tst-wall small{font-size:.8rem;opacity:.7}
+@media (max-width:860px){.tst-wall .grid{grid-template-columns:1fr;gap:26px;border-left:0}.tst-wall .t{border-right:0;padding:0 0 26px;border-bottom:1px solid var(--line)}}
+.cta-wave{position:relative;overflow:hidden;isolation:isolate;
+  padding:calc(var(--pad) * 1.25) 24px calc(var(--pad) * 1.05);
+  background:linear-gradient(135deg, var(--deep) 0%, color-mix(in srgb, var(--accent) 34%, var(--deep)) 58%, var(--deep) 100%)}
+/* The curve is drawn, not faked with a rotated box, so it stays true at every width. */
+.cta-wave .curve{position:absolute;top:-1px;left:0;width:100%;height:clamp(38px,5vw,74px);z-index:1;display:block}
+.cta-wave .curve path{fill:var(--paper)}
+.cta-wave::after{content:"";position:absolute;left:50%;bottom:-38%;width:74%;height:88%;transform:translateX(-50%);z-index:-1;
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--accent) 62%, transparent), transparent 72%);
+  filter:blur(22px);opacity:.55;pointer-events:none}
+.cta-wave .shell{position:relative;z-index:2;text-align:center;max-width:760px}
+.cta-wave h2{color:var(--lu-on-dark, #fff);font-size:clamp(1.9rem,3.6vw,2.9rem);line-height:1.05;letter-spacing:-.02em;margin:0 0 14px}
+.cta-wave p{color:var(--lu-on-dark, #fff);opacity:.88;margin:0 auto 30px;max-width:52ch}
+.cta-wave .btn{box-shadow:0 20px 44px -20px rgba(0,0,0,.8)}
+@media (max-width:860px){.cta-wave{padding-top:calc(var(--pad) * 1.1)}}
+.cform2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cform2 label{display:flex;flex-direction:column;gap:7px;font:600 12px/1 var(--body);letter-spacing:.06em;text-transform:uppercase}
+.cform2 label.wide{grid-column:1 / -1}
+.cform2 input,.cform2 select,.cform2 textarea{font:400 15px/1.4 var(--body);border:1px solid var(--line);border-radius:var(--r);padding:14px 15px;width:100%;background:var(--paper);color:var(--deep)}
+.cform2 input:focus,.cform2 select:focus,.cform2 textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+.cform2 textarea{resize:vertical}
+.cform2 button{grid-column:1 / -1;justify-self:start;margin-top:6px}
+@media (max-width:640px){.cform2{grid-template-columns:1fr}}
+.cd2{margin:0;display:grid;gap:18px}
+.cd2 dt{font:600 11px/1 var(--body);letter-spacing:.15em;text-transform:uppercase;color:var(--lu-accent-text, var(--accent));margin-bottom:6px}
+.cd2 dd{margin:0;font-size:1rem}
+.ct-wide{padding:var(--pad) 24px}
+.ct-wide .head{max-width:760px;margin:0 auto clamp(30px,4vw,48px);text-align:center}
+.ct-wide .grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start}
+.ct-wide .pane{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:clamp(24px,3vw,40px)}
+.ct-wide .pane.side{background:var(--deep);color:rgba(var(--lu-on-dark-rgb, 255,255,255), .82);border-color:var(--deep)}
+.ct-wide .pane.side dd,.ct-wide .pane.side dd a{color:var(--lu-on-dark, #fff)}
+@media (max-width:860px){.ct-wide .grid{grid-template-columns:1fr}}
+.ft-split{padding:calc(var(--pad) * .7) 24px 26px;background:var(--tint)}
+.ft-split .top{display:grid;grid-template-columns:1.2fr .8fr .8fr;gap:40px;padding-bottom:36px;border-bottom:1px solid var(--line)}
+.ft-split .brand{font:var(--dw) 2rem/1.1 var(--display);color:var(--deep);display:block;margin-bottom:12px;letter-spacing:var(--tr)}
+.ft-split p{font-size:.95rem;max-width:36ch;opacity:.85}
+.ft-split h4{font:600 11.5px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--lu-accent-text, var(--accent));margin:0 0 16px}
+.ft-split .col a{display:block;font-size:.95rem;color:var(--ink);padding:4px 0}
+.ft-split .col a:hover{color:var(--deep);text-decoration:underline;text-underline-offset:4px}
+.ft-split .social{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
+.ft-split .social a{font:600 12px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;color:var(--deep)}
+.ft-split .legal{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:20px;font-size:.84rem;opacity:.8}
+@media (max-width:860px){.ft-split .top{grid-template-columns:1fr;gap:26px}}
+
+/* lug-scope */
+.hero-aurora .eyebrow{color:var(--lu-accent-on-dark, var(--accent))}
+.hero-aurora .lede{color:var(--lu-on-dark, var(--ink))}
+.ct-wide .pane.side .cd2 dt{color:var(--lu-accent-on-dark, var(--accent))}
+/* /lug-scope */
+</style>
+</head>
+<body>
+<a class="sr" href="#services">Skip to content</a>
+<nav class="nav-glass" data-block="nav"><div class="inner shell">
+  <a class="logo" href="#top">
+    <img class="brand-mark" src="{{logo_img_src}}" alt="" data-field="logo_url">
+    <span class="brand-text" style="{{logo_text_display}}" data-field="business_name">{{business_name}}</span>
+  </a>
+  <div class="nav-links"><a class="nav-link" href="#services" data-field="nav_1">{{nav_1}}</a><a class="nav-link" href="#about" data-field="nav_2">{{nav_2}}</a><a class="nav-link" href="#gallery" data-field="nav_3">{{nav_3}}</a><a class="nav-link" href="#process" data-field="nav_4">{{nav_4}}</a><a class="nav-link" href="#contact" data-field="nav_5">{{nav_5}}</a><a class="nav-cta" href="#contact" data-field="nav_cta">{{nav_cta}}</a></div>
+</div></nav>
+<section class="hero-aurora" data-block="hero" id="top">
+  <div class="shell">
+    <span class="eyebrow" data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+    <h1 data-field="hero_title"><span class="lit">{{hero_title}}</span></h1>
+    <p class="lede" data-field="hero_subtitle">{{hero_subtitle}}</p>
+    <div class="hero-actions">
+      <a class="btn" href="#contact" data-field="hero_cta">{{hero_cta}}</a>
+      <a class="btn btn-ghost" href="#services" data-field="hero_cta_2">{{hero_cta_2}}</a>
+    </div>
+    <div class="chips"><div class="chip"><b data-field="stat_1_value">{{stat_1_value}}</b><span data-field="stat_1_label">{{stat_1_label}}</span></div><div class="chip"><b data-field="stat_2_value">{{stat_2_value}}</b><span data-field="stat_2_label">{{stat_2_label}}</span></div><div class="chip"><b data-field="stat_3_value">{{stat_3_value}}</b><span data-field="stat_3_label">{{stat_3_label}}</span></div></div>
+  </div>
+</section>
+<section class="story-drift reveal" data-block="about" id="about">
+<div class="shell grid"><div class="copy"><span class="eyebrow" data-field="story_eyebrow">{{story_eyebrow}}</span><h2 data-field="story_title">{{story_title}}</h2><p data-field="story_body">{{story_body}}</p><ul><li data-field="story_point_1">{{story_point_1}}</li><li data-field="story_point_2">{{story_point_2}}</li><li data-field="story_point_3">{{story_point_3}}</li></ul></div><div class="plate-wrap"><figure class="plate"><img src="{{story_image}}" alt="" data-field="story_image" loading="lazy" data-drift="7"></figure></div></div><script>
+/* Drift: a transform on elements marked data-drift, tied to scroll position, clipped by their parent.
+   Off entirely for anyone who has asked for reduced motion, and off on a page that never scrolls. */
+(function () {
+  if (window.luDrift) return; window.luDrift = 1;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return;
+  var els = [], ticking = false;
+  function collect() { els = [].slice.call(document.querySelectorAll('[data-drift]')); }
+  function frame() {
+    ticking = false;
+    var vh = window.innerHeight || 800;
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i], box = el.parentElement.getBoundingClientRect();
+      if (box.bottom < -200 || box.top > vh + 200) continue;
+      var amount = parseFloat(el.getAttribute('data-drift')) || 12;
+      var progress = (vh - box.top) / (vh + box.height);
+      el.style.transform = 'translate3d(0,' + ((progress - 0.5) * amount * 2).toFixed(2) + '%,0)';
+    }
+  }
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(frame); } }
+  if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', function () { collect(); frame(); }); }
+  else { collect(); frame(); }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+})();
+</script>
+</section>
+<section class="offer-stagger reveal" data-block="services" id="services">
+<div class="shell head">
+  <h2 data-field="offers_title">{{offers_title}}</h2>
+  <p class="lede" data-field="offers_subtitle">{{offers_subtitle}}</p>
+</div><div class="shell"><div class="grid"><div class="cell offer-card">
+  <h3 data-field="service_1_title">{{service_1_title}}</h3>
+  <p data-field="service_1_text">{{service_1_text}}</p>
+  <span class="meta" data-field="service_1_price">{{service_1_price}}</span>
+</div><div class="cell offer-card">
+  <h3 data-field="service_2_title">{{service_2_title}}</h3>
+  <p data-field="service_2_text">{{service_2_text}}</p>
+  <span class="meta" data-field="service_2_price">{{service_2_price}}</span>
+</div><div class="cell offer-card">
+  <h3 data-field="service_3_title">{{service_3_title}}</h3>
+  <p data-field="service_3_text">{{service_3_text}}</p>
+  <span class="meta" data-field="service_3_price">{{service_3_price}}</span>
+</div><div class="cell offer-card">
+  <h3 data-field="service_4_title">{{service_4_title}}</h3>
+  <p data-field="service_4_text">{{service_4_text}}</p>
+  <span class="meta" data-field="service_4_price">{{service_4_price}}</span>
+</div><div class="cell offer-card">
+  <h3 data-field="service_5_title">{{service_5_title}}</h3>
+  <p data-field="service_5_text">{{service_5_text}}</p>
+  <span class="meta" data-field="service_5_price">{{service_5_price}}</span>
+</div><div class="cell offer-card">
+  <h3 data-field="service_6_title">{{service_6_title}}</h3>
+  <p data-field="service_6_text">{{service_6_text}}</p>
+  <span class="meta" data-field="service_6_price">{{service_6_price}}</span>
+</div></div></div>
+</section>
+<section class="gal-masonry reveal" data-block="gallery" id="gallery">
+<div class="shell head"><h2 data-field="gallery_title">{{gallery_title}}</h2></div><div class="shell"><div class="cols"><figure class="g"><img src="{{gallery_1}}" alt="" data-field="gallery_1" loading="lazy"></figure><figure class="g"><img src="{{gallery_2}}" alt="" data-field="gallery_2" loading="lazy"></figure><figure class="g"><img src="{{gallery_3}}" alt="" data-field="gallery_3" loading="lazy"></figure><figure class="g"><img src="{{gallery_4}}" alt="" data-field="gallery_4" loading="lazy"></figure><figure class="g"><img src="{{gallery_5}}" alt="" data-field="gallery_5" loading="lazy"></figure><figure class="g"><img src="{{gallery_6}}" alt="" data-field="gallery_6" loading="lazy"></figure></div></div>
+</section>
+<section class="pf-strip reveal" data-block="why_us" id="why-us">
+<div class="shell grid"><div class="pf"><span class="k" aria-hidden="true">1</span><span data-field="proof_1">{{proof_1}}</span></div><div class="pf"><span class="k" aria-hidden="true">2</span><span data-field="proof_2">{{proof_2}}</span></div><div class="pf"><span class="k" aria-hidden="true">3</span><span data-field="proof_3">{{proof_3}}</span></div><div class="pf"><span class="k" aria-hidden="true">4</span><span data-field="proof_4">{{proof_4}}</span></div></div>
+</section>
+<section class="steps-hz reveal" data-block="process" id="process">
+<div class="shell head"><h2 data-field="steps_title">{{steps_title}}</h2></div><div class="shell"><div class="grid"><div class="step"><span class="n">01</span><h3 data-field="step_1_title">{{step_1_title}}</h3><p data-field="step_1_body">{{step_1_body}}</p></div><div class="step"><span class="n">02</span><h3 data-field="step_2_title">{{step_2_title}}</h3><p data-field="step_2_body">{{step_2_body}}</p></div><div class="step"><span class="n">03</span><h3 data-field="step_3_title">{{step_3_title}}</h3><p data-field="step_3_body">{{step_3_body}}</p></div><div class="step"><span class="n">04</span><h3 data-field="step_4_title">{{step_4_title}}</h3><p data-field="step_4_body">{{step_4_body}}</p></div></div></div>
+</section>
+<section class="faq-cards tint reveal" data-block="faq" id="faq">
+<div class="shell head"><span class="eyebrow" data-field="faq_eyebrow">{{faq_eyebrow}}</span><h2 data-field="faq_title">{{faq_title}}</h2></div><div class="shell grid"><details class="fq" open><summary><span data-field="faq_1_q">{{faq_1_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_1_a">{{faq_1_a}}</p></details><details class="fq"><summary><span data-field="faq_2_q">{{faq_2_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_2_a">{{faq_2_a}}</p></details><details class="fq"><summary><span data-field="faq_3_q">{{faq_3_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_3_a">{{faq_3_a}}</p></details><details class="fq"><summary><span data-field="faq_4_q">{{faq_4_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_4_a">{{faq_4_a}}</p></details></div>
+</section>
+<section class="tst-wall reveal" data-block="testimonials" id="testimonials">
+<div class="shell head"><h2 data-field="testimonials_title">{{testimonials_title}}</h2></div><div class="shell grid"><figure class="t"><blockquote data-field="testimonial_1_quote">{{testimonial_1_quote}}</blockquote><figcaption><span class="av" aria-hidden="true">&#8220;</span><span><b data-field="testimonial_1_name">{{testimonial_1_name}}</b><small data-field="testimonial_1_role">{{testimonial_1_role}}</small></span></figcaption></figure><figure class="t"><blockquote data-field="testimonial_2_quote">{{testimonial_2_quote}}</blockquote><figcaption><span class="av" aria-hidden="true">&#8220;</span><span><b data-field="testimonial_2_name">{{testimonial_2_name}}</b><small data-field="testimonial_2_role">{{testimonial_2_role}}</small></span></figcaption></figure><figure class="t"><blockquote data-field="testimonial_3_quote">{{testimonial_3_quote}}</blockquote><figcaption><span class="av" aria-hidden="true">&#8220;</span><span><b data-field="testimonial_3_name">{{testimonial_3_name}}</b><small data-field="testimonial_3_role">{{testimonial_3_role}}</small></span></figcaption></figure></div>
+</section>
+<section class="cta-wave dark reveal" data-block="cta" id="cta">
+<svg class="curve" viewBox="0 0 1440 80" preserveAspectRatio="none" aria-hidden="true"><path d="M0,0 L1440,0 L1440,20 C1140,86 880,6 620,34 C420,56 200,74 0,30 Z"></path></svg><div class="shell"><h2 data-field="cta_title">{{cta_title}}</h2><p data-field="cta_body">{{cta_body}}</p><a class="btn" href="#contact" data-field="cta_button">{{cta_button}}</a></div>
+</section>
+<section class="ct-wide tint reveal" data-block="contact" id="contact">
+<div class="shell"><div class="head"><h2 data-field="contact_title">{{contact_title}}</h2><p class="lede" data-field="contact_subtitle">{{contact_subtitle}}</p></div><div class="grid"><div class="pane"><form class="cform2" method="post" action="#" novalidate>
+  <label><span>Name</span><input type="text" name="name" autocomplete="name" required></label>
+  <label><span>Email</span><input type="email" name="email" autocomplete="email" required></label>
+  <label><span>Phone</span><input type="tel" name="phone" autocomplete="tel"></label>
+  <label><span>Which service?</span><select name="service"><option>General enquiry</option></select></label>
+  <label class="wide"><span>Message</span><textarea name="message" rows="4"></textarea></label>
+  <button class="btn" type="submit" data-field="contact_cta">{{contact_cta}}</button>
+</form></div><div class="pane side"><dl class="cd2">
+  <div><dt>Call</dt><dd><a href="tel:{{contact_phone}}" data-field="contact_phone">{{contact_phone}}</a></dd></div>
+  <div><dt>Email</dt><dd><a href="mailto:{{contact_email}}" data-field="contact_email">{{contact_email}}</a></dd></div>
+  <div><dt>Visit</dt><dd data-field="contact_address">{{contact_address}}</dd></div>
+  <div><dt>Open</dt><dd data-field="contact_hours">{{contact_hours}}</dd></div>
+</dl></div></div></div>
+</section>
+<footer class="ft-split" data-block="footer">
+<div class="shell top"><div><span class="brand" data-field="business_name">{{business_name}}</span><p data-field="footer_blurb">{{footer_blurb}}</p><div class="social">
+  <a href="{{social_facebook}}" data-field="social_facebook" aria-label="Facebook">Facebook</a>
+  <a href="{{social_instagram}}" data-field="social_instagram" aria-label="Instagram">Instagram</a>
+  <a href="{{social_linkedin}}" data-field="social_linkedin" aria-label="LinkedIn">LinkedIn</a>
+  <a href="{{social_x}}" data-field="social_x" aria-label="X">X</a>
+</div></div><div class="col"><h4 data-field="footer_col_1">{{footer_col_1}}</h4><a href="#services" data-field="nav_1">{{nav_1}}</a><a href="#about" data-field="nav_2">{{nav_2}}</a><a href="#gallery" data-field="nav_3">{{nav_3}}</a><a href="#process" data-field="nav_4">{{nav_4}}</a><a href="#contact" data-field="nav_5">{{nav_5}}</a></div><div class="col"><h4 data-field="footer_col_2">{{footer_col_2}}</h4><a href="tel:{{contact_phone}}" data-field="contact_phone">{{contact_phone}}</a><a href="mailto:{{contact_email}}" data-field="contact_email">{{contact_email}}</a><a href="#contact" data-field="contact_address">{{contact_address}}</a></div></div><div class="shell legal"><span>&copy; <span data-field="business_name">{{business_name}}</span>. <span data-field="footer_legal">{{footer_legal}}</span></span><a href="#top">Back to top</a></div>
+</footer>
+<script>
+(function(){
+  try{
+    var nav=document.querySelector('nav[data-block="nav"]');
+    if(nav){var t=function(){nav.classList.toggle('is-scrolled',window.scrollY>12)};t();window.addEventListener('scroll',t,{passive:true});}
+    var els=document.querySelectorAll('.reveal');
+    if(!('IntersectionObserver' in window)){for(var i=0;i<els.length;i++){els[i].classList.add('in');}return;}
+    var io=new IntersectionObserver(function(en){en.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}});},{rootMargin:'0px 0px -8% 0px',threshold:.08});
+    for(var j=0;j<els.length;j++){io.observe(els[j]);}
+    setTimeout(function(){for(var k=0;k<els.length;k++){els[k].classList.add('in');}},2500);
+  }catch(e){}
+})();
+</script></body>
+</html>

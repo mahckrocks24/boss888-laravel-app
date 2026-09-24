@@ -635,7 +635,7 @@ class ArthurService
     ];
 
     // Canonical industry slugs the template system understands.
-    // v1.4.4 (2026-05-30) — synced to the 31 templates that actually
+    // v1.4.4 (2026-05-30), extended 2026-09-24 — synced to the templates that actually
     // exist on disk at storage/templates/. Legacy "category" aliases
     // (healthcare, fashion, beauty, fitness, hospitality, events, education,
     // legal) are still routed via KEYWORD_TO_TEMPLATE + resolveTemplateSlug()
@@ -651,6 +651,9 @@ class ArthurService
         'pet_services', 'real_estate_agency', 'resort', 'restaurant',
         'retail_shop', 'short_term_rental', 'training_center', 'travel_agency',
         'tutoring',
+        // 2026-09-24: legal and accounting stop being 'legacy category aliases' and become real
+        // industries, because they now have seven template manifests each on disk.
+        'legal', 'accounting',
     ];
 
     /**

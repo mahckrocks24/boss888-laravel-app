@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -28,7 +29,11 @@ Route::prefix('public/domains')->middleware('throttle:20,1')->group(function () 
         if ($raw === '' || strlen($raw) < 2)  { return response()->json(['error' => 'Type a name to search.'], 422); }
         if (strlen($raw) > 63)                { return response()->json(['error' => 'That name is too long.'], 422); }
 
-        $payload = Cache::remember('public.domsearch.' . md5($raw), 600, function () use ($raw) {
+        /* DOM-SEARCH-1 (2026-09-24): build first, cache only a real answer. Cache::remember would store a
+           failed lookup for ten minutes and serve it to everyone who typed the same name. */
+        $cacheKey = 'public.domsearch.' . md5($raw);
+        $payload  = Cache::get($cacheKey);
+        $build = (function () use ($raw) {
             // The stem is what recommendations are built from: "fernandfold" out of "fernandfold.com".
             $typedTld = null;
             $stem = $raw;
@@ -113,6 +118,21 @@ Route::prefix('public/domains')->middleware('throttle:20,1')->group(function () 
                 'sold_by'         => 'LevelUp Growth',
             ];
         });
+
+        if (! is_array($payload)) {
+            $payload = $build();
+            // An answer the registrar actually gave: the exact name resolved, or at least one alternative
+            // came back available. Anything else is a failed lookup and must not be remembered.
+            $answered = ($payload['exact']['available'] ?? null) !== null || ! empty($payload['recommendations']);
+            if ($answered) {
+                Cache::put($cacheKey, $payload, 600);
+            } else {
+                Log::warning('public domain search: registrar returned nothing', ['query' => $raw]);
+            }
+            $payload['answered'] = $answered;
+        } else {
+            $payload['answered'] = true;
+        }
 
         return response()->json($payload + ['pricing_live' => true]);
     })->name('public.domains.search');
