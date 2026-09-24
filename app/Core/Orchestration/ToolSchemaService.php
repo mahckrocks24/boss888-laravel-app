@@ -249,6 +249,13 @@ class ToolSchemaService
             'engine'      => 'social', 'action' => 'list_posts', 'approval' => 'auto',
         ],
 
+        // ─── BUSINESS KNOWLEDGE (K9 read) ────────────────────────────
+        'platform.knowledge_gaps' => [
+            'description' => 'What is missing, unconfirmed or now out of date in the structured knowledge of this business, and what each gap costs. Returns sentences with a consequence and something to do, never a score. READ THIS before telling the owner their SEO or AI visibility is fine, and before claiming any contact detail is published.',
+            'parameters'  => ['website_id' => 'int?'],
+            'engine'      => 'platform', 'action' => 'knowledge_gaps', 'approval' => 'auto',
+        ],
+
         // ─── CHATBOT (F-CB-F2 read) ──────────────────────────────────
         'chatbot.get_state' => [
             'description' => 'The truthful state of the website chatbot: which sites it is live on, conversations, leads captured, knowledge documents, quota, and how embedding / knowledge / per-site switching work. READ THIS before saying anything about the chatbot.',
@@ -872,6 +879,36 @@ class ToolSchemaService
     {
         try {
             switch ($toolId) {
+                case 'platform.knowledge_gaps':
+                    // K9 (2026-09-25) — read-only. Resolves the business from the
+                    // website in hand, else the workspace's default, and returns
+                    // what KnowledgeAdvisor can actually say. No score: an owner
+                    // cannot act on a percentage.
+                    $kgWebsiteId = (int) ($params['website_id'] ?? 0);
+                    $kgBusiness = $kgWebsiteId > 0
+                        ? app(\App\Core\Business\BusinessProfileResolver::class)->forWebsite($kgWebsiteId)
+                        : app(\App\Core\Business\BusinessProfileResolver::class)->default($wsId);
+                    if (! $kgBusiness) {
+                        return ['success' => true, 'tool' => $toolId,
+                            'result' => 'There is no published website yet, so there is no public knowledge to check.',
+                            'data' => ['items' => []]];
+                    }
+                    $kgItems = app(\App\Core\Business\KnowledgeAdvisor::class)->forBusiness((int) $kgBusiness->id);
+                    if (! $kgItems) {
+                        return ['success' => true, 'tool' => $toolId,
+                            'result' => "Nothing is missing or out of date in {$kgBusiness->name}'s structured knowledge.",
+                            'data' => ['business' => $kgBusiness->name, 'items' => []]];
+                    }
+                    $kgLines = [];
+                    foreach (array_slice($kgItems, 0, 8) as $kgItem) {
+                        $kgLines[] = '- ' . $kgItem['say'] . ' (' . $kgItem['action'] . ')';
+                    }
+                    return [
+                        'success' => true, 'tool' => $toolId,
+                        'result'  => $kgBusiness->name . " — " . count($kgItems) . " thing(s) to settle:\n" . implode("\n", $kgLines),
+                        'data'    => ['business' => $kgBusiness->name, 'business_id' => (int) $kgBusiness->id, 'items' => $kgItems],
+                    ];
+
                 case 'platform.get_website_count':
                     // Wave 54 — filter soft-deleted rows so the count reflects
                     // the user's view (deletes from the UI only set deleted_at).
