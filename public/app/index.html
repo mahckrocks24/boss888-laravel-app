@@ -1161,7 +1161,7 @@ table tbody tr:hover{background:var(--s2)}
     .dash-ins-item strong{color:var(--da)}
     .dash-view-tab{padding:7px 14px;border:none;background:none;font-size:13px;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
     @media(max-width:1100px){.dash-body{grid-template-columns:200px 1fr}.dash-body>*:last-child{display:none}}
-    @media(max-width:800px){.dash-stats{grid-template-columns:repeat(2,1fr)}.dash-body{grid-template-columns:1fr}}
+    @media(max-width:800px){.dash-stats{grid-template-columns:repeat(2,1fr)}.dash-body{grid-template-columns:1fr}.dash-body>div:nth-child(2){order:-1}} /* SOCIAL-CAL-1: stacked, the Content Calendar comes first instead of three screens down */
 /* ── End Dashboard System ──────────────────────────────────────────────── */
 
 /* ── M1.1: iOS momentum scroll on all overflow-y containers ── */
