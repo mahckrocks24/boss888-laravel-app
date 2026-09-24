@@ -764,6 +764,12 @@ class CatalogueService
             . '.lu-cat{max-width:1140px;margin:0 auto;padding:clamp(28px,5vw,64px) 20px 72px;color:inherit}'
             . '.lu-cat h1{font-size:clamp(28px,4vw,44px);margin:0 0 6px;line-height:1.1}.lu-cat .lede{opacity:.75;margin:0 0 28px;max-width:60ch}'
             . '.lu-cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:22px}'
+            . '.lu-cat-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 22px;padding:12px;border:1px solid rgba(0,0,0,.1);border-radius:14px;background:rgba(255,255,255,.75)}'
+            . '.lu-cat-bar input[type=search]{flex:1 1 220px;min-width:0;border:1px solid rgba(0,0,0,.18);border-radius:10px;padding:11px 13px;font:inherit;font-size:15px;background:#fff;color:#111}'
+            . '.lu-cat-bar select{flex:0 1 auto;max-width:100%;border:1px solid rgba(0,0,0,.18);border-radius:10px;padding:11px 12px;font:inherit;font-size:14px;background:#fff;color:#111}'
+            . '.lu-cat-bar .cnt{font-size:13px;opacity:.7;margin-left:auto;white-space:nowrap}.lu-cat-bar .clr{border:0;background:none;font:inherit;font-size:13px;text-decoration:underline;cursor:pointer;color:inherit;opacity:.8}'
+            . '.lu-cat-none{opacity:.75;margin:0 0 24px}.lu-cat-card[hidden],.lu-cat-row[hidden]{display:none!important}'
+            . '@media (max-width:640px){.lu-cat-bar select{flex:1 1 45%}.lu-cat-bar .cnt{margin-left:0}}'
             . '.lu-cat-card{display:flex;flex-direction:column;border:1px solid rgba(0,0,0,.1);border-radius:14px;overflow:hidden;background:#fff;color:#1a1a1a;text-decoration:none;transition:transform .2s,box-shadow .2s}'
             . 'a.lu-cat-card:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(0,0,0,.12)}'
             . '.lu-cat-card figure{margin:0;position:relative;aspect-ratio:4/3;background:#eef0f3;overflow:hidden}.lu-cat-card img{width:100%;height:100%;object-fit:cover;display:block}'
@@ -815,6 +821,95 @@ class CatalogueService
         return $h;
     }
 
+    /* ═══════════════ CAT-SEARCH-1 (Owner 2026-09-24) — a search-and-filter bar on every catalogue page ═══════════════ */
+    private const SEARCH_KINDS = ['listing' => 'full', 'vehicle' => 'full', 'room' => 'light', 'program' => 'light', 'event' => 'light',
+                                  'package' => 'light', 'session' => 'light', 'plan' => 'light', 'project' => 'light', 'service' => 'text', 'menu' => 'text'];
+
+    /** The data a card carries for the bar: a lower-case haystack, the numeric price, and each attribute. */
+    private function filterAttrs(array $spec, object $r): string
+    {
+        $a = $this->attrs($r);
+        $scalars = array_filter($a, fn($v) => is_scalar($v) && trim((string) $v) !== '');
+        $hay = mb_strtolower(trim((string) preg_replace('/\s+/', ' ', $r->title . ' ' . $this->specsText($spec, $r) . ' ' . (string) ($r->summary ?? '') . ' ' . implode(' ', array_map('strval', $scalars)))));
+        $s = ' data-lu-q="' . e($hay) . '"' . ($r->price !== null ? ' data-lu-price="' . e((string) (float) $r->price) . '"' : '');
+        foreach ($spec['attrs'] as $def) {
+            $k = $def['key'];
+            if ($def['type'] === 'textarea' || ! isset($a[$k]) || ! is_scalar($a[$k]) || trim((string) $a[$k]) === '') continue;
+            $s .= ' data-lu-a-' . e($k) . '="' . e(mb_strtolower(trim((string) $a[$k]))) . '"';
+        }
+        return $s;
+    }
+
+    private function niceRound(float $n): float
+    {
+        if ($n <= 0) return 0.0;
+        $p = 10 ** max(0, (int) floor(log10($n)) - 1);
+        return (float) (round($n / $p) * $p);
+    }
+
+    /** The bar itself: a search box, up to three facets the open items actually vary on, and price bands when prices vary. */
+    private function filterBar(array $spec, array $open): string
+    {
+        $mode = self::SEARCH_KINDS[$spec['kind']] ?? null;
+        if ($mode === null || count($open) < 2 || ($mode === 'text' && count($open) < 8)) return '';
+        $facets = [];
+        if ($mode !== 'text') {
+            foreach ($spec['attrs'] as $def) {
+                if ($def['type'] === 'textarea' || in_array($def['key'], ['specs_text', 'size_unit'], true)) continue;
+                $vals = [];
+                foreach ($open as $r) { $a = $this->attrs($r); $v = $a[$def['key']] ?? null; if ($v === null || ! is_scalar($v) || trim((string) $v) === '') continue; $vals[mb_strtolower(trim((string) $v))] = trim((string) $v); }
+                if (count($vals) < 2) continue;
+                if (count($vals) === count($open) && count($open) > 3) continue;   // every item different: that is a search, not a filter
+                if ($def['type'] === 'number') {
+                    $nums = array_values(array_unique(array_map('floatval', array_keys($vals)))); sort($nums);
+                    if (count($nums) > 8) continue;
+                    $facets[] = ['key' => $def['key'], 'label' => $def['label'], 'type' => 'min', 'values' => array_map(fn($n) => [(string) $n, $this->num($n) . '+'], $nums)];
+                } else {
+                    if (count($vals) > 14) continue;
+                    ksort($vals);
+                    $facets[] = ['key' => $def['key'], 'label' => $def['label'], 'type' => 'eq', 'values' => array_map(fn($k, $v) => [$k, $v], array_keys($vals), array_values($vals))];
+                }
+                if (count($facets) >= 3) break;
+            }
+            $prices = []; foreach ($open as $r) if ($r->price !== null) $prices[] = (float) $r->price;
+            if (count(array_unique($prices)) >= 3) {
+                sort($prices); $min = $prices[0]; $max = end($prices);
+                $cur = (string) ($open[0]->currency ?? 'USD'); $sym = self::SYMBOLS[$cur] ?? ($cur . ' ');
+                $edges = [];
+                for ($i = 1; $i < 4; $i++) $edges[] = $this->niceRound($min + ($max - $min) * $i / 4);
+                $edges = array_values(array_unique(array_filter($edges, fn($x) => $x > $min && $x < $max)));
+                $bands = []; $lo = null;
+                foreach ($edges as $edge) { $bands[] = [($lo === null ? '' : $lo) . '-' . $edge, ($lo === null ? 'Up to ' : $sym . number_format($lo) . ' – ') . $sym . number_format($edge)]; $lo = $edge; }
+                if ($lo !== null) { $bands[] = [$lo . '-', $sym . number_format($lo) . ' and up']; $facets[] = ['key' => '_price', 'label' => 'Price', 'type' => 'band', 'values' => $bands]; }
+            }
+        }
+        $label = strtolower($spec['label']);
+        $h = '<form class="lu-cat-bar" role="search" onsubmit="return false" data-lu-catbar>';
+        $h .= '<input type="search" name="q" placeholder="Search ' . e($label) . '…" aria-label="Search ' . e($label) . '" autocomplete="off">';
+        foreach ($facets as $f) {
+            $h .= '<select data-lu-facet="' . e($f['key']) . '" data-lu-type="' . $f['type'] . '" aria-label="' . e($f['label']) . '"><option value="">' . e($f['type'] === 'min' ? $f['label'] . ': any' : 'Any ' . strtolower($f['label'])) . '</option>';
+            foreach ($f['values'] as [$v, $t]) $h .= '<option value="' . e($v) . '">' . e($t) . '</option>';
+            $h .= '</select>';
+        }
+        $h .= '<span class="cnt" data-lu-count>' . count($open) . ' of ' . count($open) . '</span><button type="button" class="clr" data-lu-clear>Clear</button></form>';
+        $h .= '<p class="lu-cat-none" data-lu-none hidden>Nothing matches — try fewer filters or a shorter search.</p>';
+        return $h;
+    }
+
+    private static function filterScript(): string
+    {
+        return '<script>(function(){var bar=document.querySelector("[data-lu-catbar]");if(!bar)return;var sec=bar.closest(".lu-cat")||document;'
+            . 'var items=Array.prototype.slice.call(sec.querySelectorAll(".lu-cat-open > .lu-cat-card, .lu-cat-open > .lu-cat-row"));'
+            . 'function apply(){var q=(bar.querySelector("input[type=search]").value||"").toLowerCase().trim();var sels=bar.querySelectorAll("select[data-lu-facet]");var n=0;'
+            . 'items.forEach(function(el){var ok=true;if(q&&(el.getAttribute("data-lu-q")||"").indexOf(q)<0)ok=false;'
+            . 'sels.forEach(function(s){if(!ok)return;var v=s.value;if(!v)return;var t=s.getAttribute("data-lu-type"),k=s.getAttribute("data-lu-facet");'
+            . 'if(t==="band"){var p=parseFloat(el.getAttribute("data-lu-price"));if(isNaN(p)){ok=false;return;}var lo=v.split("-")[0],hi=v.split("-")[1];if(lo!==""&&p<parseFloat(lo))ok=false;if(hi!==""&&p>parseFloat(hi))ok=false;}'
+            . 'else{var a=el.getAttribute("data-lu-a-"+k);if(a===null){ok=false;return;}if(t==="min"){if(parseFloat(a)<parseFloat(v))ok=false;}else if(a!==v)ok=false;}});'
+            . 'if(ok)n++;el.hidden=!ok;});var c=bar.querySelector("[data-lu-count]");if(c)c.textContent=n+" of "+items.length;var none=sec.querySelector("[data-lu-none]");if(none)none.hidden=n>0;}'
+            . 'bar.addEventListener("input",apply);bar.addEventListener("change",apply);var clr=bar.querySelector("[data-lu-clear]");'
+            . 'if(clr)clr.addEventListener("click",function(){bar.querySelector("input[type=search]").value="";bar.querySelectorAll("select").forEach(function(s){s.value="";});apply();});})();</script>';
+    }
+
     private function card(array $spec, object $r, bool $link): string
     {
         $closed = in_array($r->status, $spec['closed_statuses'], true);
@@ -824,7 +919,7 @@ class CatalogueService
         $href = $link && ! $closed ? ' href="../' . e($spec['detail_prefix'] . '-' . $r->slug) . '/"' : '';
         $badge = $spec['statuses'][$r->status] ?? $r->status;
         $showBadge = $spec['kind'] === 'listing' || $r->status !== $spec['default_status'];
-        $h = '<' . $tag . ' class="lu-cat-card"' . $href . '>';
+        $h = '<' . $tag . ' class="lu-cat-card"' . $href . $this->filterAttrs($spec, $r) . '>';   // CAT-SEARCH-1
         if ($withFigure) $h .= '<figure><img src="' . e($this->cardImage($r)) . '" alt="' . e($r->title) . '" loading="lazy">' . ($showBadge ? '<span class="lu-cat-badge' . ($closed ? ' closed' : '') . '">' . e($badge) . '</span>' : '') . '</figure>';
         $h .= '<div class="lu-cat-body">';
         if (! $withFigure && $showBadge) $h .= '<span class="lu-cat-badge inline' . ($closed ? ' closed' : '') . '">' . e($badge) . '</span>';
@@ -847,14 +942,16 @@ class CatalogueService
         $h .= '<h1>' . e($spec['label']) . '</h1>';
         $count = count($open);
         $h .= '<p class="lede">' . ($count === 0 ? 'Nothing is listed at the moment — get in touch and we will let you know as soon as something is available.' : ($detail ? $count . ' ' . ($count === 1 ? 'property' : 'properties') . ' currently available. Open one for the full details and to enquire.' : 'Everything we offer, with prices where they apply. Ask us about anything here.')) . '</p>';
+        $bar = $open !== [] ? $this->filterBar($spec, $open) : '';   // CAT-SEARCH-1
         if ($open !== []) {
+            $h .= $bar;
             $anyPhoto = $spec['kind'] === 'listing' || array_filter($open, fn($r) => $this->photos($r) !== []) !== [];
-            if ($anyPhoto) { $h .= '<div class="lu-cat-grid">'; foreach ($open as $r) $h .= $this->card($spec, $r, $detail); $h .= '</div>'; }
+            if ($anyPhoto) { $h .= '<div class="lu-cat-grid lu-cat-open">'; foreach ($open as $r) $h .= $this->card($spec, $r, $detail); $h .= '</div>'; }
             else {
-                $h .= '<div class="lu-cat-list">';
+                $h .= '<div class="lu-cat-list lu-cat-open">';
                 foreach ($open as $r) {
                     $specs = $this->specsText($spec, $r);
-                    $h .= '<div class="lu-cat-row"><div><h3>' . e($r->title) . ($r->status !== $spec['default_status'] ? ' <span class="lu-cat-badge inline">' . e($spec['statuses'][$r->status] ?? $r->status) . '</span>' : '') . '</h3>'
+                    $h .= '<div class="lu-cat-row"' . $this->filterAttrs($spec, $r) . '><div><h3>' . e($r->title) . ($r->status !== $spec['default_status'] ? ' <span class="lu-cat-badge inline">' . e($spec['statuses'][$r->status] ?? $r->status) . '</span>' : '') . '</h3>'
                         . (! empty($r->summary) ? '<p class="lu-cat-sum">' . e($r->summary) . '</p>' : '') . ($specs !== '' ? '<p class="lu-cat-specs">' . e($specs) . '</p>' : '') . '</div>'
                         . (($r->price !== null || ! empty($r->price_label)) ? '<div class="lu-cat-price">' . e($this->priceText($r)) . (function () use ($r, $spec) { try { return app(StorePaymentsService::class)->buttonHtml((int) $r->website_id, $r, $spec['kind'] === 'menu' ? 'Order' : 'Buy now', (string) config('app.url')); } catch (\Throwable $e) { return ''; } })() . '</div>' : '<div></div>') . '</div>';
                 }
@@ -864,6 +961,7 @@ class CatalogueService
         if ($closed !== [] && $spec['closed_label'] !== '') { $h .= '<h2>' . e($spec['closed_label']) . '</h2><div class="lu-cat-grid">'; foreach ($closed as $r) $h .= $this->card($spec, $r, false); $h .= '</div>'; }
         if (! $detail) $h .= $this->enquiryForm($spec, 'Ask about our ' . strtolower($spec['label']), "I'd like to ask about your " . strtolower($spec['label']) . '.', $spec['label'], true);
         $h .= '</section>';
+        if ($bar !== '') $h .= self::filterScript();   // CAT-SEARCH-1
         return $h;
     }
 
