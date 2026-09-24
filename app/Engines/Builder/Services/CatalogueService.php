@@ -718,6 +718,15 @@ class CatalogueService
         if ($spec['pages'] === 'index+detail') {
             foreach (array_merge($open, $closed) as $r) { if ($this->templates->deployPage($websiteId, $spec['detail_prefix'] . '-' . $r->slug, $this->detailBody($spec, $r), $r->title)) $written++; }
             $shown = array_map(fn($r) => $r->slug, array_merge($open, $closed));
+            // CAT-ORPHAN-1: sweep the disk, not just the table — a renamed item's old page belongs to no row.
+            $ownPages = DB::table('pages')->where('website_id', $websiteId)->pluck('slug')->map(fn($x) => (string) $x)->all();
+            $root = storage_path("app/public/sites/{$websiteId}");
+            foreach (glob($root . '/' . $spec['detail_prefix'] . '-*', GLOB_ONLYDIR) ?: [] as $dir) {
+                $dirSlug = basename($dir);
+                $itemSlug = substr($dirSlug, strlen($spec['detail_prefix']) + 1);
+                if (in_array($itemSlug, $shown, true) || in_array($dirSlug, $ownPages, true)) { continue; }
+                $this->removePage($websiteId, $dirSlug);
+            }
             foreach (DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $spec['kind'])->whereNull('deleted_at')->get(['slug']) as $w) { if (! in_array($w->slug, $shown, true)) $this->removePage($websiteId, $spec['detail_prefix'] . '-' . $w->slug); }
         }
         return ['written' => $written];
