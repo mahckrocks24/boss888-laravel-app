@@ -283,6 +283,11 @@ final class SchemaComposer
             $node['areaServed'] = array_values($business->area_served_json);
         }
 
+        // K7 — evidence-bearing claims, and only the ones cleared to be stated.
+        foreach ($this->claims($business) as $property => $value) {
+            $node[$property] = $value;
+        }
+
         // A LocalBusiness may carry a postal address; a NewsMediaOrganization
         // or an NGO is not a place and must not pretend to be one.
         if (! in_array($type, self::NON_LOCAL, true)) {
@@ -313,6 +318,79 @@ final class SchemaComposer
         return $node;
     }
 
+    /**
+     * K7 (2026-09-25) — the claims a business is allowed to state publicly.
+     *
+     * BusinessFact::publishableFor applies both gates: the platform's (the
+     * source is one it will stand behind) and the owner's (they chose to
+     * publish it). Everything else — a model's guess, an unconfirmed import, an
+     * observation — is stored and stays silent.
+     *
+     * Statistics are deliberately NOT mapped. schema.org has no honest property
+     * for "we have served 4,000 customers", and hanging it off description or
+     * slogan would be dressing a marketing line as structured data.
+     *
+     * @return array<string, mixed> schema.org property => value
+     */
+    private function claims(?Business $business): array
+    {
+        if (! $business || ! $business->id) {
+            return [];
+        }
+
+        $awards = [];
+        $credentials = [];
+        $memberships = [];
+        $reviews = [];
+
+        foreach (\App\Models\BusinessFact::publishableFor((int) $business->id) as $fact) {
+            $label = trim((string) $fact->label);
+
+            switch ((string) $fact->kind) {
+                case 'award':
+                    $awards[] = $label;
+                    break;
+
+                case 'certification':
+                    $credentials[] = array_filter([
+                        '@type' => 'EducationalOccupationalCredential',
+                        'name' => $label,
+                        'url' => $fact->source_url ?: null,
+                    ], fn ($v) => $v !== null && $v !== '');
+                    break;
+
+                case 'membership':
+                    $memberships[] = array_filter([
+                        '@type' => 'Organization',
+                        'name' => $label,
+                        'url' => $fact->source_url ?: null,
+                    ], fn ($v) => $v !== null && $v !== '');
+                    break;
+
+                case 'testimonial':
+                    $body = trim((string) $fact->value);
+                    if ($body === '') {
+                        break;
+                    }
+                    $reviews[] = array_filter([
+                        '@type' => 'Review',
+                        'reviewBody' => $body,
+                        'author' => ['@type' => 'Person', 'name' => $label],
+                        'datePublished' => $fact->occurred_on ?: null,
+                    ], fn ($v) => $v !== null && $v !== '');
+                    break;
+
+                // 'statistic' is stored, never published. See the note above.
+            }
+        }
+
+        return array_filter([
+            'award' => $awards,
+            'hasCredential' => $credentials,
+            'memberOf' => $memberships,
+            'review' => $reviews,
+        ], fn ($v) => $v !== []);
+    }
     private function website(array $identity, string $site): array
     {
         return [
