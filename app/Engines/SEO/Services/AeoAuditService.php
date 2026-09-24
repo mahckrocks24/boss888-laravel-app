@@ -137,15 +137,50 @@ class AeoAuditService
             'title_length'          => $this->checkTitleLength($html),
         ];
 
+        // The twelve above are scored by the runtime from a weight matrix this
+        // codebase does not hold (DEC-0026), so the entity findings are computed
+        // and recorded SEPARATELY rather than folded into a score whose meaning
+        // is not ours to change. They answer the question the twelve cannot: does
+        // this page publish the right business, or merely a well-formatted one?
         $score = $this->computeScore($checks);
+        $entity = $this->entityChecks($html, $origin);
 
         return $this->persist($wsId, $url, [
             'score' => $score,
-            'checks' => $checks,
+            'checks' => $checks + ['entity' => $entity],
             'http_status' => $status,
             'html_bytes' => strlen($html),
             'error_text' => null,
         ]);
+    }
+
+    /**
+     * K10 — entity correctness for the page just fetched. The canonical host and
+     * the industry come from the website that actually serves this origin; when
+     * no website matches (a connector site indexed by url alone) the host is
+     * still the origin's, which is what the page should be speaking as.
+     */
+    private function entityChecks(string $html, string $origin): array
+    {
+        $host = strtolower((string) parse_url($origin, PHP_URL_HOST));
+        $industry = null;
+
+        $site = DB::table('websites')->whereNull('deleted_at')
+            ->where(function ($q) use ($host) {
+                $q->where('custom_domain', $host)->orWhere('subdomain', $host)->orWhere('domain', $host);
+            })->first(['id', 'business_id']);
+
+        if ($site && $site->business_id) {
+            $industry = DB::table('businesses')->where('id', $site->business_id)->value('industry');
+        }
+
+        try {
+            return app(\App\Core\Business\EntityAudit::class)->run($html, $host, $industry);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[AeoAudit] entity checks failed', ['err' => $e->getMessage()]);
+
+            return ['entity_ok' => null, 'entity_failed' => [], 'checks' => []];
+        }
     }
 
     /**
