@@ -62,8 +62,29 @@ Route::prefix('public/domains')->middleware('throttle:20,1')->group(function () 
             $cands = array_values(array_unique($cands));
             $cands = array_slice($cands, 0, 20);
 
+            /* DOM-SEARCH-3 (2026-09-24): this is an unauthenticated page search, not a purchase. Thirty
+               seconds of "Checking..." reads as broken; healthy calls measured 0.5-2s. The client reads
+               this at construction, so the override must come first, and it lasts only for this request. */
+            config(['namecheap.timeout_seconds' => 8]);
             $registrar = \App\Connectors\Infrastructure\Namecheap\NamecheapRegistrarConnector::make();
-            $found = $registrar->checkMany($cands);
+
+            /* DOM-SEARCH-2 (2026-09-24): ask the registrar only about domains we do not already know.
+               It is intermittently unresponsive and does not fail fast — the same eleven-candidate call
+               measured 1,953ms and then 0 answers after 30,023ms a minute later — so the cheapest way to
+               stop visitors watching "Checking…" is to ask it less often. An answer about one domain is
+               good for half an hour; a domain does not usually change hands inside that. */
+            $found   = [];
+            $missing = [];
+            foreach ($cands as $d) {
+                $hit = Cache::get('dom.avail.' . $d);
+                if (is_array($hit)) { $found[$d] = $hit; } else { $missing[] = $d; }
+            }
+            if ($missing !== []) {
+                foreach ($registrar->checkMany($missing) as $d => $row) {
+                    $found[$d] = $row;
+                    Cache::put('dom.avail.' . $d, $row, 1800);
+                }
+            }
 
             // One call for every TLD Namecheap sells, kept for six hours: a price list does not move hourly,
             // and re-fetching 549 products per search would be the expensive way to save nothing.

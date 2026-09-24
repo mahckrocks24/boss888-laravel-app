@@ -50,7 +50,9 @@ if ($soon) { $first = null; foreach ($availability as $i => $a) { $availability[
     <div class="dsearch" id="dsearch" data-signup="<?= e(signup_href($data)) ?>">
       <h2 class="dsearch-h">Find your domain</h2>
       <form class="dsearch-bar" id="dsearch-form" autocomplete="off">
-        <input id="dsearch-q" type="text" inputmode="url" spellcheck="false" autocapitalize="none"
+        <input id="dsearch-q" type="search" name="domain-search" inputmode="url" spellcheck="false"
+               autocapitalize="none" autocorrect="off" autocomplete="off"
+               data-lpignore="true" data-1p-ignore data-form-type="other"
                placeholder="yourbusiness.com" aria-label="Domain name to search">
         <button type="submit" class="btn btn-primary" id="dsearch-go">Search</button>
       </form>
