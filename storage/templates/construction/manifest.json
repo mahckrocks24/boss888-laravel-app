@@ -701,7 +701,7 @@
         "project_2_image": {
             "type": "image",
             "label": "Project 2 Image",
-            "default": "/storage/template-images/construction/project_1_image.jpg"
+            "default": "/storage/template-images/construction/gen-03-scaffolding-against-a-brick-facade-on.jpg"
         },
         "project_2_cat": {
             "type": "text",
@@ -726,7 +726,7 @@
         "project_3_image": {
             "type": "image",
             "label": "Project 3 Image",
-            "default": "/storage/template-images/construction/project_3_image.jpg"
+            "default": "/storage/template-images/construction/project_1_image.jpg"
         },
         "project_3_cat": {
             "type": "text",
@@ -751,7 +751,7 @@
         "project_4_image": {
             "type": "image",
             "label": "Project 4 Image",
-            "default": "/storage/template-images/construction/project_5_image.jpg"
+            "default": "/storage/template-images/construction/project_3_image.jpg"
         },
         "project_4_cat": {
             "type": "text",
@@ -776,7 +776,7 @@
         "project_5_image": {
             "type": "image",
             "label": "Project 5 Image",
-            "default": "/storage/template-images/construction/gen-01-a-timber-frame-going-up-with-the-sky-thr.jpg"
+            "default": "/storage/template-images/construction/project_5_image.jpg"
         },
         "project_5_cat": {
             "type": "text",
@@ -801,7 +801,7 @@
         "project_6_image": {
             "type": "image",
             "label": "Project 6 Image",
-            "default": "/storage/template-images/construction/gen-02-a-spirit-level-resting-on-a-windowsill-o.jpg"
+            "default": "/storage/template-images/construction/project_6_image.jpg"
         },
         "project_6_cat": {
             "type": "text",
@@ -971,7 +971,7 @@
         "member_2_image": {
             "type": "image",
             "label": "Member 2 Image",
-            "default": "/storage/template-images/construction/project_2_image.jpg"
+            "default": "/storage/template-images/construction/gen-04-a-site-office-desk-with-rolled-drawing.jpg"
         },
         "member_2_name": {
             "type": "text",
@@ -991,7 +991,7 @@
         "member_3_image": {
             "type": "image",
             "label": "Member 3 Image",
-            "default": "/storage/template-images/construction/project_4_image.jpg"
+            "default": "/storage/template-images/construction/project_2_image.jpg"
         },
         "member_3_name": {
             "type": "text",
@@ -1011,7 +1011,7 @@
         "member_4_image": {
             "type": "image",
             "label": "Member 4 Image",
-            "default": "/storage/template-images/construction/project_6_image.jpg"
+            "default": "/storage/template-images/construction/project_4_image.jpg"
         },
         "member_4_name": {
             "type": "text",

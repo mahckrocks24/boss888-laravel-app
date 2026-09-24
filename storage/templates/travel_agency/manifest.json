@@ -765,7 +765,7 @@
         "doctor_4_image": {
             "type": "image",
             "label": "Team 4 Image",
-            "default": "/storage/template-images/travel_agency/gallery_1.jpg"
+            "default": "/storage/template-images/travel_agency/gen-04-a-harbour-at-sunrise-with-small-wooden.jpg"
         },
         "process_eyebrow": {
             "type": "text",

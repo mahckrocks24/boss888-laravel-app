@@ -866,7 +866,7 @@
         "gallery_5_image": {
             "type": "image",
             "label": "G5 Image",
-            "default": "/storage/template-images/barbershop/gen-01-a-leather-barber-chair-with-a-folded-hot.jpg"
+            "default": "/storage/template-images/barbershop/gen-12-a-stack-of-folded-white-towels-beside.jpg"
         },
         "gallery_6_title": {
             "type": "text",
@@ -881,7 +881,7 @@
         "gallery_6_image": {
             "type": "image",
             "label": "G6 Image",
-            "default": "/storage/template-images/barbershop/gen-02-straight-razors-and-a-badger-brush-on-a.jpg"
+            "default": "/storage/template-images/barbershop/gen-13-a-wall-of-small-framed-photographs-abo.jpg"
         },
         "brands_eyebrow": {
             "type": "text",

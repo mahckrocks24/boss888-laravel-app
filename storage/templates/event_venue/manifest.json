@@ -806,7 +806,7 @@
         "gallery_6_image": {
             "type": "image",
             "label": "G6 Image",
-            "default": "/storage/template-images/event_venue/gen-01-the-empty-hall-before-doors-open-rows-o.jpg"
+            "default": "/storage/template-images/event_venue/gen-22-a-registration-desk-with-name-badges-l.jpg"
         },
         "testimonials_eyebrow": {
             "type": "text",

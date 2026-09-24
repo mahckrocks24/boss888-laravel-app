@@ -964,7 +964,7 @@
         "trans_5_image": {
             "type": "image",
             "label": "Trans 5 Image",
-            "default": "/storage/template-images/gym/gen-01-a-squat-rack-with-plates-stacked-and-cha.jpg"
+            "default": "/storage/template-images/gym/gen-09-a-dumbbell-rack-running-along-a-mirror.jpg"
         },
         "trans_6_name": {
             "type": "text",
@@ -979,7 +979,7 @@
         "trans_6_image": {
             "type": "image",
             "label": "Trans 6 Image",
-            "default": "/storage/template-images/gym/gen-02-a-turf-lane-with-a-sled-at-the-end.jpg"
+            "default": "/storage/template-images/gym/gen-10-a-spin-studio-with-stationary-bikes-in.jpg"
         },
         "pricing_eyebrow": {
             "type": "text",

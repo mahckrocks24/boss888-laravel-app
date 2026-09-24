@@ -866,7 +866,7 @@
         "gallery_5_image": {
             "type": "image",
             "label": "G5 Image",
-            "default": "/storage/template-images/beauty_salon/gen-01-a-nail-station-with-polish-bottles-in-a.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-12-a-row-of-hooded-hair-dryers-under-soft.jpg"
         },
         "gallery_6_title": {
             "type": "text",
@@ -881,7 +881,7 @@
         "gallery_6_image": {
             "type": "image",
             "label": "G6 Image",
-            "default": "/storage/template-images/beauty_salon/gen-02-backwash-basins-with-towels-folded-on-th.jpg"
+            "default": "/storage/template-images/beauty_salon/gen-13-a-treatment-room-with-rolled-towels-an.jpg"
         },
         "brands_eyebrow": {
             "type": "text",
