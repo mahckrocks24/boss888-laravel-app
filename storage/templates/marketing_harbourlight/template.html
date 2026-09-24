@@ -99,6 +99,11 @@ figure{margin:0}
   -webkit-background-clip:text;background-clip:text;color:transparent}
 .hero-aurora .lede{color:var(--lu-on-dark, #fff);opacity:.9;max-width:54ch;font-size:clamp(1.02rem,1.5vw,1.2rem)}
 .hero-aurora .hero-actions{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}
+/* The shared .btn-ghost takes var(--deep), which on this hero IS the background: measured rgb(133,67,41)
+   text on rgb(133,67,41) ground, an invisible button. A hero that paints its own dark ground has to state
+   its own foreground rather than inherit the page's. */
+.hero-aurora .btn-ghost{background:transparent;color:var(--lu-on-dark, #fff);border-color:rgba(255,255,255,.55)}
+.hero-aurora .btn-ghost:hover{border-color:#fff;background:rgba(255,255,255,.10)}
 .hero-aurora .chips{display:flex;flex-wrap:wrap;gap:12px;margin-top:46px}
 .hero-aurora .chip{padding:15px 20px;border-radius:var(--r);
   background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.20);
