@@ -360,7 +360,9 @@ window.LU_LOADED_ENGINES['catalogue'] = true;
       + cell('hidden', c.hidden, 'Hidden')
       + (S.spec.closed_statuses && S.spec.closed_statuses.length ? cell('closed', c.closed, S.spec.closed_label || 'Closed') : '')
       + cell('featured', c.featured, 'Featured')
-      + cell('nophoto', c.nophoto, 'Missing a photo', true)
+      /* Owner 2026-09-24: not a fault. An item with no photo of its own renders as a clean text row on the
+         live site (or keeps the design's own picture), so this count is an opportunity, not a warning. */
+      + cell('nophoto', c.nophoto, 'Missing a photo')
       + '</div>';
   }
 
