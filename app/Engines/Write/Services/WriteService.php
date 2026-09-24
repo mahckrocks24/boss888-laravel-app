@@ -1104,11 +1104,15 @@ class WriteService
             ];
         }
 
-        // Workspace context for the Organization JSON-LD (author/publisher).
-        $ws = app(\App\Core\Business\BusinessProfileResolver::class)->workspaceRowFor($wsId, null, ['name', 'business_name']); // RFC-0011 U2
-        $businessName = $ws->business_name ?? $ws->name ?? 'LevelUpGrowth';
-        $siteUrl = \Illuminate\Support\Facades\DB::table('seo_settings')
-            ->where('workspace_id', $wsId)->where('key', 'site_url')->value('value') ?: 'https://levelupgrowth.io';
+        // K1 (2026-09-25) — the publisher of a customer's article is the CUSTOMER.
+        // This read seo_settings.site_url (set on 8 workspaces) and fell back to
+        // 'https://levelupgrowth.io', which put the platform on 174 of 202 stored
+        // blobs, staging on 11 and 127.0.0.1 on 8. CanonicalSite resolves the host
+        // from the article's own website and returns null rather than substitute
+        // anyone else's identity for a failure.
+        $identity = app(\App\Core\Business\CanonicalSite::class)->forArticle((int) $articleId, (int) $wsId);
+        $businessName = (string) ($identity['name'] ?? '');
+        $siteUrl = $identity['url'] ?? null;
 
         $articleTitle = $article->title ?: ($article->focus_keyword ?: 'Article');
         $articleContent = (string) $article->content;
@@ -1282,6 +1286,11 @@ class WriteService
         // ── 2. Build JSON-LD payload ──────────────────────────────────
         $now = now()->toIso8601String();
         $created = $article->created_at ? \Carbon\Carbon::parse($article->created_at)->toIso8601String() : $now;
+        // One Organization node, referenced twice. A url key is present only when
+        // CanonicalSite resolved a real host for this article's website.
+        $organizationNode = ['@type' => 'Organization', 'name' => $businessName];
+        if ($siteUrl) { $organizationNode['url'] = $siteUrl; }
+
         $jsonld = [
             '@context' => 'https://schema.org',
             '@graph' => [
@@ -1291,16 +1300,8 @@ class WriteService
                     'description' => $tldr,
                     'datePublished' => $created,
                     'dateModified' => $now,
-                    'author' => [
-                        '@type' => 'Organization',
-                        'name' => $businessName,
-                        'url' => $siteUrl,
-                    ],
-                    'publisher' => [
-                        '@type' => 'Organization',
-                        'name' => $businessName,
-                        'url' => $siteUrl,
-                    ],
+                    'author' => $organizationNode,
+                    'publisher' => $organizationNode,
                 ],
             ],
         ];
