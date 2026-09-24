@@ -224,6 +224,169 @@ class AeoSettingsService
     }
 
     /**
+     * K2 (2026-09-25) — llms.txt for ONE website.
+     *
+     * regenerateLlmsTxt() below is workspace-scoped: it picks "the workspace's
+     * primary published website" as orderByDesc('id') — the newest — and serves
+     * that one index at every site in the workspace. Measured 2026-09-24: 13
+     * workspaces have more than one published site, so MR Systems advertised
+     * Revere's pages, and Aurelia (a restaurant) was described as "Services in
+     * London" from a real-estate site. It also derived the host from
+     * domain ?: subdomain, never custom_domain, so all 3 custom-domain sites
+     * advertised their internal *.levelupgrowth.io host instead of their own.
+     *
+     * This method takes the website being REQUESTED and never reads a sibling.
+     */
+    public function regenerateLlmsTxtForWebsite(int $websiteId): string
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->whereNull('deleted_at')
+            ->first(['id', 'workspace_id', 'name', 'status']);
+        if (! $site) {
+            return "# Site not found\n";
+        }
+
+        $identity = app(\App\Core\Business\CanonicalSite::class)->forWebsite($websiteId);
+        if (! $identity || empty($identity['host'])) {
+            return "# Site not found\n";
+        }
+        $base = 'https://' . $identity['host'];
+
+        $business = app(\App\Core\Business\BusinessProfileResolver::class)->forWebsite($websiteId);
+        $name = trim((string) ($business->name ?? '')) ?: trim((string) $site->name);
+        $industry = $this->humaniseIndustry((string) ($business->industry ?? ''));
+        $location = trim((string) ($business->location ?? ''));
+        $description = trim($industry . ($location !== '' ? ($industry !== '' ? ' in ' : '') . $location : ''));
+
+        $out = "# {$name}\n\n";
+        if ($description !== '') {
+            $out .= '> ' . $this->oneLine($description) . "\n\n";
+        }
+
+        $pages = DB::table('pages')->where('website_id', $websiteId)
+            ->where('status', 'published')->orderBy('slug')->limit(50)
+            ->get(['title', 'slug', 'meta_description']);
+
+        if ($pages->isNotEmpty()) {
+            $out .= "## Pages\n\n";
+            foreach ($pages as $p) {
+                $url = rtrim($base, '/') . '/' . ltrim((string) $p->slug, '/');
+                $desc = $p->meta_description ? ' — ' . $this->oneLine($p->meta_description) : '';
+                $out .= "- [{$p->title}]({$url}){$desc}\n";
+            }
+            $out .= "\n";
+        }
+
+        // Articles of THIS website. A workspace with exactly one published
+        // website may still hold articles written before website_id was
+        // populated (346 of 627 rows on 2026-09-25); those belong to it
+        // unambiguously. A multi-site workspace gets only its own tagged rows,
+        // because guessing would republish one site's writing under another.
+        $onlyPublished = DB::table('websites')->where('workspace_id', $site->workspace_id)
+            ->whereNull('deleted_at')->where('status', 'published')->count() === 1;
+
+        $articles = DB::table('articles')
+            ->where('workspace_id', $site->workspace_id)
+            ->where('status', 'published')->whereNull('deleted_at')
+            ->where(function ($q) use ($websiteId, $onlyPublished) {
+                $q->where('website_id', $websiteId);
+                if ($onlyPublished) {
+                    $q->orWhereNull('website_id');
+                }
+            })
+            ->orderByDesc('published_at')->orderByDesc('id')->limit(100)
+            ->get(['title', 'slug', 'seo_json']);
+
+        if ($articles->isNotEmpty()) {
+            $out .= "## Articles\n\n";
+            foreach ($articles as $a) {
+                $url = rtrim($base, '/') . '/blog/' . ltrim((string) $a->slug, '/');
+                $seo = $a->seo_json ? json_decode($a->seo_json, true) : null;
+                $desc = (is_array($seo) && ! empty($seo['description'])) ? ' — ' . $this->oneLine($seo['description']) : '';
+                $out .= "- [{$a->title}]({$url}){$desc}\n";
+            }
+            $out .= "\n";
+        }
+
+        // Sites whose pages are not rows in `pages` (WordPress connector sites,
+        // and static template sites) are indexed in seo_content_index instead.
+        // Without this a correct-but-empty llms.txt would be a regression on the
+        // workspace-scoped version it replaces. Scoped by website_id, so it still
+        // cannot reach a sibling site's URLs.
+        if ($pages->isEmpty() && $articles->isEmpty()) {
+            try {
+                $indexed = DB::table('seo_content_index')
+                    ->where('website_id', $websiteId)
+                    ->whereNotNull('url')->where('url', '!=', '')
+                    ->orderByDesc('word_count')->limit(200)
+                    ->get(['url', 'title', 'meta_description']);
+
+                $kept = [];
+                foreach ($indexed as $row) {
+                    $u = (string) $row->url;
+                    if (preg_match('/\?p=\d+/i', $u)) { continue; }
+                    if (preg_match('#/(wp-admin|wp-content|wp-includes|wp-json|feed)/?#i', $u)) { continue; }
+                    if (preg_match('#\.(jpg|jpeg|png|gif|webp|pdf|zip|svg|ico)(\?|$)#i', $u)) { continue; }
+                    $kept[] = $row;
+                    if (count($kept) >= 100) { break; }
+                }
+
+                if ($kept) {
+                    $out .= "## Pages\n\n";
+                    foreach ($kept as $row) {
+                        $title = trim((string) ($row->title ?: $row->url));
+                        $desc = $row->meta_description ? ' — ' . $this->oneLine($row->meta_description) : '';
+                        $out .= "- [{$title}]({$row->url}){$desc}\n";
+                    }
+                    $out .= "\n";
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning('[AeoSettings] per-website seo_content_index fallback failed', ['err' => $e->getMessage()]);
+            }
+        }
+
+        $out .= "## About\n\n";
+        $out .= "This llms.txt file follows the convention proposed at https://llmstxt.org\n";
+        $out .= "It provides a canonical, machine-readable index of this site's content for LLM-based search engines.\n";
+        $out .= 'Last regenerated: ' . now()->toIso8601String() . "\n";
+
+        $this->cacheLlmsTxtForWebsite((int) $site->workspace_id, $websiteId, $out);
+
+        return $out;
+    }
+
+    /** Cached body for one website, regenerated when missing or older than 24h. */
+    public function getLlmsTxtForWebsite(int $websiteId): string
+    {
+        $row = DB::table('seo_settings')->where('website_id', $websiteId)
+            ->where('key', 'llms_txt_cache')->first(['value', 'updated_at']);
+
+        $fresh = $row && $row->value !== null && $row->value !== ''
+            && $row->updated_at && \Carbon\Carbon::parse($row->updated_at)->gt(now()->subHours(24));
+
+        return $fresh ? (string) $row->value : $this->regenerateLlmsTxtForWebsite($websiteId);
+    }
+
+    /** seo_settings.value is TEXT; an oversized body is served fresh rather than truncated. */
+    private function cacheLlmsTxtForWebsite(int $wsId, int $websiteId, string $body): void
+    {
+        if (strlen($body) > 60000) {
+            return;
+        }
+
+        DB::table('seo_settings')->updateOrInsert(
+            ['workspace_id' => $wsId, 'website_id' => $websiteId, 'key' => 'llms_txt_cache'],
+            ['value' => $body, 'group' => 'aeo', 'updated_at' => now(), 'created_at' => now()]
+        );
+    }
+
+    /** 'restaurant_counter' is a template slug, not a description of a business. */
+    private function humaniseIndustry(string $industry): string
+    {
+        $industry = trim(str_replace('_', ' ', $industry));
+
+        return $industry === '' ? '' : ucfirst($industry);
+    }
+    /**
      * Get llms.txt content, regenerating if cache is missing or stale (> 24h).
      */
     public function getLlmsTxt(int $wsId): string

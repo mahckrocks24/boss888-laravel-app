@@ -1707,13 +1707,18 @@ HTML;
         $fullSub = $subdomain . '.levelupgrowth.io';
 
         try {
+            // K2 (2026-09-25) — scope llms.txt to the website being requested.
+            // This looked the website up and then threw it away, passing only its
+            // workspace on. Every site in a multi-site workspace was therefore served
+            // the newest sibling's index under its own host.
             $website = \Illuminate\Support\Facades\DB::table('websites')
                 ->where('subdomain', $fullSub)
                 ->where('status', 'published')
-                ->first(['workspace_id']);
+                ->whereNull('deleted_at')
+                ->first(['id', 'workspace_id']);
             if ($website) {
                 $svc = app(\App\Engines\SEO\Services\AeoSettingsService::class);
-                $body = $svc->getLlmsTxt((int) $website->workspace_id);
+                $body = $svc->getLlmsTxtForWebsite((int) $website->id);
                 return response($body, 200)
                     ->header('Content-Type', 'text/markdown; charset=utf-8')
                     ->header('Cache-Control', 'public, max-age=21600'); // 6h
