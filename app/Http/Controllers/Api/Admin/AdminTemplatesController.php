@@ -56,7 +56,9 @@ class AdminTemplatesController
 
                 // Reload manifest to check required blocks (listTemplates
                 // doesn't include the raw block ids — only counts).
-                $mf = storage_path(self::TEMPLATE_ROOT . '/' . $t['industry'] . '/manifest.json');
+                // ADMIN-TPL-1: the folder is the design's own slug. Reading it from 'industry' pulled
+                // another design's manifest for every variant, and no file at all for a new industry.
+                $mf = storage_path(self::TEMPLATE_ROOT . '/' . ($t['id'] ?? $t['industry']) . '/manifest.json');
                 $blockIds = [];
                 if (is_file($mf)) {
                     $manifest = json_decode(file_get_contents($mf), true);

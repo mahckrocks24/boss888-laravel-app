@@ -419,10 +419,16 @@ Object.assign(window.pages, {
             { key:'is_active',     label:'Status',    sortable:true, render:function(v){return v?'<span class="badge badge-green">active</span>':'<span class="badge badge-amber">inactive</span>';} },
             { key:'sites_built',   label:'Usage',     sortable:true, render:function(v){return (v||0)+' sites';} },
             { key:'industry',      label:'Actions',   render:function(v,row){
-                var preview = '<a href="/templates/'+v+'/preview" target="_blank" style="color:var(--p);font-size:12px;margin-right:12px">Preview</a>';
+                /* ADMIN-TPL-1 (2026-09-24): act on the DESIGN, not on its industry. With 231 designs across
+                   33 industries the two are different for all but a handful, and the industries added today
+                   have no folder of their own — /templates/legal/preview is a 404. The row already carries
+                   id and preview_url; use them. */
+                var slug = row.id || row.slug || v;
+                var href = row.preview_url || ('/templates/' + slug + '/preview');
+                var preview = '<a href="'+href+'" target="_blank" style="color:var(--p);font-size:12px;margin-right:12px">Preview</a>';
                 var toggleLabel = row.is_active ? 'Disable' : 'Enable';
-                var toggle = '<a href="#" onclick="_admTemplateToggle(event,\''+v+'\');return false;" style="color:var(--muted);font-size:12px;margin-right:12px">'+toggleLabel+'</a>';
-                var clone = '<a href="#" onclick="_admTemplateClone(event,\''+v+'\');return false;" style="color:var(--p);font-size:12px">Clone as V2</a>';
+                var toggle = '<a href="#" onclick="_admTemplateToggle(event,\''+slug+'\');return false;" style="color:var(--muted);font-size:12px;margin-right:12px">'+toggleLabel+'</a>';
+                var clone = '<a href="#" onclick="_admTemplateClone(event,\''+slug+'\');return false;" style="color:var(--p);font-size:12px">Clone as V2</a>';
                 return preview + toggle + clone;
               } }
           ],

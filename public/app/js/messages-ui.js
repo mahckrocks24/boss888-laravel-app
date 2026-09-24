@@ -64,13 +64,18 @@ function _msgCreateFloater(){
   btn.innerHTML='<img src="/img/agents/sarah.webp" alt="" width="34" height="34" style="display:block;width:34px;height:34px;border-radius:50%;object-fit:cover;pointer-events:none" onerror="this.src=\'/img/logo-icon-48.png\';this.style.borderRadius=\'0\';this.style.boxShadow=\'none\'"><div id="lu-messages-badge"></div>';
   btn.onclick=_msgToggle;
   document.body.appendChild(btn);
+  try{ _msgMakeDraggable(btn); _msgRestorePos(btn); }catch(e){}
 
   // Inject styles
   var style=document.createElement('style');
   style.textContent='#lu-messages-floater{position:fixed;bottom:24px;right:24px;left:auto;width:48px;height:48px;border-radius:50%;background:var(--s2,#1e2030);border:2px solid var(--bd,#2a2d3e);cursor:pointer;z-index:999;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 16px rgba(0,0,0,.3);transition:all .2s}#lu-messages-floater:hover{border-color:var(--p,#6C5CE7);transform:scale(1.05)}#lu-messages-badge{position:absolute;top:-4px;right:-4px;background:#C0392B;color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center}#lu-messages-badge.visible{display:flex}'
     +'#lu-msg-modal{position:fixed;bottom:80px;right:24px;left:auto;width:560px;height:480px;background:var(--s1,#161927);border:1px solid var(--bd,#2a2d3e);border-radius:16px;z-index:1000;display:none;flex-direction:column;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.5);animation:msgSlideUp .2s ease}'
     +'@keyframes msgSlideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}'
-    +'@media(max-width:768px){#lu-messages-floater{left:16px;bottom:80px}#lu-msg-modal{left:8px;right:8px;width:auto;bottom:136px;height:60vh}}';
+    +'@media(max-width:768px){#lu-messages-floater{left:16px;bottom:80px}#lu-msg-modal{left:8px;right:8px;width:auto;bottom:136px;height:60vh}}'
+    /* FLOATER-2: she IS the conversation, so on a conversation she is only in the way. */
+    +'#lu-messages-floater{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}'
+    +'#lu-messages-floater.lu-dragging{cursor:grabbing;transition:none}'
+    +'body.lu-chat-surface #lu-messages-floater{display:none!important}';
   document.head.appendChild(style);
 }
 
@@ -528,3 +533,117 @@ if(window.luBg){ window.luBg.register('messages',{start:_msgStartPolling,stop:_m
 else { (window.requestIdleCallback||function(f){setTimeout(f,1500);})(_msgStartPolling); }
 
 })();
+
+
+/* ══════════════════════════════════════════════════════════════════════════════════════════════
+   FLOATER-2 (Owner 2026-09-24) — Sarah is draggable, and absent from chat surfaces.
+   ══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+var _MSG_POS_KEY = 'lu.floater.pos';
+
+/* Write a coordinate that survives the shell's own !important mobile pins. */
+function _msgPlace(el, x, y){
+  el.style.setProperty('left',   x + 'px', 'important');
+  el.style.setProperty('top',    y + 'px', 'important');
+  el.style.setProperty('right',  'auto',   'important');
+  el.style.setProperty('bottom', 'auto',   'important');
+}
+
+/* Keep her fully on screen: a remembered position from a wide window must not strand her
+   off the edge of a narrow one, and the keyboard opening counts as a resize. */
+function _msgClamp(el, x, y){
+  var m = 8, w = el.offsetWidth || 48, h = el.offsetHeight || 48;
+  var maxX = Math.max(m, (window.innerWidth  || 360) - w - m);
+  var maxY = Math.max(m, (window.innerHeight || 640) - h - m);
+  return { x: Math.min(Math.max(m, x), maxX), y: Math.min(Math.max(m, y), maxY) };
+}
+
+function _msgRestorePos(el){
+  var raw = null;
+  try{ raw = localStorage.getItem(_MSG_POS_KEY); }catch(e){}
+  if(!raw) return;                                   // never moved: keep the CSS default corner
+  var p; try{ p = JSON.parse(raw); }catch(e){ return; }
+  if(!p || typeof p.x !== 'number' || typeof p.y !== 'number') return;
+  var c = _msgClamp(el, p.x, p.y);
+  _msgPlace(el, c.x, c.y);
+}
+
+function _msgMakeDraggable(el){
+  if(el._luDrag) return; el._luDrag = 1;
+  var startX = 0, startY = 0, originX = 0, originY = 0, moved = false, id = null;
+
+  el.addEventListener('pointerdown', function(e){
+    if(e.button && e.button !== 0) return;
+    var r = el.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY; originX = r.left; originY = r.top;
+    moved = false; id = e.pointerId;
+    try{ el.setPointerCapture(id); }catch(err){}
+  });
+
+  el.addEventListener('pointermove', function(e){
+    if(id === null || e.pointerId !== id) return;
+    var dx = e.clientX - startX, dy = e.clientY - startY;
+    /* Below the threshold this is still a tap. Treating every pixel as a drag would swallow the click
+       that opens Sarah, which is the whole point of the button. */
+    if(!moved && Math.abs(dx) + Math.abs(dy) < 6) return;
+    if(!moved){ moved = true; el.classList.add('lu-dragging'); }
+    e.preventDefault();
+    var c = _msgClamp(el, originX + dx, originY + dy);
+    _msgPlace(el, c.x, c.y);
+  });
+
+  function end(e){
+    if(id === null || (e && e.pointerId !== id)) return;
+    try{ el.releasePointerCapture(id); }catch(err){}
+    id = null;
+    if(!moved) return;
+    el.classList.remove('lu-dragging');
+    var r = el.getBoundingClientRect();
+    try{ localStorage.setItem(_MSG_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); }catch(err){}
+    /* Swallow exactly the click this drag would otherwise produce, and nothing after it. */
+    var swallow = function(ev){ ev.stopPropagation(); ev.preventDefault(); };
+    el.addEventListener('click', swallow, true);
+    setTimeout(function(){ el.removeEventListener('click', swallow, true); moved = false; }, 0);
+  }
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+
+  window.addEventListener('resize', function(){
+    if(!el.style.left) return;
+    var r = el.getBoundingClientRect(), c = _msgClamp(el, r.left, r.top);
+    _msgPlace(el, c.x, c.y);
+  }, { passive: true });
+}
+
+/* A surface is a "chat surface" when a conversation is already on screen. */
+function _msgOnChatSurface(){
+  try{
+    var v = (typeof currentView !== 'undefined' && currentView) ? String(currentView).toLowerCase() : '';
+    if(/^(sarah|messages|chat|chatbot|inbox)/.test(v)) return true;
+    var vis = function(sel){
+      var n = document.querySelector(sel);
+      if(!n) return false;
+      if(n.hidden) return false;
+      var cs = getComputedStyle(n);
+      if(cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') < 0.05) return false;
+      var r = n.getBoundingClientRect();
+      return r.width > 40 && r.height > 40;
+    };
+    return vis('#agent-drawer') || vis('.agent-drawer') || vis('#task-drawer') || vis('#lu-msg-modal');
+  }catch(e){ return false; }
+}
+
+function _msgSyncSurface(){
+  try{ document.body.classList.toggle('lu-chat-surface', _msgOnChatSurface()); }catch(e){}
+}
+
+try{
+  /* The drawers are toggled by class and style rather than by being added and removed, so watch
+     attributes as well as children, and re-check after navigation. */
+  var mo = new MutationObserver(function(){ _msgSyncSurface(); });
+  mo.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+  window.addEventListener('hashchange', _msgSyncSurface);
+  window.addEventListener('popstate', _msgSyncSurface);
+  document.addEventListener('DOMContentLoaded', _msgSyncSurface);
+  _msgSyncSurface();
+}catch(e){}
