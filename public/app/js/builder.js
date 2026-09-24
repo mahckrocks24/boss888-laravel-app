@@ -1595,6 +1595,7 @@ function _t3UpdateImageInIframe(field, newUrl) {
 
 function _t3ReplaceImage(websiteId, field, url) {
   if (!websiteId || !field) return;
+  try { delete _t3PendingFields[field]; } catch (_pf) {}   // IMG-EDIT-1: a stale pending value must not follow the new picture
   var token = localStorage.getItem('lu_token') || '';
   // Instant client-side update via postMessage — iframe updates its own DOM.
   _t3UpdateImageInIframe(field, url);
@@ -1751,6 +1752,8 @@ async function _t3FlushSaves(opts) {
     var reflush = false, needReload = false;
     for (var ci = 0; ci < conflicts.length; ci++) {
       var c = conflicts[ci];
+      // IMG-EDIT-1: never force NOTHING over a newer value - that is how a freshly chosen picture was wiped by a stale empty save
+      if ((c.p.value === '' || c.p.value == null) && c.current) { try { console.warn('[Builder888] IMG-EDIT-1: kept the newer value of', c.field); } catch (_w) {} continue; }
       _t3PendingFields[c.field] = Object.assign({}, c.p, { force: true }); reflush = true;
     }
     if (reflush) { setTimeout(function () { _t3FlushSaves(); }, 0); }

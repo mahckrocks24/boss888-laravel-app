@@ -719,8 +719,11 @@ class TemplateService
                 'variation'     => $manifest['variation'] ?? 'luxury',
                 'category'      => $manifest['category'] ?? '',
                 'is_active'     => $isActive,
-                'thumbnail'     => $thumbs[$industry] ?? ($thumbs['default'] ?? ''),
-                'preview_url'   => '/templates/' . $industry . '/preview',
+                // TPL-LIST-1 (2026-09-24): the design's own screenshot and its own preview, so designs of one industry look different
+                'thumbnail'     => is_file(public_path('marketing-next/dist-root/assets/product/templates/' . basename($dir) . '.webp'))
+                                   ? '/assets/product/templates/' . basename($dir) . '.webp'
+                                   : ($thumbs[$industry] ?? ($thumbs['default'] ?? '')),
+                'preview_url'   => '/templates/' . basename($dir) . '/preview',
                 'block_count'   => count($manifest['blocks'] ?? []),
                 'field_count'   => count($manifest['variables'] ?? []),
                 'element_count' => $elementCount,
@@ -2084,7 +2087,7 @@ class TemplateService
         $dir     = "{$root}/.history";
         $entries = glob($dir . '/index-*.html') ?: [];
         if ($entries === []) { return $this->undoRecordOnly($websiteId, $dir); }
-        sort($entries);
+        usort($entries, fn ($a, $b) => ((int) @filemtime($a) <=> (int) @filemtime($b)) ?: strcmp($a, $b));   // IMG-EDIT-1: by time, not by the random suffix
         $latest = end($entries);
         $target = "{$root}/index.html";
         $bytes  = @file_get_contents($latest);

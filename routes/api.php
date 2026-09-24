@@ -4278,6 +4278,8 @@ document.addEventListener("DOMContentLoaded",function(){
       if (hooked) target = hooked.querySelector("[data-field]");
     }
     if (!target) return;
+    // IMG-EDIT-1: a picture is swapped by a click, never text-edited - contenteditable on an <img> posted an empty value that wiped it
+    if (target.tagName === "IMG" || (target.querySelector && target.querySelector("img") && !(target.textContent || "").trim())) { e.stopPropagation(); e.preventDefault(); return; }
     e.stopPropagation();
     e.preventDefault();
     // TEXTEDIT-2: on a touch screen, never edit inside a shrunken desktop preview - ask the editor for the phone view first
