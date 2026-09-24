@@ -4786,8 +4786,8 @@ window._t3ArthurMin = function () {
 /* CHATBOT-LOOK-1 (Owner 2026-09-23): "On Chatbot888 icon, when long pressed on editor, show and add options to change icon
    and colour". The bubble in the preview posts chatbot-longpress; this dialog offers an icon set and a colour, stored per
    website; the widget paints them from /config on the live site and in the preview. */
-function _t3ChatbotLookDialog() {
-  var siteId = window._t3PreviewSiteId || ((document.getElementById('t3-preview') || {}).getAttribute ? document.getElementById('t3-preview').getAttribute('data-site') : null);
+function _t3ChatbotLookDialog(forcedSiteId) {   // CHATBOT-PAGE-1: forcedSiteId = opened from the Chatbot page for one website
+  var siteId = forcedSiteId || window._t3PreviewSiteId || ((document.getElementById('t3-preview') || {}).getAttribute ? document.getElementById('t3-preview').getAttribute('data-site') : null);
   if (!siteId) return;
   try { var _old = document.getElementById('t3-cbl-ov'); if (_old) _old.remove(); } catch (_e) {}
   var svg = function (inner) { return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#fff">' + inner + '</svg>'); };
@@ -4843,7 +4843,8 @@ function _t3ChatbotLookDialog() {
       var j = null; try { j = await r.json(); } catch (_j) {}
       if (!r.ok || !j || !j.success) { out.innerHTML = '<span style="color:#F87171">' + esc((j && j.message) || 'That could not be saved.') + '</span>'; return; }
       if (typeof showToast === 'function') showToast(j.message || 'Saved', 'success');
-      close(); _t3ReloadPreview();
+      close(); if (forcedSiteId) return;   // CHATBOT-PAGE-1: no editor preview to reload
+      _t3ReloadPreview();
     } catch (_e) { out.innerHTML = '<span style="color:#F87171">The change could not be sent. Please try again.</span>'; }
   }
   ov.querySelector('[data-role=ok]').onclick = function () { save(false); };

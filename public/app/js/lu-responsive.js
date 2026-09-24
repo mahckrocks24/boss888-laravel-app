@@ -55,6 +55,7 @@
       if (!isNarrow) { continue; }
       var cs = w.getComputedStyle(e); if (cs.display !== 'grid') { continue; }
       var n = tracks(cs); if (e.children.length < 2 || e.children.length > 8) { continue; }
+      if (n === 7) { continue; } /* SOCIAL-CAL-1: seven tracks is a week (a calendar header or month grid), never a strip */
       /* a KPI / metric / stat row: a handful of short cards. Long card lists stay vertical. */
       var tall = false, tops = {}, rows = 0; for (var c = 0; c < e.children.length; c++) { var cr = e.children[c].getBoundingClientRect(); if (cr.height > 160) { tall = true; } var key = Math.round(cr.top); if (!tops[key]) { tops[key] = 1; rows++; } }
       var r = e.getBoundingClientRect(); if (r.width < 100) { continue; }

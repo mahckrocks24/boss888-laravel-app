@@ -3196,7 +3196,7 @@ window.luSwipeToClose = luSwipeToClose;
               <div style="background:var(--s2);border:1.5px solid var(--bd);border-radius:var(--r);padding:12px 8px;cursor:pointer;text-align:center;transition:all var(--tr)" onclick="setType('strategy_review',this)"><div style="font-size:18px;margin-bottom:4px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><circle cx="9" cy="9" r="5.5"/><path d="M17 17l-3.5-3.5"/></svg></div><div style="font-size:10px;font-weight:700;color:var(--t1);font-family:var(--fh)">Strategy</div></div>
               <div style="background:var(--s2);border:1.5px solid rgba(108,92,231,.5);border-radius:var(--r);padding:12px 8px;cursor:pointer;text-align:center;background:var(--ps);transition:all var(--tr)" onclick="setType('brainstorm',this)" id="type-active"><div style="font-size:18px;margin-bottom:4px"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5L10 2z"/><path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75L16 14z"/></svg></div><div style="font-size:10px;font-weight:700;color:var(--t1);font-family:var(--fh)">Brainstorm</div></div>
             </div>
-            <div id="mtg-biz-wrap" style="margin-bottom:10px"><label for="mtg-biz" style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Business to discuss</label><select id="mtg-biz" class="lu-sel" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:10px 12px;font-size:13px"><option value="">Let Sarah decide from the topic</option></select></div>   <!-- MEETING-BUSINESS-1 -->
+            <div id="mtg-biz-wrap" style="margin-bottom:10px"><label for="mtg-biz" style="display:block;font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">Business to discuss</label><select id="mtg-biz" aria-label="Business to discuss" style="width:100%;border-radius:var(--r);padding:10px 12px;font-size:13px"><option value="">Let Sarah decide from the topic</option></select></div>   <!-- MEETING-BUSINESS-1 -->
             <textarea id="topic-input" style="width:100%;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);color:var(--t1);padding:11px 13px;font-size:13px;resize:vertical;min-height:64px;margin-bottom:13px;transition:border-color var(--tr);line-height:1.6" placeholder="What should the team work on?&#10;e.g. We need 50 qualified leads/month. Where do we start?"></textarea>
             <button onclick="launchMeeting()" style="width:100%;height:42px;background:linear-gradient(135deg,var(--p),#9B8DF8);border-radius:var(--r);color:#fff;font-size:13px;font-weight:700;font-family:var(--fh);box-shadow:0 4px 18px var(--pg);transition:all var(--tr)">▶ Launch Strategy Session</button>
           </div>
@@ -4666,7 +4666,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=3.1.0-calday',calendar:'/app/js/calendar.js?v=3.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=cat5-20260922',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
+  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=socialcal1.1.0-calday',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=cat5-20260922',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4885,7 +4885,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=ecbae440a1"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=3ea5f89d37"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
@@ -4898,7 +4898,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 <!-- RISK-0199 (2026-09-21): the shell inside the screen on a phone or a narrow window; every dropdown, colour picker,
      modal and scroller is the site's own CSS (Owner rule). lu-responsive.js marks tables/KPI rows, lu-mobile.css lays them out,
      lu-select.js upgrades every <select> and input[type=color]. -->
-<link rel="stylesheet" href="/app/css/lu-mobile.css?v=picker1-20260922">
+<link rel="stylesheet" href="/app/css/lu-mobile.css?v=socialcal1b-20260922">
 <script src="/app/js/website-scope-bridge.js?v=inc0006c-20260901"></script>
 <link rel="stylesheet" href="/app/css/onboarding.css?v=contrast2-20260908">
 <!-- EV-1043 (2026-09-15): onboarding-interview.js retired — Sarah introduces herself inside her own thread, never on a separate screen. -->
