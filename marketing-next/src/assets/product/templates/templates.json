@@ -1,6 +1,6 @@
 {
- "generated": "2026-09-14T11:26:22.155Z",
- "count": 84,
+ "generated": "2026-09-24T07:14:23.948Z",
+ "count": 115,
  "items": [
   {
    "slug": "aesthetic_ledger",
@@ -31,11 +31,25 @@
    "file": "templates/aesthetic_clinic.webp"
   },
   {
+   "slug": "architecture_datum",
+   "name": "Architecture — Datum",
+   "industry": "architecture",
+   "industry_label": "Architecture",
+   "file": "templates/architecture_datum.webp"
+  },
+  {
    "slug": "architecture_plan",
    "name": "Architecture — Plan",
    "industry": "architecture",
    "industry_label": "Architecture",
    "file": "templates/architecture_plan.webp"
+  },
+  {
+   "slug": "architecture_section",
+   "name": "Architecture — Section",
+   "industry": "architecture",
+   "industry_label": "Architecture",
+   "file": "templates/architecture_section.webp"
   },
   {
    "slug": "architecture",
@@ -45,11 +59,25 @@
    "file": "templates/architecture.webp"
   },
   {
+   "slug": "auto_bay",
+   "name": "Automotive — Bay",
+   "industry": "automotive",
+   "industry_label": "Automotive",
+   "file": "templates/auto_bay.webp"
+  },
+  {
    "slug": "auto_ramp",
    "name": "Automotive — Ramp",
    "industry": "automotive",
    "industry_label": "Automotive",
    "file": "templates/auto_ramp.webp"
+  },
+  {
+   "slug": "auto_torque",
+   "name": "Automotive — Torque",
+   "industry": "automotive",
+   "industry_label": "Automotive",
+   "file": "templates/auto_torque.webp"
   },
   {
    "slug": "automotive",
@@ -122,6 +150,13 @@
    "file": "templates/cafe_arch.webp"
   },
   {
+   "slug": "cafe_lantern",
+   "name": "Café — Lantern",
+   "industry": "cafe",
+   "industry_label": "Cafe",
+   "file": "templates/cafe_lantern.webp"
+  },
+  {
    "slug": "cafe_press",
    "name": "Café — Press",
    "industry": "cafe",
@@ -164,11 +199,39 @@
    "file": "templates/childcare.webp"
   },
   {
+   "slug": "nursery_acorn",
+   "name": "Nursery — Acorn",
+   "industry": "childcare",
+   "industry_label": "Childcare",
+   "file": "templates/nursery_acorn.webp"
+  },
+  {
    "slug": "nursery_keyperson",
    "name": "Nursery — Key Person",
    "industry": "childcare",
    "industry_label": "Childcare",
    "file": "templates/nursery_keyperson.webp"
+  },
+  {
+   "slug": "nursery_meadow",
+   "name": "Nursery — Meadow",
+   "industry": "childcare",
+   "industry_label": "Childcare",
+   "file": "templates/nursery_meadow.webp"
+  },
+  {
+   "slug": "construction_beam",
+   "name": "Construction — Beam",
+   "industry": "construction",
+   "industry_label": "Construction",
+   "file": "templates/construction_beam.webp"
+  },
+  {
+   "slug": "construction_cornerstone",
+   "name": "Construction — Cornerstone",
+   "industry": "construction",
+   "industry_label": "Construction",
+   "file": "templates/construction_cornerstone.webp"
   },
   {
    "slug": "construction_site",
@@ -197,6 +260,13 @@
    "industry": "consulting",
    "industry_label": "Consulting",
    "file": "templates/consulting.webp"
+  },
+  {
+   "slug": "consulting_ledger",
+   "name": "Consulting — Counsel",
+   "industry": "consulting",
+   "industry_label": "Consulting",
+   "file": "templates/consulting_ledger.webp"
   },
   {
    "slug": "consulting_partner",
@@ -269,6 +339,13 @@
    "file": "templates/estate_frontage.webp"
   },
   {
+   "slug": "estate_keystone",
+   "name": "Estate Agency — Keystone",
+   "industry": "real_estate_agency",
+   "industry_label": "Estate Agency",
+   "file": "templates/estate_keystone.webp"
+  },
+  {
    "slug": "realtor_profile",
    "name": "Realtor — Portfolio",
    "industry": "real_estate_agency",
@@ -290,11 +367,39 @@
    "file": "templates/venue_exclusive.webp"
   },
   {
+   "slug": "venue_gallery",
+   "name": "Venue — Gallery",
+   "industry": "event_venue",
+   "industry_label": "Event Venue",
+   "file": "templates/venue_gallery.webp"
+  },
+  {
+   "slug": "venue_orchard",
+   "name": "Venue — Orchard",
+   "industry": "event_venue",
+   "industry_label": "Event Venue",
+   "file": "templates/venue_orchard.webp"
+  },
+  {
    "slug": "gym",
    "name": "Fitness & Athletic Club",
    "industry": "gym",
    "industry_label": "Gym",
    "file": "templates/gym.webp"
+  },
+  {
+   "slug": "gym_ironhouse",
+   "name": "Gym — Iron House",
+   "industry": "gym",
+   "industry_label": "Gym",
+   "file": "templates/gym_ironhouse.webp"
+  },
+  {
+   "slug": "gym_northgate",
+   "name": "Gym — Northgate",
+   "industry": "gym",
+   "industry_label": "Gym",
+   "file": "templates/gym_northgate.webp"
   },
   {
    "slug": "gym_platform",
@@ -332,6 +437,20 @@
    "file": "templates/home_services.webp"
   },
   {
+   "slug": "trades_beacon",
+   "name": "Home Services — Beacon",
+   "industry": "home_services",
+   "industry_label": "Home Services",
+   "file": "templates/trades_beacon.webp"
+  },
+  {
+   "slug": "trades_fixpoint",
+   "name": "Home Services — Fixpoint",
+   "industry": "home_services",
+   "industry_label": "Home Services",
+   "file": "templates/trades_fixpoint.webp"
+  },
+  {
    "slug": "trades_window",
    "name": "Home Services — Window",
    "industry": "home_services",
@@ -344,6 +463,20 @@
    "industry": "hotel",
    "industry_label": "Hotel",
    "file": "templates/hotel.webp"
+  },
+  {
+   "slug": "hotel_harbourhouse",
+   "name": "Hotel — Harbour House",
+   "industry": "hotel",
+   "industry_label": "Hotel",
+   "file": "templates/hotel_harbourhouse.webp"
+  },
+  {
+   "slug": "hotel_lantern",
+   "name": "Hotel — Lantern",
+   "industry": "hotel",
+   "industry_label": "Hotel",
+   "file": "templates/hotel_lantern.webp"
   },
   {
    "slug": "hotel_terrace",
@@ -360,11 +493,39 @@
    "file": "templates/interior_design.webp"
   },
   {
+   "slug": "interiors_atelier",
+   "name": "Interiors — Atelier",
+   "industry": "interior_design",
+   "industry_label": "Interior Design",
+   "file": "templates/interiors_atelier.webp"
+  },
+  {
    "slug": "interiors_scheme",
    "name": "Interiors — Scheme",
    "industry": "interior_design",
    "industry_label": "Interior Design",
    "file": "templates/interiors_scheme.webp"
+  },
+  {
+   "slug": "interiors_studioline",
+   "name": "Interiors — Studio Line",
+   "industry": "interior_design",
+   "industry_label": "Interior Design",
+   "file": "templates/interiors_studioline.webp"
+  },
+  {
+   "slug": "it_bastion",
+   "name": "IT Services — Bastion",
+   "industry": "it_services",
+   "industry_label": "IT Services",
+   "file": "templates/it_bastion.webp"
+  },
+  {
+   "slug": "it_meridian",
+   "name": "IT Services — Meridian",
+   "industry": "it_services",
+   "industry_label": "IT Services",
+   "file": "templates/it_meridian.webp"
   },
   {
    "slug": "it_uptime",
@@ -381,11 +542,25 @@
    "file": "templates/it_services.webp"
   },
   {
+   "slug": "agency_northstar",
+   "name": "Agency — Northstar",
+   "industry": "marketing_agency",
+   "industry_label": "Marketing Agency",
+   "file": "templates/agency_northstar.webp"
+  },
+  {
    "slug": "agency_pipeline",
    "name": "Agency — Pipeline",
    "industry": "marketing_agency",
    "industry_label": "Marketing Agency",
    "file": "templates/agency_pipeline.webp"
+  },
+  {
+   "slug": "agency_signal",
+   "name": "Agency — Signal",
+   "industry": "marketing_agency",
+   "industry_label": "Marketing Agency",
+   "file": "templates/agency_signal.webp"
   },
   {
    "slug": "marketing_agency",
@@ -437,6 +612,20 @@
    "file": "templates/news_desk.webp"
   },
   {
+   "slug": "news_ledger",
+   "name": "Newsroom — Ledger",
+   "industry": "news_channel",
+   "industry_label": "Newsroom",
+   "file": "templates/news_ledger.webp"
+  },
+  {
+   "slug": "news_wire",
+   "name": "Newsroom — Wire",
+   "industry": "news_channel",
+   "industry_label": "Newsroom",
+   "file": "templates/news_wire.webp"
+  },
+  {
    "slug": "courses_cohort",
    "name": "Courses — Cohort",
    "industry": "online_courses",
@@ -470,6 +659,20 @@
    "industry": "pet_services",
    "industry_label": "Pet Services",
    "file": "templates/pets_daycare.webp"
+  },
+  {
+   "slug": "pets_harbour",
+   "name": "Pet Services — Harbour",
+   "industry": "pet_services",
+   "industry_label": "Pet Services",
+   "file": "templates/pets_harbour.webp"
+  },
+  {
+   "slug": "pets_paddock",
+   "name": "Pet Services — Paddock",
+   "industry": "pet_services",
+   "industry_label": "Pet Services",
+   "file": "templates/pets_paddock.webp"
   },
   {
    "slug": "resort_dune",
@@ -540,6 +743,20 @@
    "industry": "training_center",
    "industry_label": "Training Centre",
    "file": "templates/training_center.webp"
+  },
+  {
+   "slug": "training_forge",
+   "name": "Training — Forge",
+   "industry": "training_center",
+   "industry_label": "Training Centre",
+   "file": "templates/training_forge.webp"
+  },
+  {
+   "slug": "training_summit",
+   "name": "Training — Summit",
+   "industry": "training_center",
+   "industry_label": "Training Centre",
+   "file": "templates/training_summit.webp"
   },
   {
    "slug": "training_yard",
