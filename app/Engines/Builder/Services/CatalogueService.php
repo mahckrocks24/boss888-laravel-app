@@ -449,6 +449,9 @@ class CatalogueService
                 $badge = strtolower((string) ($this->slotValue($tv, $family, $i, ['badge']) ?? ''));
                 $status = $closedRow ? ($spec['closed_statuses'][0] ?? $spec['default_status']) : $spec['default_status'];
                 if ($kind === 'listing' && ! $closedRow) { $status = str_contains($badge, 'sold') ? 'sold' : (preg_match('/rent|let/', $badge) ? 'to_let' : (str_contains($badge, 'offer') ? 'under_offer' : 'for_sale')); }
+                // ESTATE-LIST-1: a closed listing took the first closed status always, so a property the design
+                // marks 'Let' was published as 'Sold'. Read the badge here too, exactly as the open row does.
+                if ($kind === 'listing' && $closedRow && preg_match('/\blet\b/', $badge)) { $status = 'let'; }
                 if ($kind === 'menu' && preg_match('/sold out/', $badge)) $status = 'sold_out';
                 $priceRaw = (string) ($this->slotValue($tv, $family, $i, ['price']) ?? '');
                 $cur = strtoupper((string) ($this->slotValue($tv, $family, $i, ['currency']) ?? '')) ?: $this->currencyFromText($priceRaw, $spec['currency']);

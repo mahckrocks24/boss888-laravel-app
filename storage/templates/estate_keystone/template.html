@@ -96,6 +96,32 @@ figure{margin:0}
   .hero-stage .stage{aspect-ratio:4/3;border-radius:var(--r)}
   .hero-stage .fact{position:static;margin-top:14px;grid-template-columns:1fr 1fr;background:var(--tint);border-color:var(--line);backdrop-filter:none}
 }
+.pl-register{padding:var(--pad) 24px}
+.pl-register .head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:clamp(30px,4vw,48px);
+  padding-bottom:22px;border-bottom:1px solid var(--deep)}
+.pl-register .head h2{margin:0}
+.pl-register .head .lede{margin:0;max-width:48ch}
+.pl-register .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(16px,2vw,26px)}
+.pl-card{display:flex;flex-direction:column;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;
+  transition:border-color .2s ease,transform .2s ease}
+.pl-card:hover{border-color:var(--deep);transform:translateY(-3px)}
+.pl-shot{position:relative;display:block;margin:0;aspect-ratio:4/3;background:var(--tint);overflow:hidden}
+.pl-shot img{width:100%;height:100%;object-fit:cover;transition:transform .8s ease}
+.pl-card:hover .pl-shot img{transform:scale(1.04)}
+.pl-badge{position:absolute;top:14px;left:14px;font:600 10.5px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;
+  background:var(--deep);color:var(--lu-on-dark, #fff);padding:7px 11px;border-radius:var(--r)}
+.pl-body{padding:20px 22px 22px;display:flex;flex-direction:column;gap:5px;flex:1}
+.pl-price{font:var(--dw) 1.45rem/1 var(--display);color:var(--deep);letter-spacing:var(--tr);font-variant-numeric:tabular-nums}
+.pl-body h3{margin:2px 0 0;font-size:1.05rem;line-height:1.35}
+.pl-where{margin:0;font-size:.92rem;color:var(--lu-accent-text, var(--accent));font-weight:500}
+.pl-specs{margin:6px 0 0;padding-top:12px;border-top:1px solid var(--line);font-size:.88rem;opacity:.78}
+.pl-go{margin-top:auto;padding-top:16px;font:600 13px/1 var(--body);letter-spacing:.02em;color:var(--deep);
+  display:inline-flex;align-items:center;gap:7px;align-self:flex-start}
+.pl-go::after{content:"";width:14px;height:1px;background:var(--accent);transition:width .2s ease}
+.pl-card:hover .pl-go::after{width:24px}
+.pl-go:hover{color:var(--lu-accent-text, var(--accent))}
+@media (max-width:1000px){.pl-register .grid{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:620px){.pl-register .grid{grid-template-columns:1fr}.pl-register .head{display:block}.pl-register .head .lede{margin-top:10px}}
 .st-bigband{padding:calc(var(--pad) * .7) 24px}
 .st-bigband .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0}
 .st-bigband .st{padding:10px 28px;border-left:1px solid rgba(255,255,255,.16)}
@@ -103,6 +129,12 @@ figure{margin:0}
 .st-bigband b{display:block;font:var(--dw) clamp(2.4rem,4vw,3.6rem)/1 var(--display);color:#fff;letter-spacing:-.03em;margin-bottom:10px;font-variant-numeric:tabular-nums}
 .st-bigband span{font-size:.92rem;color:rgba(255,255,255,.72);max-width:20ch;display:block}
 @media (max-width:860px){.st-bigband .grid{grid-template-columns:1fr 1fr;gap:28px 0}.st-bigband .st{padding:0 18px}.st-bigband .st:nth-child(odd){border-left:0;padding-left:0}}
+.pf-tiles{padding:calc(var(--pad) * .6) 24px}
+.pf-tiles .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.pf-tiles .pf{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px 22px 20px;display:flex;flex-direction:column;gap:14px;font-size:.95rem}
+.pf-tiles .k{font:var(--dw) 1.5rem/1 var(--display);color:var(--lu-accent-text, var(--accent))}
+@media (max-width:860px){.pf-tiles .grid{grid-template-columns:1fr 1fr}}
+@media (max-width:480px){.pf-tiles .grid{grid-template-columns:1fr}}
 .offer-bento{padding:var(--pad) 24px}
 .offer-bento .head{max-width:720px;margin-bottom:clamp(40px,5vw,64px)}
 .offer-bento .grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:minmax(200px,auto);gap:14px}
@@ -120,12 +152,6 @@ figure{margin:0}
 .offer-bento .meta{margin-top:auto;font:600 13px/1 var(--body);letter-spacing:.06em;color:var(--deep);padding-top:14px;border-top:1px solid var(--line)}
 @media (max-width:980px){.offer-bento .grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:640px){.offer-bento .grid{grid-template-columns:1fr}.offer-bento .offer-card.big,.offer-bento .offer-card.wide{grid-column:auto;grid-row:auto}}
-.pf-tiles{padding:calc(var(--pad) * .6) 24px}
-.pf-tiles .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-.pf-tiles .pf{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:22px 22px 20px;display:flex;flex-direction:column;gap:14px;font-size:.95rem}
-.pf-tiles .k{font:var(--dw) 1.5rem/1 var(--display);color:var(--lu-accent-text, var(--accent))}
-@media (max-width:860px){.pf-tiles .grid{grid-template-columns:1fr 1fr}}
-@media (max-width:480px){.pf-tiles .grid{grid-template-columns:1fr}}
 .story-sdark{padding:0}
 .story-sdark .grid{display:grid;grid-template-columns:1fr 1fr;min-height:560px}
 .story-sdark .pic{background:var(--tint)}
@@ -136,6 +162,20 @@ figure{margin:0}
 .story-sdark .points{list-style:none;margin:30px 0 0;padding:0;display:grid;gap:0}
 .story-sdark .points li{padding:16px 0;border-top:1px solid rgba(255,255,255,.14);font-size:.98rem;color:#fff}
 @media (max-width:860px){.story-sdark .grid{grid-template-columns:1fr}.story-sdark .pic img{aspect-ratio:4/3;min-height:0}}
+.sold-ledger{padding:calc(var(--pad) * .8) 24px}
+.sold-ledger .head{max-width:60ch;margin-bottom:clamp(26px,3vw,40px)}
+.sold-ledger .head h2{margin-bottom:8px}
+.sold-ledger .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.sold-card{display:flex;gap:14px;align-items:stretch;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.sold-shot{margin:0;flex:0 0 108px;background:var(--tint)}
+.sold-shot img{width:100%;height:100%;object-fit:cover;display:block}
+.sold-body{padding:16px 18px 16px 0;display:flex;flex-direction:column;gap:3px;min-width:0}
+.sold-badge{font:600 10px/1 var(--body);letter-spacing:.14em;text-transform:uppercase;color:var(--lu-accent-text, var(--accent))}
+.sold-body h3{margin:4px 0 0;font-size:.98rem;line-height:1.3}
+.sold-where{margin:0;font-size:.85rem;opacity:.72}
+.sold-note{margin:4px 0 0;font-size:.85rem;opacity:.85;font-style:italic}
+.sold-price{margin-top:auto;padding-top:8px;font:600 .95rem/1 var(--body);color:var(--deep);font-variant-numeric:tabular-nums}
+@media (max-width:1000px){.sold-ledger .grid{grid-template-columns:1fr}.sold-shot{flex-basis:96px}}
 .steps-numbered{padding:var(--pad) 24px}
 .steps-numbered .head{margin-bottom:clamp(36px,4vw,56px)}
 .steps-numbered .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;counter-reset:s}
@@ -169,15 +209,6 @@ figure{margin:0}
 .tst-spot .t:first-child b{color:var(--lu-on-dark, #fff)}
 .tst-spot small{font-size:.82rem;opacity:.72}
 @media (max-width:860px){.tst-spot .grid{grid-template-columns:1fr}.tst-spot .t:first-child{grid-row:auto}}
-.cta-band{padding:0 24px}
-.cta-band .box{background:var(--brand);color:var(--lu-on-primary, #fff);border-radius:calc(var(--r) + 6px);padding:clamp(40px,6vw,84px);display:grid;grid-template-columns:1.4fr auto;gap:30px;align-items:center;
-  position:relative;overflow:hidden}
-.cta-band .box::after{content:"";position:absolute;right:-12%;top:-40%;width:52%;height:180%;background:rgba(255,255,255,.08);transform:rotate(14deg);pointer-events:none}
-.cta-band h2{color:#fff;margin-bottom:10px}
-.cta-band .lede{color:rgba(255,255,255,.84);margin:0}
-.cta-band .btn{background:var(--lu-bg, #fff);color:var(--deep);border-color:#fff;position:relative;white-space:nowrap;padding:19px 34px}
-.cta-band .btn:hover{background:var(--tint);border-color:var(--tint)}
-@media (max-width:860px){.cta-band .box{grid-template-columns:1fr}}
 .faq-cards{padding:var(--pad) 24px}
 .faq-cards .head{max-width:700px;margin-bottom:clamp(28px,4vw,44px)}
 .faq-cards .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -190,6 +221,15 @@ figure{margin:0}
 .faq-cards .fq[open] summary i::after{transform:scaleY(0)}
 .faq-cards .fq p{margin:0;padding:0 0 20px;font-size:.96rem;opacity:.86}
 @media (max-width:860px){.faq-cards .grid{grid-template-columns:1fr}}
+.cta-band{padding:0 24px}
+.cta-band .box{background:var(--brand);color:var(--lu-on-primary, #fff);border-radius:calc(var(--r) + 6px);padding:clamp(40px,6vw,84px);display:grid;grid-template-columns:1.4fr auto;gap:30px;align-items:center;
+  position:relative;overflow:hidden}
+.cta-band .box::after{content:"";position:absolute;right:-12%;top:-40%;width:52%;height:180%;background:rgba(255,255,255,.08);transform:rotate(14deg);pointer-events:none}
+.cta-band h2{color:#fff;margin-bottom:10px}
+.cta-band .lede{color:rgba(255,255,255,.84);margin:0}
+.cta-band .btn{background:var(--lu-bg, #fff);color:var(--deep);border-color:#fff;position:relative;white-space:nowrap;padding:19px 34px}
+.cta-band .btn:hover{background:var(--tint);border-color:var(--tint)}
+@media (max-width:860px){.cta-band .box{grid-template-columns:1fr}}
 .cform2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .cform2 label{display:flex;flex-direction:column;gap:7px;font:600 12px/1 var(--body);letter-spacing:.06em;text-transform:uppercase}
 .cform2 label.wide{grid-column:1 / -1}
@@ -272,17 +312,23 @@ figure{margin:0}
     </div>
   </div>
 </section>
+<section class="pl-register reveal" data-block="listings" id="listings">
+<div class="shell head"><div><span class="eyebrow" data-field="listings_eyebrow">{{listings_eyebrow}}</span><h2 data-field="listings_title">{{listings_title}}</h2></div><p class="lede" data-field="listings_subtitle">{{listings_subtitle}}</p></div><div class="shell"><div class="grid"><article class="pl-card"><figure class="pl-shot"><img src="{{listing_1_image}}" alt="" data-field="listing_1_image" loading="lazy"><span class="pl-badge" data-field="listing_1_badge">{{listing_1_badge}}</span></figure><div class="pl-body"><span class="pl-price" data-field="listing_1_price">{{listing_1_price}}</span><h3 data-field="listing_1_title">{{listing_1_title}}</h3><p class="pl-where" data-field="listing_1_location">{{listing_1_location}}</p><p class="pl-specs" data-field="listing_1_specs">{{listing_1_specs}}</p><a class="pl-go" href="#contact" data-field="listing_1_cta">{{listing_1_cta}}</a></div></article><article class="pl-card"><figure class="pl-shot"><img src="{{listing_2_image}}" alt="" data-field="listing_2_image" loading="lazy"><span class="pl-badge" data-field="listing_2_badge">{{listing_2_badge}}</span></figure><div class="pl-body"><span class="pl-price" data-field="listing_2_price">{{listing_2_price}}</span><h3 data-field="listing_2_title">{{listing_2_title}}</h3><p class="pl-where" data-field="listing_2_location">{{listing_2_location}}</p><p class="pl-specs" data-field="listing_2_specs">{{listing_2_specs}}</p><a class="pl-go" href="#contact" data-field="listing_2_cta">{{listing_2_cta}}</a></div></article><article class="pl-card"><figure class="pl-shot"><img src="{{listing_3_image}}" alt="" data-field="listing_3_image" loading="lazy"><span class="pl-badge" data-field="listing_3_badge">{{listing_3_badge}}</span></figure><div class="pl-body"><span class="pl-price" data-field="listing_3_price">{{listing_3_price}}</span><h3 data-field="listing_3_title">{{listing_3_title}}</h3><p class="pl-where" data-field="listing_3_location">{{listing_3_location}}</p><p class="pl-specs" data-field="listing_3_specs">{{listing_3_specs}}</p><a class="pl-go" href="#contact" data-field="listing_3_cta">{{listing_3_cta}}</a></div></article><article class="pl-card"><figure class="pl-shot"><img src="{{listing_4_image}}" alt="" data-field="listing_4_image" loading="lazy"><span class="pl-badge" data-field="listing_4_badge">{{listing_4_badge}}</span></figure><div class="pl-body"><span class="pl-price" data-field="listing_4_price">{{listing_4_price}}</span><h3 data-field="listing_4_title">{{listing_4_title}}</h3><p class="pl-where" data-field="listing_4_location">{{listing_4_location}}</p><p class="pl-specs" data-field="listing_4_specs">{{listing_4_specs}}</p><a class="pl-go" href="#contact" data-field="listing_4_cta">{{listing_4_cta}}</a></div></article><article class="pl-card"><figure class="pl-shot"><img src="{{listing_5_image}}" alt="" data-field="listing_5_image" loading="lazy"><span class="pl-badge" data-field="listing_5_badge">{{listing_5_badge}}</span></figure><div class="pl-body"><span class="pl-price" data-field="listing_5_price">{{listing_5_price}}</span><h3 data-field="listing_5_title">{{listing_5_title}}</h3><p class="pl-where" data-field="listing_5_location">{{listing_5_location}}</p><p class="pl-specs" data-field="listing_5_specs">{{listing_5_specs}}</p><a class="pl-go" href="#contact" data-field="listing_5_cta">{{listing_5_cta}}</a></div></article><article class="pl-card"><figure class="pl-shot"><img src="{{listing_6_image}}" alt="" data-field="listing_6_image" loading="lazy"><span class="pl-badge" data-field="listing_6_badge">{{listing_6_badge}}</span></figure><div class="pl-body"><span class="pl-price" data-field="listing_6_price">{{listing_6_price}}</span><h3 data-field="listing_6_title">{{listing_6_title}}</h3><p class="pl-where" data-field="listing_6_location">{{listing_6_location}}</p><p class="pl-specs" data-field="listing_6_specs">{{listing_6_specs}}</p><a class="pl-go" href="#contact" data-field="listing_6_cta">{{listing_6_cta}}</a></div></article></div></div>
+</section>
 <section class="st-bigband dark reveal" data-block="stats" id="stats">
 <div class="shell grid"><div class="st"><b data-field="stat_1_value">{{stat_1_value}}</b><span data-field="stat_1_label">{{stat_1_label}}</span></div><div class="st"><b data-field="stat_2_value">{{stat_2_value}}</b><span data-field="stat_2_label">{{stat_2_label}}</span></div><div class="st"><b data-field="stat_3_value">{{stat_3_value}}</b><span data-field="stat_3_label">{{stat_3_label}}</span></div><div class="st"><b data-field="stat_4_value">{{stat_4_value}}</b><span data-field="stat_4_label">{{stat_4_label}}</span></div></div>
-</section>
-<section class="offer-bento reveal" data-block="services" id="services">
-<div class="shell head"><h2 data-field="offers_title">{{offers_title}}</h2><p class="lede" data-field="offers_subtitle">{{offers_subtitle}}</p></div><div class="shell"><div class="grid"><div class="offer-card big"><span class="num" aria-hidden="true">01</span><h3 data-field="service_1_title">{{service_1_title}}</h3><p data-field="service_1_text">{{service_1_text}}</p><span class="meta" data-field="service_1_price">{{service_1_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">02</span><h3 data-field="service_2_title">{{service_2_title}}</h3><p data-field="service_2_text">{{service_2_text}}</p><span class="meta" data-field="service_2_price">{{service_2_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">03</span><h3 data-field="service_3_title">{{service_3_title}}</h3><p data-field="service_3_text">{{service_3_text}}</p><span class="meta" data-field="service_3_price">{{service_3_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">04</span><h3 data-field="service_4_title">{{service_4_title}}</h3><p data-field="service_4_text">{{service_4_text}}</p><span class="meta" data-field="service_4_price">{{service_4_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">05</span><h3 data-field="service_5_title">{{service_5_title}}</h3><p data-field="service_5_text">{{service_5_text}}</p><span class="meta" data-field="service_5_price">{{service_5_price}}</span></div><div class="offer-card wide"><span class="num" aria-hidden="true">06</span><h3 data-field="service_6_title">{{service_6_title}}</h3><p data-field="service_6_text">{{service_6_text}}</p><span class="meta" data-field="service_6_price">{{service_6_price}}</span></div></div></div>
 </section>
 <section class="pf-tiles tint reveal" data-block="why_us" id="why-us">
 <div class="shell grid"><div class="pf"><span class="k" aria-hidden="true">1</span><span data-field="proof_1">{{proof_1}}</span></div><div class="pf"><span class="k" aria-hidden="true">2</span><span data-field="proof_2">{{proof_2}}</span></div><div class="pf"><span class="k" aria-hidden="true">3</span><span data-field="proof_3">{{proof_3}}</span></div><div class="pf"><span class="k" aria-hidden="true">4</span><span data-field="proof_4">{{proof_4}}</span></div></div>
 </section>
+<section class="offer-bento reveal" data-block="services" id="services">
+<div class="shell head"><h2 data-field="offers_title">{{offers_title}}</h2><p class="lede" data-field="offers_subtitle">{{offers_subtitle}}</p></div><div class="shell"><div class="grid"><div class="offer-card big"><span class="num" aria-hidden="true">01</span><h3 data-field="service_1_title">{{service_1_title}}</h3><p data-field="service_1_text">{{service_1_text}}</p><span class="meta" data-field="service_1_price">{{service_1_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">02</span><h3 data-field="service_2_title">{{service_2_title}}</h3><p data-field="service_2_text">{{service_2_text}}</p><span class="meta" data-field="service_2_price">{{service_2_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">03</span><h3 data-field="service_3_title">{{service_3_title}}</h3><p data-field="service_3_text">{{service_3_text}}</p><span class="meta" data-field="service_3_price">{{service_3_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">04</span><h3 data-field="service_4_title">{{service_4_title}}</h3><p data-field="service_4_text">{{service_4_text}}</p><span class="meta" data-field="service_4_price">{{service_4_price}}</span></div><div class="offer-card"><span class="num" aria-hidden="true">05</span><h3 data-field="service_5_title">{{service_5_title}}</h3><p data-field="service_5_text">{{service_5_text}}</p><span class="meta" data-field="service_5_price">{{service_5_price}}</span></div><div class="offer-card wide"><span class="num" aria-hidden="true">06</span><h3 data-field="service_6_title">{{service_6_title}}</h3><p data-field="service_6_text">{{service_6_text}}</p><span class="meta" data-field="service_6_price">{{service_6_price}}</span></div></div></div>
+</section>
 <section class="story-sdark reveal" data-block="about" id="about">
 <div class="grid"><figure class="pic"><img src="{{story_image}}" alt="" data-field="story_image" loading="lazy"></figure><div class="copy"><span class="eyebrow" data-field="story_eyebrow">{{story_eyebrow}}</span><h2 data-field="story_title">{{story_title}}</h2><p class="lede" data-field="story_body">{{story_body}}</p><ul class="points"><li><span data-field="story_point_1">{{story_point_1}}</span></li><li><span data-field="story_point_2">{{story_point_2}}</span></li><li><span data-field="story_point_3">{{story_point_3}}</span></li></ul></div></div>
+</section>
+<section class="sold-ledger tint reveal" data-block="portfolio" id="sold">
+<div class="shell head"><h2 data-field="sold_title">{{sold_title}}</h2><p class="lede" data-field="sold_subtitle">{{sold_subtitle}}</p></div><div class="shell"><div class="grid"><article class="sold-card"><figure class="sold-shot"><img src="{{portfolio_1_image}}" alt="" data-field="portfolio_1_image" loading="lazy"></figure><div class="sold-body"><span class="sold-badge" data-field="portfolio_1_badge">{{portfolio_1_badge}}</span><h3 data-field="portfolio_1_title">{{portfolio_1_title}}</h3><p class="sold-where" data-field="portfolio_1_location">{{portfolio_1_location}}</p><p class="sold-note" data-field="portfolio_1_note">{{portfolio_1_note}}</p><span class="sold-price" data-field="portfolio_1_price">{{portfolio_1_price}}</span></div></article><article class="sold-card"><figure class="sold-shot"><img src="{{portfolio_2_image}}" alt="" data-field="portfolio_2_image" loading="lazy"></figure><div class="sold-body"><span class="sold-badge" data-field="portfolio_2_badge">{{portfolio_2_badge}}</span><h3 data-field="portfolio_2_title">{{portfolio_2_title}}</h3><p class="sold-where" data-field="portfolio_2_location">{{portfolio_2_location}}</p><p class="sold-note" data-field="portfolio_2_note">{{portfolio_2_note}}</p><span class="sold-price" data-field="portfolio_2_price">{{portfolio_2_price}}</span></div></article><article class="sold-card"><figure class="sold-shot"><img src="{{portfolio_3_image}}" alt="" data-field="portfolio_3_image" loading="lazy"></figure><div class="sold-body"><span class="sold-badge" data-field="portfolio_3_badge">{{portfolio_3_badge}}</span><h3 data-field="portfolio_3_title">{{portfolio_3_title}}</h3><p class="sold-where" data-field="portfolio_3_location">{{portfolio_3_location}}</p><p class="sold-note" data-field="portfolio_3_note">{{portfolio_3_note}}</p><span class="sold-price" data-field="portfolio_3_price">{{portfolio_3_price}}</span></div></article></div></div>
 </section>
 <section class="steps-numbered tint reveal" data-block="process" id="process">
 <div class="shell head"><h2 data-field="steps_title">{{steps_title}}</h2></div><div class="shell"><div class="grid"><div class="step"><span class="n">01</span><h3 data-field="step_1_title">{{step_1_title}}</h3><p data-field="step_1_body">{{step_1_body}}</p></div><div class="step"><span class="n">02</span><h3 data-field="step_2_title">{{step_2_title}}</h3><p data-field="step_2_body">{{step_2_body}}</p></div><div class="step"><span class="n">03</span><h3 data-field="step_3_title">{{step_3_title}}</h3><p data-field="step_3_body">{{step_3_body}}</p></div><div class="step"><span class="n">04</span><h3 data-field="step_4_title">{{step_4_title}}</h3><p data-field="step_4_body">{{step_4_body}}</p></div></div></div>
@@ -293,11 +339,11 @@ figure{margin:0}
 <section class="tst-spot reveal" data-block="testimonials" id="testimonials">
 <div class="shell head"><h2 data-field="testimonials_title">{{testimonials_title}}</h2></div><div class="shell grid"><figure class="t"><blockquote data-field="testimonial_1_quote">{{testimonial_1_quote}}</blockquote><figcaption><span class="av" aria-hidden="true">&#8220;</span><span><b data-field="testimonial_1_name">{{testimonial_1_name}}</b><small data-field="testimonial_1_role">{{testimonial_1_role}}</small></span></figcaption></figure><figure class="t"><blockquote data-field="testimonial_2_quote">{{testimonial_2_quote}}</blockquote><figcaption><span class="av" aria-hidden="true">&#8220;</span><span><b data-field="testimonial_2_name">{{testimonial_2_name}}</b><small data-field="testimonial_2_role">{{testimonial_2_role}}</small></span></figcaption></figure><figure class="t"><blockquote data-field="testimonial_3_quote">{{testimonial_3_quote}}</blockquote><figcaption><span class="av" aria-hidden="true">&#8220;</span><span><b data-field="testimonial_3_name">{{testimonial_3_name}}</b><small data-field="testimonial_3_role">{{testimonial_3_role}}</small></span></figcaption></figure></div>
 </section>
-<section class="cta-band reveal" data-block="cta" id="cta">
-<div class="shell"><div class="box"><div><h2 data-field="cta_title">{{cta_title}}</h2><p class="lede" data-field="cta_body">{{cta_body}}</p></div><a class="btn" href="#contact" data-field="cta_button">{{cta_button}}</a></div></div>
-</section>
 <section class="faq-cards tint reveal" data-block="faq" id="faq">
 <div class="shell head"><span class="eyebrow" data-field="faq_eyebrow">{{faq_eyebrow}}</span><h2 data-field="faq_title">{{faq_title}}</h2></div><div class="shell grid"><details class="fq" open><summary><span data-field="faq_1_q">{{faq_1_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_1_a">{{faq_1_a}}</p></details><details class="fq"><summary><span data-field="faq_2_q">{{faq_2_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_2_a">{{faq_2_a}}</p></details><details class="fq"><summary><span data-field="faq_3_q">{{faq_3_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_3_a">{{faq_3_a}}</p></details><details class="fq"><summary><span data-field="faq_4_q">{{faq_4_q}}</span><i aria-hidden="true"></i></summary><p data-field="faq_4_a">{{faq_4_a}}</p></details></div>
+</section>
+<section class="cta-band reveal" data-block="cta" id="cta">
+<div class="shell"><div class="box"><div><h2 data-field="cta_title">{{cta_title}}</h2><p class="lede" data-field="cta_body">{{cta_body}}</p></div><a class="btn" href="#contact" data-field="cta_button">{{cta_button}}</a></div></div>
 </section>
 <section class="ct-wide tint reveal" data-block="contact" id="contact">
 <div class="shell"><div class="head"><h2 data-field="contact_title">{{contact_title}}</h2><p class="lede" data-field="contact_subtitle">{{contact_subtitle}}</p></div><div class="grid"><div class="pane"><form class="cform2" method="post" action="#" novalidate>

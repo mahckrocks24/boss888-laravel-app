@@ -28,18 +28,22 @@
             "footer": "mega",
             "proof": "tiles",
             "faq": "cards",
-            "cta": "band"
+            "cta": "band",
+            "listings": "register",
+            "sold": "ledger"
         },
         "order": [
+            "listings",
             "stats",
-            "offers",
             "proof",
+            "offers",
             "story",
+            "sold",
             "steps",
             "gallery",
             "tst",
-            "cta",
             "faq",
+            "cta",
             "contact"
         ]
     },
@@ -115,6 +119,18 @@
         {
             "id": "cta",
             "name": "Call to action",
+            "elements": []
+        },
+        {
+            "id": "listings",
+            "name": "Properties",
+            "elements": {
+                "listing_1_title": "#listings .pl-card h3"
+            }
+        },
+        {
+            "id": "portfolio",
+            "name": "Recently sold",
             "elements": []
         }
     ],
@@ -679,6 +695,331 @@
             "label": "Call-to-action Button",
             "default": "o"
         },
+        "listings_eyebrow": {
+            "type": "text",
+            "label": "Properties Eyebrow",
+            "default": "On our books today"
+        },
+        "listings_title": {
+            "type": "text",
+            "label": "Properties Heading",
+            "default": "Every one of these has been walked round by the person who wrote the description"
+        },
+        "listings_subtitle": {
+            "type": "text",
+            "label": "Properties Subheading",
+            "default": "We do not list from a floorplan and a phone call. If something is wrong with a house, it is in the description."
+        },
+        "listing_1_title": {
+            "type": "text",
+            "label": "Property 1 Name",
+            "default": "Victorian terrace on Wolseley Road"
+        },
+        "listing_1_price": {
+            "type": "text",
+            "label": "Property 1 Price",
+            "default": "£565,000"
+        },
+        "listing_1_location": {
+            "type": "text",
+            "label": "Property 1 Location",
+            "default": "Bishopston"
+        },
+        "listing_1_specs": {
+            "type": "text",
+            "label": "Property 1 Details",
+            "default": "3 beds • 1 bath • 1,180 sq ft"
+        },
+        "listing_1_badge": {
+            "type": "text",
+            "label": "Property 1 Status",
+            "default": "For Sale"
+        },
+        "listing_1_cta": {
+            "type": "text",
+            "label": "Property 1 Button",
+            "default": "View details"
+        },
+        "listing_1_image": {
+            "type": "image",
+            "label": "Property 1 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-01-a-street-of-terraced-houses-in-evening-l.jpg"
+        },
+        "listing_2_title": {
+            "type": "text",
+            "label": "Property 2 Name",
+            "default": "Garden flat with its own entrance"
+        },
+        "listing_2_price": {
+            "type": "text",
+            "label": "Property 2 Price",
+            "default": "£315,000"
+        },
+        "listing_2_location": {
+            "type": "text",
+            "label": "Property 2 Location",
+            "default": "Redland"
+        },
+        "listing_2_specs": {
+            "type": "text",
+            "label": "Property 2 Details",
+            "default": "2 beds • 1 bath • 780 sq ft"
+        },
+        "listing_2_badge": {
+            "type": "text",
+            "label": "Property 2 Status",
+            "default": "For Sale"
+        },
+        "listing_2_cta": {
+            "type": "text",
+            "label": "Property 2 Button",
+            "default": "View details"
+        },
+        "listing_2_image": {
+            "type": "image",
+            "label": "Property 2 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-05-a-living-room-with-a-bay-window-and-a-ru.jpg"
+        },
+        "listing_3_title": {
+            "type": "text",
+            "label": "Property 3 Name",
+            "default": "Converted coach house"
+        },
+        "listing_3_price": {
+            "type": "text",
+            "label": "Property 3 Price",
+            "default": "£742,500"
+        },
+        "listing_3_location": {
+            "type": "text",
+            "label": "Property 3 Location",
+            "default": "Clifton"
+        },
+        "listing_3_specs": {
+            "type": "text",
+            "label": "Property 3 Details",
+            "default": "3 beds • 2 baths • 1,460 sq ft"
+        },
+        "listing_3_badge": {
+            "type": "text",
+            "label": "Property 3 Status",
+            "default": "For Sale"
+        },
+        "listing_3_cta": {
+            "type": "text",
+            "label": "Property 3 Button",
+            "default": "View details"
+        },
+        "listing_3_image": {
+            "type": "image",
+            "label": "Property 3 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-02-a-kitchen-with-an-island-at-dusk-lights.jpg"
+        },
+        "listing_4_title": {
+            "type": "text",
+            "label": "Property 4 Name",
+            "default": "New-build townhouse, ready now"
+        },
+        "listing_4_price": {
+            "type": "text",
+            "label": "Property 4 Price",
+            "default": "£489,000"
+        },
+        "listing_4_location": {
+            "type": "text",
+            "label": "Property 4 Location",
+            "default": "Southville"
+        },
+        "listing_4_specs": {
+            "type": "text",
+            "label": "Property 4 Details",
+            "default": "4 beds • 2 baths • 1,540 sq ft"
+        },
+        "listing_4_badge": {
+            "type": "text",
+            "label": "Property 4 Status",
+            "default": "Under Offer"
+        },
+        "listing_4_cta": {
+            "type": "text",
+            "label": "Property 4 Button",
+            "default": "View details"
+        },
+        "listing_4_image": {
+            "type": "image",
+            "label": "Property 4 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-11-a-driveway-and-garage-of-a-detached-hous.jpg"
+        },
+        "listing_5_title": {
+            "type": "text",
+            "label": "Property 5 Name",
+            "default": "Top-floor flat with a river view"
+        },
+        "listing_5_price": {
+            "type": "text",
+            "label": "Property 5 Price",
+            "default": "£1,450 pcm"
+        },
+        "listing_5_location": {
+            "type": "text",
+            "label": "Property 5 Location",
+            "default": "Harbourside"
+        },
+        "listing_5_specs": {
+            "type": "text",
+            "label": "Property 5 Details",
+            "default": "2 beds • 2 baths • 860 sq ft"
+        },
+        "listing_5_badge": {
+            "type": "text",
+            "label": "Property 5 Status",
+            "default": "To Let"
+        },
+        "listing_5_cta": {
+            "type": "text",
+            "label": "Property 5 Button",
+            "default": "View details"
+        },
+        "listing_5_image": {
+            "type": "image",
+            "label": "Property 5 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-07-a-modern-apartment-balcony-with-the-city.jpg"
+        },
+        "listing_6_title": {
+            "type": "text",
+            "label": "Property 6 Name",
+            "default": "Family house with a studio at the end of the garden"
+        },
+        "listing_6_price": {
+            "type": "text",
+            "label": "Property 6 Price",
+            "default": "£835,000"
+        },
+        "listing_6_location": {
+            "type": "text",
+            "label": "Property 6 Location",
+            "default": "Henleaze"
+        },
+        "listing_6_specs": {
+            "type": "text",
+            "label": "Property 6 Details",
+            "default": "4 beds • 2 baths • 1,910 sq ft"
+        },
+        "listing_6_badge": {
+            "type": "text",
+            "label": "Property 6 Status",
+            "default": "For Sale"
+        },
+        "listing_6_cta": {
+            "type": "text",
+            "label": "Property 6 Button",
+            "default": "View details"
+        },
+        "listing_6_image": {
+            "type": "image",
+            "label": "Property 6 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-06-a-garden-with-a-lawn-and-a-patio-table.jpg"
+        },
+        "sold_title": {
+            "type": "text",
+            "label": "Sold Heading",
+            "default": "Recently sold and let"
+        },
+        "sold_subtitle": {
+            "type": "text",
+            "label": "Sold Subheading",
+            "default": "The price achieved and how long it took — both published, whether or not they flatter us."
+        },
+        "portfolio_1_title": {
+            "type": "text",
+            "label": "Sold 1 Name",
+            "default": "Semi-detached on Kellaway Avenue"
+        },
+        "portfolio_1_price": {
+            "type": "text",
+            "label": "Sold 1 Price",
+            "default": "£612,000"
+        },
+        "portfolio_1_location": {
+            "type": "text",
+            "label": "Sold 1 Location",
+            "default": "Horfield"
+        },
+        "portfolio_1_note": {
+            "type": "text",
+            "label": "Sold 1 Outcome",
+            "default": "Sold in eleven days, £7,000 over asking."
+        },
+        "portfolio_1_badge": {
+            "type": "text",
+            "label": "Sold 1 Status",
+            "default": "Sold"
+        },
+        "portfolio_1_image": {
+            "type": "image",
+            "label": "Sold 1 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-04-a-sold-board-outside-a-brick-house.jpg"
+        },
+        "portfolio_2_title": {
+            "type": "text",
+            "label": "Sold 2 Name",
+            "default": "Two-bed maisonette"
+        },
+        "portfolio_2_price": {
+            "type": "text",
+            "label": "Sold 2 Price",
+            "default": "£1,195 pcm"
+        },
+        "portfolio_2_location": {
+            "type": "text",
+            "label": "Sold 2 Location",
+            "default": "Montpelier"
+        },
+        "portfolio_2_note": {
+            "type": "text",
+            "label": "Sold 2 Outcome",
+            "default": "Let to the first viewer, at asking."
+        },
+        "portfolio_2_badge": {
+            "type": "text",
+            "label": "Sold 2 Status",
+            "default": "Let"
+        },
+        "portfolio_2_image": {
+            "type": "image",
+            "label": "Sold 2 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-09-a-bedroom-with-a-view-over-rooftops.jpg"
+        },
+        "portfolio_3_title": {
+            "type": "text",
+            "label": "Sold 3 Name",
+            "default": "Edwardian house needing work"
+        },
+        "portfolio_3_price": {
+            "type": "text",
+            "label": "Sold 3 Price",
+            "default": "£498,000"
+        },
+        "portfolio_3_location": {
+            "type": "text",
+            "label": "Sold 3 Location",
+            "default": "Easton"
+        },
+        "portfolio_3_note": {
+            "type": "text",
+            "label": "Sold 3 Outcome",
+            "default": "Took nine weeks and two price changes. Sold."
+        },
+        "portfolio_3_badge": {
+            "type": "text",
+            "label": "Sold 3 Status",
+            "default": "Sold"
+        },
+        "portfolio_3_image": {
+            "type": "image",
+            "label": "Sold 3 Photo",
+            "default": "/storage/template-images/real_estate_agency/gen-08-a-front-door-painted-navy-with-a-brass-k.jpg"
+        },
         "primary_color": {
             "type": "color",
             "label": "Primary Colour",
@@ -715,5 +1056,13 @@
         "accent": "accent_color",
         "accent_deep": "primary_deep",
         "secondary": "secondary_color"
+    },
+    "catalogue": {
+        "kind": "listings",
+        "label": "Listings",
+        "home_block": "listings",
+        "slots": 6,
+        "sold_block": "portfolio",
+        "sold_slots": 3
     }
 }
