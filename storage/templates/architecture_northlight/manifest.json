@@ -9,7 +9,7 @@
     "variation": "northlight",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "steelgold",
         "type": "civic",
@@ -669,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "A"
+            "default": "Talk to us before you buy or brief"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "r"
+            "default": "The cheapest hour of any project is the one before the drawing starts."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "r"
+            "default": "Arrange a first meeting"
         },
         "primary_color": {
             "type": "color",

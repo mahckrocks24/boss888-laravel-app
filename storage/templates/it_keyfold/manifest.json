@@ -9,7 +9,7 @@
     "variation": "keyfold",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "plum",
         "type": "humanist",
@@ -659,17 +659,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Start with the free assessment"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Two days on your network and a written report you keep — what is at risk, what it costs to fix, and what we would do first."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book an assessment"
         },
         "hero_form_note": {
             "type": "text",

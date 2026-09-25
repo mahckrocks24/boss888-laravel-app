@@ -9,7 +9,7 @@
     "variation": "hearthside",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "stonewash",
         "type": "warm",
@@ -629,17 +629,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Book a two-hour window"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Tell us the problem, get a fixed price, choose a slot. Done and certified the same visit for most jobs."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a visit"
         },
         "primary_color": {
             "type": "color",

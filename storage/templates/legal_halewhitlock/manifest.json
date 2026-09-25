@@ -9,7 +9,7 @@
     "variation": "halewhitlock",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "graphite",
         "type": "editorial",
@@ -654,17 +654,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Start with a first meeting"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Half an hour, free, and an honest view of whether the matter is worth pursuing at all."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a first meeting"
         },
         "hero_form_note": {
             "type": "text",

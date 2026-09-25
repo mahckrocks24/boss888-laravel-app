@@ -9,7 +9,7 @@
     "variation": "studioline",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "stonewash",
         "type": "swiss",
@@ -28,7 +28,9 @@
             "footer": "bar",
             "proof": "tiles",
             "faq": "cards",
-            "cta": "split"
+            "cta": "split",
+            "listings": "none",
+            "sold": "none"
         },
         "order": [
             "stats",
@@ -667,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Start with a consultation"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Two hours in your home, a written note of what we would do and roughly what it would cost. Yours to keep whether or not you continue."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a consultation"
         },
         "primary_color": {
             "type": "color",

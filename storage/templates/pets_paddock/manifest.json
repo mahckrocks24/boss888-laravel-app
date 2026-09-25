@@ -9,7 +9,7 @@
     "variation": "paddock",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "olive",
         "type": "humanist",
@@ -28,7 +28,9 @@
             "footer": "mega",
             "proof": "strip",
             "faq": "accordion",
-            "cta": "centered"
+            "cta": "centered",
+            "listings": "none",
+            "sold": "none"
         },
         "order": [
             "stats",
@@ -667,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Book a free trial day"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "A calm morning with a small group, cameras on, and an honest verdict at pick-up."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a trial day"
         },
         "primary_color": {
             "type": "color",

@@ -9,7 +9,7 @@
     "variation": "parcelyard",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "slate",
         "type": "atelier",
@@ -666,17 +666,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "S"
+            "default": "Have a look round"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "h"
+            "default": "Everything in stock is on the site, and what is on the site is in stock."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Browse the shop"
         },
         "hero_search_title": {
             "type": "text",

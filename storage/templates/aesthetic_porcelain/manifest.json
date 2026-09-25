@@ -9,7 +9,7 @@
     "variation": "porcelain",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "clay",
         "type": "grotesque",
@@ -649,17 +649,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Start with the consultation"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Free, unhurried, and with no treatment on the day. You will leave with a written plan and a price."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a consultation"
         },
         "primary_color": {
             "type": "color",

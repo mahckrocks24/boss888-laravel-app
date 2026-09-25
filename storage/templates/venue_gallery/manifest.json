@@ -9,7 +9,7 @@
     "variation": "gallery",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "navyrose",
         "type": "atelier",
@@ -28,7 +28,9 @@
             "footer": "mega",
             "proof": "tiles",
             "faq": "cards",
-            "cta": "centered"
+            "cta": "centered",
+            "listings": "none",
+            "sold": "none"
         },
         "order": [
             "stats",
@@ -667,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "C"
+            "default": "Check your date"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "h"
+            "default": "Tell us the season you have in mind and we will send what is free, with the price for each space."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "e"
+            "default": "Check availability"
         },
         "primary_color": {
             "type": "color",

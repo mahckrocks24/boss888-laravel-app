@@ -9,7 +9,7 @@
     "variation": "haberdash",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "ironblue",
         "type": "humanist",
@@ -666,17 +666,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "S"
+            "default": "Come and have a look"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "h"
+            "default": "Open six days. Everything on the site is in the shop, and the prices match."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "See what is in"
         },
         "hero_search_title": {
             "type": "text",

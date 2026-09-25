@@ -9,7 +9,7 @@
     "variation": "crowncourt",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "ember",
         "type": "humanist",
@@ -654,17 +654,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Get the real number"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "A valuation in person, with the evidence, and no pressure to instruct on the day."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a valuation"
         },
         "primary_color": {
             "type": "color",

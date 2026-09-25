@@ -9,7 +9,7 @@
     "variation": "meadow",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "seafoam",
         "type": "humanist",
@@ -28,7 +28,9 @@
             "footer": "mega",
             "proof": "strip",
             "faq": "accordion",
-            "cta": "centered"
+            "cta": "centered",
+            "listings": "none",
+            "sold": "none"
         },
         "order": [
             "stats",
@@ -667,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Come and see a normal morning"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Visits are during the session, not after it, so you see the room as it really runs."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a visit"
         },
         "primary_color": {
             "type": "color",

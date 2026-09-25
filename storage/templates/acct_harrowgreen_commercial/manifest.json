@@ -1,47 +1,47 @@
 {
-    "id": "hotel_harbourhouse",
-    "name": "Hotel — Harbour House",
-    "industry": "hotel",
-    "description": "A small hotel that behaves like a good house",
-    "thumbnail": "/storage/builder-heroes/hotel.jpg",
-    "category": "hospitality",
+    "id": "acct_harrowgreen_commercial",
+    "name": "Accountants — Harrow Green — Commercial",
+    "industry": "accounting",
+    "description": "Your accounts filed early, your tax explained, and one fixed monthly fee",
+    "thumbnail": "/storage/builder-heroes/accounting.jpg",
+    "category": "professional",
     "version": "2.0.0",
-    "variation": "harbourhouse",
+    "variation": "commercial",
     "is_active": true,
     "design": {
-        "generated": "2026-09-25",
+        "generated": "2026-09-24",
         "generator": "lug-template-generator v2",
-        "palette": "marine",
-        "type": "humanist",
-        "scale": "stately",
-        "radius": "soft",
+        "palette": "graphite",
+        "type": "civic",
+        "scale": "compact",
+        "radius": "hair",
         "archetypes": {
-            "nav": "glass",
-            "hero": "stage",
-            "stats": "cards",
-            "offers": "bento",
-            "story": "split-dark",
+            "nav": "ledge",
+            "hero": "ledger",
+            "stats": "bigband",
+            "offers": "plate",
+            "story": "statement",
             "gallery": "feature",
-            "steps": "numbered",
-            "tst": "wall",
-            "contact": "wide",
+            "steps": "spine",
+            "tst": "marquee",
+            "contact": "darkband",
             "footer": "mega",
             "proof": "tiles",
             "faq": "cards",
-            "cta": "band",
+            "cta": "centered",
             "listings": "none",
             "sold": "none"
         },
         "order": [
+            "offers",
             "stats",
             "story",
-            "offers",
-            "gallery",
             "proof",
             "steps",
-            "faq",
             "tst",
+            "gallery",
             "cta",
+            "faq",
             "contact"
         ]
     },
@@ -124,17 +124,17 @@
         "business_name": {
             "type": "text",
             "label": "Business Name",
-            "default": "Harbour House"
+            "default": "Harrow Green Accountants"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "A small hotel that behaves like a good house"
+            "default": "Your accounts filed early, your tax explained, and one fixed monthly fee"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Twenty-two rooms, a working kitchen and a bar that stays open for residents. Direct booking always beats the agents."
+            "default": "Chartered accountants for small limited companies and sole traders: year-end accounts, tax returns, payroll and bookkeeping on a fixed monthly fee with no charge for questions."
         },
         "canonical_url": {
             "type": "url",
@@ -144,7 +144,7 @@
         "og_image": {
             "type": "image",
             "label": "OG Image",
-            "default": "/storage/builder-heroes/hotel.jpg"
+            "default": "/storage/builder-heroes/accounting.jpg"
         },
         "og_locale": {
             "type": "text",
@@ -159,42 +159,42 @@
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Twenty-two rooms · City centre"
+            "default": "Chartered accountants · Fixed monthly fee"
         },
         "hero_title": {
             "type": "text",
             "label": "Hero Heading",
-            "default": "Somewhere to stay that does not feel like a chain"
+            "default": "One fixed fee, and no bill for asking a question"
         },
         "hero_subtitle": {
             "type": "text",
             "label": "Hero Subheading",
-            "default": "Rooms with windows that open, a kitchen that serves until late, and a front desk staffed by people who live here."
+            "default": "Year-end accounts, corporation tax, payroll and VAT for small companies and sole traders, on a monthly fee agreed before we start and never billed by the hour."
         },
         "hero_cta": {
             "type": "text",
             "label": "Hero Button",
-            "default": "Check availability"
+            "default": "Get a fixed quote"
         },
         "hero_cta_2": {
             "type": "text",
             "label": "Hero Secondary Button",
-            "default": "See the rooms"
+            "default": "Find out more"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
-            "default": "/storage/builder-heroes/hotel.jpg"
+            "default": "/storage/builder-heroes/accounting.jpg"
         },
         "offers_title": {
             "type": "text",
             "label": "Offers Heading",
-            "default": "Rooms and rates"
+            "default": "What we handle"
         },
         "offers_subtitle": {
             "type": "text",
             "label": "Offers Subheading",
-            "default": "Every rate includes breakfast, wifi that works, and no resort fee of any kind."
+            "default": "Six services, bundled into one monthly fee or taken on their own. Every price on this page is the price you pay."
         },
         "story_eyebrow": {
             "type": "text",
@@ -204,27 +204,22 @@
         "story_title": {
             "type": "text",
             "label": "Story Heading",
-            "default": "A building with a longer memory than we have"
+            "default": "We do not charge for the phone call"
         },
         "story_body": {
             "type": "text",
             "label": "Story Body",
-            "default": "It was a merchant's house, then a boarding house, then empty for eleven years. We kept the staircase, the shutters and the bones, and replaced everything that had stopped working. What we did not do is strip out the things that make it feel like somewhere rather than anywhere."
-        },
-        "story_image": {
-            "type": "image",
-            "label": "Story Image",
-            "default": "/storage/template-images/hotel/gen-07-the-reception-desk-with-a-bell-and-a-bow.jpg"
+            "default": "The reason small companies avoid ringing their accountant is that it appears on the next invoice. Ours does not. The monthly fee covers the work and the questions, because a question asked in March is cheaper for everybody than a mistake found in December. If your circumstances change enough to move you to a different fee, we tell you before the change, not after."
         },
         "gallery_title": {
             "type": "text",
             "label": "Gallery Heading",
-            "default": "The house"
+            "default": "The practice"
         },
         "steps_title": {
             "type": "text",
             "label": "Process Heading",
-            "default": "Staying with us"
+            "default": "How it works"
         },
         "testimonials_title": {
             "type": "text",
@@ -234,12 +229,12 @@
         "contact_title": {
             "type": "text",
             "label": "Contact Heading",
-            "default": "Reservations and enquiries"
+            "default": "Get a fixed quote"
         },
         "contact_subtitle": {
             "type": "text",
             "label": "Contact Subheading",
-            "default": "The desk is staffed around the clock, and the phone is answered by a person."
+            "default": "Send last year's accounts, or just tell us the size of the business. A quote comes back within two working days."
         },
         "contact_phone": {
             "type": "text",
@@ -259,17 +254,17 @@
         "contact_hours": {
             "type": "text",
             "label": "Opening Hours",
-            "default": "Reception 24 hours · Kitchen 7–10, 12–10"
+            "default": "Mon–Fri 9–5.30"
         },
         "contact_cta": {
             "type": "text",
             "label": "Contact Button",
-            "default": "Check availability"
+            "default": "Get a fixed quote"
         },
         "footer_blurb": {
             "type": "text",
             "label": "Footer Blurb",
-            "default": "A small hotel that behaves like a good house"
+            "default": "Your accounts filed early, your tax explained, and one fixed monthly fee"
         },
         "footer_col_1": {
             "type": "text",
@@ -289,252 +284,252 @@
         "nav_1": {
             "type": "text",
             "label": "Nav Link 1",
-            "default": "Rooms"
+            "default": "Services"
         },
         "nav_2": {
             "type": "text",
             "label": "Nav Link 2",
-            "default": "The hotel"
+            "default": "How we work"
         },
         "nav_3": {
             "type": "text",
             "label": "Nav Link 3",
-            "default": "Gallery"
+            "default": "The team"
         },
         "nav_4": {
             "type": "text",
             "label": "Nav Link 4",
-            "default": "Dining"
+            "default": "Process"
         },
         "nav_5": {
             "type": "text",
             "label": "Nav Link 5",
-            "default": "Book"
+            "default": "Contact"
         },
         "nav_cta": {
             "type": "text",
             "label": "Nav Button",
-            "default": "Check availability"
+            "default": "Get a fixed quote"
         },
         "stat_1_value": {
             "type": "text",
             "label": "Stat 1 Value",
-            "default": "22"
+            "default": "1"
         },
         "stat_1_label": {
             "type": "text",
             "label": "Stat 1 Label",
-            "default": "Rooms"
+            "default": "Monthly fee, all in"
         },
         "stat_2_value": {
             "type": "text",
             "label": "Stat 2 Value",
-            "default": "1847"
+            "default": "£0"
         },
         "stat_2_label": {
             "type": "text",
             "label": "Stat 2 Label",
-            "default": "The building"
+            "default": "Charged for questions"
         },
         "stat_3_value": {
             "type": "text",
             "label": "Stat 3 Value",
-            "default": "24 h"
+            "default": "Nov"
         },
         "stat_3_label": {
             "type": "text",
             "label": "Stat 3 Label",
-            "default": "Staffed reception"
+            "default": "Returns filed by, not January"
         },
         "stat_4_value": {
             "type": "text",
             "label": "Stat 4 Value",
-            "default": "0"
+            "default": "2 days"
         },
         "stat_4_label": {
             "type": "text",
             "label": "Stat 4 Label",
-            "default": "Resort fees, ever"
+            "default": "To a written quote"
         },
         "service_1_title": {
             "type": "text",
             "label": "Service 1 Title",
-            "default": "Classic double"
+            "default": "Year-end accounts"
         },
         "service_1_text": {
             "type": "text",
             "label": "Service 1 Description",
-            "default": "Twenty square metres, a proper desk, and a bath you can lie down in."
+            "default": "Statutory accounts prepared, agreed with you, and filed at Companies House well before the deadline."
         },
         "service_1_price": {
             "type": "text",
             "label": "Service 1 Price / Detail",
-            "default": "From £145"
+            "default": "From £95/mo"
         },
         "service_2_title": {
             "type": "text",
             "label": "Service 2 Title",
-            "default": "Courtyard room"
+            "default": "Corporation tax"
         },
         "service_2_text": {
             "type": "text",
             "label": "Service 2 Description",
-            "default": "Quieter side of the building, with a small terrace and morning sun."
+            "default": "The return, the computation, and a plain explanation of what you owe and when it leaves the account."
         },
         "service_2_price": {
             "type": "text",
             "label": "Service 2 Price / Detail",
-            "default": "From £185"
+            "default": "From £45/mo"
         },
         "service_3_title": {
             "type": "text",
             "label": "Service 3 Title",
-            "default": "Corner suite"
+            "default": "Self assessment"
         },
         "service_3_text": {
             "type": "text",
             "label": "Service 3 Description",
-            "default": "Two aspects, a sitting area, and the only bath with a view in the building."
+            "default": "Personal tax returns for directors and sole traders, filed by the end of November, not in January."
         },
         "service_3_price": {
             "type": "text",
             "label": "Service 3 Price / Detail",
-            "default": "From £265"
+            "default": "From £250/yr"
         },
         "service_4_title": {
             "type": "text",
             "label": "Service 4 Title",
-            "default": "Long stay"
+            "default": "Payroll and pensions"
         },
         "service_4_text": {
             "type": "text",
             "label": "Service 4 Description",
-            "default": "Seven nights or more, with laundry, a weekly change and a reduced rate."
+            "default": "Monthly payroll, payslips, RTI submissions and auto-enrolment, run on the same date each month."
         },
         "service_4_price": {
             "type": "text",
             "label": "Service 4 Price / Detail",
-            "default": "From £110/nt"
+            "default": "From £6/payslip"
         },
         "service_5_title": {
             "type": "text",
             "label": "Service 5 Title",
-            "default": "Meeting room"
+            "default": "VAT returns"
         },
         "service_5_text": {
             "type": "text",
             "label": "Service 5 Description",
-            "default": "Seats ten, daylight on two sides, and lunch from our own kitchen."
+            "default": "Quarterly returns under Making Tax Digital, with the reconciliation shown so you can see how the figure was reached."
         },
         "service_5_price": {
             "type": "text",
             "label": "Service 5 Price / Detail",
-            "default": "£220/day"
+            "default": "From £55/mo"
         },
         "service_6_title": {
             "type": "text",
             "label": "Service 6 Title",
-            "default": "Whole-house hire"
+            "default": "Bookkeeping"
         },
         "service_6_text": {
             "type": "text",
             "label": "Service 6 Description",
-            "default": "All twenty-two rooms, the bar and the courtyard, for a weekend."
+            "default": "Your records kept properly and reconciled monthly, so the year end is a formality rather than an ordeal."
         },
         "service_6_price": {
             "type": "text",
             "label": "Service 6 Price / Detail",
-            "default": "On request"
+            "default": "From £120/mo"
         },
         "story_point_1": {
             "type": "text",
             "label": "Story Point 1",
-            "default": "Direct bookings are always the lowest rate we offer"
+            "default": "One monthly fee, agreed in writing, never billed by the hour"
         },
         "story_point_2": {
             "type": "text",
             "label": "Story Point 2",
-            "default": "Breakfast cooked to order, not laid out under a lamp"
+            "default": "Questions included: calls and emails are not chargeable events"
         },
         "story_point_3": {
             "type": "text",
             "label": "Story Point 3",
-            "default": "Staff are salaried, and tips are theirs entirely"
+            "default": "Accounts filed early, with the tax figure given to you in advance"
         },
         "gallery_1": {
             "type": "image",
             "label": "Gallery Image 1",
-            "default": "/storage/template-images/hotel/gen-01-a-bedroom-with-pressed-white-linen-and-a.jpg"
+            "default": "/storage/template-images/accounting/gen-01-a-calculator-a-notepad-and-a-pen-on-a.jpg"
         },
         "gallery_2": {
             "type": "image",
             "label": "Gallery Image 2",
-            "default": "/storage/template-images/hotel/gen-02-the-lobby-with-a-brass-lamp-and-a-leathe.jpg"
+            "default": "/storage/template-images/accounting/gen-02-shelves-of-plain-lever-arch-files-in-a.jpg"
         },
         "gallery_3": {
             "type": "image",
             "label": "Gallery Image 3",
-            "default": "/storage/template-images/hotel/gen-03-a-breakfast-terrace-with-a-pot-of-coffee.jpg"
+            "default": "/storage/template-images/accounting/gen-03-a-meeting-corner-with-two-chairs-and-a.jpg"
         },
         "gallery_4": {
             "type": "image",
             "label": "Gallery Image 4",
-            "default": "/storage/template-images/hotel/gen-04-a-corridor-with-patterned-carpet-and-num.jpg"
+            "default": "/storage/template-images/accounting/gen-04-a-desk-seen-from-behind-with-two-dark.jpg"
         },
         "gallery_5": {
             "type": "image",
             "label": "Gallery Image 5",
-            "default": "/storage/template-images/hotel/gen-05-a-bathroom-with-a-rain-shower-and-rolled.jpg"
+            "default": "/storage/template-images/accounting/gen-05-a-mug-of-tea-beside-a-keyboard-and-a-n.jpg"
         },
         "gallery_6": {
             "type": "image",
             "label": "Gallery Image 6",
-            "default": "/storage/template-images/hotel/gen-06-a-rooftop-pool-at-dusk-with-two-loungers.jpg"
+            "default": "/storage/template-images/accounting/gen-06-a-desk-by-a-window-in-morning-light-wi.jpg"
         },
         "step_1_title": {
             "type": "text",
             "label": "Step 1 Title",
-            "default": "Book direct"
+            "default": "A look at your figures"
         },
         "step_1_body": {
             "type": "text",
             "label": "Step 1 Body",
-            "default": "Best rate, free cancellation up to 24 hours, no card charged in advance."
+            "default": "Half an hour with last year's accounts. We will tell you what we would do differently and what it would cost."
         },
         "step_2_title": {
             "type": "text",
             "label": "Step 2 Title",
-            "default": "Tell us anything"
+            "default": "A fixed quote"
         },
         "step_2_body": {
             "type": "text",
             "label": "Step 2 Body",
-            "default": "Early arrival, a cot, a quiet floor — say so and it is arranged."
+            "default": "One monthly figure covering everything you need, with anything excluded listed explicitly."
         },
         "step_3_title": {
             "type": "text",
             "label": "Step 3 Title",
-            "default": "Check in from two"
+            "default": "Handover"
         },
         "step_3_body": {
             "type": "text",
             "label": "Step 3 Body",
-            "default": "Or drop your bags any time and go and enjoy the city."
+            "default": "We deal with your previous accountant, HMRC and Companies House. You sign two forms."
         },
         "step_4_title": {
             "type": "text",
             "label": "Step 4 Title",
-            "default": "Leave by eleven"
+            "default": "The year"
         },
         "step_4_body": {
             "type": "text",
             "label": "Step 4 Body",
-            "default": "Late checkout is free when the room allows, and it usually does."
+            "default": "Monthly bookkeeping, quarterly VAT, payroll on the same day each month, and accounts filed early."
         },
         "testimonial_1_quote": {
             "type": "text",
             "label": "Testimonial 1",
-            "default": "The first hotel in years where the person at the desk actually knew the city."
+            "default": "The first accountant who told me my tax bill in October rather than the week before it was due."
         },
         "testimonial_1_name": {
             "type": "text",
@@ -544,12 +539,12 @@
         "testimonial_1_role": {
             "type": "text",
             "label": "Testimonial 1 Role",
-            "default": "Guest"
+            "default": "Director"
         },
         "testimonial_2_quote": {
             "type": "text",
             "label": "Testimonial 2",
-            "default": "Small, quiet, immaculate, and the breakfast alone would bring me back."
+            "default": "I ring with questions now, because I know it is not going to turn up on an invoice."
         },
         "testimonial_2_name": {
             "type": "text",
@@ -559,12 +554,12 @@
         "testimonial_2_role": {
             "type": "text",
             "label": "Testimonial 2 Role",
-            "default": "Guest"
+            "default": "Director"
         },
         "testimonial_3_quote": {
             "type": "text",
             "label": "Testimonial 3",
-            "default": "They moved us to a quieter room at midnight without being asked twice."
+            "default": "They moved us off hourly billing and the annual cost went down, not up."
         },
         "testimonial_3_name": {
             "type": "text",
@@ -574,7 +569,7 @@
         "testimonial_3_role": {
             "type": "text",
             "label": "Testimonial 3 Role",
-            "default": "Guest"
+            "default": "Director"
         },
         "social_facebook": {
             "type": "url",
@@ -599,62 +594,62 @@
         "proof_1": {
             "type": "text",
             "label": "Reason 1",
-            "default": "Twenty-two rooms in an 1847 building"
+            "default": "One fixed monthly fee, never hourly"
         },
         "faq_1_q": {
             "type": "text",
             "label": "FAQ 1 Question",
-            "default": "Why book direct?"
+            "default": "Do you charge for questions?"
         },
         "faq_1_a": {
             "type": "text",
             "label": "FAQ 1 Answer",
-            "default": "Our best rate is here, not on the booking sites, and a direct booking can be changed or cancelled without a fee up to noon the day before."
+            "default": "No. Calls and emails are included in the monthly fee. It is the single thing clients say changes the relationship most."
         },
         "proof_2": {
             "type": "text",
             "label": "Reason 2",
-            "default": "Reception staffed twenty-four hours"
+            "default": "Questions included, always"
         },
         "faq_2_q": {
             "type": "text",
             "label": "FAQ 2 Question",
-            "default": "Is breakfast included?"
+            "default": "Can you take over from my current accountant?"
         },
         "faq_2_a": {
             "type": "text",
             "label": "FAQ 2 Answer",
-            "default": "Yes, cooked to order, in the dining room from seven. Not a buffet under lamps."
+            "default": "Yes, and we do the awkward part. We write for professional clearance, collect the records and deal with HMRC and Companies House. You sign two forms."
         },
         "proof_3": {
             "type": "text",
             "label": "Reason 3",
-            "default": "No resort fees, ever"
+            "default": "Accounts filed early, tax told in advance"
         },
         "faq_3_q": {
             "type": "text",
             "label": "FAQ 3 Question",
-            "default": "Is there parking?"
+            "default": "When will I know my tax bill?"
         },
         "faq_3_a": {
             "type": "text",
             "label": "FAQ 3 Answer",
-            "default": "A small courtyard car park, first come first served, and a secure public car park three minutes away that we validate for a flat rate."
+            "default": "As soon as the accounts are agreed, which is months before the payment date, not days. Nobody should discover a tax bill in January."
         },
         "proof_4": {
             "type": "text",
             "label": "Reason 4",
-            "default": "Breakfast cooked to order"
+            "default": "We handle the switch from your old accountant"
         },
         "faq_4_q": {
             "type": "text",
             "label": "FAQ 4 Question",
-            "default": "Can the whole house be hired?"
+            "default": "What software do you use?"
         },
         "faq_4_a": {
             "type": "text",
             "label": "FAQ 4 Answer",
-            "default": "Yes — all twenty-two rooms, the dining room and the drawing room, for a wedding or a company. Ask and we will send the terms."
+            "default": "Whatever you already use, as long as it is Making Tax Digital compatible. We will not make you migrate to suit our workflow."
         },
         "faq_eyebrow": {
             "type": "text",
@@ -669,37 +664,37 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "Stay somewhere that behaves like a good house"
+            "default": "Get a fixed quote"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "Check availability and book direct — the best rate, and no resort fees, ever."
+            "default": "Send last year's accounts, or just the size of the business. A written quote comes back within two working days."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "Check availability"
+            "default": "Get a fixed quote"
         },
         "primary_color": {
             "type": "color",
             "label": "Primary Colour",
-            "default": "#16607F"
+            "default": "#B4763A"
         },
         "primary_deep": {
             "type": "color",
             "label": "Primary (Deep)",
-            "default": "#124F68"
+            "default": "#946130"
         },
         "accent_color": {
             "type": "color",
             "label": "Accent Colour",
-            "default": "#16607F"
+            "default": "#B4763A"
         },
         "secondary_color": {
             "type": "color",
             "label": "Secondary Colour",
-            "default": "#0B1620"
+            "default": "#14171C"
         }
     },
     "social_fields": {

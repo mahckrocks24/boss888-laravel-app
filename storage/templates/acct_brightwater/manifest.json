@@ -9,7 +9,7 @@
     "variation": "brightwater",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "ironblue",
         "type": "swiss",
@@ -649,17 +649,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "G"
+            "default": "Get a fixed quote"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "e"
+            "default": "Send last year's accounts, or just the size of the business. A written quote comes back within two working days."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "t"
+            "default": "Get a fixed quote"
         },
         "hero_form_note": {
             "type": "text",

@@ -9,7 +9,7 @@
     "variation": "lacquer",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "clay",
         "type": "humanist",
@@ -649,17 +649,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Book a time that suits"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Consultations are free and never turn into a hard sell. Come and see what would actually work."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book an appointment"
         },
         "primary_color": {
             "type": "color",

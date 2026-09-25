@@ -9,7 +9,7 @@
     "variation": "ashgrove",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "slate",
         "type": "grotesque",
@@ -644,17 +644,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "A"
+            "default": "Start with a conversation"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "r"
+            "default": "Forty minutes, no charge, no deck. If we cannot help we will say so and suggest who can."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "r"
+            "default": "Arrange a call"
         },
         "hero_form_title": {
             "type": "text",

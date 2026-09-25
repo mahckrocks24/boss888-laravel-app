@@ -9,7 +9,7 @@
     "variation": "ironhouse",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "mono",
         "type": "industrial",
@@ -28,7 +28,9 @@
             "footer": "bar",
             "proof": "strip",
             "faq": "accordion",
-            "cta": "band"
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
         },
         "order": [
             "offers",
@@ -652,17 +654,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Train here first, then decide"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "A free trial session at peak time, deliberately, so you see the floor at its busiest."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a trial"
         },
         "primary_color": {
             "type": "color",

@@ -9,7 +9,7 @@
     "variation": "quillroom",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "copper",
         "type": "grotesque",
@@ -649,17 +649,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Start with a free session"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "An hour, no charge, no commitment, and an honest view of where things actually stand."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a free session"
         },
         "primary_color": {
             "type": "color",

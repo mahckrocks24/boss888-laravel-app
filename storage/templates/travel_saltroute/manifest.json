@@ -9,7 +9,7 @@
     "variation": "saltroute",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "ember",
         "type": "atelier",
@@ -664,17 +664,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "S"
+            "default": "Tell us where you fancy"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "t"
+            "default": "A first conversation is free and often saves more than the fee. Say roughly where, roughly when, and a budget."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "a"
+            "default": "Plan a trip"
         },
         "primary_color": {
             "type": "color",

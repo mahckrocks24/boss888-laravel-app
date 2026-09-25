@@ -9,7 +9,7 @@
     "variation": "saltcellar",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "clay",
         "type": "gazette",
@@ -654,17 +654,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "R"
+            "default": "Tell us about the day"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "e"
+            "default": "Numbers, place and the kind of food you had in mind. We will come back with a written quote, itemised."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "q"
+            "default": "Ask for a quote"
         },
         "primary_color": {
             "type": "color",

@@ -9,7 +9,7 @@
     "variation": "pennyloaf",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "marine",
         "type": "couture",
@@ -649,17 +649,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "S"
+            "default": "Come in for the first cup"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "e"
+            "default": "Doors open at seven. The bread is out of the oven by half past, and the espresso is dialled in before either."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "e"
+            "default": "See the menu"
         },
         "hero_form_title": {
             "type": "text",

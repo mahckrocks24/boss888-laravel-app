@@ -9,7 +9,7 @@
     "variation": "wintergarden",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "plum",
         "type": "warm",
@@ -669,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "C"
+            "default": "Stay somewhere that behaves like a good house"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "h"
+            "default": "Check availability and book direct — the best rate, and no resort fees, ever."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "e"
+            "default": "Check availability"
         },
         "primary_color": {
             "type": "color",

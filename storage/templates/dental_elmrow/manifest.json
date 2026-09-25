@@ -9,7 +9,7 @@
     "variation": "elmrow",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "mono",
         "type": "industrial",
@@ -659,17 +659,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Book an examination"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "A full assessment, a written plan and a price, with nothing started on the day."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book an examination"
         },
         "hero_form_title": {
             "type": "text",

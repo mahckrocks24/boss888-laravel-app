@@ -9,7 +9,7 @@
     "variation": "chapterone",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "forest",
         "type": "civic",
@@ -666,17 +666,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "S"
+            "default": "Start the first lesson"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "e"
+            "default": "The opening module is free and takes about twenty minutes. Decide after that."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "e"
+            "default": "Start free"
         },
         "hero_search_title": {
             "type": "text",

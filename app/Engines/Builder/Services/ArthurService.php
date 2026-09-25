@@ -2699,6 +2699,22 @@ PROMPT;
             app(TemplateService::class)->roleifyStoredSections($websiteId);   // RISK-0191 U1: pre-roles stored sections convert on a palette change
             app(TemplateService::class)->refreshHomeAddedBlocks($websiteId);   // U3: added blocks on the export carry their field ids (before normalising, so they take the new fallbacks)
             \App\Engines\Builder\Support\PaletteRoles::normaliseExport($websiteId, $__roles, $__manifest);
+            /* PALETTE-WINS-1 (Owner 2026-09-25): a palette must repaint every colour variable it can reach,
+               so no recolour made BEFORE it survives. themeVarsForSite() covers only the manifest-named roles;
+               a recolour goes through mapRolesToSiteVars() and lands on the most-used variables instead, which
+               the manifest may never name — so a red button outlived a palette switch. Reclaim, in order:
+               the usage-ranked set the recolour path itself would paint, then anything a recorded recolour
+               touched that is still uncovered. Recolours made AFTER the palette are written later and win. */
+            $__have = self::siteColorVars($websiteId);
+            $__theme3 = ['primary' => $theme['primary'], 'secondary' => $theme['secondary'], 'accent' => $theme['accent']];
+            foreach (self::mapRolesToSiteVars($websiteId, $__theme3) as $__k => $__v) {
+                if (! isset($vars[$__k]) && isset($__have[strtolower((string) $__k)])) { $vars[$__k] = strtoupper((string) $__v); }
+            }
+            $__tvBefore = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+            foreach ((array) ($__tvBefore['recolour_vars'] ?? []) as $__k) {
+                $__k = strtolower((string) $__k);
+                if (! isset($vars[$__k]) && isset($__have[$__k]) && ! str_starts_with($__k, '--lu-')) { $vars[$__k] = strtoupper((string) $theme['accent']); }
+            }
             $res = $editor->applyStyleColors($websiteId, $vars);
             if ((int) ($res['applied'] ?? 0) === 0) {
                 return ['success' => false, 'error' => 'not_applied', 'message' => 'The palette did not match any colour on this site.', 'missed' => $res['missed'] ?? []];
@@ -2722,6 +2738,7 @@ PROMPT;
         // Re-read: applyStyleColors mirrors the vars into template_variables; layer on top of that, not over it.
         $tv = json_decode((string) (DB::table('websites')->where('id', $websiteId)->value('template_variables') ?: '{}'), true) ?: [];
         $tv['palette']         = (string) ($theme['id'] ?? $themeId);
+        $tv['recolour_vars']   = [];   // PALETTE-WINS-1: everything painted before this palette is now superseded
         $tv['primary_color']   = $theme['primary'];
         $tv['secondary_color'] = $theme['secondary'];
         $tv['accent_color']    = $theme['accent'];
@@ -6758,6 +6775,14 @@ PROMPT;
                     $tvKey = ['primary' => 'primary_color', 'secondary' => 'secondary_color', 'accent' => 'accent_color'];
                     foreach ($roles as $role => $hex) {
                         if (isset($tvKey[$role])) { $tv[$tvKey[$role]] = $hex; }
+                    }
+                    // PALETTE-WINS-1: remember which variables this recolour painted, so a later palette
+                    // can reclaim them even where usage ranking would not reach.
+                    if ($isStatic) {
+                        $tv['recolour_vars'] = array_values(array_unique(array_merge(
+                            (array) ($tv['recolour_vars'] ?? []),
+                            array_map(fn ($k) => strtolower((string) $k), array_keys($args))
+                        )));
                     }
                     DB::table('websites')->where('id', $websiteId)->update([
                         'template_variables' => json_encode($tv), 'updated_at' => now(),

@@ -9,7 +9,7 @@
     "variation": "swallowbarn",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "steelgold",
         "type": "warm",
@@ -656,17 +656,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "See which dates are free"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "r"
+            "default": "The calendar on the site is the real one, and the price you see is the price you pay."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Check the calendar"
         },
         "hero_search_title": {
             "type": "text",

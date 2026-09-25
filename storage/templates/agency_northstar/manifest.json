@@ -9,7 +9,7 @@
     "variation": "northstar",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "mono",
         "type": "grotesque",
@@ -28,7 +28,9 @@
             "footer": "bar",
             "proof": "strip",
             "faq": "accordion",
-            "cta": "split"
+            "cta": "split",
+            "listings": "none",
+            "sold": "none"
         },
         "order": [
             "offers",
@@ -667,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Start with the account review"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "We look at what you are already spending and tell you, in writing, where the money is going. No charge, no obligation."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book a review"
         },
         "primary_color": {
             "type": "color",

@@ -9,7 +9,7 @@
     "variation": "bay",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "steelgold",
         "type": "industrial",
@@ -28,7 +28,9 @@
             "footer": "mega",
             "proof": "tiles",
             "faq": "cards",
-            "cta": "band"
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
         },
         "order": [
             "stats",
@@ -667,17 +669,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "B"
+            "default": "Book your car in"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "o"
+            "default": "Choose a slot online. You will have the filmed inspection before lunch and the car back the same day for most jobs."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "o"
+            "default": "Book online"
         },
         "primary_color": {
             "type": "color",

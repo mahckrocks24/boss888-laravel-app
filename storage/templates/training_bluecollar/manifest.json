@@ -9,7 +9,7 @@
     "variation": "bluecollar",
     "is_active": true,
     "design": {
-        "generated": "2026-09-24",
+        "generated": "2026-09-25",
         "generator": "lug-template-generator v2",
         "palette": "slate",
         "type": "civic",
@@ -629,17 +629,17 @@
         "cta_title": {
             "type": "text",
             "label": "Call-to-action Heading",
-            "default": "V"
+            "default": "Pick a cohort date"
         },
         "cta_body": {
             "type": "text",
             "label": "Call-to-action Body",
-            "default": "i"
+            "default": "Twelve months of dates are published. Check your starting point with us first and we will put you on the right level."
         },
         "cta_button": {
             "type": "text",
             "label": "Call-to-action Button",
-            "default": "e"
+            "default": "View course dates"
         },
         "primary_color": {
             "type": "color",
