@@ -494,17 +494,22 @@
   function lift(el, by, capTo) {
     var rec = null;
     for (var i = 0; i < lifted.length; i++) if (lifted[i].el === el) rec = lifted[i];
-    if (!rec) { rec = { el: el, transform: el.style.transform, transition: el.style.transition, maxHeight: el.style.maxHeight, overflowY: el.style.overflowY, by: 0 }; lifted.push(rec); }
+    if (!rec) { rec = { el: el, transform: el.style.transform, transition: el.style.transition, maxHeight: el.style.maxHeight, overflowY: el.style.overflowY, alignItems: el.style.alignItems, by: 0 }; lifted.push(rec); }
     rec.by += by;
     el.style.transition = 'transform .15s ease-out';
     el.style.transform = (rec.transform && rec.transform !== 'none' ? rec.transform + ' ' : '') + 'translateY(' + (-rec.by) + 'px)';
-    if (capTo) { el.style.maxHeight = capTo + 'px'; el.style.overflowY = 'auto'; }
+    if (capTo) {
+      el.style.maxHeight = capTo + 'px'; el.style.overflowY = 'auto';
+      // A full-screen overlay that CENTRES a dialog taller than what is visible pushes the dialog's top above the
+      // screen (a centred wizard's composer measured at y = −183). Start it at the top and scroll inside instead.
+      try { var cs = el.ownerDocument.defaultView.getComputedStyle(el); if (cs.display === 'flex' && /center/.test(cs.alignItems)) el.style.setProperty('align-items', 'flex-start', 'important'); } catch (e) {}
+    }
   }
 
   function restore() {
     for (var i = 0; i < lifted.length; i++) {
       var x = lifted[i];
-      try { x.el.style.transform = x.transform; x.el.style.transition = x.transition; x.el.style.maxHeight = x.maxHeight; x.el.style.overflowY = x.overflowY; } catch (e) {}
+      try { x.el.style.transform = x.transform; x.el.style.transition = x.transition; x.el.style.maxHeight = x.maxHeight; x.el.style.overflowY = x.overflowY; x.el.style.removeProperty('align-items'); if (x.alignItems) x.el.style.alignItems = x.alignItems; } catch (e) {}
     }
     lifted = [];
     unshrink();
