@@ -2476,6 +2476,9 @@
       return;
     }
 
+    // DOMAINS-DEEPLINK-1: a deep link (/app/#domains) asked for a specific tab; take it once.
+    if (window.__luInfraTab) { INFRA_TAB = window.__luInfraTab; window.__luInfraTab = null; _view = { name: 'list', operationId: null, assetId: null }; }
+
     // ---- CONTROL PLANE (platform admins only) --------------------------
     // Operational telemetry is re-homed here and gated. A paying customer must
     // never see asset/incident/reliability operator concepts (Bible Law L2).

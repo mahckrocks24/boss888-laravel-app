@@ -1,5 +1,5 @@
 /**
- * LevelUp Growth — Domains.
+ * LevelUpGrowth — Domains.
  *
  * The customer-facing domain experience: search, cart, checkout, dashboard,
  * domain detail and order timeline.
@@ -10,7 +10,7 @@
  * a workspace id, and never decides whether a domain is available.
  *
  * BRANDING: the orchestration engine and the upstream registrar are never
- * named. The customer buys from LevelUp Growth.
+ * named. The customer buys from LevelUpGrowth.
  *
  * DESIGN: this module renders through helpers handed to it by the
  * infrastructure module (pageShell, card, button, statusPill …), so the page
@@ -614,7 +614,7 @@
         ['Registered', fmtDate(d.registered_on)],
         ['Expires', fmtDate(d.expires_on)],
         ['Renews on', fmtDate(d.renewal_date)],
-        ['Registrar', d.registrar || 'LevelUp Growth'],
+        ['Registrar', d.registrar || 'LevelUpGrowth'],
         ['DNS managed by', d.dns_managed_by || '—'],
         ['Transfer lock', d.transfer_lock ? 'On' : 'Off'],
         ['WHOIS privacy', d.privacy ? 'On' : 'Off']
@@ -829,4 +829,22 @@
       return { view: _view, cart: _cart.slice(), domains: _domains.length, table: JSON.parse(JSON.stringify(_table)) };
     }
   };
+})();
+
+
+/* DOMAINS-DEEPLINK-1 (2026-09-25): honour /app/#domains. The shell has no hash routing, so without this a
+   signed-in customer sent here from the marketing basket, or returned here by Stripe, lands on the default
+   view with the domains screen never shown. Wait for the shell to boot, then open Hosting on its Domains tab. */
+(function () {
+  function wanted() { try { return String(window.location.hash || '').indexOf('#domains') === 0; } catch (e) { return false; } }
+  if (!wanted()) return;
+  var tries = 0;
+  var t = setInterval(function () {
+    tries++;
+    var booted = typeof window.nav === 'function' && !!document.querySelector('.view.active');
+    if (!booted) { if (tries > 60) { clearInterval(t); } return; }   // 15s, then give up quietly
+    clearInterval(t);
+    window.__luInfraTab = 'domains';
+    try { window.nav('infrastructure'); } catch (e) {}
+  }, 250);
 })();
