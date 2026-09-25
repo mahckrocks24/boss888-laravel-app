@@ -85,11 +85,10 @@ return [
             'faq' => [['Is Aria the same as Sarah?', 'No. Sarah runs the workforce and does the work; Aria answers questions about the platform and points you to Sarah or Arthur when you want something done.'], ['Does Aria cost credits?', 'Conversation is metered like every chat on the platform: one credit for every ten messages. When a workspace has no credits, Aria still shows the documentation answer.'], ['Can Aria see my customers\' data?', 'No. Aria reads only your plan name and credit balance; everything else comes from the platform documentation.']]],
     ],
     'infrastructure' => [
-        ['slug' => 'domains', 'icon' => 'globe', 'name' => 'Domains', 'engine' => 'Domain commerce', 'flag' => 'custom_domain',
+        ['slug' => 'domains', 'icon' => 'globe', 'name' => 'Domains', 'engine' => 'Domain commerce', 'flag' => 'custom_domain', 'hero_actions' => false,   // DOMAINS-HERO-1: purchase path not live; no CTA, no plan line
             'promise' => 'Search, buy and connect your domain from inside your account.',
             'lede' => 'Search for a domain, see the price, pay, and it is registered to you and connected to your site with SSL.',
             'capabilities' => [['Registered to you', 'The registrant is your business, not us.'], ['Connected in one step', 'Your site answers on the domain with SSL provisioned automatically.'], ['Renewals you control', 'Auto-renew on or off, from the domain itself.']],
-            'limit' => 'Transfers of existing domains are handled by request.',
             'faq' => [['What does a .com cost?', 'The price is shown at search time and includes the first year.'], ['Can I bring my own domain?', 'Yes, connect it from your site settings.'], ['Who owns it?', 'You do.']]],
         // RISK-0132 (DEC-0043 §3, 2026-09-07): not delivered today — no provider connector, no plan entitlement. Qualified, not sold.
         ['slug' => 'business-email', 'icon' => 'mail', 'name' => 'Business email', 'engine' => 'Business email', 'flag' => 'business_email', 'status' => 'coming_soon',

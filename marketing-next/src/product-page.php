@@ -28,6 +28,8 @@ if ($soon) { $first = null; foreach ($availability as $i => $a) { $availability[
       <p class="eyebrow"><?= icon($p['icon'], 16) ?> <?= e($p['name']) ?></p>
       <h1><?= e($fill($p['promise'])) ?></h1>
       <p class="lede"><?= e($fill($p['lede'])) ?></p>
+      <?php /* DOMAINS-HERO-1: a product may switch its hero actions and plan line off by data. */ ?>
+      <?php if (($p['hero_actions'] ?? true) !== false): ?>
       <div class="hero-actions">
         <?php if ($soon): ?>
         <span class="btn btn-secondary btn-lg" aria-disabled="true">Coming soon</span>
@@ -38,6 +40,7 @@ if ($soon) { $first = null; foreach ($availability as $i => $a) { $availability[
         <?php endif; ?>
       </div>
       <?php if ($soon): ?><p class="fine">Not included in current plans. Nothing is sold or provisioned for this product today.</p><?php elseif (! empty($p['fine'])): ?><p class="fine"><?= e($p['fine']) ?></p><?php elseif ($first): ?><p class="fine">Included from the <?= e($first['name']) ?> plan<?= $first['price'] > 0 ? ', ' . money($first['price']) . '/month' : '' ?>.</p><?php endif; ?>
+      <?php endif; ?>
     </div>
     <div><?php $ps = product_shot($p['slug']); if ($ps) { echo shot($ps['name'], $ps['caption'], $ps['url'], true, $ps['mode'] ?? 'responsive', $ps['tone'] ?? 'auto'); } ?></div>
   </div>

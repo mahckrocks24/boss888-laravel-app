@@ -80,9 +80,23 @@ Route::prefix('public/domains')->middleware('throttle:20,1')->group(function () 
                 if (is_array($hit)) { $found[$d] = $hit; } else { $missing[] = $d; }
             }
             if ($missing !== []) {
-                foreach ($registrar->checkMany($missing) as $d => $row) {
+                /* DOM-SEARCH-5 (2026-09-25): the registrar drops calls for a minute at a time — two
+                   direct calls a moment apart measured 1,953ms then nothing. Retry once after a short
+                   pause, then fall back to the last good answer for any domain still unanswered. */
+                $fresh = $registrar->checkMany($missing);
+                if ($fresh === []) {
+                    usleep(1200000);
+                    $fresh = $registrar->checkMany($missing);
+                }
+                foreach ($fresh as $d => $row) {
                     $found[$d] = $row;
                     Cache::put('dom.avail.' . $d, $row, 1800);
+                    Cache::put('dom.avail.stale.' . $d, $row, 86400);
+                }
+                foreach ($missing as $d) {
+                    if (isset($found[$d])) { continue; }
+                    $old = Cache::get('dom.avail.stale.' . $d);
+                    if (is_array($old)) { $found[$d] = $old + ['stale' => true]; }
                 }
             }
 
@@ -98,6 +112,7 @@ Route::prefix('public/domains')->middleware('throttle:20,1')->group(function () 
                     return ['domain' => $d, 'available' => null];
                 }
                 $out = ['domain' => $d, 'available' => (bool) $found[$d]['available']];
+                if (! empty($found[$d]['stale'])) { $out['stale'] = true; }   // DOM-SEARCH-5: an answer from earlier today
                 if (! empty($found[$d]['premium'])) { $out['premium'] = true; }
 
                 // Retail = registrar cost + the platform's margin. The rule is CALLED, never restated here.
