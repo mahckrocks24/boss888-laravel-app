@@ -556,7 +556,10 @@ class SocialService
     {
         // SOCIAL-PAGEPICK-1: customer-safe columns only. The raw row carried credentials_json — with the
         // access token in it — to the browser. No credential column is ever selected here.
+        // SOCIAL-DISCONNECT-1: a disconnected row stays (a reconnect revives it) but is not an account the
+        // customer has; it never appears in the list.
         $rows = DB::table('social_accounts')->where('workspace_id', $wsId)
+            ->where('status', '!=', 'disconnected')
             ->select(['id', 'workspace_id', 'platform', 'account_name', 'account_id', 'status', 'health_state',
                       'token_expires_at', 'health_checked_at', 'health_detail', 'provider_account_name',
                       'linked_page_id', 'stats_json', 'business_id', 'created_at', 'updated_at'])

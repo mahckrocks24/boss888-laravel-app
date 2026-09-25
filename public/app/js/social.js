@@ -71,7 +71,7 @@ function _socStatusBadge(s) {
 }
 
 function _socRender(el) {
-  var A = _soc.accounts, P = _soc.posts.filter(function(p){ return p.status !== 'deleted'; });
+  var A = (_soc.accounts || []).filter(function(a){ return String(a.status || '').toLowerCase() !== 'disconnected'; }), P = _soc.posts.filter(function(p){ return p.status !== 'deleted'; });   /* SOCIAL-DISCONNECT-1 */
   var published = P.filter(function(p){ return p.status === 'published'; }).length;
   var scheduled = P.filter(function(p){ return p.status === 'scheduled'; }).length;
   var failed    = P.filter(function(p){ return p.status === 'failed'; }).length;
@@ -412,7 +412,8 @@ window._svTimeAgo = function(ts){
 };
 
 window._svRenderPlatformCards = function(accounts){
-  var A = accounts || [], byPlat = {};
+  /* SOCIAL-DISCONNECT-1: a disconnected account is not a connected one. */
+  var A = (accounts || []).filter(function(a){ return String(a.status || '').toLowerCase() !== 'disconnected'; }), byPlat = {};
   A.forEach(function(a){ (byPlat[a.platform] = byPlat[a.platform] || []).push(a); });
   var fb = (byPlat.facebook||[])[0], ig = (byPlat.instagram||[])[0], li = (byPlat.linkedin||[])[0];
   // SOCIAL-PROFILE-1: several Pages are normal now (one per business); the card names them all.
