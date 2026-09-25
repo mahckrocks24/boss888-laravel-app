@@ -141,8 +141,66 @@ class DomainCommerceService
      *
      * @param array<int,array{domain:string,years?:int}> $cart
      */
+    /**
+     * Can this platform actually sell a domain right now?
+     *
+     * RISK-0153. Two switches have to agree: the registrar must be in production, and billable registrar
+     * operations must be enabled. If either is false the platform can quote and check availability but cannot
+     * deliver, and taking money for something it cannot deliver is the failure this prevents.
+     */
+    public static function canSell(): bool
+    {
+        if (app()->environment('testing')) {
+            return true;   // fixtures, not customers
+        }
+
+        $env = strtolower((string) config('namecheap.environment'));
+        if ($env === 'production' && config('namecheap.production_purchases_enabled') === true) {
+            return true;
+        }
+
+        /* DOMAINS-TEST-LANE-1 (2026-09-25): the flow was unreachable for testing — every Checkout press
+           stopped here in sandbox before Stripe was ever reached. Sandbox registrar + Stripe TEST key is
+           the one combination in which nothing real can happen (test mode moves no money, sandbox
+           registers no domain), so it is allowed. Sandbox + live key stays refused: real money for a
+           fake domain is exactly what RISK-0153 forbids. */
+        if ($env === 'sandbox' && self::stripeIsTestMode()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /** True only when the configured Stripe secret is a test-mode key. */
+    public static function stripeIsTestMode(): bool
+    {
+        $k = (string) (config('services.stripe.secret') ?: config('cashier.secret') ?: '');
+        return str_starts_with($k, 'sk_test_');
+    }
+
+    /** The refusal, in the shape every other error in this service uses. */
+    private static function cannotSell(): array
+    {
+        \Illuminate\Support\Facades\Log::warning('[domains] purchase refused: registrar cannot deliver', [
+            'environment'        => (string) config('namecheap.environment'),
+            'purchases_enabled'  => (bool) config('namecheap.production_purchases_enabled'),
+        ]);
+
+        return [
+            'error' => 'Domain registration is not available just now. Nothing has been charged.',
+            'code'  => 'REGISTRAR_NOT_READY',
+            // DOMAINS-TEST-LANE-1: say what would unlock it, so a tester is not left guessing.
+            'hint'  => 'Sandbox registrar needs a Stripe test key to walk the flow; production needs purchases enabled.',
+        ];
+    }
+
     public function createOrder(int $workspaceId, ?int $userId, array $cart, ?string $idempotencyKey = null): array
     {
+        // Before anything is priced or written: can this platform deliver what it is about to sell?
+        if (! self::canSell()) {
+            return self::cannotSell();
+        }
+
         if ($cart === []) {
             return ['error' => 'Cart is empty', 'code' => 'CART_EMPTY'];
         }
@@ -297,6 +355,12 @@ class DomainCommerceService
      */
     public function startCheckout(DomainOrder $order, ?int $userId = null): array
     {
+        // An order raised before this guard existed, or while the platform was mid-configuration, must still
+        // not become a charge. RISK-0153.
+        if (! self::canSell()) {
+            return self::cannotSell();
+        }
+
         if ($order->isPaid()) {
             return ['error' => 'Order is already paid', 'code' => 'ALREADY_PAID'];
         }

@@ -929,8 +929,14 @@
 
   pay.addEventListener('click', function () {
     if (!read().length) return;
-    // The cart is already in localStorage; signup is the next step and the app adopts it on the other side.
-    window.location.href = signup;
+    /* CART-ROUTE-1 (2026-09-25): a signed-in customer goes straight to the app's domains screen, where the
+       cart is adopted and Checkout leads to Stripe. Only a signed-out visitor is sent to signup. */
+    var signedIn = false;
+    /* The page already validates the token against /api/auth/me and publishes the verdict as
+       data-lu-session = in | out | unknown (or 'likely' before the probe). A token's presence is not
+       its validity, so the verdict is what decides, never the raw token. */
+    try { var st = document.documentElement.getAttribute('data-lu-session'); signedIn = (st === 'in' || st === 'likely'); } catch (e) {}
+    window.location.href = signedIn ? '/app/#domains' : signup;
   });
 
   form.addEventListener('submit', function (e) {
