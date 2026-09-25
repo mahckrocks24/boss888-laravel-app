@@ -9,6 +9,7 @@ use App\Services\Domains\DomainAuditLogger;
 use App\Services\Domains\DomainContactResolver;
 use App\Services\Domains\DomainLinkService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -38,9 +39,12 @@ use Illuminate\Support\Facades\Log;
  * reconciliation, because a blind retry is exactly how a customer gets charged
  * twice.
  */
-class RegisterDomainJob implements ShouldQueue
+class RegisterDomainJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** RISK-0202: one instance per item on the queue; the lock outlives the job timeout. */
+    public int $uniqueFor = 600;
 
     /** Attempts are driven by our own classification, not by blind retrying. */
     public int $tries = 3;
@@ -73,7 +77,14 @@ class RegisterDomainJob implements ShouldQueue
                 return null;
             }
 
-            if (! in_array($item->status, [DomainOrderItem::STATUS_PENDING, DomainOrderItem::STATUS_REGISTERING], true)) {
+            if ($item->status === DomainOrderItem::STATUS_REGISTERING) {
+                // RISK-0202: another runner holds this item. Only a dead one — no write for longer than
+                // the job may run — is taken over; otherwise two runners would both call the registrar.
+                $stale = $item->updated_at === null || $item->updated_at->lt(now()->subSeconds($this->timeout + 60));
+                if (! $stale) {
+                    return 'busy';
+                }
+            } elseif ($item->status !== DomainOrderItem::STATUS_PENDING) {
                 return false;   // already settled
             }
 
@@ -93,6 +104,12 @@ class RegisterDomainJob implements ShouldQueue
 
         if ($item === false) {
             Log::info('RegisterDomainJob: item already settled, nothing to do', ['item_id' => $this->itemId]);
+
+            return;
+        }
+
+        if ($item === 'busy') {
+            Log::info('RegisterDomainJob: item is being registered by another runner, leaving it', ['item_id' => $this->itemId]);
 
             return;
         }
@@ -137,6 +154,28 @@ class RegisterDomainJob implements ShouldQueue
             // a call that may already have charged us.
             $terminal = $result->retryClassification !== 'transient';
 
+            // RISK-0202: before calling a terminal failure a refund, ask the registrar. "Domain name not
+            // available" after OUR OWN concurrent registration, or a timeout after a charge that went
+            // through, means the domain is in the account — that is a success, never a refund.
+            if ($terminal) {
+                $status = $registrar->getDomainStatus($item->domain);
+                if ($status->success && ($status->data['owned'] ?? false) === true) {
+                    Log::warning('RegisterDomainJob: registrar reports the domain in our account after a failed create — treating as registered', [
+                        'item_id' => $item->id, 'domain' => $item->domain, 'error' => (string) $result->errorSummary,
+                    ]);
+                    $this->settleSuccess($item, $order, [
+                        'order_id'         => null,
+                        'transaction_id'   => null,
+                        'charged_amount'   => null,
+                        'environment'      => (string) config('namecheap.environment'),
+                        'idempotent_replay' => true,
+                        'recovered_from'   => (string) $result->errorCode,
+                    ], true, $audit);
+
+                    return;
+                }
+            }
+
             $this->settleFailure($item, $audit, (string) $result->errorCode, (string) $result->errorSummary, $terminal);
 
             if (! $terminal && $this->attempts() < $this->tries) {
@@ -148,7 +187,13 @@ class RegisterDomainJob implements ShouldQueue
             return;
         }
 
-        $replay = ($result->data['idempotent_replay'] ?? false) === true;
+        $this->settleSuccess($item, $order, $result->data, ($result->data['idempotent_replay'] ?? false) === true, $audit);
+    }
+
+    /** The one success path: item registered, ownership row written, audit, DNS/attach set-up queued. */
+    private function settleSuccess(DomainOrderItem $item, $order, array $data, bool $replay, DomainAuditLogger $audit): void
+    {
+        $result = (object) ['data' => $data];
 
         DB::transaction(function () use ($item, $result, $order, $replay) {
             $item->update([
@@ -162,6 +207,7 @@ class RegisterDomainJob implements ShouldQueue
                     'charged_amount'    => $result->data['charged_amount'] ?? null,
                     'environment'       => $result->data['environment'] ?? null,
                     'idempotent_replay' => $replay,
+                    'recovered_from'    => $result->data['recovered_from'] ?? null,
                 ],
             ]);
 
@@ -224,6 +270,14 @@ class RegisterDomainJob implements ShouldQueue
 
     private function settleFailure(DomainOrderItem $item, DomainAuditLogger $audit, string $code, string $summary, bool $terminal): void
     {
+        // RISK-0202: a failure can never downgrade an item another runner has meanwhile registered.
+        $current = (string) DomainOrderItem::where('id', $item->id)->value('status');
+        if ($current === DomainOrderItem::STATUS_REGISTERED) {
+            Log::info('RegisterDomainJob: failure ignored, item already registered', ['item_id' => $item->id, 'code' => $code]);
+
+            return;
+        }
+
         $item->update([
             'status'          => $terminal ? DomainOrderItem::STATUS_FAILED : DomainOrderItem::STATUS_PENDING,
             'last_error'      => mb_substr($summary, 0, 1000),
