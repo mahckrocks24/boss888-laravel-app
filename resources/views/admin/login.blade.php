@@ -104,5 +104,6 @@
     // that transport is recorded security debt — ADMIN TOKEN TRANSPORT
     // MODERNIZATION — and is not in scope here.
   </script>
+  <script src="/app/js/lu-keyboard.js?v=kb3"></script>
 </body>
 </html>

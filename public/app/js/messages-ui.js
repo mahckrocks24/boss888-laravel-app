@@ -54,10 +54,10 @@ function _msgRemoveFloater(){
   var md=document.getElementById('lu-msg-modal'); if(md) md.style.display='none';
 }
 function _msgCreateFloater(){
-  if(_msgBasicMode()){ _msgRemoveFloater(); return; }
+  /* FLOATER-3c (Owner 2026-09-25: "she should also be visible as a floater on basic"): the mode no longer removes her. */
   if(document.getElementById('lu-messages-floater'))return;
   var btn=document.createElement('div');
-  btn.id='lu-messages-floater'; btn.setAttribute('data-adv','1'); btn.setAttribute('aria-label','Messages'); // P1-U2: Advanced-only — Basic talks to Sarah on the home
+  btn.id='lu-messages-floater'; btn.setAttribute('aria-label','Messages'); // FLOATER-3: visible in Basic too (Owner 2026-09-25); hidden only on chat surfaces
   // Owner 2026-09-10: the LevelUp mark instead of the generic speech bubble — the same
   // asset Arthur wears in the wizard (CP-0449), so one file governs both surfaces.
   // AVATAR888 (DEC-0055, Owner: "the floater Sarah"): the button IS Sarah — her portrait, not the company mark.
@@ -75,8 +75,13 @@ function _msgCreateFloater(){
     /* FLOATER-2: she IS the conversation, so on a conversation she is only in the way. */
     +'#lu-messages-floater{touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}'
     +'#lu-messages-floater.lu-dragging{cursor:grabbing;transition:none}'
-    +'body.lu-chat-surface #lu-messages-floater{display:none!important}';
+    +'body.lu-chat-surface #lu-messages-floater{display:none!important}'
+    /* FLOATER-3: nudges (clear of buttons) and the keyboard lift ride on a transform, so her anchored or dragged
+       position underneath is never touched. */
+    +'#lu-messages-floater{transform:translate(var(--lu-fl-dx,0px),var(--lu-fl-dy,0px))}'
+    +'html.lu-kb-open #lu-messages-floater{transform:translate(var(--lu-fl-dx,0px),calc(var(--lu-fl-dy,0px) - var(--lu-kb,0px)))}';
   document.head.appendChild(style);
+  try{ _msgKeepClear(btn); }catch(e){}
 }
 
 /* Toggling Basic/Advanced without a reload must add or remove the floater, not just
@@ -84,7 +89,7 @@ function _msgCreateFloater(){
 try{
   window.addEventListener('lu:visibility-mode', function(e){
     var mode=(e&&e.detail&&e.detail.mode)||null;
-    if(mode==='advanced'){ _msgCreateFloater(); } else { _msgRemoveFloater(); }
+    _msgCreateFloater(); try{ _msgSyncSurface(); }catch(e){}   /* FLOATER-3c: both modes keep her; only a chat surface hides her */
   });
 }catch(e){}
 
@@ -619,28 +624,123 @@ function _msgMakeDraggable(el){
 function _msgOnChatSurface(){
   try{
     var v = (typeof currentView !== 'undefined' && currentView) ? String(currentView).toLowerCase() : '';
-    if(/^(sarah|messages|chat|chatbot|inbox)/.test(v)) return true;
+    /* FLOATER-3: her own view, Messages, Aria (an agent). Not the Chatbot engine, not anything else. */
+    if(/^(sarah|messages|inbox|aria)$/.test(v)) return true;
     var vis = function(sel){
       var n = document.querySelector(sel);
       if(!n) return false;
-      if(n.hidden) return false;
+      if(n.hidden || n.hasAttribute('inert') || n.getAttribute('aria-hidden') === 'true') return false;
       var cs = getComputedStyle(n);
       if(cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity || '1') < 0.05) return false;
       var r = n.getBoundingClientRect();
-      return r.width > 40 && r.height > 40;
+      if(r.width <= 40 || r.height <= 40) return false;
+      /* FLOATER-3: a drawer parked off-canvas (translateX(100%)) is not on screen — the bug that hid her in Advanced. */
+      return r.right > 8 && r.left < window.innerWidth - 8 && r.bottom > 8 && r.top < window.innerHeight - 8;
     };
-    return vis('#agent-drawer') || vis('.agent-drawer') || vis('#task-drawer') || vis('#lu-msg-modal');
+    if(document.body.classList.contains('ai-panel-open')) return true;
+    return vis('#agent-drawer') || vis('.agent-drawer.open') || vis('#task-drawer') || vis('#lu-msg-modal')
+      || vis('#t3-arthur-feed') || vis('#arthur-input') || vis('#arthur-chat-input') || vis('.ai-panel.open') || vis('#ai-panel');
   }catch(e){ return false; }
 }
 
 function _msgSyncSurface(){
   try{ document.body.classList.toggle('lu-chat-surface', _msgOnChatSurface()); }catch(e){}
+  try{ _msgAvoidSoon(); }catch(e){}   /* FLOATER-3b: scheduled, never inline from a mutation */
+}
+
+/* FLOATER-3: she must not sit on anything a person needs to press. Sample her footprint; if anything interactive
+   (button, link, field, tab, toggle) is under it and is not hers, step up in 56px moves, then mirror to the other side,
+   until the footprint is clear. Re-checked whenever the page changes, scrolls, resizes, or the keyboard opens. */
+var _msgAvoidTimer = null;
+function _msgAvoidNow(){
+  var el = document.getElementById('lu-messages-floater'); if(!el) return;
+  if(getComputedStyle(el).display === 'none') return;
+  var INTER = 'button,a[href],a[onclick],input,textarea,select,[role="button"],[role="tab"],[role="switch"],[role="checkbox"],[role="link"],[onclick],[tabindex]:not([tabindex="-1"]),label,summary';
+  /* FLOATER-3d: blocked = she covers ≥35% of a control, or its centre. */
+  function blockedAt(){
+    var r = el.getBoundingClientRect(), fa = r.width * r.height;
+    /* FLOATER-3e: the field being typed into is never touched, not even at a corner. */
+    var ae = document.activeElement;
+    if(ae && ae !== el && !el.contains(ae) && ae !== document.body && /^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName || '') || (ae && ae.isContentEditable)){
+      var ar = ae.getBoundingClientRect();
+      if(ar.width > 0 && !(r.right <= ar.left || r.left >= ar.right || r.bottom <= ar.top || r.top >= ar.bottom)) return ae;
+    }
+    var pts = [[r.left+r.width/2, r.top+r.height/2],[r.left+6,r.top+6],[r.right-6,r.top+6],[r.left+6,r.bottom-6],[r.right-6,r.bottom-6]];
+    var seen = [], worst = null, worstRatio = 0;
+    for(var i=0;i<pts.length;i++){
+      var list = document.elementsFromPoint(pts[i][0], pts[i][1]);
+      for(var j=0;j<list.length;j++){
+        var n = list[j];
+        if(n === el || el.contains(n) || (n.closest && n.closest('#lu-messages-floater,#lu-msg-modal'))) continue;
+        if(seen.indexOf(n) !== -1) continue; seen.push(n);
+        var isField = (n === document.activeElement);
+        if(!isField && !(n.matches && n.matches(INTER))) continue;
+        if(n === document.body || n === document.documentElement) continue;
+        var cs = getComputedStyle(n); if(cs.pointerEvents === 'none' || cs.visibility === 'hidden') continue;
+        var b = n.getBoundingClientRect(); if(b.width < 4 || b.height < 4) continue;
+        if(b.width * b.height > window.innerWidth * window.innerHeight * 0.6) continue;   // a page-sized click target is not "a button"
+        var ix = Math.max(0, Math.min(r.right, b.right) - Math.max(r.left, b.left)), iy = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top));
+        var ratio = (ix * iy) / Math.max(1, b.width * b.height);
+        var cx = b.left + b.width/2, cy = b.top + b.height/2, centre = cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+        if(ratio >= 0.35 || centre || isField){ if(ratio > worstRatio || !worst){ worst = n; worstRatio = Math.max(ratio, centre ? 0.5 : 0); } }
+      }
+    }
+    return worst;
+  }
+  function blockedRatio(){ var n = blockedAt(); if(!n) return 0; var r = el.getBoundingClientRect(), b = n.getBoundingClientRect(); var ix = Math.max(0, Math.min(r.right, b.right) - Math.max(r.left, b.left)), iy = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top)); return Math.max(0.01, (ix*iy)/Math.max(1,b.width*b.height)); }
+  var setVars = function(dx, dy){
+    var vx = dx + 'px', vy = dy + 'px';
+    if(el.style.getPropertyValue('--lu-fl-dx') !== vx) el.style.setProperty('--lu-fl-dx', vx);
+    if(el.style.getPropertyValue('--lu-fl-dy') !== vy) el.style.setProperty('--lu-fl-dy', vy);
+  };
+  if(_msgAvoidNow._busy) return; _msgAvoidNow._busy = true;
+  var prevTransition = el.style.transition;
+  el.style.transition = 'none';   /* FLOATER-3c: measure where she IS, not where a transition will put her */
+  try{
+  setVars(0, 0);
+  void el.offsetWidth;
+  var hit = blockedAt(); if(!hit) return;
+  var base = el.getBoundingClientRect(), step = 56, dy = 0, dx = 0, tries = 0;
+  var canMirror = true, best = { dx: 0, dy: 0, ratio: blockedRatio() };
+  while(hit && tries++ < 30){
+    if(base.top + dy - step >= 8){ dy -= step; }
+    else if(canMirror){ canMirror = false; dy = 0; dx = (base.left > window.innerWidth/2) ? -(base.left - 8) : (window.innerWidth - base.right - 8); }
+    else break;
+    setVars(dx, dy);
+    void el.offsetWidth;
+    hit = blockedAt();
+    var ratio = hit ? blockedRatio() : 0;
+    if(ratio < best.ratio){ best = { dx: dx, dy: dy, ratio: ratio }; }
+  }
+  if(hit){ setVars(best.dx, best.dy); }   /* nothing fully clear: the least-blocking spot */
+  } finally {
+    void el.offsetWidth;
+    el.style.transition = prevTransition;
+    _msgAvoidNow._busy = false;
+  }
+}
+function _msgAvoidSoon(){ clearTimeout(_msgAvoidTimer); _msgAvoidTimer = setTimeout(_msgAvoidNow, 180); }
+function _msgKeepClear(el){
+  window.addEventListener('resize', _msgAvoidSoon);
+  window.addEventListener('scroll', _msgAvoidSoon, true);
+  document.addEventListener('focusin', _msgAvoidSoon, true);
+  document.addEventListener('focusout', _msgAvoidSoon, true);
+  try{ if(window.visualViewport){ window.visualViewport.addEventListener('resize', _msgAvoidSoon); window.visualViewport.addEventListener('scroll', _msgAvoidSoon); } }catch(e){}
+  el.addEventListener('pointerup', function(){ setTimeout(_msgAvoidSoon, 50); });
+  setTimeout(_msgAvoidNow, 400); setTimeout(_msgAvoidNow, 1500);
 }
 
 try{
   /* The drawers are toggled by class and style rather than by being added and removed, so watch
      attributes as well as children, and re-check after navigation. */
-  var mo = new MutationObserver(function(){ _msgSyncSurface(); });
+  var mo = new MutationObserver(function(ms){
+    /* FLOATER-3b: her own style writes (nudges, keyboard lift) must not re-trigger the sync — that loop froze the page. */
+    for(var i=0;i<ms.length;i++){
+      var t = ms[i].target;
+      if(t && t.nodeType === 1 && (t.id === 'lu-messages-floater' || (t.closest && t.closest('#lu-messages-floater,#lu-msg-modal')))) continue;
+      _msgSyncSurface(); return;
+    }
+  });
   mo.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
   window.addEventListener('hashchange', _msgSyncSurface);
   window.addEventListener('popstate', _msgSyncSurface);

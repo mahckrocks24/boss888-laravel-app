@@ -59,7 +59,8 @@
   {{-- Order matters: core installs window.pages, shared populates it with the
        helpers and global handlers, then the page view sets window.page. --}}
   <script src="/js/admin-core.js?v={{ $v }}"></script>
-  <script src="/js/admin-shared.js?v={{ $v }}"></script>
+    <script src="/app/js/lu-keyboard.js?v=kb3"></script>
+<script src="/js/admin-shared.js?v={{ $v }}"></script>
   <script src="/js/admin-bella.js?v={{ $v }}"></script>
 
   {{-- This page's renderer, and only this page's — resources/views/admin/pages/**.

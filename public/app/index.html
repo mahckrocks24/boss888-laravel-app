@@ -3094,6 +3094,7 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('crm')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Clients</button>
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Settings</button>
       <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
+      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure-basic" data-basic="1" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosting</button>   <!-- BASIC-HOSTING-2 -->
       <button type="button" class="nav-item nav-adv-link" onclick="_lgsc_set_visibility_mode('advanced'); if (window.nav) nav('workspace');" id="ni-advanced" data-basic="1" title="Open the Command Center in Advanced"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/></svg></span>Advanced tools →</button>
       <!-- /* b24-sidebar-reorganized */ -->
       <div class="nav-section">Workspace</div>
@@ -3138,7 +3139,7 @@ window.luSwipeToClose = luSwipeToClose;
       <div class="nav-section">Hosting</div>
       <!-- REPORT-0061 B1 (2026-09-19): Hosted Sites / Domains / Email Accounts were three sidebar buttons for the tabs of ONE
            view. One item now; the tabs are in the page (infrastructure.js), deep links /app/infrastructure/domains|email keep working. -->
-      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosting</button>
+      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosting</button>
       <div class="nav-section">Data</div>
       
       
@@ -4896,7 +4897,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=d964db12d7"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=ee3595859b"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

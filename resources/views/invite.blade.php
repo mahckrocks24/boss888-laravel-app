@@ -125,5 +125,6 @@
 
     loadInvite();
   </script>
+  <script src="/app/js/lu-keyboard.js?v=kb3"></script>
 </body>
 </html>

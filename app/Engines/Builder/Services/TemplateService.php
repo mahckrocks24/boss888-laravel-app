@@ -87,7 +87,24 @@ class TemplateService
     public static function injectMobileSafety(string $html): string
     {
         $html = self::injectStyleOnce($html, 'lug-mobile-safe', self::mobileSafetyHtml());
-        return self::injectStyleOnce($html, 'lug-empty-slot', self::emptySlotSafetyHtml());
+        $html = self::injectStyleOnce($html, 'lug-empty-slot', self::emptySlotSafetyHtml());
+        // KB-3 (2026-09-25): every served page and every editor preview carries the keyboard guard, so a text field
+        // (booking/contact forms, the chatbot composer, the editor's text edit) is never left under the phone keyboard.
+        return self::injectStyleOnce($html, 'lug-keyboard', self::keyboardGuardHtml());
+    }
+
+    /** The keyboard guard as an inline script; read once per process from the app's own copy. */
+    public static function keyboardGuardHtml(): string
+    {
+        static $js = null;
+        if ($js === null) {
+            $path = public_path('app/js/lu-keyboard.js');
+            $js = is_file($path) ? (string) file_get_contents($path) : '';
+        }
+        if ($js === '') {
+            return '';
+        }
+        return "\n<script id=\"lug-keyboard\">" . str_replace('</script', '<\/script', $js) . "</script>";
     }
 
     /** Insert the reveal failsafe once, just before </body> (or append if none). Idempotent. */
@@ -615,7 +632,7 @@ class TemplateService
         $apiBase = rtrim((string) config('app.url'), '/');
         return "<!-- CHATBOT888 Widget -->\n"
             . "<script>window.LU_CHATBOT_TOKEN = \"{$tokenSafe}\"; window.LU_CHATBOT_API = \"{$apiBase}\";</script>\n"
-            . "<script src=\"{$apiBase}/chatbot-widget.js?v=20260923-look\" defer></script>\n";
+            . "<script src=\"{$apiBase}/chatbot-widget.js?v=20260925-kb3\" defer></script>\n";
     }
 
     /**

@@ -1,7 +1,7 @@
 {{--
   INFRA888 · E7.3 — the customer's mailbox setup page.
 
-  LEVELUP GROWTH ONLY. No provider name, no provider hostname, no provider
+  LEVELUPGROWTH ONLY. No provider name, no provider hostname, no provider
   asset, and deliberately no third-party script of any kind: no analytics, no
   session replay, no font CDN. A page that receives a password loads nothing it
   does not control.
@@ -14,7 +14,7 @@
   <meta name="robots" content="noindex, nofollow">
   {{-- No referrer: the token must not travel to anything the customer clicks next. --}}
   <meta name="referrer" content="no-referrer">
-  <title>Set up your Business Email — LevelUp Growth</title>
+  <title>Set up your Business Email — LevelUpGrowth</title>
   <style>
     :root { --bg:#0B0F17; --card:#141A24; --bd:#232C3A; --t1:#E8EDF5; --t2:#9AA7BC; --p:#6366F1; --ok:#34D399; --bad:#F87171; }
     * { box-sizing: border-box; }
@@ -50,7 +50,7 @@
     @if (! $ok)
       <h1>This link has expired</h1>
       <p>{{ $message }}</p>
-      <div class="foot">Need help? Contact LevelUp Growth support.</div>
+      <div class="foot">Need help? Contact LevelUpGrowth support.</div>
     @else
       <h1>Set up your mailbox</h1>
       <p>Choose a password for <span class="addr">{{ $address }}</span></p>
@@ -110,12 +110,13 @@
         if (d.success) { show('ok', d.message); f.style.display = 'none'; }
         else { show('bad', d.message || 'Something went wrong. Please try again.'); go.disabled = false; }
       } catch (err) {
-        show('bad', 'We could not reach LevelUp Growth just now. Please try again.');
+        show('bad', 'We could not reach LevelUpGrowth just now. Please try again.');
         go.disabled = false;
       }
     });
   })();
   </script>
   @endif
+  <script src="/app/js/lu-keyboard.js?v=kb3"></script>
 </body>
 </html>

@@ -1423,7 +1423,7 @@ JS;
         // workspace. Returning here left those pages permanently on the old behaviour — the widget
         // could not tell which of the business's sites it was on, and a per-site opt-out was ignored
         // because the injection path that reads it never ran. So upgrade the tag in place instead.
-        $html = str_replace('chatbot-widget.js?v=20260528-color', 'chatbot-widget.js?v=20260923-look', $html);   // CHATBOT-LOOK-1: an older export fetches the current widget
+        $html = str_replace(['chatbot-widget.js?v=20260528-color', 'chatbot-widget.js?v=20260923-look'], 'chatbot-widget.js?v=20260925-kb3', $html);   // KB-3: keyboard guard in the widget   // CHATBOT-LOOK-1: an older export fetches the current widget
         if (str_contains($html, 'chatbot-widget.js')) return $html;
         if (str_contains($html, 'chatbot.js?ws=')) {
             return $websiteId > 0
