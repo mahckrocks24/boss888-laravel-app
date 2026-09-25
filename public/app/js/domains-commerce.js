@@ -24,7 +24,7 @@
   var _view = { name: 'list', domainId: null, orderId: null };
   var _domains = [];
   var _loading = false;
-  var _search = { term: '', years: 1, result: null, busy: false, error: null };
+  var _search = { term: '', years: 3, result: null, busy: false, error: null };   /* DOMAIN-TERMS-1: the bundle is the default term */
   var _cart = [];
   var _checkingOut = false;
   // DOMAIN-OFFER-1 (RFC-0015): the website a search/cart is for ({id, name}); null = none chosen.
@@ -159,11 +159,20 @@
         suggestionBlock() + '</div>';
     }
 
-    var yearOpts = '';
-    for (var y = 1; y <= 10; y++) {
-      yearOpts += '<option value="' + y + '"' + (y === _search.years ? ' selected' : '') + '>' +
-        y + (y === 1 ? ' year' : ' years') + '</option>';
-    }
+    /* DOMAIN-TERMS-1: two terms — one year at the list price, or the bundle with its $1 first year. */
+    var terms = r.terms || [];
+    if (terms.length && !terms.some(function (t) { return t.years === _search.years; })) { _search.years = terms[terms.length - 1].years; }
+    var termCards = terms.map(function (t) {
+      var on = t.years === _search.years;
+      return '<label class="lud-term" style="flex:1 1 200px;display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--rg);cursor:pointer;' +
+        'border:1px solid ' + (on ? 'var(--p)' : 'var(--bd2)') + ';background:' + (on ? 'var(--s2)' : 'transparent') + ';">' +
+        '<input type="radio" name="lud-term" value="' + t.years + '"' + (on ? ' checked' : '') + ' style="margin-top:3px;width:16px;height:16px;cursor:pointer;">' +
+        '<span style="min-width:0;">' +
+          '<span style="display:block;font:600 14px var(--fh);color:var(--t1);">' + esc(t.label) + (t.headline ? ' · <span style="color:var(--ac);">' + esc(t.headline) + '</span>' : '') + '</span>' +
+          '<span style="display:block;font:400 12px var(--fb);color:var(--t2);margin-top:3px;line-height:1.5;">' +
+            (t.years > 1 ? esc(t.per_year[0]) + ' now for year 1, then ' + esc(t.per_year[1]) + ' a year · ' : '') + '<strong style="color:var(--t1);">' + esc(t.total) + ' total</strong></span>' +
+        '</span></label>';
+    }).join('');
 
     var already = inCart(r.domain);
 
@@ -176,20 +185,18 @@
             (r.premium ? ctx.statusPill('Premium', 'var(--am)') : '') +
           '</div>' +
           '<div style="font:400 13px var(--fb);color:var(--t2);margin-top:7px;">' +
-            'Renews at ' + esc(money(r.renewal && r.renewal.retail)) + ' per year' +
+            'Renews at ' + esc(money(r.renewal && r.renewal.retail)) + ' per year' + (r.discount_percent ? ' · ' + esc(r.discount_percent) + '% off today' : '') +
           '</div>' +
           (r.registration_period ? '<div style="font:400 12px var(--fb);color:var(--t3);margin-top:3px;">' +
             'Registered until ' + esc(fmtDate(r.registration_period.expires_on)) + '</div>' : '') +
         '</div>' +
         '<div style="text-align:right;flex:none;">' +
-          '<div style="font:600 24px var(--fh);color:var(--t1);font-variant-numeric:tabular-nums;">' + esc(money(r.retail)) + '</div>' +
-          '<div style="font:400 11px var(--fb);color:var(--t3);">first term, excl. tax</div>' +
+          '<div style="font:600 24px var(--fh);color:var(--t1);font-variant-numeric:tabular-nums;">' + esc((terms.length > 1 && terms[1].per_year) ? terms[1].per_year[0] : money(r.retail)) + '</div>' +
+          '<div style="font:400 11px var(--fb);color:var(--t3);">' + (terms.length > 1 ? 'first year with the ' + terms[1].years + '-year plan' : 'per year') + ', excl. tax</div>' +
         '</div>' +
       '</div>' +
-      '<div style="display:flex;gap:var(--sp-3);align-items:center;margin-top:var(--sp-5);flex-wrap:wrap;">' +
-        '<label for="lud-years" style="font:600 12px var(--fb);color:var(--t2);">Register for</label>' +
-        '<select id="lud-years" style="min-height:38px;padding:0 var(--sp-3);border-radius:var(--r);' +
-          'border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:400 13px var(--fb);">' + yearOpts + '</select>' +
+      (termCards ? '<div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;margin-top:var(--sp-5);">' + termCards + '</div>' : '') +
+      '<div style="display:flex;gap:var(--sp-3);align-items:center;margin-top:var(--sp-4);flex-wrap:wrap;">' +
         '<button id="lud-add" ' + (already ? 'disabled' : '') + ' style="min-height:38px;padding:0 var(--sp-5);border-radius:var(--r);' +
           'cursor:' + (already ? 'default' : 'pointer') + ';font:600 13px var(--fb);' +
           'background:' + (already ? 'transparent' : 'var(--p)') + ';color:' + (already ? 'var(--t3)' : '#fff') + ';' +
@@ -410,7 +417,9 @@
   function bindList() {
     on('lud-go', 'click', function () { doSearch(h('lud-q') ? h('lud-q').value : ''); });
     on('lud-q', 'keydown', function (e) { if (e.key === 'Enter') { doSearch(e.target.value); } });
-    on('lud-years', 'change', function (e) { _search.years = parseInt(e.target.value, 10) || 1; });
+    Array.prototype.forEach.call(document.querySelectorAll('input[name="lud-term"]'), function (i) {
+      i.addEventListener('change', function () { _search.years = parseInt(i.value, 10) || 1; render(); });
+    });
     on('lud-add', 'click', function () { addToCart(); });
     on('lud-cart-btn', 'click', function () { _view = { name: 'cart' }; render(); });
     on('lud-for-clear', 'click', function () { _for = null; render(); });
@@ -447,12 +456,14 @@
 
     if (inCart(r.domain)) { toast('That domain is already in your cart.', 'info'); return; }
 
+    var chosen = (r.terms || []).filter(function (t) { return t.years === _search.years; })[0] || null;
     _cart.push({
       domain: r.domain,
       years: _search.years,
       // Display only. The server re-prices at order time and its figure wins.
-      price: r.retail,
-      price_minor: r.retail_minor,
+      price: chosen ? chosen.total : r.retail,
+      price_minor: chosen ? chosen.total_minor : r.retail_minor,
+      terms: (r.terms || []).map(function (t) { return { years: t.years, label: t.label, headline: t.headline, total: t.total, total_minor: t.total_minor, per_year: t.per_year }; }),
       // DOMAIN-OFFER-1: the website this domain is for; changeable in the cart.
       website_id: _for ? _for.id : null,
       website_name: _for ? _for.name : null
@@ -473,20 +484,20 @@
         '<div style="font:400 13px var(--fb);color:var(--t2);margin-top:7px;">Search for a domain to get started.</div>' +
         '<div style="margin-top:var(--sp-6);">' + ctx.button('Search domains', 'id="lud-back"') + '</div></div>';
     } else {
-      var subtotal = _cart.reduce(function (t, c) { return t + (c.price_minor || 0) * (c.years || 1); }, 0);
+      var subtotal = _cart.reduce(function (t, c) { return t + (c.price_minor || 0); }, 0);   // DOMAIN-TERMS-1: a line's price IS its term total
 
       body =
         '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);overflow:hidden;">' +
         _cart.map(function (c, i) {
           var yearOpts = '';
-          for (var y = 1; y <= 10; y++) {
-            yearOpts += '<option value="' + y + '"' + (y === c.years ? ' selected' : '') + '>' + y + (y === 1 ? ' year' : ' years') + '</option>';
-          }
+          (c.terms && c.terms.length ? c.terms : [{ years: c.years, label: c.years + (c.years === 1 ? ' year' : ' years'), total: c.price }]).forEach(function (t) {
+            yearOpts += '<option value="' + t.years + '"' + (t.years === c.years ? ' selected' : '') + '>' + esc(t.label) + (t.headline ? ' · ' + esc(t.headline) : '') + ' · ' + esc(t.total) + '</option>';
+          });
           return '<div style="display:flex;justify-content:space-between;align-items:center;gap:var(--sp-4);' +
             'padding:var(--sp-5);border-bottom:1px solid var(--bd);flex-wrap:wrap;">' +
             '<div style="min-width:0;flex:1 1 200px;">' +
               '<div style="font:600 15px var(--fh);color:var(--t1);word-break:break-all;">' + esc(c.domain) + '</div>' +
-              '<div style="font:400 12px var(--fb);color:var(--t3);margin-top:3px;">Domain registration</div>' +
+              '<div style="font:400 12px var(--fb);color:var(--t3);margin-top:3px;">' + (c.terms && c.years > 1 ? 'Domain registration · ' + esc((c.terms.filter(function (t) { return t.years === c.years; })[0] || {}).headline || '') + ', then ' + esc(((c.terms.filter(function (t) { return t.years === c.years; })[0] || {}).per_year || [])[1] || '') + ' a year' : 'Domain registration') + '</div>' +
               '<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font:400 12px var(--fb);color:var(--t2);flex-wrap:wrap;">Use with' +
                 '<select class="lud-site" data-i="' + i + '" aria-label="Website for ' + esc(c.domain) + '" style="min-height:32px;padding:0 var(--sp-3);border-radius:var(--r);border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:400 12px var(--fb);max-width:260px;">' +
                   siteOptions(c.website_id) + '</select></label>' +
@@ -540,6 +551,8 @@
       s.addEventListener('change', function () {
         var i = parseInt(s.getAttribute('data-i'), 10);
         _cart[i].years = parseInt(s.value, 10) || 1;
+        var t = (_cart[i].terms || []).filter(function (x) { return x.years === _cart[i].years; })[0];
+        if (t) { _cart[i].price = t.total; _cart[i].price_minor = t.total_minor; }   // DOMAIN-TERMS-1
         saveCart();
         render();
       });

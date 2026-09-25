@@ -218,7 +218,7 @@ class DomainCommerceTest extends TestCase
         $r = DomainCommerceService::make()->search('feature-search.com', 1);
 
         $this->assertTrue($r['available']);
-        $this->assertSame('$18.17', $r['retail']);
+        $this->assertSame('$27.26', $r['retail']);   // DOMAIN-TERMS-1: list price = (13.98 + 30%) × 1.5
         $this->assertSame(1, $r['registration_period']['years']);
         $this->assertArrayHasKey('renewal', $r);
         $this->assertFalse($r['transfer_eligible']);
@@ -242,8 +242,8 @@ class DomainCommerceTest extends TestCase
 
         $item = DomainOrderItem::find($r['order']['items'][0]['id']);
         $this->assertSame(1398, $item->registrar_cost_minor);
-        $this->assertSame(419, $item->markup_minor);
-        $this->assertSame(1817, $item->retail_minor);
+        $this->assertSame(1328, $item->markup_minor);   // DOMAIN-TERMS-1: 2726 − 1398
+        $this->assertSame(2726, $item->retail_minor);
         $this->assertSame('USD', $item->currency);
         $this->assertSame('namecheap', $item->provider);
     }
@@ -453,7 +453,7 @@ class DomainCommerceTest extends TestCase
         $r = DomainCommerceService::make()->createOrder($this->wsA, null, [['domain' => 'margin.com']]);
         $order = DomainOrder::find($r['order']['id']);
 
-        $this->assertSame(419, $order->marginMinor());
+        $this->assertSame(1328, $order->marginMinor());   // DOMAIN-TERMS-1: 2726 − 1398 on the 1-year term
     }
 
     // ========================================================= MULTI-TENANT ==

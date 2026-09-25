@@ -53,22 +53,25 @@ class DomainCommerceService
     public function search(string $domain, int $years = 1): array
     {
         $years = max(1, min(10, $years));
-        $result = $this->pricing->searchWithPricing($domain, $years);
+        // DOMAIN-TERMS-1: the customer's per-year price and both terms (1 year; the $1-first-year bundle).
+        $result = $this->pricing->terms($domain);
 
         // A blocked or unavailable domain gets no pricing embellishment.
         if (($result['available'] ?? false) !== true) {
             return $result + ['searched_at' => now()->toIso8601String()];
         }
 
-        $registrar = NamecheapRegistrarConnector::make();
-
-        // Renewal price matters at the point of sale: a $1 first year with a $40
-        // renewal is a materially different product from a $12/$12 domain, and
-        // hiding that is the oldest trick in the registrar business.
-        $renewal = $registrar->quoteRenewal($domain, 1);
-        $result['renewal'] = $renewal->success
-            ? $this->retailFromCost((int) $renewal->data['amount_minor'])
-            : ['available' => false, 'blocked_reason' => $renewal->errorSummary];
+        // Renewal price matters at the point of sale, and under DOMAIN-TERMS-1 it is the same figure the
+        // customer already saw: the list price per year. Said plainly, never hidden.
+        $result['renewal'] = [
+            'available'    => true,
+            'retail_minor' => (int) ($result['renewal_per_year_minor'] ?? $result['retail_minor']),
+            'retail'       => (string) ($result['renewal_per_year'] ?? $result['retail']),
+            'currency'     => 'USD',
+        ];
+        if (! in_array($years, [1, DomainPricingService::bundleYears()], true)) {
+            $years = DomainPricingService::bundleYears();
+        }
 
         // Transfer eligibility only means something for a domain that exists.
         $result['transfer_eligible'] = false;
@@ -255,7 +258,7 @@ class DomainCommerceService
         $rejected = [];
 
         foreach ($normalized as $line) {
-            $quote = $this->pricing->searchWithPricing($line['domain'], $line['years']);
+            $quote = $this->pricing->terms($line['domain']);
 
             if (($quote['available'] ?? false) !== true) {
                 $rejected[] = [
@@ -270,6 +273,19 @@ class DomainCommerceService
                 $rejected[] = ['domain' => $line['domain'], 'reason' => 'Premium domain requires manual review before purchase'];
                 continue;
             }
+
+            // DOMAIN-TERMS-1: only the terms we sell — 1 year, or the bundle. The term's frozen breakdown is
+            // what the customer saw; wholesale and margin are the term's, not the 1-year figures × years.
+            $term = null;
+            foreach ($quote['terms'] ?? [] as $t) { if ((int) $t['years'] === (int) $line['years']) { $term = $t; break; } }
+            if ($term === null) {
+                $rejected[] = ['domain' => $line['domain'], 'reason' => 'Choose 1 year or the ' . DomainPricingService::bundleYears() . '-year plan', 'code' => 'TERM_INVALID'];
+                continue;
+            }
+            $quote['term'] = $term;
+            $quote['cost_minor']   = (int) $term['wholesale_minor'];
+            $quote['markup_minor'] = (int) $term['markup_minor'];
+            $quote['retail_minor'] = (int) $term['total_minor'];
 
             $priced[] = ['line' => $line, 'quote' => $quote];
         }
@@ -316,6 +332,18 @@ class DomainCommerceService
                     'is_premium'           => (bool) ($p['quote']['premium'] ?? false),
                     'status'               => DomainOrderItem::STATUS_PENDING,
                     'website_id'           => $p['line']['website_id'] ?? null,   // DOMAIN-LINK-1
+                    // DOMAIN-TERMS-1: the breakdown shown at purchase, frozen for receipts and support.
+                    'pricing_json'         => json_encode([
+                        'years'            => (int) $p['quote']['term']['years'],
+                        'label'            => $p['quote']['term']['label'],
+                        'headline'         => $p['quote']['term']['headline'],
+                        'per_year_minor'   => $p['quote']['term']['per_year_minor'],
+                        'per_year'         => $p['quote']['term']['per_year'],
+                        'total_minor'      => (int) $p['quote']['term']['total_minor'],
+                        'list_per_year_minor' => (int) ($p['quote']['list_per_year_minor'] ?? 0),
+                        'discount_percent' => (float) ($p['quote']['discount_percent'] ?? 0),
+                        'capped'           => (bool) ($p['quote']['term']['capped'] ?? false),
+                    ]),
                 ]);
             }
 
@@ -567,6 +595,8 @@ class DomainCommerceService
                 'error'    => $i->last_error,
                 'website_id'   => $i->website_id ? (int) $i->website_id : null,           // DOMAIN-LINK-1
                 'website_name' => DomainLinkService::websiteName($i->website_id ? (int) $i->website_id : null),
+                // DOMAIN-TERMS-1: the term as the customer saw it.
+                'term'         => (function () use ($i) { $t = json_decode((string) ($i->pricing_json ?? ''), true); return is_array($t) ? array_intersect_key($t, array_flip(['years', 'label', 'headline', 'per_year', 'total_minor'])) : null; })(),
                 // Wholesale figures are deliberately ABSENT from customer output.
             ])->all(),
         ];

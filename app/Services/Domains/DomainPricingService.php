@@ -203,12 +203,21 @@ class DomainPricingService
      * Markup = max(percentage of cost, flat minimum). The flat minimum exists so
      * a $0.99 promotional TLD still covers the cost of supporting the domain.
      */
-    private function markupMinor(int $costMinor): int
+    /**
+     * The margin rule, exposed so no other surface has to restate it. Public search prices twenty domains
+     * from a bulk price list rather than one at a time; it must apply THIS rule, not a copy of it.
+     */
+    public static function markupFor(int $costMinor): int
     {
         $percent = (float) config('namecheap.pricing.markup_percent', 30.0);
         $minimum = (int) round(((float) config('namecheap.pricing.markup_minimum_usd', 4.00)) * 100);
 
         return max((int) round($costMinor * ($percent / 100)), $minimum);
+    }
+
+    private function markupMinor(int $costMinor): int
+    {
+        return self::markupFor($costMinor);
     }
 
     private function markupBasis(int $costMinor): string
@@ -220,6 +229,114 @@ class DomainPricingService
         return $pctValue >= $minimum
             ? "{$percent}% of registrar cost"
             : 'flat minimum $' . number_format($minimum / 100, 2) . " (exceeds {$percent}%)";
+    }
+
+    /* ==================================================================== DOMAIN-TERMS-1 (Owner 2026-09-25) ==
+     * The customer never sees the base price P (registrar cost + margin). They see the LIST price per year
+     * D = P × list_multiplier, less any discount we run. One year costs D. The bundle costs first_year ($1) for
+     * year one and D for every further year — the bundle's full value is recovered over the later years, which is
+     * the GoDaddy shape the Owner asked for. Renewals are D per year. No discount can price a term below
+     * wholesale + the minimum margin.
+     */
+    public static function listMultiplier(): float { return max(1.0, (float) config('namecheap.pricing.list_multiplier', 1.5)); }
+    public static function discountPercent(): float { return min(90.0, max(0.0, (float) config('namecheap.pricing.discount_percent', 0))); }
+    public static function bundleYears(): int { return max(2, min(10, (int) config('namecheap.pricing.bundle_years', 3))); }
+    public static function bundleFirstYearMinor(): int { return max(0, (int) round(((float) config('namecheap.pricing.bundle_first_year_usd', 1.00)) * 100)); }
+
+    /** P: registrar cost + margin. Internal. */
+    public static function basePerYearMinor(int $costMinor): int { return $costMinor + self::markupFor($costMinor); }
+
+    /** D: the per-year price a customer sees, discount applied. */
+    public static function listPerYearMinor(int $costMinor): int
+    {
+        $d = self::basePerYearMinor($costMinor) * self::listMultiplier() * (1 - self::discountPercent() / 100);
+        return max(1, (int) round($d));
+    }
+
+    /** Alias for the public price list, which prices twenty rows with no registrar call each. */
+    public static function customerPerYearMinor(int $costMinor): int { return self::listPerYearMinor($costMinor); }
+
+    private static function money(int $minor): string { return '$' . number_format($minor / 100, 2); }
+    private static function moneyShort(int $minor): string { return $minor % 100 === 0 ? '$' . ($minor / 100) : self::money($minor); }
+
+    /**
+     * The terms for a domain whose 1-year wholesale is $costMinor; $bundleWholesaleMinor is the registrar's quote
+     * for the bundle term when known. Pure arithmetic; unit-tested.
+     */
+    public static function termsFor(int $costMinor, ?int $bundleWholesaleMinor = null): array
+    {
+        $n = self::bundleYears();
+        $list = self::listPerYearMinor($costMinor);
+        $first = self::bundleFirstYearMinor();
+        $minMarkup = (int) round(((float) config('namecheap.pricing.markup_minimum_usd', 4.00)) * 100);
+        // Never trust a multi-year quote below n × the 1-year cost: the registrar returns the 1-year figure for
+        // .io/.co bundle quotes (measured 2026-09-25 in sandbox).
+        $quoted = (int) $bundleWholesaleMinor;
+        $wholesaleN = ($quoted >= (int) round($costMinor * ($n - 0.5))) ? $quoted : $n * $costMinor;
+
+        $one = ['years' => 1, 'total_minor' => $list, 'per_year_minor' => [$list], 'wholesale_minor' => $costMinor, 'headline' => null, 'capped' => false];
+        if ($one['total_minor'] < $costMinor + $minMarkup) {
+            $one['total_minor'] = $costMinor + $minMarkup; $one['per_year_minor'] = [$one['total_minor']]; $one['capped'] = true;
+        }
+        $one['markup_minor'] = $one['total_minor'] - $costMinor;
+
+        $perYear = [$first];
+        for ($i = 1; $i < $n; $i++) { $perYear[] = $list; }
+        $bundle = ['years' => $n, 'total_minor' => array_sum($perYear), 'per_year_minor' => $perYear, 'wholesale_minor' => $wholesaleN,
+                   'headline' => self::moneyShort($first) . ' first year', 'capped' => false];
+        if ($bundle['total_minor'] < $wholesaleN + $minMarkup) {
+            // A discount cannot make the bundle a loss: the later years absorb the difference.
+            $each = (int) ceil(($wholesaleN + $minMarkup - $first) / ($n - 1));
+            $perYear = [$first];
+            for ($i = 1; $i < $n; $i++) { $perYear[] = $each; }
+            $bundle['per_year_minor'] = $perYear; $bundle['total_minor'] = array_sum($perYear); $bundle['capped'] = true;
+        }
+        $bundle['markup_minor'] = $bundle['total_minor'] - $wholesaleN;
+
+        foreach ([&$one, &$bundle] as &$t) {
+            $t['total'] = self::money($t['total_minor']);
+            $t['per_year'] = array_map(fn ($m) => self::money($m), $t['per_year_minor']);
+            $t['label'] = $t['years'] === 1 ? '1 year' : $t['years'] . ' years';
+        }
+        unset($t);
+
+        return [
+            'base_per_year_minor'    => self::basePerYearMinor($costMinor),   // internal
+            'list_per_year_minor'    => $list,
+            'list_per_year'          => self::money($list),
+            'discount_percent'       => self::discountPercent(),
+            'renewal_per_year_minor' => $list,
+            'renewal_per_year'       => self::money($list),
+            'bundle_years'           => $n,
+            'terms'                  => [$one, $bundle],
+        ];
+    }
+
+    /** Availability, the customer's per-year price and both terms, for a live domain. */
+    public function terms(string $domain): array
+    {
+        $q = $this->searchWithPricing($domain, 1);
+        if (($q['available'] ?? false) !== true || ($q['blocked'] ?? false) === true) {
+            return $q;
+        }
+        if (($q['premium'] ?? false) === true) {
+            // Premium names are priced per name and are non-refundable: one term, no $1 bundle.
+            $q['terms'] = [['years' => 1, 'total_minor' => $q['retail_minor'], 'total' => $q['retail'], 'per_year_minor' => [$q['retail_minor']],
+                             'per_year' => [$q['retail']], 'wholesale_minor' => $q['cost_minor'], 'markup_minor' => $q['markup_minor'],
+                             'headline' => null, 'label' => '1 year', 'capped' => false]];
+            $q['renewal_per_year_minor'] = $q['retail_minor']; $q['renewal_per_year'] = $q['retail'];
+            return $q;
+        }
+        $bq = $this->registrar->quoteRegistration($domain, self::bundleYears());
+        $t = self::termsFor((int) $q['cost_minor'], $bq->success ? (int) ($bq->data['amount_minor'] ?? 0) : null);
+
+        return array_merge($q, $t, [
+            'base_retail_minor' => $q['retail_minor'],             // P, internal
+            'retail_minor'      => $t['list_per_year_minor'],      // what the customer sees for one year
+            'retail'            => $t['list_per_year'],
+            'markup_minor'      => $t['terms'][0]['markup_minor'],
+            'markup'            => self::money($t['terms'][0]['markup_minor']),
+        ]);
     }
 
     private function blocked(

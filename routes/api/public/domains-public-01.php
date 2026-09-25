@@ -119,8 +119,15 @@ Route::prefix('public/domains')->middleware('throttle:20,1')->group(function () 
                 $tld = substr($d, strpos($d, '.') + 1);
                 $cost = $prices[$tld] ?? null;
                 if ($out['available'] && $cost !== null && $cost > 0) {
-                    $retail = $cost + \App\Services\Domains\DomainPricingService::markupFor($cost);
-                    $out['retail'] = $money($retail);
+                    // DOMAIN-TERMS-1: the per-year list price and the $1-first-year bundle, from the same rule the
+                    // app uses (pure arithmetic on the price list — no extra registrar call per row).
+                    $terms = \App\Services\Domains\DomainPricingService::termsFor((int) $cost, null);
+                    $out['retail']       = $terms['list_per_year'];
+                    $out['per_year']     = $terms['list_per_year'];
+                    $out['renewal']      = $terms['renewal_per_year'];
+                    $out['first_year']   = $terms['terms'][1]['per_year'][0];
+                    $out['bundle_years'] = $terms['bundle_years'];
+                    $out['bundle_total'] = $terms['terms'][1]['total'];
                     $out['currency'] = 'USD';
                 }
                 // Retail is a second, per-domain call, so it is only ever fetched in production and only for the
@@ -151,7 +158,7 @@ Route::prefix('public/domains')->middleware('throttle:20,1')->group(function () 
                 'exact'           => $exactRow,
                 'recommendations' => $recs,
                 'checked'         => count($cands),
-                'sold_by'         => 'LevelUp Growth',
+                'sold_by'         => 'LevelUpGrowth',
             ];
         });
 

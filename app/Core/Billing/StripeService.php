@@ -184,11 +184,16 @@ class StripeService
                         'currency'     => strtolower($order->currency ?: 'USD'),
                         'unit_amount'  => (int) $item->retail_minor,
                         'product_data' => [
-                            // Customer-facing copy. LevelUp Growth is the seller;
+                            // Customer-facing copy. LevelUpGrowth is the seller;
                             // the registrar and the internal engine are never named.
                             'name'        => 'Domain registration - ' . $item->domain,
-                            'description' => $years . ' year' . ($years === 1 ? '' : 's')
-                                . ' registration, managed by LevelUp Growth',
+                            // DOMAIN-TERMS-1: say what the customer saw — "$1 first year, then $27.26/yr".
+                            'description' => (function () use ($item, $years) {
+                                $t = json_decode((string) ($item->pricing_json ?? ''), true);
+                                $tail = (is_array($t) && ! empty($t['headline']) && ! empty($t['per_year'][1]))
+                                    ? ' (' . $t['headline'] . ', then ' . $t['per_year'][1] . '/yr)' : '';
+                                return $years . ' year' . ($years === 1 ? '' : 's') . ' registration' . $tail . ', managed by LevelUpGrowth';
+                            })(),
                         ],
                     ],
                 ];
@@ -199,7 +204,7 @@ class StripeService
                 'customer'   => $customerId,
                 'line_items' => $lineItems,
                 'payment_intent_data' => [
-                    'description' => 'LevelUp Growth domain registration (order #' . $order->id . ')',
+                    'description' => 'LevelUpGrowth domain registration (order #' . $order->id . ')',
                     'metadata'    => [
                         'order_type'      => 'domain',
                         'domain_order_id' => (string) $order->id,

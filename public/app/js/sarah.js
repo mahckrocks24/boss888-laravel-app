@@ -184,7 +184,7 @@
             /* WS-PICK-REMOVE (2026-08-31): a label, not a switch. Sarah works across everything the user owns. */
             '<div class="sh-ctx" id="sh-ctx" title="The business Sarah is working for"><span aria-hidden="true">◎</span><b id="sh-ctx-name">…</b></div>' +
             /* Owner 2026-09-21: a close button minimises Sarah — back to where the customer came from (the floater brings her back). */
-            '<button type="button" class="sh-min" id="sh-min" aria-label="Minimize Sarah" title="Minimize" onclick="sarahMinimize()"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button>' +
+            '<button type="button" class="sh-min" id="sh-min" data-adv="1" aria-label="Minimize Sarah" title="Minimize" onclick="sarahMinimize()"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button>' +
           '</div>' +
           '<div class="sh-brief" id="sh-brief" aria-label="Today at a glance"></div>' +
           '<div class="sh-rail" id="sh-rail" aria-label="Needs your attention" hidden></div>' +

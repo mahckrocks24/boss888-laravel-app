@@ -61,6 +61,13 @@ return [
     'pricing' => [
         'markup_percent'      => (float) env('DOMAIN_MARKUP_PERCENT', 30.0),
         'markup_minimum_usd'  => (float) env('DOMAIN_MARKUP_MIN_USD', 4.00),
+        // DOMAIN-TERMS-1 (Owner 2026-09-25): cost + margin is the BASE price P; the customer sees the LIST price
+        // D = P × list_multiplier per year (1 year = D; the bundle = first_year + D for each further year;
+        // renewals = D). discount_percent comes off D whenever we choose to run one — never below cost + margin.
+        'list_multiplier'       => (float) env('DOMAIN_LIST_MULTIPLIER', 1.5),
+        'bundle_years'          => (int) env('DOMAIN_BUNDLE_YEARS', 3),
+        'bundle_first_year_usd' => (float) env('DOMAIN_BUNDLE_FIRST_YEAR_USD', 1.00),
+        'discount_percent'      => (float) env('DOMAIN_DISCOUNT_PERCENT', 0),
         'quote_ttl_seconds'   => (int) env('DOMAIN_QUOTE_TTL', 900),
         // We do NOT convert currency. If Namecheap quotes anything but USD the
         // quote is rejected and surfaced for a human decision.

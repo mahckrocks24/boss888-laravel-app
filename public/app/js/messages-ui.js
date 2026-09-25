@@ -643,9 +643,15 @@ function _msgOnChatSurface(){
   }catch(e){ return false; }
 }
 
+var _msgSyncTimers = [];
+function _msgSyncSoon(){
+  _msgSyncTimers.forEach(clearTimeout); _msgSyncTimers = [];
+  [60, 450, 1000].forEach(function(ms){ _msgSyncTimers.push(setTimeout(function(){ try{ document.body.classList.toggle('lu-chat-surface', _msgOnChatSurface()); }catch(e){} try{ _msgAvoidSoon(); }catch(e){} }, ms)); });
+}
 function _msgSyncSurface(){
   try{ document.body.classList.toggle('lu-chat-surface', _msgOnChatSurface()); }catch(e){}
   try{ _msgAvoidSoon(); }catch(e){}   /* FLOATER-3b: scheduled, never inline from a mutation */
+  _msgSyncSoon();                     /* FLOATER-3f: and again once whatever is sliding has settled */
 }
 
 /* FLOATER-3: she must not sit on anything a person needs to press. Sample her footprint; if anything interactive
@@ -743,6 +749,9 @@ try{
   });
   mo.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
   window.addEventListener('hashchange', _msgSyncSurface);
+  /* FLOATER-3f: drawers and panels slide; the check at the class change sees them still on screen. */
+  document.addEventListener('transitionend', function(){ _msgSyncSoon(); }, true);
+  document.addEventListener('animationend', function(){ _msgSyncSoon(); }, true);
   window.addEventListener('popstate', _msgSyncSurface);
   document.addEventListener('DOMContentLoaded', _msgSyncSurface);
   _msgSyncSurface();
