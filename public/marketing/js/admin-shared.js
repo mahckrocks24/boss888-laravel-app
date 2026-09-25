@@ -409,7 +409,9 @@ Object.assign(window.pages, {
           id: 'tpl-library', data: templates,
           columns: [
             { key:'industry', label:'Industry', sortable:true, render:function(v,row){
-                return '<strong>' + (row.name||v||'-') + '</strong>' +
+                /* ADMIN-TPL-3: the name is the preview link — the largest target on the row, on any screen. */
+                var pv = row.preview_url || ('/templates/' + (row.id || v) + '/preview');
+                return '<a href="' + pv + '" target="_blank" rel="noopener" style="color:var(--text);text-decoration:none;font-weight:700">' + (row.name||v||'-') + '</a>' +
                        '<div style="font-size:11px;color:var(--muted);font-family:monospace">' + (v||'-') + '</div>';
               } },
             { key:'variation',     label:'Variation', sortable:true, render:function(v){return badge(v||'luxury');} },
@@ -425,17 +427,15 @@ Object.assign(window.pages, {
                    id and preview_url; use them. */
                 var slug = row.id || row.slug || v;
                 var href = row.preview_url || ('/templates/' + slug + '/preview');
-                /* ADMIN-TPL-2 (2026-09-25): Preview is the action people want and Clone creates a new
-                   folder, so they must not look alike or sit next to each other. Preview gets real edges;
-                   Clone is pushed to the far side behind a separator, small and muted. */
-                var preview = '<a href="'+href+'" target="_blank" style="display:inline-block;color:var(--p);font-size:12px;font-weight:600;'
-                            + 'border:1px solid var(--p);border-radius:6px;padding:5px 12px;text-decoration:none;margin-right:14px">Preview</a>';
+                /* ADMIN-TPL-3 (2026-09-25): Preview is a real button and Clone is no longer in the row.
+                   Preview has never had a handler; a tap could only reach Clone by landing on it, which on
+                   a narrow screen sat directly underneath. The clone API and _admTemplateClone remain; to
+                   restore a per-row link, append it here. */
+                var preview = '<a href="'+href+'" target="_blank" rel="noopener" style="display:inline-block;color:var(--p);font-size:12px;font-weight:600;'
+                            + 'border:1px solid var(--p);border-radius:6px;padding:6px 14px;text-decoration:none;margin-right:14px;white-space:nowrap">Preview</a>';
                 var toggleLabel = row.is_active ? 'Disable' : 'Enable';
-                var toggle = '<a href="#" onclick="_admTemplateToggle(event,\''+slug+'\');return false;" style="color:var(--muted);font-size:12px">'+toggleLabel+'</a>';
-                var sep = '<span style="display:inline-block;width:1px;height:14px;background:var(--border);margin:0 16px;vertical-align:middle"></span>';
-                var clone = '<a href="#" onclick="_admTemplateClone(event,\''+slug+'\');return false;" title="Creates a duplicate folder in storage/templates" '
-                          + 'style="color:var(--muted);font-size:11px;opacity:.75">Clone</a>';
-                return preview + toggle + sep + clone;
+                var toggle = '<a href="#" onclick="_admTemplateToggle(event,\''+slug+'\');return false;" style="color:var(--muted);font-size:12px;white-space:nowrap">'+toggleLabel+'</a>';
+                return preview + toggle;
               } }
           ],
           searchFields: ['industry','name','variation','category'],
