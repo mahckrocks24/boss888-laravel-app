@@ -83,7 +83,7 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
             ->where('p.workspace_id', $wsId)->whereNull('p.deleted_at')->where('p.status', 'draft')->where('p.created_at', '>=', $since)
             ->orderByDesc('p.id')->limit(6)
             ->get(['p.id', 'p.platform', 'p.content', 'p.media_json', 'p.hashtags_json', 'p.canonical_url', 'p.article_id', 'p.business_id', 'p.website_id', 'p.social_account_id', 'p.created_at',
-                   'a.title as article_title', 'a.featured_image_url', 'a.slug as article_slug', 'a.website_id as article_website_id', 'w.custom_domain', 'w.subdomain', 'w.business_id as site_business_id']);
+                   'a.title as article_title', 'a.featured_image_url', 'a.slug as article_slug', 'a.website_id as article_website_id', 'a.meta_description', 'a.excerpt', 'w.custom_domain', 'w.subdomain', 'w.business_id as site_business_id']);
         $resolver = app(\App\Engines\Social\Services\SocialAccountResolver::class);
         foreach ($rows as $d) {
             $media = json_decode((string) ($d->media_json ?? '[]'), true) ?: [];
@@ -105,7 +105,11 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
             $drafts[] = ['post_id' => (int) $d->id, 'platform' => (string) $d->platform,
                 'account' => $account, 'caption' => (string) $d->content, 'hashtags' => array_values(array_filter((array) (json_decode((string) ($d->hashtags_json ?? '[]'), true) ?: []))),
                 'link' => $link, 'image' => $first ?: ($d->featured_image_url ?: null), 'article_id' => $d->article_id ? (int) $d->article_id : null,
-                'article_title' => $d->article_title ? (string) $d->article_title : null, 'created_at' => (string) $d->created_at];
+                'article_title' => $d->article_title ? (string) $d->article_title : null,
+                'description' => mb_substr(trim((string) ($d->meta_description ?: $d->excerpt ?: '')), 0, 160) ?: null,   // PREVIEW-2: the link card's blurb
+                'domain' => $link ? strtoupper((string) preg_replace('#^https?://(www\.)?([^/]+).*$#', '$2', $link)) : null,
+                'ready' => trim((string) $d->content) !== '' && ! empty($account['name']),
+                'created_at' => (string) $d->created_at];
         }
     } catch (\Throwable $e) { $drafts = []; }
 

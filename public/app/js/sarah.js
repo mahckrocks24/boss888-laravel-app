@@ -102,12 +102,28 @@
       '.sh-act{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--s1)}',
       '.sh-act .t{font-weight:600;color:var(--t1);font-size:13.5px}.sh-act .d{font-size:12.5px;color:var(--t2)}.sh-act ol{margin:0;padding-left:18px;font-size:12.5px;color:var(--t2)}',
       '.sh-act .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}.sh-act .done{font-size:12.5px;color:var(--t2)}',
-      '.sh-draft{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--s1)}',
-      '.sh-draft .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)}.sh-draft .badge b{color:var(--t1)}',
-      '.sh-draft .pv{display:flex;gap:10px;align-items:flex-start}.sh-draft .pv img{width:88px;height:66px;object-fit:cover;border-radius:8px;flex:none;background:var(--s2)}',
-      '.sh-draft .cap{white-space:pre-wrap;font-size:13.5px;color:var(--t1);line-height:1.45;flex:1;min-width:0}.sh-draft .lnk{font-size:12px;color:var(--t3);word-break:break-all}',
-      '.sh-draft textarea{width:100%;box-sizing:border-box;min-height:80px;border:1px solid var(--bd2,var(--bd));border-radius:10px;padding:8px 10px;font:400 13.5px var(--fb);color:var(--t1);background:var(--s2)}',
-      '.sh-draft .row{display:flex;gap:8px;flex-wrap:wrap}.sh-draft .done{font-size:12.5px;color:var(--t2)}.sh-draft .warn{font-size:12.5px;color:var(--am)}',
+      /* PREVIEW-2: the card is the post. Platform anatomy, our tokens. */
+      '.sh-draft{display:flex;flex-direction:column;gap:0;padding:0;border:1px solid var(--bd2,var(--bd));border-radius:16px;background:var(--s1);overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.18)}',
+      '.sh-draft .top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--bd);background:var(--s2)}',
+      '.sh-draft .top .k{display:flex;align-items:center;gap:8px;font:600 12px var(--fb);letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}',
+      '.sh-draft .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font:600 12px var(--fb)}.sh-draft .pill i{width:7px;height:7px;border-radius:50%;background:currentColor}',
+      '.sh-draft .pill.ok{background:rgba(46,204,113,.14);color:#2ecc71}.sh-draft .pill.warn{background:rgba(245,158,11,.16);color:var(--am,#f59e0b)}.sh-draft .pill.no{background:rgba(248,113,113,.14);color:var(--rd,#f87171)}',
+      '.sh-draft .post{padding:14px 14px 4px}.sh-draft .head{display:flex;align-items:center;gap:10px;margin-bottom:10px}',
+      '.sh-draft .av{width:40px;height:40px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:700 16px var(--fh);color:#fff;background:linear-gradient(135deg,var(--p),#22d3ee);flex:none;position:relative}',
+      '.sh-draft .av .pf{position:absolute;right:-3px;bottom:-3px;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font:700 11px var(--fb);color:#fff;border:2px solid var(--s1)}.sh-draft .av .pf.fb{background:#1877F2}.sh-draft .av .pf.ig{background:linear-gradient(45deg,#f58529,#dd2a7b,#8134af)}.sh-draft .av .pf.li{background:#0A66C2}',
+      '.sh-draft .name{font:700 14.5px var(--fh);color:var(--t1);line-height:1.2}.sh-draft .when{font-size:12px;color:var(--t3);margin-top:2px}',
+      '.sh-draft .cap{white-space:pre-wrap;font-size:15px;line-height:1.45;color:var(--t1)}.sh-draft .cap.empty{color:var(--t3);font-style:italic;border:1px dashed var(--bd2,var(--bd));border-radius:10px;padding:10px 12px}',
+      '.sh-draft .tags{margin-top:6px;font-size:14px;color:var(--p)}',
+      '.sh-draft textarea{width:100%;box-sizing:border-box;min-height:96px;border:1px solid var(--p);border-radius:10px;padding:10px 12px;font:400 15px var(--fb);line-height:1.45;color:var(--t1);background:var(--s2);outline:none}',
+      '.sh-draft .count{font-size:11.5px;color:var(--t3);margin-top:4px;text-align:right}',
+      '.sh-draft .lc{margin:12px -14px 0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:var(--s2)}',
+      '.sh-draft .lc .img{width:100%;aspect-ratio:1.91/1;object-fit:cover;display:block;background:var(--s3,var(--s2))}.sh-draft .lc .img.ph{display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:12px}',
+      '.sh-draft .lc .meta{padding:10px 14px}.sh-draft .lc .dom{font:600 11px var(--fb);letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}.sh-draft .lc .ttl{font:700 14.5px var(--fh);color:var(--t1);margin-top:3px;line-height:1.25}.sh-draft .lc .desc{font-size:12.5px;color:var(--t2);margin-top:3px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
+      '.sh-draft .react{display:flex;justify-content:space-around;padding:8px 6px 10px;color:var(--t3);font:600 12.5px var(--fb);user-select:none}.sh-draft .react span{display:inline-flex;align-items:center;gap:6px}',
+      '.sh-draft .foot{display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-top:1px solid var(--bd)}',
+      '.sh-draft .note{font-size:12.5px;color:var(--t2)}.sh-draft .note b{color:var(--t1)}.sh-draft .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}',
+      '.sh-draft button.sh-btn{min-height:40px;padding:0 16px;border-radius:10px;font:600 13.5px var(--fb);cursor:pointer;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t1)}.sh-draft button.sh-btn.primary{background:var(--p);border-color:var(--p);color:#fff;box-shadow:0 4px 14px var(--pg,rgba(108,92,231,.25))}.sh-draft button.sh-btn.quiet{background:transparent;border-color:transparent;color:var(--t2)}.sh-draft button.sh-btn:disabled{opacity:.55;cursor:default}',
+      '.sh-draft .done{display:flex;align-items:center;gap:8px;font:600 13.5px var(--fb);color:#2ecc71}',
       '.sh-chips{display:flex;gap:8px;flex-wrap:wrap}.sh-chips button{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t1);font:600 13px var(--fb);cursor:pointer}.sh-chips button.go{background:var(--p);border-color:var(--p);color:#fff}',
       '.sh-act button.sh-btn{min-height:36px;padding:0 14px;border-radius:10px;font:600 13px var(--fb);cursor:pointer;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t1)}.sh-act button.sh-btn.primary{background:var(--p);border-color:var(--p);color:#fff}.sh-act button.sh-btn.danger{color:var(--rd,#c0392b)}',
       '.sh-orch{align-self:flex-start;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:var(--s1);border:1px solid var(--bd);font-size:13px;color:var(--t2);box-shadow:0 1px 3px rgba(0,0,0,.06)}',
@@ -603,33 +619,49 @@
      caption in place (PUT social/posts/{id}); Not now leaves the draft under Social › Drafts. "or tell me what to change"
      keeps text as the option. */
   function draftCard(dr) {
-    var c = document.createElement('div'); c.className = 'sh-draft'; c.setAttribute('data-post', String(dr.post_id));
-    var plat = (dr.platform || '').charAt(0).toUpperCase() + (dr.platform || '').slice(1);
-    var acct = dr.account && dr.account.name ? ('<b>' + esc(plat + (dr.platform === 'facebook' ? ' Page' : '')) + ' · ' + esc(dr.account.name) + '</b>' + (dr.account.business ? ' <span>for ' + esc(dr.account.business) + '</span>' : '')) : ('<b>' + esc(plat) + '</b>' + (dr.account && dr.account.problem ? ' <span class="warn">' + esc(dr.account.problem) + '</span>' : ''));
-    var img = dr.image && /^(https?:\/\/|\/)/.test(String(dr.image)) ? '<img src="' + esc(dr.image) + '" alt="">' : '';
-    var link = dr.link ? '<div class="lnk">' + esc(dr.link) + '</div>' : '';
-    c.innerHTML = '<div class="badge"><span>Ready to post ·</span>' + acct + '</div>' +
-      '<div class="pv">' + img + '<div class="cap"></div></div>' + link +
-      (dr.article_title ? '<div class="lnk">Shares: ' + esc(dr.article_title) + '</div>' : '') +
-      '<div class="row"><button type="button" class="sh-btn primary">Post it</button><button type="button" class="sh-btn">Edit</button><button type="button" class="sh-btn">Not now</button><span class="d" style="font-size:12px;color:var(--t3);align-self:center">or tell me what to change</span></div>';
-    c.querySelector('.cap').textContent = dr.caption || '';
-    var btns = c.querySelectorAll('button'); var post = btns[0], edit = btns[1], later = btns[2];
+    var c = document.createElement('div'); c.className = 'sh-draft'; c.setAttribute('data-post', String(dr.post_id)); c.setAttribute('role', 'group');
+    var platform = String(dr.platform || 'facebook'); var pf = platform === 'instagram' ? 'ig' : platform === 'linkedin' ? 'li' : 'fb';
+    var platName = platform === 'instagram' ? 'Instagram' : platform === 'linkedin' ? 'LinkedIn' : 'Facebook Page';
+    var pageName = dr.account && dr.account.name ? dr.account.name : (dr.account && dr.account.business ? dr.account.business : 'Your Page');
+    var hasCaption = !!(dr.caption && String(dr.caption).trim()); var hasAccount = !!(dr.account && dr.account.name);
+    var state = !hasCaption ? ['no', 'Needs a caption'] : (!hasAccount ? ['warn', 'Can\'t post yet'] : ['ok', 'Ready to post']);
+    var tags = Array.isArray(dr.hashtags) && dr.hashtags.length ? dr.hashtags.map(function (t) { return (String(t).charAt(0) === '#' ? '' : '#') + String(t); }).join(' ') : '';
+    var img = dr.image && /^(https?:\/\/|\/)/.test(String(dr.image)) ? '<img class="img" src="' + esc(dr.image) + '" alt="">' : '<div class="img ph">No image on the article — Facebook will show the link only</div>';
+    var linkCard = dr.link ? '<div class="lc">' + img + '<div class="meta"><div class="dom">' + esc(dr.domain || String(dr.link).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) + '</div><div class="ttl">' + esc(dr.article_title || dr.link) + '</div>' + (dr.description ? '<div class="desc">' + esc(dr.description) + '</div>' : '') + '</div></div>' : '';
+    c.innerHTML =
+      '<div class="top"><span class="k"><span class="pf ' + pf + '" style="position:static;width:16px;height:16px;border:0;font-size:10px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff">' + (pf === 'fb' ? 'f' : pf === 'ig' ? '◎' : 'in') + '</span>Preview · ' + esc(platName) + '</span><span class="pill ' + state[0] + '"><i></i>' + esc(state[1]) + '</span></div>' +
+      '<div class="post"><div class="head"><span class="av">' + esc(String(pageName).trim().charAt(0).toUpperCase() || 'P') + '<span class="pf ' + pf + '">' + (pf === 'fb' ? 'f' : pf === 'ig' ? '◎' : 'in') + '</span></span><div><div class="name">' + esc(pageName) + '</div><div class="when">Just now · 🌐 Public</div></div></div>' +
+      '<div class="cap' + (hasCaption ? '' : ' empty') + '"></div>' + (tags ? '<div class="tags">' + esc(tags) + '</div>' : '') + linkCard +
+      '<div class="react"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div></div>' +
+      '<div class="foot">' +
+        (hasAccount ? '<div class="note">This is what people will see on <b>' + esc(pageName) + '</b>' + (dr.account && dr.account.business ? ' (' + esc(dr.account.business) + ')' : '') + '.</div>'
+                    : '<div class="note" style="color:var(--am,#f59e0b)">' + esc(dr.account && dr.account.problem ? dr.account.problem : 'No ' + esc(platName) + ' is connected yet.') + '</div>') +
+        (!hasCaption ? '<div class="note" style="color:var(--rd,#f87171)">Sarah has not written a caption for this one — every post goes out with a caption. Add one, or tell her what to say.</div>' : '') +
+        '<div class="row"><button type="button" class="sh-btn primary" ' + (hasCaption && hasAccount ? '' : 'disabled') + '>Post it</button><button type="button" class="sh-btn">' + (hasCaption ? 'Edit caption' : 'Write a caption') + '</button><button type="button" class="sh-btn quiet">Not now</button><span class="note" style="color:var(--t3)">or tell Sarah what to change</span></div>' +
+      '</div>';
+    var capEl = c.querySelector('.cap'); capEl.textContent = hasCaption ? dr.caption : 'No caption yet';
+    var btns = c.querySelectorAll('.foot button'); var post = btns[0], edit = btns[1], later = btns[2];
+    function setBusy(on) { btns.forEach(function (b) { b.disabled = on; }); }
     post.addEventListener('click', function () {
-      btns.forEach(function (b) { b.disabled = true; }); post.textContent = 'Posting…';
+      setBusy(true); post.textContent = 'Posting…';
       api('POST', 'social/posts/' + dr.post_id + '/publish', {}).then(function (r) {
         var d = r.json || {}; var ok = r.ok && d.success !== false && !d.error && !(d.data && d.data.published === false && !d.data.in_progress);
-        if (ok) { c.innerHTML = '<div class="badge">' + acct + '</div><div class="done">Posted' + (d.data && d.data.in_progress ? ' — going out now' : '') + '. It will show under Results once the platform confirms it.</div>'; showToast('Posted.', 'success'); setTimeout(refreshActionBar, 6000); }
-        else { btns.forEach(function (b) { b.disabled = false; }); post.textContent = 'Post it'; showToast("Couldn't post: " + (d.message || d.error || (d.data && d.data.error) || ('HTTP ' + r.status)), 'error'); }
-      }).catch(function () { btns.forEach(function (b) { b.disabled = false; }); post.textContent = 'Post it'; showToast("Couldn't reach the server — try again.", 'error'); });
+        if (ok) { c.querySelector('.foot').innerHTML = '<div class="done">✓ Posted to ' + esc(pageName) + (d.data && d.data.in_progress ? ' — going out now' : '') + '.</div><div class="note">It appears under Results once the platform confirms it.</div>'; c.querySelector('.pill').className = 'pill ok'; c.querySelector('.pill').innerHTML = '<i></i>Posted'; showToast('Posted.', 'success'); setTimeout(refreshActionBar, 6000); }
+        else { setBusy(false); post.textContent = 'Post it'; var why = d.message || d.error || (d.data && d.data.error) || ('HTTP ' + r.status); var n = document.createElement('div'); n.className = 'note'; n.style.color = 'var(--am,#f59e0b)'; n.textContent = why; c.querySelector('.foot').insertBefore(n, c.querySelector('.foot .row')); }
+      }).catch(function () { setBusy(false); post.textContent = 'Post it'; showToast("Couldn't reach the server — try again.", 'error'); });
     });
     edit.addEventListener('click', function () {
-      var cap = c.querySelector('.cap'); var ta = c.querySelector('textarea');
-      if (!ta) { ta = document.createElement('textarea'); ta.value = dr.caption || ''; ta.setAttribute('aria-label', 'Caption'); cap.replaceWith(ta); ta.focus(); edit.textContent = 'Save'; return; }
-      var val = ta.value.trim(); if (!val) { ta.focus(); return; }
+      var ta = c.querySelector('textarea');
+      if (!ta) {
+        ta = document.createElement('textarea'); ta.value = hasCaption ? dr.caption : ''; ta.setAttribute('aria-label', 'Caption'); ta.placeholder = 'Write the caption people will read first…';
+        var cnt = document.createElement('div'); cnt.className = 'count'; var upd = function () { cnt.textContent = ta.value.length + ' characters'; }; ta.addEventListener('input', upd); upd();
+        capEl.replaceWith(ta); ta.insertAdjacentElement('afterend', cnt); ta.focus(); edit.textContent = 'Save caption'; post.disabled = true; return;
+      }
+      var val = ta.value.trim(); if (!val) { ta.focus(); showToast('A post needs a caption.', 'warning'); return; }
       edit.disabled = true;
       api('PUT', 'social/posts/' + dr.post_id, { content: val }).then(function (r) {
         edit.disabled = false; var d = r.json || {};
-        if (r.ok && !d.error) { dr.caption = val; var nc = document.createElement('div'); nc.className = 'cap'; nc.textContent = val; ta.replaceWith(nc); edit.textContent = 'Edit'; showToast('Caption saved.', 'success'); }
+        if (r.ok && !d.error) { dr.caption = val; hasCaption = true; var nc = document.createElement('div'); nc.className = 'cap'; nc.textContent = val; var cntEl = c.querySelector('.count'); if (cntEl) cntEl.remove(); ta.replaceWith(nc); capEl = nc; edit.textContent = 'Edit caption'; if (hasAccount) { post.disabled = false; c.querySelector('.pill').className = 'pill ok'; c.querySelector('.pill').innerHTML = '<i></i>Ready to post'; } var warn = c.querySelector('.foot .note[style*="--rd"]'); if (warn) warn.remove(); showToast('Caption saved.', 'success'); }
         else showToast("Couldn't save: " + (d.message || d.error || ('HTTP ' + r.status)), 'error');
       }).catch(function () { edit.disabled = false; showToast("Couldn't reach the server — try again.", 'error'); });
     });
