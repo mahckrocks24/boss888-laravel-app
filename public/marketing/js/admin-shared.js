@@ -425,11 +425,17 @@ Object.assign(window.pages, {
                    id and preview_url; use them. */
                 var slug = row.id || row.slug || v;
                 var href = row.preview_url || ('/templates/' + slug + '/preview');
-                var preview = '<a href="'+href+'" target="_blank" style="color:var(--p);font-size:12px;margin-right:12px">Preview</a>';
+                /* ADMIN-TPL-2 (2026-09-25): Preview is the action people want and Clone creates a new
+                   folder, so they must not look alike or sit next to each other. Preview gets real edges;
+                   Clone is pushed to the far side behind a separator, small and muted. */
+                var preview = '<a href="'+href+'" target="_blank" style="display:inline-block;color:var(--p);font-size:12px;font-weight:600;'
+                            + 'border:1px solid var(--p);border-radius:6px;padding:5px 12px;text-decoration:none;margin-right:14px">Preview</a>';
                 var toggleLabel = row.is_active ? 'Disable' : 'Enable';
-                var toggle = '<a href="#" onclick="_admTemplateToggle(event,\''+slug+'\');return false;" style="color:var(--muted);font-size:12px;margin-right:12px">'+toggleLabel+'</a>';
-                var clone = '<a href="#" onclick="_admTemplateClone(event,\''+slug+'\');return false;" style="color:var(--p);font-size:12px">Clone as V2</a>';
-                return preview + toggle + clone;
+                var toggle = '<a href="#" onclick="_admTemplateToggle(event,\''+slug+'\');return false;" style="color:var(--muted);font-size:12px">'+toggleLabel+'</a>';
+                var sep = '<span style="display:inline-block;width:1px;height:14px;background:var(--border);margin:0 16px;vertical-align:middle"></span>';
+                var clone = '<a href="#" onclick="_admTemplateClone(event,\''+slug+'\');return false;" title="Creates a duplicate folder in storage/templates" '
+                          + 'style="color:var(--muted);font-size:11px;opacity:.75">Clone</a>';
+                return preview + toggle + sep + clone;
               } }
           ],
           searchFields: ['industry','name','variation','category'],
