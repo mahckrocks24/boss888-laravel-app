@@ -643,7 +643,7 @@
     var capEl = c.querySelector('.cap'); capEl.textContent = hasCaption ? dr.caption : 'No caption yet';
     if (dr.execution_status === 'dry_run_ok') {   /* PREVIEW-3: it already went through a dry run — say so before the next click */
       var pill0 = c.querySelector('.pill'); pill0.className = 'pill warn'; pill0.innerHTML = '<i></i>Not switched on';
-      var n0 = document.createElement('div'); n0.className = 'note why'; n0.style.color = 'var(--am,#f59e0b)'; n0.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is not switched on for the platform yet (it is waiting on Meta's app review). Your draft is intact; when the switch is on, Post it sends it.';
+      var n0 = document.createElement('div'); n0.className = 'note why'; n0.style.color = 'var(--am,#f59e0b)'; n0.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is not switched on for the platform yet (it is waiting on Meta\'s app review). Your draft is intact; when the switch is on, Post it sends it.';
       c.querySelector('.foot').insertBefore(n0, c.querySelector('.foot .row'));
     }
     var btns = c.querySelectorAll('.foot button'); var post = btns[0], edit = btns[1], later = btns[2];
