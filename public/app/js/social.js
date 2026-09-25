@@ -165,7 +165,11 @@ function _socRender(el) {
     '<div id="social-view-accounts" style="display:none"><div style="display:flex;flex-direction:column;gap:14px">' + _svRenderPlatformCards(A) +
       '<div class="card"><div class="card-header"><h3>All connected accounts</h3></div><div class="card-body">' +
         (A.length === 0 ? '<div style="text-align:center;padding:30px 20px;color:var(--t3)"><p style="font-size:13px;margin:0">No accounts connected yet. Use "Connect" above to link your first platform.</p></div>'
-          : '<div style="display:flex;flex-direction:column;gap:10px">' + A.map(function(a){ return '<div style="display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--rg,10px)"><div style="flex:1;min-width:0"><strong style="color:var(--t1)">' + _socEsc(a.account_name||a.name||a.platform) + '</strong><div style="font-size:11px;color:var(--t3)">' + _socPlat(a.platform) + ' · ' + _socEsc(a.status||'active') + (a.created_at ? ' · connected ' + _svTimeAgo(a.created_at) : '') + '</div></div><button class="btn btn-outline btn-sm" style="color:var(--rd)" onclick="luSocialDisconnect(' + a.id + ')">Disconnect</button></div>'; }).join('') + '</div>') +
+          : '<div style="display:flex;flex-direction:column;gap:10px">' + A.map(function(a){ return '<div style="display:flex;align-items:center;gap:14px;padding:12px 14px;border:1px solid var(--bd);border-radius:var(--rg,10px);flex-wrap:wrap"><div style="flex:1;min-width:0"><strong style="color:var(--t1)">' + _socEsc(a.account_name||a.name||a.platform) + '</strong><div style="font-size:11px;color:var(--t3)">' + _socPlat(a.platform) + ' · ' + _socEsc(a.status||'active') + (a.created_at ? ' · connected ' + _svTimeAgo(a.created_at) : '') + '</div></div>' +
+              /* SOCIAL-PROFILE-1: which business this account belongs to (Sarah picks the Page by it). Instagram follows its Page. */
+              (String(a.platform).toLowerCase() === 'instagram' ? '<span style="font-size:12px;color:var(--t3)">' + (a.business_name ? 'For ' + _socEsc(a.business_name) : 'Follows its Facebook Page') + '</span>'
+                : '<label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)">For business <select class="sv-acct-biz" data-id="' + a.id + '" data-current="' + _socEsc(a.business_id || '') + '" style="min-height:30px;padding:0 6px;border-radius:6px;border:1px solid var(--bd);background:var(--s1);color:var(--t1);font-size:12px;max-width:220px"><option value="">' + (a.business_name ? _socEsc(a.business_name) : 'Not assigned') + '</option></select></label>') +
+              '<button class="btn btn-outline btn-sm" style="color:var(--rd)" onclick="luSocialDisconnect(' + a.id + ')">Disconnect</button></div>'; }).join('') + '</div>') +
       '</div></div>' +
     '</div></div>' +
   '</div>';
@@ -181,6 +185,7 @@ function _socRender(el) {
     ['dashboard','posts','insights','queue','accounts'].forEach(function(v){ var e = document.getElementById('social-view-' + v); if (e) e.style.display = v===view ? '' : 'none'; });
     document.querySelectorAll('[data-sv]').forEach(function(b){ var active = b.dataset.sv===view; b.style.borderBottomColor = active ? 'var(--da)' : 'transparent'; b.style.color = active ? 'var(--da)' : 'var(--t3)'; b.style.fontWeight = active ? '600' : '400'; });
     if (view === 'insights') window.socialLoadInsights();
+    if (view === 'accounts' && typeof window._svWireAccountBusiness === 'function') window._svWireAccountBusiness();   /* SOCIAL-PROFILE-1 */
   };
 }
 
@@ -343,6 +348,23 @@ window.socialDeletePost = async function(postId) {
   catch (e) { showToast('Delete failed: ' + e.message, 'error'); }
 };
 
+/* SOCIAL-PROFILE-1: fill every "For business" select once the businesses are known; save on change. */
+window._svWireAccountBusiness = async function(){
+  var sels = document.querySelectorAll('select.sv-acct-biz'); if (!sels.length) return;
+  var biz = await _svBusinesses();
+  Array.prototype.forEach.call(sels, function(s){
+    s.innerHTML = _svBizOptions(biz.list, s.getAttribute('data-current'));
+    s.onchange = async function(){
+      try {
+        var r = await _socApi('POST', '/social/accounts/' + s.getAttribute('data-id') + '/business', { business_id: s.value ? parseInt(s.value, 10) : null });
+        if (!r || !r.success) throw new Error((r && r.error) || 'Could not save.');
+        showToast(r.business_name ? 'This Page now posts for ' + r.business_name + '.' : 'Business cleared for this Page.', 'success');
+        socialLoad(document.getElementById('social-root'));
+      } catch (e) { showToast('Could not save: ' + e.message, 'error'); }
+    };
+  });
+};
+
 window.luSocialDisconnect = async function(accountId) {
   var ok = await luConfirm('Disconnect this social account? Scheduled posts for it will fail to publish until it is reconnected.', 'Disconnect account', 'Disconnect', 'Keep');
   if (!ok) return;
@@ -393,9 +415,11 @@ window._svRenderPlatformCards = function(accounts){
   var A = accounts || [], byPlat = {};
   A.forEach(function(a){ (byPlat[a.platform] = byPlat[a.platform] || []).push(a); });
   var fb = (byPlat.facebook||[])[0], ig = (byPlat.instagram||[])[0], li = (byPlat.linkedin||[])[0];
+  // SOCIAL-PROFILE-1: several Pages are normal now (one per business); the card names them all.
+  var fbAll = byPlat.facebook || [], igAll = byPlat.instagram || [];
   return [
-    _svPlatformCard({ platform:'facebook', label:'Facebook', ready:true, blurb:'Connect your Facebook Page to publish and schedule posts.', connectLabel:'Connect Facebook Page →', account: fb }),
-    _svPlatformCard({ platform:'instagram', label:'Instagram', ready:true, requires:{ platform:'facebook', connected: !!fb, message:'Instagram publishing runs through a linked Facebook Page. Connect Facebook first.' }, blurb:'Connect your Instagram Business account (via Facebook) for feed posts.', connectLabel:'Connect Instagram →', account: ig }),
+    _svPlatformCard({ platform:'facebook', label:'Facebook', ready:true, blurb:'Connect your Facebook Page to publish and schedule posts.', connectLabel:'Connect Facebook Page →', account: fb, all: fbAll }),
+    _svPlatformCard({ platform:'instagram', label:'Instagram', ready:true, requires:{ platform:'facebook', connected: !!fb, message:'Instagram publishing runs through a linked Facebook Page. Connect Facebook first.' }, blurb:'Connect your Instagram Business account (via Facebook) for feed posts.', connectLabel:'Connect Instagram →', account: ig, all: igAll }),
     _svPlatformCard({ platform:'linkedin', label:'LinkedIn', ready:false, setupRequired:true, blurb:'LinkedIn publishing is not enabled on this workspace yet. You can still draft and copy LinkedIn posts.', account: li }),
     _svPlatformCard({ platform:'tiktok', label:'TikTok', ready:false, comingSoon:true, blurb:'TikTok publishing is not available yet. Draft TikTok-ready captions here and post them manually.' }),
   ].join('');
@@ -405,7 +429,15 @@ window._svPlatformCard = function(cfg){
   var connected = !!cfg.account, blockedByReq = cfg.requires && !cfg.requires.connected, stateBadge, bodyHtml;
   if (connected) {
     var a = cfg.account;
-    stateBadge = '<span style="font-size:12px;font-weight:700;color:var(--ac)">✓ Connected</span>';
+    var all = cfg.all || [a];
+    stateBadge = '<span style="font-size:12px;font-weight:700;color:var(--ac)">✓ Connected' + (all.length > 1 ? ' · ' + all.length + ' Pages' : '') + '</span>';
+    if (all.length > 1 || (cfg.platform === 'facebook' && all.length >= 1)) {
+      bodyHtml = '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">' + all.map(function(x){
+        return '<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--t1);font-size:14px">' + _socEsc(x.account_name||cfg.label) + '</div><div style="font-size:11px;color:var(--t3)">' + (x.business_name ? 'For ' + _socEsc(x.business_name) : 'Business not assigned yet — choose it under All connected accounts') + '</div></div><button class="btn btn-outline btn-sm" style="color:var(--rd)" onclick="luSocialDisconnect(' + x.id + ')">Disconnect</button></div>';
+      }).join('') + '</div>' +
+      (cfg.platform === 'facebook' ? '<div style="display:flex;justify-content:flex-end"><button class="btn btn-outline btn-sm" id="sv-connect-' + cfg.platform + '" onclick="_svConnectPlatform(\'' + cfg.platform + '\', {rerequest:true})">Connect another Page</button></div>' : '');
+      return '<div class="card"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between"><h3>' + _socEsc(cfg.label) + '</h3>' + stateBadge + '</div><div class="card-body" style="padding:20px;max-width:560px">' + bodyHtml + '</div></div>';
+    }
     bodyHtml = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px"><div style="flex:1;min-width:0"><div style="font-weight:700;color:var(--t1);font-size:14px">' + _socEsc(a.account_name||cfg.label) + '</div><div style="font-size:11px;color:var(--t3)">' + _socEsc(cfg.platform) + ' · ' + _socEsc(a.status||'active') + (a.created_at ? ' · connected ' + _svTimeAgo(a.created_at) : '') + '</div></div></div><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-outline btn-sm" style="color:var(--rd)" onclick="luSocialDisconnect(' + a.id + ')">Disconnect</button></div>';
   } else if (cfg.comingSoon) {
     stateBadge = '<span style="font-size:10px;font-weight:700;color:var(--am);background:rgba(245,158,11,.15);padding:3px 10px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em">Not yet</span>';
@@ -458,7 +490,21 @@ window._svConnectPlatform = async function(platform, opts){
 /* SOCIAL-PAGEPICK-1 (2026-09-25): after Facebook's sign-in, ask which Page(s) this workspace is for.
    Nothing is stored until the customer confirms. "Choose different Pages" re-opens Facebook's own
    selection so a Page that was not ticked the first time can be granted. Site CSS, no native controls. */
-window._svShowPagePicker = function(platform, key, pages){
+/* SOCIAL-PROFILE-1: the workspace's businesses (id, name); cached for the view. */
+var _svBiz = null;
+async function _svBusinesses(){
+  if (_svBiz) return _svBiz;
+  try { var r = await _socApi('GET', '/social/businesses'); _svBiz = { list: (r && r.businesses) || [], multi: !!(r && r.multi) }; }
+  catch (e) { _svBiz = { list: [], multi: false }; }
+  return _svBiz;
+}
+function _svBizOptions(list, selected){
+  return '<option value=""' + (!selected ? ' selected' : '') + '>Not assigned</option>' + list.map(function(b){
+    return '<option value="' + _socEsc(b.id) + '"' + (Number(b.id) === Number(selected) ? ' selected' : '') + '>' + _socEsc(b.name) + (b.is_default ? ' (default)' : '') + '</option>';
+  }).join('');
+}
+window._svShowPagePicker = async function(platform, key, pages){
+  var biz = await _svBusinesses();
   var old = document.getElementById('sv-page-picker'); if (old) old.remove();
   var wrap = document.createElement('div'); wrap.id = 'sv-page-picker';
   wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px';
@@ -467,12 +513,16 @@ window._svShowPagePicker = function(platform, key, pages){
     var sub = [p.category, p.instagram ? ('Instagram @' + p.instagram) : null].filter(Boolean).map(_socEsc).join(' · ');
     return '<label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;cursor:pointer;margin-bottom:8px;background:var(--s2)">' +
       '<input type="checkbox" class="sv-pick" value="' + _socEsc(p.page_id) + '"' + (pages.length === 1 ? ' checked' : '') + ' style="width:18px;height:18px;flex:none;cursor:pointer">' + pic +
-      '<span style="min-width:0"><span style="display:block;font-weight:700;color:var(--t1);font-size:14px;word-break:break-word">' + _socEsc(p.name) + '</span>' +
-      (sub ? '<span style="display:block;color:var(--t3);font-size:12px;margin-top:2px">' + sub + '</span>' : '') + '</span></label>';
+      '<span style="min-width:0;flex:1"><span style="display:block;font-weight:700;color:var(--t1);font-size:14px;word-break:break-word">' + _socEsc(p.name) + '</span>' +
+      (sub ? '<span style="display:block;color:var(--t3);font-size:12px;margin-top:2px">' + sub + '</span>' : '') +
+      (biz.list.length ? '<span style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12px;color:var(--t2)">For business ' +
+        '<select class="sv-pick-biz" data-page="' + _socEsc(p.page_id) + '" onclick="event.preventDefault()" style="min-height:28px;padding:0 6px;border-radius:6px;border:1px solid var(--bd);background:var(--s1);color:var(--t1);font-size:12px;max-width:220px">' +
+        _svBizOptions(biz.list, (biz.list.length === 1 ? biz.list[0].id : (biz.list.filter(function(b){ return b.is_default; })[0] || {}).id)) + '</select></span>' : '') +
+      '</span></label>';
   }).join('');
   wrap.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="sv-pp-title" style="background:var(--s1);color:var(--t1);border:1px solid var(--bd);border-radius:14px;max-width:460px;width:100%;padding:22px;box-shadow:0 16px 48px rgba(0,0,0,.5);max-height:90vh;overflow:auto">' +
     '<h3 id="sv-pp-title" style="margin:0 0 6px;font-size:17px">Which Page is this workspace for?</h3>' +
-    '<p style="margin:0 0 14px;color:var(--t2);font-size:13px;line-height:1.5">Facebook shared ' + pages.length + ' Page' + (pages.length === 1 ? '' : 's') + ' you manage. Only the ones you tick are connected here. Not seeing the right Page? Choose different Pages and tick it in Facebook’s window.</p>' +
+    '<p style="margin:0 0 14px;color:var(--t2);font-size:13px;line-height:1.5">Facebook shared ' + pages.length + ' Page' + (pages.length === 1 ? '' : 's') + ' you manage. Only the ones you tick are connected here' + (biz.list.length > 1 ? ', and each is posted to for the business you choose — Sarah uses that to pick the right Page.' : '.') + ' Not seeing the right Page? Choose different Pages and tick it in Facebook’s window.</p>' +
     '<div id="sv-pp-list">' + (rows || '<p style="color:var(--t3);font-size:13px">No Pages were shared.</p>') + '</div>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px">' +
       '<button type="button" class="btn btn-outline btn-sm" id="sv-pp-cancel">Cancel</button>' +
@@ -489,7 +539,9 @@ window._svShowPagePicker = function(platform, key, pages){
     if (!ids.length) { showToast('Tick at least one Page.', 'warning'); return; }
     var ok = document.getElementById('sv-pp-ok'); ok.disabled = true; ok.textContent = 'Connecting…';
     try {
-      var r = await _socApi('POST', '/social/oauth/facebook/confirm', { key: key, page_ids: ids });
+      var businesses = {};
+      Array.prototype.forEach.call(wrap.querySelectorAll('.sv-pick-biz'), function(s){ if (s.value) businesses[s.getAttribute('data-page')] = parseInt(s.value, 10); });
+      var r = await _socApi('POST', '/social/oauth/facebook/confirm', { key: key, page_ids: ids, businesses: businesses });
       if (!r || !r.success) throw new Error((r && r.error) || 'Could not connect the Page.');
       var names = (r.accounts || []).map(function(a){ return a.account_name; }).filter(Boolean);
       showToast('Connected — ' + (names.join(', ') || 'Facebook') + '.', 'success');

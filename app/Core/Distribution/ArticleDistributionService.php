@@ -76,7 +76,21 @@ class ArticleDistributionService
         $support  = PlatformPolicy::check($platform, PlatformPolicy::INTENT_ARTICLE_SHARE);
         if (!$support['ok']) return $this->fail($support['reason'], $corr);
 
-        $account = $this->validateAccount($wsId, (int) ($input['social_account_id'] ?? 0), $platform);
+        // SOCIAL-PROFILE-1: no account named → the article's website → its business → that business's Page.
+        // Several Pages and no business to tell them apart → refuse with the names, so Sarah asks.
+        $accountId = (int) ($input['social_account_id'] ?? 0);
+        if ($accountId <= 0) {
+            $r = (new \App\Engines\Social\Services\SocialAccountResolver())->resolve(
+                $wsId, $platform, (int) ($input['business_id'] ?? 0) ?: null,
+                (int) ($article['article']->website_id ?? 0) ?: null, (int) $article['article']->id
+            );
+            if (!$r['ok']) {
+                return $this->fail($r['reason'], $corr) + ['message' => $r['message'], 'candidates' => $r['candidates']];
+            }
+            $accountId = (int) $r['account']->id;
+        }
+
+        $account = $this->validateAccount($wsId, $accountId, $platform);
         if (!$account['ok']) return $this->fail($account['reason'], $corr);
 
         $url = $this->urls->resolve($wsId, $article['article']);

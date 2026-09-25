@@ -240,7 +240,7 @@ class ToolSchemaService
         // ─── SOCIAL ──────────────────────────────────────────────────
         'social.create_post' => [
             'description' => 'Create a social media post draft.',
-            'parameters'  => ['platform' => 'string (facebook|instagram|linkedin|tiktok|x)', 'content' => 'string'],
+            'parameters'  => ['platform' => 'string (facebook|instagram|linkedin|tiktok|x)', 'content' => 'string', 'business_id' => 'int?', 'website_id' => 'int?', 'article_id' => 'int?' /* SOCIAL-PROFILE-1: which business/site the post is for */],
             'engine'      => 'social', 'action' => 'social_create_post', 'approval' => 'review',
         ],
         'social.list_posts' => [

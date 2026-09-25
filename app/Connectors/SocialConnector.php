@@ -438,7 +438,7 @@ class SocialConnector extends BaseConnector
      * SOCIAL-PAGEPICK-1: store only the Pages the customer chose (and the Instagram accounts linked to
      * them). The stash must belong to the caller's workspace; it is consumed on success.
      */
-    public function confirmPages(string $key, array $pageIds, int $workspaceId): array
+    public function confirmPages(string $key, array $pageIds, int $workspaceId, array $businessByPage = []): array
     {
         $pending = cache()->get(self::PENDING_PREFIX . $key);
         if (! is_array($pending) || empty($pending['accounts'])) {
@@ -453,12 +453,22 @@ class SocialConnector extends BaseConnector
             return ['success' => false, 'error' => 'Choose at least one Page.', 'code' => 'NO_PAGE_CHOSEN'];
         }
 
+        // SOCIAL-PROFILE-1: which business each Page is for; a linked Instagram follows its Page.
+        // Only a business of this workspace is accepted; anything else is stored as unassigned.
+        $resolver = new \App\Engines\Social\Services\SocialAccountResolver();
+        $bizFor = function (string $pageId) use ($businessByPage, $resolver, $workspaceId): ?int {
+            $b = (int) ($businessByPage[$pageId] ?? 0);
+            return $b > 0 && $resolver->businessInWorkspace($workspaceId, $b) ? $b : null;
+        };
+
         $chosen = [];
         foreach ($pending['accounts'] as $a) {
             $platform = $a['platform'] ?? '';
             if ($platform === 'facebook' && in_array((string) $a['account_id'], $pageIds, true)) {
+                $a['business_id'] = $bizFor((string) $a['account_id']);
                 $chosen[] = $a;
             } elseif ($platform === 'instagram' && in_array((string) ($a['linked_page_id'] ?? ''), $pageIds, true)) {
+                $a['business_id'] = $bizFor((string) $a['linked_page_id']);
                 $chosen[] = $a;
             }
         }
@@ -515,6 +525,10 @@ class SocialConnector extends BaseConnector
                 'health_state'          => 'connected',
                 'health_detail'         => null,
             ];
+            // SOCIAL-PROFILE-1: the business this account belongs to, when the caller says.
+            if (array_key_exists('business_id', $acct)) {
+                $envelope['business_id'] = $acct['business_id'] ? (int) $acct['business_id'] : null;
+            }
 
             if ($existing) {
                 DB::table('social_accounts')->where('id', $existing->id)->update($envelope + [

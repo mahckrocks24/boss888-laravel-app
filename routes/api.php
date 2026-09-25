@@ -1317,6 +1317,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $__ownPost = fn(\Illuminate\Http\Request $r, $id) => (bool) app($s)->getPost((int) $r->attributes->get('workspace_id'), (int) $id);
         Route::get('/posts/{id}', function (\Illuminate\Http\Request $r, $id) use ($s) { $p = app($s)->getPost((int) $r->attributes->get('workspace_id'), (int) $id); return $p ? response()->json($p) : response()->json(['success' => false, 'error' => 'Post not found'], 404); });
         Route::get('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->listAccounts($r->attributes->get('workspace_id'))));
+        // SOCIAL-PROFILE-1: which business an account belongs to; the businesses of the workspace (read-only).
+        Route::post('/accounts/{id}/business', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            $res = app($s)->setAccountBusiness((int) $r->attributes->get('workspace_id'), (int) $id, (int) $r->input('business_id', 0) ?: null);
+            return response()->json($res, ($res['success'] ?? false) ? 200 : (($res['code'] ?? '') === 'NOT_FOUND' ? 404 : 422));
+        })->whereNumber('id');
+        Route::get('/businesses', function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $resolver = new \App\Core\Business\BusinessProfileResolver();
+            return response()->json([
+                'businesses' => array_map(fn ($b) => ['id' => (int) $b->id, 'name' => (string) $b->name, 'is_default' => (bool) $b->is_default], $resolver->forWorkspace($wsId)),
+                'multi' => $resolver->isMulti($wsId),
+            ]);
+        });
         Route::get('/calendar', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getCalendarPosts($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'))));
         // SOCIAL INSIGHTS (SOC-P1-5): deterministic, credit-free. Workspace from the token (server-side
         // authz); website_id scopes to one site | 'all' | 'unattributed'. No exec chain -> no AI credit.
@@ -1378,7 +1391,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             if ($key === '') {
                 return response()->json(['error' => 'Missing sign-in reference.'], 422);
             }
-            $result = app(\App\Connectors\SocialConnector::class)->confirmPages($key, $pageIds, $wsId);
+            // SOCIAL-PROFILE-1: {page_id: business_id} — which business each Page is for.
+            $businesses = (array) $r->input('businesses', []);
+            $result = app(\App\Connectors\SocialConnector::class)->confirmPages($key, $pageIds, $wsId, $businesses);
             if (! ($result['success'] ?? false)) {
                 return response()->json($result, ($result['code'] ?? '') === 'WORKSPACE_MISMATCH' ? 403 : 422);
             }

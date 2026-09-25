@@ -111,7 +111,10 @@ class SocialService
             // SOCIAL-888 provenance: capture the website when the caller states one; else
             // NULL = workspace-level (no blind guessing). article/studio callers may pass it.
             'website_id' => $data['website_id'] ?? null,
-            'social_account_id' => $data['account_id'] ?? null,
+            // SOCIAL-PROFILE-1: the business the post is about (Sarah's context), and the article it shares.
+            'business_id' => isset($data['business_id']) && (int) $data['business_id'] > 0 ? (int) $data['business_id'] : null,
+            'article_id' => isset($data['article_id']) && (int) $data['article_id'] > 0 ? (int) $data['article_id'] : null,
+            'social_account_id' => $data['account_id'] ?? $data['social_account_id'] ?? null,
             'platform' => $data['platform'] ?? 'instagram',
             'content' => $data['content'] ?? '',
             'media_json' => json_encode($data['media'] ?? []),
@@ -211,12 +214,20 @@ class SocialService
         };
 
         // ── Resolve the connection for this workspace + platform.
-        $account = $post->social_account_id
-            ? DB::table('social_accounts')->where('id', $post->social_account_id)->where('workspace_id', $post->workspace_id)->first()
-            : DB::table('social_accounts')->where('workspace_id', $post->workspace_id)->where('platform', $post->platform)->orderByDesc('id')->first();
+        // SOCIAL-PROFILE-1: the business the post is about picks the Page. Several Pages and no way to tell
+        // → refuse and say so (Sarah asks), never "the newest one".
+        $resolved = (new SocialAccountResolver())->resolve(
+            (int) $post->workspace_id, (string) $post->platform,
+            (int) ($post->business_id ?? 0) ?: null, (int) ($post->website_id ?? 0) ?: null, (int) ($post->article_id ?? 0) ?: null,
+            (int) ($post->social_account_id ?? 0) ?: null
+        );
+        $account = $resolved['account'];
         if (!$account) {
-            $fail('failed', 'permanent:NOT_CONNECTED',
-                "The post wasn't published to {$post->platform} — no {$post->platform} account is connected for this workspace yet. Connect it in Settings to publish for real.");
+            $fail('failed', 'permanent:' . ($resolved['reason'] ?: 'NOT_CONNECTED'),
+                "The post wasn't published to {$post->platform} — " . ($resolved['message'] ?: "no {$post->platform} account is connected for this workspace yet. Connect it in Settings to publish for real."));
+        }
+        if (empty($post->social_account_id)) {
+            DB::table('social_posts')->where('id', $postId)->update(['social_account_id' => $account->id, 'updated_at' => now()]);
         }
 
         $health = \App\Core\Publisher\ConnectionHealth::assess($account);
@@ -545,11 +556,39 @@ class SocialService
     {
         // SOCIAL-PAGEPICK-1: customer-safe columns only. The raw row carried credentials_json — with the
         // access token in it — to the browser. No credential column is ever selected here.
-        return DB::table('social_accounts')->where('workspace_id', $wsId)
+        $rows = DB::table('social_accounts')->where('workspace_id', $wsId)
             ->select(['id', 'workspace_id', 'platform', 'account_name', 'account_id', 'status', 'health_state',
                       'token_expires_at', 'health_checked_at', 'health_detail', 'provider_account_name',
                       'linked_page_id', 'stats_json', 'business_id', 'created_at', 'updated_at'])
             ->get()->toArray();
+        // SOCIAL-PROFILE-1: name the business each account belongs to (read through the resolver).
+        $names = [];
+        foreach ((new \App\Core\Business\BusinessProfileResolver())->forWorkspace($wsId) as $b) { $names[(int) $b->id] = (string) $b->name; }
+        foreach ($rows as $r) { $r->business_name = ! empty($r->business_id) ? ($names[(int) $r->business_id] ?? null) : null; }
+
+        return $rows;
+    }
+
+    /** SOCIAL-PROFILE-1: which business a connected account belongs to (null = unassigned). */
+    public function setAccountBusiness(int $wsId, int $accountId, ?int $businessId): array
+    {
+        $acc = DB::table('social_accounts')->where('id', $accountId)->where('workspace_id', $wsId)->first();
+        if (! $acc) {
+            return ['success' => false, 'code' => 'NOT_FOUND', 'error' => 'Account not found.'];
+        }
+        $resolver = new SocialAccountResolver();
+        if ($businessId && ! $resolver->businessInWorkspace($wsId, $businessId)) {
+            return ['success' => false, 'code' => 'NOT_FOUND', 'error' => 'Business not found.'];
+        }
+        DB::table('social_accounts')->where('id', $accountId)->update(['business_id' => $businessId ?: null, 'updated_at' => now()]);
+        // An Instagram account linked to this Page follows it.
+        if (strtolower((string) $acc->platform) === 'facebook' && ! empty($acc->account_id)) {
+            DB::table('social_accounts')->where('workspace_id', $wsId)->where('platform', 'instagram')
+                ->where('linked_page_id', (string) $acc->account_id)->update(['business_id' => $businessId ?: null, 'updated_at' => now()]);
+        }
+
+        return ['success' => true, 'account_id' => $accountId, 'business_id' => $businessId ?: null,
+                'business_name' => $businessId ? $resolver->businessName($wsId, $businessId) : null];
     }
 
     public function disconnectAccount(int $wsId, int $accountId): bool
