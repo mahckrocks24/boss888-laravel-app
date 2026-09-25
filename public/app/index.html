@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="2026-09-02-dec0030d">
+<meta name="lu-build" content="20260925-256078e9">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4804,8 +4804,10 @@ window.savePolicies=async function(){var cbs=document.querySelectorAll('.pol-cb'
  }catch(e){showToast("Couldn't save policies \u2014 "+e.message,'error');if(msg){msg.textContent='Save failed';msg.style.color='var(--rd)';}}};
 try{if(window.matchMedia){matchMedia('(prefers-color-scheme: light)').addEventListener('change',function(){if((localStorage.getItem('lu_theme')||'dark')==='system')window.luApplyTheme('system');});}}catch(e){}
 document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(localStorage.getItem('lu_theme')||'dark');}catch(e){}});
-/* BUILD-CHECK (2026-08-30): a long-lived tab (phones) reloads itself once when a newer build is live. */
-(function(){try{var m=document.querySelector('meta[name="lu-build"]');var mine=m?m.getAttribute('content'):'';if(!mine)return;var checking=false;function check(){if(checking||document.hidden)return;checking=true;fetch('/app/build.txt?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){checking=false;t=(t||'').trim();if(t&&t!==mine){var k='lu_build_reloaded';if(sessionStorage.getItem(k)===t)return;sessionStorage.setItem(k,t);location.reload();}}).catch(function(){checking=false;});}document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(check,400);});setInterval(check,300000);setTimeout(check,15000);}catch(e){}})();
+/* BUILD-CHECK (2026-08-30; STALE-1 2026-09-25): a long-lived tab (phones) reloads itself once when a newer build is live.
+   The stamp is written by /root/r190/stamp-build.sh (called by build-bundle.sh; run it after any index.html edit).
+   Never while the user is typing or has the editor open — those retry a minute later. */
+(function(){try{var m=document.querySelector('meta[name="lu-build"]');var mine=m?m.getAttribute('content'):'';if(!mine)return;var checking=false,pending='';function busy(){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable))return true;var ed=document.getElementById('template-editor-view');if(ed&&ed.offsetParent!==null)return true;return false;}function apply(t){if(busy()){pending=t;setTimeout(function(){if(pending)apply(pending);},60000);return;}pending='';var k='lu_build_reloaded';if(sessionStorage.getItem(k)===t)return;sessionStorage.setItem(k,t);location.reload();}function check(){if(checking||document.hidden)return;checking=true;fetch('/app/build.txt?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){checking=false;t=(t||'').trim();if(t&&t!==mine)apply(t);}).catch(function(){checking=false;});}window.__luBuildCheck=check;document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(check,400);});setInterval(check,300000);setTimeout(check,15000);}catch(e){}})();
 
 // This inline script runs immediately — before core.js is fetched.
 // Guarantees that onclick="nav('crm')" never throws ReferenceError
