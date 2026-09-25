@@ -97,6 +97,13 @@
       '.sh-card .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}',
       '.sh-btn{min-height:40px;padding:0 14px;border-radius:var(--r);font:600 13px var(--fb);cursor:pointer;border:1px solid var(--bd2);background:transparent;color:var(--t1)}',
       '.sh-btn.primary{background:var(--p);border-color:var(--p);color:#fff}.sh-btn:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
+      /* APPROVE-BUTTONS-1: the action bar under Sarah's latest message */
+      '.sh-actbar{align-self:stretch;display:flex;flex-direction:column;gap:8px;margin:2px 0 6px}',
+      '.sh-act{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--s1)}',
+      '.sh-act .t{font-weight:600;color:var(--t1);font-size:13.5px}.sh-act .d{font-size:12.5px;color:var(--t2)}.sh-act ol{margin:0;padding-left:18px;font-size:12.5px;color:var(--t2)}',
+      '.sh-act .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}.sh-act .done{font-size:12.5px;color:var(--t2)}',
+      '.sh-chips{display:flex;gap:8px;flex-wrap:wrap}.sh-chips button{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t1);font:600 13px var(--fb);cursor:pointer}.sh-chips button.go{background:var(--p);border-color:var(--p);color:#fff}',
+      '.sh-act button.sh-btn{min-height:36px;padding:0 14px;border-radius:10px;font:600 13px var(--fb);cursor:pointer;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t1)}.sh-act button.sh-btn.primary{background:var(--p);border-color:var(--p);color:#fff}.sh-act button.sh-btn.danger{color:var(--rd,#c0392b)}',
       '.sh-orch{align-self:flex-start;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:var(--s1);border:1px solid var(--bd);font-size:13px;color:var(--t2);box-shadow:0 1px 3px rgba(0,0,0,.06)}',
       '.sh-orch .dot{width:8px;height:8px;border-radius:50%;background:var(--am);animation:shPulse 1.4s ease-in-out infinite}',
       '.sh-orch .who{display:inline-flex;align-items:center;gap:6px}.sh-orch .who b{color:var(--t1);font-weight:600}.sh-orch .arrow{color:var(--t3)}',
@@ -213,6 +220,7 @@
           '</div>' +
         '</div>';
       S.feed = document.getElementById('sh-feed'); S.input = document.getElementById('sh-input'); S.sendBtn = document.getElementById('sh-send');
+      setTimeout(refreshActionBar, 2500);   // APPROVE-BUTTONS-1: whatever is already waiting when the view opens
       /* SARAH-SCROLL-1 listeners */
       S.stick = true;
       S.feed.addEventListener('scroll', function () { S.stick = nearBottom(S.feed); }, { passive: true });
@@ -520,6 +528,7 @@
     if ((!text && !pendingAtts.length) || S.sendBtn.disabled) return;
     var empty = S.feed.querySelector('.sh-empty'); if (empty) empty.remove();
     S.input.value = ''; S.input.style.height = 'auto';
+    clearActionBar();   // APPROVE-BUTTONS-1: a typed reply supersedes the buttons
     S.feed.appendChild(bubble({ from: 'User', content: text || ('I\'ve attached ' + (pendingAtts.length === 1 ? '"' + pendingAtts[0].name + '"' : pendingAtts.length + ' files') + '.'), ts: null, attachments: pendingAtts })); toBottom();
     var typing = document.createElement('div'); typing.className = 'sh-orch'; typing.id = 'sh-typing'; typing.innerHTML = '<span class="dot"></span><span>Sarah is thinking…</span>'; S.feed.appendChild(typing); toBottom();
     var body = { content: text, from: 'User' };
@@ -549,8 +558,56 @@
         pollFinal(ackId, d.poll_interval_ms || POLL_MS); return;
       }
       if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); S.lastAgentText = String(d.reply).trim(); S.lastAgentAt = Date.now(); if (d.id) { S.rendered[String(d.id)] = 1; if (+d.id > (S.lastMid || 0)) S.lastMid = +d.id; } }
+      setTimeout(refreshActionBar, 400);   // APPROVE-BUTTONS-1
       toBottom();
     }).catch(function (e) { setBusy(false); var t = document.getElementById('sh-typing'); if (t) t.remove(); S.feed.appendChild(card({ type: 'failure_notice', content: 'Couldn\'t reach Sarah — check your connection and try again.' })); });
+  }
+  /* ── APPROVE-BUTTONS-1: execution buttons wherever Sarah asks for an approval; text stays an option ───────── */
+  function clearActionBar() { var b = document.getElementById('sh-actbar'); if (b) b.remove(); }
+  function renderActionBar(d) {
+    clearActionBar();
+    var items = (d && Array.isArray(d.items)) ? d.items : []; var chips = (d && Array.isArray(d.quick_replies)) ? d.quick_replies : [];
+    if (!items.length && !chips.length) return;
+    var bar = document.createElement('div'); bar.className = 'sh-actbar'; bar.id = 'sh-actbar'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Sarah is waiting for your decision');
+    items.forEach(function (it) {
+      var c = document.createElement('div'); c.className = 'sh-act'; c.setAttribute('data-approval', String(it.approval_id));
+      var lines = Array.isArray(it.lines) && it.lines.length ? '<ol>' + it.lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ol>' : '';
+      c.innerHTML = '<div class="t">' + esc(it.label) + '</div>' + (it.description ? '<div class="d">' + esc(it.description) + '</div>' : '') + lines +
+        '<div class="row"><button type="button" class="sh-btn primary">' + (it.kind === 'plan' ? 'Approve the plan' : 'Approve') + '</button><button type="button" class="sh-btn danger">Decline</button></div>';
+      var btns = c.querySelectorAll('button');
+      btns[0].addEventListener('click', function () { actDecide(c, it, 'approve', null); });
+      btns[1].addEventListener('click', function () {
+        var box = c.querySelector('.sh-reason'); if (!box) { box = document.createElement('textarea'); box.className = 'sh-reason'; box.rows = 2; box.placeholder = 'Why not? Sarah learns from this'; box.setAttribute('aria-label', 'Reason'); c.insertBefore(box, c.querySelector('.row')); box.focus(); return; }
+        var reason = box.value.trim(); if (!reason) { box.focus(); showToast('Add a short reason so Sarah knows what to change.', 'warning'); return; }
+        actDecide(c, it, 'reject', reason);
+      });
+      bar.appendChild(c);
+    });
+    if (chips.length) {
+      var ch = document.createElement('div'); ch.className = 'sh-chips';
+      chips.forEach(function (q, i) { var b = document.createElement('button'); b.type = 'button'; b.className = i === 0 ? 'go' : ''; b.textContent = q.label; b.addEventListener('click', function () { clearActionBar(); S.input.value = q.text; send(); }); ch.appendChild(b); });
+      var hint = document.createElement('span'); hint.className = 'd'; hint.style.cssText = 'font-size:12px;color:var(--t3);align-self:center'; hint.textContent = 'or just type';
+      ch.appendChild(hint); bar.appendChild(ch);
+    }
+    S.feed.appendChild(bar); toBottom();
+  }
+  function actDecide(c, it, action, reason) {
+    var buttons = c.querySelectorAll('button'); buttons.forEach(function (b) { b.disabled = true; });
+    var body = action === 'approve' ? { expected_credit_cost: it.credits || 0 } : { reason: reason };
+    api('POST', 'approvals/' + it.approval_id + '/' + action, body).then(function (r) {
+      var d = r.json || {};
+      if (r.ok && d.success !== false && !d.error) {
+        c.innerHTML = '<div class="t">' + esc(it.label) + '</div><div class="done">' + (action === 'approve' ? (it.kind === 'plan' ? 'Approved — the team is on it, every step, without asking again.' : 'Approved — your team is on it.') : 'Declined — nothing will run.') + '</div>';
+        showToast(action === 'approve' ? 'Approved — your team is on it.' : 'Declined.', action === 'approve' ? 'success' : 'info');
+        loadBriefing(); loadRail(); setTimeout(refreshActionBar, 6000);
+      } else {
+        buttons.forEach(function (b) { b.disabled = false; });
+        showToast((action === 'approve' ? "Couldn't approve: " : "Couldn't decline: ") + (d.message || d.error || ('HTTP ' + r.status)), 'error');
+      }
+    }).catch(function () { buttons.forEach(function (b) { b.disabled = false; }); showToast("Couldn't reach the server — try again.", 'error'); });
+  }
+  function refreshActionBar() {
+    api('GET', 'agents/' + SLUG + '/pending-actions').then(function (r) { if (r.ok) renderActionBar(r.json); }).catch(function () {});
   }
   function pollFinal(ackId, every) {
     var started = Date.now(); if (S.activePoll) clearInterval(S.activePoll);
@@ -561,7 +618,7 @@
         for (var i = 0; i < arr.length; i++) { var m = arr[i];
           if (m && m.id && m.id > ackId && !m.is_ack && (m.role === 'agent' || (m.from !== 'User' && m.from !== 'user')) && !S.rendered[String(m.id)]) {
             clearInterval(S.activePoll); S.activePoll = null; hideOrch();
-            revealBubble(m); S.rendered[String(m.id)] = 1; S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; loadBriefing(); loadRail(); return;   // DEC-0030: the reply to what you just asked reveals progressively and comes into view
+            revealBubble(m); S.rendered[String(m.id)] = 1; S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); if (+m.id > (S.lastMid || 0)) S.lastMid = +m.id; loadBriefing(); loadRail(); setTimeout(refreshActionBar, 400); return;   // APPROVE-BUTTONS-1   // DEC-0030: the reply to what you just asked reveals progressively and comes into view
           } }
       }).catch(function () {});
     }, every);
