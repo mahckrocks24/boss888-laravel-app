@@ -76,13 +76,20 @@ class SpendPolicy
         // commission / retry / try again / re-run / execute / kick off / resume were directive verbs.
         . 'commission|retry|re-?run|re-?try|try (?:[\w-]+ ){0,6}?again|kick off|execute|'
         . 'carry on|resume|get (?:going|started)|'
-        . 'get (?:it|them) done|please do)\b/i';
+        . 'get (?:it|them) done|please do|'
+        . 'share|repost|promote|distribute|announce|boost|pin|post (?:it|them|this|that|these|those|the|on|to|about))\b/i';   // RISK-0204: distribution is work
 
     /** Phrases that authorise spend explicitly, even inside a question. */
     /** WEBSITE EDITS (2026-09-15, EV-1038): editing verbs that are deliberately absent from DIRECTIVE, but ARE work when they
      *  act on a named part of a website — the set Arthur executes (elements, effects, colours, sections, catalogue). */
     private const SITE_EDIT_VERBS = '/\b(?:move|align|centre|center|shift|nudge|swap|resize|enlarge|shrink|fade|darken|lighten|brighten|dim|give|apply|set|put|mark|hide|show|reveal|colou?r|paint|tint|bold|blur|glow|add|make|change|increase|decrease|reduce|raise|lower|widen|narrow|drop|lift|place|position|reposition|rearrange|reorder|flip|highlight|emphasi[sz]e|soften|sharpen|bigger|smaller|larger)\b/i';
     private const SITE_NOUNS = '/\b(?:website|site|web ?page|page|hero|header|nav(?:igation)?|menu bar|footer|button|cta|title|headline|heading|subtitle|eyebrow|tagline|section|photo|image|picture|banner|logo|listing|listings|property|properties|service|services|menu item|dish|plan|room|price|background|text|paragraph|element|overlay|shadow|glow|opacity|gradient|palette|colou?rs?|font|sold|for sale|under offer|let agreed|rented|available|unavailable|out of stock|in stock)\b/i';
+
+    /** RISK-0204 (2026-09-25): a bare go-signal — "go", "okay go", "yes go", "post it", "share it", "ship it", "do both" — IS the
+     *  authorisation of what was just proposed. "okay go" was read as a statement and the work refused. */
+    private const GO_SIGNAL = '/^\s*(?:(?:ok(?:ay)?|yes|yeah|yep|yup|sure|fine|alright|right|great|good|perfect|please)[\s,.!-]*)*'
+        . '(?:go(?: go)?(?: now| on| for it)?|do (?:that|this|them|both|all)|both|all of them|send (?:it|them)|post (?:it|them|both)|share (?:it|them|both)|ship (?:it|them)|run (?:it|them|both)|proceed|approved?|confirmed?)'
+        . '[\s.!,]*(?:\b(?:please|now|thanks|thank you)\b[\s.!,]*)*$/i';
 
     private const EXPLICIT_AUTH = '/\b(?:yes,? (?:do|go|please)|go ahead|do it|approved?|proceed|make it so|run it|queue (?:it|them)|say the word|add the missing images'
         // MONEY-1 (2026-08-29): first-person authorisation is the clearest spend authority there is.
@@ -215,6 +222,9 @@ class SpendPolicy
         if (preg_match(self::EXPLICIT_AUTH, $m)) {
             return ['specifies_action' => $__specifies, 'authorized' => true, 'reason' => 'explicit authorisation', 'classification' => 'authorisation'];
         }
+        if (preg_match(self::GO_SIGNAL, preg_replace('/\b(?:asshole|damn|dammit|ffs|fucking|fuck)\b/i', '', $m))) {   // RISK-0204: "okay go" / "share it" is a go
+            return ['specifies_action' => $__specifies, 'authorized' => true, 'reason' => 'go-signal for the proposed work', 'classification' => 'authorisation'];
+        }
 
         $isQuestion  = (bool) preg_match(self::INTERROGATIVE, $m) || str_ends_with($m, '?');
 
@@ -248,7 +258,7 @@ class SpendPolicy
         // form — "can you", "could you", "please", "will you" — turns a
         // question into a work order.
         if ($isDirective
-            && preg_match('/^\s*(?:what|who|when|where|why|how|which)\b/i', $m)
+            && preg_match('/^\s*(?:what|who|when|where|why|how|which|did|have|has|had|was|were|is|are|does|do)\b/i', $m)   // RISK-0204: "did you share it?" asks, it does not order
             && str_ends_with($m, '?')
             && !preg_match('/\b(?:can|could|would|will)\s+(?:you|we)\b|\bplease\b/i', $m)) {
             $isDirective = false;
@@ -343,10 +353,16 @@ class SpendPolicy
         if (!$gatedTasks) return '';
         $total = array_sum(array_map(static fn ($t) => (int) ($t['credit_cost'] ?? 0), $gatedTasks));
         $n = count($gatedTasks);
-        return "\n\nI've held " . $n . ' item' . ($n === 1 ? '' : 's')
-             . ' for your approval rather than running ' . ($n === 1 ? 'it' : 'them')
-             . ' — ' . $total . ' credit' . ($total === 1 ? '' : 's')
-             . " in total, and you asked a question rather than asking me to spend. Say the word and I'll run "
-             . ($n === 1 ? 'it' : 'them') . '.';
+        // RISK-0204 (2026-09-25): an unauthorised turn does not HOLD work — TaskService refuses to create it
+        // (UNCOMMISSIONED_TURN), so "I've held N items for your approval" was false every time it appeared. Say what
+        // was not started, why, and the one word that starts it. The wording follows how the turn was read.
+        $cls = '';
+        try { $cls = (string) (app(SpendContext::class)->turn()['classification'] ?? ''); } catch (\Throwable) {}
+        $why = $cls === 'question'
+            ? 'because I read that as a question rather than an instruction'
+            : 'because I read that as a comment rather than an instruction';
+        return "\n\nI haven't started " . ($n === 1 ? 'this' : "these {$n} things") . ' ' . $why
+             . ($total > 0 ? ' (' . $total . ' credit' . ($total === 1 ? '' : 's') . ' in total)' : '')
+             . ". Say \"go\" and I'll run " . ($n === 1 ? 'it' : 'them') . ' now.';
     }
 }

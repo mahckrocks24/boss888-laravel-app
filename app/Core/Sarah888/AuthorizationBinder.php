@@ -195,7 +195,7 @@ class AuthorizationBinder
 
         if ($target === null) {
             return $out(self::AMBIGUOUS,
-                trim($this->proposals->disclosure($wsId, $conversationId)),
+                rtrim($this->proposals->disclosure($wsId, $conversationId)),   // RISK-0204: keep the leading blank line — the reply is joined straight onto it
                 null, 'more than one pending and the turn named none of them', count($pending));
         }
 
