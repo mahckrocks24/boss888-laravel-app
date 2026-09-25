@@ -163,9 +163,27 @@ class SpendPolicy
      * the work the owner already commissioned — it inherits that commission instead of reading as a bare statement.
      * The pending question is consumed so it cannot authorise anything later.
      */
+    /** RISK-0204: the shapes of an offer in Sarah's own previous message — what a bare "go" refers to. */
+    public const OFFER_SHAPE = '/\b(?:i can (?:share|post|publish|draft|write|run|queue|schedule|send|set up|start|do)\b|want me to|shall i|should i|would you like me to|say (?:yes|go|the word)|give (?:me )?the go-?ahead|(?:need|needs) your (?:approval|go-?ahead|ok)|whenever you\'re ready|tell me (?:to|what you want)|i\'ll (?:put|raise) it|ready to go|let me know if you want (?:me )?to proceed)\b/i';
+
     public function assessTurnInConversation(string $userMessage, int $wsId, string $agentSlug = 'sarah'): array
     {
         $turn = $this->assessTurn($userMessage);
+        // RISK-0204 (2026-09-25): a bare go-signal ("go", "okay go", "share it") names nothing itself — it names what
+        // Sarah proposed in her previous message. If she offered work there, the go-signal specifies that work.
+        if ($wsId > 0 && !empty($turn['authorized']) && ($turn['specifies_action'] ?? true) === false
+            && ($turn['classification'] ?? '') === 'authorisation') {
+            try {
+                $last = \Illuminate\Support\Facades\DB::table('agent_messages')->where('workspace_id', $wsId)
+                    ->where('agent_slug', $agentSlug)->where('role', 'agent')->orderByDesc('id')->limit(3)->pluck('content')->all();   // the offer may sit behind a refusal notice
+                $offered = false; foreach ($last as $c) { if (is_string($c) && preg_match(self::OFFER_SHAPE, $c)) { $offered = true; break; } }
+                if ($offered) {
+                    \Illuminate\Support\Facades\Log::info('[Sarah888] RISK-0204: go-signal names the work Sarah offered in her previous message', ['ws' => $wsId]);
+                    $turn['specifies_action'] = true;
+                    $turn['reason'] = 'go-signal to the work Sarah offered in her previous message';
+                }
+            } catch (\Throwable $e) { /* the turn stays as assessed */ }
+        }
         if ($wsId <= 0 || !empty($turn['authorized'])) return $turn;
         try {
             $key = self::pendingClarifyKey($wsId, $agentSlug);
