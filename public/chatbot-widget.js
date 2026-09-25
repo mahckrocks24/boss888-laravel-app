@@ -516,7 +516,8 @@
   var shrunk = null;
   var capped = [];          // [{el, height, maxHeight, minHeight}] — JS-sized panels capped to the visible area
   function shrink(v, a) {
-    if (v.kb <= 0) return;
+    var layoutShrunk = window.innerHeight < baseH - 120;   // Android: the keyboard took its room from the layout
+    if (v.kb <= 0 && !layoutShrunk) return;
     var se = document.scrollingElement || root;
     var appLike = se.scrollHeight <= window.innerHeight + 2;
     if (!appLike && !shrunk) return;
@@ -562,7 +563,8 @@
     if (Math.abs(n) < 2) return;
 
     // 0. iPhone: the keyboard lies over a layout that has nowhere to scroll — shrink the layout to what is visible.
-    if (v.kb > 0) { shrink(v, a); n = need(el, a.off, v); if (Math.abs(n) < 2) return; }
+    //    Android: the layout shrank but a JS-pixel-sized panel (the editor, a chat view) did not — cap it the same way.
+    if (v.kb > 0 || window.innerHeight < baseH - 120) { shrink(v, a); n = need(el, a.off, v); if (Math.abs(n) < 2) return; }
 
     // 1. Something fixed or sticky holds the field (composer bar, floater, dialog, sheet). When the keyboard
     //    covers the layout, move that container up by what is needed — no more than the room above it — and,
