@@ -97,7 +97,7 @@
       '.sh-card .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}',
       '.sh-btn{min-height:40px;padding:0 14px;border-radius:var(--r);font:600 13px var(--fb);cursor:pointer;border:1px solid var(--bd2);background:transparent;color:var(--t1)}',
       '.sh-btn.primary{background:var(--p);border-color:var(--p);color:#fff}.sh-btn:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
-      '.sh-orch{align-self:flex-start;display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:var(--s1);border:1px solid var(--bd);font-size:12.5px;color:var(--t2)}',
+      '.sh-orch{align-self:flex-start;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:var(--s1);border:1px solid var(--bd);font-size:13px;color:var(--t2);box-shadow:0 1px 3px rgba(0,0,0,.06)}',
       '.sh-orch .dot{width:8px;height:8px;border-radius:50%;background:var(--am);animation:shPulse 1.4s ease-in-out infinite}',
       '.sh-orch .who{display:inline-flex;align-items:center;gap:6px}.sh-orch .who b{color:var(--t1);font-weight:600}.sh-orch .arrow{color:var(--t3)}',
       '@keyframes shPulse{0%,100%{opacity:.35;transform:scale(.85)}50%{opacity:1;transform:scale(1)}}',
@@ -573,10 +573,10 @@
   function showOrch(agentSlug, what) {
     var el = document.getElementById('sh-orch');
     if (!el) { el = document.createElement('div'); el.className = 'sh-orch'; el.id = 'sh-orch'; el.setAttribute('aria-live', 'polite'); S.feed.appendChild(el); }
-    var chain = '<span class="who"><b>Sarah</b></span>';
+    var chain = '<span class="who"><b>Sarah</b>' + (agentSlug ? '' : '<span>is thinking…</span>') + '</span>';   /* SARAH-THINK-1: never a bare name */
     if (agentSlug && AGENT_NAMES[agentSlug]) chain += '<span class="arrow" aria-hidden="true">→</span><span class="who"><b>' + esc(AGENT_NAMES[agentSlug]) + '</b><span>' + esc(what || AGENT_WORK[agentSlug] || 'working') + '</span></span>';
     el.innerHTML = '<span class="dot" aria-hidden="true"></span>' + chain;
-    var was = nearBottom(S.feed); S.feed.appendChild(el); stick(S.feed, was);
+    var was = nearBottom(S.feed); S.feed.appendChild(el); if (was || S.stick !== false) toBottom(); else stick(S.feed, was);   /* SARAH-THINK-1: in view, instantly */
   }
   function hideOrch() { var el = document.getElementById('sh-orch'); if (el) el.remove(); }
 
@@ -589,7 +589,7 @@
     var el = document.getElementById('sh-orch');
     if (!el) { el = document.createElement('div'); el.className = 'sh-orch'; el.id = 'sh-orch'; el.setAttribute('aria-live', 'polite'); }
     el.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="who"><b>Sarah</b><span>' + esc(String(label).replace(/[.…\s]+$/, '')) + '…</span></span>';
-    var was = nearBottom(S.feed); S.feed.appendChild(el); stick(S.feed, was);
+    var was = nearBottom(S.feed); S.feed.appendChild(el); if (was || S.stick !== false) toBottom(); else stick(S.feed, was);   /* SARAH-THINK-1 */
   }
 
   /* revealBubble: render a received, ALREADY-GUARD-VALIDATED answer so it unfolds at a natural reading pace,
