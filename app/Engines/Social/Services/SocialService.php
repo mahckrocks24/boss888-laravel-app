@@ -70,8 +70,42 @@ class SocialService
     // POSTS
     // ═══════════════════════════════════════════════════════
 
+    /** F-SOC-F6: the platform the owner named, normalised to PLATFORMS ('x' → twitter); null when none is determinable. */
+    public static function resolvePlatform(array $data): ?string
+    {
+        $explicit = strtolower(trim((string) ($data['platform'] ?? $data['channel'] ?? $data['network'] ?? '')));
+        $map = ['x' => 'twitter', 'x.com' => 'twitter', 'fb' => 'facebook', 'ig' => 'instagram', 'insta' => 'instagram', 'li' => 'linkedin'];
+        $explicit = $map[$explicit] ?? $explicit;
+        if ($explicit !== '' && in_array($explicit, self::PLATFORMS, true)) return $explicit;
+        $text = strtolower(implode(' ', array_filter([(string) ($data['title'] ?? ''), (string) ($data['user_request'] ?? ''), (string) ($data['topic'] ?? ''), (string) ($data['description'] ?? ''), (string) ($data['request'] ?? '')])));
+        foreach (['facebook' => '/\bfacebook\b|\bfb\b/', 'instagram' => '/\binstagram\b|\binsta\b|\big\b/', 'linkedin' => '/\blinkedin\b/', 'tiktok' => '/\btiktok\b/', 'twitter' => '/\btwitter\b|\bx post\b|\bon x\b|\btweet/', 'snapchat' => '/\bsnapchat\b/'] as $p => $rx) {
+            if (preg_match($rx, $text)) return $p;
+        }
+        return null;
+    }
+
     public function createPost(int $wsId, array $data): array
     {
+        // F-SOC-F6: content aliases; platform inferred from the request; copy composed when only the request is present.
+        $content = trim((string) ($data['content'] ?? $data['text'] ?? $data['caption'] ?? $data['message'] ?? $data['body'] ?? $data['copy'] ?? ''));
+        $subject = trim((string) ($data['topic'] ?? $data['user_request'] ?? $data['title'] ?? $data['description'] ?? ''));
+        $platform = self::resolvePlatform($data);
+        if ($content === '' && $subject === '') {
+            return ['success' => false, 'code' => 'INVALID_INPUT', 'no_charge' => true, 'error' => 'I need the post copy, or at least what the post should say, before I can draft it.'];
+        }
+        if ($platform === null) {
+            return ['success' => false, 'code' => 'INVALID_INPUT', 'no_charge' => true, 'error' => 'Which platform should this post be for — Facebook, Instagram, LinkedIn, TikTok or X?'];
+        }
+        if ($content === '') {
+            $gen = $this->aiGeneratePost($wsId, ['platform' => $platform, 'topic' => $subject, 'persist' => false] + (isset($data['tone']) ? ['tone' => $data['tone']] : []));
+            $content = trim((string) ($gen['content'] ?? ''));
+            if ($content === '') {
+                return ['success' => false, 'code' => 'GENERATION_FAILED', 'no_charge' => true, 'error' => 'I could not compose that post just now — nothing was saved. Try again in a moment or give me the copy.'];
+            }
+            if (empty($data['hashtags']) && !empty($gen['hashtags'])) $data['hashtags'] = $gen['hashtags'];
+            $data['ai_generated'] = true;
+        }
+        $data['content'] = $content; $data['platform'] = $platform;
         $id = DB::table('social_posts')->insertGetId([
             'workspace_id' => $wsId,
             // SOCIAL-888 provenance: capture the website when the caller states one; else
@@ -88,7 +122,7 @@ class SocialService
             'created_at' => now(), 'updated_at' => now(),
         ]);
         $this->engineIntel->recordToolUsage('social', 'social_create_post');
-        return ['post_id' => $id, 'status' => 'draft'];
+        return ['post_id' => $id, 'status' => 'draft', 'platform' => $platform, 'content' => $content, 'ai_generated' => !empty($data['ai_generated'])];
     }
 
     public function getPost(int $wsId, int $id): ?object
@@ -111,9 +145,10 @@ class SocialService
         if (isset($data['media'])) $update['media_json'] = json_encode($data['media']);
         if (isset($data['hashtags'])) $update['hashtags_json'] = json_encode($data['hashtags']);
         $update['updated_at'] = now();
+        // F-SOC-C4: existence first — affected rows are 0 for a no-op update and must not read as "not found"
+        if (!DB::table('social_posts')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->exists()) throw new \RuntimeException('Post not found');
         $n = DB::table('social_posts')->where('id', $id)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update($update);
-        if ($wsId !== null && $n === 0) throw new \RuntimeException('Post not found');
-        return ['updated' => true];
+        return ['updated' => true, 'changed' => $n > 0];
     }
 
     public function schedulePost(int $postId, string $scheduledAt, ?int $wsId = null): void
@@ -485,21 +520,36 @@ class SocialService
 
     public function addAccount(int $wsId, array $data): int
     {
-        return DB::table('social_accounts')->insertGetId([
+        // F-SOC-E3 (2026-09-06): a manually supplied credential is NOT a connection. Only the OAuth callbacks (verified at the
+        // provider) may mark an account connected. Secrets go into the encrypted envelope, never the plaintext column.
+        $id = DB::table('social_accounts')->insertGetId([
             'workspace_id' => $wsId,
             'platform' => $data['platform'] ?? 'instagram',
             'account_name' => $data['account_name'] ?? '',
             'account_id' => $data['account_id'] ?? null,
-            'credentials_json' => json_encode($data['credentials'] ?? []),
-            'status' => 'connected',
+            'credentials_json' => json_encode(['_' => 'encrypted']),
+            'status' => 'pending_verification',
+            'health_state' => 'unverified',
+            'health_detail' => 'Credentials were supplied manually and have not been verified. Connect the account through the provider login to publish.',
+            'health_checked_at' => now(),
             'stats_json' => json_encode(['followers' => 0, 'posts' => 0, 'engagement_rate' => 0]),
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        if (!empty($data['credentials']) && is_array($data['credentials'])) {
+            try { \App\Core\Publisher\ConnectionHealth::storeCredentials($id, $data['credentials']); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[Social] addAccount: could not encrypt credentials', ['account' => $id, 'err' => $e->getMessage()]); }
+        }
+        return $id;
     }
 
     public function listAccounts(int $wsId): array
     {
-        return DB::table('social_accounts')->where('workspace_id', $wsId)->get()->toArray();
+        // SOCIAL-PAGEPICK-1: customer-safe columns only. The raw row carried credentials_json — with the
+        // access token in it — to the browser. No credential column is ever selected here.
+        return DB::table('social_accounts')->where('workspace_id', $wsId)
+            ->select(['id', 'workspace_id', 'platform', 'account_name', 'account_id', 'status', 'health_state',
+                      'token_expires_at', 'health_checked_at', 'health_detail', 'provider_account_name',
+                      'linked_page_id', 'stats_json', 'business_id', 'created_at', 'updated_at'])
+            ->get()->toArray();
     }
 
     public function disconnectAccount(int $wsId, int $accountId): bool

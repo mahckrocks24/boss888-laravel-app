@@ -418,6 +418,21 @@ Route::get('/social/oauth/facebook/callback', function (\Illuminate\Http\Request
         ]);
     }
 
+    // SOCIAL-PAGEPICK-1: nothing is stored yet — hand the Page list to the app window, which asks the
+    // customer which Page(s) this workspace is for and then calls /social/oauth/facebook/confirm.
+    if (($result['choose'] ?? false) === true) {
+        return response()->view('social.oauth-callback', [
+            'success'        => true,
+            'choose'         => true,
+            'platform'       => 'facebook',
+            'account_name'   => null,
+            'accounts_count' => count($result['pages'] ?? []),
+            'error_message'  => null,
+            'pending_key'    => (string) ($result['pending_key'] ?? ''),
+            'pages'          => $result['pages'] ?? [],
+        ]);
+    }
+
     $accounts = $result['accounts'] ?? [];
     $first = $accounts[0] ?? null;
     return response()->view('social.oauth-callback', [
@@ -1347,8 +1362,27 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 return response()->json(["error" => "Facebook OAuth not configured. Set FACEBOOK_APP_ID, FACEBOOK_APP_SECRET, FACEBOOK_REDIRECT_URI in .env."], 400);
             }
             $wsId = $r->attributes->get('workspace_id', 1);
-            $url = $connector->getAuthUrl('facebook', $wsId);
+            // SOCIAL-PAGEPICK-1: ?rerequest=1 re-opens Facebook's Page selection ("Choose different Pages").
+            $url = $connector->getAuthUrl('facebook', $wsId, filter_var($r->query('rerequest', false), FILTER_VALIDATE_BOOLEAN));
             return response()->json(["redirect_url" => $url, "message" => "Redirect the user to this URL to connect Facebook + Instagram."]);
+        });
+
+        // SOCIAL-PAGEPICK-1: the customer chose which Page(s) this workspace is for; store only those.
+        Route::post("/oauth/facebook/confirm", function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get('workspace_id', 0);
+            if ($wsId <= 0) {
+                return response()->json(['error' => 'No workspace context for this request.'], 403);
+            }
+            $key = (string) $r->input('key', '');
+            $pageIds = (array) $r->input('page_ids', []);
+            if ($key === '') {
+                return response()->json(['error' => 'Missing sign-in reference.'], 422);
+            }
+            $result = app(\App\Connectors\SocialConnector::class)->confirmPages($key, $pageIds, $wsId);
+            if (! ($result['success'] ?? false)) {
+                return response()->json($result, ($result['code'] ?? '') === 'WORKSPACE_MISMATCH' ? 403 : 422);
+            }
+            return response()->json($result);
         });
 
 

@@ -2715,7 +2715,7 @@ window._lgsc_set_visibility_mode = function (mode, opts) {
   // P1-U2: if the current view is not part of the mode we just entered, land on that mode's home.
   try {
     var _cur = (typeof currentView !== 'undefined') ? currentView : null;
-    var _basicViews = ['sarah','attention','results','website','customers','account','aria','approvals','command','websites','crm','settings','billing','calendar','reports','catalogue'];   // Owner 2026-09-22: the Catalogue is a Basic tool too ("exposed outside too on both Basic and Advanced")
+    var _basicViews = ['sarah','attention','results','website','customers','account','aria','approvals','command','websites','crm','settings','billing','calendar','reports','catalogue','infrastructure'];   /* BASIC-HOSTING-1 (Owner 2026-09-25): Hosting › Domains in Basic */   // Owner 2026-09-22: the Catalogue is a Basic tool too ("exposed outside too on both Basic and Advanced")
     if ((!opts.skipServer || opts.fromServer) && !opts.skipNav && typeof window.nav === 'function') { if (mode === 'basic') { window.nav('sarah'); } else if (_cur === 'sarah' || !_cur) { window.nav(typeof window._luAdvancedHome === 'function' ? window._luAdvancedHome() : 'command'); } }  // P1-U2: only a USER switch re-homes; boot/server apply never clobbers a deep link. REPORT-0061 B3: Advanced lands on Command Center
   } catch (e) {}
   if (mode === 'basic') document.body.classList.add('lu-mode-basic');
@@ -2811,7 +2811,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // P1R-3 (2026-08-31): 'command' removed — the Command Center exposes specialist agent cards that open the
   // specialist drawer, and Basic must not offer direct specialist interaction. 'settings' removed — in Basic it is
   // rewritten to 'account' below (customer settings), so nobody deep-links into the internal Advanced settings.
-  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog','aria','catalogue'];   /* CAT-BASIC-1 (Owner 2026-09-23 'Catalogue must be available on Basic view too'): the router's list, not only _basicViews */   /* ARIA888 DEC-0054: Aria is in both views */
+  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog','aria','catalogue','infrastructure'];   /* BASIC-HOSTING-1 */   /* CAT-BASIC-1 (Owner 2026-09-23 'Catalogue must be available on Basic view too'): the router's list, not only _basicViews */   /* ARIA888 DEC-0054: Aria is in both views */
   var _origNav = window.nav;
   if (typeof _origNav === 'function') {
     window.nav = function (view) {
@@ -3138,7 +3138,7 @@ window.luSwipeToClose = luSwipeToClose;
       <div class="nav-section">Hosting</div>
       <!-- REPORT-0061 B1 (2026-09-19): Hosted Sites / Domains / Email Accounts were three sidebar buttons for the tabs of ONE
            view. One item now; the tabs are in the page (infrastructure.js), deep links /app/infrastructure/domains|email keep working. -->
-      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosting</button>
+      <button type="button" class="nav-item" onclick="nav('infrastructure')" id="ni-infrastructure" data-feature="infrastructure"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="3.5" width="15" height="5" rx="1.5"/><rect x="2.5" y="11.5" width="15" height="5" rx="1.5"/><path d="M5.5 6h.01M5.5 14h.01"/></svg></span>Hosting</button>
       <div class="nav-section">Data</div>
       
       
@@ -4677,7 +4677,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=socialcal1.1.0-calday',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=dl2-20260925',catalogue:'/app/js/catalogue.js?v=rfc0012p1d-20260922',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
+  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=pagepick1-20260925',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=dl2-20260925',catalogue:'/app/js/catalogue.js?v=rfc0012p1d-20260922',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 

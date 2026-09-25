@@ -423,12 +423,14 @@ window._svPlatformCard = function(cfg){
   return '<div class="card"><div class="card-header" style="display:flex;align-items:center;justify-content:space-between"><h3>' + _socEsc(cfg.label) + '</h3>' + stateBadge + '</div><div class="card-body" style="padding:20px;max-width:560px">' + bodyHtml + '</div></div>';
 };
 
-window._svConnectPlatform = async function(platform){
+window._svConnectPlatform = async function(platform, opts){
+  opts = opts || {};
   var btn = document.getElementById('sv-connect-' + platform), spinner = document.getElementById('sv-connecting-' + platform), state = document.getElementById('sv-state-' + platform);
   if (btn) btn.disabled = true; if (spinner) spinner.style.display = 'block'; if (state) state.textContent = 'Connecting…';
   var redirectUrl = null;
   try {
-    var r = await _socApi('GET', '/social/oauth/' + platform + '/connect');
+    // SOCIAL-PAGEPICK-1: rerequest re-opens Facebook's Page selection ("Choose different Pages").
+    var r = await _socApi('GET', '/social/oauth/' + platform + '/connect' + (opts.rerequest ? '?rerequest=1' : ''));
     if (r && r.redirect_url) redirectUrl = r.redirect_url; else throw new Error(r && r.error ? r.error : 'Could not get an authorisation URL');
   } catch (e) {
     if (btn) btn.disabled = false; if (spinner) spinner.style.display = 'none'; if (state) state.textContent = 'Not connected';
@@ -442,14 +444,62 @@ window._svConnectPlatform = async function(platform){
     showToast('Popup blocked. Allow popups for this site and try again.', 'warning'); return;
   }
   function handler(e){
-    if (!e.data || !e.data.type || (e.data.type !== 'social_connected' && e.data.type !== 'social_error')) return;
+    if (!e.data || !e.data.type || (e.data.type !== 'social_connected' && e.data.type !== 'social_error' && e.data.type !== 'social_choose')) return;
     window.removeEventListener('message', handler); try { popup.close(); } catch (_) {}
     if (btn) btn.disabled = false; if (spinner) spinner.style.display = 'none';
+    if (e.data.type === 'social_choose') { if (state) state.textContent = 'Choose a Page'; _svShowPagePicker(platform, e.data.pending_key, e.data.pages || []); return; }
     if (e.data.type === 'social_connected') { showToast('Connected — ' + (e.data.account_name || platform) + ' is ready.', 'success'); socialLoad(document.getElementById('social-root')); }
     else { if (state) state.textContent = 'Not connected'; showToast('Connection failed: ' + (e.data.message || 'unknown'), 'error'); }
   }
   window.addEventListener('message', handler);
   var pollClose = setInterval(function(){ if (!popup || popup.closed) { clearInterval(pollClose); window.removeEventListener('message', handler); if (btn && btn.disabled) { btn.disabled = false; if (spinner) spinner.style.display = 'none'; if (state) state.textContent = 'Not connected'; socialLoad(document.getElementById('social-root')); } } }, 500);
+};
+
+/* SOCIAL-PAGEPICK-1 (2026-09-25): after Facebook's sign-in, ask which Page(s) this workspace is for.
+   Nothing is stored until the customer confirms. "Choose different Pages" re-opens Facebook's own
+   selection so a Page that was not ticked the first time can be granted. Site CSS, no native controls. */
+window._svShowPagePicker = function(platform, key, pages){
+  var old = document.getElementById('sv-page-picker'); if (old) old.remove();
+  var wrap = document.createElement('div'); wrap.id = 'sv-page-picker';
+  wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);z-index:99998;display:flex;align-items:center;justify-content:center;padding:20px';
+  var rows = pages.map(function(p, i){
+    var pic = p.picture_url ? '<img src="' + _socEsc(p.picture_url) + '" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex:none">' : '<span style="width:36px;height:36px;border-radius:50%;background:var(--s2);flex:none;display:inline-block"></span>';
+    var sub = [p.category, p.instagram ? ('Instagram @' + p.instagram) : null].filter(Boolean).map(_socEsc).join(' · ');
+    return '<label style="display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;cursor:pointer;margin-bottom:8px;background:var(--s2)">' +
+      '<input type="checkbox" class="sv-pick" value="' + _socEsc(p.page_id) + '"' + (pages.length === 1 ? ' checked' : '') + ' style="width:18px;height:18px;flex:none;cursor:pointer">' + pic +
+      '<span style="min-width:0"><span style="display:block;font-weight:700;color:var(--t1);font-size:14px;word-break:break-word">' + _socEsc(p.name) + '</span>' +
+      (sub ? '<span style="display:block;color:var(--t3);font-size:12px;margin-top:2px">' + sub + '</span>' : '') + '</span></label>';
+  }).join('');
+  wrap.innerHTML = '<div role="dialog" aria-modal="true" aria-labelledby="sv-pp-title" style="background:var(--s1);color:var(--t1);border:1px solid var(--bd);border-radius:14px;max-width:460px;width:100%;padding:22px;box-shadow:0 16px 48px rgba(0,0,0,.5);max-height:90vh;overflow:auto">' +
+    '<h3 id="sv-pp-title" style="margin:0 0 6px;font-size:17px">Which Page is this workspace for?</h3>' +
+    '<p style="margin:0 0 14px;color:var(--t2);font-size:13px;line-height:1.5">Facebook shared ' + pages.length + ' Page' + (pages.length === 1 ? '' : 's') + ' you manage. Only the ones you tick are connected here. Not seeing the right Page? Choose different Pages and tick it in Facebook’s window.</p>' +
+    '<div id="sv-pp-list">' + (rows || '<p style="color:var(--t3);font-size:13px">No Pages were shared.</p>') + '</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px">' +
+      '<button type="button" class="btn btn-outline btn-sm" id="sv-pp-cancel">Cancel</button>' +
+      '<button type="button" class="btn btn-outline btn-sm" id="sv-pp-other">Choose different Pages</button>' +
+      '<button type="button" class="btn btn-primary btn-sm" id="sv-pp-ok">Connect selected</button>' +
+    '</div></div>';
+  document.body.appendChild(wrap);
+  var close = function(){ wrap.remove(); var st = document.getElementById('sv-state-' + platform); if (st && st.textContent === 'Choose a Page') st.textContent = 'Not connected'; };
+  document.getElementById('sv-pp-cancel').onclick = close;
+  wrap.addEventListener('click', function(e){ if (e.target === wrap) close(); });
+  document.getElementById('sv-pp-other').onclick = function(){ wrap.remove(); _svConnectPlatform(platform, { rerequest: true }); };
+  document.getElementById('sv-pp-ok').onclick = async function(){
+    var ids = Array.prototype.map.call(wrap.querySelectorAll('.sv-pick:checked'), function(c){ return c.value; });
+    if (!ids.length) { showToast('Tick at least one Page.', 'warning'); return; }
+    var ok = document.getElementById('sv-pp-ok'); ok.disabled = true; ok.textContent = 'Connecting…';
+    try {
+      var r = await _socApi('POST', '/social/oauth/facebook/confirm', { key: key, page_ids: ids });
+      if (!r || !r.success) throw new Error((r && r.error) || 'Could not connect the Page.');
+      var names = (r.accounts || []).map(function(a){ return a.account_name; }).filter(Boolean);
+      showToast('Connected — ' + (names.join(', ') || 'Facebook') + '.', 'success');
+      wrap.remove();
+      socialLoad(document.getElementById('social-root'));
+    } catch (e) {
+      ok.disabled = false; ok.textContent = 'Connect selected';
+      showToast(e.message || 'Could not connect the Page.', 'error');
+    }
+  };
 };
 
 (function(){

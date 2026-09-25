@@ -213,7 +213,7 @@ class SocialConnector extends BaseConnector
      * cache for 10 minutes) so the callback can verify the request is legit
      * and route the tokens to the correct workspace.
      */
-    public function getAuthUrl(string $platform, int $workspaceId): string
+    public function getAuthUrl(string $platform, int $workspaceId, bool $rerequest = false): string
     {
         /* b16-linkedin-authurl */
         if ($platform === 'linkedin') {
@@ -254,14 +254,20 @@ class SocialConnector extends BaseConnector
             'pages_show_list',
         ]);
 
-        return 'https://www.facebook.com/' . self::GRAPH_API_VERSION . '/dialog/oauth?'
-            . http_build_query([
-                'client_id'    => $this->fbAppId,
-                'redirect_uri' => $this->fbRedirectUri,
-                'scope'        => $scopes,
-                'state'        => $state,
-                'response_type' => 'code',
-            ]);
+        $query = [
+            'client_id'    => $this->fbAppId,
+            'redirect_uri' => $this->fbRedirectUri,
+            'scope'        => $scopes,
+            'state'        => $state,
+            'response_type' => 'code',
+        ];
+        // SOCIAL-PAGEPICK-1: "Choose different Pages" — make Facebook show its Page selection again
+        // instead of silently reusing the previous grant.
+        if ($rerequest) {
+            $query['auth_type'] = 'rerequest';
+        }
+
+        return 'https://www.facebook.com/' . self::GRAPH_API_VERSION . '/dialog/oauth?' . http_build_query($query);
     }
 
     /**
@@ -328,7 +334,7 @@ class SocialConnector extends BaseConnector
 
         $pages = $pagesResp->json('data') ?? [];
         if (empty($pages)) {
-            return ['success' => false, 'error' => 'No Facebook Pages found. You need at least one Page to publish.'];
+            return ['success' => false, 'error' => 'Facebook did not share any Page with us. In Facebook’s window, tick the Page you want to connect (not just your profile), then try again.'];
         }
 
         // ── Step 5: For each Page, check for linked Instagram Business Account
@@ -376,19 +382,99 @@ class SocialConnector extends BaseConnector
             }
         }
 
-        // ── Step 6: Persist ───────────────────────────────────────────
-        $stored = $this->storeAccountTokens($accounts, $workspaceId);
+        // ── Step 6: SOCIAL-PAGEPICK-1 — do NOT store. Stash what Facebook shared and let the
+        // customer choose which Page(s) this workspace is for. Nothing is written until they do.
+        $key = Str::random(40);
+        cache()->put(self::PENDING_PREFIX . $key, [
+            'workspace_id' => $workspaceId,
+            'accounts'     => $accounts,
+            'created_at'   => now()->toISOString(),
+        ], now()->addMinutes(self::PENDING_MINUTES));
 
-        Log::info('SocialConnector: OAuth callback completed', [
-            'workspace_id'    => $workspaceId,
-            'accounts_found'  => count($accounts),
-            'accounts_stored' => $stored,
+        Log::info('SocialConnector: OAuth callback discovered pages, awaiting choice', [
+            'workspace_id'   => $workspaceId,
+            'pages_found'    => count($pages),
+            'accounts_found' => count($accounts),
         ]);
 
         return [
+            'success'     => true,
+            'choose'      => true,
+            'pending_key' => $key,
+            'pages'       => $this->pagesForPicker($accounts),
+        ];
+    }
+
+    private const PENDING_PREFIX  = 'social_oauth_pending:';
+    private const PENDING_MINUTES = 15;
+
+    /** Customer-safe list for the picker: no tokens. */
+    private function pagesForPicker(array $accounts): array
+    {
+        $ig = [];
+        foreach ($accounts as $a) {
+            if (($a['platform'] ?? '') === 'instagram' && ! empty($a['linked_page_id'])) {
+                $ig[(string) $a['linked_page_id']] = $a['account_name'] ?? null;
+            }
+        }
+        $out = [];
+        foreach ($accounts as $a) {
+            if (($a['platform'] ?? '') !== 'facebook') {
+                continue;
+            }
+            $out[] = [
+                'page_id'     => (string) $a['account_id'],
+                'name'        => (string) ($a['account_name'] ?? ''),
+                'category'    => $a['category'] ?? null,
+                'picture_url' => $a['picture_url'] ?? null,
+                'instagram'   => $ig[(string) $a['account_id']] ?? null,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * SOCIAL-PAGEPICK-1: store only the Pages the customer chose (and the Instagram accounts linked to
+     * them). The stash must belong to the caller's workspace; it is consumed on success.
+     */
+    public function confirmPages(string $key, array $pageIds, int $workspaceId): array
+    {
+        $pending = cache()->get(self::PENDING_PREFIX . $key);
+        if (! is_array($pending) || empty($pending['accounts'])) {
+            return ['success' => false, 'error' => 'That Facebook sign-in has expired. Please connect again.', 'code' => 'PENDING_EXPIRED'];
+        }
+        if ((int) ($pending['workspace_id'] ?? 0) !== $workspaceId) {
+            return ['success' => false, 'error' => 'That sign-in belongs to a different workspace.', 'code' => 'WORKSPACE_MISMATCH'];
+        }
+
+        $pageIds = array_values(array_unique(array_map('strval', array_filter($pageIds, fn ($v) => $v !== null && $v !== ''))));
+        if ($pageIds === []) {
+            return ['success' => false, 'error' => 'Choose at least one Page.', 'code' => 'NO_PAGE_CHOSEN'];
+        }
+
+        $chosen = [];
+        foreach ($pending['accounts'] as $a) {
+            $platform = $a['platform'] ?? '';
+            if ($platform === 'facebook' && in_array((string) $a['account_id'], $pageIds, true)) {
+                $chosen[] = $a;
+            } elseif ($platform === 'instagram' && in_array((string) ($a['linked_page_id'] ?? ''), $pageIds, true)) {
+                $chosen[] = $a;
+            }
+        }
+        if ($chosen === []) {
+            return ['success' => false, 'error' => 'None of those Pages were shared by Facebook. Please connect again.', 'code' => 'PAGE_NOT_IN_GRANT'];
+        }
+
+        $stored = $this->storeAccountTokens($chosen, $workspaceId);
+        cache()->forget(self::PENDING_PREFIX . $key);
+
+        Log::info('SocialConnector: pages confirmed', ['workspace_id' => $workspaceId, 'stored' => $stored]);
+
+        return [
             'success'  => true,
-            'accounts' => $accounts,
             'stored'   => $stored,
+            'accounts' => array_map(fn ($a) => ['platform' => $a['platform'], 'account_name' => $a['account_name']], $chosen),
         ];
     }
 
@@ -419,21 +505,30 @@ class SocialConnector extends BaseConnector
                 'category' => $acct['category'] ?? null,
             ]);
 
+            // SOCIAL-PAGEPICK-1: secrets at rest are encrypted (ConnectionHealth's envelope); the legacy
+            // plaintext column carries only the placeholder. Read back through readCredentials().
+            $envelope = [
+                'credentials_encrypted' => \Illuminate\Support\Facades\Crypt::encryptString(json_encode($credentials)),
+                'credentials_json'      => json_encode(['_' => 'encrypted']),
+                'token_expires_at'      => ! empty($acct['token_expires']) ? \Illuminate\Support\Carbon::parse($acct['token_expires']) : null,
+                'linked_page_id'        => $acct['linked_page_id'] ?? null,
+                'health_state'          => 'connected',
+                'health_detail'         => null,
+            ];
+
             if ($existing) {
-                DB::table('social_accounts')->where('id', $existing->id)->update([
+                DB::table('social_accounts')->where('id', $existing->id)->update($envelope + [
                     'account_name'     => $acct['account_name'],
-                    'credentials_json' => json_encode($credentials),
                     'stats_json'       => json_encode($stats),
                     'status'           => 'connected',
                     'updated_at'       => now(),
                 ]);
             } else {
-                DB::table('social_accounts')->insert([
+                DB::table('social_accounts')->insert($envelope + [
                     'workspace_id'     => $workspaceId,
                     'platform'         => $acct['platform'],
                     'account_id'       => $acct['account_id'],
                     'account_name'     => $acct['account_name'],
-                    'credentials_json' => json_encode($credentials),
                     'stats_json'       => json_encode($stats),
                     'status'           => 'connected',
                     'created_at'       => now(),

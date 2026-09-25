@@ -1,10 +1,14 @@
 <?php
+    $choose = ! empty($choose);
     $payload = [
-        'type'           => $success ? 'social_connected' : 'social_error',
+        // SOCIAL-PAGEPICK-1: 'social_choose' hands the Page list to the app, which asks the customer.
+        'type'           => $choose ? 'social_choose' : ($success ? 'social_connected' : 'social_error'),
         'platform'       => $platform ?? 'facebook',
         'account_name'   => $account_name ?? null,
         'accounts_count' => (int) ($accounts_count ?? 0),
         'message'        => $error_message ?? null,
+        'pending_key'    => $choose ? ($pending_key ?? null) : null,
+        'pages'          => $choose ? ($pages ?? []) : [],
     ];
 ?>
 <!DOCTYPE html>
@@ -26,7 +30,11 @@
 </head>
 <body>
 <div class="card">
-@if($success)
+@if($choose)
+  <div class="icon ok">✓</div>
+  <h1>Almost there</h1>
+  <p>Facebook shared {{ (int) ($accounts_count ?? 0) }} Page{{ ((int)($accounts_count ?? 0)) === 1 ? '' : 's' }}. Choose which one this workspace is for in the LevelUpGrowth window — this one closes by itself.</p>
+@elseif($success)
   <div class="icon ok">✓</div>
   <h1>Connected to {{ $account_name ?? 'Facebook' }}</h1>
   <p>{{ (int) ($accounts_count ?? 0) }} account{{ ((int)($accounts_count ?? 0)) === 1 ? '' : 's' }} linked. This window will close automatically.</p>

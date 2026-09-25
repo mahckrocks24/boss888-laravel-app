@@ -404,8 +404,9 @@ class ArticleDistributionService
         if (PlatformPolicy::normalise((string) $acc->platform) !== PlatformPolicy::normalise($platform)) {
             return ['ok' => false, 'reason' => 'ACCOUNT_PLATFORM_MISMATCH'];
         }
-        $creds = json_decode((string) ($acc->credentials_json ?? '{}'), true);
-        if (!is_array($creds) || empty($creds)) return ['ok' => false, 'reason' => 'ACCOUNT_CREDENTIALS_MISSING'];
+        // SOCIAL-PAGEPICK-1: credentials are encrypted at rest; read through the envelope.
+        $creds = \App\Core\Publisher\ConnectionHealth::readCredentials($acc);
+        if (!is_array($creds) || empty($creds) || (count($creds) === 1 && isset($creds['_']))) return ['ok' => false, 'reason' => 'ACCOUNT_CREDENTIALS_MISSING'];
 
         return ['ok' => true, 'account' => $acc];
     }
