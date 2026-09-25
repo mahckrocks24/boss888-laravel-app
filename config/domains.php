@@ -31,6 +31,21 @@ return [
     ],
 
     /*
+    | RFC-0015 (2026-09-25) — a domain bought from us connects itself.
+    | auto_dns: after registration, write www → routing target and apex → redirect at our
+    | registrar (merge-write, mail records untouched). Held back by the fulfilment gate
+    | above anyway: nothing registers while that is off, so nothing here runs.
+    | link.stall_minutes: how long an attachment may sit at "connecting" before it is
+    | marked stalled for an operator.
+    */
+    'auto_dns' => [
+        'enabled' => filter_var(env('DOMAINS_AUTO_DNS_ENABLED', true), FILTER_VALIDATE_BOOLEAN),
+    ],
+    'link' => [
+        'stall_minutes' => (int) env('DOMAINS_LINK_STALL_MINUTES', 60),
+    ],
+
+    /*
     |--------------------------------------------------------------------------
     | One-time fixture webhook replay  (PHASE 1E.2 — TEMPORARY)
     |--------------------------------------------------------------------------

@@ -204,9 +204,17 @@
         if (addr) a.appendChild(btn('Open website', 'quiet', function () { window.open(/^https?:/.test(addr) ? addr : 'https://' + addr, '_blank', 'noopener'); }));
         a.appendChild(btn('Ask Sarah to change it', 'primary', function () { askSarah('On the ' + (sd.name || 'website') + ' website, please change '); }));
         a.appendChild(btn('Open in Advanced', 'quiet', function () { openAdvanced('websites', sd.id); }));
+        // DOMAIN-OFFER-1 (RFC-0015): get a domain from us; it is set up and connected automatically.
+        if (!isWp && !sd.custom_domain) {
+          a.appendChild(btn('Get a domain', 'quiet', function () {
+            window.__luDomainsPrefill = { website_id: sd.id, website_name: sd.name || sd.title || null };
+            window.__luInfraTab = 'domains';
+            openAdvanced('infrastructure');
+          }));
+        }
         var info = document.createElement('div'); info.className = 'bs-grid'; s1.appendChild(info);
         info.appendChild(kpi('Address', addr || 'Not set yet', external ? (/^https:/.test(addr) ? 'Secure (HTTPS) on your own platform' : 'On your own platform') : (live ? 'HTTPS included with LevelUp hosting' : 'Appears when published')));
-        info.appendChild(kpi('Your own domain', sd.custom_domain ? sd.custom_domain : 'Not connected', sd.custom_domain ? '' : 'Connecting a domain you own is coming soon'));
+        info.appendChild(kpi('Your own domain', sd.custom_domain ? sd.custom_domain : 'Not connected', sd.custom_domain ? '' : 'Get one from us and we connect it for you'));
         if (!isWp) {
           var vs = sec('Earlier versions', null, 'Every publish keeps the previous version. Restoring puts that version live again; the current one stays in this list.'); body.appendChild(vs);
           var vl = document.createElement('div'); vs.appendChild(vl); vl.innerHTML = '<div class="bs-skel"></div>';

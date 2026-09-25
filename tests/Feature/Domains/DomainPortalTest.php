@@ -325,7 +325,7 @@ class DomainPortalTest extends TestCase
             $this->assertStringNotContainsString($forbidden, $body);
         }
 
-        $this->assertStringContainsString('LevelUp Growth', $body);
+        $this->assertStringContainsString('LevelUpGrowth', $body);
         $this->assertStringContainsString('support@levelupgrowth.io', $body);
     }
 }

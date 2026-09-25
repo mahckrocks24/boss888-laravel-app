@@ -832,6 +832,11 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         [\App\Http\Controllers\Api\CustomerDomainController::class, 'timeline'])->whereNumber('id');
     Route::post('/domains/{id}/auto-renew',
         [\App\Http\Controllers\Api\CustomerDomainController::class, 'setAutoRenew'])->whereNumber('id');
+    // DOMAIN-LINK-1 (RFC-0015): point a bought domain at a website; the set-up runs by itself.
+    Route::post('/domains/{id}/attach',
+        [\App\Http\Controllers\Api\CustomerDomainController::class, 'attach'])->whereNumber('id');
+    Route::post('/domains/{id}/detach',
+        [\App\Http\Controllers\Api\CustomerDomainController::class, 'detach'])->whereNumber('id');
     Route::put('/auth/profile', [AuthController::class, 'updateProfile']);
     Route::put('/auth/password', [AuthController::class, 'updatePassword']);
 

@@ -24,6 +24,7 @@ class CustomerDomain extends Model
         'registered_at'          => 'datetime',
         'expires_at'             => 'datetime',
         'last_synced_at'         => 'datetime',
+        'connect_started_at'     => 'datetime',   // DOMAIN-LINK-1
         'auto_renew'             => 'boolean',
         'is_locked'              => 'boolean',
         'whois_privacy'          => 'boolean',

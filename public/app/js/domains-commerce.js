@@ -27,6 +27,8 @@
   var _search = { term: '', years: 1, result: null, busy: false, error: null };
   var _cart = [];
   var _checkingOut = false;
+  // DOMAIN-OFFER-1 (RFC-0015): the website a search/cart is for ({id, name}); null = none chosen.
+  var _for = null;
   var _table = { q: '', status: 'all', sort: 'domain', dir: 'asc', page: 1, per: 10 };
 
   var CART_KEY = 'lu.domains.cart';
@@ -117,7 +119,16 @@
       body = searchResult(r);
     }
 
+    var forLine = _for
+      ? '<div role="status" style="display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3);flex-wrap:wrap;' +
+          'background:var(--s2);border:1px solid var(--bd);border-left:3px solid var(--ac);border-radius:var(--r);padding:var(--sp-3) var(--sp-4);margin-bottom:var(--sp-4);font:400 13px var(--fb);color:var(--t2);">' +
+          '<span>For <strong style="color:var(--t1);">' + esc(_for.name || ('website #' + _for.id)) + '</strong> — after payment we register it, set it up and connect it automatically.</span>' +
+          '<button id="lud-for-clear" style="min-height:30px;padding:0 var(--sp-3);border-radius:var(--r);cursor:pointer;font:600 12px var(--fb);background:transparent;color:var(--t2);border:1px solid var(--bd2);">Not for this website</button>' +
+        '</div>'
+      : '';
+
     return '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:var(--sp-5);margin-bottom:var(--sp-6);">' +
+      forLine +
       '<label for="lud-q" style="display:block;font:600 12px var(--fb);color:var(--t2);margin-bottom:6px;">Find a domain</label>' +
       '<div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;">' +
         '<input id="lud-q" type="text" inputmode="url" autocomplete="off" spellcheck="false" ' +
@@ -364,6 +375,7 @@
         '<th scope="col" style="text-align:left;padding:0 var(--sp-4) 9px;font:600 11px var(--fb);color:var(--t3);letter-spacing:.04em;text-transform:uppercase;">Registered</th>' +
         sortHead('expires', 'Expires') +
         '<th scope="col" style="text-align:left;padding:0 var(--sp-4) 9px;font:600 11px var(--fb);color:var(--t3);letter-spacing:.04em;text-transform:uppercase;">Auto-renew</th>' +
+        '<th scope="col" style="text-align:left;padding:0 var(--sp-4) 9px;font:600 11px var(--fb);color:var(--t3);letter-spacing:.04em;text-transform:uppercase;">Website</th>' +
         '<th scope="col" style="padding:0 var(--sp-4) 9px;"><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Actions</span></th>' +
       '</tr></thead><tbody>' +
       slice.map(function (d) {
@@ -375,6 +387,7 @@
           '<td style="padding:var(--sp-4);font:400 13px var(--fb);color:var(--t2);white-space:nowrap;">' + esc(fmtDate(d.expires_on)) +
             (d.days_until_expiry != null && d.expiring_soon ? '<div style="font:400 11px var(--fb);color:var(--am);">in ' + esc(d.days_until_expiry) + ' days</div>' : '') + '</td>' +
           '<td style="padding:var(--sp-4);font:400 13px var(--fb);color:var(--t2);">' + (d.auto_renew ? 'On' : 'Off') + '</td>' +
+          '<td style="padding:var(--sp-4);font:400 13px var(--fb);color:var(--t2);">' + websiteCell(d) + '</td>' +
           '<td style="padding:var(--sp-4);text-align:right;white-space:nowrap;">' +
             '<button class="lud-open" data-id="' + esc(d.id) + '" style="min-height:34px;padding:0 var(--sp-4);border-radius:var(--r);' +
             'cursor:pointer;font:600 12px var(--fb);background:transparent;color:var(--t1);border:1px solid var(--bd2);">Manage</button>' +
@@ -400,6 +413,7 @@
     on('lud-years', 'change', function (e) { _search.years = parseInt(e.target.value, 10) || 1; });
     on('lud-add', 'click', function () { addToCart(); });
     on('lud-cart-btn', 'click', function () { _view = { name: 'cart' }; render(); });
+    on('lud-for-clear', 'click', function () { _for = null; render(); });
 
     Array.prototype.forEach.call(document.querySelectorAll('.lud-sugg'), function (b) {
       b.addEventListener('click', function () { doSearch(b.getAttribute('data-d')); });
@@ -438,7 +452,10 @@
       years: _search.years,
       // Display only. The server re-prices at order time and its figure wins.
       price: r.retail,
-      price_minor: r.retail_minor
+      price_minor: r.retail_minor,
+      // DOMAIN-OFFER-1: the website this domain is for; changeable in the cart.
+      website_id: _for ? _for.id : null,
+      website_name: _for ? _for.name : null
     });
     saveCart();
     toast(r.domain + ' added to your cart.', 'success');
@@ -470,6 +487,9 @@
             '<div style="min-width:0;flex:1 1 200px;">' +
               '<div style="font:600 15px var(--fh);color:var(--t1);word-break:break-all;">' + esc(c.domain) + '</div>' +
               '<div style="font:400 12px var(--fb);color:var(--t3);margin-top:3px;">Domain registration</div>' +
+              '<label style="display:flex;align-items:center;gap:7px;margin-top:8px;font:400 12px var(--fb);color:var(--t2);flex-wrap:wrap;">Use with' +
+                '<select class="lud-site" data-i="' + i + '" aria-label="Website for ' + esc(c.domain) + '" style="min-height:32px;padding:0 var(--sp-3);border-radius:var(--r);border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:400 12px var(--fb);max-width:260px;">' +
+                  siteOptions(c.website_id) + '</select></label>' +
             '</div>' +
             '<select class="lud-yr" data-i="' + i + '" aria-label="Registration period for ' + esc(c.domain) + '" ' +
               'style="min-height:36px;padding:0 var(--sp-3);border-radius:var(--r);border:1px solid var(--bd2);' +
@@ -524,6 +544,57 @@
         render();
       });
     });
+
+    // DOMAIN-OFFER-1: change which website a line is for.
+    Array.prototype.forEach.call(document.querySelectorAll('.lud-site'), function (s) {
+      s.addEventListener('change', function () {
+        var i = parseInt(s.getAttribute('data-i'), 10);
+        var id = parseInt(s.value, 10) || null;
+        var site = sites().filter(function (w) { return Number(w.id) === id; })[0];
+        _cart[i].website_id = id;
+        _cart[i].website_name = site ? (site.name || site.title || ('Website #' + site.id)) : null;
+        saveCart();
+      });
+    });
+    ensureSites();
+  }
+
+  /* DOMAIN-OFFER-1: the workspace's websites, from the infrastructure engine (cached there). */
+  function sites() { try { return (ctx.websites && ctx.websites()) || []; } catch (e) { return []; } }
+  function ensureSites() {
+    if (sites().length || !ctx.loadWebsites || _sitesAsked) { return; }
+    _sitesAsked = true;
+    ctx.loadWebsites().then(function () { if (_view.name === 'cart' || _view.name === 'detail') { render(); } });
+  }
+  var _sitesAsked = false;
+  function siteOptions(selectedId) {
+    var list = sites();
+    var out = '<option value=""' + (!selectedId ? ' selected' : '') + '>No website yet</option>';
+    list.forEach(function (w) {
+      var name = w.name || w.title || ('Website #' + w.id);
+      out += '<option value="' + esc(w.id) + '"' + (Number(w.id) === Number(selectedId) ? ' selected' : '') + '>' + esc(name) + '</option>';
+    });
+    if (selectedId && !list.filter(function (w) { return Number(w.id) === Number(selectedId); }).length) {
+      out += '<option value="' + esc(selectedId) + '" selected>Website #' + esc(selectedId) + '</option>';
+    }
+    return out;
+  }
+  function websiteCell(d) {
+    if (!d.website_id) { return '<span style="color:var(--t3);">—</span>'; }
+    var j = d.journey || {};
+    var tone = j.complete ? 'var(--ac)' : (d.connect_state === 'failed' || d.connect_state === 'stalled') ? 'var(--rd)' : 'var(--am)';
+    return esc(d.website_name || ('Website #' + d.website_id)) +
+      '<div>' + ctx.statusPill(j.complete ? 'Live' : 'Setting up', tone) + '</div>';
+  }
+  /* The five-step line. Exposed for the website's Domain tab so both surfaces draw it the same way. */
+  function journeyLine(j) {
+    var steps = (j && j.steps) || [];
+    return '<ol style="list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px;">' + steps.map(function (s) {
+      var tone = s.state === 'done' ? 'var(--ac)' : s.state === 'current' ? 'var(--am)' : s.state === 'failed' ? 'var(--rd)' : 'var(--t3)';
+      var mark = s.state === 'done' ? '\u2713 ' : s.state === 'failed' ? '\u26A0 ' : s.state === 'skipped' ? '\u2013 ' : '';
+      return '<li title="' + esc(s.detail || '') + '" style="font:600 12px var(--fb);color:' + tone + ';padding:5px 11px;border:1px solid ' + tone + ';border-radius:999px;' +
+        (s.state === 'current' ? 'background:var(--s2);' : '') + '">' + mark + esc(s.label) + '</li>';
+    }).join('') + '</ol>';
   }
 
   function totalRow(label, value, muted, strong) {
@@ -539,9 +610,10 @@
     _checkingOut = true;
     render();
 
-    var items = _cart.map(function (c) { return { domain: c.domain, years: c.years }; });
-    // A stable key so a double-click cannot create two orders.
-    var idem = 'cart-' + items.map(function (i) { return i.domain + ':' + i.years; }).join('|');
+    var items = _cart.map(function (c) { return { domain: c.domain, years: c.years, website_id: c.website_id || null }; });
+    // A stable key so a double-click cannot create two orders. The website is part of it: the same
+    // names for a different website is a different order.
+    var idem = 'cart-' + items.map(function (i) { return i.domain + ':' + i.years + ':' + (i.website_id || 0); }).join('|');
 
     ctx.req('POST', 'domains/orders', { items: items, idempotency_key: idem })
       .then(function (r) {
@@ -601,7 +673,64 @@
     on('lud-copy-ns', 'click', function () { copyNs(d); });
     on('lud-ar', 'change', function (e) { setAutoRenew(d.id, e.target.checked); });
 
+    // DOMAIN-OFFER-1: attach / detach / open the website.
+    on('lud-attach', 'click', function () {
+      var sel = h('lud-site-pick'); var id = sel ? parseInt(sel.value, 10) : 0;
+      if (!id) { toast('Choose a website first.', 'info'); return; }
+      var b = h('lud-attach'); if (b) { b.disabled = true; b.textContent = 'Setting up…'; }
+      ctx.req('POST', 'domains/' + d.id + '/attach', { website_id: id }).then(function (r) {
+        if (!r.ok) { toast((r.json && r.json.error) || 'We could not set that up just now.', 'error'); if (b) { b.disabled = false; b.textContent = 'Use with this website'; } return; }
+        toast('Setting up ' + (r.json.domain && r.json.domain.hostname || d.domain) + ' for your website.', 'success');
+        load(true);
+      }).catch(function () { toast('We could not reach the service. Please try again.', 'error'); if (b) { b.disabled = false; b.textContent = 'Use with this website'; } });
+    });
+    on('lud-detach', 'click', function () {
+      var go = function () {
+        ctx.req('POST', 'domains/' + d.id + '/detach', {}).then(function (r) {
+          if (!r.ok) { toast((r.json && r.json.error) || 'We could not detach it just now.', 'error'); return; }
+          toast('Detached. The website answers at its LevelUp address again.', 'success');
+          load(true);
+        });
+      };
+      if (typeof window.luConfirm === 'function') {
+        window.luConfirm('Detach this domain?', 'Visitors will use the .levelupgrowth.io address until a domain is connected again.', { okLabel: 'Detach', cancelLabel: 'Keep it', danger: true }).then(function (ok) { if (ok) { go(); } });
+      } else { go(); }
+    });
+    on('lud-open-site', 'click', function () { if (ctx.openWebsite) { ctx.openWebsite(d.website_id); } });
+    ensureSites();
+
     loadTimeline(d.id);
+  }
+
+  /* DOMAIN-OFFER-1: the Website card on a domain's detail screen. */
+  function websiteBlock(d) {
+    var j = d.journey || { steps: [], summary: '' };
+    var inner;
+    if (d.website_id) {
+      inner =
+        '<div style="display:flex;justify-content:space-between;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4);">' +
+          '<div style="font:400 13px var(--fb);color:var(--t2);">' + esc(d.hostname || ('www.' + d.domain)) + ' → <strong style="color:var(--t1);">' + esc(d.website_name || ('Website #' + d.website_id)) + '</strong></div>' +
+          ctx.statusPill(j.complete ? 'Live' : (d.connect_state === 'failed' || d.connect_state === 'stalled') ? 'Needs attention' : 'Setting up',
+            j.complete ? 'var(--ac)' : (d.connect_state === 'failed' || d.connect_state === 'stalled') ? 'var(--rd)' : 'var(--am)') +
+        '</div>' +
+        journeyLine(j) +
+        '<div style="font:400 13px var(--fb);color:var(--t2);margin-top:var(--sp-4);line-height:1.5;">' + esc(j.summary || '') + '</div>' +
+        '<div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;margin-top:var(--sp-4);">' +
+          (j.live_url ? '<a href="' + esc(j.live_url) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;min-height:36px;padding:0 var(--sp-4);border-radius:var(--r);font:600 13px var(--fb);background:var(--p);color:#fff;border:1px solid var(--p);text-decoration:none;">Open ' + esc(d.hostname || d.domain) + '</a>' : '') +
+          '<button id="lud-open-site" style="min-height:36px;padding:0 var(--sp-4);border-radius:var(--r);cursor:pointer;font:600 13px var(--fb);background:transparent;color:var(--t1);border:1px solid var(--bd2);">Open website settings</button>' +
+          '<button id="lud-detach" style="min-height:36px;padding:0 var(--sp-4);border-radius:var(--r);cursor:pointer;font:600 13px var(--fb);background:transparent;color:var(--t2);border:1px solid var(--bd2);">Detach</button>' +
+        '</div>';
+    } else {
+      inner =
+        '<div style="font:400 13px var(--fb);color:var(--t2);margin-bottom:var(--sp-4);line-height:1.5;">Choose a website and we’ll point ' + esc(d.hostname || ('www.' + d.domain)) + ' at it, issue the certificate and switch it on — usually under 10 minutes, nothing to configure.</div>' +
+        '<div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center;">' +
+          '<select id="lud-site-pick" aria-label="Website" style="min-height:38px;padding:0 var(--sp-3);border-radius:var(--r);border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:400 13px var(--fb);max-width:300px;">' + siteOptions(null) + '</select>' +
+          '<button id="lud-attach" style="min-height:38px;padding:0 var(--sp-5);border-radius:var(--r);cursor:pointer;font:600 13px var(--fb);background:var(--p);color:#fff;border:1px solid var(--p);">Use with this website</button>' +
+        '</div>' +
+        (d.dns_state === 'external' ? '<div style="font:400 12px var(--fb);color:var(--t3);margin-top:var(--sp-3);">This domain uses its own name servers, so you will add the records at your DNS provider when we show them.</div>' : '');
+    }
+    return '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:var(--sp-5);margin-bottom:var(--sp-6);">' +
+      ctx.sectionTitle('Website', 'Where this domain points.') + inner + '</div>';
   }
 
   function detailBody(d) {
@@ -653,7 +782,7 @@
         : '<div style="font:400 13px var(--fb);color:var(--t3);">Not yet available. Select Refresh to check again.</div>') +
       '</div>';
 
-    return expiryNote + overview + renewal + nameservers;
+    return expiryNote + websiteBlock(d) + overview + renewal + nameservers;
   }
 
   function copyNs(d) {
@@ -808,19 +937,56 @@
       // Returning from Stripe: land on the domain list and explain what happens
       // next, rather than dropping the customer on a blank screen.
       var hash = String(window.location.hash || '');
+      var qs = {};
+      try { (hash.split('?')[1] || '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) { qs[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); } }); } catch (e) {}
+
       if (hash.indexOf('purchase=success') !== -1) {
-        toast('Payment received. We are registering your domain now — this usually takes under a minute.', 'success');
         _cart = [];
         saveCart();
         try { history.replaceState(null, '', window.location.pathname + window.location.search + '#domains'); } catch (e) {}
+        // DOMAIN-OFFER-1: say what will actually happen — connection only when a website was chosen.
+        var orderId = parseInt(qs.order, 10);
+        var said = false;
+        if (orderId) {
+          ctx.req('GET', 'domains/orders/' + orderId).then(function (r) {
+            var items = (r.json && r.json.order && r.json.order.items) || [];
+            var withSite = items.filter(function (i) { return i.website_id; });
+            if (withSite.length) {
+              toast('Payment received. We are registering ' + withSite[0].domain + ' and connecting it to ' + (withSite[0].website_name || 'your website') + ' — usually under 10 minutes.', 'success');
+            } else {
+              toast('Payment received. We are registering your domain now — this usually takes under a minute.', 'success');
+            }
+            said = true;
+          }).catch(function () {});
+        }
+        setTimeout(function () { if (!said && !orderId) { toast('Payment received. We are registering your domain now — this usually takes under a minute.', 'success'); } }, 0);
       } else if (hash.indexOf('purchase=cancelled') !== -1) {
         toast('Checkout cancelled. Your cart has been kept.', 'info');
         try { history.replaceState(null, '', window.location.pathname + window.location.search + '#domains'); } catch (e) {}
       }
 
-      _view = { name: 'list' };
-      load();
+      // DOMAIN-OFFER-1: arrived from a website (Domain tab, publish modal, Basic tile) or a deep link
+      // #domains?for=<id>&q=<term>: search for that website; or open one bought domain's detail.
+      var pre = window.__luDomainsPrefill || null; window.__luDomainsPrefill = null;
+      var forId = (pre && pre.website_id) || parseInt(qs['for'], 10) || null;
+      var term = (pre && pre.term) || qs.q || '';
+      var openId = (pre && pre.open) || null;
+      if (forId) {
+        _for = { id: Number(forId), name: (pre && pre.website_name) || null };
+        if (!_for.name && ctx.loadWebsites) {
+          ctx.loadWebsites().then(function (list) {
+            var w = (list || []).filter(function (x) { return Number(x.id) === Number(forId); })[0];
+            if (w && _for && Number(_for.id) === Number(forId)) { _for.name = w.name || w.title || null; if (_view.name === 'list') { render(); } }
+          });
+        }
+        if (qs['for']) { try { history.replaceState(null, '', window.location.pathname + window.location.search + '#domains'); } catch (e) {} }
+      }
+
+      _view = openId ? { name: 'detail', domainId: Number(openId) } : { name: 'list' };
+      load().then(function () { if (term) { _search.term = term; doSearch(term); } });
     },
+
+    journeyLine: journeyLine,
 
     openCart: function () { _view = { name: 'cart' }; render(); },
 

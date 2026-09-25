@@ -6,6 +6,7 @@ use App\Jobs\SyncCustomerDomainJob;
 use App\Models\CustomerDomain;
 use App\Models\DomainOrder;
 use App\Services\Domains\DomainCommerceService;
+use App\Services\Domains\DomainLinkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,9 +14,9 @@ use Illuminate\Http\Request;
  * Customer-facing domain commerce: search, buy, and manage owned domains.
  *
  * BRANDING
- * Everything returned here is LevelUp Growth. The internal engine name and the
+ * Everything returned here is LevelUpGrowth. The internal engine name and the
  * upstream registrar are never surfaced to a customer -- the customer is buying
- * from LevelUp Growth, and who we buy from is our commercial business.
+ * from LevelUpGrowth, and who we buy from is our commercial business.
  *
  * TENANCY
  * workspace_id comes from the authenticated token via JwtAuthMiddleware, never
@@ -24,7 +25,7 @@ use Illuminate\Http\Request;
  */
 class CustomerDomainController
 {
-    private const BRAND = 'LevelUp Growth';
+    private const BRAND = 'LevelUpGrowth';
 
     /** The workspace the caller is authenticated for. Never trusts the request body. */
     private function workspaceId(Request $request): ?int
@@ -102,7 +103,8 @@ class CustomerDomainController
         );
 
         if (isset($result['error'])) {
-            return response()->json($result, 422);
+            // DOMAIN-LINK-1: a website outside the caller's workspace is "not found", not "forbidden".
+            return response()->json($result, ($result['code'] ?? '') === 'WEBSITE_NOT_FOUND' ? 404 : 422);
         }
 
         return response()->json($result, 201);
@@ -178,10 +180,12 @@ class CustomerDomainController
             return $this->denied();
         }
 
-        $domains = CustomerDomain::forWorkspace($wsId)
-            ->orderBy('domain')
-            ->get()
-            ->map(fn (CustomerDomain $d) => $this->presentDomain($d));
+        $q = CustomerDomain::forWorkspace($wsId)->orderBy('domain');
+        // DOMAIN-LINK-1: a website's Domain tab asks only for the domain set up for it.
+        if ((int) $request->query('website_id', 0) > 0) {
+            $q->where('website_id', (int) $request->query('website_id'));
+        }
+        $domains = $q->get()->map(fn (CustomerDomain $d) => $this->presentDomain($d));
 
         return response()->json([
             'domains'  => $domains,
@@ -301,6 +305,9 @@ class CustomerDomainController
         // Show the remaining steps as upcoming, so the customer sees the whole
         // journey rather than only what has happened so far.
         $expected = $this->timelineTemplate();
+        if (! $domain->website_id) {
+            $expected = array_values(array_filter($expected, fn ($t) => $t['key'] !== 'live'));   // DOMAIN-LINK-1
+        }
         $doneKeys = array_column($steps, 'key');
 
         foreach ($expected as $tpl) {
@@ -332,6 +339,8 @@ class CustomerDomainController
             ['key' => 'registering','label' => 'Registering domain',  'detail' => 'We are securing your domain name.'],
             ['key' => 'registered', 'label' => 'Registration complete','detail' => 'Your domain is registered to you.'],
             ['key' => 'dns',        'label' => 'DNS configured',      'detail' => 'Name servers are set and your domain is ready to use.'],
+            // DOMAIN-LINK-1: shown only for a domain set up for a website (filtered in timeline()).
+            ['key' => 'live',       'label' => 'Connected to your website', 'detail' => 'Your website answers at your domain, with HTTPS.'],
         ];
     }
 
@@ -351,6 +360,8 @@ class CustomerDomainController
             'domain.registration.attempt'   => 'registering',
             'domain.registration.succeeded' => 'registered',
             'domain.synced'                 => 'dns',
+            'domain.dns.configured'         => 'dns',    // DOMAIN-LINK-1
+            'domain.website.connected'      => 'live',   // DOMAIN-LINK-1
         ];
 
         $key = $map[$event] ?? null;
@@ -407,6 +418,57 @@ class CustomerDomainController
         ]);
     }
 
+    // -------------------------------------------------------- DOMAIN-LINK-1 --
+
+    /** Point a bought domain at one of the workspace's websites; the set-up runs by itself. */
+    public function attach(Request $request, int $id): JsonResponse
+    {
+        $wsId = $this->workspaceId($request);
+
+        if ($wsId === null) {
+            return $this->denied();
+        }
+
+        $domain = CustomerDomain::forWorkspace($wsId)->find($id);
+
+        if ($domain === null) {
+            return response()->json(['error' => 'Domain not found.'], 404);
+        }
+
+        $websiteId = (int) $request->input('website_id', 0);
+
+        if ($websiteId <= 0) {
+            return response()->json(['error' => 'Choose a website.'], 422);
+        }
+
+        $result = DomainLinkService::make()->attach($domain, $websiteId);
+
+        if (isset($result['error'])) {
+            return response()->json($result, ($result['code'] ?? '') === 'WEBSITE_NOT_FOUND' ? 404 : 422);
+        }
+
+        return response()->json(['ok' => true, 'domain' => $this->presentDomain($domain->fresh(), true)]);
+    }
+
+    public function detach(Request $request, int $id): JsonResponse
+    {
+        $wsId = $this->workspaceId($request);
+
+        if ($wsId === null) {
+            return $this->denied();
+        }
+
+        $domain = CustomerDomain::forWorkspace($wsId)->find($id);
+
+        if ($domain === null) {
+            return response()->json(['error' => 'Domain not found.'], 404);
+        }
+
+        DomainLinkService::make()->detach($domain);
+
+        return response()->json(['ok' => true, 'domain' => $this->presentDomain($domain->fresh(), true)]);
+    }
+
     // ------------------------------------------------------------ present --
 
     private function presentDomain(CustomerDomain $d, bool $detailed = false): array
@@ -426,10 +488,17 @@ class CustomerDomainController
             'privacy'       => (bool) $d->whois_privacy,
             'nameservers'   => $d->nameservers(),
             'dns_managed_by'=> ($d->provider_metadata_json['uses_our_dns'] ?? false) ? self::BRAND : 'Custom nameservers',
-            // The customer's registrar of record is LevelUp Growth. The upstream
+            // The customer's registrar of record is LevelUpGrowth. The upstream
             // wholesale provider is deliberately not disclosed.
             'registrar'     => self::BRAND,
             'last_updated'  => $d->last_synced_at?->toIso8601String(),
+            // DOMAIN-LINK-1 (RFC-0015): the website this domain is set up for, and the journey so far.
+            'website_id'    => $d->website_id ? (int) $d->website_id : null,
+            'website_name'  => DomainLinkService::websiteName($d->website_id ? (int) $d->website_id : null),
+            'hostname'      => DomainLinkService::hostnameFor($d->domain),
+            'dns_state'     => $d->dns_state,
+            'connect_state' => $d->connect_state,
+            'journey'       => DomainLinkService::make()->journey($d),
         ];
 
         if ($detailed) {

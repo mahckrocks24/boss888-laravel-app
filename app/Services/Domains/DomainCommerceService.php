@@ -234,8 +234,15 @@ class DomainCommerceService
                 continue;
             }
 
+            /* DOMAIN-LINK-1 (RFC-0015): a line may name the website the domain is for. Tenancy: only a
+               website in the caller's workspace may be named; anything else is "not found", never a hint. */
+            $websiteId = (int) ($line['website_id'] ?? 0) > 0 ? (int) $line['website_id'] : null;
+            if ($websiteId !== null && ! DomainLinkService::websiteInWorkspace($websiteId, $workspaceId)) {
+                return ['error' => 'Website not found.', 'code' => 'WEBSITE_NOT_FOUND'];
+            }
+
             $seen[$domain] = true;
-            $normalized[] = ['domain' => $domain, 'years' => $years];
+            $normalized[] = ['domain' => $domain, 'years' => $years, 'website_id' => $websiteId];
         }
 
         if ($normalized === []) {
@@ -308,6 +315,7 @@ class DomainCommerceService
                     'currency'             => 'USD',
                     'is_premium'           => (bool) ($p['quote']['premium'] ?? false),
                     'status'               => DomainOrderItem::STATUS_PENDING,
+                    'website_id'           => $p['line']['website_id'] ?? null,   // DOMAIN-LINK-1
                 ]);
             }
 
@@ -557,6 +565,8 @@ class DomainCommerceService
                 'premium'  => (bool) $i->is_premium,
                 'registered_at' => $i->registered_at?->toIso8601String(),
                 'error'    => $i->last_error,
+                'website_id'   => $i->website_id ? (int) $i->website_id : null,           // DOMAIN-LINK-1
+                'website_name' => DomainLinkService::websiteName($i->website_id ? (int) $i->website_id : null),
                 // Wholesale figures are deliberately ABSENT from customer output.
             ])->all(),
         ];

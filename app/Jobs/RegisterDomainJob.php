@@ -7,6 +7,7 @@ use App\Models\CustomerDomain;
 use App\Models\DomainOrderItem;
 use App\Services\Domains\DomainAuditLogger;
 use App\Services\Domains\DomainContactResolver;
+use App\Services\Domains\DomainLinkService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -180,6 +181,13 @@ class RegisterDomainJob implements ShouldQueue
                     'expires_at'              => now()->addYears((int) $item->years),
                     'auto_renew'              => false,
                     'last_synced_at'          => now(),
+                    // DOMAIN-LINK-1 (RFC-0015): the website chosen at purchase, and the automatic
+                    // set-up that follows. States are claims about what happened, set by the jobs.
+                    'website_id'              => $item->website_id ? (int) $item->website_id : null,
+                    'dns_state'               => DomainLinkService::DNS_PENDING,
+                    'connect_state'           => $item->website_id ? DomainLinkService::CONNECT_PENDING : null,
+                    'link_error'              => null,
+                    'connect_started_at'      => null,
                 ]
             );
         });
@@ -191,6 +199,12 @@ class RegisterDomainJob implements ShouldQueue
         // Pull authoritative expiry and nameservers from the registrar rather
         // than trusting our own arithmetic.
         SyncCustomerDomainJob::dispatch($item->domain)->onQueue('tasks-low');
+
+        // DOMAIN-LINK-1: point the domain at us (DNS-AUTO-1), then attach it (CONNECT-AUTO-1).
+        $owned = CustomerDomain::where('domain', $item->domain)->first();
+        if ($owned !== null) {
+            DomainLinkService::make()->advance($owned);
+        }
     }
 
     /**

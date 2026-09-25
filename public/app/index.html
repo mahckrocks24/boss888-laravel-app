@@ -4377,6 +4377,7 @@ window.luSwipeToClose = luSwipeToClose;
               <input id="ws-pub-domain" type="text" placeholder="yourdomain.com" style="flex:1;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:9px 12px;color:var(--t1);font-size:13px;outline:none">
               <button onclick="wsConnectDomain()" class="ct-btn ws-domain-connect-btn" style="white-space:nowrap">Connect</button>
             </div>
+            <div style="font-size:11px;color:var(--t3);margin-bottom:8px;line-height:1.5">Don’t have a domain yet? <a href="#" onclick="return wsGetDomain(event)" style="color:var(--ac);font-weight:600">Get one from us</a> — we register it, set it up and connect it to this website for you.</div>
             <div id="ws-pub-domain-status" class="domain-status pending" style="display:none;align-items:center;gap:6px;margin-bottom:8px">
               <span>⏳</span><span id="ws-pub-domain-msg">Checking DNS…</span>
               <button onclick="wsVerifyDomain()" class="ct-btn" style="margin-left:auto;font-size:11px;padding:4px 12px">Verify</button>
@@ -4676,7 +4677,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=socialcal1.1.0-calday',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=c1-20260920',catalogue:'/app/js/catalogue.js?v=rfc0012p1d-20260922',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
+  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=socialcal1.1.0-calday',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=dl2-20260925',catalogue:'/app/js/catalogue.js?v=rfc0012p1d-20260922',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4895,7 +4896,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=88c9f01c0a"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=d964db12d7"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

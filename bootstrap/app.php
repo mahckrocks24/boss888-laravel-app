@@ -97,6 +97,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // credit. Idempotent + bounded (see VideoFinalizePendingCommand). No video
         // assets in flight ⇒ proven no-op.
         // OWNER RULE 2026-09-14: every new image gets vision-verified tags and a description, a few at a time.
+        // RFC-0015: advance bought domains through DNS set-up and website attachment.
+        $schedule->command('domains:link-sweep')->name('domains:link-sweep')->everyFiveMinutes()->withoutOverlapping();
         $schedule->command('media:vision-verify --limit=20')->name('media:vision-verify')->everyTenMinutes()->withoutOverlapping();
         $schedule->command('video:finalize-pending')
             ->name('video:finalize-pending')

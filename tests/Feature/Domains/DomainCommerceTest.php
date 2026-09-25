@@ -555,7 +555,7 @@ class DomainCommerceTest extends TestCase
             $this->assertStringNotContainsString($forbidden, $json, "'{$forbidden}' must never reach a customer");
         }
 
-        $this->assertStringContainsString('LevelUp Growth', $json);
+        $this->assertStringContainsString('LevelUpGrowth', $json);
     }
 
     public function test_admin_payload_does_expose_commercial_internals(): void

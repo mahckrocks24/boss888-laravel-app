@@ -2852,6 +2852,17 @@ function wsShowPublish(siteId){
 
 function wsHidePubModal(){const m=document.getElementById('ws-pub-modal');if(m)m.style.display='none';wsPubTarget=null;}
 
+// DOMAIN-OFFER-1 (RFC-0015): "Get one from us" in the publish modal → Hosting › Domains with this website preselected.
+window.wsGetDomain=function(e){
+  if(e&&e.preventDefault)e.preventDefault();
+  var id=wsPubTarget&&wsPubTarget.id; var site=(typeof wsSites!=='undefined'&&wsSites)?wsSites.find(function(s){return s.id===id;}):null;
+  wsHidePubModal();
+  window.__luDomainsPrefill={website_id:id,website_name:site?(site.title||site.name||null):null};
+  window.__luInfraTab='domains';
+  if(typeof window.nav==='function')window.nav('infrastructure');
+  return false;
+};
+
 async function wsConnectDomain(){
   if(!wsPubTarget)return;
   var domain=document.getElementById('ws-pub-domain')?.value.trim();

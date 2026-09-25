@@ -122,6 +122,52 @@ class DomainAuditLogger
      * Never throws. An audit failure must not take down a purchase -- but it is
      * logged loudly, because a silent audit gap is its own incident.
      */
+    /* ---- DOMAIN-LINK-1 (RFC-0015): DNS written at our registrar, website attached ---- */
+
+    public function dnsConfigured(\App\Models\CustomerDomain $d, array $records, int $priorCount): void
+    {
+        $this->write((int) $d->workspace_id, 'customer_domain', (int) $d->id, 'domain.dns.configured', 'info', [
+            'domain'      => $d->domain,
+            'records'     => array_map(fn ($r) => $r['name'] . ' ' . $r['type'], $records),
+            'prior_count' => $priorCount,
+        ], null, 'set', "DNS configured for {$d->domain}", null, 'namecheap', $d->domain);
+    }
+
+    public function dnsSkipped(\App\Models\CustomerDomain $d, string $why): void
+    {
+        $this->write((int) $d->workspace_id, 'customer_domain', (int) $d->id, 'domain.dns.skipped', 'info', [
+            'domain' => $d->domain, 'why' => $why,
+        ], null, 'external', "DNS for {$d->domain} is managed elsewhere", null, 'namecheap', $d->domain);
+    }
+
+    public function websiteAttachRequested(\App\Models\CustomerDomain $d, int $websiteId): void
+    {
+        $this->write((int) $d->workspace_id, 'customer_domain', (int) $d->id, 'domain.website.attach_requested', 'info', [
+            'domain' => $d->domain, 'website_id' => $websiteId,
+        ], null, 'pending', "Attach {$d->domain} to website {$websiteId} requested", null, null, $d->domain);
+    }
+
+    public function websiteConnected(\App\Models\CustomerDomain $d): void
+    {
+        $this->write((int) $d->workspace_id, 'customer_domain', (int) $d->id, 'domain.website.connected', 'info', [
+            'domain' => $d->domain, 'website_id' => (int) $d->website_id, 'hostname' => 'www.' . $d->domain,
+        ], null, 'active', "www.{$d->domain} is live on website {$d->website_id}", null, null, $d->domain);
+    }
+
+    public function websiteConnectStalled(\App\Models\CustomerDomain $d): void
+    {
+        $this->write((int) $d->workspace_id, 'customer_domain', (int) $d->id, 'domain.website.stalled', 'warning', [
+            'domain' => $d->domain, 'website_id' => (int) $d->website_id, 'error' => $d->link_error,
+        ], 'connecting', 'stalled', "Attachment of {$d->domain} stalled", null, null, $d->domain);
+    }
+
+    public function websiteDetached(\App\Models\CustomerDomain $d): void
+    {
+        $this->write((int) $d->workspace_id, 'customer_domain', (int) $d->id, 'domain.website.detached', 'info', [
+            'domain' => $d->domain, 'website_id' => (int) $d->website_id,
+        ], null, null, "{$d->domain} detached from website {$d->website_id}", null, null, $d->domain);
+    }
+
     private function write(
         ?int $workspaceId,
         string $ownerType,

@@ -789,6 +789,10 @@
         '<div style="color:var(--t3);">Custom domain</div><div style="color:var(--t1);">' + (connected ? esc(site.custom_domain) + (verified ? ' · connected' : ' · setup in progress') : 'None connected') + '</div>' +
       '</div>');
 
+    // DOMAIN-OFFER-1 (RFC-0015): a domain bought from us for this website shows its journey here.
+    // Filled by bindDomainTab from GET domains?website_id=…; empty until then.
+    var journeySlot = '<div id="infra-domain-journey"></div>';
+
     var body;
     if (connected) {
       // Connected / in-progress: show stages + Check/Disconnect. Live status is
@@ -826,7 +830,44 @@
         '</div>');
     }
 
-    return '<div style="display:flex;flex-direction:column;gap:var(--sp-4);max-width:760px;">' + current + body + '</div>';
+    // DOMAIN-OFFER-1: the second door. We register the name, write its DNS and connect it — the
+    // customer types nothing else. Search happens on Hosting › Domains with this website preselected.
+    var buy = connected ? '' : card(
+      '<div style="font:600 15px var(--fh);color:var(--t1);margin-bottom:6px;">Get a new domain</div>' +
+      '<div style="font:400 13px var(--fb);color:var(--t2);margin-bottom:var(--sp-4);line-height:1.5;">Don’t have one yet? Search for a name and we’ll register it, set it up and connect it to this website for you — nothing to configure.</div>' +
+      '<div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;">' +
+        '<input id="infra-domain-buy-q" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="yourbrand.com" aria-label="Domain name to search" ' +
+          'style="flex:1 1 220px;min-width:0;min-height:44px;padding:0 var(--sp-4);border-radius:var(--r);background:var(--s2);border:1px solid var(--bd2);color:var(--t1);font:400 14px var(--fb);" />' +
+        '<button class="infra-btn" id="infra-domain-buy-go" style="' + btnStyle('primary') + 'min-height:44px;">Search</button>' +
+      '</div>');
+
+    return '<div style="display:flex;flex-direction:column;gap:var(--sp-4);max-width:760px;">' + current + journeySlot + buy + body + '</div>';
+  }
+
+  // DOMAIN-OFFER-1: the five-step line (Paid → Registering → Setting up DNS → Securing → Live), drawn
+  // from the server's journey — never assumed. Shared with the domains engine when it is loaded.
+  function journeyLine(j) {
+    if (window.luDomains && typeof window.luDomains.journeyLine === 'function') { return window.luDomains.journeyLine(j); }
+    var steps = (j && j.steps) || [];
+    return '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + steps.map(function (s) {
+      var tone = s.state === 'done' ? 'var(--ac)' : s.state === 'current' ? 'var(--am)' : s.state === 'failed' ? 'var(--rd)' : 'var(--t3)';
+      return '<span style="font:600 12px var(--fb);color:' + tone + ';padding:4px 10px;border:1px solid ' + tone + ';border-radius:999px;">' + esc(s.label) + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function renderJourneyCard(d, site) {
+    var j = d.journey || { steps: [], summary: '' };
+    return card(
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4);">' +
+        '<div style="font:600 15px var(--fh);color:var(--t1);word-break:break-all;">' + esc(d.hostname || ('www.' + d.domain)) + '</div>' +
+        statusPill(j.complete ? 'Live' : 'Setting up', j.complete ? 'var(--ac)' : 'var(--am)') +
+      '</div>' +
+      journeyLine(j) +
+      '<div style="font:400 13px var(--fb);color:var(--t2);margin-top:var(--sp-4);line-height:1.5;">' + esc(j.summary || '') + '</div>' +
+      '<div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;margin-top:var(--sp-4);">' +
+        (j.live_url ? '<a class="infra-btn" href="' + esc(j.live_url) + '" target="_blank" rel="noopener" style="' + btnStyle('primary') + 'display:inline-flex;align-items:center;text-decoration:none;">Open ' + esc(d.hostname || d.domain) + '</a>' : '') +
+        '<button class="infra-btn" id="infra-domain-journey-manage" data-id="' + esc(d.id) + '" style="' + btnStyle() + '">Manage domain</button>' +
+      '</div>');
   }
 
   // Wire the Domain tab. Called from bindManage when the domain tab is active.
@@ -837,6 +878,41 @@
     var result = document.getElementById('infra-domain-result');
 
     function setResult(html) { if (result) { result.innerHTML = html; } }
+
+    // DOMAIN-OFFER-1: "Get a new domain" → Hosting › Domains with this website preselected and the search run.
+    var buyQ = document.getElementById('infra-domain-buy-q');
+    var buyGo = document.getElementById('infra-domain-buy-go');
+    function goBuy() {
+      var term = buyQ ? String(buyQ.value || '').trim() : '';
+      window.__luDomainsPrefill = { website_id: site.id, website_name: site.name || site.title || ('Website #' + site.id), term: term };
+      INFRA_TAB = 'domains'; _view = { name: 'list', operationId: null, assetId: null };
+      renderCurrentView();
+    }
+    if (buyGo) { buyGo.addEventListener('click', goBuy); }
+    if (buyQ) { buyQ.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); goBuy(); } }); }
+
+    // DOMAIN-OFFER-1: the journey of a domain bought for this website.
+    var journey = document.getElementById('infra-domain-journey');
+    if (journey) {
+      req('GET', 'domains?website_id=' + encodeURIComponent(site.id))
+        .then(function (r) {
+          var list = (r.json && r.json.domains) || [];
+          if (!list.length) { journey.innerHTML = ''; return; }
+          journey.innerHTML = renderJourneyCard(list[0], site);
+          // DOMAIN-OFFER-1b: one domain from us per website — the "Get a new domain" door steps aside.
+          var buyBox = document.getElementById('infra-domain-buy-q');
+          if (buyBox) { var c = buyBox; while (c && c.parentElement && c.parentElement.id !== 'infra-body' && !(c.parentElement.style && /flex-direction:\s*column/.test(c.parentElement.getAttribute('style') || ''))) { c = c.parentElement; } if (c && c !== buyBox) { c.style.display = 'none'; } }
+          var m = document.getElementById('infra-domain-journey-manage');
+          if (m) {
+            m.addEventListener('click', function () {
+              window.__luDomainsPrefill = { open: parseInt(m.getAttribute('data-id'), 10) };
+              INFRA_TAB = 'domains'; _view = { name: 'list', operationId: null, assetId: null };
+              renderCurrentView();
+            });
+          }
+        })
+        .catch(function () { journey.innerHTML = ''; });
+    }
 
     if (input && connectBtn) {
       input.addEventListener('input', function () {
@@ -2517,7 +2593,26 @@
         metricStrip: metricStrip,
         sectionTitle: sectionTitle,
         fmtTime: fmtTime,
-        ICONS: ICONS
+        ICONS: ICONS,
+        // DOMAIN-OFFER-1: the workspace's websites (for "Use with a website") and a way back to one.
+        websites: function () { return _sites; },
+        loadWebsites: function () {
+          if (_sites.length) { return Promise.resolve(_sites); }
+          return req('GET', 'builder/websites').then(function (r) {
+            var j = r.json || {}; var list = j.websites || j.data || (Array.isArray(j) ? j : []);
+            _sites = Array.isArray(list) ? list : [];
+            return _sites;
+          }).catch(function () { return _sites; });
+        },
+        openWebsite: function (id) {
+          INFRA_TAB = 'websites';
+          var go = function () { _detailTab = 'domain'; _view = { name: 'manage', siteId: String(id) }; renderCurrentView(); };
+          if (findSite(String(id))) { go(); return; }
+          req('GET', 'builder/websites').then(function (r) {
+            var j = r.json || {}; var list = j.websites || j.data || (Array.isArray(j) ? j : []);
+            _sites = Array.isArray(list) ? list : []; go();
+          }).catch(go);
+        }
       });
       return;
     }
