@@ -124,8 +124,22 @@
     var reject = btn('Reject', 'danger', function (b) { var box = r.querySelector('.bs-reason'); if (!box) { box = document.createElement('textarea'); box.className = 'bs-reason'; box.rows = 2; box.placeholder = 'Why not? Sarah learns from this'; box.setAttribute('aria-label', 'Reason for rejecting'); r.querySelector('.b').insertBefore(box, r.querySelector('.a')); box.focus(); b.textContent = 'Confirm reject'; return; } var reason = box.value.trim(); if (!reason) { box.focus(); showToast('Add a short reason so Sarah knows what to change.', 'warning'); return; } decide(a.id, 'reject', reason, b, r); });
     acts.push(approve, reject); if (link) acts.push(btn(link[2], 'quiet', function () { openAdvanced(link[0], link[1]); }));
     var r = row('att', '✓', t.label || humanAction(t.action) || 'Something needs your OK', (t.description ? t.description + ' · ' : '') + who + ' · uses ' + cost + (a.time_ago ? ' · asked ' + a.time_ago : ''), acts);
+    if (t.action === 'execute_plan' && t.payload) luPlanDecorate(r, t.payload);   // MANDATE-1
     return r;
   }
+  /* MANDATE-1 (DEC-0018): a plan's card names the plan, lists its tasks, and shows the ceiling. Approving it approves them all. */
+  window.luPlanDecorate = function (r, p) {
+    try {
+      var head = r.querySelector('.t') || r.querySelector('b') || r.firstElementChild;
+      if (head) head.textContent = 'Approve the plan: ' + (p.title || 'Plan of action');
+      var lines = Array.isArray(p.task_lines) ? p.task_lines : (Array.isArray(p.tasks) ? p.tasks.map(function (t) { return (t.description || t.action) + ' (' + (t.agent || 'team') + ')'; }) : []);
+      var box = document.createElement('div'); box.className = 'lu-plan-tasks'; box.style.cssText = 'margin:8px 0 4px;font-size:12.5px;color:var(--t2);line-height:1.5';
+      box.innerHTML = '<div style="font-weight:600;color:var(--t1);margin-bottom:2px">' + lines.length + ' task' + (lines.length === 1 ? '' : 's') + ' · up to ' + (p.spend_ceiling || 0) + ' credit' + (p.spend_ceiling === 1 ? '' : 's') + ' · valid ' + (p.validity_days || 90) + ' days</div>' +
+        '<ol style="margin:0;padding-left:18px">' + lines.map(function (l) { var d = document.createElement('div'); d.textContent = l; return '<li>' + d.innerHTML + '</li>'; }).join('') + '</ol>' +
+        '<div style="margin-top:4px;color:var(--t3)">Approve once — Sarah\'s team runs every step without asking again. Anything that needs a target you have not named is held and shown to you.</div>';
+      var acts = r.querySelector('.acts'); if (acts) acts.parentNode.insertBefore(box, acts); else r.appendChild(box);
+    } catch (e) {}
+  };
   function decide(id, action, reason, b, r) {
     var all = r.querySelectorAll('button'); all.forEach(function (x) { x.disabled = true; }); b.textContent = action === 'approve' ? 'Approving…' : 'Sending…';
     api('POST', 'approvals/' + id + '/' + action, reason ? { reason: reason } : {}).then(function (res) { var d = res.json || {};

@@ -295,6 +295,17 @@
   if (vv) { vv.addEventListener('resize', function () { if (vis().kb >= 60) assumedKb = 0; later(); }); vv.addEventListener('scroll', later); }
   window.addEventListener('resize', function () { if (window.innerHeight < focusH - 60) assumedKb = 0; later(); });
   window.addEventListener('orientationchange', function () { baseH = 0; later(); });
+  /* v8: the tab comes back (backgrounded with the keyboard open, bfcache, app switch) — nothing is focused any more, so
+     the events that would have restored the page never fired. Re-check now, and again after the browser settles. */
+  function backFromAway() {
+    ticks.forEach(clearTimeout); ticks = [];
+    var a = document.activeElement;
+    if (!a || a === document.body || !(isField(a) || a.tagName === 'IFRAME')) { assumedKb = 0; }
+    baseH = window.innerHeight; later(); setTimeout(later, 250); setTimeout(later, 900);
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) backFromAway(); });
+  window.addEventListener('pageshow', backFromAway);
+  window.addEventListener('focus', backFromAway);
 
   // A field inside an iframe (the editor's preview) is focused without a focusin on this document: poll lightly while
   // an iframe holds focus so the keyboard opening is not missed on browsers that report it late.

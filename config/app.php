@@ -66,6 +66,7 @@ return [
          * Application Service Providers...
          */
         App\Providers\AppServiceProvider::class,
+        App\Providers\MandateServiceProvider::class,   // MANDATE-1 (DEC-0018) 2026-09-25 — governance actions in the capability map
         App\Core\Email888\Email888ServiceProvider::class,
         App\Engines\Infrastructure\InfrastructureEmailServiceProvider::class,
 

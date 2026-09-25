@@ -53,6 +53,14 @@ final class ApprovalPolicyRegistry
             // ── INFRA888 — separation of duties REQUIRED ────────────────────
             // Provisioning creates a billing relationship and real resources.
             // The requester must never be the approver.
+            // MANDATE-1 (DEC-0018, 2026-09-25) — a Plan of Action: the customer approves intent and scope ONCE; the plan's
+            // tasks inherit that decision. Self-approval is the point: the customer asked for the plan.
+            'sarah.execute_plan' => [
+                'approval_roles'          => [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_MEMBER, self::ROLE_PLATFORM_ADMIN],
+                'self_approval_allowed'   => true,
+                'human_approval_required' => true,
+                'classification'          => 'plan_of_action',
+            ],
             'infrastructure.provision_hosting' => [
                 'approval_roles'          => [self::ROLE_OWNER, self::ROLE_PLATFORM_ADMIN],
                 'self_approval_allowed'   => false,

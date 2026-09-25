@@ -12,7 +12,6 @@
     ],
     "not_grandfathered": "CustomerDomainController::setAutoRenew() calls the registrar connector directly from a controller. It is listed here as a VIOLATION with an owner and a removal date. It is not accepted architecture."
   },
-
   "route_exceptions": [
     {
       "route": "POST api/domains/orders",
@@ -90,9 +89,30 @@
       "owner": "Mark",
       "removal_milestone": "Phase 4 - route purchase through TaskService",
       "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/domains/{id}/attach",
+      "controller": "App\\Http\\Controllers\\Api\\CustomerDomainController",
+      "method": "attach",
+      "capability_key": "domain.sync",
+      "reason": "RFC-0015 DOMAIN-LINK-1 (2026-09-25): links or unlinks a bought domain and a website (DNS + connection jobs follow). Same controller and same debt as its siblings; re-routing through TaskService is RFC-0015 U5.",
+      "risk": "medium",
+      "owner": "Mark",
+      "removal_milestone": "RFC-0015 U5 - route domain linking through TaskService",
+      "expires": "2026-10-31"
+    },
+    {
+      "route": "POST api/domains/{id}/detach",
+      "controller": "App\\Http\\Controllers\\Api\\CustomerDomainController",
+      "method": "detach",
+      "capability_key": "domain.sync",
+      "reason": "RFC-0015 DOMAIN-LINK-1 (2026-09-25): links or unlinks a bought domain and a website (DNS + connection jobs follow). Same controller and same debt as its siblings; re-routing through TaskService is RFC-0015 U5.",
+      "risk": "medium",
+      "owner": "Mark",
+      "removal_milestone": "RFC-0015 U5 - route domain linking through TaskService",
+      "expires": "2026-10-31"
     }
   ],
-
   "direct_provider_access": [
     {
       "file": "app/Http/Controllers/Api/CustomerDomainController.php",

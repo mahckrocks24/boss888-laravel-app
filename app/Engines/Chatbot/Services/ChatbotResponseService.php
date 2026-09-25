@@ -693,14 +693,11 @@ class ChatbotResponseService
                 'intent'         => $intent,
                 'needs_contact'  => in_array($flow, ['lead', 'callback'], true),
                 'needs_booking'  => $flow === 'booking',
-                'capture_fields' => array_values(array_intersect(
-                    $this->fsm->requiredFieldsForFlow($flow),
-                    array_keys(array_filter([
-                        'name'  => empty($captured['name']),
-                        'email' => empty($captured['email']),
-                        'phone' => empty($captured['phone']),
-                    ]))
-                )),
+                // CB-CONTACT-1b: the widget's inline form asks for what is still missing; 'contact' means email and phone
+                'capture_fields' => array_values(array_unique(array_merge([], ...array_map(function ($f) use ($captured) {
+                    if ($f === 'contact') return array_keys(array_filter(['email' => empty($captured['email']), 'phone' => empty($captured['phone'])]));
+                    return in_array($f, ['name', 'email', 'phone'], true) && empty($captured[$f]) ? [$f] : [];
+                }, $this->fsm->requiredFieldsForFlow($flow))))),
                 'booking_proposal' => null,
             ],
             'meta' => [

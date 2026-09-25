@@ -2419,6 +2419,30 @@ function updateActivityLabels(){
 
 
 // ── Task approval ──────────────────────────────────────────────────────────
+// MANDATE-1 (DEC-0018): after a strategy meeting the plan waits for ONE approval — shown here, approved here.
+async function luMeetingPlanCard(meetingId, links){
+  try{
+    var d=await get(API+'meeting/'+meetingId+'/mandate'); var m=d&&d.mandate; if(!m||!links) return false;
+    var esc=function(x){var e=document.createElement('div'); e.textContent=x==null?'':String(x); return e.innerHTML;};
+    var lines=(m.plan||[]).map(function(t){return '<li>'+esc((t.description||t.action)+' ('+(t.agent||'team')+')')+'</li>';}).join('');
+    if(m.status==='proposed'&&m.approval_id){
+      links.innerHTML='<div style="text-align:left;max-width:560px;margin:0 auto;background:var(--s1);border:1px solid var(--bd);border-radius:var(--r,12px);padding:14px 16px">'+
+        '<div style="font-weight:700;color:var(--t1);font-size:14px">Sarah\'s plan: '+esc(m.title)+'</div>'+
+        '<div style="font-size:12.5px;color:var(--t2);margin:4px 0 6px">'+(m.task_count||0)+' task'+(m.task_count===1?'':'s')+' · up to '+(m.spend_ceiling||0)+' credits · valid '+(m.validity_days||90)+' days. Approve once — the team runs every step without asking again.</div>'+
+        '<ol style="margin:0 0 10px;padding-left:18px;font-size:12.5px;color:var(--t2)">'+lines+'</ol>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" id="lu-plan-approve">Approve the plan</button><button class="btn btn-outline btn-sm" id="lu-plan-decline">Decline</button></div>'+
+        '<div id="lu-plan-msg" style="font-size:12px;color:var(--t3);margin-top:6px"></div></div>';
+      var msg=links.querySelector('#lu-plan-msg');
+      links.querySelector('#lu-plan-approve').onclick=async function(){ this.disabled=true; this.textContent='Approving…'; try{ var r=await post(API+'approvals/'+m.approval_id+'/approve',{}); if(r&&(r.success||r.approval)){ links.innerHTML='<span style="font-size:13px;font-weight:600;color:var(--ac)">✓ Plan approved — the team is on it.</span> <button class="btn btn-outline btn-sm" onclick="nav(\'workspace\')" style="font-size:11px">View tasks</button>'; showToast('Plan approved — your team is on it.','success'); } else { msg.textContent=(r&&(r.message||r.error))||'Could not approve.'; this.disabled=false; this.textContent='Approve the plan'; } }catch(e){ msg.textContent=e.message||'Could not approve.'; this.disabled=false; this.textContent='Approve the plan'; } };
+      links.querySelector('#lu-plan-decline').onclick=async function(){ var reason=prompt('Why not? Sarah learns from this.'); if(reason===null) return; this.disabled=true; try{ await post(API+'approvals/'+m.approval_id+'/reject',{reason:reason||'Declined'}); links.innerHTML='<span style="font-size:12px;color:var(--t3)">Plan declined — nothing will run.</span>'; }catch(e){ msg.textContent=e.message||'Could not decline.'; this.disabled=false; } };
+      return true;
+    }
+    var state={approved:'approved',live:'live — the team is on it',completed:'completed',declined:'declined',revoked:'stopped',superseded:'replaced by a newer plan',expired:'expired'}[m.status]||m.status;
+    links.innerHTML='<span style="font-size:12px;color:var(--t2)">Plan '+esc(m.title)+': '+state+'.</span> <button class="btn btn-outline btn-sm" onclick="nav(\'workspace\')" style="font-size:11px">View tasks</button>';
+    return true;
+  }catch(e){ return false; }
+}
+
 async function checkPendingTasks(meetingId){
   // ── Safe tools that can auto-execute without user approval ────────
   var SAFE_AUTO_TOOLS = new Set([
@@ -2476,6 +2500,8 @@ async function checkPendingTasks(meetingId){
         `;
         showToast(`${safeIds.length} tasks auto-dispatched to agents!`, 'success');
       }
+    } else if (await luMeetingPlanCard(meetingId, links)) {
+      /* MANDATE-1: the plan is one approval; its tasks appear once it is approved */
     } else {
       if(links) links.innerHTML=`
         <span style="font-size:12px;color:var(--t3)">No tasks generated this session.</span>
@@ -7055,6 +7081,11 @@ function _aqCardHtml(it) {
   var task = it.task;
   var label = task ? _cmdcEsc(task.label) : 'Orphan approval (no attached task)';
   var desc  = task && task.description ? '<div class="aq-card-desc">' + _cmdcEsc(task.description) + '</div>' : '';
+  if (task && task.action === 'execute_plan' && task.payload) {   /* MANDATE-1: the plan's one approval */
+    var _pp = task.payload, _pl = Array.isArray(_pp.task_lines) ? _pp.task_lines : [];
+    label = 'Approve the plan: ' + _cmdcEsc(_pp.title || 'Plan of action');
+    desc = '<div class="aq-card-desc">' + _pl.length + ' task' + (_pl.length === 1 ? '' : 's') + ' · up to ' + (_pp.spend_ceiling || 0) + ' credits · valid ' + (_pp.validity_days || 90) + ' days<ol style="margin:6px 0 0;padding-left:18px">' + _pl.map(function (l) { return '<li>' + _cmdcEsc(l) + '</li>'; }).join('') + '</ol><div style="margin-top:4px;color:var(--t3)">Approve once — every step runs without asking again.</div></div>';
+  }
   var agent = task ? task.agent : { name: 'Sarah', slug: 'sarah', color: '#F59E0B' };
   var engineBadge = task ? task.engine_badge : { name: 'system', color: '#8B97B0' };
   var orb = _cmdcOrbHtml(agent);

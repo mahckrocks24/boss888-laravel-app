@@ -339,6 +339,9 @@ class DashboardController
     /** Plain-English label for an engine.action event. */
     private function labelFor(string $engine, string $action, ?array $meta, ?string $agentName = null): string
     {
+        if ($engine === 'sarah' && $action === 'execute_plan') {   // MANDATE-1: the plan's one approval
+            return "Approve Sarah's plan: " . (is_array($meta) && ! empty($meta['title']) ? (string) $meta['title'] : 'plan of action');
+        }
         // Wave 41c — task.* events used to label as "Sarah created/executed a task"
         // because the audit_log action is always task.created / task.executed
         // regardless of which agent did the work. Use the real agent name +

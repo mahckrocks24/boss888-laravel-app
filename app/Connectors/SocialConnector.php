@@ -478,6 +478,7 @@ class SocialConnector extends BaseConnector
 
         $stored = $this->storeAccountTokens($chosen, $workspaceId);
         cache()->forget(self::PENDING_PREFIX . $key);
+        try { app(\App\Core\Awareness\ConnectionFactsService::class)->recompute($workspaceId, true); } catch (\Throwable $e) { Log::warning('SocialConnector: awareness recompute failed', ['workspace_id' => $workspaceId, 'error' => $e->getMessage()]); }   // SARAH-AWARE-1: Sarah learns of it now, the customer is told
 
         Log::info('SocialConnector: pages confirmed', ['workspace_id' => $workspaceId, 'stored' => $stored]);
 

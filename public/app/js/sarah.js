@@ -41,6 +41,16 @@
   }
   function ago(ts) { if (!ts) return ''; var d = window._luParseTs ? window._luParseTs(ts) : new Date(String(ts).replace(' ', 'T') + 'Z'); var m = Math.round((Date.now() - d) / 60000); if (m < 1) return 'now'; if (m < 60) return m + 'm ago'; if (m < 1440) return Math.floor(m / 60) + 'h ago'; return Math.floor(m / 1440) + 'd ago'; }
   function nearBottom(el) { return el && (el.scrollHeight - (el.scrollTop + el.clientHeight)) < 120; }
+  /* SARAH-SCROLL-1: an instant snap to the newest message; smooth scrolling is for the customer's finger, not for us */
+  function toBottom() {
+    var el = S.feed; if (!el) return;
+    el.style.scrollBehavior = 'auto'; el.scrollTop = el.scrollHeight;
+    requestAnimationFrame(function () { el.scrollTop = el.scrollHeight; requestAnimationFrame(function () { el.style.scrollBehavior = ''; }); });
+  }
+  function stickToBottom() {   /* the keyboard moved the viewport, or the composer took focus: keep the newest message in view */
+    if (S.stick === false) return;
+    toBottom(); setTimeout(toBottom, 120); setTimeout(toBottom, 420);
+  }
   function stick(el, was) {
     if (!(el && was)) return;
     // Boot window (2026-09-22): cards that land in the seconds after the thread's first paint must not glide into view.
@@ -203,6 +213,13 @@
           '</div>' +
         '</div>';
       S.feed = document.getElementById('sh-feed'); S.input = document.getElementById('sh-input'); S.sendBtn = document.getElementById('sh-send');
+      /* SARAH-SCROLL-1 listeners */
+      S.stick = true;
+      S.feed.addEventListener('scroll', function () { S.stick = nearBottom(S.feed); }, { passive: true });
+      S.input.addEventListener('focus', function () { S.stick = true; setTimeout(stickToBottom, 350); setTimeout(stickToBottom, 900); });
+      try { if (window.visualViewport) window.visualViewport.addEventListener('resize', stickToBottom); } catch (e) {}
+      window.addEventListener('resize', stickToBottom);
+      document.addEventListener('lu:kb', stickToBottom);
       S.sendBtn.addEventListener('click', send);
       S.input.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
       S.input.addEventListener('input', function () { S.input.style.height = 'auto'; S.input.style.height = Math.min(160, S.input.scrollHeight) + 'px'; });
@@ -365,6 +382,7 @@
   function approvalItem(a) {
     var t = a.task || {}; var eng = t.engine || 'system';
     var title = t.label || humanTitle(t.action || a.title || 'Something needs your OK');
+    if (t.action === 'execute_plan' && t.payload && t.payload.title) title = 'Approve the plan: ' + t.payload.title;   /* MANDATE-1 */
     // RISK-0189: a cost the task could not establish is never shown as free; the note comes from the server
     var cost = t.credit_note ? t.credit_note : (t.credit_cost_known === false ? 'credits set when Arthur applies it — not free' : (t.credit_cost ? (t.credit_cost + (t.credit_cost === 1 ? ' credit' : ' credits')) : 'no credits'));
     var shownCost = t.credit_cost_known === false ? 'unknown' : (t.credit_disclosed != null ? t.credit_disclosed : (t.credit_cost || 0));
@@ -427,7 +445,7 @@
       function updPos() { if (!pos) return; var n = items.length; if (isMin) { pos.textContent = n + (n === 1 ? ' item' : ' items'); return; } if (n < 2) { pos.textContent = ''; return; } var w = (items[0].getBoundingClientRect().width || 1) + 10; var idx = Math.min(n, Math.round(track.scrollLeft / w) + 1); var mobile = window.matchMedia && matchMedia('(max-width:767px)').matches; pos.innerHTML = idx + ' of ' + n + '<span class="swipe"> · ' + (mobile ? 'swipe' : 'scroll') + '</span>'; }
       track.addEventListener('scroll', function () { if (track._t) return; track._t = setTimeout(function () { track._t = null; updPos(); }, 80); }, { passive: true });
       window.addEventListener('resize', updPos); setMin(isMin);
-      try { if (S.feed && S.feed.scrollHeight - S.feed.scrollTop - S.feed.clientHeight < 400) { S.feed.style.scrollBehavior = 'auto'; S.feed.scrollTop = S.feed.scrollHeight; requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); } } catch (e) {}  // layout re-stick: instant, never a glide (2026-09-22)
+      try { if (S.feed && S.feed.scrollHeight - S.feed.scrollTop - S.feed.clientHeight < 400) { S.feed.style.scrollBehavior = 'auto'; toBottom(); requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); } } catch (e) {}  // layout re-stick: instant, never a glide (2026-09-22)
     });
   }
 
@@ -488,8 +506,8 @@
       // Owner 2026-09-21: the history used to animate from the oldest message to the newest (scroll-behavior:smooth on the
       // feed). The first paint is the latest message: jump without animation; smooth stays for messages that arrive later.
       S.bootUntil = Date.now() + 8000;
-      S.feed.style.scrollBehavior = 'auto'; S.feed.scrollTop = S.feed.scrollHeight;
-      requestAnimationFrame(function () { S.feed.scrollTop = S.feed.scrollHeight; requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); });
+      S.feed.style.scrollBehavior = 'auto'; toBottom();
+      requestAnimationFrame(function () { toBottom(); requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); });
     }).catch(function () { S.feed.innerHTML = '<div class="sh-card fail">Couldn\'t load the conversation — <button type="button" class="sh-btn" onclick="sarahLoad(document.getElementById(\'sarah-root\'))">try again</button></div>'; });
   }
 
@@ -502,8 +520,8 @@
     if ((!text && !pendingAtts.length) || S.sendBtn.disabled) return;
     var empty = S.feed.querySelector('.sh-empty'); if (empty) empty.remove();
     S.input.value = ''; S.input.style.height = 'auto';
-    S.feed.appendChild(bubble({ from: 'User', content: text || ('I\'ve attached ' + (pendingAtts.length === 1 ? '"' + pendingAtts[0].name + '"' : pendingAtts.length + ' files') + '.'), ts: null, attachments: pendingAtts })); S.feed.scrollTop = S.feed.scrollHeight;
-    var typing = document.createElement('div'); typing.className = 'sh-orch'; typing.id = 'sh-typing'; typing.innerHTML = '<span class="dot"></span><span>Sarah is thinking…</span>'; S.feed.appendChild(typing); S.feed.scrollTop = S.feed.scrollHeight;
+    S.feed.appendChild(bubble({ from: 'User', content: text || ('I\'ve attached ' + (pendingAtts.length === 1 ? '"' + pendingAtts[0].name + '"' : pendingAtts.length + ' files') + '.'), ts: null, attachments: pendingAtts })); toBottom();
+    var typing = document.createElement('div'); typing.className = 'sh-orch'; typing.id = 'sh-typing'; typing.innerHTML = '<span class="dot"></span><span>Sarah is thinking…</span>'; S.feed.appendChild(typing); toBottom();
     var body = { content: text, from: 'User' };
     // CHAT888 (2026-09-06): idempotency key — the same message within a 10 s window shares one key, so a double
     // click or a network retry replays the first ack instead of sending (and metering) the message twice.
@@ -522,7 +540,7 @@
         /* SYNC-1d: the ack is a real agent_messages row and comes back down the event stream. Register its id (and
            arm the content guard) or it is rendered a second time the moment that event arrives. */
         var ackId = parseInt(d.ack_message_id || 0, 10) || 0;
-        if (d.ack) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null, id: ackId || undefined })); S.feed.scrollTop = S.feed.scrollHeight; }
+        if (d.ack) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.ack, ts: null, id: ackId || undefined })); toBottom(); }
         if (ackId) { S.rendered[String(ackId)] = 1; if (ackId > (S.lastMid || 0)) S.lastMid = ackId; }
         if (d.ack) { S.lastAgentText = String(d.ack).trim(); S.lastAgentAt = Date.now(); }
         /* DEC-0030: a complex turn shows ONE truthful working strip (from the ack's work_state); a simple turn keeps the bare dot. */
@@ -531,7 +549,7 @@
         pollFinal(ackId, d.poll_interval_ms || POLL_MS); return;
       }
       if (d.reply) { S.feed.appendChild(bubble({ from: 'Sarah', content: d.reply, ts: null, id: d.id })); S.lastAgentText = String(d.reply).trim(); S.lastAgentAt = Date.now(); if (d.id) { S.rendered[String(d.id)] = 1; if (+d.id > (S.lastMid || 0)) S.lastMid = +d.id; } }
-      S.feed.scrollTop = S.feed.scrollHeight;
+      toBottom();
     }).catch(function (e) { setBusy(false); var t = document.getElementById('sh-typing'); if (t) t.remove(); S.feed.appendChild(card({ type: 'failure_notice', content: 'Couldn\'t reach Sarah — check your connection and try again.' })); });
   }
   function pollFinal(ackId, every) {
@@ -589,13 +607,13 @@
     var content = String(m && m.content != null ? m.content : '');
     var sentences = (content.match(/[.!?](\s|$)/g) || []).length;
     if (!bub || reducedMotion() || content.length < 160 || sentences < 2) {
-      S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el;   // short/simple → at once
+      S.feed.appendChild(el); toBottom(); return el;   // short/simple → at once
     }
     // Take the exact final nodes out of the bubble; we will move them back progressively.
     var nodes = Array.prototype.slice.call(bub.childNodes);
-    if (nodes.length < 2) { S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight; return el; }
+    if (nodes.length < 2) { S.feed.appendChild(el); toBottom(); return el; }
     nodes.forEach(function (n) { bub.removeChild(n); });
-    S.feed.appendChild(el); S.feed.scrollTop = S.feed.scrollHeight;
+    S.feed.appendChild(el); toBottom();
     // A "meaningful" node (visible text or a block) earns a pause; separators (<br>, spacer divs, whitespace-only
     // text) ride along with the node before them so the reveal moves line by line, not tick-by-<br>.
     function meaningful(n) {

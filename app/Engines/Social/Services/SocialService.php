@@ -605,6 +605,7 @@ class SocialService
             ->where('id', $accountId)
             ->where('workspace_id', $wsId)
             ->update(['status' => 'disconnected', 'updated_at' => now()]);
+        try { app(\App\Core\Awareness\ConnectionFactsService::class)->recompute($wsId, true); } catch (\Throwable $e) {}   // SARAH-AWARE-1
         return $n > 0;
     }
 

@@ -634,7 +634,7 @@ class AgentMeetingEngine
             "1. Acknowledge the best ideas from each team member\n" .
             "2. Resolve any disagreements (explain why you chose one approach over another)\n" .
             "3. List specific tasks with who does what\n" .
-            "4. Note what needs client approval before execution\n" .
+            "4. Say plainly that the client approves this plan ONCE and the team then carries it out — do not ask for approval task by task\n" .
             "5. Set priorities (what we do first, what can wait)\n\n" .
             "Format your plan clearly. The client will read this directly.\n" .
             "End by asking the client for approval to proceed. Max 300 words.";
@@ -654,7 +654,7 @@ class AgentMeetingEngine
         // close happened without a plan — create the tasks now so the plan is never silently lost.
         $fresh = Meeting::find($meeting->id);
         if ($fresh && $fresh->status === 'closed') {
-            $this->createTasksFromPlan($fresh);
+            $this->proposePlan($fresh);   // MANDATE-1: one approval for the plan, not one per task
         }
     }
 
@@ -685,7 +685,29 @@ class AgentMeetingEngine
             'total_credits_used' => ($reservationRef && $creditCost > 0) ? $creditCost : 0,
         ]);
 
-        $this->createTasksFromPlan($meeting);
+        $this->proposePlan($meeting);   // MANDATE-1
+    }
+
+    /**
+     * MANDATE-1 (DEC-0018 / SPEC-0023, 2026-09-25): a closed meeting's plan becomes ONE Plan of Action that the customer
+     * approves once. Its tasks are created when the plan is approved (MandateService::execute → materialisePlanTask) and
+     * need no approval of their own. Idempotent per meeting; a meeting that already has tasks (legacy) proposes nothing.
+     */
+    public function proposePlan(Meeting $meeting): ?array
+    {
+        $meeting = Meeting::find($meeting->id) ?: $meeting;
+        $meta = json_decode($meeting->metadata_json ?? '{}', true) ?: [];
+        $plan = $meta['plan'] ?? null;
+        if (! is_array($plan) || ! array_filter($plan, fn ($t) => is_array($t) && ! empty($t['action']))) return null;
+        if (DB::table('meeting_tasks')->where('meeting_id', $meeting->id)->exists()) return null;
+        try {
+            $out = app(\App\Core\Governance\MandateService::class)->proposeFromMeeting($meeting, $plan);
+            Log::info('[Meeting] plan proposed as a mandate', ['meeting_id' => $meeting->id, 'mandate_id' => $out['mandate_id'] ?? null, 'created' => $out['created'] ?? null]);
+            return $out;
+        } catch (\Throwable $e) {
+            Log::warning('[Meeting] proposePlan failed', ['meeting_id' => $meeting->id, 'error' => $e->getMessage()]);
+            return null;
+        }
     }
 
     /**
@@ -701,120 +723,142 @@ class AgentMeetingEngine
             return 0;
         }
 
-        // ── Create tasks from synthesis plan ──
         $plan = $meta['plan'] ?? null;
         if (is_array($plan)) {
             foreach ($plan as $planTask) {
                 if (!is_array($planTask) || empty($planTask['action'])) continue;
-                $agentSlug = $planTask['agent'] ?? 'sarah';
-                // Map sarah→sarah (not dmm) for DB storage
-                if ($agentSlug === 'dmm') $agentSlug = 'sarah';
-
-                // PATCH (Intel Fix 2b) — was raw DB::table('tasks')->insertGetId(['status'=>'pending', ...])
-                // which left tasks orphaned. Route through TaskService so they
-                // hit the canonical pipeline (capability check, approval,
-                // idempotency, audit, dispatch).
-                // 2026-05-26 — forward extracted params into the task payload
-                // so dispatchers (e.g. seo/deep_audit) actually receive the
-                // URL / topic / keyword the meeting agreed on. Previously
-                // only `description` + `from_meeting` were carried, so every
-                // engine threw "X required" on dispatch.
-                $extractedParams = (isset($planTask['params']) && is_array($planTask['params'])) ? $planTask['params'] : [];
-                // MEET-4: drop LLM placeholders ("new_lead_id", "sourdough_pre_order_url", "<url>", "TBD"…) —
-                // a placeholder is not a parameter. Ground URLs on the workspace's live site when missing.
-                $__isPlaceholder = function ($v): bool {
-                    if (!is_string($v)) return false;
-                    $t = trim($v);
-                    if ($t === '') return true;
-                    if (preg_match('/^(tbd|tba|n\/a|null|none|placeholder|<[^>]+>|\{\{[^}]+\}\}|\[[^\]]+\])$/i', $t)) return true;
-                    // snake/kebab token ending in _id/_url/_slug with no digits and no scheme: "new_lead_id"
-                    if (preg_match('/^[a-z][a-z_\-]*_(id|url|slug|email|phone)$/i', $t)) return true;
-                    return false;
-                };
-                foreach ($extractedParams as $__k => $__v) {
-                    if ($__isPlaceholder($__v)) unset($extractedParams[$__k]);
-                }
-                $__missing = [];
-                if (array_key_exists('url', $planTask['params'] ?? []) && empty($extractedParams['url'])) {
-                    // INC-0006: resolve only when unambiguous. With several published sites the URL is
-                    // genuinely unknown, and 'website URL' is added to the missing list below so the
-                    // meeting asks instead of silently auditing the most recently built site.
-                    $__pub = DB::table('websites')->where('workspace_id', $meeting->workspace_id)
-                        ->where('status', 'published')->whereNull('deleted_at')
-                        ->limit(2)->get(['custom_domain', 'domain', 'subdomain', 'external_url']);
-                    $__site = $__pub->count() === 1 ? $__pub->first() : null;
-                    $__host = $__site ? ($__site->custom_domain ?: ($__site->domain ?: ($__site->subdomain ?: null))) : null;
-                    if ($__host) $extractedParams['url'] = 'https://' . preg_replace('#^https?://#', '', rtrim($__host, '/'));
-                    elseif ($__site && $__site->external_url) $extractedParams['url'] = $__site->external_url;
-                    else $__missing[] = 'website URL';
-                }
-                if (in_array((string) ($planTask['engine'] ?? ''), ['crm'], true)
-                    && empty($extractedParams['lead_id']) && empty($extractedParams['entity_id']) && empty($extractedParams['contact_id'])) {
-                    $__missing[] = 'which lead or contact this is for';
-                }
-                $payload = array_merge($extractedParams, [
-                    'description'  => ($planTask['description'] ?? '') . ($__missing ? ' — NEEDS: ' . implode('; ', $__missing) : ''),
-                    'from_meeting' => $meeting->id,
-                ]);
-                if ($__missing) $planTask['requires_approval'] = true; // a human supplies the target before it runs
-                // 2026-05-26 — the tasks.priority enum is ('low','normal','high','urgent').
-                // LLMs commonly emit "medium" because the prompt examples use it.
-                // Map medium→normal so the insert doesn't get truncated and silently
-                // drop the task. Anything else outside the enum also gets normal.
-                $rawPriority = strtolower((string) ($planTask['priority'] ?? 'normal'));
-                $priority = match ($rawPriority) {
-                    'low', 'normal', 'high', 'urgent' => $rawPriority,
-                    'medium', 'med', 'mid', ''        => 'normal',
-                    'critical', 'emergency'           => 'urgent',
-                    default                           => 'normal',
-                };
-                // 2026-05-27 Phase 4 — if the LLM emitted a valid category,
-                // pass it through. Otherwise TaskService::create derives one.
-                $taskCategory = null;
-                if (!empty($planTask['category']) && is_string($planTask['category'])) {
-                    $svc = app(\App\Core\TaskSystem\TaskCategoryService::class);
-                    if ($svc->isValid($planTask['category'])) {
-                        $taskCategory = $planTask['category'];
-                    }
-                }
-                try {
-                    $createPayload = [
-                        'engine'            => $planTask['engine'] ?? 'marketing',
-                        'action'            => $planTask['action'] ?? 'follow_up',
-                        'source'            => 'agent',
-                        'priority'          => $priority,
-                        'assigned_agents'   => [$agentSlug],
-                        'requires_approval' => $planTask['requires_approval'] ?? false,
-                        'payload'           => $payload,
-                    ];
-                    if ($taskCategory) $createPayload['category'] = $taskCategory;
-                    $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($meeting->workspace_id, $createPayload);
-                    $taskId = $newTask->id;
-                    $newTask->update([
-                        'progress_message' => $planTask['description'] ?? ucfirst(str_replace('_', ' ', $planTask['action'])),
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::warning("[Meeting] TaskService::create failed", [
-                        'meeting_id' => $meeting->id,
-                        'plan_task'  => $planTask,
-                        'error'      => $e->getMessage(),
-                    ]);
-                    continue;
-                }
-
-                // Populate meeting_tasks pivot
-                DB::table('meeting_tasks')->insert([
-                    'meeting_id' => $meeting->id,
-                    'task_id'    => $taskId,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $created++;
+                $res = $this->materialisePlanTask((int) $meeting->workspace_id, $planTask, [], $meeting);
+                if (! empty($res['task_id'])) $created++;
             }
 
             Log::info("[Meeting] Created {$created} of " . count($plan) . " planned tasks", ['meeting_id' => $meeting->id]);
         }
         return $created;
+    }
+
+    /**
+     * MEET-3 + MANDATE-1: ONE plan task becomes ONE real task. Placeholders the LLM invented never reach a payload; a URL-taking
+     * action is grounded on the live site; a CRM action without a target is held for a human (legacy path: requires approval;
+     * under a mandate: NOT created — returned as held, because a missing target is a question, not an approval).
+     *
+     * $overrides (MandateService): requires_approval, authorized_by_proposal, auto_approve, mandate_id, business_id, payload_extra.
+     * Returns ['task_id' => int|null, 'held' => string|null, 'error' => string|null].
+     */
+    public function materialisePlanTask(int $wsId, array $planTask, array $overrides = [], ?Meeting $meeting = null): array
+    {
+        $agentSlug = $planTask['agent'] ?? 'sarah';
+        if ($agentSlug === 'dmm') $agentSlug = 'sarah';
+        $meetingId = $meeting ? (int) $meeting->id : null;
+
+        $extractedParams = (isset($planTask['params']) && is_array($planTask['params'])) ? $planTask['params'] : [];
+        $__isPlaceholder = function ($v): bool {
+            if (!is_string($v)) return false;
+            $t = trim($v);
+            if ($t === '') return true;
+            if (preg_match('/^(tbd|tba|n\/a|null|none|placeholder|<[^>]+>|\{\{[^}]+\}\}|\[[^\]]+\])$/i', $t)) return true;
+            if (preg_match('/^[a-z][a-z_\-]*_(id|url|slug|email|phone)$/i', $t)) return true;
+            return false;
+        };
+        foreach ($extractedParams as $__k => $__v) {
+            if ($__isPlaceholder($__v)) unset($extractedParams[$__k]);
+        }
+        $__missing = [];
+        if (array_key_exists('url', $planTask['params'] ?? []) && empty($extractedParams['url'])) {
+            $__pub = DB::table('websites')->where('workspace_id', $wsId)
+                ->where('status', 'published')->whereNull('deleted_at')
+                ->limit(2)->get(['custom_domain', 'domain', 'subdomain', 'external_url']);
+            $__site = $__pub->count() === 1 ? $__pub->first() : null;
+            $__host = $__site ? ($__site->custom_domain ?: ($__site->domain ?: ($__site->subdomain ?: null))) : null;
+            if ($__host) $extractedParams['url'] = 'https://' . preg_replace('#^https?://#', '', rtrim($__host, '/'));
+            elseif ($__site && $__site->external_url) $extractedParams['url'] = $__site->external_url;
+            else $__missing[] = 'website URL';
+        }
+        if (in_array((string) ($planTask['engine'] ?? ''), ['crm'], true)
+            && empty($extractedParams['lead_id']) && empty($extractedParams['entity_id']) && empty($extractedParams['contact_id'])) {
+            $__missing[] = 'which lead or contact this is for';
+        }
+        $payload = array_merge($extractedParams, [
+            'description'  => ($planTask['description'] ?? '') . ($__missing ? ' — NEEDS: ' . implode('; ', $__missing) : ''),
+        ], $meetingId ? ['from_meeting' => $meetingId] : [], (array) ($overrides['payload_extra'] ?? []));
+        if ($__missing && ! empty($overrides['mandate_id'])) {
+            // MANDATE-1: under an approved plan a missing target is HELD and reported, never a second approval
+            return ['task_id' => null, 'held' => implode('; ', $__missing), 'error' => null];
+        }
+        if ($__missing) $planTask['requires_approval'] = true; // a human supplies the target before it runs
+        $rawPriority = strtolower((string) ($planTask['priority'] ?? 'normal'));
+        $priority = match ($rawPriority) {
+            'low', 'normal', 'high', 'urgent' => $rawPriority,
+            'medium', 'med', 'mid', ''        => 'normal',
+            'critical', 'emergency'           => 'urgent',
+            default                           => 'normal',
+        };
+        $taskCategory = null;
+        if (!empty($planTask['category']) && is_string($planTask['category'])) {
+            $svc = app(\App\Core\TaskSystem\TaskCategoryService::class);
+            if ($svc->isValid($planTask['category'])) {
+                $taskCategory = $planTask['category'];
+            }
+        }
+        try {
+            $createPayload = [
+                'engine'            => $planTask['engine'] ?? 'marketing',
+                'action'            => $planTask['action'] ?? 'follow_up',
+                'source'            => 'agent',
+                'priority'          => $priority,
+                'assigned_agents'   => [$agentSlug],
+                'requires_approval' => array_key_exists('requires_approval', $overrides) ? (bool) $overrides['requires_approval'] : ($planTask['requires_approval'] ?? false),
+                'payload'           => $payload,
+            ];
+            if ($taskCategory) $createPayload['category'] = $taskCategory;
+            foreach (['authorized_by_proposal', 'auto_approve', 'business_id'] as $__k) {
+                if (array_key_exists($__k, $overrides) && $overrides[$__k] !== null) $createPayload[$__k] = $overrides[$__k];
+            }
+            if (! empty($overrides['mandate_id'])) {
+                $createPayload['idempotency_key'] = hash('sha256', "{$wsId}:mandate:{$overrides['mandate_id']}:" . ($planTask['engine'] ?? '') . ':' . ($planTask['action'] ?? '') . ':' . md5(json_encode($payload)));
+            }
+            $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $createPayload);
+            $taskId = $newTask->id;
+            $__upd = ['progress_message' => $planTask['description'] ?? ucfirst(str_replace('_', ' ', $planTask['action']))];
+            if (! empty($overrides['mandate_id'])) $__upd['mandate_id'] = (int) $overrides['mandate_id'];
+            DB::table('tasks')->where('id', $taskId)->update($__upd);
+            $inherited = false; $keptGate = false;
+            if (! empty($overrides['mandate_id']) && (int) $newTask->requires_approval === 1) {
+                // MANDATE-1b (DEC-0018): the plan's approval IS this task's approval — unless the capability is 'protected'
+                // (destructive / high-risk, SPEC-0010), which keeps its own gate and is reported to the customer.
+                $mode = app(\App\Core\EngineKernel\CapabilityMapService::class)->getApprovalMode((string) ($planTask['action'] ?? ''));
+                if ($mode !== 'protected') {
+                    $decider = (int) ($overrides['decided_by'] ?? 0) ?: null;
+                    DB::table('tasks')->where('id', $taskId)->update(['requires_approval' => 0, 'approval_status' => 'approved', 'status' => 'pending', 'updated_at' => now()]);
+                    DB::table('approvals')->where('task_id', $taskId)->where('status', 'pending')->update([
+                        'status' => 'approved', 'decision_by' => $decider, 'decided_at' => now(),
+                        'decision_note' => 'Inherited from the approved plan #' . (int) $overrides['mandate_id'] . ' (DEC-0018)', 'updated_at' => now(),
+                    ]);
+                    try { app(\App\Core\TaskSystem\TaskDispatcher::class)->dispatch(\App\Models\Task::find($taskId)); } catch (\Throwable $e) {
+                        Log::warning('[Mandate] inherited task dispatch failed', ['task_id' => $taskId, 'error' => $e->getMessage()]);
+                    }
+                    $inherited = true;
+                } else {
+                    $keptGate = true;
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[Meeting] TaskService::create failed", [
+                'meeting_id' => $meetingId,
+                'plan_task'  => $planTask,
+                'error'      => $e->getMessage(),
+            ]);
+            return ['task_id' => null, 'held' => null, 'error' => $e->getMessage()];
+        }
+
+        if ($meetingId) {
+            DB::table('meeting_tasks')->insert([
+                'meeting_id' => $meetingId,
+                'task_id'    => $taskId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+        return ['task_id' => (int) $taskId, 'held' => null, 'error' => null, 'inherited' => $inherited, 'kept_gate' => $keptGate];
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -1242,7 +1286,7 @@ class AgentMeetingEngine
                       . "   - research: information gathering, audits, web reading\n"
                       . "   - create: generative output (article, post, image, page)\n"
                       . "   - optimize: tweaks to live assets (links, keywords, meta)\n"
-                      . "   - publish: distribution / going live (ALWAYS requires approval)\n"
+                      . "   - publish: distribution / going live (covered by the client's approval of the plan as a whole)\n"
                       . "   - crm: lead, contact, deal lifecycle\n"
                       . "   - campaign: multi-step marketing orchestration\n"
                       . "   - operations: governance, housekeeping, destructive\n"

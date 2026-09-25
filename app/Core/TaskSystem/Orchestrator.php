@@ -100,6 +100,39 @@ class Orchestrator
             }
 
             // ── 1. Plan gating check ──────────────────────────────────
+            // MANDATE-1 (DEC-0018): the plan's gate — the customer approved the Plan of Action; materialise its tasks.
+            // An internal governance act: no engine capability, no connector, no credits of its own.
+            if ((string) $task->engine === \App\Core\Governance\MandateService::GATE_ENGINE && (string) $task->action === \App\Core\Governance\MandateService::GATE_ACTION) {
+                $this->taskService->markRunning($task);
+                $task->update(['execution_started_at' => now()]);
+                $this->progress->recordEvent($task->id, 'execution_started', 'running', action: $task->action, message: 'Plan approved — creating its tasks');
+                try {
+                    $__mid = (int) ($task->mandate_id ?? 0) ?: (int) (($task->payload_json['mandate_id'] ?? 0));
+                    $__res = app(\App\Core\Governance\MandateService::class)->execute($__mid, $task);
+                    $task->update(['status' => 'completed', 'result_json' => $__res, 'completed_at' => now(),
+                        'progress_message' => 'Plan live — ' . (int) ($__res['created'] ?? 0) . ' task(s) started' . (! empty($__res['held']) ? ', ' . count($__res['held']) . ' held' : '')]);
+                    $this->progress->recordEvent($task->id, 'completed', 'completed', message: 'Plan live');
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[Mandate] gate failed', ['task_id' => $task->id, 'error' => $e->getMessage(), 'at' => $e->getFile() . ':' . $e->getLine()]);
+                    $this->taskService->markFailed($task, 'Plan could not start: ' . $e->getMessage(), terminal: true);
+                }
+                $this->idempotency->releaseLock($idemKey);
+                return;
+            }
+
+            // MANDATE-1 (SPEC-0023 §6): a task that descends from a plan runs only while that plan is live and inside its ceiling —
+            // evaluated at EXECUTION, so a plan revoked in November stops a task created in March.
+            $__mandateRef = (int) ($task->mandate_id ?? 0) ?: (int) (($task->payload_json['_mandate_id'] ?? 0));
+            if ($__mandateRef > 0) {
+                $__live = app(\App\Core\Governance\MandateService::class)->liveness($task, $__mandateRef);
+                if (! $__live['ok']) {
+                    $task->update(['status' => 'blocked', 'progress_message' => $__live['reason']]);
+                    $this->progress->recordEvent($task->id, 'mandate_blocked', 'blocked', message: $__live['reason']);
+                    $this->idempotency->releaseLock($idemKey);
+                    return;
+                }
+            }
+
             $planCheck = $this->planGating->check($task->workspace_id, $task->action);
             if (! $planCheck['allowed']) {
                 $task->update(['status' => 'failed', 'progress_message' => $planCheck['reason']]);
@@ -108,6 +141,7 @@ class Orchestrator
                 $this->idempotency->releaseLock($idemKey);
                 return;
             }
+
 
             // ── 1b. Launch-scope enforcement (MISSION-018 WS-1, RISK-0039) ──
             // The sync path (EngineExecutionService::execute) blocks removed

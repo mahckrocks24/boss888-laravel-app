@@ -71,6 +71,7 @@ class ApprovalService
         ]);
 
         $approval->task->update(['approval_status' => 'rejected', 'status' => 'failed', 'error_text' => 'Rejected: ' . ($note ?? 'No reason given')]);
+        try { if ((string) $approval->task->action === \App\Core\Governance\MandateService::GATE_ACTION) app(\App\Core\Governance\MandateService::class)->declined($approval->task, $userId, $note); } catch (\Throwable $e) {}   // MANDATE-1
 
         $this->auditLog->log($approval->workspace_id, $userId, 'approval.rejected', 'Approval', $approvalId);
 
