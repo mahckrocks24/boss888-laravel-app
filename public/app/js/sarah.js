@@ -448,7 +448,7 @@
           [{ label: 'Reply in Customers', kind: 'primary', run: function () { if (window.nav) nav('customers'); } }], 'book-' + e.id));
       });
       var accs = Array.isArray(rs[2].json) ? rs[2].json : ((rs[2].json && (rs[2].json.accounts || rs[2].json.data)) || []);
-      var socialConnected = accs.some(function (x) { return x && (x.status === 'active' || x.connected || x.is_active); });
+      var socialConnected = accs.some(function (x) { return x && (x.status === 'active' || x.status === 'connected' || x.health_state === 'connected' || x.connected || x.is_active); });   /* PREVIEW-3: accounts are 'connected' (the rail said not connected with a Page linked) */
       S.gates = { social: socialConnected, gsc: !!(rs[3].json && rs[3].json.connected) };
       if (!socialConnected) items.push(railItem('gate', '🔗', 'Facebook / Instagram not connected', 'Sarah can write and schedule posts now; publishing them for real needs a connected account.', null,
         [{ label: 'Connect an account', run: function () { openAdvanced({ view: 'social', tail: null }); } }], 'gate-social'));
@@ -631,7 +631,7 @@
     var linkCard = dr.link ? '<div class="lc">' + img + '<div class="meta"><div class="dom">' + esc(dr.domain || String(dr.link).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) + '</div><div class="ttl">' + esc(dr.article_title || dr.link) + '</div>' + (dr.description ? '<div class="desc">' + esc(dr.description) + '</div>' : '') + '</div></div>' : '';
     c.innerHTML =
       '<div class="top"><span class="k"><span class="pf ' + pf + '" style="position:static;width:16px;height:16px;border:0;font-size:10px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff">' + (pf === 'fb' ? 'f' : pf === 'ig' ? '◎' : 'in') + '</span>Preview · ' + esc(platName) + '</span><span class="pill ' + state[0] + '"><i></i>' + esc(state[1]) + '</span></div>' +
-      '<div class="post"><div class="head"><span class="av">' + esc(String(pageName).trim().charAt(0).toUpperCase() || 'P') + '<span class="pf ' + pf + '">' + (pf === 'fb' ? 'f' : pf === 'ig' ? '◎' : 'in') + '</span></span><div><div class="name">' + esc(pageName) + '</div><div class="when">Just now · 🌐 Public</div></div></div>' +
+      '<div class="post"><div class="head"><span class="av"' + (dr.account && dr.account.avatar ? ' style="background:url(' + esc(dr.account.avatar) + ') center/cover"' : '') + '>' + (dr.account && dr.account.avatar ? '' : esc(String(pageName).trim().charAt(0).toUpperCase() || 'P')) + '<span class="pf ' + pf + '">' + (pf === 'fb' ? 'f' : pf === 'ig' ? '◎' : 'in') + '</span></span><div><div class="name">' + esc(pageName) + '</div><div class="when">Just now · 🌐 Public</div></div></div>' +
       '<div class="cap' + (hasCaption ? '' : ' empty') + '"></div>' + (tags ? '<div class="tags">' + esc(tags) + '</div>' : '') + linkCard +
       '<div class="react"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div></div>' +
       '<div class="foot">' +
@@ -641,14 +641,29 @@
         '<div class="row"><button type="button" class="sh-btn primary" ' + (hasCaption && hasAccount ? '' : 'disabled') + '>Post it</button><button type="button" class="sh-btn">' + (hasCaption ? 'Edit caption' : 'Write a caption') + '</button><button type="button" class="sh-btn quiet">Not now</button><span class="note" style="color:var(--t3)">or tell Sarah what to change</span></div>' +
       '</div>';
     var capEl = c.querySelector('.cap'); capEl.textContent = hasCaption ? dr.caption : 'No caption yet';
+    if (dr.execution_status === 'dry_run_ok') {   /* PREVIEW-3: it already went through a dry run — say so before the next click */
+      var pill0 = c.querySelector('.pill'); pill0.className = 'pill warn'; pill0.innerHTML = '<i></i>Not switched on';
+      var n0 = document.createElement('div'); n0.className = 'note why'; n0.style.color = 'var(--am,#f59e0b)'; n0.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is not switched on for the platform yet (it is waiting on Meta's app review). Your draft is intact; when the switch is on, Post it sends it.';
+      c.querySelector('.foot').insertBefore(n0, c.querySelector('.foot .row'));
+    }
     var btns = c.querySelectorAll('.foot button'); var post = btns[0], edit = btns[1], later = btns[2];
     function setBusy(on) { btns.forEach(function (b) { b.disabled = on; }); }
     post.addEventListener('click', function () {
       setBusy(true); post.textContent = 'Posting…';
-      api('POST', 'social/posts/' + dr.post_id + '/publish', {}).then(function (r) {
-        var d = r.json || {}; var ok = r.ok && d.success !== false && !d.error && !(d.data && d.data.published === false && !d.data.in_progress);
-        if (ok) { c.querySelector('.foot').innerHTML = '<div class="done">✓ Posted to ' + esc(pageName) + (d.data && d.data.in_progress ? ' — going out now' : '') + '.</div><div class="note">It appears under Results once the platform confirms it.</div>'; c.querySelector('.pill').className = 'pill ok'; c.querySelector('.pill').innerHTML = '<i></i>Posted'; showToast('Posted.', 'success'); setTimeout(refreshActionBar, 6000); }
-        else { setBusy(false); post.textContent = 'Post it'; var why = d.message || d.error || (d.data && d.data.error) || ('HTTP ' + r.status); var n = document.createElement('div'); n.className = 'note'; n.style.color = 'var(--am,#f59e0b)'; n.textContent = why; c.querySelector('.foot').insertBefore(n, c.querySelector('.foot .row')); }
+      api('POST', 'social/posts/' + dr.post_id + '/publish', {}).then(function () {
+        /* PREVIEW-3: the truth is on the post row, not in the call's reply — read it back and say exactly what happened */
+        var tries = 0; var settle = function () {
+          api('GET', 'social/posts/' + dr.post_id).then(function (r) {
+            var pst = (r.json && (r.json.post || r.json.data)) || r.json || {}; var ex = String(pst.execution_status || ''); var st = String(pst.status || '');
+            var foot = c.querySelector('.foot'), pill = c.querySelector('.pill');
+            if (st === 'published' || ex === 'published') { foot.innerHTML = '<div class="done">✓ Posted to ' + esc(pageName) + '.</div><div class="note">It appears under Results once the platform confirms it.</div>'; pill.className = 'pill ok'; pill.innerHTML = '<i></i>Posted'; showToast('Posted.', 'success'); setTimeout(refreshActionBar, 6000); return; }
+            if (ex === 'dry_run_ok') { setBusy(false); post.textContent = 'Post it'; pill.className = 'pill warn'; pill.innerHTML = '<i></i>Not switched on'; var n = foot.querySelector('.note.why') || document.createElement('div'); n.className = 'note why'; n.style.color = 'var(--am,#f59e0b)'; n.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is not switched on for the platform yet (it is waiting on Meta\'s app review). Your draft is intact; when the switch is on, Post it sends it.'; if (!n.parentNode) foot.insertBefore(n, foot.querySelector('.row')); return; }
+            if (ex === 'failed' || ex === 'publishing_unknown' || st === 'failed') { setBusy(false); post.textContent = 'Post it'; var m = foot.querySelector('.note.why') || document.createElement('div'); m.className = 'note why'; m.style.color = 'var(--rd,#f87171)'; m.textContent = ex === 'publishing_unknown' ? 'Facebook did not confirm the post. Sarah will check and tell you.' : 'The post did not go out: ' + (pst.failure_class ? String(pst.failure_class).replace(/^permanent:|^transient:/, '').replace(/_/g, ' ').toLowerCase() : 'the platform refused it'); if (!m.parentNode) foot.insertBefore(m, foot.querySelector('.row')); return; }
+            if (++tries < 10) { setTimeout(settle, 1500); return; }
+            setBusy(false); post.textContent = 'Post it'; var w = document.createElement('div'); w.className = 'note why'; w.textContent = 'Sent to the publisher — Sarah confirms it under Results.'; foot.insertBefore(w, foot.querySelector('.row'));
+          }).catch(function () { if (++tries < 10) setTimeout(settle, 1500); else { setBusy(false); post.textContent = 'Post it'; } });
+        };
+        setTimeout(settle, 1200);
       }).catch(function () { setBusy(false); post.textContent = 'Post it'; showToast("Couldn't reach the server — try again.", 'error'); });
     });
     edit.addEventListener('click', function () {

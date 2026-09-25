@@ -82,7 +82,7 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
         $rows = DB::table('social_posts as p')->leftJoin('articles as a', 'a.id', '=', 'p.article_id')->leftJoin('websites as w', 'w.id', '=', \Illuminate\Support\Facades\DB::raw('COALESCE(p.website_id, a.website_id)'))
             ->where('p.workspace_id', $wsId)->whereNull('p.deleted_at')->where('p.status', 'draft')->where('p.created_at', '>=', $since)
             ->orderByDesc('p.id')->limit(6)
-            ->get(['p.id', 'p.platform', 'p.content', 'p.media_json', 'p.hashtags_json', 'p.canonical_url', 'p.article_id', 'p.business_id', 'p.website_id', 'p.social_account_id', 'p.created_at',
+            ->get(['p.id', 'p.platform', 'p.content', 'p.media_json', 'p.hashtags_json', 'p.canonical_url', 'p.article_id', 'p.business_id', 'p.website_id', 'p.social_account_id', 'p.created_at', 'p.execution_status', 'p.failure_class',
                    'a.title as article_title', 'a.featured_image_url', 'a.slug as article_slug', 'a.website_id as article_website_id', 'a.meta_description', 'a.excerpt', 'w.custom_domain', 'w.subdomain', 'w.business_id as site_business_id']);
         $resolver = app(\App\Engines\Social\Services\SocialAccountResolver::class);
         foreach ($rows as $d) {
@@ -97,7 +97,9 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 if (! empty($res['ok']) && ! empty($res['account'])) {
                     $acc = $res['account'];
                     $biz = ! empty($acc->business_id) ? DB::table('businesses')->where('id', (int) $acc->business_id)->value('name') : null;
-                    $account = ['id' => (int) $acc->id, 'name' => (string) $acc->account_name, 'business' => $biz ? (string) $biz : null];
+                    $__stats = json_decode((string) ($acc->stats_json ?? ''), true) ?: [];
+                    $account = ['id' => (int) $acc->id, 'name' => (string) $acc->account_name, 'business' => $biz ? (string) $biz : null,
+                        'avatar' => (is_array($__stats) && ! empty($__stats['picture_url']) && preg_match('#^https://#', (string) $__stats['picture_url'])) ? (string) $__stats['picture_url'] : null];   // PREVIEW-3: the Page's real picture
                 } else {
                     $account = ['id' => null, 'name' => null, 'business' => null, 'problem' => (string) ($res['message'] ?? 'No connected account for this platform yet.')];
                 }
@@ -109,6 +111,7 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 'description' => mb_substr(trim((string) ($d->meta_description ?: $d->excerpt ?: '')), 0, 160) ?: null,   // PREVIEW-2: the link card's blurb
                 'domain' => $link ? strtoupper((string) preg_replace('#^https?://(www\.)?([^/]+).*$#', '$2', $link)) : null,
                 'ready' => trim((string) $d->content) !== '' && ! empty($account['name']),
+                'execution_status' => $d->execution_status ? (string) $d->execution_status : null, 'failure_class' => $d->failure_class ? (string) $d->failure_class : null,   // PREVIEW-3: a draft that already went through a dry run says so on load
                 'created_at' => (string) $d->created_at];
         }
     } catch (\Throwable $e) { $drafts = []; }
