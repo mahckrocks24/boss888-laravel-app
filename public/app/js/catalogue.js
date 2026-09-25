@@ -431,7 +431,7 @@ window.LU_LOADED_ENGINES['catalogue'] = true;
       var photo = (it.photos && it.photos[0]) || '';
       var meta = [it.attrs && it.attrs.location ? it.attrs.location : '', it.specs_display || ''].filter(Boolean).join(' · ') || (it.summary || '');
       return '<button type="button" class="cat-card" data-id="' + it.id + '">'
-        + '<div class="ph">' + (photo ? '<img src="' + esc(photo) + '" alt="" loading="lazy">' : '<div class="none"><span style="font-size:18px">🖼</span>No photo</div>')
+        + '<div class="ph">' + (photo ? '<img src="' + esc(photo) + '" alt="" loading="lazy">' : '<div class="none"><img src="/img/logo-icon-40.png" alt="" width="28" height="28" style="width:28px;height:28px;object-fit:contain;opacity:.35;display:block;margin:0 auto 6px">No photo</div>')
         + '<div class="cat-flags">' + flags(it, home.indexOf(it.id) >= 0) + '</div></div>'
         + '<div class="body">'
         + (it.price !== null || it.price_label ? '<div class="price">' + esc(it.price_display) + '</div>' : '')

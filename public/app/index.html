@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="20260925-256078e9">
+<meta name="lu-build" content="20260925-8ee09752">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -344,6 +344,11 @@ textarea,input{font-family:var(--fb);}
 .nav-item.active{background:rgba(108,92,231,.15);color:var(--p)}
 .nav-item .ni{width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:currentColor}
 .nav-item .ni svg{width:18px;height:18px;display:block}
+/* CAT-SUBMENU-1 (Owner 2026-09-25): the catalogue entries live under Websites as a collapsible submenu */
+.nav-row{display:flex;align-items:center}.nav-row>.nav-item{flex:1;min-width:0;margin-right:0}
+.sb-nav .nav-caret,.nav-caret{display:none;width:34px;height:34px;min-height:0;margin:1px 8px 1px 0;padding:0;border:0!important;border-radius:6px;background:none!important;box-shadow:none!important;color:var(--t2);align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent}
+.nav-row.has-children>.nav-caret{display:inline-flex}.nav-caret:hover{color:var(--t1)}.nav-caret svg{width:16px;height:16px;transition:transform .15s}.nav-caret[aria-expanded="true"] svg{transform:rotate(180deg)}
+.nav-children{display:none}.nav-children.open{display:block}.nav-children>.nav-item{padding:7px 16px 7px 44px;font-size:13.5px}   /* CAT-SUBMENU-1b: the child's icon sits under the parent's label */.nav-children>.nav-item .ni{width:16px;height:16px}.nav-children>.nav-item .ni svg{width:16px;height:16px}
 .nav-section{font-size:10px;color:var(--t2);text-transform:uppercase;letter-spacing:1px;padding:12px 16px 4px;margin-top:4px}
 /* 2026-05-28 — Basic / Advanced visibility mode.
    Basic shows only the 8 essential nav items; everything else hides via this single :not() rule.
@@ -3089,8 +3094,8 @@ window.luSwipeToClose = luSwipeToClose;
       <div class="nav-sub" data-basic="1">When you need to look</div>
       <button type="button" class="nav-item" onclick="nav('attention')" id="ni-attention" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l7 12H3z"/><path d="M10 8v3M10 13.5h.01"/></svg></span>Needs attention<span class="cmd-nav-badge" id="ni-attention-badge" style="margin-left:auto;display:none"></span></button>
       <!-- Owner 2026-09-21: Results removed — it duplicated the Command Center; nav('results') lands there. -->
-      <button type="button" class="nav-item" onclick="nav('websites')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Websites</button>
-      <button type="button" class="nav-item" id="ni-catalogue-basic" data-basic="1" data-cat-off="1" data-cat-tpl="basic"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 11h6M7 14h3"/></svg></span><span class="ni-text">Catalogue</span></button>
+      <div class="nav-row" data-basic="1" id="ni-website-row"><!-- CAT-SUBMENU-1 --><button type="button" class="nav-item" onclick="nav('websites')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Websites</button><button type="button" class="nav-caret" id="ni-website-caret" aria-expanded="false" aria-controls="ni-website-children" aria-label="Show or hide the catalogue" onclick="luNavToggle('website')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l3 3 3-3"/></svg></button></div>
+      <div class="nav-children" data-basic="1" id="ni-website-children"><button type="button" class="nav-item" id="ni-catalogue-basic" data-basic="1" data-cat-off="1" data-cat-tpl="basic"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 11h6M7 14h3"/></svg></span><span class="ni-text">Catalogue</span></button></div>
       <button type="button" class="nav-item" onclick="nav('crm')" id="ni-customers" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="7" r="3"/><path d="M2 17c0-3 3-5 6-5s6 2 6 5"/><circle cx="14.5" cy="8" r="2"/><path d="M15 12c2 .3 3 2 3 4"/></svg></span>Clients</button>
       <button type="button" class="nav-item" onclick="nav('settings')" id="ni-account" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Settings</button>
       <button type="button" class="nav-item" onclick="nav('aria')" id="ni-aria-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2"/><path d="M10 14h.01"/></svg></span>Aria</button>
@@ -3113,8 +3118,8 @@ window.luSwipeToClose = luSwipeToClose;
       <div class="nav-section">Publishing</div>
       <!-- REPORT-0061 B2/G (2026-09-19): the "Website Wizard" item is gone — building a website has ONE door, Websites › New website
            (Arthur's wizard, wsShowCreate). The homepage widget hand-off and onboarding still open the wizard directly. -->
-      <button type="button" class="nav-item" onclick="nav('websites')" id="ni-websites" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</button>
-      <button type="button" class="nav-item" id="ni-catalogue" data-adv="1" data-cat-off="1" data-cat-tpl="adv"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 11h6M7 14h3"/></svg></span><span class="ni-text">Catalogue</span></button>
+      <div class="nav-row" data-adv="1" id="ni-websites-row"><!-- CAT-SUBMENU-1 --><button type="button" class="nav-item" onclick="nav('websites')" id="ni-websites" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16M7 3v4M13 3v4"/></svg></span>Websites</button><button type="button" class="nav-caret" id="ni-websites-caret" aria-expanded="false" aria-controls="ni-websites-children" aria-label="Show or hide the catalogue" onclick="luNavToggle('websites')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l3 3 3-3"/></svg></button></div>
+      <div class="nav-children" data-adv="1" id="ni-websites-children"><button type="button" class="nav-item" id="ni-catalogue" data-adv="1" data-cat-off="1" data-cat-tpl="adv"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 11h6M7 14h3"/></svg></span><span class="ni-text">Catalogue</span></button></div>
       <!-- REMOVED: Pending Actions (ni-governance) — v5.5.2 — duplicated Review Queue (same approvals data via /api/governance/pending alias). Router redirects nav('governance') → nav('approvals'). View panel kept for back-compat deep-links. -->
       <!-- REMOVED: Review Queue (ni-previews) — v5.5.2 — legacy "Action Previews" (Phase 6.5) reading /api/previews which references non-existent `previews` table. Canonical Review Queue is ni-approvals → /api/approvals. Router redirects nav('previews') → nav('approvals'). -->
     <div class="nav-section">Engines</div>
@@ -3804,6 +3809,7 @@ window.luSwipeToClose = luSwipeToClose;
           <button type="button" role="tab" data-set-tab-btn="business" class="tab" onclick="setShowTab('business')">Business</button>
           <!-- Owner 2026-09-21: Brand tab retired — each website's look is set in its editor; the brand kit Studio, emails and social use lives in Studio › Brand. -->
           <button type="button" role="tab" data-set-tab-btn="team" class="tab" onclick="setShowTab('team')">Team</button>
+          <button type="button" role="tab" data-set-tab-btn="apikeys" class="tab" onclick="setShowTab('apikeys')">API keys</button><!-- SET-APIKEYS-1 (Owner 2026-09-25) -->
           <button type="button" role="tab" data-set-tab-btn="billing" class="tab" onclick="setShowTab('billing')">Plan &amp; billing</button>
         </div>
         <div id="set-billing-host" data-set-tab="billing"></div><!-- BILL-1: was display:none, which the tab logic never cleared - the real Billing content (bill-root, loadBilling) was never visible; the legacy card stood in for it -->
@@ -4252,10 +4258,10 @@ window.luSwipeToClose = luSwipeToClose;
         <div id="biz-section" data-was-adv="1" style="display:none;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
         <!-- API Keys section — populated by window._renderApiKeys() -->
-        <div id="apk-section" data-was-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+        <div id="apk-section" data-set-tab="apikeys" data-was-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
         <!-- WordPress Sites section — populated by window._renderWpSites() -->
-        <div id="wps-section" data-was-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
+        <div id="wps-section" data-set-tab="apikeys" data-was-adv="1" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);margin-bottom:16px;overflow:hidden"></div>
 
         <div style="background:var(--s1);border:1px solid rgba(248,113,113,.2);border-radius:var(--rg);padding:20px" data-was-adv="1">
           <div style="font-size:13px;font-weight:700;color:var(--rd);margin-bottom:14px">Danger Zone</div>
@@ -4678,7 +4684,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=disconnect1-20260925',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=dl2-20260925',catalogue:'/app/js/catalogue.js?v=rfc0012p1d-20260922',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
+  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=disconnect1-20260925',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=dl2-20260925',catalogue:'/app/js/catalogue.js?v=nophoto1-20260925',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4899,7 +4905,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=34e4d4b4de"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=ddc286ae59"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

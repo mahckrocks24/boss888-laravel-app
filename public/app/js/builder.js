@@ -836,7 +836,7 @@ function wsRenderGrid(){
     let actions;
     if(isExt){
       const extUrl=bld_escH(s.external_url||'');
-      actions=`<a href="${extUrl}" target="_blank" rel="noopener" class="ct-btn" style="font-size:11px;padding:4px 10px;text-decoration:none" onclick="event.stopPropagation()">Visit ↗</a>`
+      actions=`<a href="${extUrl}" target="_blank" rel="noopener" class="ct-btn" style="font-size:11px;padding:4px 10px;text-decoration:none;white-space:nowrap" onclick="event.stopPropagation()">Visit&nbsp;↗</a>`
         +`<button class="ct-btn" onclick="event.stopPropagation();_wsExtSeoAudit(${s.id},'${extUrl.replace(/'/g,"\\'")}')" style="font-size:11px;padding:4px 10px">SEO Audit</button>`
         +(platform==='wordpress'?`<button class="ct-btn" onclick="event.stopPropagation();_wsExtPluginInfo()" style="font-size:11px;padding:4px 10px;color:var(--bl)">Install Plugin</button>`:'')
         +`<button aria-label="Delete website" title="Delete website" onclick="event.stopPropagation();wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
@@ -853,7 +853,7 @@ function wsRenderGrid(){
       // D (2026-09-20): a published site can be taken offline from here — there was no unpublish control anywhere in the
       // customer app (only delete). Two clicks, site CSS, no native dialog.
       var _publishOrView = _isPub
-        ? `<a href="${bld_escH(_liveUrlBtn)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="ct-btn primary" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px">View ↗</a>`
+        ? `<a href="${bld_escH(_liveUrlBtn)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="ct-btn primary" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap">View&nbsp;↗</a>`
           + `<button class="ct-btn" id="ws-offline-${s.id}" onclick="event.stopPropagation();wsTakeOffline(${s.id})" title="Unpublish — the address stops serving until you publish again" style="font-size:11px;padding:4px 10px">Take offline</button>`
         : `<button class="ct-btn primary" onclick="wsShowPublish(${s.id})" style="font-size:11px;padding:4px 10px">Publish</button>`;
 
@@ -895,7 +895,6 @@ function wsRenderGrid(){
         <div class="ws-meta">${metaLine}</div>
         ${s.domain&&!isExt?`<div style="margin-bottom:6px;font-size:10px;color:var(--bl)">${window.icon('globe',14)} ${bld_escH(s.domain)}</div>`:''}
         <div class="ws-footer">
-          <div class="ws-stat" style="font-size:11px;color:var(--t3)">${bld_escH((s.description||'').slice(0,40))||'No description'}</div>
           <div class="ws-actions" onclick="event.stopPropagation()">
             ${actions}
           </div>

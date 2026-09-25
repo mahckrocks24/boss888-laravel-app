@@ -512,7 +512,8 @@ function _luSettingsTabs(){
     var id = el.id || ''; var txt = (el.textContent || '').replace(/\s+/g, ' ').slice(0, 600);   // textContent: innerText is empty while a card is display:none
     if (id === 'set-billing-host' || el.querySelector('#billing-plan-name')) return 'billing';
     if (id === 'agent-team-section') return 'team';
-    if (id === 'apk-section' || /Your Profile|Change Password/.test(txt)) return 'profile';
+    if (id === 'apk-section' || id === 'wps-section') return 'apikeys';   // SET-APIKEYS-1 (Owner 2026-09-25): the keys and the sites they connect, one tab
+    if (/Your Profile|Change Password/.test(txt)) return 'profile';
     return 'business';   // Workspace, intelligence profile, connected accounts, WordPress, internal blocks
   };
   Array.prototype.forEach.call(wrap.children, function (el) {
@@ -526,7 +527,7 @@ function _luSettingsTabs(){
 }
 function setShowTab(tab, silent){
   if (tab === 'brand') tab = 'business';   // Owner 2026-09-21: the Brand tab is retired; old links land on Business
-  setTab = ['profile','business','team','billing'].indexOf(tab) !== -1 ? tab : 'profile';
+  setTab = ['profile','business','team','apikeys','billing'].indexOf(tab) !== -1 ? tab : 'profile';
   var view = document.getElementById('view-settings'); if (!view) return;
   // a class, not inline style: the cards' own scripts set style.display when their data arrives and must not resurface a card on another tab
   view.querySelectorAll('[data-set-tab]').forEach(function (el) { el.classList.toggle('lu-set-hidden', el.getAttribute('data-set-tab') !== setTab); });
@@ -1325,6 +1326,7 @@ async function nav(view, opts){
   }
   el.classList.add('active');
   var ni=document.getElementById('ni-'+(_requested||view));if(ni)ni.classList.add('active');
+  if(view==='catalogue'){ try{ luNavToggle('website', true); luNavToggle('websites', true); }catch(e){} }   // CAT-SUBMENU-1: opening a catalogue opens its submenu
   document.querySelectorAll('.nav-item[data-nav-view="'+(_requested||view)+'"]').forEach(function(b){ b.classList.add('active'); });   // B3: a second menu entry for the same view (Results in Advanced)
   if(currentView!==(_requested||view)) window._luPrevView=currentView; // Sarah's minimise returns here
   currentView=_requested||view;
@@ -1364,7 +1366,7 @@ async function nav(view, opts){
   if(view==='agents')     { if (window.luRenderAgentsGrid) { try { luRenderAgentsGrid(); } catch (_e) {} } loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
-  if(view==='settings') { loadSettings(); (async function(){ try { await luLoadEngine('businesses'); var _bz=document.getElementById('businesses-section'); if(_bz && typeof window.businessesLoad==='function') window.businessesLoad(_bz); } catch(_e) {} })(); /* RFC-0011 U5b */ try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} try{ _luSettingsTabs(); setShowTab((opts&&opts.tail&&['profile','business','brand','team','billing'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'profile', true); }catch(e){} } /* P1R-6/7; B5 tabs */
+  if(view==='settings') { loadSettings(); (async function(){ try { await luLoadEngine('businesses'); var _bz=document.getElementById('businesses-section'); if(_bz && typeof window.businessesLoad==='function') window.businessesLoad(_bz); } catch(_e) {} })(); /* RFC-0011 U5b */ try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} try{ _luSettingsTabs(); setShowTab((opts&&opts.tail&&['profile','business','brand','team','apikeys','billing'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'profile', true); }catch(e){} } /* P1R-6/7; B5 tabs */
   if(view==='builder') {
     // Builder engine loaded via builder-spa.js (injected by builder plugin)
     if (typeof _bldPrefetchDynamic === 'function') _bldPrefetchDynamic();
@@ -6699,8 +6701,18 @@ window._luCatalogueApplyNav = function (d) {
       b.onclick = function () { nav('catalogue', { tail: g.slug }); };
       after.insertAdjacentElement('afterend', b); after = b;
     });
+    var row = document.getElementById(id === 'ni-catalogue' ? 'ni-websites-row' : 'ni-website-row'); if (row) row.classList.toggle('has-children', groups.length > 0);   // CAT-SUBMENU-1
   });
+  if (window._luCatalogueGroup && document.getElementById('view-catalogue') && document.getElementById('view-catalogue').classList.contains('active')) { luNavToggle('website', true); luNavToggle('websites', true); }
 };
+// CAT-SUBMENU-1 (Owner 2026-09-25): the catalogue is a collapsible submenu under Websites; the choice is remembered per device.
+window.luNavToggle = function (key, force) {
+  var box = document.getElementById('ni-' + key + '-children'), c = document.getElementById('ni-' + key + '-caret'); if (!box) return;
+  var open = (force === undefined) ? !box.classList.contains('open') : !!force;
+  box.classList.toggle('open', open); if (c) c.setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (force === undefined) { try { localStorage.setItem('lu_nav_open_' + key, open ? '1' : '0'); } catch (e) {} }
+};
+(function () { ['website', 'websites'].forEach(function (k) { var v = null; try { v = localStorage.getItem('lu_nav_open_' + k); } catch (e) {} if (v === '1') luNavToggle(k, true); }); })();
 window._luCatalogueNav = async function () {
   try { var r = await _luFetch('GET', '/catalogue/summary'); if (r.ok) window._luCatalogueApplyNav(await r.json()); } catch (_e) {}
 };
