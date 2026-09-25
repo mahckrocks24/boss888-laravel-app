@@ -122,8 +122,11 @@
     for (var i = 0; i < lifted.length; i++) if (lifted[i].el === el) rec = lifted[i];
     if (!rec) { rec = { el: el, transform: el.style.transform, transition: el.style.transition, maxHeight: el.style.maxHeight, overflowY: el.style.overflowY, alignItems: el.style.alignItems, by: 0 }; lifted.push(rec); }
     rec.by += by;
-    el.style.transition = 'transform .15s ease-out';
+    // No transition: the next re-check reads the rect at once, and an animated lift read mid-flight looked like
+    // "not lifted yet" — four re-checks then lifted four times (a wizard composer measured at y = −357).
+    el.style.transition = 'none';
     el.style.transform = (rec.transform && rec.transform !== 'none' ? rec.transform + ' ' : '') + 'translateY(' + (-rec.by) + 'px)';
+    void el.offsetHeight;
     if (capTo) {
       el.style.maxHeight = capTo + 'px'; el.style.overflowY = 'auto';
       // A full-screen overlay that CENTRES a dialog taller than what is visible pushes the dialog's top above the
