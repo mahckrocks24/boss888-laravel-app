@@ -3437,7 +3437,7 @@ window.luSwipeToClose = luSwipeToClose;
     </div>
 
     <!-- ── PROJECTS ── -->
-    <div id="view-infrastructure" class="view" style="display:none"><div id="infrastructure-root"></div></div>
+    <div id="view-infrastructure" class="view" style="display:none;flex-direction:column;overflow-y:auto"><div id="infrastructure-root"></div></div>   <!-- HOST-SCROLL-1 (Owner 2026-09-25: the Hosting page had no vertical scroller): .view is overflow:hidden; this view had no scroller of its own -->
     <div id="view-projects" class="view" style="display:none">
       <!-- REPORT-0061 B4 (2026-09-20): one page, three panels — Projects (list), Task board (stages), History (task history + work distribution, from the old Reports & History) -->
       <div class="lu-view-tabs" id="proj-tabs" role="tablist" aria-label="Projects" style="display:flex;gap:2px;padding:14px 24px 0;border-bottom:1px solid var(--bd);flex-shrink:0">
