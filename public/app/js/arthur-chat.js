@@ -98,7 +98,7 @@ window.wsShowArthurWizard = function(prefillArg) {
         + '<div style="padding:12px 20px;border-top:1px solid var(--bd);display:flex;gap:10px;align-items:flex-end">'
         + '<textarea id="arthur-chat-input" rows="1" placeholder="Tell me about your business..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);padding:12px 16px;font-size:14px;line-height:1.45;outline:none;font-family:inherit;resize:none;overflow-y:auto;height:44px;max-height:85px" onkeydown="if(event.key===\'Enter\'&&!event.shiftKey){event.preventDefault();_arthurSend();}" oninput="this.style.height=\'auto\';this.style.height=Math.min(this.scrollHeight,85)+\'px\'"></textarea>'
         + '<button onclick="_arthurSend()" id="arthur-chat-send-btn" aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>'
-        + '</div></div>';
+        + '</div><div class="lu-ai-fineprint" style="font-size:11px;color:var(--t3);text-align:center;padding:4px 16px 8px;line-height:1.3">Arthur is AI and can make mistakes.</div></div>';   /* DISCLAIMER-1 (Owner 2026-09-25) */
     ov.addEventListener('click', function(e) { if (e.target === ov) ov.remove(); });
     document.body.appendChild(ov);
 

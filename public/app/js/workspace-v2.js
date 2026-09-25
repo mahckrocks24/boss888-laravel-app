@@ -261,7 +261,8 @@
     + '.wsv2-tn-close{position:absolute;top:5px;right:5px;width:18px;height:18px;border:none;background:rgba(255,255,255,.06);color:var(--t2);cursor:pointer;border-radius:50%;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .15s,background .15s,color .15s;padding:0;font-family:var(--fb)}'
     + '.wsv2-task-node:hover .wsv2-tn-close{opacity:.85}'
     + '.wsv2-task-node.status-completed .wsv2-tn-close,.wsv2-task-node.status-failed .wsv2-tn-close{opacity:.85}'   /* TN-CLOSE-1 (Owner 2026-09-24): a finished card always shows its x - a phone has no hover */
-    + '@media (hover:none),(pointer:coarse){.wsv2-tn-close{opacity:.85;width:26px;height:26px;font-size:16px;top:3px;right:3px}}'
+    + '@media (hover:none),(pointer:coarse){.wsv2-tn-close{opacity:1;width:30px!important;height:30px!important;min-width:30px!important;min-height:30px!important;font-size:18px;top:3px;right:3px;background:var(--s1);border:1px solid var(--bd);color:var(--t1);box-shadow:0 1px 4px rgba(0,0,0,.18)}'
+    + '.wsv2-task-node.status-completed .tn-title,.wsv2-task-node.status-failed .tn-title{padding-right:32px}}'   /* STRAT-X-1: the x sits in the corner as a real button; the title no longer runs under it */
     + '.wsv2-tn-close:hover{background:var(--rd);color:#fff;opacity:1!important}'
     + '.wsv2-task-node .tn-title{font-size:10px;font-weight:700;color:var(--t1);line-height:1.4;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--fb)}'
     + '.wsv2-task-node .tn-assignees{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:5px}'
@@ -998,6 +999,17 @@
       var now = Date.now();
       var prev = STATE.tap;
 
+      // STRAT-X-1 (Owner 2026-09-25): a touch on the card's x is a dismiss, not a drag. Before this the
+      // touch started a drag (preventDefault swallowed the emulated click that the capture handler below
+      // relies on) and touchend, seeing no movement, opened the drawer instead of removing the card.
+      var xb = e.target.closest('.wsv2-tn-close');
+      if (xb) {
+        e.preventDefault(); e.stopPropagation();
+        var xid = xb.getAttribute('data-dismiss-task');
+        if (xid) dismissTaskNode(xid);
+        STATE.tap = { lastTime: 0, lastX: 0, lastY: 0, lastSlug: null };
+        return;
+      }
       // Task-node: single touch still starts drag immediately (unchanged).
       var tn = e.target.closest('.wsv2-task-node');
       if (tn) {

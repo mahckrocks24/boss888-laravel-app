@@ -121,6 +121,7 @@ function _msgCreateModal(){
           +'<input id="lu-msg-input" type="text" placeholder="Type a message..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:8px 12px;font-size:13px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')_msgSend()">'
           +'<button onclick="_msgSend()" style="background:var(--p,#6C5CE7);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-weight:600">\u2192</button>'
         +'</div>'
+        +'<div id="lu-msg-fineprint" class="lu-ai-fineprint" style="font-size:10px;color:var(--t3);text-align:center;padding:2px 12px 6px"></div>'
       +'</div>'
     +'</div>';
   document.body.appendChild(modal);
@@ -140,7 +141,13 @@ async function _msgLoadConversations(){
   }catch(e){console.error('[Messages]',e);}
 }
 
+/* DISCLAIMER-1 (Owner 2026-09-25): every agent composer carries the fine print, named for the agent in the thread. */
+function _msgFineprint(){
+  var n=((_msg.conversations||[]).find(function(c){return c.slug===_msg.agent;})||{}).name||(_msg.agent==='sarah'?'Sarah':'Your agent');
+  ['lu-msg-fineprint','lu-msg-page-fineprint'].forEach(function(id){var e=document.getElementById(id);if(e)e.textContent=n+' is AI and can make mistakes.';});
+}
 function _msgRenderAgentList(){
+  _msgFineprint();
   var el=document.getElementById('lu-msg-agents');if(!el)return;
   el.innerHTML=_msg.conversations.map(function(c){
     var active=c.slug===_msg.agent;
@@ -156,6 +163,7 @@ function _msgRenderAgentList(){
 
 window._msgSelectAgent=function(slug){
   _msg.agent=slug;
+  _msgFineprint();
   _msgRenderAgentList();
   _msgLoadThread(slug);
   // Mark as read
@@ -400,6 +408,7 @@ window.messagesLoad=function(el){console.log("[Messages] messagesLoad called",el
         +'<input id="lu-msg-page-input" type="text" placeholder="Type a message..." style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:10px;color:var(--t1);padding:12px 16px;font-size:14px;outline:none;font-family:inherit" onkeydown="if(event.key===\'Enter\')_msgPageSend()">'
         +'<button onclick="_msgPageSend()" aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>'
       +'</div>'
+      +'<div id="lu-msg-page-fineprint" class="lu-ai-fineprint" style="font-size:11px;color:var(--t3);text-align:center;padding:4px 16px 8px;line-height:1.3"></div>'
     +'</div></div>';
   _msgLoadConversationsPage();
 };
@@ -414,6 +423,7 @@ async function _msgLoadConversationsPage(){
 }
 
 function _msgRenderPageAgents(){
+  _msgFineprint();
   var el=document.getElementById('lu-msg-page-agents');if(!el)return;
   el.innerHTML='<div style="padding:8px 16px 12px;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.05em">Conversations</div>'
     +_msg.conversations.map(function(c){
@@ -431,6 +441,7 @@ function _msgRenderPageAgents(){
 
 window._msgPageSelect=function(slug){
   _msg.agent=slug;
+  _msgFineprint();
   _msgRenderPageAgents();
   _msgLoadPageThread(slug);
   _msgMarkRead(slug);   // server-authoritative; exactly once per action (RD-07)

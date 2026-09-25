@@ -144,7 +144,7 @@
     '  <input id="cb888-hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">',
     '  <button id="cb888-send" aria-label="Send message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>',
     '</div>',
-    '<div id="cb888-powered">Powered by LevelUpGrowth</div>'
+    '<div id="cb888-powered">LevelUpGrowth is AI and can make mistakes.</div>'
   ].join('\n');
 
   document.body.appendChild(bubble);

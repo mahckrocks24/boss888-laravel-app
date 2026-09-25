@@ -55,6 +55,7 @@
       '.ar-compose{flex:none;display:flex;gap:8px;align-items:flex-end;padding:10px 12px calc(10px + var(--safe-bottom,0px));border-top:1px solid var(--bd);background:var(--s1)}',
       '.ar-compose textarea{flex:1;min-height:44px;max-height:140px;resize:none;box-sizing:border-box;padding:11px 12px;border-radius:var(--r);border:1px solid var(--bd2);background:var(--bg);color:var(--t1);font:400 14px var(--fb);line-height:1.4}',
       '.ar-compose textarea:focus-visible{outline:2px solid var(--p);outline-offset:1px}',
+      '.ar-fineprint{font-size:10px;color:var(--t3);text-align:center;padding:4px 10px 6px;line-height:1.3}',
       '.ar-send{flex:none;width:44px;height:44px;border-radius:var(--r);border:0;background:var(--p);color:#fff;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}',
       '.ar-send[disabled]{opacity:.5;cursor:default}.ar-send:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.ar-topics{display:flex;flex-direction:column;gap:6px}.ar-topics details{border:1px solid var(--bd);border-radius:var(--r);background:var(--s1)}',
@@ -194,6 +195,7 @@
     sendBtn.type = 'button'; sendBtn.id = 'aria-send'; sendBtn.setAttribute('aria-label', 'Send');
     sendBtn.addEventListener('click', function () { var v = input.value; input.value = ''; input.style.height = 'auto'; ask(v); });
     comp.appendChild(input); comp.appendChild(sendBtn); shell.appendChild(comp);
+    shell.appendChild(el('div', 'ar-fineprint', 'Aria is AI and can make mistakes.'));   /* DISCLAIMER-1 (Owner 2026-09-25) */
     root.appendChild(shell);
     var hist = loadHist();
     if (hist.length) {
