@@ -76,6 +76,39 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
         }
     } catch (\Throwable $e) { $offer = false; }
 
-    return response()->json(['success' => true, 'items' => $items, 'offer' => $offer, 'offer_message_id' => $offerMessageId,
+    // PREVIEW-1: drafts waiting to be posted — the preview card in the chat (Post it / Edit / Not now)
+    $drafts = [];
+    try {
+        $rows = DB::table('social_posts as p')->leftJoin('articles as a', 'a.id', '=', 'p.article_id')->leftJoin('websites as w', 'w.id', '=', \Illuminate\Support\Facades\DB::raw('COALESCE(p.website_id, a.website_id)'))
+            ->where('p.workspace_id', $wsId)->whereNull('p.deleted_at')->where('p.status', 'draft')->where('p.created_at', '>=', $since)
+            ->orderByDesc('p.id')->limit(6)
+            ->get(['p.id', 'p.platform', 'p.content', 'p.media_json', 'p.hashtags_json', 'p.canonical_url', 'p.article_id', 'p.business_id', 'p.website_id', 'p.social_account_id', 'p.created_at',
+                   'a.title as article_title', 'a.featured_image_url', 'a.slug as article_slug', 'a.website_id as article_website_id', 'w.custom_domain', 'w.subdomain', 'w.business_id as site_business_id']);
+        $resolver = app(\App\Engines\Social\Services\SocialAccountResolver::class);
+        foreach ($rows as $d) {
+            $media = json_decode((string) ($d->media_json ?? '[]'), true) ?: [];
+            $first = is_array($media) && $media ? (is_array($media[0]) ? ($media[0]['url'] ?? $media[0]['src'] ?? null) : $media[0]) : null;
+            $host = $d->custom_domain ?: $d->subdomain;
+            $link = $d->canonical_url ?: (($host && $d->article_slug) ? 'https://' . preg_replace('#^https?://#', '', rtrim((string) $host, '/')) . '/blog/' . ltrim((string) $d->article_slug, '/') : null);
+            $account = null;
+            try {
+                $res = $resolver->resolve($wsId, (string) $d->platform, $d->business_id ? (int) $d->business_id : ($d->site_business_id ? (int) $d->site_business_id : null),
+                    $d->website_id ? (int) $d->website_id : ($d->article_website_id ? (int) $d->article_website_id : null), $d->article_id ? (int) $d->article_id : null, $d->social_account_id ? (int) $d->social_account_id : null);
+                if (! empty($res['ok']) && ! empty($res['account'])) {
+                    $acc = $res['account'];
+                    $biz = ! empty($acc->business_id) ? DB::table('businesses')->where('id', (int) $acc->business_id)->value('name') : null;
+                    $account = ['id' => (int) $acc->id, 'name' => (string) $acc->account_name, 'business' => $biz ? (string) $biz : null];
+                } else {
+                    $account = ['id' => null, 'name' => null, 'business' => null, 'problem' => (string) ($res['message'] ?? 'No connected account for this platform yet.')];
+                }
+            } catch (\Throwable $e) { $account = null; }
+            $drafts[] = ['post_id' => (int) $d->id, 'platform' => (string) $d->platform,
+                'account' => $account, 'caption' => (string) $d->content, 'hashtags' => array_values(array_filter((array) (json_decode((string) ($d->hashtags_json ?? '[]'), true) ?: []))),
+                'link' => $link, 'image' => $first ?: ($d->featured_image_url ?: null), 'article_id' => $d->article_id ? (int) $d->article_id : null,
+                'article_title' => $d->article_title ? (string) $d->article_title : null, 'created_at' => (string) $d->created_at];
+        }
+    } catch (\Throwable $e) { $drafts = []; }
+
+    return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'offer' => $offer, 'offer_message_id' => $offerMessageId,
         'quick_replies' => $offer ? [['label' => 'Go', 'text' => 'go'], ['label' => 'Not now', 'text' => 'not now']] : []]);
 });

@@ -106,7 +106,23 @@ class SocialService
             $data['ai_generated'] = true;
         }
         $data['content'] = $content; $data['platform'] = $platform;
+        // PREVIEW-1 (2026-09-25): a share of an article carries the article's link, site and business — the preview shows
+        // them and Facebook builds its card from the link. Sarah's drafts today carried none of the three.
+        $__canonical = isset($data['canonical_url']) && is_string($data['canonical_url']) ? trim($data['canonical_url']) : '';
+        if (! empty($data['article_id']) && (int) $data['article_id'] > 0) {
+            try {
+                $__a = DB::table('articles as a')->leftJoin('websites as w', 'w.id', '=', 'a.website_id')->where('a.id', (int) $data['article_id'])->where('a.workspace_id', $wsId)
+                    ->first(['a.slug', 'a.website_id', 'w.custom_domain', 'w.subdomain', 'w.business_id']);
+                if ($__a) {
+                    if (empty($data['website_id']) && $__a->website_id) $data['website_id'] = (int) $__a->website_id;
+                    if (empty($data['business_id']) && ! empty($__a->business_id)) $data['business_id'] = (int) $__a->business_id;
+                    $__host = $__a->custom_domain ?: $__a->subdomain;
+                    if ($__canonical === '' && $__host && $__a->slug) $__canonical = 'https://' . preg_replace('#^https?://#', '', rtrim((string) $__host, '/')) . '/blog/' . ltrim((string) $__a->slug, '/');
+                }
+            } catch (\Throwable $e) { /* the post still saves; the preview just has no link */ }
+        }
         $id = DB::table('social_posts')->insertGetId([
+            'canonical_url' => $__canonical !== '' ? $__canonical : null,   // PREVIEW-1
             'workspace_id' => $wsId,
             // SOCIAL-888 provenance: capture the website when the caller states one; else
             // NULL = workspace-level (no blind guessing). article/studio callers may pass it.

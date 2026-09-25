@@ -102,6 +102,12 @@
       '.sh-act{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--s1)}',
       '.sh-act .t{font-weight:600;color:var(--t1);font-size:13.5px}.sh-act .d{font-size:12.5px;color:var(--t2)}.sh-act ol{margin:0;padding-left:18px;font-size:12.5px;color:var(--t2)}',
       '.sh-act .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}.sh-act .done{font-size:12.5px;color:var(--t2)}',
+      '.sh-draft{display:flex;flex-direction:column;gap:8px;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--s1)}',
+      '.sh-draft .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--t2)}.sh-draft .badge b{color:var(--t1)}',
+      '.sh-draft .pv{display:flex;gap:10px;align-items:flex-start}.sh-draft .pv img{width:88px;height:66px;object-fit:cover;border-radius:8px;flex:none;background:var(--s2)}',
+      '.sh-draft .cap{white-space:pre-wrap;font-size:13.5px;color:var(--t1);line-height:1.45;flex:1;min-width:0}.sh-draft .lnk{font-size:12px;color:var(--t3);word-break:break-all}',
+      '.sh-draft textarea{width:100%;box-sizing:border-box;min-height:80px;border:1px solid var(--bd2,var(--bd));border-radius:10px;padding:8px 10px;font:400 13.5px var(--fb);color:var(--t1);background:var(--s2)}',
+      '.sh-draft .row{display:flex;gap:8px;flex-wrap:wrap}.sh-draft .done{font-size:12.5px;color:var(--t2)}.sh-draft .warn{font-size:12.5px;color:var(--am)}',
       '.sh-chips{display:flex;gap:8px;flex-wrap:wrap}.sh-chips button{min-height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t1);font:600 13px var(--fb);cursor:pointer}.sh-chips button.go{background:var(--p);border-color:var(--p);color:#fff}',
       '.sh-act button.sh-btn{min-height:36px;padding:0 14px;border-radius:10px;font:600 13px var(--fb);cursor:pointer;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t1)}.sh-act button.sh-btn.primary{background:var(--p);border-color:var(--p);color:#fff}.sh-act button.sh-btn.danger{color:var(--rd,#c0392b)}',
       '.sh-orch{align-self:flex-start;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:var(--s1);border:1px solid var(--bd);font-size:13px;color:var(--t2);box-shadow:0 1px 3px rgba(0,0,0,.06)}',
@@ -567,7 +573,8 @@
   function renderActionBar(d) {
     clearActionBar();
     var items = (d && Array.isArray(d.items)) ? d.items : []; var chips = (d && Array.isArray(d.quick_replies)) ? d.quick_replies : [];
-    if (!items.length && !chips.length) return;
+    var drafts = (d && Array.isArray(d.drafts)) ? d.drafts.filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }) : [];
+    if (!items.length && !chips.length && !drafts.length) return;
     var bar = document.createElement('div'); bar.className = 'sh-actbar'; bar.id = 'sh-actbar'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Sarah is waiting for your decision');
     items.forEach(function (it) {
       var c = document.createElement('div'); c.className = 'sh-act'; c.setAttribute('data-approval', String(it.approval_id));
@@ -583,6 +590,7 @@
       });
       bar.appendChild(c);
     });
+    drafts.forEach(function (dr) { bar.appendChild(draftCard(dr)); });   /* PREVIEW-1 */
     if (chips.length) {
       var ch = document.createElement('div'); ch.className = 'sh-chips';
       chips.forEach(function (q, i) { var b = document.createElement('button'); b.type = 'button'; b.className = i === 0 ? 'go' : ''; b.textContent = q.label; b.addEventListener('click', function () { clearActionBar(); S.input.value = q.text; send(); }); ch.appendChild(b); });
@@ -590,6 +598,43 @@
       ch.appendChild(hint); bar.appendChild(ch);
     }
     S.feed.appendChild(bar); toBottom();
+  }
+  /* PREVIEW-1: what will be posted, before it is posted. Post it publishes through the Social engine; Edit changes the
+     caption in place (PUT social/posts/{id}); Not now leaves the draft under Social › Drafts. "or tell me what to change"
+     keeps text as the option. */
+  function draftCard(dr) {
+    var c = document.createElement('div'); c.className = 'sh-draft'; c.setAttribute('data-post', String(dr.post_id));
+    var plat = (dr.platform || '').charAt(0).toUpperCase() + (dr.platform || '').slice(1);
+    var acct = dr.account && dr.account.name ? ('<b>' + esc(plat + (dr.platform === 'facebook' ? ' Page' : '')) + ' · ' + esc(dr.account.name) + '</b>' + (dr.account.business ? ' <span>for ' + esc(dr.account.business) + '</span>' : '')) : ('<b>' + esc(plat) + '</b>' + (dr.account && dr.account.problem ? ' <span class="warn">' + esc(dr.account.problem) + '</span>' : ''));
+    var img = dr.image && /^(https?:\/\/|\/)/.test(String(dr.image)) ? '<img src="' + esc(dr.image) + '" alt="">' : '';
+    var link = dr.link ? '<div class="lnk">' + esc(dr.link) + '</div>' : '';
+    c.innerHTML = '<div class="badge"><span>Ready to post ·</span>' + acct + '</div>' +
+      '<div class="pv">' + img + '<div class="cap"></div></div>' + link +
+      (dr.article_title ? '<div class="lnk">Shares: ' + esc(dr.article_title) + '</div>' : '') +
+      '<div class="row"><button type="button" class="sh-btn primary">Post it</button><button type="button" class="sh-btn">Edit</button><button type="button" class="sh-btn">Not now</button><span class="d" style="font-size:12px;color:var(--t3);align-self:center">or tell me what to change</span></div>';
+    c.querySelector('.cap').textContent = dr.caption || '';
+    var btns = c.querySelectorAll('button'); var post = btns[0], edit = btns[1], later = btns[2];
+    post.addEventListener('click', function () {
+      btns.forEach(function (b) { b.disabled = true; }); post.textContent = 'Posting…';
+      api('POST', 'social/posts/' + dr.post_id + '/publish', {}).then(function (r) {
+        var d = r.json || {}; var ok = r.ok && d.success !== false && !d.error && !(d.data && d.data.published === false && !d.data.in_progress);
+        if (ok) { c.innerHTML = '<div class="badge">' + acct + '</div><div class="done">Posted' + (d.data && d.data.in_progress ? ' — going out now' : '') + '. It will show under Results once the platform confirms it.</div>'; showToast('Posted.', 'success'); setTimeout(refreshActionBar, 6000); }
+        else { btns.forEach(function (b) { b.disabled = false; }); post.textContent = 'Post it'; showToast("Couldn't post: " + (d.message || d.error || (d.data && d.data.error) || ('HTTP ' + r.status)), 'error'); }
+      }).catch(function () { btns.forEach(function (b) { b.disabled = false; }); post.textContent = 'Post it'; showToast("Couldn't reach the server — try again.", 'error'); });
+    });
+    edit.addEventListener('click', function () {
+      var cap = c.querySelector('.cap'); var ta = c.querySelector('textarea');
+      if (!ta) { ta = document.createElement('textarea'); ta.value = dr.caption || ''; ta.setAttribute('aria-label', 'Caption'); cap.replaceWith(ta); ta.focus(); edit.textContent = 'Save'; return; }
+      var val = ta.value.trim(); if (!val) { ta.focus(); return; }
+      edit.disabled = true;
+      api('PUT', 'social/posts/' + dr.post_id, { content: val }).then(function (r) {
+        edit.disabled = false; var d = r.json || {};
+        if (r.ok && !d.error) { dr.caption = val; var nc = document.createElement('div'); nc.className = 'cap'; nc.textContent = val; ta.replaceWith(nc); edit.textContent = 'Edit'; showToast('Caption saved.', 'success'); }
+        else showToast("Couldn't save: " + (d.message || d.error || ('HTTP ' + r.status)), 'error');
+      }).catch(function () { edit.disabled = false; showToast("Couldn't reach the server — try again.", 'error'); });
+    });
+    later.addEventListener('click', function () { S.dismissedDrafts = S.dismissedDrafts || {}; S.dismissedDrafts[String(dr.post_id)] = 1; c.remove(); showToast('Kept as a draft under Social.', 'info'); });
+    return c;
   }
   function actDecide(c, it, action, reason) {
     var buttons = c.querySelectorAll('button'); buttons.forEach(function (b) { b.disabled = true; });
@@ -781,7 +826,7 @@
         S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; added++;
         if (isAgent) { S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); }
       });
-      if (added) { hideOrch(); stick(S.feed, was); loadBriefing(); loadRail(); }
+      if (added) { hideOrch(); stick(S.feed, was); loadBriefing(); loadRail(); setTimeout(refreshActionBar, 600); }   /* PREVIEW-1 */
     }).catch(function () { S.syncBusy = false; });
   }
 

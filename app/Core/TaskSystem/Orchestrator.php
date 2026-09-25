@@ -1885,7 +1885,7 @@ class Orchestrator
             'seo/gsc_sync'                 => 'Latest Google Search Console data pulled in.',
             'social/create_post'           => 'Social post created.',
             // yy (2026-08-30): these completed as a bare "Done." in the Messages panel.
-            'social/social_create_post'    => 'Social post drafted — it is waiting in Social as a draft.',
+            'social/social_create_post'    => 'Draft ready — the preview is in the chat with a Post it button (and under Social › Drafts).',   // PREVIEW-1
             'social/social_ai_post'        => 'Social copy drafted.',
             'social/social_publish_post'   => 'Social post published.',
             'social/social_schedule_post'  => 'Social post scheduled.',
