@@ -135,6 +135,7 @@
       '.sh-min{margin-left:auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--bd2,var(--bd));background:var(--s2);color:var(--t2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}',
       '.sh-min:hover{color:var(--t1);border-color:var(--p)}.sh-min:focus-visible{outline:2px solid var(--p);outline-offset:2px}',
       '.sh-top .sh-ctx{margin-left:auto}.sh-top .sh-ctx+.sh-min{margin-left:0}',
+      'html.lu-sarah-from-floater #sh-min{display:inline-flex!important}',   /* SARAH-X-2: in Basic the X exists only when she was opened from the floater; as the homepage there is nothing to close */
       '.sh-rail{flex:none;display:flex;flex-direction:column;gap:8px;padding:10px 16px 0;max-height:none;overflow:visible}',
       /* RAIL-3: one horizontal snap strip at every width — fixed-width cards, swipe/scroll for the rest. */
       '.sh-rail-track{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;margin:0 -16px;padding:0 16px 8px;scroll-padding:0 16px}',
@@ -230,6 +231,7 @@
   window.sarahUnload = function () { stopEvents(); };
   /* Minimise: the view the customer came from; otherwise the mode's home (Command Center in Advanced, Needs your OK in Basic). */
   window.sarahMinimize = function () {
+    try{ document.documentElement.classList.remove('lu-sarah-from-floater'); }catch(e){}   /* SARAH-X-2 */
     var prev = window._luPrevView, basic = document.documentElement.getAttribute('data-mode') === 'basic';
     var target = (prev && prev !== 'sarah') ? prev : (basic ? 'attention' : 'command');
     if (typeof window.nav === 'function') { window.nav(target); } else { location.href = '/app/' + target; }

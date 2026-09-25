@@ -1329,6 +1329,7 @@ async function nav(view, opts){
   if(view==='catalogue'){ try{ luNavToggle('website', true); luNavToggle('websites', true); }catch(e){} }   // CAT-SUBMENU-1: opening a catalogue opens its submenu
   document.querySelectorAll('.nav-item[data-nav-view="'+(_requested||view)+'"]').forEach(function(b){ b.classList.add('active'); });   // B3: a second menu entry for the same view (Results in Advanced)
   if(currentView!==(_requested||view)) window._luPrevView=currentView; // Sarah's minimise returns here
+  if(view!=='sarah'){ try{ document.documentElement.classList.remove('lu-sarah-from-floater'); }catch(e){} }   // SARAH-X-2: leaving her view forgets the floater origin
   currentView=_requested||view;
   // v5.7.19 (2026-05-31) — Phase 1.0 URL routing. Push the URL after the
   // view has been resolved (so unknown views never pollute history), and

@@ -98,6 +98,7 @@ try{
 window._msgToggle=function(){
   _msg.open=false;
   var modal=document.getElementById('lu-msg-modal'); if(modal) modal.style.display='none';
+  try{ document.documentElement.classList.add('lu-sarah-from-floater'); }catch(e){}   /* SARAH-X-2: opened from the floater, so she can be closed again */
   if(typeof window.nav==='function'){ window.nav('sarah'); } else { location.href='/app/sarah'; }
 }
 
@@ -603,7 +604,7 @@ function _msgMakeDraggable(el){
     id = null;
     if(!moved) return;
     el.classList.remove('lu-dragging');
-    var r = el.getBoundingClientRect();
+    var r = _msgBaseRect(el);   /* FLOATER-4: the anchored spot, not the nudged/lifted one */
     try{ localStorage.setItem(_MSG_POS_KEY, JSON.stringify({ x: Math.round(r.left), y: Math.round(r.top) })); }catch(err){}
     /* Swallow exactly the click this drag would otherwise produce, and nothing after it. */
     var swallow = function(ev){ ev.stopPropagation(); ev.preventDefault(); };
@@ -615,10 +616,40 @@ function _msgMakeDraggable(el){
 
   window.addEventListener('resize', function(){
     if(!el.style.left) return;
-    var r = el.getBoundingClientRect(), c = _msgClamp(el, r.left, r.top);
+    var r = _msgBaseRect(el), c = _msgClamp(el, r.left, r.top);   /* FLOATER-4 */
     _msgPlace(el, c.x, c.y);
   }, { passive: true });
 }
+
+/* FLOATER-4: where she is anchored, ignoring the nudge/keyboard transform that rides on top. */
+function _msgBaseRect(el){
+  var t = el.style.transform; el.style.transform = 'none';
+  var r = el.getBoundingClientRect(); var out = { left: r.left, top: r.top, width: r.width, height: r.height };
+  el.style.transform = t; return out;
+}
+/* FLOATER-4 watchdog: not on a chat surface, yet nowhere to be seen (off-screen, sizeless, or fully covered at her centre for
+   two ticks) -> back to her corner, nudges cleared. Whatever moved her, the customer gets her back. */
+(function(){
+  var misses = 0;
+  setInterval(function(){
+    try{
+      var el = document.getElementById('lu-messages-floater'); if(!el) return;
+      if(document.hidden || document.body.classList.contains('lu-chat-surface') || el.classList.contains('lu-dragging')) { misses = 0; return; }
+      if(getComputedStyle(el).display === 'none') return;
+      var r = el.getBoundingClientRect(), W = window.innerWidth, H = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      var off = r.width < 8 || r.height < 8 || r.right < 4 || r.left > W - 4 || r.bottom < 4 || r.top > H - 4;
+      var at = off ? null : document.elementFromPoint(r.left + r.width/2, r.top + r.height/2);
+      var covered = !off && !(at && (at === el || el.contains(at)));
+      if(!off && !covered){ misses = 0; return; }
+      if(++misses < 2 && !off) return;
+      misses = 0;
+      el.style.removeProperty('--lu-fl-dx'); el.style.removeProperty('--lu-fl-dy');
+      el.style.left = ''; el.style.top = ''; el.style.right = ''; el.style.bottom = '';
+      try{ localStorage.removeItem(_MSG_POS_KEY); }catch(e){}
+      if(typeof _msgSyncSoon === 'function') _msgSyncSoon();
+    }catch(e){}
+  }, 1500);
+})()
 
 /* A surface is a "chat surface" when a conversation is already on screen. */
 function _msgOnChatSurface(){
