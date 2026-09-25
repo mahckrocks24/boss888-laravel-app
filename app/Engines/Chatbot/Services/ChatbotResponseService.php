@@ -263,7 +263,16 @@ class ChatbotResponseService
             if ($expectingField === 'service' && empty($classified['captured_fields']['service']) && str_word_count($userMessage) <= 8 && !preg_match('/[@]|\d{5,}/', $userMessage)) {
                 $classified['captured_fields']['service'] = trim($userMessage, " \t.,!");
             }
-            if ($expectingField && empty($classified['captured_fields'][$expectingField])) {
+            $contactMiss = false;   // CB-CONTACT-1: the visitor answered the contact question with something unusable
+            if ($expectingField === 'contact') {
+                if (empty($classified['captured_fields']['email']) && empty($classified['captured_fields']['phone'])) {
+                    $extracted = $this->extractFieldViaLLM($userMessage, 'contact', $fsmState['captured'] ?? []);
+                    $kind = self::contactKind($extracted);
+                    if ($kind === 'email') $classified['captured_fields']['email'] = strtolower(trim((string) $extracted));
+                    elseif ($kind === 'phone') $classified['captured_fields']['phone'] = preg_replace('/[^\d+]/', '', (string) $extracted);
+                    else $contactMiss = true;
+                }
+            } elseif ($expectingField && empty($classified['captured_fields'][$expectingField])) {
                 $extracted = $this->extractFieldViaLLM($userMessage, $expectingField, $fsmState['captured'] ?? []);
                 if ($extracted !== null) {
                     $classified['captured_fields'][$expectingField] = $extracted;
@@ -326,7 +335,7 @@ class ChatbotResponseService
                 ChatbotSessionStateService::ACTION_FINALISE_LEAD     => $this->actionFinaliseLead($sessionId, $merged, $ctx),
                 ChatbotSessionStateService::ACTION_FINALISE_BOOKING  => $this->actionFinaliseBooking($sessionId, $merged, $ctx),
                 ChatbotSessionStateService::ACTION_FINALISE_CALLBACK => $this->actionFinaliseCallback($sessionId, $merged, $ctx),
-                ChatbotSessionStateService::ACTION_ASK_FIELD         => $this->actionAskField($transition, $ctx, $classified, $merged),
+                ChatbotSessionStateService::ACTION_ASK_FIELD         => $this->actionAskField($transition, $ctx, $classified, $merged, $userMessage, $expectingField, $sessionId),
                 ChatbotSessionStateService::ACTION_ESCALATE          => $this->actionEscalate($sessionId, $userMessage, $classified, $ctx),
                 default                                              => $this->actionAnswer($ctx, $userMessage, $classified, $merged),
             };
@@ -482,6 +491,71 @@ class ChatbotResponseService
         }
     }
 
+    /** CB-CONTACT-1: 'email' | 'phone' | null for a would-be contact value. A phone is 7–15 digits (optional +). */
+    public static function contactKind(?string $value): ?string
+    {
+        $v = trim((string) $value); if ($v === '') return null;
+        if (preg_match('/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/i', $v)) return 'email';
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) || preg_match('/^\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}$/', $v)) return null;   // a date is not a phone (F-CB-C2)
+        $digits = preg_replace('/\D/', '', $v);
+        if (preg_match('/^\+?[\d\s\-().\/]+$/', $v) && strlen($digits) >= 7 && strlen($digits) <= 15) return 'phone';
+        return null;
+    }
+
+    /** CB-CONTACT-1: how many times in a row the bot has already asked for this field (the message being answered included). */
+    private function askedStreak(int $sessionId, string $field): int
+    {
+        $rows = DB::table('chatbot_messages')->where('session_id', $sessionId)->where('role', 'assistant')
+            ->orderByDesc('id')->limit(4)->get(['meta_json']);
+        $n = 0;
+        foreach ($rows as $r) {
+            $meta = json_decode((string) ($r->meta_json ?? ''), true);
+            if (is_array($meta) && ($meta['next_field'] ?? null) === $field) $n++; else break;
+        }
+        return max(1, $n);
+    }
+
+    /** CB-CONTACT-1: the specific reply to an unusable answer. LLM-phrased when the runtime is up; deterministic otherwise. */
+    private function retryFieldMessage(string $field, string $flow, string $userMessage, int $misses, array $ctx): string
+    {
+        $what = match ($field) {
+            'contact' => 'a phone number or an email address',
+            'email'   => 'an email address',
+            'phone'   => 'a phone number',
+            'name'    => 'a name',
+            'date'    => 'a date',
+            'time'    => 'a time',
+            default   => $field,
+        };
+        $fallback = match ($field) {
+            'contact' => "That doesn't look like a valid phone number or email address. Could you send the number with the area code, or your email?",
+            'email'   => "That doesn't look like a valid email address — could you double-check it?",
+            'phone'   => "That doesn't look like a valid phone number. Could you send it with the area code?",
+            'name'    => "Sorry, I didn't catch a name there — what should the team call you?",
+            'date'    => "I couldn't make out a date — which day works for you? For example 'next Tuesday' or 2026-10-03.",
+            'time'    => "I couldn't make out a time — what time suits you? For example 2pm or 14:30.",
+            default   => $this->fsm->promptForField($field, $flow, $ctx),
+        };
+        $tail = $misses >= 2 ? " No pressure — you can keep asking me anything here and share a contact whenever you like." : '';
+        if (! $this->runtime->isConfigured()) return $fallback . $tail;
+        try {
+            $biz = (string) ($ctx['business_name'] ?? $ctx['brand']['name'] ?? 'the business');
+            $system = "You are the website chat assistant for {$biz}. The visitor was asked for {$what} so the team can follow up, "
+                    . "and replied with something that is not {$what}. Write ONE friendly, plain sentence (max 30 words) that says their reply "
+                    . "doesn't look like {$what} and asks again, mentioning the alternative where there is one (a number with the area code, or an email). "
+                    . ($misses >= 2 ? "This is at least the second miss: add a short second sentence that they can keep asking questions and share a contact whenever they like. " : '')
+                    . "No markdown, no links, no apologies longer than two words. Return ONLY JSON: {\"message\": \"...\"}";
+            $user = "Visitor replied: \"" . mb_substr($userMessage, 0, 200) . "\"";
+            $r = $this->runtime->chatJson($system, $user, ['task' => 'chatbot_retry_field', 'field' => $field], 120);
+            $msg = is_array($r['parsed'] ?? null) ? trim((string) ($r['parsed']['message'] ?? '')) : '';
+            $msg = preg_replace('/\s+/', ' ', $msg);
+            if (($r['success'] ?? false) && $msg !== '' && mb_strlen($msg) <= 260 && ! preg_match('~https?://|\[|\*~i', $msg)) return $msg;
+        } catch (\Throwable $e) {
+            Log::warning('[chatbot] retryFieldMessage failed', ['field' => $field, 'error' => $e->getMessage()]);
+        }
+        return $fallback . $tail;
+    }
+
     private function extractFieldViaLLM(string $userMessage, string $field, array $alreadyCaptured): ?string
     {
         if (!$this->runtime->isConfigured()) return null;
@@ -490,6 +564,7 @@ class ChatbotResponseService
             'name'    => "the visitor's personal name (first name, full name, or how they'd like to be addressed)",
             'email'   => "the visitor's email address",
             'phone'   => "the visitor's phone number",
+            'contact' => "the visitor's phone number or email address (return it exactly as written; return null if the message contains neither)",
             'service' => "the service / product the visitor is asking about",
             'date'    => "a calendar date the visitor proposed (ISO YYYY-MM-DD)",
             'time'    => "a time-of-day the visitor proposed (HH:MM 24h)",
@@ -594,11 +669,17 @@ class ChatbotResponseService
      * flags so the widget can render an inline form as fallback if it
      * already has it visible.
      */
-    private function actionAskField(array $transition, array $ctx, array $classified, array $captured): array
+    private function actionAskField(array $transition, array $ctx, array $classified, array $captured, string $userMessage = '', ?string $expectingField = null, int $sessionId = 0): array
     {
         $field = $transition['next_field'];
         $flow  = $transition['flow'];
         $message = $this->fsm->promptForField($field, $flow, $ctx);
+        // CB-CONTACT-1: we asked for this very field and the answer was not usable — say so, specifically, instead of
+        // repeating the question. The runtime LLM phrases it when configured; the fallback names what was wrong.
+        if ($expectingField !== null && $expectingField === $field && trim($userMessage) !== '') {
+            $misses = $sessionId > 0 ? $this->askedStreak($sessionId, $field) : 1;
+            $message = $this->retryFieldMessage($field, $flow, $userMessage, $misses, $ctx);
+        }
         $intent = match ($flow) {
             'booking'  => 'booking',
             'callback' => 'callback',

@@ -121,7 +121,8 @@ class ChatbotSessionStateService
         $required = $this->requiredFieldsForFlow($flow);
         $missing = [];
         foreach ($required as $field) {
-            if (empty($captured[$field])) $missing[] = $field;
+            if (self::fieldSatisfied($field, $captured)) continue;   // CB-CONTACT-1: 'contact' = email OR phone
+            $missing[] = $field;
         }
 
         // All required captured → finalise on this turn.
@@ -167,7 +168,7 @@ class ChatbotSessionStateService
                 'callback' => "Happy to arrange a callback. Could I get your name first?",
                 default    => "Happy to help with that — could I get your name?",
             },
-            'email' => "What's the best number or email so the team can follow up?",
+            'email', 'contact' => "What's the best number or email so the team can follow up?",
             'phone' => $flow === 'callback'
                 ? "What's the best number to reach you on? Happy to call you back quickly."
                 : "And a number to reach you on? (optional — just say 'skip' to move on)",
@@ -177,11 +178,18 @@ class ChatbotSessionStateService
         };
     }
 
+    /** CB-CONTACT-1: a field is satisfied when its value is captured; 'contact' is satisfied by an email OR a phone. */
+    public static function fieldSatisfied(string $field, array $captured): bool
+    {
+        if ($field === 'contact') return ! empty($captured['email']) || ! empty($captured['phone']);
+        return ! empty($captured[$field]);
+    }
+
     public function requiredFieldsForFlow(string $flow): array
     {
         return match ($flow) {
-            'lead'     => ['name', 'email'],
-            'booking'  => ['name', 'email', 'date'],   // time is nice-to-have, not required
+            'lead'     => ['name', 'contact'],          // CB-CONTACT-1: the prompt says "number or email" — either satisfies it
+            'booking'  => ['name', 'contact', 'date'],  // time is nice-to-have, not required
             'callback' => ['name', 'phone'],
             default    => [],
         };
