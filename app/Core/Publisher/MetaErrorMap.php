@@ -27,7 +27,7 @@ final class MetaErrorMap
 
     /** Token/permission problems — the connection needs user action. */
     private const AUTH_CODES = [190, 102, 458, 459, 463, 464, 467];
-    private const PERMISSION_CODES = [10, 200, 803, 3, 279];
+    private const PERMISSION_CODES = [10, 200, 283, 803, 3, 279];   // 283: 'Requires pages_read_engagement permission' (SOCIAL-LIVE-1b)
     /** Transient throttling / server-side wobble. */
     private const RATE_CODES = [4, 17, 32, 613, 341];
     private const TRANSIENT_CODES = [1, 2, 341368];
@@ -71,7 +71,7 @@ final class MetaErrorMap
         }
         if ($codeInt !== null && in_array($codeInt, self::PERMISSION_CODES, true)) {
             return self::r(self::FAILED, 'META_' . $codeInt,
-                'The connected account is missing a permission required to publish.', false, true);
+                'The Page connection does not include permission to post. Reconnect it in Settings › Social and allow posting when Facebook asks.', false, true);
         }
         if ($codeInt !== null && in_array($codeInt, self::RATE_CODES, true)) {
             return self::r(self::RETRYABLE, 'META_' . $codeInt,
@@ -87,6 +87,12 @@ final class MetaErrorMap
         return self::r(self::FAILED,
             $codeInt !== null ? 'META_' . $codeInt . ($sub ? '_' . $sub : '') : ('HTTP_' . $status),
             $safe !== '' ? $safe : 'The provider rejected this post.', false, false);
+    }
+
+    /** SOCIAL-LIVE-1b: a permission refusal marks the connection INSUFFICIENT, not REVOKED — the fix is a re-grant, not a re-login. */
+    public static function isPermissionCode(?string $code): bool
+    {
+        return is_string($code) && preg_match('/^META_(\d+)/', $code, $m) === 1 && in_array((int) $m[1], self::PERMISSION_CODES, true);
     }
 
     /**

@@ -239,7 +239,7 @@
               '<textarea id="sh-input" class="sh-ta" rows="1" placeholder="Tell Sarah what you want to achieve…" autocomplete="off"></textarea>' +
               '<button type="button" class="sh-send" id="sh-send" aria-label="Send to Sarah" title="Send (Enter)">↑</button>' +
             '</div>' +
-            '<div class="sh-hint" id="sh-hint">Sarah plans, her team does the work, and you approve anything that matters.</div>' +
+            '<div class="sh-hint" id="sh-hint">Sarah is AI and can make mistakes.</div>' +
           '</div>' +
         '</div>';
       S.feed = document.getElementById('sh-feed'); S.input = document.getElementById('sh-input'); S.sendBtn = document.getElementById('sh-send');
@@ -619,6 +619,17 @@
   /* PREVIEW-1: what will be posted, before it is posted. Post it publishes through the Social engine; Edit changes the
      caption in place (PUT social/posts/{id}); Not now leaves the draft under Social › Drafts. "or tell me what to change"
      keeps text as the option. */
+  /* SOCIAL-LIVE-1b: a refusal from the platform, in words the owner can act on (never a bare error code). */
+  function failWords(cls) {
+    var c = String(cls || '').replace(/^permanent:|^transient:|^uncertain:/, '');
+    var n = /^META_(\d+)/.exec(c); var code = n ? +n[1] : 0;
+    if ([10, 200, 283, 803, 3, 279].indexOf(code) >= 0 || /INSUFFICIENT/.test(c)) return 'Facebook says this Page connection does not include permission to post. Reconnect the Page in Settings › Social (allow posting when Facebook asks), then press Post it again.';
+    if ([190, 102, 458, 459, 463, 464, 467].indexOf(code) >= 0 || /REVOKED|EXPIRED/.test(c)) return 'Facebook no longer accepts this Page connection. Reconnect the Page in Settings › Social, then press Post it again.';
+    if (/NOT_CONNECTED|DISCONNECTED/.test(c)) return 'No Facebook Page is connected for this business yet. Connect one in Settings › Social.';
+    if (/NO_CONNECTOR/.test(c)) return 'Posting to this platform is not supported yet.';
+    if (/^HTTP_5|^META_(4|17|32|613|341|1|2)$/.test(c)) return 'Facebook had a temporary problem. Sarah will try again shortly.';
+    return 'Facebook refused the post' + (c ? ' (' + c.replace(/_/g, ' ').toLowerCase() + ')' : '') + '. Tell Sarah and she will look into it.';
+  }
   function draftCard(dr) {
     var c = document.createElement('div'); c.className = 'sh-draft'; c.setAttribute('data-post', String(dr.post_id)); c.setAttribute('role', 'group');
     var platform = String(dr.platform || 'facebook'); var pf = platform === 'instagram' ? 'ig' : platform === 'linkedin' ? 'li' : 'fb';
@@ -643,8 +654,13 @@
     var capEl = c.querySelector('.cap'); capEl.textContent = hasCaption ? dr.caption : 'No caption yet';
     if (dr.execution_status === 'dry_run_ok') {   /* PREVIEW-3: it already went through a dry run — say so before the next click */
       var pill0 = c.querySelector('.pill'); pill0.className = 'pill warn'; pill0.innerHTML = '<i></i>Not switched on';
-      var n0 = document.createElement('div'); n0.className = 'note why'; n0.style.color = 'var(--am,#f59e0b)'; n0.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is not switched on for the platform yet (it is waiting on Meta\'s app review). Your draft is intact; when the switch is on, Post it sends it.';
+      var n0 = document.createElement('div'); n0.className = 'note why'; n0.style.color = 'var(--am,#f59e0b)'; n0.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is switched off for the platform right now. Your draft is intact; when the switch is on, Post it sends it.';
       c.querySelector('.foot').insertBefore(n0, c.querySelector('.foot .row'));
+    }
+    if (dr.execution_status === 'failed' && dr.failure_class) {   /* SOCIAL-LIVE-1b: it was refused last time — say why, in words, before the next click */
+      var pillF = c.querySelector('.pill'); pillF.className = 'pill warn'; pillF.innerHTML = '<i></i>Did not go out';
+      var nF = document.createElement('div'); nF.className = 'note why'; nF.style.color = 'var(--rd,#f87171)'; nF.textContent = failWords(dr.failure_class);
+      c.querySelector('.foot').insertBefore(nF, c.querySelector('.foot .row'));
     }
     var btns = c.querySelectorAll('.foot button'); var post = btns[0], edit = btns[1], later = btns[2];
     function setBusy(on) { btns.forEach(function (b) { b.disabled = on; }); }
@@ -657,8 +673,8 @@
             var pst = (r.json && (r.json.post || r.json.data)) || r.json || {}; var ex = String(pst.execution_status || ''); var st = String(pst.status || '');
             var foot = c.querySelector('.foot'), pill = c.querySelector('.pill');
             if (st === 'published' || ex === 'published') { foot.innerHTML = '<div class="done">✓ Posted to ' + esc(pageName) + '.</div><div class="note">It appears under Results once the platform confirms it.</div>'; pill.className = 'pill ok'; pill.innerHTML = '<i></i>Posted'; showToast('Posted.', 'success'); setTimeout(refreshActionBar, 6000); return; }
-            if (ex === 'dry_run_ok') { setBusy(false); post.textContent = 'Post it'; pill.className = 'pill warn'; pill.innerHTML = '<i></i>Not switched on'; var n = foot.querySelector('.note.why') || document.createElement('div'); n.className = 'note why'; n.style.color = 'var(--am,#f59e0b)'; n.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is not switched on for the platform yet (it is waiting on Meta\'s app review). Your draft is intact; when the switch is on, Post it sends it.'; if (!n.parentNode) foot.insertBefore(n, foot.querySelector('.row')); return; }
-            if (ex === 'failed' || ex === 'publishing_unknown' || st === 'failed') { setBusy(false); post.textContent = 'Post it'; var m = foot.querySelector('.note.why') || document.createElement('div'); m.className = 'note why'; m.style.color = 'var(--rd,#f87171)'; m.textContent = ex === 'publishing_unknown' ? 'Facebook did not confirm the post. Sarah will check and tell you.' : 'The post did not go out: ' + (pst.failure_class ? String(pst.failure_class).replace(/^permanent:|^transient:/, '').replace(/_/g, ' ').toLowerCase() : 'the platform refused it'); if (!m.parentNode) foot.insertBefore(m, foot.querySelector('.row')); return; }
+            if (ex === 'dry_run_ok') { setBusy(false); post.textContent = 'Post it'; pill.className = 'pill warn'; pill.innerHTML = '<i></i>Not switched on'; var n = foot.querySelector('.note.why') || document.createElement('div'); n.className = 'note why'; n.style.color = 'var(--am,#f59e0b)'; n.innerHTML = '<b>Everything passed, but nothing went out.</b> Publishing to Facebook is switched off for the platform right now. Your draft is intact; when the switch is on, Post it sends it.'; if (!n.parentNode) foot.insertBefore(n, foot.querySelector('.row')); return; }
+            if (ex === 'failed' || ex === 'publishing_unknown' || st === 'failed') { setBusy(false); post.textContent = 'Post it'; var m = foot.querySelector('.note.why') || document.createElement('div'); m.className = 'note why'; m.style.color = 'var(--rd,#f87171)'; m.textContent = ex === 'publishing_unknown' ? 'Facebook did not confirm the post. Sarah will check and tell you.' : failWords(pst.failure_class); if (ex === 'failed' || st === 'failed') { pill.className = 'pill warn'; pill.innerHTML = '<i></i>Did not go out'; } if (!m.parentNode) foot.insertBefore(m, foot.querySelector('.row')); return; }
             if (++tries < 10) { setTimeout(settle, 1500); return; }
             setBusy(false); post.textContent = 'Post it'; var w = document.createElement('div'); w.className = 'note why'; w.textContent = 'Sent to the publisher — Sarah confirms it under Results.'; foot.insertBefore(w, foot.querySelector('.row'));
           }).catch(function () { if (++tries < 10) setTimeout(settle, 1500); else { setBusy(false); post.textContent = 'Post it'; } });

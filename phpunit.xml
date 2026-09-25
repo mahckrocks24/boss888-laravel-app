@@ -66,6 +66,7 @@
         <env name="INFRA_CUSTOM_HOSTNAME_CONNECTOR" value="App\Connectors\Infrastructure\Null\NullCustomHostnameConnector" force="true"/>
         <env name="INFRA_NULL_OUTCOME" value="success" force="true"/>
         <env name="SOCIAL_MOCK_MODE" value="true" force="true"/>
+        <env name="PUBLISHER_LIVE_TRANSPORT" value="false" force="true"/>
         <env name="CLOUDFLARE_API_TOKEN" value="" force="true"/>
         <env name="CLOUDFLARE_ZONE_ID" value="" force="true"/>
         <env name="BELLA_ADMIN_TOKEN" value="" force="true"/>

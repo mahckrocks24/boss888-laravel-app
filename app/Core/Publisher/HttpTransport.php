@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Log;
 /**
  * Real HTTP to Meta.
  *
- * NOT REACHABLE YET. PublisherService only constructs this when
- * config('publisher.live_transport') is true, and no config file sets it — there
- * is no config/publisher.php, so the default false applies. Enabling live
- * sending is therefore a deliberate, reviewable act, not a default.
+ * Constructed only when config('publisher.live_transport') is true —
+ * config/publisher.php reads PUBLISHER_LIVE_TRANSPORT from .env (SOCIAL-LIVE-1,
+ * switched on by the Owner 2026-09-25); phpunit.xml pins it to false so tests
+ * never reach Meta. Enabling live sending is a deliberate, reviewable act.
  *
- * It exists now so the connector code is written against the real response
- * shapes, including the timeout case that produces an UNCERTAIN outcome.
+ * Written against the real response shapes, including the timeout case that
+ * produces an UNCERTAIN outcome.
  */
 final class HttpTransport implements Transport
 {

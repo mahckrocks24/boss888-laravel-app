@@ -11,11 +11,11 @@ namespace App\Core\Publisher;
  * connector logic — endpoint shapes, error mapping, container workflows — be
  * fully exercised while it remains impossible to contact Meta by accident.
  *
- * HttpTransport is deliberately inert until something constructs it, and nothing
- * does yet: no route is wired, and PublisherService resolves MockTransport
- * unless config('publisher.live_transport') is true, which no config file sets.
- * Live sending becomes a deliberate one-line change once Meta permissions and
- * designated test assets exist.
+ * PublisherService and SocialService::publishPost resolve HttpTransport only when
+ * config('publisher.live_transport') is true. SOCIAL-LIVE-1 (2026-09-25): that
+ * value now comes from config/publisher.php <- PUBLISHER_LIVE_TRANSPORT in .env,
+ * switched on by the Owner; phpunit.xml pins it to false so the suite can never
+ * contact Meta.
  */
 interface Transport
 {

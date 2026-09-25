@@ -245,13 +245,16 @@ class SocialConnector extends BaseConnector
             'created_at'   => now()->toISOString(),
         ], now()->addMinutes(10));
 
-        // v5.5.4 — narrowed to scopes that auto-approve in Development mode.
-        // Broader publishing scopes (pages_manage_posts, instagram_content_publish)
-        // require the Facebook app to pass App Review before they can be granted.
-        // Once connect works end-to-end we broaden these and submit for review.
+        // SOCIAL-LIVE-1b (2026-09-25): publishing needs pages_read_engagement + pages_manage_posts
+        // (ConnectionHealth::REQUIRED_SCOPES). The v5.5.4 narrowing to public_profile + pages_show_list
+        // produced Page tokens Meta refuses with #283 the moment the live transport was switched on.
+        // While the Meta app is in Development mode these scopes are granted to the app's own roles
+        // (admins, developers, testers) without App Review; public users need the reviewed app.
         $scopes = implode(',', [
             'public_profile',
             'pages_show_list',
+            'pages_read_engagement',
+            'pages_manage_posts',
         ]);
 
         $query = [

@@ -320,7 +320,10 @@ class SocialService
         // ── FAILED / RETRYABLE.
         if (!empty($r['needs_reconnect'])) {
             \App\Core\Publisher\ConnectionHealth::mark((int) $account->id,
-                \App\Core\Publisher\ConnectionHealth::REVOKED, $r['error_code'] ?? null);
+                \App\Core\Publisher\MetaErrorMap::isPermissionCode($r['error_code'] ?? null)
+                    ? \App\Core\Publisher\ConnectionHealth::INSUFFICIENT      // SOCIAL-LIVE-1b: re-grant, not re-login
+                    : \App\Core\Publisher\ConnectionHealth::REVOKED,
+                $r['error_code'] ?? null);
         }
         DB::table('social_posts')->where('id', $postId)->update([
             'status'                => 'draft',
