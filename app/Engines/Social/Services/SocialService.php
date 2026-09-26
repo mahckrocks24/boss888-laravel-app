@@ -97,8 +97,13 @@ class SocialService
     public static function recentChatMedia(int $wsId, int $minutes = 60): ?array
     {
         try {
+            // POST-MEDIA-1b (2026-09-26): an image is carried ONCE — only if Sarah made it after the last post drafted in this
+            // workspace. The "better one" draft (post 298) otherwise re-used the earlier nutrition banner.
+            $since = now()->subMinutes($minutes);
+            $lastPost = DB::table('social_posts')->where('workspace_id', $wsId)->max('created_at');
+            if ($lastPost && $lastPost > $since) { $since = \Illuminate\Support\Carbon::parse($lastPost); }
             $rows = DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')
-                ->where('created_at', '>=', now()->subMinutes($minutes))->where('metadata_json', 'like', '%attachments%')
+                ->where('created_at', '>', $since)->where('metadata_json', 'like', '%attachments%')
                 ->orderByDesc('id')->limit(10)->pluck('metadata_json');
             $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'staging.levelupgrowth.io';
             foreach ($rows as $j) {

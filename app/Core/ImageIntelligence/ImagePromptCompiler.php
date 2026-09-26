@@ -105,6 +105,24 @@ class ImagePromptCompiler
 
         if ($mode === 'baked_in') {
             $headline = trim((string) ($ts['headline'] ?? ''));
+            // TEXT-ONE-LINE-1 (Owner 2026-09-26: "it is adding unnecessary giberish texts"): an image model draws ONE short,
+            // large line reliably and turns anything smaller into gibberish (the gold sub-line on the Chef Red banner). Baked-in
+            // text is the headline ONLY: every other quoted line, with the words that introduce it, leaves the prompt, and the
+            // model is told the headline is the only text allowed. The dropped copy belongs in the post caption.
+            $__q = '/(?:,?\s*(?:with|and|plus)?\s*(?:an?\s+)?(?:small(?:er)?\s+|thin\s+|gold\s+|tiny\s+)*(?:sub-?line|sub-?headline|subtitle|tag-?line|strap-?line|caption|secondary line|small text|fine print)\b[^"\x{201C}.;:]{0,40}:?\s*)?(?:"([^"]{2,160})"|\x{201C}([^\x{201D}]{2,160})\x{201D}|(?<=[\s:])\'([^\']{2,160})\'(?=[\s,.;]|$))/u';
+            if ($headline === '' && preg_match($__q, $prompt, $__hm)) { $headline = trim((string) ($__hm[1] ?: ($__hm[2] ?? '') ?: ($__hm[3] ?? ''))); }
+            if ($headline !== '') {
+                $__dropped = [];
+                $prompt = preg_replace_callback($__q, function ($m) use ($headline, &$__dropped) {
+                    $t = trim((string) ($m[1] ?: ($m[2] ?? '') ?: ($m[3] ?? '')));
+                    if (strcasecmp(rtrim($t, ' .!'), rtrim($headline, ' .!')) === 0) return $m[0];
+                    $__dropped[] = $t; return '';
+                }, $prompt);
+                $prompt = preg_replace('/\s{2,}/', ' ', (string) $prompt);
+                if ($__dropped) { $flags[] = 'secondary_text_moved_to_caption'; }
+                $prompt = rtrim($prompt, '. ') . '. The ONLY text anywhere in the image is the headline "' . $headline . '", spelled exactly, large and legible. '
+                    . 'No sub-line, tagline, caption, small print, labels, signage, numbers or any other letters or words.';
+            }
             if ($headline !== '' && stripos($prompt, $headline) === false) {
                 $prompt = rtrim($prompt, '. ') . '. Render the exact short headline text "' . $headline . '" '
                     . (($ts['placement'] ?? '') !== '' ? 'placed ' . $ts['placement'] . ', ' : '')

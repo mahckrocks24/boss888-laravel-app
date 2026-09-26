@@ -119,6 +119,7 @@
       '.sh-draft .count{font-size:11.5px;color:var(--t3);margin-top:4px;text-align:right}',
       '.sh-draft .lc{margin:12px -14px 0;border-top:1px solid var(--bd);border-bottom:1px solid var(--bd);background:var(--s2)}',
       '.sh-draft .lc .img{width:100%;aspect-ratio:1.91/1;object-fit:cover;display:block;background:var(--s3,var(--s2))}.sh-draft .lc .img.ph{display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:12px}',
+      '.sh-draft .lc.media{background:#000}.sh-draft .lc.media .img{aspect-ratio:auto;height:auto;max-height:70vh;object-fit:contain}',   /* MEDIA-FIT-1: a media post shows the whole image/video, uncropped */
       '.sh-draft .lc .meta{padding:10px 14px}.sh-draft .lc .dom{font:600 11px var(--fb);letter-spacing:.08em;text-transform:uppercase;color:var(--t3)}.sh-draft .lc .ttl{font:700 14.5px var(--fh);color:var(--t1);margin-top:3px;line-height:1.25}.sh-draft .lc .desc{font-size:12.5px;color:var(--t2);margin-top:3px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
       '.sh-draft .react{display:flex;justify-content:space-around;padding:8px 6px 10px;color:var(--t3);font:600 12.5px var(--fb);user-select:none}.sh-draft .react span{display:inline-flex;align-items:center;gap:6px}',
       '.sh-draft .foot{display:flex;flex-direction:column;gap:8px;padding:12px 14px 14px;border-top:1px solid var(--bd)}',
@@ -166,6 +167,7 @@
       '.sh-lb-dl,.sh-lb-close{font:600 13px/1 inherit;padding:10px 16px;border-radius:10px;cursor:pointer;border:1px solid rgba(255,255,255,.25);text-decoration:none}',
       '.sh-lb-dl{background:#6C5CE7;color:#fff;border-color:#6C5CE7}.sh-lb-dl:hover{background:#5A4BD1}',
       '.sh-lb-close{background:rgba(255,255,255,.12);color:#fff}.sh-lb-close:hover{background:rgba(255,255,255,.22)}',
+      '#sh-lightbox,#sh-lightbox *{touch-action:none!important;-webkit-user-select:none;user-select:none}#sh-lightbox{overscroll-behavior:contain}#sh-lightbox .sh-lb-img{transform-origin:center center;will-change:transform;cursor:zoom-in;-webkit-user-drag:none}#sh-lightbox.zoomed .sh-lb-img{cursor:grab}#sh-lightbox .sh-lb-hint{color:rgba(255,255,255,.6);font-size:12px}',   /* LB-ZOOM-1: the viewer owns every gesture — pinch zooms the IMAGE, never the page (ID strength beats the phone layer) */
       '.sh-attach{display:inline-flex;align-items:center;justify-content:center}.sh-attach:hover{color:var(--t1);border-color:var(--p)}',
       '.sh-attach-wrap{position:relative;flex:none;width:44px;height:44px}.sh-file{position:absolute;inset:0;width:44px;height:44px;opacity:0;cursor:pointer;font-size:0;border-radius:12px;z-index:1}.sh-file:focus{outline:none}',
       '.sh-attach-wrap:has(.sh-file:hover) .sh-attach{color:var(--t1);border-color:var(--p)}',
@@ -487,7 +489,39 @@
     if (!ov) { ov = document.createElement('div'); ov.id = 'sh-lightbox'; ov.className = 'sh-lightbox'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); document.body.appendChild(ov); }
     ov.innerHTML = '<div class="sh-lb-backdrop"></div><div class="sh-lb-body"><img class="sh-lb-img" src="' + esc(url) + '" alt="Image"><div class="sh-lb-bar"><a class="sh-lb-dl" href="' + esc(url) + '" download>\u2193 Download</a><button type="button" class="sh-lb-close">\u2715 Close</button></div></div>';
     ov.classList.add('open');
-    function close() { ov.classList.remove('open'); ov.innerHTML = ''; document.removeEventListener('keydown', onKey); }
+    /* LB-ZOOM-1 (Owner 2026-09-26: "instead of just the image zoom, the entire sarah chat zooms in and out"): pinch, drag,
+       double-tap and the mouse wheel transform the IMAGE only. touch-action:none on #sh-lightbox stops the browser zooming
+       the page; iOS Safari also needs its gesture events cancelled while the viewer is open. */
+    var lbImg = ov.querySelector('.sh-lb-img'); var zs = 1, ztx = 0, zty = 0, pts = {}, st = null, moved = false, lastTap = 0, downAt = null;
+    var hint = document.createElement('div'); hint.className = 'sh-lb-hint'; hint.textContent = 'Pinch, scroll or double-tap to zoom'; ov.querySelector('.sh-lb-body').appendChild(hint);
+    function zApply(anim) { lbImg.style.transition = anim ? 'transform .18s ease' : 'none'; lbImg.style.transform = 'translate(' + ztx + 'px,' + zty + 'px) scale(' + zs + ')'; ov.classList.toggle('zoomed', zs > 1.01); }
+    function zSettle() { if (zs <= 1.01) { zs = 1; ztx = 0; zty = 0; } }
+    function zDist() { var k = Object.keys(pts); if (k.length < 2) return 0; var a = pts[k[0]], b = pts[k[1]]; return Math.hypot(a.x - b.x, a.y - b.y); }
+    lbImg.addEventListener('pointerdown', function (e) {
+      e.preventDefault(); try { lbImg.setPointerCapture(e.pointerId); } catch (x) {}
+      pts[e.pointerId] = { x: e.clientX, y: e.clientY }; var n = Object.keys(pts).length;
+      if (n === 1) { moved = false; downAt = { x: e.clientX, y: e.clientY }; st = { x: e.clientX, y: e.clientY, tx: ztx, ty: zty }; }
+      if (n === 2) { moved = true; st = { d: zDist(), s: zs }; }
+    });
+    lbImg.addEventListener('pointermove', function (e) {
+      if (!pts[e.pointerId]) return; pts[e.pointerId] = { x: e.clientX, y: e.clientY }; var n = Object.keys(pts).length;
+      if (downAt && Math.abs(e.clientX - downAt.x) + Math.abs(e.clientY - downAt.y) > 8) moved = true;
+      if (n >= 2 && st && st.d) { zs = Math.max(1, Math.min(5, st.s * zDist() / st.d)); zApply(false); }
+      else if (n === 1 && st && st.x != null && zs > 1) { ztx = st.tx + (e.clientX - st.x); zty = st.ty + (e.clientY - st.y); zApply(false); }
+    });
+    function zUp(e) {
+      if (!pts[e.pointerId]) return; delete pts[e.pointerId]; var k = Object.keys(pts);
+      if (k.length === 1) { st = { x: pts[k[0]].x, y: pts[k[0]].y, tx: ztx, ty: zty }; return; }
+      if (k.length) return;
+      if (!moved) { var now = Date.now(); if (now - lastTap < 320) { if (zs > 1) { zs = 1; ztx = 0; zty = 0; } else { zs = 2.5; } zApply(true); lastTap = 0; return; } lastTap = now; }
+      zSettle(); zApply(true);
+    }
+    lbImg.addEventListener('pointerup', zUp); lbImg.addEventListener('pointercancel', zUp);
+    function onWheel(e) { e.preventDefault(); zs = Math.max(1, Math.min(5, zs * (e.deltaY < 0 ? 1.15 : 1 / 1.15))); zSettle(); zApply(false); }
+    ov.addEventListener('wheel', onWheel, { passive: false });
+    function noGesture(e) { e.preventDefault(); }
+    document.addEventListener('gesturestart', noGesture, { passive: false }); document.addEventListener('gesturechange', noGesture, { passive: false });
+    function close() { ov.classList.remove('open'); ov.innerHTML = ''; document.removeEventListener('keydown', onKey); document.removeEventListener('gesturestart', noGesture); document.removeEventListener('gesturechange', noGesture); ov.removeEventListener('wheel', onWheel); ov.classList.remove('zoomed'); }
     function onKey(e) { if (e.key === 'Escape') close(); }
     ov.querySelector('.sh-lb-backdrop').addEventListener('click', close);
     ov.querySelector('.sh-lb-close').addEventListener('click', close);
@@ -551,7 +585,7 @@
     if ((!text && !pendingAtts.length) || S.sendBtn.disabled) return;
     var empty = S.feed.querySelector('.sh-empty'); if (empty) empty.remove();
     S.input.value = ''; S.input.style.height = 'auto';
-    clearActionBar();   // APPROVE-BUTTONS-1: a typed reply supersedes the buttons
+    (function () { var b = document.getElementById('sh-actbar'); if (!b) return; b.querySelectorAll('.sh-chips').forEach(function (x) { x.remove(); }); if (!b.children.length) b.remove(); })();   // PREVIEW-KEEP-1: a typed reply supersedes the quick replies — never the post preview or an open approval
     S.feed.appendChild(bubble({ from: 'User', content: text || ('I\'ve attached ' + (pendingAtts.length === 1 ? '"' + pendingAtts[0].name + '"' : pendingAtts.length + ' files') + '.'), ts: null, attachments: pendingAtts })); toBottom();
     var typing = document.createElement('div'); typing.className = 'sh-orch'; typing.id = 'sh-typing'; typing.innerHTML = '<span class="dot"></span><span>Sarah is thinking…</span>'; S.feed.appendChild(typing); toBottom();
     var body = { content: text, from: 'User' };
@@ -610,7 +644,7 @@
     drafts.forEach(function (dr) { bar.appendChild(draftCard(dr)); });   /* PREVIEW-1 */
     if (chips.length) {
       var ch = document.createElement('div'); ch.className = 'sh-chips';
-      chips.forEach(function (q, i) { var b = document.createElement('button'); b.type = 'button'; b.className = i === 0 ? 'go' : ''; b.textContent = q.label; b.addEventListener('click', function () { clearActionBar(); S.input.value = q.text; send(); }); ch.appendChild(b); });
+      chips.forEach(function (q, i) { var b = document.createElement('button'); b.type = 'button'; b.className = i === 0 ? 'go' : ''; b.textContent = q.label; b.addEventListener('click', function () { ch.remove(); S.input.value = q.text; send(); }); ch.appendChild(b); });
       var hint = document.createElement('span'); hint.className = 'd'; hint.style.cssText = 'font-size:12px;color:var(--t3);align-self:center'; hint.textContent = 'or just type';
       ch.appendChild(hint); bar.appendChild(ch);
     }
@@ -641,8 +675,8 @@
     /* POST-MEDIA-1: the post's own image/video is what goes out (as a photo/video post); tap an image to inspect it. */
     var mu = dr.media_url && /^(https?:\/\/|\/)/.test(String(dr.media_url)) ? String(dr.media_url) : '';
     var mediaBlock = mu ? (dr.media_kind === 'video'
-      ? '<div class="lc"><video class="img" src="' + esc(mu) + '" controls playsinline preload="metadata"></video></div>'
-      : '<div class="lc"><button type="button" class="sh-att-img" data-full="' + esc(mu) + '" aria-label="View image" style="display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in"><img class="img" src="' + esc(mu) + '" alt=""></button></div>') : '';
+      ? '<div class="lc media"><video class="img" src="' + esc(mu) + '" controls playsinline preload="metadata"></video></div>'
+      : '<div class="lc media"><button type="button" class="sh-att-img" data-full="' + esc(mu) + '" aria-label="View image" style="display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in"><img class="img" src="' + esc(mu) + '" alt=""></button></div>') : '';
     var img = dr.image && /^(https?:\/\/|\/)/.test(String(dr.image)) ? '<button type="button" class="sh-att-img" data-full="' + esc(dr.image) + '" aria-label="View image" style="display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in"><img class="img" src="' + esc(dr.image) + '" alt=""></button>' : '<div class="img ph">No image on the article — Facebook will show the link only</div>';
     var linkCard = dr.link ? '<div class="lc">' + img + '<div class="meta"><div class="dom">' + esc(dr.domain || String(dr.link).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) + '</div><div class="ttl">' + esc(dr.article_title || dr.link) + '</div>' + (dr.description ? '<div class="desc">' + esc(dr.description) + '</div>' : '') + '</div></div>' : '';
     c.innerHTML =
@@ -845,7 +879,7 @@
         if (S.activePoll) { clearInterval(S.activePoll); S.activePoll = null; }
         // NANOBANANA (2026-09-03): fetch the full row so image attachments render LIVE (the event carries
         // only text); fall back to the event content if the row can't be found. No refresh needed.
-        hideOrch(); (function () { var _fb = { from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) }; api('GET', 'agents/' + SLUG + '/messages').then(function (r) { var arr = Array.isArray(r.json) ? r.json : [], full = null; for (var i = 0; i < arr.length; i++) { if (String(arr[i].id) === String(rowId)) { full = arr[i]; break; } } revealBubble(full || _fb); }).catch(function () { revealBubble(_fb); }); })(); S.lastAgentText = String(ev.content || '').trim(); S.lastAgentAt = Date.now(); loadBriefing();   /* DEC-0030: the sync/event final unfolds too */
+        hideOrch(); (function () { var _fb = { from: 'Sarah', content: ev.content, ts: ev.timestamp, id: rowId, error: !!(ev.data && ev.data.error) }; api('GET', 'agents/' + SLUG + '/messages').then(function (r) { var arr = Array.isArray(r.json) ? r.json : [], full = null; for (var i = 0; i < arr.length; i++) { if (String(arr[i].id) === String(rowId)) { full = arr[i]; break; } } revealBubble(full || _fb); }).catch(function () { revealBubble(_fb); }); })(); S.lastAgentText = String(ev.content || '').trim(); S.lastAgentAt = Date.now(); loadBriefing(); setTimeout(refreshActionBar, 400);   /* DEC-0030: the sync/event final unfolds too; PREVIEW-KEEP-1: and the bar is redrawn on this path as well */
       } else if (ev.type === 'task_created' || ev.type === 'task_started' || ev.type === 'delegation') {
         var d = ev.data || {}; var ag = String(ev.agent_id || d.agent_slug || d.agent || (d.assigned_agents && d.assigned_agents[0]) || '').toLowerCase();
         showOrch(ag, humanAction(d.title || d.action_label || d.label));

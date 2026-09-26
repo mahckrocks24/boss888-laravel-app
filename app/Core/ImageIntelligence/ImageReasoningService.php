@@ -102,6 +102,7 @@ class ImageReasoningService
             . "- 'separate_overlay': the model renders a TEXT-FREE visual with deliberate negative space; exact copy + layout are returned separately to be rendered by Studio's real typography engine. PREFER this whenever exact spelling, substantial copy, or exact brand typography is required.\n"
             . "- 'none': no text at all. Use for SEO/blog featured images, visual-only requests, or when platform strategy calls for no embedded copy.\n"
             . "gpt-image-1 CANNOT reliably render long or multi-line text — never choose baked_in for more than a few words.\n"
+            . "- baked_in carries EXACTLY ONE line: the headline, at most 7 words. Never put a sub-line, tagline, small print, contact details, locations or URLs into the image — that copy belongs in the post caption; leave supporting_copy empty for baked_in.\n"
             . "For the provider_prompt: if mode is 'separate_overlay' or 'none', you MUST instruct the model to include NO text/letters/words and to reserve clean negative space; if 'baked_in', embed the exact short headline in quotes.\n\n"
             // RFC-0009 P4/P5 (2026-09-16): grounding and fidelity rules. The customer's intent is never
             // rewritten; what cannot be verified is flagged (UNVERIFIED:) for the caller to resolve.
