@@ -617,8 +617,8 @@ window.socialLoadInsights = async function(){
              no_reply: ['No reply needed', 'var(--t3)'], failed: ['Did not post', 'var(--rd,#f87171)'], 'new': ['Reading…', 'var(--t3)'] };
   function when(t) { if (!t) return ''; var d = new Date(String(t).replace(' ', 'T') + (/[zZ+]/.test(String(t)) ? '' : 'Z')); if (isNaN(d)) return ''; var m = Math.round((Date.now() - d) / 60000); return m < 60 ? m + 'm ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : d.toLocaleDateString(); }
   function pill(txt, col) { return '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid ' + col + ';color:' + col + '">' + _socEsc(txt) + '</span>'; }
-  function counts() { var c = { awaiting: 0, replied: 0, complaints: 0, quiet: 0 }; S.rows.forEach(function (r) { if (r.status === 'awaiting_approval') c.awaiting++; if (r.status === 'replied') c.replied++; if (r.needs_owner && r.status !== 'replied') c.complaints++; if (r.status === 'no_reply') c.quiet++; }); return c; }
-  function visible() { return S.rows.filter(function (r) { return S.filter === 'all' ? true : S.filter === 'awaiting' ? r.status === 'awaiting_approval' : S.filter === 'replied' ? r.status === 'replied' : S.filter === 'complaints' ? r.needs_owner : (r.status === 'no_reply' || r.status === 'declined' || r.status === 'failed'); }); }
+  function counts() { var c = { awaiting: 0, replied: 0, complaints: 0, quiet: 0, hot: 0 }; S.rows.forEach(function (r) { if (r.intent === 'hot') c.hot++;   /* SOCIAL-LEADS-1 */ if (r.status === 'awaiting_approval') c.awaiting++; if (r.status === 'replied') c.replied++; if (r.needs_owner && r.status !== 'replied') c.complaints++; if (r.status === 'no_reply') c.quiet++; }); return c; }
+  function visible() { return S.rows.filter(function (r) { return S.filter === 'all' ? true : S.filter === 'awaiting' ? r.status === 'awaiting_approval' : S.filter === 'replied' ? r.status === 'replied' : S.filter === 'complaints' ? r.needs_owner : S.filter === 'hot' ? r.intent === 'hot' : (r.status === 'no_reply' || r.status === 'declined' || r.status === 'failed'); }); }
   function card(r) {
     var st = ST[r.status] || [r.status, 'var(--t3)'];
     var reply = r.reply_sent || r.draft_reply || '';
@@ -633,19 +633,21 @@ window.socialLoadInsights = async function(){
     return '<div class="dash-card" style="margin-bottom:12px' + (r.needs_owner && r.status !== 'replied' ? ';border-color:var(--rd,#f87171)' : '') + '"><div class="dash-card-body" style="padding:14px 16px">' +
       '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">' +
         '<div style="font-size:13px"><strong style="color:var(--t1)">' + _socEsc(r.author || 'Someone') + '</strong> <span style="color:var(--t3)">· ' + _socEsc(when(r.commented_at)) + '</span></div>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.category ? pill(CAT[r.category] || r.category, r.category === 'complaint' ? 'var(--rd,#f87171)' : 'var(--da)') : '') + pill(st[0], st[1]) + '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.intent === 'hot' ? pill('Buyer', 'var(--ac,#22c55e)') : r.intent === 'warm' ? pill('Interested', 'var(--da)') : '') + (r.category ? pill(CAT[r.category] || r.category, r.category === 'complaint' ? 'var(--rd,#f87171)' : 'var(--da)') : '') + pill(st[0], st[1]) + '</div>' +
       '</div>' +
       '<div style="margin-top:8px;font-size:14px;line-height:1.5;color:var(--t1)">“' + _socEsc(r.message || '') + '”</div>' +
       (r.post ? '<div style="margin-top:6px;font-size:12px;color:var(--t3)">On your post: ' + (r.permalink ? '<a href="' + _socEsc(r.permalink) + '" target="_blank" rel="noopener" style="color:var(--da)">' : '') + _socEsc(String(r.post).slice(0, 110)) + (r.permalink ? '</a>' : '') + '</div>' : '') +
       (reply ? '<div style="margin-top:10px;padding:10px 12px;border-left:3px solid var(--da);background:var(--s2);border-radius:6px;font-size:13px;line-height:1.5"><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:3px;letter-spacing:.4px">' + (r.reply_sent ? 'REPLY POSTED ' + _socEsc(when(r.replied_at)).toUpperCase() : 'SARAH’S DRAFT REPLY') + '</div>' + _socEsc(reply) + '</div>' : '') +
       (r.note ? '<div style="margin-top:6px;font-size:12px;color:var(--t3)">Sarah: ' + _socEsc(r.note) + '</div>' : '') +
+      (r.signals ? '<div style="margin-top:6px;font-size:12px;color:var(--t2)">They want: ' + Object.keys(r.signals).map(function (k) { return _socEsc(k) + ' ' + _socEsc(r.signals[k]); }).join(' · ') + '</div>' : '') +
+      ((r.lead_id || r.clicks != null) ? '<div style="margin-top:6px;font-size:12px;color:var(--t3)">' + (r.lead_id ? 'In your CRM as a lead' : '') + (r.lead_id && r.clicks != null ? ' · ' : '') + (r.clicks != null ? r.clicks + ' click' + (r.clicks === 1 ? '' : 's') + ' to your contact section' : '') + '</div>' : '') +
       (r.status === 'failed' && r.error ? '<div style="margin-top:6px;font-size:12px;color:var(--rd,#f87171)">' + _socEsc(r.error) + '</div>' : '') +
       acts + '</div></div>';
   }
   function render() {
     var el = document.getElementById('social-comments-body'); if (!el) return;
     var c = counts(), list = visible();
-    var chips = [['awaiting', 'Waiting for you', c.awaiting], ['complaints', 'Complaints', c.complaints], ['replied', 'Replied', c.replied], ['quiet', 'No reply / declined', null], ['all', 'All', S.rows.length]];
+    var chips = [['awaiting', 'Waiting for you', c.awaiting], ['hot', 'Buyers', c.hot], ['complaints', 'Complaints', c.complaints], ['replied', 'Replied', c.replied], ['quiet', 'No reply / declined', null], ['all', 'All', S.rows.length]];
     el.style.cssText = 'text-align:left';
     el.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">' +

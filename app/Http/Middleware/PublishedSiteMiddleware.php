@@ -55,6 +55,17 @@ class PublishedSiteMiddleware
             return $next($request);
         }
 
+        // SOCIAL-LEADS-1 (RFC-0016 P1): a tracked link from social — counted, a first-party lug_ref cookie set (raw; this
+        // middleware runs before any cookie encryption) so the contact form can tie the visitor to their comment, then 302.
+        if (preg_match('~^go/([a-z0-9]{6,16})$~', trim($request->getPathInfo(), '/'), $__gm)) {
+            $__gs = $website ?? DB::table('websites')->where('subdomain', $subdomain . '.levelupgrowth.io')->first();
+            $__to = app(\App\Engines\Social\Services\TrackedLinkService::class)->click($__gm[1], $__gs ? (int) $__gs->id : null, $request->ip(), $request->userAgent());
+            if ($__to) {
+                return response('', 302, ['Location' => $__to, 'Cache-Control' => 'no-store, private',
+                    'Set-Cookie' => 'lug_ref=' . $__gm[1] . '; Path=/; Max-Age=2592000; SameSite=Lax; Secure']);
+            }
+        }
+
         // PUBLISHER888 Unit 1 (2026-09-04) — the Publisher Desk lives at /admin on the site's OWN host
         // (custom domain or tenant subdomain) for themes that ship a desk (DeskService::THEMES).
         // GET /admin[/…] returns the desk shell here, BEFORE Laravel routing, so the platform admin

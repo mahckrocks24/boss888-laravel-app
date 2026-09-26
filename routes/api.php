@@ -1361,7 +1361,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 return ['id' => (int) $c->id, 'author' => $c->author_name, 'message' => $c->message, 'post' => $c->post_excerpt, 'permalink' => $c->post_permalink,
                     'commented_at' => $c->commented_at, 'category' => $c->category, 'sentiment' => $c->sentiment, 'needs_owner' => (bool) $c->needs_owner,
                     'draft_reply' => $c->draft_reply, 'reply_sent' => $c->reply_sent, 'replied_at' => $c->replied_at, 'note' => $c->triage_note,
-                    'status' => $state, 'approval_id' => $c->approval_status === 'pending' ? (int) $c->approval_id : null, 'error' => $c->error];
+                    'status' => $state, 'approval_id' => $c->approval_status === 'pending' ? (int) $c->approval_id : null, 'error' => $c->error,
+                    // SOCIAL-LEADS-1: buying intent, what they said they want, the CRM lead, clicks on the tracked link
+                    'intent' => $c->intent ?? null, 'signals' => json_decode((string) ($c->signals_json ?? ''), true) ?: null, 'lead_id' => $c->lead_id ? (int) $c->lead_id : null,
+                    'clicks' => $c->link_code ? (int) \Illuminate\Support\Facades\DB::table('tracked_links')->where('code', $c->link_code)->value('clicks') : null];
             })->all();
             $acct = \Illuminate\Support\Facades\DB::table('social_accounts')->where('workspace_id', $ws)->where('platform', 'facebook')->where('status', 'connected')->count();
             return response()->json(['success' => true, 'comments' => $out, 'connected_pages' => $acct]);

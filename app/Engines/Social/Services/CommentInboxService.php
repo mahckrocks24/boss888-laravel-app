@@ -184,7 +184,7 @@ class CommentInboxService
                     $post = $px !== '' ? ' on your post "' . mb_substr($px, 0, 60) . (mb_strlen($px) > 60 ? '…' : '') . '"' : '';
                     $fallback = ($c->needs_owner ? "This one needs you: a complaint from {$who}{$post}" : "New comment from {$who}{$post}")
                         . ":\n\n> " . mb_substr(trim((string) $c->message), 0, 280) . "\n\nI've drafted a reply — it stays unposted until you approve it here or in Social › Comments.";
-                    $title = $c->needs_owner ? 'A complaint on your Page' : 'New comment on your Page';
+                    $title = $c->needs_owner ? 'A complaint on your Page' : ((($c->intent ?? '') === 'hot') ? 'A buyer on your Page' : 'New comment on your Page');
                     $body = "{$who}: " . mb_substr(trim((string) $c->message), 0, 120);
                 } else {
                     $n = $group->count();
@@ -216,12 +216,14 @@ class CommentInboxService
         try {
             $runtime = app(\App\Connectors\RuntimeClient::class);
             if (! $runtime->isConfigured()) return $fallback;
-            $facts = $group->map(fn ($c) => ['from' => $c->author_name, 'comment' => mb_substr((string) $c->message, 0, 300), 'post' => mb_substr((string) $c->post_excerpt, 0, 80),
-                'kind' => $c->category, 'needs_owner' => (bool) $c->needs_owner, 'your_draft_reply' => $c->draft_reply])->values()->all();
+            $facts = $group->sortByDesc(fn ($c) => ($c->intent ?? '') === 'hot' ? 2 : (($c->intent ?? '') === 'warm' ? 1 : 0))->map(fn ($c) => ['from' => $c->author_name, 'comment' => mb_substr((string) $c->message, 0, 300), 'post' => mb_substr((string) $c->post_excerpt, 0, 80),
+                'kind' => $c->category, 'buying_intent' => $c->intent ?? 'none', 'details_they_gave' => json_decode((string) ($c->signals_json ?? ''), true) ?: null,
+                'added_to_crm_as_lead' => ! empty($c->lead_id), 'needs_owner' => (bool) $c->needs_owner, 'your_draft_reply' => $c->draft_reply])->values()->all();
             $sys = "You are Sarah, the business owner's digital marketing manager, writing a short chat message to the owner. "
                 . "From the FACTS only, tell them about the new comment(s) on their Facebook Page: who, what they said (quote a short comment exactly), which post, "
                 . "and that you drafted a reply which is NOT live until they approve it (the approval buttons are right below your message; do not offer to edit it in chat). "
-                . "Call out any complaint first. 2-4 sentences, warm and direct, no headings, no emojis, no invented facts. "
+                . "Call out any complaint first. A HOT buying signal comes next: say it plainly (what they want, with the details they gave) and that you added them to the CRM as a lead when added_to_crm_as_lead is true; "
+                . "mention that the reply includes a link to their contact section when intent is hot or warm. 2-4 sentences, warm and direct, no headings, no emojis, no invented facts. "
                 . 'Return ONLY JSON {"message":"..."}.';
             $r = $runtime->chatJson($sys, 'FACTS: ' . json_encode($facts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ['task' => 'comment_announce', 'workspace_id' => (string) $wsId], 300);
             $m = trim((string) (($r['success'] ?? false) ? ($r['parsed']['message'] ?? '') : ''));
@@ -243,9 +245,21 @@ class CommentInboxService
             'business' => $biz->name ?? null, 'industry' => $biz->industry ?? null, 'location' => $biz->location ?? null,
             'services' => $biz->services_json ?? null, 'tone' => $biz->tone ?? null, 'phone' => $biz->phone ?? null, 'email' => $biz->email ?? null,
         ]);
+        // SOCIAL-LEADS-1 (RFC-0016 P1): a tracked link to the business's contact section, made BEFORE the model is asked so
+        // the model never invents a URL; it is only kept when the comment shows buying interest.
+        $link = null; $linkCreated = false;
+        try {
+            if ($c->link_code) { $l = app(TrackedLinkService::class)->find((string) $c->link_code); if ($l) { $site = DB::table('websites')->where('id', $l->website_id)->first(); $base = $site ? app(TrackedLinkService::class)->baseUrl($site) : null; if ($base) $link = ['code' => $l->code, 'url' => $base . '/go/' . $l->code]; } }
+            if (! $link) { $link = app(TrackedLinkService::class)->create((int) $c->workspace_id, $c->business_id ? (int) $c->business_id : null, 'facebook_comment', (int) $c->id, 'comment-' . $c->id); $linkCreated = (bool) $link; }
+        } catch (\Throwable $e) { $link = null; }
         $system = "You are Sarah, the digital marketing manager for this business, handling comments on its Facebook Page.\n"
             . "Read the comment and return ONLY JSON: {\"category\":\"question|enquiry|praise|complaint|spam|other\",\"sentiment\":\"positive|neutral|negative\","
+            . "\"intent\":\"hot|warm|none\",\"signals\":{\"event\":null,\"date\":null,\"guests\":null,\"location\":null,\"budget\":null},"
             . "\"should_reply\":true|false,\"needs_owner\":true|false,\"reply\":\"...\",\"note\":\"one line for the owner\"}.\n"
+            . "BUYING INTENT: hot = asks about price, booking, availability, a date, a guest count, or how to hire/book; warm = asks about services, "
+            . "area served, menus or dietary options; none = praise, chat, spam, complaint. signals = only what the comment itself states (null otherwise).\n"
+            . ($link ? "CONTACT LINK: {$link['url']} — for intent hot or warm, end the reply with this exact link and a short invitation to use it "
+                . "(e.g. 'Send us your details here: <link>'). Never use any other URL. For intent none, include no link.\n" : "")
             . "Rules: reply as the business, warm and brief (1-3 sentences), in the business's tone, in the commenter's language. "
             . "Never invent prices, availability, dates, offers or facts that are not in BUSINESS FACTS — for a price or booking question invite them to message the Page or use the contact given. "
             . "Do not reply to spam (should_reply false). A complaint or anything sensitive: needs_owner true, draft a calm, apologetic reply that moves the conversation to a private message. "
@@ -271,13 +285,60 @@ class CommentInboxService
         $cat = in_array($p['category'] ?? '', self::CATEGORIES, true) ? $p['category'] : 'other';
         $reply = trim((string) ($p['reply'] ?? ''));
         $should = (bool) ($p['should_reply'] ?? false) && $reply !== '' && $cat !== 'spam';
+        // SOCIAL-LEADS-1: intent, the signals the comment states, and the link only where there is buying interest
+        $intent = in_array($p['intent'] ?? '', ['hot', 'warm', 'none'], true) ? $p['intent'] : 'none';
+        if (in_array($cat, ['spam', 'complaint'], true)) $intent = 'none';
+        $signals = array_filter(array_map(fn ($v) => is_scalar($v) ? mb_substr(trim((string) $v), 0, 80) : null, (array) ($p['signals'] ?? [])), fn ($v) => $v !== null && $v !== '' && strtolower($v) !== 'null');
+        $useLink = $link && in_array($intent, ['hot', 'warm'], true);
+        if ($link) {
+            $reply = trim(preg_replace('#https?://\S+#', '', $reply) ?? $reply);              // only OUR link, never a model-made URL
+            if ($useLink && $reply !== '') $reply = rtrim($reply) . (preg_match('/[:\-—]\s*$/u', $reply) ? ' ' : "\n") . $link['url'];
+            if (! $useLink && $linkCreated) DB::table('tracked_links')->where('code', $link['code'])->delete();
+        }
         DB::table('social_comments')->where('id', $commentId)->update([
             'category' => $cat, 'sentiment' => in_array($p['sentiment'] ?? '', ['positive', 'neutral', 'negative'], true) ? $p['sentiment'] : null,
+            'intent' => $intent, 'signals_json' => $signals ? json_encode($signals, JSON_UNESCAPED_UNICODE) : null, 'link_code' => $useLink ? $link['code'] : null,
             'needs_owner' => (bool) ($p['needs_owner'] ?? false) || $cat === 'complaint', 'draft_reply' => $reply !== '' ? mb_substr($reply, 0, 1500) : null,
             'triage_note' => mb_substr((string) ($p['note'] ?? ''), 0, 300) ?: null, 'status' => $should ? 'new' : 'no_reply', 'updated_at' => now(),
         ]);
+        // Owner 2026-09-26: a hot comment is a CRM lead at once — the Facebook name is enough until they sign up on the website.
+        if ($intent === 'hot') {
+            try { $leadId = $this->upsertSocialLead(DB::table('social_comments')->where('id', $commentId)->first(), $signals); if ($leadId && $useLink) DB::table('tracked_links')->where('code', $link['code'])->update(['lead_id' => $leadId]); }
+            catch (\Throwable $e) { Log::warning('[SOCIAL-LEADS-1] lead not created', ['comment' => $commentId, 'error' => $e->getMessage()]); }
+        }
         if (! $should) return false;
         return $requestApproval ? $this->requestApproval($commentId) : true;
+    }
+
+    /**
+     * SOCIAL-LEADS-1: the CRM lead a hot comment becomes (source facebook_comment). One lead per Facebook person per
+     * workspace: a second hot comment from them is appended to the same lead. The website form later completes it.
+     */
+    public function upsertSocialLead(object $c, array $signals): ?int
+    {
+        $entry = ['comment_row_id' => (int) $c->id, 'comment_id' => $c->external_comment_id, 'message' => mb_substr((string) $c->message, 0, 500),
+            'post' => mb_substr((string) $c->post_excerpt, 0, 120), 'at' => (string) $c->commented_at, 'signals' => $signals];
+        $existing = null;
+        if ($c->author_external_id) {
+            $existing = DB::table('leads')->where('workspace_id', $c->workspace_id)->whereIn('source', ['facebook_comment', 'facebook_messenger'])->whereNull('deleted_at')
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.fb_profile_id')) = ?", [(string) $c->author_external_id])->first();
+        }
+        if ($existing) {
+            $m = json_decode((string) $existing->metadata_json, true) ?: [];
+            $m['comments'] = array_values(array_merge(array_filter((array) ($m['comments'] ?? []), fn ($x) => (int) ($x['comment_row_id'] ?? 0) !== (int) $c->id), [$entry]));   // a redraft replaces, never duplicates
+            $m['signals'] = array_merge((array) ($m['signals'] ?? []), $signals);
+            DB::table('leads')->where('id', $existing->id)->update(['metadata_json' => json_encode($m, JSON_UNESCAPED_UNICODE), 'updated_at' => now()]);
+            $leadId = (int) $existing->id;
+        } else {
+            $lead = app(\App\Engines\CRM\Services\CrmService::class)->createLead((int) $c->workspace_id, [
+                'name' => $c->author_name ?: 'Facebook commenter', 'source' => 'facebook_comment',
+                'metadata' => ['channel' => 'facebook_comment', 'fb_profile_id' => $c->author_external_id, 'fb_name' => $c->author_name,
+                    'business_id' => $c->business_id, 'signals' => $signals, 'comments' => [$entry], 'stage_note' => 'new - social'],
+            ]);
+            $leadId = (int) $lead->id;
+        }
+        DB::table('social_comments')->where('id', $c->id)->update(['lead_id' => $leadId, 'updated_at' => now()]);
+        return $leadId;
     }
 
     /**

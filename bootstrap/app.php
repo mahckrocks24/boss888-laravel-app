@@ -19,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule) {
         // COMMENTS-1: new Page comments → Sarah drafts replies that wait for the Owner's approval
         $schedule->command('social:comments-sync')->everyTwoMinutes()->withoutOverlapping(15)->runInBackground();
+        // SOCIAL-LEADS-1: Sarah's weekly social funnel (Mondays 05:00 UTC = 09:00 Dubai)
+        $schedule->command('social:funnel-report')->weeklyOn(1, '05:00')->withoutOverlapping(30)->runInBackground();
         // TRIAL-1 (Owner 2026-09-22): trials end at 3 days or 50 credits - nothing swept them before, so a trial kept its plan for good.
         $schedule->call(function () { try { app(\App\Core\Billing\TrialService::class)->processExpiredTrials(); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[trials:expire] failed', ['error' => $e->getMessage()]); } })->hourly()->name('trials:expire')->withoutOverlapping();
 

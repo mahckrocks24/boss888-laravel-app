@@ -169,6 +169,24 @@ class PublicContactController
                     ->where('email', $validated['email'])
                     ->whereNull('deleted_at')
                     ->first();
+                // SOCIAL-LEADS-1 (RFC-0016 P1): the visitor came from a tracked social link (lug_ref cookie) whose comment is
+                // already a lead — complete THAT lead (email, phone, message) instead of creating a second one. Source stays
+                // facebook_comment; the form is recorded as the conversion.
+                $__ref = (string) ($request->cookie('lug_ref') ?? ($_COOKIE['lug_ref'] ?? ''));
+                $__tl = $__ref !== '' ? app(\App\Engines\Social\Services\TrackedLinkService::class)->find($__ref) : null;
+                if ($__tl && (int) $__tl->workspace_id === $wsId) {
+                    $__sl = $__tl->lead_id ? DB::table('leads')->where('id', $__tl->lead_id)->where('workspace_id', $wsId)->whereNull('deleted_at')->first() : null;
+                    if (! $existingLead && $__sl && empty($__sl->email)) {
+                        $__m = json_decode((string) $__sl->metadata_json, true) ?: [];
+                        $__m['converted_via'] = 'website_form'; $__m['converted_at'] = now()->toIso8601String(); $__m['form_message'] = $validated['message']; $__m['contact_id'] = $contactId;
+                        DB::table('leads')->where('id', $__sl->id)->update(['email' => $validated['email'], 'phone' => $validated['phone'] ?? $__sl->phone,
+                            'metadata_json' => json_encode($__m, JSON_UNESCAPED_UNICODE), 'updated_at' => now()]);
+                        $existingLead = DB::table('leads')->where('id', $__sl->id)->first();
+                    } elseif (! $existingLead) {
+                        $__source = 'website_form';   // no social lead yet: a website lead, attributed below
+                        $request->attributes->set('lug_social_ref', ['code' => $__tl->code, 'source_type' => $__tl->source_type, 'source_id' => $__tl->source_id]);
+                    }
+                }
                 if (!$existingLead) {
                     DB::table('leads')->insert([
                         'workspace_id'  => $wsId,
@@ -185,6 +203,7 @@ class PublicContactController
                             'subdomain'     => $subdomain,
                             'contact_id'    => $contactId,
                             'submitted_at'  => now()->toIso8601String(),
+                            'social_ref'    => $request->attributes->get('lug_social_ref'),   // SOCIAL-LEADS-1: arrived from a tracked social link
                         ]),
                         'created_at'    => now(),
                         'updated_at'    => now(),
