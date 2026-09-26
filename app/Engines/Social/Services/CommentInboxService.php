@@ -46,9 +46,10 @@ class CommentInboxService
         if ($token === '' || $page === '') return ['account_id' => (int) $acct->id, 'ok' => false, 'error' => 'no page token'];
 
         $resp = Http::timeout(25)->get(self::GRAPH . "/{$page}/published_posts", [
-            'fields' => 'id,message,permalink_url,created_time,comments.limit(50).order(reverse_chronological){id,message,from{id,name},created_time,parent{id}}',
+            'fields' => 'id,message,permalink_url,created_time,comments.filter(stream).limit(50).order(reverse_chronological){id,message,from{id,name},created_time,parent{id}}',
             'limit' => 15, 'access_token' => $token,
-        ]);
+        ]);   // THREADS-1 (Owner 2026-09-26: "i posted another comment. nothing sarah" — it was a reply inside a thread,
+              // and Graph returns only top-level comments unless filter(stream) is asked for)
         $j = $resp->json() ?: [];
         if (! $resp->successful() || isset($j['error'])) {
             $code = (int) ($j['error']['code'] ?? $resp->status());
@@ -347,6 +348,11 @@ class CommentInboxService
 
         $resp = Http::asForm()->timeout(25)->post(self::GRAPH . "/{$c->external_comment_id}/comments", ['message' => $text, 'access_token' => $token]);
         $j = $resp->json() ?: [];
+        if ((! $resp->successful() || empty($j['id'])) && ! empty($c->parent_comment_id)) {
+            // THREADS-1: a reply to a reply goes under the thread's parent comment (one nesting level on Facebook)
+            $resp = Http::asForm()->timeout(25)->post(self::GRAPH . "/{$c->parent_comment_id}/comments", ['message' => $text, 'access_token' => $token]);
+            $j = $resp->json() ?: [];
+        }
         if ($resp->successful() && ! empty($j['id'])) {
             DB::table('social_comments')->where('id', $c->id)->update(['status' => 'replied', 'reply_external_id' => (string) $j['id'], 'reply_sent' => $text,
                 'replied_at' => now(), 'error' => null, 'updated_at' => now()]);
