@@ -39,7 +39,8 @@ class TrackedLinkService
         $site = $this->siteFor($wsId, $businessId);
         $base = $site ? $this->baseUrl($site) : null;
         if (! $base) return null;
-        $utm = http_build_query(['utm_source' => 'facebook', 'utm_medium' => str_replace('facebook_', '', $sourceType), 'utm_campaign' => mb_substr($campaign, 0, 60)]);
+        $net = str_starts_with($sourceType, 'instagram_') ? 'instagram' : 'facebook';   // SOCIAL-LEADS-5
+        $utm = http_build_query(['utm_source' => $net, 'utm_medium' => str_replace(['facebook_', 'instagram_'], '', $sourceType), 'utm_campaign' => mb_substr($campaign, 0, 60)]);
         do { $code = Str::lower(Str::random(8)); } while (DB::table('tracked_links')->where('code', $code)->exists());
         DB::table('tracked_links')->insert([
             'workspace_id' => $wsId, 'website_id' => (int) $site->id, 'code' => $code, 'target_url' => $base . '/?' . $utm . $anchor,

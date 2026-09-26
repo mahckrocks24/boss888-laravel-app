@@ -49,12 +49,15 @@ class MessengerService
     /** Webhook 'messaging' events. Returns the ids of new inbound rows to process after the HTTP response. */
     public function ingest(array $payload): array
     {
-        if (($payload['object'] ?? '') !== 'page') return [];
+        $obj = (string) ($payload['object'] ?? '');   // SOCIAL-LEADS-5: Instagram direct messages ride the same path
+        if (! in_array($obj, ['page', 'instagram'], true)) return [];
         $ids = [];
         foreach ((array) ($payload['entry'] ?? []) as $entry) {
             $pageId = (string) ($entry['id'] ?? '');
-            $acct = $pageId === '' ? null : DB::table('social_accounts')->where('platform', 'facebook')->where('status', 'connected')
-                ->where(function ($q) use ($pageId) { $q->where('linked_page_id', $pageId)->orWhere('account_id', $pageId); })->first();
+            $acct = $pageId === '' ? null : ($obj === 'instagram'
+                ? DB::table('social_accounts')->where('platform', 'instagram')->where('status', 'connected')->where('account_id', $pageId)->first()
+                : DB::table('social_accounts')->where('platform', 'facebook')->where('status', 'connected')
+                    ->where(function ($q) use ($pageId) { $q->where('linked_page_id', $pageId)->orWhere('account_id', $pageId); })->first());
             if (! $acct) continue;
             foreach ((array) ($entry['messaging'] ?? []) as $ev) {
                 $text = (string) ($ev['message']['text'] ?? '');
@@ -145,8 +148,9 @@ class MessengerService
         if ($l) return (int) $l->id;
         $name = null;
         try { $tok = $acct ? $this->tokenFor($acct) : ''; if ($tok) { $pj = Http::timeout(10)->get(self::GRAPH . "/{$psid}", ['fields' => 'name', 'access_token' => $tok])->json() ?: []; $name = $pj['name'] ?? null; } } catch (\Throwable $e) {}
-        $lead = app(\App\Engines\CRM\Services\CrmService::class)->createLead($wsId, ['name' => $name ?: 'Messenger contact', 'source' => 'facebook_messenger',
-            'metadata' => ['channel' => 'facebook_messenger', 'messenger_psid' => $psid, 'fb_name' => $name, 'business_id' => $acct->business_id ?? null, 'stage_note' => 'new - social']]);
+        $__ig = ($acct->platform ?? '') === 'instagram';   // SOCIAL-LEADS-5
+        $lead = app(\App\Engines\CRM\Services\CrmService::class)->createLead($wsId, ['name' => $name ?: ($__ig ? 'Instagram contact' : 'Messenger contact'), 'source' => $__ig ? 'instagram_dm' : 'facebook_messenger',
+            'metadata' => ['channel' => $__ig ? 'instagram_dm' : 'facebook_messenger', 'messenger_psid' => $psid, 'fb_name' => $name, 'business_id' => $acct->business_id ?? null, 'stage_note' => 'new - social']]);
         return (int) $lead->id;
     }
 

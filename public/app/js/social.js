@@ -633,7 +633,7 @@ window.socialLoadInsights = async function(){
     return '<div class="dash-card" style="margin-bottom:12px' + (r.needs_owner && r.status !== 'replied' ? ';border-color:var(--rd,#f87171)' : '') + '"><div class="dash-card-body" style="padding:14px 16px">' +
       '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">' +
         '<div style="font-size:13px"><strong style="color:var(--t1)">' + _socEsc(r.author || 'Someone') + '</strong> <span style="color:var(--t3)">· ' + _socEsc(when(r.commented_at)) + '</span></div>' +
-        '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.intent === 'hot' ? pill('Buyer', 'var(--ac,#22c55e)') : r.intent === 'warm' ? pill('Interested', 'var(--da)') : '') + (r.category ? pill(CAT[r.category] || r.category, r.category === 'complaint' ? 'var(--rd,#f87171)' : 'var(--da)') : '') + pill(st[0], st[1]) + '</div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' + pill(r.platform === 'instagram' ? 'Instagram' : 'Facebook', 'var(--t3)') + (r.intent === 'hot' ? pill('Buyer', 'var(--ac,#22c55e)') : r.intent === 'warm' ? pill('Interested', 'var(--da)') : '') + (r.category ? pill(CAT[r.category] || r.category, r.category === 'complaint' ? 'var(--rd,#f87171)' : 'var(--da)') : '') + pill(st[0], st[1]) + '</div>' +
       '</div>' +
       '<div style="margin-top:8px;font-size:14px;line-height:1.5;color:var(--t1)">“' + _socEsc(r.message || '') + '”</div>' +
       (r.post ? '<div style="margin-top:6px;font-size:12px;color:var(--t3)">On your post: ' + (r.permalink ? '<a href="' + _socEsc(r.permalink) + '" target="_blank" rel="noopener" style="color:var(--da)">' : '') + _socEsc(String(r.post).slice(0, 110)) + (r.permalink ? '</a>' : '') + '</div>' : '') +

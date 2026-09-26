@@ -28,7 +28,7 @@ class CommentInboxService
     /** @return array<int, array> one result per account */
     public function syncAll(?int $wsId = null): array
     {
-        $q = DB::table('social_accounts')->where('platform', 'facebook')->where('status', 'connected');
+        $q = DB::table('social_accounts')->whereIn('platform', ['facebook', 'instagram'])->where('status', 'connected');   // SOCIAL-LEADS-5: Instagram too
         if ($wsId) $q->where('workspace_id', $wsId);
         $out = [];
         foreach ($q->get() as $acct) {
@@ -44,6 +44,7 @@ class CommentInboxService
         $token = (string) ($creds['page_access_token'] ?? $creds['access_token'] ?? '');
         $page  = (string) ($acct->linked_page_id ?: $acct->account_id);
         if ($token === '' || $page === '') return ['account_id' => (int) $acct->id, 'ok' => false, 'error' => 'no page token'];
+        if (($acct->platform ?? '') === 'instagram') return $this->syncInstagram($acct, $token);   // SOCIAL-LEADS-5
 
         $resp = Http::timeout(25)->get(self::GRAPH . "/{$page}/published_posts", [
             'fields' => 'id,message,permalink_url,created_time,comments.filter(stream).limit(50).order(reverse_chronological){id,message,from{id,name},created_time,parent{id}}',
@@ -86,7 +87,7 @@ class CommentInboxService
      */
     public function ingest(object $acct, array $c): ?int
     {
-        $page = (string) ($acct->linked_page_id ?: $acct->account_id);
+        $page = ($acct->platform ?? '') === 'instagram' ? (string) $acct->account_id : (string) ($acct->linked_page_id ?: $acct->account_id);   // SOCIAL-LEADS-5: who "we" are
         $ext = (string) ($c['comment_id'] ?? '');
         if ($ext === '' || (string) ($c['from_id'] ?? '') === $page) return null;
         $t = $c['created_time'] ?? null;
@@ -96,7 +97,7 @@ class CommentInboxService
         try {
             return (int) DB::table('social_comments')->insertGetId([
                 'workspace_id' => (int) $acct->workspace_id, 'business_id' => $acct->business_id ?? null, 'social_account_id' => (int) $acct->id,
-                'platform' => 'facebook', 'external_comment_id' => $ext, 'external_post_id' => (string) ($c['post_id'] ?? ''),
+                'platform' => ($acct->platform ?? 'facebook'), 'external_comment_id' => $ext, 'external_post_id' => (string) ($c['post_id'] ?? ''),
                 'parent_comment_id' => $c['parent_id'] ?? null, 'author_name' => mb_substr((string) ($c['from_name'] ?? ''), 0, 190) ?: null,
                 'author_external_id' => $c['from_id'] ?? null, 'message' => (string) ($c['message'] ?? ''),
                 'post_excerpt' => mb_substr((string) ($c['post_message'] ?? ''), 0, 400) ?: null, 'post_permalink' => $c['permalink'] ?? null,
@@ -114,6 +115,7 @@ class CommentInboxService
      */
     public function ingestWebhook(array $payload): array
     {
+        if (($payload['object'] ?? '') === 'instagram') return $this->ingestInstagramWebhook($payload);   // SOCIAL-LEADS-5
         if (($payload['object'] ?? '') !== 'page') return [];
         $ids = [];
         foreach ((array) ($payload['entry'] ?? []) as $entry) {
@@ -139,6 +141,61 @@ class CommentInboxService
                     'from_id' => $v['from']['id'] ?? null, 'from_name' => $v['from']['name'] ?? null, 'message' => $v['message'] ?? '',
                     'created_time' => $v['created_time'] ?? null, 'post_message' => $post['message'] ?? '', 'permalink' => $post['permalink_url'] ?? null,
                 ]);
+                if ($id) $ids[] = $id;
+            }
+        }
+        return $ids;
+    }
+
+    /** SOCIAL-LEADS-5: Instagram comments (and replies) on the account's recent media. No tokens are spent here. */
+    private function syncInstagram(object $acct, string $token): array
+    {
+        $ig = (string) $acct->account_id;
+        $resp = Http::timeout(25)->get(self::GRAPH . "/{$ig}/media", [
+            'fields' => 'id,caption,permalink,timestamp,comments.limit(50){id,text,timestamp,from{id,username},replies{id,text,timestamp,from{id,username}}}',
+            'limit' => 15, 'access_token' => $token,
+        ]);
+        $j = $resp->json() ?: [];
+        if (! $resp->successful() || isset($j['error'])) {
+            $msg = (string) ($j['error']['message'] ?? 'HTTP ' . $resp->status());
+            Log::info('[SOCIAL-LEADS-5] instagram read refused', ['account' => $acct->id, 'message' => mb_substr($msg, 0, 200)]);
+            return ['account_id' => (int) $acct->id, 'ok' => false, 'needs_reconnect' => stripos($msg, 'permission') !== false, 'error' => $msg];
+        }
+        $new = [];
+        foreach ((array) ($j['data'] ?? []) as $media) {
+            foreach ((array) ($media['comments']['data'] ?? []) as $cm) {
+                foreach (array_merge([$cm + ['_parent' => null]], array_map(fn ($r) => $r + ['_parent' => $cm['id'] ?? null], (array) ($cm['replies']['data'] ?? []))) as $x) {
+                    $id = $this->ingest($acct, ['comment_id' => $x['id'] ?? null, 'post_id' => $media['id'] ?? null, 'parent_id' => $x['_parent'], 'from_id' => $x['from']['id'] ?? null,
+                        'from_name' => $x['from']['username'] ?? ($x['username'] ?? null), 'message' => $x['text'] ?? '', 'created_time' => $x['timestamp'] ?? null,
+                        'post_message' => $media['caption'] ?? '', 'permalink' => $media['permalink'] ?? null]);
+                    if ($id) $new[] = $id;
+                }
+            }
+        }
+        $drafted = [];
+        foreach ($new as $id) { if ($this->triage($id)) $drafted[] = $id; }
+        $this->announce($drafted);
+        return ['account_id' => (int) $acct->id, 'ok' => true, 'platform' => 'instagram', 'new' => count($new), 'awaiting_approval' => count($drafted)];
+    }
+
+    /** SOCIAL-LEADS-5: Instagram 'comments' webhook changes (object instagram; entry id = the Instagram account). */
+    private function ingestInstagramWebhook(array $payload): array
+    {
+        $ids = [];
+        foreach ((array) ($payload['entry'] ?? []) as $entry) {
+            $igId = (string) ($entry['id'] ?? '');
+            $acct = $igId === '' ? null : DB::table('social_accounts')->where('platform', 'instagram')->where('status', 'connected')->where('account_id', $igId)->first();
+            if (! $acct) continue;
+            foreach ((array) ($entry['changes'] ?? []) as $ch) {
+                if (($ch['field'] ?? '') !== 'comments') continue;
+                $v = (array) ($ch['value'] ?? []);
+                $mediaId = (string) ($v['media']['id'] ?? '');
+                $media = ['caption' => '', 'permalink' => null];
+                if ($mediaId !== '') {
+                    try { $tok = (string) (ConnectionHealth::readCredentials($acct)['access_token'] ?? ''); if ($tok) $media = array_merge($media, (array) (Http::timeout(10)->get(self::GRAPH . "/{$mediaId}", ['fields' => 'caption,permalink', 'access_token' => $tok])->json() ?: [])); } catch (\Throwable $e) {}
+                }
+                $id = $this->ingest($acct, ['comment_id' => $v['id'] ?? null, 'post_id' => $mediaId, 'parent_id' => $v['parent_id'] ?? null, 'from_id' => $v['from']['id'] ?? null,
+                    'from_name' => $v['from']['username'] ?? null, 'message' => $v['text'] ?? '', 'created_time' => null, 'post_message' => $media['caption'] ?? '', 'permalink' => $media['permalink'] ?? null]);
                 if ($id) $ids[] = $id;
             }
         }
@@ -259,7 +316,7 @@ class CommentInboxService
         $link = null; $linkCreated = false;
         try {
             if ($c->link_code) { $l = app(TrackedLinkService::class)->find((string) $c->link_code); if ($l) { $site = DB::table('websites')->where('id', $l->website_id)->first(); $base = $site ? app(TrackedLinkService::class)->baseUrl($site) : null; if ($base) $link = ['code' => $l->code, 'url' => $base . '/go/' . $l->code]; } }
-            if (! $link) { $link = app(TrackedLinkService::class)->create((int) $c->workspace_id, $c->business_id ? (int) $c->business_id : null, 'facebook_comment', (int) $c->id, 'comment-' . $c->id); $linkCreated = (bool) $link; }
+            if (! $link) { $link = app(TrackedLinkService::class)->create((int) $c->workspace_id, $c->business_id ? (int) $c->business_id : null, (($c->platform ?? '') === 'instagram' ? 'instagram_comment' : 'facebook_comment'), (int) $c->id, 'comment-' . $c->id); $linkCreated = (bool) $link; }
         } catch (\Throwable $e) { $link = null; }
         $system = "You are Sarah, the digital marketing manager for this business, handling comments on its Facebook Page.\n"
             . "Read the comment and return ONLY JSON: {\"category\":\"question|enquiry|praise|complaint|spam|other\",\"sentiment\":\"positive|neutral|negative\","
@@ -332,7 +389,7 @@ class CommentInboxService
             'post' => mb_substr((string) $c->post_excerpt, 0, 120), 'at' => (string) $c->commented_at, 'signals' => $signals];
         $existing = null;
         if ($c->author_external_id) {
-            $existing = DB::table('leads')->where('workspace_id', $c->workspace_id)->whereIn('source', ['facebook_comment', 'facebook_messenger'])->whereNull('deleted_at')
+            $existing = DB::table('leads')->where('workspace_id', $c->workspace_id)->whereIn('source', ['facebook_comment', 'facebook_messenger', 'instagram_comment', 'instagram_dm'])->whereNull('deleted_at')
                 ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.fb_profile_id')) = ?", [(string) $c->author_external_id])->first();
         }
         if ($existing) {
@@ -343,8 +400,9 @@ class CommentInboxService
             $leadId = (int) $existing->id;
         } else {
             $lead = app(\App\Engines\CRM\Services\CrmService::class)->createLead((int) $c->workspace_id, [
-                'name' => $c->author_name ?: 'Facebook commenter', 'source' => 'facebook_comment',
-                'metadata' => ['channel' => 'facebook_comment', 'fb_profile_id' => $c->author_external_id, 'fb_name' => $c->author_name,
+                'name' => $c->author_name ?: (($c->platform ?? '') === 'instagram' ? 'Instagram commenter' : 'Facebook commenter'),
+                'source' => ($c->platform ?? '') === 'instagram' ? 'instagram_comment' : 'facebook_comment',   // SOCIAL-LEADS-5
+                'metadata' => ['channel' => ($c->platform ?? '') === 'instagram' ? 'instagram_comment' : 'facebook_comment', 'fb_profile_id' => $c->author_external_id, 'fb_name' => $c->author_name,
                     'business_id' => $c->business_id, 'signals' => $signals, 'comments' => [$entry], 'stage_note' => 'new - social'],
             ]);
             $leadId = (int) $lead->id;
@@ -420,11 +478,12 @@ class CommentInboxService
             return ['success' => false, 'error' => 'The Facebook Page is not connected.', 'code' => 'NO_CONNECTION', 'no_charge' => true];
         }
 
-        $resp = Http::asForm()->timeout(25)->post(self::GRAPH . "/{$c->external_comment_id}/comments", ['message' => $text, 'access_token' => $token]);
+        $__edge = ($c->platform ?? '') === 'instagram' ? 'replies' : 'comments';   // SOCIAL-LEADS-5: Instagram replies live under /replies
+        $resp = Http::asForm()->timeout(25)->post(self::GRAPH . "/{$c->external_comment_id}/{$__edge}", ['message' => $text, 'access_token' => $token]);
         $j = $resp->json() ?: [];
         if ((! $resp->successful() || empty($j['id'])) && ! empty($c->parent_comment_id)) {
             // THREADS-1: a reply to a reply goes under the thread's parent comment (one nesting level on Facebook)
-            $resp = Http::asForm()->timeout(25)->post(self::GRAPH . "/{$c->parent_comment_id}/comments", ['message' => $text, 'access_token' => $token]);
+            $resp = Http::asForm()->timeout(25)->post(self::GRAPH . "/{$c->parent_comment_id}/{$__edge}", ['message' => $text, 'access_token' => $token]);
             $j = $resp->json() ?: [];
         }
         if ($resp->successful() && ! empty($j['id'])) {

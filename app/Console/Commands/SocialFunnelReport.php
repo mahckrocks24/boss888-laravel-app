@@ -19,7 +19,7 @@ class SocialFunnelReport extends Command
     public function handle(): int
     {
         $days = max(1, (int) $this->option('days')); $since = now()->subDays($days);
-        $ws = $this->option('ws') ? [(int) $this->option('ws')] : DB::table('social_accounts')->where('platform', 'facebook')->where('status', 'connected')->distinct()->pluck('workspace_id')->all();
+        $ws = $this->option('ws') ? [(int) $this->option('ws')] : DB::table('social_accounts')->whereIn('platform', ['facebook', 'instagram'])->where('status', 'connected')->distinct()->pluck('workspace_id')->all();
         foreach ($ws as $w) {
             $f = [
                 'days' => $days,
@@ -29,8 +29,8 @@ class SocialFunnelReport extends Command
                 'replies_posted' => DB::table('social_comments')->where('workspace_id', $w)->where('replied_at', '>=', $since)->count(),
                 'replies_waiting_for_you' => DB::table('social_comments')->where('workspace_id', $w)->where('status', 'awaiting_approval')->count(),
                 'clicks_to_site' => (int) DB::table('tracked_link_clicks as k')->join('tracked_links as l', 'l.id', '=', 'k.tracked_link_id')->where('l.workspace_id', $w)->where('k.clicked_at', '>=', $since)->count(),
-                'new_social_leads' => DB::table('leads')->where('workspace_id', $w)->whereIn('source', ['facebook_comment', 'facebook_messenger', 'facebook_lead_ad'])->where('created_at', '>=', $since)->count(),
-                'leads_who_completed_the_form' => DB::table('leads')->where('workspace_id', $w)->whereIn('source', ['facebook_comment', 'facebook_messenger'])->where('updated_at', '>=', $since)->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.converted_via')) = 'website_form'")->count(),
+                'new_social_leads' => DB::table('leads')->where('workspace_id', $w)->whereIn('source', ['facebook_comment', 'facebook_messenger', 'facebook_lead_ad', 'instagram_comment', 'instagram_dm'])   /* SOCIAL-LEADS-5 */->where('created_at', '>=', $since)->count(),
+                'leads_who_completed_the_form' => DB::table('leads')->where('workspace_id', $w)->whereIn('source', ['facebook_comment', 'facebook_messenger', 'instagram_comment', 'instagram_dm'])->where('updated_at', '>=', $since)->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.converted_via')) = 'website_form'")->count(),
             ];
             if ($f['comments'] === 0 && $f['clicks_to_site'] === 0 && $f['new_social_leads'] === 0) { $this->line("ws {$w}: quiet week"); continue; }
             $fallback = "Your social week: {$f['comments']} comment" . ($f['comments'] === 1 ? '' : 's') . ", {$f['buyers']} from buyers, {$f['replies_posted']} repl" . ($f['replies_posted'] === 1 ? 'y' : 'ies') . " posted, "

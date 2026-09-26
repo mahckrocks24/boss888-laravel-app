@@ -261,6 +261,9 @@ class SocialConnector extends BaseConnector
             'pages_messaging',            // SOCIAL-LEADS-2: private replies to buyers + Messenger replies (Owner-approved)
             'leads_retrieval',            // SOCIAL-LEADS-3: read Facebook Lead Ads submissions
             'pages_manage_ads',           // SOCIAL-LEADS-3: required alongside leads_retrieval for Page lead forms
+            'instagram_basic',            // SOCIAL-LEADS-5: find the Instagram account linked to the Page
+            'instagram_manage_comments',  // SOCIAL-LEADS-5: read and reply to Instagram comments (Owner-approved)
+            'instagram_manage_messages',  // SOCIAL-LEADS-5: Instagram private replies and DMs (Owner-approved)
         ]);
 
         $query = [
