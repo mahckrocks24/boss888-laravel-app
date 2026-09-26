@@ -65,6 +65,13 @@ class SarahReadBackService
                 ? $this->interpretResult($row->engine . '/' . $row->action, $result, $agentName, $noChange)
                 : $this->templatedInterpretation($row->engine . '/' . $row->action, $result, $agentName, $noChange);
 
+            // SARAH-QA-1: the owner hears Sarah's verdict, never a bare "completed" for rejected work.
+            $__qaStatus = (string) ($row->qa_status ?? ''); $__qa = $__qaStatus !== '' ? (json_decode((string) ($row->qa_json ?? ''), true) ?: ['verdict' => $__qaStatus, 'reasons' => []]) : null;
+            if ($__qa && in_array($__qa['verdict'] ?? '', [\App\Core\Sarah888\SarahQaGate::REJECTED, \App\Core\Sarah888\SarahQaGate::NEEDS_OWNER], true)) {
+                $interpretation = \App\Core\Sarah888\SarahQaGate::summary($__qa, $agentName, str_replace('_', ' ', (string) $row->action) . ' (task #' . $row->id . ')');
+            } elseif ($__qa && ($__qa['verdict'] ?? '') === \App\Core\Sarah888\SarahQaGate::ACCEPTED) {
+                $interpretation = rtrim((string) $interpretation, '. ') . '. QA: checked and accepted by Sarah.';
+            }
             $insights[] = [
                 'task_id'        => $row->id,
                 'agent_slug'     => $agentSlug,
@@ -74,6 +81,7 @@ class SarahReadBackService
                 'completed_at'   => $row->completed_at,
                 'interpretation' => $interpretation,
                 'no_change'      => $noChange,
+                'qa_status'      => $__qaStatus ?: null,
             ];
 
             // PATCH (Phase 2H, 2026-05-10) — push the interpreted result

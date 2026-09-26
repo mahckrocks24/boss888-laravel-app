@@ -65,6 +65,8 @@ final class CompletionGuard
         '/\b(?:completed|published|created|failed)\s+in\s+the\s+last\s+\d+/i',
         '/\byou\s+have\s+\d+\b/i',
         '/\b\d+\s+(?:completed|published|pending|failed)\b/i',
+        '/\b(?:nothing|no\s+posts?)\s+(?:is|are)\s+(?:scheduled|queued|published)\b/i', // F-SOC-F5c: an empty-queue report is state, not a claim
+        '/\b\d+\s+drafts?\s+waiting\b/i',
     ];
 
     /** Capitulating to a premise about what the owner previously said. */

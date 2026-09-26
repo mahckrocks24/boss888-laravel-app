@@ -54,6 +54,8 @@ class LaunchScopeRoutes
      * `*` matches within a segment run, per Str::is / fnmatch semantics.
      */
     private const BLOCKED = [
+        // ── Email marketing: per-engine calendar view (F-EM-B1, 2026-09-06 — lived outside the /marketing prefix) ──
+        'api/email-marketing/calendar',
         // ── Email marketing: campaigns ──
         'api/marketing/campaigns',
         'api/marketing/campaigns/*',
@@ -183,7 +185,7 @@ class LaunchScopeRoutes
             return response()->json([
                 'success' => false,
                 'error'   => 'not_in_product',
-                'message' => 'This feature is not part of LevelUp Growth.',
+                'message' => 'This feature is not part of LevelUpGrowth.',
             ], 404);
         }
 

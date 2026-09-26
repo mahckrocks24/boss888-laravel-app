@@ -633,14 +633,14 @@ class BusinessEmailAdminTest extends TestCase
      */
     private function makeUser(bool $platformAdmin): User
     {
-        return User::create([
+        // RISK-0122: is_platform_admin is NOT mass-assignable — set it the sanctioned way (forceFill), as production does.
+        $u = User::create([
             'name'                 => $platformAdmin ? 'E3 Operator' : 'E3 Customer',
             'email'                => 'e3-' . \Illuminate\Support\Str::random(10) . '@test.local',
             'password'             => \Illuminate\Support\Facades\Hash::make(\Illuminate\Support\Str::random(32)),
-            'is_admin'             => $platformAdmin ? 1 : 0,
-            'is_platform_admin'    => $platformAdmin ? 1 : 0,
-            'current_workspace_id' => self::WS,
         ]);
+        $u->forceFill(['is_admin' => $platformAdmin ? 1 : 0, 'is_platform_admin' => $platformAdmin ? 1 : 0])->save();
+        return $u->fresh();
     }
 
     private function platformAdmin(): User

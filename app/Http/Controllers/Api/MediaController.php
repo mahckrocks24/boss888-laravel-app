@@ -124,6 +124,7 @@ class MediaController
         $safeExt = $extForMime[$mimeUpload] ?? ($extForMime[$realMime] ?? 'bin');
         $name = Str::random(16) . '.' . $safeExt;
         $path = $file->storeAs('uploads', $name, 'public');
+        if (str_starts_with((string) $mimeUpload, 'image/')) { \App\Engines\Builder\Support\ImagePolicy::normaliseInPlace(storage_path('app/public/' . $path), 'generic'); } // IMAGE POLICY 2026-09-06
 
         $wsId    = (int) ($request->attributes->get('workspace_id') ?? 0) ?: null;
         $mediaId = null;
@@ -246,14 +247,12 @@ class MediaController
             // Owner's intent: "Display Dalle, platform, dall-e-3, and dall-e,
             // creative, and seo featured image in the shared media library on
             // laravel. Skip Upload and uploaded."
-            $q->whereIn('source', [
-                'dalle',
-                'dall-e',
-                'dall-e-3',
-                'creative_engine',
-                'seo_featured_image',
-                'platform',
-            ]);
+            // OWN UPLOADS (2026-09-06): the shared sources above stay cross-workspace; the caller's OWN uploads and crops
+            // are added workspace-scoped, so "My Uploads" really lists the customer's files (newest first).
+            $q->where(function ($shared) use ($wsId) {
+                $shared->whereIn('source', ['dalle', 'dall-e', 'dall-e-3', 'creative_engine', 'seo_featured_image', 'platform'])
+                       ->orWhere(function ($own) use ($wsId) { $own->where('workspace_id', $wsId)->whereIn('source', ['upload', 'uploaded', 'crop']); });
+            });
         }
 
         if ($type === 'image') {

@@ -186,6 +186,7 @@ class BookingService
                         }
                     });
                 } catch (\Throwable $e) {
+                    app(\App\Core\Email888\DeliveryLedger::class)->markLastRecordedFailed($e); // F-EM-C2
                     Log::warning('[Booking] owner email failed: ' . $e->getMessage());
                 }
             } else {
@@ -229,6 +230,7 @@ class BookingService
                         }
                     });
                 } catch (\Throwable $e) {
+                    app(\App\Core\Email888\DeliveryLedger::class)->markLastRecordedFailed($e); // F-EM-C2
                     Log::warning('[Booking] customer email failed: ' . $e->getMessage());
                 }
             } else {

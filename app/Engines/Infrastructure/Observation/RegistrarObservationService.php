@@ -397,7 +397,7 @@ class RegistrarObservationService
                 'last_verified' => null,
                 'verification_confidence' => 'unknown',
                 'issues' => [],
-                'provider' => 'LevelUp Growth',
+                'provider' => 'LevelUpGrowth',
             ];
         }
 
@@ -426,7 +426,7 @@ class RegistrarObservationService
             'last_verified' => Carbon::parse($o->observed_at)->toDateTimeString(),
             'verification_confidence' => $confidence,
             'issues' => array_values(array_unique($issues)),
-            'provider' => 'LevelUp Growth',
+            'provider' => 'LevelUpGrowth',
         ];
     }
 

@@ -34,7 +34,7 @@ final class AgentDirectory
     public const HISTORICAL_SUFFIX = ' — historical agent';
 
     /** Fallback when a slug resolves to nothing at all. */
-    public const UNKNOWN = ['name' => 'LevelUp Growth', 'slug' => 'system', 'color' => '#6C5CE7'];
+    public const UNKNOWN = ['name' => 'LevelUpGrowth', 'slug' => 'system', 'color' => '#6C5CE7'];
 
     /** @var array<string,array> per-request memo */
     private static array $cache = [];

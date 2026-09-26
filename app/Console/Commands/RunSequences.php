@@ -107,6 +107,7 @@ class RunSequences extends Command
                     $sent++;
                     if ($isDone) $completed++;
                 } catch (\Throwable $e) {
+                    app(\App\Core\Email888\DeliveryLedger::class)->markLastRecordedFailed($e); // F-EM-C2: close the ledger row with the provider's reason
                     $errored++;
                     Log::error('RunSequences send failed', [
                         'enrollment_id' => $en->id,
@@ -153,7 +154,7 @@ class RunSequences extends Command
                   ->subject($subject)
                   ->from(
                       config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@levelupgrowth.io')),
-                      config('mail.from.name', env('MAIL_FROM_NAME', 'LevelUp Growth'))
+                      config('mail.from.name', env('MAIL_FROM_NAME', 'LevelUpGrowth'))
                   );
             }
         );

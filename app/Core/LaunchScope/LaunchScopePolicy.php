@@ -4,7 +4,7 @@ namespace App\Core\LaunchScope;
 
 /**
  * LaunchScopePolicy — the SINGLE authoritative source of truth for what is
- * in scope for the LevelUp Growth launch.
+ * in scope for the LevelUpGrowth launch.
  *
  * Created 2026-07-20 per the launch-scope remediation (audit
  * boss888-audit/LAUNCH-SCOPE-REMOVAL-AUDIT-2026-07-20.md, verdict SAFE WITH

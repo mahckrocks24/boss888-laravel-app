@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use PhpOffice\PhpWord\IOFactory as WordIOFactory;
-use Smalot\PdfParser\Parser as PdfParser;
 
 /**
  * CHATBOT888 — Knowledge base service.
@@ -24,9 +23,25 @@ use Smalot\PdfParser\Parser as PdfParser;
  */
 class ChatbotKnowledgeService
 {
+    /**
+     * 2026-09-10 — the formats a customer actually has lying around. Everything here is converted to
+     * MARKDOWN before it is chunked, so the knowledge base holds one predictable shape whatever was
+     * uploaded, and a spreadsheet keeps its rows and columns instead of collapsing into a word soup.
+     * No new composer dependency was taken: PDFs go through poppler's pdftotext, which is installed;
+     * Word/ODT/RTF through the PhpWord readers already vendored; XLSX through ZipArchive + SimpleXML,
+     * because an .xlsx IS a zip of XML.
+     */
     public const ALLOWED_MIME = [
         'application/pdf'           => 'pdf',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 'docx',
+        'application/msword'        => 'doc',
+        'application/vnd.oasis.opendocument.text' => 'odt',
+        'application/rtf'           => 'rtf',
+        'text/rtf'                  => 'rtf',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' => 'xlsx',
+        'application/vnd.ms-excel'  => 'xls',
+        'text/csv'                  => 'csv',
+        'application/csv'           => 'csv',
         'text/plain'                => 'txt',
         'text/markdown'             => 'md',
         'text/x-markdown'           => 'md',
@@ -49,7 +64,7 @@ class ChatbotKnowledgeService
         $serverMime = $file->getMimeType() ?: $clientMime;
         $kind = self::ALLOWED_MIME[$serverMime] ?? self::ALLOWED_MIME[$clientMime] ?? null;
         if ($kind === null) {
-            throw new \InvalidArgumentException('Unsupported file type. Allowed: PDF, DOCX, TXT, MD.');
+            throw new \InvalidArgumentException('Unsupported file type. Allowed: PDF, Word (.docx/.doc), Excel (.xlsx), CSV, ODT, RTF, TXT and Markdown.');
         }
         if ($file->getSize() > self::MAX_FILE_BYTES) {
             throw new \InvalidArgumentException('File too large (max 10 MB).');
@@ -286,6 +301,32 @@ class ChatbotKnowledgeService
         // RISK-0118 (2026-08-29) — STRICT: a website-scoped session reads only its own chunks.
         // Workspace-level (NULL) chunks were back-filled to the single website of single-site
         // workspaces; in a multi-site workspace an unassigned source is not shared by accident.
+        // 2026-09-10 — FAIL CLOSED WHEN THE WEBSITE IS UNKNOWN IN A MULTI-SITE BUSINESS.
+        // The strict filter below only applies when $websiteId is truthy. A session that resolved to 0
+        // dropped the website condition entirely and retrieved EVERY website's chunks in the workspace,
+        // which is the opposite of the RISK-0118 intent stated just above.
+        // The path is reachable: widget tokens issued before the website binding still exist (including
+        // in live multi-site workspaces), and the Origin fallback returns website_id 0 whenever the
+        // embedding host is not one of this business's known hosts — a foreign embed, or a stripped
+        // Origin. Two shopfronts of one business would then answer from each other's documents.
+        // WebsiteScope's rule is that an unknown website is never guessed; the same rule has to hold
+        // here, so retrieval returns NOTHING rather than everything.
+        // Single-site businesses are untouched: their sessions resolve to the only website, and their
+        // historic NULL-website chunks were back-filled to it.
+        if (! $websiteId) {
+            $siteCount = DB::table('websites')
+                ->where('workspace_id', $workspaceId)
+                ->whereNull('deleted_at')
+                ->count();
+            if ($siteCount > 1) {
+                Log::warning('[chatbot] retrieval refused: multi-site workspace with no website resolved', [
+                    'workspace_id' => $workspaceId,
+                    'websites'     => $siteCount,
+                ]);
+                return [];
+            }
+        }
+
         $webSql = $websiteId ? ' AND website_id = ?' : '';
 
         // FULLTEXT NATURAL LANGUAGE
@@ -329,29 +370,228 @@ class ChatbotKnowledgeService
 
     // ── Private ──────────────────────────────────────────────
 
+    /**
+     * Convert an uploaded document to MARKDOWN.
+     *
+     * Everything the customer can upload ends up as markdown before chunking, so retrieval sees one
+     * shape and a spreadsheet's rows survive as a table rather than a run-on sentence.
+     *
+     * The PDF path deliberately uses poppler's pdftotext rather than a PHP parser: the class this file
+     * used to import (Smalot\PdfParser) is in neither composer.json nor composer.lock, so every PDF
+     * upload since this feature shipped failed with a class-not-found and was recorded as status
+     * 'failed'. pdftotext is installed on the host, is the reference implementation, and -layout keeps
+     * columns and tables readable.
+     */
     private function extractText(string $path, string $kind): string
     {
         switch ($kind) {
             case 'pdf':
-                $parser = new PdfParser();
-                $pdf = $parser->parseFile($path);
-                return trim($pdf->getText());
+                return $this->pdfToMarkdown($path);
             case 'docx':
-                $reader = WordIOFactory::createReader('Word2007');
-                $doc = $reader->load($path);
-                $text = '';
-                foreach ($doc->getSections() as $section) {
-                    foreach ($section->getElements() as $el) {
-                        $text .= $this->extractWordElement($el) . "\n";
-                    }
-                }
-                return trim($text);
+                return $this->wordToMarkdown($path, 'Word2007');
+            case 'doc':
+                return $this->wordToMarkdown($path, 'MsDoc');
+            case 'odt':
+                return $this->wordToMarkdown($path, 'ODText');
+            case 'rtf':
+                return $this->wordToMarkdown($path, 'RTF');
+            case 'xlsx':
+                return $this->xlsxToMarkdown($path);
+            case 'xls':
+                // The legacy binary format needs a reader this platform does not vendor. Say so plainly
+                // rather than storing an empty document that quietly answers nothing.
+                throw new \InvalidArgumentException('That is the old .xls format. Open it in Excel and "Save As" .xlsx or .csv, then upload again.');
+            case 'csv':
+                return $this->csvToMarkdown($path);
             case 'txt':
             case 'md':
                 $raw = file_get_contents($path);
                 return trim($raw === false ? '' : $raw);
         }
         throw new \RuntimeException("Unsupported extraction kind: {$kind}");
+    }
+
+    /** PDF → markdown via poppler. Page breaks become horizontal rules so chunking has a seam to use. */
+    private function pdfToMarkdown(string $path): string
+    {
+        $out = [];
+        $code = 0;
+        @exec('pdftotext -layout -enc UTF-8 ' . escapeshellarg($path) . ' - 2>/dev/null', $out, $code);
+        $text = trim(implode("\n", $out));
+        if ($code !== 0 || $text === '') {
+            @exec('pdftotext -enc UTF-8 ' . escapeshellarg($path) . ' - 2>/dev/null', $out2, $code2);
+            $text = trim(implode("\n", $out2 ?? []));
+        }
+        if ($text === '') {
+            throw new \RuntimeException('No text could be read from this PDF. If it is a scan, it needs OCR first.');
+        }
+        $text = str_replace("\f", "\n\n---\n\n", $text);          // form feed = page break
+        return $this->tidyMarkdown($text);
+    }
+
+    /** Word/ODT/RTF → markdown, keeping headings, list items and tables. */
+    private function wordToMarkdown(string $path, string $reader): string
+    {
+        $doc = WordIOFactory::createReader($reader)->load($path);
+        $md = '';
+        foreach ($doc->getSections() as $section) {
+            foreach ($section->getElements() as $el) {
+                $md .= $this->wordElementToMarkdown($el);
+            }
+        }
+        $md = trim($md);
+        if ($md === '') {
+            throw new \RuntimeException('No text could be read from this document.');
+        }
+        return $this->tidyMarkdown($md);
+    }
+
+    private function wordElementToMarkdown(object $el): string
+    {
+        $cls = (new \ReflectionClass($el))->getShortName();
+
+        if ($cls === 'Title') {
+            $depth = method_exists($el, 'getDepth') ? max(1, min(6, (int) $el->getDepth() + 1)) : 2;
+            return "\n" . str_repeat('#', $depth) . ' ' . trim($this->extractWordElement($el)) . "\n\n";
+        }
+        if ($cls === 'ListItem' || $cls === 'ListItemRun') {
+            $depth = method_exists($el, 'getDepth') ? (int) $el->getDepth() : 0;
+            return str_repeat('  ', max(0, $depth)) . '- ' . trim($this->extractWordElement($el)) . "\n";
+        }
+        if ($cls === 'Table') {
+            $rows = method_exists($el, 'getRows') ? $el->getRows() : [];
+            if (! $rows) { return ''; }
+            $out = "\n";
+            foreach ($rows as $i => $row) {
+                $cells = [];
+                foreach ($row->getCells() as $cell) {
+                    $cells[] = str_replace('|', '\\|', trim(preg_replace('/\s+/', ' ', $this->extractWordElement($cell))));
+                }
+                $out .= '| ' . implode(' | ', $cells) . " |\n";
+                if ($i === 0) {
+                    $out .= '|' . str_repeat(' --- |', count($cells)) . "\n";
+                }
+            }
+            return $out . "\n";
+        }
+        if ($cls === 'TextBreak' || $cls === 'PageBreak') { return "\n"; }
+
+        $t = trim($this->extractWordElement($el));
+        return $t === '' ? '' : $t . "\n\n";
+    }
+
+    /**
+     * XLSX → one markdown table per sheet. An .xlsx is a zip of XML, so this reads sharedStrings and
+     * each worksheet directly rather than pulling in a spreadsheet library for a text extraction.
+     */
+    private function xlsxToMarkdown(string $path): string
+    {
+        $zip = new \ZipArchive();
+        if ($zip->open($path) !== true) {
+            throw new \RuntimeException('That .xlsx could not be opened.');
+        }
+        try {
+            $shared = [];
+            $ssXml = $zip->getFromName('xl/sharedStrings.xml');
+            if ($ssXml !== false && $ssXml !== '') {
+                $x = @simplexml_load_string($ssXml);
+                if ($x !== false) {
+                    foreach ($x->si as $si) {
+                        $shared[] = trim((string) (isset($si->t) ? $si->t : implode('', array_map(
+                            static fn ($r) => (string) $r->t, iterator_to_array($si->r ?? [], false)))));
+                    }
+                }
+            }
+
+            // sheet name -> file, from the workbook relationships
+            $names = [];
+            $wb = $zip->getFromName('xl/workbook.xml');
+            if ($wb !== false) {
+                $x = @simplexml_load_string($wb);
+                if ($x !== false) {
+                    foreach ($x->sheets->sheet as $sh) { $names[] = (string) $sh['name']; }
+                }
+            }
+
+            $md = '';
+            for ($i = 1; $i <= 50; $i++) {
+                $sheetXml = $zip->getFromName("xl/worksheets/sheet{$i}.xml");
+                if ($sheetXml === false) { continue; }
+                $x = @simplexml_load_string($sheetXml);
+                if ($x === false) { continue; }
+                $title = $names[$i - 1] ?? ('Sheet ' . $i);
+                $rows = [];
+                foreach ($x->sheetData->row as $row) {
+                    $cells = [];
+                    foreach ($row->c as $c) {
+                        $v = (string) $c->v;
+                        if ((string) $c['t'] === 's') {
+                            $v = $shared[(int) $v] ?? '';
+                        } elseif (isset($c->is->t)) {
+                            $v = (string) $c->is->t;
+                        }
+                        $cells[] = str_replace('|', '\\|', trim(preg_replace('/\s+/', ' ', $v)));
+                    }
+                    while ($cells && end($cells) === '') { array_pop($cells); }
+                    if ($cells) { $rows[] = $cells; }
+                }
+                if (! $rows) { continue; }
+                $width = max(array_map('count', $rows));
+                $md .= "\n## " . $title . "\n\n";
+                foreach ($rows as $n => $cells) {
+                    $cells = array_pad($cells, $width, '');
+                    $md .= '| ' . implode(' | ', $cells) . " |\n";
+                    if ($n === 0) { $md .= '|' . str_repeat(' --- |', $width) . "\n"; }
+                }
+                $md .= "\n";
+            }
+            if (trim($md) === '') {
+                throw new \RuntimeException('That spreadsheet has no readable cells.');
+            }
+            return $this->tidyMarkdown($md);
+        } finally {
+            $zip->close();
+        }
+    }
+
+    /** CSV → a markdown table, delimiter sniffed from the header line. */
+    private function csvToMarkdown(string $path): string
+    {
+        $fh = @fopen($path, 'r');
+        if (! $fh) { throw new \RuntimeException('That CSV could not be read.'); }
+        try {
+            $first = fgets($fh) ?: '';
+            $delim = ',';
+            foreach ([',', ';', "\t", '|'] as $d) {
+                if (substr_count($first, $d) > substr_count($first, $delim)) { $delim = $d; }
+            }
+            rewind($fh);
+            $md = ''; $n = 0; $width = 0;
+            while (($cells = fgetcsv($fh, 0, $delim)) !== false) {
+                if ($cells === [null] || $cells === false) { continue; }
+                $cells = array_map(static fn ($c) => str_replace('|', '\\|', trim((string) $c)), $cells);
+                if (! array_filter($cells, static fn ($c) => $c !== '')) { continue; }
+                if ($n === 0) { $width = count($cells); }
+                $cells = array_pad(array_slice($cells, 0, $width ?: count($cells)), $width ?: count($cells), '');
+                $md .= '| ' . implode(' | ', $cells) . " |\n";
+                if ($n === 0) { $md .= '|' . str_repeat(' --- |', count($cells)) . "\n"; }
+                $n++;
+                if ($n > 5000) { break; }   // a knowledge base is not a data warehouse
+            }
+            if ($n === 0) { throw new \RuntimeException('That CSV has no readable rows.'); }
+            return $this->tidyMarkdown($md);
+        } finally {
+            fclose($fh);
+        }
+    }
+
+    /** Collapse the runs of blank lines these converters produce, and normalise line endings. */
+    private function tidyMarkdown(string $md): string
+    {
+        $md = str_replace(["\r\n", "\r"], "\n", $md);
+        $md = preg_replace("/[ \t]+\n/", "\n", $md);
+        $md = preg_replace("/\n{3,}/", "\n\n", $md);
+        return trim($md);
     }
 
     private function extractWordElement(object $el): string

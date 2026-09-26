@@ -77,6 +77,23 @@ final class MinimumPath
         $m = trim($message);
         if ($m === '' || mb_strlen($m) > 160) return null;
         if (preg_match(self::WORK_OR_JUDGEMENT, $m)) return null;
+        // F-CB-F2 (2026-09-07): any short question about the website chatbot reads its real state first.
+        if (preg_match('/\b(chat ?bot|chat widget|live chat|website chat|ai assistant on (my|the) (site|website))\b/iu', $m)
+            && preg_match('/\b(is|are|set up|setup|live|enabled|on|off|working|how many|conversations?|leads?|embed|knowledge|status|which sites?|running)\b/iu', $m)
+            && !preg_match('/^(please\s+)?(turn|switch|disable|enable|add|upload|delete|remove|create|mint|revoke)\b/iu', $m)) {
+            return ['tool' => 'chatbot.get_state', 'params' => ['question' => $m], 'noun' => 'chatbot'];
+        }
+        // F-SOC-F5 (2026-09-06): social posts are the SOCIAL engine's rows, never the article list. Any short social
+        // question about posts/drafts/queue/scheduled resolves here — with or without a list/show opener.
+        if (\App\Core\Sarah888\SocialTurn::is($m) && preg_match('/\b(posts?|drafts?|queue|queued|scheduled|calendar)\b/iu', $m)
+            && preg_match('/\b(what|which|show|list|how many|do we have|do i have|have we got|are there|any|give me|tell me)\b/iu', $m)
+            && !preg_match('/^(please\s+|hey\s+sarah[,\s]+|sarah[,\s]+)?(draft|write|create|make|prepare|compose|queue|post|schedule|publish|put)\b/iu', $m)) { // F-SOC-F5d: a read cue, never an imperative
+            $lower = mb_strtolower($m);
+            if (preg_match('/\b(queue|queued|calendar|scheduled)\b/u', $lower) && !preg_match('/\bdrafts?\b/u', $lower)) return ['tool' => 'social.get_queue', 'params' => [], 'noun' => 'queue'];
+            $params = [];
+            if (preg_match('/\bdrafts?\b/u', $lower) && !preg_match('/\b(scheduled|queue|all|every)\b/u', $lower)) $params['status'] = 'draft';
+            return ['tool' => 'social.list_posts', 'params' => $params, 'noun' => 'posts'];
+        }
         if (!preg_match('/^(please\s+|hey\s+sarah[,\s]+|sarah[,\s]+)?(list|show( me)?|give me|what are|what pages|which pages|can you (list|show)|could you (list|show))\b/iu', $m)
             && !preg_match('/^(please\s+)?(list|show)\b/iu', $m)) {
             return null;

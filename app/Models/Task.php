@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Task extends Model
 {
     protected $fillable = [
-        'workspace_id', 'engine', 'action', 'category', 'payload_json', 'status',
+        'workspace_id', 'business_id', 'engine', 'action', 'category', 'payload_json', 'status',   // B1
         'requires_approval', 'approval_status', 'source',
         'assigned_agents_json', 'priority', 'retry_count',
         'result_json', 'error_text', 'started_at', 'completed_at',

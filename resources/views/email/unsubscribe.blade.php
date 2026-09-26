@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>{{ !empty($resubscribed) ? 'Resubscribed' : 'Unsubscribed' }} · {{ $brand_name ?? 'LevelUp Growth' }}</title>
+  <title>{{ !empty($resubscribed) ? 'Resubscribed' : 'Unsubscribed' }} · {{ $brand_name ?? 'LevelUpGrowth' }}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     body{margin:0;font-family:'Inter',Arial,sans-serif;background:#F2F4F8;color:#0F172A;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -31,7 +31,7 @@
 </head>
 <body>
 <div class="card">
-  <span class="brand">{{ $brand_name ?? 'LevelUp Growth' }}</span>
+  <span class="brand">{{ $brand_name ?? 'LevelUpGrowth' }}</span>
 
   @if(!empty($resubscribed))
     <div class="icon">👋</div>

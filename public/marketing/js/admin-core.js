@@ -41,6 +41,14 @@
     }
     // -- Auth guard ----------------------------------------------------------------
     const token = localStorage.getItem('lu_admin_token');
+    // PAGE COOKIE (2026-09-11): server-rendered admin pages (template gallery, previews) authenticate by an
+    // HttpOnly cookie the console's login never set. Mirror the bearer into it once per session.
+    try {
+      if (token && !sessionStorage.getItem('lu_admin_cookie_ok')) {
+        fetch('/api/admin/session-cookie', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' } })
+          .then(function (r) { if (r.ok) sessionStorage.setItem('lu_admin_cookie_ok', '1'); }).catch(function () {});
+      }
+    } catch (e) {}
     const user  = JSON.parse(localStorage.getItem('lu_admin_user') || '{}');
     if (!token || !user.is_platform_admin) {
       window.location.href = '/admin/login';

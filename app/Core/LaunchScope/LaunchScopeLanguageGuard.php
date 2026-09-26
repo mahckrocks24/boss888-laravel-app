@@ -25,7 +25,16 @@ use Illuminate\Support\Facades\Log;
 final class LaunchScopeLanguageGuard
 {
     /** The one truthful line. */
-    public const TRUTH = 'This capability is not part of the current LevelUp Growth product.';
+    public const TRUTH = 'This capability is not part of the current LevelUpGrowth product.';
+
+    /** F-EM-E1: the precise truth about email — marketing is out, one-to-one platform mail is in. */
+    public const TRUTH_EMAIL = 'Email marketing — campaigns, newsletters and drip sequences — is not part of the current LevelUpGrowth product. The emails the platform sends to you (new booking and enquiry alerts, notifications and account emails) are; your customers do not get automatic emails from the platform — you confirm with them yourself.';
+
+    /** F-EM-F1: what actually happens when a customer books or enquires on the website. */
+    public const TRUTH_CUSTOMER_EMAIL = 'Your customers do not get an automatic email from the platform when they book or enquire — the request lands in your Calendar › Bookings and CRM, you are alerted, and you confirm with them yourself.';
+
+    /** A sentence that denies email as a whole, without naming marketing/campaigns/newsletters/sequences. */
+    private const BLANKET_EMAIL_DENIAL = '/\b(e-?mails?|e-?mail sending|sending e-?mails?)\b[^.!?]{0,40}\b(is(?:n\'t| not)|are(?:n\'t| not)|(?:is|are) no longer)\b[^.!?]{0,30}\b(part of|in|included in|available in|offered)\b[^.!?]{0,40}\b(product|launch|platform|LevelUp)|\bno e-?mail (system|service|sending|capability|feature)\b|\bcan(?:not|\'t) send (any )?e-?mails? on your behalf\b|\bplatform can(?:not|\'t) send (e-?mail|on your behalf)\b/iu';
 
     /**
      * Subjects that genuinely CAN be connected or configured — never rewrite.
@@ -112,6 +121,23 @@ final class LaunchScopeLanguageGuard
             if (!self::mentionsAny($l, self::REMOVED_SUBJECTS)) continue;
             if (!self::mentionsAny($l, self::BANNED_FRAMING))   continue;
             $parts[$__i] = self::TRUTH; $reasons[] = 'reframed_removed_capability';
+        }
+        // ── 1b. F-EM-E1: a sentence that denies EMAIL as a whole is false — transactional mail is in the product.
+        for ($__i = 0; $__i < count($parts); $__i += 2) {
+            $sentence = $parts[$__i];
+            $l = mb_strtolower(self::normalise($sentence));
+            if ($sentence === self::TRUTH || $sentence === self::TRUTH_EMAIL) continue;
+            if (preg_match('/\b(marketing|campaigns?|newsletters?|sequences?|drips?|bulk|broadcasts?)\b/u', $l)) continue; // already precise
+            if (!preg_match(self::BLANKET_EMAIL_DENIAL, $sentence)) continue;
+            $parts[$__i] = self::TRUTH_EMAIL; $reasons[] = 'blanket_email_denial_corrected';
+        }
+        // ── 1c. F-EM-F1: "your customers receive a confirmation email" is false — the platform alerts the OWNER only.
+        for ($__i = 0; $__i < count($parts); $__i += 2) {
+            $sentence = $parts[$__i];
+            if ($sentence === self::TRUTH_CUSTOMER_EMAIL) continue;
+            if (!preg_match('/\b(customers?|clients?|guests?|visitors?|they)\b[^.!?]{0,60}\b(receive|get|are sent|will receive|will get|automatically (receive|get))\b[^.!?]{0,40}\b(confirmation|booking|appointment|reservation)\b[^.!?]{0,20}\b(e-?mails?|messages?)\b/iu', $sentence)) continue;
+            if (preg_match('/\b(do not|don.t|no|never|not)\b/iu', $sentence)) continue; // already a denial
+            $parts[$__i] = self::TRUTH_CUSTOMER_EMAIL; $reasons[] = 'customer_confirmation_claim_corrected';
         }
         $out = implode('', $parts);
 

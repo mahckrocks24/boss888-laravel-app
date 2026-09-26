@@ -555,7 +555,7 @@ HTML;
     <div class="kb-fbrand"><div class="kb-plate-text kb-plate-text--sm">{$name}</div><div class="kb-fcontact">{$contact}</div><div class="kb-fsocial">{$social}</div></div>
     {$cols}
   </div>
-  <div class="kb-wrap kb-fbottom"><span>{$copy}</span><span>Published with LevelUp Growth</span></div>
+  <div class="kb-wrap kb-fbottom"><span>{$copy}</span><span>Published with LevelUpGrowth</span></div>
 </footer>
 HTML;
     }

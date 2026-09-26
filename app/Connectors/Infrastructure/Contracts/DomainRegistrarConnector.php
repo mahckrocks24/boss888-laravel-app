@@ -7,8 +7,8 @@ use App\Connectors\Infrastructure\ProviderResult;
 /**
  * Registrar capability contract.
  *
- * Directive §15: a domain REGISTERED through LevelUp Growth and a domain merely
- * CONNECTED to LevelUp Growth are different concepts. This contract covers only
+ * Directive §15: a domain REGISTERED through LevelUpGrowth and a domain merely
+ * CONNECTED to LevelUpGrowth are different concepts. This contract covers only
  * the former — registrar authority. Connecting an externally-registered domain is
  * CustomHostnameConnector's job and deliberately does not live here, so the code
  * cannot imply we can renew or transfer a domain we do not manage.

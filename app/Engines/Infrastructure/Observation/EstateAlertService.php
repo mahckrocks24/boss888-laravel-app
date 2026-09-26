@@ -430,7 +430,7 @@ class EstateAlertService
                 default => 'unknown',
             },
             'active_warnings' => array_values(array_unique($warnings)),
-            'provider' => 'LevelUp Growth',
+            'provider' => 'LevelUpGrowth',
         ];
     }
 

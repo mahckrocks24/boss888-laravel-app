@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Connect LevelUp Growth SEO Plugin</title>
+  <title>Connect LevelUpGrowth SEO Plugin</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
            background: #0F1117; color: #E8EDF5; margin: 0;
@@ -34,12 +34,12 @@
   <div class="card">
     <div class="icon">🔗</div>
     <h1>Authorize WP Plugin</h1>
-    <p class="sub">Connect your WordPress site to your LevelUp Growth account.
+    <p class="sub">Connect your WordPress site to your LevelUpGrowth account.
        This grants the plugin permission to read your SEO data and run
        AI generations on your behalf.</p>
 
     <div id="not-logged-in" class="hidden">
-      <p class="err">You're not logged into LevelUp Growth in this browser.</p>
+      <p class="err">You're not logged into LevelUpGrowth in this browser.</p>
       <a href="/app/?return_to={{ urlencode(request()->fullUrl()) }}" class="btn">
         Log in →
       </a>

@@ -1,5 +1,5 @@
 /**
- * LevelUp Growth — Business Email (customer portal).
+ * LevelUpGrowth — Business Email (customer portal).
  *
  * The customer-facing Business Email experience: overview, domain setup,
  * mailboxes, aliases, forwarding, storage and health.
@@ -12,7 +12,7 @@
  *
  * BRANDING: the underlying mail service is never named, and there is nothing in
  * this file that could name it. The customer's Business Email provider is
- * LevelUp Growth.
+ * LevelUpGrowth.
  *
  * DESIGN: rendered through helpers handed to it by the infrastructure module
  * (pageShell, card, button, statusPill …), so the page frame, spacing and
@@ -275,7 +275,7 @@
     ctx.paintBody(shell('Email Accounts', '',
       ctx.enterpriseEmpty(ctx.ICONS.email, 'Business Email is not on your plan',
         esc(reason || 'Business Email is not included in your plan.'),
-        [], 'Talk to LevelUp Growth about adding it.')));
+        [], 'Talk to LevelUpGrowth about adding it.')));
   }
 
   function renderSetup() {

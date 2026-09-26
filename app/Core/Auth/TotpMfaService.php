@@ -42,7 +42,7 @@ class TotpMfaService
      *
      * @return array{secret:string,otpauth_uri:string,recovery_codes:array<int,string>}
      */
-    public function enrol(User $user, string $issuer = 'LevelUp Growth'): array
+    public function enrol(User $user, string $issuer = 'LevelUpGrowth'): array
     {
         $secret = $this->generateSecret();
 

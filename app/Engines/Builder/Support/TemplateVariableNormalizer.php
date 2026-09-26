@@ -124,6 +124,45 @@ final class TemplateVariableNormalizer
         return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
     }
 
+    /**
+     * HTML-TYPED VARIABLES (2026-09-05). A manifest may declare a variable `"type": "html"` for a curated heading such as
+     * "Simple<br><em>memberships.</em>". Those keep a strict inline whitelist — <br>, <em>, <strong>, <b>, <i>, <span class>
+     * — with every other tag removed and all text escaped. Any other type goes through forHtml() unchanged.
+     */
+    public static function forHtmlTyped(string $key, string $value, string $type = 'text'): string
+    {
+        if (strtolower($type) !== 'html') {
+            return self::forHtml($key, $value);
+        }
+        return self::inlineMarkup($value);
+    }
+
+    public static function inlineMarkup(string $value): string
+    {
+        $parts = preg_split('/(<\/?(?:br|em|strong|b|i|span)\b[^>]*>)/i', $value, -1, PREG_SPLIT_DELIM_CAPTURE);
+        if ($parts === false) return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        $out = '';
+        foreach ($parts as $i => $p) {
+            if ($i % 2 === 1) {
+                if (preg_match('/^<(\/?)(br|em|strong|b|i|span)\b([^>]*)>$/i', $p, $m)) {
+                    $close = $m[1] === '/'; $tag = strtolower($m[2]);
+                    if ($tag === 'br') { $out .= '<br>'; continue; }
+                    if ($close) { $out .= '</' . $tag . '>'; continue; }
+                    $attr = '';
+                    if ($tag === 'span' && preg_match('/\bclass\s*=\s*["\']([a-zA-Z0-9 _-]{1,60})["\']/', $m[3], $cm)) {
+                        $attr = ' class="' . $cm[1] . '"';
+                    }
+                    $out .= '<' . $tag . $attr . '>';
+                }
+                continue;
+            }
+            // text: drop any other tag outright, then escape (existing entities are not double-encoded)
+            $t = preg_replace('/<[^>]*>?/', '', $p) ?? '';
+            $out .= htmlspecialchars($t, ENT_QUOTES, 'UTF-8', false);
+        }
+        return $out;
+    }
+
     private static function allScalar(array $list): bool
     {
         foreach ($list as $item) {

@@ -67,6 +67,8 @@ class AgentCapabilityService
             'send_campaign', 'test_send_email',
             // Social
             'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post', 'get_queue', 'record_social_analytics',
+            // Chatbot — read only (F-CB-F2, 2026-09-07): Sarah reads the chatbot state before speaking about it
+            'get_state',
             // Calendar
             'create_event', 'list_events', 'update_event', 'check_availability', 'create_booking_slot',
             // Builder — page management + AI editing via Arthur
@@ -76,6 +78,8 @@ class AgentCapabilityService
             'list_builder_pages', 'get_builder_page', 'update_page', 'ai_builder_action', 'full_site_generation', 'publish_builder_page', 'import_html_page',
             // v1.4.4 Phase D-1 (2026-05-30) — Sarah can add pages too
             'generate_page', 'add_page_from_template',
+            // ARTHUR DELEGATION (2026-09-06) — the one door for page/section additions
+            'ask_arthur',
             // Site intelligence
             'get_site_pages', 'get_site_page', 'search_site_content', 'scan_site_url',
             // Funnel intelligence
@@ -106,6 +110,7 @@ class AgentCapabilityService
             'list_campaigns', 'record_metric',
             // Social — read only
             'list_posts', 'get_queue',
+            'get_state',
             // Calendar
             'list_events', 'check_availability', 'create_event', 'update_event',
             // Builder — read only

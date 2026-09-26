@@ -120,9 +120,9 @@ class EngineeringTaskCommand extends Command
     private function registerProject(WorkflowEngine $engine): int
     {
         $project = $engine->registerProject([
-            'company'            => 'LevelUp Growth',
+            'company'            => 'LevelUpGrowth',
             'key'                => 'levelup-growth-platform',
-            'name'               => 'LevelUp Growth Platform',
+            'name'               => 'LevelUpGrowth Platform',
             'repository_path'    => base_path(),
             'ownership_manifest' => '.engineer888/sprints',
             'test_database'      => 'levelup_e888_test',

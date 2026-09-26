@@ -90,6 +90,77 @@ class NamecheapRegistrarConnector implements DomainRegistrarConnector
         );
     }
 
+    // --------------------------------------------- adapter-only: bulk read
+
+    /**
+     * Availability for many domains in ONE call.
+     *
+     * Namecheap caps DomainList, so callers are capped here too rather than discovering the limit in production.
+     * Returns [domain => ['available' => bool, 'premium' => bool]] for every name the provider answered; a domain
+     * the provider omits is simply absent, which the caller must treat as unknown rather than as available.
+     */
+    public function checkMany(array $domains): array
+    {
+        $list = [];
+        foreach ($domains as $d) {
+            $d = $this->normalizeDomain((string) $d);
+            if ($d !== '' && $this->isPlausibleDomain($d)) { $list[$d] = true; }
+        }
+        $list = array_slice(array_keys($list), 0, 30);
+        if ($list === []) { return []; }
+
+        $r = $this->client->call('namecheap.domains.check', ['DomainList' => implode(',', $list)]);
+        if (! $r['ok']) { return []; }
+
+        $out = [];
+        $results = $r['data']->DomainCheckResult ?? null;
+        if ($results === null) { return []; }
+
+        foreach ($results as $node) {
+            $a = $node->attributes();
+            $name = strtolower((string) ($a['Domain'] ?? ''));
+            if ($name === '') { continue; }
+            $out[$name] = [
+                'available' => filter_var((string) ($a['Available'] ?? 'false'), FILTER_VALIDATE_BOOLEAN),
+                'premium'   => filter_var((string) ($a['IsPremiumName'] ?? 'false'), FILTER_VALIDATE_BOOLEAN),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * The whole register price list in ONE call: [tld => first-year cost in minor units].
+     *
+     * getPricing without a ProductName returns every product Namecheap sells (549 of them at the time of writing),
+     * which is how a twenty-candidate search can be priced without twenty requests. Adapter-only, like checkMany.
+     */
+    public function priceList(string $action = 'REGISTER'): array
+    {
+        $r = $this->client->call('namecheap.users.getPricing', [
+            'ProductType'     => 'DOMAIN',
+            'ProductCategory' => $action,
+            'ActionName'      => $action,
+        ]);
+        if (! $r['ok']) { return []; }
+
+        $out = [];
+        $products = $r['data']->UserGetPricingResult->ProductType->ProductCategory->Product ?? [];
+        foreach ($products as $product) {
+            $tld = strtolower((string) ($product->attributes()['Name'] ?? ''));
+            if ($tld === '') { continue; }
+            foreach ($product->Price as $price) {
+                $a = $price->attributes();
+                if ((string) ($a['Duration'] ?? '') !== '1') { continue; }
+                $amount = (float) ($a['Price'] ?? 0);
+                if ($amount > 0) { $out[$tld] = (int) round($amount * 100); }
+                break;
+            }
+        }
+
+        return $out;
+    }
+
     // ------------------------------------------------------- contract: read
 
     public function searchDomain(string $domain): ProviderResult

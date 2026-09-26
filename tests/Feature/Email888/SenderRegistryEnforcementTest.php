@@ -40,7 +40,7 @@ class SenderRegistryEnforcementTest extends TestCase
             $src = (string) file_get_contents($file->getPathname());
 
             // A real call site, not a docblock mentioning one.
-            if (preg_match('/^\s*(?!\*|\/\/).*Mail::(send|raw|html)\s*\(/m', $src) === 1) {
+            if (preg_match('/^\s*(?!\*|\/\/).*Mail::(send|raw|html)\s*\(/m', $src) === 1 || preg_match('/\bextends\s+Mailable\b/', $src) === 1) { // F-EM-C1: Mailables are call sites too
                 $out[$rel] = $src;
             }
         }

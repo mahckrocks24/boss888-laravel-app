@@ -65,7 +65,7 @@ final class MailboxSpec
     /**
      * INFRA888 · E7. Still true that nothing here is a credential — an address
      * to invite is not a secret, and the provider mints and delivers the
-     * password itself. LevelUp Growth never sees one.
+     * password itself. LevelUpGrowth never sees one.
      */
     public function usesInvitation(): bool
     {

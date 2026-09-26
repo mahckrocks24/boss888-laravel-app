@@ -13,6 +13,8 @@ class NotificationTypes
     public const AGENT_TASK_COMPLETED         = 'agent.task_completed';
     public const AGENT_TASK_FAILED            = 'agent.task_failed';
     public const AGENT_TASK_REQUIRES_APPROVAL = 'agent.task_requires_approval';
+    /** SARAH-QA-1: Sarah rejected (or is holding) a specialist's finished work. */
+    public const SARAH_QA_REJECTED = 'sarah.qa_rejected';
     public const AGENT_STRATEGY_READY         = 'agent.strategy_ready';
     public const AGENT_MEETING_SCHEDULED      = 'agent.meeting_scheduled';
     public const AGENT_PROACTIVE_TRIGGERED    = 'agent.proactive_triggered';

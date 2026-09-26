@@ -20,7 +20,7 @@ use RuntimeException;
  * sprint adds sequence, audit and gating, not analysis.
  *
  * PROJECTS, NOT A CODEBASE. The engine resolves its repository, manifest and
- * test configuration from a project row. LevelUp Growth is Project #001; adding
+ * test configuration from a project row. LevelUpGrowth is Project #001; adding
  * Studio888 or ChefListed is an insert, not a change here.
  */
 final class WorkflowEngine
@@ -59,7 +59,7 @@ final class WorkflowEngine
         if ($existing !== null) { return $existing; }
 
         $id = DB::table('engineering_projects')->insertGetId([
-            'company'            => $attributes['company'] ?? 'LevelUp Growth',
+            'company'            => $attributes['company'] ?? 'LevelUpGrowth',
             'key'                => $key,
             'name'               => $attributes['name'] ?? $key,
             'repository_path'    => $attributes['repository_path'],

@@ -613,7 +613,7 @@ class DomainRenewalService
 
     /**
      * What the customer may see. No registrar name, no provider identifiers, no
-     * wholesale amounts — the customer's supplier is LevelUp Growth.
+     * wholesale amounts — the customer's supplier is LevelUpGrowth.
      *
      * @return array<string,mixed>
      */
@@ -640,7 +640,7 @@ class DomainRenewalService
                 ? Carbon::parse($r->expiry_observed)->toDateString()
                 : ($r->expiry_before ? Carbon::parse($r->expiry_before)->toDateString() : null),
             'action_required' => in_array($r->state, [S::DUNNING, S::NEEDS_MANUAL], true),
-            'provider' => 'LevelUp Growth',
+            'provider' => 'LevelUpGrowth',
         ];
     }
 

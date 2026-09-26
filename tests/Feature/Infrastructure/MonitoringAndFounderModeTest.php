@@ -43,7 +43,7 @@ class MonitoringAndFounderModeTest extends TestCase
         $this->gov = app(AdminGovernanceService::class);
         $this->mfa = app(TotpMfaService::class);
 
-        $owner = User::create(['name' => 'mon-owner', 'email' => 'mon-owner-' . Str::random(6) . '@t.local',
+        $owner = \Tests\Support\AdminUsers::create(['name' => 'mon-owner', 'email' => 'mon-owner-' . Str::random(6) . '@t.local',
             'password' => Hash::make(Str::random(16)), 'is_admin' => 1, 'is_platform_admin' => 1,
             'account_classification' => 'standard']);
         $ws = Workspace::firstOrCreate(['id' => 994001],
@@ -71,7 +71,7 @@ class MonitoringAndFounderModeTest extends TestCase
 
     private function mfaAdmin(string $n, string $class = 'standard'): User
     {
-        $u = User::create(['name' => $n, 'email' => $n . '-' . Str::random(6) . '@t.local',
+        $u = \Tests\Support\AdminUsers::create(['name' => $n, 'email' => $n . '-' . Str::random(6) . '@t.local',
             'password' => Hash::make(Str::random(16)), 'is_admin' => 1, 'is_platform_admin' => 1,
             'account_classification' => $class]);
         $u->forceFill(['mfa_secret_encrypted' => self::SEED, 'mfa_enabled' => false])->save();
@@ -214,7 +214,7 @@ class MonitoringAndFounderModeTest extends TestCase
     public function test_founder_mode_requires_mfa(): void
     {
         $this->resetGov();
-        $noMfa = User::create(['name' => 'f', 'email' => 'f-' . Str::random(6) . '@t.local',
+        $noMfa = \Tests\Support\AdminUsers::create(['name' => 'f', 'email' => 'f-' . Str::random(6) . '@t.local',
             'password' => Hash::make(Str::random(16)), 'is_admin' => 1, 'is_platform_admin' => 1,
             'account_classification' => 'standard']);
 

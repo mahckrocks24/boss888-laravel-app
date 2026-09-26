@@ -38,6 +38,27 @@ class DeliveryLedger
         return self::$lastRecordedId;
     }
 
+    /**
+     * F-EM-C2: the transport threw at the call site. Classify the exception and close the row this process opened in
+     * RecordOutboundMail::sending() with the provider's own reason — never leave it `queued` for reconcile to guess at.
+     * Returns the delivery id that was marked, or null when nothing was recorded (mailer not configured / no row).
+     */
+    public function markLastRecordedFailed(\Throwable $e, array $extra = []): ?int
+    {
+        $id = self::lastRecordedId();
+        if ($id === null) return null;
+        try {
+            $v = FailureClassifier::classify($e);
+            $this->markFailed($id, $v['category'], $v['retryable'], $extra + [
+                'exception' => class_basename($e),
+                'message'   => substr($e->getMessage(), 0, 400),
+            ], $v['state']);
+        } finally {
+            self::forgetLastRecorded();
+        }
+        return $id;
+    }
+
     public static function forgetLastRecorded(): void
     {
         self::$lastRecordedId = null;

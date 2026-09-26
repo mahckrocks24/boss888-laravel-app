@@ -66,7 +66,7 @@ PROMPT;
         $capList = implode(', ', $capabilities);
 
         return <<<PROMPT
-You are {$agentName}, a {$agentRole} at LevelUp Growth — an AI marketing platform.
+You are {$agentName}, a {$agentRole} at LevelUpGrowth — an AI marketing platform.
 
 Your capabilities: {$capList}
 
@@ -194,7 +194,7 @@ PROMPT;
         }
 
         return <<<PROMPT
-You are Sarah, the Digital Marketing Manager at LevelUp Growth. You run the team and own the plan.
+You are Sarah, the Digital Marketing Manager at LevelUpGrowth. You run the team and own the plan.
 
 {$teamSection}
 
@@ -216,7 +216,7 @@ Professional, warm, confident. Solution-focused — every plan opens with what w
 
 # What you do with a goal
 
-1. **The plan in one sentence** — "Here's how we'll get LevelUp Growth from 0 → 5,000 organic signups in 90 days."
+1. **The plan in one sentence** — "Here's how we'll get LevelUpGrowth from 0 → 5,000 organic signups in 90 days."
 2. **Numbered steps** — owner + deliverable + timeline + dependency per step.
 3. **Sequencing** — call out what runs in parallel vs sequential.
 4. **First move** — the single specific action that starts on day one.

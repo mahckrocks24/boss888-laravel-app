@@ -215,6 +215,13 @@ class ProactiveStrategyEngine
             // approved it or against which offer.
             if (!isset($payload['payload']) || !is_array($payload['payload'])) $payload['payload'] = [];
             $payload['payload']['authorized_by_proposal'] = $proposalId;
+            // B1: the site this proposal was planned for travels into the work itself, so
+            // the article lands on a website instead of nowhere. Never overrides an explicit
+            // target already in the payload.
+            if ((string) ($proposal->entity_type ?? '') === 'website' && (int) ($proposal->entity_id ?? 0) > 0
+                && empty($payload['payload']['website_id'])) {
+                $payload['payload']['website_id'] = (int) $proposal->entity_id;
+            }
 
             try {
                 $task = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $payload);
@@ -397,6 +404,31 @@ class ProactiveStrategyEngine
         $taskSvc = app(\App\Core\TaskSystem\TaskService::class);
         $ids = [];
 
+        // ── B1 / N2 (2026-09-25 certification rerun) — THE BINDING TRAVELS INTO THE WORK ──
+        // The first B1 implementation propagated the proposal's website into the task payload
+        // on the chat-proposal branch of approveProposal() and omitted this branch, so a daily
+        // write task still reached TaskService with no website_id and the article was written
+        // with website_id NULL — the AMG failure, unchanged. Caught by the controlled end-to-end
+        // check before any credit was spent.
+        //
+        // This executor CONSUMES the binding SarahDailyOrchestrator already established through
+        // WebsiteTargetResolver; it never resolves, infers or chooses a site of its own. The
+        // invariant holds: no valid binding => no website_id, never a guess. And the binding is
+        // accepted only if the website belongs to this workspace — a foreign id, however it got
+        // onto the row, does not propagate.
+        $__bind = [];
+        if ((string) ($proposal->entity_type ?? '') === 'website' && (int) ($proposal->entity_id ?? 0) > 0) {
+            $__ours = DB::table('websites')->where('id', (int) $proposal->entity_id)
+                ->where('workspace_id', $wsId)->whereNull('deleted_at')->exists();
+            if ($__ours) {
+                $__bind = ['website_id' => (int) $proposal->entity_id];
+            } else {
+                Log::warning('[Proactive] proposal bound to a website outside this workspace — binding NOT propagated', [
+                    'workspace_id' => $wsId, 'proposal_id' => $proposal->id, 'entity_id' => (int) $proposal->entity_id,
+                ]);
+            }
+        }
+
         // Article: parent write_article + 3 children (meta, link suggestions, insert).
         // Image/AEO skipped here — proposals don't yet carry those flags.
         if ($slug === 'write_article') {
@@ -452,7 +484,7 @@ class ProactiveStrategyEngine
                     'length'       => 1100,
                     'created_via'  => 'sarah_proposal',
                     'proposal_id'  => $proposal->id,
-                ],
+                ] + $__bind,   // B1/N2
             ]);
             $ids[] = (int) $parent->id;
             $parent->update(['progress_message' => 'Sarah proposal — ' . mb_substr($title, 0, 60)]);
@@ -473,7 +505,7 @@ class ProactiveStrategyEngine
                         'title'       => "Sarah proposal: " . str_replace('_', ' ', $action),
                         'created_via' => 'sarah_proposal',
                         'proposal_id' => $proposal->id,
-                    ],
+                    ] + $__bind,   // B1/N2
                 ]);
                 $ids[] = (int) $child->id;
             }
@@ -537,7 +569,7 @@ class ProactiveStrategyEngine
                 'description'  => (string) $proposal->description,
                 'created_via'  => 'sarah_proposal',
                 'proposal_id'  => $proposal->id,
-            ],
+            ] + $__bind,   // B1/N2
         ]);
         $ids[] = (int) $task->id;
         return $ids;

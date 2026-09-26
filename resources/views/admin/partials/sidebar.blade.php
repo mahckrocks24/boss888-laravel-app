@@ -14,7 +14,7 @@
 <aside class="sidebar">
   <div class="sidebar-logo" style="display:flex;align-items:center;gap:10px">
     <img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">
-    <div><div class="logo-text" style="font-size:13px">LevelUp Growth</div><div class="logo-sub">Admin Console</div></div>
+    <div><div class="logo-text" style="font-size:13px">LevelUpGrowth</div><div class="logo-sub">Admin Console</div></div>
   </div>
   <nav>
     @php $lastGroup = null; @endphp

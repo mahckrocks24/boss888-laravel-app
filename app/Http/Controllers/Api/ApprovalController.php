@@ -203,7 +203,27 @@ class ApprovalController
         }
 
         if (!$row->task_id) {
-            return response()->json(['error' => 'orphan_approval', 'hint' => 'This approval has no attached task. Expire it instead.'], 422);
+            // ORPHAN APPROVAL = COMMISSION (2026-09-06): the request was parked here because the chat turn was classified as a
+            // statement (UNCOMMISSIONED_TURN). The owner clicking Approve is the authorisation — create the task from the
+            // stored request and run it, instead of refusing with "expire it".
+            $__data = DB::table('approvals')->where('id', $id)->value('data_json'); // $row is a narrow select
+            if (is_string($__data)) { $__data = json_decode($__data, true); if (is_string($__data)) $__data = json_decode($__data, true); }
+            if (!is_array($__data) || empty($row->engine) || empty($row->action)) {
+                return response()->json(['error' => 'orphan_approval', 'hint' => 'This approval has no attached task and no request data. Expire it instead.'], 422);
+            }
+            try {
+                $__task = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, [
+                    'engine' => (string) $row->engine, 'action' => (string) $row->action, 'payload' => $__data, 'source' => 'agent',
+                    'assigned_agents' => ['sarah'], 'auto_approve' => true, 'authorized_by_proposal' => true, 'requires_approval' => false,
+                ]);
+                DB::table('approvals')->where('id', $id)->update(['task_id' => $__task->id, 'status' => 'approved', 'decision_by' => $request->user()->id, 'decided_at' => now(), 'updated_at' => now()]);
+                $__dispatch = null;
+                try { $__dispatch = app(\App\Core\TaskSystem\TaskDispatcher::class)->dispatch($__task); }
+                catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[ApprovalController] orphan commission dispatch failed', ['approval' => $id, 'task' => $__task->id, 'err' => $e->getMessage()]); }
+                return response()->json(['success' => true, 'approval_id' => $id, 'task_id' => $__task->id, 'commissioned_from_orphan' => true, 'dispatch' => $__dispatch]);
+            } catch (\Throwable $e) {
+                return response()->json(['error' => 'orphan_approval_failed', 'message' => $e->getMessage()], 422);
+            }
         }
 
         try {

@@ -117,7 +117,7 @@ final class CustomerStatus
             ],
             self::SUSPENDED => [
                 'label'  => 'Suspended',
-                'detail' => 'Mail is paused. Contact LevelUp Growth support if this is unexpected.',
+                'detail' => 'Mail is paused. Contact LevelUpGrowth support if this is unexpected.',
                 'tone'   => 'attention',
             ],
             self::UNAVAILABLE => [

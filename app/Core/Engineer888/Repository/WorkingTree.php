@@ -33,7 +33,10 @@ final class WorkingTree
      */
     public static function read(string $repoPath): array
     {
-        if (! is_dir($repoPath . '/.git')) {
+        // A git WORKTREE keeps `.git` as a FILE pointing at the main repository; it
+        // is still a checkout (F-E8-A3, 2026-09-07 — the engine's own worktree was
+        // reported as "not a git checkout").
+        if (! is_dir($repoPath . '/.git') && ! is_file($repoPath . '/.git')) {
             return ['available' => false, 'reason' => 'not a git checkout', 'files' => [],
                     'by_area' => [], 'collapsed_entries' => 0, 'expanded_files' => 0];
         }

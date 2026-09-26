@@ -402,6 +402,10 @@ class EngineExecutionService
             }
 
             $this->cjSafe(fn () => $__cjs->fail($__cjob, $e->getMessage()));
+            // F-OPS-D2c (2026-09-06): validation-class exceptions (duplicate keyword, bad argument) are the caller's input, not a crash
+            if ($e instanceof \InvalidArgumentException || $e instanceof \Illuminate\Validation\ValidationException) {
+                return ['success' => false, 'error' => $e->getMessage(), 'code' => 'INVALID_INPUT'];
+            }
             return ['success' => false, 'error' => $e->getMessage(), 'code' => 'EXECUTION_FAILED'];
         }
 
@@ -451,6 +455,29 @@ class EngineExecutionService
             ];
         }
 
+        // ─── Step 5f (F-OPS-D2, 2026-09-06): a service that REFUSED (explicit success:false, at the top level or wrapped in
+        // entity_id by the CRUD arms) is not a success. Release the reservation and answer honestly — the seo/add_keyword
+        // plan-limit refusal used to come back as 201 {success:true, data:{entity_id:{success:false,…}}}.
+        $__refusal = null;
+        if ($engine !== 'builder' && is_array($result)) {
+            if (array_key_exists('success', $result) && $result['success'] === false) $__refusal = $result;
+            elseif (is_array($result['entity_id'] ?? null) && array_key_exists('success', $result['entity_id']) && $result['entity_id']['success'] === false) $__refusal = $result['entity_id'];
+        }
+        if ($__refusal !== null) {
+            if (isset($reservationId) && $creditCost > 0) {
+                $this->creditService->release($wsId, $reservationId);
+            }
+            $this->cjSafe(fn () => $__cjs->fail($__cjob, (string) ($__refusal['error'] ?? 'refused')));
+            Log::info('[EES] action refused by service', ['ws' => $wsId, 'engine' => $engine, 'action' => $action, 'error' => $__refusal['error'] ?? null]);
+            return [
+                'success'      => false,
+                'error'        => (string) ($__refusal['error'] ?? $__refusal['message'] ?? 'The action was refused.'),
+                'code'         => !empty($__refusal['limit_reached']) ? 'PLAN_GATED' : ((string) ($__refusal['code'] ?? 'ACTION_REFUSED')),
+                'data'         => $__refusal,
+                'credits_used' => 0,
+            ];
+        }
+
         // ─── Step 5d (F-STUDIO-G-EDIT-DUPCHARGE, 2026-09-03): a duplicate submit that
         // REPLAYED a cached result (same idempotency_key) did NO new work and must NOT be
         // charged again. The interactive creative/edit route has a GET_LOCK guard, but the
@@ -463,6 +490,15 @@ class EngineExecutionService
             }
             $this->cjSafe(fn () => $__cjs->complete($__cjob, ['status' => 'completed', 'asset_id' => (isset($result['asset_id']) && is_numeric($result['asset_id'])) ? (int) $result['asset_id'] : null]));
             return array_merge($result, ['success' => true, 'credits_used' => 0]);
+        }
+        // ─── Step 5e (F-OPS-C3, 2026-09-06): an action that did NO chargeable work (e.g. link generation with nothing to
+        // link, "generated": 0) says so with `no_charge => true`; the reservation is released and zero credits reported.
+        if (is_array($result) && ($result['no_charge'] ?? false) === true) {
+            if (isset($reservationId) && $creditCost > 0) {
+                $this->creditService->release($wsId, $reservationId);
+            }
+            Log::info('[EES] no-charge result, reservation released', ['ws' => $wsId, 'engine' => $engine, 'action' => $action, 'reason' => $result['no_charge_reason'] ?? null]);
+            return ['success' => true, 'data' => $result, 'credits_used' => 0, 'triggers_fired' => [], 'source' => $source];
         }
 
         // ─── Step 6: Commit credits ──────────────────────────
@@ -486,7 +522,8 @@ class EngineExecutionService
         $this->crossEngineSync($wsId, $engine, $action, $params, $result);
 
         // ─── Step 9: Audit log ───────────────────────────────
-        $this->auditLog->log($wsId, $userId, "{$engine}.{$action}", ucfirst($engine), $result['entity_id'] ?? null, [
+        $__auditEid = $result['entity_id'] ?? null; $__auditEid = is_numeric($__auditEid) ? (int) $__auditEid : (is_array($__auditEid) && is_numeric($__auditEid['id'] ?? null) ? (int) $__auditEid['id'] : null); // F-OPS-D2: never a TypeError after the work is done
+        $this->auditLog->log($wsId, $userId, "{$engine}.{$action}", ucfirst($engine), $__auditEid, [
             'source' => $source, 'agent' => $agentId, 'credits' => $creditCost, 'params' => array_keys($params),
         ]);
 
@@ -846,7 +883,9 @@ class EngineExecutionService
     {
         $svc = app(\App\Engines\Write\Services\WriteService::class);
         return match ($action) {
-            'create_article', 'write_article' => $svc->createArticle($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
+            'create_article' => $svc->createArticle($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
+            // F-OPS-E9 (2026-09-06): write_article is the AI writer — it was wired to the plain insert and charged 1 credit for an empty draft
+            'write_article'  => $svc->writeArticle($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
             'update_article' => $svc->updateArticle($params['article_id'], $params, $wsId),
             'improve_draft' => $svc->improveDraft($wsId, $params),
             'generate_outline' => $svc->generateOutline($wsId, $params),
@@ -914,7 +953,6 @@ class EngineExecutionService
         $svc = app(\App\Engines\Builder\Services\BuilderService::class);
         return match ($action) {
             'create_website' => $svc->createWebsite($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null])),
-            'generate_page' => (function() use ($svc, $params, $wsId) { if (!\Illuminate\Support\Facades\DB::table('websites')->where('id', $params['website_id'] ?? 0)->where('workspace_id', $wsId)->exists()) throw new \RuntimeException('Website not found'); return $svc->createPage($params['website_id'], $params); })(),
             // RISK-0091 (2026-08-25): wizard_generate is advertised (EngineIntelligence) as the
             // website wizard but BuilderService::wizardGenerate returns 'gone' (retired 2026-04-19).
             // Route it to the SAME proven Arthur build as full_site_generation so the advertised
@@ -933,7 +971,11 @@ class EngineExecutionService
             //   ai_builder_action → hands off to Arthur, who proposes structured
             //   actions on sections_json and applies them atomically. This is
             //   Sarah's coordination path with Arthur.
-            'update_page' => (function () use ($svc, $params, $wsId) {
+            'update_page' => (function () use ($svc, $params, $wsId, $ctx) {
+                // SARAH NEVER BUILDS (2026-09-06): an agent may change metadata, never sections. Structure/copy → ask_arthur.
+                if (($ctx['source'] ?? '') === 'agent' && (isset($params['sections']) || isset($params['sections_json']))) {
+                    return ['success' => false, 'code' => 'USE_ASK_ARTHUR', 'error' => 'Agents do not write page sections directly. Ask Arthur (builder.ask_arthur) to add or change content.'];
+                }
                 $svc->updatePage((int) ($params['page_id'] ?? 0), $params, $wsId);
                 return ['entity_type' => 'Page', 'entity_id' => (int) ($params['page_id'] ?? 0), 'action' => 'updated'];
             })(),
@@ -945,7 +987,15 @@ class EngineExecutionService
                     array_merge($params['context'] ?? [], ['workspace_id' => $wsId, 'agent_slug' => $ctx['agent_slug'] ?? 'sarah']) /* TN-1: trusted keys LAST so a model-supplied context cannot override the authenticated workspace_id */
                 ),
             // v1.4.4 Phase D-1 (2026-05-30) — add new page from universal template.
-            'add_page_from_template' => $svc->addPageFromTemplate($wsId, $params),
+            // ARTHUR DELEGATION (2026-09-06): every add/edit request lands on Arthur. Legacy tool ids are translated
+            // into a plain-English request so Sarah's older prompts keep working.
+            'ask_arthur', 'add_page_from_template', 'generate_page' => app(\App\Engines\Builder\Services\ArthurService::class)->handleSiteRequest(
+                $wsId,
+                (int) ($params['website_id'] ?? 0),
+                (string) ($params['request'] ?? $params['command'] ?? (isset($params['page_template']) ? 'add a ' . str_replace('_', ' ', (string) $params['page_template']) . ' page' : (isset($params['title']) ? 'add a ' . (string) $params['title'] . ' page' : ''))),
+                ['agent_slug' => $ctx['agent_slug'] ?? $ctx['agent_id'] ?? 'sarah', 'user_id' => $ctx['user_id'] ?? null, 'dry_run' => !empty($params['dry_run']),
+                 'attachments' => array_values(array_filter(array_map('intval', (array) ($params['attachments'] ?? $params['media_ids'] ?? []))))] // FILE HAND-OFF 2026-09-06
+            ),
             // RISK-0088 (2026-08-25): full_site_generation was a governed 10cr row
             // with NO executor (DISCONNECTED). Wire it to the PROVEN Arthur build
             // (buildFromChat -> generateWebsite) so Sarah's website capability does
@@ -1106,6 +1156,7 @@ private function executeStudioAction(int $wsId, string $action, array $params, a
     private function executeChatbotAction(int $wsId, string $action, array $params, array $ctx): array
     {
         return match ($action) {
+            'get_state' => app(\App\Engines\Chatbot\Services\ChatbotStateService::class)->forWorkspace($wsId, (int) ($params['days'] ?? 30), (string) ($params['question'] ?? '')), // F-CB-F2: Sarah's chatbot read
             'ingest_text' => [
                 'source_id' => app(\App\Engines\Chatbot\Services\ChatbotKnowledgeService::class)
                     ->ingestText($wsId, $params['label'] ?? 'untitled', $params['text'] ?? ''),

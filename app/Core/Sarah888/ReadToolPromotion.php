@@ -22,7 +22,7 @@ namespace App\Core\Sarah888;
  */
 final class ReadToolPromotion
 {
-    private const READ_FAMILY = '/^(platform\.(get_[a-z_]+|list_[a-z_]+|read_[a-z_]+|seo_health|search_performance)|web\.(fetch|search)|crm\.(list_leads|get_lead)|seo\.list_keywords|calendar\.(list_events|check_availability)|builder\.(list_builder_pages|get_builder_page))$/';
+    private const READ_FAMILY = '/^(platform\.(get_[a-z_]+|list_[a-z_]+|read_[a-z_]+|seo_health|search_performance)|web\.(fetch|search)|crm\.(list_leads|get_lead)|seo\.list_keywords|calendar\.(list_events|check_availability)|builder\.(list_builder_pages|get_builder_page)|social\.(list_posts|get_queue)|chatbot\.get_state)$/';
 
     /**
      * RFC-0007 Phase 3 (REPORT-0026 §3): the Runtime emits its own bare read ids; these map to the canonical
@@ -109,8 +109,10 @@ final class ReadToolPromotion
         $data = is_array($result['data'] ?? null) ? $result['data'] : [];
         // 2026-09-02 (run 6, turn 5): list_pages returns Collection->toArray() — a list of stdClass rows. Objects become arrays here.
         $data = json_decode(json_encode($data), true) ?: [];
+        // F-CB-F2: an engine arm may return its own envelope {success,result,data} — the kernel wraps it once more. Unwrap.
+        if (isset($data['result']) && is_string($data['result']) && is_array($data['data'] ?? null)) { if (trim((string) ($result['result'] ?? '')) === '') $result['result'] = $data['result']; $data = $data['data']; }
         $rows = null;
-        foreach (['pages', 'articles', 'items', 'rows', 'results', 'websites', 'keywords', 'leads', 'tasks'] as $k) {
+        foreach (['pages', 'articles', 'posts', 'queue', 'items', 'rows', 'results', 'websites', 'keywords', 'leads', 'tasks'] as $k) {
             if (isset($data[$k]) && is_array($data[$k])) { $rows = $data[$k]; break; }
         }
         if ($rows === null && array_is_list($data) && $data && is_array($data[0])) $rows = $data;
@@ -120,9 +122,12 @@ final class ReadToolPromotion
             foreach (array_slice($rows, 0, 25) as $r) {
                 if (!is_array($r)) continue;
                 $label = (string) ($r['title'] ?? $r['name'] ?? $r['keyword'] ?? $r['url'] ?? $r['slug'] ?? '');
+                if ($label === '' && !empty($r['content'])) { $label = trim(preg_replace('/\s+/', ' ', (string) $r['content'])); if (mb_strlen($label) > 90) $label = mb_substr($label, 0, 87) . '…'; } // F-SOC-F5: social posts have content, not a title
                 if ($label === '') continue;
                 $extra = [];
                 if (!empty($r['website_name'])) $extra[] = (string) $r['website_name'];
+                if (!empty($r['platform']))     $extra[] = (string) $r['platform'];
+                if (!empty($r['scheduled_at'])) $extra[] = 'scheduled ' . (string) $r['scheduled_at'];
                 if (!empty($r['status']))       $extra[] = (string) $r['status'];
                 $lines[] = '• ' . $label . ($extra ? ' (' . implode(', ', $extra) . ')' : '');
             }
@@ -136,7 +141,7 @@ final class ReadToolPromotion
         $text = self::stripGuidance((string) ($result['result'] ?? ''));
         if ($text !== '') return $text;
         if (isset($data['count'])) return (int) $data['count'] . ' found.';
-        return 'Done — nothing to show for that.';
+        return 'Nothing to show for that right now — the list is empty.'; // F-SOC-F5b: never "Done" — an empty read is not a completion claim
     }
 
     /**

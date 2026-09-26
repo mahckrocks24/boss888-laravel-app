@@ -364,7 +364,7 @@ class BusinessEmailCustomerController
                 'success'    => true,
                 'forwarders' => $rows,
                 'allowance'  => CustomerEntitlements::allowance($active, $entitlements[CustomerEntitlements::FORWARDER_LIMIT]),
-                'notice'     => 'Forwarding sends a copy of your mail outside LevelUp Growth. '
+                'notice'     => 'Forwarding sends a copy of your mail outside LevelUpGrowth. '
                     . 'The receiving service decides what happens to it after that.',
                 'actions'    => $this->availableActions(),
             ];

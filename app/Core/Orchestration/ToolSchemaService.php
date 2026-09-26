@@ -550,6 +550,16 @@ class ToolSchemaService
         // when the user asked "what are those 4?" she just repeated the
         // count instead of re-querying. By the time the user asked, all 4
         // had already failed. The histogram was stale.
+        // H2 (2026-09-25 certification): she named the task's internal id and omitted its cost —
+        // exactly inverted. The owner's rule is that money is disclosed on the ask; the id is the
+        // one thing the customer has no surface for.
+        // M1 (2026-09-25 certification): unprompted, she apologised for answering a social-post
+        // request with an SEO definition. She had not — she asked which business, the owner
+        // changed the subject, and she answered the new question correctly. Two adjacent turns
+        // compressed into a fault that never happened. Erring toward self-criticism is still
+        // inventing an event, and it teaches the owner to distrust her account of her own work.
+        $lines[] = '- NEVER VOLUNTEER A PAST MISTAKE. Do not tell the owner you got something wrong earlier unless that exact turn is in the conversation history in front of you AND it plainly shows the error. Do not infer a mistake from two turns that sit near each other. If you are not certain what happened earlier, say nothing about it — an invented apology is as misleading as an invented fact. Correcting an error the owner has just pointed out is different, and expected.';
+        $lines[] = '- COST IS PART OF THE ANSWER. Whenever you report work that is queued, pending, proposed or awaiting approval, STATE ITS CREDIT COST from credit_cost — "the Botox aftercare article is queued (3 credits)". If credit_cost is 0 or absent, say it costs nothing rather than staying silent. NEVER report the work and leave the price out, and NEVER give an internal id in place of a cost.';
         $lines[] = '- TASK COUNTS — ALWAYS USE platform.get_task_status, NEVER COUNT list_tasks ROWS. For ANY "how many tasks / how many completed / how many failed" question, you MUST call platform.get_task_status — that is the ONLY correct source for totals. NEVER answer a count by calling platform.list_tasks and counting the rows it returns: list_tasks returns at most a 30-row SAMPLE and will undercount badly (e.g. "20 tasks, 18 completed" when the real 7-day number is far higher). list_tasks is ONLY for naming specific rows / explaining individual failures, never for totals.';
         $lines[] = '- TASK COUNTS — DEFAULT TO THE LAST 7 DAYS. platform.get_task_status defaults to the last 7 days for finished work and gives the live count for currently-open work. Report it that way and SAY THE WINDOW: "28 tasks completed in the last 7 days (2 failed)". Do NOT quote an ever-growing all-time total — it is meaningless to the user. Only report a longer span when the user explicitly asks: "how many this month" → call get_task_status with window="30d"; "how many since the beginning / in total / all time / ever" → window="all". Never volunteer the all-time number unprompted, and never silently mix windows.';
         $lines[] = '- TASK QUESTIONS — RE-QUERY ON SPECIFICS. When you reported a count earlier in the conversation (e.g. "4 pending tasks") and the user then asks WHICH ones / WHAT they are / WHY they are slow / WHY they failed → ALWAYS call platform.list_tasks NOW. Do NOT recite the older count. State can change between turns; a task can go pending → failed in seconds. If you said "4 pending" 3 minutes ago, those 4 may have all crashed by the time the user follows up. Verify before you answer.';
@@ -1124,7 +1134,7 @@ class ToolSchemaService
                     $rows = $q->orderByDesc('updated_at')
                         ->limit($limit)
                         ->get(['id', 'engine', 'action', 'status', 'created_at', 'updated_at',
-                               'payload_json', 'error_text']);
+                               'payload_json', 'error_text', 'credit_cost']);   // H2: the cost travels with the work
                     $now = now();
                     $list = $rows->map(function ($r) use ($now) {
                         $ageMin = (int) \Carbon\Carbon::parse($r->updated_at ?? $r->created_at)->diffInMinutes($now);
@@ -1142,6 +1152,7 @@ class ToolSchemaService
                             'created_at'      => $r->created_at,
                             'updated_at'      => $r->updated_at,
                             'age_minutes'     => $ageMin,
+                            'credit_cost'     => $r->credit_cost ?? null,   // H2
                             'payload_summary' => self::scrubInternalNames($payloadSummary),
                             'error_text'      => self::scrubInternalNames($errorSummary),
                         ];

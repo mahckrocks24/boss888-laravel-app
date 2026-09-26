@@ -1427,7 +1427,7 @@ class SarahOrchestrator
 
         // ── House account: aggressive marketing context ─────────────
         if ($workspace && $workspace->is_house_account) {
-            $systemPrompt .= "\n\nSPECIAL CONTEXT: This is the LevelUp Growth platform's own marketing workspace."
+            $systemPrompt .= "\n\nSPECIAL CONTEXT: This is the LevelUpGrowth platform's own marketing workspace."
                 . "\nYou are marketing an AI Marketing Operating System to SMBs in MENA, DACH, and SEA markets."
                 . "\nTarget audience: Small and medium business owners in Dubai, UAE who need digital marketing help."
                 . "\nBe AGGRESSIVE with content strategy. Proactively:"

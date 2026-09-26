@@ -464,6 +464,16 @@ class DeskService
         $a = DB::table('articles')->where('workspace_id', $wsId)->where('website_id', $wid)->where('id', $id)->whereNull('deleted_at')->first(['id', 'title', 'status']);
         if (!$a) return ['success' => false, 'error' => 'NOT_FOUND'];
         DB::table('articles')->where('id', $id)->update(['deleted_at' => now(), 'status' => 'draft', 'updated_at' => now()]); // soft delete (recoverable from the bin); WriteService::deleteArticle is a hard delete
+        // INC-0007 (2026-09-10): retire any approval still asking to publish this article. Deleting
+        // the story used to leave its pending approval standing, so "Needs Your OK" kept offering to
+        // publish an article the customer could no longer see — Chef Red had one from 2026-09-01 for
+        // an article deleted on 09-06. Expired, not deleted, so the decision stays auditable.
+        DB::table('approvals')
+            ->where('workspace_id', $wsId)
+            ->where('status', 'pending')
+            ->where('action', 'publish_article')
+            ->whereRaw("JSON_EXTRACT(data_json, '$.create_payload.payload.article_id') = ?", [$id])
+            ->update(['status' => 'expired', 'decision_note' => 'Article deleted', 'decided_at' => now(), 'updated_at' => now()]);
         $this->invalidate($wid, $id);
         $this->audit->record('story.delete', 'story', $id, $a->title, ['status' => $a->status], ['deleted' => true]);
         return ['success' => true];

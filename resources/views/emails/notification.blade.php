@@ -18,7 +18,7 @@
 </head>
 <body>
 <div class="card">
-  <div class="brand">LevelUp Growth</div>
+  <div class="brand">LevelUpGrowth</div>
   <h2>{{ $notification->title }}</h2>
   @if($notification->body)
   <p>{{ $notification->body }}</p>

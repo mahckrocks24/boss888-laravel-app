@@ -55,7 +55,7 @@ class CredentialRolesAndGovernanceModeTest extends TestCase
 
     private function mfaAdmin(string $n): User
     {
-        $u = User::create(['name' => $n, 'email' => $n . '-' . Str::random(6) . '@t.local',
+        $u = \Tests\Support\AdminUsers::create(['name' => $n, 'email' => $n . '-' . Str::random(6) . '@t.local',
             'password' => Hash::make(Str::random(16)), 'is_admin' => 1, 'is_platform_admin' => 1,
             'account_classification' => 'standard']);
         $u->forceFill(['mfa_secret_encrypted' => self::SEED, 'mfa_enabled' => false])->save();

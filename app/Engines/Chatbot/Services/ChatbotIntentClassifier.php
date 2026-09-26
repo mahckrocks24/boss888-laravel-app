@@ -124,13 +124,22 @@ class ChatbotIntentClassifier
         if (preg_match('/[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}/i', $text, $m)) {
             $captured['email'] = strtolower($m[0]);
         }
+        // F-CB-C1: a stated name. Stops before a connector, punctuation or a contact detail.
+        if (preg_match('/\b(?:my name is|my name.s|i am|i.m|this is|it.s|name\s*[:\-]|call me)\s+((?:(?!(?:and|my|the|is|at|on|in|of|for|with|email|phone|number|here|from|to|a|an|i|but|so|or)\b)[A-Za-z][A-Za-z\'\-]*)(?:\s+(?!(?:and|my|the|is|at|on|in|of|for|with|email|phone|number|here|from|to|a|an|i|but|so|or)\b)[A-Za-z][A-Za-z\'\-]*){0,3})/iu', $text, $m)) {
+            $cand = trim($m[1]);
+            if (!preg_match('/^(?:a|an|the|not|just|interested|looking|here|calling|writing|wondering|going|trying|happy|sorry|fine|good|ok|okay)\b/i', $cand)) $captured['name'] = self::titleCaseName($cand);
+        }
 
         // Phone — international or national, 7+ digits with optional +/spaces/dashes
-        if (preg_match('/(\+?\d[\d\s\-().]{6,}\d)/', $text, $m)) {
-            $digits = preg_replace('/\D/', '', $m[1]);
-            if ($digits !== null && strlen($digits) >= 7 && strlen($digits) <= 15) {
-                // Re-prepend + if original had it
-                $captured['phone'] = (str_starts_with($m[1], '+') ? '+' : '') . $digits;
+        // F-CB-C2 (2026-09-06): the first digit-run used to win, so an ISO date ("2026-09-07") became phone "20260907".
+        // Prefer a +-prefixed number; skip anything that is a date; take the first plausible 7–15 digit candidate.
+        if (preg_match_all('/(\+?\d[\d\s\-().\/]{6,}\d)/', $text, $mm)) {
+            $cands = $mm[1]; usort($cands, fn ($a, $b) => (int) str_starts_with($b, '+') <=> (int) str_starts_with($a, '+'));
+            foreach ($cands as $cand) {
+                $cand = trim($cand);
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $cand) || preg_match('/^\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}$/', $cand)) continue;
+                $digits = preg_replace('/\D/', '', $cand);
+                if ($digits !== null && strlen($digits) >= 7 && strlen($digits) <= 15) { $captured['phone'] = (str_starts_with($cand, '+') ? '+' : '') . $digits; break; }
             }
         }
 
@@ -151,6 +160,22 @@ class ChatbotIntentClassifier
         }
 
         return $captured;
+    }
+
+    /** F-CB-C1: a bare answer to "could I get your name?" — 1–4 alphabetic words, no digits/@ — IS the name. */
+    public static function bareNameAnswer(string $text): ?string
+    {
+        $t = trim(preg_replace('/\s+/u', ' ', $text), " \t.,!");
+        if ($t === '' || preg_match('/[\d@]/', $t)) return null;
+        $t = preg_replace('/^(?:my name is|my name.s|i am|i.m|this is|it.s|call me|name\s*[:\-])\s*/iu', '', $t);
+        if (!preg_match('/^[A-Za-z][A-Za-z\'\-]*(?:\s+[A-Za-z][A-Za-z\'\-]*){0,3}$/u', $t)) return null;
+        if (preg_match('/^(?:yes|no|ok|okay|sure|hi|hello|hey|thanks|thank you|please|what|why|how|when|where|who|not now|later|skip|none|nope|yep|yeah)$/i', $t)) return null;
+        return self::titleCaseName($t);
+    }
+
+    public static function titleCaseName(string $n): string
+    {
+        return implode(' ', array_map(fn ($w) => mb_strtoupper(mb_substr($w, 0, 1)) . mb_substr($w, 1), preg_split('/\s+/u', trim($n)) ?: []));
     }
 
     private function normaliseRelativeDate(string $phrase): ?string

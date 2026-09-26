@@ -314,8 +314,8 @@ class MarketingService
             $result = $this->dispatcher->send(new SendEmailCommand(
                 purpose:    'campaign',
                 recipients: [$toEmail],
-                subject:    'LevelUp Growth — test email',
-                html:       '<p>This is a test email from your LevelUp Growth marketing engine.</p>'
+                subject:    'LevelUpGrowth — test email',
+                html:       '<p>This is a test email from your LevelUpGrowth marketing engine.</p>'
                           . '<p>If you received this, outbound email is configured correctly.</p>',
                 metadata:   ['test_send' => true],
             ));

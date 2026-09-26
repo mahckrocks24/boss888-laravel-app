@@ -261,7 +261,9 @@ HTML;
         $cards = ''; $i = 0;
         foreach ($items as $it) {
             $tag = $this->e($it['tag'] ?? 'Core service');
-            $icon = $this->e($it['icon'] ?? '✦');
+            // An icon we authored is inline SVG and passes through; a character supplied per-site is escaped.
+            $__ic = (string) ($it['icon'] ?? '');
+            $icon = $__ic === '' ? '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5 13.6 9 19 10.6 13.6 12.2 12 17.6 10.4 12.2 5 10.6 10.4 9Z"/></svg>' : (str_starts_with($__ic, '<svg ') ? $__ic : $this->e($__ic));
             $h3 = $this->e($it['heading'] ?? $it['title'] ?? '');
             $p = $this->e($it['text'] ?? '');
             $pts = is_array($it['points'] ?? null) ? $it['points'] : [];
@@ -544,18 +546,18 @@ HTML;
       <p class="lead" style="font-size:16px;margin-bottom:4px">What can we help you arrange?</p>
       <p style="color:var(--ink-soft);font-size:13.5px;margin-bottom:16px">Pick all that apply — this is an inquiry, no payment.</p>
       <div class="wz-grid">
-        <button type="button" class="wz-opt" data-svc="Flights"><span class="wz-opt__i">✈️</span>Flights</button>
-        <button type="button" class="wz-opt" data-svc="Ship / Ferry"><span class="wz-opt__i">⛴️</span>Ship / Ferry</button>
-        <button type="button" class="wz-opt" data-svc="Hotel"><span class="wz-opt__i">🏨</span>Hotel</button>
-        <button type="button" class="wz-opt" data-svc="Tour package"><span class="wz-opt__i">🌏</span>Tour package</button>
-        <button type="button" class="wz-opt" data-svc="Visa"><span class="wz-opt__i">🛂</span>Visa</button>
-        <button type="button" class="wz-opt" data-svc="Complete package"><span class="wz-opt__i">✨</span>Complete package</button>
+        <button type="button" class="wz-opt" data-svc="Flights"><span class="wz-opt__i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5c.6 0 1.1.5 1.1 1.1v4.9l7.4 4.3v1.9l-7.4-2.3v4.4l2.5 1.8v1.4L12 19.8l-3.6 1.2v-1.4l2.5-1.8v-4.4L3.5 15.7v-1.9l7.4-4.3V3.6c0-.6.5-1.1 1.1-1.1Z"/></svg></span>Flights</button>
+        <button type="button" class="wz-opt" data-svc="Ship / Ferry"><span class="wz-opt__i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20a3 3 0 0 0 2.5-1 3 3 0 0 1 5 0 3 3 0 0 0 5 0 3 3 0 0 1 5 0 3 3 0 0 0 2.5 1"/><path d="M4 15.5 5.6 10a2 2 0 0 1 1.9-1.5h9a2 2 0 0 1 1.9 1.5L20 15.5"/><path d="M12 8.5V4"/><path d="M9 4h6"/></svg></span>Ship / Ferry</button>
+        <button type="button" class="wz-opt" data-svc="Hotel"><span class="wz-opt__i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20v-9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v9"/><path d="M3 16h18"/><path d="M6 9V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg></span>Hotel</button>
+        <button type="button" class="wz-opt" data-svc="Tour package"><span class="wz-opt__i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a14 14 0 0 0 0 18 14 14 0 0 0 0-18"/><path d="M3 12h18"/></svg></span>Tour package</button>
+        <button type="button" class="wz-opt" data-svc="Visa"><span class="wz-opt__i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="10" r="2.5"/><path d="M9 17h6"/></svg></span>Visa</button>
+        <button type="button" class="wz-opt" data-svc="Complete package"><span class="wz-opt__i"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 8.5v7a2 2 0 0 1-1 1.7l-6 3.5a2 2 0 0 1-2 0l-6-3.5a2 2 0 0 1-1-1.7v-7a2 2 0 0 1 1-1.7l6-3.5a2 2 0 0 1 2 0l6 3.5a2 2 0 0 1 1 1.7Z"/><path d="M4.3 7.6 12 12l7.7-4.4"/><path d="M12 12v9"/></svg></span>Complete package</button>
       </div>
       <div class="bk__nav"><button class="btn btn--primary" id="toStep2" disabled style="opacity:.5">Continue {$arrow}</button></div>
     </div>
     <div class="bk__pane">
       <p class="lead" style="font-size:16px;margin-bottom:16px">Trip details</p>
-      <div class="wz-row" id="wzTransportRow"><label>Travelling by</label><div class="wz-seg" data-field="transport"><button type="button" class="is-on" data-val="Airline">✈️ Airline</button><button type="button" data-val="Ship">⛴️ Ship / Ferry</button></div></div>
+      <div class="wz-row" id="wzTransportRow"><label>Travelling by</label><div class="wz-seg" data-field="transport"><button type="button" class="is-on" data-val="Airline"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2.5c.6 0 1.1.5 1.1 1.1v4.9l7.4 4.3v1.9l-7.4-2.3v4.4l2.5 1.8v1.4L12 19.8l-3.6 1.2v-1.4l2.5-1.8v-4.4L3.5 15.7v-1.9l7.4-4.3V3.6c0-.6.5-1.1 1.1-1.1Z"/></svg> Airline</button><button type="button" data-val="Ship"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 20a3 3 0 0 0 2.5-1 3 3 0 0 1 5 0 3 3 0 0 0 5 0 3 3 0 0 1 5 0 3 3 0 0 0 2.5 1"/><path d="M4 15.5 5.6 10a2 2 0 0 1 1.9-1.5h9a2 2 0 0 1 1.9 1.5L20 15.5"/><path d="M12 8.5V4"/><path d="M9 4h6"/></svg> Ship / Ferry</button></div></div>
       <div class="field-row" id="wzRouteRow">
         <div class="field" id="wzFromField"><label>From</label><input id="wzFrom" placeholder="e.g. Manila"></div>
         <div class="field"><label id="wzToLabel">Destination</label><input id="wzTo" placeholder="e.g. Tokyo / Cebu"></div>
@@ -589,13 +591,13 @@ HTML;
       </div>
       <div class="wz-row"><label>Preferred contact</label><div class="wz-seg" data-field="contact"><button type="button" class="is-on" data-val="Viber">Viber</button><button type="button" data-val="Call">Call</button><button type="button" data-val="Email">Email</button></div></div>
       <div class="wz-err" id="wzErr"></div>
-      <p class="modal__note" style="text-align:left;margin-top:10px">We'll reply with a tailored quote — no payment online. Sagot agad! 😊</p>
+      <p class="modal__note" style="text-align:left;margin-top:10px">We'll reply with a tailored quote — no payment online.</p>
       <div class="bk__nav"><button class="btn btn--ghost" id="bkBack3">Back</button><button class="btn btn--primary" id="wzSubmit">Send my inquiry {$arrow}</button></div>
     </div>
     <div class="bk__pane">
       <div class="bk__done">
         <div class="bk__check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 12 4 4 10-10"/></svg></div>
-        <h3 style="font-size:26px">Inquiry sent 🎉</h3>
+        <h3 style="font-size:26px">Inquiry sent</h3>
         <p class="lead" style="font-size:16px;margin-top:8px">Salamat! An AMG specialist will email your tailored quote and itinerary shortly.</p>
         <div class="bk__ref">Reference: <span id="bkRef">AMG-XXXXXX</span></div>
         <div class="bk__nav" style="justify-content:center;margin-top:28px"><button class="btn btn--primary" id="bkDone">Done</button></div>

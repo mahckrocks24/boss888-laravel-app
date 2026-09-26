@@ -332,6 +332,169 @@ class RuntimeClient
      * @param int    $maxTokens  Default 1200, bump for larger structured outputs.
      */
     /**
+     * CONCURRENT chat_json (2026-09-06). $calls = [key => [system, prompt, context, maxTokens]]. Returns [key => result] in
+     * chatJson()'s shape. Independent generation steps (site copy + text coverage chunks + bespoke items) used to run one
+     * after another at ~17 s each; pooled they cost one round-trip.
+     */
+    public function chatJsonPool(array $calls): array
+    {
+        // RATE-LIMIT RETRY (2026-09-12, EV-1000). A pooled build sends its calls at once; when the Runtime answers 429
+        // rate_limited on both its primary and fallback provider, every call used to fail in one round-trip and the
+        // draft shipped with blank headings. Failures the Runtime marks retryable are re-sent ONE AT A TIME (a burst is
+        // what trips the limiter), after the retry_after_ms it asks for (floor 1.5 s × attempt, ceiling 8 s), up to
+        // three further attempts. Parse errors and hard 4xx answers are returned as before.
+        $out = $this->chatJsonPoolOnce($calls);
+        for ($attempt = 1; $attempt <= 3; $attempt++) {
+            $retry = [];
+            foreach ($out as $k => $r) {
+                if (($r['success'] ?? false) || !isset($calls[$k])) continue;
+                if (self::isRetryableFailure($r)) $retry[$k] = $calls[$k];
+            }
+            if ($retry === []) break;
+            $waitMs = 0;
+            foreach ($retry as $k => $_) $waitMs = max($waitMs, (int) ($out[$k]['raw']['retry_after_ms'] ?? 0));
+            $waitMs = (int) min(8000, max(1500 * $attempt, $waitMs));
+            Log::warning('RuntimeClient::chatJsonPool retrying retryable failures', ['attempt' => $attempt, 'keys' => array_keys($retry), 'wait_ms' => $waitMs,
+                'errors' => array_map(fn ($k) => $out[$k]['error'] ?? null, array_keys($retry))]);
+            usleep($waitMs * 1000);
+            $i = 0;
+            foreach ($retry as $k => $call) {
+                if ($i++ > 0) usleep(400000);
+                $out[$k] = $this->chatJsonPoolOnce([$k => $call])[$k] ?? ['success' => false, 'error' => 'no_response'];
+            }
+        }
+        return $out;
+    }
+
+    /** A failure worth re-sending: the Runtime says so, or it is a 429/5xx/connection-level answer. */
+    private static function isRetryableFailure(array $r): bool
+    {
+        $err = strtolower((string) ($r['error'] ?? ''));
+        $raw = is_array($r['raw'] ?? null) ? $r['raw'] : [];
+        if (!empty($raw['retryable'])) return true;
+        if (in_array($err, ['rate_limited', 'http_429', 'http_500', 'http_502', 'http_503', 'http_504', 'no_response'], true)) return true;
+        if (str_starts_with($err, 'connection_failed') || str_starts_with($err, 'pool_failed')) return true;
+        return preg_match('/rate.?limit|overloaded|timeout|timed out/', $err) === 1;
+    }
+
+    private function chatJsonPoolOnce(array $calls): array
+    {
+        $out = [];
+        if ($calls === []) return $out;
+        if (!$this->isConfigured()) { foreach ($calls as $k => $_) $out[$k] = ['success' => false, 'error' => 'runtime_not_configured']; return $out; }
+        $prepared = [];
+        foreach ($calls as $k => $call) {
+            [$system, $prompt] = [(string) ($call[0] ?? ''), (string) ($call[1] ?? '')];
+            $context = is_array($call[2] ?? null) ? $call[2] : []; $maxTokens = (int) ($call[3] ?? 1200);
+            $extra = is_array($call[4] ?? null) ? $call[4] : [];   // EV-1000: e.g. ['workload' => 'synthesis', 'reasoning_budget' => 6000]
+            if (stripos($system, 'json') === false && stripos($prompt, 'json') === false) $system = trim($system) . "\n\nRespond with valid JSON only. No prose, no markdown fences.";
+            $lane = (strlen($system) + strlen($prompt)) > self::LARGE_PROMPT_CHARS ? ['workload' => 'synthesis'] : [];
+            $prepared[$k] = ['task' => 'chat_json', 'system' => $system, 'prompt' => $prompt, 'context' => $context, 'max_tokens' => $maxTokens] + $extra + $lane;
+        }
+        $url = $this->baseUrl . $this->normalisePath('/ai/run');
+        $secret = $this->secret;
+        try {
+            $responses = Http::pool(function (\Illuminate\Http\Client\Pool $pool) use ($prepared, $url, $secret) {
+                foreach ($prepared as $k => $payload) {
+                    $pool->as((string) $k)->withHeaders(['X-LevelUp-Secret' => $secret])->acceptJson()->asJson()->timeout(90)->post($url, $payload);
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('RuntimeClient::chatJsonPool failed', ['error' => $e->getMessage()]);
+            foreach ($calls as $k => $_) $out[$k] = ['success' => false, 'error' => 'pool_failed: ' . $e->getMessage()];
+            return $out;
+        }
+        foreach ($prepared as $k => $payload) {
+            $resp = $responses[(string) $k] ?? null;
+            if (!$resp instanceof Response) { $out[$k] = ['success' => false, 'error' => $resp instanceof \Throwable ? 'connection_failed: ' . $resp->getMessage() : 'no_response']; continue; }
+            $body = $resp->json() ?? [];
+            if (!$resp->successful() || !($body['success'] ?? false)) { $out[$k] = ['success' => false, 'error' => $body['error'] ?? 'http_' . $resp->status(), 'raw' => $body]; continue; }
+            $r = ['success' => true, 'parsed' => $body['parsed'] ?? null, 'text' => $body['output'] ?? '', 'raw' => $body];
+            if (array_key_exists('parse_error', $body)) $r['parse_error'] = $body['parse_error'];
+            $out[$k] = $r;
+            try {
+                $estTokens = (int) ceil(strlen($body['output'] ?? '') / 4);
+                $this->logApiUsage('deepseek', $body['model'] ?? 'deepseek-chat', '/ai/run:chat_json', ['tokens_used' => $estTokens, 'tokens_in' => (int) ceil(strlen($payload['prompt'] . $payload['system']) / 4), 'tokens_out' => $estTokens], $body['duration_ms'] ?? 0, $payload['context']['workspace_id'] ?? null);
+            } catch (\Throwable $e) { /* usage logging must never break generation */ }
+        }
+        return $out;
+    }
+
+    /**
+     * Pull whatever raw model text an error body carries and try to make JSON of it.
+     * Returns the decoded array, or null when there is nothing trustworthy to recover.
+     */
+    private function salvageJsonBody(array $body): ?array
+    {
+        foreach ([
+            $body['detail']['meta']['raw_sample'] ?? null,
+            $body['raw_sample'] ?? null,
+            $body['output'] ?? null,
+            $body['detail']['raw'] ?? null,
+        ] as $candidate) {
+            if (! is_string($candidate) || trim($candidate) === '') { continue; }
+            $fixed = $this->repairJson($candidate);
+            if ($fixed === null) { continue; }
+            $decoded = json_decode($fixed, true);
+            if (is_array($decoded)) { return $decoded; }
+        }
+        return null;
+    }
+
+    /**
+     * Repair the damage models actually do to JSON, and nothing more.
+     *
+     * Deliberately conservative: markdown fences, text either side of the object, an unterminated
+     * string, trailing commas, and unclosed braces/brackets. It never edits values or guesses a
+     * missing key — a repair that invents content would be worse than the failure it replaces.
+     */
+    private function repairJson(string $raw): ?string
+    {
+        $t = trim($raw);
+        if ($t === '') { return null; }
+
+        // ```json fences
+        $t = preg_replace('/^```(?:json)?\s*/i', '', $t);
+        $t = preg_replace('/\s*```$/', '', $t);
+        $t = trim($t);
+
+        // Drop any prose before the first { or [
+        $start = strcspn($t, '{[');
+        if ($start > 0 && $start < strlen($t)) { $t = substr($t, $start); }
+        if ($t === '' || ($t[0] !== '{' && $t[0] !== '[')) { return null; }
+
+        // Already valid? Then there is nothing to repair.
+        if (is_array(json_decode($t, true))) { return $t; }
+
+        // Walk the string to find unbalanced structure, ignoring anything inside a string literal.
+        $stack = [];
+        $inStr = false;
+        $esc   = false;
+        $len   = strlen($t);
+        for ($i = 0; $i < $len; $i++) {
+            $c = $t[$i];
+            if ($inStr) {
+                if ($esc)            { $esc = false; continue; }
+                if ($c === '\\')     { $esc = true;  continue; }
+                if ($c === '"')      { $inStr = false; }
+                continue;
+            }
+            if ($c === '"') { $inStr = true; continue; }
+            if ($c === '{' || $c === '[') { $stack[] = $c; continue; }
+            if ($c === '}' || $c === ']') { array_pop($stack); continue; }
+        }
+
+        if ($inStr) { $t .= '"'; }                       // an unterminated string literal
+        $t = preg_replace('/,\s*$/', '', $t);            // a dangling comma at the very end
+        while ($stack) {                                 // close what is still open, innermost first
+            $t .= (array_pop($stack) === '{') ? '}' : ']';
+        }
+        $t = preg_replace('/,(\s*[}\]])/', '$1', $t);    // trailing commas before a closer
+
+        return is_array(json_decode($t, true)) ? $t : null;
+    }
+
+    /**
      * U0 (RFC-0011, 2026-09-22): when the chat route bound 'sarah.snapshot' (QA accounts, X-Sarah-Snapshot header), append
      * the prompts of this call to storage/app/sarah-snapshots/<label>.txt. No-op otherwise.
      */
@@ -346,7 +509,7 @@ class RuntimeClient
         } catch (\Throwable $e) { /* a snapshot never breaks a turn */ }
     }
 
-    public function chatJson(string $system, string $userPrompt, array $context = [], int $maxTokens = 1200): array
+    public function chatJson(string $system, string $userPrompt, array $context = [], int $maxTokens = 1200, array $extra = []): array
     {
         // PATCH (Intel Fix 7) — DeepSeek's `response_format: json_object` rejects
         // any call where the literal word "json" doesn't appear in either
@@ -367,7 +530,7 @@ class RuntimeClient
                 'prompt'     => $userPrompt,
                 'context'    => $context,
                 'max_tokens' => $maxTokens,
-            ] + $__lane, 90);
+            ] + $extra + $__lane, 90);
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::chatJson connection failed', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => 'connection_failed: ' . $e->getMessage()];
@@ -376,6 +539,37 @@ class RuntimeClient
         $body = $resp->json() ?? [];
 
         if (! $resp->successful() || !($body['success'] ?? false)) {
+            // 2026-09-10 — SALVAGE A MALFORMED STRUCTURED RESPONSE BEFORE GIVING UP.
+            //
+            // Observed live in the Arthur editor (website 669): the model produced a complete and
+            // perfectly usable answer — {"changes":[],"reply":"I can't change the hero image from
+            // here…"} — and omitted the single closing brace. finish_reason was "stop", 69 output
+            // tokens against a 3400 budget, so nothing was truncated by a limit; the model simply
+            // emitted invalid JSON. The runtime answered 502 malformed_provider_response, chatJson
+            // returned no `parsed`, and every caller turned that into an error for the customer.
+            // ArthurService::editStaticCopy showed "I couldn't work out that change just now —
+            // please try rephrasing it", so a correct refusal was presented as a failure and the
+            // customer retried a request that would never work.
+            //
+            // The raw text is right there in the error detail. Repair the obvious damage — fences,
+            // an unterminated string, trailing commas, unbalanced braces — and if it parses, the
+            // turn succeeds. Nothing is invented: if it does not parse, the original failure stands.
+            $salvage = $this->salvageJsonBody($body);
+            if ($salvage !== null) {
+                Log::info('RuntimeClient::chatJson salvaged a malformed structured response', [
+                    'http_code' => $resp->status(),
+                    'error'     => $body['error'] ?? null,
+                    'keys'      => array_keys($salvage),
+                ]);
+                return [
+                    'success'  => true,
+                    'parsed'   => $salvage,
+                    'text'     => (string) ($body['output'] ?? ''),
+                    'raw'      => $body,
+                    'salvaged' => true,
+                ];
+            }
+
             Log::warning('RuntimeClient::chatJson non-2xx or success=false', [
                 'http_code' => $resp->status(), 'body' => $body,
             ]);

@@ -27,7 +27,9 @@
   --ob-amber:      var(--am,#F59E0B);   /* Sarah's color only — nowhere else */
 
   --ob-text:       var(--t1,#E8EDF5);
-  --ob-muted:      var(--t2,#8B97B0);
+  /* Deliberately NOT var(--t2): the app-wide secondary colour is tuned to just clear AA, which reads dim
+     on this near-black card at 12-14px. The sign-in surface takes a lighter value of its own (~8:1). */
+  --ob-muted:      #A6B2C8;
   --ob-faint:      var(--t3,#7C879C);
 
   --ob-grad:       linear-gradient(135deg, #7C3AED, #3B82F6);

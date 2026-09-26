@@ -1,5 +1,5 @@
 {{--
-  INFRA888 · E7.3 — LevelUp Growth mailbox onboarding email.
+  INFRA888 · E7.3 — LevelUpGrowth mailbox onboarding email.
 
   LEVELUP BRANDING ONLY. The provider is never named, never linked, and never
   implied. This message replaces the provider's own invitation, which named the
@@ -33,7 +33,7 @@
   </p>
 
   <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #E5E7EB;color:#6B7280;font-size:12px;">
-    Business Email by LevelUp Growth.<br>
-    Need help? Reply to this message or contact LevelUp Growth support.
+    Business Email by LevelUpGrowth.<br>
+    Need help? Reply to this message or contact LevelUpGrowth support.
   </p>
 </div>

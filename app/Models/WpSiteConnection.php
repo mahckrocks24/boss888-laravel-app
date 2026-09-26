@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * WP-1 (2026-08-29) — a customer's WordPress site connected through the LevelUp Growth plugin.
+ * WP-1 (2026-08-29) — a customer's WordPress site connected through the LevelUpGrowth plugin.
  * One row per (workspace, host). Created/refreshed by POST /connector/register-site; touched by
  * every authenticated plugin call (last_seen_at) and by every Laravel → WP push (last_push_*).
  */

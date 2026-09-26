@@ -214,7 +214,7 @@ class BusinessEmailAdminScreensTest extends TestCase
 
     private function makeUser(bool $platformAdmin): User
     {
-        return User::create([
+        return \Tests\Support\AdminUsers::create([
             'name'              => 'screens-' . ($platformAdmin ? 'admin' : 'user'),
             'email'             => 'screens-' . Str::random(10) . '@test.local',
             'password'          => Hash::make(Str::random(32)),

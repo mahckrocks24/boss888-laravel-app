@@ -200,7 +200,7 @@ final class MessageService
         $engine = new \App\Core\Engineer888\Workflow\WorkflowEngine();
         $project = (object) $project;
 
-        $title = Str::limit(trim(preg_replace('/\s+/', ' ', $body)), 120, '');
+        $title = TaskTitle::derive($body); // F-E8-D1: derived, not the raw prompt cut at 120
 
         // The engine resolves by KEY through its own project registry, so the
         // task is bound to the project that was chosen — not to an id this

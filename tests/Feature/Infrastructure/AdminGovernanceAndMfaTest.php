@@ -36,7 +36,7 @@ class AdminGovernanceAndMfaTest extends TestCase
 
     private function user(string $prefix, bool $admin = false): User
     {
-        return User::create([
+        return \Tests\Support\AdminUsers::create([
             'name'              => $prefix,
             'email'             => $prefix . '-' . Str::random(8) . '@test.local',
             'password'          => Hash::make(Str::random(16)),
@@ -91,7 +91,7 @@ class AdminGovernanceAndMfaTest extends TestCase
     public function test_staging_validation_identity_can_never_be_appointed(): void
     {
         $appointer = $this->user('gov-appointer2', true);
-        $validation = User::create([
+        $validation = \Tests\Support\AdminUsers::create([
             'name'     => 'validation',
             'email'    => 'infra-approver-staging@levelupgrowth.io',
             'password' => Hash::make(Str::random(16)),

@@ -117,7 +117,7 @@ class BusinessEmailCustomerActionController
         if (! Gate::allowsCapability($capability)) {
             return response()->json([
                 'success' => false,
-                'reason'  => 'That action is managed by LevelUp Growth support.',
+                'reason'  => 'That action is managed by LevelUpGrowth support.',
             ], 403);
         }
 
@@ -230,7 +230,7 @@ class BusinessEmailCustomerActionController
                 }
 
                 if (EmailAddress::isReservedLocalPart($local)) {
-                    return $this->refuse('That address is reserved. Contact LevelUp Growth support if you need it.', 422);
+                    return $this->refuse('That address is reserved. Contact LevelUpGrowth support if you need it.', 422);
                 }
 
                 $exists = EmailMailbox::query()
@@ -364,7 +364,7 @@ class BusinessEmailCustomerActionController
             'success'  => true,
             'verified' => false,
             'state'    => 'awaiting_review',
-            'message'  => 'Your request has been received and is awaiting review by LevelUp Growth. '
+            'message'  => 'Your request has been received and is awaiting review by LevelUpGrowth. '
                 . 'Nothing has been deleted yet.',
         ], 202);
     }

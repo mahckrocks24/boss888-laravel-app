@@ -618,7 +618,7 @@ class BusinessEmailCustomerTest extends TestCase
 
     private function makeUser(): User
     {
-        return User::create([
+        return \Tests\Support\AdminUsers::create([
             'name'                 => 'be-customer',
             'email'                => 'be-' . Str::random(10) . '@test.local',
             'password'             => Hash::make(Str::random(32)),

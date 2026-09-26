@@ -26,11 +26,28 @@ class VerifyEmailAddress extends Mailable implements ShouldQueue
         public string $verificationUrl,
     ) {}
 
+    /** F-EM-C1: registration mail is account mail — purpose-declared so the policy pins sender + transactional stream. */
+    public const PURPOSE = 'account_security';
+    public string $correlationId = '';
+
     public function envelope(): Envelope
     {
+        $this->correlationId = $this->correlationId !== '' ? $this->correlationId : (string) \Illuminate\Support\Str::uuid();
+        $cid = $this->correlationId;
         return new Envelope(
-            subject: 'Confirm your email — Level Up Growth',
+            subject: 'Confirm your email — LevelUpGrowth',
+            using: [function (\Symfony\Component\Mime\Email $m) use ($cid) {
+                $h = $m->getHeaders();
+                $h->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, self::PURPOSE);
+                $h->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_CORRELATION, $cid);
+            }],
         );
+    }
+
+    /** F-EM-C2: the queued send threw — close the ledger row with the provider's reason instead of leaving it queued. */
+    public function failed(\Throwable $e): void
+    {
+        try { app(\App\Core\Email888\DeliveryLedger::class)->markLastRecordedFailed($e, ['correlation_id' => $this->correlationId]); } catch (\Throwable) {}
     }
 
     public function content(): Content
@@ -38,7 +55,7 @@ class VerifyEmailAddress extends Mailable implements ShouldQueue
         return new Content(
             htmlString: <<<HTML
 <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;color:#182420">
-  <h2 style="margin:0 0 16px">Welcome to Level Up Growth, {$this->recipientName}!</h2>
+  <h2 style="margin:0 0 16px">Welcome to LevelUpGrowth, {$this->recipientName}!</h2>
   <p style="line-height:1.6;margin:0 0 20px">One quick step before Sarah and the team get to work:
   confirm this is your email address.</p>
   <p style="margin:0 0 28px">
@@ -50,7 +67,7 @@ class VerifyEmailAddress extends Mailable implements ShouldQueue
   <p style="font-size:13px;color:#5A6963;line-height:1.6;margin:0">
     This link is valid for 72 hours. If the button does not work, copy this address into your browser:<br>
     <span style="word-break:break-all">{$this->verificationUrl}</span><br><br>
-    If you did not create a Level Up Growth account, you can ignore this email.
+    If you did not create a LevelUpGrowth account, you can ignore this email.
   </p>
 </div>
 HTML,

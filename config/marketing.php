@@ -15,6 +15,9 @@
 */
 
 return [
+    // Rebuild U2 (2026-09-07): when false the public plans endpoint hides the infrastructure flags
+    // (custom domain, hosting) so the site never sells what the gates still hold.
+    'infrastructure_live' => filter_var(env('MARKETING_INFRASTRUCTURE_LIVE', false), FILTER_VALIDATE_BOOLEAN),
     'public_launched'  => filter_var(env('PLATFORM_PUBLIC_LAUNCHED', false), FILTER_VALIDATE_BOOLEAN),
 
     // Public production marketing hosts. Everything else — staging.levelupgrowth.io,

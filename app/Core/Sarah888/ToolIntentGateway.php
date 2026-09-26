@@ -826,7 +826,7 @@ final class ToolIntentGateway
     {
         $mailer   = (string) config('mail.default');
         $platform = $mailer !== '' && $mailer !== 'log' && $mailer !== 'array';
-        $token    = (bool) env('POSTMARK_TOKEN');
+        $token    = \App\Core\Email888\OutboundPolicy::provider() !== 'unconfigured'; // F-EM-A1: provider-neutral readiness, never the vendor credential
 
         $senderTable = null;
         foreach (['workspace_email_settings', 'email_settings', 'email_senders', 'email_identities'] as $t) {

@@ -116,7 +116,7 @@ class MailboxSetupController
                 'message' => $outcome['reason'] === 'inconclusive'
                     // Honest: we genuinely do not know, and we will not guess.
                     ? 'We could not confirm the change. Please wait a moment and try again — '
-                        . 'if it keeps happening, contact LevelUp Growth support.'
+                        . 'if it keeps happening, contact LevelUpGrowth support.'
                     : 'We could not set the password just now. Please try again in a few minutes.',
             ], 503);
         }

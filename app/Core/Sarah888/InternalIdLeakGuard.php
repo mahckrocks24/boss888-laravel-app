@@ -17,12 +17,29 @@ use Illuminate\Support\Facades\Log;
  */
 final class InternalIdLeakGuard
 {
-    private const LEAD = '(?:article|articles|draft|drafts|piece|post|request|requests|approval|task|tasks|job|jobs|item|ticket|id|ids|no\.|number)';
+    private const LEAD = '(?:article|articles|draft|drafts|piece|post|posts|request|requests|approval|approvals|task|tasks|job|jobs|item|items|ticket|tickets|lead|leads|proposal|proposals|id|ids|no\.|number)';
+
+    /**
+     * H1 (2026-09-25 certification): the same ids written as ordinary prose.
+     *
+     * This guard assumed every internal id arrives as "#N", so it returned at the door for
+     * any reply without a hash. Sarah does not always write one. Measured live, all three
+     * reached the customer untouched: "the newest being lead 1554", "a pending write task
+     * (ID 32916)", "three tasks tied to proposal 11543". Normalising the bare form into the
+     * hash form lets the resolution below handle both without a second copy of it.
+     *
+     * Deliberately narrower than LEAD: "number" and "no." head ordinary counts and are left
+     * alone unless they carry a hash.
+     */
+    private const BARE_LEAD = '(?:article|articles|draft|drafts|piece|post|posts|request|requests|approval|approvals|task|tasks|job|jobs|item|items|ticket|tickets|lead|leads|proposal|proposals|id|ids)';
 
     /** @return array{reply:string, rewritten:array} */
     public static function apply(string $reply, int $wsId): array
     {
-        if ($wsId <= 0 || ! preg_match('/#\d+/', $reply)) return ['reply' => $reply, 'rewritten' => []];
+        if ($wsId <= 0) return ['reply' => $reply, 'rewritten' => []];
+        // H1: "task 32916" -> "task #32916" so one resolution path serves both forms.
+        $reply = (string) (preg_replace('/\b(' . self::BARE_LEAD . ')\s+(\d{1,6})\b/iu', '$1 #$2', $reply) ?? $reply);
+        if (! preg_match('/#\d+/', $reply)) return ['reply' => $reply, 'rewritten' => []];
         $rewritten = [];
         $rx = '/(\(\s*)?(?:\b(' . self::LEAD . ')\s*)?(\(\s*)?#(\d+)(\s*\))?(\s*["“][^"”]{1,120}["”])?/iu';
         $out = preg_replace_callback($rx, function ($m) use ($wsId, &$rewritten) {
@@ -47,17 +64,39 @@ final class InternalIdLeakGuard
                 if ($appr->status !== 'pending') return $paren ? '' : 'that request';
                 return $paren ? 'in your review queue' : 'the request in your review queue';
             }
+            if (in_array($leadWord, ['', 'lead', 'id', 'item'], true)) {
+                $ld = DB::table('leads')->where('workspace_id', $wsId)->where('id', $id)->whereNull('deleted_at')->first(['name', 'email']);
+                if ($ld) {
+                    $rewritten[] = ['id' => $id, 'as' => 'lead'];
+                    $nm = trim((string) ($ld->name ?? '')) ?: trim((string) ($ld->email ?? ''));
+                    if ($nm === '') return $paren ? '' : 'that lead';
+                    return ($leadWord === 'lead' && ! $paren) ? 'lead ' . $q($nm) : $q($nm);
+                }
+            }
+            if (in_array($leadWord, ['', 'proposal', 'request', 'item', 'id'], true)) {
+                $pr = DB::table('strategy_proposals')->where('workspace_id', $wsId)->where('id', $id)->first(['title']);
+                if ($pr) {
+                    $rewritten[] = ['id' => $id, 'as' => 'proposal'];
+                    $ttl = trim((string) ($pr->title ?? ''));
+                    if ($ttl === '' || strcasecmp($ttl, 'Untitled action') === 0) return $paren ? '' : 'that plan';
+                    return $paren ? $q($ttl) : 'the plan ' . $q($ttl);
+                }
+            }
             $task = DB::table('tasks')->where('workspace_id', $wsId)->where('id', $id)->first(['payload_json']);
             if ($task) {
                 $p = json_decode((string) ($task->payload_json ?? ''), true) ?: [];
                 $title = trim((string) ($p['title'] ?? $p['request'] ?? $p['description'] ?? $p['command'] ?? ''));
                 $rewritten[] = ['id' => $id, 'as' => 'task'];
                 if ($title === '') return $paren ? '' : ($leadWord !== '' ? 'that ' . $leadWord : 'that job');
-                return ($leadWord !== '' ? $leadWord . ' ' : '') . $q($title);   // "request (#N)" → request "…"; "(#N)" → "…"
+                return ($leadWord !== '' && ! $paren ? $leadWord . ' ' : '') . $q($title);   // H1b   // "request (#N)" → request "…"; "(#N)" → "…"
             }
             // names nothing in this workspace: not a fact — drop it (a quoted title, if any, is kept)
             $rewritten[] = ['id' => $id, 'as' => 'stripped'];
-            return $quoted ?: '';
+            // H1b: dropping the id must not drop the noun with it — "the newest being lead 1554"
+            // became "the newest being at status new" when the lead turned out to be soft-deleted.
+            if ($quoted) return $quoted;
+            if ($leadWord !== '' && ! $paren && ! in_array($leadWord, ['id', 'no.', 'number'], true)) return 'that ' . $leadWord;
+            return '';
         }, $reply) ?? $reply;
         // tidy what the removals leave behind
         $out = preg_replace('/\(\s*\)/', '', (string) $out);

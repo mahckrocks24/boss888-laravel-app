@@ -77,7 +77,7 @@ class ProviderControlPlaneHttpTest extends TestCase
 
     private function makeUser(string $prefix, bool $platformAdmin): User
     {
-        return User::create([
+        return \Tests\Support\AdminUsers::create([
             'name'                 => $prefix,
             'email'                => $prefix . '-' . Str::random(8) . '@test.local',
             'password'             => Hash::make(Str::random(32)),

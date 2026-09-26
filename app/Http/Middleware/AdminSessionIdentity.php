@@ -62,6 +62,30 @@ final class AdminSessionIdentity
         );
     }
 
+    /**
+     * Attach the page-identity cookie for an access token. Lifetime follows the token's own exp claim; the
+     * middleware re-validates admin status, account status and the live session on every request, so
+     * attaching it for a non-admin grants nothing. Returns the response unchanged if the token is not a JWT.
+     */
+    public static function attach(\Symfony\Component\HttpFoundation\Response $response, ?string $token): \Symfony\Component\HttpFoundation\Response
+    {
+        try {
+            if (! is_string($token) || substr_count($token, '.') !== 2) { return $response; }
+            $claims = json_decode(base64_decode(strtr(explode('.', $token)[1], '-_', '+/')) ?: '{}', true);
+            $seconds = max(60, (int) (($claims['exp'] ?? 0) - time()));
+            return $response->withCookie(cookie(
+                self::COOKIE, $token, (int) ceil($seconds / 60), self::PATH,
+                null,   // domain: current host only
+                true,   // secure
+                true,   // httpOnly
+                false,
+                'Lax'
+            ));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('admin identity cookie not attached', ['error' => $e->getMessage()]);
+            return $response;
+        }
+    }
     public function handle(Request $request, Closure $next)
     {
         $token = $request->cookie(self::COOKIE);

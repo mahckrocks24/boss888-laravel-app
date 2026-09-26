@@ -11,11 +11,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ $title ?? 'LevelUp Growth Platform' }} — AI Marketing OS for SMBs</title>
+  <title>{{ $title ?? 'LevelUpGrowth Platform' }} — AI Marketing OS for SMBs</title>
   <meta name="description" content="{{ $description ?? 'Hire AI agents instead of a marketing agency. Sarah and your team research, strategize, and execute — you stay in control.' }}">
   <link rel="canonical" href="https://levelupgrowth.io{{ request()->getPathInfo() }}">
   @if($mktNoindex)<meta name="robots" content="noindex, nofollow">@endif
-  <meta property="og:title" content="{{ $title ?? 'LevelUp Growth Platform' }}">
+  <meta property="og:title" content="{{ $title ?? 'LevelUpGrowth Platform' }}">
   <meta property="og:description" content="{{ $description ?? 'AI marketing OS for SMBs in MENA, DACH and SEA.' }}">
   <meta property="og:url" content="https://levelupgrowth.io">
   <meta name="theme-color" content="#6C5CE7">
@@ -150,7 +150,7 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© {{ date('Y') }} LevelUp Growth Platform. All rights reserved.</span>
+      <span>© {{ date('Y') }} LevelUpGrowth Platform. All rights reserved.</span>
       <span>Dubai · Frankfurt · Manila</span>
     </div>
   </div>

@@ -487,12 +487,71 @@ class SarahDailyOrchestrator
     private function persistProposals(int $wsId, array $actions): array
     {
         $ids = [];
+
+        // ── B1 (2026-09-25 certification) — WHICH SITE IS THIS ACTION FOR? ──────────
+        // This planner had no notion of a website: 594 lines, not one reference. So the
+        // business it had chosen survived only inside the action's TITLE, was copied into
+        // the article's topic, and the article itself was written with website_id NULL.
+        // 65 of 66 articles this path produced could never be published. On AMG — a real
+        // customer — nine drafts have been stranded since 2026-07-08, their topics drifting
+        // off-business, because generic copy is what you get when nothing says whose site
+        // it is.
+        //
+        // Resolved through WebsiteTargetResolver (RISK-0105), the same component the chat
+        // tools use, so this path cannot disagree with that one. Its invariant holds here
+        // too: 0 or >1 plausible targets => CLARIFY, and the proposal is stored UNBOUND
+        // rather than pointed at a guess.
+        $__b1Sites = [];
+        try {
+            $__b1Sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')
+                ->where('status', 'published')
+                ->get(['id', 'name', 'subdomain', 'custom_domain'])
+                ->map(fn ($w) => ['id' => (int) $w->id, 'name' => (string) ($w->name ?? ''),
+                                  'subdomain' => (string) ($w->subdomain ?? ''), 'custom_domain' => $w->custom_domain])
+                ->all();
+        } catch (\Throwable $e) { $__b1Sites = []; }
+
         foreach ($actions as $a) {
+            // The planner's own words are the signal — it names the business it chose.
+            $__b1SiteId = null;
+            try {
+                $__r = app(\App\Core\Sarah888\WebsiteTargetResolver::class)->resolve($__b1Sites,
+                    ['explicit_name' => trim((string) ($a['title'] ?? '') . ' ' . (string) ($a['reason'] ?? ''))]);
+                if (($__r['status'] ?? '') === \App\Core\Sarah888\WebsiteTargetResolver::RESOLVED && ! empty($__r['website_id'])) {
+                    $__b1SiteId = (int) $__r['website_id'];
+                }
+            } catch (\Throwable $e) { $__b1SiteId = null; }
+
+            // ── H3 (2026-09-25 certification) — NOTHING NAMELESS REACHES A REVIEW QUEUE ──
+            // 'Untitled action' was a silent fallback here. 36 proposals carried it, 30 of them
+            // sitting in review queues and 6 already executed — three in Chef Red's live
+            // workspace, two still pending five weeks on. An owner was being asked to approve,
+            // and to pay for, work with no description.
+            //
+            // Derived from the structured action and the resolved site — both facts we hold —
+            // never invented. If there is no action slug either, the item is malformed and is
+            // dropped rather than shown: an unapprovable proposal is worse than a missing one.
+            $__h3Title = trim((string) ($a['title'] ?? ''));
+            if ($__h3Title === '' || strcasecmp($__h3Title, 'Untitled action') === 0) {
+                $__slug = trim((string) ($a['action'] ?? ''));
+                if ($__slug === '') {
+                    Log::warning('[SarahDaily] dropped a proposed action with no title and no action slug', ['ws' => $wsId]);
+                    continue;
+                }
+                $__h3Title = ucfirst(trim(str_replace('_', ' ', $__slug)));
+                if ($__b1SiteId) {
+                    $__nm = DB::table('websites')->where('id', $__b1SiteId)->value('name');
+                    if ($__nm) $__h3Title .= ' for ' . $__nm;
+                }
+            }
+
             try {
                 $id = DB::table('strategy_proposals')->insertGetId([
                     'workspace_id'         => $wsId,
                     'type'                 => 'daily_action_' . ($a['action'] ?? 'unknown'),
-                    'title'                => mb_substr((string) ($a['title'] ?? 'Untitled action'), 0, 255),
+                    'entity_type'          => $__b1SiteId ? 'website' : null,   // B1: structured, not a name in a title
+                    'entity_id'            => $__b1SiteId,
+                    'title'                => mb_substr($__h3Title, 0, 255),   // H3: never 'Untitled action'
                     'description'          => mb_substr((string) ($a['reason'] ?? ''), 0, 65535),
                     'status'               => 'pending_approval',
                     'cost_breakdown_json'  => json_encode([

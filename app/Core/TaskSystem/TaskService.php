@@ -58,6 +58,24 @@ class TaskService
         // is deliberate — an explicit value from the caller always wins, and an
         // unset context stamps nothing, which keeps queue workers and scheduled
         // jobs behaving exactly as they do now.
+        // ── B1: stamp the BUSINESS, for the same reason the correlation envelope is
+        // stamped here — this is the one funnel every caller passes through, and a
+        // per-caller convention is one every future caller can forget. 4,061 of 4,061
+        // task rows carried business_id NULL before this. An explicit value always wins;
+        // otherwise it comes from the payload's website, then from the turn's business.
+        if (empty($data['business_id'])) {
+            $__bizId = null;
+            try {
+                $__wid = (int) ($data['payload']['website_id'] ?? 0);
+                if ($__wid > 0) {
+                    $__bizId = \Illuminate\Support\Facades\DB::table('websites')->where('id', $__wid)
+                        ->where('workspace_id', $workspaceId)->value('business_id');
+                }
+                $__bizId = $__bizId ?: \App\Core\Business\BusinessHistory::current();
+            } catch (\Throwable $e) { $__bizId = null; }
+            if ($__bizId) $data['business_id'] = (int) $__bizId;
+        }
+
         $__corrStamp = app(\App\Core\Sarah888\CorrelationContext::class)->payloadStamp();
         if ($__corrStamp) {
             $__p = is_array($data['payload'] ?? null) ? $data['payload'] : [];
@@ -540,6 +558,7 @@ class TaskService
         try {
             $task = Task::create([
                 'workspace_id' => $workspaceId,
+                'business_id' => $data['business_id'] ?? null,   // B1 stamp
                 'parent_task_id' => $data['parent_task_id'] ?? null,
                 'batch_id' => $batchId,
                 'engine' => $engine,

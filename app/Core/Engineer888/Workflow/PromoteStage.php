@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  *
  * Assets are now written with the project that proved them. That scoping is what
  * makes the reasoning engine's knowledge selection honest across projects: a
- * lesson learned in LevelUp Growth is offered to LevelUp Growth, not presented
+ * lesson learned in LevelUpGrowth is offered to LevelUpGrowth, not presented
  * to a future project as a company standard it never earned.
  *
  * A NULL project_id means company-wide, and nothing here writes one. Raising an

@@ -11,13 +11,13 @@ class NotificationService
      * replies keep the agent's OWN name (handled in PushDispatcherService) —
      * only non-conversational system notifications use the platform brand.
      */
-    public const SYSTEM_SENDER = 'LevelUp Growth';
+    public const SYSTEM_SENDER = 'LevelUpGrowth';
 
     public function send(int $workspaceId, string $channel, string $type, array $data = []): Notification
     {
         // 2026-06-11 — legacy send() stored ONLY type+data_json, so task.completed/
         // failed notifications rendered BLANK in the bell ("no traces"). Populate a
-        // human title/body: sender = "LevelUp Growth" (system events are from the
+        // human title/body: sender = "LevelUpGrowth" (system events are from the
         // platform, not the agent persona), body = a no-schema-leakage summary.
         return Notification::create([
             'workspace_id' => $workspaceId,
@@ -32,7 +32,7 @@ class NotificationService
     /**
      * Sender label. An agent's OWN proactive outreach (sarah_proposal / reminder
      * / weekly / monthly) keeps the AGENT's name; everything else is a system
-     * event and uses the platform brand "LevelUp Growth".
+     * event and uses the platform brand "LevelUpGrowth".
      */
     public static function deriveSender(string $type): string
     {

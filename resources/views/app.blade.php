@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LevelUp Growth Platform</title>
+  <title>LevelUpGrowth Platform</title>
   <meta name="description" content="AI marketing OS for SMBs — your dedicated AI marketing team.">
   <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">

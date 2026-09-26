@@ -205,12 +205,50 @@ class AdminChatbotController
         ]);
     }
 
+    /**
+     * 2026-09-10 — read one knowledge document back, including the MARKDOWN it was converted to.
+     *
+     * The library could list documents and delete them and never show what the bot had actually read.
+     * That matters most for the formats where extraction is a judgement call: a PDF goes through
+     * pdftotext, a spreadsheet is rebuilt as a markdown table, and the only way for an owner to know
+     * their price list survived is to look at it. It is also how a status='failed' row explains itself.
+     *
+     * Workspace-scoped, plan-gated, and the text is capped so a 10 MB document cannot be pulled into a
+     * browser tab in one response.
+     */
+    public function getKnowledge(Request $r, int $id): JsonResponse
+    {
+        $wsId = $this->wsId($r);
+        if ($denial = $this->planDeny($wsId)) return $denial;
+
+        $row = DB::table('chatbot_knowledge_sources as s')
+            ->leftJoin('websites as w', 'w.id', '=', 's.website_id')
+            ->where('s.workspace_id', $wsId)
+            ->where('s.id', $id)
+            ->first(['s.id','s.label','s.source_type','s.source_url','s.mime_type','s.size_bytes',
+                     's.chunk_count','s.status','s.error_message','s.created_at','s.updated_at',
+                     's.website_id','s.raw_text','w.name as website_name']);
+        if (! $row) {
+            return response()->json(['success' => false, 'error' => 'NOT_FOUND',
+                                     'message' => 'No such knowledge document in this workspace.'], 404);
+        }
+
+        $full = (string) ($row->raw_text ?? '');
+        $limit = 60000;
+        $row->raw_text  = mb_substr($full, 0, $limit);
+        $row->truncated = mb_strlen($full) > $limit;
+        $row->char_count = mb_strlen($full);
+
+        return response()->json(['success' => true, 'data' => $row]);
+    }
+
     public function deleteKnowledge(Request $r, int $id): JsonResponse
     {
         $wsId = $this->wsId($r);
         if ($denial = $this->planDeny($wsId)) return $denial;
         $deleted = $this->kb->deleteSource($wsId, $id);
-        return response()->json(['success' => $deleted]);
+        if (! $deleted) return response()->json(['success' => false, 'error' => 'NOT_FOUND', 'message' => 'No such knowledge document in this workspace.'], 404); // F-CB-D1
+        return response()->json(['success' => true]);
     }
 
     public function listConversations(Request $r): JsonResponse
@@ -320,15 +358,19 @@ class AdminChatbotController
         $data = $r->validate([
             'site_connection_id' => 'nullable|integer',
             'website_id'         => 'nullable|integer',
-            'allowed_domains'    => 'required|array|min:1|max:10',
+            'allowed_domains'    => 'nullable|array|max:10',
             'allowed_domains.*'  => 'required|string|max:255',
             'label'              => 'nullable|string|max:255',
         ]);
+        // F-CB-E1: the app posts {label} only — default the allow-list to the workspace's own website hosts.
+        $domains = array_values(array_filter((array) ($data['allowed_domains'] ?? [])));
+        if (empty($domains)) $domains = $this->tokens->workspaceHosts($wsId, isset($data['website_id']) ? (int) $data['website_id'] : null);
+        if (empty($domains)) return response()->json(['success' => false, 'error' => 'NO_DOMAINS', 'message' => 'Add a website (or pass allowed_domains) before creating a widget token — the token must be tied to at least one site.'], 422);
         $result = $this->tokens->mint(
             $wsId,
             $data['site_connection_id'] ?? null,
             $data['website_id'] ?? null,
-            $data['allowed_domains'],
+            $domains,
             $data['label'] ?? null
         );
 

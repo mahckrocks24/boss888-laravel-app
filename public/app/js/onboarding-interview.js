@@ -46,7 +46,7 @@
       '    <input id="iv-input" autocomplete="off" placeholder="Type your reply…" ' +
       '      style="flex:1;padding:12px 14px;border:1px solid #ddd;border-radius:8px;font-size:15px;font-family:sans-serif" />' +
       '    <button id="iv-send" type="submit" ' +
-      '      style="padding:12px 20px;background:#6C5CE7;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-family:sans-serif">Send</button>' +
+      '      aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>' +
       '  </form>' +
       '</div>';
   }

@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
  * possible, and Sarah replied:
  *
  *   "Since social media posting and email marketing are not part of the current
- *    LevelUp Growth product, I've queued a task to write a blog article about
+ *    LevelUpGrowth product, I've queued a task to write a blog article about
  *    the box launch… I'll proceed with this task now. ✅ Queued 1 tasks."
  *
  * She refused the requested action and then executed a different one, unasked,
@@ -41,6 +41,22 @@ class RefusalBoundaryGuard
         . 'do(?:es)?n\'?t have (?:the )?(?:ability|permission|access)|'
         . 'outside (?:of )?what I (?:can|am)|not within (?:my|what))\b/i';
 
+    /**
+     * B2 (2026-09-25 certification): the customer's OWN order to write an article.
+     *
+     * A compound request — "write an article about X and publish it" — is refused in HALF:
+     * Sarah cannot publish an article that does not exist yet, so the reply contains a
+     * refusal. The article she wrote is the part that WAS asked for, not a substitute for
+     * the part she declined. Cancelling it withdrew the customer's own request, and the
+     * closing line then told them nothing had been started while the article had in fact
+     * been written and 3 credits charged.
+     *
+     * Deliberately narrow — "article|blog|guide|piece", never "post", which is how a
+     * SOCIAL request reads. An email or social refusal that substitutes a blog article
+     * still has that substitute withdrawn, which is what this guard exists for.
+     */
+    private const ORDERED_ARTICLE = '/\b(?:write|draft|create|produce|prepare|compose|generate|author)\b[^.?!]{0,80}\b(?:articles?|blogs?|blog posts?|guides?|pieces?)\b/i';
+
     /** The owner pre-authorising a substitute in the same turn. */
     private const FALLBACK_AUTHORISED = '/\b(?:or\s+if\s+you\s+can\'?t|if\s+not,?\s+then|'
         . 'otherwise|failing\s+that|instead\s+then|if\s+that\'?s\s+not\s+possible|'
@@ -59,6 +75,7 @@ class RefusalBoundaryGuard
         try {
             if (!preg_match(self::REFUSAL, $reply)) return $out;
             if (preg_match(self::FALLBACK_AUTHORISED, $userText)) return $out;
+            if (preg_match(self::ORDERED_ARTICLE, $userText)) return $out;   // B2
 
             $r = $this->turnWork->cancelThisTurn($wsId,
                 'the reply refused the requested action; a substitute action may not run in the same turn (S1P-D01)');

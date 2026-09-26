@@ -22,6 +22,9 @@ class CapabilityMapService
         'create_contact'      => ['engine'=>'crm',       'connector'=>null,       'action'=>'create_contact',      'approval_mode'=>'auto',      'credit_cost'=>0],
         'log_activity'        => ['engine'=>'crm',       'connector'=>null,       'action'=>'log_activity',        'approval_mode'=>'auto',      'credit_cost'=>0],
         'score_lead'          => ['engine'=>'crm',       'connector'=>null,       'action'=>'score_lead',          'approval_mode'=>'auto',      'credit_cost'=>1],
+        'assign_lead'         => ['engine'=>'crm',       'connector'=>null,       'action'=>'assign_lead',         'approval_mode'=>'auto',      'credit_cost'=>0],  // F-OPS-B7 2026-09-06: route existed, capability did not
+        'merge_contacts'      => ['engine'=>'crm',       'connector'=>null,       'action'=>'merge_contacts',      'approval_mode'=>'auto',      'credit_cost'=>0],  // F-OPS-C17 2026-09-06: route existed, capability did not
+        'generate_followup'   => ['engine'=>'crm',       'connector'=>null,       'action'=>'generate_followup',   'approval_mode'=>'auto',      'credit_cost'=>1],  // 2026-09-06: kernel arm existed, capability did not (AI draft = 1)
 
         // ── SEO Engine (15 tools) ────────────────────────────────
         'serp_analysis'       => ['engine'=>'seo',       'connector'=>null,       'action'=>'serp_analysis',       'approval_mode'=>'auto',      'credit_cost'=>1],
@@ -95,6 +98,7 @@ class CapabilityMapService
         'ai_campaign_copy'    => ['engine'=>'marketing', 'connector'=>null,       'action'=>'ai_campaign_copy',    'approval_mode'=>'review',    'credit_cost'=>1],
         'full_site_generation'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'full_site_generation','approval_mode'=>'review',    'credit_cost'=>10],
         'chatbot_ai_session'  => ['engine'=>'chatbot',   'connector'=>null,       'action'=>'chatbot_ai_session',  'approval_mode'=>'auto',      'credit_cost'=>1],
+        'chatbot_get_state'   => ['engine'=>'chatbot',   'connector'=>null,       'action'=>'get_state',           'approval_mode'=>'auto',      'credit_cost'=>0], // F-CB-F2 read
         // Sarah × Studio wiring 2026-06-03 — generate_design produces drafts; review before social publish.
         'studio_generate_design'   => ['engine'=>'studio',    'connector'=>null,       'action'=>'generate_design',     'approval_mode'=>'auto',      'credit_cost'=>5],
         'studio_generate_image'    => ['engine'=>'studio',    'connector'=>null,       'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>3],
@@ -148,7 +152,7 @@ class CapabilityMapService
 
         // ── Builder Engine ───────────────────────────────────────
         'create_website'      => ['engine'=>'builder',   'connector'=>null,       'action'=>'create_website',      'approval_mode'=>'auto',      'credit_cost'=>0],
-        'generate_page'       => ['engine'=>'builder',   'connector'=>null,       'action'=>'generate_page',       'approval_mode'=>'auto',    'credit_cost'=>5], // G15 2026-06-24: add-a-page = 5cr (Boss)
+        'generate_page'       => ['engine'=>'builder',   'connector'=>null,       'action'=>'generate_page',       'approval_mode'=>'auto',    'credit_cost'=>0], // 2026-09-06: priced by Arthur (BuilderCapabilities) // G15 2026-06-24: add-a-page = 5cr (Boss)
         // 2026-05-30 — escalated auto → protected. Publishing pushes content
         // live to customers; the re-publish path in the UI had ZERO confirm
         // before this change, and there was no agent-side gate either. Now
@@ -272,7 +276,11 @@ class CapabilityMapService
         // v1.4.4 Phase D-1 (2026-05-30) — add a new page from a universal
         // template (about / services / pricing / contact / faq / legal / blog).
         // Industry-aware via workspace_memory. Cheap: just a structured DB insert.
-        'add_page_from_template'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'add_page_from_template','approval_mode'=>'review',    'credit_cost'=>5], // G15 2026-06-24: add-a-page = 5cr (Boss)
+        // ARTHUR DELEGATION (2026-09-06): Sarah asks Arthur; Arthur prices the addition itself (page 5 / section 2 / edit 1 —
+        // BuilderCapabilities::PRICING) and debits on success, so the map cost is 0 here and add_page_from_template no longer
+        // double-charges (it is executed by Arthur too).
+        'ask_arthur'            => ['engine'=>'builder',   'connector'=>null,       'action'=>'ask_arthur',            'approval_mode'=>'review',    'credit_cost'=>0],
+        'add_page_from_template'=> ['engine'=>'builder',   'connector'=>null,       'action'=>'add_page_from_template','approval_mode'=>'review',    'credit_cost'=>0], // G15 2026-06-24: add-a-page = 5cr (Boss)
 
         // -- Site Engine -- PATCH v1.0.2 ------------------------------
         'get_site_pages'        => ['engine'=>'site',      'connector'=>null,       'action'=>'get_site_pages',        'approval_mode'=>'auto',      'credit_cost'=>0],

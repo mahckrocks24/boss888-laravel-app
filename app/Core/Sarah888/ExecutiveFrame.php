@@ -159,7 +159,7 @@ MAP;
         // that retires it cannot be reviewed later; it can only be defended.
         try {
             $balR   = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
-            $done7R = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'completed')
+            $done7R = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'completed')->where(fn ($__q) => $__q->whereNull('qa_status')->orWhereNotIn('qa_status', ['rejected', 'needs_owner']))
                         ->where('created_at', '>', now()->subDays(7))->count();
             $failWR = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'failed')
                         ->where('created_at', '>', now()->subDays(7))->count();
@@ -247,7 +247,7 @@ MAP;
                 $blocked   = (int) DB::table('tasks')->where('workspace_id',$wsId)->where('status','blocked')->count();
                 $chained   = (int) DB::table('tasks')->where('workspace_id',$wsId)->whereNotNull('parent_task_id')
                                 ->whereIn('status',['pending','awaiting_approval'])->count();
-                $done7     = (int) DB::table('tasks')->where('workspace_id',$wsId)->where('status','completed')
+                $done7     = (int) DB::table('tasks')->where('workspace_id',$wsId)->where('status', 'completed')->where(fn ($__q) => $__q->whereNull('qa_status')->orWhereNotIn('qa_status', ['rejected', 'needs_owner']))
                                 ->where('created_at','>',now()->subDays(7))->count();
                 $open      = (int) DB::table('tasks')->where('workspace_id',$wsId)
                                 ->whereIn('status',['pending','awaiting_approval'])->count();
@@ -370,7 +370,7 @@ MAP;
                 $cost2  = function (string $a) use ($map2): int {
                     try { return max(1, (int) $map2->getCreditCost($a)); } catch (\Throwable) { return 1; }
                 };
-                $done7b = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'completed')
+                $done7b = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'completed')->where(fn ($__q) => $__q->whereNull('qa_status')->orWhereNotIn('qa_status', ['rejected', 'needs_owner']))
                             ->where('created_at', '>', now()->subDays(7))->count();
                 $failWkB = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'failed')
                             ->where('created_at', '>', now()->subDays(7))->count();

@@ -1326,7 +1326,7 @@
             '</div>' +
             '<div class="st-chat-box" id="st-chat-box">' +
               '<textarea class="st-chat-input" id="st-chat-input" rows="1" placeholder="Ask AI to edit your design..."></textarea>' +
-              '<button class="st-chat-send" id="st-chat-send" type="button">Send</button>' +
+              '<button class="st-chat-send" id="st-chat-send" type="button" aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button>' +
             '</div>' +
           '</div>' +
           '<div class="st-zoom" id="st-zoom">' +
@@ -2880,7 +2880,7 @@
       '<div class="st-ai-drawer hidden" id="st-ai-drawer">' +
         '<div class="st-ai-header">Design assistant<button id="st-ai-close" aria-label="Close design assistant">\u2715</button></div>' +
         '<div class="st-ai-chat" id="st-ai-chat"><div class="st-ai-welcome">Hi. Select an element or ask me to edit the whole design.</div></div>' +
-        '<div class="st-ai-input-wrap"><textarea id="st-ai-input" rows="2" placeholder="Ask for an edit…"></textarea><button id="st-ai-send">Send</button></div>' +
+        '<div class="st-ai-input-wrap"><textarea id="st-ai-input" rows="2" placeholder="Ask for an edit…"></textarea><button id="st-ai-send" aria-label="Send" title="Send" style="display:inline-flex;align-items:center;justify-content:center;width:42px;height:42px;flex:0 0 42px;padding:0;background:#6C5CE7;color:#fff;border:none;border-radius:12px;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg></button></div>' +
         '<div class="st-ai-quick">' +
           ['Apply my brand colors','Make the design more bold','Make it luxury and premium','Change to dark theme','Rewrite all the text'].map(function(p){
             return '<button data-p="' + _esc(p) + '">' + _esc(p) + '</button>';

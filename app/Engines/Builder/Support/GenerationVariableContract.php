@@ -55,6 +55,14 @@ final class GenerationVariableContract
         $expanded = [];
         $rejected = [];
 
+        // LLM JSON-mode artifact (2026-09-04): providers that require the word "json" in the
+        // prompt to enable JSON mode (DeepSeek/OpenAI json_object) sometimes wrap the ENTIRE
+        // payload in a single {"json": {...}} envelope (also seen: data/result/output/...).
+        // A single top-level key whose value is an associative map is never valid template
+        // output (every placeholder is scalar), so peel recognised envelopes first — otherwise
+        // the whole build silently falls back to template defaults with no real content.
+        $raw = self::unwrapEnvelope($raw);
+
         foreach ($raw as $key => $value) {
             if (! is_string($key) || $key === '') {
                 $rejected[] = '(non-string key)';
@@ -112,6 +120,28 @@ final class GenerationVariableContract
         }
 
         return ['variables' => $out, 'expanded' => $expanded, 'rejected' => $rejected];
+    }
+
+    /**
+     * Peel single-key envelope wrappers a provider may put around the real field map.
+     * Conservative: only recognised envelope names, only when the sole key holds an
+     * associative (non-list, non-empty) map, up to a small nesting depth.
+     *
+     * @param  array<string,mixed>  $raw
+     * @return array<string,mixed>
+     */
+    public static function unwrapEnvelope(array $raw): array
+    {
+        $names = ['json', 'data', 'result', 'output', 'content', 'response', 'fields', 'variables', 'payload'];
+        for ($i = 0; $i < 3; $i++) {
+            if (count($raw) !== 1) { break; }
+            $only = array_key_first($raw);
+            $val  = $raw[$only];
+            if (! is_string($only) || ! is_array($val) || $val === [] || array_is_list($val)) { break; }
+            if (! in_array(strtolower($only), $names, true)) { break; }
+            $raw = $val;
+        }
+        return $raw;
     }
 
     /** Map a provider key such as "services"/"service_list" onto a family base. */

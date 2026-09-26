@@ -127,8 +127,14 @@ class ArticleIdClaimGuard
             '/\b\d[\d,\.]*\s*credits?\b/i',
             '/\b(?:balance|reserved|charged|deducted|spend|spent|cost|costs|total|worth)\b[^.!?\n]{0,25}?\d[\d,\.]*/i',
             '/\b\d{1,2}:\d{2}\b/', '/\b\d{4}-\d{2}-\d{2}\b/',
+            // B2: a COUNT is not an id. "0 articles" / "3 drafts" state how many there are;
+            // an id reads "article 3" or "#3". The 2026-09-25 certification caught this guard
+            // reading the 0 in Sarah's own "0 articles" as a foreign article id and rewriting a
+            // WRITE request into "There are no drafts left ready to publish" — nothing was written.
+            '/\b\d{1,6}\s+(?:article|draft|post|piece|guide)s?\b/i',
         ], ' ', $text);
-        preg_match_all('/\d{1,6}/', (string) $t, $n);
+        // An article id is never 0.
+        preg_match_all('/[1-9]\d{0,5}/', (string) $t, $n);
         return array_values(array_unique(array_map('intval', $n[0])));
     }
 

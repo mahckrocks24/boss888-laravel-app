@@ -36,7 +36,7 @@ class CanonicalIntelligenceTest extends TestCase
         $this->incidents = app(IncidentService::class);
         $this->intel     = app(InfrastructureIntelligenceService::class);
 
-        $owner = User::create(['name' => 'ci-owner', 'email' => 'ci-' . Str::random(6) . '@t.local',
+        $owner = \Tests\Support\AdminUsers::create(['name' => 'ci-owner', 'email' => 'ci-' . Str::random(6) . '@t.local',
             'password' => Hash::make(Str::random(16)), 'is_admin' => 1, 'is_platform_admin' => 1,
             'account_classification' => 'standard']);
         $ws = Workspace::create(['name' => 'ci', 'slug' => 'ci-' . Str::random(6), 'created_by' => $owner->id]);
@@ -86,7 +86,7 @@ class CanonicalIntelligenceTest extends TestCase
     public function test_cross_workspace_link_refused(): void
     {
         $a = $this->inWs(fn () => $this->graph->upsertAsset(['asset_type' => 'server', 'name' => 's']));
-        $otherOwner = User::create(['name' => 'o', 'email' => 'o-' . Str::random(6) . '@t.local',
+        $otherOwner = \Tests\Support\AdminUsers::create(['name' => 'o', 'email' => 'o-' . Str::random(6) . '@t.local',
             'password' => Hash::make(Str::random(16))]);
         $otherWs = Workspace::create(['name' => 'o', 'slug' => 'o-' . Str::random(6), 'created_by' => $otherOwner->id]);
         $b = WorkspaceContext::run($otherWs->id, fn () => $this->graph->upsertAsset(['asset_type' => 'server', 'name' => 's2']));

@@ -190,14 +190,19 @@ class CreativeConnector extends BaseConnector
         // links, but populating file_size lets verifyResult() pass its size
         // threshold check. Falls back to minAssetSizeBytes placeholder if HEAD
         // fails (rare — only on transient network issues).
-        $fileSize = 0;
+        $fileSize = 0; $ctype = ''; $fetchErr = '';
         try {
             $head = Http::timeout(10)->head($url);
             if ($head->successful()) {
                 $fileSize = (int) ($head->header('Content-Length') ?? 0);
-            }
-        } catch (\Throwable) {
-            // Ignore — size verification is optional.
+                $ctype = strtolower((string) ($head->header('Content-Type') ?? ''));
+            } else { $fetchErr = 'HTTP ' . $head->status(); }
+        } catch (\Throwable $e) { $fetchErr = $e->getMessage(); }
+        // F-OPS-E10 (2026-09-06): the runtime reported a URL but nothing image-like is behind it (disk write failed) —
+        // never hand that URL to the caller as a success; the kernel then releases the credit.
+        if ($fetchErr !== '' || ($ctype !== '' && !str_starts_with($ctype, 'image/'))) {
+            Log::error('CreativeConnector: generated image is not retrievable', ['url' => $url, 'content_type' => $ctype, 'error' => $fetchErr]);
+            return ['success' => false, 'error' => 'The image was generated but could not be stored. Please try again.', 'code' => 'IMAGE_NOT_STORED'];
         }
         if ($fileSize === 0) {
             $fileSize = $this->minAssetSizeBytes;

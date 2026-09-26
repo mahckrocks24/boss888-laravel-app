@@ -15,7 +15,7 @@ use Throwable;
  *
  * This message exists because the provider's own invitation names the vendor in
  * its sender, subject, link and footer. Everything a customer sees here is
- * LevelUp Growth.
+ * LevelUpGrowth.
  *
  * IT CARRIES NO PASSWORD. It carries a single-use link to a LevelUp page where
  * the customer chooses their own — which is also the moment the provider
@@ -70,7 +70,7 @@ final class MailboxOnboardingMailer
                     . $this->setup->setupUrl($rawToken) . "\n\n"
                     . "If you did not expect this, you can ignore it - nothing is created "
                     . "until you choose a password.\n\n"
-                    . "LevelUp Growth",
+                    . "LevelUpGrowth",
                 templateData: [
                     'address'      => $address,
                     'setupUrl'     => $this->setup->setupUrl($rawToken),

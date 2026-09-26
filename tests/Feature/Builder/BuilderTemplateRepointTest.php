@@ -26,8 +26,16 @@ class BuilderTemplateRepointTest extends TestCase
     {
         $p = storage_path("templates/{$slug}/manifest.json");
         if (!is_file($p)) return 0;
-        $raw = strtolower((string) file_get_contents($p));
-        return substr_count($raw, 'doctor') + substr_count($raw, 'patient') + substr_count($raw, 'consultation');
+        // 2026-09-06: count DEFAULT VALUES only — the nine un-shadowed clones keep the skeleton's variable KEYS
+        // (doctor_1_name…, stripped at build by TemplateArchetypes) but their default text must read like the industry.
+        $m = json_decode((string) file_get_contents($p), true) ?: [];
+        $n = 0;
+        foreach (($m['variables'] ?? []) as $spec) {
+            if (!is_array($spec) || !is_string($spec['default'] ?? null)) continue;
+            $raw = strtolower($spec['default']);
+            $n += substr_count($raw, 'doctor') + substr_count($raw, 'patient') + substr_count($raw, 'consultation');
+        }
+        return $n;
     }
 
     public function test_clone_industries_no_longer_resolve_to_dental_content(): void
@@ -40,11 +48,13 @@ class BuilderTemplateRepointTest extends TestCase
         }
     }
 
-    public function test_expected_repoints(): void
+    /** 2026-09-05: the clones were un-shadowed into real templates (Owner decision) — each industry resolves to ITSELF. */
+    public function test_clone_industries_resolve_to_their_own_template(): void
     {
-        $this->assertSame('cafe', $this->resolve('restaurant'));
-        $this->assertSame('hotel', $this->resolve('resort'));
-        $this->assertSame('training_center', $this->resolve('tutoring'));
+        foreach (['restaurant', 'catering', 'resort', 'short_term_rental', 'travel_agency', 'tutoring', 'online_courses', 'retail_shop', 'ecommerce'] as $industry) {
+            $this->assertSame($industry, $this->resolve($industry));
+            $this->assertFileExists(storage_path("templates/{$industry}/template.html"));
+        }
     }
 
     public function test_good_templates_unchanged(): void

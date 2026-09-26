@@ -6,7 +6,7 @@
 |--------------------------------------------------------------------------
 | Locked architecture (2026-07-24): external customer domains are connected
 | via Cloudflare for SaaS Custom Hostnames, NOT by creating DNS records for
-| the customer's domain inside the LevelUp Growth zone.
+| the customer's domain inside the LevelUpGrowth zone.
 |
 | `saas_enabled` is the PRODUCTION MUTATION GATE. While false, the domain
 | service performs NO live Cloudflare mutations — connect() short-circuits

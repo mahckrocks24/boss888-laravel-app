@@ -108,6 +108,48 @@ class ChatbotWidgetTokenService
      *   domain) is allowed even if the token's allow-list predates that domain; a website-bound
      *   token accepts only ITS website's hosts. Tenancy-bound, deterministic, no wildcard.
      */
+    /** Platform hosts that may always embed a workspace's widget (previews, the app). */
+    public const PLATFORM_HOSTS = ['levelupgrowth.io', 'staging.levelupgrowth.io', 'app.levelupgrowth.io', 'www.levelupgrowth.io'];
+
+    /**
+     * F-CB-B1: does this embedding host belong to the workspace? True for the workspace's own websites (subdomain, bare
+     * subdomain + .levelupgrowth.io, custom domain, www variants) and platform hosts. Anything else is a stranger's page.
+     */
+    public function hostBelongsToWorkspace(int $workspaceId, string $host): bool
+    {
+        $h = strtolower(trim($host)); $h = (string) ($this->normaliseDomain($h) ?? $h);
+        if ($h === '') return false;
+        $bare = preg_replace('/^www\./i', '', $h);
+        if (in_array($bare, self::PLATFORM_HOSTS, true) || in_array($h, self::PLATFORM_HOSTS, true)) return true;
+        try {
+            foreach (DB::table('websites')->where('workspace_id', $workspaceId)->whereNull('deleted_at')->get(['subdomain', 'custom_domain']) as $w) {
+                foreach ([(string) $w->subdomain, (string) $w->custom_domain] as $s) {
+                    $s = strtolower(trim($s)); if ($s === '') continue;
+                    $cands = [$s]; if (!str_contains($s, '.')) $cands[] = $s . '.levelupgrowth.io';
+                    foreach ($cands as $c) { if ($bare === preg_replace('/^www\./i', '', $c)) return true; }
+                }
+            }
+            foreach (DB::table('wp_site_connections')->where('workspace_id', $workspaceId)->get(['site_host', 'site_url']) as $c) { // WordPress is a Website
+                foreach ([(string) $c->site_host, (string) parse_url((string) $c->site_url, PHP_URL_HOST)] as $s) { $s = strtolower(trim($s)); if ($s !== '' && $bare === preg_replace('/^www\./i', '', $s)) return true; }
+            }
+        } catch (\Throwable) { /* fail closed */ }
+        return false;
+    }
+
+    /** F-CB-E1: the hosts a token for this workspace (or one website of it) should be allowed on by default. */
+    public function workspaceHosts(int $workspaceId, ?int $websiteId = null): array
+    {
+        $hosts = [];
+        try {
+            $q = DB::table('websites')->where('workspace_id', $workspaceId)->whereNull('deleted_at'); if ($websiteId) $q->where('id', $websiteId);
+            foreach ($q->orderByRaw("status = 'published' desc")->orderBy('id')->get(['subdomain', 'custom_domain']) as $w) {
+                foreach ([(string) $w->subdomain, (string) $w->custom_domain] as $h) { $h = strtolower(trim($h)); if ($h === '') continue; if (!str_contains($h, '.')) $h .= '.levelupgrowth.io'; $hosts[] = $h; }
+            }
+            foreach (DB::table('wp_site_connections')->where('workspace_id', $workspaceId)->get(['site_host', 'site_url']) as $c) { $h = strtolower(trim((string) ($c->site_host ?: parse_url((string) $c->site_url, PHP_URL_HOST)))); if ($h !== '') $hosts[] = $h; }
+        } catch (\Throwable) {}
+        return array_values(array_unique($hosts));
+    }
+
     public function originAllowed(object $tokenRow, ?string $originHeader, ?string $refererHeader = null): bool
     {
         $originHost = null;

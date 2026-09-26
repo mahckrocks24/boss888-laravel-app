@@ -119,7 +119,7 @@ class WriteController extends BaseEngineController
             }
             unset($data['plain_text'], $data['content_json']);
         }
-        $res  = $this->write->updateArticle($id, $data, $wsId);
+        try { $res  = $this->write->updateArticle($id, $data, $wsId); } catch (\RuntimeException $e) { return response()->json(['success' => false, 'error' => 'not_found', 'message' => 'Article not found'], 404); }
         $item = $this->write->getArticle($wsId, $id);
         $out  = (is_array($res) ? $res : []) + ['success' => true, 'item' => $item ? $this->editorShape($item) : null];
         if (!empty($res['wordpress'])) {
@@ -130,8 +130,8 @@ class WriteController extends BaseEngineController
         }
         return $this->readJson($out);
     }
-    public function deleteArticle(Request $r, int $id): JsonResponse { $this->write->deleteArticle($id, $this->wsId($r)); return $this->readJson(['success' => true]); }
-    public function restoreVersion(Request $r, int $id, int $versionId): JsonResponse { return $this->readJson($this->write->restoreVersion($id, $versionId, $this->wsId($r))); }
+    public function deleteArticle(Request $r, int $id): JsonResponse { try { $this->write->deleteArticle($id, $this->wsId($r)); } catch (\RuntimeException $e) { return response()->json(['success' => false, 'error' => 'not_found', 'message' => 'Article not found'], 404); } return $this->readJson(['success' => true]); }
+    public function restoreVersion(Request $r, int $id, int $versionId): JsonResponse { try { return $this->readJson($this->write->restoreVersion($id, $versionId, $this->wsId($r))); } catch (\RuntimeException $e) { return response()->json(['success' => false, 'error' => 'not_found', 'message' => 'Article not found'], 404); } }
     public function writeArticle(Request $r): JsonResponse { return $this->executeAction($r, 'write_article', $r->all()); }
     public function improveDraft(Request $r): JsonResponse { return $this->executeAction($r, 'improve_draft', $r->all()); }
     public function generateOutline(Request $r): JsonResponse { return $this->executeAction($r, 'generate_outline', $r->all()); }

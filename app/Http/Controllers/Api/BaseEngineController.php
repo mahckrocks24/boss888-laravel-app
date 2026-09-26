@@ -99,6 +99,7 @@ abstract class BaseEngineController
                 'NOT_FOUND' => 404,
                 'AWAITING_APPROVAL' => 202,
                 'INVALID_ACTION' => 400,
+                'INVALID_INPUT' => 422, // F-OPS-D2c: validation-class refusals (duplicate keyword…) are 422, never 500
                 'EXECUTION_FAILED' => 500,
                 default => 400,
             };

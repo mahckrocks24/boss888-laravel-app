@@ -23,6 +23,9 @@ $A = 999861; $B = 999862;
 foreach ([$A,$B] as $w)
     DB::table('workspaces')->updateOrInsert(['id'=>$w], ['name'=>"EXP888 op{$w}",'slug'=>"exp888-op{$w}",
         'timezone'=>'UTC','created_by'=>2,'created_at'=>now(),'updated_at'=>now()]);
+// F-X-F1 (2026-09-07): opting out now stops retrieval too, so a test workspace must be ENROLLED to be retrieved from.
+foreach ([$A,$B] as $w) app(\App\Core\Experience888\ExperienceEligibility::class)->enable($w, 'exp-test enrolment', 'exp-test');
+register_shutdown_function(function () use ($A, $B) { foreach ([$A,$B] as $w) app(\App\Core\Experience888\ExperienceEligibility::class)->disable($w, 'exp-test un-enrol', 'exp-test'); }); // leave nothing enrolled behind (exp6 counts enrolled workspaces)
 foreach (['experience_pattern_evidence','experience_patterns','experience_outcomes','experience_events',
           'experience_owner_feedback','experience_playbook_runs','experience_playbooks'] as $t)
     DB::table($t)->whereIn('workspace_id',[$A,$B])->delete();

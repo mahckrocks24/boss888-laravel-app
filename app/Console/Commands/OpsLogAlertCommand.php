@@ -114,7 +114,7 @@ class OpsLogAlertCommand extends Command
             foreach ($due as $reason => $msg) {
                 $bodyLines[] = strtoupper($reason) . ': ' . $msg;
             }
-            $body = "Level Up Growth ops alert — " . now()->toDateTimeString() . "\n\n"
+            $body = "LevelUpGrowth ops alert — " . now()->toDateTimeString() . "\n\n"
                 . implode("\n", $bodyLines)
                 . "\n\nHost: " . gethostname()
                 . "\nWindow: last {$window} minutes. Repeats of the same reason are suppressed for "
@@ -123,10 +123,12 @@ class OpsLogAlertCommand extends Command
             try {
                 Mail::raw($body, function ($m) use ($to, $due) {
                     $m->to($to)->subject('[LUG OPS] ' . implode(' + ', array_keys($due)));
+                    $m->getSymfonyMessage()->getHeaders()->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'notification'); // F-EM-A2: purpose-declared like every other call site
                 });
                 $this->info('ops:log-alert — sent: ' . implode(', ', array_keys($due)));
                 Log::warning('ops:log-alert sent', ['reasons' => array_keys($due), 'to' => $to]);
             } catch (\Throwable $e) {
+                app(\App\Core\Email888\DeliveryLedger::class)->markLastRecordedFailed($e); // F-EM-C2
                 Log::error('ops:log-alert SEND FAILED — the alert channel itself is broken', [
                     'error' => $e->getMessage(), 'reasons' => array_keys($due),
                 ]);

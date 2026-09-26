@@ -1,5 +1,5 @@
 /*
- * LevelUp Growth — Onboarding + Auth Views
+ * LevelUpGrowth — Onboarding + Auth Views
  * Phase O1 (2026-05-10): extracted from core.js
  * Phase O2 (2026-05-10): Step 1 redesigned — Mission Control dark theme,
  *                       20-agent orbit, amber CTA, real social proof.
@@ -73,6 +73,14 @@ function _obBuildOrbit() {
 
 // ── TASK 1.4: Login view (Phase O2 — centred card) ───────────────────────────
 function _renderLogin() {
+  // 2026-09-11: the login page lives on the marketing site (/login/), styled like sign-up. The app only draws its
+  // own card inside a WordPress embed, where there is no marketing site to go to.
+  var _embedded = (window.LU_CFG && window.LU_CFG.nonce) || window._LGSC_EMBED || window.location.pathname.indexOf('/wp-admin') !== -1;
+  if (!_embedded && window.location.pathname.indexOf('/app') === 0) {
+    var _next = window.location.pathname + window.location.search + window.location.hash;
+    window.location.replace('/login/' + (_next && _next !== '/app/' ? '?next=' + encodeURIComponent(_next) : ''));
+    return;
+  }
   var root = document.getElementById('lu-auth-root');
   if (!root) return;
   root.style.display = 'flex';
@@ -85,7 +93,7 @@ function _renderLogin() {
       <div class="ob-card">
         <div class="ob-login-logo">
           <img src="/img/logo-icon-40.png" class="ob-logo-img" alt="">
-          <span>LevelUp Growth</span>
+          <span>LevelUpGrowth</span>
         </div>
         <h2 class="ob-card-title">Welcome back</h2>
         <p class="ob-card-sub">Sign in to your workspace</p>
@@ -109,7 +117,7 @@ function _renderLogin() {
         </div>
 
         <p class="ob-switch">No account?
-          <a href="#" onclick="_renderSignup();return false;">Create one free</a>
+          <a href="/start/">Create one free</a>
         </p>
       </div>
     </div>
@@ -1085,7 +1093,7 @@ async function _showOnboardingStep3() {
       if (m) m.remove();
       if (typeof _appEnterDashboard === 'function') _appEnterDashboard();
       if (typeof showToast === 'function') {
-        showToast('Welcome to LevelUp Growth! 🚀 Sarah is preparing your first strategy — check back soon.', 'success');
+        showToast('Welcome to LevelUpGrowth! 🚀 Sarah is preparing your first strategy — check back soon.', 'success');
       }
       setTimeout(function(){ if (typeof nav === 'function') nav('command'); }, 300);
     }, { once: true });

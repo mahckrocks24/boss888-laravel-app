@@ -39,7 +39,7 @@ class MediaService
             }
         }
 
-        return DB::table('media')->insertGetId([
+        $__mediaId = (int) DB::table('media')->insertGetId([
             'workspace_id' => $workspaceId,
             'filename' => $filename,
             'path' => $path,
@@ -56,6 +56,11 @@ class MediaService
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // 2026-09-12 — describe and tag it now, so nothing can enter the library uncatalogued.
+        \App\Services\MediaCataloguer::catalogueQuietly($__mediaId);
+
+        return $__mediaId;
     }
 
     /**
@@ -156,7 +161,7 @@ class MediaService
         // This stops a restaurant build from grabbing a dental photo just
         // because both are tagged 'general' — exact-match always wins.
         if ($industry === '') {
-            $existing = $q->orderByDesc('created_at')->first();
+            $existing = $q->orderByDesc('is_platform_asset')->orderByDesc('created_at')->first();
             if (! $existing) return null;
             return ['id' => $existing->id, 'url' => $existing->url, 'path' => $existing->path, 'reused' => true];
         }
@@ -175,7 +180,10 @@ class MediaService
                     $sub->orWhereRaw('JSON_CONTAINS(tags, ?)', [json_encode($tag)]);
                 }
             });
-            $hit = $tier->orderByDesc('created_at')->first();
+            // HERO-PRECEDENCE (2026-09-05): the curated platform library (is_platform_asset=1) ALWAYS
+            // outranks workspace-generated heroes — recency-only ordering let junk QA generations
+            // ("offers Service One…" prompts) shadow the real industry hero.
+            $hit = $tier->orderByDesc('is_platform_asset')->orderByDesc('created_at')->first();
             if ($hit) {
                 return ['id' => $hit->id, 'url' => $hit->url, 'path' => $hit->path, 'reused' => true];
             }
@@ -328,7 +336,7 @@ class MediaService
             'description' => $description ? mb_substr($description, 0, 500) : null,
         ];
 
-        return DB::table('media')->insertGetId([
+        $__mediaId = (int) DB::table('media')->insertGetId([
             'workspace_id'      => $workspaceId,
             'filename'          => basename($path ?: 'generated.png'),
             'path'              => $path,
@@ -347,6 +355,12 @@ class MediaService
             'created_at'        => now(),
             'updated_at'        => now(),
         ]);
+
+        // 2026-09-12 — describe and tag it now, so nothing can enter the library uncatalogued.
+        \App\Services\MediaCataloguer::catalogueQuietly($__mediaId);
+
+        return $__mediaId;
+
     }
 
     /**

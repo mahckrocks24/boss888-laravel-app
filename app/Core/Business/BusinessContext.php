@@ -122,10 +122,17 @@ class BusinessContext
             if (! empty($p['services'])) { $out .= '    Services: ' . implode(', ', array_slice((array) $p['services'], 0, 12)) . "\n"; }
             $out .= "  HARD RULE — ONE BUSINESS: answer for {$b->name} only. Never carry another business's name, domain, services, prices, tone or audience into this answer unless the owner names it.\n";
         } elseif ($mode === 'portfolio') {
-            $out .= "- THIS TURN COVERS ALL BUSINESSES: answer grouped by business name, one short section each, never blending one business's facts into another's.\n";
+            $out .= "- THIS TURN CONCERNS ALL BUSINESSES: unless the owner asked to go one at a time (then cover ONE and stop), answer grouped by business name, one short section each — two or three lines per business — never blending one business's facts into another's.\n";
             foreach (array_slice($all, 0, 8) as $b) { $p = $resolver->profile($wsId, (int) $b->id); $out .= '    ' . $b->name . ': ' . implode(' · ', array_filter([$p['industry'] ?? null, $p['location'] ?? null, ! empty($p['services']) ? implode(', ', array_slice((array) $p['services'], 0, 6)) : null, $p['pricing_anchor'] ?? null])) . "\n"; }
         }
-        $out .= "  HARD RULE — WHICH BUSINESS: when a message says 'my business', 'my prices', 'my customers' or the like WITHOUT naming one of these businesses and none is active, do NOT guess — ask ONE short question naming the businesses. When a business IS named, use it and say its name back in your first sentence.\n";
+        if ($mode === 'ambiguous') {
+            $out .= "- THIS MESSAGE NAMED NO BUSINESS AND NONE IS ACTIVE. Read the conversation: if the owner has already told you how to proceed in ANY words ('all', 'all of them', 'you decide', 'you pick', 'one by one', 'start with the first', 'the gym'…), that IS the answer — act on it, never ask again. Only if you genuinely cannot tell, ask ONE short question in your own words naming the businesses, and never repeat a question you have already asked in this conversation.\n";
+        }
+        // LLM-FIRST (Owner, 2026-09-25): these decisions belong to the model reading the conversation, not to a pattern.
+        $out .= "  HARD RULE — WHICH BUSINESS: when a message is about 'my business', 'my prices', 'my customers' and the like without naming one, and none is active, do NOT guess — ask once, briefly, in your own words, naming the businesses. When a business IS named, use it and say its name back in your first sentence.\n";
+        $out .= "  HARD RULE — ONE AT A TIME: if the owner says 'one by one', 'one at a time', 'let's go through them' or similar, cover ONE business — pick the most sensible first (say which and why in one line), give it properly, then stop and ask whether to go on to the next. Do not cover the others in the same reply.\n";
+        $out .= "  HARD RULE — YOU DECIDE: if the owner says 'you decide', 'you pick', 'whichever', choose one business yourself, say which and why in one line, and proceed. Never answer 'you decide' with a question.\n";
+        $out .= "  HARD RULE — LENGTH: keep a conversational answer under 120 words. Lead with the answer. No restating what the owner said.\n";
         return $out;
     }
 

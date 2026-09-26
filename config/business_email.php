@@ -54,7 +54,7 @@ return [
      |--------------------------------------------------------------------------
      | LevelUp allowances (E4)
      |--------------------------------------------------------------------------
-     | What the CUSTOMER bought from LevelUp Growth — never what the underlying
+     | What the CUSTOMER bought from LevelUpGrowth — never what the underlying
      | service happens to permit. If the provider allowed 500 mailboxes and the
      | product sells 10, the customer's limit is 10; reading it from provider
      | capacity would make a customer's allowance change when we switched
@@ -144,7 +144,7 @@ return [
     */
     'onboarding' => [
         'from_address' => env('BUSINESS_EMAIL_FROM_ADDRESS', 'support@levelupgrowth.io'),
-        'from_name'    => env('BUSINESS_EMAIL_FROM_NAME', 'LevelUp Growth'),
+        'from_name'    => env('BUSINESS_EMAIL_FROM_NAME', 'LevelUpGrowth'),
         'reply_to'     => env('BUSINESS_EMAIL_REPLY_TO', 'support@levelupgrowth.io'),
     ],
     'provider' => [

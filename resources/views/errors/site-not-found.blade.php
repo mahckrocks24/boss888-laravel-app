@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Page Not Found — LevelUp Growth</title>
+<title>Page Not Found — LevelUpGrowth</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -21,12 +21,12 @@ p{color:rgba(255,255,255,.55);font-size:16px;line-height:1.6;max-width:420px;mar
 </style>
 </head>
 <body>
-<div class="logo">LevelUp Growth</div>
+<div class="logo">LevelUpGrowth</div>
 <div class="code">404</div>
 <h2>This page doesn't exist yet</h2>
 <p>The website or page you're looking for hasn't been published, or the URL may be incorrect.</p>
 <div class="actions">
-    <a href="https://levelupgrowth.io" class="btn btn-primary">Visit LevelUp Growth</a>
+    <a href="https://levelupgrowth.io" class="btn btn-primary">Visit LevelUpGrowth</a>
     <a href="https://staging.levelupgrowth.io/app/" class="btn btn-secondary">Build Your Website</a>
 </div>
 </body>

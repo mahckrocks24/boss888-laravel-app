@@ -67,11 +67,11 @@ return [
     'senders' => [
         'platform' => [
             'address' => env('EMAIL888_SENDER_PLATFORM', 'hello@levelupgrowth.io'),
-            'name'    => env('EMAIL888_SENDER_PLATFORM_NAME', 'LevelUp Growth'),
+            'name'    => env('EMAIL888_SENDER_PLATFORM_NAME', 'LevelUpGrowth'),
         ],
         'support' => [
             'address' => env('EMAIL888_SENDER_SUPPORT', 'support@levelupgrowth.io'),
-            'name'    => env('EMAIL888_SENDER_SUPPORT_NAME', 'LevelUp Growth'),
+            'name'    => env('EMAIL888_SENDER_SUPPORT_NAME', 'LevelUpGrowth'),
         ],
     ],
 

@@ -54,7 +54,7 @@ class ProbeDelivery extends Command
         $policy        = OutboundPolicy::resolve($purpose);
         $correlationId = (string) Str::uuid();
         $stamp         = now()->toIso8601String();
-        $subject       = 'LevelUp Growth delivery probe';
+        $subject       = 'LevelUpGrowth delivery probe';
 
         $this->line('purpose        : ' . $purpose);
         $this->line('sender         : ' . $policy['sender']['address']);
@@ -62,7 +62,7 @@ class ProbeDelivery extends Command
         $this->line('recipient      : ' . $to);
         $this->line('correlation    : ' . $correlationId);
 
-        $body = "LevelUp Growth outbound delivery probe.\n\n"
+        $body = "LevelUpGrowth outbound delivery probe.\n\n"
               . "correlation: {$correlationId}\n"
               . "timestamp:   {$stamp}\n\n"
               . "No action is required.";

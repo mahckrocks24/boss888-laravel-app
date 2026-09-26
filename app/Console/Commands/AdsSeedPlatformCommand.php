@@ -139,7 +139,7 @@ class AdsSeedPlatformCommand extends Command
 
             if (! $houseId) {
                 $houseId = DB::table('advertisers')->insertGetId([
-                    'name' => 'LevelUp Growth (House)', 'legal_name' => 'LevelUp Growth',
+                    'name' => 'LevelUpGrowth (House)', 'legal_name' => 'LevelUpGrowth',
                     'status' => 'active', 'category' => 'house', 'is_house' => true,
                     'notes' => 'Platform-owned advertiser for house/upgrade campaigns.',
                     'created_at' => now(), 'updated_at' => now(),

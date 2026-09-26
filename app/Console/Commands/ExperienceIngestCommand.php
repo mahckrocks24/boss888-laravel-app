@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\Log;
 class ExperienceIngestCommand extends Command
 {
     protected $signature = 'experience888:ingest
+                            {--force-unenrolled : Ingest a workspace that is NOT enrolled (logged; never a live customer workspace)}
                             {--workspace= : a single workspace id}
                             {--all : every workspace with recent activity}
                             {--since= : only workspaces with activity since this timestamp}
@@ -94,9 +95,16 @@ class ExperienceIngestCommand extends Command
         if ($this->option('workspace')) {
             $id = (int) $this->option('workspace');
             if (!app(\App\Core\Experience888\ExperienceEligibility::class)->isIngestionEnabled($id)) {
-                $this->warn("  ws {$id} is NOT enrolled in Experience888 - proceeding because "
-                          . "--workspace was given explicitly.");
-                Log::info('[Experience888] manual ingest of a non-enrolled workspace', ['ws' => $id]);
+                // F-X-F2 (2026-09-07): an explicit --workspace no longer bypasses enrolment on its own — a live customer
+                // workspace was one flag away from 2,332 tasks of automated ingestion. Dry-run may look; writing needs
+                // --force-unenrolled, and that is logged.
+                if (!$this->option('dry-run') && !$this->option('force-unenrolled')) {
+                    $this->error("  ws {$id} is NOT enrolled in Experience888 (operational ingestion off). Refusing. Use --dry-run to inspect, or --force-unenrolled to override (logged).");
+                    Log::warning('[Experience888] refused manual ingest of a non-enrolled workspace', ['ws' => $id]);
+                    return [];
+                }
+                $this->warn("  ws {$id} is NOT enrolled in Experience888 - proceeding because " . ($this->option('dry-run') ? '--dry-run' : '--force-unenrolled') . " was given explicitly.");
+                Log::info('[Experience888] manual ingest of a non-enrolled workspace', ['ws' => $id, 'forced' => (bool) $this->option('force-unenrolled'), 'dry_run' => (bool) $this->option('dry-run')]);
             }
             return [$id];
         }

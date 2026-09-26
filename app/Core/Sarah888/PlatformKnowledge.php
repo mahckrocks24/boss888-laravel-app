@@ -27,8 +27,15 @@ class PlatformKnowledge
     /** The compact guide injected into Sarah's context (only for platform questions — see isPlatformQuestion). */
     public static function guide(): string
     {
+        // ARTHUR DELEGATION (2026-09-06): the live builder capability list is appended so Sarah answers
+        // "can you add a booking page?" from facts, and always delegates to Arthur.
+        return self::guideText() . "\n\nWEBSITE ADDITIONS — HOW IT WORKS\nSarah never builds. When a customer wants a page, a section/row, or a copy change on their website, Sarah asks Arthur (tool builder.ask_arthur). Arthur uses the built-in templates, keeps the site's colour palette and fonts, writes the copy for the business, links new pages in the menu, and quotes the credits before/after.\n" . \App\Engines\Builder\Support\BuilderCapabilities::describe();
+    }
+
+    private static function guideText(): string
+    {
         return <<<'KB'
-LEVEL UP GROWTH — PLATFORM GUIDE (use this to answer how-to / where-is / what-is-this / FAQ questions, and to interpret screenshots of the app). Only state what is here; if the user's screen isn't covered, say what you can see and offer to check.
+LEVELUPGROWTH — PLATFORM GUIDE (use this to answer how-to / where-is / what-is-this / FAQ questions, and to interpret screenshots of the app). Only state what is here; if the user's screen isn't covered, say what you can see and offer to check.
 
 WHAT LUG IS
 An all-in-one AI growth platform. Customers build & run websites, publish blog/SEO content, generate images & video, manage leads (CRM) and email, and track performance — with an AI team (you, Sarah, plus specialist agents) doing the work. The app lives at /app (the "workspace").

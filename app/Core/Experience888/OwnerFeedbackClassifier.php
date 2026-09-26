@@ -49,9 +49,23 @@ final class OwnerFeedbackClassifier
      * that order wrong is how "long-form is fine for this campaign" becomes a
      * permanent reversal of the standing preference.
      */
+    /** F-X-A1: a concrete request for a deliverable is work to do, not a rule about how work is done. */
+    public const DELIVERABLE = '(image|images|picture|photo|photos|logo|banner|thumbnail|graphic|visual|video|reel|article|blog post|post|caption|page|landing page|section|email|draft|design|mockup|flyer|poster|headline|title|slogan)';
+    public static function isWorkRequest(string $text): bool
+    {
+        $t = mb_strtolower(trim($text));
+        if (preg_match('/\b(from now on|going forward|always|never|as a rule|by default|standing (rule|instruction)|new rule|permanently|prefer|i\'d rather)\b/', $t)) return false;
+        if (preg_match('/\b(i want|i need|i\'d like|i would like|give me|make me|create me|can you|could you|please|generate|create|make|draw|design|write|draft)\b[^.!?]{0,60}\b' . self::DELIVERABLE . '\b/', $t)) return true;
+        if (preg_match('/^(a|an|one|another|some)\s+[^.!?]{0,40}\b' . self::DELIVERABLE . '\b/', $t)) return true;
+        return false;
+    }
+
     public function classify(string $text): array
     {
         $t = mb_strtolower(trim($text));
+        if (self::isWorkRequest($text)) { // F-X-A1: a request is scope-limited by nature — never durable
+            return ['feedback_type' => self::ONE_OFF_INSTRUCTION, 'durable' => false, 'explicitness' => 'explicit', 'strength' => 'WEAK', 'scope_limited' => true, 'standing' => false];
+        }
 
         $oneOff = (bool) preg_match(
             '/\b(for (this|that) (one|campaign|post|article|time)|just (this|for now)|this time only|on this occasion|as a one[- ]off|exception)\b/', $t);
@@ -132,6 +146,7 @@ final class OwnerFeedbackClassifier
                  . '|should be|change the|new rule|standing rule|for this (one|campaign|post|article|time)'
                  . '|just this|one[- ]off|that worked|didn\'t work|did not work|worked well|use )\b/';
         if (!preg_match($markers, $t)) return false;
+        if (self::isWorkRequest($text)) return false; // F-X-A1: a request for a deliverable is a task, not feedback
 
         // A bare interrogative with no instruction is a question, not feedback.
         $isQuestion = str_ends_with(trim($t), '?')

@@ -49,7 +49,7 @@ class MfaStepUpAndClassificationTest extends TestCase
 
     private function makeUser(string $prefix, bool $admin, string $class = 'standard'): User
     {
-        return User::create([
+        return \Tests\Support\AdminUsers::create([
             'name'                   => $prefix,
             'email'                  => $prefix . '-' . Str::random(8) . '@test.local',
             'password'               => Hash::make(Str::random(16)),

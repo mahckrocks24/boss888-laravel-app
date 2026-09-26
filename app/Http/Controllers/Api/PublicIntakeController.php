@@ -163,6 +163,7 @@ class PublicIntakeController
         try {
             $this->notify($type, $reference, $data, $metadata);
         } catch (\Throwable $e) {
+            app(\App\Core\Email888\DeliveryLedger::class)->markLastRecordedFailed($e); // F-EM-C2
             Log::error('public.intake.notify_failed', [
                 'lead_id' => $leadId,
                 'error'   => $e->getMessage(),

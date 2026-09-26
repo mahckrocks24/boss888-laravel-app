@@ -87,6 +87,7 @@ final class ExperienceRetriever
 
     public function forTurn(int $wsId, string $question = '', int $budget = self::BUDGET_CHARS): string
     {
+        if (!app(ExperienceEligibility::class)->isEnabled($wsId)) return ''; // F-X-F1: opted out = nothing retrieved
         if ($wsId <= 0) return '';
 
         $lines = [];
@@ -219,6 +220,12 @@ final class ExperienceRetriever
      */
     public function explainForTurn(int $wsId, string $question, ?string $subjectHint = null): string
     {
+        if (!app(ExperienceEligibility::class)->isEnabled($wsId)) { // F-X-F1: opted out = nothing may be cited — but the admission stays, so nothing is invented either
+            return "PROVENANCE FOR THIS TURN: there is NO recorded experience in this workspace "
+                 . "that bears on the question. Say plainly that you do not have enough recorded "
+                 . "experience yet to support a claim, and do NOT invent a history or a number.
+";
+        }
         if ($wsId <= 0 || !$this->isProvenanceQuestion($question)) return '';
 
         $patterns = $this->relevantPatterns($wsId, $subjectHint ?? $question, 2);

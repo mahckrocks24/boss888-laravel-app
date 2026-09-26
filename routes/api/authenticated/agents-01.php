@@ -909,8 +909,12 @@ $withCorr = function (array $meta) use ($corr) {
                 // owed their names; a tally is what you say when you cannot see them.
                 // Deliberately excluded: build/create/delete/publish (those are ACTIONS, not questions) and
                 // traffic/visitors (a different subject that happens to mention a site).
-                elseif (preg_match('/\b(websites?|sites?)\b/', $c)
-                        && preg_match('/\b(how many|number of|count of|which|what|list|show|do i have|do we have|have i got)\b/', $c)
+                // B3 (2026-09-25 certification): the websites must be the SUBJECT of the question,
+                // not a word inside it. The old test — any site noun plus any question word — answered
+                // "what colour is my website header?" with the estate list, 16 of 20 natural phrasings
+                // wrong. SiteListRequest matches only the shapes a list answers; anything else falls
+                // through to reasoning, which is the safe direction.
+                elseif (\App\Core\Sarah888\SiteListRequest::asks($c)
                         && ! preg_match('/\b(build|create|make|new|add|delete|remove|publish|connect|domain|traffic|visitors?|sessions?|revenue|rank|ranking|chat ?bot|chat widget|live chat|domains?|hosted|hosting|registrar|registered)\b/', $c)) { // F-CB-F2 / F-I-F1: chatbot, domain and hosting questions are not the site list
                     $__sites = DB::table('websites')
                         ->where('workspace_id', $wsId)->whereNull('deleted_at')
@@ -938,8 +942,20 @@ $withCorr = function (array $meta) use ($corr) {
                         if ($__empty) {
                             $routerReply .= "\n\n" . (count($__empty) === 1
                                 ? '"' . $__empty[0] . '" has no content yet — say the word and I\'ll put a launch plan in front of you with the cost.'
-                                : implode(' and ', array_map(fn ($x) => '"' . $x . '"', $__empty))
-                                  . ' have no content yet — say the word and I\'ll put launch plans in front of you with the cost.');
+                                // B3b: implode(' and ', …) over every empty site produced one sentence of
+                                // 42 quoted names, duplicates included. Name a few, count the rest.
+                                : (function (array $e) {
+                                    $show = array_slice($e, 0, 4);
+                                    $q = array_map(fn ($x) => '"' . $x . '"', $show);
+                                    $names = count($q) > 1
+                                        ? implode(', ', array_slice($q, 0, -1)) . ' and ' . end($q)
+                                        : ($q[0] ?? '');
+                                    $rest = count($e) - count($show);
+                                    return $rest > 0
+                                        ? $names . ' and ' . $rest . ' other' . ($rest === 1 ? '' : 's')
+                                          . ' have no content yet — say the word and I\'ll put launch plans in front of you with the cost.'
+                                        : $names . ' have no content yet — say the word and I\'ll put launch plans in front of you with the cost.';
+                                  })($__empty));
                         }
                     }
                 }
@@ -1256,15 +1272,15 @@ $withCorr = function (array $meta) use ($corr) {
         // answered here with ONE question — deterministic, before any model call (the ack has already gone out).
         if (!empty($__biz['multi'])) {
             try { $brandFactsBlock .= \App\Core\Business\BusinessContext::promptBlock($__biz, app(\App\Core\Business\BusinessProfileResolver::class), (int) $wsId) . "\n"; } catch (\Throwable $__bpErr) { \Illuminate\Support\Facades\Log::warning('[Business] prompt block failed: ' . $__bpErr->getMessage(), ['ws' => $wsId]); }
-            if (($__biz['mode'] ?? '') === 'ambiguous' && !empty($__biz['ask']) && $isSarah && $useTwoPhase) {
-                DB::table('agent_messages')->insert([
-                    'workspace_id'  => $wsId, 'agent_slug' => $slug, 'sender' => $agent->name,
-                    'content'       => (string) $__biz['ask'], 'role' => 'agent',
-                    'metadata_json' => $withCorr(['phase' => 'final', 'router' => true, 'router_intent' => 'which_business']),
-                    'created_at'    => now(), 'updated_at' => now(),
-                ]);
-                \Illuminate\Support\Facades\Log::info('[Business] asked which business', ['ws' => $wsId, 'businesses' => count($__biz['businesses'] ?? [])]);
-                return;
+            // LLM-FIRST (Owner, 2026-09-25): the which-business question is the MODEL's to ask, in its own
+            // words, once — never a template posted before the model has read the message. The old
+            // interception fired on the bare word "my" (BusinessContext::REFERENTIAL) and returned the
+            // identical canned line twice in one conversation, and it swallowed "let's discuss one by
+            // one" and "you decide which one" because no pattern knew them. The roster and the rules
+            // travel in the prompt block above; the model decides from context. A resolved NAME still
+            // binds the turn's business (that is a lookup, not a decision) so work stays on the right site.
+            if (($__biz['mode'] ?? '') === 'ambiguous') {
+                \Illuminate\Support\Facades\Log::info('[Business] no business named — the model decides', ['ws' => $wsId, 'businesses' => count($__biz['businesses'] ?? [])]);
             }
         }
 
@@ -1273,7 +1289,8 @@ $withCorr = function (array $meta) use ($corr) {
             . "- Use line breaks between sections\n"
             . "- Use bullet points (- text) for lists, one short line each, max 5 per list\n"
             . "- Lead with the most important point\n"
-            . "- Never write walls of text\n\n";
+            . "- Never write walls of text\n"
+            . "- LENGTH (Owner rule): a conversational answer is under 120 words. Lead with the answer; do not restate the question; no preamble. Go longer only when the owner asks for detail, a report or a plan — and even then, one business or one topic at a time.\n\n";
 
         // PATCH (Phase 2 — tool schema + read-back, 2026-05-10) — assemble the
         // closed tool schema for this agent and any unread completed-task
