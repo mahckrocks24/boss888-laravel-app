@@ -103,6 +103,11 @@ class ImageGeneration
         // RISK-0186 (2026-09-17): a website EDIT handed to Arthur ("Ask Arthur to change the hero headline on QA Harbour Yoga to: …") is not a
         // refinement of the last image, however recent that image is (EV-1058: it was offered as a 2-credit image regeneration).
         if (!$__img && preg_match('/\b(arthur|headline|hero|tagline|subtitle|strapline|cta|button|section|footer|nav|navigation|menu)\b/', $t)) { return false; }
+        // REFINE-GUARD-1 (Owner 2026-09-26): "Make the reply to Daniel shorter and warmer" was offered as a 2-credit image
+        // regeneration, and "where is the image?" became "regenerate with: where is ?". A turn about a comment reply is never an
+        // image refinement, and a where/why/how-come question that asks for no concrete change is a question, not a refinement.
+        if (!$__img && preg_match('/\b(repl(y|ies)|respon(d|se)|comments?|answer)\b/', $t)) { return false; }
+        if (preg_match('/^(where|why|how come|what happened)\b/', $t) && self::changeFrom($text) === '') { return false; }
         $hasChange = self::changeFrom($text) !== ''
             || (bool) preg_match('/\b(more|less|brighter|darker|bigger|smaller|change|turn it|instead|but make|but with|without|hyper\w*|realist\w*|photoreal\w*|cartoon|anime|render|style|version)\b/', $t);
         $refers = (bool) preg_match('/\b(the image|the picture|the photo|that image|this image|same image|the one you (sent|made|generated|created)|you (sent|made|generated|created))\b/', $t)

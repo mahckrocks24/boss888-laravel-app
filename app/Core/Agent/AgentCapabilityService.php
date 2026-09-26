@@ -68,6 +68,7 @@ class AgentCapabilityService
             // Social
             'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post', 'get_queue', 'record_social_analytics',
             'reply_comment', 'social_reply_comment',   // COMMENTS-1
+            'redraft_comment_reply', 'social_redraft_comment_reply',   // SARAH-COMMENTS-1
             // Chatbot — read only (F-CB-F2, 2026-09-07): Sarah reads the chatbot state before speaking about it
             'get_state',
             // Calendar
@@ -167,6 +168,7 @@ class AgentCapabilityService
             // Social — full access including publish
             'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post', 'get_queue', 'record_social_analytics',
             'reply_comment', 'social_reply_comment',   // COMMENTS-1
+            'redraft_comment_reply', 'social_redraft_comment_reply',   // SARAH-COMMENTS-1
             // Calendar
             'list_events', 'check_availability', 'create_event', 'update_event',
             // Builder — landing page for social campaigns

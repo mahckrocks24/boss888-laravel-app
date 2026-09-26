@@ -207,6 +207,8 @@ class CapabilityMapService
         'social_publish_post' => ['engine'=>'social',    'connector'=>null,       'action'=>'publish_post',        'approval_mode'=>'protected', 'credit_cost'=>2],
         // COMMENTS-1 (2026-09-26): a reply to a comment on the business's Page — always waits for the Owner's approval.
         'social_reply_comment' => ['engine'=>'social',   'connector'=>null,       'action'=>'reply_comment',       'approval_mode'=>'protected', 'credit_cost'=>0],
+        // SARAH-COMMENTS-1: Sarah rewrites a WAITING reply on the Owner's instruction — changes the draft only, never posts.
+        'social_redraft_comment_reply' => ['engine'=>'social', 'connector'=>null, 'action'=>'redraft_comment_reply', 'approval_mode'=>'auto', 'credit_cost'=>0],
         'social_schedule_post'=> ['engine'=>'social',    'connector'=>null,       'action'=>'schedule_post',       'approval_mode'=>'review',    'credit_cost'=>2],
 
         // ── Calendar Engine (internal) ───────────────────────────
@@ -386,6 +388,7 @@ class CapabilityMapService
             'create_post'       => 'social_create_post',
             'publish_post'      => 'social_publish_post',
             'reply_comment'     => 'social_reply_comment',   // COMMENTS-1
+            'redraft_comment_reply' => 'social_redraft_comment_reply',   // SARAH-COMMENTS-1
             'schedule_social'   => 'social_schedule_post',
             'builder_generate'  => 'wizard_generate',
             'publish_page'      => 'publish_builder_page',

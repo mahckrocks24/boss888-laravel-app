@@ -1849,7 +1849,30 @@ $withCorr = function (array $meta) use ($corr) {
                     $__domainsForTurn = is_array($__ctxSel['manifest']['domains'] ?? null) ? $__ctxSel['manifest']['domains'] : [];
                 }
             } catch (\Throwable $__csErr) { $__ctxSel = null; \Illuminate\Support\Facades\Log::warning('[Sarah888] ContextSelector failed: ' . $__csErr->getMessage(), ['ws' => $wsId]); }
-            $__selectedStateBlocks = $__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock);
+            // SARAH-COMMENTS-1 (Owner 2026-09-26, in chat: "Do not assume we cooked for him. Give me a better response" — Sarah
+            // answered "I can't see the comment or my draft reply"). Every comment reply waiting on the Owner, and the last day's
+            // posted replies, are in her context on every turn (the block is empty when there are none).
+            $__commentsBlock = '';
+            try {
+                $__cw = \Illuminate\Support\Facades\DB::table('social_comments')->where('workspace_id', (int) $wsId)->where('status', 'awaiting_approval')->orderBy('id')->limit(8)->get();
+                $__cr = \Illuminate\Support\Facades\DB::table('social_comments')->where('workspace_id', (int) $wsId)->where('status', 'replied')->where('replied_at', '>=', now()->subDay())->orderByDesc('replied_at')->limit(5)->get();
+                if ($__cw->count() || $__cr->count()) {
+                    $__commentsBlock = "\nFACEBOOK PAGE COMMENTS (live facts — this is how you see comments and your drafted replies):\n";
+                    if ($__cw->count()) {
+                        $__commentsBlock .= "Waiting for the owner's approval (NOT posted; posting happens only when the owner presses Approve):\n";
+                        foreach ($__cw as $__c) {
+                            $__commentsBlock .= '  - comment_id=' . $__c->id . ' · ' . ($__c->author_name ?: 'someone') . ($__c->post_excerpt ? ' on "' . mb_substr((string) $__c->post_excerpt, 0, 60) . '"' : '')
+                                . ': "' . mb_substr((string) $__c->message, 0, 200) . '" · your current draft: "' . mb_substr((string) $__c->draft_reply, 0, 300) . '"' . ($__c->needs_owner ? ' · COMPLAINT' : '') . "\n";
+                        }
+                        $__commentsBlock .= "To change a draft when the owner asks, include in create_tasks: {\"agent\":\"marcus\",\"engine\":\"social\",\"action\":\"social_redraft_comment_reply\",\"params\":{\"comment_id\":<id>,\"instruction\":\"<what the owner wants, in their words>\"},\"description\":\"Redraft the reply to <name>\"}. "
+                            . "Your own chat message is ONE short sentence saying Marcus is rewriting it and the new version will be on the approval card — do not write the new reply text in your message. The approval card then shows the new reply. You cannot post a reply yourself — say the owner approves it with the button. Replies respond only to what the comment says; never assume the commenter was a client.\n";
+                    }
+                    foreach ($__cr as $__c) {
+                        $__commentsBlock .= '  - POSTED ' . $__c->replied_at . ' UTC · reply to ' . ($__c->author_name ?: 'someone') . ' ("' . mb_substr((string) $__c->message, 0, 80) . '"): "' . mb_substr((string) $__c->reply_sent, 0, 200) . "\"\n";
+                    }
+                }
+            } catch (\Throwable $__ce) { \Illuminate\Support\Facades\Log::warning('[SARAH-COMMENTS-1] block failed: ' . $__ce->getMessage()); }
+            $__selectedStateBlocks = ($__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock)) . $__commentsBlock;
             $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . $__selectedStateBlocks . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
@@ -2255,7 +2278,10 @@ $withCorr = function (array $meta) use ($corr) {
                 // A4 builder-edit lane (ARTHUR888 F-ARTHUR-B-COORD): a concrete page edit / page-add request is
                 // executed DETERMINISTICALLY via Arthur — the chat LLM won't chain list_builder_pages ->
                 // edit_page_with_arthur (2-step, needs page_id), so it fell back to a phantom "I'll do it".
-                if ($assist === null && ($__bei = \App\Core\Sarah888\BuilderEditPromotion::detect((string) $__ownerMessage)) !== null) {
+                // SARAH-COMMENTS-1b: "Change your reply to Daniel…" is about a Page comment, not a website edit — while replies are
+                // waiting, a turn that talks about a reply/response/comment goes to Sarah, never to the builder-edit lane.
+                $__commentTurn = isset($__cw) && $__cw->count() > 0 && preg_match('/\b(repl(y|ies)|respon(d|se)|comments?|answer)\b/i', (string) $__ownerMessage);
+                if ($assist === null && ! $__commentTurn && ($__bei = \App\Core\Sarah888\BuilderEditPromotion::detect((string) $__ownerMessage)) !== null) {
                     try {
                         $__ber = \App\Core\Sarah888\BuilderEditPromotion::promote($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, $slug, $__bei);
                         if (!empty($__ber['handled']) && !empty($__ber['reply'])) {
