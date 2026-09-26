@@ -1369,6 +1369,16 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $acct = \Illuminate\Support\Facades\DB::table('social_accounts')->where('workspace_id', $ws)->where('platform', 'facebook')->where('status', 'connected')->count();
             return response()->json(['success' => true, 'comments' => $out, 'connected_pages' => $acct]);
         });
+        // SOCIAL-LEADS-4: campaigns for the Comments tab, and pause / resume
+        Route::get('/campaigns', function (\Illuminate\Http\Request $r) {
+            return response()->json(['success' => true, 'campaigns' => \Illuminate\Support\Facades\DB::table('social_campaigns')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->orderByDesc('id')->limit(50)->get()]);
+        });
+        Route::post('/campaigns/{id}/{state}', function (\Illuminate\Http\Request $r, $id, $state) {
+            if (! in_array($state, ['pause', 'resume', 'end'], true)) return response()->json(['success' => false, 'error' => 'Unknown action'], 422);
+            $n = \Illuminate\Support\Facades\DB::table('social_campaigns')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))
+                ->update(['status' => ['pause' => 'paused', 'resume' => 'active', 'end' => 'ended'][$state], 'updated_at' => now()]);
+            return $n ? response()->json(['success' => true]) : response()->json(['success' => false, 'error' => 'Campaign not found'], 404);
+        });
         Route::post('/comments/sync', function (\Illuminate\Http\Request $r) {
             $res = app(\App\Engines\Social\Services\CommentInboxService::class)->syncAll((int) $r->attributes->get('workspace_id'));
             return response()->json(['success' => true, 'accounts' => $res]);

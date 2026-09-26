@@ -692,7 +692,20 @@ window.socialLoadInsights = async function(){
   async function load() {
     try { var r = await _socApi('GET', '/social/comments'); S.rows = (r && r.comments) || []; S.pages = (r && r.connected_pages) || 0; }
     catch (e) { S.rows = []; }
+    try { var k = await _socApi('GET', '/social/campaigns'); S.camps = (k && k.campaigns) || []; } catch (e) { S.camps = []; }   /* SOCIAL-LEADS-4 */
     render();
   }
+  function renderCamps() {
+    var el = document.getElementById('social-comments-body'); if (!el) return;
+    var box = document.createElement('div'); box.style.cssText = 'margin-top:22px';
+    var list = S.camps || [];
+    box.innerHTML = '<div style="font-size:14px;font-weight:600;color:var(--t1);margin-bottom:4px">Comment campaigns</div><div style="font-size:12px;color:var(--t3);margin-bottom:10px">"Comment MENU and we\u2019ll send it" — you approve a campaign once; every matching comment then gets its reply and private message, and the person lands in your CRM. Ask Sarah to set one up.</div>' +
+      (list.length ? list.map(function (c) { return '<div class="dash-card" style="margin-bottom:8px"><div class="dash-card-body" style="padding:12px 14px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center"><div><strong style="color:var(--t1)">' + _socEsc(c.keyword) + '</strong> <span style="color:var(--t3);font-size:12px">· ' + _socEsc(c.name) + ' · ' + (c.responses || 0) + ' responses · ' + _socEsc(c.status) + '</span></div>' +
+        (c.status === 'active' ? '<button class="btn btn-outline btn-sm" data-camp="' + c.id + '" data-state="pause">Pause</button>' : c.status === 'paused' ? '<button class="btn btn-outline btn-sm" data-camp="' + c.id + '" data-state="resume">Resume</button>' : '') + '</div></div>'; }).join('')
+        : '<div class="card card-body" style="padding:16px;color:var(--t3);font-size:13px">No campaigns yet.</div>');
+    el.appendChild(box);
+    box.querySelectorAll('[data-camp]').forEach(function (b) { b.addEventListener('click', async function () { b.disabled = true; try { await _socApi('POST', '/social/campaigns/' + b.getAttribute('data-camp') + '/' + b.getAttribute('data-state'), {}); showToast(b.getAttribute('data-state') === 'pause' ? 'Campaign paused.' : 'Campaign running again.', 'success'); } catch (e) { showToast("Couldn't change the campaign.", 'error'); } load(); }); });
+  }
+  var __renderBase = render; render = function () { __renderBase(); renderCamps(); };   /* the campaign list redraws with the tab */
   window.socialLoadComments = load;
 })();

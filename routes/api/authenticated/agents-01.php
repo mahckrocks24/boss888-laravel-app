@@ -1856,7 +1856,10 @@ $withCorr = function (array $meta) use ($corr) {
             try {
                 $__cw = \Illuminate\Support\Facades\DB::table('social_comments')->where('workspace_id', (int) $wsId)->where('status', 'awaiting_approval')->orderBy('id')->limit(8)->get();
                 $__cr = \Illuminate\Support\Facades\DB::table('social_comments')->where('workspace_id', (int) $wsId)->where('status', 'replied')->where('replied_at', '>=', now()->subDay())->orderByDesc('replied_at')->limit(5)->get();
-                if ($__cw->count() || $__cr->count()) {
+                // SOCIAL-LEADS-4: live campaigns, and how Sarah proposes one
+                $__camps = \Illuminate\Support\Facades\DB::table('social_campaigns')->where('workspace_id', (int) $wsId)->where('status', 'active')->get(['keyword', 'name', 'responses']);
+                $__campHow = "To PROPOSE a comment-keyword campaign (e.g. 'comment MENU and we send it'), include in create_tasks: {\"agent\":\"marcus\",\"engine\":\"social\",\"action\":\"social_create_campaign\",\"params\":{\"name\":\"...\",\"keyword\":\"ONEWORD\",\"public_reply\":\"Sent you a message, {first_name}!\",\"dm_message\":\"Hi {first_name}, ... {link}\"},\"description\":\"Start the campaign ...\"}. It runs only after the owner approves it; tell them to approve the card.\n";
+                if ($__cw->count() || $__cr->count() || $__camps->count()) {
                     $__commentsBlock = "\nFACEBOOK PAGE COMMENTS (live facts — this is how you see comments and your drafted replies):\n";
                     if ($__cw->count()) {
                         $__commentsBlock .= "Waiting for the owner's approval (NOT posted; posting happens only when the owner presses Approve):\n";
@@ -1867,6 +1870,8 @@ $withCorr = function (array $meta) use ($corr) {
                         $__commentsBlock .= "To change a draft when the owner asks, include in create_tasks: {\"agent\":\"marcus\",\"engine\":\"social\",\"action\":\"social_redraft_comment_reply\",\"params\":{\"comment_id\":<id>,\"instruction\":\"<what the owner wants, in their words>\"},\"description\":\"Redraft the reply to <name>\"}. "
                             . "Your own chat message is ONE short sentence saying Marcus is rewriting it and the new version will be on the approval card — do not write the new reply text in your message. The approval card then shows the new reply. You cannot post a reply yourself — say the owner approves it with the button. Replies respond only to what the comment says; never assume the commenter was a client.\n";
                     }
+                    foreach ($__camps as $__k) { $__commentsBlock .= '  - LIVE CAMPAIGN: comment "' . $__k->keyword . '" (' . $__k->name . ') · ' . (int) $__k->responses . " responses so far\n"; }
+                    $__commentsBlock .= $__campHow;
                     foreach ($__cr as $__c) {
                         $__commentsBlock .= '  - POSTED ' . $__c->replied_at . ' UTC · reply to ' . ($__c->author_name ?: 'someone') . ' ("' . mb_substr((string) $__c->message, 0, 80) . '"): "' . mb_substr((string) $__c->reply_sent, 0, 200) . "\"\n";
                     }

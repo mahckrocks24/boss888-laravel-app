@@ -211,6 +211,8 @@ class CapabilityMapService
         'social_redraft_comment_reply' => ['engine'=>'social', 'connector'=>null, 'action'=>'redraft_comment_reply', 'approval_mode'=>'auto', 'credit_cost'=>0],
         // SOCIAL-LEADS-2: a Messenger reply to someone who wrote to the Page — always waits for the Owner.
         'social_send_message' => ['engine'=>'social', 'connector'=>null, 'action'=>'send_message', 'approval_mode'=>'protected', 'credit_cost'=>0],
+        // SOCIAL-LEADS-4: a comment-keyword campaign — approved once, then it answers matching comments by itself.
+        'social_create_campaign' => ['engine'=>'social', 'connector'=>null, 'action'=>'create_campaign', 'approval_mode'=>'protected', 'credit_cost'=>0],
         'social_schedule_post'=> ['engine'=>'social',    'connector'=>null,       'action'=>'schedule_post',       'approval_mode'=>'review',    'credit_cost'=>2],
 
         // ── Calendar Engine (internal) ───────────────────────────

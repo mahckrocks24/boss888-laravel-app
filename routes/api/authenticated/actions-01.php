@@ -60,6 +60,13 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 'credits' => (int) ($prop->total_credits ?? 0), 'created_at' => (string) $row->created_at];
             continue;
         }
+        if ($action === 'social_create_campaign' && is_array($p)) {   // SOCIAL-LEADS-4: what the campaign will say, before it runs
+            $items[] = ['approval_id' => (int) $row->id, 'kind' => 'campaign', 'task_id' => (int) $row->task_id, 'label' => 'Start the campaign: comment "' . strtoupper((string) ($p['keyword'] ?? '')) . '"',
+                'description' => 'Every comment with this word gets these two replies automatically, and the person is added to your CRM.',
+                'lines' => array_values(array_filter(['Public reply: ' . (string) ($p['public_reply'] ?? 'Sent you a message, {first_name}!'), 'Private message: ' . (string) ($p['dm_message'] ?? '') . (($p['include_link'] ?? true) ? ' (+ link to your contact section)' : '')])),
+                'credits' => 0, 'created_at' => (string) $row->created_at];
+            continue;
+        }
         if ($action === 'social_send_message' && is_array($p)) {   // SOCIAL-LEADS-2: a Messenger reply — their message and exactly what will be sent
             $items[] = ['approval_id' => (int) $row->id, 'kind' => 'message_reply', 'task_id' => (int) $row->task_id, 'label' => 'Reply to ' . (string) ($p['author'] ?? 'a') . "'s message",
                 'description' => '“' . mb_substr((string) ($p['their_message'] ?? ''), 0, 220) . '”', 'lines' => ['Reply: ' . (string) ($p['text'] ?? '')], 'credits' => 0, 'created_at' => (string) $row->created_at];

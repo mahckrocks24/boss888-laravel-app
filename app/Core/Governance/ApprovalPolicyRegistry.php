@@ -108,6 +108,13 @@ final class ApprovalPolicyRegistry
             // COMMENTS-1 (2026-09-26): a reply Sarah drafted to a comment on the owner's own Page. Same class as publishing
             // their own post — the owner confirms their own content; the human gate stays (nothing posts without it).
             // SOCIAL-LEADS-2: a Messenger reply Sarah drafted — the owner confirms their own message; the human gate stays.
+            // SOCIAL-LEADS-4: the owner approves their own campaign once; the human gate stays.
+            'social.create_campaign' => [
+                'approval_roles'          => [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_MEMBER, self::ROLE_PLATFORM_ADMIN],
+                'self_approval_allowed'   => true,
+                'human_approval_required' => true,
+                'classification'          => 'self_service_confirmation',
+            ],
             'social.send_message' => [
                 'approval_roles'          => [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_MEMBER, self::ROLE_PLATFORM_ADMIN],
                 'self_approval_allowed'   => true,

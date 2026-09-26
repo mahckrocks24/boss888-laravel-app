@@ -243,6 +243,11 @@ class CommentInboxService
     {
         $c = DB::table('social_comments')->where('id', $commentId)->first();
         if (! $c || $c->status !== 'new') return false;
+        // SOCIAL-LEADS-4: a comment carrying a live campaign keyword is answered by the campaign the Owner approved — no model call
+        if ($requestApproval && ($__camp = app(CampaignService::class)->match((int) $c->workspace_id, (string) $c->message))) {
+            app(CampaignService::class)->respond($__camp, $commentId);
+            return false;
+        }
         $biz = $c->business_id ? DB::table('businesses')->where('id', $c->business_id)->first() : null;
         if (! $biz) $biz = DB::table('businesses')->where('workspace_id', $c->workspace_id)->orderByDesc('is_default')->orderBy('id')->first();
         $facts = array_filter([
