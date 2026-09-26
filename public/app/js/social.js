@@ -649,7 +649,7 @@ window.socialLoadInsights = async function(){
     el.style.cssText = 'text-align:left';
     el.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">' +
-        '<div style="font-size:13px;color:var(--t3);max-width:640px">Sarah reads every comment on your Facebook Page, drafts a reply in your voice, and nothing is posted until you approve it. New comments are checked every 10 minutes.</div>' +
+        '<div style="font-size:13px;color:var(--t3);max-width:640px">Sarah reads every comment on your Facebook Page, drafts a reply in your voice, and nothing is posted until you approve it. New comments are checked every 2 minutes.</div>' +
         '<button class="btn btn-outline btn-sm" id="cm-sync">↺ Check for new comments</button></div>' +
       (S.note ? '<div style="margin-bottom:14px;padding:10px 14px;border:1px solid var(--am,#f59e0b);border-radius:10px;background:rgba(245,158,11,.08);font-size:13px;color:var(--t2)">' + S.note + '</div>' : '') +
       '<div class="dash-grid dash-stats" style="margin-bottom:16px">' +

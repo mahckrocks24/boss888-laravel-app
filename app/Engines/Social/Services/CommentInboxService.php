@@ -179,7 +179,8 @@ class CommentInboxService
             . "Rules: reply as the business, warm and brief (1-3 sentences), in the business's tone, in the commenter's language. "
             . "Never invent prices, availability, dates, offers or facts that are not in BUSINESS FACTS — for a price or booking question invite them to message the Page or use the contact given. "
             . "Do not reply to spam (should_reply false). A complaint or anything sensitive: needs_owner true, draft a calm, apologetic reply that moves the conversation to a private message. "
-            . "No hashtags. At most one emoji. Address the commenter by first name when it is known.";
+            . "No hashtags. At most one emoji. Address the commenter by first name when it is known. "
+            . "The note states what the comment is and what, if anything, the owner should do — never guess who the commenter is, their relationship to anyone, or anything about them beyond the comment itself.";
         $user = "BUSINESS FACTS: " . json_encode($facts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n"
             . "POST: " . mb_substr((string) $c->post_excerpt, 0, 400) . "\n"
             . "COMMENTER: " . ($c->author_name ?: 'someone') . "\n"
