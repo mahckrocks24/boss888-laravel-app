@@ -951,19 +951,49 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     // PUT /workspace/agents/positions — persist agent canvas position after drag
     // Brand identity settings
     Route::get('/workspace/brand', function (\Illuminate\Http\Request $r) {
-        $wsId = $r->attributes->get('workspace_id');
-        $brand = \Illuminate\Support\Facades\DB::table('creative_brand_identities')->where('workspace_id', $wsId)->first();
-        return response()->json($brand ?? ['primary_color' => '#6C5CE7', 'secondary_color' => '#00E5A8', 'accent_color' => '#F4F7FB']);
+        // BRAND-B0 (RFC-0017, 2026-09-27): per business, and never LevelUpGrowth's own palette. This used to answer
+        // #6C5CE7/#00E5A8/#F4F7FB for a business with no brand; the settings screen then saved those back as the
+        // customer's brand (4 workspaces carried the LevelUpGrowth teal). Unset colours are now null.
+        $wsId = (int) $r->attributes->get('workspace_id');
+        $bizId = (int) $r->query('business_id', 0);
+        if ($bizId && ! \Illuminate\Support\Facades\DB::table('businesses')->where('id', $bizId)->where('workspace_id', $wsId)->whereNull('deleted_at')->exists()) {
+            return response()->json(['success' => false, 'error' => 'That business is not in this workspace.'], 422);
+        }
+        $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId, $bizId ?: null);
+        $set = empty($kit['is_neutral']);
+        return response()->json([
+            'business_id'     => $kit['business_id'],
+            'brand_name'      => $kit['brand_name'],
+            'is_set'          => $set,
+            'primary_color'   => $set ? $kit['primary_color'] : null,
+            'secondary_color' => $set ? $kit['secondary_color'] : null,
+            'accent_color'    => $set ? $kit['accent_color'] : null,
+            'heading_font'    => $kit['heading_font'],
+            'body_font'       => $kit['body_font'],
+            'logo_url'        => $kit['logo_url'],
+            'tone'            => $kit['tone'],
+            'visual_style'    => $kit['visual_style'],
+            'sources'         => array_keys($kit['sources_present'] ?? []),
+        ]);
     });
 
     Route::put('/workspace/brand', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
+        // BRAND-B0 (RFC-0017): per business. A non-default business gets its own row; the default business keeps the
+        // workspace-level row. LevelUpGrowth's palette sent by a screen's defaults is never stored as a customer brand.
+        $__bid = (int) $r->input('business_id', 0);
+        $__biz = $__bid ? \Illuminate\Support\Facades\DB::table('businesses')->where('id', $__bid)->where('workspace_id', $wsId)->whereNull('deleted_at')->first(['id', 'is_default']) : null;
+        if ($__bid && ! $__biz) {
+            return response()->json(['success' => false, 'error' => 'That business is not in this workspace.'], 422);
+        }
+        $__key = ['workspace_id' => $wsId, 'business_id' => ($__biz && ! $__biz->is_default) ? (int) $__biz->id : null];
+        $__col = function ($k) use ($r, $wsId) { $v = $r->input($k); return ((int) $wsId !== 1 && \App\Core\Brand\WorkspaceBrandKitResolver::isPlatformColor($v)) ? null : $v; };
         \Illuminate\Support\Facades\DB::table('creative_brand_identities')->updateOrInsert(
-            ['workspace_id' => $wsId],
+            $__key,
             array_filter([
-                'primary_color' => $r->input('primary_color'),
-                'secondary_color' => $r->input('secondary_color'),
-                'accent_color' => $r->input('accent_color'),
+                'primary_color' => $__col('primary_color'),
+                'secondary_color' => $__col('secondary_color'),
+                'accent_color' => $__col('accent_color'),
                 'fonts_json' => $r->input('font_heading') ? json_encode(['heading' => $r->input('font_heading'), 'body' => $r->input('font_body')]) : null,
                 'visual_style' => $r->input('visual_style'),
                 'logo_url' => $r->input('logo_url'),
@@ -982,15 +1012,16 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             return response()->json(['success' => false, 'error' => $__brandErr], 422);
         }
         if ($__brandWid) {
+            $__prevSettings = json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', $__brandWid)->value('settings_json'), true) ?: [];
             \Illuminate\Support\Facades\DB::table('websites')->where('id', $__brandWid)->where('workspace_id', $wsId)->update([
-                'settings_json' => json_encode([
+                'settings_json' => json_encode(array_merge($__prevSettings, [ // BRAND-B0: merge, keep the site's other settings
                     'primary_color' => $r->input('primary_color', '#6C5CE7'),
                     'secondary_color' => $r->input('secondary_color', '#00E5A8'),
                     'accent_color' => $r->input('accent_color', '#F4F7FB'),
                     'font_heading' => $r->input('font_heading', 'Syne'),
                     'font_body' => $r->input('font_body', 'DM Sans'),
                     'theme' => 'modern',
-                ]),
+                ])),
                 'updated_at' => now(),
             ]);
             $__applied[] = $__brandWid;

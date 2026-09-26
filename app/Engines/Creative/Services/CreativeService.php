@@ -118,7 +118,7 @@ class CreativeService
      */
     private function previewBinding(int $wsId, string $prompt, array $params, array $ctx): array
     {
-        $brand = $ctx['brand'] ?? \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId);
+        $brand = $ctx['brand'] ?? \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, [], (int) ($params['business_id'] ?? 0) ?: null); // BRAND-B0
         $b = [
             'workspace_id'            => $wsId,
             'prompt'                  => $prompt, // byte-exact, untrimmed beyond the caller's own trim
@@ -147,6 +147,7 @@ class CreativeService
             'platform'                => $params['platform'] ?? null,
             'asset_type'              => $params['asset_type'] ?? 'social_post',
             'workspace_id'            => $wsId,
+            'business_id'             => $params['business_id'] ?? null, // BRAND-B0
             'user_prompt'             => $prompt,
             'requested_dimensions'    => $params['dimensions'] ?? null,
             'requested_quality'       => $params['quality'] ?? 'auto',
@@ -265,7 +266,7 @@ class CreativeService
             if (! is_array($cached) || (int) ($cached['workspace_id'] ?? 0) !== $wsId) {
                 return ['success' => false, 'error' => 'Your preview has expired or is not valid here. Tap Enhance to preview again before generating.', 'code' => 'PREVIEW_REQUIRED', 'reason' => 'expired_or_foreign'];
             }
-            $now = $this->previewBinding($wsId, $prompt, $params, ['brand' => \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, []), 'subject_reference' => $cached['blueprint']['_context']['subject_reference'] ?? null]);
+            $now = $this->previewBinding($wsId, $prompt, $params, ['brand' => \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, [], (int) ($params['business_id'] ?? 0) ?: null), 'subject_reference' => $cached['blueprint']['_context']['subject_reference'] ?? null]);
             $was = $cached['binding'] ?? [];
             if (($now['fingerprint'] ?? 'a') !== ($was['fingerprint'] ?? 'b')) {
                 $changed = array_values(array_filter(array_keys($now), fn ($k) => $k !== 'fingerprint' && ($now[$k] ?? null) !== ($was[$k] ?? null)));
@@ -279,6 +280,7 @@ class CreativeService
                 'platform'    => $params['platform'] ?? null,
                 'asset_type'  => $params['asset_type'] ?? ($articleId ? 'featured_image' : 'social_post'),
                 'workspace_id'=> $wsId,
+                'business_id' => $params['business_id'] ?? null, // BRAND-B0
                 'article_id'  => $articleId,
                 'user_prompt' => $prompt,
                 'requested_dimensions' => $params['dimensions'] ?? null,

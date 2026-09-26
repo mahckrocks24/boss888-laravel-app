@@ -133,7 +133,7 @@ class SocialService
             return ['success' => false, 'code' => 'INVALID_INPUT', 'no_charge' => true, 'error' => 'Which platform should this post be for — Facebook, Instagram, LinkedIn, TikTok or X?'];
         }
         if ($content === '') {
-            $gen = $this->aiGeneratePost($wsId, ['platform' => $platform, 'topic' => $subject, 'persist' => false] + (isset($data['tone']) ? ['tone' => $data['tone']] : []));
+            $gen = $this->aiGeneratePost($wsId, ['platform' => $platform, 'topic' => $subject, 'persist' => false] + (isset($data['tone']) ? ['tone' => $data['tone']] : []) + (! empty($data['business_id']) ? ['business_id' => (int) $data['business_id']] : [])); // BRAND-B0
             $content = trim((string) ($gen['content'] ?? ''));
             if ($content === '') {
                 return ['success' => false, 'code' => 'GENERATION_FAILED', 'no_charge' => true, 'error' => 'I could not compose that post just now — nothing was saved. Try again in a moment or give me the copy.'];
@@ -165,7 +165,7 @@ class SocialService
                 $ar = preg_match('/\b(1:1|4:3|3:4|16:9|9:16|4:5|3:2|2:3)\b/', $brief, $am) ? $am[1] : '1:1';
                 try {
                     $res = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute($wsId, 'creative', 'generate_image',
-                        ['prompt' => mb_substr($brief, 0, 1800), 'aspect_ratio' => $ar, 'platform' => $platform, 'asset_type' => 'social_post', 'source' => 'social'],
+                        ['prompt' => mb_substr($brief, 0, 1800), 'aspect_ratio' => $ar, 'platform' => $platform, 'asset_type' => 'social_post', 'source' => 'social'] + (! empty($data['business_id']) ? ['business_id' => (int) $data['business_id']] : []), // BRAND-B0
                         ['source' => 'agent', 'agent_id' => 'sarah']);
                     $url = $res['data']['url'] ?? $res['url'] ?? ($res['data']['data']['url'] ?? null);
                     if (is_string($url) && preg_match('#^https://#', $url)) {
@@ -459,6 +459,7 @@ class SocialService
             // Workspace-grounded brand voice (NEVER "Marcus — social media specialist")
             'brand_name'    => $kit['brand_name'],
             'brand_voice'   => $kit['voice'],
+            'visual_style'  => $kit['visual_style'] ?? null, // BRAND-B0
             'brand_primary' => $kit['primary_color'],
             'brand_secondary' => $kit['secondary_color'],
             'industry'      => $kit['industry'],

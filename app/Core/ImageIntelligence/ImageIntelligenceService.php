@@ -260,7 +260,12 @@ class ImageIntelligenceService
         // BrandContextForCreative — so the image path (here) and the video path
         // (BlueprintService::getVideoBlueprint) cannot drift apart again. Behaviour is
         // identical to the previous inline block (same precedence, same keys).
-        $brand = \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, $overrides);
+        // BRAND-B0 (RFC-0017): per-business brand - explicit business, else the article's website's business.
+        $__bizId = (int) ($c['business_id'] ?? 0);
+        if (! $__bizId && ! empty($c['article_id'])) {
+            try { $__bizId = (int) (\Illuminate\Support\Facades\DB::table('articles as a')->join('websites as w', 'w.id', '=', 'a.website_id')->where('a.id', (int) $c['article_id'])->where('a.workspace_id', $wsId)->value('w.business_id') ?? 0); } catch (\Throwable $e) { $__bizId = 0; }
+        }
+        $brand = \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, $overrides, $__bizId ?: null);
 
         // RFC-0009 P4/P5 — facts the compiler needs to guard the prompt without rewriting intent:
         //   has_logo        — a real logo asset exists in the brand kit (a null logo_url used to be

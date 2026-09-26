@@ -25,10 +25,10 @@ final class BrandContextForCreative
      * @param  array<string,mixed> $overrides  explicit request-level brand fields (kit keys)
      * @return array<string,mixed>            filtered: only non-empty fields are present
      */
-    public static function fromWorkspace(int $wsId, array $overrides = []): array
+    public static function fromWorkspace(int $wsId, array $overrides = [], ?int $businessId = null): array
     {
         try {
-            $kit     = app(WorkspaceBrandKitResolver::class)->resolve($wsId);
+            $kit     = app(WorkspaceBrandKitResolver::class)->resolve($wsId, $businessId); // BRAND-B0: per business
             $branded = empty($kit['is_neutral']);
             if (! $branded && ! $overrides) {
                 return [];
