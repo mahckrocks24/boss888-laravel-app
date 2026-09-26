@@ -93,7 +93,7 @@ function _socRender(el) {
     '</div>' +
     connectedNote +
     '<div style="display:flex;gap:0;margin-bottom:20px;border-bottom:1px solid var(--bd)">' +
-      ['dashboard','posts','insights','queue','accounts'].map(function(v){ return '<button class="dash-view-tab" data-sv="' + v + '" onclick="socialSetView(\'' + v + '\',this)" style="color:' + (v==='dashboard'?'var(--da)':'var(--t3)') + ';font-weight:' + (v==='dashboard'?'600':'400') + ';border-bottom:2px solid ' + (v==='dashboard'?'var(--da)':'transparent') + ';padding:7px 14px;border-top:none;border-left:none;border-right:none;background:none;font-size:13px;cursor:pointer">' + ({dashboard:'Dashboard',posts:'All Posts',insights:'Insights',queue:'Queue',accounts:'Accounts'})[v] + '</button>'; }).join('') +
+      ['dashboard','posts','comments','insights','queue','accounts'].map(function(v){ return '<button class="dash-view-tab" data-sv="' + v + '" onclick="socialSetView(\'' + v + '\',this)" style="color:' + (v==='dashboard'?'var(--da)':'var(--t3)') + ';font-weight:' + (v==='dashboard'?'600':'400') + ';border-bottom:2px solid ' + (v==='dashboard'?'var(--da)':'transparent') + ';padding:7px 14px;border-top:none;border-left:none;border-right:none;background:none;font-size:13px;cursor:pointer">' + ({dashboard:'Dashboard',posts:'All Posts',comments:'Comments',insights:'Insights',queue:'Queue',accounts:'Accounts'})[v] + '</button>'; }).join('') +
     '</div>' +
 
     '<div id="social-view-dashboard">' +
@@ -162,6 +162,7 @@ function _socRender(el) {
           '</tbody></table></div></div>') +
     '</div>' +
 
+    '<div id="social-view-comments" style="display:none"><div id="social-comments-body" style="padding:24px 0;text-align:center;color:var(--t3);font-size:13px">Loading comments…</div></div>' +   /* COMMENTS-1 */
     '<div id="social-view-accounts" style="display:none"><div style="display:flex;flex-direction:column;gap:14px">' + _svRenderPlatformCards(A) +
       '<div class="card"><div class="card-header"><h3>All connected accounts</h3></div><div class="card-body">' +
         (A.length === 0 ? '<div style="text-align:center;padding:30px 20px;color:var(--t3)"><p style="font-size:13px;margin:0">No accounts connected yet. Use "Connect" above to link your first platform.</p></div>'
@@ -182,9 +183,10 @@ function _socRender(el) {
     document.querySelectorAll('#social-tbl tbody tr').forEach(function(r){ r.style.display = (tab==='all' || r.dataset.status===tab) ? '' : 'none'; });
   };
   window.socialSetView = function(view) {
-    ['dashboard','posts','insights','queue','accounts'].forEach(function(v){ var e = document.getElementById('social-view-' + v); if (e) e.style.display = v===view ? '' : 'none'; });
+    ['dashboard','posts','comments','insights','queue','accounts'].forEach(function(v){ var e = document.getElementById('social-view-' + v); if (e) e.style.display = v===view ? '' : 'none'; });
     document.querySelectorAll('[data-sv]').forEach(function(b){ var active = b.dataset.sv===view; b.style.borderBottomColor = active ? 'var(--da)' : 'transparent'; b.style.color = active ? 'var(--da)' : 'var(--t3)'; b.style.fontWeight = active ? '600' : '400'; });
     if (view === 'insights') window.socialLoadInsights();
+    if (view === 'comments') window.socialLoadComments();   /* COMMENTS-1 */
     if (view === 'accounts' && typeof window._svWireAccountBusiness === 'function') window._svWireAccountBusiness();   /* SOCIAL-PROFILE-1 */
   };
 }
@@ -603,3 +605,92 @@ window.socialLoadInsights = async function(){
   else { html+=recs.map(function(r){ var act=r.action||{}; var oc = (act.type==='social_image') ? 'socialGenerateWithAI()' : 'socialNewPost()'; return '<div style="border:1px solid var(--bd2,var(--bd));background:var(--s2);border-radius:10px;padding:12px 14px;margin-bottom:8px"><div style="font-size:13px;font-weight:600">'+_socEsc(r.insight)+'</div>'+(r.evidence?'<div style="font-size:11px;color:var(--t3);margin:4px 0">'+_socEsc(r.evidence)+'</div>':'')+(act.label?'<button class="btn btn-outline btn-sm" style="margin-top:4px" onclick="'+oc+'">'+_socEsc(act.label)+'</button>':'')+'</div>'; }).join(''); }
   el.innerHTML=html;
 };
+
+
+// ── COMMENTS-1 (2026-09-26): the Comments monitor. Sarah reads every comment on the business's Facebook Page, drafts a
+// reply in its voice, and the reply waits here (and in Sarah's chat / Review) until the Owner approves it. Nothing reaches
+// the Page without that approval.
+(function () {
+  var S = { rows: [], filter: 'awaiting', pages: 0, note: '' };
+  var CAT = { question: 'Question', enquiry: 'Enquiry', praise: 'Praise', complaint: 'Complaint', spam: 'Spam', other: 'Other' };
+  var ST = { awaiting_approval: ['Waiting for you', 'var(--am,#f59e0b)'], replied: ['Replied', 'var(--ac,#22c55e)'], declined: ['Declined', 'var(--t3)'],
+             no_reply: ['No reply needed', 'var(--t3)'], failed: ['Did not post', 'var(--rd,#f87171)'], 'new': ['Reading…', 'var(--t3)'] };
+  function when(t) { if (!t) return ''; var d = new Date(String(t).replace(' ', 'T') + (/[zZ+]/.test(String(t)) ? '' : 'Z')); if (isNaN(d)) return ''; var m = Math.round((Date.now() - d) / 60000); return m < 60 ? m + 'm ago' : m < 1440 ? Math.round(m / 60) + 'h ago' : d.toLocaleDateString(); }
+  function pill(txt, col) { return '<span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid ' + col + ';color:' + col + '">' + _socEsc(txt) + '</span>'; }
+  function counts() { var c = { awaiting: 0, replied: 0, complaints: 0, quiet: 0 }; S.rows.forEach(function (r) { if (r.status === 'awaiting_approval') c.awaiting++; if (r.status === 'replied') c.replied++; if (r.needs_owner && r.status !== 'replied') c.complaints++; if (r.status === 'no_reply') c.quiet++; }); return c; }
+  function visible() { return S.rows.filter(function (r) { return S.filter === 'all' ? true : S.filter === 'awaiting' ? r.status === 'awaiting_approval' : S.filter === 'replied' ? r.status === 'replied' : S.filter === 'complaints' ? r.needs_owner : (r.status === 'no_reply' || r.status === 'declined' || r.status === 'failed'); }); }
+  function card(r) {
+    var st = ST[r.status] || [r.status, 'var(--t3)'];
+    var reply = r.reply_sent || r.draft_reply || '';
+    var acts = '';
+    if (r.status === 'awaiting_approval' && r.approval_id) {
+      acts = '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
+        '<button class="btn btn-primary btn-sm" data-cm-approve="' + r.approval_id + '">Approve &amp; post reply</button>' +
+        '<button class="btn btn-outline btn-sm" data-cm-decline="' + r.approval_id + '">Decline</button></div>' +
+        '<div data-cm-reason="' + r.approval_id + '" style="display:none;margin-top:8px"><textarea rows="2" placeholder="Why not? Sarah learns from this" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--bd);border-radius:8px;background:var(--s2);color:var(--t1);font:inherit;font-size:13px"></textarea>' +
+        '<button class="btn btn-outline btn-sm" style="margin-top:6px" data-cm-decline-send="' + r.approval_id + '">Decline with this reason</button></div>';
+    }
+    return '<div class="dash-card" style="margin-bottom:12px' + (r.needs_owner && r.status !== 'replied' ? ';border-color:var(--rd,#f87171)' : '') + '"><div class="dash-card-body" style="padding:14px 16px">' +
+      '<div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">' +
+        '<div style="font-size:13px"><strong style="color:var(--t1)">' + _socEsc(r.author || 'Someone') + '</strong> <span style="color:var(--t3)">· ' + _socEsc(when(r.commented_at)) + '</span></div>' +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap">' + (r.category ? pill(CAT[r.category] || r.category, r.category === 'complaint' ? 'var(--rd,#f87171)' : 'var(--da)') : '') + pill(st[0], st[1]) + '</div>' +
+      '</div>' +
+      '<div style="margin-top:8px;font-size:14px;line-height:1.5;color:var(--t1)">“' + _socEsc(r.message || '') + '”</div>' +
+      (r.post ? '<div style="margin-top:6px;font-size:12px;color:var(--t3)">On your post: ' + (r.permalink ? '<a href="' + _socEsc(r.permalink) + '" target="_blank" rel="noopener" style="color:var(--da)">' : '') + _socEsc(String(r.post).slice(0, 110)) + (r.permalink ? '</a>' : '') + '</div>' : '') +
+      (reply ? '<div style="margin-top:10px;padding:10px 12px;border-left:3px solid var(--da);background:var(--s2);border-radius:6px;font-size:13px;line-height:1.5"><div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:3px;letter-spacing:.4px">' + (r.reply_sent ? 'REPLY POSTED ' + _socEsc(when(r.replied_at)).toUpperCase() : 'SARAH’S DRAFT REPLY') + '</div>' + _socEsc(reply) + '</div>' : '') +
+      (r.note ? '<div style="margin-top:6px;font-size:12px;color:var(--t3)">Sarah: ' + _socEsc(r.note) + '</div>' : '') +
+      (r.status === 'failed' && r.error ? '<div style="margin-top:6px;font-size:12px;color:var(--rd,#f87171)">' + _socEsc(r.error) + '</div>' : '') +
+      acts + '</div></div>';
+  }
+  function render() {
+    var el = document.getElementById('social-comments-body'); if (!el) return;
+    var c = counts(), list = visible();
+    var chips = [['awaiting', 'Waiting for you', c.awaiting], ['complaints', 'Complaints', c.complaints], ['replied', 'Replied', c.replied], ['quiet', 'No reply / declined', null], ['all', 'All', S.rows.length]];
+    el.style.cssText = 'text-align:left';
+    el.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">' +
+        '<div style="font-size:13px;color:var(--t3);max-width:640px">Sarah reads every comment on your Facebook Page, drafts a reply in your voice, and nothing is posted until you approve it. New comments are checked every 10 minutes.</div>' +
+        '<button class="btn btn-outline btn-sm" id="cm-sync">↺ Check for new comments</button></div>' +
+      (S.note ? '<div style="margin-bottom:14px;padding:10px 14px;border:1px solid var(--am,#f59e0b);border-radius:10px;background:rgba(245,158,11,.08);font-size:13px;color:var(--t2)">' + S.note + '</div>' : '') +
+      '<div class="dash-grid dash-stats" style="margin-bottom:16px">' +
+        '<div class="dash-stat"><div class="dash-stat-val">' + c.awaiting + '</div><div class="dash-stat-lbl">Waiting for you</div><div class="dash-stat-sub">drafted replies</div></div>' +
+        '<div class="dash-stat"><div class="dash-stat-val">' + c.complaints + '</div><div class="dash-stat-lbl">Complaints</div><div class="dash-stat-sub">handle with care</div></div>' +
+        '<div class="dash-stat"><div class="dash-stat-val">' + c.replied + '</div><div class="dash-stat-lbl">Replied</div><div class="dash-stat-sub">posted on the Page</div></div>' +
+        '<div class="dash-stat"><div class="dash-stat-val">' + c.quiet + '</div><div class="dash-stat-lbl">No reply needed</div><div class="dash-stat-sub">spam or nothing to say</div></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">' + chips.map(function (x) { var on = S.filter === x[0]; return '<button data-cm-filter="' + x[0] + '" style="font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;border:1px solid ' + (on ? 'var(--da)' : 'var(--bd)') + ';background:' + (on ? 'var(--da)' : 'transparent') + ';color:' + (on ? '#fff' : 'var(--t2)') + '">' + x[1] + (x[2] != null ? ' · ' + x[2] : '') + '</button>'; }).join('') + '</div>' +
+      (S.pages === 0 && !S.rows.length ? '<div class="card card-body" style="text-align:center;padding:40px 20px;color:var(--t3);font-size:13px">Connect your Facebook Page under Accounts and Sarah starts watching its comments.</div>'
+        : list.length ? list.map(card).join('') : '<div class="card card-body" style="text-align:center;padding:40px 20px;color:var(--t3);font-size:13px">' + (S.filter === 'awaiting' ? 'Nothing waiting for you — every comment so far is handled.' : 'No comments here yet.') + '</div>');
+    el.querySelectorAll('[data-cm-filter]').forEach(function (b) { b.addEventListener('click', function () { S.filter = b.getAttribute('data-cm-filter'); render(); }); });
+    var sy = document.getElementById('cm-sync'); if (sy) sy.addEventListener('click', sync);
+    el.querySelectorAll('[data-cm-approve]').forEach(function (b) { b.addEventListener('click', function () { decide(b.getAttribute('data-cm-approve'), 'approve', null, b); }); });
+    el.querySelectorAll('[data-cm-decline]').forEach(function (b) { b.addEventListener('click', function () { var box = el.querySelector('[data-cm-reason="' + b.getAttribute('data-cm-decline') + '"]'); if (box) { box.style.display = ''; var ta = box.querySelector('textarea'); if (ta) ta.focus(); } }); });
+    el.querySelectorAll('[data-cm-decline-send]').forEach(function (b) { b.addEventListener('click', function () { var id = b.getAttribute('data-cm-decline-send'); var ta = el.querySelector('[data-cm-reason="' + id + '"] textarea'); var why = ta ? ta.value.trim() : ''; if (!why) { showToast('Add a short reason so Sarah knows what to change.', 'warning'); return; } decide(id, 'reject', why, b); }); });
+  }
+  async function decide(approvalId, action, reason, btn) {
+    try {
+      if (btn) { btn.disabled = true; btn.textContent = action === 'approve' ? 'Posting…' : 'Declining…'; }
+      await _socApi('POST', '/approvals/' + approvalId + '/' + action, action === 'approve' ? { expected_credit_cost: 0 } : { reason: reason });
+      showToast(action === 'approve' ? 'Approved — the reply is going up on your Page.' : 'Declined.', 'success');
+      setTimeout(load, action === 'approve' ? 4000 : 300);
+    } catch (e) { if (btn) btn.disabled = false; showToast((action === 'approve' ? "Couldn't approve: " : "Couldn't decline: ") + (e && e.message ? e.message : 'try again'), 'error'); }
+  }
+  async function sync() {
+    var b = document.getElementById('cm-sync'); if (b) { b.disabled = true; b.textContent = 'Checking…'; }
+    try {
+      var r = await _socApi('POST', '/social/comments/sync', {});
+      var acc = (r && r.accounts) || [];
+      var needs = acc.some(function (a) { return a && a.needs_reconnect; });
+      var fresh = acc.reduce(function (n, a) { return n + ((a && a.new) || 0); }, 0);
+      S.note = needs ? '<strong style="color:var(--t1)">Facebook needs one more permission.</strong> Reconnect your Page under Accounts and allow Facebook to let LevelUpGrowth read and reply to comments.' : '';
+      showToast(needs ? 'Reconnect your Page to let Sarah read comments.' : fresh ? fresh + ' new comment' + (fresh === 1 ? '' : 's') + ' — Sarah is drafting replies.' : 'No new comments.', needs ? 'warning' : 'info');
+    } catch (e) { showToast("Couldn't check comments: " + (e && e.message ? e.message : 'try again'), 'error'); }
+    load();
+  }
+  async function load() {
+    try { var r = await _socApi('GET', '/social/comments'); S.rows = (r && r.comments) || []; S.pages = (r && r.connected_pages) || 0; }
+    catch (e) { S.rows = []; }
+    render();
+  }
+  window.socialLoadComments = load;
+})();

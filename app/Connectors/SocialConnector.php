@@ -255,6 +255,8 @@ class SocialConnector extends BaseConnector
             'pages_show_list',
             'pages_read_engagement',
             'pages_manage_posts',
+            'pages_read_user_content',    // COMMENTS-1: read comments on the Page
+            'pages_manage_engagement',    // COMMENTS-1: reply to them (only after the Owner approves)
         ]);
 
         $query = [

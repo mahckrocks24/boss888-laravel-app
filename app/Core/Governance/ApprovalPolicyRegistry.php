@@ -105,6 +105,14 @@ final class ApprovalPolicyRegistry
                 'human_approval_required' => true,
                 'classification'          => 'self_service_confirmation',
             ],
+            // COMMENTS-1 (2026-09-26): a reply Sarah drafted to a comment on the owner's own Page. Same class as publishing
+            // their own post — the owner confirms their own content; the human gate stays (nothing posts without it).
+            'social.reply_comment' => [
+                'approval_roles'          => [self::ROLE_OWNER, self::ROLE_ADMIN, self::ROLE_MEMBER, self::ROLE_PLATFORM_ADMIN],
+                'self_approval_allowed'   => true,
+                'human_approval_required' => true,
+                'classification'          => 'self_service_confirmation',
+            ],
             // MISSION-018 WS-1 (2026-08-24, RISK-0019): key was 'content_publish_pack';
             // runtime action is 'publish_pack'. Same mis-key as social.publish_post
             // above — corrected so single-owner workspaces can self-confirm a

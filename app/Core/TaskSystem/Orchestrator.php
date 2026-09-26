@@ -1483,6 +1483,7 @@ class Orchestrator
                                                     ->schedulePost($params['post_id'], $params['scheduled_at'], $wsId);   // SEC-1
                                                 return ['scheduled' => true, 'post_id' => $params['post_id']];
                                               })(),
+            'social/social_reply_comment' => fn() => app(\App\Engines\Social\Services\CommentInboxService::class)->reply($wsId, $params),   // COMMENTS-1: runs only after the Owner approved
             'social/social_publish_post'  => fn() => app(\App\Engines\Social\Services\SocialService::class)
                                               ->publishPost($params['post_id'], $wsId),   // SEC-1
 
@@ -1888,6 +1889,7 @@ class Orchestrator
             'social/social_create_post'    => 'Draft ready — the preview is in the chat with a Post it button (and under Social › Drafts).',   // PREVIEW-1
             'social/social_ai_post'        => 'Social copy drafted.',
             'social/social_publish_post'   => 'Social post published.',
+            'social/social_reply_comment'  => 'Reply posted to the comment.',   // COMMENTS-1
             'social/social_schedule_post'  => 'Social post scheduled.',
             'seo/add_keyword'              => 'Keyword added to tracking.',
             'seo/keyword_research'         => 'Keyword research completed.',

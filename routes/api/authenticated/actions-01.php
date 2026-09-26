@@ -60,6 +60,14 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 'credits' => (int) ($prop->total_credits ?? 0), 'created_at' => (string) $row->created_at];
             continue;
         }
+        if ($action === 'social_reply_comment' && is_array($p)) {   // COMMENTS-1: the comment, and exactly what will be posted under it
+            $items[] = ['approval_id' => (int) $row->id, 'kind' => 'comment_reply', 'task_id' => (int) $row->task_id,
+                'label' => (! empty($p['needs_owner']) ? 'Complaint — ' : '') . 'Reply to ' . (string) ($p['author'] ?? 'a') . "'s comment",
+                'description' => '“' . mb_substr((string) ($p['comment'] ?? ''), 0, 220) . '”',
+                'lines' => array_values(array_filter(['Reply: ' . (string) ($p['reply'] ?? ''), ! empty($p['post']) ? 'On your post: ' . mb_substr((string) $p['post'], 0, 90) : null])),
+                'credits' => 0, 'created_at' => (string) $row->created_at];
+            continue;
+        }
         $items[] = ['approval_id' => (int) $row->id, 'kind' => 'task', 'task_id' => $row->task_id ? (int) $row->task_id : null,
             'label' => $human($engine, $action, $p), 'description' => '', 'lines' => [],
             'credits' => (int) ($row->credit_cost ?? 0), 'created_at' => (string) $row->created_at];

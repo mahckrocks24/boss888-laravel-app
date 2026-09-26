@@ -1349,6 +1349,27 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => (int) $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
         // PREVIEW-DISMISS-1 (2026-09-26): "Not now" on a draft preview is stored on the post, so every screen (web, app,
         // other devices) hides the same preview. The draft stays a draft under Social.
+        // COMMENTS-1: the Social engine's Comments monitor — every comment, Sarah's reading and reply, and its state.
+        Route::get('/comments', function (\Illuminate\Http\Request $r) {
+            $ws = (int) $r->attributes->get('workspace_id');
+            $rows = \Illuminate\Support\Facades\DB::table('social_comments as c')->leftJoin('tasks as t', 't.id', '=', 'c.task_id')->leftJoin('approvals as a', function ($j) { $j->on('a.task_id', '=', 'c.task_id'); })
+                ->where('c.workspace_id', $ws)->orderByDesc('c.commented_at')->orderByDesc('c.id')->limit(200)
+                ->get(['c.*', 't.status as task_status', 'a.id as approval_id', 'a.status as approval_status']);
+            $out = $rows->map(function ($c) {
+                $state = $c->status;
+                if ($state === 'awaiting_approval' && $c->approval_status === 'rejected') $state = 'declined';
+                return ['id' => (int) $c->id, 'author' => $c->author_name, 'message' => $c->message, 'post' => $c->post_excerpt, 'permalink' => $c->post_permalink,
+                    'commented_at' => $c->commented_at, 'category' => $c->category, 'sentiment' => $c->sentiment, 'needs_owner' => (bool) $c->needs_owner,
+                    'draft_reply' => $c->draft_reply, 'reply_sent' => $c->reply_sent, 'replied_at' => $c->replied_at, 'note' => $c->triage_note,
+                    'status' => $state, 'approval_id' => $c->approval_status === 'pending' ? (int) $c->approval_id : null, 'error' => $c->error];
+            })->all();
+            $acct = \Illuminate\Support\Facades\DB::table('social_accounts')->where('workspace_id', $ws)->where('platform', 'facebook')->where('status', 'connected')->count();
+            return response()->json(['success' => true, 'comments' => $out, 'connected_pages' => $acct]);
+        });
+        Route::post('/comments/sync', function (\Illuminate\Http\Request $r) {
+            $res = app(\App\Engines\Social\Services\CommentInboxService::class)->syncAll((int) $r->attributes->get('workspace_id'));
+            return response()->json(['success' => true, 'accounts' => $res]);
+        });
         Route::post('/posts/{id}/dismiss-preview', function (\Illuminate\Http\Request $r, $id) {
             $n = \Illuminate\Support\Facades\DB::table('social_posts')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))
                 ->whereNull('deleted_at')->update(['preview_dismissed_at' => now(), 'updated_at' => now()]);

@@ -67,6 +67,7 @@ class AgentCapabilityService
             'send_campaign', 'test_send_email',
             // Social
             'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post', 'get_queue', 'record_social_analytics',
+            'reply_comment', 'social_reply_comment',   // COMMENTS-1
             // Chatbot — read only (F-CB-F2, 2026-09-07): Sarah reads the chatbot state before speaking about it
             'get_state',
             // Calendar
@@ -165,6 +166,7 @@ class AgentCapabilityService
             'list_campaigns',
             // Social — full access including publish
             'create_post', 'schedule_post', 'publish_post', 'list_posts', 'update_post', 'get_queue', 'record_social_analytics',
+            'reply_comment', 'social_reply_comment',   // COMMENTS-1
             // Calendar
             'list_events', 'check_availability', 'create_event', 'update_event',
             // Builder — landing page for social campaigns
