@@ -2865,7 +2865,9 @@ Route::post('/webhook/meta', function (\Illuminate\Http\Request $r) {
         if ($ids) {
             dispatch(function () use ($ids) {
                 $svc = app(\App\Engines\Social\Services\CommentInboxService::class);
-                foreach ($ids as $id) { try { $svc->triage((int) $id); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[WEBHOOK-1] triage failed', ['comment' => $id, 'error' => $e->getMessage()]); } }
+                $drafted = [];
+                foreach ($ids as $id) { try { if ($svc->triage((int) $id)) $drafted[] = (int) $id; } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[WEBHOOK-1] triage failed', ['comment' => $id, 'error' => $e->getMessage()]); } }
+                $svc->announce($drafted);   // ANNOUNCE-1: tell the Owner in Sarah's chat, on the phone and in the bell
             })->afterResponse();
         }
         \Illuminate\Support\Facades\Log::info('[WEBHOOK-1] feed event', ['new_comments' => count($ids)]);

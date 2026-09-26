@@ -72,9 +72,10 @@ class CommentInboxService
                 if ($id) $new[] = $id;
             }
         }
-        $drafted = 0;
-        foreach ($new as $id) { if ($this->triage($id)) $drafted++; }
-        return ['account_id' => (int) $acct->id, 'ok' => true, 'new' => count($new), 'awaiting_approval' => $drafted];
+        $drafted = [];
+        foreach ($new as $id) { if ($this->triage($id)) $drafted[] = $id; }
+        $this->announce($drafted);   // ANNOUNCE-1
+        return ['account_id' => (int) $acct->id, 'ok' => true, 'new' => count($new), 'awaiting_approval' => count($drafted)];
     }
 
     /**
@@ -160,6 +161,74 @@ class CommentInboxService
             Log::info('[WEBHOOK-1] page subscription refused', ['account' => $acct->id, 'error' => mb_substr((string) ($j['error']['message'] ?? 'HTTP ' . $r->status()), 0, 200)]);
             return false;
         } catch (\Throwable $e) { return null; }
+    }
+
+    /**
+     * ANNOUNCE-1 (Owner 2026-09-26: "no notification or chat from Sarah" / "Sarah is the point of contact, all things go
+     * through her, LLM first before manual laravel"): drafted replies are TOLD to the Owner by Sarah — a message in her chat
+     * written by her (runtime LLM, from the facts only; the fixed text is the fallback), which also pushes to the phone via
+     * postAsAgent, plus a bell notification. One message per comment, or one summary when several arrive together.
+     */
+    public function announce(array $commentIds): void
+    {
+        $rows = $commentIds ? DB::table('social_comments')->whereIn('id', $commentIds)->where('status', 'awaiting_approval')->orderBy('id')->get() : collect();
+        if ($rows->isEmpty()) return;
+        foreach ($rows->groupBy('workspace_id') as $wsId => $group) {
+            try {
+                $complaints = $group->where('needs_owner', 1)->count();
+                if ($group->count() === 1) {
+                    $c = $group->first();
+                    $who = $c->author_name ? explode(' ', trim($c->author_name))[0] : 'Someone';
+                    $px = trim((string) $c->post_excerpt);
+                    $post = $px !== '' ? ' on your post "' . mb_substr($px, 0, 60) . (mb_strlen($px) > 60 ? '…' : '') . '"' : '';
+                    $fallback = ($c->needs_owner ? "This one needs you: a complaint from {$who}{$post}" : "New comment from {$who}{$post}")
+                        . ":\n\n> " . mb_substr(trim((string) $c->message), 0, 280) . "\n\nI've drafted a reply — it stays unposted until you approve it here or in Social › Comments.";
+                    $title = $c->needs_owner ? 'A complaint on your Page' : 'New comment on your Page';
+                    $body = "{$who}: " . mb_substr(trim((string) $c->message), 0, 120);
+                } else {
+                    $n = $group->count();
+                    $fallback = "{$n} new comments on your Page" . ($complaints ? " — {$complaints} " . ($complaints === 1 ? 'is a complaint' : 'are complaints') . ' that need you' : '')
+                        . ". I've drafted a reply to each; nothing is posted until you approve. They're waiting here and in Social › Comments.";
+                    $title = "{$n} new comments on your Page";
+                    $body = 'Replies drafted and waiting for your approval.';
+                }
+                $msg = $this->sarahWords((int) $wsId, $group, $fallback);
+                app(\App\Core\Agents\AgentMessageService::class)->postAsAgent((int) $wsId, 'sarah', $msg, [
+                    'kind' => 'comment_reply_waiting', 'comment_ids' => $group->pluck('id')->values()->all(), 'action_link' => ['view' => 'social', 'tail' => 'comments'],
+                ]);
+                $owner = DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id');
+                if ($owner) {
+                    app(\App\Core\Notifications\NotificationService::class)->dispatch(
+                        type: \App\Core\Notifications\NotificationTypes::AGENT_TASK_REQUIRES_APPROVAL, userId: (int) $owner, title: $title,
+                        workspaceId: (int) $wsId, body: $body, severity: $complaints ? 'warning' : 'info', actionUrl: '/app/social'
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[ANNOUNCE-1] could not tell the owner', ['ws' => $wsId, 'error' => $e->getMessage()]);
+            }
+        }
+    }
+
+    /** LLM first: Sarah writes the announcement from the facts only; never claims anything went out; the template is the fallback. */
+    private function sarahWords(int $wsId, $group, string $fallback): string
+    {
+        try {
+            $runtime = app(\App\Connectors\RuntimeClient::class);
+            if (! $runtime->isConfigured()) return $fallback;
+            $facts = $group->map(fn ($c) => ['from' => $c->author_name, 'comment' => mb_substr((string) $c->message, 0, 300), 'post' => mb_substr((string) $c->post_excerpt, 0, 80),
+                'kind' => $c->category, 'needs_owner' => (bool) $c->needs_owner, 'your_draft_reply' => $c->draft_reply])->values()->all();
+            $sys = "You are Sarah, the business owner's digital marketing manager, writing a short chat message to the owner. "
+                . "From the FACTS only, tell them about the new comment(s) on their Facebook Page: who, what they said (quote a short comment exactly), which post, "
+                . "and that you drafted a reply which is NOT live until they approve it (the approval buttons are right below your message; do not offer to edit it in chat). "
+                . "Call out any complaint first. 2-4 sentences, warm and direct, no headings, no emojis, no invented facts. "
+                . 'Return ONLY JSON {"message":"..."}.';
+            $r = $runtime->chatJson($sys, 'FACTS: ' . json_encode($facts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ['task' => 'comment_announce', 'workspace_id' => (string) $wsId], 300);
+            $m = trim((string) (($r['success'] ?? false) ? ($r['parsed']['message'] ?? '') : ''));
+            if ($m === '' || preg_match('/\b(has been|was|is now|already)\s+(posted|published|replied)\b/i', $m)) return $fallback;   // never let the words claim it went out
+            return mb_substr($m, 0, 1200);
+        } catch (\Throwable $e) {
+            return $fallback;
+        }
     }
 
     /** Sarah reads the comment and drafts a reply. Returns true when an approval was created. */
