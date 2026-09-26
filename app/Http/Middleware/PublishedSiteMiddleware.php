@@ -988,6 +988,31 @@ class PublishedSiteMiddleware
         if ($imgUrl) {
             $html = preg_replace('#(<meta\s+property="og:image"\s+content=)"[^"]*"#i', '$1"' . e($imgUrl) . '"', $html, 1);
         }
+        // OG-URL-1 (2026-09-26): the template is another article's page. Facebook treats og:url as the
+        // object's real address and scrapes THAT page, so a stale og:url posted the template article's
+        // title and image. Every social tag now describes this article, and a template image never
+        // survives on an article that has none of its own.
+        $html = preg_replace('#(<meta\s+property=["\']og:url["\']\s+content=)["\'][^"\']*["\']#i', '$1"' . e($canonical) . '"', $html, 1);
+        $html = preg_replace('#(<meta\s+name=["\']twitter:title["\']\s+content=)["\'][^"\']*["\']#i', '$1"' . e($metaTitle) . '"', $html, 1);
+        $html = preg_replace('#(<meta\s+name=["\']twitter:description["\']\s+content=)["\'][^"\']*["\']#i', '$1"' . e($metaDesc) . '"', $html, 1);
+        if ($imgUrl) {
+            $html = preg_replace('#(<meta\s+name=["\']twitter:image["\']\s+content=)["\'][^"\']*["\']#i', '$1"' . e($imgUrl) . '"', $html, 1);
+        } else {
+            $html = preg_replace('#<meta\s+(?:property|name)=["\'](?:og:image|twitter:image)["\'][^>]*>\s*#i', '', $html);
+        }
+        // OG-URL-1b: article:* tags must be this article's too. Dates come from the article row; the
+        // section is its category or nothing; article:author must be a profile URL (Facebook refuses
+        // to scrape the whole page otherwise), so a plain name is removed.
+        $pub = $article->published_at ?: $article->created_at;
+        $mod = $article->updated_at ?: $pub;
+        $iso = function ($d) { try { return $d ? \Carbon\Carbon::parse($d)->utc()->format('Y-m-d\TH:i:s\Z') : ''; } catch (\Throwable $e) { return ''; } };
+        foreach (['article:published_time' => $iso($pub), 'article:modified_time' => $iso($mod), 'article:section' => (string) ($article->blog_category ?: '')] as $prop => $val) {
+            $re = '#<meta\s+property=["\']' . preg_quote($prop, '#') . '["\']\s+content=["\'][^"\']*["\'][^>]*>\s*#i';
+            $html = $val !== ''
+                ? preg_replace('#(<meta\s+property=["\']' . preg_quote($prop, '#') . '["\']\s+content=)["\'][^"\']*["\']#i', '$1"' . e($val) . '"', $html, 1)
+                : preg_replace($re, '', $html);
+        }
+        $html = preg_replace('#<meta\s+property=["\']article:author["\']\s+content=["\'](?!https?://)[^"\']*["\'][^>]*>\s*#i', '', $html);
 
         // Featured/hero image: <img class="post-hero-img">
         if ($imgUrl) {
