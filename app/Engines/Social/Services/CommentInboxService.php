@@ -232,7 +232,7 @@ class CommentInboxService
     }
 
     /** Sarah reads the comment and drafts a reply. Returns true when an approval was created. */
-    public function triage(int $commentId): bool
+    public function triage(int $commentId, bool $requestApproval = true): bool
     {
         $c = DB::table('social_comments')->where('id', $commentId)->first();
         if (! $c || $c->status !== 'new') return false;
@@ -249,11 +249,17 @@ class CommentInboxService
             . "Never invent prices, availability, dates, offers or facts that are not in BUSINESS FACTS — for a price or booking question invite them to message the Page or use the contact given. "
             . "Do not reply to spam (should_reply false). A complaint or anything sensitive: needs_owner true, draft a calm, apologetic reply that moves the conversation to a private message. "
             . "No hashtags. At most one emoji. Address the commenter by first name when it is known. "
+            // NEUTRAL-1 (Owner 2026-09-26: "she assumed that Chef Red cooked for me.. my comment was about the food. she has to
+            // neutralize the comments to something more generic")
+            . "Respond ONLY to what the comment and the post actually say. Never assume the commenter is or was a client, has eaten the food, "
+            . "booked, attended, or knows the business or the owner — no 'again', no 'glad you enjoyed our service', no 'see you next time'. "
+            . "Keep it generic and gracious; a light invitation to follow the Page or send a message is fine. "
             . "The note states what the comment is and what, if anything, the owner should do — never guess who the commenter is, their relationship to anyone, or anything about them beyond the comment itself.";
         $user = "BUSINESS FACTS: " . json_encode($facts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n"
             . "POST: " . mb_substr((string) $c->post_excerpt, 0, 400) . "\n"
             . "COMMENTER: " . ($c->author_name ?: 'someone') . "\n"
-            . "COMMENT: " . mb_substr((string) $c->message, 0, 1500);
+            . "COMMENT: " . mb_substr((string) $c->message, 0, 1500)
+            . ($this->instruction !== '' ? "\nOWNER'S INSTRUCTION FOR THE REPLY: " . mb_substr($this->instruction, 0, 400) : '');
         $runtime = app(\App\Connectors\RuntimeClient::class);
         $r = $runtime->isConfigured() ? $runtime->chatJson($system, $user, ['task' => 'comment_triage', 'workspace_id' => (string) $c->workspace_id], 500) : ['success' => false];
         $p = (($r['success'] ?? false) && is_array($r['parsed'] ?? null)) ? $r['parsed'] : null;
@@ -270,8 +276,36 @@ class CommentInboxService
             'triage_note' => mb_substr((string) ($p['note'] ?? ''), 0, 300) ?: null, 'status' => $should ? 'new' : 'no_reply', 'updated_at' => now(),
         ]);
         if (! $should) return false;
-        return $this->requestApproval($commentId);
+        return $requestApproval ? $this->requestApproval($commentId) : true;
     }
+
+    /**
+     * NEUTRAL-1: redraft a reply that is still waiting for approval (new rules, or the Owner asked for a change). Updates the
+     * stored draft AND the pending task's payload, so the approval card and the posted text are the new reply.
+     */
+    public function redraft(int $commentId, string $instruction = ''): ?string
+    {
+        $c = DB::table('social_comments')->where('id', $commentId)->first();
+        if (! $c || $c->status !== 'awaiting_approval' || ! $c->task_id) return null;
+        $pending = DB::table('tasks')->where('id', $c->task_id)->whereIn('status', ['pending', 'queued', 'awaiting_approval'])->where(function ($q) { $q->whereNull('approval_status')->orWhere('approval_status', 'pending'); })->first(['id', 'payload_json']);
+        if (! $pending) return null;
+        DB::table('social_comments')->where('id', $commentId)->update(['status' => 'new', 'updated_at' => now()]);
+        $keepTask = $c->task_id;
+        DB::table('social_comments')->where('id', $commentId)->update(['task_id' => null]);
+        $this->instruction = $instruction;
+        $ok = $this->triage($commentId, false);
+        $this->instruction = '';
+        $fresh = DB::table('social_comments')->where('id', $commentId)->first();
+        $reply = $fresh->draft_reply ?? null;
+        if (! $ok || ! $reply) { DB::table('social_comments')->where('id', $commentId)->update(['task_id' => $keepTask, 'status' => 'awaiting_approval', 'draft_reply' => $c->draft_reply]); return null; }
+        $p = json_decode((string) $pending->payload_json, true) ?: [];
+        $p['reply'] = $reply;
+        DB::table('tasks')->where('id', $keepTask)->update(['payload_json' => json_encode($p, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'updated_at' => now()]);
+        DB::table('social_comments')->where('id', $commentId)->update(['task_id' => $keepTask, 'status' => 'awaiting_approval', 'updated_at' => now()]);
+        return $reply;
+    }
+
+    private string $instruction = '';
 
     /** The drafted reply becomes a protected task: it waits in Review / Sarah's chat until the Owner approves it. */
     public function requestApproval(int $commentId): bool
