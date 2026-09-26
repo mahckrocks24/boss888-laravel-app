@@ -177,7 +177,7 @@ final class MandateService
 
         $tasks = json_decode((string) $m->tasks_json, true) ?: [];
         $ceiling = (int) ($boundaries['spend_ceiling_credits'] ?? PHP_INT_MAX);
-        $created = []; $held = []; $spent = 0;
+        $created = []; $held = []; $spent = 0; $byIndex = [];
         $engine = app(AgentMeetingEngine::class);
         $meeting = ((string) $m->source_type === 'meeting' && $m->source_id) ? Meeting::find((int) $m->source_id) : null;
         foreach ($tasks as $i => $planTask) {
@@ -195,10 +195,19 @@ final class MandateService
                 'decided_by'             => $approval->decision_by ?? null,
                 'payload_extra'          => ['_mandate_id' => $mandateId, 'from_plan' => $m->title],
             ];
+            // PLAN-CHECK-1: a task planned to run after another waits for it (parent_task_id) and inherits its article.
+            if (isset($planTask['after']) && is_int($planTask['after'])) {
+                if (empty($byIndex[$planTask['after']])) {
+                    $held[] = ['index' => $i, 'action' => $planTask['action'], 'reason' => 'needs_earlier_task', 'note' => 'Depends on a step that did not start'];
+                    continue;
+                }
+                $overrides['parent_task_id'] = $byIndex[$planTask['after']];
+            }
             $res = $engine->materialisePlanTask((int) $m->workspace_id, $planTask, $overrides, $meeting);
             if (($res['held'] ?? null) !== null) { $held[] = ['index' => $i, 'action' => $planTask['action'], 'reason' => 'needs_target', 'note' => (string) $res['held']]; continue; }
             if (empty($res['task_id'])) { $held[] = ['index' => $i, 'action' => $planTask['action'], 'reason' => 'create_failed', 'note' => (string) ($res['error'] ?? 'could not be created')]; continue; }
             $created[] = (int) $res['task_id'];
+            $byIndex[$i] = (int) $res['task_id'];
             if (! empty($res['kept_gate'])) $held[] = ['index' => $i, 'action' => $planTask['action'], 'reason' => 'protected_capability', 'note' => 'A protected action keeps its own approval (task #' . (int) $res['task_id'] . ')'];
             $spent += $cost;
         }
@@ -361,7 +370,7 @@ final class MandateService
                 'description' => mb_substr(trim((string) ($t['description'] ?? '')), 0, 500),
                 'priority'    => (string) ($t['priority'] ?? 'normal'),
                 'params'      => (isset($t['params']) && is_array($t['params'])) ? $t['params'] : [],
-            ];
+            ] + ((isset($t['after']) && is_int($t['after'])) ? ['after' => $t['after']] : []);   // PLAN-CHECK-1: runs after that task
         }
         return $out;
     }

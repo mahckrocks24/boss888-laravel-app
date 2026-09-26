@@ -43,6 +43,10 @@ class AgentMeetingEngine
     private const MAX_TOKENS_PER_AGENT = 200; // per round
     private const MAX_TOKENS_TOTAL = 1500;    // entire meeting budget
 
+    /** PLAN-CHECK-1: what the last extraction could not make runnable (plain words, and the raw issues). */
+    private string $planNotes = '';
+    private array $planIssues = [];
+
     public function __construct(
         private DeepSeekConnector $llm,
         private GlobalKnowledgeService $globalKnowledge,
@@ -640,14 +644,19 @@ class AgentMeetingEngine
             "End by asking the client for approval to proceed. Max 300 words.";
 
         $response = $this->agentThink($sarah, $prompt, $workspace, $meeting);
-        $this->storeMessage($meeting->id, $sarah, $response, 'synthesis');
 
-        // Extract actionable tasks from synthesis
+        // Extract actionable tasks from synthesis — checked against the real catalog and this business's articles
+        // (PLAN-CHECK-1) BEFORE Sarah's plan is shown, so what the customer approves is what the team can run.
         $plan = $this->extractPlanFromSynthesis($meeting->id, $workspace, $goal, $agents, $response);
+        if ($this->planNotes !== '') {
+            $response .= "\n\n**What I couldn't turn into tasks, and why:**\n" . $this->planNotes;
+        }
+        $this->storeMessage($meeting->id, $sarah, $response, 'synthesis');
 
         // Store plan in meeting metadata
         $meta = json_decode($meeting->metadata_json, true);
         $meta['plan'] = $plan;
+        $meta['plan_issues'] = $this->planIssues;
         $meeting->update(['metadata_json' => json_encode($meta)]);
 
         // MEET-3: if the customer already ended the meeting while this synthesis was running, the
@@ -810,11 +819,11 @@ class AgentMeetingEngine
                 'payload'           => $payload,
             ];
             if ($taskCategory) $createPayload['category'] = $taskCategory;
-            foreach (['authorized_by_proposal', 'auto_approve', 'business_id'] as $__k) {
+            foreach (['authorized_by_proposal', 'auto_approve', 'business_id', 'parent_task_id'] as $__k) {
                 if (array_key_exists($__k, $overrides) && $overrides[$__k] !== null) $createPayload[$__k] = $overrides[$__k];
             }
             if (! empty($overrides['mandate_id'])) {
-                $createPayload['idempotency_key'] = hash('sha256', "{$wsId}:mandate:{$overrides['mandate_id']}:" . ($planTask['engine'] ?? '') . ':' . ($planTask['action'] ?? '') . ':' . md5(json_encode($payload)));
+                $createPayload['idempotency_key'] = hash('sha256', "{$wsId}:mandate:{$overrides['mandate_id']}:" . ($planTask['engine'] ?? '') . ':' . ($planTask['action'] ?? '') . ':' . md5(json_encode($payload)) . ':' . (int) ($overrides['parent_task_id'] ?? 0));
             }
             $newTask = app(\App\Core\TaskSystem\TaskService::class)->create($wsId, $createPayload);
             $taskId = $newTask->id;
@@ -1248,7 +1257,11 @@ class AgentMeetingEngine
         // truth is Orchestrator::dispatchableActions(): only actions that
         // have a real handler appear in the prompt, AND each entry carries
         // a params_hint so the LLM can populate task.params correctly.
-        $catalog = \App\Core\TaskSystem\Orchestrator::dispatchableActions();
+        // PLAN-CHECK-1: the catalog minus actions whose handlers are stubs, plus the business's real articles.
+        $validator = app(\App\Core\Orchestration\MeetingPlanValidator::class);
+        $__m = Meeting::find($meetingId);
+        $ctx = $validator->context((int) $workspace->id, $__m && $__m->business_id ? (int) $__m->business_id : null);
+        $catalog = $ctx['catalog'];
         $byEngine = [];
         foreach ($catalog as $key => $meta) {
             [$eng, $act] = array_pad(explode('/', $key, 2), 2, '');
@@ -1290,16 +1303,28 @@ class AgentMeetingEngine
                       . "   - crm: lead, contact, deal lifecycle\n"
                       . "   - campaign: multi-step marketing orchestration\n"
                       . "   - operations: governance, housekeeping, destructive\n"
-                      . "4. No markdown, no commentary outside the JSON.\n\n"
+                      . "4. No markdown, no commentary outside the JSON.\n"
+                      . "5. ONE task per deliverable: \"write 4 articles\" is 4 create_article tasks, each with its own\n"
+                      . "   title; \"refresh 8 posts\" is 8 improve_draft tasks, each with its own article_id.\n"
+                      . "6. article_id is ALWAYS a number from THIS BUSINESS'S ARTICLES below. Never a word, slug or\n"
+                      . "   topic. Choose the listed articles that best match what the plan describes.\n"
+                      . "7. Social tasks name exactly ONE platform from the list. Two platforms = two tasks.\n"
+                      . "8. A task that needs something an EARLIER task in this list creates (a social post about a NEW\n"
+                      . "   article) sets \"after\": <0-based index of that earlier task> and leaves article_id out; it\n"
+                      . "   runs when that task finishes and uses the article it created.\n"
+                      . "9. Choose the action that actually does the work described. If no action does it, leave the\n"
+                      . "   task out rather than substituting one that does something else.\n\n"
+                      . $validator->promptBlock($ctx)
                       . $catalogText;
 
         $userPrompt = "PLAN TO EXTRACT:\n{$synthesis}";
+        $this->planNotes = ''; $this->planIssues = [];
 
         $result = $this->runtime->chatJson($systemPrompt, $userPrompt, [
             'task'       => 'plan_extraction',
             'meeting_id' => (string) $meetingId,
             'goal'       => $goal,
-        ], 800);
+        ], 2500);
 
         if (!($result['success'] ?? false) || !is_array($result['parsed'] ?? null)) {
             \Illuminate\Support\Facades\Log::warning('[Meeting] plan-extraction returned no parseable JSON', [
@@ -1314,7 +1339,35 @@ class AgentMeetingEngine
             \Illuminate\Support\Facades\Log::warning('[Meeting] plan-extraction returned empty tasks array', [
                 'meeting_id' => $meetingId,
             ]);
+            return is_array($tasks) ? $tasks : null;
         }
-        return is_array($tasks) ? $tasks : null;
+
+        // PLAN-CHECK-1: every task must be runnable as written. The planner gets ONE chance to repair what is not;
+        // whatever still cannot run is left out and told to the customer in Sarah's plan, never approved blind.
+        $check = $validator->validate($tasks, $ctx);
+        $firstIssues = count($check['issues']);
+        if ($check['issues']) {
+            $problems = implode("\n", array_map(fn ($x) => "- task {$x['index']} ({$x['action']}): {$x['problem']}", $check['issues']));
+            $repairPrompt = "PLAN TO EXTRACT:\n{$synthesis}\n\nYOUR PREVIOUS TASKS:\n"
+                . json_encode(['tasks' => $tasks], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                . "\n\nTHESE CANNOT RUN AS WRITTEN:\n{$problems}\n\n"
+                . "Return the COMPLETE corrected {\"tasks\":[...]} following every rule. Fix each problem with the catalog and the article list. "
+                . "If something truly cannot be done with the available actions, leave it out.";
+            $r2 = $this->runtime->chatJson($systemPrompt, $repairPrompt, [
+                'task' => 'plan_repair', 'meeting_id' => (string) $meetingId, 'goal' => $goal,
+            ], 2500);
+            $t2 = (($r2['success'] ?? false) && is_array($r2['parsed'] ?? null)) ? ($r2['parsed']['tasks'] ?? null) : null;
+            if (is_array($t2) && $t2) {
+                $check2 = $validator->validate($t2, $ctx);
+                if (count($check2['tasks']) >= count($check['tasks'])) $check = $check2;
+            }
+        }
+        $this->planIssues = $check['issues'];
+        $this->planNotes = $check['issues'] ? $validator->describe($check['issues']) : '';
+        \Illuminate\Support\Facades\Log::info('[Meeting] plan checked (PLAN-CHECK-1)', [
+            'meeting_id' => $meetingId, 'extracted' => count($tasks), 'first_issues' => $firstIssues,
+            'runnable' => count($check['tasks']), 'left_out_or_short' => count($check['issues']),
+        ]);
+        return $check['tasks'];
     }
 }
