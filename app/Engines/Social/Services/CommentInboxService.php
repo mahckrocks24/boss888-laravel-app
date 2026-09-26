@@ -59,29 +59,107 @@ class CommentInboxService
             return ['account_id' => (int) $acct->id, 'ok' => false, 'needs_reconnect' => $perm, 'error' => $msg];
         }
 
-        $since = now()->subDays(self::LOOKBACK_DAYS);
+        $this->ensureSubscribed($acct, $page, $token);   // WEBHOOK-1: after a reconnect, the Page starts pushing comments to us
+
         $new = [];
         foreach ((array) ($j['data'] ?? []) as $post) {
             foreach ((array) ($post['comments']['data'] ?? []) as $c) {
-                if (($c['from']['id'] ?? null) === $page) continue;            // the Page's own replies
-                $at = ! empty($c['created_time']) ? \Illuminate\Support\Carbon::parse($c['created_time'])->utc() : null;
-                if ($at && $at->lt($since)) continue;
-                $ext = (string) ($c['id'] ?? ''); if ($ext === '') continue;
-                if (DB::table('social_comments')->where('external_comment_id', $ext)->exists()) continue;
-                $id = DB::table('social_comments')->insertGetId([
-                    'workspace_id' => (int) $acct->workspace_id, 'business_id' => $acct->business_id ?? null, 'social_account_id' => (int) $acct->id,
-                    'platform' => 'facebook', 'external_comment_id' => $ext, 'external_post_id' => (string) ($post['id'] ?? ''),
-                    'parent_comment_id' => $c['parent']['id'] ?? null, 'author_name' => mb_substr((string) ($c['from']['name'] ?? ''), 0, 190) ?: null,
-                    'author_external_id' => $c['from']['id'] ?? null, 'message' => (string) ($c['message'] ?? ''),
-                    'post_excerpt' => mb_substr((string) ($post['message'] ?? ''), 0, 400), 'post_permalink' => $post['permalink_url'] ?? null,
-                    'commented_at' => $at, 'status' => 'new', 'created_at' => now(), 'updated_at' => now(),
+                $id = $this->ingest($acct, [
+                    'comment_id' => $c['id'] ?? null, 'post_id' => $post['id'] ?? null, 'parent_id' => $c['parent']['id'] ?? null,
+                    'from_id' => $c['from']['id'] ?? null, 'from_name' => $c['from']['name'] ?? null, 'message' => $c['message'] ?? '',
+                    'created_time' => $c['created_time'] ?? null, 'post_message' => $post['message'] ?? '', 'permalink' => $post['permalink_url'] ?? null,
                 ]);
-                $new[] = $id;
+                if ($id) $new[] = $id;
             }
         }
         $drafted = 0;
         foreach ($new as $id) { if ($this->triage($id)) $drafted++; }
         return ['account_id' => (int) $acct->id, 'ok' => true, 'new' => count($new), 'awaiting_approval' => $drafted];
+    }
+
+    /**
+     * WEBHOOK-1: the ONE way a comment enters the inbox — from the 10-minute check or from Facebook's push. Stored once
+     * (Facebook's comment id is unique); the Page's own comments and anything older than the look-back are ignored.
+     * Returns the new row id, or null when there is nothing new. No tokens are spent here.
+     */
+    public function ingest(object $acct, array $c): ?int
+    {
+        $page = (string) ($acct->linked_page_id ?: $acct->account_id);
+        $ext = (string) ($c['comment_id'] ?? '');
+        if ($ext === '' || (string) ($c['from_id'] ?? '') === $page) return null;
+        $t = $c['created_time'] ?? null;
+        $at = $t === null || $t === '' ? now() : (is_numeric($t) ? \Illuminate\Support\Carbon::createFromTimestampUTC((int) $t) : \Illuminate\Support\Carbon::parse($t)->utc());
+        if ($at->lt(now()->subDays(self::LOOKBACK_DAYS))) return null;
+        if (DB::table('social_comments')->where('external_comment_id', $ext)->exists()) return null;
+        try {
+            return (int) DB::table('social_comments')->insertGetId([
+                'workspace_id' => (int) $acct->workspace_id, 'business_id' => $acct->business_id ?? null, 'social_account_id' => (int) $acct->id,
+                'platform' => 'facebook', 'external_comment_id' => $ext, 'external_post_id' => (string) ($c['post_id'] ?? ''),
+                'parent_comment_id' => $c['parent_id'] ?? null, 'author_name' => mb_substr((string) ($c['from_name'] ?? ''), 0, 190) ?: null,
+                'author_external_id' => $c['from_id'] ?? null, 'message' => (string) ($c['message'] ?? ''),
+                'post_excerpt' => mb_substr((string) ($c['post_message'] ?? ''), 0, 400) ?: null, 'post_permalink' => $c['permalink'] ?? null,
+                'commented_at' => $at, 'status' => 'new', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return null;   // the other path stored it a moment earlier (unique key) — nothing to do
+        }
+    }
+
+    /**
+     * WEBHOOK-1: Facebook's push. Every 'feed' change that ADDS a comment on a Page we hold is ingested; the post's text
+     * and link are fetched (a free Graph read) so Sarah sees what the comment is about. Returns the new row ids; the
+     * caller runs triage() after the HTTP response so Facebook never waits for the reasoning service.
+     */
+    public function ingestWebhook(array $payload): array
+    {
+        if (($payload['object'] ?? '') !== 'page') return [];
+        $ids = [];
+        foreach ((array) ($payload['entry'] ?? []) as $entry) {
+            $pageId = (string) ($entry['id'] ?? '');
+            if ($pageId === '') continue;
+            $acct = DB::table('social_accounts')->where('platform', 'facebook')->where('status', 'connected')
+                ->where(function ($q) use ($pageId) { $q->where('linked_page_id', $pageId)->orWhere('account_id', $pageId); })->first();
+            if (! $acct) continue;
+            foreach ((array) ($entry['changes'] ?? []) as $ch) {
+                $v = (array) ($ch['value'] ?? []);
+                if (($ch['field'] ?? '') !== 'feed' || ($v['item'] ?? '') !== 'comment' || ($v['verb'] ?? '') !== 'add') continue;
+                $postId = (string) ($v['post_id'] ?? '');
+                $post = ['message' => '', 'permalink_url' => null];
+                if ($postId !== '') {
+                    try {
+                        $creds = ConnectionHealth::readCredentials($acct);
+                        $tok = (string) ($creds['page_access_token'] ?? $creds['access_token'] ?? '');
+                        if ($tok !== '') $post = array_merge($post, (array) (Http::timeout(10)->get(self::GRAPH . "/{$postId}", ['fields' => 'message,permalink_url', 'access_token' => $tok])->json() ?: []));
+                    } catch (\Throwable $e) { /* the comment is still stored without its post text */ }
+                }
+                $id = $this->ingest($acct, [
+                    'comment_id' => $v['comment_id'] ?? null, 'post_id' => $postId, 'parent_id' => ($v['parent_id'] ?? null) !== $postId ? ($v['parent_id'] ?? null) : null,
+                    'from_id' => $v['from']['id'] ?? null, 'from_name' => $v['from']['name'] ?? null, 'message' => $v['message'] ?? '',
+                    'created_time' => $v['created_time'] ?? null, 'post_message' => $post['message'] ?? '', 'permalink' => $post['permalink_url'] ?? null,
+                ]);
+                if ($id) $ids[] = $id;
+            }
+        }
+        return $ids;
+    }
+
+    /**
+     * WEBHOOK-1: subscribe the Page to our app's 'feed' webhook (needs pages_manage_metadata on the token). Checked at
+     * most every 6 hours per account; a refusal is logged and the 10-minute check keeps working without it.
+     */
+    public function ensureSubscribed(object $acct, string $page, string $token): ?bool
+    {
+        $key = 'comments_webhook_sub:' . $acct->id;
+        if (\Illuminate\Support\Facades\Cache::get($key) === 'ok') return true;
+        if (\Illuminate\Support\Facades\Cache::get($key) === 'refused') return false;
+        try {
+            $r = Http::asForm()->timeout(15)->post(self::GRAPH . "/{$page}/subscribed_apps", ['subscribed_fields' => 'feed', 'access_token' => $token]);
+            $j = $r->json() ?: [];
+            if (! empty($j['success'])) { \Illuminate\Support\Facades\Cache::put($key, 'ok', now()->addHours(6)); Log::info('[WEBHOOK-1] page subscribed to feed', ['account' => $acct->id]); return true; }
+            \Illuminate\Support\Facades\Cache::put($key, 'refused', now()->addMinutes(30));   // retried soon: a reconnect with the permission fixes it
+            Log::info('[WEBHOOK-1] page subscription refused', ['account' => $acct->id, 'error' => mb_substr((string) ($j['error']['message'] ?? 'HTTP ' . $r->status()), 0, 200)]);
+            return false;
+        } catch (\Throwable $e) { return null; }
     }
 
     /** Sarah reads the comment and drafts a reply. Returns true when an approval was created. */

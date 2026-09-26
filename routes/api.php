@@ -2840,6 +2840,41 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])
 // ══════════════════════════════════════════════════════════════════════
 
 // Stripe Webhook (no auth — verified by signature)
+// WEBHOOK-1 (2026-09-26, Owner: "can we not have the engine to pull that up without tokens and sarah get triggered when new
+// ones are added"): Facebook pushes Page 'feed' changes here. GET answers Meta's one-time verification with a phrase DERIVED
+// from APP_KEY (no new stored credential); POST is accepted only with a valid X-Hub-Signature-256 from our app secret. New
+// comments are stored at once and Sarah reads them AFTER the response, so Facebook never waits on the reasoning service.
+Route::get('/webhook/meta', function (\Illuminate\Http\Request $r) {
+    $expected = substr(hash_hmac('sha256', 'meta-webhook-verify-v1', (string) config('app.key')), 0, 32);
+    if ($r->query('hub_mode') === 'subscribe' && hash_equals($expected, (string) $r->query('hub_verify_token'))) {
+        return response((string) $r->query('hub_challenge'), 200)->header('Content-Type', 'text/plain');
+    }
+    return response('forbidden', 403);
+});
+Route::post('/webhook/meta', function (\Illuminate\Http\Request $r) {
+    $secret = (string) (config('services.facebook.client_secret') ?: config('services.facebook.app_secret') ?: env('FACEBOOK_APP_SECRET'));
+    $raw = $r->getContent();
+    $sig = (string) $r->header('X-Hub-Signature-256', '');
+    if ($secret === '' || ! str_starts_with($sig, 'sha256=') || ! hash_equals('sha256=' . hash_hmac('sha256', $raw, $secret), $sig)) {
+        \Illuminate\Support\Facades\Log::warning('[WEBHOOK-1] rejected: bad or missing signature', ['ip' => $r->ip()]);
+        return response()->json(['ok' => false], 403);
+    }
+    try {
+        $inbox = app(\App\Engines\Social\Services\CommentInboxService::class);
+        $ids = $inbox->ingestWebhook((array) (json_decode($raw, true) ?: []));
+        if ($ids) {
+            dispatch(function () use ($ids) {
+                $svc = app(\App\Engines\Social\Services\CommentInboxService::class);
+                foreach ($ids as $id) { try { $svc->triage((int) $id); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[WEBHOOK-1] triage failed', ['comment' => $id, 'error' => $e->getMessage()]); } }
+            })->afterResponse();
+        }
+        \Illuminate\Support\Facades\Log::info('[WEBHOOK-1] feed event', ['new_comments' => count($ids)]);
+    } catch (\Throwable $e) {
+        \Illuminate\Support\Facades\Log::error('[WEBHOOK-1] handler error', ['error' => $e->getMessage()]);
+    }
+    return response()->json(['ok' => true]);   // always 200 once signed: Meta retries errors and disables noisy endpoints
+});
+
 Route::post('/webhook/stripe', function (\Illuminate\Http\Request $r) {
     // v5.5.4 — webhook ALWAYS returns 200. Stripe retries 5xx for hours; we
     // do not want a transient app bug to cause a webhook storm. We surface
