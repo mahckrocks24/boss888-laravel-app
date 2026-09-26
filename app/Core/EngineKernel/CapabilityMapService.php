@@ -209,6 +209,8 @@ class CapabilityMapService
         'social_reply_comment' => ['engine'=>'social',   'connector'=>null,       'action'=>'reply_comment',       'approval_mode'=>'protected', 'credit_cost'=>0],
         // SARAH-COMMENTS-1: Sarah rewrites a WAITING reply on the Owner's instruction — changes the draft only, never posts.
         'social_redraft_comment_reply' => ['engine'=>'social', 'connector'=>null, 'action'=>'redraft_comment_reply', 'approval_mode'=>'auto', 'credit_cost'=>0],
+        // SOCIAL-LEADS-2: a Messenger reply to someone who wrote to the Page — always waits for the Owner.
+        'social_send_message' => ['engine'=>'social', 'connector'=>null, 'action'=>'send_message', 'approval_mode'=>'protected', 'credit_cost'=>0],
         'social_schedule_post'=> ['engine'=>'social',    'connector'=>null,       'action'=>'schedule_post',       'approval_mode'=>'review',    'credit_cost'=>2],
 
         // ── Calendar Engine (internal) ───────────────────────────

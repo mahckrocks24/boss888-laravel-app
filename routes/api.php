@@ -2864,7 +2864,17 @@ Route::post('/webhook/meta', function (\Illuminate\Http\Request $r) {
     }
     try {
         $inbox = app(\App\Engines\Social\Services\CommentInboxService::class);
-        $ids = $inbox->ingestWebhook((array) (json_decode($raw, true) ?: []));
+        $__payload = (array) (json_decode($raw, true) ?: []);
+        $ids = $inbox->ingestWebhook($__payload);
+        // SOCIAL-LEADS-2/3: Messenger messages and Lead Ads submissions ride the same signed webhook
+        $__msgIds = app(\App\Engines\Social\Services\MessengerService::class)->ingest($__payload);
+        $__leadEvs = app(\App\Engines\Social\Services\LeadAdService::class)->events($__payload);
+        if ($__msgIds || $__leadEvs) {
+            dispatch(function () use ($__msgIds, $__leadEvs) {
+                foreach ($__msgIds as $mid) { try { app(\App\Engines\Social\Services\MessengerService::class)->process((int) $mid); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[SOCIAL-LEADS-2] message failed', ['id' => $mid, 'error' => $e->getMessage()]); } }
+                foreach ($__leadEvs as $ev) { try { app(\App\Engines\Social\Services\LeadAdService::class)->process($ev); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[SOCIAL-LEADS-3] lead ad failed', ['error' => $e->getMessage()]); } }
+            })->afterResponse();
+        }
         if ($ids) {
             dispatch(function () use ($ids) {
                 $svc = app(\App\Engines\Social\Services\CommentInboxService::class);

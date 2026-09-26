@@ -258,6 +258,9 @@ class SocialConnector extends BaseConnector
             'pages_read_user_content',    // COMMENTS-1: read comments on the Page
             'pages_manage_engagement',    // COMMENTS-1: reply to them (only after the Owner approves)
             'pages_manage_metadata',      // WEBHOOK-1: subscribe the Page so Facebook pushes new comments to us
+            'pages_messaging',            // SOCIAL-LEADS-2: private replies to buyers + Messenger replies (Owner-approved)
+            'leads_retrieval',            // SOCIAL-LEADS-3: read Facebook Lead Ads submissions
+            'pages_manage_ads',           // SOCIAL-LEADS-3: required alongside leads_retrieval for Page lead forms
         ]);
 
         $query = [

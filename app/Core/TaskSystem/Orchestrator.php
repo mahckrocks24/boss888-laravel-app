@@ -1484,6 +1484,7 @@ class Orchestrator
                                                 return ['scheduled' => true, 'post_id' => $params['post_id']];
                                               })(),
             'social/social_reply_comment' => fn() => app(\App\Engines\Social\Services\CommentInboxService::class)->reply($wsId, $params),   // COMMENTS-1: runs only after the Owner approved
+            'social/social_send_message' => fn() => app(\App\Engines\Social\Services\MessengerService::class)->send($wsId, $params),   // SOCIAL-LEADS-2: only after the Owner approved
             'social/social_redraft_comment_reply' => fn() => (function () use ($params, $wsId) {   // SARAH-COMMENTS-1
                 $cid = (int) ($params['comment_id'] ?? 0);
                 if (! \Illuminate\Support\Facades\DB::table('social_comments')->where('id', $cid)->where('workspace_id', $wsId)->exists()) return ['success' => false, 'error' => 'That comment is not in this workspace.', 'code' => 'NOT_FOUND', 'no_charge' => true];
@@ -1898,6 +1899,7 @@ class Orchestrator
             'social/social_publish_post'   => 'Social post published.',
             'social/social_reply_comment'  => 'Reply posted to the comment.',   // COMMENTS-1
             'social/social_redraft_comment_reply' => 'New reply drafted — it is on the approval card, waiting for you.',   // SARAH-COMMENTS-1
+            'social/social_send_message'  => 'Message sent on Messenger.',   // SOCIAL-LEADS-2
             'social/social_schedule_post'  => 'Social post scheduled.',
             'seo/add_keyword'              => 'Keyword added to tracking.',
             'seo/keyword_research'         => 'Keyword research completed.',

@@ -60,11 +60,16 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 'credits' => (int) ($prop->total_credits ?? 0), 'created_at' => (string) $row->created_at];
             continue;
         }
+        if ($action === 'social_send_message' && is_array($p)) {   // SOCIAL-LEADS-2: a Messenger reply — their message and exactly what will be sent
+            $items[] = ['approval_id' => (int) $row->id, 'kind' => 'message_reply', 'task_id' => (int) $row->task_id, 'label' => 'Reply to ' . (string) ($p['author'] ?? 'a') . "'s message",
+                'description' => '“' . mb_substr((string) ($p['their_message'] ?? ''), 0, 220) . '”', 'lines' => ['Reply: ' . (string) ($p['text'] ?? '')], 'credits' => 0, 'created_at' => (string) $row->created_at];
+            continue;
+        }
         if ($action === 'social_reply_comment' && is_array($p)) {   // COMMENTS-1: the comment, and exactly what will be posted under it
             $items[] = ['approval_id' => (int) $row->id, 'kind' => 'comment_reply', 'task_id' => (int) $row->task_id,
                 'label' => (! empty($p['needs_owner']) ? 'Complaint — ' : '') . 'Reply to ' . (string) ($p['author'] ?? 'a') . "'s comment",
                 'description' => '“' . mb_substr((string) ($p['comment'] ?? ''), 0, 220) . '”',
-                'lines' => array_values(array_filter(['Reply: ' . (string) ($p['reply'] ?? ''), ! empty($p['post']) ? 'On your post: ' . mb_substr((string) $p['post'], 0, 90) : null])),
+                'lines' => array_values(array_filter(['Reply: ' . (string) ($p['reply'] ?? ''), ! empty($p['dm']) ? 'Private message: ' . (string) $p['dm'] : null, ! empty($p['post']) ? 'On your post: ' . mb_substr((string) $p['post'], 0, 90) : null])),   // SOCIAL-LEADS-2
                 'credits' => 0, 'created_at' => (string) $row->created_at];
             continue;
         }

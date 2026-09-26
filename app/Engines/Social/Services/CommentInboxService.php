@@ -155,8 +155,12 @@ class CommentInboxService
         if (\Illuminate\Support\Facades\Cache::get($key) === 'ok') return true;
         if (\Illuminate\Support\Facades\Cache::get($key) === 'refused') return false;
         try {
-            $r = Http::asForm()->timeout(15)->post(self::GRAPH . "/{$page}/subscribed_apps", ['subscribed_fields' => 'feed', 'access_token' => $token]);
-            $j = $r->json() ?: [];
+            // SOCIAL-LEADS-2/3: comments, Messenger and Lead Ads — each field needs its own permission, so step down
+            foreach (['feed,messages,leadgen', 'feed,messages', 'feed'] as $fields) {
+                $r = Http::asForm()->timeout(15)->post(self::GRAPH . "/{$page}/subscribed_apps", ['subscribed_fields' => $fields, 'access_token' => $token]);
+                $j = $r->json() ?: [];
+                if (! empty($j['success'])) { Log::info('[WEBHOOK-1] page fields', ['account' => $acct->id, 'fields' => $fields]); break; }
+            }
             if (! empty($j['success'])) { \Illuminate\Support\Facades\Cache::put($key, 'ok', now()->addHours(6)); Log::info('[WEBHOOK-1] page subscribed to feed', ['account' => $acct->id]); return true; }
             \Illuminate\Support\Facades\Cache::put($key, 'refused', now()->addMinutes(30));   // retried soon: a reconnect with the permission fixes it
             Log::info('[WEBHOOK-1] page subscription refused', ['account' => $acct->id, 'error' => mb_substr((string) ($j['error']['message'] ?? 'HTTP ' . $r->status()), 0, 200)]);
@@ -255,7 +259,9 @@ class CommentInboxService
         $system = "You are Sarah, the digital marketing manager for this business, handling comments on its Facebook Page.\n"
             . "Read the comment and return ONLY JSON: {\"category\":\"question|enquiry|praise|complaint|spam|other\",\"sentiment\":\"positive|neutral|negative\","
             . "\"intent\":\"hot|warm|none\",\"signals\":{\"event\":null,\"date\":null,\"guests\":null,\"location\":null,\"budget\":null},"
-            . "\"should_reply\":true|false,\"needs_owner\":true|false,\"reply\":\"...\",\"note\":\"one line for the owner\"}.\n"
+            . "\"should_reply\":true|false,\"needs_owner\":true|false,\"reply\":\"...\",\"private_message\":\"...\",\"note\":\"one line for the owner\"}.\n"
+            // SOCIAL-LEADS-2: for a buyer, the one private Messenger message Facebook allows per comment
+            . "private_message: ONLY for intent hot — a short, friendly private message asking for the ONE or TWO details still missing to quote or book (date, guest count, phone or email); no link, no prices, no assumptions. Empty otherwise.\n"
             . "BUYING INTENT: hot = asks about price, booking, availability, a date, a guest count, or how to hire/book; warm = asks about services, "
             . "area served, menus or dietary options; none = praise, chat, spam, complaint. signals = only what the comment itself states (null otherwise).\n"
             . ($link ? "CONTACT LINK: {$link['url']} — for intent hot or warm, end the reply with this exact link and a short invitation to use it "
@@ -298,6 +304,7 @@ class CommentInboxService
         DB::table('social_comments')->where('id', $commentId)->update([
             'category' => $cat, 'sentiment' => in_array($p['sentiment'] ?? '', ['positive', 'neutral', 'negative'], true) ? $p['sentiment'] : null,
             'intent' => $intent, 'signals_json' => $signals ? json_encode($signals, JSON_UNESCAPED_UNICODE) : null, 'link_code' => $useLink ? $link['code'] : null,
+            'dm_draft' => ($intent === 'hot' && trim((string) ($p['private_message'] ?? '')) !== '') ? mb_substr(trim((string) $p['private_message']), 0, 1000) : null,   // SOCIAL-LEADS-2
             'needs_owner' => (bool) ($p['needs_owner'] ?? false) || $cat === 'complaint', 'draft_reply' => $reply !== '' ? mb_substr($reply, 0, 1500) : null,
             'triage_note' => mb_substr((string) ($p['note'] ?? ''), 0, 300) ?: null, 'status' => $should ? 'new' : 'no_reply', 'updated_at' => now(),
         ]);
@@ -383,6 +390,7 @@ class CommentInboxService
                 'comment_row_id' => (int) $c->id, 'comment_id' => $c->external_comment_id, 'reply' => $c->draft_reply,
                 'title' => "Reply to {$who}'s comment", 'author' => $who, 'comment' => mb_substr((string) $c->message, 0, 500),
                 'category' => $c->category, 'needs_owner' => (bool) $c->needs_owner, 'post' => mb_substr((string) $c->post_excerpt, 0, 160),
+                'dm' => $c->dm_draft ?? null,   // SOCIAL-LEADS-2: sent privately with the approved reply
                 'description' => "Reply to {$who}'s comment",
             ],
         ]);
@@ -417,6 +425,13 @@ class CommentInboxService
         if ($resp->successful() && ! empty($j['id'])) {
             DB::table('social_comments')->where('id', $c->id)->update(['status' => 'replied', 'reply_external_id' => (string) $j['id'], 'reply_sent' => $text,
                 'replied_at' => now(), 'error' => null, 'updated_at' => now()]);
+            // SOCIAL-LEADS-2: the approved private message goes with it (the same approval covered both)
+            $dm = trim((string) ($params['dm'] ?? $c->dm_draft ?? ''));
+            if ($dm !== '' && empty($c->dm_status)) {
+                $pr = app(MessengerService::class)->privateReply(DB::table('social_comments')->where('id', $c->id)->first(), $dm);
+                DB::table('social_comments')->where('id', $c->id)->update(['dm_status' => $pr['ok'] ? 'sent' : 'refused', 'psid' => $pr['psid'] ?? null,
+                    'error' => $pr['ok'] ? null : mb_substr('private message: ' . ($pr['error'] ?? ''), 0, 500), 'updated_at' => now()]);
+            }
             return ['success' => true, 'message' => 'Reply posted.', 'data' => ['comment_id' => $c->external_comment_id, 'reply_id' => (string) $j['id']]];
         }
         $code = (int) ($j['error']['code'] ?? $resp->status()); $msg = (string) ($j['error']['message'] ?? 'HTTP ' . $resp->status());
