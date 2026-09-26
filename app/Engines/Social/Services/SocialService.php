@@ -155,6 +155,29 @@ class SocialService
             $carried = self::recentChatMedia($wsId);
             if ($carried) { $data['media'] = [$carried]; }
         }
+        // POST-IMAGE-1 (Owner 2026-09-26: "how come there is no image banner on your latest draft?"): when Sarah drafts a post
+        // whose brief describes an image/banner and none exists, the image is made WITH the post — through the engine
+        // executor, so plan gating, credits and the image intelligence (one-line text rule) apply exactly as for any image.
+        if (empty($data['media']) && empty($data['article_id']) && ($data['created_via'] ?? '') === 'sarah_chat') {
+            $brief = trim(implode(' ', array_filter([(string) ($data['title'] ?? ''), (string) ($data['description'] ?? ''), (string) ($data['user_request'] ?? '')])));
+            if ($brief !== '' && preg_match('/\b(banner|image|graphic|visual|photo|picture|artwork|poster)\b/i', $brief)
+                && ! preg_match('/\b(no|without)\s+(an?\s+)?(image|photo|picture|visual|graphic|banner)\b/i', $brief)) {
+                $ar = preg_match('/\b(1:1|4:3|3:4|16:9|9:16|4:5|3:2|2:3)\b/', $brief, $am) ? $am[1] : '1:1';
+                try {
+                    $res = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute($wsId, 'creative', 'generate_image',
+                        ['prompt' => mb_substr($brief, 0, 1800), 'aspect_ratio' => $ar, 'platform' => $platform, 'asset_type' => 'social_post', 'source' => 'social'],
+                        ['source' => 'agent', 'agent_id' => 'sarah']);
+                    $url = $res['data']['url'] ?? $res['url'] ?? ($res['data']['data']['url'] ?? null);
+                    if (is_string($url) && preg_match('#^https://#', $url)) {
+                        $data['media'] = [['type' => 'image', 'url' => $url]];
+                    } else {
+                        \Illuminate\Support\Facades\Log::info('[POST-IMAGE-1] no image for the draft', ['ws' => $wsId, 'res' => array_intersect_key((array) $res, array_flip(['success', 'code', 'error', 'message']))]);
+                    }
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[POST-IMAGE-1] image generation failed', ['ws' => $wsId, 'error' => $e->getMessage()]);
+                }
+            }
+        }
         // PREVIEW-1 (2026-09-25): a share of an article carries the article's link, site and business — the preview shows
         // them and Facebook builds its card from the link. Sarah's drafts today carried none of the three.
         $__canonical = isset($data['canonical_url']) && is_string($data['canonical_url']) ? trim($data['canonical_url']) : '';
