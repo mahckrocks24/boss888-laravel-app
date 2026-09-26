@@ -80,7 +80,7 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
     $drafts = [];
     try {
         $rows = DB::table('social_posts as p')->leftJoin('articles as a', 'a.id', '=', 'p.article_id')->leftJoin('websites as w', 'w.id', '=', \Illuminate\Support\Facades\DB::raw('COALESCE(p.website_id, a.website_id)'))
-            ->where('p.workspace_id', $wsId)->whereNull('p.deleted_at')->where('p.status', 'draft')->where('p.created_at', '>=', $since)
+            ->where('p.workspace_id', $wsId)->whereNull('p.deleted_at')->where('p.status', 'draft')->whereNull('p.preview_dismissed_at')->where('p.created_at', '>=', $since)   /* PREVIEW-DISMISS-1 */
             ->orderByDesc('p.id')->limit(6)
             ->get(['p.id', 'p.platform', 'p.content', 'p.media_json', 'p.hashtags_json', 'p.canonical_url', 'p.article_id', 'p.business_id', 'p.website_id', 'p.social_account_id', 'p.created_at', 'p.execution_status', 'p.failure_class',
                    'a.title as article_title', 'a.meta_title as article_meta_title', 'a.featured_image_url', 'a.slug as article_slug', 'a.website_id as article_website_id', 'a.meta_description', 'a.excerpt', 'w.custom_domain', 'w.subdomain', 'w.business_id as site_business_id']);

@@ -736,7 +736,7 @@
         else showToast("Couldn't save: " + (d.message || d.error || ('HTTP ' + r.status)), 'error');
       }).catch(function () { edit.disabled = false; showToast("Couldn't reach the server — try again.", 'error'); });
     });
-    later.addEventListener('click', function () { S.dismissedDrafts = S.dismissedDrafts || {}; S.dismissedDrafts[String(dr.post_id)] = 1; c.remove(); showToast('Kept as a draft under Social.', 'info'); });
+    later.addEventListener('click', function () { S.dismissedDrafts = S.dismissedDrafts || {}; S.dismissedDrafts[String(dr.post_id)] = 1; c.remove(); api('POST', 'social/posts/' + dr.post_id + '/dismiss-preview', {}).catch(function () {}); showToast('Kept as a draft under Social.', 'info'); });   /* PREVIEW-DISMISS-1: stored on the post, so the app and other devices hide it too */
     return c;
   }
   function actDecide(c, it, action, reason) {

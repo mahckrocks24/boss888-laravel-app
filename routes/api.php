@@ -1347,6 +1347,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::post('/ai/hashtags', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'hashtag_suggestions', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/ai/image', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_image', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => (int) $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
+        // PREVIEW-DISMISS-1 (2026-09-26): "Not now" on a draft preview is stored on the post, so every screen (web, app,
+        // other devices) hides the same preview. The draft stays a draft under Social.
+        Route::post('/posts/{id}/dismiss-preview', function (\Illuminate\Http\Request $r, $id) {
+            $n = \Illuminate\Support\Facades\DB::table('social_posts')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))
+                ->whereNull('deleted_at')->update(['preview_dismissed_at' => now(), 'updated_at' => now()]);
+            return $n ? response()->json(['success' => true]) : response()->json(['success' => false, 'error' => 'Post not found'], 404);
+        });
         Route::post('/posts/{id}/publish', function (\Illuminate\Http\Request $r, $id) use ($exec, $__ownPost, $__socialJson) {
             if (! $__ownPost($r, $id)) return response()->json(['success' => false, 'error' => 'Post not found'], 404);
             $uid = $r->user()?->id;
