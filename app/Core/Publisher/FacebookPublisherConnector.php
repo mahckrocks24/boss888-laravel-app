@@ -61,6 +61,14 @@ class FacebookPublisherConnector
                 'message' => $content,
                 'link'    => $post['canonical_url'] ?? null,
             ]);
+        } elseif (self::isVideo($media[0])) {
+            // POST-MEDIA-1: a Page video by public file link (Graph uploads it and processes it asynchronously).
+            $url     = "https://graph-video.facebook.com/v19.0/{$pageId}/videos";
+            $payload = array_filter([
+                'description' => $content,
+                'file_url'    => $media[0]['url'] ?? null,
+                'published'   => 'true',
+            ]);
         } else {
             $url     = self::GRAPH . "/{$pageId}/photos";
             $payload = array_filter([
@@ -121,13 +129,29 @@ class FacebookPublisherConnector
         return ['resolved' => true, 'found' => false];
     }
 
+    /** POST-MEDIA-1 */
+    public static function isVideo(array $m): bool
+    {
+        return ($m['type'] ?? '') === 'video' || str_starts_with(strtolower((string) ($m['mime'] ?? '')), 'video/')
+            || (bool) preg_match('#\.(mp4|mov|m4v|webm)(\?|$)#i', (string) ($m['url'] ?? ''));
+    }
+
     private function validateMedia(array $media): ?array
     {
         if (count($media) > 1) {
             return ['code' => 'MULTI_MEDIA_NOT_SUPPORTED',
-                    'message' => 'Only a single image is supported at launch.'];
+                    'message' => 'Only a single image or video is supported at launch.'];
         }
         foreach ($media as $m) {
+            if (self::isVideo($m)) {   // POST-MEDIA-1: one MP4/MOV by public link, up to 1 GB (Graph's file_url limit)
+                if (empty($m['url']) || !filter_var($m['url'], FILTER_VALIDATE_URL)) {
+                    return ['code' => 'MEDIA_URL_INVALID', 'message' => 'The video must have a public URL.'];
+                }
+                if (!empty($m['bytes']) && (int) $m['bytes'] > 1024 * 1024 * 1024) {
+                    return ['code' => 'MEDIA_TOO_LARGE', 'message' => 'The video is larger than 1 GB.'];
+                }
+                continue;
+            }
             $mime = strtolower((string) ($m['mime'] ?? ''));
             if ($mime !== '' && !in_array($mime, self::SUPPORTED_MIME, true)) {
                 return ['code' => 'UNSUPPORTED_MEDIA_TYPE',

@@ -1347,7 +1347,23 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         Route::post('/ai/hashtags', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'hashtag_suggestions', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/ai/image', fn(\Illuminate\Http\Request $r) => $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_image', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual'])));
         Route::post('/posts/{id}/schedule', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_schedule_post', ['post_id' => (int) $id, 'scheduled_at' => $r->input('scheduled_at')], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
-        Route::post('/posts/{id}/publish', fn(\Illuminate\Http\Request $r, $id) => $__ownPost($r, $id) ? $__socialJson(app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => (int) $id], ['user_id' => $r->user()?->id, 'source' => 'manual'])) : response()->json(['success' => false, 'error' => 'Post not found'], 404));
+        Route::post('/posts/{id}/publish', function (\Illuminate\Http\Request $r, $id) use ($exec, $__ownPost, $__socialJson) {
+            if (! $__ownPost($r, $id)) return response()->json(['success' => false, 'error' => 'Post not found'], 404);
+            $uid = $r->user()?->id;
+            $res = app($exec)->execute($r->attributes->get('workspace_id'), 'social', 'social_publish_post', ['post_id' => (int) $id], ['user_id' => $uid, 'source' => 'manual']);
+            // POST-IT-1 (2026-09-26): "Post it" is pressed on the preview of exactly what goes out — that press IS the
+            // owner's approval of the protected publish. Record it as the decision (audit kept) instead of opening a
+            // second gate in the Review Queue.
+            if (($res['pending_approval'] ?? false) && ! empty($res['approval_id']) && $uid) {
+                try {
+                    app(\App\Core\Governance\ApprovalService::class)->approve((int) $res['approval_id'], (int) $uid, 'Approved by pressing Post it on the preview (POST-IT-1)');
+                    $res = ['success' => true, 'pending_approval' => false, 'approved_by_click' => true, 'approval_id' => (int) $res['approval_id'], 'message' => 'Publishing now.'];
+                } catch (\Throwable $e) {
+                    \Illuminate\Support\Facades\Log::warning('[POST-IT-1] approve on click failed', ['post_id' => (int) $id, 'error' => $e->getMessage()]);
+                }
+            }
+            return $__socialJson($res);
+        });
         Route::post('/accounts', fn(\Illuminate\Http\Request $r) => response()->json(['account_id' => app($s)->addAccount($r->attributes->get('workspace_id'), $r->all())], 201));
         // RISK-0099 (2026-08-29): the Social UI edits a post (content / platform / hashtags / schedule);
         // this route never existed — every edit was a 404. Workspace-scoped; a schedule change

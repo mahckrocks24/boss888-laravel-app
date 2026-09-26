@@ -84,6 +84,37 @@ class SocialService
         return null;
     }
 
+    /** POST-MEDIA-1: 'video' for a video file link, else 'image'. */
+    public static function mediaKind(string $url): string
+    {
+        return preg_match('#\.(mp4|mov|m4v|webm)(\?|$)#i', $url) ? 'video' : 'image';
+    }
+
+    /**
+     * POST-MEDIA-1: the newest image or video Sarah attached in this workspace's chat within the last hour, if it is a
+     * file this platform hosts. Returns ['type','url'] or null. Only Sarah's own replies count, never an upload.
+     */
+    public static function recentChatMedia(int $wsId, int $minutes = 60): ?array
+    {
+        try {
+            $rows = DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')
+                ->where('created_at', '>=', now()->subMinutes($minutes))->where('metadata_json', 'like', '%attachments%')
+                ->orderByDesc('id')->limit(10)->pluck('metadata_json');
+            $host = parse_url((string) config('app.url'), PHP_URL_HOST) ?: 'staging.levelupgrowth.io';
+            foreach ($rows as $j) {
+                $meta = json_decode((string) $j, true) ?: [];
+                foreach ((array) ($meta['attachments'] ?? []) as $a) {
+                    $url = (string) ($a['url'] ?? ''); $kind = (string) ($a['kind'] ?? '');
+                    if (! in_array($kind, ['image', 'video'], true) || ! preg_match('#^https://#', $url) || ! str_contains($url, '/storage/')) continue;
+                    $h = parse_url($url, PHP_URL_HOST);
+                    if ($h !== $host && ! str_ends_with((string) $h, 'levelupgrowth.io')) continue;
+                    return ['type' => $kind === 'video' ? 'video' : self::mediaKind($url), 'url' => $url];
+                }
+            }
+        } catch (\Throwable $e) { /* no media carried; the post still saves */ }
+        return null;
+    }
+
     public function createPost(int $wsId, array $data): array
     {
         // F-SOC-F6: content aliases; platform inferred from the request; copy composed when only the request is present.
@@ -106,6 +137,19 @@ class SocialService
             $data['ai_generated'] = true;
         }
         $data['content'] = $content; $data['platform'] = $platform;
+        // POST-MEDIA-1: a single image/video link is media too (Studio already speaks this shape) ...
+        if (empty($data['media'])) {
+            if (! empty($data['video_url']))      $data['media'] = [['type' => 'video', 'url' => (string) $data['video_url']]];
+            elseif (! empty($data['image_url']))  $data['media'] = [['type' => 'image', 'url' => (string) $data['image_url']]];
+            elseif (! empty($data['media_url']))  $data['media'] = [['type' => self::mediaKind((string) $data['media_url']), 'url' => (string) $data['media_url']]];
+        }
+        // ... and a post Sarah drafts in the chat, with no media and no article, carries the image or video she just
+        // generated in that conversation. Her post tool has no media field and her history drops attachments, so
+        // without this the banner she made and promised to "tag" was never on the post. The preview card shows it.
+        if (empty($data['media']) && empty($data['article_id']) && ($data['created_via'] ?? '') === 'sarah_chat') {
+            $carried = self::recentChatMedia($wsId);
+            if ($carried) { $data['media'] = [$carried]; }
+        }
         // PREVIEW-1 (2026-09-25): a share of an article carries the article's link, site and business — the preview shows
         // them and Facebook builds its card from the link. Sarah's drafts today carried none of the three.
         $__canonical = isset($data['canonical_url']) && is_string($data['canonical_url']) ? trim($data['canonical_url']) : '';

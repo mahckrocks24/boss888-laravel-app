@@ -107,6 +107,8 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
             $drafts[] = ['post_id' => (int) $d->id, 'platform' => (string) $d->platform,
                 'account' => $account, 'caption' => (string) $d->content, 'hashtags' => array_values(array_filter((array) (json_decode((string) ($d->hashtags_json ?? '[]'), true) ?: []))),
                 'link' => $link, 'image' => $first ?: ($d->featured_image_url ?: null), 'article_id' => $d->article_id ? (int) $d->article_id : null,
+                // POST-MEDIA-1: the post's own media — a media post goes out as a photo/video, not as a link card
+                'media_url' => $first ?: null, 'media_kind' => $first ? ((is_array($media[0]) && ($media[0]['type'] ?? '') === 'video') || preg_match('#\.(mp4|mov|m4v|webm)(\?|$)#i', (string) $first) ? 'video' : 'image') : null,
                 'article_title' => ($d->article_meta_title ?: $d->article_title) ? (string) ($d->article_meta_title ?: $d->article_title) : null,   // OG-URL-1c: the title Facebook shows (og:title)
                 'description' => mb_substr(trim((string) ($d->meta_description ?: $d->excerpt ?: '')), 0, 160) ?: null,   // PREVIEW-2: the link card's blurb
                 'domain' => $link ? strtoupper((string) preg_replace('#^https?://(www\.)?([^/]+).*$#', '$2', $link)) : null,

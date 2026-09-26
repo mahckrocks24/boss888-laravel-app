@@ -638,12 +638,17 @@
     var hasCaption = !!(dr.caption && String(dr.caption).trim()); var hasAccount = !!(dr.account && dr.account.name);
     var state = !hasCaption ? ['no', 'Needs a caption'] : (!hasAccount ? ['warn', 'Can\'t post yet'] : ['ok', 'Ready to post']);
     var tags = Array.isArray(dr.hashtags) && dr.hashtags.length ? dr.hashtags.map(function (t) { return (String(t).charAt(0) === '#' ? '' : '#') + String(t); }).join(' ') : '';
-    var img = dr.image && /^(https?:\/\/|\/)/.test(String(dr.image)) ? '<img class="img" src="' + esc(dr.image) + '" alt="">' : '<div class="img ph">No image on the article — Facebook will show the link only</div>';
+    /* POST-MEDIA-1: the post's own image/video is what goes out (as a photo/video post); tap an image to inspect it. */
+    var mu = dr.media_url && /^(https?:\/\/|\/)/.test(String(dr.media_url)) ? String(dr.media_url) : '';
+    var mediaBlock = mu ? (dr.media_kind === 'video'
+      ? '<div class="lc"><video class="img" src="' + esc(mu) + '" controls playsinline preload="metadata"></video></div>'
+      : '<div class="lc"><button type="button" class="sh-att-img" data-full="' + esc(mu) + '" aria-label="View image" style="display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in"><img class="img" src="' + esc(mu) + '" alt=""></button></div>') : '';
+    var img = dr.image && /^(https?:\/\/|\/)/.test(String(dr.image)) ? '<button type="button" class="sh-att-img" data-full="' + esc(dr.image) + '" aria-label="View image" style="display:block;width:100%;padding:0;border:0;background:none;cursor:zoom-in"><img class="img" src="' + esc(dr.image) + '" alt=""></button>' : '<div class="img ph">No image on the article — Facebook will show the link only</div>';
     var linkCard = dr.link ? '<div class="lc">' + img + '<div class="meta"><div class="dom">' + esc(dr.domain || String(dr.link).replace(/^https?:\/\/(www\.)?/, '').split('/')[0]) + '</div><div class="ttl">' + esc(dr.article_title || dr.link) + '</div>' + (dr.description ? '<div class="desc">' + esc(dr.description) + '</div>' : '') + '</div></div>' : '';
     c.innerHTML =
       '<div class="top"><span class="k"><span class="pf ' + pf + '" style="position:static;width:16px;height:16px;border:0;font-size:10px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff">' + (pf === 'fb' ? 'f' : pf === 'ig' ? '◎' : 'in') + '</span>Preview · ' + esc(platName) + '</span><span class="pill ' + state[0] + '"><i></i>' + esc(state[1]) + '</span></div>' +
       '<div class="post"><div class="head"><span class="av"' + (dr.account && dr.account.avatar ? ' style="background:url(' + esc(dr.account.avatar) + ') center/cover"' : '') + '>' + (dr.account && dr.account.avatar ? '' : esc(String(pageName).trim().charAt(0).toUpperCase() || 'P')) + '<span class="pf ' + pf + '">' + (pf === 'fb' ? 'f' : pf === 'ig' ? '◎' : 'in') + '</span></span><div><div class="name">' + esc(pageName) + '</div><div class="when">Just now · 🌐 Public</div></div></div>' +
-      '<div class="cap' + (hasCaption ? '' : ' empty') + '"></div>' + (tags ? '<div class="tags">' + esc(tags) + '</div>' : '') + linkCard +
+      '<div class="cap' + (hasCaption ? '' : ' empty') + '"></div>' + (tags ? '<div class="tags">' + esc(tags) + '</div>' : '') + (mediaBlock || linkCard) +
       '<div class="react"><span>👍 Like</span><span>💬 Comment</span><span>↗ Share</span></div></div>' +
       '<div class="foot">' +
         (hasAccount ? '<div class="note">This is what people will see on <b>' + esc(pageName) + '</b>' + (dr.account && dr.account.business ? ' (' + esc(dr.account.business) + ')' : '') + '.</div>'
