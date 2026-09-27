@@ -54,7 +54,10 @@ final class SearchSites
     /** The country's search-data location code (defaults to the US). */
     public static function locationCode(?object $biz, int $wsId): int
     {
-        $txt = strtolower(trim(($biz->location ?? '') . ' ' . ($biz->address_json ?? '') . ' ' . (string) DB::table('workspaces')->where('id', $wsId)->value('timezone')));
+        // the business's own location decides; the workspace time zone only when the business has none
+        $own = strtolower(trim(($biz->location ?? '') . ' ' . ($biz->address_json ?? '')));
+        $txt = $own !== '' ? $own : strtolower((string) DB::table('workspaces')->where('id', $wsId)->value('timezone'));
+        if ($own !== '' && preg_match('/\b(usa|united states|u\.s\.|texas|tx|california|new york|new jersey|nj|florida|illinois|washington|oregon|colorado|arizona|georgia|ohio|austin|houston|dallas|chicago|seattle|portland|miami|boston)\b/', $own)) return 2840;
         $map = [
             2784 => ['uae', 'united arab emirates', 'dubai', 'abu dhabi', 'sharjah', 'asia/dubai'],
             2826 => ['united kingdom', ' uk', 'england', 'london', 'scotland', 'europe/london'],

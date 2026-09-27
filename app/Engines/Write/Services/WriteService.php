@@ -561,6 +561,9 @@ class WriteService
 
     public function writeArticle(int $wsId, array $params): array
     {
+        // PAGE-ONE-1 (RFC-0020): campaign and Search Roadmap articles are written to reach Google's first page — brief from the live top
+        // results and the owner's facts, quality gate, in-body images, structured data, published on their date.
+        if (! empty($params['page_one']) && empty($params['_page_one_inner'])) return app(\App\Core\Search\PageOne::class)->write($wsId, $params);
         $topic   = $params['topic'] ?? $params['title'] ?? '';
         // INC-0007 (2026-09-06): a task title is not an article topic. Rescue "write a post about X" → X; refuse tasks/notes.
         if (($__t = \App\Core\Sarah888\ArticleTopicGuard::extractTopic((string) $topic)) !== null) $topic = $__t;

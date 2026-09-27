@@ -579,6 +579,12 @@ Route::get('/social/oauth/twitter/callback', function (\Illuminate\Http\Request 
 // travels in the SIGNED `state` (Crypt) and is verified server-side, the
 // same pattern the social callbacks use. Stores the workspace's own tokens;
 // the user then picks which property to sync from inside the app.
+Route::get('/seo/gsc/start/{ws}', function (\Illuminate\Http\Request $r, int $ws) {   // PAGE-ONE-1
+    if (! $r->hasValidSignature()) return response('This link has expired. Ask Sarah for a new one.', 403);
+    $gsc = app(\App\Engines\SEO\Services\GscClient::class);
+    if (! $gsc->isConfigured()) return response('Search Console is not available right now.', 503);
+    return redirect()->away($gsc->getAuthUrl($ws));
+})->name('gsc.start');
 Route::get('/seo/gsc/oauth/callback', function (\Illuminate\Http\Request $r) {
     $gsc   = app(\App\Engines\SEO\Services\GscClient::class);
     $code  = $r->query('code');
@@ -616,6 +622,8 @@ Route::get('/seo/gsc/oauth/callback', function (\Illuminate\Http\Request $r) {
             if (! empty($sites)) {
                 $owner = array_values(array_filter($sites, fn ($s) => ($s['permissionLevel'] ?? '') === 'siteOwner'));
                 $pick = $owner[0]['siteUrl'] ?? $sites[0]['siteUrl'];
+                // PAGE-ONE-1: the property that matches one of this workspace's own websites wins
+                foreach (\App\Core\Search\SearchSites::managed($wsId) as $__w) { $__h = preg_replace('/^www\./', '', (string) \App\Core\Search\SearchSites::host($__w)); foreach ($sites as $__s) { $__u = strtolower((string) ($__s['siteUrl'] ?? '')); if ($__h !== '' && ($__u === 'sc-domain:' . $__h || str_contains($__u, '://' . $__h) || str_contains($__u, '://www.' . $__h))) { $pick = $__s['siteUrl']; break 2; } } }
                 if (! empty($pick)) {
                     $gsc->setSite($wsId, $pick);
                     $selectedSite = $pick;

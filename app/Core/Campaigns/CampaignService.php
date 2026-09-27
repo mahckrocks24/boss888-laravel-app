@@ -70,7 +70,9 @@ final class CampaignService
                 'params' => $common + ['platform' => in_array($it->channel, ['facebook', 'instagram', 'linkedin'], true) ? $it->channel : 'facebook', 'topic' => $brief, 'title' => $it->title,
                     'description' => $brief . ' — with a banner image in our brand. ' . $ctx, 'created_via' => 'campaign']],
             'article' => ['engine' => 'write', 'action' => 'write_article', 'agent' => 'priya', 'description' => 'Write the article: ' . $it->title,
-                'params' => $common + array_filter(['topic' => $it->title, 'brief' => $brief . ' ' . $ctx, 'website_id' => $siteId])],
+                'params' => $common + array_filter(['topic' => $it->title, 'title' => $it->title, 'brief' => $brief . ' ' . $ctx, 'website_id' => $siteId, 'page_one' => 1,   // PAGE-ONE-1
+                    'target_keyword' => preg_match('/Target search:\s*([^.
+]+)/i', (string) $it->brief, $__tk) ? strtolower(trim($__tk[1])) : null])],
             'email' => null,   // email marketing is out of launch scope: the owner sends it personally (a "You" step)
             'image' => ['engine' => 'creative', 'action' => 'generate_image', 'agent' => 'studio', 'description' => 'Design: ' . $it->title,
                 'params' => $common + ['prompt' => $brief . ' ' . $ctx, 'platform' => in_array($it->channel, ['facebook', 'instagram', 'linkedin'], true) ? $it->channel : 'instagram', 'asset_type' => 'social_post', 'source' => 'campaign']],
@@ -86,7 +88,7 @@ final class CampaignService
     {
         $c = DB::table('marketing_campaigns')->where('id', $campaignId)->first();
         $tasks = [];
-        foreach (DB::table('campaign_items')->where('campaign_id', $campaignId)->get() as $it) { if ($t = $this->planTask($c, $it)) $tasks[] = ['engine' => $t['engine'], 'action' => $t['action']]; }
+        foreach (DB::table('campaign_items')->where('campaign_id', $campaignId)->get() as $it) { if ($c->source === \App\Core\Search\KeywordPlan::SOURCE && $it->kind === 'article') continue; if ($t = $this->planTask($c, $it)) $tasks[] = ['engine' => $t['engine'], 'action' => $t['action']]; }   // PAGE-ONE-1: included
         // VIDEO-2: the estimate is what the kernel actually charges (CapabilityMap), so the plan's spend ceiling never blocks
         // a step it listed — the blueprint table under-stated some tools (a video estimated at 5, charged 8).
         $cm = app(\App\Core\EngineKernel\CapabilityMapService::class);
