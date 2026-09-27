@@ -50,6 +50,8 @@ class GrowthTick extends Command
             $this->info('watch: ' . count($due) . " due, asked {$asked}");
         }
         if ($this->option('reminders')) { $this->info('needs-you reminders: ' . app(\App\Core\Growth\NeedsYou::class)->remind($one, (bool) $this->option('workspace'))); }   // NEEDS-YOU-1
+        if ($this->option('reminders')) { $this->info('credit pace: ' . json_encode(app(\App\Core\Growth\CreditPace::class)->tick($one, (bool) $this->option('workspace')))); }   // PACE-1
+        if ($this->option('reminders') && ! $one) { $this->info('ads notices: ' . app(\App\Core\Growth\FreeSiteNotice::class)->run()); }   // ADS-NOTICE-1
         if ($this->option('checkins')) {
             $sent = $checkins->tick($one, $this->option('force-checkin') ?: null);
             $this->info('check-ins: ' . json_encode($sent));

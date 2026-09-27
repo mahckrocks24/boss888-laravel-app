@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class ChatReplies
 {
-    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge'];
+    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge'];
     /** Text after this marker is the plain-words version of a card: the app shows it, the web hides it next to the card. */
     public const APP_PART = "\n\n\u{200B}";
 
@@ -78,6 +78,8 @@ final class ChatReplies
                 return $row && $row->intake_status === 'asked';
             case 'brand_summary':
                 return app(\App\Core\Brand\BrandProfileService::class)->proposalStatus($wsId, (string) ($c['token'] ?? '')) === 'pending';
+            case 'credit_pace': case 'plan_nudge':   // PACE-1: open until answered, for 3 days
+                return ! \Illuminate\Support\Facades\Cache::has('pace-answered:' . $q['message_id']);
             case 'search_merge':   // PAGE-ONE-1
                 return DB::table('search_plans')->where('id', (int) ($c['plan_id'] ?? 0))->where('workspace_id', $wsId)->where('kind', 'merge')->where('status', 'proposed')->exists();
             case 'campaign_step':
@@ -172,6 +174,8 @@ final class ChatReplies
             'brand_summary' => [['label' => 'Save', 'text' => 'Save'], ['label' => 'Discard', 'text' => 'Discard']],
             'campaign_step' => [['label' => 'Done', 'text' => 'Done'], ['label' => 'Skip', 'text' => 'Skip this step']],
             'search_merge' => [['label' => 'Merge', 'text' => 'Merge'], ['label' => 'Keep as they are', 'text' => 'Keep']],
+            'credit_pace' => ($q['card']['kind'] ?? '') === 'under' ? [['label' => 'Yes, draw it up', 'text' => 'Yes, draw it up'], ['label' => 'Not now', 'text' => 'Not now']] : [['label' => 'Show me the plans', 'text' => 'Show me the plans'], ['label' => 'Not now', 'text' => 'Not now']],
+            'plan_nudge' => [['label' => 'Show me the plans', 'text' => 'Show me the plans'], ['label' => 'Not now', 'text' => 'Not now']],
             default => [],
         };
     }
@@ -269,6 +273,21 @@ final class ChatReplies
                         return null;
                     }
                     if ($no || preg_match('/^\s*(discard|wrong|that\'?s wrong)\b/i', $t)) { $bp->discard($wsId, (string) ($c['token'] ?? '')); return ['turn' => 'reply', 'note' => 'The owner discarded the brand summary; nothing was saved. Acknowledge in one line and invite them to tell you what is right.', 'verified' => []]; }
+                    return null;
+                }
+                case 'credit_pace': case 'plan_nudge': {   // PACE-1
+                    $kind = (string) ($c['kind'] ?? 'nudge');
+                    $wantsPlans = (bool) preg_match('/\b(plans?|upgrade|pricing|move up|show me)\b/i', $t);
+                    if ($kind === 'under' && ($yes || preg_match('/^\s*(yes|draw it up|do it|more|aggressive|go)\b/i', $t)) && ! $wantsPlans) {
+                        \Illuminate\Support\Facades\Cache::put('pace-answered:' . $q['message_id'], 1, now()->addDays(7));
+                        app(CreditPace::class)->intensify($wsId, $userId, (int) ($c['unused'] ?? 0));
+                        return ['turn' => 'reply', 'note' => 'The owner wants the more ambitious plan to use their spare credits. Say in one or two warm lines that you are drawing it up now — two articles a week and more frequent posts — and the ideas will be right here in a moment to launch. Do not list them.', 'verified' => ['plan', 'ideas']];
+                    }
+                    if ($wantsPlans || (($yes) && $kind !== 'under')) {
+                        \Illuminate\Support\Facades\Cache::put('pace-answered:' . $q['message_id'], 1, now()->addDays(7));
+                        return ['turn' => 'reply', 'note' => 'The owner wants to see the plans. Reply in one or two lines with the plans page link https://levelupgrowth.io/pricing/ and say that the change applies straight away and their unused work carries on. No pressure.', 'verified' => ['plans', 'pricing']];
+                    }
+                    if ($no) { \Illuminate\Support\Facades\Cache::put('pace-answered:' . $q['message_id'], 1, now()->addDays(7)); return ['turn' => 'reply', 'note' => 'The owner said not now. Acknowledge in one short line; no pressure.', 'verified' => []]; }
                     return null;
                 }
                 case 'search_merge': {   // PAGE-ONE-1: the owner decides — nothing is merged without their yes
