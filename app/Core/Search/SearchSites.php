@@ -30,7 +30,7 @@ final class SearchSites
         if (self::isWp($w)) {
             $u = (string) ($w->external_url ?: ($w->domain ?? ''));
             $h = parse_url(str_contains($u, '://') ? $u : 'https://' . $u, PHP_URL_HOST);
-            return $h ? strtolower($h) : null;
+            return ($h && ! filter_var($h, FILTER_VALIDATE_IP) && strtolower($h) !== 'localhost') ? strtolower($h) : null;   // a local test install is not a public site
         }
         return ! empty($w->subdomain) ? strtolower(trim((string) $w->subdomain, ' /')) : null;
     }
