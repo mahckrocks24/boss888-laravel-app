@@ -61,10 +61,11 @@ class SearchTick extends Command
         if ($this->option("foundation")) {
             $one = $this->option("website") || $this->option("workspace");
             if (! $one && ! is_file(storage_path("app/pageone-roadmap.on"))) { $this->info("roadmaps: switched off"); return self::SUCCESS; }
-            $built = 0;
+            $built = 0; $wsDone = [];
             foreach ($sites as $w) {
                 if ($built >= 4) break;
-                if (! $one && ! $this->eligible($w)) continue;
+                if (! $one && (isset($wsDone[$w->workspace_id]) || ! $this->eligible($w))) continue;   // one roadmap per workspace per day
+                $wsDone[$w->workspace_id] = 1;
                 try { $r = app(\App\Core\Search\KeywordPlan::class)->build($w, ! $this->option("quiet-owner")); $this->line("site {$w->id}: " . json_encode($r)); if (! empty($r["success"])) $built++; }
                 catch (\Throwable $e) { $this->warn("foundation {$w->id}: " . $e->getMessage()); }
             }
@@ -76,12 +77,14 @@ class SearchTick extends Command
     /** A paying workspace in use, a LevelUp-built site, a business Sarah knows, and no roadmap in the last 12 weeks. */
     private function eligible(object $w): bool
     {
-        if (\App\Core\Search\SearchSites::isWp($w)) return false;
+        if (\App\Core\Search\SearchSites::isWp($w) || preg_match("/\b(mock ?up|demo|sample|template|test)\b/i", (string) $w->name)) return false;   // no SEO plan for mockups and demos
         $ws = (int) $w->workspace_id;
         if (\Illuminate\Support\Facades\DB::table("search_plans")->where("website_id", $w->id)->where("kind", "roadmap")->where("created_at", ">=", now()->subDays(84))->exists()) return false;
         $paid = \Illuminate\Support\Facades\DB::table("subscriptions as s")->join("plans as p", "p.id", "=", "s.plan_id")->where("s.workspace_id", $ws)->whereIn("s.status", ["active", "trialing"])->where("p.price", ">", 0)->exists();
         if (! $paid) return false;
-        $active = \Illuminate\Support\Facades\DB::table("agent_messages")->where("workspace_id", $ws)->where("role", "user")->where("created_at", ">=", now()->subDays(30))->exists();
+        $owner = (int) \Illuminate\Support\Facades\DB::table("workspaces")->where("id", $ws)->value("created_by");
+        $active = \Illuminate\Support\Facades\DB::table("agent_messages")->where("workspace_id", $ws)->where("role", "user")->where("created_at", ">=", now()->subDays(30))->exists()
+            || ($owner && \Illuminate\Support\Facades\DB::table("sessions")->where("user_id", $owner)->where("created_at", ">=", now()->subDays(30))->exists());   // signed in lately
         if (! $active) return false;
         $biz = \App\Core\Search\SearchSites::business($w);
         return $biz && (trim((string) $biz->industry) !== "" || trim((string) $biz->services_json) !== "");
