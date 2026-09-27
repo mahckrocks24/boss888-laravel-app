@@ -153,7 +153,7 @@ class PublicResumeController
             $link = $host . URL::temporarySignedRoute('resume.resume', now()->addDays(ResumeService::SAVED_TTL_DAYS), ['session' => $s->id, 'k' => substr(hash('sha256', $s->token_hash . '|' . $s->id), 0, 24)], false);
             $dl = $host . URL::temporarySignedRoute('resume.download', now()->addDays(7), ['resume' => $rendered['resume_id']], false);
             try {
-                Mail::to($d['email'])->send(new \App\Engines\Resume\Mail\ResumeReadyMail((string) $website->name, $dl, $link, $s->language));
+                Mail::to($d['email'])->send(new \App\Engines\Resume\Mail\ResumeReadyMail((string) $website->name, $dl, $link, $s->language, (int) ($website->workspace_id ?? 0) ?: null, (int) ($website->business_id ?? 0) ?: null));
             } catch (\Throwable $ex) { Log::warning('resume.mail.failed', ['e' => $ex->getMessage()]); return $this->err('MAIL_FAILED', 502, 'Could not send the email right now.'); }
             DB::table('resume_events')->insert(['website_id' => $website->id, 'session_id' => $s->id, 'event' => 'email_sent', 'cost_usd_micro' => 0, 'created_at' => now()]);
             return response()->json(['success' => true]);

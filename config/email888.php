@@ -100,6 +100,9 @@ return [
         // person who submitted the form, and the call site sets that. A registry
         // reply-to would silently redirect every answer to support.
         'intake'             => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => null],
+        // EMAIL-BRAND-1 (Owner 2026-09-27): a business writing to ITS customers (booking confirmations, form replies,
+        // CV-ready mail). audience=tenant: From name = the business, Reply-To = the business, body in its brand.
+        'tenant_transactional' => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => null, 'audience' => 'tenant'],
         'domain_event'       => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],
         'hosting_event'      => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],
 
@@ -108,9 +111,10 @@ return [
         // unclassified identity, and so its traffic is filterable in the ledger.
         'platform_diagnostic' => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],
 
-        'campaign'           => ['sender' => 'platform', 'stream' => 'broadcast', 'reply_to' => 'support'],
-        'sequence'           => ['sender' => 'platform', 'stream' => 'broadcast', 'reply_to' => 'support'],
-        'newsletter'         => ['sender' => 'platform', 'stream' => 'broadcast', 'reply_to' => 'support'],
+        // EMAIL-BRAND-1: campaigns, sequences and newsletters go to a BUSINESS's contacts — white-labelled (audience=tenant).
+        'campaign'           => ['sender' => 'platform', 'stream' => 'broadcast', 'reply_to' => null, 'audience' => 'tenant'],
+        'sequence'           => ['sender' => 'platform', 'stream' => 'broadcast', 'reply_to' => null, 'audience' => 'tenant'],
+        'newsletter'         => ['sender' => 'platform', 'stream' => 'broadcast', 'reply_to' => null, 'audience' => 'tenant'],
     ],
 
     /*
@@ -120,6 +124,12 @@ return [
      | A row still 'queued' this long after hand-off never reached the provider.
      | The reaper marks it failed rather than leaving it ambiguous forever.
      */
+    // EMAIL-BRAND-1: white-label sending. When a neutral sending domain is verified with the provider, set it here and
+    // tenant mail is sent from <business>@<domain>. Empty = the platform address, carrying the business's display name.
+    'tenant' => [
+        'domain' => env('EMAIL888_TENANT_DOMAIN', ''),
+    ],
+
     'stale_queued_minutes' => (int) env('EMAIL888_STALE_QUEUED_MINUTES', 15),
 
     /*

@@ -67,12 +67,17 @@ class RecordOutboundMail
             $senderKey     = OutboundPolicy::takeHeader($message, OutboundPolicy::HDR_SENDER);
             $replyKey      = OutboundPolicy::takeHeader($message, OutboundPolicy::HDR_REPLY_TO);
             $streamClass   = OutboundPolicy::takeHeader($message, OutboundPolicy::HDR_STREAM);
+            $businessId    = OutboundPolicy::takeHeader($message, OutboundPolicy::HDR_BUSINESS);   // EMAIL-BRAND-1
 
             // Belt and braces: nothing internal leaves, even a header a future
             // caller adds that this method did not explicitly read.
             OutboundPolicy::stripInternalHeaders($message);
 
             $policy = $this->applyPolicy($message, $purpose, $senderKey, $replyKey, $streamClass);
+            // EMAIL-BRAND-1: a business writing to its customers speaks as the business, and replies reach the business
+            if ($policy && OutboundPolicy::isTenantPurpose($purpose)) {
+                $this->applyTenantIdentity($message, is_numeric($workspaceId) ? (int) $workspaceId : null, is_numeric($businessId) ? (int) $businessId : null, $purpose);
+            }
 
             if (! config('email888.ledger_enabled', true)) {
                 self::$current = null;
@@ -145,6 +150,34 @@ class RecordOutboundMail
      * stream, same behaviour as before this class existed. That is what makes
      * enabling stream enforcement a no-op until a call site opts in.
      */
+    /**
+     * EMAIL-BRAND-1: From = "<Business name>" <tenant address>; Reply-To = the business's inbox (a Reply-To the caller
+     * already set to the business is kept); LevelUpGrowth is never the name or the reply address. A body that still
+     * names LevelUpGrowth is logged so it can be fixed at its source.
+     */
+    private function applyTenantIdentity(Email $message, ?int $wsId, ?int $businessId, string $purpose): void
+    {
+        try {
+            $id = \App\Core\Email888\TenantEmail::identity($wsId, $businessId);
+            $message->from(new \Symfony\Component\Mime\Address($id['address'], $id['name']));
+            $existing = array_values(array_filter(array_map(fn ($a) => strtolower($a->getAddress()), $message->getReplyTo()), fn ($a) => ! str_ends_with($a, '@levelupgrowth.io')));
+            if ($existing) {
+                $message->replyTo(...array_values(array_filter($message->getReplyTo(), fn ($a) => ! str_ends_with(strtolower($a->getAddress()), '@levelupgrowth.io'))));
+            } elseif ($id['reply_to']) {
+                $message->replyTo(new \Symfony\Component\Mime\Address($id['reply_to'], $id['name']));
+            } else {
+                $message->getHeaders()->remove('Reply-To');
+            }
+            $body = (string) ($message->getHtmlBody() ?? '') . ' ' . (string) ($message->getTextBody() ?? '');
+            if (preg_match('/level\s*up\s*growth(?!\.io)/i', strip_tags($body))) {
+                Log::warning('email888.tenant.platform_brand_in_body', ['purpose' => $purpose, 'workspace_id' => $wsId, 'business_id' => $id['business_id']]);
+            }
+            if (! $wsId) Log::warning('email888.tenant.no_workspace', ['purpose' => $purpose]);
+        } catch (Throwable $e) {
+            Log::warning('email888.tenant.identity_failed', ['purpose' => $purpose, 'error' => $e->getMessage()]);
+        }
+    }
+
     private function applyPolicy(
         Email $message,
         string $purpose,

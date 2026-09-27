@@ -5982,7 +5982,9 @@ Route::get('/email/unsubscribe/{token}', function (\Illuminate\Http\Request $r, 
         'ok'                 => $lead !== null || $resubscribed,
         'email'              => $lead->email ?? null,
         'first_name'         => $lead->first_name ?? null,
-        'brand_name'         => config('app.name', 'LevelUpGrowth'),
+        // EMAIL-BRAND-1: the subscriber unsubscribes from the BUSINESS — its name and colour, never LevelUpGrowth's
+        'brand_name'         => ($lead && ! empty($lead->workspace_id)) ? \App\Core\Email888\TenantEmail::identity((int) $lead->workspace_id, null)['name'] : null,
+        'brand_color'        => (function () use ($lead) { if (! $lead || empty($lead->workspace_id)) return null; $k = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) $lead->workspace_id); return empty($k['is_neutral']) && ! \App\Core\Brand\WorkspaceBrandKitResolver::isPlatformColor($k['primary_color']) ? $k['primary_color'] : null; })(),
         'resubscribe_url'    => url('/api/email/resubscribe/' . $token),
         'resubscribed'       => $resubscribed,
     ]);

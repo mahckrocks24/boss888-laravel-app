@@ -9,7 +9,17 @@ use Illuminate\Mail\Mailables\Envelope;
 /** RESUME888 — "your CV is ready" with a 7-day download link and a 12-month continue link. White-label: the site's name only. */
 class ResumeReadyMail extends Mailable
 {
-    public function __construct(public string $siteName, public string $downloadUrl, public string $continueUrl, public string $lang = 'tl') {}
+    public function __construct(public string $siteName, public string $downloadUrl, public string $continueUrl, public string $lang = 'tl', public ?int $workspaceId = null, public ?int $businessId = null) {}
+
+    /** EMAIL-BRAND-1: the site speaks to its visitor (tenant purpose) — From is the site's business, never LevelUpGrowth. */
+    public function headers(): \Illuminate\Mail\Mailables\Headers
+    {
+        return new \Illuminate\Mail\Mailables\Headers(text: array_filter([
+            \App\Core\Email888\OutboundPolicy::HDR_PURPOSE   => 'tenant_transactional',
+            \App\Core\Email888\OutboundPolicy::HDR_WORKSPACE => $this->workspaceId ? (string) $this->workspaceId : null,
+            \App\Core\Email888\OutboundPolicy::HDR_BUSINESS  => $this->businessId ? (string) $this->businessId : null,
+        ]));
+    }
 
     public function envelope(): Envelope
     {
@@ -19,10 +29,10 @@ class ResumeReadyMail extends Mailable
 
     public function content(): Content
     {
-        return new Content(htmlString: $this->html());
+        return new Content(htmlString: $this->renderHtml());   // EMAIL-BRAND-1: was html(), which clashes with Mailable::html() and fataled on load
     }
 
-    private function html(): string
+    private function renderHtml(): string
     {
         $e = fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         $t = match ($this->lang) {

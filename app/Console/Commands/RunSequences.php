@@ -130,32 +130,25 @@ class RunSequences extends Command
         $subject = (string) ($step->email_subject ?? "Update from {$sequence->name}");
         $bodyHtml = (string) ($step->email_body_html ?? '');
 
-        // Use the existing emails.notification template — consistent layout.
-        Mail::send(
-            'emails.notification',
-            [
-                'notification' => (object) [
-                    'title'      => $subject,
-                    'body'       => $bodyHtml,
-                    'action_url' => null,
-                ],
-                'user' => (object) [
-                    'email' => $contact->email,
-                    'name'  => $contact->name ?? $contact->first_name ?? null,
-                ],
-            ],
-            function ($m) use ($contact, $subject) {
+        // EMAIL-BRAND-1 (Owner 2026-09-27): a sequence is a BUSINESS writing to its contacts. It used the LevelUpGrowth
+        // notification template ("LevelUpGrowth", "View in Dashboard", dashboard footer) and escaped the HTML body. Now it
+        // is the business's own branded layout; From and Reply-To come from the business (tenant purpose).
+        $__ws = (int) ($sequence->workspace_id ?? 0) ?: null;
+        $__tid = \App\Core\Email888\TenantEmail::identity($__ws, null);
+        $__body = strip_tags($bodyHtml, '<p><br><strong><b><em><i><u><a><ul><ol><li><h2><h3><blockquote><img><span><div><table><tr><td>');
+        if ($__body === strip_tags($__body)) $__body = \App\Core\Email888\TenantEmail::paragraphs($__body);
+        $__html = \App\Core\Email888\TenantEmail::layout($__tid, '', $__body);
+        Mail::html(
+            $__html,
+            function ($m) use ($contact, $subject, $__ws) {
+                if ($__ws) $m->getSymfonyMessage()->getHeaders()->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_WORKSPACE, (string) $__ws);
                 // EM-4: sequence mail is BULK. Declaring the purpose moves it to the
                 // broadcast stream, off the reputation that password resets depend on.
                 $m->getSymfonyMessage()->getHeaders()
                     ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'sequence');
 
                 $m->to($contact->email, $contact->name ?? null)
-                  ->subject($subject)
-                  ->from(
-                      config('mail.from.address', env('MAIL_FROM_ADDRESS', 'hello@levelupgrowth.io')),
-                      config('mail.from.name', env('MAIL_FROM_NAME', 'LevelUpGrowth'))
-                  );
+                  ->subject($subject);   // EMAIL-BRAND-1: From/Reply-To are the business's (tenant purpose), set by the policy listener
             }
         );
     }

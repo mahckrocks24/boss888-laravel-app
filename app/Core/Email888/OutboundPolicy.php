@@ -24,6 +24,7 @@ final class OutboundPolicy
     public const HDR_SENDER      = 'X-LU-Sender';
     public const HDR_REPLY_TO    = 'X-LU-Reply-To';
     public const HDR_STREAM      = 'X-LU-Stream';
+    public const HDR_BUSINESS    = 'X-LU-Business';   // EMAIL-BRAND-1: which business a tenant email speaks for
 
     /** Every X-LU-* header is internal routing metadata and is stripped before send. */
     public const INTERNAL_HEADERS = [
@@ -35,7 +36,14 @@ final class OutboundPolicy
         self::HDR_SENDER,
         self::HDR_REPLY_TO,
         self::HDR_STREAM,
+        self::HDR_BUSINESS,
     ];
+
+    /** EMAIL-BRAND-1: a tenant purpose is a business writing to its own customers — white-labelled, never LevelUpGrowth. */
+    public static function isTenantPurpose(string $purpose): bool
+    {
+        return (config('email888.purposes')[$purpose]['audience'] ?? 'platform') === 'tenant';
+    }
 
     public const UNCLASSIFIED = 'unclassified';
 

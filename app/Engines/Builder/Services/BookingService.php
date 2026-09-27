@@ -220,9 +220,15 @@ class BookingService
 
             if ($mailerOk) {
                 try {
-                    Mail::raw($custBody, function ($m) use ($email, $name, $custSubject, $contactEmail, $businessName) {
+                    // EMAIL-BRAND-1: the customer hears from the BUSINESS, in its brand — never from LevelUpGrowth
+                    $__tid = \App\Core\Email888\TenantEmail::identity((int) ($website->workspace_id ?? 0) ?: null, (int) ($website->business_id ?? 0) ?: null);
+                    $__html = \App\Core\Email888\TenantEmail::layout($__tid, 'Your booking request has been received', \App\Core\Email888\TenantEmail::paragraphs($custBody), null, null, 'We have your request and will confirm shortly.');
+                    Mail::html($__html, function ($m) use ($email, $name, $custSubject, $contactEmail, $businessName, $website, $custBody) {
+                        $m->text($custBody);
                         $m->getSymfonyMessage()->getHeaders()
-                            ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'booking');
+                            ->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, 'tenant_transactional');
+                        $m->getSymfonyMessage()->getHeaders()->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_WORKSPACE, (string) (int) ($website->workspace_id ?? 0));
+                        if (! empty($website->business_id)) $m->getSymfonyMessage()->getHeaders()->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_BUSINESS, (string) (int) $website->business_id);
 
                         $m->to($email, $name !== '' ? $name : null)->subject($custSubject);
                         if (!empty($contactEmail) && filter_var($contactEmail, FILTER_VALIDATE_EMAIL)) {

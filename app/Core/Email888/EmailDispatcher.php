@@ -215,6 +215,9 @@ class EmailDispatcher
         if ($command->actorId !== null) {
             $h->addTextHeader(OutboundPolicy::HDR_USER, (string) $command->actorId);
         }
+        if (! empty($command->metadata['business_id']) && is_numeric($command->metadata['business_id'])) {   // EMAIL-BRAND-1
+            $h->addTextHeader(OutboundPolicy::HDR_BUSINESS, (string) (int) $command->metadata['business_id']);
+        }
         if ($command->senderIdentity !== null) {
             $h->addTextHeader(OutboundPolicy::HDR_SENDER, $command->senderIdentity);
         }
