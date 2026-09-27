@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 final class CampaignService
 {
     /** How early each kind of work is released before its date (hours), so the owner can review it in time. */
-    private const LEAD_HOURS = ['post' => 20, 'article' => 72, 'email' => 48, 'image' => 24, 'video' => 24, 'event' => 0, 'owner_task' => 0];
+    private const LEAD_HOURS = ['post' => 20, 'article' => 72, 'email' => 48, 'image' => 24, 'video' => 24, 'event' => 0, 'owner_task' => 0, 'optimize' => 0];
 
     /** Save planner ideas as campaigns in the "idea" state. @return int[] campaign ids */
     public function saveIdeas(int $wsId, ?int $businessId, array $ideas, string $source): array
@@ -201,6 +201,11 @@ final class CampaignService
         foreach (DB::table('campaign_items')->where('campaign_id', $id)->orderBy('scheduled_at')->get() as $it) {
             // release
             if ($it->status === 'planned' && $live && $it->scheduled_at && Carbon::parse($it->scheduled_at)->subHours(self::LEAD_HOURS[$it->kind] ?? 0)->lte(now())) {
+                if ($it->kind === 'optimize') {   // PAGE-ONE-1: a Search tune-up fix — Sarah's team makes it (included in the plan)
+                    DB::table('campaign_items')->where('id', $it->id)->update(['status' => 'in_progress', 'updated_at' => now()]); $out['released']++;
+                    \App\Jobs\SearchOptimizeJob::dispatch((int) $it->id);
+                    continue;
+                }
                 $t = $this->planTask($c, $it);
                 if (! $t) {
                     DB::table('campaign_items')->where('id', $it->id)->update(['status' => 'needs_you', 'updated_at' => now()]); $out['released']++;

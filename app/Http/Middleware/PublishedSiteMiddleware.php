@@ -66,6 +66,13 @@ class PublishedSiteMiddleware
             }
         }
 
+        // PAGE-ONE-1 heatmaps: the page's own beacon (same host, no cookies, no personal data)
+        if ($request->isMethod('POST') && trim($request->getPathInfo(), '/') === \App\Core\Search\Heatmap::PATH) {
+            $__hs = $website ?? DB::table('websites')->where('subdomain', $subdomain . '.levelupgrowth.io')->where('status', 'published')->first();
+            if ($__hs) \App\Core\Search\Heatmap::collect($__hs, $request);
+            return response('', 204, ['Cache-Control' => 'no-store']);
+        }
+
         // PUBLISHER888 Unit 1 (2026-09-04) — the Publisher Desk lives at /admin on the site's OWN host
         // (custom domain or tenant subdomain) for themes that ship a desk (DeskService::THEMES).
         // GET /admin[/…] returns the desk shell here, BEFORE Laravel routing, so the platform admin
@@ -112,7 +119,8 @@ class PublishedSiteMiddleware
                         || str_starts_with($reqPath, 'admin/')
                         || str_starts_with($reqPath, 'app/');
             $isIndexNowKey = (bool) preg_match('/^[A-Fa-f0-9]{8,128}\.txt$/', $reqPath);
-            if (!$isAdminPath && !$isIndexNowKey) {
+            $isFrame = $request->query('lug_frame') === '1';   // PAGE-ONE-1: the heatmap viewer shows the page on its platform address
+            if (!$isAdminPath && !$isIndexNowKey && !$isFrame) {
                 $w = DB::table('websites')
                     ->where('subdomain', $subdomain . '.levelupgrowth.io')
                     ->where('status', 'published')
@@ -1450,6 +1458,7 @@ JS;
 
     private function injectChatbotWidget(string $html, int $workspaceId, int $websiteId): string
     {
+        if ($websiteId > 0) $html = \App\Core\Search\Heatmap::inject($html, DB::table('websites')->where('id', $websiteId)->first(['id', 'settings_json']));   // PAGE-ONE-1 heatmaps
         if ($workspaceId <= 0) return $html;
         // Already has a chatbot widget? Don't add a second. Covers BOTH the
         // dynamic loader (chatbot.js?ws=) and the static/baked widget

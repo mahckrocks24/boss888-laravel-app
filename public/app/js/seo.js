@@ -7349,11 +7349,20 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     }).catch(function () { box.innerHTML = emptyState('⚠', 'Compare failed', 'Try again.'); });
   };
 
+  // PAGE-ONE-1: the Page One and Heatmaps views load on first use
+  function _p1Load(cb) {
+    if (window.luPageOneView) return cb();
+    var s = document.createElement('script'); s.src = '/app/js/pageone-ui.js?v=p1-20260928'; s.onload = cb; s.onerror = function () { showToast('Could not load this view. Refresh and try again.', 'error'); };
+    document.head.appendChild(s);
+  }
+
   // ── Tab 8 — Insights (sub-tabs) ────────────────────────────────────────
   function renderInsights(el) {
     el.innerHTML = pageTitle('Insights', 'Search Console performance + AI-driven traffic correlations.')
       + '<div class="lgse-subtabs" id="lgse-ins-subtabs">'
-        + '<div class="lgse-subtab active" data-sec="traffic">Traffic Insights</div>'
+        + '<div class="lgse-subtab active" data-sec="pageone">Page One</div>'   /* PAGE-ONE-1 */
+        + '<div class="lgse-subtab" data-sec="heatmaps">Heatmaps</div>'
+        + '<div class="lgse-subtab" data-sec="traffic">Traffic Insights</div>'
         + '<div class="lgse-subtab" data-sec="gsc">Search Console</div>'
         + '<div class="lgse-subtab" data-sec="visitors">Google Analytics</div>'
       + '</div>'
@@ -7363,12 +7372,13 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     function load(sec) {
       Array.prototype.forEach.call(subtabs.children, function (t) { t.classList.toggle('active', t.getAttribute('data-sec') === sec); });
       body.innerHTML = '<div style="padding:24px;color:var(--lgse-t3);text-align:center;font-size:11px">Loading…</div>';
+      if (sec === 'pageone' || sec === 'heatmaps') return _p1Load(function () { (sec === 'pageone' ? window.luPageOneView : window.luHeatmapView)(body, (window._lgseActiveSiteUrl || '').trim()); });   /* PAGE-ONE-1 */
       if (sec === 'traffic') return loadTraffic(body);
       if (sec === 'gsc') return loadGsc(body);
       if (sec === 'visitors') return loadGaVisitors(body);
     }
     Array.prototype.forEach.call(subtabs.children, function (t) { t.addEventListener('click', function () { load(t.getAttribute('data-sec')); }); });
-    load('traffic');
+    load('pageone');
   }
 
   // Switch which GA4 property the Visitors tab reads, then re-render.

@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
  */
 class SearchTick extends Command
 {
-    protected $signature = 'search:tick {--pages} {--inspect} {--publish} {--foundation} {--website= : one website only} {--workspace= : one workspace only} {--quiet-owner : do not message the owner}';
+    protected $signature = 'search:tick {--pages} {--inspect} {--publish} {--foundation} {--perf} {--tuneup} {--merges} {--report} {--website= : one website only} {--workspace= : one workspace only} {--quiet-owner : do not message the owner}';
     protected $description = 'Page One: new pages, indexing, articles, optimization, reports';
 
     public function handle(NewPages $pages): int
@@ -36,6 +36,28 @@ class SearchTick extends Command
             $this->info("inspected {$n}");
         }
         if ($this->option("publish")) $this->info("published " . app(\App\Core\Search\PageOne::class)->dueTick());
+        $perf = app(\App\Core\Search\Performance::class);
+        $quiet = (bool) $this->option('quiet-owner');
+        if ($this->option('perf')) {
+            $t = ['pages' => 0, 'page_one' => 0, 'slipping' => 0];
+            foreach ($sites as $w) { try { foreach ($perf->weekly($w) as $k => $v) $t[$k] += $v; } catch (\Throwable $e) { $this->warn("perf {$w->id}: " . $e->getMessage()); } }
+            $this->info('perf: ' . json_encode($t) . ' · heatmap events pruned ' . \App\Core\Search\Heatmap::prune());
+        }
+        if ($this->option('tuneup')) {
+            $n = 0;
+            foreach ($sites as $w) { try { if ($perf->tuneup($w, ! $quiet)) $n++; } catch (\Throwable $e) { $this->warn("tuneup {$w->id}: " . $e->getMessage()); } }
+            $this->info("tune-ups proposed {$n}");
+        }
+        if ($this->option('merges')) {
+            $n = 0;
+            foreach ($sites as $w) { try { if (! $quiet && $perf->proposeMerges($w)) $n++; } catch (\Throwable $e) { $this->warn("merges {$w->id}: " . $e->getMessage()); } }
+            $this->info("merge proposals {$n}");
+        }
+        if ($this->option('report')) {
+            $n = 0;
+            foreach ($sites as $w) { try { if (! $quiet && $perf->report($w)) $n++; } catch (\Throwable $e) { $this->warn("report {$w->id}: " . $e->getMessage()); } }
+            $this->info("reports {$n}");
+        }
         if ($this->option("foundation")) {
             $one = $this->option("website") || $this->option("workspace");
             if (! $one && ! is_file(storage_path("app/pageone-roadmap.on"))) { $this->info("roadmaps: switched off"); return self::SUCCESS; }

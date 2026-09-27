@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class ChatReplies
 {
-    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step'];
+    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge'];
     /** Text after this marker is the plain-words version of a card: the app shows it, the web hides it next to the card. */
     public const APP_PART = "\n\n\u{200B}";
 
@@ -78,6 +78,8 @@ final class ChatReplies
                 return $row && $row->intake_status === 'asked';
             case 'brand_summary':
                 return app(\App\Core\Brand\BrandProfileService::class)->proposalStatus($wsId, (string) ($c['token'] ?? '')) === 'pending';
+            case 'search_merge':   // PAGE-ONE-1
+                return DB::table('search_plans')->where('id', (int) ($c['plan_id'] ?? 0))->where('workspace_id', $wsId)->where('kind', 'merge')->where('status', 'proposed')->exists();
             case 'campaign_step':
                 return DB::table('campaign_items')->where('id', (int) ($q['meta']['item_id'] ?? 0))->where('workspace_id', $wsId)->whereIn('status', ['needs_you', 'planned', 'held', 'failed'])->exists();
         }
@@ -113,7 +115,7 @@ final class ChatReplies
         $c = DB::table('marketing_campaigns')->where('id', $id)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
         if (! $c) return null;
         $tz = (string) (DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC');
-        $kind = ['post' => 'Social post', 'article' => 'Article', 'email' => 'Email you send', 'image' => 'Design', 'video' => 'Video', 'event' => 'Event', 'owner_task' => 'Your step'];
+        $kind = ['post' => 'Social post', 'article' => 'Article', 'email' => 'Email you send', 'image' => 'Design', 'video' => 'Video', 'event' => 'Event', 'owner_task' => 'Your step', 'optimize' => 'Search fix'];
         $chan = ['facebook' => 'Facebook', 'instagram' => 'Instagram', 'linkedin' => 'LinkedIn', 'website' => 'your website', 'email' => 'email', 'in_person' => '', 'phone' => 'phone'];
         $steps = [];
         foreach (DB::table('campaign_items')->where('campaign_id', $id)->orderBy('scheduled_at')->orderBy('sort')->get() as $it) {
@@ -169,6 +171,7 @@ final class ChatReplies
             'brand_intake' => [['label' => 'Use my website', 'text' => 'Skip, use my website']],
             'brand_summary' => [['label' => 'Save', 'text' => 'Save'], ['label' => 'Discard', 'text' => 'Discard']],
             'campaign_step' => [['label' => 'Done', 'text' => 'Done'], ['label' => 'Skip', 'text' => 'Skip this step']],
+            'search_merge' => [['label' => 'Merge', 'text' => 'Merge'], ['label' => 'Keep as they are', 'text' => 'Keep']],
             default => [],
         };
     }
@@ -266,6 +269,18 @@ final class ChatReplies
                         return null;
                     }
                     if ($no || preg_match('/^\s*(discard|wrong|that\'?s wrong)\b/i', $t)) { $bp->discard($wsId, (string) ($c['token'] ?? '')); return ['turn' => 'reply', 'note' => 'The owner discarded the brand summary; nothing was saved. Acknowledge in one line and invite them to tell you what is right.', 'verified' => []]; }
+                    return null;
+                }
+                case 'search_merge': {   // PAGE-ONE-1: the owner decides — nothing is merged without their yes
+                    if ($yes || preg_match('/^\s*(merge|merge them|fold them|go ahead)\b/i', $t)) {
+                        $r = app(\App\Core\Search\Performance::class)->applyMerges($wsId, (int) ($c['plan_id'] ?? 0));
+                        if (! empty($r['ok'])) return ['turn' => 'reply', 'note' => 'The owner approved folding overlapping articles into their strongest version; ' . $r['n'] . ' articles were folded in, each with a permanent redirect so no link breaks, and they remain in the workspace as drafts. Confirm in one or two warm lines and say she will watch the stronger pages climb.', 'verified' => ['merged', 'redirect', 'folded']];
+                        return null;
+                    }
+                    if ($no || preg_match('/^\s*(keep|keep them|leave them)\b/i', $t)) {
+                        DB::table('search_plans')->where('id', (int) ($c['plan_id'] ?? 0))->where('workspace_id', $wsId)->update(['status' => 'declined', 'updated_at' => now()]);
+                        return ['turn' => 'reply', 'note' => 'The owner chose to keep those articles as they are. Acknowledge in one line; she will keep improving each one instead.', 'verified' => []];
+                    }
                     return null;
                 }
                 case 'campaign_step': {

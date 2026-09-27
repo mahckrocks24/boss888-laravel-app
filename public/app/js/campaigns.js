@@ -33,8 +33,8 @@
     video: '<rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/>'
   };
   function ic(n, s) { return '<svg class="cm-ic" viewBox="0 0 24 24" width="' + (s || 16) + '" height="' + (s || 16) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (I[n] || I.flag) + '</svg>'; }
-  var KIND = { post: 'Social post', article: 'Article', email: 'Email you send', image: 'Design', video: 'Video', event: 'Event', owner_task: 'You' };
-  var KCOL = { post: '#6C8CFF', article: '#2FB39A', email: '#E0A13A', image: '#C77DFF', video: '#F0527A', event: '#E0685A', owner_task: '#8A93A6' };
+  var KIND = { post: 'Social post', article: 'Article', email: 'Email you send', image: 'Design', video: 'Video', event: 'Event', owner_task: 'You', optimize: 'Search fix' };
+  var KCOL = { post: '#6C8CFF', article: '#2FB39A', email: '#E0A13A', image: '#C77DFF', video: '#F0527A', event: '#E0685A', owner_task: '#8A93A6', optimize: '#2FB39A' };
   var STAT = { idea: ['Idea', 'var(--p)'], launching: ['Starting', '#3B82F6'], active: ['Running', '#22A06B'], paused: ['Paused', '#D97706'], completed: ['Finished', '#64748B'], declined: ['Not now', '#94A3B8'] };
   var ISTAT = { planned: ['Planned', 'var(--t3)'], in_progress: ['In progress', '#3B82F6'], needs_you: ['Needs you', '#D97706'], done: ['Done', '#22A06B'], skipped: ['Skipped', 'var(--t3)'], failed: ['Needs attention', '#DC2626'], held: ['On hold', '#D97706'] };
   function credits(e) { var n = Math.max(1, Math.ceil((+e || 0) * 1.25)); return n + (n === 1 ? ' credit' : ' credits'); }

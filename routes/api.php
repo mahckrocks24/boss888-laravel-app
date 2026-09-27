@@ -939,6 +939,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     require __DIR__ . '/api/authenticated/mandates-01.php'; // MANDATE-1 2026-09-25 — the Plan of Action (DEC-0018): read, stop
     require __DIR__ . '/api/authenticated/catalogue-01.php'; // CAT-2 2026-09-22 — the catalogue as a section (workspace summary + groups)
     require __DIR__ . '/api/authenticated/businesses-01.php'; require __DIR__ . '/api/authenticated/brand-01.php'; // BRAND-B1 /api/brand/*
+    require __DIR__ . '/api/authenticated/search-01.php'; // PAGE-ONE-1 (RFC-0020) search overview + heatmaps
     require __DIR__ . '/api/authenticated/growth-01.php'; // WATCH-1 (RFC-0019) market watch, campaign changes, check-ins
     require __DIR__ . '/api/authenticated/campaigns-01.php'; // CAMPAIGNS-1 /api/campaigns/* // RFC-0011 U5a 2026-09-22 — the businesses of one workspace // PERF 2026-09-22 — /api/batch: allow-listed GET reads as sub-requests in one process
 

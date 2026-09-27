@@ -234,7 +234,7 @@ final class PageOne
     }
 
     /** Headings and length of a ranking page (what the article must beat). */
-    private function readCompetitor(string $url, string $title): ?array
+    public function readCompetitor(string $url, string $title): ?array
     {
         if (! str_starts_with($url, 'http')) return null;
         $d = strtolower((string) parse_url($url, PHP_URL_HOST));
