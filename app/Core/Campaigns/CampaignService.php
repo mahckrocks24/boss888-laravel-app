@@ -26,7 +26,7 @@ final class CampaignService
     /** Save planner ideas as campaigns in the "idea" state. @return int[] campaign ids */
     public function saveIdeas(int $wsId, ?int $businessId, array $ideas, string $source): array
     {
-        $tz = $this->tz($wsId);
+        $tz = $this->tz($wsId, $businessId);   // BIZ-TZ-1: a business's steps run on its own local clock
         $ids = [];
         foreach ($ideas as $c) {
             $start = Carbon::now($tz)->startOfDay()->addDays((int) $c['starts_in_days']);
@@ -417,8 +417,15 @@ final class CampaignService
         } catch (\Throwable $e) { Log::info('[CHAT-FIRST-1] campaign message failed', ['ws' => $wsId, 'type' => $type, 'e' => $e->getMessage()]); }
     }
 
-    private function tz(int $wsId): string
+    /** BIZ-TZ-1 (Owner 2026-09-28: a business in the Philippines and one in Dubai): a business's own location sets the clock its
+     *  steps are scheduled on; the workspace (the owner's) zone otherwise. Owner-facing dates still read in the owner's zone. */
+    private function tz(int $wsId, ?int $bizId = null): string
     {
+        if ($bizId) {
+            $b = DB::table('businesses')->where('id', $bizId)->where('workspace_id', $wsId)->first(['location', 'address_json']);
+            $z = $b ? \App\Core\Support\OwnerTimezone::fromLocation(trim(((string) $b->location) . ' ' . ((string) $b->address_json))) : null;
+            if ($z) return $z;
+        }
         $tz = (string) (DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC');
         try { new \DateTimeZone($tz); return $tz; } catch (\Throwable $e) { return 'UTC'; }
     }
