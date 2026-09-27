@@ -369,7 +369,9 @@ class CreativeConnector extends BaseConnector
             $taskId = $data['task_id'] ?? null;
 
             if (!$taskId) {
-                return ['success' => false, 'error' => 'MiniMax returned no task_id', 'raw' => $data];
+                // VIDEO-F1: keep the provider's own reason (balance, plan, content, parameters) in the log — never shown to customers
+                \Illuminate\Support\Facades\Log::warning('[MiniMax] video refused', ['code' => $data['base_resp']['status_code'] ?? null, 'msg' => $data['base_resp']['status_msg'] ?? null, 'duration' => $options['duration'] ?? null, 'prompt_len' => mb_strlen($prompt)]);
+                return ['success' => false, 'error' => 'Provider refused: ' . ($data['base_resp']['status_code'] ?? '?') . ' ' . ($data['base_resp']['status_msg'] ?? ''), 'raw' => $data];
             }
 
             return [

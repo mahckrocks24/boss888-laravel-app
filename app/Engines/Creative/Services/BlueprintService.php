@@ -461,15 +461,27 @@ EOT;
         // that invents "professional / professional" for a workspace without a row (EV-1054).
         $overrides = [];
         try {
-            $row = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->first();
+            $__biz = ! empty($context['business_id']) ? (int) $context['business_id'] : null;   // VIDEO-F1: the business the video is for
+            $row = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->whereNull('deleted_at')->where(fn ($q) => $__biz ? $q->where('business_id', $__biz) : $q->whereNull('business_id'))->first()
+                ?: DB::table('creative_brand_identities')->where('workspace_id', $wsId)->whereNull('deleted_at')->whereNull('business_id')->first();
             if ($row) {
                 foreach (['voice', 'tone', 'visual_style'] as $k) {
                     if (! empty($row->{$k})) { $overrides[$k] = (string) $row->{$k}; }
                 }
             }
         } catch (\Throwable $e) { /* no override layer */ }
-        $brandArr = \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, $overrides);
+        $bizId    = ! empty($context['business_id']) ? (int) $context['business_id'] : null;
+        $brandArr = \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, $overrides, $bizId);
         $brand    = \App\Core\Brand\BrandContextForCreative::toProse($brandArr);
+        // VIDEO-F1: a saved inspiration that fits the request shapes the look of the video, as it does for images (the owner never sees how)
+        try {
+            $insp = app(\App\Core\Brand\InspirationService::class);
+            $rows = $insp->relevant($wsId, $bizId, $prompt, 1);
+            if ($rows) {
+                $blk = \App\Core\Brand\InspirationService::block($rows);
+                if (trim($blk) !== '') { $brand .= "\n" . $blk; $insp->markUsed($rows); }
+            }
+        } catch (\Throwable $e) {}
         $duration = (int) ($context['duration'] ?? 10);
         // RFC-0009 P6: the scene count is decided by ONE rule, shared with ScenePlannerService
         // (round(duration/5), clamped, then the launch cap) — the blueprint used to say 2 while the

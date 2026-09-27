@@ -219,7 +219,7 @@ EOT;
                     break;
                 }
             } catch (\Throwable $e) {
-                Log::warning("ScenePlannerService: provider {$provider} failed", ['error' => $e->getMessage()]);
+                Log::warning("ScenePlannerService: provider {$provider} failed", ['error' => $e->getMessage()]);   // VIDEO-F1: refusals are logged by the connector with the provider's reason
             }
         }
 

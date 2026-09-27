@@ -524,6 +524,41 @@ class CreativeService
         ]));
     }
 
+    /**
+     * VIDEO-F1 / CHAT-FIRST-1 (Owner 2026-09-27): a video Sarah was asked for comes back to her chat — the finished clip with a
+     * link to watch it (the companion app opens links; it cannot play an attachment inline), or a plain note that it failed
+     * and the credits were returned. Videos made in Studio by hand stay in Studio (no task behind them). Said once.
+     */
+    private function tellVideoInChat(int $assetId, bool $ok, string $url): void
+    {
+        try {
+            $a = DB::table('assets')->where('id', $assetId)->first(['id', 'workspace_id', 'task_id', 'metadata_json', 'duration_seconds']);
+            if (! $a || ! $a->task_id) return;
+            $meta = json_decode((string) ($a->metadata_json ?? ''), true) ?: [];
+            if (! empty($meta['chat_told_at'])) return;
+            $meta['chat_told_at'] = now()->toIso8601String();
+            DB::table('assets')->where('id', $assetId)->update(['metadata_json' => json_encode($meta)]);
+            $task = DB::table('tasks')->where('id', $a->task_id)->first(['payload_json']);
+            $p = json_decode((string) ($task->payload_json ?? ''), true) ?: [];
+            $what = trim((string) ($p['title'] ?? $p['description'] ?? 'your video'));
+            if ($url !== '' && ! preg_match('#^https?://#', $url)) $url = rtrim((string) config('app.url'), '/') . '/' . ltrim($url, '/');
+            $bi = app(\App\Core\Brand\BrandIntakeService::class);
+            if ($ok) {
+                $words = $bi->sarahWords((int) $a->workspace_id, 'video_ready', "Write Sarah's short chat message (1-2 sentences): the video the owner asked for (FACTS.what) is ready; the link to watch it is just below. Offer one natural next step (use it in a post, or make another version). No emojis, never mention how it was made.",
+                    ['what' => $what, 'seconds' => $meta['duration'] ?? null], 'Your video is ready: ' . $what . '.');
+                $words .= "\n\n[▶ Watch the video](" . $url . ')';
+                app(\App\Core\Agents\AgentMessageService::class)->postAsAgent((int) $a->workspace_id, 'sarah', $words, ['notification_type' => 'video_ready', 'asset_id' => $assetId,
+                    'attachments' => [['kind' => 'video', 'url' => $url, 'name' => 'video.mp4']]]);
+            } else {
+                $words = $bi->sarahWords((int) $a->workspace_id, 'video_failed', "Write Sarah's short chat message (1-2 sentences): the video the owner asked for (FACTS.what) could not be made this time; the credits for it are back in their balance; offer to try again. No emojis, no technical details.",
+                    ['what' => $what], 'I could not make the video this time (' . $what . '). The credits are back in your balance — want me to try again?');
+                app(\App\Core\Agents\AgentMessageService::class)->postAsAgent((int) $a->workspace_id, 'sarah', $words, ['notification_type' => 'video_failed', 'asset_id' => $assetId]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::info('[VIDEO-F1] chat note failed', ['asset' => $assetId, 'e' => $e->getMessage()]);
+        }
+    }
+
     public function pollVideoJob(int $assetId): array
     {
         $asset = DB::table('assets')->where('id', $assetId)->first();
@@ -571,6 +606,7 @@ class CreativeService
                     'mime_type'    => 'video/mp4',
                 ]);
                 $this->engineIntel->recordToolUsage('creative', 'poll_video', 0.9);
+                $this->tellVideoInChat($assetId, true, (string) $durable['url']);   // VIDEO-F1 / CHAT-FIRST-1
                 return $this->sanitize(['status' => 'completed', 'url' => $durable['url'], 'asset_id' => $assetId]);
             }
         }
@@ -578,6 +614,7 @@ class CreativeService
         if ($jobStatus['status'] === 'failed') {
             $this->refundFailedVideo($assetId); // MONEY-PATH FIX (2026-09-03): refund the committed charge for a failed async video
             $this->failAsset($assetId, 'Scene generation failed');
+            $this->tellVideoInChat($assetId, false, '');   // VIDEO-F1 / CHAT-FIRST-1
             return $this->sanitize(['status' => 'failed', 'asset_id' => $assetId]);
         }
 

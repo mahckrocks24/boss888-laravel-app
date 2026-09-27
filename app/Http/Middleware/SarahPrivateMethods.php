@@ -19,9 +19,10 @@ class SarahPrivateMethods
 {
     /** Keys that are always private. */
     private const PRIVATE_KEYS = ['provider_prompt', 'enhanced_prompt', 'revised_prompt', 'reasoning_summary', 'design_direction', 'design_direction_id',
-        'inspiration_ids', 'prompt_skeleton', 'recipe', 'directions_json', 'analysis_json', 'typography_strategy', 'historical_or_factual_constraints'];
+        'inspiration_ids', 'prompt_skeleton', 'recipe', 'directions_json', 'analysis_json', 'typography_strategy', 'historical_or_factual_constraints',
+        'brand_context', 'scene_prompt', 'style_additions'];   // VIDEO-F1 (2026-09-27): the video recipe
 
-    private const FAST = '/"(provider_prompt|enhanced_prompt|revised_prompt|reasoning_summary|design_direction(_id)?|inspiration_ids|prompt_skeleton|recipe|directions_json|analysis_json|typography_strategy|historical_or_factual_constraints|prompt)"\s*:/';
+    private const FAST = '/"(provider_prompt|enhanced_prompt|revised_prompt|reasoning_summary|design_direction(_id)?|inspiration_ids|prompt_skeleton|recipe|directions_json|analysis_json|typography_strategy|historical_or_factual_constraints|prompt|brand_context|scene_prompt|style_additions)\\\\?"\s*:/';
 
     public function handle(Request $request, Closure $next): Response
     {
@@ -53,6 +54,11 @@ class SarahPrivateMethods
             if (is_string($k) && (in_array(strtolower($k), self::PRIVATE_KEYS, true) || ($isAsset && $k === 'prompt'))) { unset($node[$k]); $removed++; continue; }
             if (is_string($k) && strtolower($k) === 'blueprint' && is_array($v) && (isset($v['provider_prompt']) || isset($v['typography_strategy']) || isset($v['composition']))) { unset($node[$k]); $removed++; continue; }
             if (is_array($v)) $node[$k] = $this->walk($v, $removed);
+            // VIDEO-F1: JSON stored as text (metadata_json …) is opened, cleaned and closed again
+            elseif (is_string($v) && is_string($k) && (str_ends_with($k, '_json') || $k === 'metadata') && str_starts_with(ltrim($v), '{') && preg_match(self::FAST, $v)) {
+                $inner = json_decode($v, true);
+                if (is_array($inner)) { $before = $removed; $inner = $this->walk($inner, $removed); if ($removed > $before) $node[$k] = json_encode($inner, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); }
+            }
         }
         return $node;
     }
