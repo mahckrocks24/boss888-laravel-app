@@ -294,6 +294,39 @@ final class Performance
         return true;
     }
 
+    /** S4: what the campaign planner should know about search — so campaigns and the roadmap point the same way. */
+    public static function plannerFacts(int $wsId, ?int $bizId): array
+    {
+        $sites = SearchSites::managed($wsId);
+        $w = $bizId ? $sites->firstWhere('business_id', $bizId) : null;
+        $w = $w ?: ($sites->count() === 1 ? $sites->first() : null);
+        if (! $w) return [];
+        $road = DB::table('search_plans')->where('website_id', $w->id)->where('kind', 'roadmap')->orderByDesc('id')->value('campaign_id');
+        $next = $road ? DB::table('campaign_items')->where('campaign_id', $road)->where('status', 'planned')->where('scheduled_at', '>=', now())->orderBy('scheduled_at')->limit(4)->get(['title', 'scheduled_at', 'brief'])
+            ->map(fn ($i) => ['article' => $i->title, 'week_of' => substr((string) $i->scheduled_at, 0, 10), 'search' => preg_match('/Target search:\s*([^.]+)/i', (string) $i->brief, $m) ? trim($m[1]) : null])->all() : [];
+        $close = DB::table('search_pages')->where('website_id', $w->id)->whereIn('bucket', ['striking', 'seen_not_clicked'])->orderByDesc('impressions_28')->limit(4)->get(['title', 'top_query', 'position_28'])
+            ->map(fn ($p) => ['page' => $p->title, 'search' => $p->top_query, 'position' => round((float) $p->position_28, 1)])->all();
+        $targets = DB::table('search_targets')->where('website_id', $w->id)->where('status', 'target')->orderByDesc('score')->limit(6)->pluck('keyword')->all();
+        return array_filter(['roadmap_articles_coming' => $next ?: null, 'pages_close_to_page_one' => $close ?: null, 'searches_worth_winning' => $targets ?: null]);
+    }
+
+    /** S4: one line for the morning brief when something in search moved. */
+    public static function briefFacts(int $wsId): array
+    {
+        $out = [];
+        $pub = DB::table('articles')->where('workspace_id', $wsId)->where('status', 'published')->where('published_at', '>=', now()->subHours(30))->where('brief_json', 'like', '%"page_one"%')->limit(2)->pluck('title')->all();
+        if ($pub) $out['published_yesterday'] = $pub;
+        // newly on page one this week (it was below position 10, or unmeasured, at the previous reading)
+        $won = DB::table('search_pages')->where('workspace_id', $wsId)->whereIn('bucket', ['winning', 'page_one', 'seen_not_clicked'])->where('bucket_at', '>=', now()->subDays(7))->orderBy('position_28')->limit(10)->get(['title', 'top_query', 'position_28', 'bucket_json'])
+            ->filter(function ($p) { $prev = (json_decode((string) $p->bucket_json, true) ?: [])['prev_position'] ?? null; return $prev === null || (float) $prev > 10; })->take(2)
+            ->map(fn ($p) => str_replace(['"', '“', '”'], '', $p->title . ' — ' . ($p->top_query ?? '') . ' #' . round((float) $p->position_28)))->values()->all();
+        if ($won) $out['on_page_one'] = $won;
+        $road = DB::table('campaign_items as i')->join('marketing_campaigns as c', 'c.id', '=', 'i.campaign_id')->where('c.workspace_id', $wsId)->where('c.source', KeywordPlan::SOURCE)->where('c.status', 'active')
+            ->where('i.status', 'planned')->orderBy('i.scheduled_at')->first(['i.title', 'i.scheduled_at']);
+        if ($road) $out['next_article'] = str_replace(['"', '“', '”'], '', $road->title) . ' (' . substr((string) $road->scheduled_at, 0, 10) . ')';
+        return $out;
+    }
+
     private function tell(int $wsId, string $type, string $instruction, array $facts, string $fallback, array $meta = []): void
     {
         try {

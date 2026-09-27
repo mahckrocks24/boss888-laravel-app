@@ -37,6 +37,7 @@ final class CampaignPlanner
             . "- Ground every idea in the facts: the business's services and audience, the date and location (upcoming holidays, seasons, local moments in the next 8 weeks), recent signals (leads, buying comments, what content exists), and what worked or was declined before. Never repeat a declined idea or an active campaign.\n"
             . "- Use the channels the business really has (connected_channels). A channel that is not connected may appear only if the item says what the owner must connect first.\n"
             . "- Mix formats a designer and marketer would: social posts with banners, a website article that supports search, an offer or event, and simple owner tasks (call past clients, ask for reviews, put up a poster). A short brand video (kind video: a 6-second vertical clip for Reels and Stories, 8 credits) fits once or twice in a campaign when motion sells the offer (food, places, products in use).\n"
+            . "- Search (FACTS.search): when the business has a Search Roadmap, a campaign's website article is the roadmap article of that week (use its exact title from roadmap_articles_coming) — do not plan a second article that week; add a post that shares it instead. Pages close to page one and searches worth winning are good campaign themes (a keyword push: the article plus posts that point to it). A campaign aimed at search may use the KPI visits.\n"
             . "- Bulk email is not part of the product: never plan automated email sends. When emailing past customers would help, add an owner_task whose brief is the short, personal message the owner can send themselves.\n"
             . "- Structure: 2-4 phases (task groups) such as Build-up, Launch, Follow-up; 5-12 items in total, each with a day_offset from the campaign start (0 = first day) and a short plain-language brief of what it says or shows.\n"
             . "- Target: one measurable KPI (leads, bookings, enquiries, sales, reviews, followers, email_signups or visits) with a modest, believable number for this business's size. Never promise results.\n"
@@ -158,6 +159,7 @@ final class CampaignPlanner
             'saved_inspirations' => $insp,
             'last_30_days' => ['leads_by_source' => $leads, 'buying_comments' => $hot, 'posts_published' => $posts, 'articles_published' => $articles],
             'active_goals' => $goals, 'past_campaigns' => $past,
+            'search' => (function () use ($wsId, $bizId) { try { return \App\Core\Search\Performance::plannerFacts($wsId, $bizId) ?: null; } catch (\Throwable $e) { return null; } })(),   // PAGE-ONE-1 S4
         ], fn ($v) => $v !== null && $v !== [] && $v !== '');
     }
 }
