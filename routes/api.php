@@ -48,6 +48,25 @@ Route::get('/health', function () {
 // Simple liveness probe — minimal, fast
 Route::get('/ping', fn () => response()->json(['pong' => true, 'ts' => now()->timestamp]))->name('ping');
 
+// ADS-WIRE-1 (2026-09-28): the public ad delivery plane. The tag runs on tenant sites (subdomains and custom domains), so
+// these answer cross-origin without credentials. Every path fails safe: no fill (204), never an error on a tenant page.
+$__adSignals = fn (\Illuminate\Http\Request $r) => ['ip' => $r->ip(), 'user_agent' => (string) $r->userAgent(), 'country' => $r->header('CF-IPCountry')];
+$__adCors = fn ($resp) => $resp->header('Access-Control-Allow-Origin', '*')->header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')->header('Access-Control-Allow-Headers', 'Content-Type')->header('Access-Control-Max-Age', '86400');
+Route::options('/ads/{any}', fn () => $__adCors(response('', 204)))->where('any', '.*');
+Route::middleware('throttle:240,1')->post('/ads/decide', function (\Illuminate\Http\Request $r) use ($__adSignals, $__adCors) {
+    $out = app(\App\Engines\Ads\Services\AdDeliveryService::class)->decide((array) $r->json()->all(), $__adSignals($r));
+    return $__adCors($out['body'] === null ? response('', (int) $out['status']) : response()->json($out['body'], (int) $out['status']))->header('Cache-Control', 'no-store');
+});
+Route::middleware('throttle:600,1')->post('/ads/event', function (\Illuminate\Http\Request $r) use ($__adSignals, $__adCors) {
+    $payload = json_decode((string) $r->getContent(), true) ?: (array) $r->all();
+    $out = app(\App\Engines\Ads\Services\AdDeliveryService::class)->event($payload, $__adSignals($r));
+    return $__adCors(response()->json($out['body'] ?? [], (int) ($out['status'] ?? 204)))->header('Cache-Control', 'no-store');
+});
+Route::middleware('throttle:120,1')->get('/ads/click/{token}', function (\Illuminate\Http\Request $r, string $token) use ($__adSignals) {
+    $out = app(\App\Engines\Ads\Services\AdDeliveryService::class)->click($token, $__adSignals($r));
+    return $out['url'] ? redirect()->away($out['url'], 302)->header('Cache-Control', 'no-store') : response('', 204);
+})->where('token', '[A-Za-z0-9._~%-]+');
+
 Route::get('/public/workspace-count', function () {
     $count = \App\Models\Workspace::where('onboarded', true)->count();
     return response()->json(['count' => $count]);

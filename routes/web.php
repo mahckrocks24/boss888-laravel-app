@@ -1,5 +1,13 @@
 <?php
 
+// ADS-WIRE-1 (2026-09-28): the ad tag every eligible tenant page loads. Always valid JavaScript (a no-op when the site
+// is not eligible or ads are off), so a tenant page never shows a script error.
+Route::get('/ads.js', function (\Illuminate\Http\Request $r) {
+    $out = app(\App\Engines\Ads\Services\AdDeliveryService::class)->tag((int) $r->query('w', 0), app(\App\Engines\Ads\Services\AdTagAssetService::class), app(\App\Engines\Ads\Services\AdGateService::class));
+    return response((string) $out['js'], 200)->header('Content-Type', 'application/javascript; charset=utf-8')
+        ->header('Cache-Control', $out['served'] ? 'public, max-age=300' : 'public, max-age=60')->header('Access-Control-Allow-Origin', '*');
+})->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class, \Illuminate\Session\Middleware\StartSession::class, \Illuminate\View\Middleware\ShareErrorsFromSession::class]);
+
 use Illuminate\Support\Facades\Route;
 
 
