@@ -603,6 +603,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
         // OWNER RULE 2026-09-14: no vendor name or raw provider error ever reaches a customer-facing API response.
         $middleware->append(\App\Http\Middleware\VendorSafeResponse::class);
+        $middleware->append(\App\Http\Middleware\SarahPrivateMethods::class);   // SECRET-1: prompts, codes and recipes never reach a customer
         // MW-1a — SEO isolation: noindex header on staging/IP hosts only.
         $middleware->append(\App\Http\Middleware\StagingNoindex::class);
 

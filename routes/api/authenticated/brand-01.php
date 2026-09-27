@@ -83,6 +83,46 @@ Route::post('/brand/proposals/{token}/discard', function (Request $r, string $to
     return response()->json(['success' => $ok], $ok ? 200 : 422);
 });
 
+// VISION-INSPIRE-1: the inspiration library
+$inspRow = function (Request $r, int $id) {
+    return DB::table('design_inspirations')->where('id', $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first();
+};
+$inspOut = function ($x) {
+    $a = json_decode((string) $x->analysis_json, true) ?: [];
+    return ['id' => (int) $x->id, 'business_id' => $x->business_id ? (int) $x->business_id : null, 'title' => $x->title, 'image_url' => $x->image_url, 'pinned' => (bool) $x->pinned,
+        'uses' => (int) $x->uses, 'status' => $x->status, 'created_at' => (string) $x->created_at, 'why' => array_slice((array) ($a['what_makes_it_work'] ?? []), 0, 3),
+        'directions' => array_map(fn ($d) => DesignDirections::ALL[$d]['name'] ?? $d, json_decode((string) $x->directions_json, true) ?: [])];
+};
+Route::get('/brand/inspirations', function (Request $r) use ($brandBiz, $inspOut) {
+    $wsId = (int) $r->attributes->get('workspace_id');
+    [$bid, $err] = $brandBiz($r, $wsId); if ($err) return $err;
+    $q = DB::table('design_inspirations')->where('workspace_id', $wsId)->where('status', 'active');
+    if ($bid) $q->where(fn ($w) => $w->where('business_id', $bid)->orWhereNull('business_id'));
+    return response()->json(['success' => true, 'inspirations' => $q->orderByDesc('pinned')->orderByDesc('id')->limit(60)->get()->map($inspOut)->values()]);
+});
+Route::get('/brand/inspirations/{id}', function (Request $r, int $id) use ($inspRow, $inspOut) {
+    $x = $inspRow($r, $id);
+    return $x ? response()->json(['success' => true, 'inspiration' => $inspOut($x)]) : response()->json(['success' => false, 'error' => 'Not found.'], 404);
+});
+Route::post('/brand/inspirations/{id}/focus', function (Request $r, int $id) use ($inspRow) {
+    $x = $inspRow($r, $id); if (! $x || $x->status !== 'active') return response()->json(['success' => false, 'error' => 'That inspiration is no longer saved.'], 404);
+    \Illuminate\Support\Facades\Cache::put('brand:insp:focus:' . (int) $x->workspace_id, (int) $x->id, now()->addMinutes(30));
+    $biz = $x->business_id ? DB::table('businesses')->where('id', $x->business_id)->value('name') : null;
+    return response()->json(['success' => true, 'suggested_message' => 'Make a banner' . ($biz ? ' for ' . $biz : '') . ' in the style of my saved inspiration "' . $x->title . '"']);
+});
+Route::post('/brand/inspirations/{id}/pin', function (Request $r, int $id) use ($brandWrite, $inspRow) {
+    if ($e = $brandWrite($r)) return $e;
+    $x = $inspRow($r, $id); if (! $x) return response()->json(['success' => false, 'error' => 'Not found.'], 404);
+    DB::table('design_inspirations')->where('id', $x->id)->update(['pinned' => (bool) $r->input('pinned', true), 'updated_at' => now()]);
+    return response()->json(['success' => true, 'pinned' => (bool) $r->input('pinned', true)]);
+});
+Route::delete('/brand/inspirations/{id}', function (Request $r, int $id) use ($brandWrite, $inspRow) {
+    if ($e = $brandWrite($r)) return $e;
+    $x = $inspRow($r, $id); if (! $x) return response()->json(['success' => false, 'error' => 'Not found.'], 404);
+    DB::table('design_inspirations')->where('id', $x->id)->update(['status' => 'forgotten', 'pinned' => false, 'updated_at' => now()]);
+    return response()->json(['success' => true]);
+});
+
 Route::post('/brand/rules', function (Request $r) use ($brandWrite, $brandBiz) {
     if ($e = $brandWrite($r)) return $e;
     $wsId = (int) $r->attributes->get('workspace_id');

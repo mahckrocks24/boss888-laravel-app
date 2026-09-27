@@ -280,6 +280,13 @@ class ImageIntelligenceService
             if ($__dir) { $brand['design_direction'] = \App\Core\Brand\DesignDirections::promptBlock($__dir); $brand['design_direction_id'] = $__dir['id']; }
         } catch (\Throwable $__de) { /* no direction: the reasoning works from the brand alone */ }
         unset($brand['design_picks'], $brand['design_never']);
+        // VISION-INSPIRE-1: the owner's saved inspirations that fit THIS request (just asked for, pinned, or matching)
+        try {
+            $__is = app(\App\Core\Brand\InspirationService::class);
+            $__ibid = $__bizId ?: (int) (app(\App\Core\Brand\BrandProfileService::class)->business($wsId, null)->id ?? 0);
+            $__rows = $__is->relevant($wsId, $__ibid ?: null, $userPrompt, 2);
+            if ($__rows) { $brand['inspiration'] = \App\Core\Brand\InspirationService::block($__rows); $brand['inspiration_ids'] = array_map(fn ($r) => (int) $r->id, $__rows); $__is->markUsed($__rows); }
+        } catch (\Throwable $__ie) { /* no inspiration: the direction and brand still apply */ }
         if (empty($brand['brand_rules'])) unset($brand['brand_rules']);
         $hasLogo = is_string($brand['logo_url'] ?? null) && trim($brand['logo_url']) !== '';
         $logoRequested = (bool) preg_match('/\blogo\b/i', $userPrompt);

@@ -284,7 +284,7 @@ class MediaController
                 'id', 'workspace_id', 'filename', 'url', 'file_url', 'thumbnail_url',
                 'mime_type', 'asset_type', 'size_bytes', 'width', 'height',
                 'source', 'is_platform_asset', 'is_public',
-                'category', 'tags', 'prompt', 'model', 'created_at'
+                'category', 'tags', 'model', 'created_at'   // SECRET-1: the stored prompt is private
             )
             ->get();
 

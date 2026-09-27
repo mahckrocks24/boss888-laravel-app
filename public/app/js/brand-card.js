@@ -277,6 +277,72 @@
     });
   }
 
+  /* ── VISION-INSPIRE-1: an inspiration Sarah studied and remembered ── */
+  var ICO_EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var ICO_SPARK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.9L19 9.7l-4.3 3.1L16 18l-4-2.9L8 18l1.3-5.2L5 9.7l5.2-1.8Z"/></svg>';
+  var ICO_PIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l-1 6 3 3H7l3-3-1-6Z"/><path d="M12 13v7"/></svg>';
+  var ICO_COPY = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+  var CSS3 = '.lbi-body{display:grid;grid-template-columns:minmax(120px,190px) 1fr;gap:18px;align-items:start}.lbi-img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:12px;border:1px solid var(--bd);background:var(--s2);display:block;cursor:zoom-in}' +
+    '.lbi-title{font:700 17px/1.3 var(--fh,var(--fb,inherit));margin:0 0 8px;color:var(--t1)}.lbi-tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.lbi-tag{font-size:12px;padding:4px 10px;border-radius:99px;background:var(--s2);border:1px solid var(--bd);color:var(--t2)}' +
+    '.lbi-sw{display:flex;gap:6px;margin:0 0 12px}.lbi-sw i{width:22px;height:22px;border-radius:6px;border:1px solid var(--bd)}.lbi-h{font:600 11px/1 var(--fb,inherit);letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:12px 0 6px}' +
+    '.lbi-why{margin:0;padding-left:18px;color:var(--t2);font-size:13px;line-height:1.5}.lbi-why li{margin:2px 0}' +
+    '.lbi-prompt{margin-top:14px;border:1px solid var(--bd);border-radius:10px;background:var(--s2)}.lbi-prompt summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;font:600 13px var(--fb,inherit);color:var(--t1)}.lbi-prompt summary::-webkit-details-marker{display:none}.lbi-prompt summary:after{content:"Show";font-weight:500;color:var(--t3);font-size:12px}.lbi-prompt[open] summary:after{content:"Hide"}' +
+    '.lbi-prompt pre{margin:0;padding:0 12px 12px;white-space:pre-wrap;word-break:break-word;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--t2)}.lbi-copy{margin:0 12px 12px}' +
+    '.lbc-btn.on{border-color:var(--p);color:var(--p)}.lbi-gone{opacity:.6}' +
+    '.lbi-lib{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}.lbi-item{border:1px solid var(--bd);border-radius:12px;background:var(--s2);padding:6px}.lbi-item img{width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:8px;display:block}.lbi-item b{display:block;font-size:13px;margin:8px 4px 2px}.lbi-item span{display:block;font-size:11.5px;color:var(--t3);margin:0 4px 6px}.lbi-item .lbi-acts{display:flex;gap:4px;flex-wrap:wrap}' +
+    '.lbi-bar .lbc-hint{flex:1 1 100%}.lbi-acts2{display:flex;flex-wrap:wrap;gap:8px;margin-left:auto;justify-content:flex-end}.lbi-acts2 .lbc-btn{white-space:nowrap}' +
+    '@media (max-width:560px){.lbi-body{grid-template-columns:1fr}.lbi-img{max-width:220px}.lbi-acts2{width:100%}.lbi-acts2 .lbc-btn.primary{flex:1 1 100%;order:-1}}';
+  function css3() { if (document.getElementById('lbi-css')) return; var s = document.createElement('style'); s.id = 'lbi-css'; s.textContent = CSS3; document.head.appendChild(s); }
+  function composer(text) {
+    var ta = document.getElementById('sh-input') || document.querySelector('#lu-messages-floater textarea, textarea[id*="msg"]');
+    if (!ta) { toast('Open Sarah\'s chat and ask: ' + text); return; }
+    ta.value = text; ta.dispatchEvent(new Event('input', { bubbles: true })); ta.focus();
+    try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) {}
+    toast('Ready — press send and Sarah will make it in this style.', 'success');
+  }
+  function inspiration(el, card) {
+    css(); css3();
+    var st = { pinned: false, gone: false };
+    function draw() {
+      if (st.gone) { el.innerHTML = '<div class="lbc-hd"><span class="lbc-ic">' + ICO_EYE + '</span><div class="lbc-hdt"><div class="lbc-t">Inspiration forgotten</div><div class="lbc-s">Sarah will no longer use “' + esc(card.title) + '”.</div></div></div>'; return; }
+      var sw = (card.palette || []).map(function (h) { return '<i style="background:' + esc(h) + '" title="' + esc(h) + '"></i>'; }).join('');
+      el.innerHTML = '<div class="lbc-hd"><span class="lbc-ic">' + ICO_EYE + '</span><div class="lbc-hdt"><div class="lbc-t">Saved to your inspiration library</div><div class="lbc-s">For ' + esc(card.business_name || 'your business') + ' · Sarah borrows the concept, never the content, in your own colours</div></div></div>' +
+        '<div class="lbi-body"><img class="lbi-img" src="' + esc(card.image_url) + '" alt="Your inspiration" loading="lazy"><div>' +
+        '<div class="lbi-title">' + esc(card.title) + '</div>' +
+        '<div class="lbi-tags">' + (card.traits || []).concat(card.directions || []).map(function (t) { return '<span class="lbi-tag">' + esc(t) + '</span>'; }).join('') + '</div>' +
+        (sw ? '<div class="lbi-h">Colour mood</div><div class="lbi-sw">' + sw + '</div>' : '') +
+        ((card.why || []).length ? '<div class="lbi-h">Why it works</div><ul class="lbi-why">' + card.why.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>' : '') +
+        ((card.effects || []).length ? '<div class="lbi-h">Effects</div><div class="lbi-tags">' + card.effects.map(function (t) { return '<span class="lbi-tag">' + esc(t) + '</span>'; }).join('') + '</div>' : '') +
+        '</div></div>' +
+        '<div class="lbc-bar lbc-bar-static lbi-bar"><span class="lbc-hint">' + ICO_SPARK + '<span>Future banners that fit will use this look automatically.</span></span><div class="lbi-acts2">' +
+        '<button type="button" class="lbc-btn ghost" data-a="forget">Forget</button>' +
+        '<button type="button" class="lbc-btn' + (st.pinned ? ' on' : '') + '" data-a="pin" aria-pressed="' + st.pinned + '">' + ICO_PIN + (st.pinned ? 'Always used' : 'Always use this look') + '</button>' +
+        '<button type="button" class="lbc-btn primary" data-a="make">' + ICO_SPARK + 'Make one like this</button></div></div>';
+      el.querySelector('.lbi-img').onclick = function () { if (typeof window.shOpenLightbox === 'function') window.shOpenLightbox(card.image_url); else window.open(card.image_url, '_blank', 'noopener'); };
+      el.querySelector('[data-a=forget]').onclick = function () { api('DELETE', 'brand/inspirations/' + card.id).then(function (r) { if (r.ok) { st.gone = true; draw(); } else toast('Could not forget it — try again.', 'error'); }); };
+      el.querySelector('[data-a=pin]').onclick = function () { api('POST', 'brand/inspirations/' + card.id + '/pin', { pinned: !st.pinned }).then(function (r) { if (r.ok) { st.pinned = !st.pinned; draw(); toast(st.pinned ? 'Sarah will use this look on every banner.' : 'Used only when it fits.', 'success'); } }); };
+      el.querySelector('[data-a=make]').onclick = function () { api('POST', 'brand/inspirations/' + card.id + '/focus', {}).then(function (r) { if (r.ok && r.json.suggested_message) composer(r.json.suggested_message); else toast((r.json && r.json.error) || 'Could not start — try again.', 'error'); }); };
+    }
+    draw();
+    api('GET', 'brand/inspirations/' + card.id).then(function (r) { var x = (r.json || {}).inspiration; if (!x) return; st.pinned = !!x.pinned; st.gone = x.status !== 'active'; draw(); });
+  }
+  function library(el, bizId) {
+    css(); css3();
+    api('GET', 'brand/inspirations' + (bizId ? '?business_id=' + encodeURIComponent(bizId) : '')).then(function (r) {
+      var list = ((r.json || {}).inspirations) || [];
+      if (!list.length) { el.innerHTML = '<div class="lbc-s" style="margin:0">Nothing saved yet. Send Sarah any design you like — a post, a flyer, a screenshot — and she will study it and remember the look.</div>'; return; }
+      el.innerHTML = '<div class="lbi-lib">' + list.map(function (x) {
+        return '<div class="lbi-item" data-id="' + x.id + '"><img src="' + esc(x.image_url) + '" alt="" loading="lazy"><b>' + esc(x.title) + '</b><span>' + (x.pinned ? 'Always used · ' : '') + 'Used ' + x.uses + ' time' + (x.uses === 1 ? '' : 's') + '</span>' +
+          '<div class="lbi-acts"><button type="button" class="lbc-nv" data-pin="' + (x.pinned ? 0 : 1) + '">' + (x.pinned ? 'Unpin' : 'Always use') + '</button><button type="button" class="lbc-nv" data-del>Forget</button></div></div>';
+      }).join('') + '</div>';
+      el.querySelectorAll('.lbi-item').forEach(function (it) {
+        var id = it.getAttribute('data-id');
+        it.querySelector('[data-pin]').onclick = function (e) { api('POST', 'brand/inspirations/' + id + '/pin', { pinned: e.currentTarget.getAttribute('data-pin') === '1' }).then(function () { library(el, bizId); }); };
+        it.querySelector('[data-del]').onclick = function () { api('DELETE', 'brand/inspirations/' + id).then(function () { library(el, bizId); }); };
+      });
+    });
+  }
+
   /* ── Settings: Your design styles (per business) ── */
   function settings(el, bizId) {
     css(); loadFonts();
@@ -288,8 +354,10 @@
       el.innerHTML = biz + '<div class="lbc" style="margin:0"><div data-slot="pick"></div></div>' +
         '<div class="lbc" style="margin-top:10px"><div class="lbc-t">Brand rules</div><div class="lbc-s">Sarah follows these on every banner, image, caption and video for ' + esc(j.business_name) + '.</div>' +
         ((j.rules || []).length ? '<ul class="lbc-rules">' + j.rules.map(function (x, i) { return '<li>' + esc(x) + '<button type="button" class="lbc-x" data-rm="' + i + '" aria-label="Remove rule">Remove</button></li>'; }).join('') + '</ul>' : '<div class="lbc-s" style="margin:0">No rules yet — for example “Never use red” or “Always show our Instagram handle”.</div>') +
-        '<div class="lbc-add"><input type="text" maxlength="200" placeholder="Add a rule" aria-label="New brand rule"><button type="button" class="lbc-btn" data-a="add">Add</button></div></div>';
+        '<div class="lbc-add"><input type="text" maxlength="200" placeholder="Add a rule" aria-label="New brand rule"><button type="button" class="lbc-btn" data-a="add">Add</button></div></div>' +
+        '<div class="lbc" style="margin-top:10px"><div class="lbc-t">Inspiration library</div><div class="lbc-s">Designs you sent Sarah. She studied each one and borrows the look, in your colours, when it fits.</div><div data-slot="insp"></div></div>';
       el.querySelectorAll('[data-b]').forEach(function (b) { b.onclick = function () { settings(el, +b.getAttribute('data-b')); }; });
+      library(el.querySelector('[data-slot=insp]'), j.business_id);   // VISION-INSPIRE-1
       picker(el.querySelector('[data-slot=pick]'), { business_id: j.business_id, preview: j.preview, directions: j.directions, picks: j.picks, never: j.never, max: 4 }, { settings: true, saved: !!(j.picks && j.picks.length) });
       el.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { api('DELETE', 'brand/rules/' + b.getAttribute('data-rm') + (j.business_id ? '?business_id=' + j.business_id : '')).then(function () { settings(el, j.business_id); }); }; });
       var inp = el.querySelector('.lbc-add input'), add = el.querySelector('[data-a=add]');
@@ -305,12 +373,13 @@
     slot.classList.add('lbc');
     if (card.type === 'brand_directions') picker(slot, card);
     else if (card.type === 'brand_summary') summary(slot, card);
+    else if (card.type === 'inspiration') inspiration(slot, card);   // VISION-INSPIRE-1
   }
   function scan(root) { (root || document).querySelectorAll && (root || document).querySelectorAll('.lu-brand-slot').forEach(hydrate); }
   function slotHtml(card) { if (!card || !card.type) return ''; return '<div class="lu-brand-slot" data-card="' + encodeURIComponent(JSON.stringify(card)) + '"></div>'; }
   new MutationObserver(function (ms) { ms.forEach(function (m) { m.addedNodes.forEach(function (n) { if (n.nodeType === 1) { if (n.classList && n.classList.contains('lu-brand-slot')) hydrate(n); else scan(n); } }); }); })
     .observe(document.documentElement, { childList: true, subtree: true });
-  window.LU_brandCard = { slotHtml: slotHtml, hydrate: hydrate, scan: scan, settings: settings, tile: tile };
+  window.LU_brandCard = { slotHtml: slotHtml, hydrate: hydrate, scan: scan, settings: settings, tile: tile, library: library };
   /* Settings › Business: mount the panel the first time it becomes visible, and refresh it each time the tab is reopened */
   function mountSettings() {
     var r = document.getElementById('brand-styles-root'); if (!r || r.__lbcObs || !window.IntersectionObserver) return; r.__lbcObs = 1;

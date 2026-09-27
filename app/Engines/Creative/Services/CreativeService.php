@@ -192,7 +192,7 @@ class CreativeService
             'success'         => true,
             'billable'        => false,
             'credits'         => 0,
-            'enhanced_prompt' => (string) ($compiled['provider_prompt'] ?? ''),
+            // SECRET-1 (Owner 2026-09-27): the enhanced prompt is Sarah's private method — never sent to the browser
             'plan_token'      => $planToken,
             'plan_expires_in' => self::PREVIEW_TTL_SECONDS,
             'plan_binding'    => $binding['fingerprint'],
