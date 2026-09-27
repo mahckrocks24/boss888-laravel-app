@@ -158,7 +158,7 @@ class SocialService
         // POST-IMAGE-1 (Owner 2026-09-26: "how come there is no image banner on your latest draft?"): when Sarah drafts a post
         // whose brief describes an image/banner and none exists, the image is made WITH the post — through the engine
         // executor, so plan gating, credits and the image intelligence (one-line text rule) apply exactly as for any image.
-        if (empty($data['media']) && empty($data['article_id']) && ($data['created_via'] ?? '') === 'sarah_chat') {
+        if (empty($data['media']) && empty($data['article_id']) && in_array(($data['created_via'] ?? ''), ['sarah_chat', 'campaign'], true)) {   // CAMPAIGNS-1: campaign posts too
             $brief = trim(implode(' ', array_filter([(string) ($data['title'] ?? ''), (string) ($data['description'] ?? ''), (string) ($data['user_request'] ?? '')])));
             if ($brief !== '' && preg_match('/\b(banner|image|graphic|visual|photo|picture|artwork|poster)\b/i', $brief)
                 && ! preg_match('/\b(no|without)\s+(an?\s+)?(image|photo|picture|visual|graphic|banner)\b/i', $brief)) {

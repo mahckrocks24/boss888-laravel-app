@@ -50,6 +50,7 @@ final class BrandIntakeService
     public function ask(int $wsId): bool
     {
         // at most one brand question per workspace per day, and never while a summary waits for confirmation
+        if (\Illuminate\Support\Facades\Cache::has('campaign-ideas-pending:' . $wsId)) return false;   // CAMPAIGNS-1: one card at a time; ask another day
         $recent = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->where('intake_asked_at', '>=', now()->subDay())->exists();
         $pending = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->whereNotNull('proposal_json')->exists();
         if ($recent || $pending) return false;

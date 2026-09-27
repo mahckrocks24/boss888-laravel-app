@@ -69,7 +69,7 @@
 
   var REMOVED_LABEL_RX = new RegExp(
     '^\\s*(mentions|marketing' +
-    '|marketing\\s*automation|campaigns?|engagement|inbox|listening|competitors?' +
+    '|marketing\\s*automation|engagement|inbox|listening|competitors?' +   /* CAMPAIGNS-1: 'Campaigns' (growth campaigns) is in the product; email campaigns stay out below */
     '|email\\s*(marketing|campaigns?)|newsletters?|sequences?|publisher|content\\s*publisher)\\s*$',
     'i'
   );

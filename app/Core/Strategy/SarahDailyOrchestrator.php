@@ -125,6 +125,16 @@ class SarahDailyOrchestrator
         // at #14 — opportunity zone".
         $candidates = $this->rules->emit($wsId, $state);
         $state['_rule_candidates'] = $candidates;
+        // CAMPAIGNS-1: the campaigns the brief leads with
+        try {
+            $__cs = [];
+            foreach (DB::table('marketing_campaigns')->where('workspace_id', $wsId)->whereNull('deleted_at')->whereIn('status', ['active', 'paused', 'idea'])->orderBy('starts_on')->limit(6)->get() as $__c) {
+                $__due = DB::table('campaign_items')->where('campaign_id', $__c->id)->whereBetween('scheduled_at', [now()->subHours(12), now()->addHours(36)])->pluck('title')->all();
+                $__cs[] = ['title' => $__c->title, 'status' => $__c->status, 'dates' => $__c->starts_on . ' to ' . $__c->ends_on,
+                    'steps_due_today_or_tomorrow' => $__due, 'waiting_on_owner' => DB::table('campaign_items')->where('campaign_id', $__c->id)->where('status', 'needs_you')->pluck('title')->all()];
+            }
+            if ($__cs) $state['campaigns'] = $__cs;
+        } catch (\Throwable $e) {}
 
         // 1c. Phase 2 (2026-06-30) — RECALL Sarah's episodic workspace memory so
         // she sees what she proposed / learned on prior runs and stops repeating
@@ -410,8 +420,8 @@ class SarahDailyOrchestrator
             . "owning specialist (Priya/Nora for write_*, James for SEO, Alex for technical SEO, "
             . "Elena for CRM leads/follow-ups). Only orchestration actions (strategy_meeting, "
             . "goal_pivot, monthly_strategy, weekly_review, onboarding, estimate_cost) are assigned "
-            . "to sarah. LAUNCH SCOPE: social-media posting and email marketing are NOT in this "
-            . "product — never propose them or name a social/email specialist.\n\n"
+            . "to sarah. CAMPAIGNS (CAMPAIGNS-1, 2026-09-27): the owner's marketing now runs as CAMPAIGNS (state.campaigns): social posts, emails, articles and offers belong INSIDE campaigns. "
+            . "Lead TODAY with the campaign steps due today and anything a campaign is waiting on the owner for. NEVER propose strategy_meeting, goal_pivot, monthly_strategy or weekly_review — Sarah brings campaign ideas separately. Routine SEO/content upkeep is work you do yourself; mention it in one line, never as an approval.\n\n"
             . "Sarah's checklist (_rule_candidates) is pre-computed for you. Each candidate is "
             . "a real data-driven opportunity (orphan pages found, opportunity-zone keyword, "
             . "stale article, etc.). PREFER picking 3-5 of these over inventing new ones — "
@@ -512,6 +522,9 @@ class SarahDailyOrchestrator
         } catch (\Throwable $e) { $__b1Sites = []; }
 
         foreach ($actions as $a) {
+            // CAMPAIGNS-1 (Owner 2026-09-27): strategy meetings, goal pivots and monthly/weekly strategy are not asks any more —
+            // Sarah brings campaign ideas through the campaign cycle, so these never reach the approval queue.
+            if (in_array((string) ($a['action'] ?? ''), ['strategy_meeting', 'goal_pivot', 'monthly_strategy', 'weekly_review'], true)) continue;
             // The planner's own words are the signal — it names the business it chose.
             $__b1SiteId = null;
             try {

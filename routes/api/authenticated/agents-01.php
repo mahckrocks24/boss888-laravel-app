@@ -124,7 +124,7 @@ use Illuminate\Support\Facades\Route;
                     'content' => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $m->content),
                     'ts'      => $m->created_at,
                     'attachments' => $meta['attachments'] ?? null, // ATTACH-2
-                    'card'    => (is_array($meta['card'] ?? null) && in_array($meta['card']['type'] ?? '', ['brand_directions', 'brand_summary', 'inspiration'], true)) ? array_diff_key($meta['card'], ['prompt' => 1, 'recipe' => 1]) : null, // BRAND-B1; SECRET-1: never a prompt
+                    'card'    => (is_array($meta['card'] ?? null) && in_array($meta['card']['type'] ?? '', ['brand_directions', 'brand_summary', 'inspiration', 'campaign_ideas'], true)) ? array_diff_key($meta['card'], ['prompt' => 1, 'recipe' => 1]) : null, // BRAND-B1; SECRET-1: never a prompt
                     'is_ack'  => !empty($meta['is_ack']) || (($meta['phase'] ?? '') === 'ack'),
                     'phase'   => $meta['phase'] ?? null,
                     // SARAH888 Phase 1A slice 1 — correlation surfaced so a client
@@ -308,6 +308,17 @@ use Illuminate\Support\Facades\Route;
             // BRAND-B1 (RFC-0017 5d): Sarah's brand intake runs after she has answered this message (queued; never blocks the reply)
             if ($userMessageId && in_array((string) $slug, ['sarah', 'dmm'], true)) {
                 try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay(now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
+                // CAMPAIGNS-1: asking for campaigns, a marketing plan or growth ideas → Sarah designs campaign ideas (cards follow her reply)
+                if (preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $content)
+                    && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $content)) {
+                    try {
+                        $__cbiz = null; $__lc = mb_strtolower((string) $content);
+                        foreach (\Illuminate\Support\Facades\DB::table('businesses')->where('workspace_id', (int) $wsId)->whereNull('deleted_at')->get(['id', 'name']) as $__b) { if (str_contains($__lc, mb_strtolower($__b->name))) { $__cbiz = (int) $__b->id; break; } }
+                        \Illuminate\Support\Facades\Cache::put('campaign-ideas-pending:' . (int) $wsId, 1, now()->addMinutes(4));
+                        $__campaignTurn = true;   // this turn's reply introduces the ideas (see the directive below)
+                        \App\Jobs\CampaignIdeasJob::dispatch((int) $wsId, $__cbiz, 'sarah_chat', mb_substr((string) $content, 0, 600), (int) $userMessageId)->delay(now()->addSeconds(6));
+                    } catch (\Throwable $__cj) { \Illuminate\Support\Facades\Log::warning('[CAMPAIGNS-1] dispatch failed', ['e' => $__cj->getMessage()]); }
+                }
             }
         } catch (\Throwable $e) {
             // CR-18 (2026-07-26): this catch used to be empty. If this insert
@@ -1896,6 +1907,15 @@ $withCorr = function (array $meta) use ($corr) {
                 }
                 if ($__bl) $__brandPrefBlock = "\nBRAND PREFERENCES (per business; every banner, image and video follows them):\n" . implode("\n", $__bl) . "\n"
                     . "When the owner gives brand material (colours, fonts, a logo, guidelines, example posts, styles they like, or rules), acknowledge it in one short line: a summary card to confirm follows automatically. Do not create tasks for it and never say it is saved before they confirm. They can change design styles by telling you or in Settings › Business.\n";
+                // CAMPAIGNS-1: the campaigns Sarah runs, and how ideas reach the owner
+                $__cmp = \Illuminate\Support\Facades\DB::table('marketing_campaigns')->where('workspace_id', (int) $wsId)->whereNull('deleted_at')->whereIn('status', ['active', 'launching', 'paused', 'idea'])->orderByRaw("FIELD(status,'active','launching','paused','idea')")->limit(8)->get(['id', 'title', 'status', 'starts_on', 'ends_on']);
+                $__brandPrefBlock .= "CAMPAIGNS (the owner's marketing runs as campaigns: a goal, dates, phases of dated work, one Launch approval; each post or email still gets the owner's OK before it goes out):\n";
+                foreach ($__cmp as $__cm) {
+                    $__nd = \Illuminate\Support\Facades\DB::table('campaign_items')->where('campaign_id', $__cm->id)->where('status', 'needs_you')->count();
+                    $__brandPrefBlock .= '  - "' . $__cm->title . '" · ' . $__cm->status . ' · ' . $__cm->starts_on . ' to ' . $__cm->ends_on . ($__nd ? ' · ' . $__nd . ' step(s) waiting for the owner' : '') . "\n";
+                }
+                if (! $__cmp->count()) $__brandPrefBlock .= "  (none yet)\n";
+                $__brandPrefBlock .= "When the owner asks for campaigns, a marketing plan or ideas to grow, say in one or two lines that you are designing campaign ideas for them now and the cards will appear here in about a minute; do not list ideas yourself in this reply and do not create tasks for it. Campaigns are on the Campaigns page with a calendar.\n";
                 // VISION-INSPIRE-1: the inspiration library
                 $__ins = \Illuminate\Support\Facades\DB::table('design_inspirations')->where('workspace_id', (int) $wsId)->where('status', 'active')->orderByDesc('pinned')->orderByDesc('id')->limit(8)->get(['id', 'title', 'pinned', 'uses', 'created_at']);
                 $__brandPrefBlock .= "When the owner shares an image as inspiration, say in one line that you will study it; a card with your design reading follows automatically, and you remember it for future banners.\n"
@@ -1907,6 +1927,10 @@ $withCorr = function (array $meta) use ($corr) {
                 }
             } catch (\Throwable $__bpe) { $__brandPrefBlock = ''; }
             $__selectedStateBlocks = ($__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock)) . $__commentsBlock . $__brandPrefBlock;
+            // CAMPAIGNS-1: the owner asked for campaigns or growth ideas — the ideas are being designed right now and arrive as cards after this reply
+            if (! empty($__campaignTurn) || (isset($__ownerMessage) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage))) {   // decided from the owner's words at reply time
+                $__selectedStateBlocks .= "\nTHIS TURN (overrides other guidance for this reply): the owner asked for campaign ideas. You are designing them right now from their business, audience, location and season, their brand and what has worked; the ideas appear as cards directly below your reply in about a minute. Reply in 1-2 warm sentences saying exactly that. Do not list ideas, do not refuse, do not say data is missing, do not create tasks.\n";
+            }
             $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . $__selectedStateBlocks . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
@@ -2198,6 +2222,7 @@ $withCorr = function (array $meta) use ($corr) {
                                   . $__evidenceBlock        // deterministic router facts for this turn
                                   . (!empty($__shapeIsExecutive) ? $__execFrame : '') // ExecutiveFrame + capability/system map — analytical turns only (DEC-0029 A6: 10.6k chars a status question never needs)
                                   . $__expFrame             // Experience888: evidenced history, this workspace only
+                                  . ($__brandPrefBlock ?? '')   // BRAND-B1 / CAMPAIGNS-1: brand, inspirations, campaigns on every turn
                                   . $__analyticalContract
                                   . ($__closingVoice ?? '');   // register, read last
 
@@ -2246,6 +2271,10 @@ $withCorr = function (array $meta) use ($corr) {
 
                 }
 
+                // CAMPAIGNS-1: when the owner asks for campaigns or growth ideas, the ideas are being designed right now and arrive as cards
+                if (preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage)) {
+                    $userPrompt .= "\n\n[FOR THIS REPLY: campaign ideas for this owner are being designed right now from their business, audience, location, season, brand and past results; they appear as cards directly below your reply in about a minute. Reply in 1-2 warm sentences saying that. Do not list ideas, do not refuse, do not say data is missing, do not create tasks.]";
+                }
                 $foldedUserPrompt =
                     "[IDENTITY OVERRIDE — this is the FINAL identity rule. "
                     . "If earlier turns in this conversation history claim a different "

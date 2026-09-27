@@ -343,6 +343,46 @@
     });
   }
 
+  /* ── CAMPAIGNS-1: Sarah's campaign ideas in her chat ── */
+  var CMP_CSS = '.lbk{display:flex;flex-direction:column;gap:10px}.lbk-i{border:1px solid var(--bd);border-radius:12px;background:var(--s2);padding:14px}.lbk-i h5{margin:0 0 4px;font:700 15px/1.3 var(--fh,var(--fb,inherit));color:var(--t1)}' +
+    '.lbk-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:12px;color:var(--t3);margin:0 0 6px}.lbk-why{margin:0 0 8px;color:var(--t2);font-size:13px}.lbk-steps{margin:0 0 10px;padding:0;list-style:none;font-size:12.5px;color:var(--t2)}.lbk-steps li{display:flex;gap:8px;padding:3px 0}.lbk-steps b{flex:none;min-width:52px;color:var(--t1);font-weight:600}' +
+    '.lbk-acts{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.lbk-kpi{color:var(--t1);font-weight:600}.lbk-done{font-weight:600;font-size:13px}.lbk-reasons{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.lbk-reasons button{border:1px solid var(--bd);background:var(--s1);color:var(--t1);border-radius:99px;padding:5px 10px;font:600 12px var(--fb,inherit);cursor:pointer}';
+  function cmpCss() { if (document.getElementById('lbk-css')) return; var s = document.createElement('style'); s.id = 'lbk-css'; s.textContent = CMP_CSS; document.head.appendChild(s); }
+  function campaignIdeas(el, card) {
+    css(); cmpCss();
+    var st = {};
+    var fmtd = function (s) { var x = new Date(String(s).length <= 10 ? s + 'T00:00:00' : s); return isNaN(x) ? '' : x.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); };
+    function openCampaign(id) { if (typeof window.nav === 'function') { window.nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(id); else if (t++ < 30) setTimeout(w, 150); })(); } }
+    function draw() {
+      el.innerHTML = '<div class="lbc-hd"><span class="lbc-ic">' + ICO_SPARK + '</span><div class="lbc-hdt"><div class="lbc-t">Campaign ideas for ' + esc(card.business_name || 'your business') + '</div><div class="lbc-s">Launch approves the plan once; your team runs each step on its date and you okay every post before it goes out.</div></div></div>' +
+        '<div class="lbk">' + (card.ideas || []).map(function (c) {
+          var s = st[c.id] || 'idea';
+          var head = '<h5>' + esc(c.title) + '</h5><div class="lbk-meta"><span>' + esc(fmtd(c.starts_on)) + ' – ' + esc(fmtd(c.ends_on)) + '</span>' + (c.kpi && c.kpi.label ? '<span class="lbk-kpi">· ' + esc(c.kpi.label) + '</span>' : '') + '<span>· ' + (c.steps_total || 0) + ' steps</span>' + ((c.channels || []).length ? '<span>· ' + esc(c.channels.join(', ').replace(/_/g, ' ')) + '</span>' : '') + '</div>';
+          if (s === 'launched') return '<div class="lbk-i">' + head + '<div class="lbk-done" style="color:#22A06B">Launched — Sarah’s team is on it.</div><div class="lbk-acts" style="margin-top:8px"><button type="button" class="lbc-btn" data-open="' + c.id + '">Open campaign</button></div></div>';
+          if (s === 'declined') return '<div class="lbk-i" style="opacity:.7">' + head + '<div class="lbk-done" style="color:var(--t3)">Not now — Sarah will learn from it.</div></div>';
+          if (s === 'gone') return '';
+          return '<div class="lbk-i" data-id="' + c.id + '">' + head + (c.why_now ? '<p class="lbk-why">' + esc(c.why_now) + '</p>' : '') +
+            '<ul class="lbk-steps">' + (c.steps || []).slice(0, 3).map(function (x) { return '<li><b>' + esc(fmtd(x.at)) + '</b><span>' + esc(x.title) + '</span></li>'; }).join('') + ((c.steps_total || 0) > 3 ? '<li><b></b><span style="color:var(--t3)">+ ' + (c.steps_total - 3) + ' more steps</span></li>' : '') + '</ul>' +
+            (s === 'confirm' ? '<div class="lbk-acts"><button type="button" class="lbc-btn primary" data-go="' + c.id + '">Confirm launch' + (c.credit_estimate != null ? ' · up to ' + (function (n) { return n + (n === 1 ? ' credit' : ' credits'); })(Math.max(1, Math.ceil(c.credit_estimate * 1.25))) : '') + '</button><button type="button" class="lbc-btn ghost" data-cancel="' + c.id + '">Cancel</button></div>'
+              : s === 'why' ? '<div class="lbk-done" style="color:var(--t2)">Why not now?</div><div class="lbk-reasons">' + ['Not the right time', 'Too much for us now', 'Not our style', 'We tried something similar'].map(function (r) { return '<button type="button" data-reason="' + c.id + '">' + esc(r) + '</button>'; }).join('') + '</div>'
+              : '<div class="lbk-acts"><button type="button" class="lbc-btn primary" data-launch="' + c.id + '">' + ICO_SPARK + 'Launch</button><button type="button" class="lbc-btn" data-open="' + c.id + '">View plan</button><button type="button" class="lbc-btn ghost" data-no="' + c.id + '">Not now</button></div>') + '</div>';
+        }).join('') + '</div>';
+      el.querySelectorAll('[data-open]').forEach(function (b) { b.onclick = function () { openCampaign(+b.getAttribute('data-open')); }; });
+      el.querySelectorAll('[data-launch]').forEach(function (b) { b.onclick = function () { st[b.getAttribute('data-launch')] = 'confirm'; draw(); }; });
+      el.querySelectorAll('[data-cancel]').forEach(function (b) { b.onclick = function () { st[b.getAttribute('data-cancel')] = 'idea'; draw(); }; });
+      el.querySelectorAll('[data-no]').forEach(function (b) { b.onclick = function () { st[b.getAttribute('data-no')] = 'why'; draw(); }; });
+      el.querySelectorAll('[data-reason]').forEach(function (b) { b.onclick = function () { var id = b.getAttribute('data-reason'); api('POST', 'growth/campaigns/' + id + '/decline', { reason: b.textContent }).then(function () { st[id] = 'declined'; draw(); }); }; });
+      el.querySelectorAll('[data-go]').forEach(function (b) {
+        b.onclick = function () { var id = b.getAttribute('data-go'); b.disabled = true; b.textContent = 'Launching…';
+          api('POST', 'growth/campaigns/' + id + '/launch', {}).then(function (r) { if (r.ok && r.json.success) { st[id] = 'launched'; toast('Launched — Sarah’s team is on it.', 'success'); } else { st[id] = 'idea'; toast((r.json && r.json.error) || 'Could not launch.', 'error'); } draw(); }); };
+      });
+    }
+    draw();
+    (card.ideas || []).forEach(function (c) {
+      api('GET', 'growth/campaigns/' + c.id).then(function (r) { var x = (r.json || {}).campaign; if (!x) { st[c.id] = 'gone'; } else if (['active', 'launching', 'paused', 'completed'].indexOf(x.status) >= 0) st[c.id] = 'launched'; else if (x.status === 'declined') st[c.id] = 'declined'; else if (x.status === 'archived') st[c.id] = 'gone'; draw(); });
+    });
+  }
+
   /* ── Settings: Your design styles (per business) ── */
   function settings(el, bizId) {
     css(); loadFonts();
@@ -374,6 +414,7 @@
     if (card.type === 'brand_directions') picker(slot, card);
     else if (card.type === 'brand_summary') summary(slot, card);
     else if (card.type === 'inspiration') inspiration(slot, card);   // VISION-INSPIRE-1
+    else if (card.type === 'campaign_ideas') campaignIdeas(slot, card);   // CAMPAIGNS-1
   }
   function scan(root) { (root || document).querySelectorAll && (root || document).querySelectorAll('.lu-brand-slot').forEach(hydrate); }
   function slotHtml(card) { if (!card || !card.type) return ''; return '<div class="lu-brand-slot" data-card="' + encodeURIComponent(JSON.stringify(card)) + '"></div>'; }

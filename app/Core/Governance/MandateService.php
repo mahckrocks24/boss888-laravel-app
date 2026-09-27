@@ -175,6 +175,14 @@ final class MandateService
             $this->supersede((int) $m->supersedes_id, $mandateId);
         }
 
+        // CAMPAIGNS-1 (RFC-0018): a campaign's plan is approved once; its dated items are released on their dates by
+        // CampaignService::tick under this mandate (same boundaries, same liveness), not all at once.
+        if ((string) $m->source_type === 'campaign' && $m->source_id) {
+            DB::table('mandates')->where('id', $mandateId)->update(['status' => self::STATUS_LIVE, 'executed_at' => now(), 'updated_at' => now()]);
+            app(\App\Core\Campaigns\CampaignService::class)->onMandateLive((int) $m->source_id, $mandateId);
+            $fresh = DB::table('mandates')->where('id', $mandateId)->first();
+            return $this->summaryRow($fresh) + ['created' => 0, 'held' => [], 'task_ids' => [], 'campaign_id' => (int) $m->source_id];
+        }
         $tasks = json_decode((string) $m->tasks_json, true) ?: [];
         $ceiling = (int) ($boundaries['spend_ceiling_credits'] ?? PHP_INT_MAX);
         $created = []; $held = []; $spent = 0; $byIndex = [];
@@ -302,8 +310,10 @@ final class MandateService
     /** Called when a child completes/fails: a plan with nothing open is completed. */
     public function settleIfFinished(int $mandateId): void
     {
-        $m = DB::table('mandates')->where('id', $mandateId)->first(['id', 'status']);
+        $m = DB::table('mandates')->where('id', $mandateId)->first(['id', 'status', 'source_type', 'source_id']);
         if (! $m || (string) $m->status !== self::STATUS_LIVE) return;
+        // CAMPAIGNS-1: a campaign's plan stays live until the campaign itself finishes
+        if ((string) $m->source_type === 'campaign' && DB::table('marketing_campaigns')->where('id', (int) $m->source_id)->whereNotIn('status', ['completed', 'archived'])->exists()) return;
         $open = DB::table('tasks')->where('mandate_id', $mandateId)->where('action', '!=', self::GATE_ACTION)->whereIn('status', self::OPEN_TASK)->exists();
         if (! $open) DB::table('mandates')->where('id', $mandateId)->update(['status' => self::STATUS_COMPLETED, 'completed_at' => now(), 'updated_at' => now()]);
     }

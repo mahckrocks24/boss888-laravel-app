@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="f234ac5-202609270854">
+<meta name="lu-build" content="b7ef90f-202609271111">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -2816,7 +2816,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // P1R-3 (2026-08-31): 'command' removed — the Command Center exposes specialist agent cards that open the
   // specialist drawer, and Basic must not offer direct specialist interaction. 'settings' removed — in Basic it is
   // rewritten to 'account' below (customer settings), so nobody deep-links into the internal Advanced settings.
-  var BASIC_VISIBLE = ['sarah','attention','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog','aria','catalogue','infrastructure'];   /* BASIC-HOSTING-1 */   /* CAT-BASIC-1 (Owner 2026-09-23 'Catalogue must be available on Basic view too'): the router's list, not only _basicViews */   /* ARIA888 DEC-0054: Aria is in both views */
+  var BASIC_VISIBLE = ['sarah','attention','projects','results','website','customers','account','approvals','websites','crm','calendar','billing','reports','write','blog','aria','catalogue','infrastructure'];   /* BASIC-HOSTING-1 */   /* CAT-BASIC-1 (Owner 2026-09-23 'Catalogue must be available on Basic view too'): the router's list, not only _basicViews */   /* ARIA888 DEC-0054: Aria is in both views */
   var _origNav = window.nav;
   if (typeof _origNav === 'function') {
     window.nav = function (view) {
@@ -2850,7 +2850,7 @@ window._lgsc_show_mode_switch_modal = function (view, onSwitch) {
   if (existing) existing.remove();
 
   var labels = {
-    meeting: 'Strategy Room', projects: 'Projects', approvals: 'Review Queue',
+    meeting: 'Strategy Room', projects: 'Campaigns', approvals: 'Review Queue',
     seo: 'SEO', write: 'Write', creative: 'Creative', marketing: 'Marketing',
     social: 'Social', studio: 'Studio', chatbot: 'Chatbot', automation: 'Automation',
     blog: 'Blog', messages: 'Messages', builder: 'Landing Pages', websites: 'Websites',
@@ -3093,6 +3093,7 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item nav-sarah" onclick="nav('sarah')" id="ni-sarah"><!-- REPORT-0061 B3 (2026-09-19): Sarah heads Advanced too --><span class="ni" aria-hidden="true"></span>Sarah</button>
       <div class="nav-sub" data-basic="1">When you need to look</div>
       <button type="button" class="nav-item" onclick="nav('attention')" id="ni-attention" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3l7 12H3z"/><path d="M10 8v3M10 13.5h.01"/></svg></span>Needs attention<span class="cmd-nav-badge" id="ni-attention-badge" style="margin-left:auto;display:none"></span></button>
+      <button type="button" class="nav-item" onclick="nav('projects')" id="ni-campaigns-basic" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9v3a1 1 0 0 0 1 1h2l5 3.5V4.5L6 8H4a1 1 0 0 0-1 1Z"/><path d="M14 7.5a3.5 3.5 0 0 1 0 5M16 5a7 7 0 0 1 0 10"/></svg></span>Campaigns</button><!-- CAMPAIGNS-1 -->
       <!-- Owner 2026-09-21: Results removed — it duplicated the Command Center; nav('results') lands there. -->
       <div class="nav-row" data-basic="1" id="ni-website-row"><!-- CAT-SUBMENU-1 --><button type="button" class="nav-item" onclick="nav('websites')" id="ni-website" data-basic="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 7h16"/></svg></span>Websites</button><button type="button" class="nav-caret" id="ni-website-caret" aria-expanded="false" aria-controls="ni-website-children" aria-label="Show or hide the catalogue" onclick="luNavToggle('website')"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 8l3 3 3-3"/></svg></button></div>
       <div class="nav-children" data-basic="1" id="ni-website-children"><button type="button" class="nav-item" id="ni-catalogue-basic" data-basic="1" data-cat-off="1" data-cat-tpl="basic"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 8h6M7 11h6M7 14h3"/></svg></span><span class="ni-text">Catalogue</span></button></div>
@@ -3106,7 +3107,7 @@ window.luSwipeToClose = luSwipeToClose;
       <button type="button" class="nav-item" onclick="nav('workspace')" id="ni-workspace" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Workspace</button>
       <button type="button" class="nav-item" onclick="nav('command')" id="ni-command" data-feature="ai_agents" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="16" height="13" rx="2"/><path d="M2 8h16M7 17h6M10 16v1"/></svg></span>Command Center<span id="cmd-nav-badge-approvals" class="cmd-nav-badge">0</span></button>
       <button type="button" class="nav-item" onclick="nav('meeting')" id="ni-meeting" data-nav-view="reports" data-feature="meeting_room" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2a6 6 0 016 6c0 2.5-1.5 4.7-3.7 5.7L12 17H8l-.3-3.3C5.5 12.7 4 10.5 4 8a6 6 0 016-6z"/><path d="M8 17h4M9 19h2"/></svg></span>Strategy Room</button>
-      <button type="button" class="nav-item" onclick="nav('projects')" id="ni-projects" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Projects</button>
+      <button type="button" class="nav-item" onclick="nav('projects')" id="ni-projects" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="7" height="7" rx="1"/><rect x="11" y="2" width="7" height="7" rx="1"/><rect x="2" y="11" width="7" height="7" rx="1"/><rect x="11" y="11" width="7" height="7" rx="1"/></svg></span>Campaigns</button>
       <button type="button" class="nav-item" onclick="nav('approvals')" id="ni-approvals" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h12M4 10h12M4 15h8"/><path d="M16 13l2 2 3-3" transform="translate(-5 0)"/><circle cx="16" cy="15" r="1.5"/></svg></span>Review Queue<span id="nav-approval-badge" class="cmd-nav-badge">0</span></button>
       <!-- Owner 2026-09-21: Results (Advanced) removed — the Command Center is the report. -->
       <button type="button" class="nav-item" onclick="nav('queue')" id="ni-queue" data-admin-only="true" style="display:none" data-adv="1"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h12M4 10h12M4 14h8"/><circle cx="16" cy="14" r="2.5"/><path d="M15 13.5l1 1 2-2"/></svg></span>Worker Queue</button>
@@ -3446,7 +3447,7 @@ window.luSwipeToClose = luSwipeToClose;
     <div id="view-projects" class="view" style="display:none">
       <!-- REPORT-0061 B4 (2026-09-20): one page, three panels — Projects (list), Task board (stages), History (task history + work distribution, from the old Reports & History) -->
       <div class="lu-view-tabs" id="proj-tabs" role="tablist" aria-label="Projects" style="display:flex;gap:2px;padding:14px 24px 0;border-bottom:1px solid var(--bd);flex-shrink:0">
-        <button type="button" role="tab" data-proj-panel="projects" class="tab active" onclick="projShowPanel('projects')">Projects</button>
+        <button type="button" role="tab" data-proj-panel="projects" class="tab active" onclick="projShowPanel('projects')">Campaigns</button>
         <button type="button" role="tab" data-proj-panel="board" class="tab" onclick="projShowPanel('board')">Task board</button>
         <button type="button" role="tab" data-proj-panel="history" class="tab" onclick="projShowPanel('history')">History</button>
       </div>
@@ -4686,7 +4687,7 @@ window.LU_CFG = {
   // intact for back-compat (#signup, /app/?tab=strategy, Stripe, etc.).
   // Flip to false for an instant revert with no other code changes.
   url_routing_enabled: true,
-  engineUrls: {crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=leads5-20260926',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=dl2-20260925',catalogue:'/app/js/catalogue.js?v=nophoto1-20260925',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
+  engineUrls: {campaigns:'/app/js/campaigns.js?v=cmp6-20260927',crm:'/app/js/crm.js?v=u6-20260922',social:'/app/js/social.js?v=leads5-20260926',calendar:'/app/js/calendar.js?v=socialcal1.0.2-p0e',seo:'/app/js/seo.js?v=scope2-20260921',write:'/app/js/write.js?v=type1-20260831',studio:'/app/js/studio.js?v=ps12-20260903','studio-video':'/app/js/studio-video.js?v=p0e-20260830',projects:'/app/js/projects.js?v=a11y6b-20260831',infrastructure:'/app/js/infrastructure.js?v=dl2-20260925',catalogue:'/app/js/catalogue.js?v=nophoto1-20260925',businesses:'/app/js/businesses.js?v=u8e-20260922'}};
 
 // ── nav() stub ─────────────────────────────────────────────────────
 
@@ -4906,8 +4907,8 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 .bl-toolbar-divider { width:1px; height:18px; background:var(--bd); margin:0 4px; }
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
-<script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=418c043988"></script><!-- /LU-BUNDLE -->
+<script src="/app/js/launch-scope.js?v=cmp1-20260927"></script>
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=9d0bac4965"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

@@ -58,7 +58,7 @@ final class LaunchScopeLanguageGuard
     private const REMOVED_SUBJECTS = [
         'social listening', 'social monitoring',
         'email marketing', 'email campaign', 'newsletter', 'sequence',
-        'drip', 'campaign', 'ads', 'ad campaign', 'comment', 'inbox', 'engagement',
+        'drip', 'ads', 'ad campaign', 'comment', 'inbox', 'engagement',   // CAMPAIGNS-1: bare 'campaign' removed — growth campaigns are in the product
         // Bare 'email' last: it only reaches here when no PROTECTED_SUBJECT
         // matched, i.e. the sentence is not about transactional mail.
         'email',

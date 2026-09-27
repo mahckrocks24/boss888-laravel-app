@@ -1090,7 +1090,7 @@ async function luLoadEngine(engine) {
   _luEngineLoading[engine] = true;
   var urls = (window.LU_CFG && window.LU_CFG.engineUrls) || {};
   var base = (window.LU_CFG && window.LU_CFG.pluginUrl) ? window.LU_CFG.pluginUrl + '/assets/js/' : '';
-  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','automation','projects','mentions','infrastructure','catalogue','businesses'];
+  var lazy = ['crm','marketing','social','calendar','seo','write','creative','manualedit','blog','studio','studio-video','automation','projects','campaigns','mentions','infrastructure','catalogue','businesses'];
   if (lazy.indexOf(engine) === -1) { _luEngineLoading[engine] = false; return; }
   var src = urls[engine] || (base + engine + '.js');
   var isFallback = !urls[engine] && base;
@@ -1359,7 +1359,7 @@ async function nav(view, opts){
   if(view==='aria')       { var _arr=document.getElementById('aria-root'); if(_arr && typeof window.ariaLoad==='function') window.ariaLoad(_arr); }   /* ARIA888 DEC-0054 */
   if(view==='reports')    loadReports();
   if(view==='catalogue') { await luLoadEngine('catalogue'); for (var _cw = 0; typeof window.catalogueLoad !== 'function' && _cw < 30; _cw++) { await new Promise(function (r) { setTimeout(r, 100); }); } var _cel=document.getElementById('catalogue-root'); if(_cel && typeof window.catalogueLoad==='function') window.catalogueLoad(_cel, { tail: opts.tail || null }); var _cg = String(opts.tail || window._luCatalogueGroup || ''); document.querySelectorAll('.nav-item[data-cat-group]').forEach(function(b){ b.classList.toggle('active', !_cg || b.getAttribute('data-cat-group') === _cg); }); }   // CAT-2
-  if(view==='projects')   { await luLoadEngine('projects'); var _el=document.getElementById('projects-root'); if(_el && typeof projectsLoad==='function') projectsLoad(_el); if (typeof loadProjects === 'function') { try { loadProjects(); } catch (_e) {} } var _pp=(opts&&opts.tail&&['board','history'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'projects'; if (typeof projShowPanel==='function') projShowPanel(_pp); }   // A2: the board loads; B4: Projects · Task board · History panels, /app/projects/history
+  if(view==='projects')   { await luLoadEngine('campaigns'); var _el=document.getElementById('projects-root'); if(_el && typeof campaignsLoad==='function') campaignsLoad(_el); /* CAMPAIGNS-1: Projects → Campaigns */ if (typeof loadProjects === 'function') { try { loadProjects(); } catch (_e) {} } var _pp=(opts&&opts.tail&&['board','history'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'projects'; if (typeof projShowPanel==='function') projShowPanel(_pp); }   // A2: the board loads; B4: Projects · Task board · History panels, /app/projects/history
   if(view==='infrastructure') { await luLoadEngine('infrastructure'); if (opts && opts.tail && ['websites','domains','email'].indexOf(String(opts.tail).toLowerCase()) !== -1) window.__infraDesiredTab = String(opts.tail).toLowerCase();   /* B1: /app/infrastructure/domains */ var _iel=document.getElementById('infrastructure-root'); if(_iel && typeof infraLoad==='function') infraLoad(_iel); }
   // P4-U1: mentions view retired.
   if(view==='tools')      { var _el=document.getElementById('tools-root'); if(_el) loadToolRegistry(_el); }
@@ -3807,6 +3807,7 @@ function renderKanban() {
 }
 
 function makeKbCard(task) {
+    if (!task.assignee) task.assignee = 'sarah';   // a task without an assigned agent is Sarah's (the board used to crash on it)
     var a   = AGENTS[task.assignee] || { emoji:'👤', color:'var(--t2)', name: task.assignee };
     var div = document.createElement('div');
     div.className = 'kb-card';
