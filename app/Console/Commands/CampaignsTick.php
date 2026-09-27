@@ -26,8 +26,14 @@ class CampaignsTick extends Command
             return self::SUCCESS;
         }
         // retire unanswered routine asks older than 7 days — Sarah handles maintenance herself now
-        $retired = DB::table('strategy_proposals')->where('status', 'pending_approval')->where('type', 'like', 'daily_action_%')->where('created_at', '<', now()->subDays(7))
-            ->update(['status' => 'superseded', 'superseded_reason' => 'retired: routine work runs quietly; ideas are campaigns (CAMPAIGNS-1)', 'updated_at' => now()]);
+        // IDEAS-RUN-1 (2026-09-28): the old reason (69 chars) overflowed varchar(64) and the exception killed the run before a
+        // single idea was queued — no business but the ones owners asked about in chat ever got monthly ideas. Short reason,
+        // and housekeeping can never stop the ideas again.
+        $retired = 0;
+        try {
+            $retired = DB::table('strategy_proposals')->where('status', 'pending_approval')->where('type', 'like', 'daily_action_%')->where('created_at', '<', now()->subDays(7))
+                ->update(['status' => 'superseded', 'superseded_reason' => 'retired: ideas are campaigns (CAMPAIGNS-1)', 'updated_at' => now()]);
+        } catch (\Throwable $e) { $this->warn('retire failed: ' . $e->getMessage()); }
         $q = DB::table('workspaces')->where('proactive_enabled', 1);
         if ($this->option('workspace')) $q->where('id', (int) $this->option('workspace'));
         $queued = 0;
