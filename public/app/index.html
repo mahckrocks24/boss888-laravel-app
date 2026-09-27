@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="20260926-0a791fed">
+<meta name="lu-build" content="1c72424-202609270613">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -3818,6 +3818,8 @@ window.luSwipeToClose = luSwipeToClose;
         <div data-set-tab="business" class="lu-set-note" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:14px 18px;margin-bottom:16px;font-size:12.5px;color:var(--t2);line-height:1.5">Looking for colours, fonts or a logo? Each website sets its own look in its <a href="/app/websites" onclick="if(window.nav){nav('websites');return false;}" style="color:var(--p);font-weight:600">editor</a>. The brand kit Sarah's team uses for images, emails and social posts lives in <a href="/app/studio" onclick="if(window.nav){nav('studio');return false;}" style="color:var(--p);font-weight:600">Studio › Brand</a>.</div>
         <!-- RFC-0011 U5b: the businesses of this workspace (cards, no switcher) — populated by businesses.js -->
         <div id="businesses-section" data-set-tab="business"></div>
+        <!-- BRAND-B1 (RFC-0017 5d): design styles and brand rules, per business — the same cards Sarah shows in chat (brand-card.js) -->
+        <div id="brand-styles-section" data-set-tab="business" style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px 22px;margin-bottom:16px"><div style="font:700 14px var(--fh);color:var(--t1);margin-bottom:4px">Design styles &amp; brand rules</div><p style="font-size:12.5px;color:var(--t3);margin:0 0 14px;line-height:1.5">The looks Sarah uses for your banners, images and videos, and the rules she always follows. Set them for each business.</p><div id="brand-styles-root"></div></div>
         <!-- RFC-0011 U7 (Owner 2026-09-22): the "Workspace Intelligence Profile Incomplete" gate is RETIRED. The Strategy Room resolves the business from the topic and runs across all website profiles like Sarah; there is no workspace-level profile to complete. -->
 
         <!-- Your Profile (enterprise Profile tab, RFC-0011 U8 2026-09-22) — "Your Profile"/"Change Password" text kept so tab auto-classify still reads 'profile' -->
@@ -4905,7 +4907,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=dec0028-social-20260829"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=2f00102b21"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=de3cf0d5eb"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

@@ -24,7 +24,7 @@
   'use strict';
   if (window.LU_attachComposer) return;
 
-  var DEFAULT_ACCEPT = 'image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt';
+  var DEFAULT_ACCEPT = 'image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.ttf,.otf,.woff,.woff2';
   var CAPS = { image: 100 * 1024 * 1024, video: 200 * 1024 * 1024, document: 50 * 1024 * 1024, audio: 100 * 1024 * 1024 };
 
   var _pending = {};

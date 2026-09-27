@@ -112,6 +112,7 @@ class ImageReasoningService
             . "- PEOPLE: never invent a real or named person's appearance, wardrobe, age or setting; describe named people only by the facts given.\n"
             . "- PLATFORM AGENT (when subject_reference is present): the subject is a real LevelUpGrowth agent with an approved portrait. Refer to her ONLY by the facts in subject_reference.prompt_facts (name, title, role); do NOT describe her face, hair, skin, gender presentation, clothing or body. Keep her the focal point exactly as the customer asked. If subject_reference.reference_supported is false, do not claim likeness — represent her by name and role and let the composition carry the message; set brand_application to mention that the agent is identified by name/role.\n"
             . "- EXACT TEXT: every string listed under exact_text is the customer's own copy — carry each one verbatim (same words, spelling, capitalisation, punctuation) into typography_strategy.headline or supporting_copy; never paraphrase or 'improve' it.\n"
+            . "- DESIGN DIRECTION: when brand_kit.design_direction is present it is the owner's chosen art direction — follow its recipe, photo grade and composition, and never use anything it lists after 'Never use'. brand_kit.brand_rules are the owner's hard rules; obey every one.\n"
             . "- NAMES: use the brand_name exactly as given in brand_kit.\n"
             . "- REQUESTED COPY: if headline_requested is true (the customer asked for a headline, caption, tagline or slogan) and gave no text, you MUST write one — short, on-brand, with no factual claim or number — into typography_strategy.headline; a requested headline is copy to write, not a fact to invent. Choose baked_in only if it is a few words; otherwise separate_overlay with the headline filled in.\n\n"
             . "Respond with ONLY this JSON object (all fields required):\n"
@@ -251,6 +252,7 @@ class ImageReasoningService
         $brandVisual = '';
         if ($colors) $brandVisual .= ' Incorporate the brand colour palette (' . implode(', ', array_slice($colors, 0, 4)) . ') naturally through props, surfaces, lighting and accents — never as text.';
         if ($vstyle) $brandVisual .= ' Overall visual style: ' . $vstyle . '.';
+        if (! empty($brand['design_direction'])) $brandVisual .= ' Art direction: ' . preg_replace('/\s*Never use:.*$/s', '', (string) $brand['design_direction']);   // BRAND-B1
 
         // Compose the subject naturally, tolerating empty and verb-leading prompts.
         $subject   = $prompt !== '' ? $prompt : $cat['default_subject'];

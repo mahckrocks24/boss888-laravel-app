@@ -38,6 +38,7 @@ class AttachmentReader
             $kind = str_starts_with($mime, 'image/') ? 'image' : (str_starts_with($mime, 'video/') ? 'video' : (str_starts_with($mime, 'audio/') ? 'audio' : 'document'));
             $item = ['media_id' => (int) $row->id, 'kind' => $kind, 'name' => (string) $row->filename, 'mime' => $mime, 'url' => (string) ($row->url ?: $row->file_url ?? ''), 'size' => (int) $row->size_bytes];
             $meta[] = $item;
+            if (str_starts_with($mime, 'font/') || str_contains($mime, 'font') || str_contains($mime, 'opentype') || preg_match('/\.(ttf|otf|woff2?)$/i', $item['name'])) { $context .= "\n\n[The owner attached the font file \"{$item['name']}\" for their brand. A brand summary card to confirm follows automatically; acknowledge it in one line.]"; continue; }   // BRAND-B1
             if ($kind === 'image') { $images[] = $item; continue; }
             if ($kind !== 'document') { $context .= "\n\n[The owner attached a {$kind} file \"{$item['name']}\" — Sarah cannot watch or listen to it yet; acknowledge it and ask what they want done with it.]"; continue; }
 

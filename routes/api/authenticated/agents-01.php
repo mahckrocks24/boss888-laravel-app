@@ -124,6 +124,7 @@ use Illuminate\Support\Facades\Route;
                     'content' => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $m->content),
                     'ts'      => $m->created_at,
                     'attachments' => $meta['attachments'] ?? null, // ATTACH-2
+                    'card'    => (is_array($meta['card'] ?? null) && in_array($meta['card']['type'] ?? '', ['brand_directions', 'brand_summary'], true)) ? $meta['card'] : null, // BRAND-B1
                     'is_ack'  => !empty($meta['is_ack']) || (($meta['phase'] ?? '') === 'ack'),
                     'phase'   => $meta['phase'] ?? null,
                     // SARAH888 Phase 1A slice 1 — correlation surfaced so a client
@@ -304,6 +305,10 @@ use Illuminate\Support\Facades\Route;
                 'created_at'   => now(),
                 'updated_at'   => now(),
             ]);
+            // BRAND-B1 (RFC-0017 5d): Sarah's brand intake runs after she has answered this message (queued; never blocks the reply)
+            if ($userMessageId && in_array((string) $slug, ['sarah', 'dmm'], true)) {
+                try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay(now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
+            }
         } catch (\Throwable $e) {
             // CR-18 (2026-07-26): this catch used to be empty. If this insert
             // fails the user's message is gone — exactly the failure the
@@ -1877,7 +1882,22 @@ $withCorr = function (array $meta) use ($corr) {
                     }
                 }
             } catch (\Throwable $__ce) { \Illuminate\Support\Facades\Log::warning('[SARAH-COMMENTS-1] block failed: ' . $__ce->getMessage()); }
-            $__selectedStateBlocks = ($__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock)) . $__commentsBlock;
+            // BRAND-B1 (RFC-0017 5d): each business's brand preferences, so Sarah can talk about them and knows the intake flow
+            $__brandPrefBlock = '';
+            try {
+                $__bps = app(\App\Core\Brand\BrandProfileService::class);
+                $__bl = [];
+                foreach (array_slice($__bps->businesses((int) $wsId), 0, 6) as $__bb) {
+                    $__k = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve((int) $wsId, (int) $__bb->id);
+                    $__nm = array_map(fn ($d) => \App\Core\Brand\DesignDirections::ALL[$d]['name'] ?? $d, (array) ($__k['design_picks'] ?? []));
+                    $__bl[] = '  - ' . $__bb->name . ': colours ' . ($__k['is_neutral'] ? 'not set yet' : $__k['primary_color'] . ' / ' . $__k['secondary_color'] . ' / ' . $__k['accent_color'])
+                        . '; heading font ' . $__k['heading_font'] . '; design styles ' . ($__nm ? implode(', ', $__nm) : 'not chosen yet')
+                        . (! empty($__k['brand_rules']) ? '; rules: ' . implode(' | ', array_slice($__k['brand_rules'], 0, 6)) : '') . '; brand questions ' . ($__k['intake_status'] ?? 'not asked yet');
+                }
+                if ($__bl) $__brandPrefBlock = "\nBRAND PREFERENCES (per business; every banner, image and video follows them):\n" . implode("\n", $__bl) . "\n"
+                    . "When the owner gives brand material (colours, fonts, a logo, guidelines, example posts, styles they like, or rules), acknowledge it in one short line: a summary card to confirm follows automatically. Do not create tasks for it and never say it is saved before they confirm. They can change design styles by telling you or in Settings › Business.\n";
+            } catch (\Throwable $__bpe) { $__brandPrefBlock = ''; }
+            $__selectedStateBlocks = ($__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock)) . $__commentsBlock . $__brandPrefBlock;
             $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . $__selectedStateBlocks . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"

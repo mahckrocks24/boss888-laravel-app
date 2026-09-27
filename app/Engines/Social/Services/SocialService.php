@@ -490,6 +490,9 @@ class SocialService
 
         $userPrompt = "Generate a {$platform} post about: {$topic}\n"
                     . "Tone: {$tone}";
+        if (! empty($kit['brand_rules'])) {   // BRAND-B1: the owner's brand rules are hard rules for the copy too
+            $userPrompt .= "\nBrand rules (always follow):\n- " . implode("\n- ", array_slice((array) $kit['brand_rules'], 0, 12));
+        }
         if (!empty($context['learned_patterns'])) {
             // Fold learnings into the prompt directly so they reach the model even
             // if the runtime task ignores unknown context keys.

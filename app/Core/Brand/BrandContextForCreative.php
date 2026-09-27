@@ -30,7 +30,8 @@ final class BrandContextForCreative
         try {
             $kit     = app(WorkspaceBrandKitResolver::class)->resolve($wsId, $businessId); // BRAND-B0: per business
             $branded = empty($kit['is_neutral']);
-            if (! $branded && ! $overrides) {
+            $hasPrefs = ! empty($kit['design_picks']) || ! empty($kit['design_never']) || ! empty($kit['brand_rules']);   // BRAND-B1
+            if (! $branded && ! $overrides && ! $hasPrefs) {
                 return [];
             }
             $val = function (string $kitKey) use ($kit, $overrides, $branded) {
@@ -47,6 +48,11 @@ final class BrandContextForCreative
                 'visual_style' => $val('visual_style'),
                 'voice'        => $val('voice'),
                 'tone'         => $val('tone'),
+                // BRAND-B1 (RFC-0017 5d): the owner's styles and rules, and the industry the provisional styles come from
+                'industry'     => $kit['industry'] ?? null,
+                'design_picks' => $kit['design_picks'] ?? [],
+                'design_never' => $kit['design_never'] ?? [],
+                'brand_rules'  => $kit['brand_rules'] ?? [],
             ]);
         } catch (\Throwable $e) {
             return []; // neutral brand — identical to the previous inline behaviour
@@ -68,6 +74,12 @@ final class BrandContextForCreative
         $fonts = array_values(array_filter([$brand['heading_font'] ?? null, $brand['body_font'] ?? null]));
         if ($fonts)                          { $parts[] = 'Fonts: ' . implode(', ', $fonts); }
         $parts[] = 'Logo asset: ' . (! empty($brand['logo_url']) ? 'available' : 'none — do not depict a logo');
+        // BRAND-B1: the owner's design direction (video style) and hard rules reach the video planner too
+        try {
+            $d = \App\Core\Brand\DesignDirections::choose((array) ($brand['design_picks'] ?? []), (array) ($brand['design_never'] ?? []), $brand['industry'] ?? null, '');
+            if ($d) { $parts[] = 'Design direction: ' . $d['name'] . ' — video style: ' . $d['video'] . '; never use: ' . implode(', ', $d['forbids']); }
+        } catch (\Throwable $e) {}
+        if (! empty($brand['brand_rules'])) { $parts[] = 'Brand rules (always follow): ' . implode('; ', array_slice((array) $brand['brand_rules'], 0, 10)); }
         return implode('. ', $parts) . '.';
     }
 }

@@ -273,6 +273,14 @@ class ImageIntelligenceService
         //   logo_requested  — the customer's own words asked for a logo (never strip those).
         //   exact_text      — quoted strings in the request: verbatim customer copy.
         $userPrompt = (string) ($c['user_prompt'] ?? '');
+        // BRAND-B1 (RFC-0017 5d): the owner's design direction for THIS request (their picks, re-ranked by what the request
+        // is about; the industry's top three provisionally until they choose), and their brand rules as hard limits.
+        try {
+            $__dir = \App\Core\Brand\DesignDirections::choose((array) ($brand['design_picks'] ?? []), (array) ($brand['design_never'] ?? []), $brand['industry'] ?? null, $userPrompt);
+            if ($__dir) { $brand['design_direction'] = \App\Core\Brand\DesignDirections::promptBlock($__dir); $brand['design_direction_id'] = $__dir['id']; }
+        } catch (\Throwable $__de) { /* no direction: the reasoning works from the brand alone */ }
+        unset($brand['design_picks'], $brand['design_never']);
+        if (empty($brand['brand_rules'])) unset($brand['brand_rules']);
         $hasLogo = is_string($brand['logo_url'] ?? null) && trim($brand['logo_url']) !== '';
         $logoRequested = (bool) preg_match('/\blogo\b/i', $userPrompt);
         // A requested headline/caption/tagline is copy the customer wants WRITTEN — not an invented fact.

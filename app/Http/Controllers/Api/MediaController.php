@@ -81,6 +81,8 @@ class MediaController
             'application/vnd.ms-powerpoint',
             'application/vnd.openxmlformats-officedocument.presentationml.presentation',
             'text/csv', 'text/plain', 'application/zip', 'application/json',
+            // BRAND-B1: brand fonts for the brand profile
+            'font/ttf', 'font/otf', 'font/woff', 'font/woff2', 'font/sfnt', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype',
         ];
         if (! in_array($mimeUpload, $allowedMimes, true)) {
             return response()->json([

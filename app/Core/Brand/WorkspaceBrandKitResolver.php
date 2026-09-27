@@ -115,6 +115,11 @@ class WorkspaceBrandKitResolver
         $tagline     = $f($studio->tagline ?? null);
 
         $visualStyle = $f($creative->visual_style ?? null);
+        // BRAND-B1 (RFC-0017 5d): the owner's design directions and brand rules for this business
+        $dirs = [];
+        if (! empty($creative->directions_json)) { $dd = is_string($creative->directions_json) ? json_decode($creative->directions_json, true) : (array) $creative->directions_json; if (is_array($dd)) $dirs = $dd; }
+        $rulesArr = [];
+        if (! empty($creative->rules_json)) { $rr = is_string($creative->rules_json) ? json_decode($creative->rules_json, true) : (array) $creative->rules_json; if (is_array($rr)) foreach ($rr as $x) { if (is_array($x) && ! empty($x['rule'])) $rulesArr[] = (string) $x['rule']; } }
         $colorsJson  = [];
         if (! empty($creative->colors_json)) {
             $decoded = is_string($creative->colors_json) ? json_decode($creative->colors_json, true) : $creative->colors_json;
@@ -143,6 +148,10 @@ class WorkspaceBrandKitResolver
             'visual_style'      => $visualStyle,
             'colors_json'       => $colorsJson,
             'is_neutral'        => $isNeutral,
+            'design_picks'      => \App\Core\Brand\DesignDirections::clean((array) ($dirs['picks'] ?? [])),
+            'design_never'      => \App\Core\Brand\DesignDirections::clean((array) ($dirs['never'] ?? [])),
+            'brand_rules'       => $rulesArr,
+            'intake_status'     => $creative->intake_status ?? null,
             'sources_present'   => array_filter([
                 'studio_brand_kit'        => (bool) $hasStudioKit,
                 'creative_brand_identity' => (bool) $hasCreativeKit,

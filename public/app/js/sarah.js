@@ -236,7 +236,7 @@
             '<div class="sh-compose-row">' +
               '<span class="sh-attach-wrap"><button type="button" class="sh-attach" id="sh-attach" aria-label="Add a photo or file" title="Add a photo or file"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg></button>' +
               /* ATTACH-3: a real file input over the plus — a tap opens the native chooser without any scripted click. */
-              '<input type="file" id="sh-file" class="sh-file" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.md,.json" aria-hidden="true" tabindex="-1" title="Add a photo or file"></span>' +
+              '<input type="file" id="sh-file" class="sh-file" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.md,.json,.ttf,.otf,.woff,.woff2" aria-hidden="true" tabindex="-1" title="Add a photo or file"></span>' +
               '<label for="sh-input" style="position:absolute;left:-9999px">Message Sarah</label>' +
               '<textarea id="sh-input" class="sh-ta" rows="1" placeholder="Tell Sarah what you want to achieve…" autocomplete="off"></textarea>' +
               '<button type="button" class="sh-send" id="sh-send" aria-label="Send to Sarah" title="Send (Enter)">↑</button>' +
@@ -550,6 +550,7 @@
       }).join('') + '</div>';
     }
     row.innerHTML = '<div class="sh-bubble' + (m.error ? ' err' : '') + '">' + (isUser ? esc(m.content) : fmtBody(m.content)) + attHtml + '</div>' +
+                    (!isUser && m.card && window.LU_brandCard ? window.LU_brandCard.slotHtml(m.card) : '') +   /* BRAND-B1 */
                     '<div class="sh-meta">' + (isUser ? 'You' : 'Sarah') + (m.ts ? ' · ' + esc(ago(m.ts)) : '') + '</div>';
     if (m.id) row.setAttribute('data-mid', String(m.id));
     return row;
