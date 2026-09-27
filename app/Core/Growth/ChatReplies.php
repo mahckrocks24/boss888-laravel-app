@@ -137,8 +137,14 @@ final class ChatReplies
     public function previews(int $wsId): array
     {
         $out = ['campaigns' => [], 'changes' => []];
-        $q = $this->openQuestion($wsId);
-        if ($q && $q['type'] === 'campaign_ideas') foreach (array_slice($q['open_ids'], 0, 4) as $id) { if ($p = self::preview($wsId, (int) $id, $q['all_ids'])) $out['campaigns'][] = $p; }
+        // CAMPAIGN-PREVIEW-2: every idea still undecided (14 days), numbered as in the Sarah message that proposed it
+        $seen = [];
+        foreach (DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('created_at', '>=', now()->subDays(14))
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.notification_type')) = 'campaign_ideas'")->orderByDesc('id')->limit(10)->get(['metadata_json']) as $m) {
+            $all = array_map(fn ($i) => (int) ($i['id'] ?? 0), (array) ((json_decode((string) $m->metadata_json, true) ?: [])['card']['ideas'] ?? []));
+            $open = DB::table('marketing_campaigns')->where('workspace_id', $wsId)->whereIn('id', $all)->where('status', 'idea')->whereNull('deleted_at')->pluck('id')->map(fn ($x) => (int) $x)->all();
+            foreach ($all as $id) { if (in_array($id, $open, true) && ! isset($seen[$id]) && count($out['campaigns']) < 8 && ($p = self::preview($wsId, $id, $all))) { $out['campaigns'][] = $p; $seen[$id] = 1; } }
+        }
         foreach (DB::table('campaign_changes as x')->join('marketing_campaigns as c', 'c.id', '=', 'x.campaign_id')->where('x.workspace_id', $wsId)->where('x.status', 'proposed')
             ->where('x.created_at', '>=', now()->subDays(7))->orderByDesc('x.id')->limit(2)->get(['x.id', 'x.reason', 'x.changes_json', 'x.extra_credits', 'c.id as cid', 'c.title']) as $x) {
             $tz = (string) (DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC');

@@ -433,10 +433,42 @@
     if (link) acts.push({ label: link.label, run: function () { openAdvanced(link); } });
     return railItem('appr', '✓', title, desc, who, acts, 'appr-' + a.id);
   }
+  /* CAMPAIGN-PREVIEW-2 (Owner 2026-09-27: "on Laravel it should be placed on the needs you pull down on sarah chat"):
+     a campaign idea or a campaign update waiting for the owner is a rail item, decided right there. */
+  function campAct(path, body, okLine, b, el) {
+    var buttons = el.querySelectorAll('button'); buttons.forEach(function (x) { x.disabled = true; });
+    api('POST', path, body || {}).then(function (r) {
+      var d = r.json || {};
+      if (r.ok && d.success !== false) { el.querySelector('.acts').innerHTML = '<span class="d">' + esc(okLine) + '</span>'; showToast(okLine, 'success'); setTimeout(function () { el.remove(); loadRail(); }, 2200); }
+      else { buttons.forEach(function (x) { x.disabled = false; }); showToast(d.error || d.message || 'Could not do that — try again.', 'error'); }
+    }).catch(function () { buttons.forEach(function (x) { x.disabled = false; }); showToast('Couldn\'t reach the server — try again.', 'error'); });
+  }
+  function openCampaign(id) { if (window.nav) { nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(id); else if (t++ < 30) setTimeout(w, 150); })(); } }
+  function campaignItem(p) {
+    var desc = [p.dates_label, p.target ? 'target: ' + p.target : null, (p.steps || []).length + ' steps', p.credits_up_to ? 'up to ' + p.credits_up_to + ' credits' : null].filter(Boolean).join(' · ');
+    var acts = [
+      { label: 'Launch', kind: 'primary', run: function (b, el) {
+          if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Confirm launch'; return; }
+          campAct('growth/campaigns/' + p.campaign_id + '/launch', {}, 'Launched — Sarah\'s team is on it.', b, el); } },
+      { label: 'View plan', run: function () { openCampaign(p.campaign_id); } },
+      { label: 'Not now', run: function (b, el) { campAct('growth/campaigns/' + p.campaign_id + '/decline', { reason: 'Not now' }, 'Not now — Sarah will learn from it.', b, el); } }
+    ];
+    return railItem('appr', '✦', 'Campaign idea: ' + p.title, desc, 'Sarah', acts, 'camp-' + p.campaign_id);
+  }
+  function campaignChangeItem(x) {
+    var desc = (x.reason ? x.reason + ' · ' : '') + (x.lines || []).map(function (l) { return l.label + ' ' + l.title; }).join('; ');
+    var acts = [
+      { label: 'Approve' + (x.extra_credits ? ' · up to ' + x.extra_credits + ' credits' : ''), kind: 'primary', run: function (b, el) { campAct('growth/changes/' + x.change_id + '/approve', {}, 'Updated — the new steps are on the calendar.', b, el); } },
+      { label: 'View campaign', run: function () { openCampaign(x.campaign_id); } },
+      { label: 'Keep as is', run: function (b, el) { campAct('growth/changes/' + x.change_id + '/decline', {}, 'Kept as is — Sarah will learn from it.', b, el); } }
+    ];
+    return railItem('appr', '✦', 'Campaign update: ' + x.campaign_title, desc, 'Sarah', acts, 'chg-' + x.change_id);
+  }
   function loadRail() {
     var rail = document.getElementById('sh-rail'); if (!rail) return;
     Promise.all([
       api('GET', 'approvals?status=pending&per_page=5').catch(function () { return { json: null }; }),
+      api('GET', 'agents/dmm/pending-actions').catch(function () { return { json: null }; }),   /* CAMPAIGN-PREVIEW-2 */
       api('GET', 'calendar/events').catch(function () { return { json: null }; }),
       api('GET', 'social/accounts').catch(function () { return { json: null }; }),
       api('GET', 'seo/gsc/status').catch(function () { return { json: null }; })
@@ -444,6 +476,9 @@
       var items = [];
       var appr = (rs[0].json && rs[0].json.items) || [];
       appr.forEach(function (a) { items.push(approvalItem(a)); });
+      var pa = rs[1].json || {}; var camps = pa.campaigns || []; var chgs = pa.campaign_changes || [];   /* CAMPAIGN-PREVIEW-2 */
+      camps.forEach(function (p) { items.push(campaignItem(p)); }); chgs.forEach(function (x) { items.push(campaignChangeItem(x)); });
+      rs.splice(1, 1);
       var evs = Array.isArray(rs[1].json) ? rs[1].json : ((rs[1].json && (rs[1].json.events || rs[1].json.data)) || []);
       evs.filter(function (e) { return e && /booking_pending|pending/.test(String(e.status || e.booking_status || '')) && !/cancel|declin/.test(String(e.status || '')); }).slice(0, 3).forEach(function (e) {
         items.push(railItem('book', '📅', 'Booking request — ' + (e.title || e.name || 'a customer').replace(/^Booking request — /, ''), (e.starts_at ? 'Asked for ' + new Date(String(e.starts_at).replace(' ', 'T')).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '') , null,
@@ -458,14 +493,14 @@
         [{ label: 'Connect Google', run: function () { openAdvanced({ view: 'seo', tail: null }); } }], 'gate-gsc'));
       rail.innerHTML = '';
       if (!items.length) { rail.hidden = true; return; }
-      var title = appr.length ? 'Needs your OK' : 'Worth knowing';
+      var title = (appr.length || camps.length || chgs.length) ? 'Needs your OK' : 'Worth knowing';
       var h = document.createElement('div'); h.className = 'sh-rail-h';
       h.innerHTML = '<button type="button" class="tog" aria-expanded="true" aria-controls="sh-rail-track" title="Minimise"><svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ttl">' + title + '</span></button><span class="pos" aria-live="polite"></span>';
       rail.appendChild(h);
       /* RAIL-2: minimised state is remembered per device; a NEW approval reopens it. */
       var seenKey = 'lu_rail_seen', minKey = 'lu_rail_min', seen = [], isMin = false;
       try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); isMin = localStorage.getItem(minKey) === '1'; } catch (e) {}
-      var apprIds = appr.map(function (a) { return String(a.id); });
+      var apprIds = appr.map(function (a) { return String(a.id); }).concat(camps.map(function (p) { return 'camp-' + p.campaign_id; }), chgs.map(function (x) { return 'chg-' + x.change_id; }));
       var fresh = apprIds.filter(function (id) { return seen.indexOf(id) < 0; });
       if (fresh.length) { isMin = false; try { localStorage.setItem(minKey, '0'); localStorage.setItem(seenKey, JSON.stringify(seen.concat(fresh).slice(-50))); } catch (e) {} }
       function setMin(v) { isMin = !!v; rail.classList.toggle('min', isMin); var b = h.querySelector('.tog'); b.setAttribute('aria-expanded', isMin ? 'false' : 'true'); b.title = isMin ? 'Show' : 'Minimise'; try { localStorage.setItem(minKey, isMin ? '1' : '0'); } catch (e) {} if (typeof updPos === 'function') updPos(); }
