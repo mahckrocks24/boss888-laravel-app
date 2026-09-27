@@ -147,6 +147,9 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
         elseif (app(\App\Core\Sarah888\ImageGeneration::class)->pending($wsId)) $chips = [['label' => 'Yes, make it', 'text' => 'yes'], ['label' => 'No', 'text' => 'no']];
     } catch (\Throwable $e) {} }
     if ($chips) { $offer = true; $offerMessageId = $offerMessageId ?: (int) DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', $slug)->where('role', 'agent')->max('id'); }
-    return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'offer' => $offer, 'offer_message_id' => $offerMessageId,
+    // CAMPAIGN-PREVIEW-1: campaign ideas and campaign updates are previewed in the chat like posts — decide without leaving it
+    $__pv = ['campaigns' => [], 'changes' => []];
+    try { $__pv = app(\App\Core\Growth\ChatReplies::class)->previews($wsId); } catch (\Throwable $e) {}
+    return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'campaigns' => $__pv['campaigns'], 'campaign_changes' => $__pv['changes'], 'offer' => $offer, 'offer_message_id' => $offerMessageId,
         'quick_replies' => $chips ?: ($offer ? [['label' => 'Go', 'text' => 'go'], ['label' => 'Not now', 'text' => 'not now']] : [])]);
 });

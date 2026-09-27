@@ -85,17 +85,81 @@ final class ChatReplies
     }
 
     /** Tap-to-answer chips for the app (they send text, so typing works the same). */
+    /** CAMPAIGN-PREVIEW-1: a campaign's full plan as exact text (appended to Sarah's words — never paraphrased). */
+    public static function planText(int $wsId, int $id, array $order = []): string
+    {
+        $p = self::preview($wsId, $id, $order);
+        if (! $p) return '';
+        $head = '**' . ($p['number'] ? $p['number'] . '. ' : '') . $p['title'] . '** — ' . $p['dates_label'] . ($p['target'] ? ' · target: ' . $p['target'] : '') . ($p['credits_up_to'] ? ' · up to ' . $p['credits_up_to'] . ' credits' : '');
+        $lines = [$head];
+        if ($p['objective']) $lines[] = 'Goal: ' . $p['objective'];
+        if ($p['offer']) $lines[] = 'Offer: ' . $p['offer'];
+        foreach ($p['steps'] as $s) $lines[] = '• ' . $s['date_label'] . ' — ' . $s['kind_label'] . ($s['channel_label'] ? ' on ' . $s['channel_label'] : '') . ': ' . $s['title'];
+        return implode("\n", $lines);
+    }
+
+    /** CAMPAIGN-PREVIEW-1: a campaign's full plan in plain facts (for Sarah's reply). */
+    public static function planFacts(int $wsId, int $id, array $order = []): array
+    {
+        $p = self::preview($wsId, $id, $order);
+        if (! $p) return [];
+        return ['number' => $p['number'], 'title' => $p['title'], 'goal' => $p['objective'], 'why_now' => $p['why_now'], 'dates' => $p['starts_on'] . ' to ' . $p['ends_on'], 'target' => $p['target'],
+            'steps' => array_map(fn ($s) => $s['date_label'] . ' — ' . $s['kind_label'] . ($s['channel_label'] ? ' on ' . $s['channel_label'] : '') . ': ' . $s['title'], $p['steps'])];
+    }
+
+    /** CAMPAIGN-PREVIEW-1: everything the app shows in a campaign preview — like a post preview, so the owner decides in the chat. */
+    public static function preview(int $wsId, int $id, array $order = []): ?array
+    {
+        $c = DB::table('marketing_campaigns')->where('id', $id)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $c) return null;
+        $tz = (string) (DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC');
+        $kind = ['post' => 'Social post', 'article' => 'Article', 'email' => 'Email you send', 'image' => 'Design', 'video' => 'Video', 'event' => 'Event', 'owner_task' => 'Your step'];
+        $chan = ['facebook' => 'Facebook', 'instagram' => 'Instagram', 'linkedin' => 'LinkedIn', 'website' => 'your website', 'email' => 'email', 'in_person' => '', 'phone' => 'phone'];
+        $steps = [];
+        foreach (DB::table('campaign_items')->where('campaign_id', $id)->orderBy('scheduled_at')->orderBy('sort')->get() as $it) {
+            $d = $it->scheduled_at ? \Carbon\Carbon::parse($it->scheduled_at)->setTimezone($tz) : null;
+            $steps[] = ['id' => (int) $it->id, 'date' => $d ? $d->toDateString() : null, 'date_label' => $d ? $d->format('D j M') : '', 'phase' => $it->phase, 'kind' => $it->kind, 'kind_label' => $kind[$it->kind] ?? ucfirst((string) $it->kind),
+                'channel' => $it->channel, 'channel_label' => $chan[$it->channel] ?? (string) $it->channel, 'title' => $it->title, 'brief' => $it->brief ? mb_substr((string) $it->brief, 0, 400) : null, 'status' => $it->status];
+        }
+        $kpi = json_decode((string) $c->kpi_json, true) ?: [];
+        // the real charge, computed now (a stored estimate may predate the price table), with the plan's 25% headroom
+        try { $est = app(\App\Core\Campaigns\CampaignService::class)->estimate((int) $c->id); } catch (\Throwable $e) { $est = (int) $c->credit_estimate; }
+        $credits = $est ? max(1, (int) ceil($est * 1.25)) : null;
+        $n = array_search((int) $c->id, $order, true);
+        return ['campaign_id' => (int) $c->id, 'number' => $n === false ? null : $n + 1, 'status' => $c->status, 'title' => $c->title, 'objective' => $c->objective, 'why_now' => $c->why_now, 'offer' => $c->offer,
+            'audience' => $c->audience, 'starts_on' => $c->starts_on, 'ends_on' => $c->ends_on,
+            'dates_label' => \Carbon\Carbon::parse($c->starts_on)->format('j M') . ' – ' . \Carbon\Carbon::parse($c->ends_on)->format('j M'),
+            'target' => $kpi['label'] ?? null, 'channels' => array_values(array_filter(array_map(fn ($x) => $chan[$x] ?? $x, json_decode((string) $c->channels_json, true) ?: []))),
+            'credits_up_to' => $credits, 'steps' => $steps];
+    }
+
+    /** CAMPAIGN-PREVIEW-1: previews for the app — the ideas Sarah asked about (still undecided) and any campaign update waiting. */
+    public function previews(int $wsId): array
+    {
+        $out = ['campaigns' => [], 'changes' => []];
+        $q = $this->openQuestion($wsId);
+        if ($q && $q['type'] === 'campaign_ideas') foreach (array_slice($q['open_ids'], 0, 4) as $id) { if ($p = self::preview($wsId, (int) $id, $q['all_ids'])) $out['campaigns'][] = $p; }
+        foreach (DB::table('campaign_changes as x')->join('marketing_campaigns as c', 'c.id', '=', 'x.campaign_id')->where('x.workspace_id', $wsId)->where('x.status', 'proposed')
+            ->where('x.created_at', '>=', now()->subDays(7))->orderByDesc('x.id')->limit(2)->get(['x.id', 'x.reason', 'x.changes_json', 'x.extra_credits', 'c.id as cid', 'c.title']) as $x) {
+            $tz = (string) (DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC');
+            $out['changes'][] = ['change_id' => (int) $x->id, 'campaign_id' => (int) $x->cid, 'campaign_title' => $x->title, 'reason' => $x->reason, 'extra_credits' => (int) $x->extra_credits ? (int) ceil($x->extra_credits * 1.25) : 0,
+                'lines' => array_map(fn ($c) => ['op' => $c['op'], 'label' => ['add' => 'Add', 'move' => 'Move', 'drop' => 'Drop'][$c['op']] ?? $c['op'], 'title' => $c['title'] ?? '',
+                    'date_label' => isset($c['date']) ? \Carbon\Carbon::parse($c['date'], $tz)->format('D j M') : null], json_decode((string) $x->changes_json, true) ?: [])];
+        }
+        return $out;
+    }
+
     public function chips(int $wsId): array
     {
         $q = $this->openQuestion($wsId);
-        if (! $q || ! $q['latest']) return [];
+        if (! $q || (! $q['latest'] && ! in_array($q['type'], ['campaign_ideas', 'campaign_step'], true))) return [];
         return match ($q['type']) {
             'watch_ask' => [['label' => 'Every 2 days', 'text' => 'Every 2 days'], ['label' => 'Twice a week', 'text' => 'Twice a week'], ['label' => 'Once a week', 'text' => 'Once a week'], ['label' => 'Not now', 'text' => 'Not now']],
             'campaign_change' => [['label' => 'Approve', 'text' => 'Approve'], ['label' => 'Keep as is', 'text' => 'Keep as is']],
             'campaign_ideas' => array_merge(count($q['open_ids']) === 1
                 ? [['label' => 'Launch it', 'text' => 'Launch it']]
                 : array_map(fn ($id) => ['label' => 'Launch #' . (array_search($id, $q['all_ids'], true) + 1), 'text' => 'Launch #' . (array_search($id, $q['all_ids'], true) + 1)], array_slice($q['open_ids'], 0, 4)),
-                [['label' => 'Not now', 'text' => 'Not now']]),
+                [['label' => 'Not now', 'text' => 'None of these for now']]),
             'brand_intake' => [['label' => 'Use my website', 'text' => 'Skip, use my website']],
             'brand_summary' => [['label' => 'Save', 'text' => 'Save'], ['label' => 'Discard', 'text' => 'Discard']],
             'campaign_step' => [['label' => 'Done', 'text' => 'Done'], ['label' => 'Skip', 'text' => 'Skip this step']],
@@ -142,6 +206,13 @@ final class ChatReplies
                     return null;
                 }
                 case 'campaign_ideas': {
+                    // CAMPAIGN-PREVIEW-1: "what exactly will be in the campaign?" / "show me the plan" / "what's in 2" → the real steps
+                    if (preg_match('/\b(what|show|see|explain|details?|inside|exactly|steps?|plan|breakdown|in it|involve|include)\b/i', $t) && ! preg_match('/\b(launch|start|run|go with|new|more|another|different|other ideas)\b/i', $t)) {
+                        $only = preg_match('/\b(?:#|number|idea|campaign|no\.?)\s*(\d)\b|\b(\d)\b/i', $t, $mm) ? ($q['all_ids'][((int) ($mm[1] ?: $mm[2])) - 1] ?? null) : null;
+                        $ids = $only && in_array($only, $q['open_ids'], true) ? [$only] : $q['open_ids'];
+                        return ['turn' => 'reply', 'note' => 'The owner wants to see exactly what is inside the campaign ideas before deciding. Write ONE or TWO warm sentences only: say that the full plan of each campaign is listed right below your message, step by step with dates, and that they can launch the one they like or say not now. Do not list any steps, dates or targets yourself — the exact plan is appended after your words.',
+                            'verified' => ['plan', 'campaign'], 'append' => implode("\n\n", array_map(fn ($id) => self::planText($wsId, (int) $id, $q['all_ids']), $ids)) . "\n\nReply **" . (count($ids) === 1 ? 'launch it' : 'launch 1') . '**' . (count($ids) > 1 ? ', **launch 2**' : '') . ' or **not now**.'];
+                    }
                     $pick = null;
                     $ordinals = ['first' => 1, 'second' => 2, 'third' => 3, 'fourth' => 4, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4];
                     if (preg_match('/\b(?:launch|start|run|go with|do|pick|choose|option|number|idea|#)\s*(?:the\s+)?#?\s*(\d|first|second|third|fourth)\b/i', $t, $m) || preg_match('/^\s*#?(\d)\s*[.!]?\s*$/', $t, $m) || preg_match('/\b(first|second|third|fourth) one\b/i', $t, $m)) {

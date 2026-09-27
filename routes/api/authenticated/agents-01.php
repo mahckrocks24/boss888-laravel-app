@@ -311,7 +311,7 @@ use Illuminate\Support\Facades\Route;
                 // CHAT-FIRST-1: a plain-words answer to the question Sarah asked with a card ("twice a week", "launch 2", "approve", "done") acts here, so the companion app is a complete surface
                 $__reply = null;
                 try { $__reply = app(\App\Core\Growth\ChatReplies::class)->handle((int) $wsId, (int) ($userId ?? 0) ?: null, (string) $content); } catch (\Throwable $__cr) { \Illuminate\Support\Facades\Log::warning('[CHAT-FIRST-1] reply hook failed', ['e' => $__cr->getMessage()]); }
-                if ($__reply) { $__watchTurn = $__reply['turn']; $__replyNote = $__reply['note']; $__replyVerified = $__reply['verified']; \Illuminate\Support\Facades\Log::info('[CHAT-FIRST-1] answered', ['ws' => $wsId, 'turn' => $__reply['turn']]); }
+                if ($__reply) { $__watchTurn = $__reply['turn']; $__replyNote = $__reply['note']; $__replyVerified = $__reply['verified']; $__replyAppend = (string) ($__reply['append'] ?? ''); \Illuminate\Support\Facades\Log::info('[CHAT-FIRST-1] answered', ['ws' => $wsId, 'turn' => $__reply['turn']]); }
                 // WATCH-1 (RFC-0019): an answer to Sarah's check-in is learned from; "stop monitoring", "check competitors weekly", "stop checking in" act at once
                 if (! $__reply) try {
                     $__wc = (string) $content;
@@ -328,7 +328,8 @@ use Illuminate\Support\Facades\Route;
                 } catch (\Throwable $__wj) { \Illuminate\Support\Facades\Log::warning('[WATCH-1] chat hook failed', ['e' => $__wj->getMessage()]); }
                 // CAMPAIGNS-1: asking for campaigns, a marketing plan or growth ideas → Sarah designs campaign ideas (cards follow her reply)
                 if (empty($__reply) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $content)
-                    && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $content)) {
+                    && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $content)
+                    && ! (preg_match('/\b(what|show|see|explain|details?|inside|exactly|steps?|in it|which|the plan itself|confus)/i', (string) $content) && ! preg_match('/\b(new|more|another|different|other|fresh) (campaign|idea)|\b(give|suggest|design|think of|come up with)\b[^.?!]{0,30}\b(campaign|idea)/i', (string) $content))) {   // CAMPAIGN-PREVIEW-1
                     try {
                         $__cbiz = null; $__lc = mb_strtolower((string) $content);
                         foreach (\Illuminate\Support\Facades\DB::table('businesses')->where('workspace_id', (int) $wsId)->whereNull('deleted_at')->get(['id', 'name']) as $__b) { if (str_contains($__lc, mb_strtolower($__b->name))) { $__cbiz = (int) $__b->id; break; } }
@@ -1951,6 +1952,8 @@ $withCorr = function (array $meta) use ($corr) {
                 foreach ($__cmp as $__cm) {
                     $__nd = \Illuminate\Support\Facades\DB::table('campaign_items')->where('campaign_id', $__cm->id)->where('status', 'needs_you')->count();
                     $__brandPrefBlock .= '  - "' . $__cm->title . '" · ' . $__cm->status . ' · ' . $__cm->starts_on . ' to ' . $__cm->ends_on . ($__nd ? ' · ' . $__nd . ' step(s) waiting for the owner' : '') . "\n";
+                    // CAMPAIGN-PREVIEW-1: the steps themselves, so she can say exactly what a campaign contains
+                    foreach (\Illuminate\Support\Facades\DB::table('campaign_items')->where('campaign_id', $__cm->id)->orderBy('scheduled_at')->limit(12)->get(['scheduled_at', 'kind', 'channel', 'title', 'status']) as $__ci) $__brandPrefBlock .= '      · ' . substr((string) $__ci->scheduled_at, 0, 10) . ' ' . $__ci->kind . ($__ci->channel ? ' (' . $__ci->channel . ')' : '') . ': ' . $__ci->title . ($__cm->status !== 'idea' ? ' [' . $__ci->status . ']' : '') . "\n";
                 }
                 if (! $__cmp->count()) $__brandPrefBlock .= "  (none yet)\n";
                 $__brandPrefBlock .= "When the owner asks for campaigns, a marketing plan or ideas to grow, say in one or two lines that you are designing campaign ideas for them now and the cards will appear here in about a minute; do not list ideas yourself in this reply and do not create tasks for it. Campaigns are on the Campaigns page with a calendar.\n";
@@ -4716,6 +4719,9 @@ $withCorr = function (array $meta) use ($corr) {
         } catch (\Throwable $__vagErr) {
             \Illuminate\Support\Facades\Log::warning('[Sarah888] VerbalAuthorityGuard failed: ' . $__vagErr->getMessage(), ['ws' => $wsId]);
         }
+
+        // CAMPAIGN-PREVIEW-1: exact facts (a campaign's dated plan) follow Sarah's own words, after every guard — never paraphrased
+        if (! empty($__replyAppend)) { $reply = rtrim((string) $reply) . "\n\n" . $__replyAppend; }
 
         // ── SARAH888 P1-3 — ONE STATUS TRAILER, EMITTED ONCE ───────────────
         // Four components used to append their own account of the same turn.
