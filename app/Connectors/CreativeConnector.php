@@ -48,6 +48,12 @@ class CreativeConnector extends BaseConnector
                 'image_url' => 'nullable|string',
                 'duration' => 'nullable|integer|min:2|max:30',
                 'model' => 'nullable|string',
+                // VIDEO-2: the resolver keeps only fields listed here — the shape, the business and the campaign must survive to the video engine
+                'aspect_ratio' => 'nullable|in:1:1,16:9,9:16,4:3,3:4,4:5',
+                'business_id' => 'nullable|integer',
+                'campaign_id' => 'nullable|integer',
+                'campaign_item_id' => 'nullable|integer',
+                'title' => 'nullable|string|max:300',
             ],
             'get_asset' => [
                 'asset_id' => 'required|string',
@@ -355,6 +361,8 @@ class CreativeConnector extends BaseConnector
                     // VIDEO-3: Hailuo-02 accepts duration 6|10 (seconds). Aspect ratio is NOT a T2V
                     // parameter on this API — clips come back landscape; the asset keeps the request.
                     'duration' => in_array((int) ($options['duration'] ?? 0), [6, 10], true) ? (int) $options['duration'] : null,
+                    // VIDEO-2: image-to-video — the clip takes the shape of this first frame (vertical/square)
+                    'first_frame_image' => $options['first_frame_image'] ?? null,
                 ]));
 
             if ($response->failed()) {

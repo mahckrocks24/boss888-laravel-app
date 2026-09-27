@@ -544,12 +544,13 @@
     if (Array.isArray(m.attachments) && m.attachments.length) {
       attHtml = '<div class="sh-atts">' + m.attachments.map(function (a) {
         var url = String(a.url || ''); var name = esc(a.name || 'file'); var safe = /^(https?:\/\/|\/)/.test(url) ? esc(url) : '';
+        if (a.kind === 'video' && safe) { var vp = String(a.poster || ''); var tall = (+a.height || 0) > (+a.width || 0); return '<div class="sh-att-vid" style="margin-top:8px"><video controls playsinline preload="metadata"' + (/^(https?:\/\/|\/)/.test(vp) ? ' poster="' + esc(vp) + '"' : '') + ' src="' + safe + '" style="display:block;width:100%;max-width:' + (tall ? '260px' : '420px') + ';border-radius:12px;background:#000" aria-label="Video"></video></div>'; }   /* VIDEO-2 */
         if (a.kind === 'image' && safe) return '<div class="sh-att-imgwrap"><button type="button" class="sh-att sh-att-img" data-full="' + safe + '" aria-label="View image"><img src="' + safe + '" alt="' + name + '" loading="lazy"></button><a class="sh-att-dl" href="' + safe + '" download>\u2193 Download</a></div>';
         var ext = (name.split('.').pop() || '').toUpperCase().slice(0, 4);
         return (safe ? '<a class="sh-att" href="' + safe + '" target="_blank" rel="noopener">' : '<span class="sh-att">') + '<b>' + esc(ext || 'FILE') + '</b><span>' + name + '</span>' + (safe ? '</a>' : '</span>');
       }).join('') + '</div>';
     }
-    row.innerHTML = '<div class="sh-bubble' + (m.error ? ' err' : '') + '">' + (isUser ? esc(m.content) : fmtBody(m.card ? String(m.content || '').split('\n\n\u200B')[0] : m.content))   /* CHAT-FIRST-1 */ + attHtml + '</div>' +
+    row.innerHTML = '<div class="sh-bubble' + (m.error ? ' err' : '') + '">' + (isUser ? esc(m.content) : fmtBody((function (x) { return (Array.isArray(m.attachments) && m.attachments.some(function (q) { return q && q.kind === 'video'; })) ? String(x || '').replace(/\s*\[\u25B6 Watch the video\]\([^)]*\)\s*/, '') : x; })(m.card ? String(m.content || '').split('\n\n\u200B')[0] : m.content)))   /* CHAT-FIRST-1; VIDEO-2: the player replaces the link */ + attHtml + '</div>' +
                     (!isUser && m.card && window.LU_brandCard ? window.LU_brandCard.slotHtml(m.card) : '') +   /* BRAND-B1 */
                     '<div class="sh-meta">' + (isUser ? 'You' : 'Sarah') + (m.ts ? ' · ' + esc(ago(m.ts)) : '') + '</div>';
     if (m.id) row.setAttribute('data-mid', String(m.id));

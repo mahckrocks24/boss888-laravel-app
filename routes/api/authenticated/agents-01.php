@@ -318,8 +318,8 @@ use Illuminate\Support\Facades\Route;
                     if ($__ci = app(\App\Core\Growth\CheckinService::class)->openFor((int) $wsId)) { \App\Jobs\CheckinAbsorbJob::dispatch((int) $wsId, (int) $__ci->id, (int) $userMessageId)->delay(now()->addSeconds(4)); $__watchTurn = 'checkin_answer:' . $__ci->kind; }
                     if (preg_match('/\b(stop|pause|cancel|turn off|no more|don\'?t|do not)\b[^.?!\n]{0,40}\b(monitor\w*|watch\w*|research\w*|track\w*|listening|spying|competitors?|trends)\b/i', $__wc)) {
                         if (app(\App\Core\Growth\WatchService::class)->stop((int) $wsId, null, 'owner', mb_substr($__wc, 0, 200), true)) $__watchTurn = 'watch_stopped';
-                    } elseif (preg_match('/\b(monitor|watch|track|check|research|keep an eye on|look at)\b[^.?!\n]{0,70}\b(every ?day|daily|each day|twice a week|weekly|every week|once a week)\b/i', $__wc, $__wm)) {
-                        $__f = preg_match('/twice/i', $__wm[2]) ? 'twice_weekly' : (preg_match('/week/i', $__wm[2]) ? 'weekly' : 'daily');
+                    } elseif (preg_match('/\b(monitor|watch|track|check|research|keep an eye on|look at)\b[^.?!\n]{0,70}\b(every ?day|daily|each day|twice a week|weekly|every week|once a week|every\s*(2|two|other|3|three)\s*days?|every other day)\b/i', $__wc, $__wm)) {
+                        $__f = \App\Core\Growth\ChatReplies::frequencyFrom((string) $__wm[0]) ?: 'weekly';
                         $__r = app(\App\Core\Growth\WatchService::class)->setup((int) $wsId, null, $__f, ['trends' => 1, 'competitors' => 1, 'listening' => 1], (int) ($userId ?? 0) ?: null, 'chat');
                         if (! empty($__r['success'])) $__watchTurn = 'watch_on:' . $__f;
                     }
@@ -825,6 +825,19 @@ $withCorr = function (array $meta) use ($corr) {
                         $__dp0->forget((int) $wsId);
                         $__qcReply0 = $__dp0->report($__dpRes0, count($__dpNarrow0['missing'] ?? []));
                     }
+                    // VIDEO-2 (2026-09-27): the owner's yes/no to Sarah's video offer — deterministic, same as images
+                    if ($__qcReply0 === null) {
+                        $__vg0 = app(\App\Core\Sarah888\VideoGeneration::class);
+                        $__vgP0 = $__vg0->pending((int) $wsId);
+                        if ($__vgP0 && \App\Core\Sarah888\VideoGeneration::confirms((string) $__ownerMessage)) {
+                            $__vgR0 = $__vg0->execute((int) $wsId, $__vgP0, $userId > 0 ? $userId : null);
+                            $__vg0->forget((int) $wsId);
+                            $__qcReply0 = $__vg0->report($__vgR0, $__vgP0);
+                        } elseif ($__vgP0 && \App\Core\Sarah888\VideoGeneration::declines((string) $__ownerMessage)) {
+                            $__vg0->forget((int) $wsId);
+                            $__qcReply0 = "No problem — I won't make that video.";
+                        }
+                    }
                     // IMAGE-1 (2026-09-03): the owner's yes/no to Sarah's image offer — deterministic, no LLM drop.
                     if ($__qcReply0 === null) {
                         $__ig0 = app(\App\Core\Sarah888\ImageGeneration::class);
@@ -860,7 +873,14 @@ $withCorr = function (array $meta) use ($corr) {
             try {
                 $__qc = app(\App\Core\Sarah888\QueueCancellation::class);
                 $__qcReply = null;
-                if (\App\Core\Sarah888\QueueCancellation::asks($content)) {
+                if (\App\Core\Sarah888\VideoGeneration::asks($content)) {
+                    // VIDEO-2: "make a short video of … for Instagram" — say exactly what will be made, the cost and the wait, then a yes.
+                    // A platform named in the request is a shape hint (vertical for Reels), never a reason to refuse.
+                    $__vg = app(\App\Core\Sarah888\VideoGeneration::class);
+                    $__vgSpec = \App\Core\Sarah888\VideoGeneration::spec((int) $wsId, (string) $content);
+                    $__qcReply = $__vg->describe($__vgSpec);
+                    $__vg->remember((int) $wsId, $__vgSpec, (string) $content);
+                } elseif (\App\Core\Sarah888\QueueCancellation::asks($content)) {
                     $__qcScope = $__qc->scope((int) $wsId, (string) $content);
                     $__qcReply = $__qc->describe($__qcScope);
                     if ($__qcScope['tasks']->count() > 0) { $__qc->remember((int) $wsId, $__qcScope, (string) $content); } else { $__qc->forget((int) $wsId); }

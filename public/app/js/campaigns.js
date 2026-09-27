@@ -29,11 +29,12 @@
     post: '<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 15l4.5-4.5 4 4 2.5-2.5L20 17"/>', article: '<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20Z"/><path d="M10 11h5M10 14.5h5M10 18h3"/>',
     image: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/>', event: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h3"/>',
     owner_task: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.3l2.4 2.4L15.8 9.6"/>',
-    radar: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l5.5-5.5"/>'
+    radar: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l5.5-5.5"/>',
+    video: '<rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/>'
   };
   function ic(n, s) { return '<svg class="cm-ic" viewBox="0 0 24 24" width="' + (s || 16) + '" height="' + (s || 16) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (I[n] || I.flag) + '</svg>'; }
-  var KIND = { post: 'Social post', article: 'Article', email: 'Email you send', image: 'Design', event: 'Event', owner_task: 'You' };
-  var KCOL = { post: '#6C8CFF', article: '#2FB39A', email: '#E0A13A', image: '#C77DFF', event: '#E0685A', owner_task: '#8A93A6' };
+  var KIND = { post: 'Social post', article: 'Article', email: 'Email you send', image: 'Design', video: 'Video', event: 'Event', owner_task: 'You' };
+  var KCOL = { post: '#6C8CFF', article: '#2FB39A', email: '#E0A13A', image: '#C77DFF', video: '#F0527A', event: '#E0685A', owner_task: '#8A93A6' };
   var STAT = { idea: ['Idea', 'var(--p)'], launching: ['Starting', '#3B82F6'], active: ['Running', '#22A06B'], paused: ['Paused', '#D97706'], completed: ['Finished', '#64748B'], declined: ['Not now', '#94A3B8'] };
   var ISTAT = { planned: ['Planned', 'var(--t3)'], in_progress: ['In progress', '#3B82F6'], needs_you: ['Needs you', '#D97706'], done: ['Done', '#22A06B'], skipped: ['Skipped', 'var(--t3)'], failed: ['Needs attention', '#DC2626'], held: ['On hold', '#D97706'] };
   function credits(e) { var n = Math.max(1, Math.ceil((+e || 0) * 1.25)); return n + (n === 1 ? ' credit' : ' credits'); }
@@ -262,7 +263,7 @@
   /* ── WATCH-1 (RFC-0019): Market watch — trends, competitors, what people say, and what Sarah did about it ── */
   var WCSS = '.mw-top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;margin:0 0 18px;align-items:start}.mw-st{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}.mw-st .big{font:700 16px var(--fh,var(--fb,inherit));color:var(--t1);display:flex;align-items:center;gap:8px}' +
     '.mw-live{width:9px;height:9px;border-radius:50%;background:#22A06B;box-shadow:0 0 0 4px color-mix(in srgb,#22A06B 22%,transparent)}.mw-off{width:9px;height:9px;border-radius:50%;background:var(--t3)}.mw-sub{color:var(--t3);font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 14px}' +
-    '.mw-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.mw-opt{border:1px solid var(--bd);background:var(--s2);border-radius:12px;padding:12px;text-align:left;cursor:pointer;color:var(--t1);font:inherit;transition:border-color .15s,box-shadow .15s}.mw-opt b{display:block;font-size:14px}.mw-opt span{display:block;font-size:12px;color:var(--t3);margin-top:2px}' +
+    '.mw-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}.mw-opt{border:1px solid var(--bd);background:var(--s2);border-radius:12px;padding:12px;text-align:left;cursor:pointer;color:var(--t1);font:inherit;transition:border-color .15s,box-shadow .15s}.mw-opt b{display:block;font-size:14px}.mw-opt span{display:block;font-size:12px;color:var(--t3);margin-top:2px}' +
     '.mw-opt.on{border-color:var(--p);box-shadow:0 0 0 1px var(--p) inset;background:color-mix(in srgb,var(--p) 8%,var(--s2))}.mw-opt:focus-visible,.mw-tg:focus-visible{outline:2px solid var(--p);outline-offset:2px}' +
     '.mw-tgs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.mw-tg{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--bd);background:var(--s1);color:var(--t2);border-radius:99px;padding:7px 12px 7px 8px;font:600 12.5px var(--fb,inherit);cursor:pointer}.mw-tg i{width:18px;height:18px;border-radius:6px;border:1.5px solid var(--bd2,var(--bd));display:grid;place-items:center;flex:none}' +
     '.mw-tg[aria-pressed=true]{color:var(--t1);border-color:color-mix(in srgb,var(--p) 55%,var(--bd))}.mw-tg[aria-pressed=true] i{background:var(--p);border-color:var(--p);color:#fff}.mw-tg i svg{opacity:0}.mw-tg[aria-pressed=true] i svg{opacity:1}' +
@@ -272,7 +273,7 @@
     '.mw-emp{font-size:12.5px;color:var(--t3);padding:6px 0}.mw-sug{border:1px solid color-mix(in srgb,var(--p) 45%,var(--bd));background:linear-gradient(180deg,color-mix(in srgb,var(--p) 7%,var(--s1)),var(--s1) 70%);border-radius:var(--rg,14px);padding:16px;margin:0 0 12px}' +
     '.mw-sug h3{margin:0 0 4px;font:700 15px var(--fh,var(--fb,inherit));color:var(--t1)}.mw-sug p{margin:0 0 10px;color:var(--t2);font-size:13px}.mw-ch{margin:0 0 12px;padding:0;list-style:none}.mw-ch li{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px;color:var(--t1)}.mw-ch em{flex:none;font-style:normal;font:700 10.5px var(--fb,inherit);letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--s2);border:1px solid var(--bd);color:var(--t2)}' +
     '.mw-seg2{display:inline-flex;flex-wrap:wrap;padding:3px;border:1px solid var(--bd);border-radius:10px;background:var(--s2);margin-top:8px}.mw-seg2 button{border:0;background:transparent;color:var(--t2);font:600 12.5px var(--fb,inherit);padding:6px 10px;border-radius:8px;cursor:pointer}.mw-seg2 button.on{background:var(--s1);color:var(--t1);box-shadow:0 1px 3px rgba(0,0,0,.2)}' +
-    '@media (max-width:900px){.mw-top,.mw-cols{grid-template-columns:1fr}}@media (max-width:640px){.mw-opts{grid-template-columns:1fr}}';
+    '@media (max-width:900px){.mw-top,.mw-cols{grid-template-columns:1fr}}@media (max-width:640px){.mw-opts{grid-template-columns:1fr 1fr}}';
   function wcss() { if (document.getElementById('mw-css')) return; var s = document.createElement('style'); s.id = 'mw-css'; s.textContent = WCSS; document.head.appendChild(s); }
   var TICK = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
   var AREAS = [['trends', 'Trends & local moments'], ['competitors', 'Competitors'], ['listening', 'What people say online']];
@@ -288,8 +289,8 @@
     var w = j.watch || {}, opts = w.options || [];
     st.freq = st.freq || w.frequency || 'twice_weekly'; st.areas = st.areas || JSON.parse(JSON.stringify(w.areas || { trends: true, competitors: true, listening: true }));
     var per = 0; var COST = { trends: 6, competitors: 4, listening: 4 }; Object.keys(st.areas).forEach(function (k) { if (st.areas[k]) per += COST[k]; });
-    var runs = { daily: 7, twice_weekly: 2, weekly: 1 };
-    return '<div class="mw-opts" role="radiogroup" aria-label="How often">' + opts.map(function (o) { return '<button type="button" role="radio" aria-checked="' + (st.freq === o.frequency) + '" class="mw-opt' + (st.freq === o.frequency ? ' on' : '') + '" data-f="' + o.frequency + '"><b>' + esc(o.label) + '</b><span>About ' + (per * runs[o.frequency]) + ' credits a week</span></button>'; }).join('') + '</div>' +
+    var runs = { daily: 7, every_2_days: 3.5, twice_weekly: 2, weekly: 1 };
+    return '<div class="mw-opts" role="radiogroup" aria-label="How often">' + opts.map(function (o) { return '<button type="button" role="radio" aria-checked="' + (st.freq === o.frequency) + '" class="mw-opt' + (st.freq === o.frequency ? ' on' : '') + '" data-f="' + o.frequency + '"><b>' + esc(o.label) + '</b><span>About ' + Math.round(per * runs[o.frequency]) + ' credits a week</span></button>'; }).join('') + '</div>' +
       '<div class="mw-tgs">' + AREAS.map(function (a) { return '<button type="button" class="mw-tg" aria-pressed="' + !!st.areas[a[0]] + '" data-ar="' + a[0] + '"><i>' + TICK + '</i>' + esc(a[1]) + '</button>'; }).join('') + '</div>';
   }
   function renderWatch() {
@@ -301,7 +302,7 @@
       var j = r.json || {}; if (!r.ok || !j.success) { root.querySelector('#cm').innerHTML = head() + '<div class="cm-empty"><h3>Market watch could not load</h3><p>Please try again.</p></div>'; wireHead(); return; }
       var w = j.watch || {}, on = w.status === 'on', editing = !on || st.edit;
       var biz = (j.businesses || []).length > 1 ? '<div class="cm-biz" role="group" aria-label="Business">' + j.businesses.map(function (b) { var sel = (S.biz || 0) === b.id || (!S.biz && b.is_default); return '<button type="button" data-b="' + b.id + '" class="' + (sel ? 'on' : '') + '">' + esc(b.name) + '</button>'; }).join('') + '</div>' : '';
-      var freqLab = { daily: 'Every day', twice_weekly: 'Twice a week', weekly: 'Once a week' }[w.frequency] || '';
+      var freqLab = { daily: 'Every day', every_2_days: 'Every 2 days', twice_weekly: 'Twice a week', weekly: 'Once a week' }[w.frequency] || '';
       var areasOn = AREAS.filter(function (a) { return (w.areas || {})[a[0]]; }).map(function (a) { return a[1]; }).join(' · ');
       var status = on && !st.edit
         ? '<div class="mw-st"><div class="big"><span class="mw-live"></span>Sarah is watching · ' + esc(freqLab) + '</div><div class="cm-acts" style="margin-left:auto"><button type="button" class="cm-btn sm" data-w="now">Look now</button><button type="button" class="cm-btn sm" data-w="edit">Change</button><button type="button" class="cm-btn ghost sm" data-w="stop">Stop</button></div></div>' +
@@ -373,7 +374,7 @@
       var dows = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       root.querySelector('.cm-cal').innerHTML = '<div class="cm-calh"><button type="button" class="cm-btn ghost sm" data-m="-1" aria-label="Previous month">' + ic('back', 16) + '</button><b>' + m.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) + '</b><button type="button" class="cm-btn ghost sm" data-m="0">Today</button><button type="button" class="cm-btn ghost sm" data-m="1" aria-label="Next month">' + ic('chev', 16) + '</button></div>' +
         '<div class="cm-dow">' + dows.map(function (x) { return '<div>' + x + '</div>'; }).join('') + '</div><div class="cm-days">' + cells + '</div>' +
-        '<div class="cm-leg">' + ['post', 'article', 'email', 'image', 'event', 'owner_task'].map(function (k) { return '<span><i style="background:' + KCOL[k] + '"></i>' + KIND[k] + '</span>'; }).join('') + '<span><i style="background:#14B8A6"></i>Bookings</span><span><i style="background:transparent;border:1px dashed var(--t3)"></i>Idea (not launched)</span></div>';
+        '<div class="cm-leg">' + ['post', 'article', 'email', 'image', 'video', 'event', 'owner_task'].map(function (k) { return '<span><i style="background:' + KCOL[k] + '"></i>' + KIND[k] + '</span>'; }).join('') + '<span><i style="background:#14B8A6"></i>Bookings</span><span><i style="background:transparent;border:1px dashed var(--t3)"></i>Idea (not launched)</span></div>';
       root.querySelectorAll('[data-m]').forEach(function (b) { b.onclick = function () { var v = +b.getAttribute('data-m'); S.month = v === 0 ? new Date() : new Date(m.getFullYear(), m.getMonth() + v, 1); renderCal(); }; });
       root.querySelectorAll('.cm-chip[data-c]').forEach(function (ch) { ch.onclick = function () { S.view = 'one'; S.id = +ch.getAttribute('data-c'); render(); }; });
     });

@@ -385,13 +385,13 @@
 
 
   /* ── WATCH-1 (RFC-0019): Sarah asks once how often to watch the market; Sarah suggests a campaign update ── */
-  var LBW_CSS = '.lbw-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 10px}.lbw-opt{border:1px solid var(--bd);background:var(--s2);border-radius:12px;padding:11px 12px;text-align:left;cursor:pointer;color:var(--t1);font:inherit;transition:border-color .15s,box-shadow .15s}' +
+  var LBW_CSS = '.lbw-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:0 0 10px}.lbw-opt{border:1px solid var(--bd);background:var(--s2);border-radius:12px;padding:11px 12px;text-align:left;cursor:pointer;color:var(--t1);font:inherit;transition:border-color .15s,box-shadow .15s}' +
     '.lbw-opt b{display:block;font-size:13.5px}.lbw-opt span{display:block;font-size:11.5px;color:var(--t3);margin-top:2px}.lbw-opt.on{border-color:var(--p);box-shadow:0 0 0 1px var(--p) inset;background:color-mix(in srgb,var(--p) 8%,var(--s2))}' +
     '.lbw-tgs{display:flex;flex-wrap:wrap;gap:6px}.lbw-tg{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--bd);background:var(--s1);color:var(--t2);border-radius:99px;padding:6px 11px 6px 7px;font:600 12px var(--fb,inherit);cursor:pointer}' +
     '.lbw-tg i{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--bd2,var(--bd));display:grid;place-items:center}.lbw-tg i svg{width:11px;height:11px;opacity:0}.lbw-tg[aria-pressed=true]{color:var(--t1);border-color:color-mix(in srgb,var(--p) 55%,var(--bd))}.lbw-tg[aria-pressed=true] i{background:var(--p);border-color:var(--p);color:#fff}.lbw-tg[aria-pressed=true] i svg{opacity:1}' +
     '.lbw-opt:focus-visible,.lbw-tg:focus-visible{outline:2px solid var(--p);outline-offset:2px}.lbw-ok{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:#22A06B}.lbw-ok i{width:9px;height:9px;border-radius:50%;background:#22A06B;box-shadow:0 0 0 4px color-mix(in srgb,#22A06B 22%,transparent)}' +
     '.lbw-ch{margin:0 0 4px;padding:0;list-style:none}.lbw-ch li{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px;color:var(--t1)}.lbw-ch em{flex:none;font-style:normal;font:700 10.5px var(--fb,inherit);letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--s2);border:1px solid var(--bd);color:var(--t2)}' +
-    '.lbw-why{margin:0 0 10px;color:var(--t2);font-size:13px}@media (max-width:560px){.lbw-opts{grid-template-columns:1fr}}';
+    '.lbw-why{margin:0 0 10px;color:var(--t2);font-size:13px}@media (max-width:560px){.lbw-opts{grid-template-columns:1fr 1fr}}';
   function lbwCss() { if (document.getElementById('lbw-css')) return; var s = document.createElement('style'); s.id = 'lbw-css'; s.textContent = LBW_CSS; document.head.appendChild(s); }
   var ICO_RADAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l5.5-5.5"/></svg>';
   var ICO_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
@@ -399,15 +399,15 @@
   function watchSetup(el, card) {
     css(); lbwCss();
     var st = { s: 'ask', freq: 'twice_weekly', areas: { trends: true, competitors: true, listening: true } };
-    var COST = card.cost || { trends: 6, competitors: 4, listening: 4 }, RUNS = { daily: 7, twice_weekly: 2, weekly: 1 };
+    var COST = card.cost || { trends: 6, competitors: 4, listening: 4 }, RUNS = { daily: 7, every_2_days: 3.5, twice_weekly: 2, weekly: 1 };
     var AR = [['trends', 'Trends & local moments'], ['competitors', 'Competitors'], ['listening', 'What people say online']];
-    var LAB = { daily: 'Every day', twice_weekly: 'Twice a week', weekly: 'Once a week' };
+    var LAB = { daily: 'Every day', every_2_days: 'Every 2 days', twice_weekly: 'Twice a week', weekly: 'Once a week' };
     function draw() {
       var per = 0; Object.keys(st.areas).forEach(function (k) { if (st.areas[k]) per += (COST[k] || 0); });
       var hd = '<div class="lbc-hd"><span class="lbc-ic">' + ICO_RADAR + '</span><div class="lbc-hdt"><div class="lbc-t">Keep an eye on the market' + (card.business_name ? ' for ' + esc(card.business_name) : '') + '</div><div class="lbc-s">Trends, competitors and what people say about you — turned into campaign moves you approve.</div></div></div>';
       if (st.s === 'on') { el.innerHTML = hd + '<div class="lbw-ok"><i></i>Sarah is watching · ' + esc(LAB[st.freq] || '') + '</div><div class="lbc-s" style="margin:6px 0 0">Tell her “stop monitoring” any time, or change it in Campaigns › Market watch.</div><div class="lbc-acts"><button type="button" class="lbc-btn" data-mw>Open Market watch</button></div>'; el.querySelector('[data-mw]').onclick = openWatch; return; }
       if (st.s === 'no') { el.innerHTML = hd + '<div class="lbc-s" style="margin:0">Not now. Sarah won’t spend anything on this. Turn it on any time in Campaigns › Market watch, or just ask her.</div>'; return; }
-      el.innerHTML = hd + '<div class="lbw-opts" role="radiogroup" aria-label="How often">' + ['daily', 'twice_weekly', 'weekly'].map(function (f) { return '<button type="button" role="radio" aria-checked="' + (st.freq === f) + '" class="lbw-opt' + (st.freq === f ? ' on' : '') + '" data-f="' + f + '"><b>' + LAB[f] + '</b><span>About ' + (per * RUNS[f]) + ' credits a week</span></button>'; }).join('') + '</div>' +
+      el.innerHTML = hd + '<div class="lbw-opts" role="radiogroup" aria-label="How often">' + ['daily', 'every_2_days', 'twice_weekly', 'weekly'].map(function (f) { return '<button type="button" role="radio" aria-checked="' + (st.freq === f) + '" class="lbw-opt' + (st.freq === f ? ' on' : '') + '" data-f="' + f + '"><b>' + LAB[f] + '</b><span>About ' + Math.round(per * RUNS[f]) + ' credits a week</span></button>'; }).join('') + '</div>' +
         '<div class="lbw-tgs">' + AR.map(function (a) { return '<button type="button" class="lbw-tg" aria-pressed="' + !!st.areas[a[0]] + '" data-ar="' + a[0] + '"><i>' + ICO_TICK + '</i>' + a[1] + '</button>'; }).join('') + '</div>' +
         '<div class="lbc-acts"><button type="button" class="lbc-btn primary" data-go' + (per ? '' : ' disabled') + '>' + ICO_SPARK + 'Start watching</button><button type="button" class="lbc-btn ghost" data-no>Not now</button><span class="lbc-hint">One yes keeps it running until you say stop.</span></div>';
       el.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { st.freq = b.getAttribute('data-f'); draw(); }; });

@@ -30,6 +30,17 @@ final class ChatReplies
     private const YES = '/^\s*(yes|yep|yeah|yup|sure|ok(ay)?|go( ahead)?|do it|approve[d]?|sounds good|perfect|great|let\'?s do it|please do|go for it)\b[\s.!]*$/iu';
     private const NO = '/^\s*(no|nope|not now|not yet|no thanks|maybe later|later|skip( it)?|pass|keep( it)? as is|leave it|don\'?t)\b[\s.!]*$/iu';
 
+    /** "every 2 days", "every other day", "3 times a week", "weekly"… → the nearest schedule. */
+    public static function frequencyFrom(string $t): ?string
+    {
+        $t = mb_strtolower($t);
+        if (preg_match('/\bevery\s*(2|two|other|second)\s*(days?|nights?)\b|\bevery other day\b|\b(3|three|4|four) times a week\b|\balternate days\b/', $t)) return 'every_2_days';
+        if (preg_match('/\bevery\s*(3|three|4|four)\s*days?\b|\btwice\b|\b(2|two) times a week\b/', $t)) return 'twice_weekly';
+        if (preg_match('/\b(every ?day|daily|each day|every morning)\b/', $t)) return 'daily';
+        if (preg_match('/\b(once a week|weekly|every week|once|every\s*(7|seven|5|five|6|six)\s*days)\b/', $t)) return 'weekly';
+        return null;
+    }
+
     /** The question still waiting on the owner, if any. */
     public function openQuestion(int $wsId): ?array
     {
@@ -79,7 +90,7 @@ final class ChatReplies
         $q = $this->openQuestion($wsId);
         if (! $q || ! $q['latest']) return [];
         return match ($q['type']) {
-            'watch_ask' => [['label' => 'Twice a week', 'text' => 'Twice a week'], ['label' => 'Once a week', 'text' => 'Once a week'], ['label' => 'Every day', 'text' => 'Every day'], ['label' => 'Not now', 'text' => 'Not now']],
+            'watch_ask' => [['label' => 'Every 2 days', 'text' => 'Every 2 days'], ['label' => 'Twice a week', 'text' => 'Twice a week'], ['label' => 'Once a week', 'text' => 'Once a week'], ['label' => 'Not now', 'text' => 'Not now']],
             'campaign_change' => [['label' => 'Approve', 'text' => 'Approve'], ['label' => 'Keep as is', 'text' => 'Keep as is']],
             'campaign_ideas' => array_merge(count($q['open_ids']) === 1
                 ? [['label' => 'Launch it', 'text' => 'Launch it']]
@@ -111,7 +122,7 @@ final class ChatReplies
             switch ($q['type']) {
                 case 'watch_ask': {
                     $bizId = isset($c['business_id']) ? (int) $c['business_id'] : null;
-                    $f = preg_match('/\b(every ?day|daily|each day)\b/i', $t) ? 'daily' : (preg_match('/\btwice\b/i', $t) ? 'twice_weekly' : (preg_match('/\b(once a week|weekly|every week|once)\b/i', $t) ? 'weekly' : null));
+                    $f = self::frequencyFrom($t);
                     if (! $f && $yes) $f = 'twice_weekly';
                     if ($f) {
                         $r = app(WatchService::class)->setup($wsId, $bizId, $f, ['trends' => 1, 'competitors' => 1, 'listening' => 1], $userId, 'chat');

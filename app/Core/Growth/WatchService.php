@@ -18,8 +18,9 @@ use Illuminate\Support\Facades\Log;
  */
 final class WatchService
 {
-    public const FREQUENCIES = ['daily' => 1, 'twice_weekly' => 3, 'weekly' => 7];   // days between runs (twice a week ~ every 3-4 days)
-    private const RUNS_PER_WEEK = ['daily' => 7, 'twice_weekly' => 2, 'weekly' => 1];
+    public const FREQUENCIES = ['daily' => 1, 'every_2_days' => 2, 'twice_weekly' => 3, 'weekly' => 7];   // days between runs (twice a week ~ every 3-4 days)
+    private const RUNS_PER_WEEK = ['daily' => 7, 'every_2_days' => 3.5, 'twice_weekly' => 2, 'weekly' => 1];
+    public const LABELS = ['daily' => 'Every day', 'every_2_days' => 'Every 2 days', 'twice_weekly' => 'Twice a week', 'weekly' => 'Once a week'];
     public const COST = ['trends' => 6, 'competitors' => 4, 'listening' => 4];   // credits per run: 3 searches; 4 page reads; 2 searches
     private const NOT_COMPETITORS = '/(^|\.)(instagram|facebook|fb|twitter|x|tiktok|youtube|linkedin|pinterest|reddit|quora|wikipedia|google|goo\.gl|bing|yahoo|amazon|ebay|yelp|tripadvisor|trustpilot|tiktok|medium|substack|wordpress|blogspot|wix|squarespace|shopify|apple|timeout|eventbrite|groupon|booking|airbnb|zomato|ubereats|deliveroo|doordash|grubhub|talabat|foursquare|glassdoor|indeed|craigslist|gumtree)\./i';
 
@@ -48,14 +49,14 @@ final class WatchService
     public static function options(array $areas = ['trends' => 1, 'competitors' => 1, 'listening' => 1]): array
     {
         $per = self::perRun($areas);
-        return array_map(fn ($f) => ['frequency' => $f, 'label' => ['daily' => 'Every day', 'twice_weekly' => 'Twice a week', 'weekly' => 'Once a week'][$f],
-            'credits_per_week' => $per * self::RUNS_PER_WEEK[$f]], array_keys(self::FREQUENCIES));
+        return array_map(fn ($f) => ['frequency' => $f, 'label' => self::LABELS[$f],
+            'credits_per_week' => (int) round($per * self::RUNS_PER_WEEK[$f])], array_keys(self::FREQUENCIES));
     }
 
     /** The owner's one approval: how often and what. Runs until stopped. */
     public function setup(int $wsId, ?int $bizId, string $frequency, array $areas, ?int $userId, string $via = 'card'): array
     {
-        if (! isset(self::FREQUENCIES[$frequency])) return ['success' => false, 'error' => 'Choose every day, twice a week or once a week.'];
+        if (! isset(self::FREQUENCIES[$frequency])) return ['success' => false, 'error' => 'Choose every day, every 2 days, twice a week or once a week.'];
         $areas = ['trends' => (bool) ($areas['trends'] ?? true), 'competitors' => (bool) ($areas['competitors'] ?? true), 'listening' => (bool) ($areas['listening'] ?? true)];
         if (! array_filter($areas)) return ['success' => false, 'error' => 'Pick at least one thing for Sarah to watch.'];
         $row = $this->row($wsId, $bizId, true);
@@ -100,7 +101,7 @@ final class WatchService
         $r = $this->row($wsId, $bizId);
         $areas = ['trends' => (bool) ($r->trends ?? true), 'competitors' => (bool) ($r->competitors ?? true), 'listening' => (bool) ($r->listening ?? true)];
         return ['status' => $r->status ?? 'not_asked', 'frequency' => $r->frequency ?? null, 'areas' => $areas, 'credits_per_run' => self::perRun($areas),
-            'credits_per_week' => ($r && $r->frequency) ? self::perRun($areas) * self::RUNS_PER_WEEK[$r->frequency] : null,
+            'credits_per_week' => ($r && $r->frequency) ? (int) round(self::perRun($areas) * (self::RUNS_PER_WEEK[$r->frequency] ?? 1)) : null,
             'last_run_at' => $r && $r->last_run_at ? Carbon::parse($r->last_run_at)->toIso8601String() : null, 'next_run_at' => $r && $r->next_run_at ? Carbon::parse($r->next_run_at)->toIso8601String() : null,
             'stopped_by' => $r->stopped_by ?? null, 'stopped_reason' => $r->stopped_reason ?? null, 'options' => self::options($areas)];
     }
@@ -135,7 +136,7 @@ final class WatchService
         $text = app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, 'watch_ask',
             "Write Sarah's short chat message (3-4 sentences) asking the owner, once, whether she should keep watching the world around their business and how often. Say what she would watch and why it helps (from FACTS), that it uses a few credits each time, and that one yes keeps it running on that schedule until they say stop. The choices are listed right after your message; do not mention a card or buttons. Warm, direct, no headings, no emojis.",
             $facts, $fallback);
-        $text .= \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_map(fn ($o) => '• ' . $o['label'] . ' — about ' . $o['credits_per_week'] . ' credits a week', $opts)) . "\n\nReply **twice a week**, **once a week**, **every day** or **not now**.";
+        $text .= \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_map(fn ($o) => '• ' . $o['label'] . ' — about ' . $o['credits_per_week'] . ' credits a week', $opts)) . "\n\nReply **every 2 days**, **twice a week**, **once a week**, **every day** or **not now**.";
         $card = ['type' => 'watch_setup', 'business_id' => $bizId, 'business_name' => $biz->name ?? null, 'options' => $opts, 'areas' => ['trends' => true, 'competitors' => true, 'listening' => true], 'cost' => self::COST];
         app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $text, ['card' => $card, 'notification_type' => 'watch_ask']);
         DB::table('business_watch')->where('id', $row->id)->update(['status' => 'asked', 'asked_at' => now(), 'updated_at' => now()]);

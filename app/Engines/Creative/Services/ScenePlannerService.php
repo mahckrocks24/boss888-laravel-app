@@ -202,6 +202,13 @@ EOT;
             'updated_at'    => now(),
         ]);
 
+        // VIDEO-2: a vertical or square video starts from a first frame in that shape (queued: the frame takes ~30 s)
+        if (self::needsFrame((string) ($options['aspect_ratio'] ?? '16:9'))) {
+            DB::table('creative_video_jobs')->where('id', $jobId)->update(['status' => 'framing', 'updated_at' => now()]);
+            \App\Jobs\VideoFirstFrameJob::dispatch($jobId);
+            return (array) DB::table('creative_video_jobs')->where('id', $jobId)->first();
+        }
+
         // Try providers in waterfall order (mock excluded outside local/testing)
         $dispatched = false;
         foreach ($this->activeProviders() as $provider) {
@@ -232,6 +239,59 @@ EOT;
         }
 
         return DB::table('creative_video_jobs')->where('id', $jobId)->first() ? (array) DB::table('creative_video_jobs')->where('id', $jobId)->first() : ['id' => $jobId, 'status' => 'failed'];
+    }
+
+    public static function needsFrame(string $aspect): bool
+    {
+        return in_array($aspect, ['9:16', '3:4', '4:5', '2:3', '1:1'], true);
+    }
+
+    /**
+     * VIDEO-2: make the first frame in the requested shape from the scene prompt (brand-aware already), keep it on our disk
+     * (it is also the poster until the clip exists), and hand it to the provider as the image to animate.
+     */
+    public function dispatchWithFrame(int $jobId): array
+    {
+        $job = DB::table('creative_video_jobs')->where('id', $jobId)->first();
+        if (! $job || $job->status !== 'framing') return ['skipped' => true];
+        $meta = json_decode((string) $job->metadata_json, true) ?: [];
+        $aspect = (string) ($meta['aspect_ratio'] ?? '9:16');
+        $fail = function (string $why) use ($jobId) {
+            DB::table('creative_video_jobs')->where('id', $jobId)->update(['status' => 'failed', 'error' => mb_substr($why, 0, 250), 'updated_at' => now()]);
+            Log::warning('[VIDEO-2] first frame path failed', ['job' => $jobId, 'why' => $why]);
+            return ['success' => false, 'error' => $why];
+        };
+        $img = $this->connector->generateImage('The very first frame of a short ' . ($aspect === '1:1' ? 'square' : 'vertical') . ' video. ' . $job->scene_prompt
+            . ' Photographic and natural, composed for a ' . ($aspect === '1:1' ? 'square' : 'tall phone') . ' screen. No text, captions, logos or watermarks.',
+            ['aspect_ratio' => $aspect === '1:1' ? '1:1' : '9:16', 'workspace_id' => (int) $job->workspace_id, 'quality' => 'high']);
+        if (empty($img['success']) || empty($img['url'])) return $fail('first frame: ' . ($img['error'] ?? 'no image'));
+        try {
+            $bytes = \Illuminate\Support\Facades\Http::timeout(60)->get($img['url'])->body();
+        } catch (\Throwable $e) { return $fail('first frame download: ' . $e->getMessage()); }
+        if (strlen($bytes) < 2000) return $fail('first frame empty');
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) ?: 'image/png';
+        $ext = $mime === 'image/jpeg' ? 'jpg' : ($mime === 'image/webp' ? 'webp' : 'png');
+        $path = 'ai-videos/' . (int) $job->workspace_id . '/frame-' . $jobId . '-' . substr(md5($bytes), 0, 10) . '.' . $ext;
+        \Illuminate\Support\Facades\Storage::disk('public')->put($path, $bytes);
+        // the image model makes 2:3 portraits; the clip takes the frame's shape, so the frame is cut to exactly 9:16 (or 1:1) first
+        $disk = \Illuminate\Support\Facades\Storage::disk('public');
+        $target = $aspect === '1:1' ? [1, 1] : [9, 16];
+        $size = @getimagesizefromstring($bytes);
+        if ($size && abs($size[0] / max(1, $size[1]) - $target[0] / $target[1]) > 0.01) {
+            $cropped = preg_replace('/\.\w+$/', '-cut.png', $path);
+            $vf = $target[0] / $target[1] < $size[0] / max(1, $size[1]) ? 'crop=ih*' . $target[0] . '/' . $target[1] . ':ih' : 'crop=iw:iw*' . $target[1] . '/' . $target[0];
+            @shell_exec('ffmpeg -v error -y -i ' . escapeshellarg($disk->path($path)) . ' -vf ' . escapeshellarg($vf) . ' ' . escapeshellarg($disk->path($cropped)) . ' 2>/dev/null');
+            if (is_file($disk->path($cropped)) && filesize($disk->path($cropped)) > 2000) { $path = $cropped; $bytes = (string) file_get_contents($disk->path($cropped)); $mime = 'image/png'; }
+        }
+        $frameUrl = rtrim((string) config('app.url'), '/') . '/storage/' . $path;
+        $meta['first_frame'] = $frameUrl;
+        $res = $this->connector->generateVideoViaProvider((string) $job->scene_prompt, ['provider' => 'minimax', 'duration' => (int) ($meta['duration'] ?? 6),
+            'first_frame_image' => 'data:' . $mime . ';base64,' . base64_encode($bytes)]);
+        if (empty($res['success'])) return $fail('provider: ' . ($res['error'] ?? 'refused'));
+        DB::table('creative_video_jobs')->where('id', $jobId)->update(['provider' => 'minimax', 'provider_job_id' => $res['job_id'] ?? null, 'status' => 'in_progress',
+            'metadata_json' => json_encode($meta), 'updated_at' => now()]);
+        Log::info('[VIDEO-2] first frame made and sent to animate', ['job' => $jobId, 'aspect' => $aspect]);
+        return ['success' => true];
     }
 
     // ═══════════════════════════════════════════════════════
@@ -322,7 +382,7 @@ EOT;
         $statuses = array_column($jobs, 'status');
         $completed  = count(array_filter($statuses, fn($s) => $s === 'completed'));
         $failed     = count(array_filter($statuses, fn($s) => in_array($s, ['failed', 'timed_out'])));
-        $inProgress = count(array_filter($statuses, fn($s) => in_array($s, ['in_progress', 'dispatching'])));
+        $inProgress = count(array_filter($statuses, fn($s) => in_array($s, ['in_progress', 'dispatching', 'framing'])));   // VIDEO-2: 'framing' = the first frame is being made
         $total      = count($jobs);
 
         $overallStatus = match (true) {

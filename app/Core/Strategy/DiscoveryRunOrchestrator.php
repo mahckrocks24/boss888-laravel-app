@@ -70,6 +70,22 @@ class DiscoveryRunOrchestrator
             Log::warning('[Discovery] memory read failed, proceeding: ' . $e->getMessage());
         }
 
+        // WATCH-1 follow-up (2026-09-27): the welcome + first-day audit is for NEW accounts. The completion mark lives only in
+        // Redis, so a workspace switched to proactive later (or a flushed cache) was greeted "Today is day 1". An account
+        // onboarded more than 3 days ago, or with Sarah conversations older than that, is marked done silently.
+        try {
+            $ws = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['onboarded_at', 'created_at']);
+            $since = $ws ? ($ws->onboarded_at ?: $ws->created_at) : null;
+            $old = ($since && \Carbon\Carbon::parse($since)->lt(now()->subDays(3)))
+                || \Illuminate\Support\Facades\DB::table('agent_messages')->where('workspace_id', $wsId)->where('created_at', '<', now()->subDays(3))->exists();
+            if ($old) {
+                $raw = Redis::get($memKey); $mem = $raw ? (json_decode($raw, true) ?: []) : [];
+                $mem['discovery_run_completed_at'] = now()->toIso8601String(); $mem['discovery_skipped'] = 'existing_account';
+                Redis::set($memKey, json_encode($mem));
+                return ['skipped' => true, 'reason' => 'existing_account'];
+            }
+        } catch (\Throwable $e) { Log::info('[Discovery] age check failed: ' . $e->getMessage()); }
+
         return $this->run($wsId);
     }
 

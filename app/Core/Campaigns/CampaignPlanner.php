@@ -18,9 +18,9 @@ use Illuminate\Support\Facades\Schema;
  */
 final class CampaignPlanner
 {
-    public const KINDS = ['post', 'article', 'email', 'image', 'event', 'owner_task'];
+    public const KINDS = ['post', 'article', 'email', 'image', 'video', 'event', 'owner_task'];   // VIDEO-2: video
     public const CHANNELS = ['facebook', 'instagram', 'linkedin', 'website', 'email', 'in_person', 'phone'];
-    private const KIND_ALIAS = ['social_post' => 'post', 'social' => 'post', 'facebook_post' => 'post', 'instagram_post' => 'post', 'linkedin_post' => 'post', 'reel' => 'post', 'story' => 'post', 'carousel' => 'post',
+    private const KIND_ALIAS = ['social_post' => 'post', 'social' => 'post', 'facebook_post' => 'post', 'instagram_post' => 'post', 'linkedin_post' => 'post', 'reel' => 'video', 'reels' => 'video', 'clip' => 'video', 'short_video' => 'video', 'tiktok' => 'video', 'story' => 'post', 'carousel' => 'post',
         'blog' => 'article', 'blog_post' => 'article', 'newsletter' => 'email', 'email_blast' => 'email', 'graphic' => 'image', 'banner' => 'image', 'flyer' => 'image', 'poster' => 'image', 'design' => 'image',
         'call' => 'owner_task', 'task' => 'owner_task', 'in_store' => 'owner_task', 'owner' => 'owner_task', 'promotion' => 'event', 'offer' => 'event', 'workshop' => 'event', 'tasting' => 'event'];
 
@@ -36,7 +36,7 @@ final class CampaignPlanner
             . "Rules:\n"
             . "- Ground every idea in the facts: the business's services and audience, the date and location (upcoming holidays, seasons, local moments in the next 8 weeks), recent signals (leads, buying comments, what content exists), and what worked or was declined before. Never repeat a declined idea or an active campaign.\n"
             . "- Use the channels the business really has (connected_channels). A channel that is not connected may appear only if the item says what the owner must connect first.\n"
-            . "- Mix formats a designer and marketer would: social posts with banners, a website article that supports search, an offer or event, and simple owner tasks (call past clients, ask for reviews, put up a poster).\n"
+            . "- Mix formats a designer and marketer would: social posts with banners, a website article that supports search, an offer or event, and simple owner tasks (call past clients, ask for reviews, put up a poster). A short brand video (kind video: a 6-second vertical clip for Reels and Stories, 8 credits) fits once or twice in a campaign when motion sells the offer (food, places, products in use).\n"
             . "- Bulk email is not part of the product: never plan automated email sends. When emailing past customers would help, add an owner_task whose brief is the short, personal message the owner can send themselves.\n"
             . "- Structure: 2-4 phases (task groups) such as Build-up, Launch, Follow-up; 5-12 items in total, each with a day_offset from the campaign start (0 = first day) and a short plain-language brief of what it says or shows.\n"
             . "- Target: one measurable KPI (leads, bookings, enquiries, sales, reviews, followers, email_signups or visits) with a modest, believable number for this business's size. Never promise results.\n"
@@ -44,7 +44,7 @@ final class CampaignPlanner
             . "- Write for the owner: warm, concrete, no jargon, no internal codes, no mention of AI, prompts or how you plan.\n"
             . 'Return ONLY JSON: {"campaigns":[{"title":"","objective":"the business outcome in one sentence","why_now":"the moment or signal that makes this timely","audience":"","offer":"optional",'
             . '"channels":["facebook|instagram|linkedin|website|email|in_person|phone"],"starts_in_days":0,"duration_days":14,"kpi":{"metric":"leads","target":10,"label":"10 new enquiries"},'
-            . '"phases":[{"name":"Build-up","items":[{"kind":"post|article|email|image|event|owner_task","channel":"facebook","day_offset":0,"title":"","brief":""}]}]}]}';
+            . '"phases":[{"name":"Build-up","items":[{"kind":"post|article|email|image|video|event|owner_task","channel":"facebook","day_offset":0,"title":"","brief":""}]}]}]}';
         $user = 'FACTS: ' . json_encode($facts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ($ask !== '' ? "\nOWNER ASKED: " . mb_substr($ask, 0, 600) : '');
         $r = $runtime->chatJson($sys, $user, ['task' => 'campaign_ideas', 'workspace_id' => (string) $wsId], 4000);
         $raw = (($r['success'] ?? false) && is_array($r['parsed']['campaigns'] ?? null)) ? $r['parsed']['campaigns'] : [];
@@ -79,6 +79,7 @@ final class CampaignPlanner
                 $social = array_values(array_intersect((array) ($facts['connected_channels'] ?? []), ['facebook', 'instagram', 'linkedin']));
                 if ($kind === 'post' && ! in_array($ch, ['facebook', 'instagram', 'linkedin'], true)) $ch = $social[0] ?? (in_array($channels[0] ?? '', ['facebook', 'instagram', 'linkedin'], true) ? $channels[0] : 'facebook');
                 if ($kind === 'article') $ch = 'website';
+                if ($kind === 'video' && ! in_array($ch, ['facebook', 'instagram', 'linkedin', 'website'], true)) $ch = $social[0] ?? 'instagram';
                 if ($kind === 'email') { $kind = 'owner_task'; $ch = 'email'; }   // email marketing is out of launch scope: the owner sends it personally
                 $items[] = ['kind' => $kind, 'channel' => $ch, 'day_offset' => max(0, min($dur - 1, (int) ($it['day_offset'] ?? 0))), 'title' => $s($it['title'], 200), 'brief' => $s($it['brief'] ?? '', 1500)];
             }

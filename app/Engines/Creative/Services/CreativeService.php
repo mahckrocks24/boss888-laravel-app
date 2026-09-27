@@ -529,10 +529,30 @@ class CreativeService
      * link to watch it (the companion app opens links; it cannot play an attachment inline), or a plain note that it failed
      * and the credits were returned. Videos made in Studio by hand stay in Studio (no task behind them). Said once.
      */
+    /** VIDEO-2: a poster frame (for the chat, the library and the app player) and the clip's real size and length. */
+    public function videoPoster(int $assetId): ?string
+    {
+        try {
+            $a = DB::table('assets')->where('id', $assetId)->first(['id', 'storage_path', 'thumbnail_url']);
+            if (! $a || ! $a->storage_path) return null;
+            $disk = \Illuminate\Support\Facades\Storage::disk('public');
+            $file = $disk->path($a->storage_path);
+            if (! is_file($file)) return null;
+            $probe = trim((string) @shell_exec('ffprobe -v error -select_streams v:0 -show_entries stream=width,height:format=duration -of csv=p=0 ' . escapeshellarg($file) . ' 2>/dev/null'));
+            $w = $h = null; $dur = null;
+            foreach (preg_split('/\s+/', $probe) as $line) { if (preg_match('/^(\d+),(\d+)$/', $line, $m)) { $w = (int) $m[1]; $h = (int) $m[2]; } elseif (is_numeric($line)) { $dur = (float) $line; } }
+            $posterPath = preg_replace('/\.mp4$/i', '', $a->storage_path) . '-poster.jpg';
+            @shell_exec('ffmpeg -v error -y -ss 1 -i ' . escapeshellarg($file) . ' -frames:v 1 -q:v 3 ' . escapeshellarg($disk->path($posterPath)) . ' 2>/dev/null');
+            $poster = is_file($disk->path($posterPath)) ? rtrim((string) config('app.url'), '/') . '/storage/' . $posterPath : null;
+            DB::table('assets')->where('id', $assetId)->update(array_filter(['thumbnail_url' => $poster, 'width' => $w, 'height' => $h, 'duration_seconds' => $dur !== null ? (int) round($dur) : null], fn ($v) => $v !== null) + ['updated_at' => now()]);
+            return $poster;
+        } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::info('[VIDEO-2] poster failed', ['asset' => $assetId, 'e' => $e->getMessage()]); return null; }
+    }
+
     private function tellVideoInChat(int $assetId, bool $ok, string $url): void
     {
         try {
-            $a = DB::table('assets')->where('id', $assetId)->first(['id', 'workspace_id', 'task_id', 'metadata_json', 'duration_seconds']);
+            $a = DB::table('assets')->where('id', $assetId)->first(['id', 'workspace_id', 'task_id', 'metadata_json', 'duration_seconds', 'thumbnail_url', 'width', 'height']);
             if (! $a || ! $a->task_id) return;
             $meta = json_decode((string) ($a->metadata_json ?? ''), true) ?: [];
             if (! empty($meta['chat_told_at'])) return;
@@ -544,11 +564,11 @@ class CreativeService
             if ($url !== '' && ! preg_match('#^https?://#', $url)) $url = rtrim((string) config('app.url'), '/') . '/' . ltrim($url, '/');
             $bi = app(\App\Core\Brand\BrandIntakeService::class);
             if ($ok) {
-                $words = $bi->sarahWords((int) $a->workspace_id, 'video_ready', "Write Sarah's short chat message (1-2 sentences): the video the owner asked for (FACTS.what) is ready; the link to watch it is just below. Offer one natural next step (use it in a post, or make another version). No emojis, never mention how it was made.",
+                $words = $bi->sarahWords((int) $a->workspace_id, 'video_ready', "Write Sarah's short chat message (1-2 sentences): the video the owner asked for is ready and it is right below this message. Offer one natural next step (use it in a post, or make another version). No emojis, never mention how it was made.",
                     ['what' => $what, 'seconds' => $meta['duration'] ?? null], 'Your video is ready: ' . $what . '.');
                 $words .= "\n\n[▶ Watch the video](" . $url . ')';
                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent((int) $a->workspace_id, 'sarah', $words, ['notification_type' => 'video_ready', 'asset_id' => $assetId,
-                    'attachments' => [['kind' => 'video', 'url' => $url, 'name' => 'video.mp4']]]);
+                    'attachments' => [array_filter(['kind' => 'video', 'url' => $url, 'name' => 'video.mp4', 'poster' => $a->thumbnail_url ?: null, 'width' => $a->width ? (int) $a->width : null, 'height' => $a->height ? (int) $a->height : null])]]);
             } else {
                 $words = $bi->sarahWords((int) $a->workspace_id, 'video_failed', "Write Sarah's short chat message (1-2 sentences): the video the owner asked for (FACTS.what) could not be made this time; the credits for it are back in their balance; offer to try again. No emojis, no technical details.",
                     ['what' => $what], 'I could not make the video this time (' . $what . '). The credits are back in your balance — want me to try again?');
@@ -606,6 +626,7 @@ class CreativeService
                     'mime_type'    => 'video/mp4',
                 ]);
                 $this->engineIntel->recordToolUsage('creative', 'poll_video', 0.9);
+                $this->videoPoster($assetId);   // VIDEO-2: poster frame, real size and length
                 $this->tellVideoInChat($assetId, true, (string) $durable['url']);   // VIDEO-F1 / CHAT-FIRST-1
                 return $this->sanitize(['status' => 'completed', 'url' => $durable['url'], 'asset_id' => $assetId]);
             }

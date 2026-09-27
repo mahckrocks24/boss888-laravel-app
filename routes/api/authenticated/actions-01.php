@@ -141,6 +141,11 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
     // CHAT-FIRST-1: the question Sarah asked with a card can be answered by a tap in the companion app (the chip sends text)
     $chips = [];
     try { $chips = app(\App\Core\Growth\ChatReplies::class)->chips($wsId); } catch (\Throwable $e) { $chips = []; }
+    // VIDEO-2: Sarah's video or image offer is answered with a tap too
+    if (! $chips) { try {
+        if (app(\App\Core\Sarah888\VideoGeneration::class)->pending($wsId)) $chips = [['label' => 'Yes, make it', 'text' => 'yes'], ['label' => 'No', 'text' => 'no']];
+        elseif (app(\App\Core\Sarah888\ImageGeneration::class)->pending($wsId)) $chips = [['label' => 'Yes, make it', 'text' => 'yes'], ['label' => 'No', 'text' => 'no']];
+    } catch (\Throwable $e) {} }
     if ($chips) { $offer = true; $offerMessageId = $offerMessageId ?: (int) DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', $slug)->where('role', 'agent')->max('id'); }
     return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'offer' => $offer, 'offer_message_id' => $offerMessageId,
         'quick_replies' => $chips ?: ($offer ? [['label' => 'Go', 'text' => 'go'], ['label' => 'Not now', 'text' => 'not now']] : [])]);

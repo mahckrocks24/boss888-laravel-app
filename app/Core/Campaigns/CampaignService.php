@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\Log;
 final class CampaignService
 {
     /** How early each kind of work is released before its date (hours), so the owner can review it in time. */
-    private const LEAD_HOURS = ['post' => 20, 'article' => 72, 'email' => 48, 'image' => 24, 'event' => 0, 'owner_task' => 0];
+    private const LEAD_HOURS = ['post' => 20, 'article' => 72, 'email' => 48, 'image' => 24, 'video' => 24, 'event' => 0, 'owner_task' => 0];
 
     /** Save planner ideas as campaigns in the "idea" state. @return int[] campaign ids */
     public function saveIdeas(int $wsId, ?int $businessId, array $ideas, string $source): array
@@ -74,6 +74,8 @@ final class CampaignService
             'email' => null,   // email marketing is out of launch scope: the owner sends it personally (a "You" step)
             'image' => ['engine' => 'creative', 'action' => 'generate_image', 'agent' => 'studio', 'description' => 'Design: ' . $it->title,
                 'params' => $common + ['prompt' => $brief . ' ' . $ctx, 'platform' => in_array($it->channel, ['facebook', 'instagram', 'linkedin'], true) ? $it->channel : 'instagram', 'asset_type' => 'social_post', 'source' => 'campaign']],
+            'video' => ['engine' => 'creative', 'action' => 'generate_video', 'agent' => 'studio', 'description' => 'Make the video: ' . $it->title,   // VIDEO-2
+                'params' => $common + ['prompt' => $brief . ' ' . $ctx, 'duration' => 6, 'aspect_ratio' => $it->channel === 'website' ? '16:9' : '9:16', 'title' => 'Video: ' . $it->title, 'created_via' => 'campaign']],
             'event' => ['engine' => 'calendar', 'action' => 'create_event', 'agent' => 'sarah', 'description' => 'Put on the calendar: ' . $it->title,
                 'params' => $common + ['title' => $it->title, 'description' => $brief, 'starts_at' => Carbon::parse($it->scheduled_at)->toIso8601String()]],
             default => null,
@@ -85,7 +87,16 @@ final class CampaignService
         $c = DB::table('marketing_campaigns')->where('id', $campaignId)->first();
         $tasks = [];
         foreach (DB::table('campaign_items')->where('campaign_id', $campaignId)->get() as $it) { if ($t = $this->planTask($c, $it)) $tasks[] = ['engine' => $t['engine'], 'action' => $t['action']]; }
-        try { return (int) (app(\App\Core\Intelligence\ToolCostCalculatorService::class)->estimate($tasks)['total'] ?? 0); } catch (\Throwable $e) { return 0; }
+        // VIDEO-2: the estimate is what the kernel actually charges (CapabilityMap), so the plan's spend ceiling never blocks
+        // a step it listed — the blueprint table under-stated some tools (a video estimated at 5, charged 8).
+        $cm = app(\App\Core\EngineKernel\CapabilityMapService::class);
+        $total = 0;
+        foreach ($tasks as $t) {
+            $cap = $cm->resolve((string) $t['action']);
+            if ($cap && isset($cap['credit_cost'])) { $total += (int) $cap['credit_cost']; continue; }
+            try { $total += (int) app(\App\Core\Intelligence\ToolCostCalculatorService::class)->costForTool((string) $t['engine'], (string) $t['action']); } catch (\Throwable $e) {}
+        }
+        return $total;
     }
 
     /**
@@ -123,6 +134,7 @@ final class CampaignService
         $m = $mandates->propose($wsId, [
             'business_id' => $c->business_id, 'source_type' => 'campaign', 'source_id' => (int) $c->id, 'title' => 'Campaign: ' . $c->title,
             'objective' => $c->objective, 'strategy' => $c->why_now, 'tasks' => $tasks, 'validity_days' => (int) $validity, 'proposed_by' => $userId,
+            'spend_ceiling_credits' => max(1, (int) ceil($this->estimate((int) $c->id) * 1.25)),   // VIDEO-2: the ceiling from what is really charged
         ]);
         DB::table('marketing_campaigns')->where('id', $c->id)->update(['status' => 'launching', 'mandate_id' => $m['mandate_id'], 'decided_by' => $userId, 'decided_at' => now(), 'decline_reason' => null, 'updated_at' => now()]);
         if (! empty($m['approval_id'])) {
@@ -142,7 +154,7 @@ final class CampaignService
     {
         DB::table('marketing_campaigns')->where('id', $campaignId)->update(['status' => 'active', 'mandate_id' => $mandateId, 'launched_at' => now(), 'updated_at' => now()]);
         $this->syncCalendar($campaignId);
-        if (! \Illuminate\Support\Facades\Cache::pull('campaign-launch-quiet:' . $campaignId)) {   // CHAT-FIRST-1
+        if (! \Illuminate\Support\Facades\Cache::pull('campaign-launch-quiet:' . $campaignId) && \Illuminate\Support\Facades\Cache::add('campaign-live-told:' . $campaignId, 1, now()->addDays(2))) {   // CHAT-FIRST-1 (said once)
             $c = DB::table('marketing_campaigns')->where('id', $campaignId)->first();
             $next = DB::table('campaign_items')->where('campaign_id', $campaignId)->where('status', 'planned')->orderBy('scheduled_at')->first(['title', 'scheduled_at']);
             $this->tell((int) $c->workspace_id, 'campaign_live', "Write Sarah's short chat message (1-2 sentences): the campaign in FACTS is live, her team runs each step on its date, the owner okays each post before it goes out, and what comes first (FACTS.first_step). No emojis.",
@@ -215,6 +227,13 @@ final class CampaignService
                 $task = DB::table('tasks')->where('id', $it->task_id)->first(['status', 'approval_status', 'result_json', 'error_text']);
                 if (! $task) continue;
                 $new = null; $extra = [];
+                if ($it->kind === 'video' && $task->status === 'completed') {   // VIDEO-2: the task finishes at dispatch; the clip is done when its asset is
+                    $va = DB::table('assets')->where('task_id', $it->task_id)->where('type', 'video')->orderByDesc('id')->first(['status', 'url']);
+                    if (! $va || ! in_array($va->status, ['completed', 'failed'], true)) continue;
+                    if ($va->status === 'completed') { DB::table('campaign_items')->where('id', $it->id)->update(['status' => 'done', 'result_type' => 'media', 'result_url' => mb_substr((string) $va->url, 0, 1024), 'updated_at' => now()]); $out['updated']++; }
+                    else { DB::table('campaign_items')->where('id', $it->id)->update(['status' => 'failed', 'note' => 'The video could not be made; the credits were returned.', 'updated_at' => now()]); $out['updated']++; }
+                    continue;
+                }
                 if ($task->status === 'completed') {
                     $new = 'done';
                     $extra = $this->resultOf($it, $task);

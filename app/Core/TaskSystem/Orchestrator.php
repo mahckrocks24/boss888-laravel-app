@@ -548,7 +548,7 @@ class Orchestrator
                                     ->whereNull('sarah_read_at')->update(['sarah_read_at' => now()]);
                             }
                         }
-                        if ($root && ! $isStandaloneImage && ! in_array(($rp['created_via'] ?? ''), $skipVia, true)
+                        if ($root && ! $isStandaloneImage && ($root->action ?? '') !== 'generate_video' && ! in_array(($rp['created_via'] ?? ''), $skipVia, true)   // VIDEO-2: CreativeService::tellVideoInChat reports the finished clip
                             && ($root->source ?? '') !== 'system') {
                             $rr  = json_decode($root->result_json ?? '{}', true) ?: [];
                             $msg = (string) ($rr['message'] ?? 'Your request is done.');
