@@ -66,7 +66,7 @@
           '<i class="lbc-rule" style="background:' + p.accentOnDark + '"></i><div class="lbc-foot" style="color:#fff;position:absolute;left:9%;bottom:8%">' + n + '</div></div>'; break;
       case 'light':
         body = '<div class="lbc-bg" style="background:' + p.light + '"></div><div class="lbc-in">' + (e ? '<div class="lbc-eb" style="color:' + p.accentOnLight + '">' + e + '</div>' : '') +
-          H(sz(1.15) + 'color:#16181D;font-weight:700;line-height:1.1', esc(h), 3) + '<i class="lbc-bar" style="background:' + p.accentOnLight + '"></i>' +
+          H(sz(1.15) + 'color:#16181D;font-weight:700;line-height:1.1', esc(h), 3) + '<i class="lbc-accbar" style="background:' + p.accentOnLight + '"></i>' +
           '<div class="lbc-ph" style="flex:1 1 auto;min-height:34%;background-image:' + ph + ';background-color:' + mix(p.accentOnLight, '#ffffff', .8) + '"></div><div class="lbc-foot" style="color:#16181D">' + n + '</div></div>'; break;
       case 'brand_block':
         body = '<div class="lbc-bg" style="background:' + p.block + '"></div><div class="lbc-cut" style="background-image:' + ph + ';border-color:#fff"></div><div class="lbc-in">' +
@@ -106,7 +106,7 @@
     '.lbc-art{position:relative;aspect-ratio:4/5;border-radius:10px;overflow:hidden;font-size:clamp(15px,4.2vw,19px);isolation:isolate;background:#222}' +
     '.lbc-bg{position:absolute;inset:0;background-size:cover;background-position:center;z-index:0}.lbc-in{position:absolute;inset:0;padding:9% 9% 8%;display:flex;flex-direction:column;z-index:2}' +
     '.lbc-h{flex:none;word-break:break-word;overflow:hidden;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical}.lbc-eb{font:700 .42em/1.2 var(--fb,inherit);letter-spacing:.14em;text-transform:uppercase;margin-bottom:.4em}' +
-    '.lbc-rule{display:block;width:28%;height:2px;margin:.7em 0 0}.lbc-bar{display:block;width:22%;height:4px;border-radius:2px;margin:.55em 0}.lbc-foot{margin-top:auto;font:700 .42em/1.2 var(--fb,inherit);letter-spacing:.04em;opacity:.95}' +
+    '.lbc-rule{display:block;width:28%;height:2px;margin:.7em 0 0}.lbc-accbar{display:block;flex:none;width:22%;height:4px;border-radius:2px;margin:.55em 0}.lbc-foot{margin-top:auto;font:700 .42em/1.2 var(--fb,inherit);letter-spacing:.04em;opacity:.95}' +
     '.lbc-ph{background-size:cover;background-position:center;border-radius:8px;flex:1;margin:.5em 0 .6em}.lbc-round{flex:none;border-radius:10px}' +
     '.lbc-cut{position:absolute;right:-10%;bottom:-4%;width:58%;aspect-ratio:1;border-radius:50%;background-size:cover;background-position:center;border:4px solid;z-index:1}' +
     '.lbc-pill{align-self:flex-start;margin-top:.6em;padding:.35em .9em;border-radius:99px;font:800 .45em/1 var(--fb,inherit);text-transform:uppercase;letter-spacing:.06em}' +
@@ -132,58 +132,107 @@
     '.lbc-rules{margin:4px 0 0;padding-left:18px}.lbc-rules li{margin:2px 0}.lbc-x{border:0;background:transparent;color:var(--t3);cursor:pointer;font-size:12px;margin-left:6px}' +
     '.lbc-biz{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}.lbc-biz button{border:1px solid var(--bd);background:var(--s2);color:var(--t1);border-radius:99px;padding:6px 12px;font:600 12.5px var(--fb,inherit);cursor:pointer}.lbc-biz button.on{background:var(--p);border-color:var(--p);color:#fff}' +
     '.lbc-add{display:flex;gap:8px;margin-top:8px}.lbc-add input{flex:1;min-height:40px;border:1px solid var(--bd);border-radius:var(--r,10px);background:var(--s2);color:var(--t1);padding:0 12px;font:inherit}';
-  function css() { if (document.getElementById('lbc-css')) return; var s = document.createElement('style'); s.id = 'lbc-css'; s.textContent = CSS; document.head.appendChild(s); }
+  /* SaaS polish (Owner 2026-09-27: "enterprise quality css and UI/UX … saas quality") — layered after CSS so it wins */
+  var CSS2 = '.lbc-flag[hidden],.lbc-check[hidden]{display:none!important}.lbc{padding:18px;box-shadow:0 1px 2px rgba(0,0,0,.05),0 10px 30px rgba(0,0,0,.10)}' +
+    '.lbc-hd{display:flex;align-items:center;gap:12px;margin:0 0 12px}.lbc-ic{flex:none;width:40px;height:40px;border-radius:11px;display:grid;place-items:center;background:color-mix(in srgb,var(--p) 15%,transparent);color:var(--p)}.lbc-ic svg{width:21px;height:21px}' +
+    '.lbc-hdt{flex:1;min-width:0}.lbc-hd .lbc-t{font:700 16px/1.3 var(--fh,var(--fb,inherit));margin:0;color:var(--t1)}.lbc-hd .lbc-s{margin:3px 0 0;line-height:1.4}' +
+    '.lbc-count{flex:none;font:600 12px/1 var(--fb,inherit);padding:8px 12px;border-radius:99px;border:1px solid var(--bd);color:var(--t2);background:var(--s2);white-space:nowrap;transition:background .2s,color .2s,border-color .2s}.lbc-count.ok{color:#fff;background:var(--p);border-color:var(--p)}' +
+    '.lbc-steps{list-style:none;display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 16px;padding:0;color:var(--t2);font-size:12.5px}.lbc-steps li{display:flex;align-items:center;gap:8px}.lbc-steps b{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;background:var(--s2);border:1px solid var(--bd);color:var(--t1)}' +
+    '.lbc-grid10{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}' +
+    '.lbc-opt{padding:6px;border:1.5px solid var(--bd);border-radius:14px;background:var(--s2);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}' +
+    '.lbc-opt:hover{transform:translateY(-2px);border-color:var(--bd2,var(--bd));box-shadow:0 10px 24px rgba(0,0,0,.20)}.lbc-opt.on{border-color:var(--p);box-shadow:0 0 0 3px color-mix(in srgb,var(--p) 30%,transparent),0 10px 24px rgba(0,0,0,.18)}' +
+    '.lbc-artwrap{position:relative}.lbc-art{border-radius:10px}' +
+    '.lbc-check{position:absolute;top:8px;right:8px;z-index:4;width:28px;height:28px;border-radius:50%;background:var(--p);color:#fff;font:700 13px/24px var(--fb,inherit);text-align:center;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4)}' +
+    '.lbc-flag{position:absolute;top:8px;left:8px;z-index:4;display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:99px;background:#B83227;color:#fff;font:600 11px/1 var(--fb,inherit)}.lbc-flag svg{width:12px;height:12px}' +
+    '.lbc-cap{padding:10px 4px 4px}.lbc-cr{display:flex;align-items:center;justify-content:space-between;gap:6px}.lbc-cap b{font-size:13.5px}.lbc-cap span{margin-top:3px}' +
+    '.lbc-nv{margin:0;display:inline-flex;align-items:center;gap:4px;border:0;background:transparent;color:var(--t3);padding:4px 6px;min-height:28px;border-radius:7px;font:600 11px/1 var(--fb,inherit);cursor:pointer;flex:none}.lbc-nv svg{width:13px;height:13px}.lbc-nv:hover{color:var(--t1);background:var(--s1)}' +
+    '.lbc-opt.never .lbc-nv{background:transparent;border:0;color:#E0685A}.lbc-opt.never{border-style:dashed}' +
+    '.lbc-bar{position:sticky;bottom:0;z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px -18px -18px;padding:12px 18px;background:color-mix(in srgb,var(--s1) 88%,transparent);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border-top:1px solid var(--bd);border-radius:0 0 var(--rg,14px) var(--rg,14px)}.lbc-bar-static{position:static;margin-top:14px}' +
+    '.lbc-hint{display:flex;align-items:center;gap:7px;flex:1 1 240px;color:var(--t3);font-size:12.5px;line-height:1.4}.lbc-hint svg{width:17px;height:17px;flex:none}.lbc-hint b{color:var(--t1)}' +
+    '.lbc-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:filter .15s,background .15s,color .15s}.lbc-btn svg{width:16px;height:16px}.lbc-btn.ghost{border-color:transparent;color:var(--t2)}.lbc-btn.ghost:hover{color:var(--t1);background:var(--s2)}.lbc-btn.primary:not([disabled]):hover{filter:brightness(1.08)}.lbc-btn:focus-visible{outline:2px solid var(--p);outline-offset:2px}' +
+    '.lbc-chip b{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--p);color:#fff;font-size:10.5px}.lbc-chip-nv{color:var(--t3)}.lbc-chip svg{width:13px;height:13px}' +
+    '@media (max-width:560px){.lbc{padding:14px}.lbc-grid10{grid-template-columns:1fr 1fr;gap:10px}.lbc-bar{margin:14px -14px -14px;padding:10px 14px}.lbc-hint{flex-basis:100%}.lbc-bar .lbc-btn.primary{flex:1}.lbc-steps{gap:6px 14px}.lbc-hd .lbc-t{font-size:15px}}' +
+    '@media (prefers-reduced-motion:reduce){.lbc-opt,.lbc-count,.lbc-btn{transition:none}.lbc-opt:hover{transform:none}}';
+  function css() { if (document.getElementById('lbc-css')) return; var s = document.createElement('style'); s.id = 'lbc-css'; s.textContent = CSS + CSS2; document.head.appendChild(s); }
 
   /* ── the picker ── */
   function picker(el, card, opts) {
     opts = opts || {}; css(); loadFonts();
     var st = { picks: (card.picks || []).slice(), never: (card.never || []).slice(), saved: !!opts.saved, pv: card.preview || {}, dirs: card.directions || [] };
     var bizQ = card.business_id ? '?business_id=' + encodeURIComponent(card.business_id) : '';
-    function draw() {
+    var MAX = card.max || 4;
+    var ICON = {
+      palette: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.8-.9 1.8-1.9 0-.5-.2-.9-.5-1.3-.3-.3-.5-.8-.5-1.3 0-1 .8-1.8 1.8-1.8H16a5 5 0 0 0 5-5C21 6.4 17 3 12 3Z"/><circle cx="7.5" cy="11.5" r="1.2"/><circle cx="10.5" cy="7.5" r="1.2"/><circle cx="15.5" cy="7.5" r="1.2"/></svg>',
+      upload: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg>',
+      check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>',
+      ban: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 6l12 12"/></svg>'
+    };
+    function nameOf(id) { var d = st.dirs.filter(function (x) { return x.id === id; })[0]; return d ? d.name : id; }
+    function header(title, sub, right) {
+      return '<div class="lbc-hd"><span class="lbc-ic">' + ICON.palette + '</span><div class="lbc-hdt"><div class="lbc-t">' + title + '</div><div class="lbc-s">' + sub + '</div></div>' + (right || '') + '</div>';
+    }
+    function drawSaved() {
       var name = esc(st.pv.business_name || 'your business');
-      if (st.saved && !opts.alwaysOpen) {
-        var names = st.picks.map(function (id) { var d = st.dirs.filter(function (x) { return x.id === id; })[0]; return d ? d.name : id; });
-        el.innerHTML = '<div class="lbc-t">Design styles for ' + name + '</div><div class="lbc-done">' + names.map(function (n, i) { return '<span class="lbc-chip"><b>' + (i + 1) + '</b>' + esc(n) + '</span>'; }).join('') +
-          '<button type="button" class="lbc-btn" data-a="edit">Change</button></div>';
-        el.querySelector('[data-a=edit]').onclick = function () { st.saved = false; draw(); };
-        return;
-      }
-      el.innerHTML = '<div class="lbc-t">Pick 3 or 4 styles for ' + name + '</div><div class="lbc-s">Made with your own name, colours and photo. Tap in order of preference. Tap “Never” on any style you don’t want.</div>' +
+      el.innerHTML = header('Design styles saved', 'For ' + name + ' · Sarah picks the best fit for each banner, image and video') +
+        '<div class="lbc-done">' + st.picks.map(function (id, i) { return '<span class="lbc-chip"><b>' + (i + 1) + '</b>' + esc(nameOf(id)) + '</span>'; }).join('') +
+        (st.never.length ? '<span class="lbc-chip lbc-chip-nv">' + ICON.ban + 'Never: ' + st.never.map(function (id) { return esc(nameOf(id)); }).join(', ') + '</span>' : '') + '</div>' +
+        '<div class="lbc-bar lbc-bar-static"><span class="lbc-hint">You can change these any time' + (opts.settings ? '.' : ' — here, by telling Sarah, or in Settings › Business.') + '</span><button type="button" class="lbc-btn" data-a="edit">Change styles</button></div>';
+      el.querySelector('[data-a=edit]').onclick = function () { st.saved = false; draw(); };
+    }
+    function drawSkipped() {
+      el.innerHTML = header('Skipped for now', 'Sarah will work from your website. Choose styles any time in Settings › Business.');
+    }
+    function refresh() {
+      el.querySelectorAll('.lbc-opt').forEach(function (o) {
+        var id = o.getAttribute('data-id'), i = st.picks.indexOf(id), nv = st.never.indexOf(id) >= 0;
+        o.classList.toggle('on', i >= 0); o.classList.toggle('never', nv); o.setAttribute('aria-pressed', String(i >= 0));
+        var b = o.querySelector('.lbc-check'); b.innerHTML = i >= 0 ? String(i + 1) : ''; b.hidden = i < 0;
+        var n = o.querySelector('.lbc-nv'); n.setAttribute('aria-pressed', String(nv)); n.innerHTML = ICON.ban + (nv ? 'Never' : 'Never');
+        o.querySelector('.lbc-flag').hidden = !nv;
+      });
+      var c = el.querySelector('[data-count]'); if (c) { c.textContent = st.picks.length + ' of ' + MAX + ' chosen'; c.classList.toggle('ok', st.picks.length >= 3); }
+      var sv = el.querySelector('[data-a=save]');
+      if (sv) { sv.disabled = !st.picks.length; sv.innerHTML = st.picks.length ? ICON.check + 'Save ' + st.picks.length + ' style' + (st.picks.length > 1 ? 's' : '') : 'Choose at least one'; }
+    }
+    function draw() {
+      if (st.saved && !opts.alwaysOpen) { drawSaved(); return; }
+      var name = esc(st.pv.business_name || 'your business');
+      el.innerHTML = header('Choose your design styles', 'For ' + name + ' · previews use your own name, colours and photo', '<span class="lbc-count" data-count></span>') +
+        '<ol class="lbc-steps"><li><b>1</b>Tap the 3 or 4 you like, in order of preference</li><li><b>2</b>Mark any you never want</li></ol>' +
         '<div class="lbc-grid10">' + st.dirs.map(function (d) {
-          var i = st.picks.indexOf(d.id), nv = st.never.indexOf(d.id) >= 0;
-          return '<div class="lbc-opt' + (i >= 0 ? ' on' : '') + (nv ? ' never' : '') + '" role="button" tabindex="0" aria-pressed="' + (i >= 0) + '" data-id="' + d.id + '">' + tile(d, st.pv) +
-            '<div class="lbc-cap"><b>' + (i >= 0 ? '<span class="lbc-num">' + (i + 1) + '</span>' : '') + esc(d.name) + '</b><span>' + esc(d.blurb) + '</span><button type="button" class="lbc-nv" data-nv="' + d.id + '" aria-pressed="' + nv + '" aria-label="Never use ' + esc(d.name) + '">' + (nv ? 'Never use ✓' : 'Never use') + '</button></div></div>';
+          return '<div class="lbc-opt" role="button" tabindex="0" aria-pressed="false" data-id="' + d.id + '"><div class="lbc-artwrap">' + tile(d, st.pv) +
+            '<span class="lbc-check" hidden></span><span class="lbc-flag" hidden>' + ICON.ban + 'Never</span></div>' +
+            '<div class="lbc-cap"><div class="lbc-cr"><b>' + esc(d.name) + '</b><button type="button" class="lbc-nv" data-nv="' + d.id + '" aria-label="Never use ' + esc(d.name) + '"></button></div><span>' + esc(d.blurb) + '</span></div></div>';
         }).join('') + '</div>' +
-        '<div class="lbc-acts"><button type="button" class="lbc-btn primary" data-a="save"' + (st.picks.length ? '' : ' disabled') + '>' + (st.picks.length ? 'Save ' + st.picks.length + ' style' + (st.picks.length > 1 ? 's' : '') : 'Pick at least one') + '</button>' +
-        (opts.settings ? '' : '<button type="button" class="lbc-btn" data-a="skip">Skip for now</button><span class="lbc-hint">Have brand guidelines, a logo, fonts or posts you like? Send them with the + button below.</span>') + '</div>';
+        '<div class="lbc-bar">' + (opts.settings ? '<span class="lbc-hint">Sarah uses the best fit for each request.</span>' : '<span class="lbc-hint">' + ICON.upload + '<span>Have brand guidelines, a logo, fonts or posts you like? Send them with the <b>+</b> button below.</span></span><button type="button" class="lbc-btn ghost" data-a="skip">Skip for now</button>') +
+        '<button type="button" class="lbc-btn primary" data-a="save"></button></div>';
+      refresh();
       el.querySelectorAll('.lbc-opt').forEach(function (o) {
         function toggle() {
           var id = o.getAttribute('data-id'), i = st.picks.indexOf(id);
-          if (i >= 0) st.picks.splice(i, 1); else { if (st.picks.length >= (card.max || 4)) { toast('Up to ' + (card.max || 4) + ' styles — untick one first.'); return; } st.picks.push(id); st.never = st.never.filter(function (x) { return x !== id; }); }
-          draw();
+          if (i >= 0) st.picks.splice(i, 1); else { if (st.picks.length >= MAX) { toast('Up to ' + MAX + ' styles — untick one first.'); return; } st.picks.push(id); st.never = st.never.filter(function (x) { return x !== id; }); }
+          refresh();
         }
         o.addEventListener('click', function (e) { if (e.target.closest('.lbc-nv')) return; toggle(); });
-        o.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+        o.addEventListener('keydown', function (e) { if (e.target.closest('.lbc-nv')) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
       });
       el.querySelectorAll('.lbc-nv').forEach(function (b) {
         b.addEventListener('click', function (e) {
           e.stopPropagation(); var id = b.getAttribute('data-nv'), i = st.never.indexOf(id);
           if (i >= 0) st.never.splice(i, 1); else { st.never.push(id); st.picks = st.picks.filter(function (x) { return x !== id; }); }
-          draw();
+          refresh();
         });
       });
       var sv = el.querySelector('[data-a=save]');
-      if (sv) sv.onclick = function () {
+      sv.onclick = function () {
         sv.disabled = true; sv.textContent = 'Saving…';
         api('POST', 'brand/directions', { business_id: card.business_id || null, picks: st.picks, never: st.never, from: opts.settings ? 'settings' : 'chat' }).then(function (r) {
           if (r.ok && r.json.success) { st.saved = true; draw(); toast(opts.settings ? 'Design styles saved.' : 'Saved — Sarah will design in these styles.', 'success'); if (opts.onSaved) opts.onSaved(); }
-          else { toast((r.json && r.json.error) || 'Could not save — try again.', 'error'); draw(); }
+          else { toast((r.json && r.json.error) || 'Could not save — try again.', 'error'); refresh(); }
         });
       };
       var sk = el.querySelector('[data-a=skip]');
-      if (sk) sk.onclick = function () {
-        api('POST', 'brand/intake/skip', { business_id: card.business_id || null }).then(function () { el.innerHTML = '<div class="lbc-s" style="margin:0">Skipped — Sarah will work from your website. You can choose styles any time in Settings › Business.</div>'; });
-      };
+      if (sk) sk.onclick = function () { api('POST', 'brand/intake/skip', { business_id: card.business_id || null }).then(drawSkipped); };
     }
     draw();
     if (!opts.settings) {
@@ -191,7 +240,7 @@
         var j = r.json || {}; if (!r.ok || !j.success) return;
         if (j.preview) st.pv = j.preview;
         if (j.picks && j.picks.length && j.picks_source !== 'suggested_from_upload') { st.picks = j.picks; st.never = j.never || []; st.saved = true; }
-        else if (j.intake_status === 'skipped') { el.innerHTML = '<div class="lbc-s" style="margin:0">Skipped — you can choose design styles any time in Settings › Business.</div>'; return; }
+        else if (j.intake_status === 'skipped') { drawSkipped(); return; }
         draw();
       });
     }
