@@ -63,7 +63,7 @@ final class PageOne
             . 'Return ONLY JSON {"title":"<= 65 chars, the search near the front, worth clicking","answer_first":"the direct answer to the search in 40-60 words","outline":[{"h2":"","points":["what this section must say"]}],'
             . '"faq":["4-6 real questions searchers ask"],"table":"a comparison or price table idea, or empty","word_target":1500,"image_moments":[{"after_section":1,"subject":"what the picture shows, concrete","alt":"alt text"}],'
             . '"cta":"what the reader should do next with this business","missing_owner_facts":["a short question for the owner that would make this article more credible"]}. '
-            . 'word_target 1100-2500 sized to the competitors. 5-8 H2 sections. 2-3 image_moments placed where a picture explains something (not decoration). Never plan invented statistics, awards, reviews or prices.';
+            . 'word_target 1100-2500 sized to the competitors. 5-8 H2 sections. 2-3 image_moments placed where a picture explains something (not decoration). Never plan invented statistics, awards, reviews or prices, and never plan a section of testimonials, reviews, customer stories or case studies unless the business facts contain them.';
         $r = app(\App\Connectors\RuntimeClient::class)->chatJson($sys, 'JSON input: ' . json_encode(['search' => $kw, 'topic_hint' => $topic, 'campaign' => $camp->title ?? null, 'item_brief' => $item->brief ?? null,
             'business' => $owner, 'competitors' => $competitors, 'serp_features' => $serp['features'] ?? [], 'today' => now()->toDateString()], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ['task' => 'seo_brief', 'workspace_id' => (string) $wsId], 2500);
         $b = ($r['success'] ?? false) && is_array($r['parsed'] ?? null) ? $r['parsed'] : [];
@@ -79,11 +79,24 @@ final class PageOne
             . 'Close with a short paragraph inviting the reader to ' . OnPage::clean($b['cta'] ?? 'get in touch', 200) . ".\n"
             . 'Write from the business\'s own experience using ONLY these facts where numbers or claims are needed: ' . json_encode($owner, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n"
             . 'Never invent statistics, prices, awards, reviews, client names or quotes. When a number is not in the facts, describe it without a number. Short paragraphs, plain words, helpful first — no filler, no keyword stuffing.';
-        $res = app(\App\Engines\Write\Services\WriteService::class)->writeArticle($wsId, array_merge($params, [
-            '_page_one_inner' => 1, 'title' => $title, 'topic' => $kw, 'target_keyword' => $kw, 'brief' => $brief, 'length' => $words, 'min_words' => $words - 150, 'max_words' => $words + 250,
-            'auto_featured_image' => 1, 'website_id' => $w->id ?? null, 'is_marketing_blog' => 1, 'type' => 'blog_post', 'tone' => $biz->tone ?? ($params['tone'] ?? 'warm and expert'),
-        ]));
-        $aid = (int) ($res['article_id'] ?? $res['id'] ?? 0);
+        // Written section by section (in parallel), so the planned structure and depth are guaranteed — a single long draft
+        // came back with half the sections and a quarter of the length (article 1101: 4 of 7 sections, then 481 words).
+        $html = $outline ? $this->compose($wsId, $kw, $title, $b, $outline, $faq, $owner, $words, (string) ($biz->tone ?? '')) : '';
+        if (str_word_count(strip_tags($html)) >= 700) {
+            $ws = app(\App\Engines\Write\Services\WriteService::class);
+            $res = $ws->createArticle($wsId, ['title' => $title, 'content' => $html, 'type' => 'blog_post', 'target_keyword' => $kw, 'tone' => $biz->tone ?? 'warm and expert', 'assigned_agent' => 'priya',
+                'is_marketing_blog' => true, 'user_id' => $params['user_id'] ?? null, 'website_id' => $w->id ?? null]);
+            $aid = (int) ($res['article_id'] ?? $res['id'] ?? 0);
+            if ($aid) try { app(\App\Engines\Creative\Services\CreativeService::class)->generateImage($wsId, ['article_id' => $aid, 'quality' => 'mini', 'user_id' => $params['user_id'] ?? null]); } catch (\Throwable $e) {}
+            $res += ['generated' => true, 'source' => 'page_one'];
+        } else {
+            // the section writer could not finish: fall back to the single-draft writer, still gated by quality
+            $res = app(\App\Engines\Write\Services\WriteService::class)->writeArticle($wsId, array_merge($params, [
+                '_page_one_inner' => 1, 'title' => $title, 'topic' => $kw, 'target_keyword' => $kw, 'brief' => $brief, 'length' => $words, 'min_words' => $words - 150, 'max_words' => $words + 250,
+                'auto_featured_image' => 1, 'website_id' => $w->id ?? null, 'is_marketing_blog' => 1, 'type' => 'blog_post', 'tone' => $biz->tone ?? ($params['tone'] ?? 'warm and expert'),
+            ]));
+            $aid = (int) ($res['article_id'] ?? $res['id'] ?? 0);
+        }
         if (! $aid) return $res;
         $included = $camp && $camp->source === KeywordPlan::SOURCE;
         $bj = json_decode((string) DB::table('articles')->where('id', $aid)->value('brief_json'), true) ?: [];
@@ -111,10 +124,8 @@ final class PageOne
         // 1. quality gate (before images, so an improvement round cannot drop them)
         $q = $this->grade($a, $po);
         if (! $q['pass']) {
-            try {
-                app(\App\Engines\Write\Services\WriteService::class)->improveDraft($wsId, ['article_id' => $aid, 'instructions' => 'Raise this article to page-one quality for the search "' . $po['keyword'] . '". Fix exactly these problems: ' . implode(' ', $q['fixes'])
-                    . ' Remove anything not supported by the business facts (no invented numbers, awards, reviews or quotes). Keep the headings, the FAQ section and the call to action. Return the full article as HTML.']);
-            } catch (\Throwable $e) { Log::info('[PAGE-ONE-1] improve failed', ['article' => $aid, 'e' => $e->getMessage()]); }
+            try { $this->fixSections($a, $po, $q['fixes']); }   // only the named sections; a fix that shortens the article is discarded
+            catch (\Throwable $e) { Log::info('[PAGE-ONE-1] fix failed', ['article' => $aid, 'e' => $e->getMessage()]); }
             $a = DB::table('articles')->where('id', $aid)->first();
             $q = $this->grade($a, $po);
         }
@@ -130,7 +141,7 @@ final class PageOne
         // 2. images in the body
         $po['inline_images'] = $this->placeImages($a, (array) ($po['images'] ?? []));
         // 3. on-page pass (title, description, alt text, Article + FAQ structured data)
-        try { $po['onpage'] = app(OnPage::class)->article($aid, false, $po['keyword'])['changed']; } catch (\Throwable $e) {}
+        try { $po['onpage'] = app(OnPage::class)->article($aid, true, $po['keyword'])['changed']; } catch (\Throwable $e) {}   // our own fresh article: write every field
         // 4. publish on its date
         $at = ! empty($po['publish_at']) ? Carbon::parse($po['publish_at']) : now();
         $po['state'] = 'ready';
@@ -181,13 +192,85 @@ final class PageOne
         return $n;
     }
 
+    /** The article, written section by section in parallel from the brief: answer first, every planned section, FAQ, call to act. */
+    private function compose(int $wsId, string $kw, string $title, array $b, array $outline, array $faq, array $owner, int $words, string $tone): string
+    {
+        $per = max(170, min(360, (int) round(($words - 250) / max(1, count($outline)))));
+        $rules = 'You write for a small business website, in its own voice' . ($tone !== '' ? ' (' . $tone . ')' : '') . '. Helpful first, plain words, short paragraphs (2-4 sentences), no filler, no keyword stuffing, no mention of AI. '
+            . 'Use ONLY the business facts given for anything about the business (prices, policies, services, places it serves); never invent statistics, prices, awards, reviews, client names or quotes — when a number is not given, describe it without a number. '
+            . 'Well-known general facts are fine. Never name competitor businesses. Return ONLY JSON {"html":"..."} using only <p>, <ul>, <ol>, <li>, <strong>, <em>, <table>, <thead>, <tbody>, <tr>, <th>, <td> — no headings, no <h1>/<h2>, no links.';
+        $facts = json_encode($owner, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $ctx = ['task' => 'seo_section', 'workspace_id' => (string) $wsId];
+        $calls = ['intro' => [$rules, 'JSON input: ' . json_encode(['article_title' => $title, 'search' => $kw, 'write' => 'The opening of the article (90-140 words): first a direct answer to the search in 40-60 words (' . OnPage::clean($b['answer_first'] ?? '', 400) . '), then one or two sentences on what the article covers. Use the search phrase naturally in the first sentence.', 'business_facts' => $facts], JSON_UNESCAPED_UNICODE), $ctx, 700]];
+        foreach ($outline as $i => $o) {
+            $wantsTable = ! empty($b['table']) && $i === (int) floor(count($outline) / 2);
+            $calls['s' . $i] = [$rules, 'JSON input: ' . json_encode(['article_title' => $title, 'search' => $kw, 'section_heading' => OnPage::clean($o['h2'] ?? '', 140),
+                'must_cover' => array_values(array_map(fn ($p) => OnPage::clean($p, 220), array_slice((array) ($o['points'] ?? []), 0, 6))), 'length_words' => $per,
+                'table' => $wantsTable ? OnPage::clean($b['table'], 300) : null, 'other_sections' => array_values(array_map(fn ($x) => OnPage::clean($x['h2'] ?? '', 120), $outline)), 'business_facts' => $facts,
+                'write' => 'The body of this ONE section only (about ' . $per . ' words' . ($wantsTable ? ', including the table as an HTML <table>' : '') . '). Do not repeat what the other sections cover.'], JSON_UNESCAPED_UNICODE), $ctx, 1400];
+        }
+        if ($faq) $calls['faq'] = ['You answer customer questions for a small business website. Each answer 2-4 sentences, direct, helpful, using ONLY the business facts for anything about the business; never invent prices, policies or claims — when unknown, answer generally and invite them to ask. Return ONLY JSON {"answers":[{"q":"","a":""}]}',
+            'JSON input: ' . json_encode(['search' => $kw, 'questions' => $faq, 'business_facts' => $facts], JSON_UNESCAPED_UNICODE), $ctx, 1400];
+        $calls['close'] = [$rules, 'JSON input: ' . json_encode(['article_title' => $title, 'write' => 'A short closing paragraph (50-80 words) that sums up and invites the reader to ' . OnPage::clean($b['cta'] ?? 'get in touch', 200) . '.', 'business_facts' => $facts], JSON_UNESCAPED_UNICODE), $ctx, 400];
+        $r = app(\App\Connectors\RuntimeClient::class)->chatJsonPool($calls);
+        $clean = fn ($h) => trim(preg_replace('#</?(h[1-6]|a|script|style|div|span|img|iframe)[^>]*>#i', '', (string) $h));
+        $piece = fn ($k) => ($r[$k]['success'] ?? false) ? $clean($r[$k]['parsed']['html'] ?? '') : '';
+        $out = $piece('intro');
+        $missing = 0;
+        foreach ($outline as $i => $o) {
+            $body = $piece('s' . $i);
+            if ($body === '') { $missing++; continue; }
+            $out .= "\n<h2>" . e(OnPage::clean($o['h2'] ?? '', 140)) . "</h2>\n" . $body;
+        }
+        $answers = ($r['faq']['success'] ?? false) ? (array) ($r['faq']['parsed']['answers'] ?? []) : [];
+        if ($answers) {
+            $out .= "\n<h2>Frequently asked questions</h2>";
+            foreach (array_slice($answers, 0, 6) as $x) if (is_array($x) && trim((string) ($x['q'] ?? '')) !== '' && trim((string) ($x['a'] ?? '')) !== '') $out .= "\n<h3>" . e(OnPage::clean($x['q'], 200)) . "</h3>\n<p>" . e(OnPage::clean($x['a'], 900)) . '</p>';
+        }
+        $out .= "\n" . $piece('close');
+        if ($missing > 1 || $piece('intro') === '') { Log::info('[PAGE-ONE-1] section writer incomplete', ['missing' => $missing, 'sections' => count($outline)]); return ''; }
+        return trim($out);
+    }
+
+    /** A quality fix rewrites only the sections the grader named; a fix that loses length or structure is thrown away. */
+    private function fixSections(object $a, array $po, array $fixes): bool
+    {
+        $html = (string) $a->content;
+        if (! preg_match_all('#<h2[^>]*>(.*?)</h2>#is', $html, $hm)) return false;
+        $heads = array_map(fn ($h) => trim(html_entity_decode(strip_tags($h))), $hm[1]);
+        $biz = DB::table('businesses')->where('workspace_id', $a->workspace_id)->whereNull('deleted_at')->orderByDesc('is_default')->first();
+        $sys = 'You are a senior SEO editor fixing a small business article. Given the FIXES, choose up to 3 sections (by their exact heading, or "__intro__" for the opening before the first heading) and rewrite ONLY their body to apply the fixes. '
+            . 'Keep each section at least as long as before, keep its tables and lists, use ONLY the business facts for anything about the business, never invent numbers, prices, reviews or awards. '
+            . 'Return ONLY JSON {"sections":[{"heading":"","html":"body only: <p>, <ul>, <ol>, <li>, <strong>, <em>, <table> — no headings"}]}';
+        $parts = [];
+        $split = preg_split('#(<h2[^>]*>.*?</h2>)#is', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $parts['__intro__'] = trim($split[0] ?? '');
+        for ($i = 1; $i < count($split); $i += 2) $parts[trim(html_entity_decode(strip_tags($split[$i])))] = trim($split[$i + 1] ?? '');
+        $r = app(\App\Connectors\RuntimeClient::class)->chatJson($sys, 'JSON input: ' . json_encode(['search' => $po['keyword'] ?? '', 'fixes' => $fixes, 'sections' => array_map(fn ($b) => mb_substr(strip_tags($b), 0, 2500), $parts),
+            'business_facts' => array_filter(['name' => $biz->name ?? null, 'services' => $biz->services_json ?? null, 'pricing' => $biz->pricing_anchor ?? null, 'place' => $biz->location ?? null])], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ['task' => 'seo_fix', 'workspace_id' => (string) $a->workspace_id], 3000);
+        $changed = 0;
+        foreach ((array) ($r['parsed']['sections'] ?? []) as $s) {
+            $h = trim((string) ($s['heading'] ?? '')); $new = trim(preg_replace('#</?(h[1-6]|a|script|style|div|span|img|iframe)[^>]*>#i', '', (string) ($s['html'] ?? '')));
+            if (! array_key_exists($h, $parts) || $new === '' || str_word_count(strip_tags($new)) < 0.85 * str_word_count(strip_tags($parts[$h]))) continue;
+            $parts[$h] = $new; $changed++;
+        }
+        if (! $changed) return false;
+        $out = $parts['__intro__'];
+        for ($i = 1; $i < count($split); $i += 2) { $h = trim(html_entity_decode(strip_tags($split[$i]))); $out .= "\n" . $split[$i] . "\n" . $parts[$h]; }
+        if (str_word_count(strip_tags($out)) < 0.95 * str_word_count(strip_tags($html)) || substr_count(strtolower($out), '<h2') < substr_count(strtolower($html), '<h2')) return false;
+        DB::table('articles')->where('id', $a->id)->update(['content' => $out, 'updated_at' => now()]);
+        return true;
+    }
+
     /** @return array{pass:bool, score:float, scores:array, fixes:string[]} */
     public function grade(object $a, array $po): array
     {
         $text = trim(preg_replace('/\s+/', ' ', strip_tags(str_replace(['</p>', '</h2>', '</h3>', '</li>'], ["\n", "\n", "\n", "\n"], (string) $a->content))));
         $sys = 'You are a strict senior SEO editor deciding whether an article is good enough to publish and compete for Google\'s first page. Score 1-10: intent (answers what the searcher wants, answer early), depth (covers the topic as well as or better than the competitors), '
             . 'experience (specific first-hand detail, not generic), accuracy (no invented numbers, awards, reviews, quotes or claims beyond the business facts), readability (short paragraphs, plain words, scannable), voice (fits the business), seo (the search used naturally in the title, first paragraph and headings; FAQ present). '
-            . 'List invented_claims (exact phrases that are not supported by the facts) and fixes (specific edits, max 5). Return ONLY JSON {"scores":{"intent":0,"depth":0,"experience":0,"accuracy":0,"readability":0,"voice":0,"seo":0},"invented_claims":[],"fixes":[]}';
+            . 'invented_claims are ONLY specific claims about THIS business that the facts do not support (its prices, fees, policies, clients, awards, reviews, years, team) and precise statistics with no source — well-known general facts (weather, geography, common practice) are NOT invented claims. '
+            . 'Experience is judged on what the facts allow: a new business with few facts is not penalised for lacking detail it never gave. '
+            . 'List invented_claims (exact phrases) and fixes (specific edits, max 5). Return ONLY JSON {"scores":{"intent":0,"depth":0,"experience":0,"accuracy":0,"readability":0,"voice":0,"seo":0},"invented_claims":[],"fixes":[]}';
         $biz = DB::table('businesses')->where('workspace_id', $a->workspace_id)->whereNull('deleted_at')->orderByDesc('is_default')->first();
         $r = app(\App\Connectors\RuntimeClient::class)->chatJson($sys, 'JSON input: ' . json_encode(['search' => $po['keyword'] ?? $a->focus_keyword, 'title' => $a->title, 'competitor_pages' => $po['competitors'] ?? [],
             'business_facts' => array_filter(['name' => $biz->name ?? null, 'services' => $biz->services_json ?? null, 'pricing' => $biz->pricing_anchor ?? null, 'differentiators' => $biz->differentiators ?? null, 'place' => $biz->location ?? null]),
@@ -199,7 +282,9 @@ final class PageOne
         $inv = array_values(array_filter(array_map(fn ($x) => OnPage::clean($x, 200), (array) ($p['invented_claims'] ?? []))));
         $fixes = array_values(array_filter(array_map(fn ($x) => OnPage::clean($x, 300), (array) ($p['fixes'] ?? []))));
         if ($inv) array_unshift($fixes, 'Remove or rephrase these unsupported claims: ' . implode(' | ', array_slice($inv, 0, 5)) . '.');
-        $pass = $sc && $avg >= 7.5 && min($sc) >= 6 && ! $inv && str_word_count($text) >= 900;
+        // experience is advisory (it drives the question to the owner); accuracy is strict
+        $core = array_diff_key($sc, ['experience' => 1]);
+        $pass = $sc && $avg >= 7.0 && ($core ? min($core) >= 6 : false) && ($sc['accuracy'] ?? 0) >= 7 && ! $inv && str_word_count($text) >= 900;
         return ['pass' => $pass, 'score' => $avg, 'scores' => $sc, 'fixes' => array_slice($fixes, 0, 6)];
     }
 
@@ -224,7 +309,7 @@ final class PageOne
             $pEnd = stripos($html, '</p>', $pos);
             $at = $pEnd !== false ? $pEnd + 4 : $pos;
             $alt = OnPage::clean($mo['alt'] ?? $subject, 150);
-            $inserts[$at] = "\n<figure class=\"lu-article-figure\"><img src=\"" . e($img['url']) . '" alt="' . e($alt) . '" loading="lazy" decoding="async" width="1536" height="864" style="width:100%;height:auto;border-radius:12px"></figure>' . "\n";
+            $inserts[$at] = "\n<figure class=\"lu-article-figure\" style=\"margin:22px 0\"><img src=\"" . e($img['url']) . '" alt="' . e($alt) . '" loading="lazy" decoding="async" width="1536" height="864" style="width:100%;height:auto;border-radius:12px"></figure>' . "\n";
             $placed[] = $img['url'];
         }
         krsort($inserts);

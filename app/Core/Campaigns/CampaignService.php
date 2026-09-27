@@ -217,6 +217,7 @@ final class CampaignService
                 try {
                     $res = $engine->materialisePlanTask((int) $c->workspace_id, $t, [
                         'requires_approval' => false, 'authorized_by_proposal' => true, 'auto_approve' => true, 'mandate_id' => (int) $c->mandate_id,
+                        'credit_cost' => ($c->source === \App\Core\Search\KeywordPlan::SOURCE && $it->kind === 'article') ? 0 : null,   // PAGE-ONE-1: the weekly roadmap article is included
                         'business_id' => $c->business_id, 'decided_by' => $c->decided_by, 'payload_extra' => ['_mandate_id' => (int) $c->mandate_id, 'from_plan' => 'Campaign: ' . $c->title, 'campaign_item_id' => (int) $it->id],
                     ]);
                     $upd = ! empty($res['task_id']) ? ['status' => 'in_progress', 'task_id' => (int) $res['task_id']] : ['status' => 'held', 'note' => self::plainNote((string) ($res['held'] ?? $res['error'] ?? 'Could not start'))];

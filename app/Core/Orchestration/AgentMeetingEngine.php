@@ -819,7 +819,7 @@ class AgentMeetingEngine
                 'payload'           => $payload,
             ];
             if ($taskCategory) $createPayload['category'] = $taskCategory;
-            foreach (['authorized_by_proposal', 'auto_approve', 'business_id', 'parent_task_id'] as $__k) {
+            foreach (['authorized_by_proposal', 'auto_approve', 'business_id', 'parent_task_id', 'credit_cost'] as $__k) {   // PAGE-ONE-1: credit_cost 0 for work included in the plan
                 if (array_key_exists($__k, $overrides) && $overrides[$__k] !== null) $createPayload[$__k] = $overrides[$__k];
             }
             if (! empty($overrides['mandate_id'])) {
