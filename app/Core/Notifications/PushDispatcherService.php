@@ -53,6 +53,7 @@ class PushDispatcherService
         string $rawContent,
         string $conversationId,
         ?int $messageId = null,
+        array $extraData = [],   // NEEDS-YOU-1: e.g. ['screen' => 'review']
     ): void {
         try {
             // ── b19 (2026-07-24) — DO NOT PUSH TO A LOGGED-OUT USER ──
@@ -129,7 +130,7 @@ class PushDispatcherService
             $body = $this->humanizeForPush($rawContent);
             if ($__specialist !== null) { $body = $__specialist . ': ' . $body; }
 
-            $messages = array_map(function ($token) use ($agentName, $body, $conversationId, $agentSlug, $messageId, $workspaceId) {
+            $messages = array_map(function ($token) use ($agentName, $body, $conversationId, $agentSlug, $messageId, $workspaceId, $extraData) {
                 return [
                     'to'         => $token,
                     'title'      => $agentName,
@@ -143,7 +144,7 @@ class PushDispatcherService
                         'message_id'      => $messageId !== null ? (string) $messageId : null,
                         'agent_slug'      => $agentSlug,
                         'workspace_id'    => (string) $workspaceId,
-                    ], fn ($v) => $v !== null),
+                    ] + $extraData, fn ($v) => $v !== null && $v !== ''),
                 ];
             }, $tokens);
 

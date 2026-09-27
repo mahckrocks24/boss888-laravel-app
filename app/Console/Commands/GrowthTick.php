@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  */
 class GrowthTick extends Command
 {
-    protected $signature = 'growth:tick {--signals} {--watch} {--checkins} {--workspace= : one workspace only} {--force-checkin= : afternoon|night|weekly_feedback (testing)}';
+    protected $signature = 'growth:tick {--signals} {--watch} {--checkins} {--reminders} {--workspace= : one workspace only} {--force-checkin= : afternoon|night|weekly_feedback (testing)}';
     protected $description = 'Sarah watches and adapts: signals, market watch, check-ins';
 
     public function handle(SignalService $signals, WatchService $watch, CheckinService $checkins): int
@@ -49,6 +49,7 @@ class GrowthTick extends Command
             }
             $this->info('watch: ' . count($due) . " due, asked {$asked}");
         }
+        if ($this->option('reminders')) { $this->info('needs-you reminders: ' . app(\App\Core\Growth\NeedsYou::class)->remind($one, (bool) $this->option('workspace'))); }   // NEEDS-YOU-1
         if ($this->option('checkins')) {
             $sent = $checkins->tick($one, $this->option('force-checkin') ?: null);
             $this->info('check-ins: ' . json_encode($sent));

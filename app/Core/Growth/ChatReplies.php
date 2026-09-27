@@ -158,7 +158,7 @@ final class ChatReplies
     public function chips(int $wsId): array
     {
         $q = $this->openQuestion($wsId);
-        if (! $q || (! $q['latest'] && ! in_array($q['type'], ['campaign_ideas', 'campaign_step'], true))) return [];
+        if (! $q || ! $q['latest']) return [];   // NEEDS-YOU-1: chips answer Sarah's latest message only; older decisions wait in Review / Needs your OK
         return match ($q['type']) {
             'watch_ask' => [['label' => 'Every 2 days', 'text' => 'Every 2 days'], ['label' => 'Twice a week', 'text' => 'Twice a week'], ['label' => 'Once a week', 'text' => 'Once a week'], ['label' => 'Not now', 'text' => 'Not now']],
             'campaign_change' => [['label' => 'Approve', 'text' => 'Approve'], ['label' => 'Keep as is', 'text' => 'Keep as is']],

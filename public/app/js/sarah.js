@@ -660,7 +660,7 @@
   function clearActionBar() { var b = document.getElementById('sh-actbar'); if (b) b.remove(); }
   function renderActionBar(d) {
     clearActionBar();
-    var items = (d && Array.isArray(d.items)) ? d.items : []; var chips = (d && Array.isArray(d.quick_replies)) ? d.quick_replies : [];
+    var items = []; var chips = (d && Array.isArray(d.quick_replies)) ? d.quick_replies : [];   /* NEEDS-YOU-1: approvals wait in the Needs your OK pull-down, not under whatever Sarah said last */
     var drafts = (d && Array.isArray(d.drafts)) ? d.drafts.filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }) : [];
     if (!items.length && !chips.length && !drafts.length) return;
     var bar = document.createElement('div'); bar.className = 'sh-actbar'; bar.id = 'sh-actbar'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Sarah is waiting for your decision');

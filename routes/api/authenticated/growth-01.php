@@ -108,6 +108,10 @@ Route::delete('/growth/competitors/{id}', function (Request $r, int $id) use ($g
     return response()->json(['success' => $ok], $ok ? 200 : 404);
 })->whereNumber('id');
 
+Route::get('/growth/needs-you', function (Request $r) {   // NEEDS-YOU-1
+    $n = app(\App\Core\Growth\NeedsYou::class)->count((int) $r->attributes->get('workspace_id'));
+    return response()->json($n + ['line' => $n['count'] ? \App\Core\Growth\NeedsYou::line($n) : null]);
+});
 Route::get('/growth/changes/{id}', function (Request $r, int $id) {
     $x = DB::table('campaign_changes')->where('id', $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first(['id', 'status', 'campaign_id']);
     return $x ? response()->json(['success' => true, 'change' => $x]) : response()->json(['success' => false], 404);

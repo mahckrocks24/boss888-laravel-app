@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // WATCH-1 (RFC-0019): Sarah acts on events, not only the clock — results inside the business, the world, the owner's answers
         $schedule->command('growth:tick --signals')->when(fn () => is_file(storage_path('app/watch1.on')))->everyTenMinutes()->withoutOverlapping(15)->runInBackground();
         $schedule->command('growth:tick --watch')->when(fn () => is_file(storage_path('app/watch1.on')))->hourlyAt(20)->withoutOverlapping(50)->runInBackground();
+        $schedule->command('growth:tick --reminders')->hourlyAt(5)->withoutOverlapping(20)->runInBackground();   // NEEDS-YOU-1: once a day, 10:00 local
         $schedule->command('growth:tick --checkins')->when(fn () => is_file(storage_path('app/watch1.on')))->hourlyAt(2)->withoutOverlapping(30)->runInBackground();
         // SOCIAL-LEADS-1: Sarah's weekly social funnel (Mondays 05:00 UTC = 09:00 Dubai)
         $schedule->command('social:funnel-report')->weeklyOn(1, '05:00')->withoutOverlapping(30)->runInBackground();
