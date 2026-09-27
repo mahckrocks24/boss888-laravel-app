@@ -86,8 +86,7 @@ class MentionScanService
      */
     public function scanWatchlist(int $wsId, int $watchlistId, array $opts = []): array
     {
-        // LAUNCH SCOPE (2026-07-20) — removed capability execution hard-stop.
-        return ['success' => false, 'error' => 'Social listening is not available in the current plan.', 'code' => 'LAUNCH_SCOPE_REMOVED_ENGINE'];
+        // WATCH-1 (RFC-0019, Owner 2026-09-27): listening is back in launch — it runs only inside the market watch the owner approved (credits, one approval, until stopped).
         $get = $this->watchlist->get($wsId, $watchlistId);
         if (empty($get['success'])) {
             return ['success' => false, 'error' => 'watchlist row not found'];

@@ -40,6 +40,12 @@ class CampaignIdeasJob implements ShouldQueue
         try {
             $ideas = $planner->ideas($this->wsId, $this->businessId, $this->count, $this->ask);
             if (! $ideas) {
+                // WATCH-1: ideas Sarah started herself (a signal, the monthly cycle) retry quietly — the owner never asked, so no failure note
+                if (in_array($this->source, ['sarah_signal', 'sarah_monthly'], true)) {
+                    if ($this->attempts() < 3) $this->release(180);
+                    else \Illuminate\Support\Facades\Log::warning('[CAMPAIGNS-1] quiet ideas gave up', ['ws' => $this->wsId, 'source' => $this->source]);
+                    return;
+                }
                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($this->wsId, 'sarah', 'I could not finish the campaign ideas just now. I will try again shortly, or ask me again in a moment.', ['notification_type' => 'campaign_ideas_failed']);
                 return;
             }

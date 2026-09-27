@@ -28,7 +28,8 @@
     email: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="M4 7l8 6 8-6"/>', in_person: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 4-5.5 7-5.5s5.8 1.9 7 5.5"/>', phone: '<path d="M6 4h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4 6a2 2 0 0 1 2-2Z"/>',
     post: '<rect x="4" y="4" width="16" height="16" rx="2.5"/><path d="M4 15l4.5-4.5 4 4 2.5-2.5L20 17"/>', article: '<path d="M7 3.5h7l4 4V20a.5.5 0 0 1-.5.5h-10A.5.5 0 0 1 7 20Z"/><path d="M10 11h5M10 14.5h5M10 18h3"/>',
     image: '<rect x="3.5" y="5" width="17" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M4 17l5-4.5 4 3.5 3-2.5 4 3.5"/>', event: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h3"/>',
-    owner_task: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.3l2.4 2.4L15.8 9.6"/>'
+    owner_task: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8.5 12.3l2.4 2.4L15.8 9.6"/>',
+    radar: '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l5.5-5.5"/>'
   };
   function ic(n, s) { return '<svg class="cm-ic" viewBox="0 0 24 24" width="' + (s || 16) + '" height="' + (s || 16) + '" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (I[n] || I.flag) + '</svg>'; }
   var KIND = { post: 'Social post', article: 'Article', email: 'Email you send', image: 'Design', event: 'Event', owner_task: 'You' };
@@ -80,16 +81,18 @@
   var root;
   window.campaignsLoad = function (el) { root = el; css(); if (S.poll) { clearTimeout(S.poll); S.poll = null; } render(); };
   window.campaignsOpen = function (id) { S.view = 'one'; S.id = id; render(); };
+  window.campaignsWatch = function () { S.view = 'watch'; render(); };   // WATCH-1
 
   function render() {
     if (!root) return;
     if (S.view === 'one' && S.id) return renderOne();
     if (S.view === 'calendar') return renderCal();
+    if (S.view === 'watch') return renderWatch();   // WATCH-1
     return renderList();
   }
   function head(sub) {
     return '<div class="cm-hd"><div class="cm-hdl"><h1>Campaigns</h1><p>' + (sub || 'Sarah plans campaigns to grow your business. You launch one with a single approval; your team runs every step on its date.') + '</p></div>' +
-      '<div class="cm-seg" role="tablist" aria-label="Campaign views"><button type="button" role="tab" data-v="list" class="' + (S.view === 'list' ? 'on' : '') + '" aria-selected="' + (S.view === 'list') + '">' + ic('list', 15) + 'Campaigns</button><button type="button" role="tab" data-v="calendar" class="' + (S.view === 'calendar' ? 'on' : '') + '" aria-selected="' + (S.view === 'calendar') + '">' + ic('cal', 15) + 'Calendar</button></div>' +
+      '<div class="cm-seg" role="tablist" aria-label="Campaign views"><button type="button" role="tab" data-v="list" class="' + (S.view === 'list' ? 'on' : '') + '" aria-selected="' + (S.view === 'list') + '">' + ic('list', 15) + 'Campaigns</button><button type="button" role="tab" data-v="calendar" class="' + (S.view === 'calendar' ? 'on' : '') + '" aria-selected="' + (S.view === 'calendar') + '">' + ic('cal', 15) + 'Calendar</button><button type="button" role="tab" data-v="watch" class="' + (S.view === 'watch' ? 'on' : '') + '" aria-selected="' + (S.view === 'watch') + '">' + ic('radar', 15) + 'Market watch</button></div>' +
       '<button type="button" class="cm-btn primary" data-a="ideas">' + ic('spark', 16) + 'Get campaign ideas</button></div>';
   }
   function wireHead() {
@@ -252,6 +255,99 @@
           p.then(function (x) { if (x.ok) { toast(a === 'pause' ? 'Paused.' : a === 'complete' ? 'Finished — Sarah will report the results.' : 'Archived.', 'success'); if (a === 'archive') { S.view = 'list'; } render(); } else toast((x.json && x.json.error) || 'Could not do that.', 'error'); });
         };
       });
+    });
+  }
+
+
+  /* ── WATCH-1 (RFC-0019): Market watch — trends, competitors, what people say, and what Sarah did about it ── */
+  var WCSS = '.mw-top{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;margin:0 0 18px;align-items:start}.mw-st{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}.mw-st .big{font:700 16px var(--fh,var(--fb,inherit));color:var(--t1);display:flex;align-items:center;gap:8px}' +
+    '.mw-live{width:9px;height:9px;border-radius:50%;background:#22A06B;box-shadow:0 0 0 4px color-mix(in srgb,#22A06B 22%,transparent)}.mw-off{width:9px;height:9px;border-radius:50%;background:var(--t3)}.mw-sub{color:var(--t3);font-size:12.5px;display:flex;flex-wrap:wrap;gap:4px 14px}' +
+    '.mw-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}.mw-opt{border:1px solid var(--bd);background:var(--s2);border-radius:12px;padding:12px;text-align:left;cursor:pointer;color:var(--t1);font:inherit;transition:border-color .15s,box-shadow .15s}.mw-opt b{display:block;font-size:14px}.mw-opt span{display:block;font-size:12px;color:var(--t3);margin-top:2px}' +
+    '.mw-opt.on{border-color:var(--p);box-shadow:0 0 0 1px var(--p) inset;background:color-mix(in srgb,var(--p) 8%,var(--s2))}.mw-opt:focus-visible,.mw-tg:focus-visible{outline:2px solid var(--p);outline-offset:2px}' +
+    '.mw-tgs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}.mw-tg{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--bd);background:var(--s1);color:var(--t2);border-radius:99px;padding:7px 12px 7px 8px;font:600 12.5px var(--fb,inherit);cursor:pointer}.mw-tg i{width:18px;height:18px;border-radius:6px;border:1.5px solid var(--bd2,var(--bd));display:grid;place-items:center;flex:none}' +
+    '.mw-tg[aria-pressed=true]{color:var(--t1);border-color:color-mix(in srgb,var(--p) 55%,var(--bd))}.mw-tg[aria-pressed=true] i{background:var(--p);border-color:var(--p);color:#fff}.mw-tg i svg{opacity:0}.mw-tg[aria-pressed=true] i svg{opacity:1}' +
+    '.mw-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.mw-list{display:flex;flex-direction:column}.mw-li{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--bd)}.mw-li:first-child{border-top:0;padding-top:2px}.mw-li .tx{flex:1;min-width:0}.mw-li b{display:block;font-size:13.5px;color:var(--t1);font-weight:600}.mw-li p{margin:3px 0 0;font-size:12.5px;color:var(--t2)}.mw-li .mt{font-size:11.5px;color:var(--t3);margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}' +
+    '.mw-li a{color:var(--p);text-decoration:none;font-weight:600}.mw-li a:hover{text-decoration:underline}.mw-av{flex:none;width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font:700 13px var(--fb,inherit);color:#fff}' +
+    '.mw-add{display:flex;gap:8px;margin-top:12px}.mw-add input{flex:1;min-width:0;height:36px;border:1px solid var(--bd);border-radius:9px;background:var(--s2);color:var(--t1);padding:0 11px;font:13px var(--fb,inherit)}.mw-add input:focus{outline:none;border-color:var(--p)}' +
+    '.mw-emp{font-size:12.5px;color:var(--t3);padding:6px 0}.mw-sug{border:1px solid color-mix(in srgb,var(--p) 45%,var(--bd));background:linear-gradient(180deg,color-mix(in srgb,var(--p) 7%,var(--s1)),var(--s1) 70%);border-radius:var(--rg,14px);padding:16px;margin:0 0 12px}' +
+    '.mw-sug h3{margin:0 0 4px;font:700 15px var(--fh,var(--fb,inherit));color:var(--t1)}.mw-sug p{margin:0 0 10px;color:var(--t2);font-size:13px}.mw-ch{margin:0 0 12px;padding:0;list-style:none}.mw-ch li{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px;color:var(--t1)}.mw-ch em{flex:none;font-style:normal;font:700 10.5px var(--fb,inherit);letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--s2);border:1px solid var(--bd);color:var(--t2)}' +
+    '.mw-seg2{display:inline-flex;flex-wrap:wrap;padding:3px;border:1px solid var(--bd);border-radius:10px;background:var(--s2);margin-top:8px}.mw-seg2 button{border:0;background:transparent;color:var(--t2);font:600 12.5px var(--fb,inherit);padding:6px 10px;border-radius:8px;cursor:pointer}.mw-seg2 button.on{background:var(--s1);color:var(--t1);box-shadow:0 1px 3px rgba(0,0,0,.2)}' +
+    '@media (max-width:900px){.mw-top,.mw-cols{grid-template-columns:1fr}}@media (max-width:640px){.mw-opts{grid-template-columns:1fr}}';
+  function wcss() { if (document.getElementById('mw-css')) return; var s = document.createElement('style'); s.id = 'mw-css'; s.textContent = WCSS; document.head.appendChild(s); }
+  var TICK = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
+  var AREAS = [['trends', 'Trends & local moments'], ['competitors', 'Competitors'], ['listening', 'What people say online']];
+  function ago(s) { var x = d(s); if (!x) return ''; var m = Math.round((Date.now() - x) / 60000); if (m < 60) return m <= 1 ? 'just now' : m + ' min ago'; var h = Math.round(m / 60); if (h < 24) return h + ' h ago'; var dd = Math.round(h / 24); return dd === 1 ? 'yesterday' : dd + ' days ago'; }
+  function changeList(chs) {
+    return '<ul class="mw-ch">' + (chs || []).map(function (x) {
+      var lab = x.op === 'add' ? 'Add' : x.op === 'move' ? 'Move' : 'Drop';
+      return '<li><em>' + lab + '</em><span>' + esc(x.title) + (x.op === 'add' ? ' · ' + esc(KIND[x.kind] || x.kind) + ' · ' + esc(fmt(x.date, { weekday: 'short', month: 'short', day: 'numeric' })) : x.op === 'move' ? ' · ' + esc(fmt(x.from)) + ' → ' + esc(fmt(x.date, { weekday: 'short', month: 'short', day: 'numeric' })) : '') + '</span></li>';
+    }).join('') + '</ul>';
+  }
+  window.LU_changeList = changeList;
+  function setupPanel(j, st) {
+    var w = j.watch || {}, opts = w.options || [];
+    st.freq = st.freq || w.frequency || 'twice_weekly'; st.areas = st.areas || JSON.parse(JSON.stringify(w.areas || { trends: true, competitors: true, listening: true }));
+    var per = 0; var COST = { trends: 6, competitors: 4, listening: 4 }; Object.keys(st.areas).forEach(function (k) { if (st.areas[k]) per += COST[k]; });
+    var runs = { daily: 7, twice_weekly: 2, weekly: 1 };
+    return '<div class="mw-opts" role="radiogroup" aria-label="How often">' + opts.map(function (o) { return '<button type="button" role="radio" aria-checked="' + (st.freq === o.frequency) + '" class="mw-opt' + (st.freq === o.frequency ? ' on' : '') + '" data-f="' + o.frequency + '"><b>' + esc(o.label) + '</b><span>About ' + (per * runs[o.frequency]) + ' credits a week</span></button>'; }).join('') + '</div>' +
+      '<div class="mw-tgs">' + AREAS.map(function (a) { return '<button type="button" class="mw-tg" aria-pressed="' + !!st.areas[a[0]] + '" data-ar="' + a[0] + '"><i>' + TICK + '</i>' + esc(a[1]) + '</button>'; }).join('') + '</div>';
+  }
+  function renderWatch() {
+    wcss();
+    root.innerHTML = '<div id="cm">' + head('Sarah keeps an eye on trends, competitors and what people say about you, and turns it into campaign moves you approve.') + '<div class="cm-empty" style="padding:22px">Loading…</div></div>';
+    wireHead();
+    var st = S.wst || (S.wst = {});
+    api('GET', 'growth/watch' + (S.biz ? '?business_id=' + S.biz : '')).then(function (r) {
+      var j = r.json || {}; if (!r.ok || !j.success) { root.querySelector('#cm').innerHTML = head() + '<div class="cm-empty"><h3>Market watch could not load</h3><p>Please try again.</p></div>'; wireHead(); return; }
+      var w = j.watch || {}, on = w.status === 'on', editing = !on || st.edit;
+      var biz = (j.businesses || []).length > 1 ? '<div class="cm-biz" role="group" aria-label="Business">' + j.businesses.map(function (b) { var sel = (S.biz || 0) === b.id || (!S.biz && b.is_default); return '<button type="button" data-b="' + b.id + '" class="' + (sel ? 'on' : '') + '">' + esc(b.name) + '</button>'; }).join('') + '</div>' : '';
+      var freqLab = { daily: 'Every day', twice_weekly: 'Twice a week', weekly: 'Once a week' }[w.frequency] || '';
+      var areasOn = AREAS.filter(function (a) { return (w.areas || {})[a[0]]; }).map(function (a) { return a[1]; }).join(' · ');
+      var status = on && !st.edit
+        ? '<div class="mw-st"><div class="big"><span class="mw-live"></span>Sarah is watching · ' + esc(freqLab) + '</div><div class="cm-acts" style="margin-left:auto"><button type="button" class="cm-btn sm" data-w="now">Look now</button><button type="button" class="cm-btn sm" data-w="edit">Change</button><button type="button" class="cm-btn ghost sm" data-w="stop">Stop</button></div></div>' +
+          '<div class="mw-sub" style="margin-top:8px"><span>' + esc(areasOn) + '</span><span>About ' + (w.credits_per_week || 0) + ' credits a week</span>' + (w.last_run_at ? '<span>Last look ' + esc(ago(w.last_run_at)) + '</span>' : '<span>First look in a few minutes</span>') + (w.next_run_at ? '<span>Next ' + esc(fmt(w.next_run_at, { weekday: 'short', month: 'short', day: 'numeric' })) + '</span>' : '') + '</div>'
+        : '<div class="mw-st"><div class="big"><span class="mw-off"></span>' + (on ? 'Change what Sarah watches' : w.stopped_by === 'sarah' ? 'Sarah paused the watch' : 'Let Sarah watch the market for you') + '</div></div>' +
+          '<p class="mw-sub" style="margin:6px 0 0;display:block">' + esc(w.stopped_by === 'sarah' && !on ? (w.stopped_reason || '') + '. Turn it back on when you are ready.' : 'She looks at what is trending in your industry and area, what competitors offer and change, and what people say about you — then suggests campaign moves you approve. It uses a few credits each time; one yes keeps it running until you say stop.') + '</p>' +
+          setupPanel(j, st) + '<div class="cm-acts"><button type="button" class="cm-btn primary" data-w="save">' + (on ? 'Save changes' : 'Start watching') + '</button>' + (on ? '<button type="button" class="cm-btn ghost" data-w="cancel">Cancel</button>' : '') + '</div>';
+      var ci = j.checkins || 'on';
+      var side = '<div class="cm-panel"><h4>Sarah’s check-ins</h4><p class="mw-sub" style="display:block;margin:0">A morning brief, a quick afternoon hello, an evening wrap-up and a Friday question about how it’s going. Your answers teach her your business.</p>' +
+        '<div class="mw-seg2" role="radiogroup" aria-label="Check-ins">' + [['on', 'Afternoon & evening'], ['no_night', 'Afternoon only'], ['off', 'Brief only']].map(function (o) { return '<button type="button" role="radio" aria-checked="' + (ci === o[0]) + '" class="' + (ci === o[0] ? 'on' : '') + '" data-ci="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div></div>';
+      var sug = (j.changes_waiting || []).map(function (c) {
+        return '<div class="mw-sug" data-ch="' + c.change_id + '"><div class="cm-row" style="margin:0 0 6px">' + pill('Sarah suggests', 'var(--p)') + '<span>' + esc(c.campaign_title) + '</span></div><h3>Update “' + esc(c.campaign_title) + '”</h3><p>' + esc(c.reason) + '</p>' + changeList(c.changes) +
+          '<div class="cm-acts"><button type="button" class="cm-btn primary sm" data-ok="' + c.change_id + '">' + ic('check', 14) + 'Approve' + (c.extra_credits ? ' · up to ' + credits(c.extra_credits) : '') + '</button><button type="button" class="cm-btn ghost sm" data-no="' + c.change_id + '">Keep as is</button></div></div>';
+      }).join('');
+      var li = function (items, fn, empty) { return items.length ? '<div class="mw-list">' + items.map(fn).join('') + '</div>' : '<div class="mw-emp">' + empty + '</div>'; };
+      var trends = li(j.trends || [], function (t) { return '<div class="mw-li"><span class="mw-av" style="background:' + (t.kind === 'moment' ? '#E0685A' : '#6C8CFF') + '">' + ic(t.kind === 'moment' ? 'cal' : 'spark', 16) + '</span><div class="tx"><b>' + esc(t.title) + '</b>' + (t.detail ? '<p>' + esc(t.detail) + '</p>' : '') + '<div class="mt">' + (t.kind === 'moment' ? '<span>Local moment' + (t.date ? ' · ' + esc(fmt(t.date)) : '') + '</span>' : '<span>Trend</span>') + '<span>' + esc(ago(t.at)) + '</span>' + (t.acted ? '<span style="color:#22A06B;font-weight:600">Sarah acted on this</span>' : '') + (t.url ? '<a href="' + esc(t.url) + '" target="_blank" rel="noopener">Source</a>' : '') + '</div></div></div>'; }, on ? 'Nothing yet — Sarah shares what she finds after her next look.' : 'Turn on the watch and Sarah will bring trends and local moments that matter to your business.');
+      var comps = li(j.competitors || [], function (c) { return '<div class="mw-li"><span class="mw-av" style="background:#8A93A6">' + esc((c.name || '?').charAt(0).toUpperCase()) + '</span><div class="tx"><b>' + esc(c.name) + '</b>' + (c.last_change ? '<p><span style="color:#D97706;font-weight:600">Changed:</span> ' + esc(c.last_change) + '</p>' : c.summary ? '<p>' + esc(c.summary) + '</p>' : '') + '<div class="mt">' + (c.domain ? '<a href="https://' + esc(c.domain) + '" target="_blank" rel="noopener">' + esc(c.domain) + '</a>' : '') + '<span>' + (c.last_checked_at ? 'Checked ' + esc(ago(c.last_checked_at)) : 'Not checked yet') + '</span>' + (c.source === 'owner' ? '<span>Added by you</span>' : '') + '<button type="button" class="cm-btn ghost sm" style="min-height:24px;padding:0 6px" data-rmc="' + c.id + '" aria-label="Stop watching ' + esc(c.name) + '">Remove</button></div></div></div>'; }, on ? 'Sarah finds your competitors on her first look. You can also add one below.' : 'Sarah finds your competitors when the watch is on. You can add ones you know now.') +
+        '<div class="mw-add"><input type="text" maxlength="200" placeholder="Add a competitor’s website" aria-label="Competitor website"><button type="button" class="cm-btn sm" data-addc>Add</button></div>';
+      var ment = li(j.mentions || [], function (m) { var col = m.sentiment === 'negative' ? '#DC2626' : m.sentiment === 'positive' ? '#22A06B' : '#8A93A6'; return '<div class="mw-li"><span class="mw-av" style="background:' + col + '">' + ic('website', 16) + '</span><div class="tx"><b>' + esc(m.source_title || m.source_domain) + '</b>' + (m.excerpt ? '<p>' + esc(m.excerpt) + '</p>' : '') + '<div class="mt">' + pill(m.sentiment === 'negative' ? 'Critical' : m.sentiment === 'positive' ? 'Positive' : 'Neutral', col) + '<span>' + esc(m.source_domain || '') + '</span><a href="' + esc(m.source_url) + '" target="_blank" rel="noopener">Open</a></div></div></div>'; }, on ? 'No mentions found yet.' : 'Sarah searches the web for your business name when the watch is on.');
+      var did = li(j.activity || [], function (a) { var lab = { adjust: 'Suggested a campaign update', propose: 'Suggested a new campaign', tell: 'Told you' }[a.did] || a.did; return '<div class="mw-li"><span class="mw-av" style="background:var(--p)">' + ic('spark', 15) + '</span><div class="tx"><b>' + esc(lab) + '</b><p>' + esc(a.why || a.title) + '</p><div class="mt"><span>' + esc(a.title) + '</span><span>' + esc(ago(a.at)) + '</span></div></div></div>'; }, 'When something happens that matters — a trend, a competitor move, a slow week or a campaign behind target — Sarah suggests what to do here and in her chat.');
+      root.querySelector('#cm').innerHTML = head('Sarah keeps an eye on trends, competitors and what people say about you, and turns it into campaign moves you approve.') + biz +
+        '<div class="mw-top"><div class="cm-panel">' + status + '</div>' + side + '</div>' + sug +
+        '<div class="mw-cols"><section class="cm-panel"><h4>Trends & local moments</h4>' + trends + '</section><section class="cm-panel"><h4>Competitors</h4>' + comps + '</section>' +
+        '<section class="cm-panel"><h4>What people say online</h4>' + ment + '</section><section class="cm-panel"><h4>What Sarah did about it</h4>' + did + '</section></div>';
+      wireHead();
+      var bizId = S.biz || null;
+      root.querySelectorAll('.cm-biz [data-b]').forEach(function (b) { b.onclick = function () { S.biz = +b.getAttribute('data-b') || 0; S.wst = {}; renderWatch(); }; });
+      root.querySelectorAll('.mw-opt').forEach(function (b) { b.onclick = function () { st.freq = b.getAttribute('data-f'); renderWatch(); }; });
+      root.querySelectorAll('.mw-tg').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-ar'); st.areas[k] = !st.areas[k]; renderWatch(); }; });
+      root.querySelectorAll('[data-ci]').forEach(function (b) { b.onclick = function () { api('POST', 'growth/checkins', { value: b.getAttribute('data-ci') }).then(function (x) { if (x.ok) { toast('Saved.', 'success'); renderWatch(); } }); }; });
+      root.querySelectorAll('[data-w]').forEach(function (b) {
+        b.onclick = function () {
+          var a = b.getAttribute('data-w');
+          if (a === 'edit') { st.edit = true; st.freq = w.frequency; st.areas = JSON.parse(JSON.stringify(w.areas)); renderWatch(); return; }
+          if (a === 'cancel') { S.wst = {}; renderWatch(); return; }
+          b.disabled = true;
+          var p = a === 'save' ? api('POST', 'growth/watch', { business_id: bizId, frequency: st.freq, areas: st.areas }) : a === 'stop' ? api('POST', 'growth/watch/stop', { business_id: bizId }) : api('POST', 'growth/watch/run', { business_id: bizId });
+          p.then(function (x) { var ok = x.ok && x.json.success; toast(ok ? (a === 'save' ? (on ? 'Saved.' : 'Sarah is on it — her first look starts in a few minutes.') : a === 'stop' ? 'Stopped. Nothing more is spent.' : x.json.message) : ((x.json && x.json.error) || 'Could not do that.'), ok ? 'success' : 'error'); if (ok) S.wst = {}; renderWatch(); });
+        };
+      });
+      var inp = root.querySelector('.mw-add input'), add = root.querySelector('[data-addc]');
+      function doAdd() { var v = (inp.value || '').trim(); if (!v) return; add.disabled = true; api('POST', 'growth/competitors', { business_id: bizId, url: v, name: '' }).then(function (x) { if (x.ok && x.json.success) { toast('Sarah will watch them from her next look.', 'success'); renderWatch(); } else { add.disabled = false; toast((x.json && x.json.error) || 'Could not add.', 'error'); } }); }
+      if (add) { add.onclick = doAdd; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } }); }
+      root.querySelectorAll('[data-rmc]').forEach(function (b) { b.onclick = function () { api('DELETE', 'growth/competitors/' + b.getAttribute('data-rmc')).then(function () { renderWatch(); }); }; });
+      root.querySelectorAll('[data-ok]').forEach(function (b) { b.onclick = function () { b.disabled = true; api('POST', 'growth/changes/' + b.getAttribute('data-ok') + '/approve', {}).then(function (x) { toast(x.ok && x.json.success ? 'Updated — the new steps are on the calendar.' : ((x.json && x.json.error) || 'Could not update.'), x.ok && x.json.success ? 'success' : 'error'); renderWatch(); }); }; });
+      root.querySelectorAll('.mw-sug [data-no]').forEach(function (b) { b.onclick = function () { api('POST', 'growth/changes/' + b.getAttribute('data-no') + '/decline', {}).then(function () { toast('Kept as is — Sarah will learn from it.', 'success'); renderWatch(); }); }; });
     });
   }
 

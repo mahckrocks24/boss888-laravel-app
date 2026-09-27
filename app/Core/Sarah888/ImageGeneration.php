@@ -107,6 +107,11 @@ class ImageGeneration
         // regeneration, and "where is the image?" became "regenerate with: where is ?". A turn about a comment reply is never an
         // image refinement, and a where/why/how-come question that asks for no concrete change is a question, not a refinement.
         if (!$__img && preg_match('/\b(repl(y|ies)|respon(d|se)|comments?|answer)\b/', $t)) { return false; }
+        // WATCH-1 (2026-09-27): feedback about the business or the marketing ("3 out of 5, the posts look nice but no new customers, more things that bring people in")
+        // was offered as a 2-credit image regeneration. Talk about posts, customers, sales, the shop or a score is never an image edit unless it names an image,
+        // and nothing is while the owner is answering one of Sarah's check-ins.
+        if (!$__img && preg_match('/\b(posts?|customers?|clients?|sales|orders?|marketing|business|shop|store|footfall|enquir(y|ies)|out of (5|five|10|ten)|\d\s*\/\s*(5|10))\b/', $t)) { return false; }
+        if (!$__img) { try { if (\Illuminate\Support\Facades\DB::table('owner_checkins')->where('workspace_id', $wsId)->where('status', 'asked')->where('created_at', '>=', now()->subHours(12))->exists()) { return false; } } catch (\Throwable $e) {} }
         if (preg_match('/^(where|why|how come|what happened)\b/', $t) && self::changeFrom($text) === '') { return false; }
         $hasChange = self::changeFrom($text) !== ''
             || (bool) preg_match('/\b(more|less|brighter|darker|bigger|smaller|change|turn it|instead|but make|but with|without|hyper\w*|realist\w*|photoreal\w*|cartoon|anime|render|style|version)\b/', $t);

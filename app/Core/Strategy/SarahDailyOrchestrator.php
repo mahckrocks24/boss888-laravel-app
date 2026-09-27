@@ -135,6 +135,19 @@ class SarahDailyOrchestrator
             }
             if ($__cs) $state['campaigns'] = $__cs;
         } catch (\Throwable $e) {}
+        // WATCH-1 (RFC-0019): what happened since yesterday — results, the world, the owner's own news — that Sarah kept for the brief
+        try {
+            $__sg = DB::table('growth_signals')->where('workspace_id', $wsId)->whereIn('status', ['brief', 'new'])->where('created_at', '>=', now()->subHours(40))->orderByDesc('strength')->orderByDesc('id')->limit(5)->get(['id', 'kind', 'title', 'detail']);
+            if ($__sg->count()) {
+                $__plain = fn ($t) => trim(str_replace(['"', '“', '”'], '', (string) $t));   // quotes inside titles broke the brief's JSON
+                $state['market_watch'] = $__sg->map(fn ($s) => $__plain(mb_substr((string) $s->title, 0, 200)))->values()->all();
+                DB::table('growth_signals')->whereIn('id', $__sg->pluck('id'))->where('status', 'brief')->update(['status' => 'handled', 'updated_at' => now()]);
+            }
+            $__jr = DB::table('business_journal')->where('workspace_id', $wsId)->where('created_at', '>=', now()->subDays(3))->orderByDesc('id')->limit(4)->pluck('text')->map(fn ($t) => str_replace(['"', '“', '”'], '', (string) $t))->all();
+            if ($__jr) $state['owner_told_you'] = $__jr;
+            $__chw = DB::table('campaign_changes')->where('workspace_id', $wsId)->where('status', 'proposed')->count();
+            if ($__chw) $state['campaign_updates_waiting_for_owner'] = $__chw;
+        } catch (\Throwable $e) {}
 
         // 1c. Phase 2 (2026-06-30) — RECALL Sarah's episodic workspace memory so
         // she sees what she proposed / learned on prior runs and stops repeating
@@ -421,6 +434,7 @@ class SarahDailyOrchestrator
             . "Elena for CRM leads/follow-ups). Only orchestration actions (strategy_meeting, "
             . "goal_pivot, monthly_strategy, weekly_review, onboarding, estimate_cost) are assigned "
             . "to sarah. CAMPAIGNS (CAMPAIGNS-1, 2026-09-27): the owner's marketing now runs as CAMPAIGNS (state.campaigns): social posts, emails, articles and offers belong INSIDE campaigns. "
+            . "MARKET WATCH (state.market_watch, state.owner_told_you): what happened since yesterday — results, trends and local moments, competitors, mentions, and the owner's own news. In ONE short paragraph (at most two sentences), mention the one or two that matter and what you suggest; skip the rest. Never use double quotes inside the brief. "
             . "Lead TODAY with the campaign steps due today and anything a campaign is waiting on the owner for. NEVER propose strategy_meeting, goal_pivot, monthly_strategy or weekly_review — Sarah brings campaign ideas separately. Routine SEO/content upkeep is work you do yourself; mention it in one line, never as an approval.\n\n"
             . "Sarah's checklist (_rule_candidates) is pre-computed for you. Each candidate is "
             . "a real data-driven opportunity (orphan pages found, opportunity-zone keyword, "

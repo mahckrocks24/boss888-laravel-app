@@ -37,7 +37,10 @@ final class BrandIntakeService
         }
         if ($this->absorb($wsId, (string) $msg->content, $atts)) return $insp['saved'] ? 'inspired+absorbed' : 'absorbed';
         if ($insp['saved'] > 0) return 'inspired';
-        return $this->ask($wsId) ? 'asked' : 'nothing';
+        // WATCH-1: a reply to Sarah's check-in is a conversation — no setup questions on top of it
+        if (DB::table('owner_checkins')->where('workspace_id', $wsId)->where(fn ($q) => $q->where('answer_message_id', $userMessageId)->orWhere(fn ($w) => $w->where('status', 'asked')->where('created_at', '>=', now()->subHours(12))))->exists()) return 'checkin';
+        if ($this->ask($wsId)) return 'asked';
+        return app(\App\Core\Growth\WatchService::class)->ask($wsId) ? 'watch_asked' : 'nothing';   // WATCH-1: then, once, whether and how often to watch the market
     }
 
     /** The business whose intake is open (asked in the last 14 days), if any. */

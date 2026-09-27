@@ -56,7 +56,7 @@ final class LaunchScopeLanguageGuard
     // DEC-0028 / RISK-0099 (2026-08-29): social posting/publishing and the platforms are IN the
     // product again — "connect your Facebook account" is now a TRUE statement, not banned framing.
     private const REMOVED_SUBJECTS = [
-        'social listening', 'social monitoring',
+        // WATCH-1 (2026-09-27): listening and monitoring are in the product again (market watch)
         'email marketing', 'email campaign', 'newsletter', 'sequence',
         'drip', 'ads', 'ad campaign', 'comment', 'inbox', 'engagement',   // CAMPAIGNS-1: bare 'campaign' removed — growth campaigns are in the product
         // Bare 'email' last: it only reaches here when no PROTECTED_SUBJECT

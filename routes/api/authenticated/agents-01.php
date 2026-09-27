@@ -124,7 +124,7 @@ use Illuminate\Support\Facades\Route;
                     'content' => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $m->content),
                     'ts'      => $m->created_at,
                     'attachments' => $meta['attachments'] ?? null, // ATTACH-2
-                    'card'    => (is_array($meta['card'] ?? null) && in_array($meta['card']['type'] ?? '', ['brand_directions', 'brand_summary', 'inspiration', 'campaign_ideas'], true)) ? array_diff_key($meta['card'], ['prompt' => 1, 'recipe' => 1]) : null, // BRAND-B1; SECRET-1: never a prompt
+                    'card'    => (is_array($meta['card'] ?? null) && in_array($meta['card']['type'] ?? '', ['brand_directions', 'brand_summary', 'inspiration', 'campaign_ideas', 'watch_setup', 'campaign_change'], true)) ? array_diff_key($meta['card'], ['prompt' => 1, 'recipe' => 1]) : null, // BRAND-B1; SECRET-1: never a prompt
                     'is_ack'  => !empty($meta['is_ack']) || (($meta['phase'] ?? '') === 'ack'),
                     'phase'   => $meta['phase'] ?? null,
                     // SARAH888 Phase 1A slice 1 — correlation surfaced so a client
@@ -308,6 +308,20 @@ use Illuminate\Support\Facades\Route;
             // BRAND-B1 (RFC-0017 5d): Sarah's brand intake runs after she has answered this message (queued; never blocks the reply)
             if ($userMessageId && in_array((string) $slug, ['sarah', 'dmm'], true)) {
                 try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay(now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
+                // WATCH-1 (RFC-0019): an answer to Sarah's check-in is learned from; "stop monitoring", "check competitors weekly", "stop checking in" act at once
+                try {
+                    $__wc = (string) $content;
+                    if ($__ci = app(\App\Core\Growth\CheckinService::class)->openFor((int) $wsId)) { \App\Jobs\CheckinAbsorbJob::dispatch((int) $wsId, (int) $__ci->id, (int) $userMessageId)->delay(now()->addSeconds(4)); $__watchTurn = 'checkin_answer:' . $__ci->kind; }
+                    if (preg_match('/\b(stop|pause|cancel|turn off|no more|don\'?t|do not)\b[^.?!\n]{0,40}\b(monitor\w*|watch\w*|research\w*|track\w*|listening|spying|competitors?|trends)\b/i', $__wc)) {
+                        if (app(\App\Core\Growth\WatchService::class)->stop((int) $wsId, null, 'owner', mb_substr($__wc, 0, 200), true)) $__watchTurn = 'watch_stopped';
+                    } elseif (preg_match('/\b(monitor|watch|track|check|research|keep an eye on|look at)\b[^.?!\n]{0,70}\b(every ?day|daily|each day|twice a week|weekly|every week|once a week)\b/i', $__wc, $__wm)) {
+                        $__f = preg_match('/twice/i', $__wm[2]) ? 'twice_weekly' : (preg_match('/week/i', $__wm[2]) ? 'weekly' : 'daily');
+                        $__r = app(\App\Core\Growth\WatchService::class)->setup((int) $wsId, null, $__f, ['trends' => 1, 'competitors' => 1, 'listening' => 1], (int) ($userId ?? 0) ?: null, 'chat');
+                        if (! empty($__r['success'])) $__watchTurn = 'watch_on:' . $__f;
+                    }
+                    if (preg_match('/\b(stop|no more|don\'?t|do not)\b[^.?!\n]{0,30}\bcheck(ing)?[- ]?(ins?|in on me)\b/i', $__wc)) { \App\Core\Growth\CheckinService::setPrefs((int) $wsId, 'off'); $__watchTurn = 'checkins_off'; }
+                    elseif (preg_match('/\b(don\'?t|do not|stop|no)\b[^.?!\n]{0,30}\bmessag\w* me\b[^.?!\n]{0,25}\b(at night|in the evening|evenings|late)\b/i', $__wc)) { \App\Core\Growth\CheckinService::setPrefs((int) $wsId, 'no_night'); $__watchTurn = 'checkins_no_night'; }
+                } catch (\Throwable $__wj) { \Illuminate\Support\Facades\Log::warning('[WATCH-1] chat hook failed', ['e' => $__wj->getMessage()]); }
                 // CAMPAIGNS-1: asking for campaigns, a marketing plan or growth ideas → Sarah designs campaign ideas (cards follow her reply)
                 if (preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $content)
                     && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $content)) {
@@ -1925,6 +1939,18 @@ $withCorr = function (array $meta) use ($corr) {
                     foreach ($__ins as $__in) { $__brandPrefBlock .= '  - "' . $__in->title . '" (saved ' . substr((string) $__in->created_at, 0, 10) . ($__in->pinned ? ', always used' : '') . ', used ' . (int) $__in->uses . " times)\n"; }
                     $__brandPrefBlock .= "When the owner asks for something like one of these, name the one you will follow; it is applied to the image automatically.\n";
                 }
+                // WATCH-1 (RFC-0019): what Sarah watches, what she noticed, what the owner told her about the business
+                try {
+                    $__wr = \Illuminate\Support\Facades\DB::table('business_watch')->where('workspace_id', (int) $wsId)->where('status', 'on')->pluck('frequency');
+                    $__brandPrefBlock .= 'MARKET WATCH (trends and local moments, competitors, what people say online; the owner approves it once with a schedule and it uses a few credits each time): ' . ($__wr->count() ? 'ON, ' . $__wr->map(fn ($f) => str_replace('_', ' ', (string) $f))->implode(', ') : 'off')
+                        . ". If the owner says 'stop monitoring' or 'watch competitors weekly' it is done automatically; they can also manage it on the Campaigns page, Market watch tab. You react to results and to what happens in the world by suggesting campaign changes or ideas; the owner approves every new or updated campaign.\n";
+                    $__ws7 = \Illuminate\Support\Facades\DB::table('growth_signals')->where('workspace_id', (int) $wsId)->where('created_at', '>=', now()->subDays(10))->whereIn('kind', ['trend', 'moment', 'competitor_move', 'mention', 'campaign_pace', 'leads_quiet', 'new_leads'])->orderByDesc('strength')->orderByDesc('id')->limit(6)->pluck('title');
+                    if ($__ws7->count()) $__brandPrefBlock .= "WHAT YOU NOTICED LATELY (facts; use when relevant):\n" . $__ws7->map(fn ($t) => '  - ' . $t)->implode("\n") . "\n";
+                    $__jr = \Illuminate\Support\Facades\DB::table('business_journal')->where('workspace_id', (int) $wsId)->orderByDesc('id')->limit(8)->get(['kind', 'text', 'created_at']);
+                    if ($__jr->count()) $__brandPrefBlock .= "WHAT THE OWNER TOLD YOU ABOUT THE BUSINESS (remember it, follow up on it naturally):\n" . $__jr->map(fn ($j) => '  - ' . substr((string) $j->created_at, 0, 10) . ' ' . $j->kind . ': ' . $j->text)->implode("\n") . "\n";
+                    $__chw = \Illuminate\Support\Facades\DB::table('campaign_changes')->where('workspace_id', (int) $wsId)->where('status', 'proposed')->count();
+                    if ($__chw) $__brandPrefBlock .= $__chw . " campaign update(s) you suggested are waiting for the owner's approval (cards in this chat and on the Campaigns page).\n";
+                } catch (\Throwable $__we) {}
             } catch (\Throwable $__bpe) { $__brandPrefBlock = ''; }
             $__selectedStateBlocks = ($__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock)) . $__commentsBlock . $__brandPrefBlock;
             // CAMPAIGNS-1: the owner asked for campaigns or growth ideas — the ideas are being designed right now and arrive as cards after this reply
@@ -2274,6 +2300,20 @@ $withCorr = function (array $meta) use ($corr) {
                 // CAMPAIGNS-1: when the owner asks for campaigns or growth ideas, the ideas are being designed right now and arrive as cards
                 if (preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage)) {
                     $userPrompt .= "\n\n[FOR THIS REPLY: campaign ideas for this owner are being designed right now from their business, audience, location, season, brand and past results; they appear as cards directly below your reply in about a minute. Reply in 1-2 warm sentences saying that. Do not list ideas, do not refuse, do not say data is missing, do not create tasks.]";
+                }
+                // WATCH-1: this turn answers a check-in, or changed the market watch / check-ins
+                if (! empty($__watchTurn)) {
+                    $__wt = (string) $__watchTurn;
+                    $__wn = match (true) {
+                        str_starts_with($__wt, 'checkin_answer:weekly') => "the owner is answering your end-of-week question about how the marketing is going. Thank them honestly, acknowledge any criticism without being defensive, and say concretely what you will SUGGEST changing or keeping next week — as a campaign update they approve. Never say you will change, post, schedule or shift anything yourself, and never say it is done. Warm, 2-4 sentences, no lists.",
+                        str_starts_with($__wt, 'checkin_answer:') => "the owner is answering your check-in. Reply like a person who cares about their business: react to what they said, and ask at most one natural follow-up. If it gives a marketing opening, say in one line what you will suggest for their approval; never say you will change, post or schedule anything yourself. Short, warm, no report, no lists.",
+                        $__wt === 'watch_stopped' => "as asked, you have stopped watching trends, competitors and mentions; nothing more is spent. Confirm in one line; they can turn it back on any time.",
+                        str_starts_with($__wt, 'watch_on:') => "as asked, you now watch trends, competitors and what people say online " . str_replace(['watch_on:', '_'], ['', ' '], $__wt) . ". Confirm in one or two lines: you will bring what matters and act on it in their campaigns; it uses a few credits each time; they can say stop any time.",
+                        $__wt === 'checkins_off' => "as asked, you will stop your afternoon and evening check-ins (you will still send the morning brief and a short end-of-week question). Confirm in one line.",
+                        $__wt === 'checkins_no_night' => "as asked, you will not message in the evening any more. Confirm in one line.",
+                        default => '',
+                    };
+                    if ($__wn !== '') $userPrompt .= "\n\n[FOR THIS REPLY: " . $__wn . ']';
                 }
                 $foldedUserPrompt =
                     "[IDENTITY OVERRIDE — this is the FINAL identity rule. "
@@ -4423,6 +4463,11 @@ $withCorr = function (array $meta) use ($corr) {
                         }
                     }
                 } catch (\Throwable $__ve) { /* no verified actions => strictest gate */ }
+                // WATCH-1: settings this turn really changed (recorded before the reply) are verified actions, named the way Sarah says them
+                if (! empty($__watchTurn) && preg_match('/^(watch_stopped|watch_on|checkins_)/', (string) $__watchTurn)) {
+                    foreach (str_starts_with((string) $__watchTurn, 'checkins') ? ['check-in', 'checking in', 'message', 'evening', 'night'] : ['monitoring', 'watching', 'market watch', 'competitors', 'trends', 'mentions'] as $__wv) $__verified[] = ['action' => 'settings', 'entity' => $__wv];
+                    if (str_starts_with((string) $__watchTurn, 'watch') && \App\Core\Growth\CheckinService::prefs((int) $wsId) !== 'on') foreach (['message', 'evening', 'night'] as $__wv) $__verified[] = ['action' => 'settings', 'entity' => $__wv];
+                }
 
                 // SF-05 (REPORT-0024 / RISK-0130): "I'll fetch the list of pages now. Please hold on" with nothing run
                 // is a claim about the future the record cannot back. Remove the promise; keep whatever else was said.

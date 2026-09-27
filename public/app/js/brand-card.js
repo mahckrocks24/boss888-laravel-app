@@ -383,6 +383,65 @@
     });
   }
 
+
+  /* ── WATCH-1 (RFC-0019): Sarah asks once how often to watch the market; Sarah suggests a campaign update ── */
+  var LBW_CSS = '.lbw-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 10px}.lbw-opt{border:1px solid var(--bd);background:var(--s2);border-radius:12px;padding:11px 12px;text-align:left;cursor:pointer;color:var(--t1);font:inherit;transition:border-color .15s,box-shadow .15s}' +
+    '.lbw-opt b{display:block;font-size:13.5px}.lbw-opt span{display:block;font-size:11.5px;color:var(--t3);margin-top:2px}.lbw-opt.on{border-color:var(--p);box-shadow:0 0 0 1px var(--p) inset;background:color-mix(in srgb,var(--p) 8%,var(--s2))}' +
+    '.lbw-tgs{display:flex;flex-wrap:wrap;gap:6px}.lbw-tg{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--bd);background:var(--s1);color:var(--t2);border-radius:99px;padding:6px 11px 6px 7px;font:600 12px var(--fb,inherit);cursor:pointer}' +
+    '.lbw-tg i{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--bd2,var(--bd));display:grid;place-items:center}.lbw-tg i svg{width:11px;height:11px;opacity:0}.lbw-tg[aria-pressed=true]{color:var(--t1);border-color:color-mix(in srgb,var(--p) 55%,var(--bd))}.lbw-tg[aria-pressed=true] i{background:var(--p);border-color:var(--p);color:#fff}.lbw-tg[aria-pressed=true] i svg{opacity:1}' +
+    '.lbw-opt:focus-visible,.lbw-tg:focus-visible{outline:2px solid var(--p);outline-offset:2px}.lbw-ok{display:flex;align-items:center;gap:8px;font-weight:600;font-size:13px;color:#22A06B}.lbw-ok i{width:9px;height:9px;border-radius:50%;background:#22A06B;box-shadow:0 0 0 4px color-mix(in srgb,#22A06B 22%,transparent)}' +
+    '.lbw-ch{margin:0 0 4px;padding:0;list-style:none}.lbw-ch li{display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px;color:var(--t1)}.lbw-ch em{flex:none;font-style:normal;font:700 10.5px var(--fb,inherit);letter-spacing:.06em;text-transform:uppercase;border-radius:6px;padding:2px 7px;background:var(--s2);border:1px solid var(--bd);color:var(--t2)}' +
+    '.lbw-why{margin:0 0 10px;color:var(--t2);font-size:13px}@media (max-width:560px){.lbw-opts{grid-template-columns:1fr}}';
+  function lbwCss() { if (document.getElementById('lbw-css')) return; var s = document.createElement('style'); s.id = 'lbw-css'; s.textContent = LBW_CSS; document.head.appendChild(s); }
+  var ICO_RADAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><path d="M12 12l5.5-5.5"/></svg>';
+  var ICO_TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>';
+  function openWatch() { if (typeof window.nav === 'function') { window.nav('projects'); var t = 0; (function w() { if (typeof window.campaignsWatch === 'function') window.campaignsWatch(); else if (t++ < 30) setTimeout(w, 150); })(); } }
+  function watchSetup(el, card) {
+    css(); lbwCss();
+    var st = { s: 'ask', freq: 'twice_weekly', areas: { trends: true, competitors: true, listening: true } };
+    var COST = card.cost || { trends: 6, competitors: 4, listening: 4 }, RUNS = { daily: 7, twice_weekly: 2, weekly: 1 };
+    var AR = [['trends', 'Trends & local moments'], ['competitors', 'Competitors'], ['listening', 'What people say online']];
+    var LAB = { daily: 'Every day', twice_weekly: 'Twice a week', weekly: 'Once a week' };
+    function draw() {
+      var per = 0; Object.keys(st.areas).forEach(function (k) { if (st.areas[k]) per += (COST[k] || 0); });
+      var hd = '<div class="lbc-hd"><span class="lbc-ic">' + ICO_RADAR + '</span><div class="lbc-hdt"><div class="lbc-t">Keep an eye on the market' + (card.business_name ? ' for ' + esc(card.business_name) : '') + '</div><div class="lbc-s">Trends, competitors and what people say about you — turned into campaign moves you approve.</div></div></div>';
+      if (st.s === 'on') { el.innerHTML = hd + '<div class="lbw-ok"><i></i>Sarah is watching · ' + esc(LAB[st.freq] || '') + '</div><div class="lbc-s" style="margin:6px 0 0">Tell her “stop monitoring” any time, or change it in Campaigns › Market watch.</div><div class="lbc-acts"><button type="button" class="lbc-btn" data-mw>Open Market watch</button></div>'; el.querySelector('[data-mw]').onclick = openWatch; return; }
+      if (st.s === 'no') { el.innerHTML = hd + '<div class="lbc-s" style="margin:0">Not now. Sarah won’t spend anything on this. Turn it on any time in Campaigns › Market watch, or just ask her.</div>'; return; }
+      el.innerHTML = hd + '<div class="lbw-opts" role="radiogroup" aria-label="How often">' + ['daily', 'twice_weekly', 'weekly'].map(function (f) { return '<button type="button" role="radio" aria-checked="' + (st.freq === f) + '" class="lbw-opt' + (st.freq === f ? ' on' : '') + '" data-f="' + f + '"><b>' + LAB[f] + '</b><span>About ' + (per * RUNS[f]) + ' credits a week</span></button>'; }).join('') + '</div>' +
+        '<div class="lbw-tgs">' + AR.map(function (a) { return '<button type="button" class="lbw-tg" aria-pressed="' + !!st.areas[a[0]] + '" data-ar="' + a[0] + '"><i>' + ICO_TICK + '</i>' + a[1] + '</button>'; }).join('') + '</div>' +
+        '<div class="lbc-acts"><button type="button" class="lbc-btn primary" data-go' + (per ? '' : ' disabled') + '>' + ICO_SPARK + 'Start watching</button><button type="button" class="lbc-btn ghost" data-no>Not now</button><span class="lbc-hint">One yes keeps it running until you say stop.</span></div>';
+      el.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { st.freq = b.getAttribute('data-f'); draw(); }; });
+      el.querySelectorAll('[data-ar]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-ar'); st.areas[k] = !st.areas[k]; draw(); }; });
+      el.querySelector('[data-no]').onclick = function () { api('POST', 'growth/watch/stop', { business_id: card.business_id }).then(function () { st.s = 'no'; draw(); }); };
+      el.querySelector('[data-go]').onclick = function (e) {
+        e.currentTarget.disabled = true;
+        api('POST', 'growth/watch', { business_id: card.business_id, frequency: st.freq, areas: st.areas }).then(function (r) { if (r.ok && r.json.success) { st.s = 'on'; toast('Sarah is on it — her first look starts in a few minutes.', 'success'); } else toast((r.json && r.json.error) || 'Could not start.', 'error'); draw(); });
+      };
+    }
+    draw();
+    api('GET', 'growth/watch' + (card.business_id ? '?business_id=' + card.business_id : '')).then(function (r) { var w = (r.json || {}).watch; if (!w) return; if (w.status === 'on') { st.s = 'on'; st.freq = w.frequency; } else if (w.status === 'declined' || w.status === 'off') st.s = 'no'; draw(); });
+  }
+  function campaignChange(el, card) {
+    css(); lbwCss();
+    var st = 'proposed';
+    var fmtd = function (s) { var x = new Date(String(s).length <= 10 ? s + 'T00:00:00' : s); return isNaN(x) ? '' : x.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }); };
+    var KN = { post: 'Social post', article: 'Article', image: 'Design', event: 'Event', owner_task: 'You' };
+    function draw() {
+      var hd = '<div class="lbc-hd"><span class="lbc-ic">' + ICO_SPARK + '</span><div class="lbc-hdt"><div class="lbc-t">Update “' + esc(card.campaign_title) + '”</div><div class="lbc-s">Sarah’s suggestion — nothing changes until you approve.</div></div></div>';
+      var list = '<ul class="lbw-ch">' + (card.changes || []).map(function (x) {
+        return '<li><em>' + (x.op === 'add' ? 'Add' : x.op === 'move' ? 'Move' : 'Drop') + '</em><span>' + esc(x.title) + (x.op === 'add' ? ' · ' + esc(KN[x.kind] || x.kind) + ' · ' + esc(fmtd(x.date)) : x.op === 'move' ? ' · to ' + esc(fmtd(x.date)) : '') + '</span></li>';
+      }).join('') + '</ul>';
+      var body = (card.reason ? '<p class="lbw-why">' + esc(card.reason) + '</p>' : '') + list;
+      if (st === 'applied') { el.innerHTML = hd + body + '<div class="lbw-ok"><i></i>Approved — the campaign is updated.</div><div class="lbc-acts"><button type="button" class="lbc-btn" data-open>Open campaign</button></div>'; el.querySelector('[data-open]').onclick = function () { if (typeof window.nav === 'function') { window.nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(card.campaign_id); else if (t++ < 30) setTimeout(w, 150); })(); } }; return; }
+      if (st === 'declined' || st === 'expired') { el.innerHTML = hd + body + '<div class="lbc-s" style="margin:0">Kept as is. Sarah will learn from it.</div>'; return; }
+      el.innerHTML = hd + body + '<div class="lbc-acts"><button type="button" class="lbc-btn primary" data-ok>' + ICO_TICK + 'Approve' + (card.extra_credits ? ' · up to ' + Math.max(1, Math.ceil(card.extra_credits * 1.25)) + ' credits' : '') + '</button><button type="button" class="lbc-btn ghost" data-no>Keep as is</button></div>';
+      el.querySelector('[data-ok]').onclick = function (e) { e.currentTarget.disabled = true; api('POST', 'growth/changes/' + card.change_id + '/approve', {}).then(function (r) { if (r.ok && r.json.success) { st = 'applied'; toast('Updated — the new steps are on the calendar.', 'success'); } else toast((r.json && r.json.error) || 'Could not update.', 'error'); draw(); }); };
+      el.querySelector('[data-no]').onclick = function () { api('POST', 'growth/changes/' + card.change_id + '/decline', {}).then(function () { st = 'declined'; draw(); }); };
+    }
+    draw();
+    api('GET', 'growth/changes/' + card.change_id).then(function (r) { var x = (r.json || {}).change; if (x && x.status !== 'proposed') { st = x.status; draw(); } });
+  }
+
   /* ── Settings: Your design styles (per business) ── */
   function settings(el, bizId) {
     css(); loadFonts();
@@ -415,6 +474,8 @@
     else if (card.type === 'brand_summary') summary(slot, card);
     else if (card.type === 'inspiration') inspiration(slot, card);   // VISION-INSPIRE-1
     else if (card.type === 'campaign_ideas') campaignIdeas(slot, card);   // CAMPAIGNS-1
+    else if (card.type === 'watch_setup') watchSetup(slot, card);   // WATCH-1
+    else if (card.type === 'campaign_change') campaignChange(slot, card);   // WATCH-1
   }
   function scan(root) { (root || document).querySelectorAll && (root || document).querySelectorAll('.lu-brand-slot').forEach(hydrate); }
   function slotHtml(card) { if (!card || !card.type) return ''; return '<div class="lu-brand-slot" data-card="' + encodeURIComponent(JSON.stringify(card)) + '"></div>'; }
