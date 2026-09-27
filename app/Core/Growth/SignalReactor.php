@@ -186,17 +186,23 @@ final class SignalReactor
         $id = DB::table('campaign_changes')->insertGetId(['campaign_id' => $campaignId, 'workspace_id' => $wsId, 'signal_ids_json' => json_encode($signalIds), 'reason' => $reason ?: 'Based on what happened this week.',
             'changes_json' => json_encode($clean, JSON_UNESCAPED_UNICODE), 'extra_credits' => $extra, 'status' => 'proposed', 'created_at' => now(), 'updated_at' => now()]);
         $facts = ['campaign' => $c->title, 'why' => $reason, 'changes' => array_map(fn ($x) => $x['op'] . ': ' . $x['title'] . (isset($x['date']) ? ' on ' . $x['date'] : ''), $clean), 'extra_credits' => $extra];
-        $fallback = 'Something changed that affects "' . $c->title . '". ' . ($reason ?: '') . ' I would like to update the plan as shown below; nothing changes until you approve.';
+        $fallback = 'Something changed that affects "' . $c->title . '". ' . ($reason ?: '') . ' I would like to update the plan; nothing changes until you approve.';
         $words = app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, 'campaign_change',
-            "Write Sarah's short chat message (2-3 sentences) to the owner: what happened (from FACTS.why) and that she suggests updating the campaign as shown in the card below; nothing changes until they approve. Warm, direct, no emojis, no lists.",
+            "Write Sarah's short chat message (2-3 sentences) to the owner: what happened (from FACTS.why) and that she suggests an update to the campaign, listed right after your message; nothing changes until they approve. Do not mention a card or buttons. Warm, direct, no emojis, no lists.",
             $facts, $fallback);
+        // CHAT-FIRST-1: the change in words, so the companion app shows everything the web card shows
+        $tz2 = $tz;
+        $words .= \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_map(function ($x) use ($tz2) {
+            $d = isset($x['date']) ? \Carbon\Carbon::parse($x['date'], $tz2)->format('D j M') : '';
+            return match ($x['op']) { 'add' => '• Add: ' . $x['title'] . ' (' . $d . ')', 'move' => '• Move: ' . $x['title'] . ' to ' . $d, default => '• Drop: ' . $x['title'] };
+        }, $clean)) . ($extra ? "\nUp to " . (int) ceil($extra * 1.25) . ' extra credits.' : '') . "\n\nReply **approve** or **keep as is**.";
         app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $words, ['notification_type' => 'campaign_change', 'campaign_id' => $campaignId,
             'card' => ['type' => 'campaign_change', 'change_id' => $id, 'campaign_id' => $campaignId, 'campaign_title' => $c->title, 'reason' => $reason, 'changes' => $clean, 'extra_credits' => $extra]]);
         return true;
     }
 
     /** The owner approves Sarah's change: it is applied under the campaign's existing plan, with the extra spend added to its ceiling. */
-    public function applyChange(int $wsId, int $changeId, int $userId): array
+    public function applyChange(int $wsId, int $changeId, int $userId, bool $announce = true): array
     {
         $ch = DB::table('campaign_changes')->where('id', $changeId)->where('workspace_id', $wsId)->first();
         if (! $ch) return ['success' => false, 'error' => 'Not found.'];
@@ -237,16 +243,24 @@ final class SignalReactor
         DB::table('marketing_campaigns')->where('id', $c->id)->update(['credit_estimate' => $svc->estimate((int) $c->id)]);
         $svc->syncCalendar((int) $c->id);
         $this->ownerDecision($wsId, $ch, true);
+        if ($announce) $this->say($wsId, 'campaign_change_done', "Write Sarah's one-line chat message confirming the owner approved her update to the campaign in FACTS and it is applied; the new steps are on the calendar. No emojis.", ['campaign' => $c->title], 'Done — "' . $c->title . '" is updated and the new steps are on the calendar.');
         return ['success' => true];
     }
 
-    public function declineChange(int $wsId, int $changeId, int $userId): bool
+    public function declineChange(int $wsId, int $changeId, int $userId, bool $announce = true): bool
     {
         $ch = DB::table('campaign_changes')->where('id', $changeId)->where('workspace_id', $wsId)->where('status', 'proposed')->first();
         if (! $ch) return false;
         DB::table('campaign_changes')->where('id', $changeId)->update(['status' => 'declined', 'decided_by' => $userId, 'decided_at' => now(), 'updated_at' => now()]);
         $this->ownerDecision($wsId, $ch, false);
+        if ($announce) $this->say($wsId, 'campaign_change_kept', "Write Sarah's one-line chat message acknowledging the owner kept the campaign in FACTS as it is; she will learn from it. No emojis.", ['campaign' => (string) DB::table('marketing_campaigns')->where('id', $ch->campaign_id)->value('title')], 'Understood — I have kept the campaign as it is and will learn from that.');
         return true;
+    }
+
+    /** CHAT-FIRST-1: whatever the owner does on the web also lands in Sarah's chat, in her words. */
+    private function say(int $wsId, string $task, string $instruction, array $facts, string $fallback): void
+    {
+        try { app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, $task, $instruction, $facts, $fallback), ['notification_type' => $task]); } catch (\Throwable $e) {}
     }
 
     private function ownerDecision(int $wsId, object $ch, bool $accepted): void

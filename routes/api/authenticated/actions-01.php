@@ -138,6 +138,10 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
         }
     } catch (\Throwable $e) { $drafts = []; }
 
+    // CHAT-FIRST-1: the question Sarah asked with a card can be answered by a tap in the companion app (the chip sends text)
+    $chips = [];
+    try { $chips = app(\App\Core\Growth\ChatReplies::class)->chips($wsId); } catch (\Throwable $e) { $chips = []; }
+    if ($chips) { $offer = true; $offerMessageId = $offerMessageId ?: (int) DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', $slug)->where('role', 'agent')->max('id'); }
     return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'offer' => $offer, 'offer_message_id' => $offerMessageId,
-        'quick_replies' => $offer ? [['label' => 'Go', 'text' => 'go'], ['label' => 'Not now', 'text' => 'not now']] : []]);
+        'quick_replies' => $chips ?: ($offer ? [['label' => 'Go', 'text' => 'go'], ['label' => 'Not now', 'text' => 'not now']] : [])]);
 });

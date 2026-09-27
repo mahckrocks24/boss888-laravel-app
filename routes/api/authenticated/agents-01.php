@@ -308,8 +308,12 @@ use Illuminate\Support\Facades\Route;
             // BRAND-B1 (RFC-0017 5d): Sarah's brand intake runs after she has answered this message (queued; never blocks the reply)
             if ($userMessageId && in_array((string) $slug, ['sarah', 'dmm'], true)) {
                 try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay(now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
+                // CHAT-FIRST-1: a plain-words answer to the question Sarah asked with a card ("twice a week", "launch 2", "approve", "done") acts here, so the companion app is a complete surface
+                $__reply = null;
+                try { $__reply = app(\App\Core\Growth\ChatReplies::class)->handle((int) $wsId, (int) ($userId ?? 0) ?: null, (string) $content); } catch (\Throwable $__cr) { \Illuminate\Support\Facades\Log::warning('[CHAT-FIRST-1] reply hook failed', ['e' => $__cr->getMessage()]); }
+                if ($__reply) { $__watchTurn = $__reply['turn']; $__replyNote = $__reply['note']; $__replyVerified = $__reply['verified']; \Illuminate\Support\Facades\Log::info('[CHAT-FIRST-1] answered', ['ws' => $wsId, 'turn' => $__reply['turn']]); }
                 // WATCH-1 (RFC-0019): an answer to Sarah's check-in is learned from; "stop monitoring", "check competitors weekly", "stop checking in" act at once
-                try {
+                if (! $__reply) try {
                     $__wc = (string) $content;
                     if ($__ci = app(\App\Core\Growth\CheckinService::class)->openFor((int) $wsId)) { \App\Jobs\CheckinAbsorbJob::dispatch((int) $wsId, (int) $__ci->id, (int) $userMessageId)->delay(now()->addSeconds(4)); $__watchTurn = 'checkin_answer:' . $__ci->kind; }
                     if (preg_match('/\b(stop|pause|cancel|turn off|no more|don\'?t|do not)\b[^.?!\n]{0,40}\b(monitor\w*|watch\w*|research\w*|track\w*|listening|spying|competitors?|trends)\b/i', $__wc)) {
@@ -323,7 +327,7 @@ use Illuminate\Support\Facades\Route;
                     elseif (preg_match('/\b(don\'?t|do not|stop|no)\b[^.?!\n]{0,30}\bmessag\w* me\b[^.?!\n]{0,25}\b(at night|in the evening|evenings|late)\b/i', $__wc)) { \App\Core\Growth\CheckinService::setPrefs((int) $wsId, 'no_night'); $__watchTurn = 'checkins_no_night'; }
                 } catch (\Throwable $__wj) { \Illuminate\Support\Facades\Log::warning('[WATCH-1] chat hook failed', ['e' => $__wj->getMessage()]); }
                 // CAMPAIGNS-1: asking for campaigns, a marketing plan or growth ideas → Sarah designs campaign ideas (cards follow her reply)
-                if (preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $content)
+                if (empty($__reply) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $content)
                     && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $content)) {
                     try {
                         $__cbiz = null; $__lc = mb_strtolower((string) $content);
@@ -1954,7 +1958,7 @@ $withCorr = function (array $meta) use ($corr) {
             } catch (\Throwable $__bpe) { $__brandPrefBlock = ''; }
             $__selectedStateBlocks = ($__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock)) . $__commentsBlock . $__brandPrefBlock;
             // CAMPAIGNS-1: the owner asked for campaigns or growth ideas — the ideas are being designed right now and arrive as cards after this reply
-            if (! empty($__campaignTurn) || (isset($__ownerMessage) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage))) {   // decided from the owner's words at reply time
+            if (empty($__reply) && ! empty($__campaignTurn) || (empty($__reply) && isset($__ownerMessage) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage))) {   // decided from the owner's words at reply time
                 $__selectedStateBlocks .= "\nTHIS TURN (overrides other guidance for this reply): the owner asked for campaign ideas. You are designing them right now from their business, audience, location and season, their brand and what has worked; the ideas appear as cards directly below your reply in about a minute. Reply in 1-2 warm sentences saying exactly that. Do not list ideas, do not refuse, do not say data is missing, do not create tasks.\n";
             }
             $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . $__selectedStateBlocks . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
@@ -2298,7 +2302,7 @@ $withCorr = function (array $meta) use ($corr) {
                 }
 
                 // CAMPAIGNS-1: when the owner asks for campaigns or growth ideas, the ideas are being designed right now and arrive as cards
-                if (preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage)) {
+                if (empty($__reply) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage)) {
                     $userPrompt .= "\n\n[FOR THIS REPLY: campaign ideas for this owner are being designed right now from their business, audience, location, season, brand and past results; they appear as cards directly below your reply in about a minute. Reply in 1-2 warm sentences saying that. Do not list ideas, do not refuse, do not say data is missing, do not create tasks.]";
                 }
                 // WATCH-1: this turn answers a check-in, or changed the market watch / check-ins
@@ -2311,6 +2315,7 @@ $withCorr = function (array $meta) use ($corr) {
                         str_starts_with($__wt, 'watch_on:') => "as asked, you now watch trends, competitors and what people say online " . str_replace(['watch_on:', '_'], ['', ' '], $__wt) . ". Confirm in one or two lines: you will bring what matters and act on it in their campaigns; it uses a few credits each time; they can say stop any time.",
                         $__wt === 'checkins_off' => "as asked, you will stop your afternoon and evening check-ins (you will still send the morning brief and a short end-of-week question). Confirm in one line.",
                         $__wt === 'checkins_no_night' => "as asked, you will not message in the evening any more. Confirm in one line.",
+                        $__wt === 'reply' => (string) ($__replyNote ?? ''),   // CHAT-FIRST-1
                         default => '',
                     };
                     if ($__wn !== '') $userPrompt .= "\n\n[FOR THIS REPLY: " . $__wn . ']';
@@ -4464,6 +4469,7 @@ $withCorr = function (array $meta) use ($corr) {
                     }
                 } catch (\Throwable $__ve) { /* no verified actions => strictest gate */ }
                 // WATCH-1: settings this turn really changed (recorded before the reply) are verified actions, named the way Sarah says them
+                foreach ((array) ($__replyVerified ?? []) as $__wv) { if (trim((string) $__wv) !== '') $__verified[] = ['action' => 'settings', 'entity' => (string) $__wv]; }   // CHAT-FIRST-1
                 if (! empty($__watchTurn) && preg_match('/^(watch_stopped|watch_on|checkins_)/', (string) $__watchTurn)) {
                     foreach (str_starts_with((string) $__watchTurn, 'checkins') ? ['check-in', 'checking in', 'message', 'evening', 'night'] : ['monitoring', 'watching', 'market watch', 'competitors', 'trends', 'mentions'] as $__wv) $__verified[] = ['action' => 'settings', 'entity' => $__wv];
                     if (str_starts_with((string) $__watchTurn, 'watch') && \App\Core\Growth\CheckinService::prefs((int) $wsId) !== 'on') foreach (['message', 'evening', 'night'] as $__wv) $__verified[] = ['action' => 'settings', 'entity' => $__wv];
@@ -4680,9 +4686,13 @@ $withCorr = function (array $meta) use ($corr) {
         // governance stopped the action, but Sarah still claimed the authority.
         // This runs last, when the authoritative state has already settled.
         try {
+            // CHAT-FIRST-1: on a turn where the owner's words already changed something real (recorded before this reply — a watch
+            // schedule, a launch, an approved update, saved styles), Sarah's confirmation of it is true; this guard only knows tasks.
+            if (empty($__replyVerified) && ! (isset($__watchTurn) && preg_match('/^(watch_stopped|watch_on|checkins_)/', (string) $__watchTurn))) {
             $__vag = app(\App\Core\Sarah888\VerbalAuthorityGuard::class)
                         ->validate((string) $reply, (int) $wsId, $corr['conversation_id'] ?? null);
             $reply = $__vag['reply'];
+            }
         } catch (\Throwable $__vagErr) {
             \Illuminate\Support\Facades\Log::warning('[Sarah888] VerbalAuthorityGuard failed: ' . $__vagErr->getMessage(), ['ws' => $wsId]);
         }

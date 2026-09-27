@@ -142,6 +142,13 @@ final class CampaignService
     {
         DB::table('marketing_campaigns')->where('id', $campaignId)->update(['status' => 'active', 'mandate_id' => $mandateId, 'launched_at' => now(), 'updated_at' => now()]);
         $this->syncCalendar($campaignId);
+        if (! \Illuminate\Support\Facades\Cache::pull('campaign-launch-quiet:' . $campaignId)) {   // CHAT-FIRST-1
+            $c = DB::table('marketing_campaigns')->where('id', $campaignId)->first();
+            $next = DB::table('campaign_items')->where('campaign_id', $campaignId)->where('status', 'planned')->orderBy('scheduled_at')->first(['title', 'scheduled_at']);
+            $this->tell((int) $c->workspace_id, 'campaign_live', "Write Sarah's short chat message (1-2 sentences): the campaign in FACTS is live, her team runs each step on its date, the owner okays each post before it goes out, and what comes first (FACTS.first_step). No emojis.",
+                ['campaign' => $c->title, 'dates' => $c->starts_on . ' to ' . $c->ends_on, 'first_step' => $next ? $next->title . ' on ' . Carbon::parse($next->scheduled_at)->setTimezone($this->tz((int) $c->workspace_id))->format('l j M') : null],
+                '"' . $c->title . '" is live. My team runs each step on its date, and you okay every post before it goes out.', ['campaign_id' => $campaignId]);
+        }
         $this->tickCampaign($campaignId);
     }
 
@@ -181,7 +188,13 @@ final class CampaignService
             // release
             if ($it->status === 'planned' && $live && $it->scheduled_at && Carbon::parse($it->scheduled_at)->subHours(self::LEAD_HOURS[$it->kind] ?? 0)->lte(now())) {
                 $t = $this->planTask($c, $it);
-                if (! $t) { DB::table('campaign_items')->where('id', $it->id)->update(['status' => 'needs_you', 'updated_at' => now()]); $out['released']++; continue; }
+                if (! $t) {
+                    DB::table('campaign_items')->where('id', $it->id)->update(['status' => 'needs_you', 'updated_at' => now()]); $out['released']++;
+                    $this->tell((int) $c->workspace_id, 'campaign_step', "Write Sarah's short chat message (1-3 sentences) telling the owner that today's step in their campaign is theirs to do: what it is and the gist of FACTS.brief (if it is a message to send, include the message itself, ready to copy). Ask them to reply done when finished. Warm, no emojis.",
+                        ['campaign' => $c->title, 'step' => $it->title, 'brief' => $it->brief, 'channel' => $it->channel],
+                        'Today\'s step in "' . $c->title . '" is yours: ' . $it->title . ($it->brief ? ' — ' . $it->brief : '') . ' Reply **done** when it\'s finished.', ['item_id' => (int) $it->id, 'campaign_id' => (int) $c->id]);
+                    continue;
+                }
                 try {
                     $res = $engine->materialisePlanTask((int) $c->workspace_id, $t, [
                         'requires_approval' => false, 'authorized_by_proposal' => true, 'auto_approve' => true, 'mandate_id' => (int) $c->mandate_id,
@@ -193,6 +206,8 @@ final class CampaignService
                 }
                 DB::table('campaign_items')->where('id', $it->id)->update($upd + ['updated_at' => now()]);
                 $out['released']++;
+                if (in_array($upd['status'], ['held', 'failed'], true)) $this->tell((int) $c->workspace_id, 'campaign_step_problem', "Write Sarah's one or two sentence chat message: a step in the campaign could not run, why in plain words (FACTS.why), and what the owner can do. No emojis, no codes.",
+                    ['campaign' => $c->title, 'step' => $it->title, 'why' => $upd['note'] ?? null], 'A step in "' . $c->title . '" could not run: ' . $it->title . '. ' . ($upd['note'] ?? ''), ['campaign_id' => (int) $c->id]);
                 continue;
             }
             // follow
@@ -213,7 +228,13 @@ final class CampaignService
                 } elseif ($task->status === 'awaiting_approval' || $task->approval_status === 'pending') {
                     $new = 'needs_you';
                 }
-                if ($new && ($new !== $it->status || $extra)) { DB::table('campaign_items')->where('id', $it->id)->update(['status' => $new, 'updated_at' => now()] + $extra); $out['updated']++; }
+                if ($new && ($new !== $it->status || $extra)) {
+                    DB::table('campaign_items')->where('id', $it->id)->update(['status' => $new, 'updated_at' => now()] + $extra); $out['updated']++;
+                    if ($new === 'needs_you' && $it->status !== 'needs_you' && $it->kind === 'post') $this->tell((int) $c->workspace_id, 'campaign_post_ready', "Write Sarah's one or two sentence chat message: the post for the campaign in FACTS is drafted with its banner and ready; the owner can look at the preview right here and tap Post it, or ask for changes. No emojis.",
+                        ['campaign' => $c->title, 'post' => $it->title, 'goes_out' => Carbon::parse($it->scheduled_at)->setTimezone($this->tz((int) $c->workspace_id))->format('l j M')], 'The post "' . $it->title . '" for "' . $c->title . '" is ready — have a look at the preview here and tap Post it, or tell me what to change.', ['campaign_id' => (int) $c->id]);
+                    elseif ($new === 'failed') $this->tell((int) $c->workspace_id, 'campaign_step_problem', "Write Sarah's one or two sentence chat message: a step in the campaign could not finish, why in plain words (FACTS.why), and what happens next. No emojis, no codes.",
+                        ['campaign' => $c->title, 'step' => $it->title, 'why' => $extra['note'] ?? null], 'A step in "' . $c->title . '" could not finish: ' . $it->title . '. ' . ($extra['note'] ?? ''), ['campaign_id' => (int) $c->id]);
+                }
             }
             if ($it->status === 'needs_you' && $it->result_type === 'social_post' && $it->result_id) {
                 if (DB::table('social_posts')->where('id', $it->result_id)->value('status') === 'published') { DB::table('campaign_items')->where('id', $it->id)->update(['status' => 'done', 'updated_at' => now()]); $out['updated']++; }
@@ -364,6 +385,15 @@ final class CampaignService
             'starts_on' => $c->starts_on, 'ends_on' => $c->ends_on, 'status' => $c->status, 'kpi' => json_decode((string) $c->kpi_json, true) ?: null, 'credit_estimate' => $c->credit_estimate !== null ? (int) $c->credit_estimate : null,
             'steps_total' => count($items), 'steps_done' => $done, 'needs_you' => $needs, 'next_step' => $next ? ['title' => $next->title ?? null, 'at' => $next->scheduled_at ? Carbon::parse($next->scheduled_at)->toIso8601String() : null] : null,
             'decline_reason' => $c->decline_reason, 'source' => $c->source, 'created_at' => (string) $c->created_at];
+    }
+
+    /** CHAT-FIRST-1: everything that happens in a campaign reaches the owner in Sarah's chat (and so the companion app), in her words. */
+    private function tell(int $wsId, string $type, string $instruction, array $facts, string $fallback, array $meta = []): void
+    {
+        try {
+            $words = app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, $type, $instruction, array_filter($facts, fn ($v) => $v !== null && $v !== ''), $fallback);
+            app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $words, $meta + ['notification_type' => $type]);
+        } catch (\Throwable $e) { Log::info('[CHAT-FIRST-1] campaign message failed', ['ws' => $wsId, 'type' => $type, 'e' => $e->getMessage()]); }
     }
 
     private function tz(int $wsId): string

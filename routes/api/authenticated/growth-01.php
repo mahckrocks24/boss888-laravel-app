@@ -68,7 +68,9 @@ Route::post('/growth/watch/stop', function (Request $r) use ($grWrite, $grBiz) {
     $svc = app(WatchService::class);
     $row = $svc->row($wsId, $bizId);
     if ($row && $row->status === 'asked') { $svc->decline($wsId, $bizId); return response()->json(['success' => true, 'watch' => $svc->state($wsId, $bizId)]); }
-    $svc->stop($wsId, $bizId, 'owner', (string) $r->input('reason', 'Stopped by the owner'));
+    if ($svc->stop($wsId, $bizId, 'owner', (string) $r->input('reason', 'Stopped by the owner'))) {   // CHAT-FIRST-1: a stop on the web is said in the chat too
+        try { app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, 'watch_stopped', "Write Sarah's one-line chat message confirming she has stopped watching the market as the owner asked; nothing more is spent; they can ask her to start again any time. No emojis.", [], 'Stopped — I am no longer watching the market, so nothing more is spent. Ask me any time to start again.'), ['notification_type' => 'watch_stopped']); } catch (\Throwable $e) {}
+    }
     return response()->json(['success' => true, 'watch' => $svc->state($wsId, $bizId)]);
 });
 

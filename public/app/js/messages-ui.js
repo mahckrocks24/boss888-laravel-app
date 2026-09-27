@@ -192,7 +192,7 @@ async function _msgLoadThread(slug, silent){
       var bg=isUser?'var(--p,#6C5CE7)':color+'18';
       var tc=isUser?'#fff':'var(--t1)';
       var border=isUser?'none':'1px solid '+color+'30';
-      return'<div style="display:flex;justify-content:'+align+';margin-bottom:8px"><div style="max-width:80%;padding:10px 14px;border-radius:12px;background:'+bg+';border:'+border+';color:'+tc+';font-size:13px;line-height:1.5"><div>'+(isUser?_msgE(m.content):(typeof fmt==='function'?fmt(m.content):_msgE(m.content)))+'</div>'+(!isUser&&m.card&&window.LU_brandCard?window.LU_brandCard.slotHtml(m.card):'')+'<div style="font-size:9px;opacity:.6;margin-top:4px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
+      return'<div style="display:flex;justify-content:'+align+';margin-bottom:8px"><div style="max-width:80%;padding:10px 14px;border-radius:12px;background:'+bg+';border:'+border+';color:'+tc+';font-size:13px;line-height:1.5"><div>'+(isUser?_msgE(m.content):(function(x){return typeof fmt==='function'?fmt(x):_msgE(x);})(m.card?String(m.content||'').split('\n\n\u200B')[0]:m.content))+'</div>'+(!isUser&&m.card&&window.LU_brandCard?window.LU_brandCard.slotHtml(m.card):'')+'<div style="font-size:9px;opacity:.6;margin-top:4px;text-align:right">'+_msgAgo(m.ts)+'</div></div></div>';
     }).join('');
     // 2026-05-22 FIX 12 — was scrollIntoView({block:'start'}) which yanked
     // the last message to the TOP of the feed (chat history shifted out of
@@ -467,7 +467,8 @@ async function _msgLoadPageThread(slug){
       // v1.4.4 — historical agent messages go through fmt() to match the
       // markdown + paragraph spacing applied to new replies. User messages
       // stay plain (typed text, no markdown).
-      var body = isUser ? _msgE(m.content) : (typeof fmt === 'function' ? fmt(m.content) : _msgE(m.content));
+      var __c = (!isUser && m.card) ? String(m.content || '').split('\n\n\u200B')[0] : m.content;   // CHAT-FIRST-1: the card shows the plain-words part
+      var body = isUser ? _msgE(__c) : (typeof fmt === 'function' ? fmt(__c) : _msgE(__c));
       if (!isUser && m.card && window.LU_brandCard) body += window.LU_brandCard.slotHtml(m.card);   // BRAND-B1
       return'<div style="display:flex;justify-content:'+(isUser?'flex-end':'flex-start')+';margin-bottom:10px"><div style="max-width:70%;padding:12px 16px;border-radius:14px;background:'+(isUser?'var(--p)':color+'12')+';border:'+(isUser?'none':'1px solid '+color+'25')+';color:'+(isUser?'#fff':'var(--t1)')+';font-size:14px;line-height:1.6">'
         +'<div style="font-size:10px;font-weight:600;margin-bottom:4px;opacity:.7">'+(isUser?'You':_msgE(conv.name))+'</div>'

@@ -67,6 +67,8 @@ final class WatchService
             'updated_at' => now(),
         ]);
         Log::info('[WATCH-1] watch on', ['ws' => $wsId, 'biz' => $bizId, 'frequency' => $frequency, 'areas' => $areas, 'via' => $via]);
+        if ($via === 'card') $this->say($wsId, 'watch_on', "Write Sarah's one-line chat message confirming she now watches the market for the business in FACTS on the schedule in FACTS, will bring what matters to them here, and they can say stop any time. No emojis.",
+            ['business' => app(\App\Core\Brand\BrandProfileService::class)->business($wsId, $bizId)->name ?? null, 'schedule' => str_replace('_', ' ', $frequency)], 'Done — I will keep an eye on the market ' . str_replace('_', ' ', $frequency) . ' and bring you anything that matters. Say stop any time.');
         $this->experience($wsId, (int) $row->id, 'OWNER_APPROVAL', 'watch_setup', ['frequency' => $frequency, 'areas' => $areas, 'via' => $via]);
         return ['success' => true, 'watch' => $this->state($wsId, $bizId)];
     }
@@ -79,6 +81,12 @@ final class WatchService
         $n = $q->update(['status' => 'off', 'stopped_at' => now(), 'stopped_by' => $by, 'stopped_reason' => mb_substr($reason, 0, 300) ?: null, 'next_run_at' => null, 'updated_at' => now()]);
         if ($n) Log::info('[WATCH-1] watch stopped', ['ws' => $wsId, 'biz' => $bizId, 'all' => $all, 'by' => $by, 'reason' => $reason]);
         return $n;
+    }
+
+    /** CHAT-FIRST-1: what the owner does on the web, and what Sarah finds, lands in her chat in her words. */
+    private function say(int $wsId, string $task, string $instruction, array $facts, string $fallback, array $meta = []): void
+    {
+        try { app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, $task, $instruction, $facts, $fallback), $meta + ['notification_type' => $task]); } catch (\Throwable $e) {}
     }
 
     public function decline(int $wsId, ?int $bizId): void
@@ -125,8 +133,9 @@ final class WatchService
         $fallback = 'Would you like me to keep an eye on what is happening around ' . ($biz->name ?? 'your business') . '? I can watch trends and local moments, what competitors are doing, and what people say about you online, then act on it in your campaigns. '
             . 'It uses a few credits each time, so choose how often below. One yes and I will keep doing it until you tell me to stop.';
         $text = app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, 'watch_ask',
-            "Write Sarah's short chat message (3-4 sentences) asking the owner, once, whether she should keep watching the world around their business and how often. Say what she would watch and why it helps (from FACTS), that it uses a few credits each time, that one yes keeps it running on that schedule until they say stop, and point to the choices in the card below. Warm, direct, no headings, no emojis.",
+            "Write Sarah's short chat message (3-4 sentences) asking the owner, once, whether she should keep watching the world around their business and how often. Say what she would watch and why it helps (from FACTS), that it uses a few credits each time, and that one yes keeps it running on that schedule until they say stop. The choices are listed right after your message; do not mention a card or buttons. Warm, direct, no headings, no emojis.",
             $facts, $fallback);
+        $text .= \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_map(fn ($o) => '• ' . $o['label'] . ' — about ' . $o['credits_per_week'] . ' credits a week', $opts)) . "\n\nReply **twice a week**, **once a week**, **every day** or **not now**.";
         $card = ['type' => 'watch_setup', 'business_id' => $bizId, 'business_name' => $biz->name ?? null, 'options' => $opts, 'areas' => ['trends' => true, 'competitors' => true, 'listening' => true], 'cost' => self::COST];
         app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $text, ['card' => $card, 'notification_type' => 'watch_ask']);
         DB::table('business_watch')->where('id', $row->id)->update(['status' => 'asked', 'asked_at' => now(), 'updated_at' => now()]);
@@ -166,8 +175,18 @@ final class WatchService
             DB::table('business_watch')->where('id', $watchId)->update(['last_run_at' => now(), 'next_run_at' => $manual && $w->next_run_at && Carbon::parse($w->next_run_at)->isFuture() ? $w->next_run_at : $next,
                 'empty_runs' => $found ? 0 : ((int) $w->empty_runs + 1), 'last_run_json' => json_encode(['found' => $found, 'credits' => $spent, 'errors' => $out['errors'], 'at' => now()->toIso8601String()]), 'updated_at' => now()]);
             Log::info('[WATCH-1] run', ['ws' => $wsId, 'biz' => $bizId, 'trends' => count($out['trends']), 'competitors' => count($out['competitors']), 'mentions' => $out['mentions'], 'credits' => $spent, 'errors' => $out['errors']]);
+            // CHAT-FIRST-1: every look is reported in the chat — what she found, briefly; a quiet look in one line
+            $newComps = array_values(array_filter($out['competitors'], fn ($c) => ! empty($c['first'])));
+            $changed = DB::table('business_competitors')->where('workspace_id', $wsId)->where('last_change_at', '>=', now()->subMinutes(20))->pluck('last_change', 'name')->all();
+            $mentionsNew = DB::table('growth_signals')->where('workspace_id', $wsId)->where('kind', 'mention')->where('created_at', '>=', now()->subMinutes(20))->pluck('title')->all();
+            $facts = array_filter(['business' => $biz->name ?? null, 'trends_and_moments' => $out['trends'], 'competitors_found' => array_column($newComps, 'name'), 'competitor_changes' => $changed, 'new_mentions' => $mentionsNew, 'credits_used' => $spent]);
+            $quiet = ! $out['trends'] && ! $newComps && ! $changed && ! $mentionsNew;
+            $this->say($wsId, 'watch_report', $quiet
+                ? "Write Sarah's one-line chat message: she had her scheduled look at the market for the business and nothing new is worth their time this time. No emojis."
+                : "Write Sarah's short chat message (2-4 sentences) reporting her scheduled look at the market for the business: the one to three findings that matter most from FACTS, in plain words, and that she will suggest anything worth acting on. Conversational, no lists, no emojis, never invent.",
+                $facts, $quiet ? 'I had my look at the market — nothing new worth your time this round.' : 'I had my look at the market: ' . implode('; ', array_slice(array_merge($out['trends'], array_map(fn ($k, $v) => $k . ': ' . $v, array_keys($changed), $changed)), 0, 3)) . '. I will suggest anything worth acting on.', ['watch_id' => $watchId]);
             // Sarah reacts to what she found now, not at the next tick
-            \App\Jobs\GrowthReactJob::dispatch($wsId, $bizId)->delay(now()->addSeconds(5));
+            \App\Jobs\GrowthReactJob::dispatch($wsId, $bizId)->delay(now()->addSeconds(20));
             return ['ran' => true] + $out + ['credits' => $spent];
         } finally {
             optional($lock)->release();

@@ -39,6 +39,8 @@ final class BrandIntakeService
         if ($insp['saved'] > 0) return 'inspired';
         // WATCH-1: a reply to Sarah's check-in is a conversation — no setup questions on top of it
         if (DB::table('owner_checkins')->where('workspace_id', $wsId)->where(fn ($q) => $q->where('answer_message_id', $userMessageId)->orWhere(fn ($w) => $w->where('status', 'asked')->where('created_at', '>=', now()->subHours(12))))->exists()) return 'checkin';
+        // CHAT-FIRST-1: one setup question a day — never straight after the owner answered another one
+        if (DB::table('business_watch')->where('workspace_id', $wsId)->where('asked_at', '>=', now()->subDay())->exists()) return 'nothing';
         if ($this->ask($wsId)) return 'asked';
         return app(\App\Core\Growth\WatchService::class)->ask($wsId) ? 'watch_asked' : 'nothing';   // WATCH-1: then, once, whether and how often to watch the market
     }
@@ -74,7 +76,10 @@ final class BrandIntakeService
         ];
         $fallback = 'One quick thing so every banner, image and video looks like ' . $prev['business_name'] . ': do you have brand guidelines, a logo, fonts, colours or posts you like? Upload a PDF or images here, or just tell me. '
             . 'Below are ten design styles made with your name and colours. Tap the 3 or 4 you like and I\'ll use them from now on. You can also skip, and I\'ll work from your website.';
-        $text = $this->sarahWords($wsId, 'brand_intake_ask', "Write Sarah's short chat message (3-4 sentences) asking the owner, once, for their brand material so every banner, image and video matches their brand. Name the business. Mention they can upload a PDF or images or just describe it, or skip. Point to the style card below and say to pick 3 or 4. Warm, direct, no headings, no emojis, no invented facts.", $facts, $fallback);
+        $text = $this->sarahWords($wsId, 'brand_intake_ask', "Write Sarah's short chat message (3-4 sentences) asking the owner, once, for their brand material so every banner, image and video matches their brand. Name the business. Mention they can upload a PDF or images or just describe it, or skip. Say ten design styles are listed right after your message and to pick 3 or 4; do not mention a card or buttons. Warm, direct, no headings, no emojis, no invented facts.", $facts, $fallback);
+        $__n = 0;   // CHAT-FIRST-1: the styles in words (numbers, never internal codes)
+        $text .= \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_map(function ($d) use (&$__n) { $__n++; return $__n . '. **' . $d['name'] . '** — ' . rtrim((string) ($d['blurb'] ?? $d['description'] ?? ''), '.'); }, array_values(DesignDirections::ALL)))
+            . "\n\nReply with the numbers you like (for example **2, 4 and 5**), send your brand files, or say **skip** and I'll work from your website.";
         $card = ['type' => 'brand_directions', 'business_id' => $prev['business_id'], 'preview' => $prev,
             'directions' => DesignDirections::catalogue($prev['industry']), 'picks' => [], 'max' => BrandProfileService::MAX_PICKS];
         app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $text, ['card' => $card, 'notification_type' => 'brand_intake']);
@@ -177,7 +182,13 @@ final class BrandIntakeService
         $name = $biz->name ?? 'your business';
         $facts = ['business' => $name, 'found' => ['colours' => array_column($colors, 'hex'), 'fonts' => $fontsOut, 'logo' => (bool) $logo, 'rules' => $rules, 'styles' => array_map(fn ($d) => DesignDirections::ALL[$d]['name'], $dirs)], 'summary' => $proposal['summary']];
         $fallback = 'Here is what I picked up for ' . $name . '. Check it in the card below and tap Save; nothing changes until you do.';
-        $words = $this->sarahWords($wsId, 'brand_intake_summary', "Write Sarah's short chat message (2-3 sentences): say what you found in the owner's brand material (colours, fonts, logo, rules, styles — only what is in FOUND), that the card below shows it, and that nothing is saved until they tap Save. Warm, direct, no headings, no emojis.", $facts, $fallback);
+        $words = $this->sarahWords($wsId, 'brand_intake_summary', "Write Sarah's short chat message (2-3 sentences): say what you found in the owner's brand material (colours, fonts, logo, rules, styles — only what is in FOUND) and that nothing is saved until they confirm. Do not mention a card or buttons. Warm, direct, no headings, no emojis.", $facts, $fallback);
+        $words .= \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_filter([   // CHAT-FIRST-1
+            $colors ? '• Colours: ' . implode(', ', array_map(fn ($c) => strtoupper((string) $c['hex']) . (! empty($c['role']) ? ' (' . $c['role'] . ')' : ''), $colors)) : null,
+            $fontsOut ? '• Fonts: ' . implode(', ', array_map(fn ($k, $v) => $v . ' (' . $k . ')', array_keys($fontsOut), $fontsOut)) : null,
+            $logo ? '• Logo: yes' : null, $rules ? '• Rules: ' . implode(' · ', $rules) : null,
+            $dirs ? '• Styles: ' . implode(', ', array_map(fn ($d) => DesignDirections::ALL[$d]['name'], $dirs)) : null,
+        ])) . "\n\nReply **save** to keep it, or **discard**.";
         $card = ['type' => 'brand_summary', 'token' => $token, 'business_id' => $biz->id ?? null, 'business_name' => $name, 'colors' => $colors, 'fonts' => $fontsOut,
             'logo_url' => $logo['url'] ?? null, 'rules' => $rules, 'tone' => $proposal['tone'], 'visual_style' => $proposal['visual_style'],
             'directions' => array_map(fn ($d) => ['id' => $d, 'name' => DesignDirections::ALL[$d]['name']], $dirs)];

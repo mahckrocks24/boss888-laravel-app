@@ -62,8 +62,13 @@ class CampaignIdeasJob implements ShouldQueue
             $facts = ['business' => $name, 'ideas' => array_map(fn ($c) => ['title' => $c['title'], 'why_now' => $c['why_now'], 'target' => $c['kpi']['label'] ?? null, 'dates' => $c['starts_on'] . ' to ' . $c['ends_on']], $cards)];
             $fallback = 'Here are ' . count($cards) . ' campaign ideas for ' . $name . '. Each has a clear goal, dates and every step planned. Launch the one you like and my team will run it; you approve each post before it goes out.';
             $words = app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($this->wsId, 'campaign_ideas',
-                "Write Sarah's short chat message (2-4 sentences) presenting campaign ideas she designed to grow the business: name the business, one line on why these fit now (from FACTS), and say that Launch approves the whole plan once, her team runs every step on its date, and the owner still okays each post before it goes out; anything marked 'You' is a quick step for the owner. Warm, confident, no emojis, no internal codes.",
+                "Write Sarah's short chat message (2-3 sentences) presenting campaign ideas she designed to grow the business: name the business, one line on why these fit now (from FACTS), and say that launching approves the whole plan once, her team runs every step on its date, and the owner still okays each post before it goes out. The ideas are listed right after your message, numbered; do not list them yourself and do not mention cards or buttons. Warm, confident, no emojis, no internal codes.",
                 $facts, $fallback);
+            // CHAT-FIRST-1: the ideas in words, so the companion app shows everything the web card shows
+            $fmt = fn ($d) => $d ? \Carbon\Carbon::parse($d)->format('j M') : '';
+            $words .= \App\Core\Growth\ChatReplies::APP_PART . implode("\n\n", array_map(fn ($c, $i) => ($i + 1) . '. **' . $c['title'] . '** — ' . $fmt($c['starts_on']) . '–' . $fmt($c['ends_on']) . (! empty($c['kpi']['label']) ? ' · target: ' . $c['kpi']['label'] : '') . ' · ' . (int) $c['steps_total'] . ' steps'
+                . (! empty($c['why_now']) ? "\n   " . $c['why_now'] : ''), $cards, array_keys($cards)))
+                . "\n\nReply " . (count($cards) === 1 ? '**launch it**' : '**launch 1**' . (count($cards) > 1 ? ', **launch 2**' : '') . ' …') . ' or **not now**.';
             app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($this->wsId, 'sarah', $words, ['notification_type' => 'campaign_ideas',
                 'card' => ['type' => 'campaign_ideas', 'business_id' => $biz->id ?? null, 'business_name' => $name, 'ideas' => $cards]]);
         } catch (\Throwable $e) {

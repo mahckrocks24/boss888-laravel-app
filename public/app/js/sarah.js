@@ -549,7 +549,7 @@
         return (safe ? '<a class="sh-att" href="' + safe + '" target="_blank" rel="noopener">' : '<span class="sh-att">') + '<b>' + esc(ext || 'FILE') + '</b><span>' + name + '</span>' + (safe ? '</a>' : '</span>');
       }).join('') + '</div>';
     }
-    row.innerHTML = '<div class="sh-bubble' + (m.error ? ' err' : '') + '">' + (isUser ? esc(m.content) : fmtBody(m.content)) + attHtml + '</div>' +
+    row.innerHTML = '<div class="sh-bubble' + (m.error ? ' err' : '') + '">' + (isUser ? esc(m.content) : fmtBody(m.card ? String(m.content || '').split('\n\n\u200B')[0] : m.content))   /* CHAT-FIRST-1 */ + attHtml + '</div>' +
                     (!isUser && m.card && window.LU_brandCard ? window.LU_brandCard.slotHtml(m.card) : '') +   /* BRAND-B1 */
                     '<div class="sh-meta">' + (isUser ? 'You' : 'Sarah') + (m.ts ? ' · ' + esc(ago(m.ts)) : '') + '</div>';
     if (m.id) row.setAttribute('data-mid', String(m.id));
