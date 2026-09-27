@@ -1928,7 +1928,7 @@ $withCorr = function (array $meta) use ($corr) {
                     foreach ($__camps as $__k) { $__commentsBlock .= '  - LIVE CAMPAIGN: comment "' . $__k->keyword . '" (' . $__k->name . ') · ' . (int) $__k->responses . " responses so far\n"; }
                     $__commentsBlock .= $__campHow;
                     foreach ($__cr as $__c) {
-                        $__commentsBlock .= '  - POSTED ' . $__c->replied_at . ' UTC · reply to ' . ($__c->author_name ?: 'someone') . ' ("' . mb_substr((string) $__c->message, 0, 80) . '"): "' . mb_substr((string) $__c->reply_sent, 0, 200) . "\"\n";
+                        $__commentsBlock .= '  - POSTED ' . \App\Core\Support\OwnerTimezone::local((int) $wsId, $__c->replied_at) . ' · reply to ' . ($__c->author_name ?: 'someone') . ' ("' . mb_substr((string) $__c->message, 0, 80) . '"): "' . mb_substr((string) $__c->reply_sent, 0, 200) . "\"\n";
                     }
                 }
             } catch (\Throwable $__ce) { \Illuminate\Support\Facades\Log::warning('[SARAH-COMMENTS-1] block failed: ' . $__ce->getMessage()); }

@@ -170,8 +170,11 @@ final class SessionLedgerFacts
     }
 
     /** The prompt block. Empty when the turn is not about sessions or money, or the workspace has nothing to say. */
+    private static ?int $tzWs = null;   // TZ-1
+
     public static function render(int $wsId, string $message): string
     {
+        self::$tzWs = $wsId;   // TZ-1: times in the owner's zone
         if (!self::relevant($message)) return '';
         $sessions = self::sessions($wsId);
         $spend    = self::spend($wsId);
@@ -312,6 +315,6 @@ final class SessionLedgerFacts
     private static function hm(?string $ts): string
     {
         if (!$ts) return 'time unknown';
-        try { return \Carbon\Carbon::parse($ts)->format('H:i') . ' UTC ' . \Carbon\Carbon::parse($ts)->format('Y-m-d'); } catch (\Throwable $e) { return (string) $ts; }
+        try { $tz = app(\App\Core\Sarah888\TemporalAnchor::class)->timezone((int) (self::$tzWs ?? 0)); return \Carbon\Carbon::parse($ts, 'UTC')->setTimezone($tz)->format('H:i') . ' ' . \App\Core\Support\OwnerTimezone::label($tz) . ' ' . \Carbon\Carbon::parse($ts, 'UTC')->setTimezone($tz)->format('Y-m-d'); } catch (\Throwable $e) { return (string) $ts; }   // TZ-1
     }
 }

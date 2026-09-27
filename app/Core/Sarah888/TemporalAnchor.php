@@ -78,8 +78,9 @@ class TemporalAnchor
 
         $s  = "CURRENT TIME (authoritative — computed by the platform, not recalled).\n";
         $s .= "  Today is {$l->format('l, j F Y')} in this workspace.\n";
-        $s .= "  Workspace local : {$l->format('Y-m-d H:i')} ({$n['tz']})\n";
-        $s .= "  UTC             : {$n['utc']->format('Y-m-d H:i')}Z\n";
+        $s .= "  Local time      : {$l->format('Y-m-d H:i')} (" . \App\Core\Support\OwnerTimezone::label($n['tz']) . ")\n";
+        // TZ-1 (Owner 2026-09-28): the owner lives in their own time zone — never UTC.
+        $s .= "  Always give times and days in this local time and, when a time matters, name it the way people say it (" . \App\Core\Support\OwnerTimezone::label($n['tz']) . "). Never mention UTC, GMT offsets or zone codes unless the owner asks.\n";
         $s .= "  Use these dates. Do NOT infer today's date from anything you\n"
             . "  learned in training — it will be wrong. Any date arithmetic\n"
             . "  already computed for you below is exact; prefer it to your own\n"

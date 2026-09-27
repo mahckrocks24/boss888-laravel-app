@@ -122,6 +122,7 @@ class JwtAuthMiddleware
         $request->setUserResolver(fn () => $user);
         $request->attributes->set('workspace_id', (int) $wsId);
         $request->attributes->set('auth_via', 'jwt');
+        if ($request->hasHeader('X-LU-TZ')) \App\Core\Support\OwnerTimezone::adopt((int) $wsId, (int) $user->id, (string) $request->header('X-LU-TZ'));   // TZ-1
         // Provenance of the token itself (e.g. the shared BELLA_ADMIN_TOKEN path),
         // so routes needing individual attribution can refuse it.
         $request->attributes->set('auth_via_claim', $payload->via ?? null);

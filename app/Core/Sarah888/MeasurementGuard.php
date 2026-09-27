@@ -27,7 +27,7 @@ class MeasurementGuard
      * balance, meeting/proposal/task ids, clock times — are ledger facts, never a Search Console/Analytics metric. On the
      * first live run every sentence that said "meeting #24 closed at 16:42 UTC … 8 credits" was cut as fabricated traffic.
      */
-    private const LEDGER_FACT = '/\b(?:credits?|balance|reserved|charged|deducted|strategy\s+session|meeting\s*#?\s*\d|proposal\s*#?\s*\d|task\s*#?\s*\d|\d{1,2}:\d{2}\s*UTC)\b/i';
+    private const LEDGER_FACT = '/\b(?:credits?|balance|reserved|charged|deducted|strategy\s+session|meeting\s*#?\s*\d|proposal\s*#?\s*\d|task\s*#?\s*\d|\d{1,2}:\d{2}\s*UTC|\d{1,2}:\d{2}\s+[A-Za-z]+\s+time)\b/i';   // TZ-1: ledger times are now local
 
     public function sanitize(string $reply, int $wsId): array
     {

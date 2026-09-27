@@ -1189,6 +1189,7 @@ function authHeader() {
     if (token) {
         h['Authorization'] = 'Bearer ' + token;
     }
+    try { h['X-LU-TZ'] = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_) {}   /* TZ-1 */
     if (typeof NONCE !== 'undefined' && NONCE) {
         h['X-WP-Nonce'] = NONCE;
     }
@@ -6163,6 +6164,7 @@ async function _luFetch(method, path, body) {
   } else {
     if (token)  headers['Authorization']  = 'Bearer ' + token;
     if (nonce)  headers['X-WP-Nonce']     = nonce;
+    try { headers['X-LU-TZ'] = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (_) {}   /* TZ-1 */
   }
   var opts = { method: method, headers: headers, cache: 'no-store' };
   if (body) opts.body = JSON.stringify(body);
