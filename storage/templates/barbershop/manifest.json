@@ -1196,7 +1196,7 @@
         "warm_grey": {
             "type": "color",
             "label": "Warm Grey",
-            "default": "#8A7A7D"
+            "default": "#524545"
         },
         "divider": {
             "type": "color",

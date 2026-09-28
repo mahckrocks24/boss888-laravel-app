@@ -351,7 +351,7 @@
         "orange": {
             "type": "color",
             "label": "Construction Orange",
-            "default": "#F6820C"
+            "default": "#AF5B06"
         },
         "orange_deep": {
             "type": "color",

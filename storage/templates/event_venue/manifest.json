@@ -1061,7 +1061,7 @@
         "gold": {
             "type": "color",
             "label": "Champagne Gold",
-            "default": "#D9A64D"
+            "default": "#946920"
         },
         "gold_deep": {
             "type": "color",

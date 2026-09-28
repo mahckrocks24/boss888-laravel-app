@@ -338,7 +338,7 @@
         "gold": {
             "type": "color",
             "label": "Gold",
-            "default": "#C9A84C"
+            "default": "#886F29"
         },
         "gold_deep": {
             "type": "color",

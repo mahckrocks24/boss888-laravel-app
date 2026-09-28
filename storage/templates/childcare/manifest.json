@@ -342,7 +342,7 @@
         "sky": {
             "type": "color",
             "label": "Sky Blue",
-            "default": "#0EA5E9"
+            "default": "#0B7CAF"
         },
         "sky_deep": {
             "type": "color",
@@ -352,7 +352,7 @@
         "coral": {
             "type": "color",
             "label": "Coral",
-            "default": "#F97316"
+            "default": "#BE5105"
         },
         "white": {
             "type": "color",

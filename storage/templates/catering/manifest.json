@@ -1090,7 +1090,7 @@
         "medical_blue": {
             "type": "color",
             "label": "Medical Blue",
-            "default": "#E67E22"
+            "default": "#AF5D14"
         },
         "medical_deep": {
             "type": "color",
