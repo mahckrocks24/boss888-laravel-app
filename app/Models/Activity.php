@@ -11,6 +11,7 @@ class Activity extends Model
     protected $fillable = [
         'workspace_id', 'activitable_type', 'activitable_id',
         'type', 'description', 'metadata_json', 'performed_by',
+        'subject', 'scheduled_at', 'completed', 'completed_at', // CRM-FIX-0: were silently dropped
     ];
 
     protected function casts(): array

@@ -802,11 +802,27 @@ class EngineExecutionService
         };
     }
 
+    /**
+     * CRM-FIX-0 (2026-09-28): an agent may file a lead only when it is a real person who can be reached (an email
+     * or a phone). The audit found tasks and meeting notes ("Team Check-in", "Hiring") filed as leads.
+     */
+    private function crmLeadGuard(array $params, array $ctx): array
+    {
+        if (($ctx['source'] ?? 'manual') !== 'manual') {
+            $email = trim((string) ($params['email'] ?? ''));
+            $phone = preg_replace('/[^0-9]/', '', (string) ($params['phone'] ?? ''));
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL) && strlen($phone) < 7) {
+                throw new \InvalidArgumentException('A lead is a person who can be reached: give their email or phone. Tasks, notes and meetings are not leads.');
+            }
+        }
+        return $params;
+    }
+
     private function executeCrmAction(int $wsId, string $action, array $params, array $ctx): array
     {
         $svc = app(\App\Engines\CRM\Services\CrmService::class);
         return match ($action) {
-            'create_lead' => ['entity_type' => 'Lead', 'entity_id' => $svc->createLead($wsId, array_merge($params, ['user_id' => $ctx['user_id'] ?? null]))->id, 'action' => 'created'],
+            'create_lead' => ['entity_type' => 'Lead', 'entity_id' => $svc->createLead($wsId, array_merge($this->crmLeadGuard($params, $ctx), ['user_id' => $ctx['user_id'] ?? null, '_origin' => $ctx['source'] ?? null]))->id, 'action' => 'created'],
             // 2026-05-22 FIX 17 — list_leads sync dispatch.
             'list_leads' => $svc->listLeads($wsId, $params),
             'update_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'], 'data' => $svc->updateLead($params['lead_id'], $params, $ctx['user_id'] ?? null, $wsId)],

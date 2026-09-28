@@ -254,8 +254,9 @@ class CrmService
             'website' => $data['website'] ?? null,
             'city' => $data['city'] ?? null,
             'country' => $data['country'] ?? null,
-            'source' => $data['source'] ?? null,
-            'status' => 'new',
+            'source' => ($data['source'] ?? null) ?: (($data['_origin'] ?? '') === 'manual' ? 'manual' : null),
+            'status' => in_array(($data['status'] ?? ''), ['new', 'contacted', 'qualified', 'converted', 'lost'], true) ? $data['status'] : 'new',
+            'converted_at' => ($data['status'] ?? '') === 'converted' ? now() : null,
             'score' => 0,
             'deal_value' => $data['deal_value'] ?? 0,
             'assigned_to' => $data['assigned_to'] ?? null,
@@ -286,6 +287,9 @@ class CrmService
             $this->validateStatusTransition($oldStatus, $update['status']);
             if ($update['status'] === 'converted' && !$lead->converted_at) {
                 $update['converted_at'] = now();
+            }
+            if ($update['status'] !== 'converted' && $lead->converted_at && $oldStatus === 'converted') {
+                $update['converted_at'] = null;
             }
             if ($update['status'] === 'contacted' && !$lead->last_contacted_at) {
                 $update['last_contacted_at'] = now();
@@ -403,7 +407,7 @@ class CrmService
 
         // Search (name, email, phone, company)
         if (!empty($filters['search'])) {
-            $s = $filters['search'];
+            $s = addcslashes((string) $filters['search'], '%_\\');
             $q->where(function ($q2) use ($s) {
                 $q2->where('name', 'like', "%{$s}%")
                    ->orWhere('email', 'like', "%{$s}%")
@@ -489,27 +493,31 @@ class CrmService
 
     public function exportLeads(int $wsId, array $filters = []): string
     {
-        $result = $this->listLeads($wsId, array_merge($filters, ['limit' => 10000]));
-        $leads = $result['leads'];
+        // CRM-FIX-0: all rows, not the first 200; every cell quoted; a cell that starts like a formula is
+        // prefixed with ' so a spreadsheet shows it as text instead of running it.
+        $leads = [];
+        $offset = 0;
+        do {
+            $page = $this->listLeads($wsId, array_merge($filters, ['limit' => 200, 'offset' => $offset]));
+            foreach ($page['leads'] as $l) $leads[] = $l;
+            $offset += 200;
+        } while (count($page['leads']) === 200 && $offset < 20000);
 
+        $cell = function ($v): string {
+            $v = (string) ($v ?? '');
+            // a phone number or a plain figure ("+1 555 0100", "-12.5") stays as it is
+            if ($v !== '' && strpbrk($v[0], "=+-@\t\r") !== false && ! preg_match('/^[+-]?[0-9][0-9 ().\/-]*$/', $v)) $v = "'" . $v;
+            return '"' . str_replace('"', '""', $v) . '"';
+        };
         $headers = ['ID', 'Name', 'Email', 'Phone', 'Company', 'Source', 'Status', 'Score', 'Deal Value', 'City', 'Country', 'Created'];
-        $csv = implode(',', $headers) . "\n";
+        $csv = implode(',', array_map($cell, $headers)) . "\n";
 
         foreach ($leads as $lead) {
-            $csv .= implode(',', [
-                $lead->id,
-                '"' . str_replace('"', '""', $lead->name ?? '') . '"',
-                '"' . ($lead->email ?? '') . '"',
-                '"' . ($lead->phone ?? '') . '"',
-                '"' . str_replace('"', '""', $lead->company ?? '') . '"',
-                '"' . ($lead->source ?? '') . '"',
-                $lead->status,
-                $lead->score,
-                $lead->deal_value,
-                '"' . ($lead->city ?? '') . '"',
-                '"' . ($lead->country ?? '') . '"',
-                $lead->created_at?->toDateString() ?? '',
-            ]) . "\n";
+            $csv .= implode(',', array_map($cell, [
+                $lead->id, $lead->name, $lead->email, $lead->phone, $lead->company, $lead->source,
+                $lead->status, $lead->score, $lead->deal_value, $lead->city, $lead->country,
+                $lead->created_at?->toDateString(),
+            ])) . "\n";
         }
 
         return $csv;
@@ -631,7 +639,7 @@ class CrmService
             'contact_id' => $data['contact_id'] ?? null,
             'title' => $data['title'],
             'value' => $data['value'] ?? 0,
-            'currency' => $data['currency'] ?? 'AED',
+            'currency' => $data['currency'] ?? 'USD', // CRM-FIX-0: the screen shows $; AED was a leftover default
             'stage' => $stage,
             'probability' => $data['probability'] ?? ($stageObj->default_probability ?? 0),
             'expected_close' => $data['expected_close'] ?? null,
@@ -807,6 +815,33 @@ class CrmService
             'completed' => $data['completed'] ?? false,
             'completed_at' => !empty($data['completed']) ? now() : null,
         ]);
+    }
+
+    /** CRM-FIX-0: one lead's timeline in the shape the Clients screen draws. */
+    public function leadTimeline(int $wsId, int $leadId): array
+    {
+        if (! Lead::where('workspace_id', $wsId)->whereKey($leadId)->exists()) return [];
+        $human = ['note', 'call', 'email', 'meeting', 'task'];
+        $rows = [];
+        $acts = Activity::where('workspace_id', $wsId)->whereIn('activitable_type', ['Lead', 'App\\Models\\Lead'])
+            ->where('activitable_id', $leadId)->orderByDesc('created_at')->limit(200)->get();
+        foreach ($acts as $a) {
+            $meta = is_array($a->metadata_json) ? $a->metadata_json : (json_decode((string) $a->metadata_json, true) ?: []);
+            $title = trim((string) ($a->subject ?: $a->description));
+            $rows[] = [
+                'id' => $a->id, 'type' => $a->type, 'title' => $title !== '' ? $title : ucfirst(str_replace('_', ' ', $a->type)),
+                'description' => $a->subject ? $a->description : null,
+                'status' => $a->completed ? 'done' : 'pending', 'due_date' => $a->scheduled_at ? (string) $a->scheduled_at : null,
+                'priority' => $meta['priority'] ?? 'medium', 'created_at' => (string) $a->created_at,
+                'system' => ! in_array($a->type, $human, true),
+            ];
+        }
+        foreach (Note::where('workspace_id', $wsId)->whereIn('notable_type', ['Lead', 'App\\Models\\Lead'])->where('notable_id', $leadId)->get() as $n) {
+            $rows[] = ['id' => 'n' . $n->id, 'type' => 'note', 'title' => mb_substr((string) $n->body, 0, 120), 'description' => mb_strlen((string) $n->body) > 120 ? $n->body : null,
+                'status' => 'pending', 'due_date' => null, 'priority' => 'medium', 'created_at' => (string) $n->created_at, 'system' => false];
+        }
+        usort($rows, fn ($x, $y) => strcmp($y['created_at'], $x['created_at']));
+        return $rows;
     }
 
     public function completeActivity(int $activityId, ?int $wsId = null): Activity
@@ -1044,17 +1079,11 @@ class CrmService
 
     private function validateStatusTransition(string $from, string $to): void
     {
-        $allowed = [
-            'new' => ['contacted', 'qualified', 'lost'],
-            'contacted' => ['qualified', 'converted', 'lost'],
-            'qualified' => ['converted', 'lost', 'contacted'],
-            'converted' => [],
-            'lost' => ['new', 'contacted'],
-        ];
-
-        if (!in_array($to, $allowed[$from] ?? [])) {
-            if ($from === $to) return; // Same status is fine
-            throw new \InvalidArgumentException("Cannot transition lead from '{$from}' to '{$to}'");
+        // CRM-FIX-0 (2026-09-28): a person moving a lead on the board may move it anywhere — back a step, or
+        // straight to Won. Only unknown statuses are refused.
+        $known = ['new', 'contacted', 'qualified', 'converted', 'lost'];
+        if (!in_array($to, $known, true)) {
+            throw new \InvalidArgumentException("Unknown stage '{$to}'. Use one of: new, contacted, qualified, converted, lost.");
         }
     }
 

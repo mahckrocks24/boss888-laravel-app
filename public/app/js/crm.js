@@ -16,7 +16,7 @@
 // ── Claim engine slot ─────────────────────────────────────────────────────────
 window.LU_LOADED_ENGINES = window.LU_LOADED_ENGINES || {};
 window.LU_LOADED_ENGINES['crm'] = true;
-console.log('[LuCRM] v3.6.0 — engine slot claimed');
+console.log('[LuCRM] v3.6.0 + CRM-FIX-0 — engine slot claimed');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 var _crm = {
@@ -35,6 +35,42 @@ var _crm = {
     // Phase 8
     dragLeadId:   null,   // id of lead being dragged
 };
+
+// ── CRM-FIX-0 (Owner 2026-09-28 "go"): one status list drives the board, the table, the record and the form ──
+var _CRM_STATUSES = [
+    {id:'new',       name:'New',       color:'var(--p)'},
+    {id:'contacted', name:'Contacted', color:'var(--bl)'},
+    {id:'qualified', name:'Qualified', color:'var(--am)'},
+    {id:'converted', name:'Won',       color:'var(--ac)', is_won:1},
+    {id:'lost',      name:'Lost',      color:'var(--rd)', is_lost:1}
+];
+function _crmStatus(l) { var st = String((l && l.status) || 'new').toLowerCase(); return _CRM_STATUSES.find(function(s){return s.id===st;}) || _CRM_STATUSES[0]; }
+var _CRM_SOURCES = {manual:'Added by you',website_form:'Website form',contact_form:'Website form',website:'Website',booking:'Booking',chatbot888:'Chatbot',chatbot:'Chatbot',facebook_lead_ad:'Facebook lead ad',facebook_comment:'Facebook comment',facebook_messenger:'Messenger',instagram_dm:'Instagram DM',instagram:'Instagram',order:'Store order',store_order:'Store order',import:'Import',referral:'Referral',phone:'Phone call',walk_in:'Walk-in',email:'Email',social:'Social media',other:'Other'};
+function _crmSource(l) { var s = (l && l.source) ? String(l.source) : ''; if (!s) return '—'; return _CRM_SOURCES[s.toLowerCase()] || s.replace(/[_-]+/g,' ').replace(/^\w/, function(c){return c.toUpperCase();}); }
+function _crmAuthHeaders() { return {'Content-Type':'application/json','Accept':'application/json','Authorization':'Bearer ' + (localStorage.getItem('lu_token') || '')}; }
+async function _crmSend(method, path, payload) {
+    var res, body; res = await fetch(_crmUrl(path), {method:method, headers:_crmAuthHeaders(), body: payload ? JSON.stringify(payload) : undefined});
+    try { body = await res.json(); } catch(e) { body = {}; }
+    if (!res.ok || (body && body.success === false)) { var m = (body && (body.message || body.error)) || ('HTTP ' + res.status); throw new Error(m); }
+    return body || {};
+}
+var _crmQ = {search:'', source:'', offset:0, total:0};
+(function _crmCss(){ if (document.getElementById('crm-fix0-css')) return; var st = document.createElement('style'); st.id = 'crm-fix0-css'; st.textContent =
+  '.crm-detail-grid{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}' +
+  '.crm-kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}' +
+  '.crm-kanban-colwrap{min-width:220px;max-width:240px;flex-shrink:0}' +
+  '.crm-move{margin-top:8px;width:100%;font-size:12px}' +
+  '.crm-search{min-width:0;flex:1 1 220px;max-width:340px}' +
+  '@media (max-width:760px){.crm-detail-grid{grid-template-columns:1fr}' +
+  '.crm-kanban{scroll-snap-type:x mandatory}.crm-kanban-colwrap{min-width:calc(100vw - 64px);max-width:none;scroll-snap-align:start}}' +
+  '@media (max-width:640px){.crm-table-wrap table{min-width:0!important;width:100%!important}' +
+  '.crm-search{max-width:none;flex-basis:100%}' +
+  '.crm-table-wrap tbody td.crm-actions{justify-content:flex-start;flex-wrap:wrap;padding-top:8px}' +
+  '.crm-table-wrap tbody td.crm-actions::before{display:none}' +
+  '#crm-root .btn-sm,#crm-root .tab{min-height:44px;min-width:44px}' +
+  '#crm-root .crm-tab-bar{flex-wrap:nowrap!important;overflow-x:auto}' +
+  '#crm-root .crm-tab-bar .tab{flex:0 0 auto}}';
+  document.head.appendChild(st); })();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function _crmUrl(p) {
@@ -110,7 +146,7 @@ window.crmLoad = async function(el) {
     var _all = await Promise.all([
       _crmGet('/dashboard').catch(function(e){console.warn('[LuCRM] dash:',e.message);return null;}),
       _crmGet('/pipeline/stages').catch(function(){return [];}),
-      _crmGet('/leads').catch(function(){return {leads:[]};}),
+      _crmGet('/leads?limit=100').catch(function(){return {leads:[]};}),
       _crmGet('/contacts').catch(function(){return {contacts:[]};}),  // PATCH 10 Fix 8
       _crmGet('/modules').catch(function(){return {};}),
       _crmGet('/settings').catch(function(){return {};}),
@@ -120,7 +156,7 @@ window.crmLoad = async function(el) {
     var dash = _all[0], stages = _all[1], leads = _all[2], contacts = _all[3], modules = _all[4], settings = _all[5], tasks = _all[6], appts = _all[7];
 
     _crm.dash     = dash;
-    _crm.stages   = Array.isArray(stages) ? stages : [];
+    _crm.stages   = _CRM_STATUSES; /* CRM-FIX-0: the board is the lead's status; /pipeline/stages are deal stages */
 
     // PATCH 10 Fix 8 — surface website-form contacts in the Leads list.
     // PublicContactController::submit (T3.2) writes form submissions to the
@@ -147,7 +183,8 @@ window.crmLoad = async function(el) {
         updated_at: c.updated_at
       };
     });
-    _crm.leads = rawLeads.concat(contactsAsLeads);
+    _crm.leads = rawLeads; /* CRM-FIX-0: every form enquiry is already a lead; merging contacts showed it twice */
+    _crmQ.total = (leads && leads.total) || rawLeads.length; _crmQ.offset = 0; _crmQ.search = ''; _crmQ.source = '';
 
     _crm.modules  = Object.entries(modules||{}).map(function(p){return Object.assign({slug:p[0]},p[1]);});
     _crm.settings = settings||{};
@@ -248,8 +285,8 @@ window._crmTab = async function(tab) {
 async function _crmReload(tab) {
     var el=document.getElementById('crm-root'); if(!el)return;
     if(tab)_crm.tab=tab;
-    var d=await _crmGet('/leads').catch(function(e){console.error('[LuCRM] reload leads:',e.message);showToast('Could not reload leads.','error');return null;});
-    if(d&&d.leads)_crm.leads=d.leads;
+    var d=await _crmGet(_crmLeadsPath(0)).catch(function(e){console.error('[LuCRM] reload leads:',e.message);showToast('Could not reload leads.','error');return null;});
+    if(d&&d.leads){_crm.leads=d.leads;_crmQ.total=d.total||d.leads.length;_crmQ.offset=0;}
     var dsh=await _crmGet('/dashboard').catch(function(){return null;}); if(dsh)_crm.dash=dsh;
     var td=await _crmGet('/tasks?status=pending').catch(function(){return null;});
     if(td&&td.tasks){_crm.tasks=td.tasks;_crm.taskFlags=_buildTaskFlags(_crm.tasks);}
@@ -285,12 +322,11 @@ function _pipelineHtml() {
     // One column per stage
     var cols = stages.map(function(stage) {
         var stageLeads = leads.filter(function(l) {
-            return String(l.pipeline_stage_id) === String(stage.id);
+            return _crmStatus(l).id === stage.id;
         });
 
-        var isClosed  = parseInt(stage.is_closed);
-        var isWon     = isClosed && (stage.name||'').toLowerCase().indexOf('won')  !== -1;
-        var isLost    = isClosed && (stage.name||'').toLowerCase().indexOf('lost') !== -1;
+        var isWon     = !!stage.is_won;
+        var isLost    = !!stage.is_lost;
         var hdrColor  = isWon ? 'var(--ac)' : isLost ? 'var(--rd)' : 'var(--p)';
         var hdrBg     = isWon ? 'rgba(0,229,168,.1)' : isLost ? 'rgba(248,113,113,.1)' : 'rgba(108,92,231,.1)';
 
@@ -301,7 +337,7 @@ function _pipelineHtml() {
         var emptySlot = !cards ?
             '<div style="padding:20px;text-align:center;color:var(--t3);font-size:12px;border:2px dashed var(--bd);border-radius:8px;margin:4px 0">Drop here</div>' : '';
 
-        return '<div style="min-width:200px;max-width:220px;flex-shrink:0">' +
+        return '<div class="crm-kanban-colwrap">' +
             // Column header
             '<div style="background:'+hdrBg+';border-radius:8px 8px 0 0;padding:10px 12px;margin-bottom:0;border:1px solid var(--bd);border-bottom:none">' +
                 '<div style="display:flex;justify-content:space-between;align-items:center">' +
@@ -314,17 +350,17 @@ function _pipelineHtml() {
                 'style="min-height:120px;background:var(--s1);border:1px solid var(--bd);border-radius:0 0 8px 8px;padding:8px;overflow-y:auto;max-height:calc(100vh - 300px)" ' +
                 'ondragover="event.preventDefault();this.style.background=\'rgba(108,92,231,.07)\'" ' +
                 'ondragleave="this.style.background=\'var(--s1)\'" ' +
-                'ondrop="window._kanbanDrop(event,'+stage.id+')">' +
+                'ondrop="window._kanbanDrop(event,\''+stage.id+'\')">' +
                     cards + emptySlot +
             '</div>' +
         '</div>';
     }).join('');
 
     return summary +
-        '<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:flex-start">' +
+        '<div class="crm-kanban">' +
             cols +
         '</div>' +
-        '<div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Drag and drop lead cards to move between stages</div>';
+        '<div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:center">Drag a card, or use "Move to" on the card, to change its stage.' + (_crmQ.total > _crm.leads.length ? ' Showing the ' + _crm.leads.length + ' newest of ' + _crmQ.total + '.' : '') + '</div>';
 }
 
 function _leadCard(lead, stage) {
@@ -351,14 +387,17 @@ function _leadCard(lead, stage) {
         (lead.company ? '<div style="font-size:11px;color:var(--t3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_e(lead.company)+'</div>' : '') +
 
         // Source
-        (lead.source_website ? '<div style="font-size:11px;color:var(--ac);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_e(lead.source_website)+'</div>' : '') +
+        (lead.source ? '<div style="font-size:11px;color:var(--ac);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_e(_crmSource(lead))+'</div>' : '') +
 
         // Score badge
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
             _scoreBadge(score) +
             '<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 6px;color:var(--t3)" ' +
-                'onclick="event.stopPropagation();window._crmOpenDetail('+lead.id+')" title="View lead">'+window.icon("eye",14)+'</button>' +
+                'onclick="event.stopPropagation();window._crmOpenDetail('+lead.id+')" title="View lead" aria-label="View lead">'+window.icon("eye",14)+'</button>' +
         '</div>' +
+        '<select class="form-select crm-move" aria-label="Move to stage" onclick="event.stopPropagation()" onchange="window._crmMoveLead('+lead.id+',this.value)">' +
+            _CRM_STATUSES.map(function(s){return '<option value="'+s.id+'"'+(s.id===stage.id?' selected':'')+'>'+(s.id===stage.id?'Stage: ':'Move to ')+_e(s.name)+'</option>';}).join('') +
+        '</select>' +
     '</div>';
 }
 
@@ -384,70 +423,26 @@ window._kanbanDragEnd = function(event) {
 
 window._kanbanDrop = async function(event, stageId) {
     event.preventDefault();
-    var col = event.currentTarget;
-    col.style.background = 'var(--s1)';
-
+    var col = event.currentTarget; if (col) col.style.background = 'var(--s1)';
     var leadId = parseInt(event.dataTransfer.getData('text/plain')) || _crm.dragLeadId;
     _crm.dragLeadId = null;
+    if (leadId && stageId) await window._crmMoveLead(leadId, stageId);
+};
 
-    if (!leadId || !stageId) return;
-
-    // Check lead already in this stage
+// CRM-FIX-0: one move path for drag and the "Move to" menu. The screen changes only after the server saved it.
+window._crmMoveLead = async function(leadId, status) {
     var lead = _crm.leads.find(function(l){ return l.id == leadId; });
-    if (!lead) return;
-    if (String(lead.pipeline_stage_id) === String(stageId)) return;
-
-    console.log('[LuCRM] Kanban drop: lead', leadId, '→ stage', stageId);
-
-    // Optimistic update
-    lead.pipeline_stage_id = stageId;
+    if (!lead || _crmStatus(lead).id === status) return;
     var el = document.getElementById('crm-root');
-    try { _crmRender(el); } catch(e) {}
-
-    // PUT to API
-    var url   = _crmUrl('/leads/' + leadId);
-    var nonce = _crmNonce();
-    var res;
     try {
-        res = await fetch(url, {
-            method:  'PUT',
-            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},
-            body:    JSON.stringify({ pipeline_stage_id: parseInt(stageId) }),
-        });
-    } catch(e) {
-        console.error('[LuCRM] kanban drop fetch error:', e);
-        showToast('Network error moving lead.', 'error');
-        // Revert
-        await _crmReload('pipeline');
-        return;
+        var body = await _crmSend('PUT', '/leads/' + leadId, {status: status});
+        var fresh = (body && body.data && body.data.data) || (body && body.data) || null;
+        lead.status = (fresh && fresh.status) || status; if (fresh && typeof fresh.score !== 'undefined') lead.score = fresh.score;
+        showToast('Moved to ' + _crmStatus(lead).name + '.', 'success');
+    } catch (e) {
+        showToast('Not moved: ' + e.message, 'error');
     }
-
-    if (!res.ok) {
-        showToast('Could not move lead.', 'error');
-        await _crmReload('pipeline');
-        return;
-    }
-
-    console.log('[LuCRM] Stage updated ✓ — recalculating score…');
-
-    // Recalculate score server-side
-    var scoreRes = await fetch(_crmUrl('/leads/' + leadId + '/score'), {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},
-        body:    '{}',
-    }).catch(function() { return null; });
-
-    if (scoreRes && scoreRes.ok) {
-        var scoreData;
-        try { scoreData = await scoreRes.json(); } catch(e) { scoreData = null; }
-        if (scoreData && typeof scoreData.score !== 'undefined') {
-            lead.score = scoreData.score;
-            console.log('[LuCRM] Score updated → ', scoreData.score);
-        }
-    }
-
     try { _crmRender(el); } catch(e) {}
-    showToast('Lead moved!', 'success');
 };
 
 // ── Batch recalculate all scores ──────────────────────────────────────────────
@@ -468,11 +463,11 @@ window._batchRecalcScore = async function() {
     var body; try { body = await res.json(); } catch(e) { body = {}; }
 
     if (!res.ok) { showToast('Recalculate failed.', 'error'); return; }
-    showToast('Scores updated for ' + (body.updated || 0) + ' leads!', 'success');
+    showToast('Scores updated for ' + (body.recalculated || body.updated || 0) + ' leads.', 'success');
 
     // Reload leads to get fresh scores
-    var d = await _crmGet('/leads').catch(function(){ return null; });
-    if (d && d.leads) _crm.leads = d.leads;
+    var d = await _crmGet('/leads?limit=100').catch(function(){ return null; });
+    if (d && d.leads) { _crm.leads = d.leads; _crmQ.total = d.total || d.leads.length; _crmQ.offset = 0; }
     var el = document.getElementById('crm-root');
     try { _crmRender(el); } catch(e) {}
 };
@@ -572,37 +567,46 @@ function _taskRows(tasks){
 // =============================================================================
 // LEADS TABLE — with score column
 // =============================================================================
+function _crmLeadsPath(offset) { var p = '/leads?limit=100&offset=' + (offset||0); if (_crmQ.search) p += '&search=' + encodeURIComponent(_crmQ.search); if (_crmQ.source) p += '&source=' + encodeURIComponent(_crmQ.source); return p; }
 function _leadsHtml() {
-    var sources=[];
-    _crm.leads.forEach(function(l){if(l.source_website&&sources.indexOf(l.source_website)===-1)sources.push(l.source_website);});
+    var srcCounts = (_crm.dash && Array.isArray(_crm.dash.leads_by_source)) ? _crm.dash.leads_by_source : [];
     var rows=_crm.leads.map(function(l){
-        var st=_crm.stages.find(function(s){return String(s.id)===String(l.pipeline_stage_id);});
+        var st=_crmStatus(l);
         var flags=_crm.taskFlags[String(l.id)]||{};
-        var ind=flags.overdue?'<span style="margin-left:5px">'+window.icon("info",14)+'</span>':flags.today?'<span style="margin-left:5px">'+window.icon("info",14)+'</span>':'';
+        var ind=flags.overdue?'<span style="margin-left:5px" title="Overdue task">'+window.icon("info",14)+'</span>':flags.today?'<span style="margin-left:5px" title="Task due today">'+window.icon("info",14)+'</span>':'';
         return '<tr onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'">'+
-            '<td data-label="Name" style="padding:11px 14px;font-weight:500;color:var(--t1)">'+_e(l.name)+ind+'</td>'+
-            '<td data-label="Email" style="padding:11px 14px;color:var(--t2);font-size:12px">'+_e(l.email||'—')+'</td>'+
-            '<td data-label="Company" style="padding:11px 14px;color:var(--t2);font-size:12px">'+_e(l.company||'—')+'</td>'+
-            '<td data-label="Source" style="padding:11px 14px"><span style="color:var(--ac);font-size:12px">'+_e(l.source_website||'—')+'</span></td>'+
-            '<td data-label="Status" style="padding:11px 14px"><span class="badge badge-purple">'+_e((st&&st.name)||'?')+'</span></td>'+
+            '<td data-label="Name" style="padding:11px 14px;font-weight:500;color:var(--t1);cursor:pointer" onclick="window._crmOpenDetail('+l.id+')">'+_e(l.name)+ind+'</td>'+
+            '<td data-label="Email" style="padding:11px 14px;color:var(--t2);font-size:12px;word-break:break-all">'+_e(l.email||'—')+'</td>'+
+            '<td data-label="Phone" style="padding:11px 14px;color:var(--t2);font-size:12px">'+_e(l.phone||'—')+'</td>'+
+            '<td data-label="Source" style="padding:11px 14px"><span style="color:var(--ac);font-size:12px">'+_e(_crmSource(l))+'</span></td>'+
+            '<td data-label="Stage" style="padding:11px 14px"><span class="badge badge-purple">'+_e(st.name)+'</span></td>'+
             '<td data-label="Score" style="padding:11px 14px">'+_scoreBadge(l.score)+'</td>'+
             '<td data-label="Value" style="padding:11px 14px;color:var(--ac);font-size:12px">'+(l.deal_value&&parseFloat(l.deal_value)>0?'$'+parseFloat(l.deal_value).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0}):'—')+'</td>'+
-            '<td style="padding:11px 14px;text-align:center;white-space:nowrap">'+
+            '<td class="crm-actions" style="padding:11px 14px;text-align:center;white-space:nowrap">'+
                 '<button class="btn btn-ghost btn-sm" style="color:var(--ac)" onclick="window._crmOpenDetail('+l.id+')">'+window.icon("eye",14)+' View</button> '+
-                '<button class="btn btn-ghost btn-sm" onclick="window._crmEditLead('+l.id+')">'+window.icon("edit",14)+'</button> '+
-                '<button class="btn btn-ghost btn-sm" style="color:var(--rd)" onclick="window._crmDelLead('+l.id+')">'+window.icon("delete",14)+'</button>'+
+                '<button class="btn btn-ghost btn-sm" aria-label="Edit" onclick="window._crmEditLead('+l.id+')">'+window.icon("edit",14)+'</button> '+
+                '<button class="btn btn-ghost btn-sm" aria-label="Delete" style="color:var(--rd)" onclick="window._crmDelLead('+l.id+')">'+window.icon("delete",14)+'</button>'+
             '</td></tr>';
     }).join('');
-    var empty='<tr><td colspan="8" style="padding:50px;text-align:center;color:var(--t3)"><div style="font-size:36px;margin-bottom:12px">'+window.icon("more",14)+'</div><div style="font-weight:600;color:var(--t1);margin-bottom:8px">No leads yet</div><button class="btn btn-primary btn-sm" onclick="window._crmNewLead()">+ Create first lead</button></td></tr>';
-    var srcOpts=sources.map(function(s){return '<option value="'+_e(s)+'">'+_e(s)+'</option>';}).join('');
+    var filtered = !!(_crmQ.search || _crmQ.source);
+    var empty='<tr><td colspan="8" style="padding:50px;text-align:center;color:var(--t3)"><div style="font-size:36px;margin-bottom:12px">'+window.icon("more",14)+'</div><div style="font-weight:600;color:var(--t1);margin-bottom:8px">'+(filtered?'No leads match':'No leads yet')+'</div>'+(filtered?'':'<button class="btn btn-primary btn-sm" onclick="window._crmNewLead()">+ Create first lead</button>')+'</td></tr>';
+    var srcOpts=srcCounts.filter(function(s){return s.source && s.source!=='unknown';}).map(function(s){return '<option value="'+_e(s.source)+'"'+(_crmQ.source===s.source?' selected':'')+'>'+_e(_crmSource({source:s.source}))+' ('+(s.count||0)+')</option>';}).join('');
+    var more = _crmQ.total > _crm.leads.length ? '<div style="text-align:center;margin-top:14px"><button class="btn btn-outline btn-sm" id="crm-more" onclick="window._crmMore()">Show more ('+(_crmQ.total-_crm.leads.length)+' left)</button></div>' : '';
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">'+
-        '<div>'+(sources.length?'<select class="form-select" style="width:180px;font-size:12px" onchange="window._crmFilterSrc(this.value)"><option value="">All Sources</option>'+srcOpts+'</select>':'')+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;flex:1;min-width:0"><input class="form-input crm-search" id="crm-search" type="search" placeholder="Search clients" aria-label="Search by name, email, phone or company" value="'+_e(_crmQ.search)+'" onkeydown="if(event.key===\'Enter\'){window._crmSearch(this.value)}" onsearch="window._crmSearch(this.value)">'+
+        (srcOpts?'<select class="form-select" style="width:190px;font-size:12px" onchange="window._crmFilterSrc(this.value)"><option value="">All sources</option>'+srcOpts+'</select>':'')+
         '</div><div style="display:flex;gap:8px"><button class="btn btn-outline btn-sm" onclick="window._crmExport(\'csv\')">'+window.icon("download",14)+' CSV</button><button class="btn btn-primary" onclick="window._crmNewLead()">+ New Lead</button></div></div>'+
-        '<div class="card crm-table-wrap" style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:760px">'+
-        '<thead><tr style="border-bottom:1px solid var(--bd)">'+_th('Name')+_th('Email')+_th('Company')+_th('Source')+_th('Stage')+_th('Score')+_th('Value')+
+        '<div style="font-size:12px;color:var(--t3);margin-bottom:8px">'+(_crmQ.total ? 'Showing '+_crm.leads.length+' of '+_crmQ.total : '')+'</div>'+
+        '<div class="card crm-table-wrap" data-lu-nowrap style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+
+        '<thead><tr style="border-bottom:1px solid var(--bd)">'+_th('Name')+_th('Email')+_th('Phone')+_th('Source')+_th('Stage')+_th('Score')+_th('Value')+
             '<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">Actions</th></tr></thead>'+
-        '<tbody>'+(rows||empty)+'</tbody></table></div></div>';
+        '<tbody>'+(rows||empty)+'</tbody></table></div></div>'+more;
 }
+window._crmSearch = async function(q) { _crmQ.search = String(q||'').trim(); await _crmReload('leads'); var i = document.getElementById('crm-search'); if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch(e){} } };
+window._crmMore = async function() { var b = document.getElementById('crm-more'); if (b) { b.disabled = true; b.textContent = 'Loading…'; }
+    var d = await _crmGet(_crmLeadsPath(_crm.leads.length)).catch(function(e){ showToast('Could not load more: '+e.message,'error'); return null; });
+    if (d && d.leads) { var seen = {}; _crm.leads.forEach(function(l){seen[l.id]=1;}); d.leads.forEach(function(l){ if(!seen[l.id]) _crm.leads.push(l); }); _crmQ.total = d.total || _crmQ.total; }
+    var el = document.getElementById('crm-root'); try { _crmRender(el); } catch(e) {} };
 function _th(l){return '<th style="padding:10px 14px;text-align:left;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">'+l+'</th>';}
 
 // =============================================================================
@@ -619,12 +623,12 @@ function _tasksHtml(){
             '</td><td data-label="Lead" style="padding:10px 14px"><span style="font-size:11px;color:var(--ac);cursor:pointer" onclick="window._crmOpenDetail('+t.lead_id+')">'+_e(t.lead_name||'Lead #'+t.lead_id)+'</span></td>'+
             '<td data-label="Priority" style="padding:10px 14px">'+_priBadge(t.priority||'medium')+'</td>'+
             '<td data-label="Due" style="padding:10px 14px">'+(t.due_date?_dueBadge(t.due_date,t.status):'<span style="color:var(--t3);font-size:11px">—</span>')+'</td>'+
-            '<td style="padding:10px 14px;text-align:center;white-space:nowrap"><button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--ac)" onclick="window._taskMarkDone('+t.id+')">✓ Done</button> <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="window._crmOpenDetail('+t.lead_id+')">'+window.icon("eye",14)+'</button> <button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--rd)" onclick="window._actDelete('+t.id+')">✕</button></td></tr>';
+            '<td class="crm-actions" style="padding:10px 14px;text-align:center;white-space:nowrap"><button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--ac)" onclick="window._taskMarkDone('+t.id+')">✓ Done</button> <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="window._crmOpenDetail('+t.lead_id+')">'+window.icon("eye",14)+'</button> <button class="btn btn-ghost btn-sm" style="font-size:11px;color:var(--rd)" onclick="window._actDelete('+t.id+')">✕</button></td></tr>';
     }).join('');
-    return filters+'<div class="card crm-table-wrap" style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:640px"><thead><tr style="border-bottom:1px solid var(--bd)"><th style="padding:10px 14px;width:10px"></th>'+_th('Task')+_th('Lead')+_th('Priority')+_th('Due')+'<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">Actions</th></tr></thead><tbody id="tasks-tbody">'+rows+'</tbody></table></div></div>';
+    return filters+'<div class="card crm-table-wrap" data-lu-nowrap style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--bd)"><th style="padding:10px 14px;width:10px"></th>'+_th('Task')+_th('Lead')+_th('Priority')+_th('Due')+'<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">Actions</th></tr></thead><tbody id="tasks-tbody">'+rows+'</tbody></table></div></div>';
 }
 window._filterTasks=function(){var pri=(document.getElementById('tf-pri')||{}).value||'';var due=(document.getElementById('tf-due')||{}).value||'';document.querySelectorAll('#tasks-tbody tr').forEach(function(r){var show=(!pri||r.getAttribute('data-priority')===pri)&&(!due||r.getAttribute('data-due')===due);r.style.display=show?'':'none';});};
-window._taskMarkDone=async function(id){var res;try{res=await fetch(_crmUrl('/activities/'+id),{method:'PUT',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify({status:'done'})});}catch(e){showToast('Network error.','error');return;}if(!res.ok){showToast('Could not mark done.','error');return;}showToast('Task done!','success');_crm.tasks=_crm.tasks.filter(function(t){return t.id!=id;});_crm.taskFlags=_buildTaskFlags(_crm.tasks);var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
+window._taskMarkDone=async function(id){try{await _crmSend('PUT','/activities/'+id,{status:'done'});}catch(e){showToast('Could not mark done: '+e.message,'error');return;}showToast('Task done!','success');_crm.tasks=_crm.tasks.filter(function(t){return t.id!=id;});_crm.taskFlags=_buildTaskFlags(_crm.tasks);var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
 
 // =============================================================================
 // APPOINTMENTS TAB
@@ -632,13 +636,13 @@ window._taskMarkDone=async function(id){var res;try{res=await fetch(_crmUrl('/ac
 function _apptHtml(){
     var appts=_crm.appointments||[];
     var rows=appts.map(function(a){var stCls={scheduled:'badge-blue',completed:'badge-green',cancelled:'badge-grey',no_show:'badge-red'}[a.status]||'badge-grey';
-        return '<tr onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'"><td data-label="Title" style="padding:11px 14px;font-weight:500;color:var(--t1)">'+_e(a.title)+'</td><td data-label="Lead" style="padding:11px 14px"><span style="font-size:12px;color:var(--ac);cursor:pointer" onclick="window._crmOpenDetail('+a.lead_id+')">'+_e(a.lead_name||'Lead #'+a.lead_id)+'</span></td><td data-label="Start" style="padding:11px 14px;color:var(--t1);font-size:12px">'+_fmtDateTime(a.start_at)+'</td><td data-label="End" style="padding:11px 14px;color:var(--t3);font-size:12px">'+_fmtDateTime(a.end_at)+'</td><td data-label="Status" style="padding:11px 14px"><span class="badge '+stCls+'">'+_e(a.status)+'</span></td><td style="padding:11px 14px;text-align:center;white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="window._apptEdit('+a.id+')">'+window.icon("edit",14)+'</button> <button class="btn btn-ghost btn-sm" style="color:var(--rd)" onclick="window._apptCancel('+a.id+')">✕</button></td></tr>';
+        return '<tr onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'"><td data-label="Title" style="padding:11px 14px;font-weight:500;color:var(--t1)">'+_e(a.title)+'</td><td data-label="Lead" style="padding:11px 14px"><span style="font-size:12px;color:var(--ac);cursor:pointer" onclick="window._crmOpenDetail('+a.lead_id+')">'+_e(a.lead_name||'Lead #'+a.lead_id)+'</span></td><td data-label="Start" style="padding:11px 14px;color:var(--t1);font-size:12px">'+_fmtDateTime(a.start_at)+'</td><td data-label="End" style="padding:11px 14px;color:var(--t3);font-size:12px">'+_fmtDateTime(a.end_at)+'</td><td data-label="Status" style="padding:11px 14px"><span class="badge '+stCls+'">'+_e(a.status)+'</span></td><td class="crm-actions" style="padding:11px 14px;text-align:center;white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="window._apptEdit('+a.id+')">'+window.icon("edit",14)+'</button> <button class="btn btn-ghost btn-sm" style="color:var(--rd)" onclick="window._apptCancel('+a.id+')">✕</button></td></tr>';
     }).join('');
     var empty='<tr><td colspan="6" style="padding:50px;text-align:center;color:var(--t3)"><div style="font-size:36px;margin-bottom:12px">'+window.icon("calendar",14)+'</div><div style="font-weight:600;color:var(--t1);margin-bottom:8px">No upcoming appointments</div></td></tr>';
-    return '<div class="card crm-table-wrap" style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:700px"><thead><tr style="border-bottom:1px solid var(--bd)">'+_th('Title')+_th('Lead')+_th('Start')+_th('End')+_th('Status')+'<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">Actions</th></tr></thead><tbody>'+(rows||empty)+'</tbody></table></div></div>';
+    return '<div class="card crm-table-wrap" data-lu-nowrap style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--bd)">'+_th('Title')+_th('Lead')+_th('Start')+_th('End')+_th('Status')+'<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">Actions</th></tr></thead><tbody>'+(rows||empty)+'</tbody></table></div></div>';
 }
 window._apptEdit=async function(id){var appt=(_crm.appointments||[]).find(function(a){return a.id==id;});if(!appt){showToast('Not found.','error');return;}_apptModal(appt.lead_id,appt);};
-window._apptCancel=async function(id){var ok=await luConfirm('Cancel this appointment?','Cancel','Cancel It','Keep');if(!ok)return;var res;try{res=await fetch(_crmUrl('/appointments/'+id),{method:'PUT',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify({status:'cancelled'})});}catch(e){showToast('Network error.','error');return;}if(!res.ok){showToast('Could not cancel.','error');return;}showToast('Appointment cancelled.','success');_crm.appointments=_crm.appointments.filter(function(a){return a.id!=id;});var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
+window._apptCancel=async function(id){var ok=await luConfirm('Cancel this appointment?','Cancel','Cancel It','Keep');if(!ok)return;try{await _crmSend('PUT','/appointments/'+id,{status:'cancelled'});}catch(e){showToast('Could not cancel: '+e.message,'error');return;}showToast('Appointment cancelled.','success');_crm.appointments=_crm.appointments.filter(function(a){return a.id!=id;});var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
 window._apptModal=function(leadId,appt){var isEdit=!!(appt&&appt.id);var now=new Date(),pad=function(n){return n<10?'0'+n:n;};var ds=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours()+1)+':00';var de=now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'T'+pad(now.getHours()+2)+':00';var stOpts=['scheduled','completed','cancelled','no_show'].map(function(s){return '<option value="'+s+'"'+(appt&&appt.status===s?' selected':'')+(s==='scheduled'&&!appt?' selected':'')+'>'+s.replace('_',' ').replace(/\b\w/g,function(c){return c.toUpperCase();})+'</option>';}).join('');
     var bd=document.createElement('div');bd.className='modal-backdrop';bd.innerHTML='<div class="modal" style="max-width:480px"><div class="modal-header"><h3>'+(isEdit?'Edit Appointment':''+window.icon("calendar",14)+' Schedule Meeting')+'</h3><button class="btn btn-ghost btn-sm" onclick="this.closest(\'.modal-backdrop\').remove()">✕</button></div><div style="padding:20px;display:grid;gap:14px">'+_fi('Title','ap-t','text','e.g. Discovery Call',appt?appt.title:'',true)+'<div><label style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Description</label><textarea class="form-input" id="ap-d" rows="2" style="resize:vertical">'+_e(appt?(appt.description||''):'')+'</textarea></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div><label style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Start <span style="color:var(--rd)">*</span></label><input class="form-input" id="ap-s" type="datetime-local" value="'+(appt?appt.start_at.replace(' ','T').substring(0,16):ds)+'"></div><div><label style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">End <span style="color:var(--rd)">*</span></label><input class="form-input" id="ap-e" type="datetime-local" value="'+(appt?appt.end_at.replace(' ','T').substring(0,16):de)+'"></div></div>'+(isEdit?'<div><label style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Status</label><select class="form-select" id="ap-st">'+stOpts+'</select></div>':'')+'<div id="ap-err" style="display:none;color:var(--rd);font-size:12px;padding:8px 12px;background:rgba(248,113,113,.1);border-radius:6px"></div></div><div style="padding:0 20px 20px;display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-outline" onclick="this.closest(\'.modal-backdrop\').remove()">Cancel</button><button class="btn btn-primary" id="ap-btn">'+(isEdit?''+window.icon("save",14)+' Save':''+window.icon("calendar",14)+' Schedule & Create Task')+'</button></div></div>';
     document.body.appendChild(bd);requestAnimationFrame(function(){bd.classList.add('visible');});try{bd.querySelector('#ap-t').focus();}catch(e){}
@@ -668,21 +672,21 @@ window._crmOpenDetail=async function(id){
 function _renderDetail(el,lead){
     if(!el)el=document.getElementById('crm-root');if(!el)return;
     if(!lead)lead=_crm.leads.find(function(l){return l.id==_crm.detailLeadId;})||{};
-    var st=_crm.stages.find(function(s){return String(s.id)===String(lead.pipeline_stage_id);});
+    var st=_crmStatus(lead);
     var initials=(lead.name||'?').split(' ').slice(0,2).map(function(w){return w[0];}).join('').toUpperCase();
     var flags=_crm.taskFlags[String(lead.id)]||{};
     var alert=flags.overdue?'<div style="background:rgba(248,113,113,.1);border:1px solid var(--rd);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--rd)">'+window.icon("warning",14)+' Overdue tasks</div>':flags.today?'<div style="background:rgba(245,158,11,.1);border:1px solid var(--am);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--am)">'+window.icon("info",14)+' Task due today</div>':'';
     el.innerHTML='<div style="padding:24px;min-height:100%;box-sizing:border-box">'+
         '<button class="btn btn-ghost btn-sm" onclick="window._crmTab(\'leads\')" style="margin-bottom:16px">← Back to Leads</button>'+
-        '<div style="display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start">'+
+        '<div class="crm-detail-grid">'+
             '<div>'+alert+
                 '<div class="card" style="padding:24px">'+
                     '<div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--bd)">'+
                         '<div style="width:48px;height:48px;border-radius:50%;background:var(--pg);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:var(--pu);flex-shrink:0">'+_e(initials)+'</div>'+
-                        '<div><div style="font-size:15px;font-weight:700;color:var(--t1)">'+_e(lead.name||'—')+'</div><span class="badge badge-purple" style="margin-top:4px">'+_e((st&&st.name)||'—')+'</span></div>'+
+                        '<div><div style="font-size:15px;font-weight:700;color:var(--t1)">'+_e(lead.name||'—')+'</div><span class="badge badge-purple" style="margin-top:4px">'+_e(st.name)+'</span></div>'+
                     '</div>'+
                     '<div style="margin-bottom:12px">'+_scoreBadge(lead.score)+'</div>'+
-                    _df('Email',lead.email)+_df('Phone',lead.phone)+_df('Company',lead.company)+_df('Source',lead.source_website)+_df('Status',lead.status)+_df('Created',_fmtDate(lead.created_at))+
+                    _dfLink('Email',lead.email,'mailto:')+_dfLink('Phone',lead.phone,'tel:')+_df('Company',lead.company)+_df('Source',lead.source?_crmSource(lead):'')+_df('Created',_fmtDate(lead.created_at))+'<div style="margin-top:12px"><label for="crm-detail-move" style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--t3);margin-bottom:6px">Stage</label><select id="crm-detail-move" class="form-select" onchange="window._crmMoveLead('+lead.id+',this.value).then(function(){})">'+_CRM_STATUSES.map(function(s){return '<option value="'+s.id+'"'+(s.id===st.id?' selected':'')+'>'+_e(s.name)+'</option>';}).join('')+'</select></div>'+
                     '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:16px" onclick="window._crmEditLead('+lead.id+')">'+window.icon("edit",14)+' Edit Lead</button>'+
                 '</div>'+
             '</div>'+
@@ -698,6 +702,7 @@ function _renderDetail(el,lead){
         '</div></div>';
 }
 
+function _dfLink(label,value,scheme){if(!value)return '';var href=scheme+(scheme==='tel:'?String(value).replace(/[^0-9+]/g,''):String(value));return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="color:var(--t3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">'+label+'</span><a href="'+_e(href)+'" style="color:var(--ac);text-align:right;max-width:175px;word-break:break-word">'+_e(value)+'</a></div>';}
 function _df(label,value){if(!value)return '';return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd);font-size:13px"><span style="color:var(--t3);font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em">'+label+'</span><span style="color:var(--t1);text-align:right;max-width:175px;word-break:break-word">'+_e(value)+'</span></div>';}
 
 // =============================================================================
@@ -708,7 +713,7 @@ function _timelineHtml(activities){
     var groups={},order=[];
     activities.forEach(function(a){var k=_dateKey(a.created_at);if(!groups[k]){groups[k]=[];order.push(k);}groups[k].push(a);});
     return order.map(function(dk){
-        var items=groups[dk].map(function(a){var meta=_actMeta[a.type]||_actMeta.note;var isDone=a.status==='done';var isTask=a.type==='task';
+        var items=groups[dk].map(function(a){var meta=_actMeta[a.type]||(a.system?{icon:window.icon("clock",14),label:({status_changed:"Stage changed",lead_created:"Added",assigned:"Assigned",form_submission:"Form",deal_created:"Deal",stage_changed:"Stage changed"})[a.type]||"History",color:"var(--t3)"}:_actMeta.note);var isDone=a.status==='done';var isTask=a.type==='task';
             return '<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd)">'+
                 '<div style="width:30px;height:30px;border-radius:50%;background:'+meta.color+'22;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;margin-top:2px">'+meta.icon+'</div>'+
                 '<div style="flex:1;min-width:0"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'+
@@ -718,8 +723,8 @@ function _timelineHtml(activities){
                         (isTask&&a.due_date?'<div style="margin-top:4px">'+_dueBadge(a.due_date,a.status)+'</div>':'')+
                     '</div>'+
                     '<div style="display:flex;align-items:center;gap:4px;flex-shrink:0"><span style="font-size:11px;color:var(--t3);white-space:nowrap">'+_fmtTime(a.created_at)+'</span>'+
-                        '<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 5px;color:'+(isDone?'var(--t3)':'var(--ac)')+'" onclick="window._actToggle('+a.id+',\''+(isDone?'pending':'done')+'\')">'+( isDone?'↩':'✓')+'</button>'+
-                        '<button class="btn btn-ghost btn-sm" style="font-size:10px;padding:2px 5px;color:var(--rd)" onclick="window._actDelete('+a.id+')">✕</button>'+
+                        (isTask?'<button class="btn btn-ghost btn-sm" aria-label="'+(isDone?'Reopen':'Mark done')+'" style="font-size:12px;color:'+(isDone?'var(--t3)':'var(--ac)')+'" onclick="window._actToggle(\''+a.id+'\',\''+(isDone?'pending':'done')+'\')">'+( isDone?'↩':'✓')+'</button>':'')+
+                        (a.system?'':'<button class="btn btn-ghost btn-sm" aria-label="Delete" style="font-size:12px;color:var(--rd)" onclick="window._actDelete(\''+a.id+'\')">✕</button>')+
                     '</div></div></div></div>';
         }).join('');
         return '<div style="margin-bottom:14px"><div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--t3);padding:6px 0 4px;border-bottom:2px solid var(--bd);margin-bottom:2px">'+_relDate(dk)+'</div><div class="card" style="padding:0 14px">'+items+'</div></div>';
@@ -747,14 +752,14 @@ window._actModal=function(leadId,defaultType){
     bd.querySelector('#act-save').onclick=async function(){
         var title=bd.querySelector('#act-title').value.trim();var errEl=bd.querySelector('#act-err');var btn=bd.querySelector('#act-save');var type=bd.querySelector('#act-type').value;
         errEl.style.display='none';if(!title){errEl.textContent='Title is required.';errEl.style.display='block';return;}
-        var payload={lead_id:leadId,type:type,title:title,description:bd.querySelector('#act-desc').value.trim(),status:'pending'};
+        var payload={lead_id:leadId,entity_type:'Lead',entity_id:leadId,type:type,title:title,subject:title,description:bd.querySelector('#act-desc').value.trim(),status:'pending'};
         if(type==='task'){payload.priority=bd.querySelector('#act-priority').value;var dv=bd.querySelector('#act-due').value;if(dv)payload.due_date=dv;}
         btn.disabled=true;btn.textContent='Saving…';
         var res,body;
-        try{res=await fetch(_crmUrl('/activities'),{method:'POST',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify(payload)});}
+        try{res=await fetch(_crmUrl('/activities'),{method:'POST',headers:_crmAuthHeaders(),body:JSON.stringify(payload)});}
         catch(e){errEl.textContent='Network error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent='Save';return;}
         try{body=await res.json();}catch(e){body={};}
-        if(!res.ok){errEl.textContent='Error: '+((body&&body.message)||res.status);errEl.style.display='block';btn.disabled=false;btn.textContent='Save';return;}
+        if(!res.ok||(body&&body.success===false)){errEl.textContent='Not saved: '+((body&&(body.message||body.error))||res.status);errEl.style.display='block';btn.disabled=false;btn.textContent='Save';return;}
         bd.remove();showToast('Activity saved!','success');
         await _reloadTimeline();
         await _recalcCurrentScore(leadId);
@@ -764,19 +769,19 @@ window._actModal=function(leadId,defaultType){
     };
 };
 window._actTypeChange=function(type){var tf=document.getElementById('act-task-fields');if(tf)tf.style.display=type==='task'?'grid':'none';var title=document.getElementById('act-modal-title');if(title){var m=_actMeta[type]||_actMeta.note;title.textContent=m.icon+' '+m.label;}};
-window._actToggle=async function(id,newStatus){var res;try{res=await fetch(_crmUrl('/activities/'+id),{method:'PUT',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify({status:newStatus})});}catch(e){showToast('Network error.','error');return;}if(!res.ok){showToast('Update failed.','error');return;}await _reloadTimeline();};
-window._actDelete=async function(id){var ok=await luConfirm('Delete this activity?','Delete','Delete','Cancel');if(!ok)return;var res;try{res=await fetch(_crmUrl('/activities/'+id),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')}});}catch(e){showToast('Network error.','error');return;}if(!res.ok){showToast('Delete failed.','error');return;}showToast('Deleted.','success');if(_crm.tab==='tasks'||_crm.tab==='today'){_crm.tasks=_crm.tasks.filter(function(t){return t.id!=id;});_crm.taskFlags=_buildTaskFlags(_crm.tasks);var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}}else{await _reloadTimeline();}};
+window._actToggle=async function(id,newStatus){try{await _crmSend('PUT','/activities/'+id,{status:newStatus});}catch(e){showToast('Update failed: '+e.message,'error');return;}await _reloadTimeline();};
+window._actDelete=async function(id){var ok=await luConfirm('Delete this activity?','Delete','Delete','Cancel');if(!ok)return;try{await _crmSend('DELETE','/activities/'+id);}catch(e){showToast('Delete failed: '+e.message,'error');return;}showToast('Deleted.','success');if(_crm.tab==='tasks'||_crm.tab==='today'){_crm.tasks=_crm.tasks.filter(function(t){return t.id!=id;});_crm.taskFlags=_buildTaskFlags(_crm.tasks);var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}}else{await _reloadTimeline();}};
 
 // =============================================================================
 // PROJECTS
 // =============================================================================
-function _prjHtml(){var rows=_crm.projects.map(function(p){var lead=_crm.leads.find(function(l){return String(l.id)===String(p.lead_id);});var cls={active:'badge-green',on_hold:'badge-amber',completed:'badge-blue',cancelled:'badge-red'}[p.status]||'badge-grey';return '<tr onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'"><td data-label="Project" style="padding:11px 14px;font-weight:500;color:var(--t1)">'+_e(p.name)+'</td><td data-label="Lead" style="padding:11px 14px;color:var(--t2);font-size:12px">'+(lead?_e(lead.name):'<span style="color:var(--t3)">Unassigned</span>')+'</td><td data-label="Status" style="padding:11px 14px"><span class="badge '+cls+'">'+_e(p.status||'—')+'</span></td><td data-label="Budget" style="padding:11px 14px;color:var(--ac);font-size:12px">$'+parseFloat(p.budget||0).toFixed(2)+'</td><td data-label="Start" style="padding:11px 14px;color:var(--t3);font-size:12px">'+_e(p.start_date||'—')+'</td><td style="padding:11px 14px;text-align:center;white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="window._crmEditPrj('+p.id+')">'+window.icon("edit",14)+' Edit</button> <button class="btn btn-ghost btn-sm" style="color:var(--rd)" onclick="window._crmDelPrj('+p.id+')">'+window.icon("delete",14)+'</button></td></tr>';}).join('');var empty='<tr><td colspan="6" style="padding:50px;text-align:center;color:var(--t3)"><div style="font-size:36px;margin-bottom:12px">'+window.icon("more",14)+'</div><div style="font-weight:600;color:var(--t1);margin-bottom:8px">No projects yet</div><button class="btn btn-primary btn-sm" onclick="window._crmNewPrj()">+ Create first project</button></td></tr>';return '<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-primary" onclick="window._crmNewPrj()">+ New Project</button></div><div class="card crm-table-wrap" style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:600px"><thead><tr style="border-bottom:1px solid var(--bd)">'+_th('Project')+_th('Lead')+_th('Status')+_th('Budget')+_th('Start')+'<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">Actions</th></tr></thead><tbody>'+(rows||empty)+'</tbody></table></div></div>';}
+function _prjHtml(){var rows=_crm.projects.map(function(p){var lead=_crm.leads.find(function(l){return String(l.id)===String(p.lead_id);});var cls={active:'badge-green',on_hold:'badge-amber',completed:'badge-blue',cancelled:'badge-red'}[p.status]||'badge-grey';return '<tr onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'"><td data-label="Project" style="padding:11px 14px;font-weight:500;color:var(--t1)">'+_e(p.name)+'</td><td data-label="Lead" style="padding:11px 14px;color:var(--t2);font-size:12px">'+(lead?_e(lead.name):'<span style="color:var(--t3)">Unassigned</span>')+'</td><td data-label="Status" style="padding:11px 14px"><span class="badge '+cls+'">'+_e(p.status||'—')+'</span></td><td data-label="Budget" style="padding:11px 14px;color:var(--ac);font-size:12px">$'+parseFloat(p.budget||0).toFixed(2)+'</td><td data-label="Start" style="padding:11px 14px;color:var(--t3);font-size:12px">'+_e(p.start_date||'—')+'</td><td class="crm-actions" style="padding:11px 14px;text-align:center;white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="window._crmEditPrj('+p.id+')">'+window.icon("edit",14)+' Edit</button> <button class="btn btn-ghost btn-sm" style="color:var(--rd)" onclick="window._crmDelPrj('+p.id+')">'+window.icon("delete",14)+'</button></td></tr>';}).join('');var empty='<tr><td colspan="6" style="padding:50px;text-align:center;color:var(--t3)"><div style="font-size:36px;margin-bottom:12px">'+window.icon("more",14)+'</div><div style="font-weight:600;color:var(--t1);margin-bottom:8px">No projects yet</div><button class="btn btn-primary btn-sm" onclick="window._crmNewPrj()">+ Create first project</button></td></tr>';return '<div style="display:flex;justify-content:flex-end;margin-bottom:14px"><button class="btn btn-primary" onclick="window._crmNewPrj()">+ New Project</button></div><div class="card crm-table-wrap" style="overflow:hidden"><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:1px solid var(--bd)">'+_th('Project')+_th('Lead')+_th('Status')+_th('Budget')+_th('Start')+'<th style="padding:10px 14px;text-align:center;font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase">Actions</th></tr></thead><tbody>'+(rows||empty)+'</tbody></table></div></div>';}
 
 // =============================================================================
 // SETTINGS
 // =============================================================================
-function _setHtml(){var s=_crm.settings||{};var industries=[{val:'general',label:''+window.icon("more",14)+' General'},{val:'clinic',label:''+window.icon("more",14)+' Clinic / Healthcare'},{val:'real_estate',label:''+window.icon("more",14)+' Real Estate'},{val:'agency',label:''+window.icon("rocket",14)+' Agency'},{val:'contractor',label:''+window.icon("edit",14)+' Contractor'}];var bizOpts=industries.map(function(i){return '<option value="'+i.val+'"'+(s.business_type===i.val?' selected':'')+'>'+i.label+'</option>';}).join('');var mods=_crm.modules.map(function(m){if(m.required)return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border-radius:8px;margin-bottom:8px"><input type="checkbox" checked disabled style="width:16px;height:16px"><span style="flex:1;font-size:13px">'+_e(m.icon||'')+' '+_e(m.label)+'</span><span class="badge badge-grey">Required</span></div>';return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border-radius:8px;margin-bottom:8px"><input type="checkbox" id="cmod_'+_e(m.slug)+'"'+(m.enabled?' checked':'')+' style="width:16px;height:16px;cursor:pointer"><label for="cmod_'+_e(m.slug)+'" style="flex:1;font-size:13px;cursor:pointer">'+_e(m.icon||'')+' '+_e(m.label)+'</label></div>';}).join('');return '<div class="card" style="padding:24px;max-width:560px"><h3 style="margin:0 0 20px;font-size:16px;font-weight:600">CRM Settings</h3><div style="margin-bottom:8px"><label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px">Industry / Business Type</label><select id="crmBizType" class="form-select" onchange="window._onBizTypeChange(this.value)">'+bizOpts+'</select><div style="font-size:11px;color:var(--t3);margin-top:6px">Changing industry auto-configures module defaults.</div></div><div style="margin-top:20px;margin-bottom:24px"><label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:12px">Modules</label>'+(mods||'<div style="color:var(--t3);font-size:12px">No modules</div>')+'</div><button class="btn btn-primary" onclick="window._crmSaveSet()">Save Settings</button></div>';}
-window._onBizTypeChange=async function(biz){var payload={business_type:biz};var res;try{res=await fetch(_crmUrl('/settings'),{method:'PUT',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify(payload)});}catch(e){return;}if(!res.ok)return;var mf=await _crmGet('/modules').catch(function(){return null;});var sf=await _crmGet('/settings').catch(function(){return null;});if(mf)_crm.modules=Object.entries(mf).map(function(p){return Object.assign({slug:p[0]},p[1]);});if(sf)_crm.settings=sf;showToast('Industry updated!','success');var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
+function _setHtml(){var s=_crm.settings||{};var industries=[{val:'general',label:''+window.icon("more",14)+' General'},{val:'clinic',label:''+window.icon("more",14)+' Clinic / Healthcare'},{val:'real_estate',label:''+window.icon("more",14)+' Real Estate'},{val:'agency',label:''+window.icon("rocket",14)+' Agency'},{val:'contractor',label:''+window.icon("edit",14)+' Contractor'}];var bizOpts=industries.map(function(i){return '<option value="'+i.val+'"'+(s.business_type===i.val?' selected':'')+'>'+i.label+'</option>';}).join('');var mods=_crm.modules.map(function(m){if(m.required)return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border-radius:8px;margin-bottom:8px"><input type="checkbox" checked disabled style="width:16px;height:16px"><span style="flex:1;font-size:13px">'+_e(m.icon||'')+' '+_e(m.label)+'</span><span class="badge badge-grey">Required</span></div>';return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:var(--s2);border-radius:8px;margin-bottom:8px"><input type="checkbox" id="cmod_'+_e(m.slug)+'"'+(m.enabled?' checked':'')+' style="width:16px;height:16px;cursor:pointer"><label for="cmod_'+_e(m.slug)+'" style="flex:1;font-size:13px;cursor:pointer">'+_e(m.icon||'')+' '+_e(m.label)+'</label></div>';}).join('');return '<div class="card" style="padding:24px;max-width:560px"><h3 style="margin:0 0 20px;font-size:16px;font-weight:600">CRM Settings</h3><div style="margin-bottom:8px"><label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px">Industry / Business Type</label><select id="crmBizType" class="form-select" onchange="window._onBizTypeChange(this.value)">'+bizOpts+'</select><div style="font-size:11px;color:var(--t3);margin-top:6px">Saved for this workspace. Stages and fields per industry are coming in the new Clients.</div></div><div style="margin-top:20px;margin-bottom:24px"><label style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:12px">Modules</label>'+(mods||'<div style="color:var(--t3);font-size:12px">No modules</div>')+'</div><button class="btn btn-primary" onclick="window._crmSaveSet()">Save Settings</button></div>';}
+window._onBizTypeChange=async function(biz){try{await _crmSend('PUT','/settings',{business_type:biz});}catch(e){showToast('Not saved: '+e.message,'error');return;}var mf=await _crmGet('/modules').catch(function(){return null;});var sf=await _crmGet('/settings').catch(function(){return null;});if(mf)_crm.modules=Object.entries(mf).map(function(p){return Object.assign({slug:p[0]},p[1]);});if(sf)_crm.settings=sf;showToast('Industry updated!','success');var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
 window._crmSaveSet=async function(){var bizEl=document.getElementById('crmBizType');if(!bizEl){showToast('Settings form not found.','error');return;}var mods={};_crm.modules.forEach(function(m){var cb=document.getElementById('cmod_'+m.slug);mods[m.slug]=m.required?true:(cb?cb.checked:false);});var res,body;try{res=await fetch(_crmUrl('/settings'),{method:'PUT',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify({business_type:bizEl.value,enabled_modules:mods})});}catch(e){showToast('Network error.','error');return;}try{body=await res.json();}catch(e){body={};}if(!res.ok){showToast('Save failed: '+((body&&body.message)||res.status),'error');return;}showToast('Settings saved!','success');var mf=await _crmGet('/modules').catch(function(){return null;});var sf=await _crmGet('/settings').catch(function(){return null;});if(mf)_crm.modules=Object.entries(mf).map(function(p){return Object.assign({slug:p[0]},p[1]);});if(sf)_crm.settings=sf;var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){console.error('[LuCRM] settings render:',e);}};
 
 // =============================================================================
@@ -784,8 +789,9 @@ window._crmSaveSet=async function(){var bizEl=document.getElementById('crmBizTyp
 // =============================================================================
 window._crmNewLead=function(){_leadModal(null);};
 window._crmEditLead=async function(id){var lead=_crm.leads.find(function(l){return l.id==id;});if(!lead){lead=await _crmGet('/leads/'+id).catch(function(){return null;});}if(!lead){showToast('Could not load lead.','error');return;}_leadModal(lead);};
-function _leadModal(lead){var isEdit=!!(lead&&lead.id);var stOpts=_crm.stages.map(function(s){var sel=lead?(String(lead.pipeline_stage_id)===String(s.id)?' selected':''):(s.position===1?' selected':'');return '<option value="'+s.id+'"'+sel+'>'+_e(s.name)+'</option>';}).join('');var bd=document.createElement('div');bd.className='modal-backdrop';bd.innerHTML='<div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto"><div class="modal-header"><h3>'+(isEdit?'Edit Lead':'New Lead')+'</h3><button class="btn btn-ghost btn-sm" onclick="this.closest(\'.modal-backdrop\').remove()">✕</button></div><div style="padding:20px;display:grid;gap:14px">'+_fi('Name','cl-n','text','Full name',lead?lead.name:'',true)+_fi('Email','cl-e','email','email@example.com',lead?(lead.email||''):'')+_fi('Phone','cl-p','tel','+971 50 000 0000',lead?(lead.phone||''):'')+_fi('Company','cl-c','text','Company name',lead?(lead.company||''):'')+_fi('Source Website','cl-s','text','example.com',lead?(lead.source_website||''):'',true)+'<div><label style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Pipeline Stage</label><select class="form-select" id="cl-stg">'+stOpts+'</select></div>'+_fi('Deal Value (optional)','cl-dv','number','0.00',lead?(lead.deal_value||''):'')+'<div id="cl-err" style="display:none;color:var(--rd);font-size:12px;padding:8px 12px;background:rgba(248,113,113,.1);border-radius:6px"></div></div><div style="padding:0 20px 20px;display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-outline" onclick="this.closest(\'.modal-backdrop\').remove()">Cancel</button><button class="btn btn-primary" id="cl-btn">'+(isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead')+'</button></div></div>';document.body.appendChild(bd);requestAnimationFrame(function(){bd.classList.add('visible');});try{bd.querySelector('#cl-n').focus();}catch(e){}
-    bd.querySelector('#cl-btn').onclick=async function(){var name=bd.querySelector('#cl-n').value.trim();var source=bd.querySelector('#cl-s').value.trim();var errEl=bd.querySelector('#cl-err');var btn=bd.querySelector('#cl-btn');errEl.style.display='none';if(!name){errEl.textContent='Name is required.';errEl.style.display='block';return;}if(!source){errEl.textContent='Source Website is required.';errEl.style.display='block';return;}var payload={name:name,email:bd.querySelector('#cl-e').value.trim(),phone:bd.querySelector('#cl-p').value.trim(),company:bd.querySelector('#cl-c').value.trim(),source_website:source,pipeline_stage_id:parseInt(bd.querySelector('#cl-stg').value)||1,deal_value:parseFloat(bd.querySelector('#cl-dv').value)||0};btn.disabled=true;btn.textContent='Saving…';var url=_crmUrl(isEdit?'/leads/'+lead.id:'/leads');var nonce=_crmNonce();console.log('[LuCRM] Saving lead…',url);var res,body;try{res=await fetch(url,{method:isEdit?'PUT':'POST',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify(payload)});}catch(e){errEl.textContent='Network error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead response:',res.status,res.ok?'✓':'✗');try{body=await res.json();}catch(e){body={};}if(!res.ok){errEl.textContent='Error: '+((body&&body.message)||res.status);errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead saved ✓');bd.remove();showToast(isEdit?'Lead updated!':'Lead created!','success');await _crmReload('leads');};}
+function _leadModal(lead){var isEdit=!!(lead&&lead.id);var curSt=lead?_crmStatus(lead).id:'new';var stOpts=_CRM_STATUSES.map(function(s){return '<option value="'+s.id+'"'+(s.id===curSt?' selected':'')+'>'+_e(s.name)+'</option>';}).join('');var bd=document.createElement('div');bd.className='modal-backdrop';bd.innerHTML='<div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto"><div class="modal-header"><h3>'+(isEdit?'Edit Lead':'New Lead')+'</h3><button class="btn btn-ghost btn-sm" onclick="this.closest(\'.modal-backdrop\').remove()">✕</button></div><div style="padding:20px;display:grid;gap:14px">'+_fi('Name','cl-n','text','Full name',lead?lead.name:'',true)+_fi('Email','cl-e','email','email@example.com',lead?(lead.email||''):'')+_fi('Phone','cl-p','tel','+971 50 000 0000',lead?(lead.phone||''):'')+_fi('Company','cl-c','text','Company name',lead?(lead.company||''):'')+'<div><label for="cl-s" style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Where did they come from?</label><select class="form-select" id="cl-s">'+_crmSourceOpts(lead?lead.source:'manual')+'</select></div>'+'<div><label for="cl-stg" style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Stage</label><select class="form-select" id="cl-stg">'+stOpts+'</select></div>'+_fi('Deal Value (optional)','cl-dv','number','0.00',lead?(lead.deal_value||''):'')+'<div id="cl-err" style="display:none;color:var(--rd);font-size:12px;padding:8px 12px;background:rgba(248,113,113,.1);border-radius:6px"></div></div><div style="padding:0 20px 20px;display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-outline" onclick="this.closest(\'.modal-backdrop\').remove()">Cancel</button><button class="btn btn-primary" id="cl-btn">'+(isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead')+'</button></div></div>';document.body.appendChild(bd);requestAnimationFrame(function(){bd.classList.add('visible');});try{bd.querySelector('#cl-n').focus();}catch(e){}
+    bd.querySelector('#cl-btn').onclick=async function(){var name=bd.querySelector('#cl-n').value.trim();var source=bd.querySelector('#cl-s').value.trim();var errEl=bd.querySelector('#cl-err');var btn=bd.querySelector('#cl-btn');errEl.style.display='none';if(!name){errEl.textContent='Name is required.';errEl.style.display='block';return;}var payload={name:name,email:bd.querySelector('#cl-e').value.trim(),phone:bd.querySelector('#cl-p').value.trim(),company:bd.querySelector('#cl-c').value.trim(),deal_value:parseFloat(bd.querySelector('#cl-dv').value)||0};if(source)payload.source=source;var newSt=bd.querySelector('#cl-stg').value;if(!isEdit||newSt!==curSt)payload.status=newSt;btn.disabled=true;btn.textContent='Saving…';var url=_crmUrl(isEdit?'/leads/'+lead.id:'/leads');var nonce=_crmNonce();console.log('[LuCRM] Saving lead…',url);var res,body;try{res=await fetch(url,{method:isEdit?'PUT':'POST',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify(payload)});}catch(e){errEl.textContent='Network error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead response:',res.status,res.ok?'✓':'✗');try{body=await res.json();}catch(e){body={};}if(!res.ok||(body&&body.success===false)){errEl.textContent='Not saved: '+((body&&(body.message||body.error))||res.status);errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead saved ✓');bd.remove();showToast(isEdit?'Lead updated!':'Lead created!','success');await _crmReload('leads');};}
+function _crmSourceOpts(cur){var list=[['manual','Added by you'],['phone','Phone call'],['walk_in','Walk-in'],['referral','Referral'],['email','Email'],['website','Website'],['social','Social media'],['other','Other']];cur=String(cur||'manual');if(!list.some(function(x){return x[0]===cur;}))list.unshift([cur,_crmSource({source:cur})]);return list.map(function(x){return '<option value="'+_e(x[0])+'"'+(x[0]===cur?' selected':'')+'>'+_e(x[1])+'</option>';}).join('');}
 function _fi(label,id,type,ph,val,required){return '<div><label style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">'+label+(required?' <span style="color:var(--rd)">*</span>':'')+'</label><input class="form-input" id="'+id+'" type="'+type+'" placeholder="'+_e(ph)+'" value="'+_e(val)+'"></div>';}
 window._crmDelLead=async function(id){var ok=await luConfirm('Delete this lead permanently?','Delete Lead','Delete','Cancel');if(!ok)return;var res;try{res=await fetch(_crmUrl('/leads/'+id),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')}});}catch(e){showToast('Network error.','error');return;}var body;try{body=await res.json();}catch(e){body={};}if(!res.ok){showToast('Delete failed: '+((body&&body.message)||res.status),'error');return;}showToast('Lead deleted.','success');await _crmReload('leads');};
 
@@ -800,7 +806,7 @@ window._crmDelPrj=async function(id){var ok=await luConfirm('Delete this project
 // =============================================================================
 // FILTER + EXPORT
 // =============================================================================
-window._crmFilterSrc=async function(src){var d=await _crmGet(src?'/leads?source_website='+encodeURIComponent(src):'/leads').catch(function(e){showToast('Filter failed.','error');return null;});if(d&&d.leads)_crm.leads=d.leads;var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
+window._crmFilterSrc=async function(src){_crmQ.source=src||'';var d=await _crmGet(_crmLeadsPath(0)).catch(function(e){showToast('Filter failed.','error');return null;});if(d&&d.leads){_crm.leads=d.leads;_crmQ.total=d.total||d.leads.length;}var el=document.getElementById('crm-root');try{_crmRender(el);}catch(e){}};
 window._crmExport=async function(format){var d=await _crmGet('/leads/export/'+format).catch(function(e){showToast('Export failed: '+e.message,'error');return null;});if(!d)return;var txt=format==='csv'?(d.csv||''):format==='xml'?(d.xml||''):JSON.stringify(d);var mime={csv:'text/csv',xml:'application/xml',json:'application/json'}[format]||'text/plain';var blob=new Blob([txt],{type:mime});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='leads-'+new Date().toISOString().split('T')[0]+'.'+format;document.body.appendChild(a);a.click();URL.revokeObjectURL(url);a.remove();showToast('Export ready!','success');};
 
 console.log('[LuCRM] v3.6.0 loaded — window.crmLoad ready');

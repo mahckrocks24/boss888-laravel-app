@@ -70,6 +70,11 @@ class CrmController extends BaseEngineController
 
     public function listActivities(Request $r): JsonResponse
     {
+        // CRM-FIX-0: the Clients screen asks by lead_id; it gets the whole lead timeline (activities + notes)
+        // in the shape it draws (title, status, due_date, priority, system).
+        if ($r->filled('lead_id') && ! $r->filled('entity_id')) {
+            return $this->readJson(['activities' => $this->crm->leadTimeline($this->wsId($r), (int) $r->input('lead_id'))]);
+        }
         $r->validate(['entity_type' => 'required|string', 'entity_id' => 'required|integer']);
         return $this->readJson(['activities' => $this->crm->listActivities($this->wsId($r), $r->input('entity_type'), $r->input('entity_id'))]);
     }
@@ -208,8 +213,44 @@ class CrmController extends BaseEngineController
 
     public function logActivity(Request $r): JsonResponse
     {
-        $r->validate(['type' => 'required|string', 'entity_id' => 'required|integer']);
-        return $this->executeAction($r, 'log_activity', array_merge($r->all(), ['entity_type' => $r->input('entity_type', 'Lead')]));
+        // CRM-FIX-0: lead_id is accepted as the entity; title/due_date/priority from the screen are kept
+        if (! $r->filled('entity_id') && $r->filled('lead_id')) $r->merge(['entity_id' => (int) $r->input('lead_id'), 'entity_type' => 'Lead']);
+        $r->validate(['type' => 'required|string|in:note,call,email,meeting,task', 'entity_id' => 'required|integer']);
+        $lead = \App\Models\Lead::where('workspace_id', $this->wsId($r))->find((int) $r->input('entity_id'));
+        if (($r->input('entity_type', 'Lead') === 'Lead') && ! $lead) return response()->json(['success' => false, 'message' => 'That lead was not found.'], 404);
+        $extra = ['entity_type' => $r->input('entity_type', 'Lead'), 'subject' => $r->input('subject', $r->input('title'))];
+        if ($r->filled('due_date')) $extra['scheduled_at'] = $r->input('due_date') . ' 09:00:00';
+        if ($r->filled('priority')) $extra['metadata'] = ['priority' => in_array($r->input('priority'), ['low', 'medium', 'high'], true) ? $r->input('priority') : 'medium'];
+        return $this->executeAction($r, 'log_activity', array_merge($r->all(), $extra));
+    }
+
+    /** CRM-FIX-0: tick a task done or reopen it (PUT /activities/{id} {status}). */
+    public function updateActivity(Request $r, int $id): JsonResponse
+    {
+        $a = \App\Models\Activity::where('workspace_id', $this->wsId($r))->find($id);
+        if (! $a) return response()->json(['success' => false, 'message' => 'That item was not found.'], 404);
+        $done = in_array((string) $r->input('status'), ['done', 'completed'], true);
+        $a->update(['completed' => $done, 'completed_at' => $done ? now() : null]);
+        return $this->readJson(['success' => true, 'id' => $a->id, 'status' => $done ? 'done' : 'pending']);
+    }
+
+    /** CRM-FIX-0: delete what a person wrote (note, call, email, meeting, task); system history stays. */
+    public function deleteActivity(Request $r, string $id): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        if (str_starts_with($id, 'n')) {
+            $n = \App\Models\Note::where('workspace_id', $ws)->find((int) substr($id, 1));
+            if (! $n) return response()->json(['success' => false, 'message' => 'That note was not found.'], 404);
+            $n->delete();
+            return $this->readJson(['success' => true]);
+        }
+        $a = \App\Models\Activity::where('workspace_id', $ws)->find((int) $id);
+        if (! $a) return response()->json(['success' => false, 'message' => 'That item was not found.'], 404);
+        if (! in_array($a->type, ['note', 'call', 'email', 'meeting', 'task'], true)) {
+            return response()->json(['success' => false, 'message' => 'History entries cannot be deleted.'], 422);
+        }
+        $a->delete();
+        return $this->readJson(['success' => true]);
     }
 
     public function completeActivity(Request $r, int $id): JsonResponse

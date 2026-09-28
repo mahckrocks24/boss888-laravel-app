@@ -16,6 +16,7 @@ class Lead extends Model
         'workspace_id', 'name', 'email', 'phone', 'company',
         'source', 'status', 'score', 'deal_value',
         'metadata_json', 'assigned_to',
+        'website', 'city', 'country', 'tags_json', 'last_contacted_at', 'converted_at', // CRM-FIX-0: were silently dropped
     ];
 
     protected function casts(): array
@@ -23,6 +24,9 @@ class Lead extends Model
         return [
             'metadata_json' => 'array',
             'deal_value' => 'decimal:2',
+            'tags_json' => 'array', // CRM-FIX-0
+            'converted_at' => 'datetime',
+            'last_contacted_at' => 'datetime',
         ];
     }
 

@@ -86,6 +86,8 @@ use Illuminate\Support\Facades\Route;
         Route::get('/activities', [$c, 'listActivities']);
         Route::post('/activities', [$c, 'logActivity']);
         Route::post('/activities/{id}/complete', [$c, 'completeActivity']);
+        Route::put('/activities/{id}', [$c, 'updateActivity']);     // CRM-FIX-0: tick / reopen a task
+        Route::delete('/activities/{id}', [$c, 'deleteActivity']);  // CRM-FIX-0: delete a note, call or task
         Route::get('/today', [$c, 'todayView']);
 
         // Notes (3 routes)
@@ -97,7 +99,9 @@ use Illuminate\Support\Facades\Route;
         Route::get("/settings", function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get("workspace_id");
             $stages = app(\App\Engines\CRM\Services\CrmService::class)->getStages($wsId);
+            $crmSet = (json_decode((string) \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('settings_json'), true) ?: [])['crm'] ?? [];
             return response()->json([
+                "business_type" => $crmSet['business_type'] ?? 'general',
                 "stages" => collect($stages)->map(fn($s) => ["id" => is_object($s) ? $s->id : $s, "label" => is_object($s) ? $s->name : (string)$s, "color" => is_object($s) ? ($s->color ?? "#6C5CE7") : "#6C5CE7"])->values()->toArray(),
                 "statuses" => [["id" => "active", "label" => "Active"], ["id" => "inactive", "label" => "Inactive"]],
                 "categories" => [],
@@ -106,11 +110,30 @@ use Illuminate\Support\Facades\Route;
             ]);
         });
         Route::get("/views", fn() => response()->json([]));
+        // CRM-FIX-0: the Settings tab saves (it called a route that did not exist)
+        Route::put("/settings", function (\Illuminate\Http\Request $r) {
+            $wsId = (int) $r->attributes->get("workspace_id");
+            $row = \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->first(['settings_json']);
+            if (! $row) return response()->json(['success' => false, 'message' => 'Workspace not found.'], 404);
+            $set = json_decode((string) $row->settings_json, true) ?: [];
+            $crm = $set['crm'] ?? [];
+            $types = ['general', 'clinic', 'real_estate', 'agency', 'contractor'];
+            if ($r->filled('business_type')) {
+                if (! in_array($r->input('business_type'), $types, true)) return response()->json(['success' => false, 'message' => 'Unknown business type.'], 422);
+                $crm['business_type'] = $r->input('business_type');
+            }
+            if (is_array($r->input('enabled_modules'))) {
+                $crm['modules'] = ['appointments' => (bool) ($r->input('enabled_modules')['appointments'] ?? true)];
+            }
+            $set['crm'] = $crm;
+            \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->update(['settings_json' => json_encode($set), 'updated_at' => now()]);
+            return response()->json(['success' => true, 'business_type' => $crm['business_type'] ?? 'general']);
+        });
 
         // Nested contact notes & attachments (frontend compat)
         Route::get('/contacts/{contactId}/notes', [$c, 'listNotes']);
         Route::post('/contacts/{contactId}/notes', [$c, 'addNote']);
-        Route::delete('/contacts/{contactId}/notes/{noteId}', [$c, 'deleteNote']);
+        Route::delete('/contacts/{contactId}/notes/{noteId}', fn(\Illuminate\Http\Request $r, $contactId, $noteId) => app($c)->deleteNote($r, (int) $noteId)); // CRM-FIX-0: was deleting by contactId
         Route::post('/contacts/{contactId}/attachments', fn(\Illuminate\Http\Request $r, $contactId) => response()->json(["message" => "Attachments not yet implemented"], 501));
         Route::get('/contacts/{contactId}/attachments', fn(\Illuminate\Http\Request $r, $contactId) => response()->json(["attachments" => []]));
 
@@ -189,12 +212,12 @@ use Illuminate\Support\Facades\Route;
 
         Route::get('/modules', function (\Illuminate\Http\Request $r) {
             // CRM modules config — returns enabled module flags
+            // CRM-FIX-0: only switches that change the screen. The old list showed four toggles that did nothing.
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $crmSet = (json_decode((string) \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('settings_json'), true) ?: [])['crm'] ?? [];
             return response()->json([
-                'leads' => ['enabled' => true, 'required' => true, 'label' => 'Leads & Pipeline'],
-                'contacts' => ['enabled' => true, 'required' => false, 'label' => 'Contact Management'],
-                'deals' => ['enabled' => true, 'required' => false, 'label' => 'Deal Tracking'],
-                'activities' => ['enabled' => true, 'required' => false, 'label' => 'Activities & Tasks'],
-                'reporting' => ['enabled' => true, 'required' => false, 'label' => 'Revenue Reporting'],
+                'leads' => ['enabled' => true, 'required' => true, 'label' => 'Leads, pipeline and tasks'],
+                'appointments' => ['enabled' => (bool) ($crmSet['modules']['appointments'] ?? true), 'required' => false, 'label' => 'Appointments and bookings'],
             ]);
         });
 
@@ -202,17 +225,32 @@ use Illuminate\Support\Facades\Route;
         Route::post('/projects', fn(\Illuminate\Http\Request $r) => app($c)->createDeal($r));
         Route::get('/projects/{id}', fn(\Illuminate\Http\Request $r, $id) => app($c)->getDeal($r, $id));
         Route::put('/projects/{id}', fn(\Illuminate\Http\Request $r, $id) => app($c)->updateDeal($r, $id));
-        Route::delete('/projects/{id}', fn(\Illuminate\Http\Request $r, $id) => response()->json(['deleted' => true]));
+        Route::delete('/projects/{id}', function (\Illuminate\Http\Request $r, $id) { // CRM-FIX-0: said deleted, deleted nothing
+            $d = \App\Models\Deal::where('workspace_id', (int) $r->attributes->get('workspace_id'))->find((int) $id);
+            if (! $d) return response()->json(['success' => false, 'message' => 'Project not found.'], 404);
+            $d->delete();
+            return response()->json(['success' => true, 'deleted' => true]);
+        });
 
         Route::get('/appointments', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
             $upcoming = $r->boolean('upcoming');
             $events = \Illuminate\Support\Facades\DB::table('calendar_events')
                 ->where('workspace_id', $wsId)
-                ->when($upcoming, fn($q) => $q->where('starts_at', '>=', now()))
+                ->when($upcoming, fn($q) => $q->where('starts_at', '>=', now())->whereNotIn('category', ['cancelled', 'booking_declined']))
+                ->where('category', '!=', 'task_deadline') // CRM-FIX-0: tasks live in the Tasks tab
                 ->orderBy('starts_at')
                 ->limit(50)
                 ->get();
+            // CRM-FIX-0: the screen reads start_at / end_at / status / lead_name
+            $leadIds = $events->filter(fn($e) => in_array(strtolower((string) $e->reference_type), ['lead', 'app\\models\\lead'], true))->pluck('reference_id')->all();
+            $names = $leadIds ? \Illuminate\Support\Facades\DB::table('leads')->where('workspace_id', $wsId)->whereIn('id', $leadIds)->pluck('name', 'id') : collect();
+            $events = $events->map(function ($e) use ($names) {
+                $isLead = in_array(strtolower((string) $e->reference_type), ['lead', 'app\\models\\lead'], true);
+                $status = match ((string) $e->category) { 'booking_pending', 'callback_pending' => 'pending', 'booking_confirmed' => 'confirmed', 'cancelled', 'booking_declined' => 'cancelled', 'completed' => 'completed', 'no_show' => 'no_show', default => 'scheduled' };
+                return array_merge((array) $e, ['start_at' => $e->starts_at, 'end_at' => $e->ends_at, 'status' => $status,
+                    'lead_id' => $isLead ? $e->reference_id : null, 'lead_name' => $isLead ? ($names[$e->reference_id] ?? null) : null]);
+            })->values();
             return response()->json(['appointments' => $events]);
         });
         Route::post('/appointments', function (\Illuminate\Http\Request $r) {
@@ -233,6 +271,8 @@ use Illuminate\Support\Facades\Route;
                 'ends_at' => $r->input('end_at'),
                 'category' => 'appointment',
                 'engine' => 'crm',
+                'reference_type' => ($r->filled('lead_id') && \Illuminate\Support\Facades\DB::table('leads')->where('workspace_id', $wsId)->where('id', (int) $r->input('lead_id'))->exists()) ? 'Lead' : null,
+                'reference_id' => ($r->filled('lead_id') && \Illuminate\Support\Facades\DB::table('leads')->where('workspace_id', $wsId)->where('id', (int) $r->input('lead_id'))->exists()) ? (int) $r->input('lead_id') : null,
                 'created_at' => now(), 'updated_at' => now(),
             ]);
             return response()->json(['id' => $id], 201);
@@ -250,6 +290,9 @@ use Illuminate\Support\Facades\Route;
                 'starts_at' => $r->input('start_at'),
                 'ends_at' => $r->input('end_at'),
             ], fn($v) => $v !== null && $v !== '');
+            // CRM-FIX-0: status lives in `category` (cancel said "cancelled" and changed nothing)
+            $stMap = ['cancelled' => 'cancelled', 'completed' => 'completed', 'no_show' => 'no_show', 'scheduled' => 'appointment', 'confirmed' => 'booking_confirmed'];
+            if ($r->filled('status') && isset($stMap[$r->input('status')])) $update['category'] = $stMap[$r->input('status')];
             $update['updated_at'] = now();
 
             $n = \Illuminate\Support\Facades\DB::table('calendar_events')
@@ -268,12 +311,22 @@ use Illuminate\Support\Facades\Route;
         Route::get('/tasks', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
             $status = $r->input('status');
-            $tasks = \App\Models\Task::where('workspace_id', $wsId)
-                ->where('engine', 'crm')
-                ->when($status, fn($q) => $q->where('status', $status))
-                ->orderByDesc('created_at')
-                ->limit(50)
-                ->get();
+            // CRM-FIX-0: the CRM's own tasks (activities of type task), in the shape the screen draws.
+            $rows = \Illuminate\Support\Facades\DB::table('activities as a')
+                ->leftJoin('leads as l', function ($j) { $j->on('l.id', '=', 'a.activitable_id')->whereIn('a.activitable_type', ['Lead', 'App\\Models\\Lead']); })
+                ->where('a.workspace_id', $wsId)->where('a.type', 'task')
+                ->when($status === 'pending', fn($q) => $q->where('a.completed', 0))
+                ->when($status === 'done', fn($q) => $q->where('a.completed', 1))
+                ->whereNull('l.deleted_at')
+                ->orderByRaw('a.scheduled_at IS NULL, a.scheduled_at ASC')->orderByDesc('a.created_at')
+                ->limit(200)
+                ->get(['a.id', 'a.subject', 'a.description', 'a.scheduled_at', 'a.completed', 'a.metadata_json', 'a.activitable_id', 'l.name as lead_name']);
+            $tasks = $rows->map(function ($t) {
+                $meta = json_decode((string) $t->metadata_json, true) ?: [];
+                return ['id' => $t->id, 'title' => $t->subject ?: mb_substr((string) $t->description, 0, 80), 'description' => $t->subject ? $t->description : null,
+                    'due_date' => $t->scheduled_at, 'priority' => $meta['priority'] ?? 'medium', 'status' => $t->completed ? 'done' : 'pending',
+                    'lead_id' => $t->activitable_id, 'lead_name' => $t->lead_name];
+            })->values();
             return response()->json(['tasks' => $tasks]);
         });
 
@@ -285,7 +338,7 @@ use Illuminate\Support\Facades\Route;
             foreach ($leads as $leadId) {
                 try { $s->scoreLead($leadId); $count++; } catch (\Throwable $e) {}
             }
-            return response()->json(['recalculated' => $count]);
+            return response()->json(['recalculated' => $count, 'updated' => $count]);
         });
 
         Route::get('/leads/export/{format}', function (\Illuminate\Http\Request $r, $format) {
