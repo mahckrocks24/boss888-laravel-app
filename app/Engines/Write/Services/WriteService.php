@@ -344,18 +344,34 @@ class WriteService
 
     public function listArticles(int $wsId, array $filters = []): array
     {
-        $q = DB::table('articles')->where('workspace_id', $wsId);
-        if (!empty($filters['status'])) $q->where('status', $filters['status']);
-        if (!empty($filters['type']))   $q->where('type',   $filters['type']);
-        if (!empty($filters['search'])) $q->where('title', 'like', '%' . $filters['search'] . '%');
+        /* WRITE-BIZ-1 (Owner 2026-09-28: "There is no proper segregation of articles per business in the engine"): every
+           article carries the business its website belongs to; the list filters by business and says how many each has.
+           Deleted articles stay out, and the whole list is served (it was cut at the latest 50). */
+        $q = DB::table('articles')->leftJoin('websites as w', 'w.id', '=', 'articles.website_id')->leftJoin('businesses as b', 'b.id', '=', 'w.business_id')
+            ->where('articles.workspace_id', $wsId)->whereNull('articles.deleted_at')
+            ->select('articles.*', 'w.business_id', 'b.name as business_name', 'w.name as website_name');
+        if (!empty($filters['status'])) $q->where('articles.status', $filters['status']);
+        $type = $filters['type'] ?? ($filters['content_type'] ?? null);   // the editor sends content_type
+        if (!empty($type))   $q->where('articles.type', $type);
+        if (!empty($filters['search'])) $q->where('articles.title', 'like', '%' . $filters['search'] . '%');
+        if (isset($filters['business_id']) && $filters['business_id'] !== '') {
+            if ($filters['business_id'] === 'none') $q->whereNull('w.business_id'); else $q->where('w.business_id', (int) $filters['business_id']);
+        }
         // NOTE: 'category' filter is now stored inside brief_json (not a top-level column).
         // Use JSON_EXTRACT for category filtering. MySQL 5.7+ / 8.0 syntax.
         if (!empty($filters['category'])) {
             $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.category')) = ?", [$filters['category']]);
         }
         $total = $q->count();
-        $articles = $q->orderByDesc('updated_at')->limit($filters['limit'] ?? 50)->get();
-        return ['articles' => $articles, 'total' => $total];
+        $articles = $q->orderByDesc('articles.updated_at')->limit(max(1, min(500, (int) ($filters['limit'] ?? 50))))->get();
+        // every business of the workspace with its article count (a business with none still shows, at 0)
+        $counts = DB::table('articles')->leftJoin('websites as w', 'w.id', '=', 'articles.website_id')
+            ->where('articles.workspace_id', $wsId)->whereNull('articles.deleted_at')->groupBy('w.business_id')->selectRaw('w.business_id, count(*) as n')->pluck('n', 'business_id');
+        $businesses = DB::table('businesses')->where('workspace_id', $wsId)->whereNull('deleted_at')->orderBy('name')->get(['id', 'name'])
+            ->map(fn ($x) => ['id' => (int) $x->id, 'name' => (string) $x->name, 'count' => (int) ($counts[$x->id] ?? 0)])->values()->all();
+        $websites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->whereNotNull('business_id')->orderBy('id')->get(['id', 'name', 'business_id'])
+            ->map(fn ($x) => ['id' => (int) $x->id, 'name' => (string) $x->name, 'business_id' => (int) $x->business_id])->values()->all();
+        return ['articles' => $articles, 'total' => $total, 'businesses' => $businesses, 'unassigned' => (int) ($counts[''] ?? 0), 'websites' => $websites];
     }
 
     public function deleteArticle(int $articleId, ?int $wsId = null): void

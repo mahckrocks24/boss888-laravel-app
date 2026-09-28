@@ -31,6 +31,10 @@ var _wr = {
     rootEl:       null,
     filterStatus: '',
     filterType:   '',
+    filterBiz:    null,         // WRITE-BIZ-1: '' = all businesses, 'none' = no business, else business id (remembered per workspace)
+    businesses:   [],
+    unassigned:   0,
+    websites:     [],
     _outlineTimer: null,        // debounce handle for outline refresh
 };
 
@@ -198,12 +202,19 @@ function _wrLoadingHTML() {
 }
 
 async function _wrBootstrap() {
-    var params = '?workspace_id=' + encodeURIComponent(_wr.wsId) + '&limit=50';
+    if (_wr.filterBiz === null) { try { _wr.filterBiz = localStorage.getItem('lu_write_biz:' + _wr.wsId) || ''; } catch (e) { _wr.filterBiz = ''; } }
+    var params = '?workspace_id=' + encodeURIComponent(_wr.wsId) + '&limit=500';
+    if (_wr.filterBiz)    params += '&business_id='  + encodeURIComponent(_wr.filterBiz);
     if (_wr.filterStatus) params += '&status='       + encodeURIComponent(_wr.filterStatus);
     if (_wr.filterType)   params += '&content_type=' + encodeURIComponent(_wr.filterType);
     var data = await _wrGet('/articles' + params).catch(function() { return { items: [] }; });
     _wr.items = data.items || [];
+    _wr.businesses = data.businesses || []; _wr.unassigned = +data.unassigned || 0; _wr.websites = data.websites || [];
+    // a remembered business that no longer exists falls back to all
+    if (_wr.filterBiz && _wr.filterBiz !== 'none' && !_wr.businesses.some(function (b) { return String(b.id) === String(_wr.filterBiz); })) { _wr.filterBiz = ''; }
 }
+function _wrMultiBiz() { return (_wr.businesses || []).length > 1 || ((_wr.businesses || []).length === 1 && _wr.unassigned > 0); }
+function _wrBizName() { var b = (_wr.businesses || []).find(function (x) { return String(x.id) === String(_wr.filterBiz); }); return _wr.filterBiz === 'none' ? 'No business' : (b ? b.name : ''); }
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // RENDER ORCHESTRATOR
@@ -237,7 +248,13 @@ function _wrShell() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function _wrViewDashboard() {
+    var bizSel = _wrMultiBiz() ? '<select id="wr-filter-biz" aria-label="Business" style="' + _wrSelectStyle() + ';min-width:200px;">' +
+            '<option value="">All businesses (' + ((_wr.businesses || []).reduce(function (n, b) { return n + b.count; }, 0) + _wr.unassigned) + ')</option>' +
+            _wr.businesses.map(function (b) { return '<option value="' + b.id + '"' + (String(_wr.filterBiz) === String(b.id) ? ' selected' : '') + '>' + _e(b.name) + ' (' + b.count + ')</option>'; }).join('') +
+            (_wr.unassigned ? '<option value="none"' + (_wr.filterBiz === 'none' ? ' selected' : '') + '>No business (' + _wr.unassigned + ')</option>' : '') +
+        '</select>' : '';
     var filterBar = '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+        bizSel +
         // Status filter
         '<select id="wr-filter-status" style="' + _wrSelectStyle() + '">' +
             '<option value="">All Statuses</option>' +
@@ -268,7 +285,8 @@ function _wrViewDashboard() {
         : _wr.items.map(function(item) {
             var statusColor = _WR_STATUS_COLORS[item.status] || 'var(--t3,#888)';
             return '<tr class="wr-row" data-id="' + item.id + '" style="cursor:pointer;border-bottom:1px solid var(--bd,#2a2d3e);transition:background .15s;">' +
-                '<td style="padding:12px 14px;font-weight:600;color:var(--t1,#e0e0e0);">' + _e(item.title || 'Untitled') + '</td>' +
+                '<td style="padding:12px 14px;font-weight:600;color:var(--t1,#e0e0e0);">' + _e(item.title || 'Untitled') +
+                    (_wrMultiBiz() && !_wr.filterBiz ? '<div style="margin-top:3px;font-size:12px;font-weight:500;color:var(--t3,#777);">' + _e(item.business_name || 'No business') + '</div>' : '') + '</td>' +
                 '<td style="padding:12px 14px;font-size:12px;color:var(--t2,#aaa);">' + _e(_WR_TYPES[item.content_type] || String(item.content_type || '').replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); })) + '</td>' +
                 '<td style="padding:12px 14px;">' +
                     '<span style="font-size:11px;padding:3px 8px;border-radius:20px;background:' + statusColor + '22;color:' + statusColor + ';border:1px solid ' + statusColor + '44;">' +
@@ -289,7 +307,7 @@ function _wrViewDashboard() {
         '<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">' +
             '<div>' +
                 '<h2 style="margin:0;font-size:20px;font-weight:700;color:var(--t1,#e0e0e0);">Content Dashboard</h2>' +
-                '<p style="margin:4px 0 0;font-size:13px;color:var(--t3,#777);">Create and manage all your written content</p>' +
+                '<p style="margin:4px 0 0;font-size:13px;color:var(--t3,#777);">' + (_wr.filterBiz ? 'Articles for ' + _e(_wrBizName()) : 'Create and manage all your written content') + '</p>' +
             '</div>' +
         '</div>' +
         // Stats row
@@ -346,6 +364,12 @@ function _wrCreateModal() {
                 '<label style="' + _wrLabelStyle() + '">Title</label>' +
                 '<input id="wr-new-title" type="text" placeholder="e.g. Top 10 SEO Tips for 2025" style="' + _wrInputStyle() + '">' +
             '</div>' +
+            ((_wr.websites || []).length > 1 ? '<div style="margin-bottom:14px;">' +
+                '<label style="' + _wrLabelStyle() + '">Business</label>' +
+                '<select id="wr-new-site" style="' + _wrSelectStyle() + ';width:100%;">' +
+                    _wr.websites.map(function (w) { var b = (_wr.businesses || []).find(function (x) { return x.id === w.business_id; }); return '<option value="' + w.id + '"' + (String(w.business_id) === String(_wr.filterBiz) ? ' selected' : '') + '>' + _e(b ? b.name : w.name) + (b && b.name !== w.name ? ' — ' + _e(w.name) : '') + '</option>'; }).join('') +
+                '</select>' +
+            '</div>' : '') +
             '<div style="margin-bottom:14px;">' +
                 '<label style="' + _wrLabelStyle() + '">Content Type</label>' +
                 '<select id="wr-new-type" style="' + _wrSelectStyle() + ';width:100%;">' +
@@ -422,6 +446,8 @@ function _wrBindDashboard() {
             audience:     audience.trim(),
             language:     lang,
             workspace_id: _wr.wsId,
+            type:         ctype,   // the server reads type (content_type was ignored)
+            website_id:   +((document.getElementById('wr-new-site') || {}).value || ((_wr.websites || []).length === 1 ? _wr.websites[0].id : 0)) || undefined,   // WRITE-BIZ-1: the article belongs to that business
         });
 
         createConfirm.textContent = 'Create & Open Editor';
@@ -488,6 +514,15 @@ function _wrBindDashboard() {
             if (e.target.closest('.wr-edit-btn') || e.target.closest('.wr-delete-btn')) return;
             _wrLoadAndOpenEditor(parseInt(row.dataset.id, 10));
         });
+    });
+
+    // WRITE-BIZ-1: business picker
+    var bizSelEl = document.getElementById('wr-filter-biz');
+    if (bizSelEl) bizSelEl.addEventListener('change', async function () {
+        _wr.filterBiz = bizSelEl.value || '';
+        try { localStorage.setItem('lu_write_biz:' + _wr.wsId, _wr.filterBiz); } catch (e) {}
+        await _wrBootstrap();
+        _wrRender();
     });
 
     // Filter
@@ -1891,6 +1926,7 @@ function _wrRenderAttachmentList() {
         '#wr-main>div[style*="padding:24px"],#wr-main>div[style*="padding: 24px"]{padding:12px 12px 96px!important}' +
         '#wr-main div[style*="repeat(4,1fr)"],#wr-main div[style*="repeat(4, 1fr)"]{grid-template-columns:1fr 1fr!important;gap:10px!important}' +
         '#wr-main div[style*="flex-wrap:wrap"]>*,#wr-main div[style*="flex-wrap: wrap"]>*{flex:1 1 40%;min-width:0}' +
+        '#wr-filter-biz,#wr-main div[style*="flex-wrap"]>*:has(>#wr-filter-biz){flex:1 1 100%!important}' +
         '#wr-create-btn{flex:1 1 100%!important;margin-left:0!important;justify-content:center;min-height:44px}' +
         '#wr-filter-btn{min-height:44px}' +
         /* the list: each row is a card — title, then type · status · date, then its actions */
