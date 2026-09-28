@@ -425,7 +425,7 @@ final class CampaignService
 
     /** BIZ-TZ-1 (Owner 2026-09-28: a business in the Philippines and one in Dubai): a business's own location sets the clock its
      *  steps are scheduled on; the workspace (the owner's) zone otherwise. Owner-facing dates still read in the owner's zone. */
-    private function tz(int $wsId, ?int $bizId = null): string
+    public function tz(int $wsId, ?int $bizId = null): string
     {
         if ($bizId) {
             $b = DB::table('businesses')->where('id', $bizId)->where('workspace_id', $wsId)->first(['location', 'address_json']);
