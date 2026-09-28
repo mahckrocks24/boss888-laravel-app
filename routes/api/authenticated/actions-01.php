@@ -136,6 +136,17 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 'execution_status' => $d->execution_status ? (string) $d->execution_status : null, 'failure_class' => $d->failure_class ? (string) $d->failure_class : null,   // PREVIEW-3: a draft that already went through a dry run says so on load
                 'created_at' => (string) $d->created_at];
         }
+        // POST-TIMELINE-1
+        foreach ($drafts as &$__d) {
+            $__base = DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')
+                ->where(fn ($q) => $q->whereNull('metadata_json')->orWhereRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.phase')), '') <> 'ack'"));
+            $__at = \Carbon\Carbon::parse($__d['created_at']);
+            // the message that announced it (just before, within 30 min), else the first after it (within 2 h), else the last before it
+            $__d['message_id'] = (int) ((clone $__base)->where('created_at', '<=', $__at->copy()->addSeconds(2))->where('created_at', '>=', $__at->copy()->subMinutes(30))->orderByDesc('id')->value('id')
+                ?: (clone $__base)->where('created_at', '>', $__at)->where('created_at', '<=', $__at->copy()->addHours(2))->orderBy('id')->value('id')
+                ?: (clone $__base)->where('created_at', '<=', $__at)->orderByDesc('id')->value('id')) ?: null;
+        }
+        unset($__d);
     } catch (\Throwable $e) { $drafts = []; }
 
     // CHAT-FIRST-1: the question Sarah asked with a card can be answered by a tap in the companion app (the chip sends text)

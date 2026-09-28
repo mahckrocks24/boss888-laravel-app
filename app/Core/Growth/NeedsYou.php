@@ -22,12 +22,15 @@ final class NeedsYou
         try { $campaigns = (int) DB::table('marketing_campaigns')->where('workspace_id', $wsId)->where('status', 'idea')->whereNull('deleted_at')->where('created_at', '>=', now()->subDays(14))->count(); } catch (\Throwable $e) {}
         $changes = 0;
         try { $changes = (int) DB::table('campaign_changes')->where('workspace_id', $wsId)->where('status', 'proposed')->count(); } catch (\Throwable $e) {}
-        return ['count' => $approvals + $campaigns + $changes, 'approvals' => $approvals, 'campaigns' => $campaigns, 'changes' => $changes];
+        $posts = 0;   // POST-TIMELINE-1: drafted posts waiting for Post it
+        try { $posts = (int) DB::table('social_posts')->where('workspace_id', $wsId)->where('status', 'draft')->whereNull('deleted_at')->whereNull('preview_dismissed_at')->where('created_at', '>=', now()->subDays(7))->count(); } catch (\Throwable $e) {}
+        return ['count' => $approvals + $campaigns + $changes + $posts, 'approvals' => $approvals, 'campaigns' => $campaigns, 'changes' => $changes, 'posts' => $posts];
     }
 
     public static function line(array $n): string
     {
         $parts = [];
+        if (! empty($n['posts'])) $parts[] = $n['posts'] . ' post' . ($n['posts'] === 1 ? '' : 's') . ' ready to go out';
         if ($n['campaigns']) $parts[] = $n['campaigns'] . ' campaign idea' . ($n['campaigns'] === 1 ? '' : 's');
         if ($n['changes']) $parts[] = $n['changes'] . ' campaign update' . ($n['changes'] === 1 ? '' : 's');
         if ($n['approvals']) $parts[] = $n['approvals'] . ' approval' . ($n['approvals'] === 1 ? '' : 's');

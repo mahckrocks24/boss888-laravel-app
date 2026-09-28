@@ -464,6 +464,19 @@
     ];
     return railItem('appr', '✦', 'Campaign update: ' + x.campaign_title, desc, 'Sarah', acts, 'chg-' + x.change_id);
   }
+  /* POST-TIMELINE-1: a drafted post in the pull-down — Post it, see it where Sarah presented it, or not now */
+  function postItem(x) {
+    var plat = x.platform === 'instagram' ? 'Instagram' : x.platform === 'linkedin' ? 'LinkedIn' : 'Facebook';
+    var desc = (x.account && x.account.name ? x.account.name + ' · ' : '') + String(x.caption || 'No caption yet').replace(/\s+/g, ' ').slice(0, 110);
+    var ready = !!x.ready;
+    var acts = [
+      { label: ready ? 'Post it' : 'Open', kind: 'primary', run: function (b, el) { if (!ready) { see(); return; } campAct('social/posts/' + x.post_id + '/publish', {}, 'Sent to ' + plat + ' — it shows under Results once confirmed.', b, el); } },
+      { label: 'View post', run: function () { see(); } },
+      { label: 'Not now', run: function (b, el) { S.dismissedDrafts = S.dismissedDrafts || {}; S.dismissedDrafts[String(x.post_id)] = 1; campAct('social/posts/' + x.post_id + '/dismiss-preview', {}, 'Not now — it stays in Social › Drafts.', b, el); var c = S.feed && S.feed.querySelector('.sh-inline-post[data-post="' + x.post_id + '"]'); if (c) c.remove(); } }
+    ];
+    function see() { var c = S.feed && S.feed.querySelector('.sh-inline-post[data-post="' + x.post_id + '"]'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('sh-flash'); setTimeout(function () { c.classList.remove('sh-flash'); }, 1600); } else if (window.nav) nav('social'); }
+    return railItem('appr', '\u270E', 'Post ready: ' + plat, desc, 'Sarah', acts, 'post-' + x.post_id);
+  }
   function loadRail() {
     var rail = document.getElementById('sh-rail'); if (!rail) return;
     Promise.all([
@@ -478,6 +491,7 @@
       appr.forEach(function (a) { items.push(approvalItem(a)); });
       var pa = rs[1].json || {}; var camps = pa.campaigns || []; var chgs = pa.campaign_changes || [];   /* CAMPAIGN-PREVIEW-2 */
       camps.forEach(function (p) { items.push(campaignItem(p)); }); chgs.forEach(function (x) { items.push(campaignChangeItem(x)); });
+      var posts = (pa.drafts || []).filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }); posts.forEach(function (x) { items.push(postItem(x)); });   /* POST-TIMELINE-1 */
       rs.splice(1, 1);
       var evs = Array.isArray(rs[1].json) ? rs[1].json : ((rs[1].json && (rs[1].json.events || rs[1].json.data)) || []);
       evs.filter(function (e) { return e && /booking_pending|pending/.test(String(e.status || e.booking_status || '')) && !/cancel|declin/.test(String(e.status || '')); }).slice(0, 3).forEach(function (e) {
@@ -493,14 +507,14 @@
         [{ label: 'Connect Google', run: function () { openAdvanced({ view: 'seo', tail: null }); } }], 'gate-gsc'));
       rail.innerHTML = '';
       if (!items.length) { rail.hidden = true; return; }
-      var title = (appr.length || camps.length || chgs.length) ? 'Needs your OK' : 'Worth knowing';
+      var title = (appr.length || camps.length || chgs.length || posts.length) ? 'Needs your OK' : 'Worth knowing';
       var h = document.createElement('div'); h.className = 'sh-rail-h';
       h.innerHTML = '<button type="button" class="tog" aria-expanded="true" aria-controls="sh-rail-track" title="Minimise"><svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ttl">' + title + '</span></button><span class="pos" aria-live="polite"></span>';
       rail.appendChild(h);
       /* RAIL-2: minimised state is remembered per device; a NEW approval reopens it. */
       var seenKey = 'lu_rail_seen', minKey = 'lu_rail_min', seen = [], isMin = false;
       try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); isMin = localStorage.getItem(minKey) === '1'; } catch (e) {}
-      var apprIds = appr.map(function (a) { return String(a.id); }).concat(camps.map(function (p) { return 'camp-' + p.campaign_id; }), chgs.map(function (x) { return 'chg-' + x.change_id; }));
+      var apprIds = appr.map(function (a) { return String(a.id); }).concat(camps.map(function (p) { return 'camp-' + p.campaign_id; }), chgs.map(function (x) { return 'chg-' + x.change_id; }), posts.map(function (x) { return 'post-' + x.post_id; }));
       var fresh = apprIds.filter(function (id) { return seen.indexOf(id) < 0; });
       if (fresh.length) { isMin = false; try { localStorage.setItem(minKey, '0'); localStorage.setItem(seenKey, JSON.stringify(seen.concat(fresh).slice(-50))); } catch (e) {} }
       function setMin(v) { isMin = !!v; rail.classList.toggle('min', isMin); var b = h.querySelector('.tog'); b.setAttribute('aria-expanded', isMin ? 'false' : 'true'); b.title = isMin ? 'Show' : 'Minimise'; try { localStorage.setItem(minKey, isMin ? '1' : '0'); } catch (e) {} if (typeof updPos === 'function') updPos(); }
@@ -658,10 +672,31 @@
   }
   /* ── APPROVE-BUTTONS-1: execution buttons wherever Sarah asks for an approval; text stays an option ───────── */
   function clearActionBar() { var b = document.getElementById('sh-actbar'); if (b) b.remove(); }
+  /* POST-TIMELINE-1: each draft's preview goes right under the message that presented it (message_id from the server). A draft
+     whose message is not on screen waits in the Needs your OK pull-down instead. Posted or dismissed drafts leave. */
+  function placeDrafts(drafts) {
+    if (!S.feed) return;
+    var keep = {};
+    (drafts || []).forEach(function (dr) {
+      if (dr.message_id == null) return;
+      var row = S.feed.querySelector('.sh-row[data-mid="' + String(dr.message_id) + '"]'); if (!row) return;
+      keep[String(dr.post_id)] = 1;
+      var cur = S.feed.querySelector('.sh-inline-post[data-post="' + dr.post_id + '"]');
+      if (cur && cur.__placedAfter === row && cur.isConnected) return;   // already in place: never re-draw (no flicker)
+      if (cur) cur.remove();
+      var box = document.createElement('div'); box.className = 'sh-actbar sh-inline-post'; box.setAttribute('data-post', String(dr.post_id)); box.__placedAfter = row;
+      box.appendChild(draftCard(dr));
+      var after = row; while (after.nextElementSibling && after.nextElementSibling.classList.contains('sh-inline-post')) after = after.nextElementSibling;
+      after.parentNode.insertBefore(box, after.nextSibling);
+    });
+    S.feed.querySelectorAll('.sh-inline-post').forEach(function (b) { if (!keep[b.getAttribute('data-post')] && !b.querySelector('.posted, .ok, [data-state=posted]')) b.remove(); });
+  }
   function renderActionBar(d) {
     clearActionBar();
     var items = []; var chips = (d && Array.isArray(d.quick_replies)) ? d.quick_replies : [];   /* NEEDS-YOU-1: approvals wait in the Needs your OK pull-down, not under whatever Sarah said last */
     var drafts = (d && Array.isArray(d.drafts)) ? d.drafts.filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }) : [];
+    placeDrafts(drafts);   /* POST-TIMELINE-1 (Owner 2026-09-28): on the timeline, never pinned to the bottom */
+    drafts = [];
     if (!items.length && !chips.length && !drafts.length) return;
     var bar = document.createElement('div'); bar.className = 'sh-actbar'; bar.id = 'sh-actbar'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Sarah is waiting for your decision');
     items.forEach(function (it) {
