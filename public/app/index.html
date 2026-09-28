@@ -419,6 +419,9 @@ html[data-mode="basic"] .sb-nav .nav-section{display:none}
 .ws-badge.published{background:var(--as,rgba(0,229,168,.15));color:var(--ac,#00E5A8)} /* P1R-9: literal was 1.49:1 in light mode */
 .ws-badge.draft{background:rgba(245,158,11,.15);color:var(--am,#F59E0B)} /* P1R-9 */
 .ws-badge.unpublished{background:rgba(107,114,128,.15);color:var(--t3)}
+/* WS-BADGE-1 (Owner 2026-09-28 "not visible"): the status sits on the site picture — a solid pill with white text reads on any picture */
+.ws-card .ws-badge.published,.ws-card .ws-badge.draft,.ws-card .ws-badge.unpublished,.ws-card .ws-badge.connected{box-shadow:0 1px 4px rgba(0,0,0,.35);color:#fff!important;letter-spacing:.02em}.ws-card .ws-badge.connected{background:#1D4ED8!important;border-color:transparent!important}.ws-card .ws-badge.connected svg{stroke:#fff}
+.ws-card .ws-badge.published{background:#047857!important}.ws-card .ws-badge.draft{background:#B45309!important}.ws-card .ws-badge.unpublished{background:#4B5563!important}
 .ws-info{padding:14px 16px}
 .ws-title{font-family:var(--fh);font-size:14px;font-weight:700;color:var(--t1);margin-bottom:3px}
 .ws-meta{font-size:11px;color:var(--t3);margin-bottom:10px}
@@ -2250,6 +2253,10 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
     width:     calc(100vw - 48px) !important;
     max-width: 320px !important;
   }
+  /* WS-CENTER-1 (Owner 2026-09-28 "not centered"): the clamp above squeezed the Websites cards to 320px in a wider
+     column, so they sat off to the left; in the Websites grid a card fills its column, and the page keeps one 12px gutter */
+  #ws-grid .ws-card { width: auto !important; max-width: none !important; }
+  #ws-site-list { padding-left: 12px !important; padding-right: 12px !important; }
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
