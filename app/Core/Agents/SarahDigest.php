@@ -122,11 +122,12 @@ final class SarahDigest
             $cards[] = ['who' => $a ? (string) $a->name : 'Sarah', 'slug' => $a ? (string) $a->slug : 'sarah', 'role' => $a ? (string) $a->title : null, 'avatar' => $a ? $a->avatar_url : null,
                 'kind' => 'other', 'title' => mb_substr($first ?: $it['report'], 0, 120), 'detail' => null, 'link' => $metas[$i]['action_link'] ?? null];
         }
-        $text = "Here's what the team finished just now.";   // $fallback is unused here: the list always travels after APP_PART
+        $when = collect($metas)->every(fn ($m) => ! empty($m["replay"])) ? "earlier today" : "just now";   // a replay of earlier reports says so
+        $text = "Here's what the team finished " . $when . ".";   // $fallback is unused here: the list always travels after APP_PART
         try {
             $runtime = app(\App\Connectors\RuntimeClient::class);
             if ($runtime->isConfigured()) {
-                $sys = "You are Sarah, the business owner's digital marketing manager, writing in your chat with the owner. Several pieces of work your team finished just now are listed, numbered. "
+                $sys = "You are Sarah, the business owner's digital marketing manager, writing in your chat with the owner. Several pieces of work your team finished " . $when . " are listed, numbered. "
                     . 'Return ONLY JSON {"message":"","items":[{"n":1,"kind":"","title":"","detail":""}]}. '
                     . 'message: one or two short sentences that say, in general terms, what the team got done (each piece shows as a card under your message, so do not list them one by one), and — only if one of them waits for the owner, such as a post ready to go out with a Post it button — what to do. '
                     . 'items: one per piece of work, same n. kind is one of post, article, link, page, image, video, seo, email, lead, other. title: what was made or done, max 70 characters, keep article and post titles exactly. detail: one short plain line (max 90 characters) — where it is or what is next; empty when nothing to add. '
