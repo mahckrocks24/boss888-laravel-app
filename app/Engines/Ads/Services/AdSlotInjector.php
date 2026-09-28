@@ -203,7 +203,8 @@ html.lu-ad-filled body{padding-bottom:90px}}
    height-constrained — sizing both identically would push a 3:4 creative off
    a short viewport. aspect-ratio reserves the box before the asset loads, so
    the modal does not resize as the image arrives. */
-.lu-ad-modal-backdrop{position:fixed;inset:0;z-index:2147482000;
+html.lu-ad-modal-on #lu-cb-bubble,html.lu-ad-modal-on #lu-cb-panel,html.lu-ad-modal-on #cb888-bubble{visibility:hidden!important}
+.lu-ad-modal-backdrop{position:fixed;inset:0;z-index:2147483200;
 display:flex;align-items:center;justify-content:center;padding:20px;
 background:radial-gradient(130% 120% at 50% 38%,rgba(9,10,14,.58) 0%,rgba(6,7,10,.88) 100%);
 -webkit-backdrop-filter:blur(7px) saturate(.86);backdrop-filter:blur(7px) saturate(.86);

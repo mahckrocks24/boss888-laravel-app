@@ -407,6 +407,8 @@ final class AdTagAssetService
     /* 17 of the 31 templates ship their own modal/lightbox markup. Opening ours
        on top of a tenant's dialog is a z-index fight and an accessibility
        failure, so we defer instead. */
+    var cb = document.getElementById("lu-cb-panel");   /* LAYER-1: never over the open chat / contact form */
+    if (cb && cb.style.display !== "none") return true;
     return !!document.querySelector("dialog[open], [aria-modal='true']:not(#lu-ad-modal)");
   }
 
@@ -511,6 +513,7 @@ final class AdTagAssetService
     wrap.focus();
 
     document.addEventListener("keydown", onModalKey, true);
+    document.documentElement.classList.add("lu-ad-modal-on");   /* LAYER-1: the chat button steps aside */
 
     bumpModalSeen();
     beacon("impression", fill.token);
@@ -618,6 +621,7 @@ final class AdTagAssetService
     document.body.style.overflow = "";
     if (modalState.lastFocus && modalState.lastFocus.focus) modalState.lastFocus.focus();
     modalState = null;
+    document.documentElement.classList.remove("lu-ad-modal-on");
   }
 
   /* IAB quartile measurement. `timeupdate` is the only event that works across

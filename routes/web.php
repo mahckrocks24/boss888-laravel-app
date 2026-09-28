@@ -701,7 +701,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
         '<label style="'+lab+'">Message<textarea name="message" rows="4" maxlength="2000" style="'+fld+';resize:vertical"></textarea></label>' +
         '<input name="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
         '<div id="lu-cf-err" role="alert" style="display:none;margin-top:10px;font-size:13px;color:#c0392b"></div>' +
-        '<div style="position:sticky;bottom:0;background:'+bg+';padding:12px 0 14px;margin-top:2px"><button type="submit" id="lu-cf-send" style="width:100%;padding:12px;border:none;border-radius:10px;background:'+COLOR+';color:'+FGON+';font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Send message</button></div>' +
+        '<div style="position:sticky;bottom:0;background:'+bg+';padding:12px 0 14px;margin-top:2px;box-shadow:0 -18px 16px -6px '+bg+'"><button type="submit" id="lu-cf-send" style="width:100%;padding:12px;border:none;border-radius:10px;background:'+COLOR+';color:'+FGON+';font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Send message</button></div>' +
       '</form>';
     document.body.appendChild(panel);
     bubble.style.display = 'none';
