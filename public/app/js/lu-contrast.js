@@ -74,9 +74,30 @@
     return { css: '#111827', c: { r: 17, g: 24, b: 39, a: 1 } };
   }
 
+  /* photos, videos and canvases on the page, in page coordinates: text over one of them has an unknowable background
+     (a hero photo is often an <img> laid behind the words, not a background of their container) */
+  var media = [];
+  function collectMedia() {
+    media = [];
+    document.querySelectorAll("img,video,picture,canvas,iframe,svg image").forEach(function (m) {
+      var r = m.getBoundingClientRect(); if (r.width < 40 || r.height < 40) return;
+      media.push({ el: m, x: r.left + scrollX, y: r.top + scrollY, w: r.width, h: r.height });
+    });
+  }
+  function overMedia(el) {
+    var r = el.getBoundingClientRect(); if (!r.width || !r.height) return false;
+    var x = r.left + scrollX, y = r.top + scrollY, area = r.width * r.height;
+    for (var i = 0; i < media.length; i++) {
+      var m = media[i]; if (el.contains(m.el) || m.el.contains(el)) continue;
+      var ox = Math.max(0, Math.min(x + r.width, m.x + m.w) - Math.max(x, m.x)), oy = Math.max(0, Math.min(y + r.height, m.y + m.h) - Math.max(y, m.y));
+      if (ox * oy > area * 0.3) return true;
+    }
+    return false;
+  }
+
   var fixed = 0;
   function run() {
-    cache = new Map();
+    cache = new Map(); collectMedia();
     var INK = ink(), WHITE = { css: '#FFFFFF', c: { r: 255, g: 255, b: 255, a: 1 } };
     var seen = new Set();
     var tw = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT, null);
@@ -92,6 +113,7 @@
       var fill = parse(cs.webkitTextFillColor); if (fill && fill.a === 0) continue;
       var fg = parse(cs.color); if (!fg || fg.a < 0.15) continue;
       var bg = bgBehind(el); if (!bg) continue;
+      if (overMedia(el)) continue;
       var fgOn = fg.a < 1 ? blend(fg, bg) : fg;
       if (ratio(fgOn, bg) >= 3) continue;
       var pick = ratio(INK.c, bg) >= ratio(WHITE.c, bg) ? INK : WHITE;
