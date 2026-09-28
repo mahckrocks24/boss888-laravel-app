@@ -90,10 +90,21 @@ class TemplateService
         $html = self::injectStyleOnce($html, 'lug-empty-slot', self::emptySlotSafetyHtml());
         // KB-3 (2026-09-25): every served page and every editor preview carries the keyboard guard, so a text field
         // (booking/contact forms, the chatbot composer, the editor's text edit) is never left under the phone keyboard.
-        return self::injectStyleOnce($html, 'lug-keyboard', self::keyboardGuardHtml());
+        $html = self::injectStyleOnce($html, 'lug-keyboard', self::keyboardGuardHtml());
+        // LU-CONTRAST-LIVE (2026-09-28): every served page and editor preview checks its own text against what is really
+        // behind it and fixes only unreadable text — no template x palette combination can ship invisible copy again
+        return self::injectStyleOnce($html, 'lug-contrast-live', self::contrastLiveHtml());
     }
 
     /** The keyboard guard as an inline script; read once per process from the app's own copy. */
+    public static function contrastLiveHtml(): string
+    {
+        static $js = null;
+        if ($js === null) { $path = public_path('app/js/lu-contrast.js'); $js = is_file($path) ? (string) file_get_contents($path) : ''; }
+        return $js === '' ? '' : "
+<script id=\"lug-contrast-live\">" . str_replace('</script', '<\/script', $js) . '</script>';
+    }
+
     public static function keyboardGuardHtml(): string
     {
         static $js = null;
