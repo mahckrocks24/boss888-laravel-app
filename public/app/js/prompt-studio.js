@@ -55,65 +55,79 @@
   function injectCss() {
     if (document.getElementById('ps-css')) return;
     var css = [
-      '.ps-root{position:absolute;inset:0;height:100%;min-height:100%;display:flex;flex-direction:column;background:#0E0F14;color:#fff;font:400 15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}',
-      '.ps-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}',
-      '.ps-head h2{font:600 17px/1 inherit;margin:0}',
-      '.ps-head .ps-sub{color:rgba(255,255,255,.5);font-size:12px}',
-      '.ps-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;display:flex;flex-direction:column;gap:16px}',
-      '.ps-stage{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px}',
-      // result
-      '.ps-result{width:100%;aspect-ratio:1/1;flex-shrink:0;min-height:220px;border-radius:16px;overflow:hidden;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;position:relative}',
-      '.ps-result.wide{aspect-ratio:16/9}.ps-result.tall{aspect-ratio:9/16;max-height:70vh}',
-      '.ps-result img{width:100%;height:100%;object-fit:contain;display:block}',
-      '.ps-empty{color:rgba(255,255,255,.4);text-align:center;padding:24px;font-size:14px}',
-      '.ps-empty svg{opacity:.5;margin-bottom:10px}',
-      '.ps-busy{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(14,15,20,.75);backdrop-filter:blur(6px)}',
-      '.ps-spin{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:#6C5CE7;animation:psSpin .9s linear infinite}',
-      '@keyframes psSpin{to{transform:rotate(360deg)}}',
-      // enhanced panel
-      '.ps-enh{border:1px solid rgba(108,92,231,.35);background:rgba(108,92,231,.08);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}',
-      '.ps-enh-title{font:600 13px/1 inherit;color:#B0A4FF;display:flex;align-items:center;gap:6px}',
-      '.ps-enh-row{font-size:13px;color:rgba(255,255,255,.82)}',
-      '.ps-enh-row b{color:rgba(255,255,255,.55);font-weight:500;margin-right:6px}',
+      '.ps-root{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg,#F7F6F3);color:var(--t1,#111);font:400 14px/1.5 var(--fb,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif)}',
+      '.ps-head{display:flex;align-items:center;gap:14px;padding:20px 28px 16px;flex-shrink:0;border-bottom:1px solid var(--bd,rgba(0,0,0,.08))}',
+      '.ps-head h2{font:700 22px/1.2 var(--fh,inherit);margin:0;letter-spacing:-.01em;color:var(--t1,#111)}',
+      '.ps-head .ps-sub{color:var(--t3,#777);font-size:13px;margin-top:3px}',
+      '.ps-costpill{margin-left:auto;font-size:12px;color:var(--t2,#555);background:var(--s1,#fff);border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:999px;padding:6px 12px;white-space:nowrap}',
+      '.ps-body{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:24px;padding:24px 28px 32px;align-items:start}',
+      '.ps-panel{background:var(--s1,#fff);border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px;box-shadow:0 1px 2px rgba(0,0,0,.04);position:sticky;top:0}',
+      '.ps-lbl{font:600 12px/1 var(--fb,inherit);letter-spacing:.06em;text-transform:uppercase;color:var(--t3,#777);margin:0 0 -6px}',
+      '.ps-hint{font-size:12px;color:var(--t3,#777);margin-top:-8px}',
+      /* type switch */
+      '.ps-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--s2,#F1F0EC);border:1px solid var(--bd,rgba(0,0,0,.08));border-radius:12px;padding:4px}',
+      '.ps-modebtn{display:flex;align-items:center;justify-content:center;gap:8px;background:transparent;border:0;color:var(--t2,#555);font:600 13.5px/1 var(--fb,inherit);padding:11px 12px;border-radius:9px;cursor:pointer;transition:background .15s,color .15s}',
+      '.ps-modebtn svg{width:16px;height:16px}',
+      '.ps-modebtn[aria-pressed="true"]{background:var(--s1,#fff);color:var(--t1,#111);box-shadow:0 1px 3px rgba(0,0,0,.12)}',
+      /* prompt */
+      '.ps-box{background:var(--bg,#F7F6F3);border:1px solid var(--bd2,rgba(0,0,0,.14));border-radius:12px;padding:12px 14px;transition:border-color .15s,box-shadow .15s}',
+      '.ps-box.focused{border-color:var(--p,#6C5CE7);box-shadow:0 0 0 3px color-mix(in srgb,var(--p,#6C5CE7) 18%,transparent)}',
+      '.ps-input{width:100%;box-sizing:border-box;background:transparent;color:var(--t1,#111);border:0;outline:0;resize:none;font:400 15px/1.55 var(--fb,inherit);min-height:96px;max-height:240px;padding:0}',
+      '.ps-input::placeholder{color:var(--t3,#999)}',
+      '.ps-examples{display:flex;flex-wrap:wrap;gap:6px;align-items:center}',
+      '.ps-examples>span{font-size:12px;color:var(--t3,#777);margin-right:2px}',
+      '.ps-ex{background:var(--s2,#F1F0EC);border:1px solid var(--bd,rgba(0,0,0,.08));color:var(--t2,#444);font:500 12.5px/1.3 var(--fb,inherit);padding:7px 11px;border-radius:999px;cursor:pointer;text-align:left}',
+      '.ps-ex:hover{border-color:var(--p,#6C5CE7);color:var(--t1,#111)}',
+      /* size tiles */
+      '.ps-chips{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}',
+      '.ps-chip{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--bg,#F7F6F3);border:1px solid var(--bd,rgba(0,0,0,.1));color:var(--t2,#555);font:600 12.5px/1.2 var(--fb,inherit);padding:12px 6px 10px;border-radius:12px;cursor:pointer;transition:border-color .15s,background .15s}',
+      '.ps-chip small{font:400 11px/1.2 var(--fb,inherit);color:var(--t3,#888)}',
+      '.ps-chip i{display:block;border:2px solid currentColor;border-radius:3px;opacity:.7}',
+      '.ps-chip[aria-pressed="true"]{border-color:var(--p,#6C5CE7);background:color-mix(in srgb,var(--p,#6C5CE7) 8%,var(--s1,#fff));color:var(--t1,#111)}',
+      '.ps-chip[aria-pressed="true"] i{opacity:1;border-color:var(--p,#6C5CE7)}',
+      /* actions */
+      '.ps-actions{display:flex;flex-direction:column;gap:8px}',
+      '.ps-btn{border:0;border-radius:12px;font:600 14.5px/1 var(--fb,inherit);padding:14px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;transition:filter .15s,background .15s}',
+      '.ps-btn:disabled{opacity:.55;cursor:not-allowed}',
+      '.ps-btn-primary{background:var(--p,#6C5CE7);color:#fff;width:100%}',
+      '.ps-btn-primary:hover:not(:disabled){filter:brightness(1.07)}',
+      '.ps-btn-ghost{background:transparent;border:1px solid var(--bd2,rgba(0,0,0,.14));color:var(--t1,#111);padding:11px 14px;font-size:13.5px}',
+      '.ps-btn-ghost:hover:not(:disabled){background:var(--s2,#F1F0EC)}',
+      '.ps-cost{font-size:12px;color:var(--t3,#777);text-align:center;margin-top:-6px}',
+      '.ps-cost b{color:var(--t1,#111);font-weight:600}',
+      '.ps-err{background:color-mix(in srgb,#EF4444 10%,var(--s1,#fff));border:1px solid color-mix(in srgb,#EF4444 40%,transparent);color:var(--t1,#111);border-radius:10px;padding:10px 12px;font-size:13px}',
+      /* how we will make it */
+      '.ps-enh{border:1px solid var(--bd,rgba(0,0,0,.1));background:var(--bg,#F7F6F3);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:8px}',
+      '.ps-enh-title{font:600 13px/1.2 var(--fb,inherit);color:var(--t1,#111);display:flex;align-items:center;gap:6px}',
+      '.ps-enh-row{font-size:12.5px;color:var(--t2,#555)}',
+      '.ps-enh-row b{color:var(--t3,#888);font-weight:500;margin-right:6px}',
       '.ps-swatches{display:flex;gap:6px;flex-wrap:wrap}',
-      '.ps-swatch{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.2)}',
+      '.ps-swatch{width:20px;height:20px;border-radius:6px;border:1px solid var(--bd2,rgba(0,0,0,.14))}',
       '.ps-tags{display:flex;gap:6px;flex-wrap:wrap}',
-      '.ps-tag{font-size:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:3px 8px;color:rgba(255,255,255,.75)}',
-      // result actions
-      '.ps-ractions{display:flex;gap:8px;flex-wrap:wrap}',
-      '.ps-raction{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.9);font:600 13px/1 inherit;padding:10px 14px;border-radius:10px;cursor:pointer}',
-      '.ps-raction:hover{background:rgba(255,255,255,.12)}',
-      // version chips
-      '.ps-versions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}',
-      '.ps-versions-lbl{font-size:12px;color:rgba(255,255,255,.5);margin-right:2px}',
-      '.ps-versions-hint{font-size:11px;color:rgba(255,255,255,.35)}',
-      '.ps-vchip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.8);font:600 12px/1 inherit;padding:7px 11px;border-radius:10px;cursor:pointer;min-width:38px}',
-      '.ps-vchip[aria-pressed="true"]{background:rgba(108,92,231,.25);border-color:#6C5CE7;color:#fff}',
-      // composer
-      '.ps-composer{flex-shrink:0;border-top:1px solid rgba(255,255,255,.08);padding:12px 16px;background:#0E0F14;display:flex;flex-direction:column;gap:10px}',
-      '.ps-composer-inner{width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:10px}',
-      '.ps-mode{display:inline-flex;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:3px;gap:2px;align-self:flex-start}',
-      '.ps-modebtn{background:transparent;border:0;color:rgba(255,255,255,.7);font:600 13px/1 inherit;padding:8px 16px;border-radius:9px;cursor:pointer;transition:.12s}',
-      '.ps-modebtn[aria-pressed="true"]{background:rgba(108,92,231,.35);color:#fff}',
-      '.ps-result video{width:100%;height:100%;object-fit:contain;display:block;background:#000}',
-      '.ps-chips{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:2px}',
-      '.ps-chip{flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);color:rgba(255,255,255,.8);font:500 13px/1 inherit;padding:9px 14px;border-radius:20px;cursor:pointer;transition:.12s}',
-      '.ps-chip[aria-pressed="true"]{background:rgba(108,92,231,.25);border-color:#6C5CE7;color:#fff}',
-      '.ps-box{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:10px 12px;display:flex;align-items:flex-end;gap:10px;transition:border-color .15s}',
-      '.ps-box.focused{border-color:rgba(108,92,231,.6)}',
-      '.ps-input{flex:1;background:transparent;color:#fff;border:0;outline:0;resize:none;font:400 15px/1.45 inherit;min-height:24px;max-height:120px;padding:2px 0}',
-      '.ps-input::placeholder{color:rgba(255,255,255,.4)}',
-      '.ps-actions{display:flex;gap:8px;align-items:center}',
-      '.ps-btn{border:0;border-radius:12px;font:600 14px/1 inherit;padding:12px 16px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}',
-      '.ps-btn:disabled{opacity:.5;cursor:not-allowed}',
-      '.ps-btn-primary{background:linear-gradient(180deg,#6C5CE7,#5A4BD1);color:#fff;flex:1;justify-content:center}',
-      '.ps-btn-primary:hover:not(:disabled){background:linear-gradient(180deg,#7B6BF0,#6358DE)}',
-      '.ps-btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:rgba(255,255,255,.85)}',
-      '.ps-cost{font-size:12px;color:rgba(255,255,255,.55)}',
-      '.ps-cost b{color:#F5C451}',
-      '.ps-err{background:rgba(60,10,10,.5);border:1px solid rgba(255,80,80,.4);color:#FFD1D1;border-radius:10px;padding:10px 12px;font-size:13px}',
-      // desktop widen
-      '@media(min-width:900px){.ps-scroll{padding:24px}}'
+      '.ps-tag{font-size:11px;background:var(--s1,#fff);border:1px solid var(--bd,rgba(0,0,0,.1));border-radius:999px;padding:3px 9px;color:var(--t2,#555)}',
+      /* canvas */
+      '.ps-canvas{display:flex;flex-direction:column;gap:14px;min-width:0}',
+      '.ps-result{width:100%;max-width:760px;margin:0 auto;aspect-ratio:1/1;border-radius:18px;overflow:hidden;background:var(--s1,#fff);border:1px solid var(--bd,rgba(0,0,0,.1));display:flex;align-items:center;justify-content:center;position:relative;box-shadow:0 1px 2px rgba(0,0,0,.04)}',
+      '.ps-result.wide{aspect-ratio:16/9}.ps-result.tall{aspect-ratio:9/16;max-width:420px;max-height:78vh}',
+      '.ps-result img,.ps-result video{width:100%;height:100%;object-fit:contain;display:block}',
+      '.ps-result video{background:#000}',
+      '.ps-empty{color:var(--t3,#888);text-align:center;padding:32px;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:10px}',
+      '.ps-empty .ps-empty-ic{width:56px;height:56px;border-radius:16px;background:var(--s2,#F1F0EC);display:flex;align-items:center;justify-content:center;color:var(--t2,#555)}',
+      '.ps-empty b{color:var(--t1,#111);font:600 15px/1.3 var(--fb,inherit)}',
+      '.ps-empty span{font-size:13px;line-height:1.5}',
+      '.ps-busy{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:color-mix(in srgb,var(--s1,#fff) 82%,transparent);backdrop-filter:blur(6px);color:var(--t2,#555);font-size:13px}',
+      '.ps-spin{width:36px;height:36px;border-radius:50%;border:3px solid var(--bd,rgba(0,0,0,.1));border-top-color:var(--p,#6C5CE7);animation:psSpin .9s linear infinite}',
+      '@keyframes psSpin{to{transform:rotate(360deg)}}',
+      '.ps-ractions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}',
+      '.ps-raction{background:var(--s1,#fff);border:1px solid var(--bd2,rgba(0,0,0,.14));color:var(--t1,#111);font:600 13px/1 var(--fb,inherit);padding:11px 16px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}',
+      '.ps-raction:hover{background:var(--s2,#F1F0EC)}',
+      '.ps-versions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center}',
+      '.ps-versions-lbl{font-size:12px;color:var(--t3,#777)}',
+      '.ps-versions-hint{font-size:11px;color:var(--t3,#999)}',
+      '.ps-vchip{background:var(--s1,#fff);border:1px solid var(--bd,rgba(0,0,0,.1));color:var(--t2,#555);font:600 12px/1 var(--fb,inherit);padding:7px 11px;border-radius:10px;cursor:pointer;min-width:38px}',
+      '.ps-vchip[aria-pressed="true"]{border-color:var(--p,#6C5CE7);color:var(--t1,#111)}',
+      /* phone: canvas first, one column */
+      '@media(max-width:899px){.ps-head{padding:14px 16px 12px}.ps-head h2{font-size:19px}.ps-body{grid-template-columns:1fr;padding:14px 12px 96px;gap:14px}.ps-body.has-result .ps-canvas{order:-1}.ps-body:not(.has-result) .ps-result{aspect-ratio:auto;min-height:0}.ps-body:not(.has-result) .ps-empty{flex-direction:row;text-align:left;padding:16px;max-width:none;gap:14px}.ps-body:not(.has-result) .ps-empty-ic{flex:0 0 44px;width:44px;height:44px}.ps-body:not(.has-result) .ps-empty b{font-size:14px}.ps-panel{position:static;padding:16px}.ps-costpill{display:none}}'
     ].join('');
     var s = document.createElement('style'); s.id = 'ps-css'; s.textContent = css;
     document.head.appendChild(s);
@@ -136,7 +150,7 @@
     var placeholder = video
       ? 'Describe a short video — e.g. “a 5-second clip of waves rolling onto a beach at sunset”…'
       : (editing ? 'Describe a change — e.g. “make the background warmer”, “remove the person”…'
-                 : 'A cozy coffee shop latte on a wooden table, morning light…');
+                 : 'e.g. A latte on a wooden table, morning light');
     var actions = video
       ? '<button type="button" class="ps-btn ps-btn-primary" id="ps-genvideo" ' + (S.busy ? 'disabled' : '') + '>Generate video</button>'
       : (editing
@@ -156,37 +170,59 @@
           '<button type="button" class="ps-modebtn" data-mode="video" aria-pressed="' + (video ? 'true' : 'false') + '">Video</button>' +
         '</div>'
       : '';
+    var ICON_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>';
+    var ICON_VID = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="15" height="14" rx="3"/><path d="M17 10l5-3v10l-5-3"/></svg>';
+    var typeSwitch = videoEnabled()
+      ? '<div class="ps-mode" role="group" aria-label="What to create">' +
+          '<button type="button" class="ps-modebtn" data-mode="image" aria-pressed="' + (!video) + '">' + ICON_IMG + 'Image</button>' +
+          '<button type="button" class="ps-modebtn" data-mode="video" aria-pressed="' + video + '">' + ICON_VID + 'Video</button>' +
+        '</div>'
+      : '';
+    var EX = video
+      ? ['Waves rolling onto a beach at sunset, slow pan', 'Steam rising from a fresh coffee, close-up', 'A city street at night with neon reflections']
+      : ['Fresh pastries on a marble counter, soft morning light', 'A bright modern office with a team at work, candid', 'A gift box with a ribbon on a pastel background, flat lay'];
+    var examples = (S.prompt || '').trim() ? '' :
+      '<div class="ps-examples"><span>Try</span>' + EX.map(function (t) { return '<button type="button" class="ps-ex" data-ex="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div>';
+    var buttons = video
+      ? '<button type="button" class="ps-btn ps-btn-primary" id="ps-genvideo" ' + (S.busy ? 'disabled' : '') + '>' + ICON_VID.replace('<svg ', '<svg width="18" height="18" ') + 'Generate video</button>'
+      : '<button type="button" class="ps-btn ps-btn-primary" id="ps-generate" ' + (S.busy ? 'disabled' : '') + '>' + ICON_IMG.replace('<svg ', '<svg width="18" height="18" ') + 'Generate image</button>' +
+        '<button type="button" class="ps-btn ps-btn-ghost" id="ps-enhance" ' + (S.busy ? 'disabled' : '') + '>✦ Enhance my prompt · free</button>';
     host.innerHTML =
       '<div class="ps-root">' +
-        '<div class="ps-head">' +
-          '<h2>Studio</h2>' +
-          '<span class="ps-sub">Describe it and we create it — images' + (videoEnabled() ? ' and short videos' : '') + '.</span>' +
+        '<div class="ps-head"><div><h2>Studio</h2><div class="ps-sub">Describe it and we create it — images' + (videoEnabled() ? ' and short videos' : '') + ' for your business.</div></div>' +
+          '<span class="ps-costpill">' + (video ? VIDEO_COST + ' credits per video' : COST.generate_image + ' credits per image') + '</span></div>' +
+        '<div class="ps-body' + ((S.busy || S.imageUrl || S.videoUrl) ? ' has-result' : '') + '">' +
+          '<section class="ps-panel" aria-label="Create">' +
+            typeSwitch +
+            '<label class="ps-lbl" for="ps-input">Describe your ' + (video ? 'video' : 'image') + '</label>' +
+            '<div class="ps-box" id="ps-box"><textarea class="ps-input" id="ps-input" rows="4" placeholder="' + esc(placeholder) + '" aria-label="' + (video ? 'Describe the video' : 'Describe the image') + '">' + esc(S.prompt || '') + '</textarea></div>' +
+            '<div class="ps-hint">Name the subject, the setting, the light and the mood.</div>' +
+            examples +
+            (video ? '' : '<div class="ps-lbl">Size</div><div class="ps-chips" role="group" aria-label="Size">' + chips() + '</div>') +
+            '<div class="ps-actions">' + buttons + '</div>' +
+            '<div class="ps-cost">' + costLine + '</div>' +
+            (!video && S.enh ? enhancedPanel(S.enh) : '') +
+            (S.error ? '<div class="ps-err" role="alert">' + esc(S.error) + '</div>' : '') +
+          '</section>' +
+          '<section class="ps-canvas" aria-label="Result">' +
+            '<div class="' + resultClass() + '" id="ps-result">' + resultInner() + '</div>' +
+            (video ? '' : resultActions() + versionChips()) +
+          '</section>' +
         '</div>' +
-        '<div class="ps-scroll"><div class="ps-stage">' +
-          '<div class="' + resultClass() + '" id="ps-result">' + resultInner() + '</div>' +
-          (video ? '' : resultActions() + versionChips() + (S.enh && !editing ? enhancedPanel(S.enh) : '')) +
-          (S.error ? '<div class="ps-err">' + esc(S.error) + '</div>' : '') +
-        '</div></div>' +
-        '<div class="ps-composer"><div class="ps-composer-inner">' +
-          modeToggle +
-          (video || editing ? '' : '<div class="ps-chips" role="group" aria-label="Aspect ratio">' + chips() + '</div>') +
-          '<div class="ps-box" id="ps-box">' +
-            '<textarea class="ps-input" id="ps-input" rows="1" placeholder="' + esc(placeholder) + '" ' +
-              'aria-label="' + (video ? 'Describe the video' : (editing ? 'Describe a change' : 'Describe the image')) + '">' + esc(S.prompt || '') + '</textarea>' +
-          '</div>' +
-          '<div class="ps-actions">' + actions + '</div>' +
-          '<div class="ps-cost">' + costLine + '</div>' +
-        '</div></div>' +
       '</div>';
     wire();
+    // example prompts fill the box
+    Array.prototype.forEach.call(host.querySelectorAll('.ps-ex'), function (b) {
+      b.addEventListener('click', function () { S.prompt = b.getAttribute('data-ex'); S.enh = null; render(); var i = document.getElementById('ps-input'); if (i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } });
+    });
   }
 
   function resultActions() {
     if (!S.imageUrl || S.busy) return '';
     var canVary = !!S.genPrompt;
     return '<div class="ps-ractions">' +
-      '<button type="button" class="ps-raction" id="ps-download">⬇ Save</button>' +
-      (canVary ? '<button type="button" class="ps-raction" id="ps-vary">⎘ Make another</button>' : '') +
+      '<button type="button" class="ps-raction" id="ps-download">⬇ Save image</button>' +
+      (canVary ? '<button type="button" class="ps-raction" id="ps-vary">↻ Make another</button>' : '') +
       '</div>';
   }
 
@@ -204,10 +240,10 @@
 
   function resultInner() {
     if (S.busy && S.busyKind === 'video') {
-      return '<div class="ps-busy"><div class="ps-spin"></div><div style="color:rgba(255,255,255,.7);font-size:13px">Creating your video… this can take a minute or two</div></div>';
+      return '<div class="ps-busy"><div class="ps-spin"></div><div>Creating your video — this can take a minute or two</div></div>';
     }
     if (S.busy && S.busyKind === 'generate') {
-      return '<div class="ps-busy"><div class="ps-spin"></div><div style="color:rgba(255,255,255,.7);font-size:13px">Creating your image…</div></div>';
+      return '<div class="ps-busy"><div class="ps-spin"></div><div>Creating your image…</div></div>';
     }
     if (S.mode === 'video' && S.videoUrl) {
       return '<video src="' + esc(S.videoUrl) + '" controls playsinline style="width:100%;height:100%;object-fit:contain;background:#000"></video>';
@@ -216,20 +252,19 @@
       return '<img src="' + esc(S.imageUrl) + '" alt="' + esc(S.prompt || 'Generated image') + '">';
     }
     if (S.mode === 'video') {
-      return '<div class="ps-empty">' +
-        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M10 9l5 3-5 3z"/></svg>' +
-        '<div>Describe a short video below, then Generate video.</div></div>';
+      return '<div class="ps-empty"><div class="ps-empty-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="2" y="5" width="15" height="14" rx="3"/><path d="M17 10l5-3v10l-5-3"/></svg></div>' +
+        '<b>Your video appears here</b><span>Describe a short scene and press Generate video. It takes a minute or two.</span></div>';
     }
-    return '<div class="ps-empty">' +
-      '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>' +
-      '<div>Describe an image below, then Generate.</div></div>';
+    return '<div class="ps-empty"><div class="ps-empty-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg></div>' +
+      '<b>Your image appears here</b><span>Describe what you want, pick a size and press Generate image.</span></div>';
   }
 
   function chips() {
+    var SHAPE = { square: [18, 18], story: [12, 20], landscape: [22, 13] }, NAME = { square: 'Feed post', story: 'Story', landscape: 'Cover' };
     return ASPECTS.map(function (a) {
-      var on = (S.aspectId || 'square') === a.id;
+      var on = (S.aspectId || 'square') === a.id, sh = SHAPE[a.id] || [18, 18];
       return '<button type="button" class="ps-chip" data-aspect="' + a.id + '" aria-pressed="' + (on ? 'true' : 'false') + '">' +
-        esc(a.label) + '</button>';
+        '<i style="width:' + sh[0] + 'px;height:' + sh[1] + 'px"></i>' + esc(NAME[a.id] || a.label) + '<small>' + esc(a.ar) + '</small></button>';
     }).join('');
   }
 
@@ -251,7 +286,7 @@
     var tagsHtml = tags.map(function (t) { return '<span class="ps-tag">' + esc(t) + '</span>'; }).join('');
     var subject = clean(sum.subject), audience = clean(sum.audience), aspect = clean(sum.aspect_ratio), size = clean(e.size);
     return '<div class="ps-enh">' +
-      '<div class="ps-enh-title">✦ Enhanced your prompt</div>' +
+      '<div class="ps-enh-title">✦ How we will make it</div>' +
       (subject ? '<div class="ps-enh-row"><b>Subject</b>' + esc(subject) + '</div>' : '') +
       (audience ? '<div class="ps-enh-row"><b>For</b>' + esc(audience) + '</div>' : '') +
       (aspect ? '<div class="ps-enh-row"><b>Aspect</b>' + esc(aspect) + (size ? ' · ' + esc(size) : '') + '</div>' : '') +
@@ -259,8 +294,8 @@
       (palette ? '<div class="ps-swatches">' + palette + '</div>' : '') +
       // RFC-0009: honest state of the preview — bound to this exact request, or not.
       (planTokenFor((S.prompt || '').trim())
-        ? '<div class="ps-enh-row ps-enh-bound"><b>Bound</b>Generate uses exactly this preview.</div>'
-        : '<div class="ps-enh-row ps-enh-bound"><b>Changed</b>Your request differs from this preview — Enhance again to bind it.</div>') +
+        ? '<div class="ps-enh-row ps-enh-bound">✓ Generate will follow this.</div>'
+        : '<div class="ps-enh-row ps-enh-bound">You changed the description — enhance again to update this.</div>') +
       ((e.flags || []).indexOf('logo_requested_no_logo_asset') >= 0 ? '<div class="ps-enh-row"><b>Note</b>No logo file is in your brand kit yet, so no logo can be drawn.</div>' : '') +
       ((e.exact_text_missing || []).length ? '<div class="ps-enh-row"><b>Note</b>Your quoted text was not carried verbatim: ' + esc(e.exact_text_missing.join(' · ')) + '</div>' : '') +
       // RFC-0009 P2: a named platform agent — say who was resolved and, truthfully, what the provider can do with it.
@@ -280,12 +315,12 @@
       input.addEventListener('input', function () {
         S.prompt = input.value;
         input.style.height = 'auto';
-        input.style.height = Math.min(120, input.scrollHeight) + 'px';
+        input.style.height = Math.max(96, Math.min(240, input.scrollHeight)) + 'px';
         // RFC-0009 P1: keep the preview-binding note truthful while the customer types (no full re-render).
         var bound = document.querySelector('.ps-enh-bound');
         if (bound) bound.innerHTML = planTokenFor((S.prompt || '').trim())
-          ? '<b>Bound</b>Generate uses exactly this preview.'
-          : '<b>Changed</b>Your request differs from this preview — Enhance again to bind it.';
+          ? '✓ Generate will follow this.'
+          : 'You changed the description — enhance again to update this.';
       });
       input.addEventListener('focus', function () { box && box.classList.add('focused'); });
       input.addEventListener('blur', function () { box && box.classList.remove('focused'); });
