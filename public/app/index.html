@@ -2257,6 +2257,11 @@ body:has(#view-meeting:not([style*="display:none"])) #ws-activity-panel {
      column, so they sat off to the left; in the Websites grid a card fills its column, and the page keeps one 12px gutter */
   #ws-grid .ws-card { width: auto !important; max-width: none !important; }
   #ws-site-list { padding-left: 12px !important; padding-right: 12px !important; }
+  /* WS-HEAD-1 (Owner 2026-09-28 "Not enough space vertically"): the title block and the buttons wrap on a phone — give them air, and one even row of buttons */
+  #ws-site-list > div:first-of-type { flex-wrap: wrap !important; row-gap: 16px !important; align-items: flex-start !important; }
+  #ws-site-list > div:first-of-type > div:last-child { width: 100%; }
+  #ws-site-list > div:first-of-type > div:last-child > .ct-btn { flex: 1 1 0; justify-content: center; min-height: 44px; }
+  #ws-site-list > div:first-of-type p { margin-top: 2px; line-height: 1.45; }
 }
 
 /* ═════════════════════════════════════════════════════════════════════════
