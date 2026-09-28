@@ -172,6 +172,15 @@ final class SarahDigest
             } catch (\Throwable $e) {}
         }
         if (! isset($out['article_id']) && ! empty($meta['action_link']) && preg_match('#/write/(\d+)#', (string) $meta['action_link'], $m)) $out['article_id'] = (int) $m[1];
+        // a published article can be read where it lives (the companion app has no editor; it opens this)
+        if (isset($out['article_id'])) {
+            try {
+                $a = DB::table('articles as a')->leftJoin('websites as w', 'w.id', '=', 'a.website_id')->where('a.id', $out['article_id'])->whereNull('a.deleted_at')
+                    ->first(['a.status', 'a.slug', 'w.custom_domain', 'w.subdomain']);
+                $host = $a ? ($a->custom_domain ?: $a->subdomain) : null;
+                if ($a && $a->status === 'published' && $host && $a->slug) $out['article_url'] = 'https://' . preg_replace('#^https?://#', '', rtrim((string) $host, '/')) . '/blog/' . ltrim((string) $a->slug, '/');
+            } catch (\Throwable $e) {}
+        }
         return $out;
     }
 
