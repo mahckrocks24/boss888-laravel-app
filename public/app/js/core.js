@@ -7448,7 +7448,7 @@ function _cmdcRenderAll(d, isPoll) {
     var hour = new Date().getHours();
     var salutation = hour < 12 ? 'Good morning' : (hour < 18 ? 'Good afternoon' : 'Good evening');
     var name = d.first_name ? (', ' + d.first_name) : '';
-    greet.textContent = salutation + name + '. Sarah is working.';
+    greet.textContent = salutation + name + '.';   /* CC-GREET-1 (Owner 2026-09-28): no 'Sarah is working' */
   }
   if (sub) {
     var when = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
