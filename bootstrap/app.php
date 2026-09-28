@@ -25,6 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // WATCH-1 (RFC-0019): Sarah acts on events, not only the clock — results inside the business, the world, the owner's answers
         $schedule->command('growth:tick --signals')->when(fn () => is_file(storage_path('app/watch1.on')))->everyTenMinutes()->withoutOverlapping(15)->runInBackground();
         $schedule->command('growth:tick --watch')->when(fn () => is_file(storage_path('app/watch1.on')))->hourlyAt(20)->withoutOverlapping(50)->runInBackground();
+        // DIGEST-1: reports left waiting past the quiet window go out even if their job was lost
+        $schedule->call(fn () => app(\App\Core\Agents\SarahDigest::class)->sweep())->name('sarah-digest-sweep')->when(fn () => is_file(storage_path('app/digest1.on')))->everyMinute()->withoutOverlapping(5);
         // PAGE-ONE-1 (RFC-0020): kill switch storage/app/pageone.on
         $schedule->command('search:tick --pages')->when(fn () => is_file(storage_path('app/pageone.on')))->everyFifteenMinutes()->withoutOverlapping(30)->runInBackground();
         $schedule->command('search:tick --publish')->when(fn () => is_file(storage_path('app/pageone.on')))->everyTenMinutes()->withoutOverlapping(20)->runInBackground();

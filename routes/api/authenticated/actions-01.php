@@ -152,7 +152,9 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 ->where(fn ($q) => $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(result_json, '$.data.post_id')) = ?", [(string) $__d['post_id']])->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(result_json, '$.post_id')) = ?", [(string) $__d['post_id']]))
                 ->orderByDesc('id')->first(['id', 'parent_task_id']);
             if ($__task) $__mid = (clone $__base)->where(fn ($q) => $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.root_task_id')) = ?", [(string) $__task->id])->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.task_id')) = ?", [(string) $__task->id])
-                ->when($__task->parent_task_id, fn ($x) => $x->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.root_task_id')) = ?", [(string) $__task->parent_task_id])))->orderBy('id')->value('id');
+                ->orWhereRaw("JSON_CONTAINS(COALESCE(JSON_EXTRACT(metadata_json, '$.root_task_ids'), JSON_ARRAY()), JSON_QUOTE(?))", [(string) $__task->id])   /* DIGEST-1 */
+                ->when($__task->parent_task_id, fn ($x) => $x->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.root_task_id')) = ?", [(string) $__task->parent_task_id])
+                    ->orWhereRaw("JSON_CONTAINS(COALESCE(JSON_EXTRACT(metadata_json, '$.root_task_ids'), JSON_ARRAY()), JSON_QUOTE(?))", [(string) $__task->parent_task_id])))->orderBy('id')->value('id');
             // 2. the first Sarah message within 3 minutes after it; 3. the one that announced it just before; 4. the last before it
             $__d['message_id'] = (int) ($__mid
                 ?: (clone $__base)->where('created_at', '>=', $__at->copy()->subSeconds(2))->where('created_at', '<=', $__at->copy()->addMinutes(3))->orderBy('id')->value('id')

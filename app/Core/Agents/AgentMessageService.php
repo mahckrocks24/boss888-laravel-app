@@ -55,6 +55,11 @@ class AgentMessageService
         $agentSlug = $voice['slug'];
         $content   = $voice['content'];
         $metadata  = $voice['metadata'];
+        // DIGEST-1 (Owner 2026-09-28): reports of finished work go out as ONE Sarah message once the team goes quiet
+        if (SarahDigest::wants((bool) $voice['relayed'], $metadata)) {
+            try { app(SarahDigest::class)->hold($wsId, $content, $metadata); return null; }
+            catch (\Throwable $e) { Log::warning('[DIGEST-1] hold failed — posting now', ['ws' => $wsId, 'e' => $e->getMessage()]); }
+        }
         try {
             $id = DB::table('agent_messages')->insertGetId([
                 'workspace_id'  => $wsId,
