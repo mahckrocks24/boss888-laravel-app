@@ -1430,6 +1430,7 @@
     }
     lifted = [];
     unshrink();
+    var room = document.getElementById('lu-kb-room'); if (room) room.parentNode.removeChild(room);   // KB-3 v10
   }
 
   /* An app-shaped document — html/body at 100%, nothing to scroll, panels pinned to the bottom (a chat composer, an
@@ -1531,6 +1532,13 @@
       }
       if (Math.abs(n) < 2) return;
     }
+    // KB-3 v10: a field near the end of the page has no page below it to scroll into view above the keyboard — make room
+    if (n > 2 && v.kb > 0) {
+      var room = document.getElementById('lu-kb-room');
+      if (!room) { room = document.createElement('div'); room.id = 'lu-kb-room'; room.setAttribute('aria-hidden', 'true'); room.style.cssText = 'height:0;margin:0;padding:0;border:0;pointer-events:none;clear:both'; document.body.appendChild(room); }
+      var want = Math.round(n + v.kb);
+      if ((parseInt(room.style.height, 10) || 0) < want) room.style.height = want + 'px';
+    }
     try { instantScroll(null, n, window); } catch (e) {}
     n = need(el, a.off, v);
     if (Math.abs(n) < 2) return;
@@ -1563,7 +1571,11 @@
     var a = deepActive();
     if (!phone || !isField(a.el) || assumedKb > 0) return;
     var v = vis();
-    var signalled = v.kb >= 60 || window.innerHeight < focusH - 60;
+    /* KB-3 v9 (Owner 2026-09-26: "sometime when keyboard closes white background for the keyboard stays"): a field
+       re-focused while Android's keyboard is ALREADY open (the composer after Send) saw no NEW signal and assumed a second,
+       phantom keyboard; closing the real one grew the page back but nothing cleared the phantom. A layout already shrunk
+       below its tallest height IS the signal. */
+    var signalled = v.kb >= 60 || window.innerHeight < focusH - 60 || window.innerHeight < baseH - 120;
     if (signalled) return;
     var r = rectOf(a.el, a.off);
     if (r.bottom <= window.innerHeight * 0.55) return;   // high on the screen: even an unannounced keyboard leaves it visible
@@ -1580,8 +1592,14 @@
 
   document.addEventListener('focusin', function (e) { if (isField(e.target) || (e.target && e.target.tagName === 'IFRAME')) { focusedAt = Date.now(); schedule(); } }, true);
   document.addEventListener('focusout', function () { ticks.forEach(clearTimeout); ticks = []; assumedKb = 0; later(); }, true);
-  if (vv) { vv.addEventListener('resize', function () { if (vis().kb >= 60) assumedKb = 0; later(); }); vv.addEventListener('scroll', later); }
-  window.addEventListener('resize', function () { if (window.innerHeight < focusH - 60) assumedKb = 0; later(); });
+  var lastVvH = vv ? vv.height : 0;
+  if (vv) { vv.addEventListener('resize', function () { if (vis().kb >= 60 || vv.height > lastVvH + 60) assumedKb = 0; lastVvH = vv.height; later(); }); vv.addEventListener('scroll', later); }
+  var lastH = window.innerHeight;
+  window.addEventListener('resize', function () {
+    if (window.innerHeight < focusH - 60) assumedKb = 0;
+    if (window.innerHeight > lastH + 60) assumedKb = 0;   // v9: the layout grew back — a keyboard closed; no phantom survives it
+    lastH = window.innerHeight; later();
+  });
   window.addEventListener('orientationchange', function () { baseH = 0; later(); });
   /* v8: the tab comes back (backgrounded with the keyboard open, bfcache, app switch) — nothing is focused any more, so
      the events that would have restored the page never fired. Re-check now, and again after the browser settles. */
