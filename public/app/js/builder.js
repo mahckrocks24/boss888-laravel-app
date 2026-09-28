@@ -829,7 +829,7 @@ function wsRenderGrid(){
       let host='';try{host=new URL(s.external_url||'').hostname;}catch(e){}
       metaLine=host+(platform?' · '+platform.charAt(0).toUpperCase()+platform.slice(1):'')+' · External';
     }else{
-      metaLine='/'+bld_escH(s.slug)+' · '+(s.page_count||0)+' pages'+(upd?' · '+upd:'');
+      metaLine='/'+bld_escH(s.slug)+((s.page_count||0)>0?' · '+s.page_count+' page'+(s.page_count===1?'':'s'):'')+(upd?' · '+upd:'');   // template sites keep pages as files: never say 0 pages
     }
 
     // Action buttons
@@ -5020,4 +5020,30 @@ window._t3CloseFloating = function (except) {
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') { window._t3CloseFloating(null); }
   });
+})();
+
+/* ARTHUR-ZERO-1 (2026-09-28): at a 0 balance, focusing Arthur's box says why he can't make changes and that the owner's
+   own edits in the editor are free — before they type, not after. */
+(function () {
+  var at = 0, bal = null;
+  function status(cb) {
+    if (bal !== null && Date.now() - at < 60000) return cb(bal);
+    var f = (typeof _luFetch === 'function') ? _luFetch : window._luFetch; if (typeof f !== 'function') return;
+    f('GET', '/workspace/status').then(function (r) { return r && r.ok ? r.json() : null; }).then(function (s) { if (!s) return; at = Date.now(); bal = { credits: Number(s.credit_balance) || 0, sarah: s.sarah_included !== false }; cb(bal); }).catch(function () {});
+  }
+  document.addEventListener('focusin', function (e) {
+    var inp = e.target; if (!inp || inp.id !== 't3-arthur-input') return;
+    status(function (s) {
+      var old = document.getElementById('t3-arthur-zero');
+      if (s.credits > 0) { if (old) old.remove(); return; }
+      if (old) return;
+      var n = document.createElement('div');
+      n.id = 't3-arthur-zero'; n.setAttribute('role', 'status');
+      n.style.cssText = 'margin:0 0 8px;padding:9px 12px;border:1px solid var(--bd,#e5e7eb);border-radius:10px;background:color-mix(in srgb,var(--ac,#6C5CE7) 8%,var(--s1,#fff));color:var(--t1,#111);font-size:12.5px;line-height:1.45';
+      n.innerHTML = 'Your balance is 0 credits, so Arthur can’t make changes right now. Your own edits in the editor are free. '
+        + '<a href="#" style="color:var(--ac,#6C5CE7);font-weight:600;text-decoration:none">' + (s.sarah ? 'Add credits' : 'Choose a plan') + '</a>';
+      n.querySelector('a').onclick = function (ev) { ev.preventDefault(); try { window.nav('billing'); } catch (x) {} };
+      var row = inp.parentElement; if (row && row.parentElement) row.parentElement.insertBefore(n, row);
+    });
+  }, true);
 })();
