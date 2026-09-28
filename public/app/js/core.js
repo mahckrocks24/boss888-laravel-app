@@ -8640,3 +8640,27 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
   document.addEventListener('focusout', function () { lastFocus = null; later(); }, true);
   apply();
 })();
+
+/* NEEDS-YOU-1 web (Owner 2026-09-28: "Does it notify or pop up on laravel too?"): once a day, when something is waiting for
+   the owner, a site-styled pop-up says what — Open takes them to Sarah's chat with the "Needs your OK" pull-down open. */
+(function () {
+  function today() { var d = new Date(); return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate(); }
+  function run() {
+    var tok = null, ws = '';
+    try { tok = localStorage.getItem('lu_token'); ws = localStorage.getItem('lu_workspace_id') || ''; } catch (e) { return; }
+    if (!tok || !window.luApi || typeof window.luDialog !== 'function' || window._LGSC_EMBED) return;
+    var key = 'lu_needs_you_shown:' + ws;
+    try { if (localStorage.getItem(key) === today()) return; } catch (e) { return; }
+    fetch(window.luApi + 'growth/needs-you', { headers: authHeader(), cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !d.count || !d.line) return;
+      try { localStorage.setItem(key, today()); } catch (e) {}
+      window.luDialog({ type: 'confirm', title: 'Waiting for your OK', message: String(d.line).replace(/ Tap to open Review\.$/, ''), okLabel: 'Open', cancelLabel: 'Later' }).then(function (open) {
+        if (!open) return;
+        try { localStorage.setItem('lu_rail_min', '0'); } catch (e) {}
+        if (typeof window.nav === 'function') window.nav('sarah');
+        var t = 0; (function show() { var r = document.getElementById('sh-rail'); if (r && !r.hidden) { r.classList.remove('min'); r.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else if (t++ < 40) setTimeout(show, 250); })();
+      });
+    }).catch(function () {});
+  }
+  if (document.readyState === 'complete') setTimeout(run, 5000); else window.addEventListener('load', function () { setTimeout(run, 5000); });
+})();
