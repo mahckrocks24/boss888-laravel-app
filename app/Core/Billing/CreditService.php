@@ -385,6 +385,14 @@ class CreditService
 
     public function meterChat(int $workspaceId, string $reason = 'chat'): array
     {
+        // SARAH-GATE-1: Sarah and the specialists answer only on a plan that includes them (an expired trial is Free)
+        if (in_array($reason, ['agent_message', 'assistant_message'], true)) {
+            try {
+                if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah($workspaceId)) {
+                    return ['debited' => false, 'counter' => 0, 'sufficient' => false, 'reason' => 'plan_required'];
+                }
+            } catch (\Throwable $e) {}
+        }
         return $this->txRetry(function () use ($workspaceId, $reason) {
             $current = (int) (DB::table('workspaces')
                 ->where('id', $workspaceId)

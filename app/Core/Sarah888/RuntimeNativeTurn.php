@@ -132,11 +132,13 @@ final class RuntimeNativeTurn
         if (!($meter['sufficient'] ?? true)) {
             // The owner's message is already saved by the route above. Same words legacy
             // uses, because a billing state is not the moment to invent new copy.
-            $text = "I can't reply just yet — this workspace is out of credits. "
+            $planGate = ($meter['reason'] ?? '') === 'plan_required';   // SARAH-GATE-1
+            $text = $planGate ? \App\Core\Billing\SarahPaused::text($wsId)
+                  : "I can't reply just yet — this workspace is out of credits. "
                   . "Your message is saved, so top up and I'll pick straight up from here.";
             $this->persist($wsId, $agentSlug, $agentName, $text,
                 array_merge($corr, ['phase' => 'final', 'error' => true,
-                                    'reason' => 'insufficient_credits', 'runtime_native' => true]));
+                                    'reason' => $planGate ? 'plan_required' : 'insufficient_credits', 'runtime_native' => true]));
             return [
                 'success' => false,
                 'error'   => "This workspace is out of credits, so {$agentName} can't reply right now. "

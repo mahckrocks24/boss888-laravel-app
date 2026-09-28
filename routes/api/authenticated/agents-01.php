@@ -513,10 +513,11 @@ $withCorr = function (array $meta) use ($corr) {
                 'workspace_id'  => $wsId,
                 'agent_slug'    => $slug,
                 'sender'        => $agentName,
-                'content'       => "I can't reply just yet — this workspace is out of credits. "
+                'content'       => (($_meter['reason'] ?? '') === 'plan_required') ? \App\Core\Billing\SarahPaused::text((int) $wsId)   // SARAH-GATE-1
+                                 : "I can't reply just yet — this workspace is out of credits. "
                                  . "Your message is saved, so top up and I'll pick straight up from here.",
                 'role'          => 'agent',
-                'metadata_json' => $withCorr(['phase' => 'final', 'error' => true, 'reason' => 'insufficient_credits']),
+                'metadata_json' => $withCorr(['phase' => 'final', 'error' => true, 'reason' => ($_meter['reason'] ?? 'insufficient_credits')]),
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);
@@ -524,13 +525,13 @@ $withCorr = function (array $meta) use ($corr) {
             if ($__irec && $__isvc) { try { $__isvc->markFailed($__irec, 'CHAT_INSUFFICIENT_CREDITS', false, ['status' => 402, 'body' => ['success' => false, 'reason' => 'insufficient_credits', 'message_saved' => true, 'required_credits' => 1]]); } catch (\Throwable $__ie) {} }
             return response()->json([
                 'success' => false,
-                'error'   => "This workspace is out of credits, so {$agentName} can't reply right now. "
+                'error'   => (($_meter['reason'] ?? '') === 'plan_required') ? \App\Core\Billing\SarahPaused::text((int) $wsId) : "This workspace is out of credits, so {$agentName} can't reply right now. "
                            . "Your message has been saved — add credits and she'll continue from where you left off.",
-                'reason'            => 'insufficient_credits',
+                'reason'            => ($_meter['reason'] ?? 'insufficient_credits'),
                 'message_saved'     => true,
                 'required_credits'  => 1,
                 'chat_counter'      => $_meter['counter'],
-                'action_label'      => 'Top up credits',
+                'action_label'      => (($_meter['reason'] ?? '') === 'plan_required') ? 'Choose a plan' : 'Top up credits',
             ], 402);
         }
 
