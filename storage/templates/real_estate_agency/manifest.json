@@ -476,7 +476,7 @@
         "gold": {
             "type": "color",
             "label": "Gold",
-            "default": "#C9943A"
+            "default": "#956D29"
         },
         "gold_deep": {
             "type": "color",
@@ -506,7 +506,7 @@
         "whatsapp_green": {
             "type": "color",
             "label": "WhatsApp Green",
-            "default": "#25D366"
+            "default": "#128C7E"
         },
         "broker_name": {
             "type": "text",

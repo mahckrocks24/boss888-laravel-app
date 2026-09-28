@@ -343,7 +343,7 @@
         "gold": {
             "type": "color",
             "label": "Gold",
-            "default": "#F5A623"
+            "default": "#9E6507"
         },
         "gold_deep": {
             "type": "color",

@@ -142,12 +142,17 @@ final class PaletteRoles
         foreach (self::GEN_B_NEUTRALS as $css => $role) {
             if (isset($have[$css]) && isset($roles[$role])) $vars[$css] = $roles[$role];
         }
+        /* PALETTE-ROLES-2 (audit 2026-09-28): the css name comes from the template's own placeholder ("--medical: {{medical_blue}}"),
+           not from the variable name, and a declared role ALWAYS wins over the painter's pick — the on-colours are computed
+           for the role's value, so a surface painted with anything else carries the wrong text (Midnight Gold: the cta banner
+           declared accent was painted the navy primary while its text was on-accent #111 — black on navy, 12 templates). */
+        $names = is_array($manifest['_css_names'] ?? null) ? $manifest['_css_names'] : [];
         foreach (($manifest['palette_roles'] ?? []) as $var => $role) {
             if (! is_string($role) || $role === 'keep' || ! isset($roles[$role])) continue;
-            $css = '--' . str_replace('_', '-', (string) $var);
-            if (! isset($have[$css])) continue;
-            if (isset($vars[$css]) && in_array($role, ['primary', 'secondary', 'accent', 'primary_deep', 'accent_deep'], true)) continue;
-            $vars[$css] = $roles[$role];
+            foreach (array_unique(array_filter([$names[$var] ?? null, '--' . str_replace('_', '-', (string) $var)])) as $css) {
+                if (! isset($have[strtolower($css)]) && ! isset($have[$css])) continue;
+                $vars[$css] = $roles[$role];
+            }
         }
         return $vars;
     }

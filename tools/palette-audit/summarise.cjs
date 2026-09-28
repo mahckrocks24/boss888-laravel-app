@@ -1,0 +1,22 @@
+const fs = require('fs');
+const L = fs.readFileSync(__dirname + '/results.jsonl', 'utf8').trim().split('\n').map(l => JSON.parse(l));
+const pages = L.filter(r => !r.error);
+const errors = L.filter(r => r.error);
+const orig = pages.filter(r => r.k.endsWith('/_original'));
+const pal = pages.filter(r => !r.k.endsWith('/_original'));
+const badPages = pal.filter(r => r.unreadable > 0);
+console.log('pages scanned', L.length, 'errors', errors.length);
+console.log('originals with unreadable text', orig.filter(r => r.unreadable > 0).length, '/', orig.length);
+console.log('palette pages with unreadable text', badPages.length, '/', pal.length, '(' + Math.round(badPages.length * 100 / pal.length) + '%)');
+console.log('unreadable text items total', badPages.reduce((n, r) => n + r.unreadable, 0));
+const byPal = {}; pal.forEach(r => { const p = r.k.split('/')[1]; byPal[p] = byPal[p] || { pages: 0, bad: 0, items: 0 }; byPal[p].pages++; if (r.unreadable) { byPal[p].bad++; byPal[p].items += r.unreadable; } });
+console.log('\nBY PALETTE (pages with problems / pages):');
+Object.entries(byPal).sort((a, b) => b[1].bad - a[1].bad).forEach(([p, v]) => console.log('  ' + p.padEnd(16) + String(v.bad).padStart(4) + ' / ' + v.pages + '   items ' + v.items));
+const byTpl = {}; pal.forEach(r => { const t = r.k.split('/')[0]; byTpl[t] = byTpl[t] || { bad: 0, items: 0 }; if (r.unreadable) { byTpl[t].bad++; byTpl[t].items += r.unreadable; } });
+const tplBad = Object.entries(byTpl).filter(([, v]) => v.bad > 0);
+console.log('\ntemplates with at least one bad palette', tplBad.length, '/', Object.keys(byTpl).length);
+console.log('worst templates:'); tplBad.sort((a, b) => b[1].items - a[1].items).slice(0, 12).forEach(([t, v]) => console.log('  ' + t.padEnd(30) + v.bad + ' palettes, ' + v.items + ' items'));
+// what kind of text / which block
+const kinds = {}; badPages.forEach(r => (r.bad || []).forEach(b => { const k = b.block + ' ' + b.tag; kinds[k] = (kinds[k] || 0) + 1; }));
+console.log('\nmost common places (sampled):'); Object.entries(kinds).sort((a, b) => b[1] - a[1]).slice(0, 15).forEach(([k, n]) => console.log('  ' + String(n).padStart(4) + '  ' + k));
+if (errors.length) console.log('\nerrors e.g.', errors.slice(0, 3).map(e => e.k + ' ' + e.error));

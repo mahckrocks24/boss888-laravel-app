@@ -2693,6 +2693,7 @@ PROMPT;
             // idempotent) and the roles block is written into it, so the switch repaints the whole site.
             $__manifest = $this->siteManifest($site, $settings);
             $__roles = \App\Engines\Builder\Support\PaletteRoles::derive($theme, (string) ($__manifest['palette_scheme'] ?? 'light'));
+            $__manifest['_css_names'] = $this->templateCssNames($site, $settings);   // PALETTE-ROLES-2
             $vars = \App\Engines\Builder\Support\PaletteRoles::siteVarsForRoles($vars, $__manifest, $__roles, self::siteColorVars($websiteId));
             // the --lu-* roles ride along for the hover preview only; on apply the roles block is rewritten whole
             $vars = array_filter($vars, fn ($k) => ! str_starts_with((string) $k, '--lu-'), ARRAY_FILTER_USE_KEY);
@@ -2905,6 +2906,7 @@ PROMPT;
         // the hover preview paints the same thing apply writes: the design's neutrals and the --lu-* roles
         // (on_accent, accent_text, …) the normalised CSS reads, so what the customer sees on hover is what they get
         $__roles = \App\Engines\Builder\Support\PaletteRoles::derive($theme, (string) ($manifest['palette_scheme'] ?? 'light'));
+        $manifest['_css_names'] = $this->templateCssNames($site, $settings);   // PALETTE-ROLES-2: preview == apply
         $vars = \App\Engines\Builder\Support\PaletteRoles::siteVarsForRoles($vars, $manifest, $__roles, $have);
         foreach (\App\Engines\Builder\Support\PaletteRoles::cssVars($__roles) as $k => $v) { $vars[$k] = $v; }
         return $vars;
@@ -2917,6 +2919,21 @@ PROMPT;
             if ($cand === '') { continue; }
             $m = $ts->getManifest($cand);
             if (is_array($m)) { return $m; }
+        }
+        return [];
+    }
+
+    /** PALETTE-ROLES-2: manifest variable => the css custom property the template writes it into ("--medical: {{medical_blue}}"). */
+    private function templateCssNames(object $site, array $settings): array
+    {
+        foreach ([(string) ($settings['template'] ?? ''), (string) ($settings['industry'] ?? ''), (string) ($site->template_industry ?? ''), (string) ($site->template ?? '')] as $cand) {
+            $cand = (string) preg_replace('/[^a-z0-9_]/', '', strtolower($cand)); if ($cand === '') continue;
+            $f = storage_path("templates/{$cand}/template.html"); if (! is_file($f)) continue;
+            $out = [];
+            if (preg_match_all('/(--[a-z0-9_-]+)\s*:\s*\{\{\s*([a-z0-9_]+)\s*\}\}/i', (string) file_get_contents($f), $mm, PREG_SET_ORDER)) {
+                foreach ($mm as $m) { if (! isset($out[$m[2]])) $out[$m[2]] = strtolower($m[1]); }
+            }
+            return $out;
         }
         return [];
     }
