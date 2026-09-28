@@ -167,7 +167,9 @@ class NotificationService
             ->where('user_id', $userId)
             ->where('notification_type', $type)
             ->first();
-        $emailEnabled = $pref ? (bool) $pref->email : true;
+        // MAIL-AUDIT-1: routine background completions stay in the app (Sarah reports finished work in chat); an owner can
+        // still switch the email on in preferences
+        $emailEnabled = $pref ? (bool) $pref->email : ! in_array($type, [NotificationTypes::AGENT_TASK_COMPLETED], true);
 
         if ($emailEnabled || $emailRequired) {
             \dispatch(new \App\Jobs\SendNotificationEmail($notification->id))

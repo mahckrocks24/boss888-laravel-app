@@ -25,7 +25,8 @@
   @endif
   @if($notification->action_url)
   <p style="margin-bottom:32px">
-    <a href="{{ rtrim(config('app.url'), '/') . $notification->action_url }}" class="btn">View in Dashboard</a>
+    @php $__to = (string) $notification->action_url; if ($__to !== '' && ! preg_match('#^(https?:)?//#', $__to) && ! str_starts_with($__to, '/app')) $__to = '/app' . (str_starts_with($__to, '/') ? '' : '/') . $__to; @endphp{{-- MAIL-AUDIT-1: the app lives under /app --}}
+    <a href="{{ preg_match('#^(https?:)?//#', $__to) ? $__to : rtrim(config('app.url'), '/') . $__to }}" class="btn">Open in LevelUpGrowth</a>
   </p>
   @endif
   <div class="footer">

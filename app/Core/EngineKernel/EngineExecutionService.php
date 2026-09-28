@@ -531,8 +531,8 @@ class EngineExecutionService
         // T_NOTIF — flag task completion to workspace owner (agent-driven only)
         if ($source === 'agent') {
             $this->notifyTaskEvent($wsId, \App\Core\Notifications\NotificationTypes::AGENT_TASK_COMPLETED,
-                'Agent task completed',
-                "{$engine}/{$action} completed successfully.",
+                'Your team finished a task',
+                (function () use ($action) { $h = ['write_article' => 'An article is ready for you to review.', 'generate_image' => 'A new image is ready.', 'generate_image_mini' => 'A new image is ready.', 'generate_image_high' => 'A new image is ready.', 'generate_video' => 'A new video is ready.', 'social_create_post' => 'A social post is ready for you to review.', 'social_ai_post' => 'A social post is ready for you to review.', 'social_publish_post' => 'A social post was published.', 'publish_article' => 'An article was published.']; return $h[$action] ?? 'A task your team was working on is done.'; })(),   // MAIL-AUDIT-1: never an internal code
                 'success', null);
         }
 
