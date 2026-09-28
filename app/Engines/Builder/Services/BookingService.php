@@ -222,7 +222,7 @@ class BookingService
                 try {
                     // EMAIL-BRAND-1: the customer hears from the BUSINESS, in its brand — never from LevelUpGrowth
                     $__tid = \App\Core\Email888\TenantEmail::identity((int) ($website->workspace_id ?? 0) ?: null, (int) ($website->business_id ?? 0) ?: null);
-                    $__html = \App\Core\Email888\TenantEmail::layout($__tid, 'Your booking request has been received', \App\Core\Email888\TenantEmail::paragraphs($custBody), null, null, 'We have your request and will confirm shortly.');
+                    $__html = \App\Core\Email888\TenantEmail::layout($__tid, 'Thank you' . ($name !== '' ? ', ' . strtok($name, ' ') : '') . '. Your request is in.', '', $__tid['website'] ? ['url' => $__tid['website'], 'label' => 'Visit our website'] : null, null, 'We have your request and will confirm shortly.', \App\Core\Email888\TenantEmail::bookingOptions($__tid, $name, $service, $date, $time));
                     Mail::html($__html, function ($m) use ($email, $name, $custSubject, $contactEmail, $businessName, $website, $custBody) {
                         $m->text($custBody);
                         $m->getSymfonyMessage()->getHeaders()
