@@ -183,6 +183,9 @@ final class AdTagAssetService
       beacon("click", fill.token, { dwell_ms: Date.now() - shownAt });
     });
 
+    /* ADS-CLICK-1 (Owner 2026-09-28: "entire banner and modal clickable"): a tap anywhere on the bar opens the ad */
+    el.style.cursor = "pointer";
+    el.onclick = function (e) { if (e.target && e.target.closest && e.target.closest("a")) return; link.click(); };
     body.replaceChildren(link);  /* replaceChildren, not append: a refresh must
                                     SWAP the creative, never stack a second one */
     el.hidden = false;           /* height was reserved in CSS — no shift */
@@ -433,6 +436,8 @@ final class AdTagAssetService
     box.appendChild(label);
     box.appendChild(close);
     box.appendChild(media);
+    box.style.cursor = "pointer";   /* ADS-CLICK-1: anywhere on the pop-up but the close button */
+    box.addEventListener("click", function (e) { if (e.target && e.target.closest && (e.target.closest("a") || e.target.closest(".lu-ad-modal-close"))) return; link.click(); });
     wrap.appendChild(box);
 
     close.addEventListener("click", function () { if (canClose()) closeModal("button"); });
