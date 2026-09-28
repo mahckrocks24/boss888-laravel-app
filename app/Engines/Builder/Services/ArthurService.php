@@ -7104,6 +7104,12 @@ PROMPT;
                 $selector = trim(preg_replace('/\s+/', ' ', $m[1]));
                 if ($selector === '' || str_contains($selector, '@')) { continue; }
                 $decls = $m[2];
+                /* CONTRAST-GUARD-1 (Owner 2026-09-28: "issue on body text colours" — Sky Gonzales Events): a colour that is only
+                   mixed in faintly (color-mix(var(--cf1) 8%, transparent) — the dotted / washed section treatment) does not make
+                   a section dark. Only a background that really paints with the variable counts; otherwise the guard forced white
+                   text onto light sections. */
+                $solid = preg_replace('/color-mix\((?:[^()]|\([^()]*\))*\)/i', '', $decls);
+                if (! preg_match('/background(?:-color|-image)?\s*:[^;}]*var\(\s*' . $q . '\s*[,)]/i', (string) $solid)) { continue; }
                 // What colour does this rule put ON that background?
                 $fg = null;
                 if (preg_match('/(?<![-a-z])color\s*:\s*([^;}]+)/i', $decls, $cm)) {
