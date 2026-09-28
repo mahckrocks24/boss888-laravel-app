@@ -238,7 +238,7 @@
               /* ATTACH-3: a real file input over the plus — a tap opens the native chooser without any scripted click. */
               '<input type="file" id="sh-file" class="sh-file" multiple accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.md,.json,.ttf,.otf,.woff,.woff2" aria-hidden="true" tabindex="-1" title="Add a photo or file"></span>' +
               '<label for="sh-input" style="position:absolute;left:-9999px">Message Sarah</label>' +
-              '<textarea id="sh-input" class="sh-ta" rows="1" placeholder="Tell Sarah what you want to achieve…" autocomplete="off"></textarea>' +
+              '<textarea id="sh-input" class="sh-ta" rows="1" placeholder="Message Sarah…" aria-label="Message Sarah" autocomplete="off"></textarea>' +
               '<button type="button" class="sh-send" id="sh-send" aria-label="Send to Sarah" title="Send (Enter)">↑</button>' +
             '</div>' +
             '<div class="sh-hint" id="sh-hint">Sarah is AI and can make mistakes.</div>' +
