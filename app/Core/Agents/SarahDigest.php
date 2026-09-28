@@ -120,7 +120,7 @@ final class SarahDigest
             $slug = (string) ($metas[$i]['relayed_from'] ?? 'sarah'); $a = $agents[$slug] ?? $agents['sarah'] ?? null;
             $first = trim((string) preg_replace('/^[•\-\*]\s*/u', '', (string) (collect(preg_split('/\n+/u', (string) preg_replace('/^.*?here\'s what\'s done:\s*/su', '', $it['report'])))->first(fn ($l) => trim($l) !== '') ?? '')));
             $cards[] = ['who' => $a ? (string) $a->name : 'Sarah', 'slug' => $a ? (string) $a->slug : 'sarah', 'role' => $a ? (string) $a->title : null, 'avatar' => $a ? $a->avatar_url : null,
-                'kind' => 'other', 'title' => mb_substr($first ?: $it['report'], 0, 120), 'detail' => null, 'link' => $metas[$i]['action_link'] ?? null];
+                'kind' => 'other', 'title' => mb_substr($first ?: $it['report'], 0, 120), 'detail' => null, 'link' => $metas[$i]['action_link'] ?? null] + self::targets($metas[$i]);
         }
         $when = collect($metas)->every(fn ($m) => ! empty($m["replay"])) ? "earlier today" : "just now";   // a replay of earlier reports says so
         $text = "Here's what the team finished " . $when . ".";   // $fallback is unused here: the list always travels after APP_PART
@@ -147,6 +147,32 @@ final class SarahDigest
         } catch (\Throwable $e) { Log::info('[DIGEST-1] compose fallback', ['ws' => $wsId, 'e' => $e->getMessage()]); }
         // the words stand on their own too: an app that cannot draw the strip still reads what was done (the web cuts after APP_PART)
         return [$text . \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_map(fn ($c) => '- ' . $c['who'] . ': ' . $c['title'], $cards)), $cards];
+    }
+
+    /**
+     * REPORT-CARDS-1b (Owner 2026-09-28: "buttons are missing"): every card needs somewhere to go. The post or article a
+     * report is about — named in its metadata, or in the result of the task it reports — becomes the card's button.
+     *
+     * @return array{post_id?:int, article_id?:int}
+     */
+    public static function targets(array $meta): array
+    {
+        $out = [];
+        if (! empty($meta['article_id'])) $out['article_id'] = (int) $meta['article_id'];
+        if (! empty($meta['post_id'])) $out['post_id'] = (int) $meta['post_id'];
+        $tid = (int) ($meta['root_task_id'] ?? $meta['task_id'] ?? 0);
+        if ($tid && ! $out) {
+            try {
+                $rows = DB::table('tasks')->where(fn ($q) => $q->where('id', $tid)->orWhere('parent_task_id', $tid))->orderBy('id')->limit(10)->pluck('result_json');
+                foreach ($rows as $rj) {
+                    $d = (json_decode((string) $rj, true) ?: [])['data'] ?? [];
+                    if (! isset($out['post_id']) && ! empty($d['post_id'])) $out['post_id'] = (int) $d['post_id'];
+                    if (! isset($out['article_id']) && ! empty($d['article_id'])) $out['article_id'] = (int) $d['article_id'];
+                }
+            } catch (\Throwable $e) {}
+        }
+        if (! isset($out['article_id']) && ! empty($meta['action_link']) && preg_match('#/write/(\d+)#', (string) $meta['action_link'], $m)) $out['article_id'] = (int) $m[1];
+        return $out;
     }
 
     /** Safety net (every minute): anything left waiting past the window goes out even if a job was lost. */

@@ -524,7 +524,7 @@
     '.ltr-k i{width:6px;height:6px;border-radius:50%;background:var(--p,#7c5cff)}' +
     '.ltr-t{font-weight:600;font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}' +
     '.ltr-d{font-size:12.5px;color:var(--t2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
-    '.ltr-go{margin-top:auto;align-self:flex-start;font:600 12.5px var(--fb,inherit);color:var(--t1);background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:7px 12px;cursor:pointer}.ltr-go:hover{border-color:var(--t3)}' +
+    '.ltr-go{margin-top:auto;align-self:flex-start;font:600 12.5px var(--fb,inherit);color:var(--t1);background:var(--s2);border:1px solid var(--bd2,var(--bd));border-radius:10px;padding:7px 12px;cursor:pointer}.ltr-go:hover{border-color:var(--t3)}' +
     '.ltr-nav{position:absolute;top:calc(50% - 22px);width:32px;height:32px;border-radius:50%;border:1px solid var(--bd);background:var(--s1);color:var(--t1);box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:pointer;display:none;align-items:center;justify-content:center;font-size:16px;line-height:1;z-index:2}' +
     '.ltr-nav.l{left:-10px}.ltr-nav.r{right:-10px}@media (hover:hover) and (min-width:768px){.ltr.can-l .ltr-nav.l,.ltr.can-r .ltr-nav.r{display:flex}}' +
     '.ltr-cnt{font-size:11.5px;color:var(--t3);margin:0 0 6px 2px}';
@@ -542,7 +542,8 @@
       c.innerHTML = '<div class="ltr-who"><span class="ltr-av"' + av + ' aria-hidden="true"></span><div style="min-width:0"><div class="ltr-nm">' + esc(it.who || 'Sarah') + '</div>' + (it.role ? '<div class="ltr-rl">' + esc(it.role) + '</div>' : '') + '</div></div>' +
         '<span class="ltr-k"><i></i>' + esc(LTR_KIND[it.kind] || LTR_KIND.other) + '</span>' +
         '<div class="ltr-t">' + esc(it.title || '') + '</div>' + (it.detail ? '<div class="ltr-d">' + esc(it.detail) + '</div>' : '');
-      if (it.link) { var b = document.createElement('button'); b.type = 'button'; b.className = 'ltr-go'; b.textContent = 'Open'; b.addEventListener('click', function () { ltrOpen(String(it.link)); }); c.appendChild(b); }
+      var act = ltrAction(it);   /* REPORT-CARDS-1b: every card has somewhere to go */
+      if (act) { var b = document.createElement('button'); b.type = 'button'; b.className = 'ltr-go'; b.textContent = act[0]; b.addEventListener('click', act[1]); c.appendChild(b); }
       track.appendChild(c);
     });
     function upd() { var max = track.scrollWidth - track.clientWidth - 2; el.classList.toggle('can-l', track.scrollLeft > 2); el.classList.toggle('can-r', track.scrollLeft < max);
@@ -551,9 +552,19 @@
     el.querySelector('.ltr-nav.r').addEventListener('click', function () { track.scrollBy({ left: 242, behavior: 'smooth' }); });
     track.addEventListener('scroll', upd, { passive: true }); window.addEventListener('resize', upd); setTimeout(upd, 50);
   }
+  function ltrAction(it) {
+    function go(v) { return function () { if (typeof window.nav === 'function') window.nav(v); }; }
+    if (it.post_id) return ['View post', function () { var c = document.querySelector('.sh-inline-post[data-post="' + it.post_id + '"]'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('sh-flash'); setTimeout(function () { c.classList.remove('sh-flash'); }, 1600); } else go('social')(); }];
+    if (it.article_id) return ['Open article', function () { ltrOpen('/app/write/' + it.article_id); }];
+    var k = { post: ['Open Social', 'social'], article: ['Open articles', 'write'], link: ['Open Search', 'seo'], seo: ['Open Search', 'seo'], page: ['Open website', 'websites'], image: ['Open Studio', 'studio'], video: ['Open Studio', 'studio'], lead: ['Open Clients', 'crm'], email: ['Open Email', 'email'] }[it.kind];
+    if (k) return [k[0], go(k[1])];   /* the kind of work picks the place; a generic link is the last resort */
+    return it.link ? ['Open', function () { ltrOpen(String(it.link)); }] : null;
+  }
   function ltrOpen(link) {
     var m = link.match(/^\/app\/?#\/?([a-z0-9_-]+)/i);
     if (m && typeof window.nav === 'function') { window.nav(m[1]); return; }
+    var v = link.match(/^\/app\/([a-z0-9_-]+)(?:\/([^?#\/]+))?\/?$/i);   /* /app/write/1103 opens the article in place, no reload */
+    if (v && typeof window.nav === 'function') { window.nav(v[1], v[2] ? { tail: v[2] } : undefined); return; }
     if (/^https?:\/\//i.test(link)) { window.open(link, '_blank', 'noopener'); return; }
     if (link.charAt(0) === '/') location.href = link;
   }
