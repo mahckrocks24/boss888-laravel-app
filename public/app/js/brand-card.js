@@ -443,24 +443,72 @@
   }
 
   /* ── Settings: Your design styles (per business) ── */
-  function settings(el, bizId) {
-    css(); loadFonts();
-    el.innerHTML = '<div class="lbc-s">Loading your design styles…</div>';
+  /* BIZ-BRAND-1 (Owner 2026-09-28): each business's brand in one place — colours, styles, rules, inspirations — in both modes */
+  function colCss() { if (document.getElementById('lbx-col-css')) return; var s = document.createElement('style'); s.id = 'lbx-col-css';
+    s.textContent = '.lbx-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:14px 0 4px}'
+      + '.lbx-col{position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid var(--bd2,rgba(127,127,127,.25));border-radius:12px;padding:12px;background:var(--s1,#fff);min-width:0}'
+      + '.lbx-cn{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.lbx-cn b{font-size:13px;color:var(--t1)}.lbx-cn label{cursor:pointer}.lbx-cn small{font-size:11.5px;color:var(--t3)}'
+      + '.lbx-pv{margin-top:16px}.lbx-pv-l{font:600 11px var(--fb,system-ui);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);margin-bottom:8px}'
+      + '.lbx-pv-card{border-radius:14px;overflow:hidden;border:1px solid var(--bd,rgba(127,127,127,.2));background:#fff;max-width:520px;box-shadow:0 6px 20px rgba(15,23,42,.08)}'
+      + '.lbx-pv-bar{padding:16px 18px;color:#fff;font:700 17px var(--fh,system-ui);letter-spacing:-.01em;transition:background .2s}'
+      + '.lbx-pv-in{display:flex;align-items:center;gap:14px;padding:14px 18px;border-left:5px solid transparent;transition:border-color .2s,background .2s}'
+      + '.lbx-pv-t{flex:1;font-size:12.5px;color:#334155;line-height:1.45}.lbx-pv-btn{flex:0 0 auto;padding:9px 16px;border-radius:999px;color:#fff;font:700 12.5px var(--fb,system-ui);transition:background .2s}'
+      + '.lbx-logo{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--bd,rgba(127,127,127,.18))}.lbx-logo img{height:44px;max-width:160px;object-fit:contain;border-radius:8px;background:rgba(127,127,127,.08);padding:4px}'
+      + '.lbx-logo .ph{width:44px;height:44px;border-radius:10px;border:1px dashed var(--bd2,rgba(127,127,127,.35));display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:18px}'
+      + '.lbx-logo span{display:flex;flex-direction:column;gap:2px}.lbx-logo b{font-size:13px;color:var(--t1)}.lbx-logo small{font-size:11.5px;color:var(--t3)}';
+    document.head.appendChild(s); }
+  function settings(el, bizId, opts) {
+    opts = opts || {};
+    css(); loadFonts(); colCss();
+    var P = opts.panes || null;   // BIZ-BRAND-2: inside the business profile, the parts fill its Brand / Design styles / Rules tabs
+    var slots = P ? [P.brand, P.styles, P.rules] : [el];
+    slots.forEach(function (s) { if (s) s.innerHTML = '<div class="lbc-s" style="padding:8px 0">Loading…</div>'; });
     api('GET', 'brand/profile' + (bizId ? '?business_id=' + encodeURIComponent(bizId) : '')).then(function (r) {
       var j = r.json || {};
-      if (!r.ok || !j.success) { el.innerHTML = '<div class="lbc-s">Couldn’t load your design styles.</div>'; return; }
-      var biz = (j.businesses || []).length > 1 ? '<div class="lbc-biz">' + j.businesses.map(function (b) { return '<button type="button" data-b="' + b.id + '" class="' + (b.id === j.business_id ? 'on' : '') + '">' + esc(b.name) + '</button>'; }).join('') + '</div>' : '';
-      el.innerHTML = biz + '<div class="lbc" style="margin:0"><div data-slot="pick"></div></div>' +
-        '<div class="lbc" style="margin-top:10px"><div class="lbc-t">Brand rules</div><div class="lbc-s">Sarah follows these on every banner, image, caption and video for ' + esc(j.business_name) + '.</div>' +
+      if (!r.ok || !j.success) { slots.forEach(function (s) { if (s) s.innerHTML = '<div class="lbc-s">Couldn’t load the brand. Try again.</div>'; }); return; }
+      var col = j.colors || {}, CL = { primary: 'Main colour', secondary: 'Second colour', accent: 'Highlight colour' };
+      var HINT = { primary: 'Buttons, headings and banners', secondary: 'Backgrounds and panels', accent: 'Highlights and calls to action' };
+      var colours = '<div class="lbc" style="margin:0 0 12px"><div class="lbc-t">Colours</div><div class="lbc-s">' + (j.brand_set ? 'Used on ' + esc(j.business_name) + '’s website, banners, images and videos.' : 'Not set yet for ' + esc(j.business_name) + ' — pick its colours so everything Sarah makes looks like this business.') + '</div>'
+        + '<div class="lbx-cols">' + ['primary', 'secondary', 'accent'].map(function (k) { var v = col[k] || '#1F2937';
+            return '<div class="lbx-col" data-k="' + k + '"><span class="lbx-cn"><label for="bzc-' + k + '-' + (j.business_id || 0) + '"><b>' + CL[k] + '</b></label><small>' + HINT[k] + '</small></span>'
+              + '<input type="color" class="lbx-cp" id="bzc-' + k + '-' + (j.business_id || 0) + '" data-c="' + k + '" value="' + esc(v) + '"></div>'; }).join('') + '</div>'
+        + '<div class="lbx-pv" aria-hidden="true"><div class="lbx-pv-l">Preview</div><div class="lbx-pv-card"><div class="lbx-pv-bar">' + esc(j.business_name) + '</div><div class="lbx-pv-in"><div class="lbx-pv-t">How the colours sit together on a banner, a page section and a button.</div><span class="lbx-pv-btn">Book now</span></div></div></div>'
+        + '<div class="lbx-logo">' + (j.logo_url ? '<img src="' + esc(j.logo_url) + '" alt="' + esc(j.business_name) + ' logo"><span><b>Logo</b><small>From the website — Sarah uses it on banners and videos.</small></span>' : '<div class="ph">+</div><span><b>Logo</b><small>No logo yet — send it to Sarah in chat and she will use it everywhere.</small></span>') + '</div>'
+        + (P ? '' : '<div class="lbc-acts" style="margin-top:12px"><button type="button" class="lbc-btn primary" data-a="colsave">Save colours</button></div>') + '</div>';
+      var biz = (!opts.single && (j.businesses || []).length > 1) ? '<div class="lbc-biz">' + j.businesses.map(function (b) { return '<button type="button" data-b="' + b.id + '" class="' + (b.id === j.business_id ? 'on' : '') + '">' + esc(b.name) + '</button>'; }).join('') + '</div>' : '';
+      var stylesHtml = '<div class="lbc" style="margin:0"><div data-slot="pick"></div></div>';
+      var rulesHtml = '<div class="lbc" style="margin:' + (P ? '0' : '10px 0 0') + '"><div class="lbc-t">Brand rules</div><div class="lbc-s">Sarah follows these on every banner, image, caption and video for ' + esc(j.business_name) + '.</div>' +
         ((j.rules || []).length ? '<ul class="lbc-rules">' + j.rules.map(function (x, i) { return '<li>' + esc(x) + '<button type="button" class="lbc-x" data-rm="' + i + '" aria-label="Remove rule">Remove</button></li>'; }).join('') + '</ul>' : '<div class="lbc-s" style="margin:0">No rules yet — for example “Never use red” or “Always show our Instagram handle”.</div>') +
         '<div class="lbc-add"><input type="text" maxlength="200" placeholder="Add a rule" aria-label="New brand rule"><button type="button" class="lbc-btn" data-a="add">Add</button></div></div>' +
-        '<div class="lbc" style="margin-top:10px"><div class="lbc-t">Inspiration library</div><div class="lbc-s">Designs you sent Sarah. She studied each one and borrows the look, in your colours, when it fits.</div><div data-slot="insp"></div></div>';
-      el.querySelectorAll('[data-b]').forEach(function (b) { b.onclick = function () { settings(el, +b.getAttribute('data-b')); }; });
-      library(el.querySelector('[data-slot=insp]'), j.business_id);   // VISION-INSPIRE-1
-      picker(el.querySelector('[data-slot=pick]'), { business_id: j.business_id, preview: j.preview, directions: j.directions, picks: j.picks, never: j.never, max: 4 }, { settings: true, saved: !!(j.picks && j.picks.length) });
-      el.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { api('DELETE', 'brand/rules/' + b.getAttribute('data-rm') + (j.business_id ? '?business_id=' + j.business_id : '')).then(function () { settings(el, j.business_id); }); }; });
-      var inp = el.querySelector('.lbc-add input'), add = el.querySelector('[data-a=add]');
-      function doAdd() { var v = (inp.value || '').trim(); if (!v) return; add.disabled = true; api('POST', 'brand/rules', { business_id: j.business_id, rule: v }).then(function (x) { add.disabled = false; if (x.ok && x.json.success) settings(el, j.business_id); else toast((x.json && x.json.error) || 'Could not add the rule.', 'error'); }); }
+        '<div class="lbc" style="margin-top:12px"><div class="lbc-t">Inspiration library</div><div class="lbc-s">Designs you sent Sarah. She studied each one and borrows the look, in your colours, when it fits.</div><div data-slot="insp"></div></div>';
+      var brandRoot, stylesRoot, rulesRoot;
+      if (P) { P.brand.innerHTML = colours; P.styles.innerHTML = stylesHtml; P.rules.innerHTML = rulesHtml; brandRoot = P.brand; stylesRoot = P.styles; rulesRoot = P.rules; }
+      else { el.innerHTML = biz + colours + stylesHtml + rulesHtml; brandRoot = stylesRoot = rulesRoot = el; }
+      var again = function () { settings(el, j.business_id, opts); };
+      el.querySelectorAll('[data-b]').forEach(function (b) { b.onclick = function () { settings(el, +b.getAttribute('data-b'), opts); }; });
+      // colours: swatch opens the picker, the hex code is editable, the preview follows both
+      var dirty = false;
+      function paint() {
+        var c = {}; brandRoot.querySelectorAll('.lbx-cp').forEach(function (i) { c[i.getAttribute('data-c')] = i.value; });
+        var pv = brandRoot.querySelector('.lbx-pv-card'); if (pv) { pv.querySelector('.lbx-pv-bar').style.background = c.primary; var inn = pv.querySelector('.lbx-pv-in'); inn.style.borderLeftColor = c.secondary; inn.style.background = c.secondary + '14'; pv.querySelector('.lbx-pv-btn').style.background = c.accent; }
+        if (typeof opts.onColours === 'function') opts.onColours(c);
+      }
+      // the site colour control (LUColorPicker) edits the trio together; every change repaints the preview
+      brandRoot.querySelectorAll('.lbx-cp').forEach(function (cp) { cp.addEventListener('input', function () { dirty = true; paint(); }); cp.addEventListener('change', function () { dirty = true; paint(); }); });
+      paint();
+      el.__lbcColours = function () { if (!dirty) return null; var c = {}; brandRoot.querySelectorAll('.lbx-cp').forEach(function (i) { c[i.getAttribute('data-c') + '_color'] = i.value; }); return c; };
+      var cs = brandRoot.querySelector('[data-a=colsave]');
+      if (cs) cs.onclick = function () { var body = el.__lbcColours() || {}; body.business_id = j.business_id; cs.disabled = true;
+        api('PUT', 'workspace/brand', body).then(function (x) { cs.disabled = false; if (x.ok && (x.json || {}).success !== false) { toast('Colours saved for ' + j.business_name + '.', 'success'); again(); } else toast(((x.json || {}).error) || 'Could not save the colours.', 'error'); }); };
+      library(rulesRoot.querySelector('[data-slot=insp]'), j.business_id);   // VISION-INSPIRE-1
+      picker(stylesRoot.querySelector('[data-slot=pick]'), { business_id: j.business_id, preview: j.preview, directions: j.directions, picks: j.picks, never: j.never, max: 4 }, { settings: true, saved: !!(j.picks && j.picks.length) });
+      // rules re-render only their own part, so an unsaved colour change in the profile is never lost
+      function rulesAgain() { api('GET', 'brand/profile?business_id=' + encodeURIComponent(j.business_id)).then(function (x) { var jj = x.json || {}; j.rules = jj.rules || []; var box = rulesRoot.querySelector('.lbc-rules, .lbc-rules-empty'); var list = (j.rules || []).length ? '<ul class="lbc-rules">' + j.rules.map(function (y, i) { return '<li>' + esc(y) + '<button type="button" class="lbc-x" data-rm="' + i + '" aria-label="Remove rule">Remove</button></li>'; }).join('') + '</ul>' : '<div class="lbc-s lbc-rules-empty" style="margin:0">No rules yet — for example “Never use red” or “Always show our Instagram handle”.</div>';
+        var cur = rulesRoot.querySelector('.lbc-rules') || rulesRoot.querySelector('.lbc-add').previousElementSibling; if (cur) cur.outerHTML = list; wireRules(); }); }
+      function wireRules() { rulesRoot.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function () { api('DELETE', 'brand/rules/' + b.getAttribute('data-rm') + (j.business_id ? '?business_id=' + j.business_id : '')).then(function () { P ? rulesAgain() : again(); }); }; }); }
+      wireRules();
+      var inp = rulesRoot.querySelector('.lbc-add input'), add = rulesRoot.querySelector('[data-a=add]');
+      function doAdd() { var v = (inp.value || '').trim(); if (!v) return; add.disabled = true; api('POST', 'brand/rules', { business_id: j.business_id, rule: v }).then(function (x) { add.disabled = false; if (x.ok && x.json.success) { inp.value = ''; P ? rulesAgain() : again(); } else toast((x.json && x.json.error) || 'Could not add the rule.', 'error'); }); }
       add.onclick = doAdd; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); doAdd(); } });
     });
   }
