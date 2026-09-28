@@ -264,6 +264,45 @@ class PublicChatbotController
     }
 
     /**
+     * CHATBOT-CONTACT-1 — POST /api/public/chatbot/contact. The contact form a site shows when its plan has no chatbot
+     * (Free, an expired trial). No plan gate: a visitor reaching the business is never blocked. Same guards as a lead
+     * (token + allowed host, IP limit, honeypot, too-fast submit), then the same lead path, so the owner is told.
+     * Body: { name, email?, phone?, message, page_url?, hp?, started_at? }
+     */
+    public function contact(Request $r): JsonResponse
+    {
+        [$tokenRow, $err] = $this->authToken($r);
+        if ($err) return $err;
+        if ($this->ipRateLimited($r, 'cb:contact-ip', 5, 600)) return $this->rate();
+        $data = $r->validate([
+            'name'       => 'required|string|max:120',
+            'email'      => 'nullable|email|max:190',
+            'phone'      => 'nullable|string|max:40',
+            'message'    => 'required|string|max:2000',
+            'page_url'   => 'nullable|string|max:1024',
+            'hp'         => 'nullable|string|max:255',
+            'started_at' => 'nullable|integer',
+        ]);
+        if (trim((string) ($data['hp'] ?? '')) !== '' || (! empty($data['started_at']) && (int) (microtime(true) * 1000) - (int) $data['started_at'] < 2500)) {
+            Log::info('[chatbot] contact form bot guard', ['ip' => $r->ip()]);
+            return response()->json(['success' => true]);
+        }
+        if (trim((string) ($data['email'] ?? '')) === '' && trim((string) ($data['phone'] ?? '')) === '') {
+            return response()->json(['success' => false, 'message' => 'Please add an email or a phone number so we can reply.'], 422);
+        }
+        $wsId = (int) $tokenRow->workspace_id;
+        $websiteId = $this->resolveWebsiteId($r, $wsId, (string) ($data['page_url'] ?? ''));
+        if ($websiteId <= 0 && ! empty($tokenRow->website_id)) $websiteId = (int) $tokenRow->website_id;
+        $sessionId = DB::table('chatbot_sessions')->insertGetId([
+            'workspace_id' => $wsId, 'website_id' => $websiteId > 0 ? $websiteId : null, 'widget_token_id' => $tokenRow->id,
+            'page_url' => $data['page_url'] ?? null, 'message_count' => 0, 'created_at' => now(),
+        ]);
+        $res = $this->responder->captureLead($sessionId, ['name' => $data['name'], 'email' => $data['email'] ?? null, 'phone' => $data['phone'] ?? null,
+            'notes' => "Sent through the website contact form:\n" . trim($data['message'])]);
+        return response()->json(['success' => (bool) ($res['success'] ?? false)] + (($res['success'] ?? false) ? [] : ['message' => 'Your message could not be sent. Please try again.']));
+    }
+
+    /**
      * POST /api/public/chatbot/booking-request
      * Body: { session_id, name, email, phone, date, time, service, notes }
      */

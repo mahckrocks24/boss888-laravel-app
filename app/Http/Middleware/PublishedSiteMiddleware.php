@@ -1487,9 +1487,7 @@ JS;
             // fresh sites with no chatbot_settings row yet. A workspace can opt out with
             // chatbot_settings.enabled = 0; a non-entitled (< $49) workspace never gets it
             // even if a stale enabled=1 row lingers after a downgrade.
-            if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessChatbot($workspaceId)) {
-                return false;
-            }
+            // CHATBOT-CONTACT-1: no plan gate here — without the chatbot the button opens a contact form (the loader decides)
             $row = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $workspaceId, $websiteId);
             return $row === null ? true : (bool) $row->enabled;
         });
@@ -1526,9 +1524,7 @@ JS;
     {
         $key = "chatbot_enabled_ws_{$workspaceId}_w{$websiteId}";
         $enabled = Cache::remember($key, 60, function () use ($workspaceId, $websiteId) {
-            if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessChatbot($workspaceId)) {
-                return false;
-            }
+            // CHATBOT-CONTACT-1: no plan gate here — without the chatbot the button opens a contact form (the loader decides)
             $row = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $workspaceId, $websiteId);
 
             return $row === null ? true : (bool) $row->enabled;

@@ -438,10 +438,12 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
 
     // Plan check + chatbot enabled check
     $gate = app(\App\Core\Billing\FeatureGateService::class);
-    if (! $gate->canAccessChatbot($wsId)) return $reject('plan_required');
+    $contactOnly = ! $gate->canAccessChatbot($wsId);   // CHATBOT-CONTACT-1: Free / expired -> a contact form, not nothing
 
     $settings = \App\Core\Tenancy\WebsiteScope::settingsRow('chatbot_settings', $wsId, $cbWebsiteId);
-    if (! $settings || ! $settings->enabled) return $reject('chatbot_disabled');
+    if ($settings && ! $settings->enabled) return $reject('chatbot_disabled');
+    if (! $settings && ! $contactOnly) return $reject('chatbot_disabled');
+    $settings = $settings ?: (object) [];
 
     // Discover the embed host from Origin (cross-origin) or Referer.
     // Without it we can't allowlist anything; reject so we don't accumulate
@@ -596,6 +598,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     $colorJs    = json_encode($color);
     $themeJs    = json_encode($theme);
     $wsIdJs     = (int) $wsId;
+    $contactJs  = $contactOnly ? 'true' : 'false';
 
     $js = <<<JS
 /* LevelUp Chatbot888 widget — auto-generated for workspace {$wsIdJs} */
@@ -606,6 +609,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
   var GREETING = {$greetingJs};
   var COLOR    = {$colorJs};
   var ICON     = {$iconJs};
+  var CONTACT  = {$contactJs};   // CHATBOT-CONTACT-1
   function cbLum(h){h=String(h||'').replace('#','');if(h.length===3){h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];}if(h.length!==6){return 0.5;}var r=parseInt(h.slice(0,2),16)/255,g=parseInt(h.slice(2,4),16)/255,b=parseInt(h.slice(4,6),16)/255;var lf=function(c){return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4);};return 0.2126*lf(r)+0.7152*lf(g)+0.0722*lf(b);}
   function cbOn(h){var L=cbLum(h);return ((L+0.05)/0.05)>=(1.05/(L+0.05))?'#111111':'#ffffff';}
   var FGON=cbOn(COLOR);
@@ -632,9 +636,14 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     bubble.onmouseleave = function(){ bubble.style.transform = 'scale(1)'; };
     bubble.onclick = openPanel;
     document.body.appendChild(bubble);
+    // CHATBOT-CONTACT-1b: a Free site carries the ad bar along the bottom; keep the button and the panel above it
+    var lift = function(){ var s = document.getElementById('lu-ad-slot'), h = (s && !s.hidden) ? Math.round(s.getBoundingClientRect().height) : 0; bubble.style.bottom = (20 + h) + 'px'; if (panel) panel.style.bottom = (20 + h) + 'px'; };
+    lift(); var n = 0, t = setInterval(function(){ lift(); if (++n > 20) clearInterval(t); }, 750);
+    window.addEventListener('resize', lift);
   }
 
   function openPanel(){
+    if (CONTACT) return openContact();
     if (panel) { panel.style.display = 'flex'; bubble.style.display = 'none'; if (input) input.focus(); return; }
     panel = document.createElement('div');
     panel.id = 'lu-cb-panel';
@@ -665,6 +674,58 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     addBubble('bot', GREETING);
     startSession();
     setTimeout(function(){ input.focus(); }, 50);
+  }
+
+  // CHATBOT-CONTACT-1: the site's plan has no chatbot, so the button opens a short contact form. The message goes to
+  // the owner's CRM as a lead.
+  function openContact(){
+    if (panel) { panel.style.display = 'flex'; bubble.style.display = 'none'; return; }
+    panel = document.createElement('div');
+    panel.id = 'lu-cb-panel';
+    var dark = (THEME === 'dark') || (THEME === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    var bg = dark ? '#15151A' : '#ffffff', fg = dark ? '#ffffff' : '#111111', muted = dark ? '#9aa0aa' : '#5b6170', bd = dark ? '#2a2a33' : '#e2e5ea';
+    var fld = 'width:100%;box-sizing:border-box;background:transparent;border:1px solid '+bd+';border-radius:10px;color:'+fg+';padding:11px 12px;font-size:15px;font-family:inherit;outline:none;margin-top:6px';
+    var lab = 'display:block;font-size:12.5px;font-weight:600;color:'+muted+';margin-top:12px';
+    panel.style.cssText = 'position:fixed;bottom:'+bubble.style.bottom+';right:20px;width:360px;max-width:calc(100vw - 32px);max-height:calc(100vh - 110px);background:'+bg+';color:'+fg+';border:1px solid '+bd+';border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25);z-index:2147483000;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif';
+    panel.innerHTML =
+      '<div style="padding:14px 16px;background:'+COLOR+';color:'+FGON+';display:flex;align-items:center;justify-content:space-between">' +
+        '<div style="font-size:15px;font-weight:600">Send us a message</div>' +
+        '<button id="lu-cb-close" aria-label="Close" style="background:none;border:none;color:'+FGON+';cursor:pointer;font-size:20px;padding:0;line-height:1">\u00d7</button>' +
+      '</div>' +
+      '<form id="lu-cf" novalidate style="padding:4px 16px 16px;overflow-y:auto;margin:0">' +
+        '<p style="margin:12px 0 0;font-size:13.5px;line-height:1.5;color:'+muted+'">Leave your details and we will get back to you.</p>' +
+        '<label style="'+lab+'">Name<input name="name" autocomplete="name" maxlength="120" style="'+fld+'"></label>' +
+        '<label style="'+lab+'">Email<input name="email" type="email" autocomplete="email" maxlength="190" style="'+fld+'"></label>' +
+        '<label style="'+lab+'">Phone<input name="phone" type="tel" autocomplete="tel" maxlength="40" style="'+fld+'"></label>' +
+        '<label style="'+lab+'">Message<textarea name="message" rows="4" maxlength="2000" style="'+fld+';resize:vertical"></textarea></label>' +
+        '<input name="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
+        '<div id="lu-cf-err" role="alert" style="display:none;margin-top:10px;font-size:13px;color:#c0392b"></div>' +
+        '<button type="submit" id="lu-cf-send" style="margin-top:14px;width:100%;padding:12px;border:none;border-radius:10px;background:'+COLOR+';color:'+FGON+';font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Send message</button>' +
+      '</form>';
+    document.body.appendChild(panel);
+    bubble.style.display = 'none';
+    panel.querySelector('#lu-cb-close').onclick = function(){ panel.style.display = 'none'; bubble.style.display = 'flex'; };
+    var form = panel.querySelector('#lu-cf'), err = panel.querySelector('#lu-cf-err'), btn = panel.querySelector('#lu-cf-send');
+    var started = Date.now();
+    function fail(t){ err.textContent = t; err.style.display = 'block'; }
+    form.onsubmit = function(e){
+      e.preventDefault(); err.style.display = 'none';
+      var v = function(n){ return (form.elements[n].value || '').trim(); };
+      if (!v('name')) return fail('Please add your name.');
+      if (!v('email') && !v('phone')) return fail('Please add an email or a phone number so we can reply.');
+      if (v('email') && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v('email'))) return fail('That email address does not look right. Please check it.');
+      if (!v('message')) return fail('Please write a short message.');
+      btn.disabled = true; btn.textContent = 'Sending…';
+      api('POST', '/contact', { name: v('name'), email: v('email'), phone: v('phone'), message: v('message'), hp: v('hp'), page_url: location.href, started_at: started }).then(function(j){
+        if (j && j.success) {
+          form.innerHTML = '<div style="padding:28px 4px 12px;text-align:center"><div style="font-size:34px;line-height:1">\u2713</div><div style="margin-top:10px;font-size:16px;font-weight:600">Thank you!</div><p style="margin:8px 0 0;font-size:14px;line-height:1.5;color:'+muted+'">Your message has been sent. We will get back to you soon.</p></div>';
+        } else {
+          btn.disabled = false; btn.textContent = 'Send message';
+          fail((j && j.message) || 'Your message could not be sent. Please try again.');
+        }
+      }, function(){ btn.disabled = false; btn.textContent = 'Send message'; fail('Your message could not be sent. Please try again.'); });
+    };
+    setTimeout(function(){ try { form.elements.name.focus(); } catch(e){} }, 50);
   }
 
   function startSession(){

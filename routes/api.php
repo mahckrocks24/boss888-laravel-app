@@ -6037,6 +6037,7 @@ Route::prefix('public/chatbot')->group(function () {
     Route::post('/session/start',    [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'startSession']);
     Route::post('/message',          [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'postMessage']);
     Route::post('/lead',             [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'captureLead']);
+    Route::post('/contact',          [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'contact']);   // CHATBOT-CONTACT-1
     Route::post('/booking-request', [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'bookingRequest']);
     Route::post('/callback-request', [\App\Http\Controllers\Api\Widget\PublicChatbotController::class, 'callbackRequest']);
 });
