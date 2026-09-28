@@ -29,6 +29,13 @@ class CalendarService
             'all_day' => $data['all_day'] ?? false,
             'recurrence' => $data['recurrence'] ?? null,
             'recurrence_config_json' => json_encode($data['recurrence_config'] ?? []),
+            // CAL-2: who it is with, where, how it stands, when to remind
+            'lead_id' => ! empty($data['lead_id']) ? (int) $data['lead_id'] : ($refId && in_array($refType, ['lead', 'app\\models\\lead'], true) ? $refId : null),
+            'status' => $data['status'] ?? null,
+            'location' => isset($data['location']) ? mb_substr((string) $data['location'], 0, 255) : null,
+            'remind_minutes' => isset($data['remind_minutes']) && $data['remind_minutes'] !== '' ? (int) $data['remind_minutes'] : null,
+            'reminded_at' => \Carbon\Carbon::parse($data['starts_at'], $this->ownerTz($wsId))->isPast() ? now() : null, // owner's local wall time
+            'created_by' => $data['created_by'] ?? null,
             'created_at' => now(), 'updated_at' => now(),
         ]);
         // CAL-SYNC-1: a booking made for a client shows on that client's timeline in Clients
@@ -44,11 +51,21 @@ class CalendarService
         return $id;
     }
 
+    /** CAL-2: calendar times are the owner's local wall time (workspaces.timezone, TZ-1). */
+    public function ownerTz(int $wsId): string
+    {
+        $tz = (string) (DB::table('workspaces')->where('id', $wsId)->value('timezone') ?? '');
+        return in_array($tz, timezone_identifiers_list(), true) ? $tz : 'UTC';
+    }
+
     public function updateEvent(int $eventId, array $data, ?int $wsId = null): void
     {
         $update = array_intersect_key($data, array_flip([
             'title', 'description', 'category', 'color', 'starts_at', 'ends_at', 'all_day', 'recurrence',
+            'location', 'remind_minutes', 'status', // CAL-2
         ]));
+        if (isset($update['starts_at']) || array_key_exists('remind_minutes', $update)) $update['reminded_at'] = null; // CAL-2: a moved item is reminded again
+        if (! empty($data['no_reminder'])) $update['reminded_at'] = now();
         if (isset($data['recurrence_config'])) $update['recurrence_config_json'] = json_encode($data['recurrence_config']);
         $update['updated_at'] = now();
         $n = DB::table('calendar_events')->where('id', $eventId)->when($wsId !== null, fn($q) => $q->where('workspace_id', $wsId))->update($update);

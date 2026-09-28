@@ -65,6 +65,9 @@ class NotificationTypes
     public const ONBOARDING_COMPLETED      = 'onboarding.completed';
     public const ONBOARDING_STALLED        = 'onboarding.stalled';
 
+    // CAL-2: the owner's calendar
+    public const CALENDAR_REMINDER         = 'calendar.reminder';
+
     /**
      * Category derived from type prefix. Matches the ENUM list in
      * notifications.severity… no wait, in the spec for the (separate)
@@ -83,6 +86,7 @@ class NotificationTypes
             'system'     => 'system',
             'error'      => 'error',
             'onboarding' => 'onboarding',
+            'calendar'   => 'activity',
             default      => 'system',
         };
     }

@@ -596,7 +596,7 @@ window._crm2 = {
                 var start = new Date(f.bd.value + 'T' + f.bh.value); if (isNaN(start)) throw new Error('Pick a day and time.');
                 var end = new Date(start.getTime() + parseInt(f.bl.value, 10) * 60000);
                 var fmt = function (x) { return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()) + ' ' + pad(x.getHours()) + ':' + pad(x.getMinutes()) + ':00'; };
-                var res = await fetch('/api/calendar/events', {method: 'POST', headers: hdr(), body: JSON.stringify({title: f.bt.value.trim(), starts_at: fmt(start), ends_at: fmt(end), category: 'appointment', engine: 'crm', reference_type: 'Lead', reference_id: c.id, business_id: c.business_id || undefined})});
+                var res = await fetch('/api/calendar/schedule', {method: 'POST', headers: hdr(), body: JSON.stringify({kind: 'appointment', title: f.bt.value.trim(), starts_at: fmt(start), ends_at: fmt(end), lead_id: c.id, business_id: c.business_id || undefined, remind_minutes: 30})});
                 var j = {}; try { j = await res.json(); } catch (e) {}
                 if (!res.ok || j.success === false) throw new Error(j.error || j.message || ('HTTP ' + res.status));
                 toast('Booked. It is in your Calendar.'); await loadRecord(c.id); render();

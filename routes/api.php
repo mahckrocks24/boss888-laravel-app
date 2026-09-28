@@ -1600,6 +1600,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $ev = \Illuminate\Support\Facades\DB::table('calendar_events')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first();
             return $ev ? response()->json(['event' => $ev]) : response()->json(['error' => 'Event not found'], 404);
         })->where('id', '[0-9]+');
+        // CAL-2: the owner's own calendar (agenda, schedule, how an item went)
+        Route::get('/agenda', [\App\Engines\Calendar\Http\Controllers\MyCalendarController::class, 'agenda']);
+        Route::post('/schedule', [\App\Engines\Calendar\Http\Controllers\MyCalendarController::class, 'schedule']);
+        Route::put('/events/{id}/status', [\App\Engines\Calendar\Http\Controllers\MyCalendarController::class, 'status'])->whereNumber('id');
         Route::post('/events/{id}/decision', function (\Illuminate\Http\Request $r, $id) {
             $wsId = (int) $r->attributes->get('workspace_id');
             $decision = (string) $r->input('decision');
