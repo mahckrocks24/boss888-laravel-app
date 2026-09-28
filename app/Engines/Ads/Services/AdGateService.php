@@ -93,9 +93,12 @@ final class AdGateService
             // slug-eligibility alone would wrongly exempt it. Allow it while it is
             // trialing; the moment the trial converts to a paid/active sub the slug
             // check applies again and ads stop.
-            if (! in_array($planSlug, $eligible, true) && ! $this->isTrialing($workspaceId)) {
+            // Owner directive 2026-09-28 (supersedes the earlier trials-too rule): NO ads while a free trial runs.
+            // Only the eligible plans (Free) carry ads; a running trial is refused even if it resolves to Free.
+            if (! in_array($planSlug, $eligible, true)) {
                 return $this->deny(self::DENY_PLAN_NOT_ELIGIBLE, $workspaceId, $planSlug);
             }
+            try { if (app(\App\Core\Billing\TrialService::class)->isInTrial($workspaceId)) return $this->deny(self::DENY_PLAN_NOT_ELIGIBLE, $workspaceId, "trial"); } catch (Throwable) {}
 
             // 4. Per-site override (brand safety escape hatch).
             $override = $this->siteOverride($websiteId);
