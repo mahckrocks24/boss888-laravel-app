@@ -333,6 +333,7 @@
           STATE.initialLayoutDone = true;
         }
         render();
+        try { campCard(false); } catch (_c) {}   /* WS-CAMP-1 */
       })
       .catch(function (err) {
         if (err && err.name === 'AbortError') return;
@@ -1753,4 +1754,105 @@
   } else {
     watchActivation();
   }
+
+  /* ── WS-CAMPAIGNS-1 (Owner 2026-09-28: "introduce campaigns card in the workspace") ─────────────────────────
+     Sarah's plans on the canvas, in the agent-card language: how many are live, ideas waiting for the owner, what
+     finished, the live ones with their progress, and the next dated step. It sits beside Sarah until the owner moves
+     it (remembered per workspace), refreshes every minute, and opens Campaigns. */
+  var CAMP = { data: null, at: 0, loading: false };
+  var CAMP_W = 232;
+  function campPosKey() { return 'wsv2_camp_pos_' + getWorkspaceId(); }
+  function campLoadPos() { try { return JSON.parse(localStorage.getItem(campPosKey()) || 'null'); } catch (e) { return null; } }
+  function campSavePos(pos) { try { localStorage.setItem(campPosKey(), JSON.stringify(pos)); } catch (e) {} }
+  function campEsc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function campFetch() {
+    if (CAMP.loading) return; CAMP.loading = true;
+    fetch((window.LU_API_BASE || '/api') + '/growth/campaigns', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' }, cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) { CAMP.loading = false; if (j && j.success !== false) { CAMP.data = j; CAMP.at = Date.now(); campCard(true); } })
+      .catch(function () { CAMP.loading = false; });
+  }
+  function campWhen(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d)) return '';
+    return d.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'short' });
+  }
+  function campCard(fresh) {
+    var world = document.getElementById('wsv2-world'); if (!world) return;
+    if (!fresh && (!CAMP.data || Date.now() - CAMP.at > 60000)) campFetch();
+    var el = document.getElementById('wsv2-camp');
+    if (!el) {
+      el = document.createElement('div'); el.id = 'wsv2-camp'; el.className = 'wsv2-camp'; el.setAttribute('role', 'region'); el.setAttribute('aria-label', 'Campaigns');   /* own class: selection / lasso / agent drag never treat it as an agent */
+      world.appendChild(el); campDrag(el);
+    }
+    // position: where the owner left it, else beside Sarah
+    var pos = campLoadPos();
+    if (!pos) {
+      var sp = STATE.overrides.sarah || STATE.positions.sarah;
+      /* first free spot around Sarah that does not cover an agent card (the card is about 300px tall) */
+      var cards = STATE.agents.map(function (a) { var q = STATE.overrides[a.slug] || STATE.positions[a.slug]; return q ? { x: q.x, y: q.y, w: CARD_W, h: CARD_H } : null; }).filter(Boolean);
+      var H = 310, cand = sp ? [[-CAMP_W - 60, -H - 20], [CARD_W + 60, -H - 20], [-CAMP_W - 60, -20], [CARD_W + 60, -20], [-CAMP_W - 60, CARD_H + 40], [CARD_W + 60, CARD_H + 40], [-(CAMP_W - CARD_W) / 2, -H - 40]] : [];
+      pos = null;
+      for (var ci = 0; ci < cand.length && !pos; ci++) { var r = { x: sp.x + cand[ci][0], y: sp.y + cand[ci][1], w: CAMP_W, h: H }; if (r.x < 10 || r.y < 10) continue; if (!cards.some(function (c) { return rectsOverlap(r, c, 16); })) pos = { x: r.x, y: r.y }; }
+      if (!pos) pos = sp ? { x: Math.max(20, sp.x - CAMP_W - 60), y: Math.max(20, sp.y - H - 20) } : { x: CANVAS_W / 2 - CAMP_W - 200, y: CANVAS_H / 2 - 120 };
+    }
+    el.style.left = pos.x + 'px'; el.style.top = pos.y + 'px';
+    var d = CAMP.data || {}, list = Array.isArray(d.campaigns) ? d.campaigns : [];
+    var live = list.filter(function (c) { return c.status === 'active' || c.status === 'live' || c.status === 'running'; });
+    var ideas = typeof d.ideas_pending === 'number' ? d.ideas_pending : list.filter(function (c) { return c.status === 'idea'; }).length;
+    var done = list.filter(function (c) { return c.status === 'completed' || c.status === 'done' || c.status === 'finished'; }).length;
+    var next = live.map(function (c) { return c.next_step && c.next_step.at ? { t: c.next_step.title, at: c.next_step.at, c: c.title } : null; }).filter(Boolean)
+      .sort(function (a, b) { return new Date(a.at) - new Date(b.at); })[0];
+    var sig = JSON.stringify([live.map(function (c) { return [c.id, c.steps_done, c.steps_total]; }), ideas, done, next && next.at, !!CAMP.data]);
+    if (el.__sig === sig) return; el.__sig = sig;
+    var ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/></svg>';
+    var liveHtml = live.slice(0, 2).map(function (c) {
+      var tot = +c.steps_total || 0, dn = +c.steps_done || 0, pct = tot ? Math.round(dn * 100 / tot) : 0;
+      return '<div class="wsv2-camp-item"><div class="wsv2-camp-t" title="' + campEsc(c.title) + '">' + campEsc(c.title) + '</div>' +
+        '<div class="wsv2-camp-m">' + campEsc(c.business_name || '') + (tot ? ' · ' + dn + '/' + tot + ' steps' : '') + '</div>' +
+        '<div class="wsv2-bar"><div class="wsv2-bar-fill" style="width:' + pct + '%;background:#3DD9B0"></div></div></div>';
+    }).join('') + (live.length > 2 ? '<div class="wsv2-camp-m">+ ' + (live.length - 2) + ' more live</div>' : '');
+    el.innerHTML =
+      '<div class="wsv2-agent-head"><span class="wsv2-camp-ic">' + ICON + '</span><div class="wsv2-agent-info"><div class="wsv2-name">Campaigns</div><div class="wsv2-title">Sarah’s plans</div></div></div>' +
+      (!CAMP.data ? '<div class="wsv2-camp-m">Loading…</div>' :
+      '<div class="wsv2-stats">' +
+        '<div class="wsv2-stat-row wsv2-stat ongoing"><span class="wsv2-stat-lbl">Live</span><span class="wsv2-stat-val">' + live.length + '</span></div>' +
+        '<div class="wsv2-stat-row wsv2-stat upcoming"><span class="wsv2-stat-lbl">Ideas waiting</span><span class="wsv2-stat-val">' + ideas + '</span></div>' +
+        '<div class="wsv2-stat-row wsv2-stat"><span class="wsv2-stat-lbl">Finished</span><span class="wsv2-stat-val">' + done + '</span></div>' +
+      '</div>' +
+      (liveHtml ? '<div class="wsv2-camp-list">' + liveHtml + '</div>' : '<div class="wsv2-camp-m" style="margin-top:10px">No campaign is live yet — Sarah proposes ideas for each business.</div>') +
+      (next ? '<div class="wsv2-camp-next"><span>Next · ' + campEsc(campWhen(next.at)) + '</span>' + campEsc(next.t) + '</div>' : '') +
+      (ideas ? '<button type="button" class="wsv2-cta wsv2-camp-go" data-go="ideas">Review ' + ideas + ' idea' + (ideas === 1 ? '' : 's') + ' →</button>' : '') +
+      '<button type="button" class="wsv2-cta" data-go="open">Open Campaigns →</button>');
+    Array.prototype.forEach.call(el.querySelectorAll('[data-go]'), function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); if (el.__moved) return; if (typeof window.nav === 'function') window.nav('projects'); });
+    });
+  }
+  // drag: same feel as the agent cards (mouse and touch), stays put where dropped; never starts the canvas lasso or pan
+  function campDrag(el) {
+    var st = null;
+    function scale() { var w = document.getElementById('wsv2-world'); return (w && w.getBoundingClientRect().width / CANVAS_W) || 1; }
+    function down(x, y, e) { if (e.target.closest && e.target.closest('button')) return; e.stopPropagation(); st = { x: x, y: y, l: parseFloat(el.style.left) || 0, t: parseFloat(el.style.top) || 0, sc: scale() }; el.__moved = false; }
+    function move(x, y, e) { if (!st) return; var dx = (x - st.x) / st.sc, dy = (y - st.y) / st.sc; if (Math.abs(dx) + Math.abs(dy) > 4) el.__moved = true; if (!el.__moved) return; e.preventDefault(); el.classList.add('dragging'); el.style.left = Math.max(0, Math.min(CANVAS_W - CAMP_W, st.l + dx)) + 'px'; el.style.top = Math.max(0, Math.min(CANVAS_H - 120, st.t + dy)) + 'px'; }
+    function up() { if (!st) return; if (el.__moved) campSavePos({ x: parseFloat(el.style.left), y: parseFloat(el.style.top) }); el.classList.remove('dragging'); st = null; setTimeout(function () { el.__moved = false; }, 0); }
+    el.addEventListener('mousedown', function (e) { down(e.clientX, e.clientY, e); });
+    window.addEventListener('mousemove', function (e) { move(e.clientX, e.clientY, e); });
+    window.addEventListener('mouseup', up);
+    el.addEventListener('touchstart', function (e) { var t = e.touches[0]; if (t) down(t.clientX, t.clientY, e); }, { passive: true });
+    el.addEventListener('touchmove', function (e) { var t = e.touches[0]; if (t) move(t.clientX, t.clientY, e); }, { passive: false });
+    el.addEventListener('touchend', up);
+  }
+  (function campCss() {
+    if (document.getElementById('wsv2-camp-css')) return;
+    var s = document.createElement('style'); s.id = 'wsv2-camp-css';
+    s.textContent = '.wsv2-camp{position:absolute;width:' + CAMP_W + 'px;z-index:4;cursor:grab;user-select:none;-webkit-touch-callout:none;background:var(--s1);border:1px solid var(--bd);border-top:3px solid #3DD9B0;border-radius:var(--rg);padding:14px;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:box-shadow .2s,border-color .2s}.wsv2-camp:hover{box-shadow:0 8px 32px rgba(0,0,0,.4)}.wsv2-camp.dragging{opacity:.9;z-index:100;cursor:grabbing}.wsv2-camp .wsv2-name{cursor:default}' +
+      '.wsv2-camp-ic{width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;background:rgba(61,217,176,.14);color:#3DD9B0;flex-shrink:0}' +
+      '.wsv2-camp-list{margin-top:10px;padding-top:8px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:8px}' +
+      '.wsv2-camp-t{font-size:11.5px;font-weight:600;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.wsv2-camp-m{font-size:10px;color:var(--t3);margin-top:1px}' +
+      '.wsv2-camp-next{margin-top:10px;padding:7px 8px;border-radius:7px;background:var(--s2);border:1px solid var(--bd);font-size:10.5px;color:var(--t2);line-height:1.35}' +
+      '.wsv2-camp-next span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:#F59E0B;margin-bottom:2px}' +
+      '.wsv2-camp-go{background:var(--p)!important;border-color:var(--p)!important;color:#fff!important}';
+    document.head.appendChild(s);
+  })();
 })();
