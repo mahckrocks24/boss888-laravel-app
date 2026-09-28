@@ -479,7 +479,7 @@
       var stylesHtml = '<div class="lbc" style="margin:0"><div data-slot="pick"></div></div>';
       var rulesHtml = '<div class="lbc" style="margin:' + (P ? '0' : '10px 0 0') + '"><div class="lbc-t">Brand rules</div><div class="lbc-s">Sarah follows these on every banner, image, caption and video for ' + esc(j.business_name) + '.</div>' +
         ((j.rules || []).length ? '<ul class="lbc-rules">' + j.rules.map(function (x, i) { return '<li>' + esc(x) + '<button type="button" class="lbc-x" data-rm="' + i + '" aria-label="Remove rule">Remove</button></li>'; }).join('') + '</ul>' : '<div class="lbc-s" style="margin:0">No rules yet — for example “Never use red” or “Always show our Instagram handle”.</div>') +
-        '<div class="lbc-add"><input type="text" maxlength="200" placeholder="Add a rule" aria-label="New brand rule"><button type="button" class="lbc-btn" data-a="add">Add</button></div></div>' +
+        '<div class="lbc-add"><input type="text" autocomplete="off" maxlength="200" placeholder="Add a rule" aria-label="New brand rule"><button type="button" class="lbc-btn" data-a="add">Add</button></div></div>' +
         '<div class="lbc" style="margin-top:12px"><div class="lbc-t">Inspiration library</div><div class="lbc-s">Designs you sent Sarah. She studied each one and borrows the look, in your colours, when it fits.</div><div data-slot="insp"></div></div>';
       var brandRoot, stylesRoot, rulesRoot;
       if (P) { P.brand.innerHTML = colours; P.styles.innerHTML = stylesHtml; P.rules.innerHTML = rulesHtml; brandRoot = P.brand; stylesRoot = P.styles; rulesRoot = P.rules; }
