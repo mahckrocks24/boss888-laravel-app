@@ -2798,7 +2798,7 @@ PROMPT;
         return $total;
     }
 
-    private function clearSectionTints(int $websiteId): int
+    public function clearSectionTints(int $websiteId): int
     {
         try {
             $tv = json_decode((string) DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
@@ -2812,8 +2812,9 @@ PROMPT;
                 $css = $this->fxRules((string) $key, $st, null);
                 if ($css === '') unset($extras[$rk]); else $rules[$rk] = $css;
             }
-            // PALETTE-TINT-2: a section colour set by hand ("make the menu grey") is a fixed colour too — it goes with the veils
-            foreach (array_keys($extras) as $ek) { if (str_starts_with((string) $ek, 'colour_section_')) { unset($extras[$ek]); $n++; } }
+            // PALETTE-TINT-2/3: every colour set by hand (the nav, a section, the buttons — colour_*) is a fixed colour too;
+            // it goes with the veils (Sky Gonzales Events kept a grey nav: its rule was colour_nav, not colour_section_*)
+            foreach (array_keys($extras) as $ek) { if (str_starts_with((string) $ek, 'colour_')) { unset($extras[$ek]); $n++; } }
             if ($n === 0) return 0;
             $tv['element_fx'] = $fx; $tv['design_extras'] = $extras;
             if (! self::writeDesignExtras($websiteId, $rules, $tv)) return 0;
