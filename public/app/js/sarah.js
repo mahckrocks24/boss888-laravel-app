@@ -711,6 +711,9 @@
     var drafts = (d && Array.isArray(d.drafts)) ? d.drafts.filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }) : [];
     placeDrafts(drafts, (d && Array.isArray(d.timeline_posts)) ? d.timeline_posts : []);   /* POST-TIMELINE-1 (Owner 2026-09-28): on the timeline, never pinned to the bottom; POST-HISTORY-1 */
     drafts = [];
+    /* ONE-SET-1 (Owner 2026-09-28: "2 sets of buttons"): on the web a card inside Sarah's message carries its own buttons — the
+       quick-answer chips are for the companion app; show them here only when her latest message has no such card */
+    if (chips.length && S.feed) { var hers = S.feed.querySelectorAll('.sh-row.her[data-mid]'); var last = hers.length ? hers[hers.length - 1] : null; if (last && last.querySelector('.lu-brand-slot')) chips = []; }
     if (!items.length && !chips.length && !drafts.length) return;
     var bar = document.createElement('div'); bar.className = 'sh-actbar'; bar.id = 'sh-actbar'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Sarah is waiting for your decision');
     items.forEach(function (it) {
