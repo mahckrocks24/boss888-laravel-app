@@ -19,7 +19,7 @@ $blurbs = [
     'free' => 'Build and publish your site, capture leads and take bookings. No card, no time limit, no ongoing AI.',
     'starter' => 'The site you own on your own domain, with the CRM and calendar. No ongoing AI.',
     'ai-lite' => 'The full AI Growth OS at its smallest capacity: Sarah, specialists, SEO, content, creative and the chatbot.',
-    'growth' => 'More capacity, more sites, more credits for the workforce to spend.',
+    'growth' => 'More capacity, more sites, more credits for the workforce to spend, and the companion app.',
     'pro' => 'Ten sites, priority processing and the companion app.',
     'agency' => 'White-label, unlimited team, twenty-five client sites under one roof.',
 ];
@@ -63,7 +63,7 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
           <?php if (! isset($labels[$flag])) { continue; } ?>
           <li class="<?= ! empty($f[$flag]) ? '' : 'no' ?>"><?= icon('check', 18) ?><span><?= e($labels[$flag]) ?><?= $flag === 'chatbot_included' && ! empty($f[$flag]) && ! empty($f['chatbot_messages_per_month']) ? ', ' . $fmtNum($f['chatbot_messages_per_month']) . ' messages/month' : '' ?></span></li>
         <?php endforeach; ?>
-        <?php if (! empty($p['agents']['includes_dmm'])): ?><li><?= icon('check', 18) ?><span>Companion app: <?= $p['slug'] === 'pro' || $p['slug'] === 'agency' ? 'included' : 'not included' ?></span></li><?php endif; ?>
+        <?php if (! empty($p['agents']['includes_dmm'])): ?><li><?= icon('check', 18) ?><span>Companion app: <?= in_array($p['slug'], ['growth', 'pro', 'agency'], true) ? 'included' : 'not included' ?></span></li><?php endif; ?>
         <?php if ($p['white_label']): ?><li><?= icon('check', 18) ?><span>White-label</span></li><?php endif; ?>
         <?php if ($p['priority_processing']): ?><li><?= icon('check', 18) ?><span>Priority processing</span></li><?php endif; ?>
       </ul>
@@ -111,7 +111,7 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
           <?php foreach ($counters as $flag => $label): ?>
           <tr><th scope="row"><?= e($label) ?></th><?php foreach ($plans as $p): ?><td class="num"><?= ! empty($p['features'][$flag]) ? $fmtNum($p['features'][$flag]) : '—' ?></td><?php endforeach; ?></tr>
           <?php endforeach; ?>
-          <tr><th scope="row">Companion app</th><?php foreach ($plans as $p): ?><td class="mark"><?= in_array($p['slug'], ['pro', 'agency'], true) ? icon('check', 18) : '<span class="dash">—</span>' ?></td><?php endforeach; ?></tr>
+          <tr><th scope="row">Companion app</th><?php foreach ($plans as $p): ?><td class="mark"><?= in_array($p['slug'], ['growth', 'pro', 'agency'], true) ? icon('check', 18) : '<span class="dash">—</span>' ?></td><?php endforeach; ?></tr>
           <tr><th scope="row">White-label</th><?php foreach ($plans as $p): ?><td class="mark"><?= $p['white_label'] ? icon('check', 18) : '<span class="dash">—</span>' ?></td><?php endforeach; ?></tr>
           <tr><th scope="row">Priority processing</th><?php foreach ($plans as $p): ?><td class="mark"><?= $p['priority_processing'] ? icon('check', 18) : '<span class="dash">—</span>' ?></td><?php endforeach; ?></tr>
         </tbody>

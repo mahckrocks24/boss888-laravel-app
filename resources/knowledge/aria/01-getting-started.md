@@ -22,4 +22,4 @@ The app has two views, switched with the Basic / Advanced toggle at the top of t
 Aria is in the left sidebar in both Basic and Advanced views. She answers questions about the platform: what a feature does, where it lives, what a plan includes, what something costs in credits. She does not change anything in your account. When you want work done, Aria points you to Sarah (for marketing, content, leads and everything the workforce does) or to Arthur (for your website).
 
 ## Is there a mobile app?
-The web app works on a phone in the browser. The companion app is included on Pro and Agency. The Studio video editor is a desktop experience: review and edit videos on a computer.
+The web app works on a phone in the browser. The companion app is included from Growth ($99) and up. The Studio video editor is a desktop experience: review and edit videos on a computer.

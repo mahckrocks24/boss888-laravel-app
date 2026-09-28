@@ -500,7 +500,7 @@ class FeatureGateService
 
     public function canUseApp888(int $wsId): bool
     {
-        // The Companion app stays a Pro+ (companion_app) entitlement — the Owner's explicit exclusion at $49.
+        // The Companion app is a companion_app entitlement: Growth ($99) and above (Owner 2026-09-28); not at $49.
         $plan = $this->getActivePlan($wsId);
         return $plan && (bool) $plan->companion_app;
     }
