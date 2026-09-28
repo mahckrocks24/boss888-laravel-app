@@ -52,7 +52,7 @@ final class TenantEmail
                 $reply = $valid($owner);
             }
         }
-        $host = $site ? ($site->custom_domain ?: $site->subdomain) : null;
+        $host = $site ? ((! empty($site->custom_domain) && ! empty($site->domain_verified) ? $site->custom_domain : null) ?: $site->subdomain) : null; // WL-MAIL-1b: an unverified domain is not live yet
         $website = $host ? 'https://' . preg_replace('#^https?://#', '', rtrim((string) $host, '/')) : null;
 
         $domain = trim((string) config('email888.tenant.domain', ''));
@@ -63,6 +63,10 @@ final class TenantEmail
         if (! empty($biz->address_json)) { $a = json_decode((string) $biz->address_json, true); if (is_array($a)) $addr = implode(', ', array_filter(array_map(fn ($v) => is_scalar($v) ? trim((string) $v) : '', $a))); }
         $heroSrc = null;
         if ($site) { $tv = json_decode((string) ($site->template_variables ?? ''), true) ?: []; foreach (['hero_image', 'hero_bg', 'hero_img', 'hero_photo'] as $hk) { if (is_string($tv[$hk] ?? null) && $tv[$hk] !== '') { $heroSrc = $tv[$hk]; break; } } }
+        if (! $heroSrc && $site) { // custom-built sites keep their hero in the site image folder
+            $g = glob(public_path('storage/sites/' . (int) $site->id . '/images/hero*.{jpg,jpeg,png,webp}'), GLOB_BRACE) ?: [];
+            if ($g) $heroSrc = '/storage/sites/' . (int) $site->id . '/images/' . basename($g[0]);
+        }
         return ['business_id' => $biz ? (int) $biz->id : null, 'name' => $name, 'address' => $address, 'reply_to' => $reply, 'kit' => $kit, 'website' => $website,
             'phone' => ($biz->phone ?? null) ?: null, 'address_line' => $addr ?: ($biz->location ?? null), 'hero' => self::heroUrl($heroSrc)];
     }
@@ -87,7 +91,7 @@ final class TenantEmail
                 $w = imagesx($img); $h = imagesy($img); $tw = 1200; $th = 480;
                 $scale = max($tw / $w, $th / $h); $cw = (int) round($tw / $scale); $ch = (int) round($th / $scale);
                 $dst = imagecreatetruecolor($tw, $th);
-                imagecopyresampled($dst, $img, 0, 0, (int) (($w - $cw) / 2), (int) (($h - $ch) / 2.6), $tw, $th, $cw, $ch);
+                imagecopyresampled($dst, $img, 0, 0, (int) (($w - $cw) / 2), (int) (($h - $ch) / 4), $tw, $th, $cw, $ch);
                 if (! is_dir(dirname($out))) @mkdir(dirname($out), 0775, true);
                 imagejpeg($dst, $out, 80); imagedestroy($dst); imagedestroy($img);
             } catch (\Throwable $e) { return null; }
@@ -116,6 +120,9 @@ final class TenantEmail
         $btn = $lum($primary) > 0.3 ? ($lum($accent) <= 0.3 ? $accent : '#111827') : $primary;
         $ink = $lum($primary) > 0.3 ? '#0F172A' : $primary;
         $tint = $mix($btn, 0.94); $line = $mix($btn, 0.84);
+        $deep = function ($h, $t) { $c = array_map('hexdec', str_split(ltrim($h, '#'), 2)); return sprintf('#%02X%02X%02X', ...array_map(fn ($v) => (int) round($v * (1 - $t)), $c)); };
+        $stripe = $accent !== $btn && $lum($accent) < 0.75 ? $accent : $btn;
+        $eyeInk = $stripe === $btn ? $btn : ($lum($stripe) > 0.18 ? $deep($stripe, 0.32) : $stripe);
         $font = trim(explode(',', (string) ($k['heading_font'] ?? 'Georgia'))[0], " '\"");
         $serif = "'" . $e($font) . "',Georgia,'Times New Roman',serif";
         $sans = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif";
@@ -128,7 +135,7 @@ final class TenantEmail
         $label = 'font:700 12px/1 ' . $sans . ';letter-spacing:.14em;text-transform:uppercase;';
 
         $h = '';
-        if (! empty($o['eyebrow'])) $h .= '<div style="' . $label . 'color:' . $btn . ';margin:0 0 12px">' . $e($o['eyebrow']) . '</div>';
+        if (! empty($o['eyebrow'])) $h .= '<div style="' . $label . 'color:' . $eyeInk . ';margin:0 0 12px">' . $e($o['eyebrow']) . '</div>';
         if ($title !== '') $h .= '<h1 style="margin:0 0 14px;font-family:' . $serif . ';font-size:30px;line-height:1.18;font-weight:700;color:#0F172A;letter-spacing:-.015em">' . $e($title) . '</h1>';
         if (! empty($o['lead'])) $h .= '<p style="margin:0 0 22px;font:17px/1.6 ' . $sans . ';color:#475569">' . $e($o['lead']) . '</p>';
         $h .= $bodyHtml;
@@ -165,7 +172,7 @@ final class TenantEmail
             . '<tr><td style="padding:0 6px 18px">' . $mark . '</td></tr>'
             . '<tr><td style="background:#FFFFFF;border-radius:18px;overflow:hidden;border:1px solid #E2E8F0">'
             . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0">'
-            . '<tr><td style="height:5px;background:' . $btn . ';line-height:5px;font-size:0">&nbsp;</td></tr>'
+            . '<tr><td style="height:5px;background:' . $stripe . ';line-height:5px;font-size:0">&nbsp;</td></tr>'
             . ($hero ? '<tr><td style="line-height:0;font-size:0"><img src="' . $e($hero) . '" width="600" alt="" style="display:block;width:100%;max-width:600px;height:auto;border:0"></td></tr>' : '')
             . '<tr><td style="padding:36px 36px 34px;font:15px/1.65 ' . $sans . ';color:#334155">' . $h . '</td></tr>'
             . '</table></td></tr>'
@@ -204,7 +211,7 @@ final class TenantEmail
     public static function siteLabel(?string $url): ?string
     {
         $host = strtolower((string) preg_replace('#^https?://#', '', rtrim((string) $url, '/')));
-        return $host === '' || str_contains($host, 'levelup') ? null : $host;
+        return $host === '' || $host === 'levelupgrowth.io' || str_ends_with($host, '.levelupgrowth.io') ? null : $host;
     }
 
     /** Plain paragraphs from plain text (escaped), for callers that compose text. */
