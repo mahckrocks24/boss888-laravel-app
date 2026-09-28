@@ -117,10 +117,10 @@ final class AdTagAssetService
       var url = ORIGIN + "/api/ads/event";
       /* sendBeacon survives page unload, which a fetch() may not. */
       if (navigator.sendBeacon) {
-        navigator.sendBeacon(url, new Blob([body], { type: "application/json" }));
+        navigator.sendBeacon(url, new Blob([body], { type: "text/plain;charset=UTF-8" }));   /* ADS-IAB-1: a simple request, no CORS preflight */
       } else {
-        fetch(url, { method: "POST", headers: { "Content-Type": "application/json" },
-                     body: body, keepalive: true, mode: "cors" });
+        fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                     body: body, keepalive: true, mode: "no-cors" });
       }
     } catch (e) {}
   }
@@ -289,6 +289,7 @@ final class AdTagAssetService
     return (Math.min(r.bottom, vh) - Math.max(r.top, 0)) >= r.height * 0.5;
   }
 
+  var decideTries = 0;
   function decide() {
     var el = slot();
     if (!el) return;
@@ -344,7 +345,12 @@ final class AdTagAssetService
          sold ad because one request failed would cost an advertiser delivery
          they paid for, so the current creative stays and the next refresh
          retries. */
-      .catch(function () { clearTimeout(timer); });
+      .catch(function () {
+        clearTimeout(timer);
+        /* ADS-IAB-1: a slow answer (phone network, busy server) aborted the only try and the bar never came. Retry, spaced. */
+        var cur = slot();
+        if (decideTries < 3 && cur && cur.hidden) { decideTries++; setTimeout(decide, 3000 * decideTries); }
+      });
   }
 
   /* @@MODAL_BLOCK_START@@
@@ -408,7 +414,7 @@ final class AdTagAssetService
     if (!MODAL_ON) return false;
     if (MODAL_CAP > 0 && modalsSeen() >= MODAL_CAP) return false;
     if (Date.now() - lastModalAt() < MODAL_EVERY) return false;     /* ADS-ALWAYS-1: 3 minutes apart */
-    if (pv < MODAL_MIN_PV && Date.now() - visitStart() < MODAL_EVERY) return false;   /* never on arrival */
+    if (pv < MODAL_MIN_PV && Date.now() - visitStart() < 20000) return false;   /* ADS-IAB-1: not on arrival — 20 s in, or the next page */
     if (MODAL_NO_SEARCH && cameFromSearch()) return false;  /* the SEO guard */
     if (onExcludedPath()) return false;               /* never break a conversion */
     return true;

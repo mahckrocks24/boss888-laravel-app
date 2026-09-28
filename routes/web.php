@@ -693,7 +693,7 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
         '<div style="font-size:15px;font-weight:600">Send us a message</div>' +
         '<button id="lu-cb-close" aria-label="Close" style="background:none;border:none;color:'+FGON+';cursor:pointer;font-size:20px;padding:0;line-height:1">\u00d7</button>' +
       '</div>' +
-      '<form id="lu-cf" novalidate style="padding:4px 16px 16px;overflow-y:auto;margin:0">' +
+      '<form id="lu-cf" novalidate style="padding:4px 16px 0;overflow-y:auto;margin:0;flex:1 1 auto;min-height:0;-webkit-overflow-scrolling:touch;scroll-padding-bottom:84px;scroll-padding-top:8px">' +
         '<p style="margin:12px 0 0;font-size:13.5px;line-height:1.5;color:'+muted+'">Leave your details and we will get back to you.</p>' +
         '<label style="'+lab+'">Name<input name="name" autocomplete="name" maxlength="120" style="'+fld+'"></label>' +
         '<label style="'+lab+'">Email<input name="email" type="email" autocomplete="email" maxlength="190" style="'+fld+'"></label>' +
@@ -701,13 +701,33 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
         '<label style="'+lab+'">Message<textarea name="message" rows="4" maxlength="2000" style="'+fld+';resize:vertical"></textarea></label>' +
         '<input name="hp" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">' +
         '<div id="lu-cf-err" role="alert" style="display:none;margin-top:10px;font-size:13px;color:#c0392b"></div>' +
-        '<button type="submit" id="lu-cf-send" style="margin-top:14px;width:100%;padding:12px;border:none;border-radius:10px;background:'+COLOR+';color:'+FGON+';font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Send message</button>' +
+        '<div style="position:sticky;bottom:0;background:'+bg+';padding:12px 0 14px;margin-top:2px"><button type="submit" id="lu-cf-send" style="width:100%;padding:12px;border:none;border-radius:10px;background:'+COLOR+';color:'+FGON+';font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">Send message</button></div>' +
       '</form>';
     document.body.appendChild(panel);
     bubble.style.display = 'none';
     panel.querySelector('#lu-cb-close').onclick = function(){ panel.style.display = 'none'; bubble.style.display = 'flex'; };
     var form = panel.querySelector('#lu-cf'), err = panel.querySelector('#lu-cf-err'), btn = panel.querySelector('#lu-cf-send');
     var started = Date.now();
+    // CONTACT-KB-1: the sheet follows the keyboard
+    var vvH = function(){ return window.visualViewport ? window.visualViewport.height : window.innerHeight; };
+    var H0 = vvH(), fitT = null;
+    var touch = (function(){ try { return window.matchMedia('(pointer: coarse)').matches; } catch(e){ return false; } })();
+    function fitKb(){
+      var ae = document.activeElement;
+      var on = touch && panel.style.display !== 'none' && ae && panel.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName) && ae.name !== 'hp';
+      if (!on) { panel.style.top = ''; panel.style.height = ''; panel.style.bottom = bubble.style.bottom || '20px'; panel.style.maxHeight = 'calc(100vh - 110px)'; return; }
+      var h = vvH(); if (h > H0) H0 = h;
+      var top = window.visualViewport ? Math.max(0, window.visualViewport.offsetTop) : 0;
+      var avail = (h < H0 - 100) ? h : Math.round(window.innerHeight * 0.55);   // no keyboard signal (in-app browsers): leave the lower 45% to it
+      panel.style.bottom = 'auto'; panel.style.top = (top + 8) + 'px';
+      panel.style.height = Math.max(200, avail - 16) + 'px'; panel.style.maxHeight = Math.max(200, avail - 16) + 'px';
+      setTimeout(function(){ try { ae.scrollIntoView({ block: 'nearest', behavior: 'instant' }); } catch(e){ try { ae.scrollIntoView(false); } catch(e2){} } }, 40);
+    }
+    var later = function(){ clearTimeout(fitT); fitT = setTimeout(fitKb, 60); };
+    panel.addEventListener('focusin', fitKb);
+    panel.addEventListener('focusout', later);
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', later);
+    window.addEventListener('resize', later);
     function fail(t){ err.textContent = t; err.style.display = 'block'; }
     form.onsubmit = function(e){
       e.preventDefault(); err.style.display = 'none';
