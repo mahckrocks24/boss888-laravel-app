@@ -2709,6 +2709,9 @@ PROMPT;
             $__have = self::siteColorVars($websiteId);
             $__theme3 = ['primary' => $theme['primary'], 'secondary' => $theme['secondary'], 'accent' => $theme['accent']];
             foreach (self::mapRolesToSiteVars($websiteId, $__theme3) as $__k => $__v) {
+                // PALETTE-TEXT-1: never a role variable (--lu-*) — the roles block is written whole by normaliseExport; this loop
+                // painted --lu-dark with Coral Reef's light #F4A261 (dark sections and dark headlines went unreadable on 89 templates)
+                if (str_starts_with(strtolower((string) $__k), '--lu-')) { continue; }
                 if (! isset($vars[$__k]) && isset($__have[strtolower((string) $__k)])) { $vars[$__k] = strtoupper((string) $__v); }
             }
             $__tvBefore = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
@@ -2716,6 +2719,7 @@ PROMPT;
                 $__k = strtolower((string) $__k);
                 if (! isset($vars[$__k]) && isset($__have[$__k]) && ! str_starts_with($__k, '--lu-')) { $vars[$__k] = strtoupper((string) $theme['accent']); }
             }
+            $vars = $this->textSafeVars($websiteId, $vars, $theme);   // PALETTE-TEXT-1: a palette never makes readable text unreadable
             $res = $editor->applyStyleColors($websiteId, $vars);
             if ((int) ($res['applied'] ?? 0) === 0) {
                 return ['success' => false, 'error' => 'not_applied', 'message' => 'The palette did not match any colour on this site.', 'missed' => $res['missed'] ?? []];
@@ -2766,6 +2770,53 @@ PROMPT;
      * stylesheets whose colour is one of the site's colour variables becomes color-mix() of that variable, once; from
      * then on those surfaces follow every palette. Arthur's own style block is left alone. Returns replacements made.
      */
+    /**
+     * PALETTE-TEXT-1 (Owner 2026-09-28: "audit all and make sure we never ever encounter this same problem"). The audit of
+     * 233 templates x 18 palettes found the unreadable text came from a palette colour landing on a variable the template
+     * uses FOR TEXT (Coral Reef's #F4A261, Bubblegum Pop's #FF6FB5, Sage Linen's #D9CFC1 as headings / prices on cream).
+     * Rule: for every variable the page uses as a text colour, if the template's own value was readable on its page
+     * background and the palette's value would not be, the palette's colour is deepened (same hue) until it reads (4.5:1).
+     * Variables the template never uses for text, and text the template itself left unreadable, are untouched here.
+     *
+     * @param array<string,string> $vars --var => #HEX the palette is about to write
+     * @return array<string,string>
+     */
+    private function textSafeVars(int $websiteId, array $vars, array $theme): array
+    {
+        try {
+            $html = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+            if ($html === '' || ! preg_match_all('~<style(?![^>]*id="(?:lug-design-extras|lu-contrast-guard)")[^>]*>(.*?)</style>~is', $html, $sm)) return $vars;
+            $css = implode("\n", $sm[1]);
+            $old = self::siteColorVars($websiteId);   // --var => #HEX, the template's values before the switch
+            $val = function (string $v, array $over) use ($old): ?string { $v = strtolower($v); $h = $over[$v] ?? ($over[strtoupper($v)] ?? ($old[$v] ?? null)); return is_string($h) && preg_match('/^#[0-9a-f]{6}$/i', $h) ? strtoupper($h) : null; };
+            $lower = []; foreach ($vars as $k => $v) $lower[strtolower((string) $k)] = $v;
+            // the page background: body / html / :root background, as a variable or a literal; else the theme's own ground
+            $bgOld = null; $bgNew = null;
+            if (preg_match('/(?:^|[\s,}])(?:body|html)\s*\{[^}]*?background(?:-color)?\s*:\s*([^;}]+)/i', $css, $bm)) {
+                $bv = trim($bm[1]);
+                if (preg_match('/var\(\s*(--[a-z0-9_-]+)/i', $bv, $vm)) { $bgOld = $val($vm[1], []); $bgNew = $val($vm[1], $lower); }
+                elseif (preg_match('/#[0-9a-f]{6}\b/i', $bv, $hm)) { $bgOld = $bgNew = strtoupper($hm[0]); }
+            }
+            $bgNew = $bgNew ?: ($theme['bg'] ?? '#FFFFFF'); $bgOld = $bgOld ?: '#FFFFFF';
+            // the variables the page paints text with (colour, not background)
+            if (! preg_match_all('/(?<![-a-z])color\s*:\s*var\(\s*(--[a-z0-9_-]+)/i', $css, $um)) return $vars;
+            $textVars = array_unique(array_map('strtolower', $um[1]));
+            $changed = [];
+            foreach ($textVars as $tv) {
+                if (! isset($lower[$tv])) continue;                       // the palette does not touch it
+                $new = $val($tv, $lower); $was = $val($tv, []);
+                if ($new === null || $was === null) continue;
+                if (\App\Engines\Builder\Support\ColorTheme::contrast($was, $bgOld) < 4.5) continue;  // the template itself did not rely on it reading
+                if (\App\Engines\Builder\Support\ColorTheme::contrast($new, $bgNew) >= 4.5) continue; // already reads
+                $safe = \App\Engines\Builder\Support\PaletteRoles::ensureContrast($new, $bgNew, 4.5);
+                foreach ($vars as $k => $v) { if (strtolower((string) $k) === $tv) { $vars[$k] = $safe; } }
+                $changed[$tv] = [$new, $safe];
+            }
+            if ($changed) Log::info('[PALETTE-TEXT-1] palette colours deepened where the page uses them for text', ['website' => $websiteId, 'bg' => $bgNew, 'changed' => $changed]);
+        } catch (\Throwable $e) { Log::warning('[PALETTE-TEXT-1] skipped', ['website' => $websiteId, 'e' => $e->getMessage()]); }
+        return $vars;
+    }
+
     private function varifyTranslucentColours(int $websiteId): int
     {
         $vars = self::siteColorVars($websiteId);   // --name => #HEX (current values, before the switch)
