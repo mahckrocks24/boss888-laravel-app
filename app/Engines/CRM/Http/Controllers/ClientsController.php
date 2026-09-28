@@ -180,6 +180,8 @@ class ClientsController extends BaseEngineController
             'client' => $row + ['city' => $l->city, 'country' => $l->country, 'website_id' => $l->website_id, 'converted_at' => $l->converted_at ? (string) $l->converted_at : null,
                 'first_message_full' => (string) ($meta['first_message'] ?? ''), 'duplicate_of' => $meta['possible_duplicate_of'] ?? []],
             'pack' => $pack, 'fields' => $fields, 'others' => $others, 'tasks' => $tasks, 'appointments' => $appts,
+            'sarah' => ($meta['sarah_summary'] ?? null), // CRM-SARAH-3: refreshed by GET /clients/{id}/summary when stale
+            'drafts' => DB::table('crm_reply_drafts')->where('workspace_id', $ws)->where('lead_id', $l->id)->where('status', 'draft')->orderByDesc('id')->limit(3)->get(['id', 'source', 'subject', 'body', 'reason', 'created_at'])->values(),
             'timeline' => $this->crm->leadTimeline($ws, $l->id),
             'facts' => ['human_touches' => $humanCount, 'first_reply_at' => $firstReply ? (string) $firstReply : null,
                 'days_since_contact' => $row['last_activity_at'] ? (int) now()->diffInDays($row['last_activity_at']) : null],
@@ -321,6 +323,55 @@ class ClientsController extends BaseEngineController
                 'total' => $scope(Lead::where('workspace_id', $ws))->count(),
             ],
         ]);
+    }
+
+    /** GET /crm/clients/{id}/summary — Sarah's summary and next step (written again only when something changed). */
+    public function summary(Request $r, int $id): JsonResponse
+    {
+        $out = app(\App\Engines\CRM\Services\SarahClients::class)->summary($this->wsId($r), $id, $r->boolean('refresh'));
+        return $out ? $this->readJson(['success' => true] + $out) : response()->json(['success' => false, 'message' => 'No summary yet.'], 404);
+    }
+
+    /** GET /crm/drafts — replies Sarah wrote that are waiting for the owner. */
+    public function drafts(Request $r): JsonResponse
+    {
+        $ws = $this->wsId($r); $b = $this->biz($r);
+        $rows = DB::table('crm_reply_drafts as d')->join('leads as l', 'l.id', '=', 'd.lead_id')->where('d.workspace_id', $ws)->where('d.status', 'draft')->whereNull('l.deleted_at')
+            ->when($b && $b > 0, fn ($q) => $q->where('l.business_id', $b))->where('d.created_at', '>=', now()->subDays(7))->orderByDesc('d.id')->limit(20)
+            ->get(['d.id', 'd.source', 'd.subject', 'd.body', 'd.reason', 'd.created_at', 'l.id as lead_id', 'l.name', 'l.email', 'l.business_id']);
+        return $this->readJson(['drafts' => $rows]);
+    }
+
+    /** POST /crm/drafts/{id}/send {body?} — the owner sends (or edits and sends) a reply Sarah wrote. */
+    public function sendDraft(Request $r, int $id): JsonResponse
+    {
+        $body = $r->filled('body') ? mb_substr(trim((string) $r->input('body')), 0, 4000) : null;
+        $res = app(\App\Engines\CRM\Services\SarahClients::class)->sendDraft($this->wsId($r), $id, $this->userId($r), $body);
+        return ! empty($res['success']) ? $this->readJson(['success' => true]) : response()->json(['success' => false, 'message' => $res['error'] ?? 'Not sent.'], 422);
+    }
+
+    /** POST /crm/drafts/{id}/skip */
+    public function skipDraft(Request $r, int $id): JsonResponse
+    {
+        app(\App\Engines\CRM\Services\SarahClients::class)->skipDraft($this->wsId($r), $id);
+        return $this->readJson(['success' => true]);
+    }
+
+    /** GET|PUT /crm/autoreply/{businessId} {setting: off|draft|send} — Sarah answering new enquiries for this business. */
+    public function autoreply(Request $r, int $businessId): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        if (! DB::table('businesses')->where('workspace_id', $ws)->where('id', $businessId)->whereNull('deleted_at')->exists()) return response()->json(['success' => false, 'message' => 'Business not found.'], 404);
+        $sc = app(\App\Engines\CRM\Services\SarahClients::class);
+        if ($r->isMethod('put')) {
+            $s = (string) $r->input('setting');
+            if (! in_array($s, ['off', 'draft', 'send'], true)) return response()->json(['success' => false, 'message' => 'Unknown setting.'], 422);
+            $s === 'off' ? $sc->setAutoreply($ws, $businessId, 'off', null, $this->userId($r)) : $sc->setAutoreply($ws, $businessId, 'on', $s, $this->userId($r));
+        }
+        $row = $sc->autoreplyRow($ws, $businessId);
+        $setting = $row->status === 'on' ? $row->mode : 'off';
+        return $this->readJson(['success' => true, 'setting' => $setting, 'status' => $row->status, 'sent_count' => (int) $row->sent_count, 'last_sent_at' => $row->last_sent_at,
+            'available' => is_file(storage_path('app/speedlead.on'))]);
     }
 
     /** GET /crm/reports?days=30 — where enquiries come from, how fast they are answered, where they go. */

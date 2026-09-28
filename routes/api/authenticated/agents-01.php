@@ -1425,7 +1425,8 @@ $withCorr = function (array $meta) use ($corr) {
                 $__turnShape = $__spendTurn ?? app(\App\Core\Sarah888\SpendPolicy::class)->assessTurn((string) $__ownerMessage);
                 $__isWorkTurn = !empty($__turnShape['authorized'])
                     || in_array($__turnShape['classification'] ?? '', ['directive', 'directive-question', 'authorisation'], true)
-                    || !empty($isConfirmation);   // SARAH-LEAK-1: a confirmation of a pending offer is work, never analysis
+                    || !empty($isConfirmation)   // SARAH-LEAK-1: a confirmation of a pending offer is work, never analysis
+                    || \App\Core\Sarah888\MinimumPath::isClientTurn((string) $__ownerMessage);   // CRM-SARAH-3: client questions and actions run with the Clients tools
                 if ($__isWorkTurn) {
                     \Illuminate\Support\Facades\Log::info('[Sarah888] work/authorisation turn — analytical shape skipped (RISK-0123)', [
                         'ws' => $wsId, 'classification' => $__turnShape['classification'] ?? null,
@@ -2873,6 +2874,14 @@ $withCorr = function (array $meta) use ($corr) {
                             }
                             $tr = $toolSchemaSvc->executeToolCall((string) $tc['tool'], $__tcParams, $wsId, $slug, $__tcCtx);
                             $toolResults[] = ['tool' => $tc['tool'], 'result' => $tr];
+                            // CRM-SARAH-3: what a Clients tool really did this turn is a verified action (named as Sarah will say it)
+                            if (!empty($tr['success']) && str_starts_with((string) $tc['tool'], 'crm.')) {
+                                $__cv = (array) request()->attributes->get('sarah_tool_verified', []);
+                                $__cd = is_array($tr['data'] ?? null) ? $tr['data'] : (is_array($tr['result'] ?? null) ? $tr['result'] : $tr);
+                                foreach (['title', 'client', 'name', 'now', 'when', 'logged'] as $__ck) if (!empty($__cd[$__ck]) && is_scalar($__cd[$__ck])) $__cv[] = ['action' => (string) $tc['tool'], 'entity' => (string) $__cd[$__ck]];
+                                foreach (['booked', 'scheduled', 'calendar', 'moved', 'logged', 'noted'] as $__cw2) $__cv[] = ['action' => (string) $tc['tool'], 'entity' => $__cw2];
+                                request()->attributes->set('sarah_tool_verified', $__cv);
+                            }
                             \Illuminate\Support\Facades\Log::info('[AgentChat] tool_call executed', [
                                 'agent' => $slug, 'tool' => $tc['tool'],
                                 'success' => $tr['success'] ?? false,
@@ -4492,6 +4501,7 @@ $withCorr = function (array $meta) use ($corr) {
                         }
                     }
                 } catch (\Throwable $__ve) { /* no verified actions => strictest gate */ }
+                foreach ((array) request()->attributes->get('sarah_tool_verified', []) as $__tv) $__verified[] = $__tv;   // CRM-SARAH-3
                 // WATCH-1: settings this turn really changed (recorded before the reply) are verified actions, named the way Sarah says them
                 foreach ((array) ($__replyVerified ?? []) as $__wv) { if (trim((string) $__wv) !== '') $__verified[] = ['action' => 'settings', 'entity' => (string) $__wv]; }   // CHAT-FIRST-1
                 if (! empty($__watchTurn) && preg_match('/^(watch_stopped|watch_on|checkins_)/', (string) $__watchTurn)) {

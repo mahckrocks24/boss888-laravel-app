@@ -178,6 +178,18 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-sheet-list{display:flex;flex-direction:column;gap:6px}.crm2-sheet-list button{justify-content:flex-start}',
         '.crm2-note{font-size:12px;color:var(--t3)}',
         '.crm2-hide-d{display:none}',
+        '.crm2-sarah{padding:16px 18px;border-radius:var(--rg);border:1px solid var(--pg);background:linear-gradient(0deg,var(--ps),var(--ps)),var(--s1);margin-bottom:14px}',
+        '.crm2-sarah .h{display:flex;align-items:center;gap:8px;font:600 12px var(--fb);color:var(--pu);letter-spacing:.04em;text-transform:uppercase;margin-bottom:8px}',
+        '.crm2-sarah p{margin:0;color:var(--t1);font-size:14px;line-height:1.55}.crm2-sarah .nx{margin-top:10px;padding-top:10px;border-top:1px solid var(--pg);font-size:14px;color:var(--t1)}',
+        '.crm2-sarah .nx b{color:var(--pu)}.crm2-sarah .q{margin-top:10px;color:var(--t2);font-style:italic;font-size:13px}',
+        '.crm2-draft{border:1px solid var(--bd2);border-radius:12px;padding:14px;margin-bottom:10px;background:var(--s1)}',
+        '.crm2-draft .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}',
+        '.crm2-draft .top b{color:var(--t1);font-size:14px}.crm2-draft .top span{font-size:12px;color:var(--t3)}',
+        '.crm2-draft textarea{width:100%;min-height:120px;box-sizing:border-box;resize:vertical;font-size:14px;line-height:1.5}',
+        '.crm2-draft .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px}',
+        '.crm2-radio{display:flex;flex-direction:column;gap:8px}.crm2-radio label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--bd);border-radius:12px;cursor:pointer;background:var(--s1)}',
+        '.crm2-radio input{accent-color:var(--p);margin-top:3px;width:18px;height:18px}.crm2-radio label b{display:block;color:var(--t1);font-size:14px}.crm2-radio label span{font-size:13px;color:var(--t3)}',
+        '.crm2-radio label:has(input:checked){border-color:var(--p);background:var(--ps)}',
         '@media (max-width:1180px){.crm2-rec{grid-template-columns:280px minmax(0,1fr)}.crm2-rec .rc{grid-column:1 / -1;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}}',
         '@media (max-width:900px){.crm2-grid2{grid-template-columns:minmax(0,1fr)}.crm2-grid2>*{min-width:0}.crm2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}',
         '@media (max-width:760px){',
@@ -218,9 +230,38 @@ async function loadList(append) {
     if (!append) L.sel = {};
 }
 async function loadBoard() { var j = await api('GET', '/clients' + qs(Object.assign({limit: 500}, bizQ()))); S.board.rows = j.clients; S.board.total = j.total; }
-async function loadToday() { S.today = await api('GET', '/today-v2' + qs(bizQ())); }
+async function loadToday() { var r = await Promise.all([api('GET', '/today-v2' + qs(bizQ())), api('GET', '/drafts' + qs(bizQ())).catch(function () { return {drafts: []}; })]); S.today = r[0]; S.drafts = r[1].drafts || []; }
 async function loadReport() { S.report = await api('GET', '/reports-v2' + qs(Object.assign({days: S.days}, bizQ()))); }
-async function loadRecord(id) { S.rec = await api('GET', '/clients/' + id); S.recId = id; }
+async function loadRecord(id) { S.rec = await api('GET', '/clients/' + id); S.recId = id; refreshSummary(id); }
+function refreshSummary(id) {
+    api('GET', '/clients/' + id + '/summary').then(function (j) {
+        if (!S.rec || S.recId != id) return;
+        var changed = !S.rec.sarah || S.rec.sarah.summary !== j.summary || S.rec.sarah.next_step !== j.next_step;
+        S.rec.sarah = {summary: j.summary, next_step: j.next_step};
+        var box = document.getElementById('crm2-sarah'); if (box && changed) box.outerHTML = sarahBox(S.rec);
+    }).catch(function () { var box = document.getElementById('crm2-sarah'); if (box && !S.rec.sarah) box.querySelector('p').textContent = factsLine(S.rec); });
+}
+function factsLine(R) {
+    var c = R.client, facts = R.facts || {};
+    var s = 'Came in through ' + chName(c.channel).toLowerCase() + ' ' + ago(c.created_at) + '. ';
+    s += facts.human_touches ? 'Last contact ' + ago(c.last_activity_at) + '.' : 'Nobody has replied yet.';
+    return s;
+}
+function sarahBox(R) {
+    var c = R.client, sm = R.sarah;
+    return '<section class="crm2-sarah" id="crm2-sarah" aria-live="polite"><div class="h">' + I('ai', 14) + ' Sarah\'s summary</div>' +
+        '<p>' + esc(sm ? sm.summary : 'Reading ' + c.name.split(' ')[0] + '\'s history…') + '</p>' +
+        (sm && sm.next_step ? '<div class="nx"><b>Next:</b> ' + esc(sm.next_step) + '</div>' : '') +
+        (c.first_message_full ? '<div class="q">“' + esc(c.first_message_full.slice(0, 400)) + '”</div>' : '') + '</section>';
+}
+function draftCard(d, withName) {
+    return '<article class="crm2-draft" data-draft="' + d.id + '"><div class="top"><b>' + esc(withName ? (d.name + ' · ' + (d.subject || '')) : (d.subject || 'Reply')) + '</b><span>' +
+        esc(d.source === 'daily' ? (d.reason || 'Follow-up') : 'Reply to their enquiry') + ' · written by Sarah ' + esc(ago(d.created_at)) + '</span></div>' +
+        '<label class="crm2-hide-d" for="crm2-d-' + d.id + '">Message</label><textarea class="form-input" id="crm2-d-' + d.id + '">' + esc(d.body) + '</textarea>' +
+        '<div class="row"><button class="btn btn-ghost btn-sm" onclick="window._crm2.skipDraft(' + d.id + ')">Skip</button>' +
+        (withName ? '<button class="btn btn-outline btn-sm" onclick="window._crm2.open(' + d.lead_id + ')">Open ' + esc(String(d.name).split(' ')[0]) + '</button>' : '') +
+        '<button class="btn btn-primary btn-sm" onclick="window._crm2.sendDraft(' + d.id + ')">' + I('send', 14) + ' Send email</button></div></article>';
+}
 
 function root() { return document.getElementById('crm-root'); }
 function busy(el) { if (el) el.innerHTML = (typeof loadingCard === 'function') ? loadingCard(260) : '<div class="crm2-empty">Loading…</div>'; }
@@ -255,6 +296,7 @@ async function render() {
         else body = todayHtml();
         el.innerHTML = S.tab === 'record' ? '<div class="crm2">' + body + '</div>' : shell(body);
         if (S.tab === 'board') wireBoard();
+        if (S.tab === 'settings' && S.biz && S.biz !== 'none') loadAutoreply();
     } catch (e) {
         console.error('[Clients] render', e);
         el.innerHTML = '<div class="crm2-empty"><b>Something went wrong showing this page.</b>' + esc(e.message) + '<div style="margin-top:12px"><button class="btn btn-outline" onclick="window.crmLoad(document.getElementById(\'crm-root\'))">Try again</button></div></div>';
@@ -298,6 +340,7 @@ function todayHtml() {
         kpi('Waiting for a reply', t.waiting_total || 0, (t.waiting_total ? 'Answer these first' : 'All answered')) +
         kpi('New this week', wk.new || 0, '') + kpi('Won this week', wk.won || 0, '') + kpi('All ' + esc(w.many.toLowerCase()), wk.total || 0, '') + '</div>' +
         '<div class="crm2-grid2"><div style="display:flex;flex-direction:column;gap:16px">' +
+        ((S.drafts || []).length ? '<section class="crm2-card"><div class="crm2-card-h"><h3>' + I('ai', 16) + ' Replies Sarah wrote for you</h3><span class="more">Edit if you like, then send</span></div><div style="padding:0 14px 6px">' + S.drafts.map(function (d) { return draftCard(d, true); }).join('') + '</div></section>' : '') +
         '<section class="crm2-card"><div class="crm2-card-h"><h3>Waiting for your reply</h3>' + (t.waiting_total > 8 ? '<button class="btn btn-ghost btn-sm" onclick="window._crm2.view(\'new_enquiries\')">See all ' + t.waiting_total + '</button>' : '') + '</div>' +
         (waiting ? '<ul class="crm2-rows">' + waiting + '</ul>' : empty('Nobody is waiting.', 'New enquiries from your website, chatbot and social pages land here.')) + '</section>' +
         '<section class="crm2-card"><div class="crm2-card-h"><h3>Gone quiet</h3><span class="more">No contact in 14 days</span></div>' +
@@ -438,7 +481,8 @@ function recordHtml() {
             '<div class="d">' + esc(a.type === 'lead_created' ? 'Added to ' + p.many : a.title) + (a.description ? '\n' + esc(a.description) : '') + '</div></div><div class="w">' + esc(ago(a.created_at)) +
             (human ? '<br><button class="x" aria-label="Delete this ' + esc(lab.toLowerCase()) + '" onclick="window._crm2.delAct(\'' + a.id + '\')">' + I('delete', 14) + '</button>' : '') + '</div></li>';
     }).join('');
-    var mid = '<div class="mc">' + summary +
+    var drafts = (R.drafts || []).map(function (d) { return draftCard(d, false); }).join('');
+    var mid = '<div class="mc">' + sarahBox(R) + (drafts ? '<section class="crm2-card" style="margin-bottom:14px"><div class="crm2-card-h"><h3>Reply ready to send</h3><span class="more">Sent as ' + esc(c.business_name || 'your business') + '</span></div><div style="padding:0 14px 6px">' + drafts + '</div></section>' : '') +
         '<section class="crm2-card crm2-comp"><div class="crm2-comp-tabs" role="toolbar" aria-label="Add to the timeline">' + [['note', 'Note'], ['call', 'Log a call'], ['task', 'Task'], ['meeting', 'Meeting']].map(function (x) {
             return '<button aria-pressed="' + (comp === x[0]) + '" onclick="window._crm2.comp(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>' +
         '<form class="crm2-comp-b" onsubmit="event.preventDefault();window._crm2.addAct(' + c.id + ',this)"><label for="crm2-comp-t" class="crm2-hide-d">Text</label><textarea class="form-input" id="crm2-comp-t" name="t" placeholder="' +
@@ -496,8 +540,22 @@ function setupHtml() {
         packs.map(function (k) { return '<button class="crm2-pack" aria-pressed="' + (p.key === k.key) + '" onclick="window._crm2.setPack(\'' + k.key + '\')"><b>' + esc(k.label) + (p.auto === k.key ? ' · suggested' : '') + '</b>' + esc(k.about) + '</button>'; }).join('') + '</div></div>' +
         '<form class="crm2-sec" onsubmit="event.preventDefault();window._crm2.saveWords(this)"><h4>What you call them</h4><div style="display:grid;grid-template-columns:1fr 1fr;gap:12px"><div class="crm2-field"><label for="crm2-one">One</label><input class="form-input" id="crm2-one" name="one" maxlength="30" value="' + esc(p.one) + '"></div>' +
         '<div class="crm2-field"><label for="crm2-many">Many</label><input class="form-input" id="crm2-many" name="many" maxlength="30" value="' + esc(p.many) + '"></div></div><button class="btn btn-primary btn-sm" type="submit">Save</button></form></section>' +
+        '<section class="crm2-card"><div class="crm2-sec"><h4>Sarah answers new enquiries</h4><div id="crm2-ar" class="crm2-note">Loading…</div></div></section>' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Stages</h4>' + p.stages.map(function (s, i) { return '<div class="crm2-task"><span class="crm2-pill ' + stageTone(p, s.key) + '">' + (i + 1) + '</span><div class="t">' + esc(s.name) + '</div></div>'; }).join('') + '</div>' +
         '<div class="crm2-sec"><h4>Details kept about each ' + esc(p.one.toLowerCase()) + '</h4>' + p.fields.map(function (f) { return '<div class="crm2-task"><div class="t">' + esc(f.label) + '</div></div>'; }).join('') + '<div class="crm2-note" style="margin-top:8px">Your own stages and fields come next.</div></div></section></div>';
+}
+
+async function loadAutoreply() {
+    var box = document.getElementById('crm2-ar'); if (!box) return;
+    try {
+        var j = await api('GET', '/autoreply/' + S.biz);
+        var opt = function (v, t, d) { return '<label><input type="radio" name="crm2-ar" value="' + v + '"' + (j.setting === v ? ' checked' : '') + ' onchange="window._crm2.setAutoreply(this.value)"><span><b>' + t + '</b><span>' + d + '</span></span></label>'; };
+        box.className = '';
+        box.innerHTML = '<div class="crm2-note" style="margin-bottom:10px">When someone enquires through your website, booking form, chatbot or social pages and leaves an email, Sarah writes the reply as your business within about a minute. She never promises prices or times you have not given her.</div>' +
+            '<div class="crm2-radio">' + opt('send', 'Send for me', 'Sarah replies straight away and tells you in chat.') + opt('draft', 'Show me each one first', 'Sarah writes the reply; you send or skip it.') + opt('off', 'Off', 'New enquiries wait for you.') + '</div>' +
+            (j.sent_count ? '<div class="crm2-note" style="margin-top:10px">' + j.sent_count + ' repl' + (j.sent_count === 1 ? 'y' : 'ies') + ' sent so far' + (j.last_sent_at ? ', last ' + ago(j.last_sent_at) : '') + '.</div>' : '') +
+            (j.available === false ? '<div class="crm2-note" style="margin-top:10px">This is paused platform-wide right now.</div>' : '');
+    } catch (e) { box.textContent = 'Could not load this setting.'; }
 }
 
 // ── dialogs (the shell's modal) ─────────────────────────────────────────────
@@ -573,6 +631,21 @@ window._crm2 = {
         var sub = bd.querySelector('[type=submit]'); if (sub) sub.style.display = 'none';
     },
     stage: function (id, st) { moveTo(id, st); },
+    sendDraft: async function (id) {
+        var ta = document.getElementById('crm2-d-' + id); var body = ta ? ta.value.trim() : '';
+        if (!body) return toast('The message is empty.', 'error');
+        var btn = document.querySelector('[data-draft="' + id + '"] .btn-primary'); if (btn) btn.disabled = true;
+        try { await api('POST', '/drafts/' + id + '/send', {body: body}); toast('Sent. It is on their timeline.'); } catch (e) { if (btn) btn.disabled = false; return toast('Not sent: ' + e.message, 'error'); }
+        if (S.tab === 'record' && S.recId) { await loadRecord(S.recId); } else { await loadToday(); } render();
+    },
+    skipDraft: async function (id) {
+        try { await api('POST', '/drafts/' + id + '/skip'); } catch (e) { return toast(e.message, 'error'); }
+        if (S.tab === 'record' && S.recId) { await loadRecord(S.recId); } else { await loadToday(); } render();
+    },
+    setAutoreply: async function (v) {
+        try { await api('PUT', '/autoreply/' + S.biz, {setting: v}); toast({send: 'Sarah will reply to new enquiries for you.', draft: 'Sarah will show you each reply first.', off: 'Off. New enquiries wait for you.'}[v]); } catch (e) { toast(e.message, 'error'); }
+        loadAutoreply();
+    },
     decide: async function (eventId, decision) {
         try {
             var res = await fetch('/api/calendar/events/' + eventId + '/decision', {method: 'POST', headers: hdr(), body: JSON.stringify({decision: decision})});

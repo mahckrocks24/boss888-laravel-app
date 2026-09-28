@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class ChatReplies
 {
-    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge'];
+    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily'];
     /** Text after this marker is the plain-words version of a card: the app shows it, the web hides it next to the card. */
     public const APP_PART = "\n\n\u{200B}";
 
@@ -82,6 +82,12 @@ final class ChatReplies
                 return ! \Illuminate\Support\Facades\Cache::has('pace-answered:' . $q['message_id']);
             case 'search_merge':   // PAGE-ONE-1
                 return DB::table('search_plans')->where('id', (int) ($c['plan_id'] ?? 0))->where('workspace_id', $wsId)->where('kind', 'merge')->where('status', 'proposed')->exists();
+            case 'autoreply_ask': case 'lead_reply':   // CRM-SARAH-3: open while the reply Sarah wrote is still unsent
+                return DB::table('crm_reply_drafts')->where('id', (int) ($c['draft_id'] ?? 0))->where('workspace_id', $wsId)->where('status', 'draft')->exists();
+            case 'crm_daily':
+                $q['draft_ids'] = array_map('intval', (array) ($c['draft_ids'] ?? []));
+                $q['open_drafts'] = DB::table('crm_reply_drafts')->whereIn('id', $q['draft_ids'] ?: [0])->where('workspace_id', $wsId)->where('status', 'draft')->pluck('id')->map(fn ($x) => (int) $x)->all();
+                return (bool) $q['open_drafts'];
             case 'campaign_step':
                 return DB::table('campaign_items')->where('id', (int) ($q['meta']['item_id'] ?? 0))->where('workspace_id', $wsId)->whereIn('status', ['needs_you', 'planned', 'held', 'failed'])->exists();
         }
@@ -176,6 +182,13 @@ final class ChatReplies
             'search_merge' => [['label' => 'Merge', 'text' => 'Merge'], ['label' => 'Keep as they are', 'text' => 'Keep']],
             'credit_pace' => ($q['card']['kind'] ?? '') === 'under' ? [['label' => 'Yes, draw it up', 'text' => 'Yes, draw it up'], ['label' => 'Not now', 'text' => 'Not now']] : [['label' => 'Show me the plans', 'text' => 'Show me the plans'], ['label' => 'Not now', 'text' => 'Not now']],
             'plan_nudge' => [['label' => 'Show me the plans', 'text' => 'Show me the plans'], ['label' => 'Not now', 'text' => 'Not now']],
+            // CRM-SARAH-3
+            'autoreply_ask' => (DB::table('crm_autoreply')->where('workspace_id', $wsId)->where('business_id', (int) ($q['card']['business_id'] ?? 0))->value('status') === 'asked')
+                ? [['label' => 'Yes, send them', 'text' => 'Yes, send them'], ['label' => 'Show me first', 'text' => 'Show me first'], ['label' => 'Send this one', 'text' => 'Send this one'], ['label' => 'No thanks', 'text' => 'No thanks']]
+                : [['label' => 'Send it', 'text' => 'Send it'], ['label' => 'Skip', 'text' => 'Skip']],
+            'lead_reply' => [['label' => 'Send it', 'text' => 'Send it'], ['label' => 'Skip', 'text' => 'Skip']],
+            'crm_daily' => array_merge(array_map(fn ($id) => ['label' => 'Send #' . (array_search($id, $q['draft_ids'], true) + 1), 'text' => 'Send #' . (array_search($id, $q['draft_ids'], true) + 1)], array_slice($q['open_drafts'], 0, 3)),
+                count($q['open_drafts']) > 1 ? [['label' => 'Send all', 'text' => 'Send all']] : [], [['label' => 'Not today', 'text' => 'Not today']]),
             default => [],
         };
     }
@@ -249,6 +262,55 @@ final class ChatReplies
                     if ($no || preg_match('/^\s*(none|none of them|neither)\b/i', $t)) {
                         foreach ($q['open_ids'] as $id) app(\App\Core\Campaigns\CampaignService::class)->decline($wsId, $id, (int) $userId, 'Not now (chat)');
                         return ['turn' => 'reply', 'note' => 'The owner passed on these campaign ideas for now. Acknowledge in one line, and ask in a few words what would suit them better so the next ideas fit.', 'verified' => []];
+                    }
+                    return null;
+                }
+                case 'autoreply_ask': case 'lead_reply': {   // CRM-SARAH-3
+                    $sc = app(\App\Engines\CRM\Services\SarahClients::class);
+                    $draft = (int) ($c['draft_id'] ?? 0); $biz = (int) ($c['business_id'] ?? 0);
+                    $d = DB::table('crm_reply_drafts')->where('id', $draft)->where('workspace_id', $wsId)->first();
+                    $who = $d ? (string) DB::table('leads')->where('id', $d->lead_id)->value('name') : 'them';
+                    $bizName = $biz ? (string) DB::table('businesses')->where('id', $biz)->value('name') : 'the business';
+                    if (! $biz && $d) $biz = (int) $d->business_id;
+                    if (preg_match('/\b(stop|don\'?t|do not)\b.*\b(reply|replying|answer|answering)\b/i', $t)) {
+                        if ($biz) $sc->setAutoreply($wsId, $biz, 'off', null, $userId);
+                        if ($draft) $sc->skipDraft($wsId, $draft);
+                        return ['turn' => 'reply', 'note' => "The owner asked you to stop replying to new enquiries for {$bizName}. It is off now; new enquiries still land in Clients and you still tell them. Confirm in one line and say they can turn it back on any time by asking.", 'verified' => ['stopped', 'turned off']];
+                    }
+                    $all = $q['type'] === 'autoreply_ask' && preg_match('/^\s*(yes|yep|yeah|sure|ok(ay)?)?[,\s]*(send (them|all|every(one| one)?|for me)|do it for me|reply for me|go ahead)\b/i', $t) || ($q['type'] === 'autoreply_ask' && $yes && ! preg_match('/\bthis\b/i', $t));
+                    if ($all) {
+                        $sc->setAutoreply($wsId, $biz, 'on', 'send', $userId);
+                        $r = $sc->sendDraft($wsId, $draft, null);
+                        return ['turn' => 'reply', 'note' => "The owner said yes: from now on you answer every new enquiry for {$bizName} within about a minute, in the business's voice, and tell them in chat each time; they can say stop replying for me any time. " . (! empty($r['success']) ? "You have just sent the reply to {$who}." : 'The reply to ' . $who . ' could not be sent: ' . ($r['error'] ?? 'unknown') . '.') . ' Confirm in one or two short lines.', 'verified' => ['sent', 'replied', 'answer', 'reply']];
+                    }
+                    if ($q['type'] === 'autoreply_ask' && preg_match('/\b(show me|check|approve|ask me|let me see)\b.*\b(first|each|them|before)\b|^\s*show me first/i', $t)) {
+                        $sc->setAutoreply($wsId, $biz, 'on', 'draft', $userId);
+                        return ['turn' => 'reply', 'note' => "The owner wants to see each reply before it goes: from now on you write the reply to every new enquiry for {$bizName} and show it in chat for them to send or skip. The reply to {$who} is still waiting: they can say send it or skip. Confirm in one or two short lines.", 'verified' => ['draft', 'reply']];
+                    }
+                    if (preg_match('/^\s*(send|send it|send this( one)?|yes,? send (it|this( one)?)|go ahead and send( it)?)\b[\s.!]*$/i', $t) || ($q['type'] === 'lead_reply' && $yes)) {
+                        $r = $sc->sendDraft($wsId, $draft, $userId);
+                        return ['turn' => 'reply', 'note' => ! empty($r['success']) ? "The reply to {$who} is sent by email as {$bizName}, and it is on their timeline in Clients. Confirm in one short line." : 'The reply to ' . $who . ' could not be sent: ' . ($r['error'] ?? 'unknown') . '. Say so plainly in one line.', 'verified' => ! empty($r['success']) ? ['sent', 'replied', 'email'] : []];
+                    }
+                    if ($no || preg_match('/^\s*(skip|no thanks|don\'?t send)\b/i', $t)) {
+                        if ($draft) $sc->skipDraft($wsId, $draft);
+                        if ($q['type'] === 'autoreply_ask' && $biz && preg_match('/\b(no thanks|no)\b/i', $t)) $sc->setAutoreply($wsId, $biz, 'declined', null, $userId);
+                        return ['turn' => 'reply', 'note' => "The owner will not send your reply to {$who}" . ($q['type'] === 'autoreply_ask' ? ", and does not want you answering new enquiries for {$bizName} for now; you will still tell them about each one" : '') . '. Acknowledge in one short line.', 'verified' => []];
+                    }
+                    return null;
+                }
+                case 'crm_daily': {   // CRM-SARAH-3: the morning list
+                    $sc = app(\App\Engines\CRM\Services\SarahClients::class);
+                    $pick = [];
+                    if (preg_match('/\bsend (them )?all\b|\bsend every(one| one)?\b/i', $t) || ($yes && $q['latest'])) $pick = $q['open_drafts'];
+                    elseif (preg_match_all('/#?\s*(\d)\b/', $t, $mm) && preg_match('/\bsend\b/i', $t)) foreach ($mm[1] as $n) { $id = $q['draft_ids'][((int) $n) - 1] ?? null; if ($id && in_array($id, $q['open_drafts'], true)) $pick[] = $id; }
+                    if ($pick) {
+                        $sent = []; $failed = [];
+                        foreach ($pick as $id) { $r = $sc->sendDraft($wsId, (int) $id, $userId); $nm = (string) DB::table('leads')->where('id', DB::table('crm_reply_drafts')->where('id', $id)->value('lead_id'))->value('name'); if (! empty($r['success'])) $sent[] = $nm; else $failed[] = $nm . ' (' . ($r['error'] ?? 'error') . ')'; }
+                        return ['turn' => 'reply', 'note' => 'Sent by email, each as the business: ' . (implode(', ', $sent) ?: 'none') . '.' . ($failed ? ' Not sent: ' . implode('; ', $failed) . '.' : '') . ($sent ? ' Each one sent is on that client\'s timeline.' : '') . ' Confirm in one short line, honestly.', 'verified' => $sent ? ['sent', 'emailed'] : []];
+                    }
+                    if ($no || preg_match('/^\s*(not today|skip( them| all)?|none)\b/i', $t)) {
+                        foreach ($q['open_drafts'] as $id) $sc->skipDraft($wsId, (int) $id);
+                        return ['turn' => 'reply', 'note' => 'The owner will not send today\'s follow-ups. Acknowledge in one short line; the people stay in Clients.', 'verified' => []];
                     }
                     return null;
                 }

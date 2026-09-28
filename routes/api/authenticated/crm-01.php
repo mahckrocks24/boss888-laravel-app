@@ -58,6 +58,12 @@ use Illuminate\Support\Facades\Route;
         Route::get('/clients/{id}', [$k, 'show'])->whereNumber('id');
         Route::put('/clients/{id}/stage', [$k, 'stage'])->whereNumber('id');
         Route::put('/clients/{id}/fields', [$k, 'fields'])->whereNumber('id');
+        // CRM-SARAH-3: Sarah in Clients
+        Route::get('/clients/{id}/summary', [$k, 'summary'])->whereNumber('id');
+        Route::get('/drafts', [$k, 'drafts']);
+        Route::post('/drafts/{id}/send', [$k, 'sendDraft'])->whereNumber('id');
+        Route::post('/drafts/{id}/skip', [$k, 'skipDraft'])->whereNumber('id');
+        Route::match(['get', 'put'], '/autoreply/{businessId}', [$k, 'autoreply'])->whereNumber('businessId');
 
         // Leads (12 routes)
         Route::get('/leads', [$c, 'listLeads']);

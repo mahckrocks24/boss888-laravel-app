@@ -60,6 +60,7 @@ class AgentCapabilityService
             'competitor_serp', 'competitor_gaps', 'serp_analysis', 'deep_audit', 'ai_report',
             // CRM — full access including sequence discovery
             'create_lead', 'get_lead', 'update_lead', 'list_leads', 'move_lead', 'log_activity', 'add_note', 'enroll_sequence', 'list_sequences',
+            'find_clients', 'client_brief', 'move_client', 'note_client', 'schedule_client', 'clients_today', // CRM-SARAH-3
             // Marketing — full access including schedule + sequences
             'create_campaign', 'update_campaign', 'list_campaigns', 'schedule_campaign',
             'create_template', 'list_templates', 'create_automation', 'record_metric',
@@ -187,6 +188,7 @@ class AgentCapabilityService
             'ai_status', 'list_goals', 'agent_status',
             // CRM — full access including sequence discovery
             'create_lead', 'get_lead', 'update_lead', 'list_leads', 'move_lead', 'log_activity', 'add_note', 'enroll_sequence', 'list_sequences',
+            'find_clients', 'client_brief', 'move_client', 'note_client', 'schedule_client', 'clients_today', // CRM-SARAH-3
             // Marketing — CRM agents need to create and send campaigns for leads
             'create_campaign', 'update_campaign', 'list_campaigns', 'list_templates',
             'send_campaign', 'test_send_email',

@@ -280,6 +280,38 @@ class ToolSchemaService
             'engine'      => 'crm', 'action' => 'update_lead', 'approval' => 'auto',
         ],
 
+        // ─── CLIENTS (CRM-SARAH-3): the owner's clients, in each business's own words and stages ───
+        'crm.find_clients' => [
+            'description' => 'Find clients. Use for "who has not heard back", "new this week", "who is in Offer made", "clients of <business>", "has Maria enquired". view: not_contacted | new_this_week | gone_quiet | won | lost.',
+            'parameters'  => ['search' => 'string?', 'view' => 'string?', 'stage' => 'string? (the stage name the business uses)', 'business' => 'string? (business name)', 'channel' => 'string?', 'limit' => 'int?'],
+            'engine'      => 'crm', 'action' => 'find_clients', 'approval' => 'auto',
+        ],
+        'crm.client_brief' => [
+            'description' => 'Everything about one client: stage, last contact, a short summary and the next step, open tasks, upcoming bookings. Use when the owner asks about a person.',
+            'parameters'  => ['client' => 'string (name) or client_id int'],
+            'engine'      => 'crm', 'action' => 'client_brief', 'approval' => 'auto',
+        ],
+        'crm.move_client' => [
+            'description' => 'Move a client to another stage of their business (e.g. "Booked", "Offer made", "Won"). Use when the owner says what happened.',
+            'parameters'  => ['client' => 'string or client_id int', 'stage' => 'string (stage name)'],
+            'engine'      => 'crm', 'action' => 'move_client', 'approval' => 'auto',
+        ],
+        'crm.note_client' => [
+            'description' => 'Write down on a client\'s timeline what the owner tells you: a note, a call, a meeting or an email they had. kind: note | call | meeting | email.',
+            'parameters'  => ['client' => 'string or client_id int', 'kind' => 'string?', 'text' => 'string'],
+            'engine'      => 'crm', 'action' => 'note_client', 'approval' => 'auto',
+        ],
+        'crm.schedule_client' => [
+            'description' => 'Put something on the owner\'s own calendar, optionally with a client: a call, meeting, appointment, follow-up or strategy meeting. when: "YYYY-MM-DD HH:MM" in the owner\'s time. Sarah reminds them before it.',
+            'parameters'  => ['when' => 'string', 'kind' => 'string? (call|meeting|appointment|follow_up|strategy_meeting)', 'client' => 'string?', 'title' => 'string?', 'minutes' => 'int?', 'remind_minutes' => 'int?', 'notes' => 'string?'],
+            'engine'      => 'crm', 'action' => 'schedule_client', 'approval' => 'auto',
+        ],
+        'crm.clients_today' => [
+            'description' => 'What needs the owner today in Clients: enquiries waiting for a reply, today\'s calendar, tasks due, replies ready to send.',
+            'parameters'  => [],
+            'engine'      => 'crm', 'action' => 'clients_today', 'approval' => 'auto',
+        ],
+
         // ─── MARKETING ───────────────────────────────────────────────
         'marketing.create_campaign' => [
             'description' => 'Create an email marketing campaign.',

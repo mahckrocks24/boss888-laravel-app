@@ -192,6 +192,32 @@ final class MinimumPath
      * @param string[] $domains RouterIntent domains (crm, seo, content, tasks, incident, commercial)
      * @return string[] engines
      */
+    /** CRM-SARAH-3: a question about, or an action on, the owner's clients — answered with the Clients tools. */
+    public static function isClientTurn(string $message): bool
+    {
+        $m = mb_strtolower(trim($message));
+        if ($m === '' || mb_strlen($m) > 400) return false;
+        if (preg_match('/\b(brief me|tell me about|what about|how is|how\'?s|update on|who (hasn\'?t|has not|didn\'?t|should i|do i need to)|heard back|waiting for a reply|not contacted|gone quiet|needs me today|to contact today)\b/u', $m)
+            && (preg_match('/\b(clients?|customers?|patients?|guests?|buyers?|leads?|students?|members?|enquir|inquir|heard back|reply|contact)\b/u', $m) || self::mentionsClient($m))) return true;
+        if (preg_match('/\b(book|schedule|set up|arrange|put)\b.{0,40}\b(call|meeting|appointment|viewing|follow.?up)\b.{0,30}\b(with|for)\b/u', $m)) return true;
+        if (preg_match('/\b(move|mark|put)\b.{0,60}\b(to|as|in|into)\b.{0,30}\b(booked|won|lost|contacted|qualified|offer made|under contract|closed|quote sent|visited|regular|enrolled|paid)\b/u', $m) && self::mentionsClient($m)) return true;
+        if (preg_match('/\b(i (just )?(called|spoke|talked|met|emailed))\b/u', $m) && self::mentionsClient($m)) return true;
+        return self::mentionsClient($m) && (bool) preg_match('/\?|\b(brief|summary|status|stage|where are we|what\'?s happening)\b/u', $m);
+    }
+
+    /** CRM-SARAH-3: the message names one of the workspace's clients (full name, or first + last). */
+    public static function mentionsClient(string $lowerMessage): bool
+    {
+        try {
+            $ws = (int) (request()?->attributes->get('workspace_id') ?? 0);
+            if (! $ws || mb_strlen($lowerMessage) > 600) return false;
+            $names = \Illuminate\Support\Facades\Cache::remember('crm-names:' . $ws, 120, fn () => \Illuminate\Support\Facades\DB::table('leads')->where('workspace_id', $ws)->whereNull('deleted_at')
+                ->orderByDesc('updated_at')->limit(3000)->pluck('name')->map(fn ($n) => mb_strtolower(trim((string) $n)))->filter(fn ($n) => mb_strlen($n) >= 5 && str_contains($n, ' '))->unique()->values()->all());
+            foreach ($names as $n) if (str_contains($lowerMessage, $n)) return true;
+        } catch (\Throwable $e) {}
+        return false;
+    }
+
     public static function toolEngines(array $domains, string $message): array
     {
         $map = ['crm' => ['crm'], 'seo' => ['seo'], 'content' => ['write', 'creative'], 'tasks' => [], 'incident' => [], 'commercial' => []];
@@ -204,6 +230,10 @@ final class MinimumPath
         if (preg_match('/\b(calendar|meeting|booking|bookings|event|events|appointment)\b/u', $m)) $engines['calendar'] = true;
         if (preg_match('/\b(article|articles|blog|draft|drafts|content|write|meta|headline)\b/u', $m)) $engines['write'] = true;
         if (preg_match('/\b(lead|leads|crm|pipeline|contact|contacts|follow.?up)\b/u', $m)) $engines['crm'] = true;
+        // CRM-SARAH-3: the owner talks about clients in their own words, or names one
+        if (preg_match('/\b(clients?|customers?|patients?|guests?|buyers?|sellers?|tenants?|students?|members?|enquir(y|ies|ed)|inquir(y|ies|ed)|heard back|brief me|who (should|do) i (call|contact)|reply to|replied|booked|offer made|under contract|quote sent|no.?show|stage)\b/u', $m)
+            || preg_match('/\b(book|schedule|set up|arrange|put)\b.{0,40}\b(call|meeting|appointment|viewing|follow.?up|strategy meeting)\b/u', $m)) $engines['crm'] = true;
+        if (! isset($engines['crm']) && self::mentionsClient($m)) $engines['crm'] = true;
         if (preg_match('/\b(seo|keyword|keywords|rank|ranking|audit|backlink|links?)\b/u', $m)) $engines['seo'] = true;
         if (preg_match('/\b(email|newsletter|campaign)\b/u', $m)) $engines['marketing'] = true;
         if (preg_match('/\b(job|jobs|vacancy|vacancies|hiring|recruit|recruitment|employer|job portal|job board)\b/u', $m)) $engines['jobs'] = true; // KABAYAN888 JOBS-1

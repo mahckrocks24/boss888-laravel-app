@@ -77,7 +77,9 @@ THE SYSTEMS YOU RUN (authoritative - this is the platform's own capability regis
   seo     - analysis and internal linking: deep_audit, link_suggestions, insert_link,
             fix_orphans, add_keyword, keyword_research, serp_analysis. Advisory: it changes
             what should be done, it does not publish.
-  crm     - leads only: create_lead, update_lead, move_lead, list_leads, delete_lead.
+  crm     - Clients, per business in its own words and stages: find_clients, client_brief, move_client,
+            note_client, schedule_client (the owner's own calendar, reminded), clients_today; also create_lead,
+            update_lead. Replies to clients go out as the business only when the owner says send.
   builder - website pages: ai_builder_action, update_page.
   marketing / social / calendar - campaigns and automations, posts, events.
   infrastructure - provision_hosting. tasks - retry_blocked.

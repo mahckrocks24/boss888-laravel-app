@@ -845,6 +845,13 @@ class EngineExecutionService
             // v1.4.4 (2026-05-30) — Phase B wiring
             'move_lead' => ['entity_type' => 'Lead', 'entity_id' => $params['lead_id'] ?? 0, 'data' => $svc->updateLead((int) ($params['lead_id'] ?? 0), ['status' => (string) ($params['stage'] ?? '')], $ctx['user_id'] ?? null, $wsId)],
             'list_sequences' => app(\App\Engines\Marketing\Services\SequenceService::class)->listSequences($wsId),
+            // CRM-SARAH-3: Clients tools
+            'find_clients' => app(\App\Engines\CRM\Services\SarahCrmTools::class)->findClients($wsId, $params),
+            'client_brief' => app(\App\Engines\CRM\Services\SarahCrmTools::class)->clientBrief($wsId, $params),
+            'move_client' => app(\App\Engines\CRM\Services\SarahCrmTools::class)->moveClient($wsId, $params, $ctx['user_id'] ?? null),
+            'note_client' => app(\App\Engines\CRM\Services\SarahCrmTools::class)->noteClient($wsId, $params, $ctx['user_id'] ?? null),
+            'schedule_client' => app(\App\Engines\CRM\Services\SarahCrmTools::class)->scheduleClient($wsId, $params, $ctx['user_id'] ?? null),
+            'clients_today' => app(\App\Engines\CRM\Services\SarahCrmTools::class)->clientsToday($wsId, $params),
             default => throw new \RuntimeException("Unknown CRM action: {$action}"),
         };
     }

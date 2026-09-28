@@ -306,6 +306,10 @@ class CrmService
 
         // CRM-DATA-1: the kernel fires lead_created itself (create_lead action); every other door fires it here, so a
         // website form, booking, order, chatbot or social lead starts the same automations as one typed in by hand.
+        // CRM-SARAH-3: an enquiry from a customer (not typed in by the owner) gets Sarah's reply in about a minute
+        if (! array_key_exists('_origin', $data) && is_file(storage_path('app/speedlead.on'))) {
+            try { \App\Jobs\SpeedToLeadJob::dispatch((int) $lead->id)->delay(now()->addSeconds(45)); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CRM-SARAH-3] dispatch: ' . $e->getMessage()); }
+        }
         if (! array_key_exists('_origin', $data)) {
             try { app(\App\Core\EngineKernel\EngineExecutionService::class)->fireCrmTrigger($wsId, 'create_lead', $data, ['entity_type' => 'Lead', 'entity_id' => $lead->id]); }
             catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CRM-DATA-1] lead_created automations: ' . $e->getMessage()); }

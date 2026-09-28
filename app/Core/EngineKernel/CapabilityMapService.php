@@ -231,6 +231,13 @@ class CapabilityMapService
         'create_canvas'       => ['engine'=>'manualedit','connector'=>null,       'action'=>'create_canvas',       'approval_mode'=>'auto',      'credit_cost'=>0],
 
         // -- CRM Engine (reads + sequences) -- PATCH v1.0.2 -----------
+        // CRM-SARAH-3: Clients tools (read, note, move, schedule the owner's own calendar) — free, nothing reaches a client
+        'find_clients'          => ['engine'=>'crm',       'connector'=>null,       'action'=>'find_clients',          'approval_mode'=>'auto',      'credit_cost'=>0],
+        'client_brief'          => ['engine'=>'crm',       'connector'=>null,       'action'=>'client_brief',          'approval_mode'=>'auto',      'credit_cost'=>0],
+        'move_client'           => ['engine'=>'crm',       'connector'=>null,       'action'=>'move_client',           'approval_mode'=>'auto',      'credit_cost'=>0],
+        'note_client'           => ['engine'=>'crm',       'connector'=>null,       'action'=>'note_client',           'approval_mode'=>'auto',      'credit_cost'=>0],
+        'schedule_client'       => ['engine'=>'crm',       'connector'=>null,       'action'=>'schedule_client',       'approval_mode'=>'auto',      'credit_cost'=>0],
+        'clients_today'         => ['engine'=>'crm',       'connector'=>null,       'action'=>'clients_today',         'approval_mode'=>'auto',      'credit_cost'=>0],
         'get_lead'              => ['engine'=>'crm',       'connector'=>null,       'action'=>'get_lead',              'approval_mode'=>'auto',      'credit_cost'=>0],
         'list_leads'            => ['engine'=>'crm',       'connector'=>null,       'action'=>'list_leads',            'approval_mode'=>'auto',      'credit_cost'=>0],
         'move_lead'             => ['engine'=>'crm',       'connector'=>null,       'action'=>'move_lead',             'approval_mode'=>'auto',      'credit_cost'=>0],
