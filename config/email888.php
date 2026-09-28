@@ -69,6 +69,11 @@ return [
             'address' => env('EMAIL888_SENDER_PLATFORM', 'hello@levelupgrowth.io'),
             'name'    => env('EMAIL888_SENDER_PLATFORM_NAME', 'LevelUpGrowth'),
         ],
+        // LIFECYCLE-1: lifecycle emails are Sarah's (she is the point of contact); same verified hello@ address
+        'sarah' => [
+            'address' => env('EMAIL888_SENDER_PLATFORM', 'hello@levelupgrowth.io'),
+            'name'    => env('EMAIL888_SENDER_SARAH_NAME', 'Sarah from LevelUpGrowth'),
+        ],
         'support' => [
             'address' => env('EMAIL888_SENDER_SUPPORT', 'support@levelupgrowth.io'),
             'name'    => env('EMAIL888_SENDER_SUPPORT_NAME', 'LevelUpGrowth'),
@@ -95,6 +100,7 @@ return [
         'mailbox_onboarding' => ['sender' => 'support',  'stream' => 'transactional', 'reply_to' => 'support'],
         'billing'            => ['sender' => 'support',  'stream' => 'transactional', 'reply_to' => 'support'],
         'notification'       => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],
+        'lifecycle'          => ['sender' => 'sarah',    'stream' => 'transactional', 'reply_to' => 'support'],   // LIFECYCLE-1: welcome, trial, nudges
         'booking'            => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],
         // reply_to is deliberately NULL: an intake notification must reply to the
         // person who submitted the form, and the call site sets that. A registry

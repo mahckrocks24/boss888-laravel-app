@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('social:comments-sync')->everyTwoMinutes()->withoutOverlapping(15)->runInBackground();
         // CAMPAIGNS-1: release dated campaign work, follow it, finish campaigns; monthly campaign ideas per business
         $schedule->command('campaigns:tick')->everyTenMinutes()->withoutOverlapping(15)->runInBackground();
+        $schedule->command('lifecycle:tick')->everyFifteenMinutes()->withoutOverlapping(20)->runInBackground();   // LIFECYCLE-1
         $schedule->command('campaigns:tick --ideas')->dailyAt('13:00')->withoutOverlapping(60)->runInBackground();
         // WATCH-1 (RFC-0019): Sarah acts on events, not only the clock — results inside the business, the world, the owner's answers
         $schedule->command('growth:tick --signals')->when(fn () => is_file(storage_path('app/watch1.on')))->everyTenMinutes()->withoutOverlapping(15)->runInBackground();

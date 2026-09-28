@@ -27,7 +27,7 @@ class VerifyEmailAddress extends Mailable implements ShouldQueue
     ) {}
 
     /** F-EM-C1: registration mail is account mail — purpose-declared so the policy pins sender + transactional stream. */
-    public const PURPOSE = 'account_security';
+    public const PURPOSE = 'lifecycle';   // LIFECYCLE-1: the welcome is Sarah's; still transactional
     public string $correlationId = '';
 
     public function envelope(): Envelope
@@ -35,7 +35,7 @@ class VerifyEmailAddress extends Mailable implements ShouldQueue
         $this->correlationId = $this->correlationId !== '' ? $this->correlationId : (string) \Illuminate\Support\Str::uuid();
         $cid = $this->correlationId;
         return new Envelope(
-            subject: 'Confirm your email — LevelUpGrowth',
+            subject: 'Welcome to LevelUpGrowth: confirm your email',
             using: [function (\Symfony\Component\Mime\Email $m) use ($cid) {
                 $h = $m->getHeaders();
                 $h->addTextHeader(\App\Core\Email888\OutboundPolicy::HDR_PURPOSE, self::PURPOSE);
@@ -51,6 +51,12 @@ class VerifyEmailAddress extends Mailable implements ShouldQueue
     }
 
     public function content(): Content
+    {
+        // LIFECYCLE-1 / MAIL-BRAND-1: the branded welcome (confirm + meet Sarah + first steps)
+        return new Content(htmlString: \App\Core\Lifecycle\EmailLayout::render(\App\Core\Lifecycle\LifecycleEmails::welcomeLayout(htmlspecialchars($this->recipientName, ENT_QUOTES), $this->verificationUrl)));
+    }
+
+    public function contentLegacy(): Content
     {
         return new Content(
             htmlString: <<<HTML

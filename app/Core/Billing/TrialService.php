@@ -282,6 +282,7 @@ class TrialService
             DB::commit();
 
             Log::info("Trial expired for workspace {$wsId}");
+            try { app(\App\Core\Lifecycle\LifecycleEmails::class)->trialEnded((int) $wsId); } catch (\Throwable $e) { Log::warning('[LIFECYCLE-1] trial ended notice failed', ['ws' => $wsId, 'e' => $e->getMessage()]); }   // LIFECYCLE-1
 
             return ['expired' => true, 'downgraded_to' => 'free'];
 

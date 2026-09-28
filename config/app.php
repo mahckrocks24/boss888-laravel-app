@@ -9,6 +9,8 @@ return [
     'debug' => (bool) env('APP_DEBUG', false),
 
     'url' => env('APP_URL', 'http://localhost'),
+    // MAIL-BRAND-1: the customer-facing app address every email link uses (empty = url)
+    'customer_url' => env('APP_CUSTOMER_URL', ''),
 
     'timezone' => 'UTC',
 

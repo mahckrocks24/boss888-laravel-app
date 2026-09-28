@@ -67,6 +67,20 @@ Route::middleware('throttle:120,1')->get('/ads/click/{token}', function (\Illumi
     return $out['url'] ? redirect()->away($out['url'], 302)->header('Cache-Control', 'no-store') : response('', 204);
 })->where('token', '[A-Za-z0-9._~%-]+');
 
+// LIFECYCLE-1: one-click unsubscribe from lifecycle email (tips, nudges, trial reminders). Account, security and billing
+// email is not affected. GET shows a page; POST is the mail clients' one-click (List-Unsubscribe-Post).
+Route::match(['get', 'post'], '/account/email/unsubscribe/{user}', function (\Illuminate\Http\Request $r, int $user) {
+    \Illuminate\Support\Facades\DB::table('notification_preferences')->updateOrInsert(
+        ['user_id' => $user, 'notification_type' => 'lifecycle'],
+        ['email' => 0, 'in_app' => 1, 'updated_at' => now(), 'created_at' => now()]
+    );
+    if ($r->isMethod('post')) return response('', 200);
+    return response('<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribed</title></head>'
+        . '<body style="margin:0;background:#F3F4F8;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Arial,sans-serif;color:#0F1117"><div style="max-width:520px;margin:64px auto;padding:32px 28px;background:#fff;border:1px solid #E6E8F0;border-radius:16px">'
+        . '<div style="font-weight:800;font-size:18px;margin-bottom:18px">LevelUpGrowth</div><h1 style="font-size:22px;margin:0 0 12px">You are unsubscribed</h1>'
+        . '<p style="font-size:15px;line-height:1.6;color:#2B3345;margin:0">You will no longer get tips and trial reminders by email. Emails about your account, security and billing still arrive.</p></div></body></html>', 200)->header('Content-Type', 'text/html; charset=utf-8');
+})->middleware(['signed', 'throttle:30,1'])->name('lifecycle.unsubscribe');
+
 Route::get('/public/workspace-count', function () {
     $count = \App\Models\Workspace::where('onboarded', true)->count();
     return response()->json(['count' => $count]);

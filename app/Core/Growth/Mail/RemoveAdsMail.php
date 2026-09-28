@@ -43,20 +43,16 @@ class RemoveAdsMail extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $n = e($this->name); $s = e($this->siteName); $u = e($this->siteUrl); $p = e($this->plansUrl); $c = e($this->cheapest); $ai = e($this->aiFrom);
-        return new Content(htmlString: <<<HTML
-<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;color:#182420;line-height:1.6">
-  <h2 style="margin:0 0 16px">Hi {$n}, your website is live</h2>
-  <p style="margin:0 0 14px"><a href="{$u}" style="color:#5B3DF5">{$s}</a> is on the Free plan, so it shows a small LevelUpGrowth ad to your visitors. That is how we keep the Free plan free.</p>
-  <p style="margin:0 0 8px"><strong>To remove the ads:</strong></p>
-  <ol style="margin:0 0 18px;padding-left:20px">
-    <li>Choose a paid plan (from {$c} a month).</li>
-    <li>That's it — the ads disappear from your website within a minute.</li>
-  </ol>
-  <p style="margin:0 0 22px">Plans from {$ai} a month also put Sarah, your AI marketing manager, to work: social posts, articles that help you get found on Google, and campaigns for your business.</p>
-  <p style="margin:0 0 26px"><a href="{$p}" style="display:inline-block;background:#5B3DF5;color:#fff;text-decoration:none;padding:12px 22px;border-radius:999px;font-weight:bold">See the plans</a></p>
-  <p style="margin:0;color:#6b7280;font-size:13px">LevelUpGrowth</p>
-</div>
-HTML);
-    }
+        // MAIL-BRAND-1: the one branded design
+        $e = fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
+        return new Content(htmlString: \App\Core\Lifecycle\EmailLayout::render([
+            'preheader'  => 'Your website is live on the Free plan. Here is how to remove the ads.',
+            'heading'    => 'Your website is live',
+            'greeting'   => 'Hi ' . $e($this->name) . ',',
+            'paragraphs' => ['<a href="' . $e($this->siteUrl) . '" style="color:#6C5CE7">' . $e($this->siteName) . '</a> is on the Free plan, so it shows a small LevelUpGrowth ad to your visitors. That is how the Free plan stays free.'],
+            'list'       => ['Choose a paid plan, from ' . $e($this->cheapest) . ' a month, and the ads leave your website within a minute.', 'Plans from ' . $e($this->aiFrom) . ' a month also put Sarah and the AI team to work: social posts, articles that help you get found on Google, and campaigns.'],
+            'button'     => ['See the plans', $this->plansUrl],
+            'signoff'    => 'team',
+            'reason'     => 'You received this email because your website runs on the LevelUpGrowth Free plan.',
+        ]));    }
 }
