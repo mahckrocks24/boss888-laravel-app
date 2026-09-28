@@ -227,7 +227,6 @@ function _wrShell() {
         '<div id="wr-topbar" style="display:flex;align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--bd,#2a2d3e);flex-shrink:0;">' +
             '<span style="font-size:18px;">'+window.icon("edit",14)+'</span>' +
             '<span style="font-weight:700;font-size:15px;color:var(--t1,#e0e0e0);">Write</span>' +
-            '<span style="margin-left:auto;font-size:12px;color:var(--t3,#666);">WRITE888 v2.0.0</span>' +
         '</div>' +
         '<div id="wr-main" style="flex:1;min-height:0;overflow:auto;"></div>' +
     '</div>';
@@ -270,7 +269,7 @@ function _wrViewDashboard() {
             var statusColor = _WR_STATUS_COLORS[item.status] || 'var(--t3,#888)';
             return '<tr class="wr-row" data-id="' + item.id + '" style="cursor:pointer;border-bottom:1px solid var(--bd,#2a2d3e);transition:background .15s;">' +
                 '<td style="padding:12px 14px;font-weight:600;color:var(--t1,#e0e0e0);">' + _e(item.title || 'Untitled') + '</td>' +
-                '<td style="padding:12px 14px;font-size:12px;color:var(--t2,#aaa);">' + _e(_WR_TYPES[item.content_type] || item.content_type) + '</td>' +
+                '<td style="padding:12px 14px;font-size:12px;color:var(--t2,#aaa);">' + _e(_WR_TYPES[item.content_type] || String(item.content_type || '').replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); })) + '</td>' +
                 '<td style="padding:12px 14px;">' +
                     '<span style="font-size:11px;padding:3px 8px;border-radius:20px;background:' + statusColor + '22;color:' + statusColor + ';border:1px solid ' + statusColor + '44;">' +
                         (item.status || 'draft') +
@@ -691,8 +690,14 @@ function _wrViewEditor() {
         '</div>' +
     '</div>';
 
-    return '<div style="display:flex;height:100%;min-height:0;">' +
-        leftPanel + centerPanel + rightPanel +
+    /* WRITE-MOBILE-1 (Owner 2026-09-28: "write engine is broken on mobile"): three desktop columns squeezed the article to a
+       sliver on a phone. Under 768px one panel shows at a time; the switch is hidden on desktop. */
+    var mp = _wr.mpane || 'article';
+    var mtabs = '<div id="wr-mtabs" role="tablist" aria-label="Editor panels">' +
+        [['article', 'Article'], ['tools', 'AI tools'], ['outline', 'Outline']].map(function (t) { return '<button type="button" role="tab" data-p="' + t[0] + '" aria-selected="' + (mp === t[0]) + '">' + t[1] + '</button>'; }).join('') +
+    '</div>';
+    return '<div id="wr-editor" data-mpane="' + mp + '" style="display:flex;height:100%;min-height:0;">' +
+        mtabs + leftPanel + centerPanel + rightPanel +
     '</div>';
 }
 
@@ -1874,3 +1879,56 @@ function _wrRenderAttachmentList() {
                '</div>';
     }).join('');
 }
+
+/* WRITE-MOBILE-1: the phone layer for the list and the editor (desktop untouched) */
+(function () {
+    if (document.getElementById('wr-mobile-css')) return;
+    var s = document.createElement('style'); s.id = 'wr-mobile-css';
+    s.textContent = '#wr-mtabs{display:none}' +
+      '@media (max-width:767px){' +
+        '#write-root{padding:0!important}' +
+        '#wr-topbar{padding:12px!important}' +
+        '#wr-main>div[style*="padding:24px"],#wr-main>div[style*="padding: 24px"]{padding:12px 12px 96px!important}' +
+        '#wr-main div[style*="repeat(4,1fr)"],#wr-main div[style*="repeat(4, 1fr)"]{grid-template-columns:1fr 1fr!important;gap:10px!important}' +
+        '#wr-main div[style*="flex-wrap:wrap"]>*,#wr-main div[style*="flex-wrap: wrap"]>*{flex:1 1 40%;min-width:0}' +
+        '#wr-create-btn{flex:1 1 100%!important;margin-left:0!important;justify-content:center;min-height:44px}' +
+        '#wr-filter-btn{min-height:44px}' +
+        /* the list: each row is a card — title, then type · status · date, then its actions */
+        '#wr-main table,#wr-main tbody{display:block;width:100%}#wr-main thead{display:none}' +
+        '#wr-items-tbody tr.wr-row{display:grid;grid-template-columns:auto auto 1fr;gap:6px 10px;align-items:center;padding:14px}' +
+        '#wr-items-tbody tr.wr-row>td{padding:0!important;min-width:0}' +
+        '#wr-items-tbody tr.wr-row>td:nth-child(1){grid-column:1/-1;font-size:15px;line-height:1.35;white-space:normal!important;overflow-wrap:anywhere}' +
+        '#wr-items-tbody tr.wr-row>td:nth-child(4){display:none}' +
+        '#wr-items-tbody tr.wr-row>td:nth-child(5){text-align:right}' +
+        '#wr-items-tbody tr.wr-row>td:nth-child(6){grid-column:1/-1;display:flex;gap:8px;justify-content:flex-start;text-align:left!important}' +
+        '#wr-items-tbody tr.wr-row>td:nth-child(6) button{min-height:40px;padding:0 16px!important;font-size:13px!important;margin-left:0!important}' +
+        '#wr-items-tbody tr.wr-row>td:nth-child(6) .wr-edit-btn{flex:1;justify-content:center;border:1px solid var(--bd,#2a2d3e)!important}' +
+        '#wr-items-tbody tr:not(.wr-row){display:block}#wr-items-tbody tr:not(.wr-row)>td{display:block}' +
+        /* the editor: one panel at a time */
+        '#wr-editor{display:block!important;height:auto!important}' +
+        '#wr-mtabs{display:flex;position:sticky;top:0;z-index:5;gap:4px;padding:8px 12px;background:var(--bg,#0F1117);border-bottom:1px solid var(--bd,#2a2d3e)}' +
+        '#wr-mtabs button{flex:1;min-height:40px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--t2,#aaa);font:600 13px inherit;cursor:pointer}' +
+        '#wr-mtabs button[aria-selected=true]{background:var(--s2,#1e2030);border-color:var(--bd,#2a2d3e);color:var(--t1,#e0e0e0)}' +
+        '#wr-editor #wr-outline-panel,#wr-editor #wr-actions-panel{width:auto!important;border:0!important;display:none!important;padding:12px!important;overflow:visible!important}' +
+        '#wr-editor[data-mpane=outline] #wr-outline-panel{display:block!important}' +
+        '#wr-editor[data-mpane=tools] #wr-actions-panel{display:flex!important}' +
+        '#wr-editor:not([data-mpane=article]) #wr-center-panel{display:none!important}' +
+        '#wr-center-panel{padding:0 12px 96px!important}' +
+        '#wr-block-renderer{overflow:visible!important;min-height:0!important}' +
+        '#wr-media-toolbar{flex-wrap:wrap}' +
+        '#wr-title-input{min-width:0;font-size:17px!important}' +
+      '}';
+    document.head.appendChild(s);
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('#wr-mtabs [data-p]');
+        if (b) { wrSetPane(b.getAttribute('data-p')); return; }
+        // picking a section in the outline takes a phone back to the article
+        if (e.target.closest && e.target.closest('#wr-outline-panel') && e.target.closest('a,button,li,[data-idx],[data-section],[onclick]') && window.matchMedia('(max-width:767px)').matches) setTimeout(function () { wrSetPane('article'); }, 60);
+    });
+    function wrSetPane(p) {
+        _wr.mpane = p; var ed = document.getElementById('wr-editor'); if (!ed) return;
+        ed.setAttribute('data-mpane', p);
+        ed.querySelectorAll('#wr-mtabs [data-p]').forEach(function (x) { x.setAttribute('aria-selected', String(x.getAttribute('data-p') === p)); });
+        var m = document.getElementById('wr-main'); if (m) m.scrollTop = 0;
+    }
+})();
