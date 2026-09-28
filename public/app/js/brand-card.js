@@ -513,6 +513,50 @@
     });
   }
 
+  /* REPORT-CARDS-1 (Owner 2026-09-28: "make those reports scrollable cards so it looks nice rather than pure text"):
+     what the team finished, one card per piece of work, in a strip that scrolls sideways under Sarah's words. */
+  var LTR_CSS = '.ltr{position:relative;margin:8px 0 2px;max-width:min(760px,100%)}' +
+    '.ltr-track{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding:0 2px;padding:2px 2px 10px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}' +
+    '.ltr-card{flex:0 0 232px;scroll-snap-align:start;background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg,14px);padding:12px 13px;display:flex;flex-direction:column;gap:8px;color:var(--t1);font:13.5px/1.4 var(--fb,inherit);box-shadow:0 1px 2px rgba(0,0,0,.04)}' +
+    '.ltr-who{display:flex;align-items:center;gap:9px;min-width:0}.ltr-av{width:34px;height:34px;border-radius:50%;flex:0 0 34px;background:var(--s2) center/cover no-repeat;border:1px solid var(--bd)}' +
+    '.ltr-nm{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ltr-rl{font-size:11.5px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+    '.ltr-k{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--t2);background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px 9px}' +
+    '.ltr-k i{width:6px;height:6px;border-radius:50%;background:var(--p,#7c5cff)}' +
+    '.ltr-t{font-weight:600;font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}' +
+    '.ltr-d{font-size:12.5px;color:var(--t2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}' +
+    '.ltr-go{margin-top:auto;align-self:flex-start;font:600 12.5px var(--fb,inherit);color:var(--t1);background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:7px 12px;cursor:pointer}.ltr-go:hover{border-color:var(--t3)}' +
+    '.ltr-nav{position:absolute;top:calc(50% - 22px);width:32px;height:32px;border-radius:50%;border:1px solid var(--bd);background:var(--s1);color:var(--t1);box-shadow:0 2px 8px rgba(0,0,0,.12);cursor:pointer;display:none;align-items:center;justify-content:center;font-size:16px;line-height:1;z-index:2}' +
+    '.ltr-nav.l{left:-10px}.ltr-nav.r{right:-10px}@media (hover:hover) and (min-width:768px){.ltr.can-l .ltr-nav.l,.ltr.can-r .ltr-nav.r{display:flex}}' +
+    '.ltr-cnt{font-size:11.5px;color:var(--t3);margin:0 0 6px 2px}';
+  function ltrCss() { if (document.getElementById('ltr-css')) return; var s = document.createElement('style'); s.id = 'ltr-css'; s.textContent = LTR_CSS; document.head.appendChild(s); }
+  var LTR_KIND = { post: 'Social post', article: 'Article', link: 'Internal link', page: 'Web page', image: 'Design', video: 'Video', seo: 'Search', email: 'Email', lead: 'Enquiry', other: 'Done' };
+  function teamReport(el, card) {
+    ltrCss(); el.classList.remove('lbc'); el.classList.add('ltr');
+    var items = Array.isArray(card.items) ? card.items : [];
+    if (!items.length) { el.remove(); return; }
+    el.innerHTML = '<div class="ltr-cnt">' + items.length + ' finished · scroll for more</div><div class="ltr-track" role="list"></div><button type="button" class="ltr-nav l" aria-label="Previous">‹</button><button type="button" class="ltr-nav r" aria-label="Next">›</button>';
+    var track = el.querySelector('.ltr-track');
+    items.forEach(function (it) {
+      var c = document.createElement('div'); c.className = 'ltr-card'; c.setAttribute('role', 'listitem');
+      var av = it.avatar && /^(https?:\/\/|\/)/.test(String(it.avatar)) ? ' style="background-image:url(' + esc(it.avatar) + ')"' : '';
+      c.innerHTML = '<div class="ltr-who"><span class="ltr-av"' + av + ' aria-hidden="true"></span><div style="min-width:0"><div class="ltr-nm">' + esc(it.who || 'Sarah') + '</div>' + (it.role ? '<div class="ltr-rl">' + esc(it.role) + '</div>' : '') + '</div></div>' +
+        '<span class="ltr-k"><i></i>' + esc(LTR_KIND[it.kind] || LTR_KIND.other) + '</span>' +
+        '<div class="ltr-t">' + esc(it.title || '') + '</div>' + (it.detail ? '<div class="ltr-d">' + esc(it.detail) + '</div>' : '');
+      if (it.link) { var b = document.createElement('button'); b.type = 'button'; b.className = 'ltr-go'; b.textContent = 'Open'; b.addEventListener('click', function () { ltrOpen(String(it.link)); }); c.appendChild(b); }
+      track.appendChild(c);
+    });
+    function upd() { var max = track.scrollWidth - track.clientWidth - 2; el.classList.toggle('can-l', track.scrollLeft > 2); el.classList.toggle('can-r', track.scrollLeft < max);
+      el.querySelector('.ltr-cnt').textContent = items.length + ' finished' + (max > 0 ? ' \u00b7 scroll for more' : ''); }
+    el.querySelector('.ltr-nav.l').addEventListener('click', function () { track.scrollBy({ left: -242, behavior: 'smooth' }); });
+    el.querySelector('.ltr-nav.r').addEventListener('click', function () { track.scrollBy({ left: 242, behavior: 'smooth' }); });
+    track.addEventListener('scroll', upd, { passive: true }); window.addEventListener('resize', upd); setTimeout(upd, 50);
+  }
+  function ltrOpen(link) {
+    var m = link.match(/^\/app\/?#\/?([a-z0-9_-]+)/i);
+    if (m && typeof window.nav === 'function') { window.nav(m[1]); return; }
+    if (/^https?:\/\//i.test(link)) { window.open(link, '_blank', 'noopener'); return; }
+    if (link.charAt(0) === '/') location.href = link;
+  }
   /* ── hydrate card slots wherever they appear (Sarah view, Advanced floater, Messages page) ── */
   function hydrate(slot) {
     if (slot.__lbc) return; slot.__lbc = 1;
@@ -524,6 +568,7 @@
     else if (card.type === 'campaign_ideas') campaignIdeas(slot, card);   // CAMPAIGNS-1
     else if (card.type === 'watch_setup') watchSetup(slot, card);   // WATCH-1
     else if (card.type === 'campaign_change') campaignChange(slot, card);   // WATCH-1
+    else if (card.type === 'team_report') teamReport(slot, card);   // REPORT-CARDS-1
   }
   function scan(root) { (root || document).querySelectorAll && (root || document).querySelectorAll('.lu-brand-slot').forEach(hydrate); }
   function slotHtml(card) { if (!card || !card.type) return ''; return '<div class="lu-brand-slot" data-card="' + encodeURIComponent(JSON.stringify(card)) + '"></div>'; }

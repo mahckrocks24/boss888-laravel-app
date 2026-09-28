@@ -124,7 +124,7 @@ use Illuminate\Support\Facades\Route;
                     'content' => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $m->content),
                     'ts'      => $m->created_at,
                     'attachments' => $meta['attachments'] ?? null, // ATTACH-2
-                    'card'    => (is_array($meta['card'] ?? null) && in_array($meta['card']['type'] ?? '', ['brand_directions', 'brand_summary', 'inspiration', 'campaign_ideas', 'watch_setup', 'campaign_change'], true)) ? array_diff_key($meta['card'], ['prompt' => 1, 'recipe' => 1]) : null, // BRAND-B1; SECRET-1: never a prompt
+                    'card'    => (is_array($meta['card'] ?? null) && in_array($meta['card']['type'] ?? '', ['brand_directions', 'brand_summary', 'inspiration', 'campaign_ideas', 'watch_setup', 'campaign_change', 'team_report'], true)) ? array_diff_key($meta['card'], ['prompt' => 1, 'recipe' => 1]) : null, // BRAND-B1; SECRET-1: never a prompt
                     'is_ack'  => !empty($meta['is_ack']) || (($meta['phase'] ?? '') === 'ack'),
                     'phase'   => $meta['phase'] ?? null,
                     // SARAH888 Phase 1A slice 1 — correlation surfaced so a client

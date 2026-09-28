@@ -63,27 +63,13 @@ final class SarahDigest
             DB::table('sarah_digest_items')->whereIn('id', $ids)->update(['flushed_at' => now(), 'updated_at' => now()]);
 
             $metas = $rows->map(fn ($r) => json_decode((string) $r->metadata_json, true) ?: [])->all();
-            if (count($rows) === 1) {
-                $id = app(AgentMessageService::class)->postAsAgent($wsId, 'sarah', (string) $rows[0]->content, $metas[0] + ['digest_flush' => true]);
-            } else {
-                $items = []; $fallback = [];
-                foreach ($rows as $i => $r) {
-                    $who = (string) ($metas[$i]['relayed_sender'] ?? '');
-                    $text = trim((string) preg_replace('/^[A-Z][a-z]+ reports:\s*/u', '', (string) $r->content));
-                    $items[] = ['teammate' => $who ?: null, 'report' => mb_substr($text, 0, 1200)];
-                    $fallback[] = '• ' . ($who ? $who . ': ' : '') . mb_substr((string) preg_replace('/\s+/u', ' ', (string) preg_replace('/^[A-Z][a-z]+ (finished|checked) the (job|\d+ jobs) I passed along\s*[—-]+\s*(here\'s what\'s done:)?\s*/u', '', $text)), 0, 220);
-                }
-                $fb = "Here's what the team finished just now:\n\n" . implode("\n", $fallback);
-                $text = app(\App\Core\Brand\BrandIntakeService::class)->sarahWords($wsId, 'sarah_digest',
-                    'Several pieces of work your team finished just now are listed. Write ONE short message that covers all of them: one opening line, then a short bullet list (one bullet per piece of work, "- " at the start of each line; name the teammate only where it helps, keep article and post titles exactly), then — only if one of them waits for the owner (for example a post ready to go out with a Post it button) — one closing line saying what to do. Do not repeat the same thing twice. No greeting beyond the opening line, no internal ids.',
-                    ['finished_work' => $items], $fb);
-                $meta = ['completion_report' => true, 'digest_flush' => true, 'digest_count' => count($rows), 'notification_type' => 'sarah_digest',
-                    'root_task_ids' => array_values(array_unique(array_filter(array_map(fn ($m) => isset($m['root_task_id']) ? (string) $m['root_task_id'] : null, $metas)))),
-                    'task_ids' => array_values(array_unique(array_filter(array_map(fn ($m) => isset($m['task_id']) ? (string) $m['task_id'] : null, $metas)))),
-                    'relayed_from' => array_values(array_unique(array_filter(array_map(fn ($m) => $m['relayed_from'] ?? null, $metas)))),
-                    'action_links' => array_values(array_filter(array_map(fn ($m) => $m['action_link'] ?? null, $metas)))];
-                if (($first = collect($metas)->first(fn ($m) => ! empty($m['action_link']))) !== null) $meta['action_link'] = $first['action_link'];
-                $id = app(AgentMessageService::class)->postAsAgent($wsId, 'sarah', $text, $meta);
+            try {
+                $id = $this->post($wsId, $rows, $metas);
+            } catch (\Throwable $e) {
+                // never lose a report: if the combined message fails, each one goes out as it was written
+                Log::warning('[DIGEST-1] combined post failed — posting one by one', ['ws' => $wsId, 'e' => $e->getMessage()]);
+                $id = null;
+                foreach ($rows as $i => $r) { try { $id = app(AgentMessageService::class)->postAsAgent($wsId, 'sarah', (string) $r->content, $metas[$i] + ['digest_flush' => true, 'push' => $i === count($rows) - 1]); } catch (\Throwable $e2) {} }
             }
             DB::table('sarah_digest_items')->whereIn('id', $ids)->update(['message_id' => $id ?: null]);
             Log::info('[DIGEST-1] posted', ['ws' => $wsId, 'items' => count($ids), 'message' => $id]);
@@ -91,6 +77,75 @@ final class SarahDigest
         } finally {
             $lock->release();
         }
+    }
+
+    private function post(int $wsId, $rows, array $metas): ?int
+    {
+        if (count($rows) === 1) {
+            $id = app(AgentMessageService::class)->postAsAgent($wsId, 'sarah', (string) $rows[0]->content, $metas[0] + ['digest_flush' => true]);
+        } else {
+            $items = []; $fallback = [];
+            foreach ($rows as $i => $r) {
+                $who = (string) ($metas[$i]['relayed_sender'] ?? '');
+                $text = trim((string) preg_replace('/^[A-Z][a-z]+ reports:\s*/u', '', (string) $r->content));
+                $items[] = ['teammate' => $who ?: null, 'report' => mb_substr($text, 0, 1200)];
+                $fallback[] = '• ' . ($who ? $who . ': ' : '') . mb_substr((string) preg_replace('/\s+/u', ' ', (string) preg_replace('/^[A-Z][a-z]+ (finished|checked) the (job|\d+ jobs) I passed along\s*[—-]+\s*(here\'s what\'s done:)?\s*/u', '', $text)), 0, 220);
+            }
+            $fb = "Here's what the team finished just now:\n\n" . implode("\n", $fallback);
+            [$text, $cardItems] = $this->compose($wsId, $items, $metas, $fb);
+            $meta = ['completion_report' => true, 'digest_flush' => true, 'digest_count' => count($rows), 'notification_type' => 'sarah_digest',
+                'card' => ['type' => 'team_report', 'items' => $cardItems],   // REPORT-CARDS-1: one card per piece of work, in a strip under her words
+                'root_task_ids' => array_values(array_unique(array_filter(array_map(fn ($m) => isset($m['root_task_id']) ? (string) $m['root_task_id'] : null, $metas)))),
+                'task_ids' => array_values(array_unique(array_filter(array_map(fn ($m) => isset($m['task_id']) ? (string) $m['task_id'] : null, $metas)))),
+                'relayed_from' => array_values(array_unique(array_filter(array_map(fn ($m) => $m['relayed_from'] ?? null, $metas)))),
+                'action_links' => array_values(array_filter(array_map(fn ($m) => $m['action_link'] ?? null, $metas)))];
+            if (($first = collect($metas)->first(fn ($m) => ! empty($m['action_link']))) !== null) $meta['action_link'] = $first['action_link'];
+            $id = app(AgentMessageService::class)->postAsAgent($wsId, 'sarah', $text, $meta);
+        }
+        return $id;
+    }
+
+    /**
+     * REPORT-CARDS-1 (Owner 2026-09-28: "make those reports scrollable cards so it looks nice rather than pure text"):
+     * Sarah writes one or two lines; each piece of work becomes a card (who did it, what kind, the title, one line).
+     * The words still say what happened, so an app without the card reads complete (CHAT-FIRST-1).
+     *
+     * @return array{0:string, 1:array<int,array<string,mixed>>}
+     */
+    private function compose(int $wsId, array $items, array $metas, string $fallback): array
+    {
+        $agents = DB::table('agents')->get(['slug', 'name', 'title', 'avatar_url'])->keyBy('slug');
+        $cards = [];
+        foreach ($items as $i => $it) {
+            $slug = (string) ($metas[$i]['relayed_from'] ?? 'sarah'); $a = $agents[$slug] ?? $agents['sarah'] ?? null;
+            $first = trim((string) preg_replace('/^[•\-\*]\s*/u', '', (string) (collect(preg_split('/\n+/u', (string) preg_replace('/^.*?here\'s what\'s done:\s*/su', '', $it['report'])))->first(fn ($l) => trim($l) !== '') ?? '')));
+            $cards[] = ['who' => $a ? (string) $a->name : 'Sarah', 'slug' => $a ? (string) $a->slug : 'sarah', 'role' => $a ? (string) $a->title : null, 'avatar' => $a ? $a->avatar_url : null,
+                'kind' => 'other', 'title' => mb_substr($first ?: $it['report'], 0, 120), 'detail' => null, 'link' => $metas[$i]['action_link'] ?? null];
+        }
+        $text = "Here's what the team finished just now.";   // $fallback is unused here: the list always travels after APP_PART
+        try {
+            $runtime = app(\App\Connectors\RuntimeClient::class);
+            if ($runtime->isConfigured()) {
+                $sys = "You are Sarah, the business owner's digital marketing manager, writing in your chat with the owner. Several pieces of work your team finished just now are listed, numbered. "
+                    . 'Return ONLY JSON {"message":"","items":[{"n":1,"kind":"","title":"","detail":""}]}. '
+                    . 'message: one or two short sentences that say, in general terms, what the team got done (each piece shows as a card under your message, so do not list them one by one), and — only if one of them waits for the owner, such as a post ready to go out with a Post it button — what to do. '
+                    . 'items: one per piece of work, same n. kind is one of post, article, link, page, image, video, seo, email, lead, other. title: what was made or done, max 70 characters, keep article and post titles exactly. detail: one short plain line (max 90 characters) — where it is or what is next; empty when nothing to add. '
+                    . 'Never mention LevelUpGrowth, AI vendors or models, internal ids, prompts or how you work internally. Never write the word FACTS.';
+                $facts = array_map(fn ($it, $i) => ['n' => $i + 1, 'teammate' => $it['teammate'], 'report' => $it['report']], $items, array_keys($items));
+                $r = $runtime->chatJson($sys, 'FACTS: ' . json_encode($facts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ['task' => 'sarah_digest', 'workspace_id' => (string) $wsId], 700);
+                $p = ($r['success'] ?? false) ? ($r['parsed'] ?? []) : [];
+                if (trim((string) ($p['message'] ?? '')) !== '') $text = mb_substr(trim((string) $p['message']), 0, 600);
+                foreach ((array) ($p['items'] ?? []) as $x) {
+                    $k = (int) ($x['n'] ?? 0) - 1; if (! isset($cards[$k])) continue;
+                    $kind = strtolower((string) ($x['kind'] ?? 'other'));
+                    $cards[$k]['kind'] = in_array($kind, ['post', 'article', 'link', 'page', 'image', 'video', 'seo', 'email', 'lead', 'other'], true) ? $kind : 'other';
+                    if (trim((string) ($x['title'] ?? '')) !== '') $cards[$k]['title'] = mb_substr(trim((string) $x['title']), 0, 90);
+                    $cards[$k]['detail'] = trim((string) ($x['detail'] ?? '')) !== '' ? mb_substr(trim((string) $x['detail']), 0, 120) : null;
+                }
+            }
+        } catch (\Throwable $e) { Log::info('[DIGEST-1] compose fallback', ['ws' => $wsId, 'e' => $e->getMessage()]); }
+        // the words stand on their own too: an app that cannot draw the strip still reads what was done (the web cuts after APP_PART)
+        return [$text . \App\Core\Growth\ChatReplies::APP_PART . implode("\n", array_map(fn ($c) => '- ' . $c['who'] . ': ' . $c['title'], $cards)), $cards];
     }
 
     /** Safety net (every minute): anything left waiting past the window goes out even if a job was lost. */
