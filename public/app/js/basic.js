@@ -82,13 +82,20 @@
     ensureCss(); root.innerHTML = shell('Needs attention', 'Approvals, booking requests and anything only you can decide. Everything else, Sarah handles.',
       '');
     var body = root.querySelector('#bs-body'); skel(body, 2);
-    Promise.all([api('GET', 'approvals?status=pending&per_page=20'), api('GET', 'calendar/events'), api('GET', 'social/accounts'), api('GET', 'seo/gsc/status'), api('GET', 'tasks')])
+    Promise.all([api('GET', 'approvals?status=pending&per_page=20'), api('GET', 'calendar/events'), api('GET', 'social/accounts'), api('GET', 'seo/gsc/status'), api('GET', 'tasks'), api('GET', 'agents/dmm/pending-actions').catch(function () { return { json: null }; })])
       .then(function (rs) {
         if (!rs[0].ok) { throw new Error('approvals ' + rs[0].status); }
         body.innerHTML = '';
         var appr = (rs[0].json && rs[0].json.items) || [];
-        var s1 = sec('Waiting for your OK', appr.length, appr.length ? 'Each of these was proposed by Sarah. Approve to let the team run it, or reject with a reason so she adjusts.' : null); body.appendChild(s1);
-        if (!appr.length) s1.appendChild(empty('Nothing needs your OK', 'Sarah will ask here — and in your conversation — when something matters.'));
+        /* NEEDS-ATTN-1 (Owner 2026-09-28): the same things Review and the chat pull-down show — posts ready to go out, campaign ideas, campaign updates */
+        var pa = (rs[5] && rs[5].json) || {}; var posts = pa.drafts || [], camps = pa.campaigns || [], chgs = pa.campaign_changes || [];
+        var total = appr.length + posts.length + camps.length + chgs.length;
+        if (window.luNeedsYouRefresh) window.luNeedsYouRefresh(); else luAttnBadge(total);
+        var s1 = sec('Waiting for your OK', total, total ? 'Each of these was proposed by Sarah. Approve to let the team run it, or say no so she adjusts.' : null); body.appendChild(s1);
+        if (!total) s1.appendChild(empty('Nothing needs your OK', 'Sarah will ask here — and in your conversation — when something matters.'));
+        posts.forEach(function (x) { s1.appendChild(postRow(x)); });
+        camps.forEach(function (p) { s1.appendChild(campaignRow(p)); });
+        chgs.forEach(function (x) { s1.appendChild(changeRow(x)); });
         appr.forEach(function (a) { s1.appendChild(approvalRow(a)); });
 
         var evs = Array.isArray(rs[1].json) ? rs[1].json : ((rs[1].json && (rs[1].json.events || rs[1].json.data)) || []);
@@ -116,6 +123,42 @@
   var ACTION_WORDS = { deep_audit: 'a technical check of your website', run_audit: 'a website health check', add_keyword: 'tracking a new search phrase', track_keywords: 'checking your search rankings', serp_analysis: 'researching what people search for', generate_links: 'connecting related pages', fix_orphans: 'linking pages nobody links to', generate_meta: 'writing page descriptions', create_article: 'writing an article', write_article: 'writing an article', publish_article: 'publishing an article', improve_draft: 'polishing a draft', aeo_enrich: 'making an article easier for AI search to cite', create_post: 'writing a social post', social_create_post: 'writing a social post', social_ai_post: 'writing a social post', publish_post: 'publishing a social post', social_publish_post: 'publishing a social post', social_schedule_post: 'scheduling a social post', schedule_post: 'scheduling a social post', create_lead: 'adding a new enquiry', update_lead: 'updating a customer record', log_activity: 'noting a customer conversation', generate_image: 'creating an image', generate_video: 'creating a video', generate_design: 'designing a graphic', wizard_generate: 'building your website', publish_website: 'publishing your website', arthur_edit: 'editing your website' };
   function humanAction(a) { a = String(a || '').replace(/^[a-z]+\//, ''); return ACTION_WORDS[a] || (window.LU_humanize ? window.LU_humanize(a) : a.replace(/_/g, ' ')); }
   function deepLink(engine, payload) { payload = payload || {}; if (payload.article_id) return ['write', payload.article_id, 'Open the article']; if (payload.post_id) return ['social', payload.post_id, 'Open the post']; if (payload.design_id) return ['studio', payload.design_id, 'Open the design']; if (payload.lead_id) return ['crm', payload.lead_id, 'Open the enquiry']; if (payload.website_id) return ['websites', payload.website_id, 'Open the website']; var m = { write: 'write', seo: 'seo', social: 'social', studio: 'studio', crm: 'crm', builder: 'websites', calendar: 'calendar' }; return m[engine] ? [m[engine], null, 'Open in Advanced'] : null; }
+  function luAttnBadge(n) { var b = document.getElementById('ni-attention-badge'); if (!b) return; n = +n || 0; b.textContent = n > 99 ? '99+' : String(n); b.style.display = ''; b.classList.toggle('show', n > 0); }
+  window.luAttnBadge = luAttnBadge;
+  function rowAct(path, body, okLine, b, r) {
+    var all = r.querySelectorAll('button'); all.forEach(function (x) { x.disabled = true; });
+    api('POST', path, body || {}).then(function (res) { var d = res.json || {};
+      if (res.ok && d.success !== false && !d.error) { r.classList.remove('att'); r.classList.add('book'); r.querySelector('.a').innerHTML = '<span class="d">' + esc(okLine) + '</span>'; showToast(okLine, 'success'); if (window.luNeedsYouRefresh) window.luNeedsYouRefresh(); }
+      else { all.forEach(function (x) { x.disabled = false; }); showToast(d.message || d.error || 'Could not do that — try again.', 'error'); }
+    }).catch(function () { all.forEach(function (x) { x.disabled = false; }); showToast("Couldn't reach the server — try again.", 'error'); });
+  }
+  function openCampaign(id) { if (!window.nav) return; nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(id); else if (t++ < 30) setTimeout(w, 150); })(); }
+  function seePost(id) { if (!window.nav) return; nav('sarah'); var t = 0; (function w() { var c = document.querySelector('.sh-inline-post[data-post="' + id + '"]'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('sh-flash'); setTimeout(function () { c.classList.remove('sh-flash'); }, 1600); } else if (t++ < 40) setTimeout(w, 250); })(); }
+  function postRow(x) {
+    var plat = x.platform === 'instagram' ? 'Instagram' : x.platform === 'linkedin' ? 'LinkedIn' : 'Facebook'; var r;
+    var desc = (x.account && x.account.name ? x.account.name + ' · ' : '') + String(x.caption || 'No caption yet').replace(/\s+/g, ' ').slice(0, 140);
+    var acts = [];
+    if (x.ready) acts.push(btn('Post it', 'primary', function (b) { if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Confirm — post now'; return; } rowAct('social/posts/' + x.post_id + '/publish', {}, 'Sent to ' + plat + ' — it shows under Results once confirmed.', b, r); }));
+    acts.push(btn('View post', x.ready ? 'quiet' : 'primary', function () { seePost(x.post_id); }));
+    acts.push(btn('Not now', 'quiet', function (b) { rowAct('social/posts/' + x.post_id + '/dismiss-preview', {}, 'Not now — it stays in Social › Drafts.', b, r); }));
+    r = row('att', '\u270E', 'Post ready: ' + plat, desc, acts); return r;
+  }
+  function campaignRow(p) {
+    var r; var desc = [p.dates_label, p.target ? 'target: ' + p.target : null, (p.steps || []).length + ' steps', p.credits_up_to ? 'up to ' + p.credits_up_to + ' credits' : null].filter(Boolean).join(' · ');
+    r = row('att', '\u2726', 'Campaign idea: ' + p.title, desc, [
+      btn('Launch', 'primary', function (b) { if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Confirm launch'; return; } rowAct('growth/campaigns/' + p.campaign_id + '/launch', {}, 'Launched — Sarah\'s team is on it.', b, r); }),
+      btn('View plan', 'quiet', function () { openCampaign(p.campaign_id); }),
+      btn('Not now', 'quiet', function (b) { rowAct('growth/campaigns/' + p.campaign_id + '/decline', { reason: 'Not now' }, 'Not now — Sarah will learn from it.', b, r); })]);
+    return r;
+  }
+  function changeRow(x) {
+    var r; var desc = (x.reason ? x.reason + ' · ' : '') + (x.lines || []).map(function (l) { return l.label + ' ' + l.title; }).join('; ');
+    r = row('att', '\u2726', 'Campaign update: ' + x.campaign_title, desc, [
+      btn('Approve' + (x.extra_credits ? ' · up to ' + x.extra_credits + ' credits' : ''), 'primary', function (b) { rowAct('growth/changes/' + x.change_id + '/approve', {}, 'Updated — the new steps are on the calendar.', b, r); }),
+      btn('View campaign', 'quiet', function () { openCampaign(x.campaign_id); }),
+      btn('Keep as is', 'quiet', function (b) { rowAct('growth/changes/' + x.change_id + '/decline', {}, 'Kept as is — Sarah will learn from it.', b, r); })]);
+    return r;
+  }
   function approvalRow(a) {
     var t = a.task || {}; var who = (t.agent && t.agent.name) || AGENT_NAMES[t.primary_agent] || 'Sarah';
     var cost = t.credit_note ? t.credit_note : (t.credit_cost_known === false ? 'credits set when Arthur applies it — not free' : (t.credit_cost ? t.credit_cost + (t.credit_cost === 1 ? ' credit' : ' credits') : 'no credits'));   // RISK-0189

@@ -8657,10 +8657,21 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
       window.luDialog({ type: 'confirm', title: 'Waiting for your OK', message: String(d.line).replace(/ Tap to open Review\.$/, ''), okLabel: 'Open', cancelLabel: 'Later' }).then(function (open) {
         if (!open) return;
         try { localStorage.setItem('lu_rail_min', '0'); } catch (e) {}
+        if (document.documentElement.getAttribute('data-mode') === 'basic' && typeof window.nav === 'function') { window.nav('attention'); return; }   /* NEEDS-ATTN-1 */
         if (typeof window.nav === 'function') window.nav('sarah');
         var t = 0; (function show() { var r = document.getElementById('sh-rail'); if (r && !r.hidden) { r.classList.remove('min'); r.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } else if (t++ < 40) setTimeout(show, 250); })();
       });
     }).catch(function () {});
   }
   if (document.readyState === 'complete') setTimeout(run, 5000); else window.addEventListener('load', function () { setTimeout(run, 5000); });
+  /* NEEDS-ATTN-1: the Needs attention nav badge carries the same count, refreshed every two minutes */
+  function badge() {
+    var el = document.getElementById('ni-attention-badge'); if (!el || !window.luApi || document.hidden) return;
+    try { if (!localStorage.getItem('lu_token')) return; } catch (e) { return; }
+    fetch(window.luApi + 'growth/needs-you', { headers: authHeader(), cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d) return; var n = +d.count || 0; el.textContent = n > 99 ? '99+' : String(n); el.style.display = ''; el.classList.toggle('show', n > 0);
+    }).catch(function () {});
+  }
+  window.luNeedsYouRefresh = badge;
+  window.addEventListener('load', function () { setTimeout(badge, 3000); setInterval(badge, 120000); });
 })();
