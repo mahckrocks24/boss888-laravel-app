@@ -123,18 +123,25 @@ final class ResponsiveNav
             // The links become a panel under the bar rather than a second and third row inside it.
             .   '.nav-links{display:none!important;position:absolute;top:100%;left:0;right:0;'
             .     'flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;'
-            .     'background:var(--lu-nav-panel-bg,#fff);color:inherit;'
-            .     'border-top:1px solid rgba(128,128,128,.22);box-shadow:0 14px 34px rgba(0,0,0,.18);'
-            .     'padding:8px;gap:2px;margin:0;max-height:72vh;overflow-y:auto;z-index:9999}'
-            .   '.lu-nav-open .nav-links{display:flex!important}'
+            .     'background:var(--lu-nav-panel-bg,#fff)!important;color:var(--lu-nav-panel-fg,inherit);list-style:none;'
+            .     'border-top:1px solid rgba(128,128,128,.18);box-shadow:0 18px 40px rgba(0,0,0,.16),0 0 0 100vmax rgba(10,14,24,.38);clip-path:inset(0 0 -100vmax 0);'
+            .     'padding:6px 0 16px!important;gap:0!important;margin:0!important;max-height:calc(100vh - 72px);overflow-y:auto;overscroll-behavior:contain;z-index:9999;box-sizing:border-box;width:auto!important}'
+            .   '.lu-nav-open .nav-links{display:flex!important;animation:luNavIn .22s cubic-bezier(.2,.8,.2,1)}'
+            .   '@keyframes luNavIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}'
+            .   '.nav-links>li{display:block!important;margin:0!important;padding:0!important;width:100%;list-style:none;border:0}'
+            .   '.nav-links>li::marker{content:""}'
+            .   '.nav-links a:empty{display:none!important}'
             // HAMB-1 (2026-09-23): a template's own phone rule (.nav-links a:not(.nav-cta){display:none}) hid every item inside the open panel
             .   '.lu-nav-open .nav-links>a,.lu-nav-open .nav-links>li,.lu-nav-open .nav-links>li>a,.lu-nav-open .nav-links>.nav-cta{display:flex!important}'
             // Comfortable targets, and a link that is too long wraps instead of forcing the panel wider.
-            .   '.nav-links>a,.nav-links>.nav-cta{display:flex;align-items:center;min-height:44px;'
-            .     'padding:11px 14px;margin:0;white-space:normal;border-radius:8px;width:auto;text-align:left}'
-            .   '.nav-links>a:hover,.nav-links>a:focus-visible{background:rgba(128,128,128,.14)}'
-            // The call-to-action keeps its emphasis but sits in the flow like everything else.
-            .   '.nav-links>.nav-cta{margin-top:6px;justify-content:center;text-align:center}'
+            // NAV-SHEET-1: every link, direct or inside <li>, is a full-width row
+            .   '.nav-links a:not(.nav-cta):not(.btn){display:flex!important;align-items:center;min-height:52px;padding:14px 24px!important;margin:0!important;'
+            .     'font-size:17px!important;font-weight:500!important;line-height:1.3!important;letter-spacing:0!important;text-transform:none!important;'
+            .     'color:inherit!important;text-decoration:none!important;border-bottom:1px solid rgba(128,128,128,.16);border-radius:0!important;'
+            .     'width:100%;box-sizing:border-box;white-space:normal;text-align:left;background:transparent}'
+            .   '.nav-links a:not(.nav-cta):not(.btn):hover,.nav-links a:not(.nav-cta):not(.btn):focus-visible,.nav-links a:not(.nav-cta):not(.btn):active{background:rgba(128,128,128,.10)}'
+            .   '.nav-links .nav-cta,.nav-links a.btn{display:flex!important;align-items:center;justify-content:center;text-align:center;min-height:50px;margin:16px 24px 4px!important;'
+            .     'padding:13px 20px!important;border-radius:12px!important;font-size:16px!important;box-sizing:border-box;width:auto!important}'
             . '}'
             // BTN-1 (2026-09-23): hero call-to-actions that wrap on a phone stack at full width instead of two ragged widths
             . '@media(max-width:640px){.hero-ctas,.hero-buttons,.hero-actions{flex-direction:column!important;align-items:stretch!important;gap:12px}.hero-ctas>a,.hero-ctas>button,.hero-buttons>a,.hero-buttons>button,.hero-actions>a,.hero-actions>button{width:100%!important;box-sizing:border-box;display:flex;justify-content:center;text-align:center}}'
@@ -244,7 +251,10 @@ final class ResponsiveNav
             .     'if(c&&c!=="transparent"&&c.indexOf("rgba(0, 0, 0, 0)")===-1){bg=c;break;}'
             .     'probe=probe.parentNode;'
             .   '}'
-            .   'if(bg){links.style.setProperty("--lu-nav-panel-bg",bg);}'
+            // NAV-SHEET-1: a translucent header (frosted glass) would let the page show through the menu: use the colour opaque
+            .   'if(!bg){bg=getComputedStyle(document.body).backgroundColor;if(!bg||bg.indexOf("rgba(0, 0, 0, 0)")!==-1||bg==="transparent"){bg="rgb(255, 255, 255)";}}'
+            .   'var m=bg.match(/rgba?\\(([^,]+),([^,]+),([^,)]+)/);if(m){bg="rgb("+m[1].trim()+", "+m[2].trim()+", "+m[3].trim()+")";}var k=bg.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);if(k){bg="rgb("+Math.round(k[1]*255)+", "+Math.round(k[2]*255)+", "+Math.round(k[3]*255)+")";}'
+            .   'links.style.setProperty("--lu-nav-panel-bg",bg);'
             .   'var btn=document.createElement("button");'
             .   'btn.type="button";btn.className="lu-nav-toggle";'
             .   'btn.setAttribute("aria-label","Menu");'
@@ -253,10 +263,16 @@ final class ResponsiveNav
             .   'if(!links.id){links.id="lu-nav-links";}'
             .   'btn.setAttribute("aria-controls",links.id);'
             .   'inner.appendChild(btn);'
+            // NAV-SHEET-1b: an inset header row would make an inset sheet; measure and span the screen
+            .   'function fit(){try{links.style.removeProperty("left");links.style.removeProperty("right");links.style.removeProperty("width");'
+            .     'var op=links.offsetParent;if(!op)return;var r=op.getBoundingClientRect();'
+            .     'if(r.left>1||r.right<window.innerWidth-1){links.style.setProperty("left",(-r.left)+"px","important");links.style.setProperty("right","auto","important");links.style.setProperty("width",document.documentElement.clientWidth+"px","important");}'
+            .   '}catch(e){}}'
             .   'function setOpen(v){'
             .     'inner.classList.toggle("lu-nav-open",v);'
             .     'document.documentElement.classList.toggle("lu-nav-open",v);'
             .     'btn.setAttribute("aria-expanded",v?"true":"false");'
+            .     'if(v){fit();}'
             .   '}'
             .   'btn.addEventListener("click",function(e){'
             .     'e.stopPropagation();setOpen(btn.getAttribute("aria-expanded")!=="true");'
@@ -282,7 +298,7 @@ final class ResponsiveNav
     }
 
     /** The build this markup carries, so an older one can be recognised and replaced rather than kept. */
-    public const VERSION = 'mobile9l-controls';   // SELECT-1: site-styled dropdowns and scrollbars (HAMB-1/BTN-1 inside)
+    public const VERSION = 'mobile10c-sheet';   // NAV-SHEET-1 (2026-09-28): opaque sheet, full-width rows (li or a), dimmed page, CTA button   // SELECT-1: site-styled dropdowns and scrollbars (HAMB-1/BTN-1 inside)
 
     /**
      * Append the rules and the toggle before </head>.
