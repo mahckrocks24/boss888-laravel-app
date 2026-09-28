@@ -2745,9 +2745,39 @@ PROMPT;
         DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
         try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
         Log::info('[Arthur] palette applied', ['website' => $websiteId, 'palette' => $themeId, 'vars' => array_keys($vars), 'actor' => $actorId]);
+        $__cleared = $isStatic ? $this->clearSectionTints($websiteId) : 0;   // PALETTE-TINT-1
         return ['success' => true, 'palette' => (string) ($theme['id'] ?? $themeId), 'label' => $label,
-            'applied' => (int) ($res['applied'] ?? 0), 'vars' => $vars, 'credits' => 0,
-            'message' => "Switched to {$label}. Undo puts the old colours back."];
+            'applied' => (int) ($res['applied'] ?? 0), 'vars' => $vars, 'credits' => 0, 'tints_cleared' => $__cleared,
+            'message' => "Switched to {$label}." . ($__cleared ? ' I also took off the ' . ($__cleared === 1 ? 'tint' : $__cleared . ' tints') . ' you had on ' . ($__cleared === 1 ? 'a section' : 'sections') . ' so the new colours show.' : '') . ' Undo puts the old colours back.'];
+    }
+
+    /**
+     * PALETTE-TINT-1 (Owner 2026-09-28: "I tried changing the background of the menu to gray, then decided to change the
+     * colour palette, it stays gray. it should not be like that"): a section overlay is a black or white veil laid over
+     * the section's colour — on a white menu it reads as grey, and no palette reaches it. A palette switch recolours the
+     * whole site, so it takes those veils off (the palette's own snapshot is taken first, so Undo brings them back).
+     * Returns how many sections were cleared.
+     */
+    private function clearSectionTints(int $websiteId): int
+    {
+        try {
+            $tv = json_decode((string) DB::table('websites')->where('id', $websiteId)->value('template_variables'), true) ?: [];
+            $fx = is_array($tv['element_fx'] ?? null) ? $tv['element_fx'] : [];
+            $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
+            $this->fxSiteId = $websiteId; $rules = []; $n = 0;
+            foreach ($fx as $key => $st) {
+                if (! str_starts_with((string) $key, 'section:') || (int) ($st['overlay'] ?? 0) === 0) continue;
+                unset($st['overlay'], $st['overlay_tone']); $fx[$key] = $st; $n++;
+                $rk = 'fx_section_' . substr((string) $key, 8);
+                $css = $this->fxRules((string) $key, $st, null);
+                if ($css === '') unset($extras[$rk]); else $rules[$rk] = $css;
+            }
+            if ($n === 0) return 0;
+            $tv['element_fx'] = $fx; $tv['design_extras'] = $extras;
+            if (! self::writeDesignExtras($websiteId, $rules, $tv)) return 0;
+            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            return $n;
+        } catch (\Throwable $e) { Log::warning('[PALETTE-TINT-1] could not clear section tints', ['website' => $websiteId, 'e' => $e->getMessage()]); return 0; }
     }
 
     /**
