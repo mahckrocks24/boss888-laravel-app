@@ -100,9 +100,13 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
     $drafts = [];
     try {
         $rows = DB::table('social_posts as p')->leftJoin('articles as a', 'a.id', '=', 'p.article_id')->leftJoin('websites as w', 'w.id', '=', \Illuminate\Support\Facades\DB::raw('COALESCE(p.website_id, a.website_id)'))
-            ->where('p.workspace_id', $wsId)->whereNull('p.deleted_at')->where('p.status', 'draft')->whereNull('p.preview_dismissed_at')->where('p.created_at', '>=', now()->subDays(7))   /* PREVIEW-DISMISS-1; NEEDS-ATTN-1: a post waits a week, same as the Needs you count */
-            ->orderByDesc('p.id')->limit(6)
-            ->get(['p.id', 'p.platform', 'p.content', 'p.media_json', 'p.hashtags_json', 'p.canonical_url', 'p.article_id', 'p.business_id', 'p.website_id', 'p.social_account_id', 'p.created_at', 'p.execution_status', 'p.failure_class',
+            ->where('p.workspace_id', $wsId)->whereNull('p.deleted_at')
+            /* POST-HISTORY-1 (Owner 2026-09-28: "why Preview fb post gets invisible on chat history"): a draft waits a week (PREVIEW-DISMISS-1, NEEDS-ATTN-1);
+               a post that went out, or was set aside, stays in the chat where Sarah presented it for 30 days */
+            ->where(fn ($q) => $q->where(fn ($x) => $x->where('p.status', 'draft')->whereNull('p.preview_dismissed_at')->where('p.created_at', '>=', now()->subDays(7)))
+                ->orWhere(fn ($x) => $x->where('p.created_at', '>=', now()->subDays(30))->where(fn ($y) => $y->where('p.status', '<>', 'draft')->orWhereNotNull('p.preview_dismissed_at'))))
+            ->orderByDesc('p.id')->limit(16)
+            ->get(['p.status', 'p.preview_dismissed_at', 'p.published_at', 'p.id', 'p.platform', 'p.content', 'p.media_json', 'p.hashtags_json', 'p.canonical_url', 'p.article_id', 'p.business_id', 'p.website_id', 'p.social_account_id', 'p.created_at', 'p.execution_status', 'p.failure_class',
                    'a.title as article_title', 'a.meta_title as article_meta_title', 'a.featured_image_url', 'a.slug as article_slug', 'a.website_id as article_website_id', 'a.meta_description', 'a.excerpt', 'w.custom_domain', 'w.subdomain', 'w.business_id as site_business_id']);
         $resolver = app(\App\Engines\Social\Services\SocialAccountResolver::class);
         foreach ($rows as $d) {
@@ -134,7 +138,8 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 'domain' => $link ? strtoupper((string) preg_replace('#^https?://(www\.)?([^/]+).*$#', '$2', $link)) : null,
                 'ready' => trim((string) $d->content) !== '' && ! empty($account['name']),
                 'execution_status' => $d->execution_status ? (string) $d->execution_status : null, 'failure_class' => $d->failure_class ? (string) $d->failure_class : null,   // PREVIEW-3: a draft that already went through a dry run says so on load
-                'created_at' => (string) $d->created_at];
+                'created_at' => (string) $d->created_at,
+                'status' => (string) $d->status, 'set_aside' => $d->preview_dismissed_at !== null, 'published_at' => $d->published_at ? (string) $d->published_at : null];   // POST-HISTORY-1
         }
         // POST-TIMELINE-1
         foreach ($drafts as &$__d) {
@@ -155,7 +160,9 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
                 ?: (clone $__base)->where('created_at', '<=', $__at)->orderByDesc('id')->value('id')) ?: null;
         }
         unset($__d);
-    } catch (\Throwable $e) { $drafts = []; }
+        $timelinePosts = array_values(array_filter($drafts, fn ($x) => $x['status'] !== 'draft' || $x['set_aside']));   // POST-HISTORY-1
+        $drafts = array_values(array_filter($drafts, fn ($x) => $x['status'] === 'draft' && ! $x['set_aside']));
+    } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::info('[PREVIEW] drafts failed', ['ws' => $wsId, 'e' => $e->getMessage()]); $drafts = []; $timelinePosts = []; }
 
     // CHAT-FIRST-1: the question Sarah asked with a card can be answered by a tap in the companion app (the chip sends text)
     $chips = [];
@@ -169,6 +176,6 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
     // CAMPAIGN-PREVIEW-1: campaign ideas and campaign updates are previewed in the chat like posts — decide without leaving it
     $__pv = ['campaigns' => [], 'changes' => []];
     try { $__pv = app(\App\Core\Growth\ChatReplies::class)->previews($wsId); } catch (\Throwable $e) {}
-    return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'campaigns' => $__pv['campaigns'], 'campaign_changes' => $__pv['changes'], 'offer' => $offer, 'offer_message_id' => $offerMessageId,
+    return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'timeline_posts' => $timelinePosts ?? [], 'campaigns' => $__pv['campaigns'], 'campaign_changes' => $__pv['changes'], 'offer' => $offer, 'offer_message_id' => $offerMessageId,
         'quick_replies' => $chips ?: ($offer ? [['label' => 'Go', 'text' => 'go'], ['label' => 'Not now', 'text' => 'not now']] : [])]);
 });

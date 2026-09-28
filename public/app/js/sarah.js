@@ -622,6 +622,7 @@
       // Owner 2026-09-21: the history used to animate from the oldest message to the newest (scroll-behavior:smooth on the
       // feed). The first paint is the latest message: jump without animation; smooth stays for messages that arrive later.
       S.bootUntil = Date.now() + 8000;
+      placeDrafts(); refreshActionBar();   /* POST-HISTORY-1: the posts belong to messages that are on screen only now */
       S.feed.style.scrollBehavior = 'auto'; toBottom();
       requestAnimationFrame(function () { toBottom(); requestAnimationFrame(function () { S.feed.style.scrollBehavior = ''; }); });
     }).catch(function () { S.feed.innerHTML = '<div class="sh-card fail">Couldn\'t load the conversation — <button type="button" class="sh-btn" onclick="sarahLoad(document.getElementById(\'sarah-root\'))">try again</button></div>'; });
@@ -674,18 +675,31 @@
   function clearActionBar() { var b = document.getElementById('sh-actbar'); if (b) b.remove(); }
   /* POST-TIMELINE-1: each draft's preview goes right under the message that presented it (message_id from the server). A draft
      whose message is not on screen waits in the Needs your OK pull-down instead. Posted or dismissed drafts leave. */
-  function placeDrafts(drafts) {
+  function postedCard(dr) {   /* POST-HISTORY-1: a post that went out stays in the history, showing what went out */
+    var c = draftCard(dr); var pill = c.querySelector('.pill'), foot = c.querySelector('.foot');
+    var page = dr.account && dr.account.name ? dr.account.name : 'your Page';
+    var when = dr.published_at ? new Date(String(dr.published_at).replace(' ', 'T') + 'Z').toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '';
+    if (dr.status === 'published') { if (pill) { pill.className = 'pill ok'; pill.innerHTML = '<i></i>Posted'; } if (foot) foot.innerHTML = '<div class="done">\u2713 Posted to ' + esc(page) + (when ? ' \u00b7 ' + esc(when) : '') + '.</div>'; }
+    else if (dr.status === 'scheduled') { if (pill) { pill.className = 'pill ok'; pill.innerHTML = '<i></i>Scheduled'; } if (foot) foot.innerHTML = '<div class="note">Scheduled for ' + esc(page) + '. It shows under Results once it goes out.</div>'; }
+    else { if (pill) { pill.className = 'pill warn'; pill.innerHTML = '<i></i>' + (dr.set_aside ? 'Set aside' : 'Did not go out'); } if (foot) foot.innerHTML = '<div class="note">' + (dr.set_aside ? 'You chose not now \u2014 it stays in Social \u203a Drafts.' : esc(dr.failure_class ? failWords(dr.failure_class) : 'It did not go out.')) + '</div>'; }
+    var hd = c.querySelector('.head'); if (hd && when) hd.innerHTML = hd.innerHTML.replace('Just now', esc(when));   /* the date it went out, not "Just now" */
+    c.setAttribute('data-state', 'posted'); return c;
+  }
+  function placeDrafts(drafts, posted) {
     if (!S.feed) return;
+    if (drafts) S.lastDrafts = drafts; else drafts = S.lastDrafts || [];
+    if (posted) S.lastPosted = posted; else posted = S.lastPosted || [];
     var keep = {};
-    (drafts || []).forEach(function (dr) {
+    drafts.map(function (x) { return [x, 0]; }).concat(posted.map(function (x) { return [x, 1]; })).forEach(function (pair) { var dr = pair[0], done = pair[1];
       if (dr.message_id == null) return;
       var row = S.feed.querySelector('.sh-row[data-mid="' + String(dr.message_id) + '"]'); if (!row) return;
       keep[String(dr.post_id)] = 1;
       var cur = S.feed.querySelector('.sh-inline-post[data-post="' + dr.post_id + '"]');
-      if (cur && cur.__placedAfter === row && cur.isConnected) return;   // already in place: never re-draw (no flicker)
+      if (cur && cur.__placedAfter === row && cur.isConnected && (!done || cur.__done)) return;   // already in place: never re-draw (no flicker)
+      if (cur && done && !cur.__done && cur.querySelector('.done')) { cur.__done = 1; cur.__placedAfter = row; return; }   // just posted here: keep the card that says so
       if (cur) cur.remove();
-      var box = document.createElement('div'); box.className = 'sh-actbar sh-inline-post'; box.setAttribute('data-post', String(dr.post_id)); box.__placedAfter = row;
-      box.appendChild(draftCard(dr));
+      var box = document.createElement('div'); box.className = 'sh-actbar sh-inline-post'; box.setAttribute('data-post', String(dr.post_id)); box.__placedAfter = row; box.__done = done;
+      box.appendChild(done ? postedCard(dr) : draftCard(dr));
       var after = row; while (after.nextElementSibling && after.nextElementSibling.classList.contains('sh-inline-post')) after = after.nextElementSibling;
       after.parentNode.insertBefore(box, after.nextSibling);
     });
@@ -695,7 +709,7 @@
     clearActionBar();
     var items = []; var chips = (d && Array.isArray(d.quick_replies)) ? d.quick_replies : [];   /* NEEDS-YOU-1: approvals wait in the Needs your OK pull-down, not under whatever Sarah said last */
     var drafts = (d && Array.isArray(d.drafts)) ? d.drafts.filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }) : [];
-    placeDrafts(drafts);   /* POST-TIMELINE-1 (Owner 2026-09-28): on the timeline, never pinned to the bottom */
+    placeDrafts(drafts, (d && Array.isArray(d.timeline_posts)) ? d.timeline_posts : []);   /* POST-TIMELINE-1 (Owner 2026-09-28): on the timeline, never pinned to the bottom; POST-HISTORY-1 */
     drafts = [];
     if (!items.length && !chips.length && !drafts.length) return;
     var bar = document.createElement('div'); bar.className = 'sh-actbar'; bar.id = 'sh-actbar'; bar.setAttribute('role', 'group'); bar.setAttribute('aria-label', 'Sarah is waiting for your decision');
