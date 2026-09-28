@@ -85,6 +85,16 @@
     root.dataset.wired = '1';
     buildShell(root);
     wireEvents(root);
+    /* WS-FAST-1 (Owner 2026-09-28: "it takes 3 sec before the cards appear"): the team is drawn at once from the last state
+       this device saw (same workspace, under a day old); the live fetch that follows replaces it. */
+    try {
+      var cached = JSON.parse(localStorage.getItem('wsv2_state_' + getWorkspaceId()) || 'null');
+      if (cached && Array.isArray(cached.agents) && cached.agents.length && Date.now() - (cached.at || 0) < 86400000 && !STATE.agents.length) {
+        STATE.agents = cached.agents; STATE.tasks = cached.tasks || []; STATE.positions = cached.positions || {};
+        syncGlobalAgentsMap(); computeInitialLayout(); STATE.initialLayoutDone = true; render();
+        try { campCard(false); } catch (_c) {}
+      }
+    } catch (_e) {}
     refresh();
     ensurePollLoop();
   };
@@ -325,6 +335,7 @@
         STATE.agents = data.agents || [];
         STATE.tasks = data.tasks || [];
         STATE.positions = data.positions || {};
+        try { localStorage.setItem('wsv2_state_' + getWorkspaceId(), JSON.stringify({ at: Date.now(), agents: STATE.agents, tasks: STATE.tasks, positions: STATE.positions })); } catch (_q) {}   /* WS-FAST-1 */
         syncGlobalAgentsMap();
         detectStatusTransitions(prevTasksById);
         var unplaced = STATE.agents.some(function (a) { return !(STATE.overrides[a.slug] || STATE.positions[a.slug]); });   // WS-CANVAS-1: newly added agents
