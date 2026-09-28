@@ -299,7 +299,9 @@ final class AdDecisionService
             }
 
             // Frequency cap
-            if ($this->frequencyCapped($campaignId, $context)) {
+            // ADS-HOUSE-UNCAPPED (Owner 2026-09-28: "why do ads go away?"): the per-visitor daily cap protects ADVERTISERS from
+            // over-delivery; it hid our own house ad from a visitor after 12 views, and the tag then took the bar down.
+            if (($row->kind ?? "") !== "house" && $this->frequencyCapped($campaignId, $context)) {
                 $rejected[$campaignId] = 'frequency_capped';
                 continue;
             }
