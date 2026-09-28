@@ -2696,6 +2696,7 @@ PROMPT;
             $vars = \App\Engines\Builder\Support\PaletteRoles::siteVarsForRoles($vars, $__manifest, $__roles, self::siteColorVars($websiteId));
             // the --lu-* roles ride along for the hover preview only; on apply the roles block is rewritten whole
             $vars = array_filter($vars, fn ($k) => ! str_starts_with((string) $k, '--lu-'), ARRAY_FILTER_USE_KEY);
+            $this->varifyTranslucentColours($websiteId);   // PALETTE-TINT-2: rgba(cream, .96) on the nav follows the palette from now on
             app(TemplateService::class)->roleifyStoredSections($websiteId);   // RISK-0191 U1: pre-roles stored sections convert on a palette change
             app(TemplateService::class)->refreshHomeAddedBlocks($websiteId);   // U3: added blocks on the export carry their field ids (before normalising, so they take the new fallbacks)
             \App\Engines\Builder\Support\PaletteRoles::normaliseExport($websiteId, $__roles, $__manifest);
@@ -2748,7 +2749,7 @@ PROMPT;
         $__cleared = $isStatic ? $this->clearSectionTints($websiteId) : 0;   // PALETTE-TINT-1
         return ['success' => true, 'palette' => (string) ($theme['id'] ?? $themeId), 'label' => $label,
             'applied' => (int) ($res['applied'] ?? 0), 'vars' => $vars, 'credits' => 0, 'tints_cleared' => $__cleared,
-            'message' => "Switched to {$label}." . ($__cleared ? ' I also took off the ' . ($__cleared === 1 ? 'tint' : $__cleared . ' tints') . ' you had on ' . ($__cleared === 1 ? 'a section' : 'sections') . ' so the new colours show.' : '') . ' Undo puts the old colours back.'];
+            'message' => "Switched to {$label}." . ($__cleared ? ' I also cleared the colour' . ($__cleared === 1 ? '' : 's') . ' you had set on ' . ($__cleared === 1 ? 'a section' : 'sections') . ', so the new palette shows everywhere.' : '') . ' Undo puts the old colours back.'];
     }
 
     /**
@@ -2758,6 +2759,45 @@ PROMPT;
      * whole site, so it takes those veils off (the palette's own snapshot is taken first, so Undo brings them back).
      * Returns how many sections were cleared.
      */
+    /**
+     * PALETTE-TINT-2 (Owner 2026-09-28: "Palette bug is still the same on mobile"): designs write some surfaces as a
+     * translucent literal of a palette colour — the sticky nav is rgba(253,246,236,.96), i.e. --cream at 96% — so a
+     * palette switch changed --cream and the nav kept the old cream. Before the switch, every rgba() in the page's own
+     * stylesheets whose colour is one of the site's colour variables becomes color-mix() of that variable, once; from
+     * then on those surfaces follow every palette. Arthur's own style block is left alone. Returns replacements made.
+     */
+    private function varifyTranslucentColours(int $websiteId): int
+    {
+        $vars = self::siteColorVars($websiteId);   // --name => #HEX (current values, before the switch)
+        if ($vars === []) return 0;
+        $byHex = [];
+        foreach ($vars as $name => $hex) {
+            $h = strtoupper((string) $hex); if (! preg_match('/^#[0-9A-F]{6}$/', $h) || str_starts_with((string) $name, '--lu-')) continue;
+            // prefer the plain name over -soft / -deep variants when two variables share a colour
+            if (! isset($byHex[$h]) || strlen((string) $name) < strlen($byHex[$h])) $byHex[$h] = (string) $name;
+        }
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $files = glob("{$root}/*.html") ?: [];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $nested) { if (! str_contains($nested, '/.history/')) $files[] = $nested; }
+        $total = 0;
+        foreach (array_unique($files) as $file) {
+            $html = @file_get_contents($file); if ($html === false || $html === '') continue;
+            $new = preg_replace_callback('~<style(?![^>]*id="lug-design-extras")([^>]*)>(.*?)</style>~is', function ($m) use ($byHex, &$total) {
+                $css = preg_replace_callback('/rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(0?\.\d+|1(?:\.0+)?|0)\s*\)/i', function ($c) use ($byHex, &$total) {
+                    $hex = sprintf('#%02X%02X%02X', min(255, (int) $c[1]), min(255, (int) $c[2]), min(255, (int) $c[3]));
+                    if (! isset($byHex[$hex])) return $c[0];
+                    $pct = rtrim(rtrim(number_format((float) $c[4] * 100, 2, '.', ''), '0'), '.');
+                    $total++;
+                    return 'color-mix(in srgb,var(' . $byHex[$hex] . ') ' . $pct . '%,transparent)';
+                }, $m[2]);
+                return '<style' . $m[1] . '>' . $css . '</style>';
+            }, $html);
+            if (is_string($new) && $new !== $html) @file_put_contents($file, $new);
+        }
+        if ($total) Log::info('[PALETTE-TINT-2] translucent palette colours linked to their variables', ['website' => $websiteId, 'count' => $total]);
+        return $total;
+    }
+
     private function clearSectionTints(int $websiteId): int
     {
         try {
@@ -2772,6 +2812,8 @@ PROMPT;
                 $css = $this->fxRules((string) $key, $st, null);
                 if ($css === '') unset($extras[$rk]); else $rules[$rk] = $css;
             }
+            // PALETTE-TINT-2: a section colour set by hand ("make the menu grey") is a fixed colour too — it goes with the veils
+            foreach (array_keys($extras) as $ek) { if (str_starts_with((string) $ek, 'colour_section_')) { unset($extras[$ek]); $n++; } }
             if ($n === 0) return 0;
             $tv['element_fx'] = $fx; $tv['design_extras'] = $extras;
             if (! self::writeDesignExtras($websiteId, $rules, $tv)) return 0;
