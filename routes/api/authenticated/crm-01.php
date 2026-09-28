@@ -46,6 +46,19 @@ use Illuminate\Support\Facades\Route;
     Route::prefix('crm')->group(function () {
         $c = \App\Engines\CRM\Http\Controllers\CrmController::class;
 
+        // CRM-UX-2 (Clients revamp Phase 2): the new Clients screens
+        $k = \App\Engines\CRM\Http\Controllers\ClientsController::class;
+        Route::get('/setup', [$k, 'setup']);
+        Route::put('/setup/{businessId}', [$k, 'saveSetup'])->whereNumber('businessId');
+        Route::get('/today-v2', [$k, 'today']);
+        Route::get('/reports-v2', [$k, 'reports']);
+        Route::get('/clients', [$k, 'index']);
+        Route::post('/clients', [$k, 'store']);
+        Route::post('/clients/bulk', [$k, 'bulk']);
+        Route::get('/clients/{id}', [$k, 'show'])->whereNumber('id');
+        Route::put('/clients/{id}/stage', [$k, 'stage'])->whereNumber('id');
+        Route::put('/clients/{id}/fields', [$k, 'fields'])->whereNumber('id');
+
         // Leads (12 routes)
         Route::get('/leads', [$c, 'listLeads']);
         Route::post('/leads', [$c, 'createLead']);
