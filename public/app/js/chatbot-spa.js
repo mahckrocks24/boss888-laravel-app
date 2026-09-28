@@ -163,12 +163,12 @@
     document.getElementById('cb-body').innerHTML =
       '<div style="padding:60px 24px;text-align:center;background:rgba(108,92,231,0.05);border:1px solid rgba(108,92,231,0.2);border-radius:14px">' +
         '<div style="margin-bottom:12px;color:var(--t3)">' + (window.icon ? window.icon('lock', 42) : '') + '</div>' +
-        '<div style="font-size:18px;font-weight:600;color:var(--t1);margin-bottom:6px">Chatbot is a Pro feature</div>' +
+        '<div style="font-size:18px;font-weight:600;color:var(--t1);margin-bottom:6px">The AI chatbot is part of the AI plans</div>' +
         '<div style="font-size:13px;color:var(--t3);margin-bottom:20px;max-width:420px;margin-left:auto;margin-right:auto">' +
           'Add a smart AI front desk to every page of your website. Capture leads, book appointments, answer FAQs 24/7. ' +
-          'Available on the Pro ($199/mo) and Agency ($399/mo) plans.' +
+          'Included from AI Lite ($49/mo). Until then, the chat button on your website opens a contact form, and messages arrive in Clients as leads.' +
         '</div>' +
-        '<button onclick="nav(\'billing\')" style="background:linear-gradient(135deg,var(--p),var(--pu));color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:13px;font-weight:600;cursor:pointer">Upgrade to Pro</button>' +
+        '<button onclick="nav(\'billing\')" style="background:linear-gradient(135deg,var(--p),var(--pu));color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:13px;font-weight:600;cursor:pointer">Choose a plan</button>' +
       '</div>';
   }
 

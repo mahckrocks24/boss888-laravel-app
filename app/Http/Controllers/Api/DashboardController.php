@@ -259,7 +259,7 @@ class DashboardController
             ->limit(6)
             ->get(['id', 'name', 'status', 'subdomain', 'custom_domain', 'published_at', 'updated_at'])
             ->map(function ($w) {
-                $host = $w->custom_domain ?: ($w->subdomain ? $w->subdomain . '.levelupgrowth.io' : null);
+                $host = $w->custom_domain ?: ($w->subdomain ? (str_contains((string) $w->subdomain, '.') ? $w->subdomain : $w->subdomain . '.levelupgrowth.io') : null);   // the subdomain column already holds the full host on newer sites
                 return [
                     'id'            => $w->id,
                     'name'          => $w->name,

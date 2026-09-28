@@ -7511,7 +7511,9 @@ function _cmdcRenderFeed(items, isPoll) {
   if (!el) return;
   if (countEl) countEl.textContent = items.length ? (items.length + ' events') : '';
   if (!items.length) {
-    el.innerHTML = '<div class="cmd-empty">Your team is warming up.<br>Sarah runs her first analysis within 24 hours of signup.</div>';
+    el.innerHTML = (window.__luSarahIncluded === false)   // PLAN-LOCK-1: never promise work a Free plan will not get
+      ? '<div class="cmd-empty">Sarah and the team are paused on your current plan.<br>Choose a plan under Settings › Plan &amp; billing to bring them back.</div>'
+      : '<div class="cmd-empty">Your team is warming up.<br>Sarah runs her first analysis within 24 hours of signup.</div>';
     return;
   }
   var prevIds = _cmdcLastFeedIds;
@@ -8742,7 +8744,7 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
   }
   function check() {
     var f = (typeof _luFetch === 'function') ? _luFetch : window._luFetch; if (typeof f !== 'function') return;
-    try { f('GET', '/workspace/status').then(function (r) { return r && r.ok ? r.json() : null; }).then(function (s) { if (!s) return; locked = s.sarah_included === false; paint(); }).catch(function () {}); } catch (e) {}
+    try { f('GET', '/workspace/status').then(function (r) { return r && r.ok ? r.json() : null; }).then(function (s) { if (!s) return; locked = s.sarah_included === false; window.__luSarahIncluded = !locked; paint(); }).catch(function () {}); } catch (e) {}
   }
   function start() { setTimeout(check, 2500); setInterval(check, 600000); document.addEventListener('click', function () { if (locked) setTimeout(paint, 400); }, true); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
