@@ -542,12 +542,7 @@ function _dashHtml() {
             '</div>'+
         '</div>'+
         '<div class="card" style="padding:20px;margin-bottom:20px"><h3 style="margin:0 0 12px;font-size:13px;font-weight:600">Upcoming Appointments</h3>'+apptRows+
-            '<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%;font-size:11px" onclick="window._crmTab(\'appointments\')">View All →</button></div>'+
-        '<div style="display:flex;gap:10px">'+
-            '<button class="btn btn-primary" onclick="window._crmTab(\'leads\')" style="flex:1">→ Leads</button>'+
-            '<button class="btn btn-outline" onclick="window._crmTab(\'pipeline\')" style="flex:1">→ Pipeline</button>'+
-            '<button class="btn btn-outline" onclick="window._crmTab(\'today\')" style="flex:1">→ Today</button>'+
-        '</div>';
+            '<button class="btn btn-outline btn-sm" style="margin-top:10px;width:100%;font-size:11px" onclick="window._crmTab(\'appointments\')">View All →</button></div>';   /* CRM-TIDY-1 (Owner 2026-09-28 "random menu at the bottom"): the Leads / Pipeline / Today shortcuts repeated the tabs at the top */
 }
 function _stat(l,v,c){return '<div class="card crm-kpi" style="padding:20px"><div class="crm-kpi-label" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--t3);margin-bottom:8px">'+l+'</div><div class="crm-kpi-value" style="font-size:36px;font-weight:700;color:'+c+'">'+v+'</div></div>';}
 
