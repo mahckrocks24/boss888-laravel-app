@@ -159,7 +159,7 @@ use Illuminate\Support\Facades\Route;
         Route::get('/dashboard', function (\Illuminate\Http\Request $r) {
             $wsId = $r->attributes->get('workspace_id');
             $s = app(\App\Engines\CRM\Services\CrmService::class);
-            $leads = $s->listLeads($wsId);
+            $leads = $s->listLeads($wsId, ['business_id' => $r->input('business_id'), 'limit' => 200]); // CRM-DATA-1: per business
             $leadsList = collect($leads['leads'] ?? []);
             $stages = \Illuminate\Support\Facades\DB::table('pipeline_stages')->where('workspace_id', $wsId)->orderBy('position')->get();
             $todayActivities = \Illuminate\Support\Facades\DB::table('activities')->where('workspace_id', $wsId)->where('created_at', '>=', now()->startOfDay())->count();

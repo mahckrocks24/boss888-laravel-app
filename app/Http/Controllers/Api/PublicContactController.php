@@ -121,6 +121,15 @@ class PublicContactController
                 ->update(['updated_at' => now()]);
             $contactId = (int) $existing->id;
 
+            // CRM-DATA-1: the returning visitor's client profile in THIS business gets the enquiry (or is created)
+            try {
+                app(\App\Engines\CRM\Services\CrmService::class)->captureLead($wsId, [
+                    'name' => $validated['firstname'], 'email' => $validated['email'], 'phone' => $validated['phone'] ?? null,
+                    'website_id' => $__websiteId, 'source' => $__source, 'activity' => $validated['message'],
+                    'metadata' => ['first_message' => $validated['message'], 'subdomain' => $subdomain, 'contact_id' => $contactId, 'website_id' => $__websiteId, 'submitted_at' => now()->toIso8601String()],
+                ]);
+            } catch (\Throwable $e) { Log::warning('[PublicContact] client profile update failed', ['workspace_id' => $wsId, 'error' => $e->getMessage()]); }
+
             // Log touchpoint via activities (polymorphic to App\Models\Contact)
             DB::table('activities')->insert([
                 'workspace_id'     => $wsId,
@@ -164,11 +173,10 @@ class PublicContactController
             // submissions were invisible despite the contact existing.
             // Dedupe by (workspace_id, email) so we never double-create.
             try {
-                $existingLead = DB::table('leads')
-                    ->where('workspace_id', $wsId)
-                    ->where('email', $validated['email'])
-                    ->whereNull('deleted_at')
-                    ->first();
+                // CRM-DATA-1: the same person in THIS business is the same client; another business gets its own profile
+                $existingLead = \App\Engines\CRM\Services\ClientIdentity::existingProfile($wsId,
+                    \App\Engines\CRM\Services\ClientIdentity::resolveBusiness($wsId, ['website_id' => $__websiteId])[0], $validated['email'], $validated['phone'] ?? null);
+                $__socialDone = false;
                 // SOCIAL-LEADS-1 (RFC-0016 P1): the visitor came from a tracked social link (lug_ref cookie) whose comment is
                 // already a lead — complete THAT lead (email, phone, message) instead of creating a second one. Source stays
                 // facebook_comment; the form is recorded as the conversion.
@@ -182,36 +190,33 @@ class PublicContactController
                         DB::table('leads')->where('id', $__sl->id)->update(['email' => $validated['email'], 'phone' => $validated['phone'] ?? $__sl->phone,
                             'metadata_json' => json_encode($__m, JSON_UNESCAPED_UNICODE), 'updated_at' => now()]);
                         $existingLead = DB::table('leads')->where('id', $__sl->id)->first();
+                        $__socialDone = true;
                     } elseif (! $existingLead) {
                         $__source = 'website_form';   // no social lead yet: a website lead, attributed below
                         $request->attributes->set('lug_social_ref', ['code' => $__tl->code, 'source_type' => $__tl->source_type, 'source_id' => $__tl->source_id]);
                     }
                 }
-                if (!$existingLead) {
-                    DB::table('leads')->insert([
-                        'workspace_id'  => $wsId,
-                        'name'          => $validated['firstname'],
-                        'email'         => $validated['email'],
-                        'phone'         => $validated['phone'] ?? null,
-                        'website_id'    => $__websiteId, // KABAYAN888 JOBS-1
-                        'source'        => $__source,    // KABAYAN888 JOBS-1
-                        'status'        => 'new',
-                        'score'         => 0,
-                        'deal_value'    => 0,
-                        'metadata_json' => json_encode([
+                if ($__socialDone) {
+                    // the social lead was completed above; nothing more to create
+                    DB::table('leads')->where('id', $existingLead->id)->update(['updated_at' => now()]);
+                } else {
+                    // CRM-DATA-1: one door for every enquiry — business, person, channel, scoring, automations,
+                    // and a repeat enquiry from the same person lands on their timeline instead of a second lead
+                    app(\App\Engines\CRM\Services\CrmService::class)->captureLead($wsId, [
+                        'name'       => $validated['firstname'],
+                        'email'      => $validated['email'],
+                        'phone'      => $validated['phone'] ?? null,
+                        'website_id' => $__websiteId,
+                        'source'     => $__source,
+                        'activity'   => $validated['message'],
+                        'metadata'   => [
                             'first_message' => $validated['message'],
                             'subdomain'     => $subdomain,
                             'contact_id'    => $contactId,
+                            'website_id'    => $__websiteId,
                             'submitted_at'  => now()->toIso8601String(),
                             'social_ref'    => $request->attributes->get('lug_social_ref'),   // SOCIAL-LEADS-1: arrived from a tracked social link
-                        ]),
-                        'created_at'    => now(),
-                        'updated_at'    => now(),
-                    ]);
-                } else {
-                    // Touch existing lead so it floats back up in the UI.
-                    DB::table('leads')->where('id', $existingLead->id)->update([
-                        'updated_at' => now(),
+                        ],
                     ]);
                 }
             } catch (\Throwable $e) {

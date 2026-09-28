@@ -16,7 +16,7 @@
 // ── Claim engine slot ─────────────────────────────────────────────────────────
 window.LU_LOADED_ENGINES = window.LU_LOADED_ENGINES || {};
 window.LU_LOADED_ENGINES['crm'] = true;
-console.log('[LuCRM] v3.6.0 + CRM-FIX-0 — engine slot claimed');
+console.log('[LuCRM] v3.6.0 + CRM-FIX-0 + CRM-DATA-1 — engine slot claimed');
 
 // ── State ─────────────────────────────────────────────────────────────────────
 var _crm = {
@@ -54,7 +54,19 @@ async function _crmSend(method, path, payload) {
     if (!res.ok || (body && body.success === false)) { var m = (body && (body.message || body.error)) || ('HTTP ' + res.status); throw new Error(m); }
     return body || {};
 }
-var _crmQ = {search:'', source:'', offset:0, total:0};
+var _crmQ = {search:'', source:'', offset:0, total:0, business:''};
+var _crmBiz = []; /* CRM-DATA-1: the workspace's businesses; the filter shows when there are 2+ */
+function _crmMulti() { return _crmBiz.length > 1; }
+function _crmBizChip(l) { if (!_crmMulti() || _crmQ.business) return ''; var n = l.business_name || 'No business yet'; return '<div style="font-size:11px;color:var(--t3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="Business">'+window.icon("more",12)+' '+_e(n)+'</div>'; }
+function _crmBizBar() {
+    if (!_crmMulti()) return '';
+    var opts = '<option value="">All businesses</option>' + _crmBiz.map(function(b){ return '<option value="'+b.id+'"'+(String(_crmQ.business)===String(b.id)?' selected':'')+'>'+_e(b.name)+'</option>'; }).join('') + '<option value="none"'+(_crmQ.business==='none'?' selected':'')+'>Not tied to a business yet</option>';
+    return '<div style="display:flex;align-items:center;gap:10px;margin:-6px 0 16px;flex-wrap:wrap"><label for="crm-biz" style="font-size:12px;font-weight:600;color:var(--t3)">Business</label><select id="crm-biz" class="form-select" style="max-width:320px" onchange="window._crmSetBiz(this.value)">'+opts+'</select></div>';
+}
+window._crmSetBiz = async function(v) { _crmQ.business = v || ''; var el = document.getElementById('crm-root'); if (el) el.innerHTML = loadingCard(200);
+    var d = await _crmGet(_crmLeadsPath(0)).catch(function(){ return null; }); if (d && d.leads) { _crm.leads = d.leads; _crmQ.total = d.total || d.leads.length; }
+    var dsh = await _crmGet('/dashboard' + (_crmQ.business ? '?business_id=' + encodeURIComponent(_crmQ.business) : '')).catch(function(){ return null; }); if (dsh) _crm.dash = dsh;
+    try { _crmRender(el); } catch(e) {} };
 (function _crmCss(){ if (document.getElementById('crm-fix0-css')) return; var st = document.createElement('style'); st.id = 'crm-fix0-css'; st.textContent =
   '.crm-detail-grid{display:grid;grid-template-columns:300px 1fr;gap:20px;align-items:start}' +
   '.crm-kanban{display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;align-items:flex-start}' +
@@ -151,8 +163,10 @@ window.crmLoad = async function(el) {
       _crmGet('/modules').catch(function(){return {};}),
       _crmGet('/settings').catch(function(){return {};}),
       _crmGet('/tasks?status=pending').catch(function(){return {tasks:[]};}),
-      _crmGet('/appointments?upcoming=1').catch(function(){return {appointments:[]};})
+      _crmGet('/appointments?upcoming=1').catch(function(){return {appointments:[]};}),
+      fetch('/api/businesses', {headers:_crmAuthHeaders()}).then(function(r){return r.ok?r.json():{};}).catch(function(){return {};})
     ]);
+    var _bz = _all[8] || {}; _crmBiz = (_bz.businesses || _bz.data || (Array.isArray(_bz) ? _bz : [])).map(function(b){ return {id:b.id, name:b.name}; });
     var dash = _all[0], stages = _all[1], leads = _all[2], contacts = _all[3], modules = _all[4], settings = _all[5], tasks = _all[6], appts = _all[7];
 
     _crm.dash     = dash;
@@ -249,6 +263,7 @@ function _crmRender(el) {
         '<div style="padding:24px;min-height:100%;box-sizing:border-box">' +
             '<div class="page-header" style="margin-top:10px"><div class="page-header-left"><h1>Clients</h1></div></div>' +
             '<div class="crm-tab-bar" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;border-bottom:1px solid var(--bd);padding-bottom:16px">'+tabsHtml+'</div>' +
+            ((_crm.tab==='dashboard'||_crm.tab==='leads'||_crm.tab==='pipeline') ? _crmBizBar() : '') +
             body +
         '</div>';
 }
@@ -381,7 +396,7 @@ function _leadCard(lead, stage) {
         // Name + task flag
         '<div style="font-size:13px;font-weight:600;color:var(--t1);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' +
             _e(lead.name) + (dueFlag ? ' <span title="Overdue/due task">'+dueFlag+'</span>' : '') +
-        '</div>' +
+        '</div>' + _crmBizChip(lead) +
 
         // Company
         (lead.company ? '<div style="font-size:11px;color:var(--t3);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+_e(lead.company)+'</div>' : '') +
@@ -567,7 +582,7 @@ function _taskRows(tasks){
 // =============================================================================
 // LEADS TABLE — with score column
 // =============================================================================
-function _crmLeadsPath(offset) { var p = '/leads?limit=100&offset=' + (offset||0); if (_crmQ.search) p += '&search=' + encodeURIComponent(_crmQ.search); if (_crmQ.source) p += '&source=' + encodeURIComponent(_crmQ.source); return p; }
+function _crmLeadsPath(offset) { var p = '/leads?limit=100&offset=' + (offset||0) + (_crmQ.business ? '&business_id=' + encodeURIComponent(_crmQ.business) : ''); if (_crmQ.search) p += '&search=' + encodeURIComponent(_crmQ.search); if (_crmQ.source) p += '&source=' + encodeURIComponent(_crmQ.source); return p; }
 function _leadsHtml() {
     var srcCounts = (_crm.dash && Array.isArray(_crm.dash.leads_by_source)) ? _crm.dash.leads_by_source : [];
     var rows=_crm.leads.map(function(l){
@@ -575,7 +590,7 @@ function _leadsHtml() {
         var flags=_crm.taskFlags[String(l.id)]||{};
         var ind=flags.overdue?'<span style="margin-left:5px" title="Overdue task">'+window.icon("info",14)+'</span>':flags.today?'<span style="margin-left:5px" title="Task due today">'+window.icon("info",14)+'</span>':'';
         return '<tr onmouseover="this.style.background=\'rgba(255,255,255,.03)\'" onmouseout="this.style.background=\'\'">'+
-            '<td data-label="Name" style="padding:11px 14px;font-weight:500;color:var(--t1);cursor:pointer" onclick="window._crmOpenDetail('+l.id+')">'+_e(l.name)+ind+'</td>'+
+            '<td data-label="Name" style="padding:11px 14px;font-weight:500;color:var(--t1);cursor:pointer" onclick="window._crmOpenDetail('+l.id+')"><div>'+_e(l.name)+ind+_crmBizChip(l)+'</div></td>'+
             '<td data-label="Email" style="padding:11px 14px;color:var(--t2);font-size:12px;word-break:break-all">'+_e(l.email||'—')+'</td>'+
             '<td data-label="Phone" style="padding:11px 14px;color:var(--t2);font-size:12px">'+_e(l.phone||'—')+'</td>'+
             '<td data-label="Source" style="padding:11px 14px"><span style="color:var(--ac);font-size:12px">'+_e(_crmSource(l))+'</span></td>'+
@@ -686,7 +701,7 @@ function _renderDetail(el,lead){
                         '<div><div style="font-size:15px;font-weight:700;color:var(--t1)">'+_e(lead.name||'—')+'</div><span class="badge badge-purple" style="margin-top:4px">'+_e(st.name)+'</span></div>'+
                     '</div>'+
                     '<div style="margin-bottom:12px">'+_scoreBadge(lead.score)+'</div>'+
-                    _dfLink('Email',lead.email,'mailto:')+_dfLink('Phone',lead.phone,'tel:')+_df('Company',lead.company)+_df('Source',lead.source?_crmSource(lead):'')+_df('Created',_fmtDate(lead.created_at))+'<div style="margin-top:12px"><label for="crm-detail-move" style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--t3);margin-bottom:6px">Stage</label><select id="crm-detail-move" class="form-select" onchange="window._crmMoveLead('+lead.id+',this.value).then(function(){})">'+_CRM_STATUSES.map(function(s){return '<option value="'+s.id+'"'+(s.id===st.id?' selected':'')+'>'+_e(s.name)+'</option>';}).join('')+'</select></div>'+
+                    _dfLink('Email',lead.email,'mailto:')+_dfLink('Phone',lead.phone,'tel:')+_df('Company',lead.company)+(_crmMulti()?_df('Business',lead.business_name||(_crmBiz.find(function(b){return String(b.id)===String(lead.business_id);})||{}).name||'Not tied to a business yet'):'')+_df('Source',lead.source?_crmSource(lead):'')+_df('Created',_fmtDate(lead.created_at))+'<div style="margin-top:12px"><label for="crm-detail-move" style="display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--t3);margin-bottom:6px">Stage</label><select id="crm-detail-move" class="form-select" onchange="window._crmMoveLead('+lead.id+',this.value).then(function(){})">'+_CRM_STATUSES.map(function(s){return '<option value="'+s.id+'"'+(s.id===st.id?' selected':'')+'>'+_e(s.name)+'</option>';}).join('')+'</select></div>'+
                     '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:16px" onclick="window._crmEditLead('+lead.id+')">'+window.icon("edit",14)+' Edit Lead</button>'+
                 '</div>'+
             '</div>'+
@@ -790,7 +805,7 @@ window._crmSaveSet=async function(){var bizEl=document.getElementById('crmBizTyp
 window._crmNewLead=function(){_leadModal(null);};
 window._crmEditLead=async function(id){var lead=_crm.leads.find(function(l){return l.id==id;});if(!lead){lead=await _crmGet('/leads/'+id).catch(function(){return null;});}if(!lead){showToast('Could not load lead.','error');return;}_leadModal(lead);};
 function _leadModal(lead){var isEdit=!!(lead&&lead.id);var curSt=lead?_crmStatus(lead).id:'new';var stOpts=_CRM_STATUSES.map(function(s){return '<option value="'+s.id+'"'+(s.id===curSt?' selected':'')+'>'+_e(s.name)+'</option>';}).join('');var bd=document.createElement('div');bd.className='modal-backdrop';bd.innerHTML='<div class="modal" style="max-width:500px;max-height:90vh;overflow-y:auto"><div class="modal-header"><h3>'+(isEdit?'Edit Lead':'New Lead')+'</h3><button class="btn btn-ghost btn-sm" onclick="this.closest(\'.modal-backdrop\').remove()">✕</button></div><div style="padding:20px;display:grid;gap:14px">'+_fi('Name','cl-n','text','Full name',lead?lead.name:'',true)+_fi('Email','cl-e','email','email@example.com',lead?(lead.email||''):'')+_fi('Phone','cl-p','tel','+971 50 000 0000',lead?(lead.phone||''):'')+_fi('Company','cl-c','text','Company name',lead?(lead.company||''):'')+'<div><label for="cl-s" style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Where did they come from?</label><select class="form-select" id="cl-s">'+_crmSourceOpts(lead?lead.source:'manual')+'</select></div>'+'<div><label for="cl-stg" style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">Stage</label><select class="form-select" id="cl-stg">'+stOpts+'</select></div>'+_fi('Deal Value (optional)','cl-dv','number','0.00',lead?(lead.deal_value||''):'')+'<div id="cl-err" style="display:none;color:var(--rd);font-size:12px;padding:8px 12px;background:rgba(248,113,113,.1);border-radius:6px"></div></div><div style="padding:0 20px 20px;display:flex;gap:10px;justify-content:flex-end"><button class="btn btn-outline" onclick="this.closest(\'.modal-backdrop\').remove()">Cancel</button><button class="btn btn-primary" id="cl-btn">'+(isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead')+'</button></div></div>';document.body.appendChild(bd);requestAnimationFrame(function(){bd.classList.add('visible');});try{bd.querySelector('#cl-n').focus();}catch(e){}
-    bd.querySelector('#cl-btn').onclick=async function(){var name=bd.querySelector('#cl-n').value.trim();var source=bd.querySelector('#cl-s').value.trim();var errEl=bd.querySelector('#cl-err');var btn=bd.querySelector('#cl-btn');errEl.style.display='none';if(!name){errEl.textContent='Name is required.';errEl.style.display='block';return;}var payload={name:name,email:bd.querySelector('#cl-e').value.trim(),phone:bd.querySelector('#cl-p').value.trim(),company:bd.querySelector('#cl-c').value.trim(),deal_value:parseFloat(bd.querySelector('#cl-dv').value)||0};if(source)payload.source=source;var newSt=bd.querySelector('#cl-stg').value;if(!isEdit||newSt!==curSt)payload.status=newSt;btn.disabled=true;btn.textContent='Saving…';var url=_crmUrl(isEdit?'/leads/'+lead.id:'/leads');var nonce=_crmNonce();console.log('[LuCRM] Saving lead…',url);var res,body;try{res=await fetch(url,{method:isEdit?'PUT':'POST',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify(payload)});}catch(e){errEl.textContent='Network error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead response:',res.status,res.ok?'✓':'✗');try{body=await res.json();}catch(e){body={};}if(!res.ok||(body&&body.success===false)){errEl.textContent='Not saved: '+((body&&(body.message||body.error))||res.status);errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead saved ✓');bd.remove();showToast(isEdit?'Lead updated!':'Lead created!','success');await _crmReload('leads');};}
+    bd.querySelector('#cl-btn').onclick=async function(){var name=bd.querySelector('#cl-n').value.trim();var source=bd.querySelector('#cl-s').value.trim();var errEl=bd.querySelector('#cl-err');var btn=bd.querySelector('#cl-btn');errEl.style.display='none';if(!name){errEl.textContent='Name is required.';errEl.style.display='block';return;}var payload={business_id:(!isEdit&&_crmQ.business&&_crmQ.business!=='none')?parseInt(_crmQ.business):undefined,name:name,email:bd.querySelector('#cl-e').value.trim(),phone:bd.querySelector('#cl-p').value.trim(),company:bd.querySelector('#cl-c').value.trim(),deal_value:parseFloat(bd.querySelector('#cl-dv').value)||0};if(source)payload.source=source;var newSt=bd.querySelector('#cl-stg').value;if(!isEdit||newSt!==curSt)payload.status=newSt;btn.disabled=true;btn.textContent='Saving…';var url=_crmUrl(isEdit?'/leads/'+lead.id:'/leads');var nonce=_crmNonce();console.log('[LuCRM] Saving lead…',url);var res,body;try{res=await fetch(url,{method:isEdit?'PUT':'POST',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')},body:JSON.stringify(payload)});}catch(e){errEl.textContent='Network error: '+e.message;errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead response:',res.status,res.ok?'✓':'✗');try{body=await res.json();}catch(e){body={};}if(!res.ok||(body&&body.success===false)){errEl.textContent='Not saved: '+((body&&(body.message||body.error))||res.status);errEl.style.display='block';btn.disabled=false;btn.textContent=isEdit?''+window.icon("save",14)+' Save Changes':'+ Create Lead';return;}console.log('[LuCRM] Lead saved ✓');bd.remove();showToast(isEdit?'Lead updated!':'Lead created!','success');await _crmReload('leads');};}
 function _crmSourceOpts(cur){var list=[['manual','Added by you'],['phone','Phone call'],['walk_in','Walk-in'],['referral','Referral'],['email','Email'],['website','Website'],['social','Social media'],['other','Other']];cur=String(cur||'manual');if(!list.some(function(x){return x[0]===cur;}))list.unshift([cur,_crmSource({source:cur})]);return list.map(function(x){return '<option value="'+_e(x[0])+'"'+(x[0]===cur?' selected':'')+'>'+_e(x[1])+'</option>';}).join('');}
 function _fi(label,id,type,ph,val,required){return '<div><label style="display:block;font-size:12px;font-weight:600;color:var(--t3);margin-bottom:6px">'+label+(required?' <span style="color:var(--rd)">*</span>':'')+'</label><input class="form-input" id="'+id+'" type="'+type+'" placeholder="'+_e(ph)+'" value="'+_e(val)+'"></div>';}
 window._crmDelLead=async function(id){var ok=await luConfirm('Delete this lead permanently?','Delete Lead','Delete','Cancel');if(!ok)return;var res;try{res=await fetch(_crmUrl('/leads/'+id),{method:'DELETE',headers:{'Content-Type':'application/json','Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '')}});}catch(e){showToast('Network error.','error');return;}var body;try{body=await res.json();}catch(e){body={};}if(!res.ok){showToast('Delete failed: '+((body&&body.message)||res.status),'error');return;}showToast('Lead deleted.','success');await _crmReload('leads');};

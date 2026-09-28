@@ -17,6 +17,7 @@ class Lead extends Model
         'source', 'status', 'score', 'deal_value',
         'metadata_json', 'assigned_to',
         'website', 'city', 'country', 'tags_json', 'last_contacted_at', 'converted_at', // CRM-FIX-0: were silently dropped
+        'business_id', 'person_id', 'channel', 'business_source', 'website_id', // CRM-DATA-1
     ];
 
     protected function casts(): array

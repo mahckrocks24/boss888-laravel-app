@@ -59,6 +59,7 @@ class BookingService
         try {
             $id = DB::table('booking_submissions')->insertGetId([
                 'website_id'     => $websiteId,
+                'business_id'    => DB::table('websites')->where('id', $websiteId)->value('business_id'), // CRM-DATA-1
                 'name'           => $name !== '' ? mb_substr($name, 0, 150) : null,
                 'email'          => $email !== '' ? mb_substr($email, 0, 255) : null,
                 'phone'          => $phone !== '' ? mb_substr($phone, 0, 50) : null,

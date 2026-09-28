@@ -89,9 +89,6 @@ class PublicBookingController
         $kind = str_contains(strtolower((string) ($data['form'] ?? '')), 'quote') ? 'quote' : 'booking';
 
         // ── Lead (de-duped by email within the workspace) ───────────────────────────────────
-        $lead = $email !== ''
-            ? DB::table('leads')->where('workspace_id', $wsId)->where('email', $email)->whereNull('deleted_at')->first()
-            : null;
         $meta = [
             'source'         => 'website_form',
             'form'           => $data['form'] ?? 'booking',
@@ -104,29 +101,16 @@ class PublicBookingController
             'extra'          => $data['extra'] ?? null,
             'submitted_at'   => now()->toIso8601String(),
         ];
-        if ($lead) {
-            DB::table('leads')->where('id', $lead->id)->update([
-                'phone'         => $phone !== '' ? $phone : $lead->phone,
-                'website_id'    => $lead->website_id ?: (int) $website->id,
-                'metadata_json' => json_encode(array_merge((array) json_decode((string) $lead->metadata_json, true), ['last_booking_request' => $meta])),
-                'updated_at'    => now(),
-            ]);
-            $leadId = (int) $lead->id;
-        } else {
-            $leadId = (int) DB::table('leads')->insertGetId([
-                'workspace_id'  => $wsId,
-                'website_id'    => (int) $website->id,
-                'name'          => $name,
-                'email'         => $email !== '' ? $email : null,
-                'phone'         => $phone !== '' ? $phone : null,
-                'source'        => 'website_form',
-                'status'        => 'new',
-                'score'         => 0,
-                'deal_value'    => 0,
-                'metadata_json' => json_encode($meta),
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
+        // CRM-DATA-1: through the one door — deduped per business (email or phone), channel "booking", automations fire
+        $__cap = app(\App\Engines\CRM\Services\CrmService::class)->captureLead($wsId, [
+            'name' => $name, 'email' => $email !== '' ? $email : null, 'phone' => $phone !== '' ? $phone : null,
+            'website_id' => (int) $website->id, 'source' => $kind === 'quote' ? 'quote_form' : 'booking_form', 'metadata' => $meta,
+            'activity' => ucfirst($kind) . ' request' . (! empty($data['service']) ? ' — ' . $data['service'] : '') . (! empty($data['preferred_date']) ? ' on ' . $data['preferred_date'] : ''),
+        ]);
+        $leadId = (int) $__cap['lead']->id;
+        if (! $__cap['created']) {
+            $__old = DB::table('leads')->where('id', $leadId)->value('metadata_json');
+            DB::table('leads')->where('id', $leadId)->update(['metadata_json' => json_encode(array_merge((array) json_decode((string) $__old, true), ['last_booking_request' => $meta]))]);
         }
 
         // ── Calendar: the request as a pending booking the owner confirms or declines ───────

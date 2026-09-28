@@ -242,10 +242,44 @@ class CrmService
         return ['success' => false, 'error' => 'scoring failed', 'detail' => $result['error'] ?? null];
     }
 
+    /**
+     * CRM-DATA-1: the one door for an enquiry from any channel (website form, booking, store order, chatbot, social).
+     * Same human in the same business = the same client profile: missing details are filled in and the repeat
+     * enquiry goes on their timeline. A new human (or the same human in another business) = a new profile.
+     *
+     * @return array{lead: Lead, created: bool}
+     */
+    public function captureLead(int $wsId, array $data): array
+    {
+        [$bizId] = ClientIdentity::resolveBusiness($wsId, $data);
+        $existing = ClientIdentity::existingProfile($wsId, $bizId, $data['email'] ?? null, $data['phone'] ?? null);
+        if ($existing) {
+            $fill = [];
+            if (empty($existing->email) && ClientIdentity::emailKey($data['email'] ?? null)) $fill['email'] = trim((string) $data['email']);
+            if (empty($existing->phone) && ! empty($data['phone'])) $fill['phone'] = $data['phone'];
+            if (empty($existing->website_id) && ! empty($data['website_id'])) $fill['website_id'] = (int) $data['website_id'];
+            DB::table('leads')->where('id', $existing->id)->update($fill + ['updated_at' => now()]);
+            $what = trim((string) ($data['activity'] ?? ''));
+            $this->logActivityInternal($wsId, 'Lead', (int) $existing->id, 'repeat_enquiry',
+                'Came back through ' . str_replace('_', ' ', (string) ($data['source'] ?? 'the website')) . ($what !== '' ? ': ' . mb_substr($what, 0, 500) : ''), null);
+            if (! empty($existing->person_id)) ClientIdentity::personFor($wsId, $data['name'] ?? null, $data['email'] ?? null, $data['phone'] ?? null);
+            return ['lead' => Lead::find($existing->id), 'created' => false];
+        }
+        return ['lead' => $this->createLead($wsId, $data), 'created' => true];
+    }
+
     public function createLead(int $wsId, array $data): Lead
     {
+        // CRM-DATA-1: every new client profile knows its business, its person and its channel
+        [$bizId, $bizHow] = ClientIdentity::resolveBusiness($wsId, $data);
+        $personId = ClientIdentity::personFor($wsId, $data['name'] ?? null, $data['email'] ?? null, $data['phone'] ?? null);
         $lead = Lead::create([
             'workspace_id' => $wsId,
+            'business_id' => $bizId,
+            'business_source' => $bizHow,
+            'person_id' => $personId,
+            'website_id' => ! empty($data['website_id']) ? (int) $data['website_id'] : ((is_array($data['metadata'] ?? null) && ! empty($data['metadata']['website_id'])) ? (int) $data['metadata']['website_id'] : null),
+            'channel' => ClientIdentity::channelFor(($data['source'] ?? null) ?: ((($data['_origin'] ?? '') === 'manual') ? 'manual' : null)),
             'name' => $data['name']
                 ?? (trim(($data['first_name'] ?? '') . ' ' . ($data['last_name'] ?? '')) ?: ($data['email'] ?? 'New Lead')),  // 2026-07-23: runtime LLM sends first_name/last_name per params_hint, not 'name'
             'email' => $data['email'] ?? null,
@@ -269,6 +303,13 @@ class CrmService
 
         // Log activity
         $this->logActivityInternal($wsId, 'Lead', $lead->id, 'lead_created', 'Lead created', $data['user_id'] ?? null);
+
+        // CRM-DATA-1: the kernel fires lead_created itself (create_lead action); every other door fires it here, so a
+        // website form, booking, order, chatbot or social lead starts the same automations as one typed in by hand.
+        if (! array_key_exists('_origin', $data)) {
+            try { app(\App\Core\EngineKernel\EngineExecutionService::class)->fireCrmTrigger($wsId, 'create_lead', $data, ['entity_type' => 'Lead', 'entity_id' => $lead->id]); }
+            catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CRM-DATA-1] lead_created automations: ' . $e->getMessage()); }
+        }
 
         return $lead->fresh();
     }
@@ -381,6 +422,12 @@ class CrmService
             $q->whereIn('status', $statuses);
         }
 
+        // CRM-DATA-1: one business, or the leads not yet tied to one ('none')
+        if (isset($filters['business_id']) && $filters['business_id'] !== '' && $filters['business_id'] !== 'all') {
+            $filters['business_id'] === 'none' ? $q->whereNull('business_id') : $q->where('business_id', (int) $filters['business_id']);
+        }
+        if (!empty($filters['channel'])) $q->where('channel', $filters['channel']);
+
         // Source filter
         if (!empty($filters['source'])) $q->where('source', $filters['source']);
 
@@ -427,6 +474,8 @@ class CrmService
         $limit = min((int)($filters['limit'] ?? 50), 200);
         $offset = (int)($filters['offset'] ?? 0);
         $leads = $q->limit($limit)->offset($offset)->get();
+        $bizNames = DB::table('businesses')->where('workspace_id', $wsId)->whereNull('deleted_at')->pluck('name', 'id');
+        foreach ($leads as $l) $l->setAttribute('business_name', $l->business_id ? ($bizNames[$l->business_id] ?? null) : null);
 
         // Source breakdown for filter UI
         $sources = Lead::where('workspace_id', $wsId)
@@ -823,8 +872,10 @@ class CrmService
         if (! Lead::where('workspace_id', $wsId)->whereKey($leadId)->exists()) return [];
         $human = ['note', 'call', 'email', 'meeting', 'task'];
         $rows = [];
-        $acts = Activity::where('workspace_id', $wsId)->whereIn('activitable_type', ['Lead', 'App\\Models\\Lead'])
-            ->where('activitable_id', $leadId)->orderByDesc('created_at')->limit(200)->get();
+        $acts = Activity::where('workspace_id', $wsId)->where(function ($w) use ($leadId) {
+                $w->where(fn ($x) => $x->whereIn('activitable_type', ['Lead', 'App\\Models\\Lead'])->where('activitable_id', $leadId))->orWhere('lead_id', $leadId);
+            })->orderByDesc('created_at')->limit(200)->get();
+        $copied = $acts->map(fn ($a) => (int) ((is_array($a->metadata_json) ? $a->metadata_json : [])['note_id'] ?? 0))->filter()->all();
         foreach ($acts as $a) {
             $meta = is_array($a->metadata_json) ? $a->metadata_json : (json_decode((string) $a->metadata_json, true) ?: []);
             $title = trim((string) ($a->subject ?: $a->description));
@@ -836,7 +887,7 @@ class CrmService
                 'system' => ! in_array($a->type, $human, true),
             ];
         }
-        foreach (Note::where('workspace_id', $wsId)->whereIn('notable_type', ['Lead', 'App\\Models\\Lead'])->where('notable_id', $leadId)->get() as $n) {
+        foreach (Note::where('workspace_id', $wsId)->whereIn('notable_type', ['Lead', 'App\\Models\\Lead'])->where('notable_id', $leadId)->whereNotIn('id', $copied ?: [0])->get() as $n) {
             $rows[] = ['id' => 'n' . $n->id, 'type' => 'note', 'title' => mb_substr((string) $n->body, 0, 120), 'description' => mb_strlen((string) $n->body) > 120 ? $n->body : null,
                 'status' => 'pending', 'due_date' => null, 'priority' => 'medium', 'created_at' => (string) $n->created_at, 'system' => false];
         }

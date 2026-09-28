@@ -1186,6 +1186,12 @@ private function executeStudioAction(int $wsId, string $action, array $params, a
     // AUTOMATION TRIGGERS
     // ═══════════════════════════════════════════════════════════
 
+    /** CRM-DATA-1: leads created outside the kernel (forms, bookings, orders, chatbot, social) start the same automations. */
+    public function fireCrmTrigger(int $wsId, string $action, array $params, array $result): array
+    {
+        return $this->fireAutomationTriggers($wsId, 'crm', $action, $params, $result);
+    }
+
     private function fireAutomationTriggers(int $wsId, string $engine, string $action, array $params, array $result): array
     {
         $triggers = [];
