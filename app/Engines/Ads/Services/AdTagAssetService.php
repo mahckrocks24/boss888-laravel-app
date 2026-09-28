@@ -89,6 +89,10 @@ final class AdTagAssetService
   var MODAL_CLOSE_DELAY = {$modalDelay};
   var MODAL_SUPPRESS_FOOTER = {$modalSuppress};
   var MODAL_EXCLUDED = {$modalPaths};
+  /* ADS-ALWAYS-1 (Owner 2026-09-28): a pop-up every 3 minutes of browsing. The first still never comes on arrival:
+     it waits for the second page or for 3 minutes on the first one. */
+  var MODAL_EVERY = 180000;
+  var modalBusy = false;
 
   var refreshes = 0, refreshTimer = null, footerBlockedUntil = 0;
 
@@ -185,7 +189,8 @@ final class AdTagAssetService
 
     /* ADS-CLICK-1 (Owner 2026-09-28: "entire banner and modal clickable"): a tap anywhere on the bar opens the ad */
     el.style.cursor = "pointer";
-    el.onclick = function (e) { if (e.target && e.target.closest && e.target.closest("a")) return; link.click(); };
+    el.onclick = function (e) { if (e.target && e.target.closest && (e.target.closest("a") || e.target.closest(".lu-ad-x") || e.target.closest(".lu-ad-tab"))) return; if (el.classList.contains("lu-ad-closed")) return; link.click(); };
+    drawer(el);
     body.replaceChildren(link);  /* replaceChildren, not append: a refresh must
                                     SWAP the creative, never stack a second one */
     el.hidden = false;           /* height was reserved in CSS — no shift */
@@ -232,8 +237,35 @@ final class AdTagAssetService
   function reserveSpace() {
     var el = slot();
     if (!el || el.hidden) return;
-    var h = el.offsetHeight;
+    var h = el.classList.contains("lu-ad-closed") ? 30 : el.offsetHeight;   /* ADS-DRAWER-1: closed = just the tab */
     if (h > 0) document.body.style.paddingBottom = h + "px";
+  }
+
+  /* ADS-DRAWER-1 (Owner 2026-09-28): the bottom ad is a drawer. The x slides it down behind a logo tab; the tab pulls it
+     out again; closed, it reopens by itself a minute later (the minute carries across pages of the visit). */
+  var DRAWER_EVERY = 60000, drawerTimer = null, drawerBound = false;
+  function drawerClosedAt() { try { return parseInt(sessionStorage.getItem("lu_ad_drawer_at") || "0", 10) || 0; } catch (e) { return 0; } }
+  function setDrawer(el, open) {
+    el.classList.toggle("lu-ad-closed", !open);
+    var tab = el.querySelector(".lu-ad-tab"); if (tab) { tab.setAttribute("aria-expanded", open ? "true" : "false"); tab.setAttribute("aria-label", open ? "Hide the ad" : "Show the ad"); }
+    try { if (open) sessionStorage.removeItem("lu_ad_drawer_at"); else sessionStorage.setItem("lu_ad_drawer_at", String(Date.now())); } catch (e) {}
+    if (drawerTimer) { clearTimeout(drawerTimer); drawerTimer = null; }
+    if (!open) drawerTimer = setTimeout(function () { setDrawer(el, true); }, DRAWER_EVERY);
+    reserveSpace();
+    try { window.dispatchEvent(new Event("lu-ad-drawer")); } catch (e) {}
+  }
+  function drawer(el) {
+    if (drawerBound) return;
+    drawerBound = true;
+    var x = el.querySelector(".lu-ad-x"), tab = el.querySelector(".lu-ad-tab");
+    if (x) x.addEventListener("click", function (e) { e.stopPropagation(); setDrawer(el, false); });
+    if (tab) tab.addEventListener("click", function (e) { e.stopPropagation(); setDrawer(el, el.classList.contains("lu-ad-closed")); });
+    var at = drawerClosedAt();
+    if (at && Date.now() - at < DRAWER_EVERY) {   /* closed on the last page less than a minute ago: stay closed for the rest of it */
+      el.classList.add("lu-ad-closed");
+      drawerTimer = setTimeout(function () { setDrawer(el, true); }, DRAWER_EVERY - (Date.now() - at));
+      reserveSpace();
+    }
   }
 
   function releaseSpace() {
@@ -338,6 +370,14 @@ final class AdTagAssetService
   }
   function bumpModalSeen() {
     try { sessionStorage.setItem("lu_ad_modal", String(modalsSeen() + 1)); } catch (e) {}
+    try { localStorage.setItem("lu_ad_modal_at", String(Date.now())); } catch (e) {}
+  }
+  function lastModalAt() {
+    try { return parseInt(localStorage.getItem("lu_ad_modal_at") || "0", 10) || 0; } catch (e) { return 0; }
+  }
+  function visitStart() {
+    try { var t = parseInt(sessionStorage.getItem("lu_ad_t0") || "0", 10); if (!t) { t = Date.now(); sessionStorage.setItem("lu_ad_t0", String(t)); } return t; }
+    catch (e) { return Date.now(); }
   }
 
   function cameFromSearch() {
@@ -367,7 +407,8 @@ final class AdTagAssetService
   function modalEligible(pv) {
     if (!MODAL_ON) return false;
     if (MODAL_CAP > 0 && modalsSeen() >= MODAL_CAP) return false;
-    if (pv < MODAL_MIN_PV) return false;              /* never on arrival */
+    if (Date.now() - lastModalAt() < MODAL_EVERY) return false;     /* ADS-ALWAYS-1: 3 minutes apart */
+    if (pv < MODAL_MIN_PV && Date.now() - visitStart() < MODAL_EVERY) return false;   /* never on arrival */
     if (MODAL_NO_SEARCH && cameFromSearch()) return false;  /* the SEO guard */
     if (onExcludedPath()) return false;               /* never break a conversion */
     return true;
@@ -620,17 +661,59 @@ final class AdTagAssetService
   }
 
   function armModal(pv) {
-    if (!modalEligible(pv)) return;
-    setTimeout(function () {
-      if (document.hidden || anotherDialogOpen()) return;
-      if (!modalEligible(pv)) return;    /* the cap may have been hit meanwhile */
+    visitStart();
+    var tryShow = function () {
+      if (modalBusy || modalState || document.hidden || anotherDialogOpen()) return;
+      if (!modalEligible(pv)) return;
+      modalBusy = true;
       decideModal();
-    }, MODAL_DWELL);
+      setTimeout(function () { modalBusy = false; }, 10000);
+    };
+    setTimeout(tryShow, MODAL_DWELL);
+    /* ADS-ALWAYS-1: keep looking while the page is open, so the next one comes 3 minutes after the last */
+    setInterval(tryShow, 15000);
   }
 
   /* @@MODAL_BLOCK_END@@ */
 
+  /* ADS-ALWAYS-1 (Owner 2026-09-28): a second ad inside the page, right below the hero. Same house rules as the bar:
+     the server decides (no ad on a paying site), a tap anywhere on it opens the ad. */
+  function heroEl() {
+    return document.querySelector('[data-block="hero"]') || document.querySelector('section[class^="hero"], section[class*=" hero"], section#hero') || document.querySelector("main section, body > section");
+  }
+  function decideInline() {
+    var hero = heroEl();
+    if (!hero || document.getElementById("lu-ad-inline")) return;
+    fetch(ORIGIN + "/api/ads/decide", {
+      method: "POST", headers: { "Content-Type": "application/json" }, mode: "cors",
+      body: JSON.stringify({ website_id: SITE, slots: ["in_content_mrec"], ctx: {
+        device: window.matchMedia && window.matchMedia("(min-width:768px)").matches ? "desktop" : "mobile",
+        language: (navigator.language || "en").slice(0, 2), page_type: (slot() && slot().getAttribute("data-lu-page")) || "home" } })
+    })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || !data.fills || !data.fills.length || document.getElementById("lu-ad-inline")) return;
+        var fill = data.fills[0];
+        var box = document.createElement("aside");
+        box.id = "lu-ad-inline"; box.className = "lu-ad-inline"; box.setAttribute("aria-label", "Advertisement");
+        var label = document.createElement("span"); label.className = "lu-ad-label"; label.textContent = fill.label || "Sponsored";
+        var link = document.createElement("a");
+        link.href = fill.click_url; link.target = "_blank"; link.rel = "nofollow sponsored noopener";
+        if (fill.type === "image" && fill.asset_url) { var im = document.createElement("img"); im.src = fill.asset_url; im.alt = fill.alt || ""; link.appendChild(im); }
+        else link.innerHTML = fill.html || fill.alt || "";
+        var shownAt = Date.now();
+        link.addEventListener("click", function () { beacon("click", fill.token, { dwell_ms: Date.now() - shownAt }); });
+        box.addEventListener("click", function (e) { if (e.target && e.target.closest && e.target.closest("a")) return; link.click(); });
+        box.appendChild(label); box.appendChild(link);
+        hero.insertAdjacentElement("afterend", box);
+        beacon("impression", fill.token);
+        watchViewability(box, fill.token);
+      })
+      .catch(function () {});
+  }
+
   function start() {
+    decideInline();
     var pv = (typeof pageviews === "function") ? pageviews() : 1;
     if (typeof armModal === "function") armModal(pv);
     /* The footer bar is suppressed briefly after a modal so a visitor never gets

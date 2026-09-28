@@ -637,9 +637,10 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     bubble.onclick = openPanel;
     document.body.appendChild(bubble);
     // CHATBOT-CONTACT-1b: a Free site carries the ad bar along the bottom; keep the button and the panel above it
-    var lift = function(){ var s = document.getElementById('lu-ad-slot'), h = (s && !s.hidden) ? Math.round(s.getBoundingClientRect().height) : 0; bubble.style.bottom = (20 + h) + 'px'; if (panel) panel.style.bottom = (20 + h) + 'px'; };
+    var lift = function(){ var s = document.getElementById('lu-ad-slot'), h = 0; if (s && !s.hidden) { h = s.classList.contains('lu-ad-closed') ? 30 : Math.round(s.offsetHeight); } bubble.style.bottom = (20 + h) + 'px'; if (panel) panel.style.bottom = (20 + h) + 'px'; };
+    bubble.style.transition = 'bottom .35s cubic-bezier(.2,.8,.2,1)';
     lift(); var n = 0, t = setInterval(function(){ lift(); if (++n > 20) clearInterval(t); }, 750);
-    window.addEventListener('resize', lift);
+    window.addEventListener('resize', lift); window.addEventListener('lu-ad-drawer', lift);   // ADS-DRAWER-1
   }
 
   function openPanel(){

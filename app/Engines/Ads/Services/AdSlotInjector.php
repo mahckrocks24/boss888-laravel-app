@@ -119,8 +119,10 @@ final class AdSlotInjector
 <!-- LevelUp Ads -->
 <style>{$css}</style>
 <div id="lu-ad-slot" class="lu-ad-slot" data-lu-slot="{$slotSafe}" data-lu-site="{$websiteId}" hidden>
+  <button type="button" class="lu-ad-tab" aria-label="Show the ad" aria-expanded="true"><img src="{$origin}/img/logo-icon-new.png" alt="" width="20" height="20"><span class="lu-ad-chev" aria-hidden="true"></span></button>
   <span class="lu-ad-label">{$labelSafe}</span>
   <div class="lu-ad-body"></div>
+  <button type="button" class="lu-ad-x" aria-label="Close the ad">&#x2715;</button>
 </div>
 <script src="{$origin}/ads.js?w={$websiteId}&v={$versionSafe}" async></script>
 
@@ -158,6 +160,29 @@ background:rgba(0,0,0,.04);border-radius:2px;padding:2px 5px}
 .lu-ad-body{flex:1 1 auto;display:flex;align-items:center;justify-content:center;overflow:hidden;max-height:60px}
 .lu-ad-body a{display:inline-flex;align-items:center;gap:6px;color:inherit;text-decoration:none}
 .lu-ad-body img{display:block;max-width:100%;max-height:60px;height:auto}
+/* ADS-DRAWER-1: the bar is a drawer — open, or slid down behind its logo tab */
+.lu-ad-slot{transition:transform .35s cubic-bezier(.2,.8,.2,1);overflow:visible}
+.lu-ad-slot.lu-ad-closed{transform:translateY(100%)}
+.lu-ad-x{position:absolute;top:6px;right:8px;width:26px;height:26px;border:0;border-radius:50%;background:rgba(0,0,0,.06);color:#555;font:600 13px/26px -apple-system,sans-serif;cursor:pointer;padding:0;text-align:center;z-index:2}
+.lu-ad-x:hover{background:rgba(0,0,0,.12)}
+.lu-ad-tab{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;margin:0;
+border:1px solid rgba(0,0,0,.12);border-bottom:0;border-radius:12px 12px 0 0;background:#fff;box-shadow:0 -3px 10px rgba(0,0,0,.08);cursor:pointer}
+.lu-ad-tab img{width:20px;height:20px;display:block;border-radius:5px}
+.lu-ad-chev{width:8px;height:8px;border-right:2px solid #6C5CE7;border-bottom:2px solid #6C5CE7;transform:rotate(45deg);margin-top:-4px}
+.lu-ad-slot.lu-ad-closed .lu-ad-chev{transform:rotate(-135deg);margin-top:4px}
+@media(max-width:767px){.lu-ad-slot{padding-right:40px}}
+@media(prefers-color-scheme:dark){.lu-ad-tab{background:#15171c;border-color:rgba(255,255,255,.12)}.lu-ad-x{background:rgba(255,255,255,.1);color:#ddd}}
+.lu-ad-inline{position:relative;box-sizing:border-box;max-width:1100px;margin:28px auto;padding:22px 24px 20px;width:calc(100% - 32px);
+background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:16px;box-shadow:0 6px 24px rgba(20,20,60,.08);cursor:pointer;
+font:400 16px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1f2330;z-index:2;clear:both}
+.lu-ad-inline .lu-ad-label{position:absolute;top:7px;left:14px;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:#8a8a8a;background:none;padding:0}
+.lu-ad-inline a{display:flex;align-items:center;gap:16px;color:inherit;text-decoration:none}
+.lu-ad-inline a>img{flex:0 0 48px;width:48px!important;height:48px!important;margin:0!important;border-radius:12px!important}
+.lu-ad-inline a>span{flex:1 1 auto;min-width:0;font-size:18px}
+.lu-ad-inline .lu-ad-cta{flex:0 0 auto;white-space:nowrap;background:#6C5CE7;color:#fff;border-radius:999px;padding:12px 22px;font-weight:700}
+@media(max-width:767px){.lu-ad-inline{margin:18px auto;padding:22px 14px 14px}.lu-ad-inline a{gap:12px}.lu-ad-inline a>img{flex-basis:40px;width:40px!important;height:40px!important}
+.lu-ad-inline a>span{font-size:15px}.lu-ad-inline .lu-ad-cta{padding:9px 13px;font-size:13px}}
+@media(prefers-color-scheme:dark){.lu-ad-inline{background:#15171c;color:#e8e8e8;border-color:rgba(255,255,255,.12)}}
 .lu-ad-body .lu-ad-cta{flex:0 0 auto;white-space:nowrap;background:#6C5CE7;color:#fff;border-radius:999px;padding:7px 14px;margin-left:6px;font-weight:700}
 @media(max-width:767px){.lu-ad-slot{min-height:64px;padding-top:14px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
 .lu-ad-label{position:absolute;top:3px;left:10px;font-size:8px;padding:1px 4px;background:none;letter-spacing:.08em}
