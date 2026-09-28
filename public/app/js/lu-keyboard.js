@@ -142,6 +142,7 @@
     }
     lifted = [];
     unshrink();
+    var room = document.getElementById('lu-kb-room'); if (room) room.parentNode.removeChild(room);   // KB-3 v10
   }
 
   /* An app-shaped document — html/body at 100%, nothing to scroll, panels pinned to the bottom (a chat composer, an
@@ -242,6 +243,13 @@
         while (fsp && Math.abs(n) > 2 && fg++ < 5) { var fb = fsp.scrollTop; instantScroll(fsp, n); n = need(el, a.off, v); if (fsp.scrollTop === fb || Math.abs(n) > 2) fsp = scrollParent(fsp, fdoc); }
       }
       if (Math.abs(n) < 2) return;
+    }
+    // KB-3 v10: a field near the end of the page has no page below it to scroll into view above the keyboard — make room
+    if (n > 2 && v.kb > 0) {
+      var room = document.getElementById('lu-kb-room');
+      if (!room) { room = document.createElement('div'); room.id = 'lu-kb-room'; room.setAttribute('aria-hidden', 'true'); room.style.cssText = 'height:0;margin:0;padding:0;border:0;pointer-events:none;clear:both'; document.body.appendChild(room); }
+      var want = Math.round(n + v.kb);
+      if ((parseInt(room.style.height, 10) || 0) < want) room.style.height = want + 'px';
     }
     try { instantScroll(null, n, window); } catch (e) {}
     n = need(el, a.off, v);

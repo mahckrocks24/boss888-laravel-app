@@ -8675,3 +8675,37 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
   window.luNeedsYouRefresh = badge;
   window.addEventListener('load', function () { setTimeout(badge, 3000); setInterval(badge, 120000); });
 })();
+
+/* TRIAL-ENDED-1 (2026-09-28): an owner whose free trial ended is told so, above every page in both modes: what still works,
+   and one button to choose a plan. Dismissed for a day; the status is re-read every 10 minutes and on workspace switch. */
+(function () {
+  var KEY = 'lu_trial_banner_hidden_until';
+  function hiddenNow() { try { return Date.now() < (parseInt(localStorage.getItem(KEY) || '0', 10) || 0); } catch (e) { return false; } }
+  function remove() { var b = document.getElementById('lu-trial-ended'); if (b) b.remove(); }
+  function render() {
+    if (document.getElementById('lu-trial-ended') || hiddenNow()) return;
+    var main = document.querySelector('.main'); if (!main) return;
+    var b = document.createElement('div');
+    b.id = 'lu-trial-ended'; b.setAttribute('role', 'status');
+    b.style.cssText = 'flex:0 0 auto;display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;padding:11px 16px;'
+      + 'background:color-mix(in srgb,var(--ac,#6C5CE7) 10%,var(--s1,#fff));border-bottom:1px solid var(--bd,#e5e7eb);color:var(--t1,#111);font-size:13.5px;line-height:1.45';
+    b.innerHTML = '<div style="flex:1 1 260px;min-width:0"><strong>Your free trial has ended.</strong> '
+      + '<span style="color:var(--t2,#555)">Your website, contacts and calendar keep working on the Free plan. Choose a plan to bring back Sarah and the AI team.</span></div>'
+      + '<button type="button" id="lu-trial-plan" style="flex:0 0 auto;background:var(--ac,#6C5CE7);color:#fff;border:0;border-radius:10px;padding:9px 16px;font:600 13px/1 inherit;cursor:pointer">Choose a plan</button>'
+      + '<button type="button" id="lu-trial-x" aria-label="Hide for today" title="Hide for today" style="flex:0 0 auto;background:transparent;border:0;color:var(--t2,#555);font-size:18px;line-height:1;cursor:pointer;padding:4px 6px">&#x2715;</button>';
+    main.insertBefore(b, main.firstChild);
+    b.querySelector('#lu-trial-plan').onclick = function () { try { if (typeof window.nav === 'function') window.nav('billing'); } catch (e) {} };
+    b.querySelector('#lu-trial-x').onclick = function () { try { localStorage.setItem(KEY, String(Date.now() + 86400000)); } catch (e) {} remove(); };
+  }
+  function check() {
+    if (typeof window._luFetch !== 'function' && typeof _luFetch !== 'function') return;
+    var f = (typeof _luFetch === 'function') ? _luFetch : window._luFetch;
+    try {
+      f('GET', '/workspace/status').then(function (r) { return r && r.ok ? r.json() : null; }).then(function (s) {
+        if (s && s.trial_ended) render(); else remove();
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  function start() { setTimeout(check, 2500); setInterval(check, 600000); window.addEventListener('lu:workspace-changed', function () { remove(); setTimeout(check, 800); }); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();

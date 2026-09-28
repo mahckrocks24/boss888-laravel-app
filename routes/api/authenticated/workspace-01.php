@@ -114,6 +114,9 @@ use Illuminate\Support\Facades\Route;
             'is_trial' => $__onTrial,
             'trial_expires_at' => $__onTrial ? ($__trial['expires_at'] ?? null) : null,
             'trial_days_remaining' => $__onTrial ? (int) ($__trial['days_remaining'] ?? 0) : null,
+            // TRIAL-ENDED-1: the app tells an expired-trial owner what changed and what still works
+            'sarah_included' => (function () use ($ws) { try { return app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah((int) $ws->id); } catch (\Throwable $e) { return true; } })(),
+            'trial_ended' => ! $__onTrial && ! empty($__trial['has_trial']) && ! empty($__trial['expired']) && ! (function () use ($ws) { try { return app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah((int) $ws->id); } catch (\Throwable $e) { return true; } })(),
             'website_count' => $websiteCount,
             'business_name' => $ws->business_name,
             'industry' => $ws->industry,
