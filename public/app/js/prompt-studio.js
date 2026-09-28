@@ -33,8 +33,8 @@
   }
 
   // Display-only credit costs (authoritative gate is server-side CapabilityMapService).
-  var COST = { generate_image: 2, generate_image_mini: 1, generate_image_high: 4, edit_image: 2 };
-  var VIDEO_COST = 8;
+  var COST = { generate_image: 4, generate_image_mini: 2, generate_image_high: 21, edit_image: 6 };   // PRICE-1 (2026-09-28)
+  var VIDEO_COST = 28;   // PRICE-1: a 6-second video
 
   // Video is entitlement-gated (Pro+ / companion_app). The one interface offers a Video mode
   // only when the workspace is entitled — nano-banana chat-first, consolidated (Owner decision 2).

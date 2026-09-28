@@ -137,7 +137,7 @@ final class RuntimeNativeTurn
                   : "I can't reply just yet — this workspace is out of credits. "
                   . "Your message is saved, so top up and I'll pick straight up from here.";
             $this->persist($wsId, $agentSlug, $agentName, $text,
-                array_merge($corr, ['phase' => 'final', 'error' => true,
+                array_merge($corr, ['phase' => 'final', 'error' => ! $planGate,
                                     'reason' => $planGate ? 'plan_required' : 'insufficient_credits', 'runtime_native' => true]));
             return [
                 'success' => false,

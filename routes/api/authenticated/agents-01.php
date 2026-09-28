@@ -517,7 +517,7 @@ $withCorr = function (array $meta) use ($corr) {
                                  : "I can't reply just yet — this workspace is out of credits. "
                                  . "Your message is saved, so top up and I'll pick straight up from here.",
                 'role'          => 'agent',
-                'metadata_json' => $withCorr(['phase' => 'final', 'error' => true, 'reason' => ($_meter['reason'] ?? 'insufficient_credits')]),
+                'metadata_json' => $withCorr(['phase' => 'final', 'error' => (($_meter['reason'] ?? '') !== 'plan_required'), 'reason' => ($_meter['reason'] ?? 'insufficient_credits')]),
                 'created_at'    => now(),
                 'updated_at'    => now(),
             ]);

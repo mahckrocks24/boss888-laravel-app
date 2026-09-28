@@ -8709,3 +8709,41 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
   function start() { setTimeout(check, 2500); setInterval(check, 600000); window.addEventListener('lu:workspace-changed', function () { remove(); setTimeout(check, 800); }); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
+
+/* PLAN-LOCK-1 (2026-09-28): on a plan without the AI team (an expired trial on Free, or Starter) the AI pages say so at
+   the top, with one button to choose a plan, instead of looking open and failing after a click. */
+(function () {
+  var VIEWS = {
+    'view-studio':  'Image and video generation',
+    'view-social':  'AI-written social posts',
+    'view-write':   'AI-written articles',
+    'view-meeting': 'Strategy sessions with the AI team',
+    'view-agents':  'The AI specialists'
+  };
+  var locked = false;
+  function card(label) {
+    var d = document.createElement('div');
+    d.className = 'lu-plan-lock';
+    d.style.cssText = 'flex:0 0 auto;margin:14px 16px 0;padding:14px 16px;border:1px solid var(--bd,#e5e7eb);border-radius:14px;'
+      + 'background:color-mix(in srgb,var(--ac,#6C5CE7) 8%,var(--s1,#fff));color:var(--t1,#111);display:flex;align-items:center;flex-wrap:wrap;gap:10px 14px;font-size:13.5px;line-height:1.45';
+    d.innerHTML = '<div style="flex:1 1 240px;min-width:0"><strong>' + label + ' is part of the AI plans.</strong> '
+      + '<span style="color:var(--t2,#555)">Your plan doesn\'t include the AI team, so nothing here will run until you choose a plan.</span></div>'
+      + '<button type="button" style="flex:0 0 auto;background:var(--ac,#6C5CE7);color:#fff;border:0;border-radius:10px;padding:9px 16px;font:600 13px/1 inherit;cursor:pointer">Choose a plan</button>';
+    d.querySelector('button').onclick = function () { try { window.nav('billing'); } catch (e) {} };
+    return d;
+  }
+  function paint() {
+    Object.keys(VIEWS).forEach(function (id) {
+      var v = document.getElementById(id); if (!v) return;
+      var cur = v.querySelector(':scope > .lu-plan-lock');
+      if (locked && !cur) v.insertBefore(card(VIEWS[id]), v.firstChild);
+      if (!locked && cur) cur.remove();
+    });
+  }
+  function check() {
+    var f = (typeof _luFetch === 'function') ? _luFetch : window._luFetch; if (typeof f !== 'function') return;
+    try { f('GET', '/workspace/status').then(function (r) { return r && r.ok ? r.json() : null; }).then(function (s) { if (!s) return; locked = s.sarah_included === false; paint(); }).catch(function () {}); } catch (e) {}
+  }
+  function start() { setTimeout(check, 2500); setInterval(check, 600000); document.addEventListener('click', function () { if (locked) setTimeout(paint, 400); }, true); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+})();
