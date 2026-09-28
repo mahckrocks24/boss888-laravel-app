@@ -156,6 +156,7 @@ final class WatchService
         if (! $w || $w->status !== 'on') return ['ran' => false, 'reason' => 'not on'];
         $wsId = (int) $w->workspace_id;
         $bizId = $w->business_id ? (int) $w->business_id : null;
+        try { if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah($wsId)) return ['ran' => false, 'reason' => 'plan without Sarah']; } catch (\Throwable $e) {}   // SARAH-GATE-1b
         $lock = \Illuminate\Support\Facades\Cache::lock('watch-run:' . $watchId, 900);
         if (! $lock->get()) return ['ran' => false, 'reason' => 'running'];
         try {

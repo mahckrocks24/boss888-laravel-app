@@ -35,6 +35,13 @@ class CampaignIdeasJob implements ShouldQueue
                 ->where(fn ($q) => $q->whereNull('metadata_json')->orWhereRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.phase')), '') <> 'ack'"))->exists();
             if (! $answered && $this->attempts() < $this->tries) { $this->release(10); return; }
         }
+        // SARAH-GATE-1b: ideas are Sarah's AI work; on a plan without her the owner hears why, and nothing is generated
+        try {
+            if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah($this->wsId)) {
+                if (! in_array($this->source, ['sarah_signal', 'sarah_monthly'], true)) app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($this->wsId, 'sarah', \App\Core\Billing\SarahPaused::text($this->wsId), ['notification_type' => 'plan_required']);
+                return;
+            }
+        } catch (\Throwable $e) {}
         $lock = Cache::lock('campaign-ideas:' . $this->wsId . ':' . ($this->businessId ?? 0), 280);
         if (! $lock->get()) return;
         try {

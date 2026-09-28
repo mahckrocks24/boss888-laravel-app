@@ -43,6 +43,7 @@ final class CheckinService
                 elseif ($now->hour === self::HOURS['night']) $kind = 'night';
             }
             if (! $kind) continue;
+            try { if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah((int) $ws->id)) continue; } catch (\Throwable $e) {}   // SARAH-GATE-1b
             try { if ($r = $this->send((int) $ws->id, $kind, $now, (bool) $force)) $sent[] = $ws->id . ':' . $kind; } catch (\Throwable $e) { Log::warning('[WATCH-1] check-in failed', ['ws' => $ws->id, 'kind' => $kind, 'e' => $e->getMessage()]); }
         }
         return $sent;

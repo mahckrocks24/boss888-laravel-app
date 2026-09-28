@@ -27,6 +27,7 @@ final class SignalReactor
     {
         $ws = DB::table('workspaces')->where('id', $wsId)->first(['id', 'timezone', 'proactive_enabled', 'onboarded']);
         if (! $ws || ! $ws->onboarded) return ['reacted' => 0, 'reason' => 'not onboarded'];
+        try { if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah($wsId)) return ['reacted' => 0, 'reason' => 'plan without Sarah']; } catch (\Throwable $e) {}   // SARAH-GATE-1b
         $tz = (string) ($ws->timezone ?: 'UTC');
         try { $now = Carbon::now($tz); } catch (\Throwable $e) { $now = Carbon::now('UTC'); $tz = 'UTC'; }
         $q = DB::table('growth_signals')->where('workspace_id', $wsId)->where('status', 'new')->where(fn ($w) => $bizId ? $w->where('business_id', $bizId) : $w->whereNull('business_id'));
