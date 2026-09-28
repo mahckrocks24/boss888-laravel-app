@@ -201,8 +201,8 @@ final class RuntimeNativeTurn
             'chat_meter' => [
                 'counter'        => $meter['counter'] ?? 0,
                 'debited'        => $meter['debited'] ?? false,
-                'threshold'      => 10,
-                'effective_cost' => '0.1 cr',
+                'threshold'      => \App\Core\Billing\CreditService::CHAT_METER_EVERY,
+                'effective_cost' => '0.2 cr',
             ],
         ];
     }

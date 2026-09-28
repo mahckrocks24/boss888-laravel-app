@@ -129,6 +129,7 @@ class EngineExecutionService
 
         // ─── Step 3: Check credits (for AI-powered actions) ──
         $creditCost = $capability['credit_cost'] ?? 0;
+        if ($action === 'generate_video' && (int) ($params['duration'] ?? 0) === 10) $creditCost = \App\Core\EngineKernel\CapabilityMapService::VIDEO_10S_CREDITS;   // PRICE-1
         if ($creditCost > 0) {
             $hasCredits = $this->creditService->hasBalance($wsId, $creditCost);
             if (!$hasCredits) {

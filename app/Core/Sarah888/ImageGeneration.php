@@ -172,7 +172,9 @@ class ImageGeneration
 
     public static function costFor(string $action): int
     {
-        return ['generate_image_mini' => 1, 'generate_image' => 2, 'generate_image_high' => 4][$action] ?? 2;
+        // PRICE-1: one price list — the capability map.
+        try { $c = (int) app(\App\Core\EngineKernel\CapabilityMapService::class)->getCreditCost($action); if ($c > 0) return $c; } catch (\Throwable) {}
+        return ['generate_image_mini' => 2, 'generate_image' => 4, 'generate_image_high' => 21][$action] ?? 4;
     }
 
     /** Strip the leading command so the stored prompt is the subject/brief, not "generate an image of …". */

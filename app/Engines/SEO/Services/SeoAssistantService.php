@@ -2710,7 +2710,7 @@ class SeoAssistantService
         $p[] = '- Deep audit: 3 credits. SERP analysis: 1 credit. AI report: 2 credits.';
         $p[] = '- Link suggestions: 1 credit. Generate meta (batch): 1 credit. Apply link suggestions: up to N x 2 (only successful inserts charged).';
         $p[] = '- Add keyword (start tracking): FREE.';
-        $p[] = '- Chat itself: 0.1 credit per message (1 credit per 10 messages — already metered, do not quote).';
+        $p[] = '- Chat itself: 0.2 credit per message (1 credit per 5 messages — already metered, do not quote).';
         $p[] = 'If asked about cost: quote ONLY from the list above. Never say "X credits per word", "X credits with images" or any per-feature breakdown that is not in this list — the chain is BUNDLED at the per-article price.';
         $p[] = 'If you do not know the cost for an action: say so, do not invent.';
 

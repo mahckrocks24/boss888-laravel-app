@@ -1458,7 +1458,7 @@ async function _t3ImgGenerate() {
     + '<div style="padding:0 22px 6px">'
     +   '<textarea id="t3-gen-p" rows="3" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:10px;font:inherit;font-size:13px;resize:vertical" placeholder="e.g. a private chef plating a seasonal dish in a bright home kitchen, warm evening light"></textarea>'
     +   '<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap"><label for="t3-gen-s" style="font-size:12px;color:var(--t3)">Style</label><select id="t3-gen-s"><option value="natural">Natural</option><option value="cinematic">Cinematic</option><option value="minimal">Minimal</option><option value="bold">Bold</option><option value="elegant">Elegant</option><option value="editorial">Editorial</option></select></div>'
-    +   '<div id="t3-gen-cost" style="font-size:12px;color:var(--t3);margin-top:8px">Uses 1 credit for a standard image, up to 2 for a higher-quality one — you are charged only for what is actually produced.</div>'
+    +   '<div id="t3-gen-cost" style="font-size:12px;color:var(--t3);margin-top:8px">Uses 2 credits for a quick image, up to 4 for a standard one — you are charged only for what is actually produced.</div>'
     +   '<div id="t3-gen-out" style="margin-top:10px"></div>'
     + '</div>'
     + '<div class="lu-dlg-foot"><button type="button" class="lu-dlg-btn ghost" data-role="cancel">Cancel</button><button type="button" class="lu-dlg-btn primary" data-role="ok">Generate</button></div>'

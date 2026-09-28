@@ -46,7 +46,7 @@ return [
             ['who' => 'you',   'name' => 'You',
              'text' => 'People keep asking us when to go to Japan for the cherry blossom. Can we put something on the site about it?'],
             ['who' => 'sarah', 'name' => 'Sarah · your growth manager',
-             'text' => 'Yes, that fits — a clear "when to see the cherry blossom" guide is exactly the kind of evergreen content that keeps answering the same question for you, and it\'s the sort of thing people search for months ahead, so it doesn\'t need to be rushed out this week. I\'d queue it as a write_article (1 credit). … Want me to add the Japan piece to the queue as well?'],
+             'text' => 'Yes, that fits — a clear "when to see the cherry blossom" guide is exactly the kind of evergreen content that keeps answering the same question for you, and it\'s the sort of thing people search for months ahead, so it doesn\'t need to be rushed out this week. I\'d queue it as an article (2 credits). … Want me to add the Japan piece to the queue as well?'],
             ['who' => 'you',   'name' => 'You',
              'text' => 'Yes, go ahead. Who is writing it?'],
             ['who' => 'sarah', 'name' => 'Sarah · your growth manager',

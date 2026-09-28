@@ -500,7 +500,7 @@ class CreativeService
             'prompt'       => $prompt,
             'task_id'      => $params['task_id'] ?? null,
             'aspect_ratio' => $params['aspect_ratio'] ?? '16:9',
-            'metadata'     => ['scene_count' => count($scenes), 'scene_count_predicted' => $videoBp['scene_count'] ?? null, 'scene_duration_total' => $videoBp['scene_duration_total'], 'duration' => $params['duration'] ?? 10, 'brand_context' => $videoBp['brand_context'] ?? null],
+            'metadata'     => ['scene_count' => count($scenes), 'scene_count_predicted' => $videoBp['scene_count'] ?? null, 'scene_duration_total' => $videoBp['scene_duration_total'], 'duration' => $params['duration'] ?? 10, 'brand_context' => $videoBp['brand_context'] ?? null, 'credits_charged' => app(\App\Core\EngineKernel\CapabilityMapService::class)->creditCostFor('generate_video', $params)],
         ]);
         $assetId = $asset['asset_id'];
 
@@ -1000,7 +1000,8 @@ class CreativeService
             if (! $a || ($a->type ?? '') !== 'video') return;
             $meta = json_decode($a->metadata_json ?? '{}', true) ?: [];
             if (! empty($meta['video_refunded_at'])) return; // already refunded — idempotent
-            $cost = 8; // generate_video credit_cost (App\Core\EngineKernel\CapabilityMapService)
+            // PRICE-1: refund what this video was charged (recorded on the asset); videos made before it paid 8.
+            $cost = (int) ($meta['credits_charged'] ?? 8);
             app(\App\Core\Billing\CreditService::class)->credit(
                 (int) $a->workspace_id, $cost, 'refund/generate_video', $assetId,
                 ['reason' => 'video generation failed — automatic refund']

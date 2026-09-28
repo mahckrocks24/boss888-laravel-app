@@ -37,7 +37,7 @@ try { console.log('[LU SEO] seo.js v5.28.3-wave53 loaded — Watchdog removed (r
       var meter = document.createElement('div');
       meter.className = 'lgse-chat-meter';
       meter.style.cssText = 'font-size:11px;color:#A78BFA;text-align:right;padding:8px 12px;margin-top:8px;border-radius:8px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2)';
-      meter.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit · responses metered at 0.1 cr each</span>';
+      meter.innerHTML = '<span style="font-weight:500">💬 5 chats = 1 credit · responses metered at 0.2 cr each</span>';
       // Wave 28 — find a reliable visible parent.
       // For #lgse-chat-input (AI Assistant), the panel structure nests the
       // input row inside a flex-column container. Walk up until we find a
@@ -73,12 +73,12 @@ window._lgseUpdateChatMeter = function (counter, debited) {
   var els = document.querySelectorAll('.lgse-chat-meter');
   Array.prototype.forEach.call(els, function (el) {
     if (debited) {
-      el.innerHTML = '<span style="color:#10B981;font-weight:600">✓ 1 credit charged — next 10 chats free</span>';
+      el.innerHTML = '<span style="color:#10B981;font-weight:600">✓ 1 credit charged — next 5 chats free</span>';
       setTimeout(function () { window._lgseUpdateChatMeter(0, false); }, 4000);
       return;
     }
     if (c === null) {
-      el.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit (0.1 cr each)</span>';
+      el.innerHTML = '<span style="font-weight:500">💬 5 chats = 1 credit (0.2 cr each)</span>';
       return;
     }
     el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 10 chats toward next credit</span>';
@@ -4780,12 +4780,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
             if (p.featured_image_url) {
               return '<img src="' + esc(p.featured_image_url) + '" '
                 + 'style="width:44px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" '
-                + 'title="Regenerate featured image (1 credit)" '
+                + 'title="Regenerate featured image (2 credits)" '
                 + 'onclick="window._lgseRegenImage(' + pid + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)">';
             }
             return '<div onclick="window._lgseRegenImage(' + pid + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)" '
               + 'style="width:44px;height:36px;background:#1e293b;border:1px dashed #334155;border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center" '
-              + 'title="Generate featured image (1 credit)">'
+              + 'title="Generate featured image (2 credits)">'
               + '<span style="color:#475569;font-size:16px">📷</span></div>';
           })() + '</td>'
         + '<td style="position:relative;max-width:220px">' + window.lgseIleCell(p.meta_title || p.title || '', 'meta_title', url, 60, 50) + '</td>'
@@ -9809,7 +9809,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         '<div style="max-width:680px;margin:0 auto;padding:8px 0">'
       +   '<h2 style="color:var(--lgse-t1,#fff);font-size:18px;font-weight:600;margin:0 0 4px">Write Article</h2>'
       +   '<p style="color:var(--lgse-t3,#94a3b8);font-size:13px;margin:0 0 24px">'
-      +     'Generate an SEO-optimised article with a featured image. Uses <strong style="color:#7C3AED">2 credits</strong>.'
+      +     'Generate an SEO-optimised article with a featured image. Uses <strong style="color:#7C3AED">4 credits</strong>.'
       +   '</p>'
       +   '<div style="display:grid;gap:14px">'
       +     '<div>'
@@ -9860,7 +9860,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       +       '<textarea id="lgse-w-context" rows="2" placeholder="Target audience, specific points to cover, location..." '
       +         'style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:vertical"></textarea>'
       +     '</div>'
-      +     '<p style="color:#64748b;font-size:12px;margin:0">💳 This will use <strong style="color:#7C3AED">2 credits</strong> (1 text + 1 featured image).</p>'
+      +     '<p style="color:#64748b;font-size:12px;margin:0">💳 This will use <strong style="color:#7C3AED">4 credits</strong> (2 text + 2 featured image).</p>'
       +     '<button id="lgse-w-btn" onclick="window._lgseWriteGenerate()" '
       +       'style="background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%">Generate Article</button>'
       +     '<div id="lgse-w-result" style="display:none;background:#1e293b;border-radius:8px;padding:16px;margin-top:8px">'
@@ -9976,7 +9976,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     }
 
     // Loading state — immediate, no confirm.
-    setCellState(statusHtml('Generating<br>1 credit', 'var(--lgse-t3,#94a3b8)'), '0.7');
+    setCellState(statusHtml('Generating<br>2 credits', 'var(--lgse-t3,#94a3b8)'), '0.7');
 
     var payload = {
       page_id: pageId,
@@ -10009,7 +10009,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       // SEC-3: encode the provider URL before it becomes an attribute; pageUrl/pageTitle below are already encoded.
       cell.innerHTML = '<img src="' + encodeURI(String(d.image_url || '')) + '" '
         + 'style="width:44px;height:36px;object-fit:cover;border-radius:4px;cursor:pointer" '
-        + 'title="Regenerate featured image (1 credit)" '
+        + 'title="Regenerate featured image (2 credits)" '
         + 'onclick="window._lgseRegenImage(' + pageId + ',decodeURIComponent(\'' + safeUrl + '\'),decodeURIComponent(\'' + safeTitle + '\'),this)">';
     }).catch(function () {
       setCellState(statusHtml('Request<br>failed', 'var(--lgse-red,#ef4444)'), '1');

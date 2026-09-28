@@ -95,7 +95,7 @@
       if (src.url) { var a = el('a', 'ar-src', 'Read more ↗'); a.href = src.url; a.target = '_blank'; a.rel = 'noopener'; a.title = src.title; meta.appendChild(a); }
       else meta.appendChild(el('span', 'ar-note', 'From: ' + esc(src.doc || src.title)));
     }
-    if (r.chat_meter && r.chat_meter.debited) meta.appendChild(el('span', 'ar-note', '1 credit — every 10th chat message'));
+    if (r.chat_meter && r.chat_meter.debited) meta.appendChild(el('span', 'ar-note', '1 credit — every 5th chat message'));
     if (r.mode === 'out_of_credits') meta.appendChild(el('span', 'ar-note warn', 'Documentation answer — no credits left in this workspace'));
     if (meta.childNodes.length) m.appendChild(meta);
     if (r.followups && r.followups.length) {
@@ -134,7 +134,7 @@
       typing.remove();
       var j = r.json || {};
       if (!r.ok) {
-        var msg = r.status === 402 ? (j.error || 'This workspace has no credits left. Chat is 1 credit for every 10 messages; top up under Billing.')
+        var msg = r.status === 402 ? (j.error || 'This workspace has no credits left. Chat is 1 credit for every 5 messages; top up under Billing.')
           : r.status === 429 ? 'Too many questions in a minute. Give it a moment.'
           : (j.error || j.message || 'Aria could not answer just now. Try again.');
         renderAria({ answer: msg, sources: [], followups: [] });

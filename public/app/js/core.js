@@ -8521,7 +8521,7 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
 /* Wave 31 — Chat counter widget (global). Auto-injects a 💬 badge near
    any known chat input. window._lgseUpdateChatMeter(counter, debited) is
    called by each chat sender from its response handler. Effective price
-   0.1 cr per chat (10 chats = 1 credit), batched in CreditService::meterChat
+   0.2 cr per chat (5 chats = 1 credit), batched in CreditService::meterChat
    via workspaces.chat_meter. */
 (function () {
   if (window._lgseChatMeterAutoInject) return;
@@ -8532,12 +8532,12 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
     var els = document.querySelectorAll('.lgse-chat-meter');
     Array.prototype.forEach.call(els, function (el) {
       if (debited) {
-        el.innerHTML = '<span style="color:#10B981;font-weight:600">✓ 1 credit charged — next 10 chats free</span>';
+        el.innerHTML = '<span style="color:#10B981;font-weight:600">✓ 1 credit charged — next 5 chats free</span>';
         setTimeout(function () { window._lgseUpdateChatMeter(0, false); }, 4000);
         return;
       }
       if (c === null) {
-        el.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit · 0.1 cr each</span>';
+        el.innerHTML = '<span style="font-weight:500">💬 5 chats = 1 credit · 0.2 cr each</span>';
         return;
       }
       el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 10 chats toward next credit</span>';
@@ -8565,7 +8565,7 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
       var meter = document.createElement('div');
       meter.className = 'lgse-chat-meter';
       meter.style.cssText = 'font-size:11px;color:#A78BFA;text-align:right;padding:8px 12px;margin-top:8px;border-radius:8px;background:rgba(124,58,237,0.08);border:1px solid rgba(124,58,237,0.2)';
-      meter.innerHTML = '<span style="font-weight:500">💬 10 chats = 1 credit · 0.1 cr each</span>';
+      meter.innerHTML = '<span style="font-weight:500">💬 5 chats = 1 credit · 0.2 cr each</span>';
       if (wrapper) wrapper.appendChild(meter);
       else if (row.insertAdjacentElement) row.insertAdjacentElement('afterend', meter);
       else row.appendChild(meter);

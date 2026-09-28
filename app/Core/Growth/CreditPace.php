@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Log;
  */
 final class CreditPace
 {
-    private const POST = 3;    // a social post with its designed banner (post 1 + image 2)
-    private const VIDEO = 8;   // a short brand video
+    private const POST = 6;    // PRICE-1: a published post — the draft with its banner 4 + posting it 2
+    private const VIDEO = 28;  // PRICE-1: a 6-second brand video
 
     /** @return array{credits:int, used:int, balance:int, days_in:int, days_left:int, per_day:float, runs_out_in:?int, unused:int, renews_on:string, plan:object}|null */
     public function pace(int $wsId): ?array
@@ -49,7 +49,7 @@ final class CreditPace
     public static function capacity(int $credits): array
     {
         return ['posts_with_banner' => intdiv($credits, self::POST), 'videos' => intdiv($credits, self::VIDEO), 'weekly_article' => 'included',
-            'example_month' => $credits >= 900 ? 'a designed post every day, two short videos a week and extra articles' : ($credits >= 300 ? 'a designed post every weekday and a short video every week' : 'about three designed posts a week')];
+            'example_month' => $credits >= 900 ? 'a designed post every day, two short videos a week and extra articles' : ($credits >= 300 ? 'a designed post every weekday and a short video every week' : 'about two designed posts a week')];
     }
 
     /** Hourly: each workspace is looked at once a day at 11:00 its local time. @return array{under:int, over:int, nudge:int} */

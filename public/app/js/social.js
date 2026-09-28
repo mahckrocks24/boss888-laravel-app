@@ -205,7 +205,7 @@ function _socComposer(opts) {
     '<div class="modal-body">' +
       '<div class="form-group"><label class="form-label">Platform</label><select class="form-select" id="sp-pl">' + _SOC_PLATFORMS.map(function(p){ return '<option value="' + p + '"' + (p===platform?' selected':'') + '>' + _socPlat(p) + '</option>'; }).join('') + '</select></div>' +
       '<div class="form-group"><div style="display:flex;justify-content:space-between;align-items:baseline"><label class="form-label">Content *</label><span id="sp-count" style="font-size:11px;color:var(--t3)"></span></div><textarea class="form-input" id="sp-c" style="min-height:110px;resize:vertical" placeholder="What do you want to share?">' + _socEsc(post ? (post.content||'') : (opts.content||'')) + '</textarea>' +
-        '<div style="display:flex;gap:6px;margin-top:6px"><button type="button" class="btn btn-outline btn-sm" id="sp-ai">' + window.icon('ai',14) + ' Draft with AI (1 credit)</button><button type="button" class="btn btn-outline btn-sm" id="sp-tags">#  Suggest hashtags (1 credit)</button></div></div>' +
+        '<div style="display:flex;gap:6px;margin-top:6px"><button type="button" class="btn btn-outline btn-sm" id="sp-ai">' + window.icon('ai',14) + ' Draft with AI (4 credits)</button><button type="button" class="btn btn-outline btn-sm" id="sp-tags">#  Suggest hashtags (1 credit)</button></div></div>' +
       '<div class="form-group"><label class="form-label">Hashtags <span style="font-size:10px;opacity:.6">(space-separated)</span></label><input class="form-input" id="sp-h" value="' + _socEsc(tags.join(' ')) + '" placeholder="#bakery #sourdough"></div>' +
       '<div class="form-group"><label class="form-label">Schedule <span style="font-size:10px;opacity:.6">(optional — leave blank to keep as a draft)</span></label><input type="datetime-local" class="form-input" id="sp-s" value="' + _socEsc(sched) + '"></div>' +
       '<div class="form-group"><label class="form-label">Image URL <span style="font-size:10px;opacity:.6">(optional)</span></label><div style="display:flex;gap:6px"><input class="form-input" id="sp-img" placeholder="Paste a URL…" style="flex:1" value="' + _socEsc(post && post.media_json ? ((function(){ try { var m = typeof post.media_json==='string' ? JSON.parse(post.media_json) : post.media_json; return (m && m[0] && (m[0].url||m[0])) || ''; } catch(e){ return ''; } })()) : (opts.image||'')) + '"><button type="button" class="btn btn-outline" style="padding:0 14px;font-size:12px;white-space:nowrap" onclick="_spPickImage()">Library</button></div></div>' +
@@ -236,7 +236,7 @@ function _socComposer(opts) {
       bd.dataset.aiPostId = d.post_id || '';
       showToast('Draft written' + (d.best_time ? ' · best time: ' + d.best_time : '') + '.', 'success');
     } catch (e) { showToast('AI draft failed: ' + e.message, 'error'); }
-    finally { b.disabled = false; b.innerHTML = window.icon('ai',14) + ' Draft with AI (1 credit)'; }
+    finally { b.disabled = false; b.innerHTML = window.icon('ai',14) + ' Draft with AI (4 credits)'; }
   };
   bd.querySelector('#sp-tags').onclick = async function(){
     var content = ta.value.trim(); if (!content) { showToast('Write or draft the post first.', 'warning'); return; }

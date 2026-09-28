@@ -165,7 +165,7 @@ class AriaService
         $top = $passages[0];
         $text = '**' . $top['title'] . "**\n" . $top['text'];
         if ($mode === 'out_of_credits') {
-            $text .= "\n\nThis workspace has no credits left, so this is the documentation answer without a conversation. Chat is 1 credit for every 10 messages; top up under **Billing**.";
+            $text .= "\n\nThis workspace has no credits left, so this is the documentation answer without a conversation. Chat is 1 credit for every 5 messages; top up under **Billing**.";
         }
         $followups = [];
         foreach (array_slice($passages, 1, 3) as $p) $followups[] = $p['title'];
@@ -179,7 +179,7 @@ class AriaService
 
     private function meterOut(array $meter): array
     {
-        return ['counter' => (int) ($meter['counter'] ?? 0), 'debited' => (bool) ($meter['debited'] ?? false), 'sufficient' => (bool) ($meter['sufficient'] ?? true), 'threshold' => 10];
+        return ['counter' => (int) ($meter['counter'] ?? 0), 'debited' => (bool) ($meter['debited'] ?? false), 'sufficient' => (bool) ($meter['sufficient'] ?? true), 'threshold' => \App\Core\Billing\CreditService::CHAT_METER_EVERY];
     }
 
     private function pack(string $answer, array $sources, ?array $handoff, array $followups, array $meter, string $mode): array

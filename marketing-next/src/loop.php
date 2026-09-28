@@ -13,7 +13,7 @@ $steps = [
     ['n' => '01', 'who' => 'You',    'label' => 'Ask',
      'text' => 'People keep asking us when to go to Japan for the cherry blossom. Can we put something on the site about it?'],
     ['n' => '02', 'who' => 'Sarah',  'label' => 'Plans and prices it',
-     'text' => 'Queued as an article. Priya is writing it. 1 credit.'],
+     'text' => 'Queued as an article. Priya is writing it. 2 credits.'],
     ['n' => '03', 'who' => 'Priya',  'label' => 'Produces it',
      'text' => e($a['words']) . ' words, a meta description, a featured image, and answer-engine markup.'],
     ['n' => '04', 'who' => 'You',    'label' => 'Approve',

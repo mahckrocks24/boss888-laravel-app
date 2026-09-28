@@ -58,7 +58,7 @@ class ArthurEditController
         // CHAT METER (2026-09-15): every chat message counts — 1 credit per 10, on every chat surface of the platform.
         $__meter = $explicitPlan ? ['sufficient' => true, 'debited' => false] : app(\App\Core\Billing\CreditService::class)->meterChat($wsId, 'arthur_message');
         if (empty($__meter['sufficient'])) {
-            return response()->json(['error' => 'insufficient_credits', 'required_credits' => 1, 'message' => 'Not enough credits to chat — 1 credit covers 10 messages. Add credits under Billing to continue.'], 402);
+            return response()->json(['error' => 'insufficient_credits', 'required_credits' => 1, 'message' => 'Not enough credits to chat — 1 credit covers 5 messages. Add credits under Billing to continue.'], 402);
         }
         // RISK-0100 — opt-in optimistic lock (parity with the direct save path). If
         // the caller sent the base_version it loaded (sha1 of sections_json), refuse a

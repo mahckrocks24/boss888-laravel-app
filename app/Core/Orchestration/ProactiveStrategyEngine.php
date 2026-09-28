@@ -45,13 +45,13 @@ class ProactiveStrategyEngine
         'serp_analysis' => 1,
         'deep_audit' => 3,
         'ai_report' => 2,
-        'write_article' => 3,
+        'write_article' => 2,
         'improve_draft' => 2,
         'generate_outline' => 1,
-        'generate_image' => 2,
-        'generate_video' => 5,
-        'social_create_post' => 0,  // Manual creation is free
-        'social_ai_post' => 1,     // AI-generated post costs 1
+        'generate_image' => 4,
+        'generate_video' => 28,
+        'social_create_post' => 4,  // PRICE-1: a post draft with its banner
+        'social_ai_post' => 4,
         'create_campaign' => 0,     // Creation is free, sending costs
         'send_campaign' => 2,
     ];

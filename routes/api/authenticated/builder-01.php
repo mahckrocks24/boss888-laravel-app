@@ -497,7 +497,7 @@ use Illuminate\Support\Facades\Route;
             $__meter = ['debited' => false];
             if (! $isConfirm) {
                 $__meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'arthur_message');
-                if (empty($__meter['sufficient'])) return response()->json(['type' => 'error', 'reply' => 'Not enough credits to chat — 1 credit covers 10 messages. Add credits under Billing to continue.', 'build_error' => 'insufficient_credits'], 402);
+                if (empty($__meter['sufficient'])) return response()->json(['type' => 'error', 'reply' => 'Not enough credits to chat — 1 credit covers 5 messages. Add credits under Billing to continue.', 'build_error' => 'insufficient_credits'], 402);
             }
 
             if ($isConfirm) {

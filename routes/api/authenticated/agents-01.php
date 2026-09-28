@@ -569,8 +569,8 @@ $withCorr = function (array $meta) use ($corr) {
                     'chat_meter'       => [
                         'counter'        => $_meter['counter']   ?? 0,
                         'debited'        => $_meter['debited']   ?? false,
-                        'threshold'      => 10,
-                        'effective_cost' => '0.1 cr',
+                        'threshold'      => \App\Core\Billing\CreditService::CHAT_METER_EVERY,
+                        'effective_cost' => '0.2 cr',
                     ],
                     'expected_seconds' => 15,
                     // DEC-0030 (2026-09-02): a truthful, deterministic progress label for COMPLEX turns; null for simple
@@ -4878,8 +4878,8 @@ $withCorr = function (array $meta) use ($corr) {
             'chat_meter' => [
                 'counter'   => $_meter['counter'] ?? 0,
                 'debited'   => $_meter['debited'] ?? false,
-                'threshold' => 10,
-                'effective_cost' => '0.1 cr',
+                'threshold' => \App\Core\Billing\CreditService::CHAT_METER_EVERY,
+                'effective_cost' => '0.2 cr',
             ],
         ]);
     });

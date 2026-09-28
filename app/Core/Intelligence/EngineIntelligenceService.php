@@ -328,8 +328,8 @@ class EngineIntelligenceService
             ],
             'creative' => [
                 'create_asset' => ['description' => 'Create an asset record. Used for tracking uploaded and generated media.', 'metadata' => ['credit_cost' => 0]],
-                'generate_image' => ['description' => 'AI-generate an image. Provider: OpenAI gpt-image-1. Supports: various styles, sizes, brand-aligned generation.', 'metadata' => ['credit_cost' => 2]],
-                'generate_video' => ['description' => 'AI-generate a video. Provider: MiniMax Hailuo-02 then Runway fallback. Async job queue. Max 5 seconds.', 'metadata' => ['credit_cost' => 5]],
+                'generate_image' => ['description' => 'AI-generate an image. Provider: OpenAI gpt-image-1. Supports: various styles, sizes, brand-aligned generation.', 'metadata' => ['credit_cost' => 4]],
+                'generate_video' => ['description' => 'AI-generate a video. Provider: MiniMax Hailuo-02 then Runway fallback. Async job queue. 6 seconds (10 seconds on request).', 'metadata' => ['credit_cost' => 28]],
                 'upscale_image' => ['description' => 'Upscale an image to higher resolution while preserving quality.', 'metadata' => ['credit_cost' => 1]],
             ],
             'marketing' => [

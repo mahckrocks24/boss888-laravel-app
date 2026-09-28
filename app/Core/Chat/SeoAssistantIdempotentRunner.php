@@ -81,8 +81,8 @@ final class SeoAssistantIdempotentRunner
             'chat_meter' => [
                 'counter'        => $meter['counter'],
                 'debited'        => $meter['debited'],
-                'effective_cost' => '0.1 cr',
-                'threshold'      => 10,
+                'effective_cost' => '0.2 cr',
+                'threshold'      => \App\Core\Billing\CreditService::CHAT_METER_EVERY,
             ],
         ], 200];
     }

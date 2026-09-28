@@ -4207,7 +4207,7 @@
         '<select id="sv-ai-dur" style="flex:1;background:#12151d;border:1px solid #2a2f3a;color:#fff;border-radius:6px;padding:7px">' +
           '<option value="6" selected>6 seconds</option><option value="10">10 seconds</option>' +
         '</select></div>' +
-      '<div style="margin:12px 0 6px;font-size:12px;color:rgba(255,255,255,.55)">Cost: <b style="color:#fff">8 credits</b> \u00b7 governed generation</div>' +
+      '<div style="margin:12px 0 6px;font-size:12px;color:rgba(255,255,255,.55)">Cost: <b style="color:#fff">28 credits</b> \u00b7 governed generation</div>' +
       '<button class="sv-btn-wide" id="sv-ai-generate">\u2726 Generate video</button>' +
       '<div id="sv-ai-status" style="margin-top:12px;font-size:12px;color:rgba(255,255,255,.65);line-height:1.5"></div>';
     // VIDEO-2: propose the aspect that matches this design's canvas.

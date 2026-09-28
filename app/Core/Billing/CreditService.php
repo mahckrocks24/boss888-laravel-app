@@ -372,14 +372,17 @@ class CreditService
     }
 
     /**
-     * Wave 22 — 10-chat batched metering for AI Assistant + agent chats.
+     * Wave 22 — batched chat metering for every chat surface.
+     * PRICE-1 (Boss 2026-09-27): 1 credit per CHAT_METER_EVERY (5) messages, was 10.
      *
-     * Atomically increments workspaces.chat_meter. On the 10th call,
-     * resets the counter to 0 and debits 1 credit (effective 0.1 cr/chat).
+     * Atomically increments workspaces.chat_meter. On the 5th call,
+     * resets the counter to 0 and debits 1 credit (effective 0.2 cr/chat).
      *
      * Returns ['debited' => bool, 'counter' => int, 'sufficient' => bool].
      * When sufficient=false the caller should reject the chat with a 402.
      */
+    public const CHAT_METER_EVERY = 5;
+
     public function meterChat(int $workspaceId, string $reason = 'chat'): array
     {
         return $this->txRetry(function () use ($workspaceId, $reason) {
@@ -390,8 +393,8 @@ class CreditService
 
             $newCounter = $current + 1;
 
-            if ($newCounter >= 10) {
-                // 10th chat triggers a 1-credit debit; refuse if balance short.
+            if ($newCounter >= self::CHAT_METER_EVERY) {
+                // the 5th chat triggers a 1-credit debit; refuse if balance short.
                 if (!$this->hasBalance($workspaceId, 1)) {
                     return ['debited' => false, 'counter' => $current, 'sufficient' => false];
                 }

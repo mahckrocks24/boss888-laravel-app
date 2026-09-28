@@ -31,7 +31,7 @@ class CapabilityMapService
         'ai_report'           => ['engine'=>'seo',       'connector'=>null,       'action'=>'ai_report',           'approval_mode'=>'auto',      'credit_cost'=>2],
         'deep_audit'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'deep_audit',          'approval_mode'=>'auto',      'credit_cost'=>3],
         'improve_draft'       => ['engine'=>'write',     'connector'=>null,       'action'=>'improve_draft',       'approval_mode'=>'review',    'credit_cost'=>2],
-        'write_article'       => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article',       'approval_mode'=>'review',    'credit_cost'=>1],
+        'write_article'       => ['engine'=>'write',     'connector'=>null,       'action'=>'write_article',       'approval_mode'=>'review',    'credit_cost'=>2],
         'fill_missing_images' => ['engine'=>'write',     'connector'=>null,       'action'=>'fill_missing_images', 'approval_mode'=>'auto',      'credit_cost'=>0],
         // 2026-07-23 — was MISSING; every publish_article task died at
         // "No capability mapped" before executing. See fix note in git/backup.
@@ -74,20 +74,20 @@ class CapabilityMapService
         'competitor_serp'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'competitor_serp',     'approval_mode'=>'auto',      'credit_cost'=>1],
         'competitor_gaps'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'competitor_gaps',     'approval_mode'=>'auto',      'credit_cost'=>3],
         // Wave 22 — Chat metering + strategy meeting.
-        // assistant_message + agent_message are batched 10:1 via CreditService::meterChat() — effective 0.1 cr/chat. credit_cost here is the threshold debit, not the per-call charge.
+        // assistant_message + agent_message are batched 5:1 via CreditService::meterChat() — effective 0.2 cr/chat (PRICE-1). credit_cost here is the threshold debit, not the per-call charge.
         'assistant_message'   => ['engine'=>'sarah',     'connector'=>null,       'action'=>'assistant_message',   'approval_mode'=>'auto',      'credit_cost'=>1],
         'agent_message'       => ['engine'=>'sarah',     'connector'=>null,       'action'=>'agent_message',       'approval_mode'=>'auto',      'credit_cost'=>1],
         'strategy_meeting'    => ['engine'=>'sarah',     'connector'=>null,       'action'=>'strategy_meeting',    'approval_mode'=>'auto',      'credit_cost'=>8],
         // Sarah cross-engine campaign drafting (Batch 4 — activates ContentPackService) /* b4-sarah-capmap */
         'sarah_draft_campaign' => ['engine'=>'sarah',     'connector'=>null,       'action'=>'draft_campaign',      'approval_mode'=>'auto',      'credit_cost'=>0],
         // Wave 23 — Canonical realignment additions.
-        'generate_image_mini' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>1],
-        'generate_image_high' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_high', 'approval_mode'=>'auto',      'credit_cost'=>4],
+        'generate_image_mini' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_mini', 'approval_mode'=>'auto',      'credit_cost'=>2],
+        'generate_image_high' => ['engine'=>'creative',  'connector'=>null,       'action'=>'generate_image_high', 'approval_mode'=>'auto',      'credit_cost'=>21],
         // [Phase G Fix 3 · 2026-07-25] Disabled dead capability: no engine implements the
         // upscale_image action (EngineExecutionService throws "Unknown Creative action: upscale_image").
         // Re-added by Wave 23 in error; see the Phase 2A removal note below. Reversible — uncomment to restore.
         // 'upscale_image'       => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'upscale_image',       'approval_mode'=>'auto',      'credit_cost'=>1],
-        'social_ai_post'      => ['engine'=>'social',    'connector'=>null,       'action'=>'social_ai_post',      'approval_mode'=>'review',    'credit_cost'=>1],
+        'social_ai_post'      => ['engine'=>'social',    'connector'=>null,       'action'=>'social_ai_post',      'approval_mode'=>'review',    'credit_cost'=>4],
         'social_image'        => ['engine'=>'social',    'connector'=>'creative', 'action'=>'social_image',        'approval_mode'=>'auto',      'credit_cost'=>1],
         'hashtag_suggestions' => ['engine'=>'social',    'connector'=>null,       'action'=>'hashtag_suggestions', 'approval_mode'=>'auto',      'credit_cost'=>1],
         'ai_followup_draft'   => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_followup_draft',   'approval_mode'=>'review',    'credit_cost'=>1],
@@ -101,7 +101,7 @@ class CapabilityMapService
         'chatbot_get_state'   => ['engine'=>'chatbot',   'connector'=>null,       'action'=>'get_state',           'approval_mode'=>'auto',      'credit_cost'=>0], // F-CB-F2 read
         // Sarah × Studio wiring 2026-06-03 — generate_design produces drafts; review before social publish.
         'studio_generate_design'   => ['engine'=>'studio',    'connector'=>null,       'action'=>'generate_design',     'approval_mode'=>'auto',      'credit_cost'=>5],
-        'studio_generate_image'    => ['engine'=>'studio',    'connector'=>null,       'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>3],
+        'studio_generate_image'    => ['engine'=>'studio',    'connector'=>null,       'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>4],
         'studio_suggest_copy'      => ['engine'=>'studio',    'connector'=>null,       'action'=>'suggest_copy',        'approval_mode'=>'auto',      'credit_cost'=>1],
         // Sarah × Email Phase 1 wiring 2026-06-04 — all AI surfaces produce drafts; send is approval-gated separately.
         'marketing_email_ai_generate'      => ['engine'=>'marketing', 'connector'=>null,       'action'=>'email_ai_generate',      'approval_mode'=>'review',    'credit_cost'=>3],
@@ -135,13 +135,13 @@ class CapabilityMapService
         'aeo_enrich'          => ['engine'=>'write',     'connector'=>null,       'action'=>'aeo_enrich',          'approval_mode'=>'auto',      'credit_cost'=>1],
 
         // ── Creative Engine (native AI) ──────────────────────────
-        'generate_image'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>2],
-        'generate_video'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_video',      'approval_mode'=>'review',    'credit_cost'=>8],
+        'generate_image'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_image',      'approval_mode'=>'auto',      'credit_cost'=>4],
+        'generate_video'      => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'generate_video',      'approval_mode'=>'review',    'credit_cost'=>28],
         // STUDIO888 Phase O (2026-07-26): edit_image RE-ADDED with a real
         // implementation — CreativeService::editImage() performs masked
         // inpainting via OpenAI gpt-image-1 (/v1/images/edits) and creates a
         // non-destructive child version. Same cost as generation.
-        'edit_image'          => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'edit_image',          'approval_mode'=>'auto',      'credit_cost'=>2],
+        'edit_image'          => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'edit_image',          'approval_mode'=>'auto',      'credit_cost'=>6],
         // Phase 2A: removed 6 unimplemented aspirational creative actions that had
         // registered capabilities but no CreativeService implementation. Leaving them
         // registered caused Sarah's planner to include them in plans, then
@@ -203,7 +203,7 @@ class CapabilityMapService
         // 31828). Drafting is Laravel-native (SocialService::createPost); publishing goes through
         // SocialService::publishPost, which calls the platform connector itself and refuses to mark a post
         // published without a confirmed external id. Both are dispatched internally now.
-        'social_create_post'  => ['engine'=>'social',    'connector'=>null,       'action'=>'create_post',         'approval_mode'=>'review',    'credit_cost'=>1],
+        'social_create_post'  => ['engine'=>'social',    'connector'=>null,       'action'=>'create_post',         'approval_mode'=>'review',    'credit_cost'=>4],
         'social_publish_post' => ['engine'=>'social',    'connector'=>null,       'action'=>'publish_post',        'approval_mode'=>'protected', 'credit_cost'=>2],
         // COMMENTS-1 (2026-09-26): a reply to a comment on the business's Page — always waits for the Owner's approval.
         'social_reply_comment' => ['engine'=>'social',   'connector'=>null,       'action'=>'reply_comment',       'approval_mode'=>'protected', 'credit_cost'=>0],
@@ -334,6 +334,16 @@ class CapabilityMapService
     {
         $cap = $this->resolve($action);
         return $cap['approval_mode'] ?? 'review';
+    }
+
+    /** PRICE-1: a 10-second video costs more than the 6-second default (the provider renders 6 or 10). */
+    public const VIDEO_10S_CREDITS = 52;
+
+    /** The charge for one run of $action with these params — the one place a price depends on the request. */
+    public function creditCostFor(string $action, array $params = []): int
+    {
+        if ($action === 'generate_video' && (int) ($params['duration'] ?? 0) === 10) return self::VIDEO_10S_CREDITS;
+        return $this->getCreditCost($action);
     }
 
     public function getCreditCost(string $action): int
