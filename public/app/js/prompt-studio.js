@@ -129,7 +129,9 @@
   function render() {
     var host = S.host;
     var video = S.mode === 'video';
-    var editing = !video && !!S.currentAssetId;
+    // LAUNCH-STUDIO-1 (Owner 2026-09-28: "We are launching just image and video AI generation"): no editing —
+    // after a result the composer generates a new image (or another take of the same prompt); edit mode is off.
+    var editing = false;
     var cost = video ? VIDEO_COST : (editing ? COST.edit_image : COST.generate_image);
     var placeholder = video
       ? 'Describe a short video — e.g. “a 5-second clip of waves rolling onto a beach at sunset”…'
@@ -157,8 +159,8 @@
     host.innerHTML =
       '<div class="ps-root">' +
         '<div class="ps-head">' +
-          '<h2>Prompt Studio</h2>' +
-          '<span class="ps-sub">Describe it. We enhance it. Refine by prompting.</span>' +
+          '<h2>Studio</h2>' +
+          '<span class="ps-sub">Describe it and we create it — images' + (videoEnabled() ? ' and short videos' : '') + '.</span>' +
         '</div>' +
         '<div class="ps-scroll"><div class="ps-stage">' +
           '<div class="' + resultClass() + '" id="ps-result">' + resultInner() + '</div>' +
