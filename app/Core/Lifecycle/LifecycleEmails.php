@@ -67,6 +67,15 @@ final class LifecycleEmails
         return EmailLayout::appUrl() . $path;
     }
 
+    /** MAIL-BRAND-2: the AI plans as cards (price, credits); the cheapest marked, or the next one up from the current plan. */
+    private function planCards(string $currentSlug = ''): array
+    {
+        $rows = DB::table('plans')->where('is_public', 1)->where('includes_dmm', 1)->where('price', '>', 0)->orderBy('price')->get(['slug', 'name', 'price', 'credit_limit']);
+        if ($currentSlug !== '') { $cur = (float) ($rows->firstWhere('slug', $currentSlug)->price ?? 0); $rows = $rows->filter(fn ($r) => (float) $r->price >= $cur)->values(); }   // never offer a step down
+        $mark = $currentSlug === '' ? ($rows->first()->slug ?? '') : ($rows->first(fn ($r) => (float) $r->price > (float) ($rows->firstWhere('slug', $currentSlug)->price ?? 0))->slug ?? '');
+        return $rows->map(fn ($r) => [$r->name, '$' . (int) $r->price, number_format((int) $r->credit_limit) . ' credits a month', $r->slug === $mark ? ($currentSlug === '' ? 'Best to start' : 'Next step') : null])->all();
+    }
+
     private function plans(): array
     {
         $rows = DB::table('plans')->where('is_public', 1)->where('includes_dmm', 1)->where('price', '>', 0)->orderBy('price')->get(['name', 'price', 'credit_limit']);
@@ -74,8 +83,12 @@ final class LifecycleEmails
     }
 
     /** What the team did since the trial started — the customer's own numbers, never invented. */
+    /** Preview only (samples for the Owner): demo numbers instead of a real account. Never set in production sends. */
+    public static ?array $demo = null;
+
     private function results(int $wsId, ?string $since): array
     {
+        if (self::$demo !== null) return self::$demo;
         $since = $since ?: now()->subDays(3)->toDateTimeString();
         $n = fn ($t, $extra = null) => (int) (function () use ($t, $wsId, $since, $extra) { try { $q = DB::table($t)->where('workspace_id', $wsId)->where('created_at', '>=', $since); if ($extra) $extra($q); return $q->count(); } catch (\Throwable $e) { return 0; } })();
         return [
@@ -110,19 +123,20 @@ final class LifecycleEmails
     {
         return [
             'preheader' => 'Confirm your email and meet Sarah, your AI marketing manager.',
+            'hero' => 'welcome',
+            'eyebrow' => 'Welcome aboard',
             'heading' => 'Welcome to LevelUpGrowth, ' . $name,
-            'paragraphs' => [
-                "I'm Sarah, your marketing manager. For the next 3 days you have the whole team and 50 credits to try everything, no card needed.",
-                'First, confirm this is your email address:',
+            'lead' => "I'm Sarah, your marketing manager. For the next 3 days you have my whole team and 50 credits to try everything.",
+            'paragraphs' => ['Here is how we will start:'],
+            'steps' => [
+                ['Build your website', 'Arthur designs it in your brand, in minutes.'],
+                ['Connect Facebook, Instagram and LinkedIn', 'So I can post for you, every day.'],
+                ['Ask me for campaign ideas', 'A post every day, planned around your business.'],
             ],
+            'callout' => 'Your trial &nbsp;&middot;&nbsp; <strong>3 days</strong> &nbsp;&middot;&nbsp; <strong>50 credits</strong> &nbsp;&middot;&nbsp; the whole AI team &nbsp;&middot;&nbsp; no card needed',
             'button' => ['Confirm my email', $verifyUrl],
-            'list' => [
-                '<strong>Build your website</strong> with Arthur, in your brand, in minutes.',
-                '<strong>Connect Facebook, Instagram and LinkedIn</strong> so I can post for you.',
-                '<strong>Ask me for campaign ideas</strong>: a post every day, planned for you.',
-            ],
             'after' => [
-                'The button works for 72 hours. If it does not open, copy this address into your browser: <span style="word-break:break-all">' . htmlspecialchars($verifyUrl, ENT_QUOTES) . '</span>',
+                'Confirming lets your website and posts go live. The button works for 72 hours.',
                 'Did not sign up for LevelUpGrowth? You can ignore this email.',
             ],
             'signoff' => 'sarah',
@@ -147,12 +161,17 @@ final class LifecycleEmails
         if ($n === 1) $this->chat($wsId, "Connect {$names} and I'll start posting for you. It takes a minute: open Social, sign in, pick your page.", 'lifecycle_social');
         return $this->send($wsId, $u, "Connect {$names} so I can post for you", [
             'preheader' => 'One minute, and your posts start going out on schedule.',
+            'hero' => 'social',
+            'eyebrow' => 'Takes one minute',
             'heading' => 'Let me post for you',
+            'lead' => "Your posts are ready to go. I can publish them as soon as <strong>{$names}</strong> " . (count($missing) > 1 ? 'are' : 'is') . ' connected.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => [
-                "Your posts are ready to go, but I can only publish them once your accounts are connected. Connect <strong>{$names}</strong>: sign in, pick your page, done.",
-                'Once connected I will also answer comments and messages for your approval, and turn buying comments into leads.',
+            'steps' => [
+                ['Open Social in LevelUpGrowth', ''],
+                ['Sign in to ' . $names, 'The usual sign-in window, nothing to install.'],
+                ['Pick your page', 'Done. I take it from there.'],
             ],
+            'callout' => 'Once connected I also answer comments and messages for your approval, and turn buying comments into leads.',
             'button' => ['Connect my accounts', $this->link('/app/social')],
             'signoff' => 'sarah',
             'reason' => 'You received this email because you are trying LevelUpGrowth.',
@@ -177,16 +196,15 @@ final class LifecycleEmails
         $this->chat($wsId, 'Your trial ends tomorrow. Your website, contacts and calendar stay yours on the Free plan; to keep me and the team working, choose a plan' . ($plans ? ' (from ' . $plans[0] . ')' : '') . '.', 'lifecycle_trial_ending');
         return $this->send($wsId, $u, 'Your trial ends tomorrow', [
             'preheader' => 'Here is what we did together, and how to keep going.',
+            'hero' => 'ending',
+            'eyebrow' => 'Your trial · 1 day left',
             'heading' => 'Your trial ends tomorrow',
+            'lead' => 'Here is what we built together so far, and how to keep the team working for you.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => array_merge(
-                [$did ? 'Here is what we did so far:' : 'Your trial ends in about a day.'],
-            ),
-            'list' => $did ?: ['Your website, your brand and your first plan are ready for us to keep going.'],
-            'after' => array_merge(
-                ['After tomorrow your website, contacts and calendar keep working on the Free plan. To keep me and the team working, choose a plan:'],
-                array_map(fn ($p) => '&bull; ' . htmlspecialchars($p, ENT_QUOTES), $plans)
-            ),
+            'stats' => [[(string) $r['posts'], 'Posts drafted'], [(string) $r['articles'], 'Articles written'], [(string) $r['leads'], 'New leads']],
+            'paragraphs' => $r['site'] ? ['Your website is live at <a href="' . htmlspecialchars($r['site']['url'], ENT_QUOTES) . '" style="color:' . EmailLayout::PURPLE . ';font-weight:600">' . htmlspecialchars(preg_replace('#^https://#', '', $r['site']['url']), ENT_QUOTES) . '</a>.'] : [],
+            'callout' => 'After tomorrow your website, contacts and calendar keep working on the Free plan. Choose a plan to keep me and the team working.',
+            'plans' => $this->planCards(),
             'button' => ['Choose a plan', $this->link('/app/billing')],
             'signoff' => 'sarah',
             'reason' => 'You received this email because you are trying LevelUpGrowth.',
@@ -212,18 +230,19 @@ final class LifecycleEmails
         $this->chat($wsId, \App\Core\Billing\SarahPaused::text($wsId), 'lifecycle_trial_ended');
         return $this->send($wsId, $u, 'Your trial has ended; your website is still live', [
             'preheader' => 'What stays, what changes, and how to bring the team back.',
-            'heading' => 'Your trial has ended',
+            'hero' => 'ended',
+            'eyebrow' => 'Trial ended',
+            'heading' => 'Your website is still live',
+            'lead' => 'Thank you for trying LevelUpGrowth. Your trial has ended; here is what happens now.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => [
-                'Thank you for trying LevelUpGrowth. Here is what happens now:',
-            ],
             'list' => [
                 $site . ' stays live, with your contacts and calendar, on the Free plan.',
                 'A small LevelUpGrowth ad now shows on your website. That is how the Free plan stays free.',
                 'I am paused, with the AI team: no new posts, articles or campaigns until you choose a plan.',
             ],
-            'after' => array_merge(['Choose a plan to remove the ads and bring me back:'], array_map(fn ($p) => '&bull; ' . htmlspecialchars($p, ENT_QUOTES), $plans), ['Your own domain without ads starts from Starter at $19 a month.']),
+            'plans' => $this->planCards(),
             'button' => ['Choose a plan', $this->link('/app/billing')],
+            'after' => ['Only want your own domain without ads? Starter is  a month.'],
             'signoff' => 'sarah',
             'reason' => 'You received this email because your LevelUpGrowth trial ended.',
         ], false);   // an account status notice: sent even to those who unsubscribed from tips
@@ -261,15 +280,21 @@ final class LifecycleEmails
         if ($r['site']) $done[] = 'Your website is live at <a href="' . htmlspecialchars($r['site']['url'], ENT_QUOTES) . '" style="color:' . EmailLayout::PURPLE . '">' . htmlspecialchars(preg_replace('#^https://#', '', $r['site']['url']), ENT_QUOTES) . '</a>.';
         if ($r['posts']) $done[] = $this->plural($r['posts'], 'social post') . ' drafted for you.';
         if ($r['articles']) $done[] = $this->plural($r['articles'], 'article') . ' written.';
-        $waiting = 0; try { $waiting = (int) DB::table('social_posts')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('status', 'draft')->count(); } catch (\Throwable $e) {}
+        $waiting = (int) (self::$demo["waiting"] ?? 0); if (self::$demo === null) try { $waiting = (int) DB::table('social_posts')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('status', 'draft')->count(); } catch (\Throwable $e) {}
         $this->chat($wsId, 'Good morning. Today I will keep your posts coming' . ($waiting ? ': ' . $this->plural($waiting, 'post') . ' are waiting for your approval in Needs you' : '') . '. Ask me for campaign ideas any time.', 'lifecycle_first_day');
         return $this->send($wsId, $u, 'Your first day: here is what I did', [
             'preheader' => 'Your website, your first posts, and what comes today.',
-            'heading' => 'Your first day with LevelUpGrowth',
-            'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => [$done ? 'Here is what the team has done since you signed up:' : 'Here is how we can get going today:'],
-            'list' => $done ?: ['Tell me about your business in chat and I will plan your first week.', 'Ask Arthur to build your website in your brand.'],
-            'after' => [$waiting ? ($waiting === 1 ? '1 post is' : $waiting . ' posts are') . ' waiting for your approval. Approve them and I will publish them on schedule.' : 'Today I will draft your first posts. You approve each one before anything goes out.'],
+            'hero' => 'firstday',
+            'eyebrow' => 'Day 1',
+            'heading' => 'Good morning, ' . $this->first($u),
+            'lead' => $done ? 'Here is what the team did since you signed up, and what comes today.' : 'Here is how we get going today.',
+            'stats' => [[(string) $r['posts'], 'Posts drafted'], [(string) $r['articles'], 'Articles'], [(string) $waiting, 'Waiting for you']],
+            'paragraphs' => $r['site'] ? ['Your website is live at <a href="' . htmlspecialchars($r['site']['url'], ENT_QUOTES) . '" style="color:' . EmailLayout::PURPLE . ';font-weight:600">' . htmlspecialchars(preg_replace('#^https://#', '', $r['site']['url']), ENT_QUOTES) . '</a>.'] : [],
+            'steps' => [
+                [$waiting ? 'Approve your first posts' : 'Tell me about your business', $waiting ? 'They go out on schedule once you approve.' : 'I plan your first week from it.'],
+                ['Connect your social accounts', 'Facebook, Instagram and LinkedIn.'],
+                ['Ask me for campaign ideas', 'A post every day, planned for you.'],
+            ],
             'button' => [$waiting ? 'Review my posts' : 'Open LevelUpGrowth', $this->link($waiting ? '/app/attention' : '/app/')],
             'signoff' => 'sarah',
             'reason' => 'You received this email because you are trying LevelUpGrowth.',
@@ -287,9 +312,11 @@ final class LifecycleEmails
         $url = URL::temporarySignedRoute('verification.verify', now()->addHours(72), ['id' => $user->id, 'hash' => sha1($user->email)]);
         return $this->send($wsId, $u, 'Confirm your email to publish your website', [
             'preheader' => 'One tap, and your website and posts can go live.',
+            'hero' => 'welcome',
+            'eyebrow' => 'One tap',
             'heading' => 'Please confirm your email',
+            'lead' => 'Confirming keeps your account safe and lets your website and posts go live.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => ['Confirming your email keeps your account safe and lets your website and posts go live.'],
             'button' => ['Confirm my email', $url],
             'after' => ['The button works for 72 hours. Did not sign up for LevelUpGrowth? You can ignore this email.'],
             'signoff' => 'sarah',
@@ -316,9 +343,11 @@ final class LifecycleEmails
         if ($p->includes_dmm) $this->chat($wsId, 'Welcome to ' . $p->name . '. I am back at work: your posts and campaigns pick up from where we left off.', 'lifecycle_welcome_plan');
         return $this->send($wsId, $u, 'Welcome to ' . $p->name . ': here is what is new', [
             'preheader' => 'Your plan is active. Here is everything it includes.',
+            'hero' => 'plan',
+            'eyebrow' => 'Plan active',
             'heading' => 'Welcome to ' . $p->name,
+            'lead' => 'Thank you. Your plan is active and I am back at work on your business. Here is what it gives you:',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => ['Thank you. Your ' . $p->name . ' plan is active. Here is what it gives you:'],
             'list' => $list,
             'button' => ['Open LevelUpGrowth', $this->link('/app/')],
             'after' => ['Your receipt and invoices are always in Settings, Plan and billing.'],
@@ -342,9 +371,14 @@ final class LifecycleEmails
         $this->chat($wsId, 'Heads up: ' . $left . ' credits left this month. That covers about ' . intdiv($left, 6) . ' more published posts. Your credits refill at renewal, or you can move up a plan.', 'lifecycle_credits_low');
         return $this->send($wsId, $u, 'You have used 80% of this month\'s credits', [
             'preheader' => $left . ' credits left this month.',
+            'hero' => 'credits',
+            'eyebrow' => 'This month',
             'heading' => $left . ' credits left this month',
+            'lead' => 'You have used most of this month\'s credits. Your balance refills at your next renewal.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => ['You have used most of this month\'s ' . number_format((int) $p->credit_limit) . ' credits. The ' . $left . ' left cover about ' . intdiv($left, 6) . ' more published posts with banners.', 'Your credits refill at your next renewal. To keep the same pace until then, move up a plan.'],
+            'stats' => [[(string) $left, 'Credits left'], ['~' . intdiv($left, 6), 'Posts it covers'], [number_format((int) $p->credit_limit), 'Monthly credits']],
+            'callout' => 'To keep the same pace until renewal, move up a plan. The change applies at once.',
+            'plans' => $this->planCards((string) $p->slug),
             'button' => ['See the plans', $this->link('/app/billing')],
             'signoff' => 'sarah',
             'reason' => 'You received this email because you have a LevelUpGrowth plan.',
@@ -370,10 +404,13 @@ final class LifecycleEmails
         $this->chat($wsId, 'Your month: ' . implode(', ', $list) . '. Ask me what we should do more of next month.', 'lifecycle_monthly');
         return $this->send($wsId, $u, 'Your month: ' . $posts . ' posts, ' . $articles . ' articles, ' . $leads . ' leads', [
             'preheader' => 'What the team did for your business in the last 30 days.',
+            'hero' => 'monthly',
+            'eyebrow' => 'Your month',
             'heading' => 'Your month with LevelUpGrowth',
+            'lead' => 'Here is what the team did for your business in the last 30 days.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => ['Here is what we did for your business in the last 30 days:'],
-            'list' => $list,
+            'stats' => [[(string) $posts, 'Posts published'], [(string) $articles, 'Articles'], [(string) $leads, 'New leads']],
+            'callout' => 'Reply in chat with what you want more of next month, and I will plan it.',
             'button' => ['See the details', $this->link('/app/')],
             'signoff' => 'sarah',
             'reason' => 'You received this email because you have a LevelUpGrowth plan.',
@@ -393,20 +430,30 @@ final class LifecycleEmails
         if ($day === 7) {
             return $this->send($wsId, $u, 'What your website did this week', [
                 'preheader' => 'Your website is still working for you on the Free plan.',
-                'heading' => 'Your website this week',
+                'hero' => 'winback',
+                'eyebrow' => 'Your week',
+                'heading' => 'Your website kept working this week',
+                'lead' => ($r['site'] ? htmlspecialchars($r['site']['name'], ENT_QUOTES) . ' is live on the Free plan' : 'Your website is live on the Free plan') . ($r['leads'] ? ', and it brought you ' . $this->plural($r['leads'], 'new lead') . '.' : '.'),
                 'greeting' => 'Hi ' . $this->first($u) . ',',
-                'paragraphs' => [($r['site'] ? htmlspecialchars($r['site']['name'], ENT_QUOTES) . ' is live on the Free plan' : 'Your website is live on the Free plan') . ($r['leads'] ? ', and it brought you ' . $this->plural($r['leads'], 'new lead') . ' this week.' : '.'), 'When you want more visitors, I can post every day, write articles that get you found on Google, and plan campaigns.'],
+                'paragraphs' => ['When you want more visitors, I can post every day, write articles that get you found on Google, and plan campaigns around your season.'],
+                'plans' => $this->planCards(),
                 'button' => ['Bring Sarah back', $this->link('/app/billing')],
-                'after' => $plans ? ['Plans start at ' . htmlspecialchars($plans[0], ENT_QUOTES) . '.'] : [],
                 'signoff' => 'sarah',
                 'reason' => 'You received this email because you tried LevelUpGrowth.',
             ]);
         }
         return $this->send($wsId, $u, 'One thing you have not tried yet', [
             'preheader' => 'Campaigns: a post every day, planned for your business.',
+            'hero' => 'winback',
+            'eyebrow' => 'Something you have not tried',
             'heading' => 'Campaigns, planned for you',
+            'lead' => 'On a plan, I plan whole campaigns for your business. You approve the plan once, and each post before it goes out.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => ['On a plan, I plan campaigns for your business: a theme that fits the season, a post every day, an article that helps you get found, and the offer to go with it. You approve the plan once, and each post before it goes out.'],
+            'steps' => [
+                ['A theme that fits the season', 'Grounded in your business and your area.'],
+                ['A post every day', 'With its banner, in your brand.'],
+                ['An article that helps you get found', 'On the searches your customers use.'],
+            ],
             'button' => ['See the plans', $this->link('/app/billing')],
             'signoff' => 'sarah',
             'reason' => 'You received this email because you tried LevelUpGrowth.',
@@ -423,9 +470,12 @@ final class LifecycleEmails
         $name = ucfirst(strtolower($platform));
         return $this->send($wsId, $u, 'Your ' . $name . ' connection needs you', [
             'preheader' => 'Posts are waiting until it is reconnected.',
+            'hero' => 'social',
+            'eyebrow' => 'Action needed',
             'heading' => 'Reconnect ' . $name,
+            'lead' => 'Your ' . $name . ' connection stopped working, usually after a password change or when a permission was removed.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'paragraphs' => ['Your ' . $name . ' connection stopped working, usually after a password change or when a permission was removed. Your posts are waiting, not lost. Reconnect it and I will carry on.'],
+            'callout' => 'Your posts are waiting, not lost. Reconnect and I carry on where we left off.',
             'button' => ['Reconnect ' . $name, $this->link('/app/social')],
             'signoff' => 'sarah',
             'reason' => 'You received this email because ' . $name . ' is connected to your LevelUpGrowth account.',
@@ -438,6 +488,7 @@ final class LifecycleEmails
         $u = DB::table('users')->where('id', $userId)->first(['id', 'name', 'email']); if (! $u) return false;
         return $this->send(0, $u, 'Your LevelUpGrowth password was changed', [
             'preheader' => 'If this was you, you do not need to do anything.',
+            'hero' => 'security', 'tone' => 'security', 'eyebrow' => 'Security notice',
             'heading' => 'Your password was changed',
             'greeting' => 'Hi ' . $this->first($u) . ',',
             'paragraphs' => ['The password for your LevelUpGrowth account was changed on ' . now()->format('j M Y, H:i') . ' (UTC).', 'If this was you, you do not need to do anything. If it was not, reset your password now and reply to this email.'],
@@ -452,6 +503,7 @@ final class LifecycleEmails
         foreach (array_unique([$old, $new]) as $addr) {
             $this->send(0, (object) ['id' => $u->id, 'name' => $u->name, 'email' => $addr], 'Your LevelUpGrowth email address was changed', [
                 'preheader' => 'If this was you, you do not need to do anything.',
+                'hero' => 'security', 'tone' => 'security', 'eyebrow' => 'Security notice',
                 'heading' => 'Your email address was changed',
                 'greeting' => 'Hi ' . $this->first($u) . ',',
                 'paragraphs' => ['The email address on your LevelUpGrowth account was changed from <strong>' . htmlspecialchars($old, ENT_QUOTES) . '</strong> to <strong>' . htmlspecialchars($new, ENT_QUOTES) . '</strong>.', 'If this was not you, reply to this email straight away and we will lock the account.'],

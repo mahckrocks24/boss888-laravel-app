@@ -47,6 +47,7 @@ class RemoveAdsMail extends Mailable implements ShouldQueue
         $e = fn ($v) => htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
         return new Content(htmlString: \App\Core\Lifecycle\EmailLayout::render([
             'preheader'  => 'Your website is live on the Free plan. Here is how to remove the ads.',
+            'hero' => 'ended', 'eyebrow' => 'Free plan',
             'heading'    => 'Your website is live',
             'greeting'   => 'Hi ' . $e($this->name) . ',',
             'paragraphs' => ['<a href="' . $e($this->siteUrl) . '" style="color:#6C5CE7">' . $e($this->siteName) . '</a> is on the Free plan, so it shows a small LevelUpGrowth ad to your visitors. That is how the Free plan stays free.'],

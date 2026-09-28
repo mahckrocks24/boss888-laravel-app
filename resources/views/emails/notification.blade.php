@@ -5,6 +5,7 @@
   $__base = \App\Core\Lifecycle\EmailLayout::appUrl();
   $__o = [
     'preheader'   => (string) ($notification->body ?? $notification->title),
+    'hero' => 'alert', 'eyebrow' => 'Notification',
     'heading'     => (string) $notification->title,
     'paragraphs'  => $notification->body ? [nl2br(e((string) $notification->body))] : [],
     'button'      => $__to !== '' ? ['Open in LevelUpGrowth', preg_match('#^(https?:)?//#', $__to) ? $__to : $__base . $__to] : null,

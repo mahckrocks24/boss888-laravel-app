@@ -2,6 +2,7 @@
 @php
   $__o = [
     'preheader'  => 'Choose a new password for your LevelUpGrowth account.',
+    'hero' => 'password', 'tone' => 'security', 'eyebrow' => 'Account security',
     'heading'    => 'Reset your password',
     'greeting'   => 'Hi' . (isset($user->name) && $user->name ? ' ' . trim(explode(' ', (string) $user->name)[0]) : '') . ',',
     'paragraphs' => ['Tap the button to choose a new password. The link works for ' . (int) $expireMin . ' minutes.'],
