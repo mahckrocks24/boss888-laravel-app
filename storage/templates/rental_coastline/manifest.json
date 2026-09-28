@@ -146,7 +146,7 @@
         "hero_cta": {
             "type": "text",
             "label": "Hero Button",
-            "default": "Browse homes"
+            "default": "Book a viewing"
         },
         "hero_cta_2": {
             "type": "text",

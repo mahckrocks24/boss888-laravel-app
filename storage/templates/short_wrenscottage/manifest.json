@@ -174,7 +174,7 @@
         "hero_cta": {
             "type": "text",
             "label": "Hero Button",
-            "default": "Browse homes"
+            "default": "Check availability"
         },
         "hero_cta_2": {
             "type": "text",

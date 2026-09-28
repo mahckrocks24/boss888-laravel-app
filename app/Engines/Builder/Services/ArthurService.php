@@ -2405,7 +2405,7 @@ PROMPT;
     private static function layoutCopyKeys(array $manifest): array
     {
         $skipKey   = '/(image|img|photo|logo|url|color|colour|display|icon|bg|background|style|css|href|src|width|height|dim|ratio|font|hex|locale|canonical|slug|og_image)/i';
-        $structKey = '/(nav|menu|link|button|_cta$|^cta|tab|breadcrumb|^logo|_label$)/i';
+        $structKey = '/(nav|menu|link|button|_cta(_[a-z0-9]+)?$|_cta_primary|^cta|tab|breadcrumb|^logo|_label$)/i';
         $out = [];
         foreach (($manifest['variables'] ?? []) as $k => $spec) {
             if (! is_array($spec)) { continue; }
@@ -5724,7 +5724,7 @@ PROMPT;
     private function coverageCandidates(array $vars, array $variables): array
     {
         $skipKey = '/(image|img|photo|logo|url|color|colour|display|icon|bg|background|style|css|href|src|width|height|dim|ratio|font|hex|locale|canonical|slug|og_image|_id$)/i';
-        $structKey = '/(nav|menu|link|button|_cta$|^cta|tab|breadcrumb|^logo|_label$)/i';
+        $structKey = '/(nav|menu|link|button|_cta(_[a-z0-9]+)?$|_cta_primary|^cta|tab|breadcrumb|^logo|_label$)/i';
         $toFill = [];
         foreach ($vars as $k => $spec) {
             if (!is_array($spec)) continue;
@@ -5779,7 +5779,7 @@ PROMPT;
 
         $skipKey = '/(image|img|photo|logo|url|color|colour|display|icon|bg|background|style|css|href|src|width|height|dim|ratio|font|hex|locale|canonical|slug|og_image|_id$)/i';
         // structural labels we must NOT rewrite/blank (would break nav/buttons)
-        $structKey = '/(nav|menu|link|button|_cta$|^cta|tab|breadcrumb|^logo|_label$)/i';
+        $structKey = '/(nav|menu|link|button|_cta(_[a-z0-9]+)?$|_cta_primary|^cta|tab|breadcrumb|^logo|_label$)/i';
 
         $name = $data['business_name'] ?? 'the business';
         $toFill = [];
