@@ -141,9 +141,17 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
             $__base = DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')
                 ->where(fn ($q) => $q->whereNull('metadata_json')->orWhereRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.phase')), '') <> 'ack'"));
             $__at = \Carbon\Carbon::parse($__d['created_at']);
-            // the message that announced it (just before, within 30 min), else the first after it (within 2 h), else the last before it
-            $__d['message_id'] = (int) ((clone $__base)->where('created_at', '<=', $__at->copy()->addSeconds(2))->where('created_at', '>=', $__at->copy()->subMinutes(30))->orderByDesc('id')->value('id')
-                ?: (clone $__base)->where('created_at', '>', $__at)->where('created_at', '<=', $__at->copy()->addHours(2))->orderBy('id')->value('id')
+            // 1. the message that reported the task which made this draft (task result names the post; the report names the task)
+            $__mid = null;
+            $__task = DB::table('tasks')->where('workspace_id', $wsId)->where('created_at', '>=', $__at->copy()->subDays(2))->where('created_at', '<=', $__at->copy()->addMinutes(5))
+                ->where(fn ($q) => $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(result_json, '$.data.post_id')) = ?", [(string) $__d['post_id']])->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(result_json, '$.post_id')) = ?", [(string) $__d['post_id']]))
+                ->orderByDesc('id')->first(['id', 'parent_task_id']);
+            if ($__task) $__mid = (clone $__base)->where(fn ($q) => $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.root_task_id')) = ?", [(string) $__task->id])->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.task_id')) = ?", [(string) $__task->id])
+                ->when($__task->parent_task_id, fn ($x) => $x->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.root_task_id')) = ?", [(string) $__task->parent_task_id])))->orderBy('id')->value('id');
+            // 2. the first Sarah message within 3 minutes after it; 3. the one that announced it just before; 4. the last before it
+            $__d['message_id'] = (int) ($__mid
+                ?: (clone $__base)->where('created_at', '>=', $__at->copy()->subSeconds(2))->where('created_at', '<=', $__at->copy()->addMinutes(3))->orderBy('id')->value('id')
+                ?: (clone $__base)->where('created_at', '<=', $__at)->where('created_at', '>=', $__at->copy()->subMinutes(30))->orderByDesc('id')->value('id')
                 ?: (clone $__base)->where('created_at', '<=', $__at)->orderByDesc('id')->value('id')) ?: null;
         }
         unset($__d);

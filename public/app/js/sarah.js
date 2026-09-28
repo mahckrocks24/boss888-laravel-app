@@ -878,7 +878,9 @@
      never reflows (the earlier re-render-the-prefix approach re-wrapped lists and flashed partial markdown — that
      was the fragmenting). The final DOM is the exact same nodes in the same order, so it is byte-identical to a
      whole render (lossless). Short answers and prefers-reduced-motion render whole immediately. */
+  function onScreen(id) { return !!(id && S.feed && S.feed.querySelector('.sh-row[data-mid="' + String(id) + '"]')); }   /* SEAMLESS-1 */
   function revealBubble(m) {
+    if (m && m.id && onScreen(m.id)) return;   /* SEAMLESS-1: the history reload and the event stream raced — one copy only */
     var el = bubble(m);                                   // the full, correct final row (fmt + attachments + meta)
     var bub = el.querySelector('.sh-bubble');
     var content = String(m && m.content != null ? m.content : '');
@@ -998,6 +1000,7 @@
           if (body && S.lastAgentText === body && (Date.now() - (S.lastAgentAt || 0)) < 120000) { S.rendered[String(m.id)] = 1; return; }
         }
         var empty = S.feed.querySelector('.sh-empty'); if (empty) empty.remove();
+        if (onScreen(m.id)) { S.rendered[String(m.id)] = 1; return; }   /* SEAMLESS-1 */
         S.feed.appendChild(bubble(m)); S.rendered[String(m.id)] = 1; added++;
         if (isAgent) { S.lastAgentText = String(m.content || '').trim(); S.lastAgentAt = Date.now(); }
       });
