@@ -108,7 +108,7 @@ window.LU_LOADED_ENGINES['businesses'] = true;
       + '.bz-pf-id{min-width:0;flex:1}.bz-pf-id h2{margin:0;font:700 18px var(--fh,system-ui);letter-spacing:-.01em;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
       + '.bz-pf-id p{margin:3px 0 0;font-size:12.5px;color:var(--t3)}'
       + '.bz-pf-x{width:40px;height:40px;border-radius:10px;border:1px solid var(--bd2,rgba(127,127,127,.25));background:transparent;color:var(--t2);font-size:18px;cursor:pointer;flex:0 0 auto}.bz-pf-x:hover{background:var(--s2)}'
-      + '.bz-pf-tabs{display:flex;gap:4px;padding:16px 24px 0;border-bottom:1px solid var(--bd,rgba(127,127,127,.18));overflow-x:auto;scrollbar-width:none}'
+      + '.bz-pf-top{flex:0 0 auto}.bz-pf-tabs{flex:0 0 auto;display:flex;gap:4px;padding:16px 24px 0;border-bottom:1px solid var(--bd,rgba(127,127,127,.18));overflow-x:auto;scrollbar-width:none}'
       + '.bz-pf-tab{position:relative;background:none;border:0;padding:10px 14px 12px;font:600 13px var(--fb,system-ui);color:var(--t3);cursor:pointer;white-space:nowrap;border-radius:8px 8px 0 0}'
       + '.bz-pf-tab:hover{color:var(--t1)}.bz-pf-tab[aria-selected=true]{color:var(--t1)}.bz-pf-tab[aria-selected=true]::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--p,#6C5CE7)}'
       + '.bz-pf-tab:focus-visible{outline:2px solid var(--p,#6C5CE7);outline-offset:-2px}'
