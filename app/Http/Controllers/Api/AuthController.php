@@ -236,7 +236,9 @@ class AuthController
             }
         }
 
+        $__oldEmail = (string) $user->email;
         $user->update($data);
+        if (isset($data['email']) && strcasecmp($__oldEmail, (string) $data['email']) !== 0) { try { app(\App\Core\Lifecycle\LifecycleEmails::class)->emailChanged((int) $user->id, $__oldEmail, (string) $data['email']); } catch (\Throwable $e) {} }   // LIFECYCLE-2
 
         return response()->json([
             'message' => 'Profile updated successfully',
@@ -264,6 +266,7 @@ class AuthController
         $user->update([
             'password' => \Illuminate\Support\Facades\Hash::make($request->input('password')),
         ]);
+        try { app(\App\Core\Lifecycle\LifecycleEmails::class)->passwordChanged((int) $user->id); } catch (\Throwable $e) {}   // LIFECYCLE-2 security notice
 
         return response()->json(['message' => 'Password changed successfully']);
     }

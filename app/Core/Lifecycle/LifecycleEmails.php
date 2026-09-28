@@ -86,13 +86,13 @@ final class LifecycleEmails
         ];
     }
 
-    private function send(int $wsId, object $u, string $subject, array $layout, bool $lifecycle = true): bool
+    private function send(int $wsId, object $u, string $subject, array $layout, bool $lifecycle = true, string $purpose = self::PURPOSE): bool
     {
         if (! self::deliverable($u->email ?? null)) return false;
         if ($lifecycle && $this->optedOut((int) $u->id)) return false;
         if ($lifecycle) $layout['unsubscribe'] = $this->unsubscribeUrl((int) $u->id);
         try {
-            Mail::to($u->email)->queue(new LifecycleMail(self::PURPOSE, $subject, $layout));
+            Mail::to($u->email)->queue(new LifecycleMail($purpose, $subject, $layout));
             return true;
         } catch (\Throwable $e) {
             Log::warning('[LIFECYCLE-1] send failed', ['ws' => $wsId, 'subject' => $subject, 'e' => $e->getMessage()]);
@@ -229,10 +229,266 @@ final class LifecycleEmails
         ], false);   // an account status notice: sent even to those who unsubscribed from tips
     }
 
-    /** Every 15 minutes: social nudges (2 h and day 1) and the day-before trial notice. */
+    // ── LIFECYCLE-2 (Owner 2026-09-28 "continue") ──────────────────────────────────────────────────────
+
+    private function wsTz(int $wsId): string
+    {
+        $tz = (string) (DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC');
+        try { new \DateTimeZone($tz); return $tz; } catch (\Throwable $e) { return 'UTC'; }
+    }
+
+    private function paidPlan(int $wsId): ?object
+    {
+        try {
+            $p = app(\App\Core\Billing\FeatureGateService::class)->getActivePlanFor($wsId);
+            if (! $p || (float) $p->price <= 0) return null;
+            if (app(\App\Core\Billing\TrialService::class)->isInTrial($wsId)) return null;
+            return $p;
+        } catch (\Throwable $e) { return null; }
+    }
+
+    private function plural(int $n, string $one): string { return $n . ' ' . $one . ($n === 1 ? '' : 's'); }
+
+    /** Trial day 1, from 9:00 local: what Sarah did since sign-up and what comes today. */
+    public function firstDay(int $wsId): bool
+    {
+        if ($this->flag($wsId, 'first_day')) return false;
+        $u = $this->owner($wsId); if (! $u) return false;
+        $this->setFlag($wsId, 'first_day');
+        $w = DB::table('workspaces')->where('id', $wsId)->first(['trial_started_at']);
+        $r = $this->results($wsId, $w->trial_started_at ?? null);
+        $done = [];
+        if ($r['site']) $done[] = 'Your website is live at <a href="' . htmlspecialchars($r['site']['url'], ENT_QUOTES) . '" style="color:' . EmailLayout::PURPLE . '">' . htmlspecialchars(preg_replace('#^https://#', '', $r['site']['url']), ENT_QUOTES) . '</a>.';
+        if ($r['posts']) $done[] = $this->plural($r['posts'], 'social post') . ' drafted for you.';
+        if ($r['articles']) $done[] = $this->plural($r['articles'], 'article') . ' written.';
+        $waiting = 0; try { $waiting = (int) DB::table('social_posts')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('status', 'draft')->count(); } catch (\Throwable $e) {}
+        $this->chat($wsId, 'Good morning. Today I will keep your posts coming' . ($waiting ? ': ' . $this->plural($waiting, 'post') . ' are waiting for your approval in Needs you' : '') . '. Ask me for campaign ideas any time.', 'lifecycle_first_day');
+        return $this->send($wsId, $u, 'Your first day: here is what I did', [
+            'preheader' => 'Your website, your first posts, and what comes today.',
+            'heading' => 'Your first day with LevelUpGrowth',
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => [$done ? 'Here is what the team has done since you signed up:' : 'Here is how we can get going today:'],
+            'list' => $done ?: ['Tell me about your business in chat and I will plan your first week.', 'Ask Arthur to build your website in your brand.'],
+            'after' => [$waiting ? ($waiting === 1 ? '1 post is' : $waiting . ' posts are') . ' waiting for your approval. Approve them and I will publish them on schedule.' : 'Today I will draft your first posts. You approve each one before anything goes out.'],
+            'button' => [$waiting ? 'Review my posts' : 'Open LevelUpGrowth', $this->link($waiting ? '/app/attention' : '/app/')],
+            'signoff' => 'sarah',
+            'reason' => 'You received this email because you are trying LevelUpGrowth.',
+        ]);
+    }
+
+    /** 24 h after sign-up with the email still unconfirmed. */
+    public function confirmReminder(int $wsId): bool
+    {
+        if ($this->flag($wsId, 'confirm_reminder')) return false;
+        $u = $this->owner($wsId); if (! $u) return false;
+        $user = \App\Models\User::find($u->id);
+        if (! $user || $user->email_verified_at !== null) { $this->setFlag($wsId, 'confirm_reminder'); return false; }
+        $this->setFlag($wsId, 'confirm_reminder');
+        $url = URL::temporarySignedRoute('verification.verify', now()->addHours(72), ['id' => $user->id, 'hash' => sha1($user->email)]);
+        return $this->send($wsId, $u, 'Confirm your email to publish your website', [
+            'preheader' => 'One tap, and your website and posts can go live.',
+            'heading' => 'Please confirm your email',
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => ['Confirming your email keeps your account safe and lets your website and posts go live.'],
+            'button' => ['Confirm my email', $url],
+            'after' => ['The button works for 72 hours. Did not sign up for LevelUpGrowth? You can ignore this email.'],
+            'signoff' => 'sarah',
+            'reason' => 'You received this email because this address was used to create a LevelUpGrowth account.',
+        ], false);
+    }
+
+    /** First payment: welcome to the plan (replaces the bare "Subscription activated" email). */
+    public function welcomeToPlan(int $wsId): bool
+    {
+        $p = $this->paidPlan($wsId); if (! $p) return false;
+        $key = 'welcome_plan_' . $p->slug;
+        if ($this->flag($wsId, $key)) return false;
+        $u = $this->owner($wsId); if (! $u) return false;
+        $this->setFlag($wsId, $key);
+        $has = fn ($f) => ! empty($p->$f);
+        $list = [];
+        if ((int) $p->credit_limit > 0) $list[] = number_format((int) $p->credit_limit) . ' credits every month for posts, articles, images and video.';
+        if ($p->includes_dmm) $list[] = 'Me and the AI team, back at work on your business today.';
+        $list[] = 'No ads on your website from now on.';
+        $list[] = 'Your own domain: connect one you own, or buy one in the app.';
+        if ($has('companion_app')) $list[] = 'The companion app on your phone: approve posts and chat with me on the go.';
+        if ((int) $p->max_team_members > 1) $list[] = 'Invite up to ' . ((int) $p->max_team_members >= 999 ? 'unlimited' : (int) $p->max_team_members) . ' team members.';
+        if ($p->includes_dmm) $this->chat($wsId, 'Welcome to ' . $p->name . '. I am back at work: your posts and campaigns pick up from where we left off.', 'lifecycle_welcome_plan');
+        return $this->send($wsId, $u, 'Welcome to ' . $p->name . ': here is what is new', [
+            'preheader' => 'Your plan is active. Here is everything it includes.',
+            'heading' => 'Welcome to ' . $p->name,
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => ['Thank you. Your ' . $p->name . ' plan is active. Here is what it gives you:'],
+            'list' => $list,
+            'button' => ['Open LevelUpGrowth', $this->link('/app/')],
+            'after' => ['Your receipt and invoices are always in Settings, Plan and billing.'],
+            'signoff' => 'sarah',
+            'reason' => 'You received this email because you started a LevelUpGrowth plan.',
+        ], false, 'billing');
+    }
+
+    /** Paid plan with 80% of this month's credits used (once per month). */
+    public function creditsLow(int $wsId): bool
+    {
+        $p = $this->paidPlan($wsId); if (! $p || (int) $p->credit_limit <= 0) return false;
+        $key = 'credits_low_' . now()->format('Ym');
+        if ($this->flag($wsId, $key)) return false;
+        $pool = (int) (DB::table('workspaces')->where('id', $wsId)->value('billing_workspace_id') ?: $wsId);
+        $bal = (float) (DB::table('credits')->where('workspace_id', $pool)->value('balance') ?? 0);
+        if ($bal > 0.2 * (int) $p->credit_limit) return false;
+        $u = $this->owner($wsId); if (! $u) return false;
+        $this->setFlag($wsId, $key);
+        $left = (int) floor($bal);
+        $this->chat($wsId, 'Heads up: ' . $left . ' credits left this month. That covers about ' . intdiv($left, 6) . ' more published posts. Your credits refill at renewal, or you can move up a plan.', 'lifecycle_credits_low');
+        return $this->send($wsId, $u, 'You have used 80% of this month\'s credits', [
+            'preheader' => $left . ' credits left this month.',
+            'heading' => $left . ' credits left this month',
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => ['You have used most of this month\'s ' . number_format((int) $p->credit_limit) . ' credits. The ' . $left . ' left cover about ' . intdiv($left, 6) . ' more published posts with banners.', 'Your credits refill at your next renewal. To keep the same pace until then, move up a plan.'],
+            'button' => ['See the plans', $this->link('/app/billing')],
+            'signoff' => 'sarah',
+            'reason' => 'You received this email because you have a LevelUpGrowth plan.',
+        ]);
+    }
+
+    /** Paid plans: every 30 days, the month in the customer's own numbers. */
+    public function monthlyResults(int $wsId): bool
+    {
+        $p = $this->paidPlan($wsId); if (! $p) return false;
+        $start = DB::table('subscriptions')->where('workspace_id', $wsId)->where('status', 'active')->orderByDesc('id')->value('starts_at');
+        // existing customers start the 30-day clock at go-live, never an immediate backlog report
+        $base = $start ? max(\Carbon\Carbon::parse($start), \Carbon\Carbon::parse(self::SINCE)) : null;
+        if (! $base || $base->gt(now()->subDays(30))) return false;
+        $last = $this->flag($wsId, 'monthly_last');
+        if ($last && \Carbon\Carbon::parse($last)->gt(now()->subDays(30))) return false;
+        $u = $this->owner($wsId); if (! $u) return false;
+        $this->setFlag($wsId, 'monthly_last');
+        $since = now()->subDays(30)->toDateTimeString();
+        $q = fn ($t, $extra = null) => (int) (function () use ($t, $wsId, $since, $extra) { try { $x = DB::table($t)->where('workspace_id', $wsId)->where('created_at', '>=', $since); if ($extra) $extra($x); return $x->count(); } catch (\Throwable $e) { return 0; } })();
+        $posts = $q('social_posts', fn ($x) => $x->where('status', 'published')); $articles = $q('articles', fn ($x) => $x->where('status', 'published')); $leads = $q('leads', fn ($x) => $x->whereNull('deleted_at'));
+        $list = [$this->plural($posts, 'social post') . ' published', $this->plural($articles, 'article') . ' published', $this->plural($leads, 'new lead')];
+        $this->chat($wsId, 'Your month: ' . implode(', ', $list) . '. Ask me what we should do more of next month.', 'lifecycle_monthly');
+        return $this->send($wsId, $u, 'Your month: ' . $posts . ' posts, ' . $articles . ' articles, ' . $leads . ' leads', [
+            'preheader' => 'What the team did for your business in the last 30 days.',
+            'heading' => 'Your month with LevelUpGrowth',
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => ['Here is what we did for your business in the last 30 days:'],
+            'list' => $list,
+            'button' => ['See the details', $this->link('/app/')],
+            'signoff' => 'sarah',
+            'reason' => 'You received this email because you have a LevelUpGrowth plan.',
+        ]);
+    }
+
+    /** Free after a trial: day 7 (your week) and day 14 (something new). Day 30's offer waits for the Owner. */
+    public function winBack(int $wsId, int $day): bool
+    {
+        $key = 'winback_' . $day;
+        if ($this->flag($wsId, $key)) return false;
+        if ($this->paidPlan($wsId)) { $this->setFlag($wsId, $key); return false; }
+        $u = $this->owner($wsId); if (! $u) return false;
+        $this->setFlag($wsId, $key);
+        $r = $this->results($wsId, now()->subDays(7)->toDateTimeString());
+        $plans = $this->plans();
+        if ($day === 7) {
+            return $this->send($wsId, $u, 'What your website did this week', [
+                'preheader' => 'Your website is still working for you on the Free plan.',
+                'heading' => 'Your website this week',
+                'greeting' => 'Hi ' . $this->first($u) . ',',
+                'paragraphs' => [($r['site'] ? htmlspecialchars($r['site']['name'], ENT_QUOTES) . ' is live on the Free plan' : 'Your website is live on the Free plan') . ($r['leads'] ? ', and it brought you ' . $this->plural($r['leads'], 'new lead') . ' this week.' : '.'), 'When you want more visitors, I can post every day, write articles that get you found on Google, and plan campaigns.'],
+                'button' => ['Bring Sarah back', $this->link('/app/billing')],
+                'after' => $plans ? ['Plans start at ' . htmlspecialchars($plans[0], ENT_QUOTES) . '.'] : [],
+                'signoff' => 'sarah',
+                'reason' => 'You received this email because you tried LevelUpGrowth.',
+            ]);
+        }
+        return $this->send($wsId, $u, 'One thing you have not tried yet', [
+            'preheader' => 'Campaigns: a post every day, planned for your business.',
+            'heading' => 'Campaigns, planned for you',
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => ['On a plan, I plan campaigns for your business: a theme that fits the season, a post every day, an article that helps you get found, and the offer to go with it. You approve the plan once, and each post before it goes out.'],
+            'button' => ['See the plans', $this->link('/app/billing')],
+            'signoff' => 'sarah',
+            'reason' => 'You received this email because you tried LevelUpGrowth.',
+        ]);
+    }
+
+    /** A social connection broken for 24 hours. */
+    public function socialBroken(int $wsId, int $accountId, string $platform): bool
+    {
+        $key = 'social_broken_' . $accountId;
+        if ($this->flag($wsId, $key)) return false;
+        $u = $this->owner($wsId); if (! $u) return false;
+        $this->setFlag($wsId, $key);
+        $name = ucfirst(strtolower($platform));
+        return $this->send($wsId, $u, 'Your ' . $name . ' connection needs you', [
+            'preheader' => 'Posts are waiting until it is reconnected.',
+            'heading' => 'Reconnect ' . $name,
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => ['Your ' . $name . ' connection stopped working, usually after a password change or when a permission was removed. Your posts are waiting, not lost. Reconnect it and I will carry on.'],
+            'button' => ['Reconnect ' . $name, $this->link('/app/social')],
+            'signoff' => 'sarah',
+            'reason' => 'You received this email because ' . $name . ' is connected to your LevelUpGrowth account.',
+        ], false, 'notification');
+    }
+
+    /** Security notices: always sent, from the security sender, no unsubscribe. */
+    public function passwordChanged(int $userId): bool
+    {
+        $u = DB::table('users')->where('id', $userId)->first(['id', 'name', 'email']); if (! $u) return false;
+        return $this->send(0, $u, 'Your LevelUpGrowth password was changed', [
+            'preheader' => 'If this was you, you do not need to do anything.',
+            'heading' => 'Your password was changed',
+            'greeting' => 'Hi ' . $this->first($u) . ',',
+            'paragraphs' => ['The password for your LevelUpGrowth account was changed on ' . now()->format('j M Y, H:i') . ' (UTC).', 'If this was you, you do not need to do anything. If it was not, reset your password now and reply to this email.'],
+            'button' => ['Reset my password', EmailLayout::appUrl() . '/login/'],
+            'reason' => 'You received this email because it is about the security of your LevelUpGrowth account.',
+        ], false, 'account_security');
+    }
+
+    public function emailChanged(int $userId, string $old, string $new): void
+    {
+        $u = DB::table('users')->where('id', $userId)->first(['id', 'name', 'email']); if (! $u) return;
+        foreach (array_unique([$old, $new]) as $addr) {
+            $this->send(0, (object) ['id' => $u->id, 'name' => $u->name, 'email' => $addr], 'Your LevelUpGrowth email address was changed', [
+                'preheader' => 'If this was you, you do not need to do anything.',
+                'heading' => 'Your email address was changed',
+                'greeting' => 'Hi ' . $this->first($u) . ',',
+                'paragraphs' => ['The email address on your LevelUpGrowth account was changed from <strong>' . htmlspecialchars($old, ENT_QUOTES) . '</strong> to <strong>' . htmlspecialchars($new, ENT_QUOTES) . '</strong>.', 'If this was not you, reply to this email straight away and we will lock the account.'],
+                'reason' => 'You received this email because it is about the security of your LevelUpGrowth account.',
+            ], false, 'account_security');
+        }
+    }
+
+    /** Every 15 minutes: every time-based lifecycle email that is due. */
     public function tick(): array
     {
-        $n = ['social_1' => 0, 'social_2' => 0, 'trial_ending' => 0];
+        $n = ['social_1' => 0, 'social_2' => 0, 'trial_ending' => 0, 'first_day' => 0, 'confirm' => 0, 'credits_low' => 0, 'monthly' => 0, 'winback_7' => 0, 'winback_14' => 0, 'social_broken' => 0];
+        $trialSvc = app(\App\Core\Billing\TrialService::class);
+        foreach (DB::table('workspaces')->where('created_at', '>=', self::SINCE)->where('created_at', '<=', now()->subHours(20))->where('created_at', '>=', now()->subDays(3))->get(['id']) as $w) {
+            $ws = (int) $w->id;
+            if ($trialSvc->isInTrial($ws) && \Carbon\Carbon::now($this->wsTz($ws))->hour >= 9 && $this->firstDay($ws)) $n['first_day']++;
+        }
+        foreach (DB::table('workspaces')->where('created_at', '>=', self::SINCE)->where('created_at', '<=', now()->subDay())->where('created_at', '>=', now()->subDays(3))->pluck('id') as $ws) {
+            if ($this->confirmReminder((int) $ws)) $n['confirm']++;
+        }
+        foreach (DB::table('subscriptions as s')->join('plans as p', 'p.id', '=', 's.plan_id')->where('s.status', 'active')->where('p.price', '>', 0)->pluck('s.workspace_id')->unique() as $ws) {
+            if ($this->creditsLow((int) $ws)) $n['credits_low']++;
+            if ($this->monthlyResults((int) $ws)) $n['monthly']++;
+        }
+        foreach (DB::table('workspaces')->whereNotNull('settings_json')->where('settings_json', 'like', '%trial_ended%')->get(['id', 'settings_json']) as $w) {
+            $ended = (json_decode((string) $w->settings_json, true) ?: [])['lifecycle']['trial_ended'] ?? null;
+            if (! $ended) continue;
+            $age = \Carbon\Carbon::parse($ended)->diffInDays(now());
+            if ($age >= 7 && $age < 10 && $this->winBack((int) $w->id, 7)) $n['winback_7']++;
+            if ($age >= 14 && $age < 17 && $this->winBack((int) $w->id, 14)) $n['winback_14']++;
+        }
+        try {
+            foreach (DB::table('social_accounts')->where('status', 'disconnected')->where('updated_at', '>=', self::SINCE)->where('updated_at', '<=', now()->subDay())->get(['id', 'workspace_id', 'platform']) as $a) {
+                if ($this->socialBroken((int) $a->workspace_id, (int) $a->id, (string) $a->platform)) $n['social_broken']++;
+            }
+        } catch (\Throwable $e) {}
+        $n += ['social_1' => 0];
         foreach (DB::table('workspaces')->where('created_at', '>=', self::SINCE)->where('created_at', '<=', now()->subHours(2))->where('created_at', '>=', now()->subDays(3))->pluck('id') as $ws) {
             if ($this->socialNudge((int) $ws, 1)) $n['social_1']++;
         }

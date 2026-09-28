@@ -169,7 +169,7 @@ class NotificationService
             ->first();
         // MAIL-AUDIT-1: routine background completions stay in the app (Sarah reports finished work in chat); an owner can
         // still switch the email on in preferences
-        $emailEnabled = $pref ? (bool) $pref->email : ! in_array($type, [NotificationTypes::AGENT_TASK_COMPLETED], true);
+        $emailEnabled = $pref ? (bool) $pref->email : ! in_array($type, [NotificationTypes::AGENT_TASK_COMPLETED, NotificationTypes::BILLING_SUBSCRIPTION_CREATED], true);   // LIFECYCLE-2: the welcome-to-plan email replaces the bare one
 
         if ($emailEnabled || $emailRequired) {
             \dispatch(new \App\Jobs\SendNotificationEmail($notification->id))

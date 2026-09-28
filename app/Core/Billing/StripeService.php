@@ -1034,6 +1034,7 @@ class StripeService
             } catch (\Throwable $e) {
                 Log::warning('BILLING_SUBSCRIPTION_CREATED notification failed', ['error' => $e->getMessage()]);
             }
+            try { app(\App\Core\Lifecycle\LifecycleEmails::class)->welcomeToPlan((int) $wsId); } catch (\Throwable $e) {}   // LIFECYCLE-2: the branded welcome to the plan
         }
 
         return ['handled' => true, 'action' => 'subscription_created', 'plan' => $plan?->slug];

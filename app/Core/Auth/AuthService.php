@@ -399,6 +399,7 @@ class AuthService
         }
 
         $user->update(['password' => Hash::make($password)]);
+        try { app(\App\Core\Lifecycle\LifecycleEmails::class)->passwordChanged((int) $user->id); } catch (\Throwable $e) {}   // LIFECYCLE-2 security notice
 
         // Delete all tokens for this email
         \Illuminate\Support\Facades\DB::table('password_reset_tokens')
