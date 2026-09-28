@@ -231,6 +231,13 @@ class CrmController extends BaseEngineController
         if (! $a) return response()->json(['success' => false, 'message' => 'That item was not found.'], 404);
         $done = in_array((string) $r->input('status'), ['done', 'completed'], true);
         $a->update(['completed' => $done, 'completed_at' => $done ? now() : null]);
+        // CAL-SYNC-1: the task's deadline in the Calendar follows it
+        $evs = \Illuminate\Support\Facades\DB::table('calendar_events')->where('workspace_id', $this->wsId($r))->where('category', 'task_deadline')->where('reference_type', 'Activity')->where('reference_id', $a->id);
+        if ($done) $evs->delete();
+        elseif ($a->type === 'task' && $a->scheduled_at && ! (clone $evs)->exists()) {
+            app(\App\Engines\Calendar\Services\CalendarService::class)->createEvent($this->wsId($r), ['title' => $a->subject ?: 'Task', 'starts_at' => $a->scheduled_at,
+                'category' => 'task_deadline', 'engine' => 'crm', 'reference_type' => 'Activity', 'reference_id' => $a->id, 'color' => '#00E5A8']);
+        }
         return $this->readJson(['success' => true, 'id' => $a->id, 'status' => $done ? 'done' : 'pending']);
     }
 
@@ -249,6 +256,7 @@ class CrmController extends BaseEngineController
         if (! in_array($a->type, ['note', 'call', 'email', 'meeting', 'task'], true)) {
             return response()->json(['success' => false, 'message' => 'History entries cannot be deleted.'], 422);
         }
+        \Illuminate\Support\Facades\DB::table('calendar_events')->where('workspace_id', $ws)->where('category', 'task_deadline')->where('reference_type', 'Activity')->where('reference_id', $a->id)->delete(); // CAL-SYNC-1
         $a->delete();
         return $this->readJson(['success' => true]);
     }

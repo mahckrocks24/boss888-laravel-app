@@ -22,7 +22,7 @@ class CrmPacks
     {
         return [
             'appointments' => [
-                'label' => 'Appointments', 'about' => 'Clinics, salons, barbers, gyms, pet care and car servicing: people who book visits.',
+                'booked' => 'booked', 'label' => 'Appointments', 'about' => 'Clinics, salons, barbers, gyms, pet care and car servicing: people who book visits.',
                 'one' => 'Client', 'many' => 'Clients',
                 'stages' => [
                     ['key' => 'enquiry', 'name' => 'Enquiry', 'status' => 'new'],
@@ -46,7 +46,7 @@ class CrmPacks
                 ],
             ],
             'property' => [
-                'label' => 'Property', 'about' => 'Real estate agents and agencies: buyers, sellers, landlords and tenants.',
+                'booked' => 'viewing', 'label' => 'Property', 'about' => 'Real estate agents and agencies: buyers, sellers, landlords and tenants.',
                 'one' => 'Client', 'many' => 'Clients',
                 'stages' => [
                     ['key' => 'new_lead', 'name' => 'New lead', 'status' => 'new'],
@@ -73,7 +73,7 @@ class CrmPacks
                 ],
             ],
             'stays' => [
-                'label' => 'Stays and venues', 'about' => 'Hotels, resorts, rentals, event venues and travel: guests who book dates.',
+                'booked' => 'confirmed', 'label' => 'Stays and venues', 'about' => 'Hotels, resorts, rentals, event venues and travel: guests who book dates.',
                 'one' => 'Guest', 'many' => 'Guests',
                 'stages' => [
                     ['key' => 'enquiry', 'name' => 'Enquiry', 'status' => 'new'],
@@ -97,7 +97,7 @@ class CrmPacks
                 ],
             ],
             'projects' => [
-                'label' => 'Projects and quotes', 'about' => 'Trades, builders, designers, caterers, agencies and advisers: work that is quoted, won and delivered.',
+                'booked' => 'discovery', 'label' => 'Projects and quotes', 'about' => 'Trades, builders, designers, caterers, agencies and advisers: work that is quoted, won and delivered.',
                 'one' => 'Client', 'many' => 'Clients',
                 'stages' => [
                     ['key' => 'lead', 'name' => 'New lead', 'status' => 'new'],
@@ -122,7 +122,7 @@ class CrmPacks
                 ],
             ],
             'guests' => [
-                'label' => 'Guests and orders', 'about' => 'Restaurants, cafes, bakeries and shops: regulars, orders and reservations.',
+                'booked' => 'contacted', 'label' => 'Guests and orders', 'about' => 'Restaurants, cafes, bakeries and shops: regulars, orders and reservations.',
                 'one' => 'Customer', 'many' => 'Customers',
                 'stages' => [
                     ['key' => 'new', 'name' => 'New', 'status' => 'new'],
@@ -146,7 +146,7 @@ class CrmPacks
                 ],
             ],
             'enrolment' => [
-                'label' => 'Enrolment', 'about' => 'Schools, tutors, courses, training centres and childcare: students and parents.',
+                'booked' => 'trial', 'label' => 'Enrolment', 'about' => 'Schools, tutors, courses, training centres and childcare: students and parents.',
                 'one' => 'Student', 'many' => 'Students',
                 'stages' => [
                     ['key' => 'enquiry', 'name' => 'Enquiry', 'status' => 'new'],
@@ -170,7 +170,7 @@ class CrmPacks
                 ],
             ],
             'audience' => [
-                'label' => 'Audience', 'about' => 'News sites and media: advertisers, sponsors and subscribers.',
+                'booked' => 'contacted', 'label' => 'Audience', 'about' => 'News sites and media: advertisers, sponsors and subscribers.',
                 'one' => 'Contact', 'many' => 'Contacts',
                 'stages' => [
                     ['key' => 'lead', 'name' => 'Lead', 'status' => 'new'],
@@ -192,7 +192,7 @@ class CrmPacks
                 ],
             ],
             'general' => [
-                'label' => 'General', 'about' => 'Any other business: a simple enquiry-to-won pipeline.',
+                'booked' => 'qualified', 'label' => 'General', 'about' => 'Any other business: a simple enquiry-to-won pipeline.',
                 'one' => 'Client', 'many' => 'Clients',
                 'stages' => [
                     ['key' => 'new', 'name' => 'New', 'status' => 'new'],

@@ -866,6 +866,37 @@ class CrmService
         ]);
     }
 
+    /**
+     * CAL-SYNC-1: an owner confirmed or declined a booking / callback request in the Calendar or in Clients.
+     * Confirm moves the client to its pack's "booked" stage, only forward (a regular never drops back to booked);
+     * decline counts as a reply (new -> contacted) and nothing more. Both are written on the client's timeline.
+     */
+    public function bookingDecided(int $wsId, int $leadId, string $decision, object $ev, ?int $userId = null): void
+    {
+        $lead = Lead::where('workspace_id', $wsId)->find($leadId);
+        if (! $lead) return;
+        $pack = CrmPacks::forBusiness($lead->business_id ? (int) $lead->business_id : null);
+        $rank = ['lost' => -1, 'new' => 0, 'contacted' => 1, 'qualified' => 2, 'converted' => 3];
+        $cur = $rank[$lead->status] ?? 0;
+        $target = null;
+        if ($decision === 'confirm') {
+            $key = $pack['booked'] ?? null;
+            $st = $key ? CrmPacks::statusOf($pack, $key) : null;
+            if ($key && $st && ($rank[$st] ?? 0) > $cur) $target = [$key, $st];
+        } elseif ($lead->status === 'new') {
+            $key = collect($pack['stages'])->firstWhere('status', 'contacted')['key'] ?? null;
+            if ($key) $target = [$key, 'contacted'];
+        }
+        if ($target) {
+            $this->updateLead($lead->id, ['status' => $target[1]], $userId, $wsId);
+            DB::table('leads')->where('id', $lead->id)->update(['stage' => $target[0], 'updated_at' => now()]);
+        }
+        $when = $ev->starts_at ? \Carbon\Carbon::parse($ev->starts_at)->format('D j M, g:i A') : '';
+        \App\Models\Activity::create(['workspace_id' => $wsId, 'activitable_type' => 'Lead', 'activitable_id' => $lead->id, 'type' => 'booked',
+            'subject' => ($decision === 'confirm' ? 'Booking confirmed' : 'Booking declined') . ': ' . preg_replace('/^(booking|quote|callback) request\s*[—-]\s*/iu', '', (string) ($ev->title ?? 'Booking')), 'description' => $when,
+            'performed_by' => $userId, 'metadata_json' => ['event_id' => (int) $ev->id, 'decision' => $decision]]);
+    }
+
     /** CRM-FIX-0: one lead's timeline in the shape the Clients screen draws. */
     public function leadTimeline(int $wsId, int $leadId): array
     {

@@ -278,6 +278,7 @@ function personRow(c, side) {
         '<div class="main"><div class="nm">' + esc(c.name) + '</div><div class="meta">' + esc(chName(c.channel)) + (multi() && !S.biz && c.business_name ? ' · ' + esc(c.business_name) : '') + (c.first_message ? ' · “' + esc(c.first_message) + '”' : '') + '</div></div>' +
         '<div class="side">' + (side || '') + '</div></li>';
 }
+function decideBtns(id) { return '<span style="display:inline-flex;gap:6px" onclick="event.stopPropagation()"><button class="btn btn-primary btn-sm" onclick="window._crm2.decide(' + id + ',\'confirm\')">Confirm</button><button class="btn btn-outline btn-sm" onclick="window._crm2.decide(' + id + ',\'decline\')">Decline</button></span>'; }
 function todayHtml() {
     var t = S.today || {}; var w = words(); var wk = t.week || {};
     var kpi = function (l, v, h) { return '<div class="crm2-card crm2-kpi"><div class="l">' + l + '</div><div class="v">' + v + '</div>' + (h ? '<div class="h">' + h + '</div>' : '') + '</div>'; };
@@ -289,7 +290,7 @@ function todayHtml() {
     }).join('');
     var bookings = (t.bookings || []).map(function (b) {
         return '<li class="crm2-row"' + (b.lead_id ? ' onclick="window._crm2.open(' + b.lead_id + ')"' : ' style="cursor:default"') + '><div class="crm2-av" aria-hidden="true">' + I('calendar', 16) + '</div>' +
-            '<div class="main"><div class="nm">' + esc(b.lead_name || b.title) + '</div><div class="meta">' + esc(b.title) + '</div></div><div class="side">' + (b.pending ? '<span class="crm2-pill crm2-t-qualified">Waiting for you</span> ' : '') + esc(when(b.starts_at)) + '</div></li>';
+            '<div class="main"><div class="nm">' + esc(b.lead_name || b.title) + '</div><div class="meta">' + esc(b.title) + ' · ' + esc(when(b.starts_at)) + '</div></div><div class="side">' + (b.pending ? decideBtns(b.id) : '') + '</div></li>';
     }).join('');
     var stalled = (t.stalled || []).map(function (c) { return personRow(c, '<span class="crm2-pill ' + toneS(c.status) + '">' + esc(c.stage_name) + '</span>'); }).join('');
     var empty = function (b, s) { return '<div class="crm2-empty"><b>' + b + '</b>' + s + '</div>'; };
@@ -431,8 +432,8 @@ function recordHtml() {
     var comp = S.composer;
     var tl = (R.timeline || []).map(function (a) {
         var human = !a.system;
-        var ic = {note: 'edit', call: 'phone', email: 'mail', meeting: 'calendar', task: 'check'}[a.type] || (a.type === 'repeat_enquiry' ? 'message' : 'clock');
-        var lab = {note: 'Note', call: 'Call', email: 'Email', meeting: 'Meeting', task: 'Task', status_changed: 'Stage changed', lead_created: 'Added', repeat_enquiry: 'Came back', assigned: 'Assigned', form_submission: 'Form'}[a.type] || 'History';
+        var ic = {note: 'edit', call: 'phone', email: 'mail', meeting: 'calendar', task: 'check', booked: 'calendar'}[a.type] || (a.type === 'repeat_enquiry' ? 'message' : 'clock');
+        var lab = {note: 'Note', call: 'Call', email: 'Email', meeting: 'Meeting', task: 'Task', status_changed: 'Stage changed', lead_created: 'Added', repeat_enquiry: 'Came back', assigned: 'Assigned', form_submission: 'Form', booked: 'Booking'}[a.type] || 'History';
         return '<li><div class="dot' + (human ? ' h' : '') + '" aria-hidden="true">' + I(ic, 14) + '</div><div class="b"><div class="t">' + esc(lab) + (a.type === 'task' ? (a.status === 'done' ? ' · done' : (a.due_date ? ' · due ' + esc(when(a.due_date)) : '')) : '') + '</div>' +
             '<div class="d">' + esc(a.type === 'lead_created' ? 'Added to ' + p.many : a.title) + (a.description ? '\n' + esc(a.description) : '') + '</div></div><div class="w">' + esc(ago(a.created_at)) +
             (human ? '<br><button class="x" aria-label="Delete this ' + esc(lab.toLowerCase()) + '" onclick="window._crm2.delAct(\'' + a.id + '\')">' + I('delete', 14) + '</button>' : '') + '</div></li>';
@@ -449,11 +450,11 @@ function recordHtml() {
         var late = t.due && new Date(String(t.due).replace(' ', 'T')) < new Date(new Date().toDateString());
         return '<div class="crm2-task"><input type="checkbox" class="crm2-cb" aria-label="Mark done" onclick="window._crm2.done(' + t.id + ',this,true)"><div><div class="t">' + esc(t.title) + '</div><div class="w' + (late ? ' late' : '') + '">' + (t.due ? (late ? 'Overdue · ' : '') + esc(when(t.due)) : 'No date') + '</div></div></div>';
     }).join('');
-    var appts = (R.appointments || []).map(function (a) { return '<div class="crm2-task"><span aria-hidden="true" style="color:var(--t3)">' + I('calendar', 16) + '</span><div><div class="t">' + esc(a.title) + '</div><div class="w">' + esc(when(a.starts_at)) + (a.category === 'booking_pending' ? ' · waiting for you to confirm' : '') + '</div></div></div>'; }).join('');
+    var appts = (R.appointments || []).map(function (a) { var pend = /pending/.test(a.category || ''); return '<div class="crm2-task"><span aria-hidden="true" style="color:var(--t3)">' + I('calendar', 16) + '</span><div style="flex:1"><div class="t">' + esc(a.title) + '</div><div class="w">' + esc(when(a.starts_at)) + (pend ? ' · waiting for you' : (/confirmed/.test(a.category || '') ? ' · confirmed' : '')) + '</div>' + (pend ? '<div style="margin-top:8px">' + decideBtns(a.id) + '</div>' : '') + '</div></div>'; }).join('');
     var others = (R.others || []).map(function (o) { return '<button class="btn btn-ghost btn-sm" style="width:100%;justify-content:space-between" onclick="window._crm2.open(' + o.id + ')"><span>' + esc(o.business_name) + '</span><span class="crm2-note">' + esc(o.stage_name) + '</span></button>'; }).join('');
     var right = '<div class="rc" style="display:flex;flex-direction:column;gap:16px">' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Open tasks</h4>' + (tasks || '<div class="crm2-note">No open tasks.</div>') + '</div></section>' +
-        '<section class="crm2-card"><div class="crm2-sec"><h4>Bookings</h4>' + (appts || '<div class="crm2-note">No bookings.</div>') + '</div></section>' +
+        '<section class="crm2-card"><div class="crm2-sec"><h4>Bookings</h4>' + (appts || '<div class="crm2-note">No bookings.</div>') + '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:12px" onclick="window._crm2.book()">' + I('calendar', 14) + ' Book ' + esc(c.name.split(' ')[0]) + '</button><div class="crm2-note" style="margin-top:8px">Bookings also show in your Calendar.</div></div></section>' +
         (others ? '<section class="crm2-card"><div class="crm2-sec"><h4>Also a client of</h4>' + others + '</div></section>' : '') +
         ((c.duplicate_of || []).length ? '<section class="crm2-card"><div class="crm2-sec"><h4>Possible duplicate</h4><div class="crm2-note" style="margin-bottom:8px">Another record looks like the same person in this business.</div>' + c.duplicate_of.map(function (d) { return '<button class="btn btn-ghost btn-sm" onclick="window._crm2.open(' + d + ')">Open record #' + d + '</button>'; }).join('') + '</div></section>' : '') +
         '<button class="btn btn-ghost btn-sm" style="color:var(--rd);align-self:flex-start" onclick="window._crm2.archiveOne(' + c.id + ')">' + I('delete', 14) + ' Archive this ' + esc(w.one.toLowerCase()) + '</button></div>';
@@ -572,6 +573,35 @@ window._crm2 = {
         var sub = bd.querySelector('[type=submit]'); if (sub) sub.style.display = 'none';
     },
     stage: function (id, st) { moveTo(id, st); },
+    decide: async function (eventId, decision) {
+        try {
+            var res = await fetch('/api/calendar/events/' + eventId + '/decision', {method: 'POST', headers: hdr(), body: JSON.stringify({decision: decision})});
+            var j = {}; try { j = await res.json(); } catch (e) {}
+            if (!res.ok || j.success === false) throw new Error(j.error || j.message || ('HTTP ' + res.status));
+            toast(decision === 'confirm' ? 'Booking confirmed. It shows as confirmed in your Calendar.' : 'Booking declined.');
+        } catch (e) { return toast('Not saved: ' + e.message, 'error'); }
+        if (S.tab === 'record' && S.recId) { await loadRecord(S.recId); } else { await loadToday(); }
+        render();
+    },
+    book: function () {
+        var c = S.rec.client, p = S.rec.pack;
+        var word = {property: 'Viewing', stays: 'Booking', projects: 'Consultation', enrolment: 'Trial', guests: 'Reservation'}[p.key] || 'Appointment';
+        var d = new Date(Date.now() + 86400000), pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+        var day = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        modal('Book ' + c.name, fld('bt', 'What', 'text', word + ' — ' + c.name, ' required maxlength="150"') +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + fld('bd', 'Day', 'date', day, ' required') + fld('bh', 'Time', 'time', '10:00', ' required') + '</div>' +
+            '<div class="crm2-field" style="margin:0"><label for="bl">How long</label><select class="form-select" id="bl" name="bl">' + [[30, '30 minutes'], [45, '45 minutes'], [60, '1 hour'], [90, '1½ hours'], [120, '2 hours'], [240, 'Half a day']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === 60 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +
+            '<div class="crm2-note">It goes into your Calendar and onto ' + esc(c.name.split(' ')[0]) + '\'s timeline. Nothing is sent to them automatically.</div>',
+            async function (f) {
+                var start = new Date(f.bd.value + 'T' + f.bh.value); if (isNaN(start)) throw new Error('Pick a day and time.');
+                var end = new Date(start.getTime() + parseInt(f.bl.value, 10) * 60000);
+                var fmt = function (x) { return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()) + ' ' + pad(x.getHours()) + ':' + pad(x.getMinutes()) + ':00'; };
+                var res = await fetch('/api/calendar/events', {method: 'POST', headers: hdr(), body: JSON.stringify({title: f.bt.value.trim(), starts_at: fmt(start), ends_at: fmt(end), category: 'appointment', engine: 'crm', reference_type: 'Lead', reference_id: c.id, business_id: c.business_id || undefined})});
+                var j = {}; try { j = await res.json(); } catch (e) {}
+                if (!res.ok || j.success === false) throw new Error(j.error || j.message || ('HTTP ' + res.status));
+                toast('Booked. It is in your Calendar.'); await loadRecord(c.id); render();
+            }, 'Book');
+    },
     comp: function (k) { S.composer = k; render(); setTimeout(function () { var t = document.getElementById('crm2-comp-t'); if (t) t.focus(); }, 30); },
     addAct: async function (id, f) {
         var txt = f.t.value.trim(); if (!txt) return;

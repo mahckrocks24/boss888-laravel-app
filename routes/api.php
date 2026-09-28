@@ -1588,7 +1588,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $exec = \App\Core\EngineKernel\EngineExecutionService::class;
         /* b21-phase5-route */
         // Pass auth user_id so getEvents can surface Strategy Room invites for THIS user.
-        Route::get('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getEvents($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'), $r->input('category'), $r->user()?->id)));
+        Route::get('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($s)->getEvents($r->attributes->get('workspace_id'), $r->input('from'), $r->input('to'), $r->input('category'), $r->user()?->id, $r->filled('business_id') ? (string) $r->input('business_id') : null)));
         Route::post('/events', fn(\Illuminate\Http\Request $r) => response()->json(app($exec)->execute($r->attributes->get('workspace_id'), 'calendar', 'create_event', $r->all(), ['user_id' => $r->user()?->id, 'source' => 'manual']), 201));
         // SECURITY 2026-07-23: these were already workspace-scoped, but the `&&` chain
         // discarded the JsonResponse and a cross-workspace/missing id surfaced as a 500.
@@ -1613,9 +1613,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             \Illuminate\Support\Facades\DB::table('calendar_events')->where('id', (int) $id)->update([
                 'category' => $newCat, 'color' => $decision === 'confirm' ? '#22C55E' : '#94A3B8', 'description' => $desc, 'updated_at' => now(),
             ]);
-            if ($ev->reference_type === 'Lead' && $ev->reference_id) {
-                \Illuminate\Support\Facades\DB::table('leads')->where('id', (int) $ev->reference_id)->where('workspace_id', $wsId)
-                    ->update(['status' => $decision === 'confirm' ? 'qualified' : 'contacted', 'updated_at' => now()]);
+            if (in_array(strtolower((string) $ev->reference_type), ['lead', 'app\\models\\lead'], true) && $ev->reference_id) {
+                // CAL-SYNC-1: the client moves through its business's own stages, never backwards, and the
+                // decision lands on its timeline in Clients
+                app(\App\Engines\CRM\Services\CrmService::class)->bookingDecided($wsId, (int) $ev->reference_id, $decision, $ev, $r->user()?->id);
             }
             try {
                 \Illuminate\Support\Facades\DB::table('booking_submissions')->where('meta_json->event_id', (int) $id)->update(['status' => $decision === 'confirm' ? 'confirmed' : 'cancelled', 'updated_at' => now()]);

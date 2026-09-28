@@ -55,7 +55,12 @@ async function calLoad(el) {
   var to = new Date(vd.getFullYear(), vd.getMonth() + 2, 0);
   el.innerHTML = loadingCard(300);
   try {
-    var res = await _calApi('GET', '/calendar/events?from=' + _calYmd(from) + '&to=' + _calYmd(to) + ' 23:59:59');
+    // CAL-SYNC-1 (RFC-0011): the same business choice as Clients
+    if (!window._calBizList) { try { var bz = await _calApi('GET', '/businesses'); window._calBizList = (bz && (bz.businesses || bz.data)) || []; } catch (e) { window._calBizList = []; } }
+    var _cb = ''; try { _cb = localStorage.getItem('lu_crm_biz') || ''; } catch (e) {}
+    if (_cb && _cb !== 'none' && !window._calBizList.some(function(b){ return String(b.id) === _cb; })) _cb = '';
+    window._calBiz = window._calBizList.length > 1 ? _cb : '';
+    var res = await _calApi('GET', '/calendar/events?from=' + _calYmd(from) + '&to=' + _calYmd(to) + ' 23:59:59' + (window._calBiz ? '&business_id=' + encodeURIComponent(window._calBiz) : ''));
     _cal.events = Array.isArray(res) ? res : (res && res.events) || [];
     _calRender(el, _cal.events);
   } catch (e) {
@@ -103,7 +108,7 @@ function _calRender(el, evts) {
   el.innerHTML =
   '<style>.cal-grid-header{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:4px}.cal-dow{text-align:center;font-size:11px;font-weight:600;color:var(--text-3);padding:6px 0;text-transform:uppercase}.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}.cal-cell{min-height:72px;padding:6px;border:1px solid var(--border);border-radius:4px;cursor:pointer;transition:border-color .15s}.cal-cell:hover{border-color:var(--blue)}.cal-cell.empty{background:var(--surface-0);border-color:transparent;cursor:default}.cal-cell.today{border-color:var(--blue);background:rgba(59,111,245,.06)}.cal-day-num{font-size:12px;font-weight:600;color:var(--text-2);display:block;margin-bottom:3px}.cal-day-num.active{background:var(--blue);color:#fff;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px}.cal-event-dot{font-size:10px;background:var(--blue-soft);color:var(--blue);border-radius:3px;padding:1px 4px;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}</style>' +
   '<div class="page-header" style="margin-top:10px"><div class="page-header-left"><h1>Calendar</h1><p>' + monthEvents.length + ' event' + (monthEvents.length !== 1 ? 's' : '') + ' in ' + _calEsc(monthName) + ' · ' + pendingCount + ' booking request' + (pendingCount !== 1 ? 's' : '') + ' awaiting your reply</p></div>' +
-    '<div class="page-header-actions"><button class="btn btn-outline btn-sm" onclick="calLoad(document.getElementById(\'calendar-root\'))">↺ Refresh</button><button class="btn btn-primary" onclick="calNewEvent()">' + icons.plus + ' New Event</button></div></div>' +
+    '<div class="page-header-actions">' + ((window._calBizList || []).length > 1 ? '<select class="form-select" aria-label="Business" style="max-width:240px" onchange="calSetBiz(this.value)"><option value="">All businesses</option>' + window._calBizList.map(function(b){ return '<option value="' + b.id + '"' + (String(window._calBiz) === String(b.id) ? ' selected' : '') + '>' + _calEsc(b.name) + '</option>'; }).join('') + '</select>' : '') + '<button class="btn btn-outline btn-sm" onclick="calLoad(document.getElementById(\'calendar-root\'))">↺ Refresh</button><button class="btn btn-primary" onclick="calNewEvent()">' + icons.plus + ' New Event</button></div></div>' +
   '<div style="display:flex;gap:8px;margin-bottom:20px">' +
     '<button class="tab active" data-cal-tab="month" onclick="calSetTab(this,\'month\')">' + window.icon('calendar', 14) + ' Month</button>' +
     '<button class="tab" data-cal-tab="list" onclick="calSetTab(this,\'list\')">' + window.icon('more', 14) + ' List</button>' +
@@ -157,6 +162,7 @@ function calNavigate(dir) {
 }
 
 // ── BOOKING DECISIONS — the owner's reply to a request; the lead and the event move together ──
+window.calSetBiz = function(v) { try { v ? localStorage.setItem('lu_crm_biz', v) : localStorage.removeItem('lu_crm_biz'); } catch (e) {} calLoad(document.getElementById('calendar-root')); };
 window.calBookingDecide = async function(id, decision) {
   var ev = _cal.events.find(function(e){ return e.id === id; }) || {};
   var verb = decision === 'confirm' ? 'Confirm' : 'Decline';

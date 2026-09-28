@@ -8,8 +8,15 @@ class CalendarService
 {
     public function createEvent(int $wsId, array $data): int
     {
+        // CAL-SYNC-1: an event carries its business (given, or from the client / task it belongs to)
+        $refType = strtolower((string) ($data['reference_type'] ?? ''));
+        $refId = (int) ($data['reference_id'] ?? 0);
+        $bizId = ! empty($data['business_id']) && DB::table('businesses')->where('workspace_id', $wsId)->where('id', (int) $data['business_id'])->exists() ? (int) $data['business_id'] : null;
+        if (! $bizId && $refId && in_array($refType, ['lead', 'app\\models\\lead'], true)) $bizId = DB::table('leads')->where('workspace_id', $wsId)->where('id', $refId)->value('business_id');
+        if (! $bizId && $refId && $refType === 'activity') $bizId = DB::table('activities')->where('workspace_id', $wsId)->where('id', $refId)->value('business_id');
         $id = DB::table('calendar_events')->insertGetId([
             'workspace_id' => $wsId,
+            'business_id' => $bizId,
             'title' => $data['title'] ?? 'Untitled Event',
             'description' => $data['description'] ?? null,
             'category' => $data['category'] ?? 'general',
@@ -24,6 +31,16 @@ class CalendarService
             'recurrence_config_json' => json_encode($data['recurrence_config'] ?? []),
             'created_at' => now(), 'updated_at' => now(),
         ]);
+        // CAL-SYNC-1: a booking made for a client shows on that client's timeline in Clients
+        if ($refId && in_array($refType, ['lead', 'app\\models\\lead'], true) && DB::table('leads')->where('workspace_id', $wsId)->where('id', $refId)->exists()) {
+            try {
+                $cat = (string) ($data['category'] ?? 'general');
+                $label = str_starts_with($cat, 'booking_pending') ? 'Booking request' : (str_starts_with($cat, 'callback') ? 'Callback request' : 'Booked');
+                \App\Models\Activity::create(['workspace_id' => $wsId, 'activitable_type' => 'Lead', 'activitable_id' => $refId, 'type' => 'booked',
+                    'subject' => $label . ': ' . preg_replace('/^(booking|quote|callback) request\s*[—-]\s*/iu', '', (string) ($data['title'] ?? 'Appointment')), 'description' => \Carbon\Carbon::parse($data['starts_at'])->format('D j M, g:i A'),
+                    'metadata_json' => ['event_id' => $id, 'category' => $cat]]);
+            } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CAL-SYNC-1] timeline: ' . $e->getMessage()); }
+        }
         return $id;
     }
 
@@ -50,7 +67,8 @@ class CalendarService
         ?string $from,
         ?string $to,
         ?string $category = null,
-        ?int $userId = null
+        ?int $userId = null,
+        ?string $business = null
     ): array {
         $from = $from ?: now()->startOfMonth()->toDateString();
         $to   = $to   ?: now()->endOfMonth()->toDateString();
@@ -60,6 +78,9 @@ class CalendarService
                 ->orWhere(fn($q2) => $q2->whereNotNull('recurrence')));
 
         if ($category) $q->where('category', $category);
+        // CAL-SYNC-1 (RFC-0011): one business's calendar, or the events not tied to one
+        if ($business === 'none') $q->whereNull('business_id');
+        elseif ($business !== null && $business !== '' && ctype_digit($business)) $q->where('business_id', (int) $business);
 
         // W6 launch scope: Publisher and article-share rows are internal. They must
         // never reach a customer calendar. Null-safe: user-created rows have no
