@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1q 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1u 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -937,3 +937,68 @@ html.lg-ui :is(.lgse-nav-tab.active, .crm2-tab[aria-selected="true"]) {
   background: var(--lg-raised) !important; color: var(--lg-ink) !important; font-weight: 600;
   box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-1);
 }
+
+/* CAMPAIGNS (Owner: "Campaigns page is also different"): its page tabs, view switch, business chips,
+   idea cards, pills and buttons move onto the shared looks. Markup and order untouched. */
+html.lg-ui .lu-view-tabs {
+  display: inline-flex; background: var(--lg-fill-hover); border: 1px solid var(--lg-hairline); border-radius: 999px; padding: 4px; gap: 4px;
+  max-width: 100%; overflow-x: auto; scrollbar-width: none;
+}
+html.lg-ui .lu-view-tabs .tab { border: 0 !important; border-radius: 999px !important; min-height: 36px; padding: 0 14px; background: transparent; color: var(--lg-ink-2); font-weight: 500; }
+html.lg-ui .lu-view-tabs .tab:is(.active, [aria-selected="true"]) {
+  background: var(--lg-raised) !important; color: var(--lg-ink) !important; font-weight: 600;
+  box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-1);
+}
+html.lg-ui .cm-seg { background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline) !important; border-radius: 999px !important; padding: 4px !important; gap: 2px; }
+html.lg-ui .cm-seg button { border-radius: 999px !important; font-family: var(--lg-font); font-weight: 500; color: var(--lg-ink-2); min-height: 34px; }
+html.lg-ui .cm-seg button.on {
+  background: var(--lg-raised) !important; color: var(--lg-ink) !important; font-weight: 600;
+  box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-1) !important;
+}
+html.lg-ui .cm-biz button {
+  background: var(--lg-glass-thin) !important; border: 1px solid var(--lg-rim) !important; color: var(--lg-ink) !important; font-weight: 500;
+  -webkit-backdrop-filter: blur(var(--lg-blur-1)); backdrop-filter: blur(var(--lg-blur-1)); box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge);
+}
+html.lg-ui .cm-biz button.on { background: var(--lg-action-grad) !important; border-color: transparent !important; color: #fff !important; }
+html.lg-ui .cm-card {
+  background: var(--lg-glass) !important; border: 1px solid var(--lg-rim) !important; border-radius: var(--lg-r-lg) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur-2)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-2)) saturate(var(--lg-glass-sat));
+  box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-2) !important;
+}
+html.lg-ui .cm-card.cm-idea { box-shadow: inset 0 1px 0 var(--lg-rim-top), inset 0 0 0 1px var(--lg-tint-rim), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-2) !important; }
+html.lg-ui .cm-pill { border-radius: 999px; background: var(--lg-tint) !important; color: var(--lg-accent-text) !important; border-color: var(--lg-tint-rim) !important; font-weight: 600; }
+html.lg-ui .cm-btn.primary {
+  color: #fff !important; border-color: transparent !important; text-shadow: 0 1px 1px rgba(40, 12, 96, .28);
+  background: radial-gradient(120% 100% at 50% -10%, rgba(255,255,255,.34) 0%, rgba(255,255,255,0) 58%), var(--lg-action-grad) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), inset 0 -1px 0 rgba(30,8,80,.22), 0 1px 2px rgba(60,24,150,.22), 0 8px 20px -8px rgba(107,59,223,.55);
+}
+html.lg-ui .cm-btn:not(.primary):not(.ghost) {
+  background: var(--lg-glass-thin); color: var(--lg-ink); border-color: transparent !important;
+  box-shadow: inset 0 1px 0 var(--lg-rim-top), inset 0 0 0 1px var(--lg-rim), 0 4px 12px -6px rgba(30,24,80,.16);
+}
+
+/* SEO tab track (phones): lines up with the page content (20px gutter, not 12px), a little air under the website bar,
+   and room at both ends so the first and last tab never touch the curve; the cut-off side fades softly while it scrolls. */
+html.lg-ui .lgse-topbar { margin: 10px 20px 0 !important; scroll-padding-inline: 12px;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+html.lg-ui .lgse-topbar::after { content: ''; flex: 0 0 18px; }
+
+/* PAGE TAB BARS (Strategy Room, Campaigns, Settings): today they stretch edge to edge (inline display:flex + padding).
+   Owner markup: they sit inside the page gutter with air above and below, like every other tab track. */
+html.lg-ui .lu-view-tabs { display: flex !important; width: max-content; max-width: calc(100% - 48px); align-self: flex-start; flex-shrink: 0;
+  padding: 4px !important; border: 1px solid var(--lg-hairline) !important; }
+html.lg-ui :is(#mtg-tabs, #proj-tabs) { margin: 14px 24px 6px !important; }
+html.lg-ui #set-tabs { max-width: 100%; }
+
+/* STRATEGY ROOM start screen: the page shows the background (no flat fill) and the card keeps the page gutter */
+html.lg-ui :is(.meeting-view, #mtg-start-screen) { background: transparent !important; }
+html.lg-ui #mtg-start-screen { padding: 16px 24px 24px; }
+html.lg-ui #mtg-start-screen > div { max-width: 100%; box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-2) !important; border-radius: var(--lg-r-lg) !important; }
+@media (max-width: 760px) { html.lg-ui #mtg-start-screen > div { padding: 22px 20px !important; } }
+
+/* COMMAND CENTER stat cards: the grid clipped the cards' shadows (overflow-x hidden) into a hard grey slab;
+   the cards are plain glass like the rest (no coloured side rail), labels fit on one line. */
+html.lg-ui #cmd-kpis { overflow: visible !important; }
+html.lg-ui .cmd-kpi { padding-left: 16px !important; }
+html.lg-ui .cmd-kpi::before { display: none !important; }
+html.lg-ui .cmd-kpi-label { letter-spacing: .04em !important; }

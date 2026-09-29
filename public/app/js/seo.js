@@ -9619,17 +9619,16 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         if (calLoadFailed) showToast("Couldn't load part of the calendar — try again.", 'error');
         var days = window._lgsePipeCalCache.days;
 
-        // Shared chrome — view switcher + Today button + nav row.
+        // 2026-09-29 CAL-UNIFY-1 — one calendar across the app (Owner: "copy the calendar engine itself.
+        // that must be the calendar on all"). Same markup and styles as the Calendar engine (calendar.js cal2-*):
+        // segment switch, ‹ title › Today, day tiles with the today dot, chips with a colour rail, dots on phones.
+        // Data, clicks and views unchanged.
+        _luCalLook();
         function viewBtn(key, label) {
-          var active = window._lgsePipeView === key;
-          return '<button onclick="window._lgsePipeNav(null, null, \'' + key + '\')" '
-            + 'style="background:' + (active ? '#7C3AED' : '#1e293b') + ';border:1px solid '
-            + (active ? '#7C3AED' : '#334155') + ';color:#fff;padding:6px 12px;border-radius:6px;'
-            + 'cursor:pointer;font-size:12px;font-weight:' + (active ? '600' : '500') + '">' + label + '</button>';
+          return '<button aria-pressed="' + (window._lgsePipeView === key) + '" onclick="window._lgsePipeNav(null, null, \'' + key + '\')">' + label + '</button>';
         }
-        var viewSwitcher = '<div style="display:flex;gap:6px;align-items:center">'
+        var viewSwitcher = '<div class="cal2-seg" role="group" aria-label="View">'
           + viewBtn('day','Day') + viewBtn('week','Week') + viewBtn('month','Month')
-          + '<button onclick="window._lgsePipeNavToday()" style="margin-left:8px;background:#1e293b;border:1px solid #334155;color:#fff;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px">Today</button>'
           + '</div>';
 
         // Compute label + nav-arrow targets per view.
@@ -9659,141 +9658,88 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           nextCmd = "window._lgsePipeNav(null, '" + shiftMonth(window._lgsePipeMonth, +1) + "')";
         }
 
-        var navRow = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">'
-          + '<div style="display:flex;align-items:center;gap:8px">'
-          +   '<button onclick="' + prevCmd + '" style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">←</button>'
-          +   '<strong style="color:#fff;font-size:15px">' + _esc(label) + '</strong>'
-          +   '<button onclick="' + nextCmd + '" style="background:#1e293b;border:none;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer">→</button>'
-          + '</div>'
-          + viewSwitcher
-          + '</div>';
+        var navRow = '<div class="cal2-bar">' + viewSwitcher
+          + '<div class="cal2-nav">'
+          +   '<button class="btn btn-outline btn-sm" aria-label="Earlier" onclick="' + prevCmd + '">‹</button>'
+          +   '<b>' + _esc(label) + '</b>'
+          +   '<button class="btn btn-outline btn-sm" aria-label="Later" onclick="' + nextCmd + '">›</button>'
+          +   '<button class="btn btn-ghost btn-sm" onclick="window._lgsePipeNavToday()">Today</button>'
+          + '</div></div>';
 
         // Legend + timezone label.
         // 2026-05-23 FIX 35 — show timezone so users understand the time
         // values are in their local browser TZ (converted from UTC).
         var tzLabel = _localTzLabel();
-        var legend = '<div style="display:flex;gap:14px;margin-bottom:14px;font-size:11px;color:#64748b;flex-wrap:wrap;align-items:center">'
-          + '<span><span style="background:#10b981;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Completed</span>'
-          + '<span><span style="background:#3B82F6;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Running</span>'
-          + '<span><span style="background:#F59E0B;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Queued</span>'
-          + '<span><span style="background:#7C3AED;display:inline-block;width:8px;height:8px;border-radius:2px"></span> Article</span>'
-          + (tzLabel ? '<span style="margin-left:auto;font-size:10px;color:#475569;font-variant-numeric:tabular-nums" title="All times shown in your local timezone, converted from server UTC">Times: ' + tzLabel + '</span>' : '')
+        function key(c, t) { return '<span style="display:inline-flex;align-items:center;gap:6px"><i style="background:' + c + ';display:inline-block;width:8px;height:8px;border-radius:50%"></i>' + t + '</span>'; }
+        var legend = '<div style="display:flex;gap:14px;margin-bottom:14px;font-size:12px;color:var(--t3);flex-wrap:wrap;align-items:center">'
+          + key('#10b981','Completed') + key('#3B82F6','Running') + key('#F59E0B','Queued') + key('#7C3AED','Article')
+          + (tzLabel ? '<span style="margin-left:auto;font-variant-numeric:tabular-nums" title="All times shown in your local timezone, converted from server UTC">Times: ' + tzLabel + '</span>' : '')
           + '</div>';
 
         var html = navRow + legend;
+        function byTime(list) {
+          // 2026-05-23 FIX 34 — chronological order, top to bottom.
+          return list.slice().sort(function (a, b) { return String(a.created_at || '').localeCompare(String(b.created_at || '')); });
+        }
+        function chipText(it) { var ts = fmtTimeOnly(it.created_at); return (ts ? ts + ' ' : '') + _esc(it.title || 'Task'); }
+        var todayIso = _iso(new Date());
 
         if (view === 'day') {
-          var items = days[cursor] || [];
-          // 2026-05-23 FIX 34 — sort items by created_at ascending so the
-          // day's timeline reads top-to-bottom in chronological order.
-          items = items.slice().sort(function (a, b) {
-            return String(a.created_at || '').localeCompare(String(b.created_at || ''));
-          });
-          html += '<div style="background:#1e293b;border-radius:8px;padding:14px;min-height:200px">';
+          var items = byTime(days[cursor] || []);
+          html += '<div class="cal2-list">';
           if (items.length === 0) {
-            html += '<div style="text-align:center;color:#64748b;font-size:13px;padding:40px 0">Nothing scheduled for this day.</div>';
+            html += '<div class="cal2-empty">Nothing scheduled for this day.</div>';
           } else {
-            html += '<div style="font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;font-weight:600">' + items.length + ' item' + (items.length===1?'':'s') + '</div>';
             items.forEach(function (it) {
               var col = _itemCol(it);
               var safe = _esc(it.title || 'Task');
               var meta = (it.type === 'article' ? 'article' : (it.task_type || it.engine || 'task')) + ' · ' + _esc(it.status || '');
-              // 2026-05-23 FIX 34 — show timestamp on each card.
               var ts = fmtTimeOnly(it.created_at);
-              html += '<div style="background:' + col + '15;border-left:3px solid ' + col + ';padding:8px 10px;border-radius:4px;margin-bottom:6px">'
-                + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline">'
-                +   '<div style="font-size:12px;font-weight:500;color:#fff;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + safe + '">' + safe + '</div>'
-                +   (ts ? '<div style="font-size:11px;color:#94a3b8;font-variant-numeric:tabular-nums;flex-shrink:0">' + ts + '</div>' : '')
-                + '</div>'
-                + '<div style="font-size:10px;color:' + col + ';text-transform:uppercase;letter-spacing:.3px;margin-top:2px">' + meta + '</div>'
+              html += '<div class="cal2-it" style="cursor:default">'
+                + '<div class="t">' + (ts || '—') + '</div>'
+                + '<div class="rail" style="background:' + col + '"></div>'
+                + '<div style="min-width:0"><div class="ti" title="' + safe + '">' + safe + '</div><div class="me">' + meta + '</div></div>'
                 + '</div>';
             });
           }
           html += '</div>';
         } else if (view === 'week') {
           var ws3 = _weekStart(cursor);
-          html += '<div style="background:#1e293b;border-radius:8px;overflow:hidden">';
-          html += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#0f172a;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">';
-          var dn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-          for (var i=0;i<7;i++) {
-            var dd = _parseIso(_addDays(ws3, i));
-            html += '<div style="padding:8px 6px;border-right:1px solid #334155;text-align:center">' + dn[i] + ' ' + dd.getDate() + '</div>';
-          }
-          html += '</div>';
-          html += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">';
-          var todayIso = _iso(new Date());
+          html += '<div class="cal2-week">';
           for (var i=0;i<7;i++) {
             var iso = _addDays(ws3, i);
-            var items2 = days[iso] || [];
-            var isToday = iso === todayIso;
-            html += '<div style="min-height:240px;background:' + (isToday ? '#1e293b' : '#0f172a') + ';border-right:1px solid #334155;border-top:1px solid #334155;padding:8px 6px;font-size:11px">';
+            var dd = _parseIso(iso);
+            var items2 = byTime(days[iso] || []);
+            html += '<div class="cal2-wd"><h3 class="' + (iso === todayIso ? 'today' : '') + '">' + _esc(dd.toLocaleDateString('en-US', {weekday: 'short', day: 'numeric'})) + '</h3><div class="b">';
             if (items2.length === 0) {
-              html += '<div style="color:#64748b;opacity:.5;text-align:center;padding-top:24px;font-size:11px">—</div>';
+              html += '<span style="font-size:12px;color:var(--t3);padding:4px">—</span>';
             } else {
-              // 2026-05-23 FIX 34 — sort by created_at so week-cell items
-              // read top-to-bottom in chronological order.
-              items2 = items2.slice().sort(function (a, b) {
-                return String(a.created_at || '').localeCompare(String(b.created_at || ''));
-              });
               var max = 8;
-              for (var j=0; j<Math.min(items2.length, max); j++) {
-                var it2 = items2[j];
-                var c2 = _itemCol(it2);
-                var t2 = _esc(it2.title || 'Task');
-                var clip2 = t2.length > 18 ? t2.slice(0,18) + '…' : t2;
-                // 2026-05-23 FIX 34 — show HH:MM prefix on each compact cell.
+              items2.slice(0, max).forEach(function (it2) {
                 var ts2 = fmtTimeOnly(it2.created_at);
-                html += '<div style="background:' + c2 + '22;color:' + c2 + ';font-size:10px;padding:2px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (ts2 ? ts2 + ' · ' : '') + t2 + '">'
-                  + (ts2 ? '<span style="opacity:.7;font-variant-numeric:tabular-nums">' + ts2 + '</span> ' : '')
-                  + clip2 + '</div>';
-              }
-              if (items2.length > max) html += '<div style="color:#64748b;font-size:10px">+' + (items2.length - max) + ' more</div>';
+                html += '<button class="cal2-chip" style="border-left-color:' + _itemCol(it2) + '" onclick="window._lgsePipeJumpDay(\'' + iso + '\')">' + _esc(it2.title || 'Task') + '<small>' + (ts2 || '') + '</small></button>';
+              });
+              if (items2.length > max) html += '<span style="font-size:12px;color:var(--t3);padding:0 4px">+' + (items2.length - max) + ' more</span>';
             }
-            html += '</div>';
+            html += '</div></div>';
           }
-          html += '</div></div>';
+          html += '</div>';
         } else {
-          // Month view (existing logic preserved, using cached days)
+          // Month view — six weeks from Sunday, like the Calendar engine; days of the next/previous month are faded.
           var mparts2 = window._lgsePipeMonth.split('-');
           var yr = parseInt(mparts2[0], 10);
           var mo = parseInt(mparts2[1], 10) - 1;
-          var firstDay = new Date(yr, mo, 1).getDay();
-          var daysInMonth = new Date(yr, mo + 1, 0).getDate();
-          html += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">';
-          ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (d) {
-            html += '<div style="text-align:center;font-size:11px;color:#64748b;padding:4px">' + d + '</div>';
-          });
-          var startOffset = (firstDay + 6) % 7;
-          for (var i = 0; i < startOffset; i++) {
-            html += '<div style="min-height:60px"></div>';
-          }
-          for (var d2 = 1; d2 <= daysInMonth; d2++) {
-            var key2 = yr + '-' + String(mo + 1).padStart(2, '0') + '-' + String(d2).padStart(2, '0');
-            var items3 = days[key2] || [];
-            // 2026-05-23 FIX 34 — sort by created_at so the month-cell
-            // items show in chronological order.
-            items3 = items3.slice().sort(function (a, b) {
-              return String(a.created_at || '').localeCompare(String(b.created_at || ''));
-            });
-            var cellHtml = '<div style="background:#1e293b;border-radius:6px;padding:6px;min-height:60px;cursor:pointer" onclick="window._lgsePipeJumpDay(\'' + key2 + '\')">'
-                         +   '<div style="font-size:11px;color:#64748b;margin-bottom:4px">' + d2 + '</div>';
-            items3.slice(0, 3).forEach(function (item) {
-              var col3 = _itemCol(item);
-              var safeTitle = _esc(item.title || 'Task');
-              var clip3 = safeTitle.length > 16 ? safeTitle.slice(0,16) + '…' : safeTitle;
-              // 2026-05-23 FIX 34 — HH:MM prefix on each item.
-              var ts3 = fmtTimeOnly(item.created_at);
-              cellHtml += '<div style="background:' + col3 + '22;color:' + col3
-                        + ';font-size:10px;padding:2px 4px;border-radius:3px;margin-bottom:2px;'
-                        + 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (ts3 ? ts3 + ' · ' : '') + safeTitle + '">'
-                        + (ts3 ? '<span style="opacity:.7;font-variant-numeric:tabular-nums">' + ts3 + '</span> ' : '')
-                        + clip3 + '</div>';
-            });
-            if (items3.length > 3) {
-              cellHtml += '<div style="font-size:10px;color:#64748b">+' + (items3.length - 3) + ' more</div>';
-            }
-            cellHtml += '</div>';
-            html += cellHtml;
+          var first = new Date(yr, mo, 1); first.setDate(1 - first.getDay());
+          html += '<div class="cal2-month">';
+          ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function (d) { html += '<div class="cal2-mh">' + d + '</div>'; });
+          for (var c = 0; c < 42; c++) {
+            var day = new Date(first); day.setDate(first.getDate() + c);
+            var key2 = _iso(day);
+            var items3 = byTime(days[key2] || []);
+            html += '<button class="cal2-md' + (day.getMonth() !== mo ? ' out' : '') + (key2 === todayIso ? ' today' : '') + '" onclick="window._lgsePipeJumpDay(\'' + key2 + '\')" aria-label="' + _esc(day.toDateString()) + ', ' + items3.length + ' items"><span class="n">' + day.getDate() + '</span>'
+              + items3.slice(0, 3).map(function (it) { return '<span class="d" style="border-left:3px solid ' + _itemCol(it) + '" title="' + chipText(it) + '">' + chipText(it) + '</span>'; }).join('')
+              + (items3.length > 3 ? '<span class="d">+' + (items3.length - 3) + ' more</span>' : '')
+              + '<span class="dots">' + items3.slice(0, 5).map(function (it) { return '<i style="background:' + _itemCol(it) + '"></i>'; }).join('') + '</span></button>';
           }
           html += '</div>';
         }
@@ -9804,6 +9750,9 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       });
     }
   }
+
+  // CAL-UNIFY-1 — the Calendar engine's calendar styles (copied from calendar.js), shared by every calendar in the app.
+  function _luCalLook() { if (document.getElementById('lu-cal2-look')) return; var s = document.createElement('style'); s.id = 'lu-cal2-look'; s.textContent = ".cal2-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:16px}\n.cal2-seg{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:3px}\n.cal2-seg button{appearance:none;border:0;background:none;color:var(--t2);font:600 13px var(--fb);padding:8px 14px;border-radius:8px;cursor:pointer;min-height:38px}\n.cal2-seg button[aria-pressed=true]{background:var(--s1);color:var(--t1);box-shadow:0 1px 2px rgba(0,0,0,.15)}\n.cal2-nav{display:flex;align-items:center;gap:8px}.cal2-nav b{font:600 15px var(--fb);color:var(--t1);min-width:160px;text-align:center}\n.cal2-day{margin-bottom:18px}.cal2-day h2{font:600 13px var(--fb);color:var(--t3);margin:0 0 8px;letter-spacing:.02em}.cal2-day h2.today{color:var(--t1)}\n.cal2-list{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);overflow:hidden}\n.cal2-it{display:grid;grid-template-columns:78px 4px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 16px;cursor:pointer}\n.cal2-it+.cal2-it{border-top:1px solid var(--bd)}.cal2-it:hover{background:var(--s2)}\n.cal2-it .t{font:600 13px var(--fb);color:var(--t1);text-align:right}.cal2-it .t small{display:block;font-weight:400;color:var(--t3);font-size:12px}\n.cal2-it .rail{align-self:stretch;border-radius:4px}\n.cal2-it .ti{font:600 14px var(--fb);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n.cal2-it .me{font-size:12px;color:var(--t3);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}\n.cal2-it.past .ti{color:var(--t2)}.cal2-it.off .ti{text-decoration:line-through;color:var(--t3)}\n.cal2-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px}\n.cal2-s-pending{background:rgba(245,158,11,.14);color:var(--am)}.cal2-s-ok{background:var(--as);color:var(--ac)}.cal2-s-done{background:var(--s2);color:var(--t2)}.cal2-s-bad{background:rgba(248,113,113,.12);color:var(--rd)}\n.cal2-empty{padding:26px 16px;text-align:center;color:var(--t3);font-size:13px}.cal2-empty b{display:block;color:var(--t1);font-size:14px;margin-bottom:4px}\n.cal2-week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}\n.cal2-wd{background:var(--s1);border:1px solid var(--bd);border-radius:12px;min-height:180px;display:flex;flex-direction:column}\n.cal2-wd h3{margin:0;padding:10px 12px;font:600 12px var(--fb);color:var(--t3);border-bottom:1px solid var(--bd)}.cal2-wd h3.today{color:var(--t1);background:var(--ps)}\n.cal2-wd .b{padding:8px;display:flex;flex-direction:column;gap:6px}\n.cal2-chip{border-left:3px solid;border-radius:6px;background:var(--s2);padding:6px 8px;font-size:12px;color:var(--t1);cursor:pointer;text-align:left;border-top:0;border-right:0;border-bottom:0;font-family:var(--fb)}\n.cal2-chip small{display:block;color:var(--t3)}\n.cal2-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}\n.cal2-mh{font:600 11px var(--fb);color:var(--t3);text-align:center;padding:6px 0;text-transform:uppercase}\n.cal2-md{background:var(--s1);border:1px solid var(--bd);border-radius:10px;min-height:96px;padding:6px;cursor:pointer;display:flex;flex-direction:column;gap:3px;appearance:none;text-align:left;font-family:var(--fb)}\n.cal2-md .n{font:600 12px var(--fb);color:var(--t2)}.cal2-md.today .n{color:#fff;background:var(--p);border-radius:999px;width:22px;height:22px;display:flex;align-items:center;justify-content:center}\n.cal2-md.out{opacity:.45}.cal2-md .d{font-size:11px;border-radius:4px;padding:2px 5px;background:var(--s2);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}\n@media (max-width:900px){.cal2-week{grid-template-columns:1fr}.cal2-wd{min-height:0}}\n@media (min-width:761px){.cal2-md .dots{display:none}}\n@media (max-width:760px){.cal2-it{grid-template-columns:64px 4px minmax(0,1fr)}.cal2-md{min-height:58px}.cal2-md .d{display:none}.cal2-md .dots{display:flex;gap:3px;flex-wrap:wrap}.cal2-md .dots i{width:6px;height:6px;border-radius:50%;display:block}.cal2-seg button{min-height:44px}}"; document.head.appendChild(s); }
 
   // ── Tab — Write Article (embed mode only) ────────────────────────────
   // 2026-05-13 — Simple form that calls /connector/generate-article (2cr,
