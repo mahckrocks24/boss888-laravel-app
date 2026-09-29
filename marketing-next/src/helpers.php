@@ -315,3 +315,6 @@ function crop(string $name, string $alt, array $o = []): string
     return '<figure class="crop-fig"><div class="' . $cls . '" style="' . $style . '">' . $img . '</div>'
          . ($note !== '' ? '<figcaption class="crop-note">' . e($note) . '</figcaption>' : '') . '</figure>';
 }
+
+/** GLASS-SITE-2 (2026-09-30): the live panels that replace screenshots. */
+require_once __DIR__ . '/live-panels.php';

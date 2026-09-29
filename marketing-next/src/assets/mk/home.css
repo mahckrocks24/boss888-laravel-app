@@ -154,7 +154,7 @@ html[data-theme="dark"] .hx-say__av .lg-avatar { border-color: #15172A; }
   .mk-hero__copy .mk-pill { height: 26px !important; font-size: 12px; padding: 0 10px !important; }
   .mk-h1 { font-size: 62px; white-space: nowrap; }
   .mk-lead { font-size: 15px; line-height: 23px; max-width: 52ch; }
-  .mk-hero__copy .lg-row[data-hero="4"] { margin-top: 6px; }
+  .mk-hero__copy .lg-row[data-hero="4"] { margin-top: 18px; }   /* Owner 09-30: a little more air above the CTA */
   .mk-cta { padding: 13px 28px !important; font-size: .95rem !important; }
   .mk-glow::before { inset: -14px -18px; }
   .mk-hero__visual { height: 440px; }

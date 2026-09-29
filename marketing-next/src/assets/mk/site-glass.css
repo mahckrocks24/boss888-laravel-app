@@ -28,7 +28,8 @@ html .lg-site h1, html .lg-site h2, html .lg-site h3, html .lg-site h4 { color: 
 html .lg-site .fine, html .lg-site .mono { color: var(--ink-3); }
 html .lg-site .eyebrow { color: var(--accent-text); }
 html .lg-site .eyebrow-badge { background: var(--tint); border-color: var(--tint-rim); color: var(--accent-text); }
-html .lg-site a:not(.btn):not(.btn-glow):not(.lg-btn) { color: var(--accent-text); }
+/* plain links take the accent; :where() keeps this at link-level specificity so nav, brand, footer and buttons keep their own colours */
+html .lg-site :where(a:not(.btn, .btn-glow, .lg-btn, .brand, .nav-primary a, .site-footer a, .mega-item, .nav-dd-item, .nav-mobile a)) { color: var(--accent-text); }
 /* buttons keep their own text colour whatever the link colour is (Owner: the $49 and closing CTAs lost contrast) */
 html .lg-site a.lg-btn, html .lg-site .lg-btn { color: var(--ink); }
 html .lg-site a.lg-btn--primary, html .lg-site .lg-btn--primary, html .lg-site a.btn-primary, html .lg-site a.btn-glow { color: #fff; }

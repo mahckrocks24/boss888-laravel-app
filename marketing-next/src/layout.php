@@ -43,6 +43,7 @@ $jsonld = array_merge([[
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/next/assets/mk/lug-glass.css?v=<?= substr(md5_file(__DIR__ . '/assets/mk/lug-glass.css'), 0, 8) ?>">
 <link rel="stylesheet" href="/next/assets/mk/site-glass.css?v=<?= substr(md5_file(__DIR__ . '/assets/mk/site-glass.css'), 0, 8) ?>">
+<link rel="stylesheet" href="/next/assets/mk/live.css?v=<?= substr(md5_file(__DIR__ . '/assets/mk/live.css'), 0, 8) ?>">
 <?php foreach ($jsonld as $block): ?>
 <script type="application/ld+json"><?= json_encode($block, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endforeach; ?>
@@ -150,6 +151,7 @@ $jsonld = array_merge([[
 <?php if ($page['route'] !== '/'): ?>
 <script src="/next/assets/mk/motion.js?v=<?= substr(md5_file(__DIR__ . '/assets/mk/motion.js'), 0, 8) ?>" defer></script>
 <script src="/next/assets/mk/site-motion.js?v=<?= substr(md5_file(__DIR__ . '/assets/mk/site-motion.js'), 0, 8) ?>" defer></script>
+<script src="/next/assets/mk/live.js?v=<?= substr(md5_file(__DIR__ . '/assets/mk/live.js'), 0, 8) ?>" defer></script>
 <?php endif; ?>
 <?php /* Chatbot888, run by the house workspace (Owner, 2026-09-12). Token is a public, domain-restricted widget key. */ ?>
 <script src="/chatbot-widget.js?v=20260925-ai" data-token="cwt_019cba3b517c458b30eae508ba28fdf055d9b2c5317157d0" data-color="#6D4AFF" data-theme="dark" data-position="bottom-right" data-icon="/img/logo-icon-48.png" data-bubble="#0B0B14" data-gradient="linear-gradient(135deg,#6D4AFF,#2FE0C8)" data-panel="#10141F" data-backdrop="3" defer></script>

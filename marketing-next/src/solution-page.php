@@ -24,7 +24,7 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
         
       </div>
     </div>
-    <div><?= shot('01-dashboard', 'Sarah\'s home screen in a demo workspace: the same manager, plan and approval flow every industry gets.', 'app.levelupgrowth.io/app', true) ?></div>
+    <div><?= live_panel('cc', 'Sarah\'s home screen: the same manager, plan and approval flow every industry gets.') ?></div>
   </div>
 </section>
 

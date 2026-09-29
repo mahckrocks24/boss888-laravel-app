@@ -20,7 +20,7 @@ $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm']
       </div>
       <?php if ($agency): ?><p class="fine"><?= e($agency['name']) ?>: <?= money($agency['price_monthly']) ?>/month, <?= (int) $agency['max_websites'] ?> sites, <?= $agency['unlimited_team'] ? 'unlimited team' : (int) $agency['max_team_members'] . ' team members' ?>, <?= number_format((int) $agency['credits_per_month']) ?> credits, white-label. Read from the plans table.</p><?php endif; ?>
     </div>
-    <div><?= shot('12-websites', 'Two published sites in one workspace. An agency runs one workspace per client, each with its own sites, CRM, calendar and credits.', 'Websites', true) ?></div>
+    <div><?= live_panel('workspaces', 'One workspace per client, each with its own sites, Clients, Calendar and credits, under your name.') ?></div>
   </div>
 </section>
 

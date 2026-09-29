@@ -42,7 +42,7 @@ if ($soon) { $first = null; foreach ($availability as $i => $a) { $availability[
       <?php if ($soon): ?><p class="fine">Not included in current plans. Nothing is sold or provisioned for this product today.</p><?php elseif (! empty($p['fine'])): ?><p class="fine"><?= e($p['fine']) ?></p><?php elseif ($first): ?><p class="fine">Included from the <?= e($first['name']) ?> plan<?= $first['price'] > 0 ? ', ' . money($first['price']) . '/month' : '' ?>.</p><?php endif; ?>
       <?php endif; ?>
     </div>
-    <div><?php $ps = product_shot($p['slug']); if ($ps) { echo shot($ps['name'], $ps['caption'], $ps['url'], true, $ps['mode'] ?? 'responsive', $ps['tone'] ?? 'auto'); } ?></div>
+    <div><?php /* GLASS-SITE-2: a live panel where one fits the product, else the screenshot */ $lk = live_panel_for_product($p['slug']); if ($lk !== '') { echo live_panel($lk); } else { $ps = product_shot($p['slug']); if ($ps) { echo shot($ps['name'], $ps['caption'], $ps['url'], true, $ps['mode'] ?? 'responsive', $ps['tone'] ?? 'auto'); } } ?></div>
   </div>
 </section>
 
