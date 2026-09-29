@@ -21,7 +21,8 @@
   var SKIP = 'script, style, svg, canvas, iframe, video, img, code, pre, [contenteditable="true"], [data-type-keep], .lg-no-snap, [class*="preview"], [class*="thumb"]';
   var OURS = /plus jakarta sans/i;
   // the app's own UI families (today's modules hard-code these); anything else is a preview or special type
-  var UI = /plus jakarta sans|inter|bricolage|dm sans|syne|manrope|space grotesk|jetbrains mono|system-ui|-apple-system|segoe ui/i;
+  // generic monospace too (Owner: no monospace numbers); code and pre stay mono via SKIP
+  var UI = /plus jakarta sans|inter|bricolage|dm sans|syne|manrope|space grotesk|jetbrains mono|fira code|ui-monospace|menlo|consolas|courier|monospace|system-ui|-apple-system|segoe ui/i;
 
   function snapSize(px) {
     if (px > 40) return px;                 // true display sizes (hero numbers) keep their size

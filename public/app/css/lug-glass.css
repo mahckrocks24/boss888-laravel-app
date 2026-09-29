@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2d 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2f 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -1073,3 +1073,29 @@ html.lg-ui .lu-view-tabs .tab { flex: 0 0 auto !important; white-space: nowrap !
 html.lg-ui #set-tabs { max-width: 100%; width: max-content; }
 html.lg-ui .cm-seg { display: flex !important; flex-wrap: nowrap !important; max-width: 100%; overflow-x: auto !important; scrollbar-width: none; }
 html.lg-ui .cm-seg > * { flex: 0 0 auto !important; white-space: nowrap !important; padding-inline: 12px !important; }
+
+/* CONTROLS ARE SITE CSS, NEVER NATIVE (Owner rule; phone review: native checkboxes, square X buttons, mono numbers) */
+html.lg-ui input[type="checkbox"]:not(.lu-sel):not([data-native]), html.lg-ui input[type="radio"]:not(.lu-sel):not([data-native]) {
+  -webkit-appearance: none !important; appearance: none !important; width: 20px !important; height: 20px !important; margin: 0 6px 0 0; flex: none; cursor: pointer;
+  border: 1px solid var(--lg-ink-3) !important; border-radius: 6px !important; background: var(--lg-glass-thick) !important; box-shadow: inset 0 1px 0 var(--lg-rim-top);
+  display: inline-grid; place-items: center; vertical-align: middle; transition: background var(--lg-d-fast), border-color var(--lg-d-fast); }
+html.lg-ui input[type="radio"]:not(.lu-sel):not([data-native]) { border-radius: 999px !important; }
+html.lg-ui input[type="checkbox"]:not(.lu-sel):not([data-native])::before, html.lg-ui input[type="radio"]:not(.lu-sel):not([data-native])::before {
+  content: ''; width: 12px; height: 12px; transform: scale(0); transition: transform var(--lg-d-fast) var(--lg-ease-spring);
+  background: #fff; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 5 5 9-10'/%3E%3C/svg%3E") center/contain no-repeat; }
+html.lg-ui input[type="radio"]:not(.lu-sel):not([data-native])::before { width: 8px; height: 8px; border-radius: 999px; -webkit-mask: none; mask: none; }
+html.lg-ui input[type="checkbox"]:not(.lu-sel):not([data-native]):checked, html.lg-ui input[type="radio"]:not(.lu-sel):not([data-native]):checked { background: var(--lg-action) !important; border-color: var(--lg-action) !important; }
+html.lg-ui input[type="checkbox"]:not(.lu-sel):not([data-native]):checked::before, html.lg-ui input[type="radio"]:not(.lu-sel):not([data-native]):checked::before { transform: scale(1); }
+html.lg-ui input[type="checkbox"]:not(.lu-sel):not([data-native]):focus-visible, html.lg-ui input[type="radio"]:not(.lu-sel):not([data-native]):focus-visible { outline: 2px solid var(--lg-accent-text); outline-offset: 2px; }
+
+/* close / delete X buttons: round, one size, centred glyph (were assorted squares) */
+html.lg-ui :is(.modal-close, .lbc-x, .wr-delete-btn, .wsv2-tn-close, .wsv2-act-close, .st-prod-ov-close, .sh-lb-close, .lu-mp-x, .lu-att-x, .bz-pf-x, .lu-toast-x, .lu-dlg-x) {
+  border-radius: 999px !important; min-width: 36px; min-height: 36px; display: inline-grid !important; place-items: center; line-height: 1; padding: 0 !important; }
+html.lg-ui :is(.modal-close, .lbc-x, .wsv2-tn-close, .wsv2-act-close, .st-prod-ov-close, .sh-lb-close, .lu-mp-x, .lu-att-x, .bz-pf-x) { background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline) !important; color: var(--lg-ink-2) !important; }
+html.lg-ui :is(.modal-close, .lbc-x, .wsv2-tn-close, .wsv2-act-close, .st-prod-ov-close, .sh-lb-close, .lu-mp-x, .lu-att-x, .bz-pf-x):hover { background: var(--lg-fill-press) !important; color: var(--lg-ink) !important; }
+
+/* numbers in the platform face, tabular (no monospace) */
+html.lg-ui :is(.lg-stat__value, .lg-kv > span:last-child, .t-num, .lg-zoom__val) { font-family: var(--lg-font) !important; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+html.lg-ui.lg-ui { --lgse-mono: var(--lg-font); --fm: var(--lg-font); }   /* the SEO engine's mono token becomes the platform face */
+html.lg-ui :is(.modal-close, .lbc-x, .wr-delete-btn, .wsv2-tn-close, .wsv2-act-close, .st-prod-ov-close, .sh-lb-close, .lu-mp-x, .lu-att-x, .bz-pf-x, .lu-toast-x, .lu-dlg-x) { aspect-ratio: 1 / 1; width: auto !important; }
