@@ -39,7 +39,7 @@ $jsonld = array_merge([[
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/next/site.css?v=<?= substr(md5_file(__DIR__ . '/site.css'), 0, 8) ?>">
 <?php /* GLASS-SITE-1 (2026-09-30): every page wears the Liquid Glass skin and follows the device's colour scheme */ ?>
-<script>try{document.documentElement.classList.add("lg-glass");var t=localStorage.getItem("lug_theme");if(!t&&window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}</script>
+<script>try{document.documentElement.classList.add("lg-glass");var t=(window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)?"light":"dark";/* device only (Owner 09-30: a stored lug_theme from another surface forced light on a dark phone) */if(t==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}</script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/next/assets/mk/lug-glass.css?v=<?= substr(md5_file(__DIR__ . '/assets/mk/lug-glass.css'), 0, 8) ?>">
 <link rel="stylesheet" href="/next/assets/mk/site-glass.css?v=<?= substr(md5_file(__DIR__ . '/assets/mk/site-glass.css'), 0, 8) ?>">

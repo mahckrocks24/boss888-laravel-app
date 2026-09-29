@@ -167,3 +167,13 @@ html .lg-site [hidden] { display: none !important; }
 
 /* 13. prose links (legal and help bodies) carried a fixed blue */
 html .lg-site .prose a:not(.btn) { color: var(--accent-text); }
+
+/* 14. Owner 09-30 'home page has no gradient background at all, only on hero and footer': the home's own .lg.mk wrapper painted an opaque ground over the fixed aurora; nested .lg scopes are see-through, the page paints the ground once */
+html .lg-site .lg.mk, html .lg-site .lg .lg { background: transparent; }
+/* phones: the light aurora widens like the dark one so the wash fills a narrow screen (Owner 09-30, phone showed no gradient) */
+@media (max-width: 979px) {
+  html .lg-site > .lg-aurora i { filter: blur(60px); }
+  html .lg-site > .lg-aurora i:nth-child(1) { width: 130%; left: -50%; top: -18%; }
+  html .lg-site > .lg-aurora i:nth-child(2) { width: 140%; right: -75%; top: 28%; }
+  html .lg-site > .lg-aurora i:nth-child(3) { width: 150%; left: -35%; bottom: -36%; }
+}
