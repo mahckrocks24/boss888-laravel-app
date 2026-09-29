@@ -145,3 +145,13 @@
   .lv-day { min-height: 64px; }
   .lv-post { font-size: 10px; }
 }
+
+/* phones (Owner 09-30 shot of /product/social/): seven columns cannot hold a title in 46px; the week stacks, one row per day, titles on one line */
+@media (max-width: 599px) {
+  .lv-week { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .lv-day { min-height: 0; flex-direction: row; align-items: center; gap: 8px; padding: 4px 8px; }
+  .lv-day:not(.has) { min-height: 26px; opacity: .8; }
+  .lv-day__n { flex: none; width: 34px; }
+  .lv-post { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-size: 12px; line-height: 16px; padding: 5px 8px; }
+  .lv-post i { display: inline-block; vertical-align: middle; margin: -2px 6px 0 0; }
+}

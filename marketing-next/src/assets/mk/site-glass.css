@@ -192,3 +192,8 @@ html .lg-site .lg.mk, html .lg-site .lg .lg { background: transparent; }
   html .lg-site header, html .lg-site .site-header, html .lg-site .nav-mobile, html .lg-site .hx-frost { -webkit-backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)) !important; backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)) !important; }
   html .lg-site .lg-glass, html .lg-site .card, html .lg-site .plan, html .lg-site .post-card, html .lg-site .lv { background: var(--glass-thick); }
 }
+
+/* 16. Owner 09-30 phone shots: the mobile nav's Dashboard/Start button kept the link ink; buttons in the mobile nav read white. Remaining light contrast: legal "Other policies" links, the SEO report Pass tag. */
+html .lg-site .nav-mobile a.btn, html .lg-site .nav-mobile .btn-primary, html .lg-site .nav-mobile .btn-glow { color: #FFFFFF; }
+html .lg-site .legal a, html .lg-site .fine a, html .lg-site .notice a { color: var(--accent-text); }
+html .lg-site .rep-pass .rep-tag { color: var(--success); }
