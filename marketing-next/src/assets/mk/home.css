@@ -5,6 +5,7 @@ html.mk-home .site-header { position: fixed; left: 16px; right: 16px; top: 12px;
 html.mk-home .site-header .nav-row { height: 60px; }
 html[data-theme="light"].mk-home .site-header { background: rgba(255,255,255,.78); border-color: rgba(255,255,255,.75); box-shadow: 0 0 0 .5px rgba(18,16,48,.07), 0 6px 16px rgba(30,24,80,.08), 0 28px 64px rgba(30,24,80,.14); }
 @media (max-width: 900px) { html.mk-home .site-header { position: sticky; left: auto; right: auto; top: 0; border-radius: 0; border: 0; box-shadow: none; } body.mk-home .site-header .nav-row { height: 64px; } }
+@media (max-width: 900px) { html.mk-home .hero-mr .hero-top > .pill { margin-bottom: 18px; } }   /* Owner 09-30: air between the pill and the headline on phones */
 /* layout concept: the Liquid Glass home concept (canvas Site-Home) made fluid, every animation driven by Motion (vanilla build) */
 .lg.mk { --spring-t: 480ms var(--ease-spring); --bub-1: rgba(255,255,255,.90); --bub-2: rgba(255,255,255,.74); --frost: rgba(243,244,249,.38); }
 html[data-theme="dark"] .lg.mk { --bub-1: rgba(24,26,42,.90); --bub-2: rgba(20,22,36,.78); --frost: rgba(10,11,22,.46); }
