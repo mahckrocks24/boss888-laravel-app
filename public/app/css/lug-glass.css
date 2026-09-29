@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1m 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1n 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -717,10 +717,14 @@ html.lg-ui { background: var(--lg-ground); }
 html.lg-ui body { background: transparent; font-family: var(--lg-font); -webkit-font-smoothing: antialiased; }
 html.lg-ui .lg-aurora--page { position: fixed; inset: 0; z-index: -1; }   /* paints above the page ground, below everything else */
 
+/* near-solid surface for anything that must be read over busy content (dialogs, fallbacks): no blur needed */
+html.lg-ui { --lg-solid: rgba(255, 255, 255, .96); }
+html.lg-ui:not([data-theme="light"]) { --lg-solid: rgba(20, 22, 36, .96); }
+
 /* 1. today's tokens take glass values: every var()-styled surface follows (.lg-ui twice beats the theme blocks) */
 html.lg-ui.lg-ui {
   --bg: var(--lg-ground);          /* opaque: tool overlays and editors that paint --bg must never be see-through */
-  --s1: var(--lg-glass-thick);     /* un-curated surfaces stay readable; curated cards get real glass below */
+  --s1: var(--lg-solid);           /* un-curated surfaces stay readable; curated cards get real glass below */
   --s2: var(--lg-fill-hover);
   --s3: var(--lg-fill-press);
   --bd: var(--lg-hairline);
@@ -799,17 +803,17 @@ html.lg-ui :is(.pe-bar, .pe-side, #t3-view-ov > div:first-child) {
 
 /* overlays: dialogs, modals, drawers — thick glass over a blurred scrim */
 html.lg-ui :is(.lu-dlg, .modal, .summary-modal, .note-modal, .dm-modal, .da-modal, .st-dlg) {
-  background: var(--lg-glass-thick);
+  background: var(--lg-solid) !important;   /* dialogs are read, not looked through: phones switch backdrop blur off on overlays */
   -webkit-backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat));
   border: 1px solid var(--lg-rim); border-radius: var(--lg-r-xl);
   box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-3);
 }
 html.lg-ui .lu-drawer {
-  background: var(--lg-glass-thick);
+  background: var(--lg-solid);
   -webkit-backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat));
   border-left: 1px solid var(--lg-rim); border-radius: var(--lg-r-xl) 0 0 var(--lg-r-xl);
 }
-html.lg-ui .lu-dlg-overlay { background: var(--lg-scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+html.lg-ui .lu-dlg-overlay { background: var(--lg-scrim) !important; -webkit-backdrop-filter: blur(8px) !important; backdrop-filter: blur(8px) !important; }
 /* phone menu drawer: no dark dim (Owner) — the page behind is only frosted */
 /* today's phone performance rule forces backdrop-filter:none and a 65% black on every overlay (!important); the menu drawer overrides both */
 html.lg-ui .lu-mob-overlay, html.lg-ui .lu-mob-overlay.show { background: transparent !important; opacity: 1; -webkit-backdrop-filter: blur(14px) saturate(120%) !important; backdrop-filter: blur(14px) saturate(120%) !important; }
