@@ -64,6 +64,10 @@ use Illuminate\Support\Facades\Route;
         // CRM-PACKS-4a: quotes, deposits, invoices
         Route::post('/clients/{id}/payments', [$k, 'createPayment'])->whereNumber('id');
         Route::post('/payments/{id}/send', [$k, 'sendPayment'])->whereNumber('id');
+        // CRM-PACKS-4c: interests, property matches, send a selection
+        Route::get('/clients/{id}/catalogue', [$k, 'catalogue'])->whereNumber('id');
+        Route::put('/clients/{id}/interests', [$k, 'interests'])->whereNumber('id');
+        Route::post('/clients/{id}/send-items', [$k, 'sendItems'])->whereNumber('id');
         Route::post('/payments/{id}/cancel', [$k, 'cancelPayment'])->whereNumber('id');
         Route::post('/drafts/{id}/send', [$k, 'sendDraft'])->whereNumber('id');
         Route::post('/drafts/{id}/skip', [$k, 'skipDraft'])->whereNumber('id');

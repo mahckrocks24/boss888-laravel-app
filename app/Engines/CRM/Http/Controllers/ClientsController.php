@@ -351,6 +351,43 @@ class ClientsController extends BaseEngineController
         return $out ? $this->readJson(['success' => true] + $out) : response()->json(['success' => false, 'message' => 'No summary yet.'], 404);
     }
 
+    /** GET /crm/clients/{id}/catalogue — what the client is interested in, the business's items, and (property) matches. */
+    public function catalogue(Request $r, int $id): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        $l = DB::table('leads')->where('workspace_id', $ws)->where('id', $id)->whereNull('deleted_at')->first();
+        if (! $l) return response()->json(['success' => false, 'message' => 'Client not found.'], 404);
+        $cat = app(\App\Engines\CRM\Services\CrmCatalogue::class);
+        $pack = $this->packFor($l->business_id ? (int) $l->business_id : null);
+        [$kinds, $label] = \App\Engines\CRM\Services\CrmCatalogue::KINDS[$pack['key']] ?? \App\Engines\CRM\Services\CrmCatalogue::KINDS['general'];
+        $items = $cat->items($ws, $l->business_id ? (int) $l->business_id : null, $kinds)->map(fn ($it) => $cat->shape($it))->values();
+        $ids = array_map('intval', (array) ((json_decode((string) $l->metadata_json, true) ?: [])['interests'] ?? []));
+        return $this->readJson(['label' => $label, 'items' => $items, 'interests' => $items->filter(fn ($i) => in_array($i['id'], $ids, true))->values(),
+            'matches' => $cat->matches($ws, $l, $pack), 'is_property' => $pack['key'] === 'property']);
+    }
+
+    /** PUT /crm/clients/{id}/interests {ids:[]} */
+    public function interests(Request $r, int $id): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        $l = DB::table('leads')->where('workspace_id', $ws)->where('id', $id)->whereNull('deleted_at')->first();
+        if (! $l) return response()->json(['success' => false, 'message' => 'Client not found.'], 404);
+        $meta = json_decode((string) $l->metadata_json, true) ?: [];
+        $meta['interests'] = array_slice(array_values(array_unique(array_map('intval', (array) $r->input('ids', [])))), 0, 30);
+        DB::table('leads')->where('id', $id)->update(['metadata_json' => json_encode($meta, JSON_UNESCAPED_UNICODE), 'updated_at' => now()]);
+        return $this->readJson(['success' => true]);
+    }
+
+    /** POST /crm/clients/{id}/send-items {ids:[], note?} — email the chosen items to the client as the business. */
+    public function sendItems(Request $r, int $id): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        $l = DB::table('leads')->where('workspace_id', $ws)->where('id', $id)->whereNull('deleted_at')->first();
+        if (! $l) return response()->json(['success' => false, 'message' => 'Client not found.'], 404);
+        $res = app(\App\Engines\CRM\Services\CrmCatalogue::class)->send($ws, $l, (array) $r->input('ids', []), mb_substr(trim((string) $r->input('note', '')), 0, 1000), $this->userId($r));
+        return ! empty($res['success']) ? $this->readJson($res) : response()->json(['success' => false, 'message' => $res['error'] ?? 'Not sent.'], 422);
+    }
+
     /** POST /crm/clients/{id}/payments {kind, title?, items[], currency?, due_date?, note?, send?} */
     public function createPayment(Request $r, int $id): JsonResponse
     {

@@ -190,6 +190,9 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-radio{display:flex;flex-direction:column;gap:8px}.crm2-radio label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--bd);border-radius:12px;cursor:pointer;background:var(--s1)}',
         '.crm2-radio input{accent-color:var(--p);margin-top:3px;width:18px;height:18px}.crm2-radio label b{display:block;color:var(--t1);font-size:14px}.crm2-radio label span{font-size:13px;color:var(--t3)}',
         '.crm2-radio label:has(input:checked){border-color:var(--p);background:var(--ps)}',
+        '.crm2-it{display:flex;gap:10px;align-items:center;padding:8px 0}.crm2-it+.crm2-it{border-top:1px solid var(--bd)}',
+        '.crm2-it img{width:56px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--s2)}.crm2-it .t{font-size:13px;color:var(--t1);font-weight:600;line-height:1.3}',
+        '.crm2-it .w{font-size:12px;color:var(--t3)}.crm2-it .why{font-size:11px;color:var(--ac)}.crm2-it input{accent-color:var(--p);width:18px;height:18px;flex-shrink:0}',
         '.crm2-pay{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0}.crm2-pay+.crm2-pay{border-top:1px solid var(--bd)}',
         '.crm2-pay .t{font-size:13px;color:var(--t1);font-weight:600}.crm2-pay .w{font-size:12px;color:var(--t3);margin-top:2px}.crm2-pay .a{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}',
         '.crm2-lines{display:grid;gap:8px}.crm2-line{display:grid;grid-template-columns:minmax(0,1fr) 64px 104px 36px;gap:6px;align-items:center}',
@@ -237,7 +240,34 @@ async function loadList(append) {
 async function loadBoard() { var j = await api('GET', '/clients' + qs(Object.assign({limit: 500}, bizQ()))); S.board.rows = j.clients; S.board.total = j.total; }
 async function loadToday() { var r = await Promise.all([api('GET', '/today-v2' + qs(bizQ())), api('GET', '/drafts' + qs(bizQ())).catch(function () { return {drafts: []}; })]); S.today = r[0]; S.drafts = r[1].drafts || []; }
 async function loadReport() { S.report = await api('GET', '/reports-v2' + qs(Object.assign({days: S.days}, bizQ()))); }
-async function loadRecord(id) { S.rec = await api('GET', '/clients/' + id); S.recId = id; refreshSummary(id); }
+async function loadRecord(id) { S.rec = await api('GET', '/clients/' + id); S.recId = id; refreshSummary(id); refreshCatalogue(id); }
+function refreshCatalogue(id) {
+    api('GET', '/clients/' + id + '/catalogue').then(function (j) {
+        if (!S.rec || S.recId != id) return; S.rec.cat = j; S.catSel = {};
+        var box = document.getElementById('crm2-cat'); if (box) box.outerHTML = catCard(S.rec);
+    }).catch(function () { var box = document.getElementById('crm2-cat'); if (box) box.remove(); });
+}
+function catRow(it, pick, extra) {
+    return '<div class="crm2-it">' + (pick ? '<input type="checkbox" aria-label="Pick ' + esc(it.title) + '" onchange="window._crm2.catPick(' + it.id + ',this.checked)"' + ((S.catSel || {})[it.id] ? ' checked' : '') + '>' : '') +
+        (it.photo ? '<img src="' + esc(it.photo) + '" alt="" loading="lazy">' : '') + '<div style="min-width:0;flex:1"><a class="t" href="' + esc(it.url) + '" target="_blank" rel="noopener" style="text-decoration:none">' + esc(it.title) + '</a>' +
+        '<div class="w">' + esc([it.price, it.beds ? it.beds + ' bed' : '', it.location].filter(Boolean).join(' · ')) + '</div>' + (extra || '') + '</div></div>';
+}
+function catCard(R) {
+    var j = R.cat; if (!j) return '<section class="crm2-card" id="crm2-cat"><div class="crm2-sec"><h4>Interested in</h4><div class="crm2-note">Loading…</div></div></section>';
+    if (!j.items.length && !j.is_property) return '<div id="crm2-cat"></div>';
+    var first = R.client.name.split(' ')[0];
+    var ints = j.interests.map(function (it) { return catRow(it, true); }).join('');
+    var m = j.is_property ? (j.matches.length ? j.matches.map(function (it) { return catRow(it, true, it.why && it.why.length ? '<div class="why">' + esc(it.why.join(' · ')) + '</div>' : ''); }).join('')
+        : '<div class="crm2-note">Add their budget, bedrooms or areas in Details to see matching listings.</div>') : '';
+    var any = Object.keys(S.catSel || {}).length;
+    return '<section class="crm2-card" id="crm2-cat"><div class="crm2-sec"><h4>' + (j.is_property ? 'Listings for ' + esc(first) : 'Interested in') + '</h4>' +
+        (j.is_property ? '<div class="crm2-note" style="margin-bottom:4px">Best matches</div>' + m + (ints ? '<div class="crm2-note" style="margin:10px 0 4px">Saved</div>' + ints : '') : (ints || '<div class="crm2-note">Nothing picked yet.</div>')) +
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">' +
+        '<button class="btn btn-outline btn-sm" onclick="window._crm2.catAdd()">' + I('add', 14) + ' ' + esc(j.label) + '</button>' +
+        '<button class="btn btn-primary btn-sm" id="crm2-cat-send"' + (any ? '' : ' disabled') + ' onclick="window._crm2.catSend()">' + I('send', 14) + ' Send picked</button>' +
+        (j.is_property ? '<button class="btn btn-outline btn-sm" id="crm2-cat-view"' + (any === 1 ? '' : ' disabled') + ' onclick="window._crm2.catViewing()">' + I('calendar', 14) + ' Book a viewing</button>' : '') +
+        '</div></div></section>';
+}
 function refreshSummary(id) {
     api('GET', '/clients/' + id + '/summary').then(function (j) {
         if (!S.rec || S.recId != id) return;
@@ -525,7 +555,7 @@ function recordHtml() {
     var right = '<div class="rc" style="display:flex;flex-direction:column;gap:16px">' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Open tasks</h4>' + (tasks || '<div class="crm2-note">No open tasks.</div>') + '</div></section>' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Bookings</h4>' + visitsLine(R) + (appts || '<div class="crm2-note">No bookings.</div>') + '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:12px" onclick="window._crm2.book(\'' + esc((R.visits && R.visits.due_on) || '') + '\')">' + I('calendar', 14) + ' ' + (R.visits && R.visits.count ? 'Book next visit' : 'Book ' + esc(c.name.split(' ')[0])) + '</button><div class="crm2-note" style="margin-top:8px">Bookings also show in your Calendar.</div></div></section>' +
-        payCard(R) +
+        catCard(R) + payCard(R) +
         (others ? '<section class="crm2-card"><div class="crm2-sec"><h4>Also a client of</h4>' + others + '</div></section>' : '') +
         ((c.duplicate_of || []).length ? '<section class="crm2-card"><div class="crm2-sec"><h4>Possible duplicate</h4><div class="crm2-note" style="margin-bottom:8px">Another record looks like the same person in this business.</div>' + c.duplicate_of.map(function (d) { return '<button class="btn btn-ghost btn-sm" onclick="window._crm2.open(' + d + ')">Open record #' + d + '</button>'; }).join('') + '</div></section>' : '') +
         '<button class="btn btn-ghost btn-sm" style="color:var(--rd);align-self:flex-start" onclick="window._crm2.archiveOne(' + c.id + ')">' + I('delete', 14) + ' Archive this ' + esc(w.one.toLowerCase()) + '</button></div>';
@@ -658,6 +688,25 @@ window._crm2 = {
         var sub = bd.querySelector('[type=submit]'); if (sub) sub.style.display = 'none';
     },
     stage: function (id, st) { moveTo(id, st); },
+    catPick: function (id, on) { S.catSel = S.catSel || {}; if (on) S.catSel[id] = 1; else delete S.catSel[id]; var n = Object.keys(S.catSel).length;
+        var b = document.getElementById('crm2-cat-send'); if (b) b.disabled = !n; var v = document.getElementById('crm2-cat-view'); if (v) v.disabled = n !== 1; },
+    catAdd: function () {
+        var j = S.rec.cat, have = {}; (j.interests || []).forEach(function (i) { have[i.id] = 1; });
+        var list = j.items.map(function (it) { return '<label class="crm2-it" style="cursor:pointer"><input type="checkbox" name="ci" value="' + it.id + '"' + (have[it.id] ? ' checked' : '') + '>' + (it.photo ? '<img src="' + esc(it.photo) + '" alt="">' : '') +
+            '<span style="min-width:0"><span class="t" style="display:block">' + esc(it.title) + '</span><span class="w">' + esc([it.price, it.location].filter(Boolean).join(' · ')) + '</span></span></label>'; }).join('');
+        modal(j.label + ' ' + S.rec.client.name.split(' ')[0] + ' is interested in', list ? '<div style="max-height:52vh;overflow:auto">' + list + '</div>' : '<div class="crm2-note">Nothing in your catalogue yet. Add items to your website\'s catalogue first.</div>',
+            async function (f) { var ids = Array.prototype.map.call(f.querySelectorAll('input[name=ci]:checked'), function (x) { return parseInt(x.value, 10); });
+                await api('PUT', '/clients/' + S.recId + '/interests', {ids: ids}); toast('Saved.'); refreshCatalogue(S.recId); }, 'Save');
+    },
+    catSend: function () {
+        var ids = Object.keys(S.catSel || {}).map(Number), c = S.rec.client; if (!ids.length) return;
+        modal('Send ' + ids.length + ' to ' + c.name, '<div class="crm2-field" style="margin:0"><label for="cn">A line from you (optional)</label><textarea class="form-input" id="cn" name="cn" rows="3" placeholder="These came up this week and fit what you are looking for."></textarea></div><div class="crm2-note">Sent as your business to ' + esc(c.email || 'their email') + ', each with a photo and a link to its page on your website.</div>',
+            async function (f) { var j = await api('POST', '/clients/' + c.id + '/send-items', {ids: ids, note: f.cn.value.trim()}); toast('Sent ' + j.sent + ' to ' + c.name + '.'); S.catSel = {}; await loadRecord(c.id); render(); }, 'Send');
+    },
+    catViewing: function () {
+        var id = Object.keys(S.catSel || {})[0]; var j = S.rec.cat; var it = (j.matches.concat(j.interests, j.items)).find(function (x) { return String(x.id) === String(id); });
+        window._crm2.book('', it ? {title: 'Viewing — ' + it.title, where: it.location || ''} : null);
+    },
     payNew: function () {
         var R = S.rec, c = R.client, cur = R.payments_currency || 'USD';
         var line = function (i) { return '<div class="crm2-line"><input class="form-input" aria-label="Line ' + i + ' description" name="d' + i + '" placeholder="' + (i === 1 ? 'What it is for' : '') + '"><input class="form-input" aria-label="Line ' + i + ' quantity" name="q' + i + '" type="number" min="0" step="1" value="1"><input class="form-input" aria-label="Line ' + i + ' price" name="u' + i + '" type="number" min="0" step="0.01" placeholder="0.00"><span></span></div>'; };
@@ -711,13 +760,13 @@ window._crm2 = {
         if (S.tab === 'record' && S.recId) { await loadRecord(S.recId); } else { await loadToday(); }
         render();
     },
-    book: function (defDay) {
+    book: function (defDay, preset) {
         var c = S.rec.client, p = S.rec.pack;
         var word = {property: 'Viewing', stays: 'Booking', projects: 'Consultation', enrolment: 'Trial', guests: 'Reservation'}[p.key] || 'Appointment';
         var d = new Date(Date.now() + 86400000), pad = function (n) { return n < 10 ? '0' + n : '' + n; };
         var day = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
         if (defDay && /^d{4}-d{2}-d{2}$/.test(defDay) && new Date(defDay + 'T23:59:00') > new Date()) day = defDay;
-        modal('Book ' + c.name, fld('bt', 'What', 'text', word + ' — ' + c.name, ' required maxlength="150"') +
+        modal('Book ' + c.name, fld('bt', 'What', 'text', preset && preset.title ? preset.title : word + ' — ' + c.name, ' required maxlength="150"') + (preset && preset.where ? '<input type="hidden" name="bw" value="' + esc(preset.where) + '">' : '') +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + fld('bd', 'Day', 'date', day, ' required') + fld('bh', 'Time', 'time', '10:00', ' required') + '</div>' +
             '<div class="crm2-field" style="margin:0"><label for="bl">How long</label><select class="form-select" id="bl" name="bl">' + [[30, '30 minutes'], [45, '45 minutes'], [60, '1 hour'], [90, '1½ hours'], [120, '2 hours'], [240, 'Half a day']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === 60 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +
             '<div class="crm2-note">It goes into your Calendar and onto ' + esc(c.name.split(' ')[0]) + '\'s timeline. Nothing is sent to them automatically.</div>',
@@ -725,7 +774,7 @@ window._crm2 = {
                 var start = new Date(f.bd.value + 'T' + f.bh.value); if (isNaN(start)) throw new Error('Pick a day and time.');
                 var end = new Date(start.getTime() + parseInt(f.bl.value, 10) * 60000);
                 var fmt = function (x) { return x.getFullYear() + '-' + pad(x.getMonth() + 1) + '-' + pad(x.getDate()) + ' ' + pad(x.getHours()) + ':' + pad(x.getMinutes()) + ':00'; };
-                var res = await fetch('/api/calendar/schedule', {method: 'POST', headers: hdr(), body: JSON.stringify({kind: 'appointment', title: f.bt.value.trim(), starts_at: fmt(start), ends_at: fmt(end), lead_id: c.id, business_id: c.business_id || undefined, remind_minutes: 30})});
+                var res = await fetch('/api/calendar/schedule', {method: 'POST', headers: hdr(), body: JSON.stringify({kind: 'appointment', title: f.bt.value.trim(), starts_at: fmt(start), ends_at: fmt(end), lead_id: c.id, business_id: c.business_id || undefined, remind_minutes: 30, location: f.bw ? f.bw.value : undefined})});
                 var j = {}; try { j = await res.json(); } catch (e) {}
                 if (!res.ok || j.success === false) throw new Error(j.error || j.message || ('HTTP ' + res.status));
                 toast('Booked. It is in your Calendar.'); await loadRecord(c.id); render();
