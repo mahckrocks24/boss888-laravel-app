@@ -43,59 +43,82 @@
   // SHAPE: buttons whose corners are written inline (e.g. border-radius:6px) become capsules like every other button.
   // Skipped: calendar cells, colour swatches, pickers, editors, anything wider than a button.
   var NO_SHAPE = '[class*="cal"], [class*="swatch"], [class*="lucp"], [class*="picker"], [class*="day"], [class*="grid"], [data-shape-keep]';
-  function shape(el) {
-    if (!(el.tagName === 'BUTTON' || el.getAttribute('role') === 'button' || (el.tagName === 'A' && /btn|button/.test(el.className)))) return;
-    if (el.closest(NO_SHAPE)) return;
-    var r = el.getBoundingClientRect(); if (!r.width || r.height < 24 || r.height > 60 || r.width > 420) return;
-    var cs = getComputedStyle(el), rad = parseFloat(cs.borderTopLeftRadius) || 0;
-    if (rad >= r.height / 2 - 1) return;                       // already a capsule or circle
-    // underline tabs (a bottom border only) keep their straight edge: rounding would curve the underline
-    if (parseFloat(cs.borderBottomWidth) > 0 && !parseFloat(cs.borderTopWidth) && !parseFloat(cs.borderLeftWidth)) return;
-    el.style.setProperty('border-radius', '999px', 'important');
-  }
-  function fix(el) {
+  // PERF (2026-09-29): every element is READ first, then all changes are WRITTEN in one go. Reading after
+  // each write forced a fresh layout per element: a 166-row AEO list took 47 s instead of 50 ms.
+  function isButton(el) { return el.tagName === 'BUTTON' || el.getAttribute('role') === 'button' || (el.tagName === 'A' && /btn|button/.test(el.className)); }
+  function plan(el, out) {
     if (el.nodeType !== 1 || el.closest(SKIP)) return;
-    shape(el);
-    if (!hasOwnText(el)) return;
-    var cs = getComputedStyle(el);
-    if (!UI.test(cs.fontFamily)) return;              // previews and special surfaces keep their own type
-    if (!OURS.test(cs.fontFamily)) el.style.setProperty('font-family', 'var(--lg-font)', 'important');
-    var cur = parseFloat(cs.fontSize);
-    // first visit, or the page changed the size since our last pass: take the page's size as the original
-    if (el.__lgSet == null || Math.abs(cur - el.__lgSet) > 0.25) el.__lgPx = cur;
-    var px = el.__lgPx;
-    var s = snapSize(px); s = s === px && px > 40 ? px : fit(s); var w = snapWeight(cs.fontWeight);
-    if (Math.abs(s - cur) > 0.25) el.style.setProperty('font-size', s + 'px', 'important');
-    el.__lgSet = s;
-    if (String(w) !== cs.fontWeight) el.style.setProperty('font-weight', String(w), 'important');
-    // Plus Jakarta Sans has a narrow word space: negative tracking inherited from today's CSS crams words together.
-    // Below 20px, tracking goes back to normal; headings keep a slight tightening; uppercase labels keep theirs.
-    var ls = parseFloat(cs.letterSpacing);
-    if (s < 20 && ls < 0) el.style.setProperty('letter-spacing', '0', 'important');
-    else if (s >= 20 && ls < -0.02 * s) el.style.setProperty('letter-spacing', '-0.015em', 'important');
+    var cs = null, w = [];
+    if (isButton(el) && !el.closest(NO_SHAPE)) {
+      var r = el.getBoundingClientRect();
+      if (r.width && r.height >= 24 && r.height <= 60 && r.width <= 420) {
+        cs = getComputedStyle(el);
+        var rad = parseFloat(cs.borderTopLeftRadius) || 0;
+        // capsules and circles stay; underline tabs (a bottom border only) keep their straight edge
+        var underline = parseFloat(cs.borderBottomWidth) > 0 && !parseFloat(cs.borderTopWidth) && !parseFloat(cs.borderLeftWidth);
+        if (rad < r.height / 2 - 1 && !underline) w.push(['border-radius', '999px']);
+      }
+    }
+    if (hasOwnText(el)) {
+      cs = cs || getComputedStyle(el);
+      if (UI.test(cs.fontFamily)) {                    // previews and special surfaces keep their own type
+        if (!OURS.test(cs.fontFamily)) w.push(['font-family', 'var(--lg-font)']);
+        var cur = parseFloat(cs.fontSize);
+        // first visit, or the page changed the size since our last pass: take the page's size as the original
+        if (el.__lgSet == null || Math.abs(cur - el.__lgSet) > 0.25) el.__lgPx = cur;
+        var px = el.__lgPx;
+        var s = snapSize(px); s = s === px && px > 40 ? px : fit(s); var wt = snapWeight(cs.fontWeight);
+        if (Math.abs(s - cur) > 0.25) w.push(['font-size', s + 'px']);
+        el.__lgSet = s;
+        if (String(wt) !== cs.fontWeight) w.push(['font-weight', String(wt)]);
+        // Plus Jakarta Sans has a narrow word space: negative tracking inherited from today's CSS crams words together.
+        // Below 20px, tracking goes back to normal; headings keep a slight tightening; uppercase labels keep theirs.
+        var ls = parseFloat(cs.letterSpacing);
+        if (s < 20 && ls < 0) w.push(['letter-spacing', '0']);
+        else if (s >= 20 && ls < -0.02 * s) w.push(['letter-spacing', '-0.015em']);
+      }
+    }
+    if (w.length) out.push([el, w]);
   }
-  function sweep(node) {
+  function apply(out) {
+    for (var i = 0; i < out.length; i++) {
+      var el = out[i][0], w = out[i][1];
+      for (var k = 0; k < w.length; k++) el.style.setProperty(w[k][0], w[k][1], 'important');
+    }
+  }
+  function collect(node, out) {
     if (!node || node.nodeType !== 1) return;
-    fix(node);
+    plan(node, out);
     var all = node.getElementsByTagName('*');
-    for (var i = 0; i < all.length; i++) fix(all[i]);
+    for (var i = 0; i < all.length; i++) plan(all[i], out);
   }
+  function sweep(node) { var out = []; collect(node, out); apply(out); }
   function scope() { return [document.querySelector('.sidebar'), document.querySelector('.lu-topbar'), document.querySelector('.main')]; }
 
-  var pending = [], self = [], queued = false;
+  var pending = [], self = [], queued = false, mo = null;
   function later() { if (!queued) { queued = true; requestAnimationFrame(flush); } }
   function flush() {
     queued = false;
     var list = pending; pending = [];
     var one = self; self = [];
-    for (var k = 0; k < one.length; k++) if (one[k].isConnected) fix(one[k]);
-    for (var i = 0; i < list.length; i++) if (list[i].isConnected) sweep(list[i]);
+    var out = [], seen = new Set();
+    for (var k = 0; k < one.length; k++) if (one[k].isConnected && !seen.has(one[k])) { seen.add(one[k]); plan(one[k], out); }
+    for (var i = 0; i < list.length; i++) {
+      var n = list[i];
+      if (!n.isConnected || seen.has(n)) continue;
+      // a node inside another queued node is covered by that node's sweep
+      var inside = false; for (var p = n.parentElement; p; p = p.parentElement) if (seen.has(p)) { inside = true; break; }
+      seen.add(n); if (!inside) collect(n, out);
+    }
+    apply(out);
+    // our own style writes are not page changes: drop the records they produced so they do not come back next frame
+    if (mo) mo.takeRecords();
   }
   function queue(n) { pending.push(n); if (!queued) { queued = true; requestAnimationFrame(flush); } }
 
   function start() {
     scope().forEach(function (s) { if (s) sweep(s); });
-    var mo = new MutationObserver(function (muts) {
+    mo = new MutationObserver(function (muts) {
       for (var i = 0; i < muts.length; i++) {
         var a = muts[i].addedNodes;
         for (var j = 0; j < a.length; j++) if (a[j].nodeType === 1) queue(a[j]);
@@ -105,8 +128,9 @@
       }
     });
     mo.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['class', 'style'] });
+    mo.takeRecords();
     // fonts arriving late change nothing in size, but views often render after a data fetch: one late pass
-    setTimeout(function () { scope().forEach(function (s) { if (s) sweep(s); }); }, 2500);
+    setTimeout(function () { scope().forEach(function (s) { if (s) sweep(s); }); if (mo) mo.takeRecords(); }, 2500);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
