@@ -42,7 +42,8 @@ class CrmPacks
                     ['key' => 'new_enquiries', 'name' => 'New enquiries'],
                     ['key' => 'booked', 'name' => 'Booked', 'stage' => 'booked'],
                     ['key' => 'no_reply_3d', 'name' => 'Waiting for a reply'],
-                    ['key' => 'lapsed_60d', 'name' => 'Not seen in 60 days'],
+                    ['key' => 'due_for_visit', 'name' => 'Due for a visit'],
+                    ['key' => 'no_shows', 'name' => 'No-shows'],
                 ],
             ],
             'property' => [
@@ -237,6 +238,15 @@ class CrmPacks
         };
     }
 
+    /** CRM-PACKS-4b: how many days between visits a client of this industry is usually due (0 = no recall). */
+    public static function recallDays(?string $industry): int
+    {
+        $i = strtolower((string) $industry);
+        foreach ([['barber', 28], ['nail', 21], ['lash', 21], ['massage', 30], ['spa', 30], ['salon', 42], ['hair', 42], ['beauty', 42], ['aesthetic', 90], ['groom', 56], ['vet', 365], ['pet', 60],
+                  ['dental', 180], ['dentist', 180], ['physio', 14], ['therapy', 14], ['clinic', 180], ['medical', 365], ['doctor', 365], ['automotive', 180], ['mechanic', 180], ['garage', 180], ['car ', 180]] as [$w, $d]) if (str_contains($i, $w)) return $d;
+        return 0;
+    }
+
     /** The setup a business uses: its pack (automatic from industry unless the owner chose) with the owner's words. */
     public static function forBusiness(?int $businessId): array
     {
@@ -248,6 +258,7 @@ class CrmPacks
         if (($set['pack'] ?? null) === null || $key === $auto) { $pack['one'] = $one; $pack['many'] = $many; }
         if (! empty($set['one'])) $pack['one'] = mb_substr((string) $set['one'], 0, 30);
         if (! empty($set['many'])) $pack['many'] = mb_substr((string) $set['many'], 0, 30);
+        $pack['recall_days'] = isset($set['recall_days']) ? (int) $set['recall_days'] : self::recallDays($b->industry ?? null);
         return ['key' => $key, 'auto' => $auto, 'chosen' => ! empty($set['pack'])] + $pack;
     }
 

@@ -95,6 +95,11 @@ class ClientsController extends BaseEngineController
             'new_today' => $q->where('created_at', '>=', now()->startOfDay()),
             'no_reply_3d' => $q->where('status', 'new')->where('created_at', '<', now()->subDays(3))->whereRaw("$human IS NULL"),
             'lapsed_60d' => $q->where('status', 'converted')->whereRaw("COALESCE($human, leads.updated_at) < ?", [now()->subDays(60)]),
+            // CRM-PACKS-4b: a visit is due when the last one is older than the business's recall and nothing is booked
+            'due_for_visit' => $q->where('status', 'converted')
+                ->whereRaw("NOT EXISTS (SELECT 1 FROM calendar_events e WHERE e.lead_id = leads.id AND e.starts_at > NOW() AND COALESCE(e.status,'') NOT IN ('cancelled','no_show','done'))")
+                ->whereRaw("COALESCE((SELECT MAX(e.starts_at) FROM calendar_events e WHERE e.lead_id = leads.id AND e.starts_at <= NOW() AND COALESCE(e.status,'') NOT IN ('cancelled','no_show')), leads.converted_at, leads.updated_at) < ?", [now()->subDays(max(1, (int) ($pack['recall_days'] ?? 0) ?: 180))]),
+            'no_shows' => $q->whereRaw("EXISTS (SELECT 1 FROM calendar_events e WHERE e.lead_id = leads.id AND e.status = 'no_show' AND e.starts_at > NOW() - INTERVAL 180 DAY)"),
             default => null,
         };
         return $q;
@@ -184,6 +189,15 @@ class ClientsController extends BaseEngineController
             'payments' => DB::table('crm_payment_requests')->where('workspace_id', $ws)->where('lead_id', $l->id)->orderByDesc('id')->limit(20)->get(['id', 'kind', 'number', 'title', 'currency', 'total', 'status', 'due_date', 'sent_at', 'viewed_at', 'accepted_at', 'paid_at', 'paid_amount', 'token'])
                 ->map(function ($p) { $pay = app(\App\Engines\CRM\Services\CrmPayments::class); $o = (array) $p; $o['total_text'] = $pay->money($p->currency, (float) $p->total); $o['link'] = $pay->link($p); unset($o['token']); return $o; })->values(),
             'payments_account' => (bool) app(\App\Engines\CRM\Services\CrmPayments::class)->account($ws),
+            'visits' => (function () use ($l, $pack) {   // CRM-PACKS-4b
+                $ev = DB::table('calendar_events')->where('lead_id', $l->id)->whereNotIn('category', ['task_deadline', 'follow_up', 'email', 'reminder']);
+                $past = (clone $ev)->where('starts_at', '<=', now())->whereNotIn(DB::raw("COALESCE(status,'')"), ['cancelled', 'no_show'])->whereNotIn('category', ['booking_pending', 'booking_declined', 'callback_pending', 'cancelled']);
+                $last = (clone $past)->max('starts_at');
+                $next = (clone $ev)->where('starts_at', '>', now())->whereNotIn(DB::raw("COALESCE(status,'')"), ['cancelled', 'no_show', 'done'])->min('starts_at');
+                $recall = (int) ($pack['recall_days'] ?? 0);
+                return ['count' => (clone $past)->count(), 'last' => $last, 'next' => $next, 'no_shows' => (clone $ev)->where('status', 'no_show')->count(), 'recall_days' => $recall,
+                    'due_on' => $recall && $last && ! $next ? \Carbon\Carbon::parse($last)->addDays($recall)->toDateString() : null];
+            })(),
             'payments_currency' => app(\App\Engines\CRM\Services\CrmPayments::class)->account($ws)->currency ?? 'USD',
             'sarah' => ($meta['sarah_summary'] ?? null), // CRM-SARAH-3: refreshed by GET /clients/{id}/summary when stale
             'drafts' => DB::table('crm_reply_drafts')->where('workspace_id', $ws)->where('lead_id', $l->id)->where('status', 'draft')->orderByDesc('id')->limit(3)->get(['id', 'source', 'subject', 'body', 'reason', 'created_at'])->values(),

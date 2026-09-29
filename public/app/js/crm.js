@@ -261,6 +261,13 @@ function sarahBox(R) {
 }
 var PAYST = {draft: ['Not sent', 'crm2-t-lost'], sent: ['Sent', 'crm2-t-contacted'], viewed: ['Opened', 'crm2-t-qualified'], accepted: ['Accepted', 'crm2-t-won'], paid: ['Paid', 'crm2-t-won'], cancelled: ['Withdrawn', 'crm2-t-lost']};
 var PAYK = {quote: 'Quote', deposit: 'Deposit', invoice: 'Invoice'};
+function visitsLine(R) {
+    var v = R.visits || {}; if (!v.count && !v.no_shows) return '';
+    var due = v.due_on ? new Date(v.due_on + 'T09:00:00') : null, overdue = due && due < new Date();
+    return '<div class="crm2-note" style="margin-bottom:8px;display:flex;flex-wrap:wrap;gap:6px 12px">' + (v.count ? '<span>' + v.count + ' visit' + (v.count === 1 ? '' : 's') + (v.last ? ', last ' + esc(ago(v.last)) : '') + '</span>' : '') +
+        (v.no_shows ? '<span class="crm2-pill crm2-t-lost" style="color:var(--rd)">' + v.no_shows + ' no-show' + (v.no_shows === 1 ? '' : 's') + '</span>' : '') +
+        (due ? '<span' + (overdue ? ' style="color:var(--am);font-weight:600"' : '') + '>' + (overdue ? 'Due for a visit since ' : 'Next visit due ') + esc(due.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})) + '</span>' : '') + '</div>';
+}
 function payCard(R) {
     var list = (R.payments || []).map(function (p) {
         var st = PAYST[p.status] || PAYST.sent;
@@ -517,7 +524,7 @@ function recordHtml() {
     var others = (R.others || []).map(function (o) { return '<button class="btn btn-ghost btn-sm" style="width:100%;justify-content:space-between" onclick="window._crm2.open(' + o.id + ')"><span>' + esc(o.business_name) + '</span><span class="crm2-note">' + esc(o.stage_name) + '</span></button>'; }).join('');
     var right = '<div class="rc" style="display:flex;flex-direction:column;gap:16px">' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Open tasks</h4>' + (tasks || '<div class="crm2-note">No open tasks.</div>') + '</div></section>' +
-        '<section class="crm2-card"><div class="crm2-sec"><h4>Bookings</h4>' + (appts || '<div class="crm2-note">No bookings.</div>') + '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:12px" onclick="window._crm2.book()">' + I('calendar', 14) + ' Book ' + esc(c.name.split(' ')[0]) + '</button><div class="crm2-note" style="margin-top:8px">Bookings also show in your Calendar.</div></div></section>' +
+        '<section class="crm2-card"><div class="crm2-sec"><h4>Bookings</h4>' + visitsLine(R) + (appts || '<div class="crm2-note">No bookings.</div>') + '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:12px" onclick="window._crm2.book(\'' + esc((R.visits && R.visits.due_on) || '') + '\')">' + I('calendar', 14) + ' ' + (R.visits && R.visits.count ? 'Book next visit' : 'Book ' + esc(c.name.split(' ')[0])) + '</button><div class="crm2-note" style="margin-top:8px">Bookings also show in your Calendar.</div></div></section>' +
         payCard(R) +
         (others ? '<section class="crm2-card"><div class="crm2-sec"><h4>Also a client of</h4>' + others + '</div></section>' : '') +
         ((c.duplicate_of || []).length ? '<section class="crm2-card"><div class="crm2-sec"><h4>Possible duplicate</h4><div class="crm2-note" style="margin-bottom:8px">Another record looks like the same person in this business.</div>' + c.duplicate_of.map(function (d) { return '<button class="btn btn-ghost btn-sm" onclick="window._crm2.open(' + d + ')">Open record #' + d + '</button>'; }).join('') + '</div></section>' : '') +
@@ -704,11 +711,12 @@ window._crm2 = {
         if (S.tab === 'record' && S.recId) { await loadRecord(S.recId); } else { await loadToday(); }
         render();
     },
-    book: function () {
+    book: function (defDay) {
         var c = S.rec.client, p = S.rec.pack;
         var word = {property: 'Viewing', stays: 'Booking', projects: 'Consultation', enrolment: 'Trial', guests: 'Reservation'}[p.key] || 'Appointment';
         var d = new Date(Date.now() + 86400000), pad = function (n) { return n < 10 ? '0' + n : '' + n; };
         var day = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+        if (defDay && /^d{4}-d{2}-d{2}$/.test(defDay) && new Date(defDay + 'T23:59:00') > new Date()) day = defDay;
         modal('Book ' + c.name, fld('bt', 'What', 'text', word + ' — ' + c.name, ' required maxlength="150"') +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + fld('bd', 'Day', 'date', day, ' required') + fld('bh', 'Time', 'time', '10:00', ' required') + '</div>' +
             '<div class="crm2-field" style="margin:0"><label for="bl">How long</label><select class="form-select" id="bl" name="bl">' + [[30, '30 minutes'], [45, '45 minutes'], [60, '1 hour'], [90, '1½ hours'], [120, '2 hours'], [240, 'Half a day']].map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === 60 ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></div>' +

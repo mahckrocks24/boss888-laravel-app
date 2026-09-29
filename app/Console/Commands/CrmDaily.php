@@ -86,6 +86,20 @@ class CrmDaily extends Command
                 ->orderByDesc('deal_value')->orderByDesc('score')->limit(5 - count($out))->select('leads.*')->selectRaw("$human AS last_touch")->get();
             foreach ($quiet as $l) $out[] = ['lead' => $l, 'business' => $biz[$l->business_id] ?? null, 'reason' => 'last heard from you ' . Carbon::parse($l->last_touch)->diffForHumans() . ' and has gone quiet'];
         }
+        // CRM-PACKS-4b: clients of visit businesses whose next visit is due and not booked
+        if (count($out) < 5) {
+            foreach (DB::table('leads')->where('workspace_id', $ws)->whereNull('deleted_at')->where('status', 'converted')->whereNotNull('business_id')->orderBy('updated_at')->limit(80)->get() as $l) {
+                if (count($out) >= 5) break;
+                $pack = \App\Engines\CRM\Services\CrmPacks::forBusiness((int) $l->business_id);
+                $days = (int) ($pack['recall_days'] ?? 0);
+                if ($pack['key'] !== 'appointments' || ! $days) continue;
+                if (DB::table('calendar_events')->where('lead_id', $l->id)->where('starts_at', '>', now())->whereNotIn(DB::raw("COALESCE(status,'')"), ['cancelled', 'no_show', 'done'])->exists()) continue;
+                if (DB::table('crm_reply_drafts')->where('lead_id', $l->id)->where('created_at', '>', now()->subDays(14))->exists()) continue;
+                $last = DB::table('calendar_events')->where('lead_id', $l->id)->where('starts_at', '<=', now())->whereNotIn(DB::raw("COALESCE(status,'')"), ['cancelled', 'no_show'])->max('starts_at') ?: $l->converted_at;
+                if (! $last || Carbon::parse($last)->gt(now()->subDays($days))) continue;
+                $out[] = ['lead' => $l, 'business' => $biz[$l->business_id] ?? null, 'reason' => 'last visit was ' . Carbon::parse($last)->diffForHumans() . ' and they are due to book again'];
+            }
+        }
         return $out;
     }
 }
