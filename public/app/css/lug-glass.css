@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2c 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2d 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -1063,3 +1063,13 @@ html.lg-ui .lbc-btn:not(.primary):hover { background: var(--lg-fill-press) !impo
 html.lg-ui .lu-toast { background: var(--lg-glass-thick) !important; -webkit-backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat));
   border: 1px solid var(--lg-hairline) !important; border-left-width: 3px !important; border-radius: 16px !important; color: var(--lg-ink) !important; box-shadow: 0 0 0 .5px var(--lg-edge), var(--lg-shadow-2); }
 @media (max-width: 640px) { html.lg-ui #lu-toast-stack { top: 72px; bottom: auto !important; } }
+
+/* PAGE TABS + VIEW SWITCHES NEVER SQUEEZE (Owner 09-29 phone shots: Settings tabs overlapped, "Market watch" wrapped):
+   items keep their width and stay on one line; a strip wider than the screen scrolls sideways under a soft fade. */
+html.lg-ui .lu-view-tabs { flex-wrap: nowrap !important; overflow-x: auto !important; overflow-y: hidden; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+html.lg-ui .lu-view-tabs::after { content: ''; flex: 0 0 18px; }
+html.lg-ui .lu-view-tabs .tab { flex: 0 0 auto !important; white-space: nowrap !important; }
+html.lg-ui #set-tabs { max-width: 100%; width: max-content; }
+html.lg-ui .cm-seg { display: flex !important; flex-wrap: nowrap !important; max-width: 100%; overflow-x: auto !important; scrollbar-width: none; }
+html.lg-ui .cm-seg > * { flex: 0 0 auto !important; white-space: nowrap !important; padding-inline: 12px !important; }

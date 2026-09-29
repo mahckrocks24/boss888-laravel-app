@@ -706,7 +706,7 @@ function _msgAvoidNow(){
   var el = document.getElementById('lu-messages-floater'); if(!el) return;
   if(getComputedStyle(el).display === 'none') return;
   var INTER = 'button,a[href],a[onclick],input,textarea,select,[role="button"],[role="tab"],[role="switch"],[role="checkbox"],[role="link"],[onclick],[tabindex]:not([tabindex="-1"]),label,summary';
-  /* FLOATER-3d: blocked = she covers ≥35% of a control, or its centre. */
+  /* FLOATER-3d/5: blocked = she overlaps a control at all, or covers its centre. */
   function blockedAt(){
     var r = el.getBoundingClientRect(), fa = r.width * r.height;
     /* FLOATER-3e: the field being typed into is never touched, not even at a corner. */
@@ -732,7 +732,7 @@ function _msgAvoidNow(){
         var ix = Math.max(0, Math.min(r.right, b.right) - Math.max(r.left, b.left)), iy = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top));
         var ratio = (ix * iy) / Math.max(1, b.width * b.height);
         var cx = b.left + b.width/2, cy = b.top + b.height/2, centre = cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
-        if(ratio >= 0.35 || centre || isField){ if(ratio > worstRatio || !worst){ worst = n; worstRatio = Math.max(ratio, centre ? 0.5 : 0); } }
+        if(ratio > 0.02 || centre || isField){   /* FLOATER-5 (Owner 09-29: SHOW button under the orb): ANY overlap with a control counts, not 35% */ if(ratio > worstRatio || !worst){ worst = n; worstRatio = Math.max(ratio, centre ? 0.5 : 0); } }
       }
     }
     return worst;
