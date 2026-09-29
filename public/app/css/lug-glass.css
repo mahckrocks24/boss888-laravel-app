@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1d 2026-09-29
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1i 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -125,8 +125,8 @@ html.lg-ui:not([data-theme="light"]) {
 
 /* ---------- 1c. TOKENS: scale (theme-independent) ---------- */
 html.lg-ui {
-  --lg-font: "Geist", "SF Pro Text", -apple-system, system-ui, "Segoe UI", sans-serif;
-  --lg-font-mono: "Geist Mono", "SF Mono", ui-monospace, Consolas, monospace;
+  --lg-font: "Plus Jakarta Sans", -apple-system, system-ui, "Segoe UI", sans-serif;
+  --lg-font-mono: "Plus Jakarta Sans", -apple-system, system-ui, sans-serif;   /* numbers use the same family with tabular figures */
 
   /* type scale — 9 steps, mobile first (px / line-height) */
   --lg-fs-display: 34px; --lg-lh-display: 40px;
@@ -862,4 +862,18 @@ html.lg-ui .wsv2-zone-label { font-family: var(--lg-font); color: var(--lg-accen
 html.lg-ui .lg-fade-mask {
   -webkit-mask: linear-gradient(180deg, transparent 0, #000 var(--lg-fade-t, 0px), #000 calc(100% - var(--lg-fade-b, 0px)), transparent 100%);
           mask: linear-gradient(180deg, transparent 0, #000 var(--lg-fade-t, 0px), #000 calc(100% - var(--lg-fade-b, 0px)), transparent 100%);
+}
+
+/* compact type on desktop (Owner: text read too large); phones keep the full mobile scale */
+@media (min-width: 1024px) {
+  html.lg-ui {
+    --lg-fs-display: 26px; --lg-lh-display: 32px;
+    --lg-fs-title1: 22px;  --lg-lh-title1: 28px;
+    --lg-fs-title2: 18px;  --lg-lh-title2: 24px;
+    --lg-fs-title3: 15px;  --lg-lh-title3: 22px;
+    --lg-fs-body: 14px;    --lg-lh-body: 21px;
+    --lg-fs-callout: 13px; --lg-lh-callout: 20px;
+    --lg-fs-subhead: 13px; --lg-lh-subhead: 19px;
+    --lg-fs-footnote: 12px; --lg-lh-footnote: 17px;
+  }
 }
