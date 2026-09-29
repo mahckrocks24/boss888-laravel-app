@@ -203,7 +203,7 @@ function _wrLoadingHTML() {
 
 async function _wrBootstrap() {
     if (_wr.filterBiz === null) { try { _wr.filterBiz = localStorage.getItem('lu_write_biz:' + _wr.wsId) || ''; } catch (e) { _wr.filterBiz = ''; } }
-    var params = '?workspace_id=' + encodeURIComponent(_wr.wsId) + '&limit=500';
+    var params = '?workspace_id=' + encodeURIComponent(_wr.wsId) + '&limit=500&fields=summary';
     if (_wr.filterBiz)    params += '&business_id='  + encodeURIComponent(_wr.filterBiz);
     if (_wr.filterStatus) params += '&status='       + encodeURIComponent(_wr.filterStatus);
     if (_wr.filterType)   params += '&content_type=' + encodeURIComponent(_wr.filterType);

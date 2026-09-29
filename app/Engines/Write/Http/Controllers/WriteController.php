@@ -16,10 +16,27 @@ class WriteController extends BaseEngineController
     public function listArticles(Request $r): JsonResponse
     {
         $out = $this->write->listArticles($this->wsId($r), $r->all());
+        // WRFAST-1 (2026-09-29): ?fields=summary = the Write list page (id, title, business, type, status, language, dates).
+        // Bodies, JSON-LD, SEO and brief JSON are left out: the editor loads one article by id. Without it a busy
+        // workspace sent every body four times (8.7 MB for 198 articles, 10+ s on a phone).
+        $summary = $r->query('fields') === 'summary';
+        if ($summary && is_array($out) && isset($out['articles'])) {
+            $heavy = ['content', 'jsonld_json', 'seo_json', 'brief_json', 'tags_json', 'plain_text', 'content_json'];
+            $out['articles'] = collect($out['articles'])->map(function ($a) use ($heavy) {
+                $a = (array) $a;
+                foreach ($heavy as $k) { unset($a[$k]); }
+                return $a;
+            })->values()->all();
+        }
         // WRITE-1 (2026-08-29): the editor reads `items`; other callers read `articles`. Serve both.
         if (is_array($out) && isset($out['articles']) && !isset($out['items'])) {
-            $out['items']   = collect($out['articles'])->map(fn($a) => $this->editorShape($a))->values()->all();
+            $out['items']   = collect($out['articles'])->map(function ($a) use ($summary) {
+                $s = $this->editorShape($a);
+                if ($summary) { unset($s['content'], $s['plain_text'], $s['content_json']); }
+                return $s;
+            })->values()->all();
             $out['success'] = true;
+            if ($summary) { unset($out['articles']); }
         }
         return $this->readJson($out);
     }
