@@ -55,6 +55,9 @@ use Illuminate\Support\Facades\Route;
         Route::get('/clients', [$k, 'index']);
         Route::post('/clients', [$k, 'store']);
         Route::post('/clients/bulk', [$k, 'bulk']);
+        Route::post('/clients/import', [$k, 'import']);                          // CRM-PACKS-4d
+        Route::post('/imports/{batch}/undo', [$k, 'undoImport']);
+        Route::put('/setup/{businessId}/fields', [$k, 'customFields'])->whereNumber('businessId');
         Route::get('/clients/{id}', [$k, 'show'])->whereNumber('id');
         Route::put('/clients/{id}/stage', [$k, 'stage'])->whereNumber('id');
         Route::put('/clients/{id}/fields', [$k, 'fields'])->whereNumber('id');

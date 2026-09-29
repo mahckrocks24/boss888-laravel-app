@@ -442,12 +442,13 @@ function listHtml() {
     var anyFilter = L.view || L.stage || L.channel || L.search;
     var empty = '<div class="crm2-card"><div class="crm2-empty"><b>' + (anyFilter ? 'No ' + esc(w.many.toLowerCase()) + ' match.' : 'No ' + esc(w.many.toLowerCase()) + ' yet.') + '</b>' +
         (anyFilter ? '<button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="window._crm2.reset()">Clear filters</button>' : 'Enquiries from your website, bookings, chatbot and social pages arrive here by themselves.<div style="margin-top:12px"><button class="btn btn-primary" onclick="window._crm2.newClient()">' + I('add', 14) + ' Add a ' + esc(w.one.toLowerCase()) + '</button></div>') + '</div></div>';
-    return '<div class="crm2-views" role="toolbar" aria-label="Ready lists">' + chips + '</div>' +
+    var undo = S.lastImport && S.lastImport.created ? '<div class="crm2-bulk" role="status"><span style="color:var(--t1)">' + S.lastImport.created + ' ' + esc(w.many.toLowerCase()) + ' imported.</span><button class="btn btn-outline btn-sm" onclick="window._crm2.undoImport()">Undo import</button><button class="btn btn-ghost btn-sm" onclick="S_clearImport()">Dismiss</button></div>' : '';
+    return undo + '<div class="crm2-views" role="toolbar" aria-label="Ready lists">' + chips + '</div>' +
         '<div class="crm2-toolbar"><div class="crm2-search">' + I('search', 16) + '<input class="form-input" type="search" id="crm2-q" placeholder="Search ' + esc(w.many.toLowerCase()) + '" aria-label="Search by name, email or phone" value="' + esc(L.search) + '" onkeydown="if(event.key===\'Enter\')window._crm2.search(this.value)" onsearch="window._crm2.search(this.value)"></div>' +
         (S.biz && S.biz !== 'none' ? '<select class="form-select" style="max-width:190px" aria-label="Stage" onchange="window._crm2.filter(\'stage\',this.value)">' + stageOpts + '</select>' : '') +
         '<select class="form-select" style="max-width:170px" aria-label="Channel" onchange="window._crm2.filter(\'channel\',this.value)">' + chOpts + '</select>' +
         '<select class="form-select" style="max-width:190px" aria-label="Sort" onchange="window._crm2.sort(this.value)">' + sortOpts + '</select>' +
-        '<span style="flex:1"></span><button class="btn btn-outline btn-sm" onclick="window._crm2.exportCsv()">' + I('download', 14) + ' Export</button></div>' + bulk +
+        '<span style="flex:1"></span><button class="btn btn-outline btn-sm" onclick="window._crm2.importCsv()">' + I('upload', 14) + ' Import</button><button class="btn btn-outline btn-sm" onclick="window._crm2.exportCsv()">' + I('download', 14) + ' Export</button></div>' + bulk +
         (L.rows.length ? '<div class="crm2-card crm2-tablewrap" data-lu-nowrap style="overflow-x:auto"><table class="crm2-table"><thead><tr><th><input type="checkbox" class="crm2-cb" aria-label="Select all shown" onchange="window._crm2.selAll(this.checked)"' + (nSel && nSel === L.rows.length ? ' checked' : '') + '></th><th>' + esc(w.one) + '</th>' + (showBiz ? '<th>Business</th>' : '') + '<th>Stage</th><th>Came from</th><th>Last contact</th><th>Next task</th><th style="text-align:right">Value</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
             '<div class="crm2-cards">' + cards + '</div>' +
             '<div class="crm2-more crm2-note">Showing ' + L.rows.length + ' of ' + L.total + (L.total > L.rows.length ? ' <button class="btn btn-outline btn-sm" style="margin-left:10px" onclick="window._crm2.more(this)">Show more</button>' : '') + '</div>' : empty);
@@ -599,7 +600,9 @@ function setupHtml() {
         '<div class="crm2-field"><label for="crm2-many">Many</label><input class="form-input" id="crm2-many" name="many" maxlength="30" value="' + esc(p.many) + '"></div></div><button class="btn btn-primary btn-sm" type="submit">Save</button></form></section>' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Sarah answers new enquiries</h4><div id="crm2-ar" class="crm2-note">Loading…</div></div></section>' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Stages</h4>' + p.stages.map(function (s, i) { return '<div class="crm2-task"><span class="crm2-pill ' + stageTone(p, s.key) + '">' + (i + 1) + '</span><div class="t">' + esc(s.name) + '</div></div>'; }).join('') + '</div>' +
-        '<div class="crm2-sec"><h4>Details kept about each ' + esc(p.one.toLowerCase()) + '</h4>' + p.fields.map(function (f) { return '<div class="crm2-task"><div class="t">' + esc(f.label) + '</div></div>'; }).join('') + '<div class="crm2-note" style="margin-top:8px">Your own stages and fields come next.</div></div></section></div>';
+        '<div class="crm2-sec"><h4>Details kept about each ' + esc(p.one.toLowerCase()) + '</h4>' + p.fields.map(function (f) { return '<div class="crm2-task"><div class="t">' + esc(f.label) + '</div></div>'; }).join('') + '</div><div class="crm2-sec"><h4>Your own details</h4>' + ((p.fields || []).filter(function (f) { return f.custom; }).map(function (f) { return '<div class="crm2-task" style="justify-content:space-between;align-items:center"><div class="t">' + esc(f.label) + ' <span class="crm2-note">' + esc({text: 'text', textarea: 'long text', number: 'number', date: 'date', select: 'choice: ' + (f.options || []).join(', ')}[f.type] || f.type) + '</span></div><button class="btn btn-ghost btn-sm" aria-label="Remove ' + esc(f.label) + '" onclick="window._crm2.cfRemove(\'' + esc(f.key) + '\')">' + I('delete', 14) + '</button></div>'; }).join('') || '<div class="crm2-note">None yet.</div>') +
+     '<form onsubmit="event.preventDefault();window._crm2.cfAdd(this)" style="display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:8px;margin-top:10px"><label class="crm2-hide-d" for="cf-l">Name</label><input class="form-input" id="cf-l" name="l" maxlength="60" placeholder="e.g. Insurance provider" required><label class="crm2-hide-d" for="cf-t">Kind</label><select class="form-select" id="cf-t" name="t"><option value="text">Text</option><option value="textarea">Long text</option><option value="number">Number</option><option value="date">Date</option><option value="select">Choice</option></select>' +
+     '<input class="form-input" name="o" placeholder="Choices, separated by commas (for Choice)" style="grid-column:1 / -1"><button class="btn btn-outline btn-sm" type="submit" style="grid-column:1 / -1">' + I('add', 14) + ' Add detail</button></form></div></section></div>';
 }
 
 async function loadAutoreply() {
@@ -613,6 +616,18 @@ async function loadAutoreply() {
             (j.sent_count ? '<div class="crm2-note" style="margin-top:10px">' + j.sent_count + ' repl' + (j.sent_count === 1 ? 'y' : 'ies') + ' sent so far' + (j.last_sent_at ? ', last ' + ago(j.last_sent_at) : '') + '.</div>' : '') +
             (j.available === false ? '<div class="crm2-note" style="margin-top:10px">This is paused platform-wide right now.</div>' : '');
     } catch (e) { box.textContent = 'Could not load this setting.'; }
+}
+
+function parseCsv(t) {
+    t = t.replace(/^\ufeff/, ''); var rows = [], row = [], cur = '', q = false;
+    var sep = (t.split('\n')[0].split(';').length > t.split('\n')[0].split(',').length) ? ';' : ',';
+    for (var i = 0; i < t.length; i++) { var c = t[i];
+        if (q) { if (c === '"') { if (t[i + 1] === '"') { cur += '"'; i++; } else q = false; } else cur += c; }
+        else if (c === '"') q = true; else if (c === sep) { row.push(cur); cur = ''; }
+        else if (c === '\n' || c === '\r') { if (c === '\r' && t[i + 1] === '\n') i++; row.push(cur); cur = ''; if (row.some(function (x) { return x.trim() !== ''; })) rows.push(row); row = []; }
+        else cur += c; }
+    row.push(cur); if (row.some(function (x) { return x.trim() !== ''; })) rows.push(row);
+    return rows;
 }
 
 // ── dialogs (the shell's modal) ─────────────────────────────────────────────
@@ -637,6 +652,7 @@ function modal(title, inner, onSave, saveLabel) {
 function fld(id, label, type, val, extra) { return '<div class="crm2-field" style="margin:0"><label for="' + id + '">' + label + '</label><input class="form-input" id="' + id + '" name="' + id + '" type="' + (type || 'text') + '" value="' + esc(val || '') + '"' + (extra || '') + '></div>'; }
 
 // ── actions ─────────────────────────────────────────────────────────────────
+window.S_clearImport = function () { S.lastImport = null; render(); };
 window._crm2 = {
     tab: function (t) { go(t); },
     biz: async function (v, tab) {
@@ -688,6 +704,67 @@ window._crm2 = {
         var sub = bd.querySelector('[type=submit]'); if (sub) sub.style.display = 'none';
     },
     stage: function (id, st) { moveTo(id, st); },
+    cfAdd: async function (f) {
+        var cur = (S.pack.fields || []).filter(function (x) { return x.custom; }).map(function (x) { return {key: x.key, label: x.label, type: x.type, options: x.options}; });
+        cur.push({label: f.l.value.trim(), type: f.t.value, options: f.o.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean)});
+        try { var j = await api('PUT', '/setup/' + S.biz + '/fields', {fields: cur}); S.pack = j.pack; toast('Added. It shows on every ' + words().one.toLowerCase() + '.'); } catch (e) { return toast(e.message, 'error'); }
+        render();
+    },
+    cfRemove: async function (key) {
+        var cur = (S.pack.fields || []).filter(function (x) { return x.custom && x.key !== key; }).map(function (x) { return {key: x.key, label: x.label, type: x.type, options: x.options}; });
+        try { var j = await api('PUT', '/setup/' + S.biz + '/fields', {fields: cur}); S.pack = j.pack; toast('Removed. What was written is kept.'); } catch (e) { return toast(e.message, 'error'); }
+        render();
+    },
+    undoImport: async function () {
+        var ok = typeof luConfirm === 'function' ? await luConfirm('Undo the import? The ' + S.lastImport.created + ' ' + words().many.toLowerCase() + ' it added are archived (people who were already here are not touched).', 'Undo import', 'Undo', 'Keep') : true;
+        if (!ok) return;
+        try { var j = await api('POST', '/imports/' + S.lastImport.batch + '/undo'); toast(j.archived + ' archived.'); } catch (e) { return toast(e.message, 'error'); }
+        S.lastImport = null; go('clients');
+    },
+    importCsv: function () {
+        var needBiz = multi() && (!S.biz || S.biz === 'none'), p = S.pack;
+        var targets = [['', 'Skip this column'], ['name', 'Name'], ['first', 'First name'], ['last', 'Last name'], ['email', 'Email'], ['phone', 'Phone'], ['company', 'Company'], ['stage', 'Stage'], ['value', 'Value'], ['notes', 'Notes'], ['source', 'Where they came from']]
+            .concat(needBiz ? [] : (p.fields || []).map(function (f) { return ['f:' + f.key, esc(f.label)]; }));
+        var guess = function (h) { h = h.toLowerCase().trim();
+            if (/^(full ?)?name$|^client$|^customer$|^contact$/.test(h)) return 'name'; if (/first/.test(h)) return 'first'; if (/last|surname/.test(h)) return 'last';
+            if (/mail/.test(h)) return 'email'; if (/phone|mobile|cell|tel/.test(h)) return 'phone'; if (/company|organi|business/.test(h)) return 'company';
+            if (/stage|status/.test(h)) return 'stage'; if (/value|amount|budget|deal/.test(h)) return 'value'; if (/note|comment|message/.test(h)) return 'notes'; if (/source|channel|from/.test(h)) return 'source';
+            var f = (p.fields || []).find(function (x) { return x.label.toLowerCase() === h; }); return f && !needBiz ? 'f:' + f.key : ''; };
+        var bd = modal('Import ' + words().many.toLowerCase(),
+            (needBiz ? '<div class="crm2-field" style="margin:0"><label for="ib">Into which business?</label><select class="form-select" id="ib" name="ib" required><option value="">Pick a business</option>' + S.setup.businesses.map(function (b) { return '<option value="' + b.id + '">' + esc(b.name) + '</option>'; }).join('') + '</select></div>' : '') +
+            '<div class="crm2-field" style="margin:0"><label for="if">Spreadsheet (CSV)</label><input class="form-input" type="file" id="if" name="if" accept=".csv,text/csv" required></div>' +
+            '<div id="imap"></div><div class="crm2-field" style="margin:0"><label for="id">If someone is already in Clients</label><select class="form-select" id="id" name="id"><option value="skip">Leave them as they are</option><option value="update">Update them with this sheet</option></select></div>' +
+            '<div class="crm2-note">Up to 5,000 rows. People already in Clients are matched by email or phone. You can undo the whole import for 24 hours.</div>',
+            async function (f) {
+                if (!bd._rows) throw new Error('Choose a CSV file first.');
+                var map = Array.prototype.map.call(bd.querySelectorAll('[data-col]'), function (x) { return x.value; });
+                if (map.indexOf('name') < 0 && map.indexOf('first') < 0 && map.indexOf('email') < 0 && map.indexOf('phone') < 0) throw new Error('Match at least a name, email or phone column.');
+                var rows = bd._rows.slice(1).map(function (r) { var o = {fields: {}}; map.forEach(function (t, i) { var v = (r[i] || '').trim(); if (!t || !v) return; if (t.indexOf('f:') === 0) o.fields[t.slice(2)] = v; else if (t === 'first') o.name = (v + ' ' + (o.name || '')).trim(); else if (t === 'last') o.name = ((o.name || '') + ' ' + v).trim(); else o[t] = v; }); return o; })
+                    .filter(function (o) { return o.name || o.email || o.phone; }).slice(0, 5000);
+                var biz = needBiz ? f.ib.value : (S.biz && S.biz !== 'none' ? S.biz : '');
+                var btn = f.querySelector('[type=submit]'), tot = {created: 0, updated: 0, skipped: 0, errors: []}, batch = '';
+                for (var i = 0; i < rows.length; i += 400) {
+                    btn.textContent = 'Importing ' + Math.min(i + 400, rows.length) + ' of ' + rows.length + '…';
+                    var j = await api('POST', '/clients/import', {business_id: biz || undefined, rows: rows.slice(i, i + 400), on_duplicate: f.id.value, batch: batch || undefined});
+                    batch = j.batch; tot.created += j.created; tot.updated += j.updated; tot.skipped += j.skipped; tot.errors = tot.errors.concat(j.errors || []);
+                }
+                S.lastImport = {batch: batch, created: tot.created};
+                toast(tot.created + ' added' + (tot.updated ? ', ' + tot.updated + ' updated' : '') + (tot.skipped ? ', ' + tot.skipped + ' left as they were' : '') + (tot.errors.length ? ', ' + tot.errors.length + ' with problems' : '') + '.');
+                go('clients');
+            }, 'Import');
+        bd.querySelector('#if').addEventListener('change', function (e) {
+            var file = e.target.files[0]; if (!file) return;
+            if (file.size > 8 * 1024 * 1024) { toast('That file is over 8 MB. Split it into smaller files.', 'error'); return; }
+            var rd = new FileReader(); rd.onload = function () {
+                var rows = parseCsv(String(rd.result || '')); bd._rows = rows;
+                if (rows.length < 2) { bd.querySelector('#imap').innerHTML = '<div class="crm2-note" style="color:var(--rd)">That file has no rows.</div>'; return; }
+                var h = rows[0];
+                bd.querySelector('#imap').innerHTML = '<div class="crm2-field" style="margin:0"><label>Match your columns (' + (rows.length - 1) + ' rows)</label><div style="display:grid;gap:6px;max-height:40vh;overflow:auto">' + h.map(function (col, i) {
+                    var g = guess(col); return '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center"><span style="font-size:13px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + esc(col) + '">' + esc(col) + ' <span class="crm2-note">e.g. ' + esc((rows[1][i] || '').slice(0, 24)) + '</span></span><select class="form-select" data-col="' + i + '" aria-label="' + esc(col) + ' goes to">' + targets.map(function (t) { return '<option value="' + t[0] + '"' + (t[0] === g ? ' selected' : '') + '>' + t[1] + '</option>'; }).join('') + '</select></div>';
+                }).join('') + '</div></div>';
+            }; rd.readAsText(file);
+        });
+    },
     catPick: function (id, on) { S.catSel = S.catSel || {}; if (on) S.catSel[id] = 1; else delete S.catSel[id]; var n = Object.keys(S.catSel).length;
         var b = document.getElementById('crm2-cat-send'); if (b) b.disabled = !n; var v = document.getElementById('crm2-cat-view'); if (v) v.disabled = n !== 1; },
     catAdd: function () {

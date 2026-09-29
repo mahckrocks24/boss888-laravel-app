@@ -259,6 +259,8 @@ class CrmPacks
         if (! empty($set['one'])) $pack['one'] = mb_substr((string) $set['one'], 0, 30);
         if (! empty($set['many'])) $pack['many'] = mb_substr((string) $set['many'], 0, 30);
         $pack['recall_days'] = isset($set['recall_days']) ? (int) $set['recall_days'] : self::recallDays($b->industry ?? null);
+        // CRM-PACKS-4d: the owner's own details for this business, after the industry's
+        foreach ((array) ($set['custom_fields'] ?? []) as $cf) if (is_array($cf) && ! empty($cf['key']) && ! empty($cf['label'])) $pack['fields'][] = ['key' => (string) $cf['key'], 'label' => (string) $cf['label'], 'type' => in_array($cf['type'] ?? 'text', ['text', 'textarea', 'number', 'date', 'select'], true) ? $cf['type'] : 'text', 'options' => array_values((array) ($cf['options'] ?? [])), 'custom' => true];
         return ['key' => $key, 'auto' => $auto, 'chosen' => ! empty($set['pack'])] + $pack;
     }
 

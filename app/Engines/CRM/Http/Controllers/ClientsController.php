@@ -351,6 +351,82 @@ class ClientsController extends BaseEngineController
         return $out ? $this->readJson(['success' => true] + $out) : response()->json(['success' => false, 'message' => 'No summary yet.'], 404);
     }
 
+    /** PUT /crm/setup/{businessId}/fields {fields:[{label, type, options?}]} — the owner's own details kept about each client. */
+    public function customFields(Request $r, int $businessId): JsonResponse
+    {
+        $b = DB::table('businesses')->where('workspace_id', $this->wsId($r))->where('id', $businessId)->whereNull('deleted_at')->first(['id', 'settings_json']);
+        if (! $b) return response()->json(['success' => false, 'message' => 'Business not found.'], 404);
+        $set = json_decode((string) $b->settings_json, true) ?: [];
+        $keep = [];
+        foreach (array_slice((array) $r->input('fields', []), 0, 20) as $f) {
+            $label = mb_substr(trim(strip_tags((string) ($f['label'] ?? ''))), 0, 60);
+            if ($label === '') continue;
+            $type = in_array($f['type'] ?? 'text', ['text', 'textarea', 'number', 'date', 'select'], true) ? $f['type'] : 'text';
+            $key = (string) ($f['key'] ?? '') ?: 'c_' . substr(preg_replace('/[^a-z0-9]+/', '_', mb_strtolower($label)), 0, 30);
+            $opts = $type === 'select' ? array_values(array_filter(array_map(fn ($o) => mb_substr(trim((string) $o), 0, 60), (array) ($f['options'] ?? [])))) : [];
+            if ($type === 'select' && ! $opts) continue;
+            $keep[] = ['key' => preg_replace('/[^a-z0-9_]/', '', $key), 'label' => $label, 'type' => $type, 'options' => $opts];
+        }
+        $set['crm']['custom_fields'] = $keep;
+        DB::table('businesses')->where('id', $businessId)->update(['settings_json' => json_encode($set, JSON_UNESCAPED_UNICODE), 'updated_at' => now()]);
+        return $this->readJson(['success' => true, 'pack' => \App\Engines\CRM\Services\CrmPacks::forBusiness($businessId)]);
+    }
+
+    /**
+     * POST /crm/clients/import {business_id?, rows:[{name,email,phone,company,source,stage,value,notes,fields:{}}], on_duplicate: skip|update, batch?}
+     * The browser reads and maps the CSV; each chunk (≤500 rows) is checked here. One batch id ties the chunks together
+     * so the whole import can be undone for 24 hours.
+     */
+    public function import(Request $r): JsonResponse
+    {
+        $ws = $this->wsId($r); $b = $this->biz($r);
+        if ($b === -1) return response()->json(['success' => false, 'message' => 'Business not found.'], 404);
+        $rows = array_slice((array) $r->input('rows', []), 0, 500);
+        $batch = preg_match('/^imp_[a-z0-9]{12}$/', (string) $r->input('batch')) ? (string) $r->input('batch') : 'imp_' . strtolower(\Illuminate\Support\Str::random(12));
+        $upd = $r->input('on_duplicate') === 'update';
+        $pack = $this->packFor($b);
+        $fieldKeys = collect($pack['fields'])->pluck('key')->all();
+        $crm = app(\App\Engines\CRM\Services\CrmService::class);
+        $made = 0; $updated = 0; $skipped = 0; $errors = [];
+        foreach ($rows as $i => $row) {
+            $name = mb_substr(trim((string) ($row['name'] ?? '')), 0, 190);
+            $email = trim((string) ($row['email'] ?? '')); $phone = mb_substr(trim((string) ($row['phone'] ?? '')), 0, 60);
+            if ($email !== '' && ! \App\Engines\CRM\Services\ClientIdentity::emailKey($email)) { $errors[] = ['row' => $i, 'why' => 'email looks wrong: ' . mb_substr($email, 0, 60)]; $email = ''; }
+            if ($name === '' && $email === '' && $phone === '') { $skipped++; continue; }
+            if ($name === '') $name = $email ?: $phone;
+            $stageName = mb_strtolower(trim((string) ($row['stage'] ?? '')));
+            $stage = $stageName !== '' ? collect($pack['stages'])->first(fn ($s) => mb_strtolower($s['name']) === $stageName || $s['key'] === $stageName) : null;
+            $fields = array_filter(array_intersect_key((array) ($row['fields'] ?? []), array_flip($fieldKeys)), fn ($v) => trim((string) $v) !== '');
+            $existing = \App\Engines\CRM\Services\ClientIdentity::existingProfile($ws, $b ?: null, $email ?: null, $phone ?: null);
+            if ($existing) {
+                if (! $upd) { $skipped++; continue; }
+                $meta = json_decode((string) $existing->metadata_json, true) ?: [];
+                $meta['fields'] = array_merge((array) ($meta['fields'] ?? []), $fields);
+                DB::table('leads')->where('id', $existing->id)->update(array_filter(['name' => $name, 'phone' => $phone ?: null, 'company' => mb_substr((string) ($row['company'] ?? ''), 0, 190) ?: null,
+                    'metadata_json' => json_encode($meta, JSON_UNESCAPED_UNICODE), 'updated_at' => now()], fn ($v) => $v !== null));
+                $updated++; continue;
+            }
+            try {
+                $lead = $crm->createLead($ws, ['_origin' => 'import', 'business_id' => $b ?: null, 'name' => $name, 'email' => $email ?: null, 'phone' => $phone ?: null,
+                    'company' => mb_substr((string) ($row['company'] ?? ''), 0, 190) ?: null, 'source' => 'import', 'status' => $stage['status'] ?? 'new', 'deal_value' => (float) preg_replace('/[^0-9.]/', '', (string) ($row['value'] ?? '')) ?: 0,
+                    'metadata' => ['fields' => $fields, 'import_batch' => $batch, 'imported_source' => mb_substr((string) ($row['source'] ?? ''), 0, 60) ?: null]]);
+                if ($stage) DB::table('leads')->where('id', $lead->id)->update(['stage' => $stage['key']]);
+                if (trim((string) ($row['notes'] ?? '')) !== '') \App\Models\Activity::create(['workspace_id' => $ws, 'activitable_type' => 'Lead', 'activitable_id' => $lead->id, 'type' => 'note', 'description' => mb_substr((string) $row['notes'], 0, 2000), 'performed_by' => $this->userId($r)]);
+                $made++;
+            } catch (\Throwable $e) { $errors[] = ['row' => $i, 'why' => 'could not be saved']; }
+        }
+        return $this->readJson(['success' => true, 'batch' => $batch, 'created' => $made, 'updated' => $updated, 'skipped' => $skipped, 'errors' => array_slice($errors, 0, 50)]);
+    }
+
+    /** POST /crm/imports/{batch}/undo — within 24 hours, the clients that import created are archived again. */
+    public function undoImport(Request $r, string $batch): JsonResponse
+    {
+        if (! preg_match('/^imp_[a-z0-9]{12}$/', $batch)) return response()->json(['success' => false, 'message' => 'Unknown import.'], 404);
+        $n = DB::table('leads')->where('workspace_id', $this->wsId($r))->whereNull('deleted_at')->where('created_at', '>=', now()->subDay())
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.import_batch')) = ?", [$batch])->update(['deleted_at' => now()]);
+        return $this->readJson(['success' => true, 'archived' => $n]);
+    }
+
     /** GET /crm/clients/{id}/catalogue — what the client is interested in, the business's items, and (property) matches. */
     public function catalogue(Request $r, int $id): JsonResponse
     {
