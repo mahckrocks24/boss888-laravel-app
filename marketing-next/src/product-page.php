@@ -86,7 +86,6 @@ if ($soon) { $first = null; foreach ($availability as $i => $a) { $availability[
       <div class="card"><?= icon('check', 22) ?><h3><?= e($h) ?></h3><p><?= e($fill($t)) ?></p></div>
       <?php endforeach; ?>
     </div>
-    <div class="limit"><strong>One thing it does not do.</strong> <?= e($fill($p['limit'])) ?></div>
   </div>
 </section>
 

@@ -14,6 +14,7 @@ foreach ($map as $slug => $file) {
     $html = @file_get_contents("$old/$file") ?: '';
     $body = '';
     if (preg_match('#<div class="legal">(.*?)<div id="site-footer-placeholder">#s', $html, $m)) { $body = $m[1]; }
+    $body = preg_replace('#</div>\s*$#', '', rtrim($body)) ?? $body; /* the capture ends with the legacy .legal wrapper's own </div>; unbalanced, it closed the glass wrapper early and dropped the footer out of the skin */
     $body = preg_replace('#<div class="draft-banner">.*?</div>#s', '', $body) ?? $body;
     $body = preg_replace('#<h1>.*?</h1>#s', '', $body, 1) ?? $body;
     $body = preg_replace_callback('#<span class="ph">\[\[OWNER:([A-Z_]+)\]\]</span>#', function ($mm) use (&$ownerKeys) { $ownerKeys[$mm[1]] = true; return '<mark class="owner" data-key="' . $mm[1] . '">to be confirmed before launch</mark>'; /* P0-4: never a literal placeholder word on a public page */ }, $body) ?? $body;

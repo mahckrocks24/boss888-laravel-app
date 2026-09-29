@@ -140,3 +140,30 @@ html[data-theme="dark"] .lg-site .mega, html[data-theme="dark"] .lg-site .nav-dd
 html .lg-site .mega-name, html .lg-site .nav-dd-item, html .lg-site .mega-col-title { color: var(--ink); }
 html .lg-site .mega-desc { color: var(--ink-3); }
 html .lg-site .mega-item:hover .mega-name, html .lg-site .nav-dd-item:hover { color: var(--ink); }
+
+/* 11. Owner 09-30 'text on pricing has contrast issue': site.css paints feature spans a fixed dark-theme grey (#D3DAE5); in glass every span reads its list item's ink */
+html .lg-site .feature-list span, html .lg-site .night .feature-list span, html .lg-site .feature-list-light span { color: inherit; }
+html .lg-site .feature-list li.no { color: var(--ink-3); }
+
+/* 12. domain search (Owner 09-30: field not recognisable, white text in light): the widget was dark-only in site.css; every part reads the glass tokens */
+html .lg-site .dsearch { background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); }
+html .lg-site .dsearch-h { color: var(--ink); }
+html .lg-site .dsearch-bar input, html .lg-site input[type=search] { background: var(--glass-thick); border: 1px solid var(--rim); color: var(--ink); border-radius: 14px; font-family: var(--font);
+  box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge); -webkit-appearance: none; appearance: none; }
+html[data-theme="light"] .lg-site .dsearch-bar input { background: #FFFFFF; border-color: rgba(13, 15, 28, .16); }
+html .lg-site .dsearch-bar input:focus { border-color: var(--action); box-shadow: var(--focus); }
+html .lg-site .dsearch-bar input::placeholder { color: var(--ink-3); }
+html .lg-site .dsearch-bar input::-webkit-search-cancel-button, html .lg-site .dsearch-bar input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; display: none; }
+html .lg-site .dsearch-note, html .lg-site .dsearch-sub { color: var(--ink-3); }
+html .lg-site .dsearch-msg { color: var(--danger, #D0335A); }
+html .lg-site .dsearch-results li { background: var(--glass); border: 1px solid var(--hairline); }
+html .lg-site .dsearch-name { color: var(--ink); }
+html .lg-site .dsearch-price { color: var(--ink-2); }
+html .lg-site .dsearch-tag.no { color: var(--ink-3); background: var(--tint); border: 1px solid var(--tint-rim); }
+html .lg-site .dsearch-exact { background: var(--tint); border: 1px solid var(--tint-rim); }
+html .lg-site .dsearch-exact.taken { background: var(--glass); border-color: var(--hairline); }
+html .lg-site .dsearch-recs-h { color: var(--ink); }
+html .lg-site [hidden] { display: none !important; }
+
+/* 13. prose links (legal and help bodies) carried a fixed blue */
+html .lg-site .prose a:not(.btn) { color: var(--accent-text); }
