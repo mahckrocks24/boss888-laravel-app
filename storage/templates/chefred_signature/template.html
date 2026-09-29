@@ -1,0 +1,1613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{seo_title}}</title>
+<meta name="description" content="{{meta_description}}">
+<link rel="canonical" href="{{canonical_url}}">
+<meta name="robots" content="{{robots}}">
+<meta name="theme-color" content="{{ink_color}}">
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{canonical_url}}">
+<meta property="og:title" content="{{og_title}}">
+<meta property="og:description" content="{{og_description}}">
+<meta property="og:image" content="{{og_image}}">
+<meta property="og:site_name" content="{{business_name}}">
+<meta property="og:locale" content="{{og_locale}}">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{og_title}}">
+<meta name="twitter:description" content="{{og_description}}">
+<meta name="twitter:image" content="{{og_image}}">
+<!-- Structured data: built only from this page's own content (variables), refreshed from the page on load -->
+<script type="application/ld+json" id="lu-schema">{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "{{canonical_url}}#website",
+      "url": "{{canonical_url}}",
+      "name": "{{business_name}}",
+      "description": "{{meta_description}}",
+      "inLanguage": "en-US",
+      "publisher": { "@id": "{{canonical_url}}#business" }
+    },
+    {
+      "@type": "WebPage",
+      "@id": "{{canonical_url}}#webpage",
+      "url": "{{canonical_url}}",
+      "name": "{{seo_title}}",
+      "description": "{{meta_description}}",
+      "inLanguage": "en-US",
+      "isPartOf": { "@id": "{{canonical_url}}#website" },
+      "about": { "@id": "{{canonical_url}}#business" },
+      "primaryImageOfPage": { "@type": "ImageObject", "url": "{{og_image}}" }
+    },
+    {
+      "@type": "FoodEstablishment",
+      "@id": "{{canonical_url}}#business",
+      "name": "{{business_name}}",
+      "url": "{{canonical_url}}",
+      "description": "{{meta_description}}",
+      "image": "{{og_image}}",
+      "email": "{{contact_email}}",
+      "telephone": "{{contact_phone}}",
+      "areaServed": [
+        { "@type": "State", "name": "{{area_1}}" },
+        { "@type": "State", "name": "{{area_2}}" },
+        { "@type": "State", "name": "{{area_3}}" }
+      ],
+      "servesCuisine": ["{{cuisine_1_title}}", "{{cuisine_2_title}}", "{{cuisine_3_title}}", "{{cuisine_4_title}}", "{{cuisine_5_title}}", "{{cuisine_6_title}}"],
+      "founder": { "@id": "{{canonical_url}}#chef" },
+      "employee": { "@id": "{{canonical_url}}#chef" },
+      "hasOfferCatalog": {
+        "@type": "OfferCatalog",
+        "name": "Services",
+        "itemListElement": [
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "{{service_1_title}}", "description": "{{service_1_text}}", "provider": { "@id": "{{canonical_url}}#business" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "{{service_2_title}}", "description": "{{service_2_text}}", "provider": { "@id": "{{canonical_url}}#business" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "{{service_3_title}}", "description": "{{service_3_text}}", "provider": { "@id": "{{canonical_url}}#business" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "{{service_4_title}}", "description": "{{service_4_text}}", "provider": { "@id": "{{canonical_url}}#business" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "{{service_5_title}}", "description": "{{service_5_text}}", "provider": { "@id": "{{canonical_url}}#business" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "{{service_6_title}}", "description": "{{service_6_text}}", "provider": { "@id": "{{canonical_url}}#business" } } }
+        ]
+      }
+    },
+    {
+      "@type": "Person",
+      "@id": "{{canonical_url}}#chef",
+      "name": "{{chef_person}}",
+      "jobTitle": "{{chef_job_title}}",
+      "image": "{{og_image}}",
+      "url": "{{canonical_url}}",
+      "worksFor": { "@id": "{{canonical_url}}#business" }
+    }
+  ]
+}</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Marcellus&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════
+   CHEF RED RAYMUNDO — Design System (platform template chefred_signature;
+   brand colours are template variables so the palette editor, Arthur and Layouts can move them)
+   Direction: Dark luxury editorial, high-contrast,
+   cinematic negative space, jewel-toned accents
+═══════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:    {{ink_color}};
+  --ink2:   {{ink2_color}};
+  --ink3:   {{ink3_color}};
+  --gold:   {{primary_color}};
+  --gold-l: {{accent_color}};
+  --cream:  {{cream_color}};
+  --warm:   #E8DDD0;
+  --stone:  {{stone_color}};
+  --smoke:  {{smoke_color}};
+  --fd:     'Playfair Display', Georgia, serif;
+  --fm:     'Marcellus', Georgia, serif;
+  --fb:     'DM Sans', system-ui, sans-serif;
+  --ease:   cubic-bezier(.22,.68,0,1.2);
+  --ease2:  cubic-bezier(.4,0,.2,1);
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--fb);
+  font-weight: 300;
+  line-height: 1.6;
+  overflow-x: hidden;
+  cursor: none;
+}
+
+/* ── Custom Cursor ── */
+.cursor {
+  position: fixed;
+  width: 10px; height: 10px;
+  background: var(--gold);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9999;
+  transition: transform .15s var(--ease2), opacity .2s;
+  transform: translate(-50%,-50%);
+}
+.cursor-ring {
+  position: fixed;
+  width: 36px; height: 36px;
+  border: 1px solid rgba(201,148,58,.4);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 9998;
+  transition: transform .35s var(--ease2), width .3s, height .3s, opacity .3s;
+  transform: translate(-50%,-50%);
+}
+body.hovering .cursor { transform: translate(-50%,-50%) scale(1.8); }
+body.hovering .cursor-ring { width: 56px; height: 56px; border-color: rgba(201,148,58,.6); }
+
+/* ── Navigation ── */
+nav {
+  min-height: 80px;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 1.5rem 3rem;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: background .4s, padding .4s;
+}
+nav.scrolled {
+  background: rgba(10,8,6,.92);
+  backdrop-filter: blur(20px);
+  padding: 1rem 3rem;
+  border-bottom: 1px solid rgba(201,148,58,.12);
+}
+.nav-logo {
+  font-family: var(--fm);
+  font-size: .7rem;
+  letter-spacing: .35em;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-decoration: none;
+}
+.nav-links {
+  flex-wrap: nowrap; white-space: nowrap;
+  display: flex; align-items: center; gap: 2.5rem;
+  list-style: none;
+}
+.nav-links a {
+  font-size: .62rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: rgba(242,235,223,.6);
+  text-decoration: none;
+  transition: color .25s;
+  position: relative;
+}
+.nav-links a::after {
+  content: '';
+  position: absolute; bottom: -3px; left: 0; right: 0;
+  height: 1px; background: var(--gold);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform .3s var(--ease2);
+}
+.nav-links a:hover { color: var(--cream); }
+.nav-links a:hover::after { transform: scaleX(1); }
+.nav-cta {
+  font-size: .6rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gold);
+  padding: .6rem 1.5rem;
+  text-decoration: none;
+  transition: background .25s, transform .2s;
+}
+.nav-cta:hover { background: var(--gold-l); transform: translateY(-1px); }
+.nav-burger {
+  display: none;
+  flex-direction: column; gap: 5px;
+  background: none; border: none; cursor: pointer; padding: .4rem;
+}
+.nav-burger span {
+  display: block; width: 22px; height: 1px;
+  background: var(--cream); transition: all .3s;
+}
+
+/* ── Hero ── */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  overflow: hidden;
+}
+.hero-left {
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 8rem 4rem 6rem 6rem;
+  position: relative; z-index: 2;
+}
+.hero-eyebrow {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 2rem;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block; width: 3rem; height: 1px;
+  background: var(--gold);
+}
+.hero-eyebrow span {
+  font-size: .58rem;
+  letter-spacing: .3em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.hero-h1 {
+  font-family: var(--fd);
+  font-size: clamp(3.5rem, 6vw, 6rem);
+  font-weight: 400;
+  line-height: .95;
+  color: var(--cream);
+  margin-bottom: 1.5rem;
+}
+.hero-h1 em {
+  font-style: italic;
+  color: var(--gold-l);
+  display: block;
+}
+.hero-sub {
+  font-size: .85rem;
+  color: var(--stone);
+  max-width: 400px;
+  line-height: 1.8;
+  margin-bottom: 3rem;
+  letter-spacing: .02em;
+}
+.hero-actions {
+  display: flex; align-items: center; gap: 2rem;
+}
+.btn-primary {
+  font-size: .6rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--gold);
+  padding: 1rem 2.5rem;
+  text-decoration: none;
+  display: inline-block;
+  transition: background .25s, transform .2s;
+}
+.btn-primary:hover { background: var(--gold-l); transform: translateY(-2px); }
+.btn-ghost {
+  font-size: .6rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--cream);
+  text-decoration: none;
+  display: flex; align-items: center; gap: .6rem;
+  transition: gap .25s;
+}
+.btn-ghost::after {
+  content: '→';
+  transition: transform .25s;
+}
+.btn-ghost:hover { gap: .9rem; }
+.btn-ghost:hover::after { transform: translateX(4px); }
+
+.hero-right {
+  position: relative;
+  overflow: hidden;
+}
+.hero-right img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  filter: brightness(.85) contrast(1.05);
+  transition: transform 8s ease;
+}
+.hero-right:hover img { transform: scale(1.04); }
+.hero-right-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to right, var(--ink) 0%, transparent 30%),
+              linear-gradient(to top, rgba(10,8,6,.5) 0%, transparent 50%);
+}
+
+/* Hero grain */
+.hero::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 3;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  background-size: 200px;
+  opacity: .4;
+  mix-blend-mode: overlay;
+}
+
+.hero-scroll-hint {
+  position: absolute; bottom: 2.5rem; left: 6rem; z-index: 4;
+  display: flex; align-items: center; gap: .75rem;
+  font-size: .55rem; letter-spacing: .2em; text-transform: uppercase;
+  color: var(--smoke);
+}
+.hero-scroll-hint::before {
+  content: '';
+  display: block; width: 1px; height: 3rem;
+  background: linear-gradient(to bottom, var(--gold), transparent);
+  animation: scroll-line 2s ease-in-out infinite;
+}
+@keyframes scroll-line {
+  0%, 100% { opacity: .3; transform: scaleY(1); }
+  50% { opacity: 1; transform: scaleY(1.2); }
+}
+
+/* ── Stats strip ── */
+.stats-strip {
+  background: var(--ink3);
+  border-top: 1px solid rgba(201,148,58,.12);
+  border-bottom: 1px solid rgba(201,148,58,.12);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+.stat-item {
+  padding: 2.5rem 2rem;
+  text-align: center;
+  border-right: 1px solid rgba(201,148,58,.08);
+  position: relative;
+  overflow: hidden;
+}
+.stat-item:last-child { border-right: none; }
+.stat-item::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
+  opacity: 0; transition: opacity .4s;
+}
+.stat-item:hover::before { opacity: 1; }
+.stat-num {
+  font-family: var(--fd);
+  font-size: 2.8rem;
+  font-weight: 400;
+  color: var(--gold);
+  line-height: 1;
+  margin-bottom: .4rem;
+  display: block;
+}
+.stat-label {
+  font-size: .58rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+/* ── Section utility ── */
+.section { padding: 7rem 6rem; }
+.section-sm { padding: 5rem 6rem; }
+
+.eyebrow {
+  display: flex; align-items: center; gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.eyebrow::before {
+  content: '';
+  display: block; width: 2rem; height: 1px;
+  background: var(--gold);
+}
+.eyebrow span {
+  font-size: .58rem; letter-spacing: .28em;
+  text-transform: uppercase; color: var(--gold);
+}
+.section-h2 {
+  font-family: var(--fd);
+  font-size: clamp(2.2rem, 4vw, 3.5rem);
+  font-weight: 400;
+  line-height: 1.1;
+  color: var(--cream);
+  margin-bottom: 1.5rem;
+}
+.section-h2 em {
+  font-style: italic;
+  color: var(--gold-l);
+}
+
+/* ── About ── */
+.about {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  background: var(--ink2);
+}
+.about-left {
+  padding: 7rem 4rem 7rem 6rem;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.about-text {
+  font-size: .9rem; color: var(--stone);
+  line-height: 1.9; margin-bottom: 1.5rem;
+}
+.about-text strong { color: var(--cream); font-weight: 500; }
+.about-signature {
+  font-family: var(--fd);
+  font-size: 2.2rem;
+  font-style: italic;
+  color: var(--gold);
+  margin-top: 2rem;
+}
+
+.about-right {
+  position: relative;
+  overflow: hidden;
+  min-height: 700px;
+}
+.about-right img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center;
+  filter: brightness(.8) saturate(1.1);
+  transition: transform 6s ease;
+}
+.about-right:hover img { transform: scale(1.05); }
+.about-img-caption {
+  position: absolute; bottom: 2rem; right: 2rem;
+  font-size: .55rem; letter-spacing: .18em;
+  text-transform: uppercase; color: rgba(242,235,223,.4);
+  writing-mode: vertical-rl;
+}
+
+/* ── Expertise / Services ── */
+.expertise { background: var(--ink); }
+.expertise-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: rgba(201,148,58,.12);
+  margin-top: 4rem;
+  border: 1px solid rgba(201,148,58,.12);
+}
+.expertise-card {
+  background: var(--ink);
+  padding: 3rem 2.5rem;
+  transition: background .35s;
+  position: relative;
+  overflow: hidden;
+}
+.expertise-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0;
+  width: 0; height: 2px;
+  background: var(--gold);
+  transition: width .4s var(--ease2);
+}
+.expertise-card:hover { background: var(--ink3); }
+.expertise-card:hover::before { width: 100%; }
+.expertise-num {
+  font-family: var(--fd);
+  font-size: 3.5rem; font-weight: 400;
+  color: rgba(201,148,58,.12);
+  line-height: 1;
+  margin-bottom: 1.25rem;
+  transition: color .35s;
+}
+.expertise-card:hover .expertise-num { color: rgba(201,148,58,.25); }
+.expertise-title {
+  font-family: var(--fm);
+  font-size: 1.1rem;
+  color: var(--cream);
+  margin-bottom: .75rem;
+  letter-spacing: .04em;
+}
+.expertise-desc {
+  font-size: .78rem;
+  color: var(--stone);
+  line-height: 1.8;
+}
+.expertise-tags {
+  display: flex; flex-wrap: wrap; gap: .4rem;
+  margin-top: 1.5rem;
+}
+.expertise-tag {
+  font-size: .52rem; letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid rgba(201,148,58,.25);
+  padding: .25rem .7rem;
+}
+
+/* ── Gallery — Masonry feel ── */
+.gallery { background: var(--ink2); padding: 7rem 0; }
+.gallery-header { padding: 0 6rem 4rem; }
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-auto-rows: 280px;
+  gap: 3px;
+}
+.gallery-item {
+  overflow: hidden;
+  position: relative;
+  cursor: none;
+}
+.gallery-item.tall { grid-row: span 2; }
+.gallery-item.wide { grid-column: span 2; }
+.gallery-item img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform .7s var(--ease2), filter .4s;
+  filter: brightness(.85) saturate(1.05);
+}
+.gallery-item:hover img {
+  transform: scale(1.08);
+  filter: brightness(.95) saturate(1.15);
+}
+.gallery-item-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(10,8,6,.7) 0%, transparent 60%);
+  opacity: 0; transition: opacity .4s;
+}
+.gallery-item:hover .gallery-item-overlay { opacity: 1; }
+
+/* Lightbox */
+.lightbox {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(10,8,6,.97);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s;
+}
+.lightbox.open { opacity: 1; pointer-events: all; }
+.lightbox img {
+  max-width: 88vw; max-height: 88vh;
+  object-fit: contain;
+  transform: scale(.9);
+  transition: transform .4s var(--ease);
+}
+.lightbox.open img { transform: scale(1); }
+.lightbox-close {
+  position: absolute; top: 2rem; right: 2.5rem;
+  font-size: 1.5rem; color: var(--stone);
+  background: none; border: none; cursor: pointer;
+  transition: color .2s;
+}
+.lightbox-close:hover { color: var(--gold); }
+.lightbox-nav {
+  position: absolute;
+  top: 50%; transform: translateY(-50%);
+  background: none; border: 1px solid rgba(201,148,58,.2);
+  color: var(--cream); font-size: 1.2rem;
+  width: 48px; height: 48px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: border-color .2s, background .2s;
+}
+.lightbox-nav:hover { border-color: var(--gold); background: rgba(201,148,58,.08); }
+.lightbox-prev { left: 2rem; }
+.lightbox-next { right: 2rem; }
+
+/* ── Cuisine repertoire ── */
+.cuisines { background: var(--ink); }
+.cuisines-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6rem;
+  align-items: center;
+}
+.cuisine-list {
+  list-style: none;
+  margin-top: 2.5rem;
+  display: flex; flex-direction: column; gap: .75rem;
+}
+.cuisine-list li {
+  display: flex; align-items: center; gap: 1.25rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(201,148,58,.08);
+  cursor: default;
+  transition: padding-left .3s var(--ease2);
+}
+.cuisine-list li:hover { padding-left: .5rem; }
+.cuisine-list li::before {
+  content: '';
+  display: block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+  transition: transform .3s;
+}
+.cuisine-list li:hover::before { transform: scale(1.5); }
+.cuisine-name {
+  font-family: var(--fm);
+  font-size: 1.05rem;
+  color: var(--cream);
+  letter-spacing: .04em;
+  flex: 1;
+}
+.cuisine-note {
+  font-size: .62rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--stone);
+}
+
+.cuisines-img {
+  position: relative;
+  overflow: hidden;
+}
+.cuisines-img img {
+  width: 100%; aspect-ratio: 4/5;
+  object-fit: cover;
+  filter: brightness(.8) saturate(1.1);
+  transition: transform 6s ease;
+}
+.cuisines-img:hover img { transform: scale(1.06); }
+.cuisines-img-accent {
+  position: absolute;
+  bottom: -1px; left: -1px;
+  width: 40%; height: 40%;
+  border: 2px solid var(--gold);
+  pointer-events: none;
+}
+
+/* ── Testimonials ── */
+.testimonials {
+  background: var(--ink3);
+  border-top: 1px solid rgba(201,148,58,.08);
+  border-bottom: 1px solid rgba(201,148,58,.08);
+}
+.testimonials-inner {
+  max-width: 800px; margin: 0 auto;
+  text-align: center;
+}
+.testimonials-inner .eyebrow { justify-content: center; }
+.testimonials-inner .eyebrow::before { display: none; }
+.testimonial-track {
+  position: relative;
+  min-height: 280px;
+  margin-top: 3rem;
+}
+.testimonial-slide {
+  position: absolute; inset: 0;
+  opacity: 0; transition: opacity .6s;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.testimonial-slide.active { opacity: 1; }
+.testimonial-quote {
+  font-family: var(--fd);
+  font-size: 1.4rem;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--cream);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  position: relative;
+}
+.testimonial-quote::before {
+  content: '"';
+  font-size: 6rem;
+  color: rgba(201,148,58,.12);
+  position: absolute; top: -2.5rem; left: -2rem;
+  font-family: var(--fd);
+  line-height: 1;
+}
+.testimonial-author {
+  font-size: .6rem;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.testimonial-dots {
+  display: flex; gap: .5rem; justify-content: center;
+  margin-top: 3rem;
+}
+.testimonial-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: var(--smoke);
+  cursor: pointer; transition: background .3s, transform .3s;
+  border: none;
+}
+.testimonial-dot.active {
+  background: var(--gold);
+  transform: scale(1.4);
+}
+
+/* ── Process ── */
+.process { background: var(--ink2); }
+.process-steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  margin-top: 4rem;
+  background: rgba(201,148,58,.08);
+}
+.process-step {
+  background: var(--ink2);
+  padding: 3rem 2rem;
+  position: relative;
+}
+.process-step::after {
+  content: attr(data-num);
+  position: absolute; top: 2.5rem; right: 2rem;
+  font-family: var(--fd);
+  font-size: 5rem; font-weight: 400;
+  color: rgba(201,148,58,.05);
+  line-height: 1;
+  pointer-events: none;
+}
+.process-icon { font-size: 1.5rem; margin-bottom: 1.25rem; }
+.process-title {
+  font-family: var(--fm);
+  font-size: .95rem; color: var(--cream);
+  margin-bottom: .75rem; letter-spacing: .04em;
+}
+.process-desc {
+  font-size: .75rem; color: var(--stone); line-height: 1.8;
+}
+
+/* ── Full-width dish feature ── */
+.feature-dish {
+  position: relative;
+  height: 70vh; overflow: hidden;
+}
+.feature-dish img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  filter: brightness(.6) saturate(1.1);
+  transition: transform 10s ease;
+}
+.feature-dish:hover img { transform: scale(1.05); }
+.feature-dish-content {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  padding: 0 6rem;
+  background: linear-gradient(to right, rgba(10,8,6,.75) 0%, transparent 70%);
+}
+.feature-dish-label {
+  font-size: .58rem; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 1rem;
+}
+.feature-dish-h {
+  font-family: var(--fd);
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  font-weight: 400;
+  color: var(--cream);
+  line-height: 1.1;
+  max-width: 600px;
+  margin-bottom: 2rem;
+}
+.feature-dish-h em { font-style: italic; color: var(--gold-l); }
+
+/* ── Contact / CTA ── */
+.contact {
+  background: var(--ink);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.contact-left {
+  padding: 7rem 4rem 7rem 6rem;
+  background: var(--ink3);
+  border-right: 1px solid rgba(201,148,58,.12);
+}
+.contact-info {
+  margin-top: 3rem;
+  display: flex; flex-direction: column; gap: 2rem;
+}
+.contact-item { display: flex; flex-direction: column; gap: .35rem; }
+.contact-item-label {
+  font-size: .52rem; letter-spacing: .22em;
+  text-transform: uppercase; color: var(--gold);
+}
+.contact-item-value {
+  font-family: var(--fm);
+  font-size: 1rem; color: var(--cream);
+  text-decoration: none; letter-spacing: .04em;
+  transition: color .2s;
+}
+a.contact-item-value:hover { color: var(--gold); }
+.contact-availability {
+  margin-top: 3rem;
+  padding: 1.5rem;
+  border: 1px solid rgba(201,148,58,.2);
+  display: flex; align-items: flex-start; gap: 1rem;
+}
+.contact-avail-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #4CAF50; flex-shrink: 0; margin-top: .35rem;
+  box-shadow: 0 0 8px rgba(76,175,80,.5);
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(76,175,80,.3); }
+  50% { box-shadow: 0 0 16px rgba(76,175,80,.7); }
+}
+.contact-avail-text { font-size: .75rem; color: var(--stone); line-height: 1.7; }
+.contact-avail-text strong { color: var(--cream); font-weight: 500; }
+
+.contact-right {
+  padding: 7rem 6rem 7rem 4rem;
+  display: flex; flex-direction: column; justify-content: center;
+}
+.contact-form { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 2.5rem; }
+.form-field { display: flex; flex-direction: column; gap: .4rem; }
+.form-field label {
+  font-size: .55rem; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--gold);
+}
+.form-field input,
+.form-field select,
+.form-field textarea {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(201,148,58,.2);
+  color: var(--cream);
+  padding: .85rem 1rem;
+  font-family: var(--fb); font-size: .82rem; font-weight: 300;
+  outline: none;
+  transition: border-color .25s, background .25s;
+  appearance: none;
+}
+.form-field input:focus,
+.form-field select:focus,
+.form-field textarea:focus {
+  border-color: var(--gold);
+  background: rgba(201,148,58,.04);
+}
+.form-field select option { background: var(--ink2); }
+.form-field textarea { resize: vertical; min-height: 120px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-submit {
+  background: var(--gold);
+  color: var(--ink);
+  border: none;
+  padding: 1rem 2.5rem;
+  font-family: var(--fb);
+  font-size: .6rem; font-weight: 500;
+  letter-spacing: .2em; text-transform: uppercase;
+  cursor: pointer; align-self: flex-start;
+  transition: background .25s, transform .2s;
+}
+.form-submit:hover { background: var(--gold-l); transform: translateY(-2px); }
+
+/* ── Footer ── */
+footer {
+  background: var(--ink2);
+  border-top: 1px solid rgba(201,148,58,.12);
+  padding: 3rem 6rem;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 1.5rem;
+}
+.footer-logo {
+  font-family: var(--fm);
+  font-size: .75rem; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--gold);
+}
+.footer-copy {
+  font-size: .6rem; letter-spacing: .08em;
+  color: var(--smoke);
+}
+.footer-links {
+  display: flex; gap: 2rem; list-style: none;
+}
+.footer-links a {
+  font-size: .58rem; letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--stone); text-decoration: none;
+  transition: color .2s;
+}
+.footer-links a:hover { color: var(--gold); }
+
+/* ── Reveal animations ── */
+.reveal {
+  opacity: 0; transform: translateY(28px);
+  transition: opacity .8s var(--ease2), transform .8s var(--ease2);
+}
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-delay-1 { transition-delay: .1s; }
+.reveal-delay-2 { transition-delay: .2s; }
+.reveal-delay-3 { transition-delay: .3s; }
+.reveal-delay-4 { transition-delay: .4s; }
+
+/* ── Mobile nav overlay ── */
+.mob-nav {
+  position: fixed; inset: 0; z-index: 90;
+  background: var(--ink2);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2rem;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s;
+}
+.mob-nav.open { opacity: 1; pointer-events: all; }
+.mob-nav a {
+  font-family: var(--fd);
+  font-size: 2rem; font-weight: 400;
+  color: var(--cream); text-decoration: none;
+  letter-spacing: .05em;
+  transition: color .2s;
+}
+.mob-nav a:hover { color: var(--gold); }
+.mob-nav .btn-primary { font-size: .65rem; margin-top: 1rem; }
+
+/* ══════════════════════════════
+   RESPONSIVE
+══════════════════════════════ */
+@media (max-width: 1100px) {
+  nav { padding: 1.25rem 2rem; }
+  nav.scrolled { padding: .85rem 2rem; }
+  .hero-left { padding: 7rem 3rem 5rem 4rem; }
+  .section, .section-sm { padding: 5rem 3rem; }
+  .gallery-header { padding: 0 3rem 3rem; }
+  .feature-dish-content { padding: 0 3rem; }
+  footer { padding: 2.5rem 3rem; }
+}
+
+@media (max-width: 900px) {
+  .nav-links, .nav-cta { display: none; }
+  .nav-burger { display: flex; }
+  nav { padding: 1.25rem 1.5rem; }
+  nav.scrolled { padding: .85rem 1.5rem; }
+
+  .hero { grid-template-columns: 1fr; }
+  .hero-right { height: 55vw; grid-row: 1; }
+  .hero-right-overlay {
+    background: linear-gradient(to bottom, rgba(10,8,6,.4) 0%, var(--ink) 100%);
+  }
+  .hero-left { padding: 2.5rem 1.5rem 5rem; order: 2; }
+  .hero-scroll-hint { left: 1.5rem; }
+
+  .stats-strip { grid-template-columns: 1fr 1fr; }
+  .stat-item:nth-child(2) { border-right: none; }
+  .stat-item:nth-child(3) { border-top: 1px solid rgba(201,148,58,.08); }
+  .stat-item:nth-child(4) { border-top: 1px solid rgba(201,148,58,.08); border-right: none; }
+
+  .about { grid-template-columns: 1fr; }
+  .about-right { min-height: 60vw; order: -1; }
+  .about-left { padding: 4rem 1.5rem; }
+
+  .section, .section-sm { padding: 4rem 1.5rem; }
+
+  .expertise-grid { grid-template-columns: 1fr; }
+
+  .gallery-grid { grid-template-columns: 1fr 1fr; grid-auto-rows: 220px; }
+  .gallery-item.wide { grid-column: span 1; }
+  .gallery-header { padding: 0 1.5rem 2.5rem; }
+
+  .cuisines-inner { grid-template-columns: 1fr; gap: 3rem; }
+
+  .process-steps { grid-template-columns: 1fr 1fr; }
+
+  .contact { grid-template-columns: 1fr; }
+  .contact-left { padding: 4rem 1.5rem; border-right: none; border-bottom: 1px solid rgba(201,148,58,.12); }
+  .contact-right { padding: 4rem 1.5rem; }
+
+  .form-row { grid-template-columns: 1fr; }
+
+  footer { flex-direction: column; align-items: flex-start; padding: 2rem 1.5rem; }
+  .footer-links { flex-wrap: wrap; gap: 1.25rem; }
+
+  .feature-dish-content { padding: 0 1.5rem; }
+  .feature-dish-h { font-size: clamp(1.8rem, 6vw, 3rem); }
+}
+
+@media (max-width: 600px) {
+  .stats-strip { grid-template-columns: 1fr; }
+  .stat-item { border-right: none; border-bottom: 1px solid rgba(201,148,58,.08); }
+  .gallery-grid { grid-template-columns: 1fr; }
+  .gallery-item.tall { grid-row: span 1; }
+  .process-steps { grid-template-columns: 1fr; }
+}
+
+/* ── Enquiry form replies (in the page, never a browser dialog) ── */
+.form-success {
+  font-size: .8rem; color: var(--gold); letter-spacing: .06em; line-height: 1.7;
+  margin-top: 2.5rem; padding: 1.25rem 1.5rem;
+  border: 1px solid rgba(201,148,58,.2);
+}
+.form-error {
+  font-size: .75rem; color: var(--cream); letter-spacing: .04em; line-height: 1.7;
+  border-left: 2px solid var(--gold); padding: .35rem 0 .35rem .9rem;
+}
+.form-submit:disabled { opacity: .6; cursor: wait; transform: none; }
+</style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+
+<!-- Mobile nav -->
+<div class="mob-nav" id="mob-nav">
+  <a href="#about" onclick="closeMob()" data-field="nav_1">{{nav_1}}</a>
+  <a href="#expertise" onclick="closeMob()" data-field="nav_2">{{nav_2}}</a>
+  <a href="#gallery" onclick="closeMob()" data-field="nav_3">{{nav_3}}</a>
+  <a href="#cuisines" onclick="closeMob()" data-field="nav_4">{{nav_4}}</a>
+  <a href="/blog/" onclick="closeMob()" data-field="nav_5">{{nav_5}}</a>
+  <a href="#contact" onclick="closeMob()" data-field="nav_6">{{nav_6}}</a>
+  <a href="#contact" class="btn-primary" onclick="closeMob()" data-field="nav_cta">{{nav_cta}}</a>
+</div>
+
+<!-- Navigation -->
+<nav id="main-nav" data-block="nav">
+  <a href="#" class="nav-logo" data-field="logo">{{logo}}</a>
+  <ul class="nav-links">
+    <li><a href="#about" data-field="nav_1">{{nav_1}}</a></li>
+    <li><a href="#expertise" data-field="nav_2">{{nav_2}}</a></li>
+    <li><a href="#gallery" data-field="nav_3">{{nav_3}}</a></li>
+    <li><a href="#cuisines" data-field="nav_4">{{nav_4}}</a></li>
+    <li><a href="/blog/" data-field="nav_5">{{nav_5}}</a></li>
+    <li><a href="#contact" data-field="nav_6">{{nav_6}}</a></li>
+  </ul>
+  <a href="#contact" class="nav-cta" data-field="nav_cta">{{nav_cta}}</a>
+  <button class="nav-burger" id="burger" aria-label="Menu" onclick="toggleMob()">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero" id="top" data-block="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">
+      <span data-field="hero_eyebrow">{{hero_eyebrow}}</span>
+    </div>
+    <h1 class="hero-h1" data-field="hero_title">
+      {{hero_title}}
+    </h1>
+    <p class="hero-sub" data-field="hero_subtitle">
+      {{hero_subtitle}}
+    </p>
+    <div class="hero-actions">
+      <a href="#contact" class="btn-primary" data-field="hero_cta">{{hero_cta}}</a>
+      <a href="#gallery" class="btn-ghost" data-field="hero_cta_2">{{hero_cta_2}}</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <img src="{{hero_image}}" alt="{{hero_image_alt}}" loading="eager" data-field="hero_image">
+    <div class="hero-right-overlay"></div>
+  </div>
+
+  <div class="hero-scroll-hint" data-field="hero_scroll_hint">{{hero_scroll_hint}}</div>
+</section>
+
+<!-- ═══ STATS ═══ -->
+<section class="stats-strip" id="stats" data-block="stats">
+  <div class="stat-item reveal">
+    <span class="stat-num"><span data-field="stat_1_value">{{stat_1_value}}</span><sup style="font-size:1.5rem" data-field="stat_1_suffix">{{stat_1_suffix}}</sup></span>
+    <span class="stat-label" data-field="stat_1_label">{{stat_1_label}}</span>
+  </div>
+  <div class="stat-item reveal reveal-delay-1">
+    <span class="stat-num"><span data-field="stat_2_value">{{stat_2_value}}</span><sup style="font-size:1.5rem" data-field="stat_2_suffix">{{stat_2_suffix}}</sup></span>
+    <span class="stat-label" data-field="stat_2_label">{{stat_2_label}}</span>
+  </div>
+  <div class="stat-item reveal reveal-delay-2">
+    <span class="stat-num"><span data-field="stat_3_value">{{stat_3_value}}</span><sup style="font-size:1.5rem" data-field="stat_3_suffix">{{stat_3_suffix}}</sup></span>
+    <span class="stat-label" data-field="stat_3_label">{{stat_3_label}}</span>
+  </div>
+  <div class="stat-item reveal reveal-delay-3">
+    <span class="stat-num"><span data-field="stat_4_value">{{stat_4_value}}</span><sup style="font-size:1.5rem" data-field="stat_4_suffix">{{stat_4_suffix}}</sup></span>
+    <span class="stat-label" data-field="stat_4_label">{{stat_4_label}}</span>
+  </div>
+</section>
+
+<!-- ═══ ABOUT ═══ -->
+<section class="about" id="about" data-block="about">
+  <div class="about-left">
+    <div class="eyebrow reveal"><span data-field="about_eyebrow">{{about_eyebrow}}</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="about_title">
+      {{about_title}}
+    </h2>
+    <p class="about-text reveal reveal-delay-2" data-field="about_text_1">
+      {{about_text_1}}
+    </p>
+    <p class="about-text reveal reveal-delay-3" data-field="about_text_2">
+      {{about_text_2}}
+    </p>
+    <p class="about-text reveal reveal-delay-4" data-field="about_text_3">
+      {{about_text_3}}
+    </p>
+    <div class="about-signature reveal" data-field="about_signature">{{about_signature}}</div>
+  </div>
+  <div class="about-right">
+    <img src="{{about_image}}" alt="{{about_image_alt}}" loading="lazy" data-field="about_image">
+    <div class="about-img-caption" data-field="about_caption">{{about_caption}}</div>
+  </div>
+</section>
+
+<!-- ═══ EXPERTISE ═══ -->
+<section class="expertise section" id="expertise" data-block="services">
+  <div class="eyebrow reveal"><span data-field="services_eyebrow">{{services_eyebrow}}</span></div>
+  <h2 class="section-h2 reveal reveal-delay-1" data-field="services_title">
+    {{services_title}}
+  </h2>
+  <div class="expertise-grid">
+    <div class="expertise-card reveal">
+      <div class="expertise-num">01</div>
+      <div class="expertise-title" data-field="service_1_title">{{service_1_title}}</div>
+      <p class="expertise-desc" data-field="service_1_text">{{service_1_text}}</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag" data-field="service_1_tag_1">{{service_1_tag_1}}</span>
+        <span class="expertise-tag" data-field="service_1_tag_2">{{service_1_tag_2}}</span>
+        <span class="expertise-tag" data-field="service_1_tag_3">{{service_1_tag_3}}</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-1">
+      <div class="expertise-num">02</div>
+      <div class="expertise-title" data-field="service_2_title">{{service_2_title}}</div>
+      <p class="expertise-desc" data-field="service_2_text">{{service_2_text}}</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag" data-field="service_2_tag_1">{{service_2_tag_1}}</span>
+        <span class="expertise-tag" data-field="service_2_tag_2">{{service_2_tag_2}}</span>
+        <span class="expertise-tag" data-field="service_2_tag_3">{{service_2_tag_3}}</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-2">
+      <div class="expertise-num">03</div>
+      <div class="expertise-title" data-field="service_3_title">{{service_3_title}}</div>
+      <p class="expertise-desc" data-field="service_3_text">{{service_3_text}}</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag" data-field="service_3_tag_1">{{service_3_tag_1}}</span>
+        <span class="expertise-tag" data-field="service_3_tag_2">{{service_3_tag_2}}</span>
+        <span class="expertise-tag" data-field="service_3_tag_3">{{service_3_tag_3}}</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-3">
+      <div class="expertise-num">04</div>
+      <div class="expertise-title" data-field="service_4_title">{{service_4_title}}</div>
+      <p class="expertise-desc" data-field="service_4_text">{{service_4_text}}</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag" data-field="service_4_tag_1">{{service_4_tag_1}}</span>
+        <span class="expertise-tag" data-field="service_4_tag_2">{{service_4_tag_2}}</span>
+        <span class="expertise-tag" data-field="service_4_tag_3">{{service_4_tag_3}}</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-4">
+      <div class="expertise-num">05</div>
+      <div class="expertise-title" data-field="service_5_title">{{service_5_title}}</div>
+      <p class="expertise-desc" data-field="service_5_text">{{service_5_text}}</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag" data-field="service_5_tag_1">{{service_5_tag_1}}</span>
+        <span class="expertise-tag" data-field="service_5_tag_2">{{service_5_tag_2}}</span>
+        <span class="expertise-tag" data-field="service_5_tag_3">{{service_5_tag_3}}</span>
+      </div>
+    </div>
+    <div class="expertise-card reveal reveal-delay-1">
+      <div class="expertise-num">06</div>
+      <div class="expertise-title" data-field="service_6_title">{{service_6_title}}</div>
+      <p class="expertise-desc" data-field="service_6_text">{{service_6_text}}</p>
+      <div class="expertise-tags">
+        <span class="expertise-tag" data-field="service_6_tag_1">{{service_6_tag_1}}</span>
+        <span class="expertise-tag" data-field="service_6_tag_2">{{service_6_tag_2}}</span>
+        <span class="expertise-tag" data-field="service_6_tag_3">{{service_6_tag_3}}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ GALLERY ═══ -->
+<section class="gallery" id="gallery" data-block="gallery">
+  <div class="gallery-header">
+    <div class="eyebrow reveal"><span data-field="gallery_eyebrow">{{gallery_eyebrow}}</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="gallery_title">
+      {{gallery_title}}
+    </h2>
+  </div>
+  <div class="gallery-grid" id="gallery-grid">
+    <div class="gallery-item tall">
+      <img src="{{gallery_1_image}}" alt="Signature dish" loading="lazy" data-field="gallery_1_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_2_image}}" alt="Culinary creation" loading="lazy" data-field="gallery_2_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_3_image}}" alt="Plated elegance" loading="lazy" data-field="gallery_3_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_4_image}}" alt="Fine dining" loading="lazy" data-field="gallery_4_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_5_image}}" alt="Premium cuisine" loading="lazy" data-field="gallery_5_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item tall">
+      <img src="{{gallery_6_image}}" alt="Chef's selection" loading="lazy" data-field="gallery_6_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_7_image}}" alt="Elegant cuisine" loading="lazy" data-field="gallery_7_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_8_image}}" alt="Private dining" loading="lazy" data-field="gallery_8_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_9_image}}" alt="Signature dish" loading="lazy" data-field="gallery_9_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item tall">
+      <img src="{{gallery_10_image}}" alt="Signature dish" loading="lazy" data-field="gallery_10_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item">
+      <img src="{{gallery_11_image}}" alt="Signature dish" loading="lazy" data-field="gallery_11_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+    <div class="gallery-item wide">
+      <img src="{{gallery_12_image}}" alt="Signature dish" loading="lazy" data-field="gallery_12_image">
+      <div class="gallery-item-overlay"></div>
+    </div>
+  </div>
+</section>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+  <button class="lightbox-nav lightbox-prev" onclick="lightboxNav(-1)" aria-label="Previous">‹</button>
+  <img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" alt="" id="lightbox-img">
+  <button class="lightbox-nav lightbox-next" onclick="lightboxNav(1)" aria-label="Next">›</button>
+</div>
+
+<!-- ═══ FEATURE DISH / PHILOSOPHY ═══ -->
+<section class="feature-dish" id="philosophy" data-block="philosophy">
+  <img src="{{philosophy_image}}" alt="Signature creation" loading="lazy" data-field="philosophy_image">
+  <div class="feature-dish-content">
+    <div class="feature-dish-label" data-field="philosophy_label">{{philosophy_label}}</div>
+    <h3 class="feature-dish-h" data-field="philosophy_title">
+      {{philosophy_title}}
+    </h3>
+    <a href="#contact" class="btn-primary" data-field="philosophy_cta">{{philosophy_cta}}</a>
+  </div>
+</section>
+
+<!-- ═══ CUISINES ═══ -->
+<section class="cuisines section" id="cuisines" data-block="cuisines">
+  <div class="cuisines-inner">
+    <div>
+      <div class="eyebrow reveal"><span data-field="cuisines_eyebrow">{{cuisines_eyebrow}}</span></div>
+      <h2 class="section-h2 reveal reveal-delay-1" data-field="cuisines_title">
+        {{cuisines_title}}
+      </h2>
+      <p class="about-text reveal reveal-delay-2" style="margin-bottom:0;" data-field="cuisines_intro">
+        {{cuisines_intro}}
+      </p>
+      <ul class="cuisine-list">
+        <li class="reveal"><span class="cuisine-name" data-field="cuisine_1_title">{{cuisine_1_title}}</span><span class="cuisine-note" data-field="cuisine_1_note">{{cuisine_1_note}}</span></li>
+        <li class="reveal reveal-delay-1"><span class="cuisine-name" data-field="cuisine_2_title">{{cuisine_2_title}}</span><span class="cuisine-note" data-field="cuisine_2_note">{{cuisine_2_note}}</span></li>
+        <li class="reveal reveal-delay-2"><span class="cuisine-name" data-field="cuisine_3_title">{{cuisine_3_title}}</span><span class="cuisine-note" data-field="cuisine_3_note">{{cuisine_3_note}}</span></li>
+        <li class="reveal reveal-delay-3"><span class="cuisine-name" data-field="cuisine_4_title">{{cuisine_4_title}}</span><span class="cuisine-note" data-field="cuisine_4_note">{{cuisine_4_note}}</span></li>
+        <li class="reveal reveal-delay-4"><span class="cuisine-name" data-field="cuisine_5_title">{{cuisine_5_title}}</span><span class="cuisine-note" data-field="cuisine_5_note">{{cuisine_5_note}}</span></li>
+        <li class="reveal"><span class="cuisine-name" data-field="cuisine_6_title">{{cuisine_6_title}}</span><span class="cuisine-note" data-field="cuisine_6_note">{{cuisine_6_note}}</span></li>
+      </ul>
+    </div>
+    <div class="cuisines-img reveal reveal-delay-2">
+      <img src="{{cuisines_image}}" alt="Culinary mastery" loading="lazy" data-field="cuisines_image">
+      <div class="cuisines-img-accent"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TESTIMONIALS ═══ -->
+<section class="testimonials section-sm" id="testimonials" data-block="testimonials">
+  <div class="testimonials-inner">
+    <div class="eyebrow"><span data-field="testimonials_eyebrow">{{testimonials_eyebrow}}</span></div>
+    <h2 class="section-h2" style="margin-bottom:0" data-field="testimonials_title">
+      {{testimonials_title}}
+    </h2>
+    <div class="testimonial-track">
+      <div class="testimonial-slide active">
+        <p class="testimonial-quote" data-field="testimonial_1_quote">{{testimonial_1_quote}}</p>
+        <div class="testimonial-author" data-field="testimonial_1_role">{{testimonial_1_role}}</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote" data-field="testimonial_2_quote">{{testimonial_2_quote}}</p>
+        <div class="testimonial-author" data-field="testimonial_2_role">{{testimonial_2_role}}</div>
+      </div>
+      <div class="testimonial-slide">
+        <p class="testimonial-quote" data-field="testimonial_3_quote">{{testimonial_3_quote}}</p>
+        <div class="testimonial-author" data-field="testimonial_3_role">{{testimonial_3_role}}</div>
+      </div>
+    </div>
+    <div class="testimonial-dots">
+      <button class="testimonial-dot active" onclick="goToSlide(0)" aria-label="Go to slide 1"></button>
+      <button class="testimonial-dot" onclick="goToSlide(1)" aria-label="Go to slide 2"></button>
+      <button class="testimonial-dot" onclick="goToSlide(2)" aria-label="Go to slide 3"></button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ PROCESS ═══ -->
+<section class="process section" id="process" data-block="process">
+  <div class="eyebrow reveal"><span data-field="process_eyebrow">{{process_eyebrow}}</span></div>
+  <h2 class="section-h2 reveal reveal-delay-1" data-field="process_title">
+    {{process_title}}
+  </h2>
+  <div class="process-steps">
+    <div class="process-step reveal" data-num="01">
+      <div class="process-icon">◇</div>
+      <div class="process-title" data-field="step_1_title">{{step_1_title}}</div>
+      <p class="process-desc" data-field="step_1_body">{{step_1_body}}</p>
+    </div>
+    <div class="process-step reveal reveal-delay-1" data-num="02">
+      <div class="process-icon">◇</div>
+      <div class="process-title" data-field="step_2_title">{{step_2_title}}</div>
+      <p class="process-desc" data-field="step_2_body">{{step_2_body}}</p>
+    </div>
+    <div class="process-step reveal reveal-delay-2" data-num="03">
+      <div class="process-icon">◇</div>
+      <div class="process-title" data-field="step_3_title">{{step_3_title}}</div>
+      <p class="process-desc" data-field="step_3_body">{{step_3_body}}</p>
+    </div>
+    <div class="process-step reveal reveal-delay-3" data-num="04">
+      <div class="process-icon">◇</div>
+      <div class="process-title" data-field="step_4_title">{{step_4_title}}</div>
+      <p class="process-desc" data-field="step_4_body">{{step_4_body}}</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section class="contact" id="contact" data-block="contact">
+  <div class="contact-left">
+    <div class="eyebrow reveal"><span data-field="contact_eyebrow">{{contact_eyebrow}}</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" data-field="contact_title">
+      {{contact_title}}
+    </h2>
+    <div class="contact-info">
+      <div class="contact-item reveal reveal-delay-2">
+        <span class="contact-item-label">Email</span>
+        <a href="mailto:{{contact_email}}" class="contact-item-value" data-field="contact_email">{{contact_email}}</a>
+      </div>
+      <div class="contact-item reveal reveal-delay-3">
+        <span class="contact-item-label">Website</span>
+        <span class="contact-item-value" data-field="contact_website">{{contact_website}}</span>
+      </div>
+      <div class="contact-item reveal reveal-delay-4">
+        <span class="contact-item-label">Service Area</span>
+        <span class="contact-item-value"><span data-field="area_1">{{area_1}}</span> · <span data-field="area_2">{{area_2}}</span> · <span data-field="area_3">{{area_3}}</span></span>
+      </div>
+    </div>
+    <div class="contact-availability reveal">
+      <div class="contact-avail-dot"></div>
+      <div class="contact-avail-text">
+        <strong data-field="availability_title">{{availability_title}}</strong><br>
+        <span data-field="availability_text">{{availability_text}}</span>
+      </div>
+    </div>
+  </div>
+  <div class="contact-right">
+    <div class="eyebrow reveal"><span data-field="form_eyebrow">{{form_eyebrow}}</span></div>
+    <h2 class="section-h2 reveal reveal-delay-1" style="font-size:1.8rem;" data-field="form_title">
+      {{form_title}}
+    </h2>
+    <form class="contact-form" id="contact-form" data-lu-native="1" novalidate>
+      <div class="form-row">
+        <div class="form-field reveal">
+          <label for="cf-firstname">First Name</label>
+          <input id="cf-firstname" type="text" name="firstname" placeholder="Your first name" autocomplete="given-name" required>
+        </div>
+        <div class="form-field reveal reveal-delay-1">
+          <label for="cf-lastname">Last Name</label>
+          <input id="cf-lastname" type="text" name="lastname" placeholder="Your last name" autocomplete="family-name" required>
+        </div>
+      </div>
+      <div class="form-field reveal reveal-delay-2">
+        <label for="cf-email">Email Address</label>
+        <input id="cf-email" type="email" name="email" placeholder="your@email.com" autocomplete="email" required>
+      </div>
+      <div class="form-field reveal reveal-delay-3">
+        <label for="cf-phone">Phone Number</label>
+        <input id="cf-phone" type="tel" name="phone" placeholder="+1 (000) 000-0000" autocomplete="tel">
+      </div>
+      <div class="form-field reveal reveal-delay-4">
+        <label for="cf-interest">Service of Interest</label>
+        <select id="cf-interest" name="interest">
+          <option value="" disabled selected>Select a service…</option>
+          <option>Private Chef (Daily / Weekly)</option>
+          <option>Performance Nutrition</option>
+          <option>Wellness Cuisine</option>
+          <option>Private Event or Dinner</option>
+          <option>Travel Chef</option>
+          <option>Nutrition Consultation</option>
+          <option>Other / Multiple Services</option>
+        </select>
+      </div>
+      <div class="form-field reveal">
+        <label for="cf-message">Tell Me About Your Goals</label>
+        <textarea id="cf-message" name="message" placeholder="Share your lifestyle, preferences, health goals, or any details that help Chef Red understand what you're looking for…"></textarea>
+      </div>
+      <button type="submit" class="form-submit reveal reveal-delay-1" data-field="form_cta">{{form_cta}}</button>
+      <p class="form-error" id="form-error" role="alert" hidden></p>
+    </form>
+    <div class="form-success" id="form-success" role="status" aria-live="polite" hidden data-field="form_success">{{form_success}}</div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer data-block="footer">
+  <div class="footer-logo" data-field="logo">{{logo}}</div>
+  <ul class="footer-links">
+    <li><a href="#about" data-field="nav_1">{{nav_1}}</a></li>
+    <li><a href="#expertise" data-field="nav_2">{{nav_2}}</a></li>
+    <li><a href="#gallery" data-field="nav_3">{{nav_3}}</a></li>
+    <li><a href="#cuisines" data-field="nav_4">{{nav_4}}</a></li>
+    <li><a href="#contact" data-field="nav_6">{{nav_6}}</a></li>
+  </ul>
+  <div class="footer-contact" style="margin:10px 0;font-size:15px"><a href="tel:{{contact_phone}}" style="color:inherit;text-decoration:none">Call Chef Red: <span data-field="contact_phone">{{contact_phone}}</span></a></div>
+  <div class="footer-copy" data-field="footer_copy">{{footer_copy}}</div>
+</footer>
+
+<script>
+/* ── Cursor ── */
+const cursor = document.getElementById('cursor');
+const ring   = document.getElementById('cursor-ring');
+let mx = 0, my = 0;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx + 'px';
+  cursor.style.top  = my + 'px';
+  ring.style.left   = mx + 'px';
+  ring.style.top    = my + 'px';
+});
+document.querySelectorAll('a,button,.gallery-item,.cuisine-list li').forEach(el => {
+  el.addEventListener('mouseenter', () => document.body.classList.add('hovering'));
+  el.addEventListener('mouseleave', () => document.body.classList.remove('hovering'));
+});
+
+/* ── Nav scroll ── */
+const nav = document.getElementById('main-nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 60);
+}, { passive: true });
+
+/* ── Mobile nav ── */
+const mobNav = document.getElementById('mob-nav');
+const burger = document.getElementById('burger');
+function toggleMob() {
+  const open = mobNav.classList.toggle('open');
+  document.body.style.overflow = open ? 'hidden' : '';
+  const s = burger.querySelectorAll('span');
+  s[0].style.transform = open ? 'rotate(45deg) translate(5px,5px)' : '';
+  s[1].style.opacity   = open ? '0' : '1';
+  s[2].style.transform = open ? 'rotate(-45deg) translate(5px,-5px)' : '';
+}
+function closeMob() {
+  mobNav.classList.remove('open');
+  document.body.style.overflow = '';
+  burger.querySelectorAll('span').forEach(s => { s.style.transform = ''; s.style.opacity = '1'; });
+}
+
+/* ── Reveal on scroll ── */
+const revealEls = document.querySelectorAll('.reveal');
+const revObs = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); revObs.unobserve(e.target); } });
+}, { threshold: 0.1 });
+revealEls.forEach(el => revObs.observe(el));
+
+/* ── Lightbox (reads each photo's current src, so a photo replaced in the editor opens as itself) ── */
+const galleryItems = [...document.querySelectorAll('.gallery-item')];
+const lightbox = document.getElementById('lightbox');
+const lbImg    = document.getElementById('lightbox-img');
+let lbCurrent  = 0;
+function lbSrc(item) { const im = item.querySelector('img'); return im ? (im.currentSrc || im.src) : ''; }
+galleryItems.forEach((item, i) => {
+  item.addEventListener('click', () => {
+    lbCurrent = i;
+    lbImg.src = lbSrc(item);
+    const im = item.querySelector('img');
+    lbImg.alt = im ? im.alt : '';
+    lightbox.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  });
+});
+function closeLightbox() {
+  lightbox.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function lightboxNav(dir) {
+  lbCurrent = (lbCurrent + dir + galleryItems.length) % galleryItems.length;
+  lbImg.src = lbSrc(galleryItems[lbCurrent]);
+}
+lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+document.addEventListener('keydown', e => {
+  if (!lightbox.classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft')  lightboxNav(-1);
+  if (e.key === 'ArrowRight') lightboxNav(1);
+});
+
+/* ── Testimonials ── */
+const slides = document.querySelectorAll('.testimonial-slide');
+const dots   = document.querySelectorAll('.testimonial-dot');
+let currentSlide = 0;
+function goToSlide(n) {
+  slides[currentSlide].classList.remove('active');
+  dots[currentSlide].classList.remove('active');
+  currentSlide = n;
+  slides[currentSlide].classList.add('active');
+  dots[currentSlide].classList.add('active');
+}
+setInterval(() => goToSlide((currentSlide + 1) % slides.length), 5000);
+
+/* ── Enquiry form: posts to this website's CRM (the platform resolves the site from the page's own address);
+      the reply is shown in the page, never in a browser dialog ── */
+(function () {
+  var f = document.getElementById('contact-form');
+  if (!f) return;
+  var ENDPOINT = 'https://staging.levelupgrowth.io/api/public/contact/by-host';
+  var btn = f.querySelector('button[type="submit"]');
+  var err = document.getElementById('form-error');
+  var ok  = document.getElementById('form-success');
+  var label = btn ? btn.textContent : '';
+  var mail = (document.querySelector('[data-field="contact_email"]') || {}).textContent || '';
+  function fail(msg) {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+    if (err) { err.textContent = msg; err.hidden = false; }
+  }
+  f.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (err) { err.hidden = true; err.textContent = ''; }
+    var fd = new FormData(f);
+    var v = function (k) { return (fd.get(k) || '').toString().trim(); };
+    var firstname = v('firstname'), lastname = v('lastname'), email = v('email');
+    if (!firstname || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      fail('Please add your name and a valid email address so Chef Red can reply.');
+      var first = !firstname ? f.querySelector('[name="firstname"]') : f.querySelector('[name="email"]');
+      if (first) first.focus();
+      return;
+    }
+    var service = v('interest'), body = v('message');
+    var message = (service ? '[' + service + '] ' : '') + body;
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ firstname: firstname + (lastname ? ' ' + lastname : ''), email: email, phone: v('phone'),
+        message: message || 'Contact form submission', source: 'contact_form', page: location.pathname })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (x) {
+      if (x.ok && x.j && x.j.success !== false) {
+        f.style.display = 'none';
+        if (ok) { ok.hidden = false; }
+      } else {
+        fail('That did not go through. Please try again' + (mail ? ' or email ' + mail.trim() : '') + '.');
+      }
+    }).catch(function () {
+      fail('Network error. Please try again' + (mail ? ' or email ' + mail.trim() : '') + '.');
+    });
+  });
+})();
+
+/* ── Structured data follows the page: after an edit in the website editor the JSON-LD is refreshed from the
+      page's own fields, so the schema never disagrees with what visitors read ── */
+(function () {
+  try {
+    var el = document.getElementById('lu-schema');
+    if (!el) return;
+    var data = JSON.parse(el.textContent);
+    var t = function (k) { var n = document.querySelector('[data-field="' + k + '"]'); return n ? n.textContent.replace(/\s+/g, ' ').trim() : null; };
+    var set = function (o, key, k) { var x = t(k); if (x !== null && x !== '') o[key] = x; };
+    var abs = function (u) { try { return u ? new URL(u, location.href).href : u; } catch (e) { return u; } };
+    (data['@graph'] || []).forEach(function (n) {
+      if (n['@type'] === 'FoodEstablishment') {
+        set(n, 'email', 'contact_email');
+        set(n, 'telephone', 'contact_phone');
+        if (Array.isArray(n.areaServed)) n.areaServed.forEach(function (a, i) { set(a, 'name', 'area_' + (i + 1)); });
+        if (Array.isArray(n.servesCuisine)) n.servesCuisine = n.servesCuisine.map(function (c, i) { return t('cuisine_' + (i + 1) + '_title') || c; });
+        var items = (n.hasOfferCatalog && n.hasOfferCatalog.itemListElement) || [];
+        items.forEach(function (o, i) { var s = o.itemOffered || {}; set(s, 'name', 'service_' + (i + 1) + '_title'); set(s, 'description', 'service_' + (i + 1) + '_text'); });
+      }
+      ['image'].forEach(function (k) { if (typeof n[k] === 'string') n[k] = abs(n[k]); });
+    });
+    el.textContent = JSON.stringify(data);
+  } catch (e) {}
+})();
+</script>
+</body>
+</html>

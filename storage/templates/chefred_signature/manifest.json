@@ -1,0 +1,962 @@
+{
+  "id": "chefred_signature",
+  "name": "Chef Red Raymundo — Signature",
+  "industry": "catering",
+  "description": "Bespoke design for Chef Red Raymundo's website (dark luxury editorial). Private to that site: never offered in the gallery, the catalogue or the Arthur template chooser.",
+  "thumbnail": "/storage/sites/3/images/portrait-01.jpg",
+  "category": "hospitality",
+  "version": "1.0.0",
+  "variation": "signature",
+  "is_active": false,
+  "bespoke": {
+    "website_id": 3,
+    "workspace_id": 2,
+    "note": "Converted 2026-09-29 from the hand-built site (sites/3/home.html) so the website editor can edit it. Defaults are the real site content."
+  },
+  "palette_scheme": "dark",
+  "design": {
+    "generated": "2026-09-29",
+    "generator": "manual conversion of sites/3/home.html",
+    "palette": "ink-gold-cream",
+    "fonts": {
+      "display": "Playfair Display",
+      "label": "Marcellus",
+      "body": "DM Sans"
+    }
+  },
+  "blocks": [
+    {
+      "id": "nav",
+      "name": "Navigation",
+      "elements": {
+        "logo": "nav .nav-logo",
+        "nav_cta": "nav .nav-cta"
+      }
+    },
+    {
+      "id": "hero",
+      "name": "Hero",
+      "elements": {
+        "hero_eyebrow": ".hero .hero-eyebrow span",
+        "hero_title": ".hero .hero-h1",
+        "hero_subtitle": ".hero .hero-sub",
+        "hero_cta": ".hero .btn-primary",
+        "hero_cta_2": ".hero .btn-ghost",
+        "hero_image": ".hero .hero-right img"
+      }
+    },
+    {
+      "id": "stats",
+      "name": "Stats",
+      "elements": {
+        "stat_1_value": ".stats-strip .stat-item:nth-child(1) .stat-num",
+        "stat_1_label": ".stats-strip .stat-item:nth-child(1) .stat-label"
+      }
+    },
+    {
+      "id": "about",
+      "name": "About / The Chef",
+      "elements": {
+        "about_title": "#about .section-h2",
+        "about_text_1": "#about .about-text",
+        "about_image": "#about .about-right img"
+      }
+    },
+    {
+      "id": "services",
+      "name": "Services",
+      "elements": {
+        "services_title": "#expertise .section-h2",
+        "service_1_title": "#expertise .expertise-title",
+        "service_1_text": "#expertise .expertise-desc"
+      }
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery",
+      "elements": {
+        "gallery_title": "#gallery .section-h2",
+        "gallery_1_image": "#gallery .gallery-item img"
+      }
+    },
+    {
+      "id": "philosophy",
+      "name": "Philosophy",
+      "elements": {
+        "philosophy_title": ".feature-dish .feature-dish-h",
+        "philosophy_image": ".feature-dish > img",
+        "philosophy_cta": ".feature-dish .btn-primary"
+      }
+    },
+    {
+      "id": "cuisines",
+      "name": "Cuisines",
+      "elements": {
+        "cuisines_title": "#cuisines .section-h2",
+        "cuisine_1_title": "#cuisines .cuisine-name",
+        "cuisines_image": "#cuisines .cuisines-img img"
+      }
+    },
+    {
+      "id": "testimonials",
+      "name": "Testimonials",
+      "elements": {
+        "testimonials_title": ".testimonials .section-h2",
+        "testimonial_1_quote": ".testimonials .testimonial-quote",
+        "testimonial_1_role": ".testimonials .testimonial-author"
+      }
+    },
+    {
+      "id": "process",
+      "name": "Process",
+      "elements": {
+        "process_title": "#process .section-h2",
+        "step_1_title": "#process .process-title",
+        "step_1_body": "#process .process-desc"
+      }
+    },
+    {
+      "id": "contact",
+      "name": "Contact",
+      "elements": {
+        "contact_title": "#contact .contact-left .section-h2",
+        "contact_email": "#contact a.contact-item-value",
+        "form_title": "#contact .contact-right .section-h2",
+        "form_cta": "#contact .form-submit"
+      }
+    },
+    {
+      "id": "footer",
+      "name": "Footer",
+      "elements": {
+        "logo": "footer .footer-logo",
+        "contact_phone": "footer .footer-contact span",
+        "footer_copy": "footer .footer-copy"
+      }
+    }
+  ],
+  "variables": {
+    "business_name": {
+      "type": "text",
+      "label": "Business Name",
+      "default": "Chef Red Raymundo"
+    },
+    "logo": {
+      "type": "text",
+      "label": "Logo Text",
+      "default": "Chef Red Raymundo"
+    },
+    "logo_url": {
+      "type": "image",
+      "label": "Logo",
+      "default": ""
+    },
+    "seo_title": {
+      "type": "text",
+      "label": "Page Title (browser tab / Google)",
+      "default": "Chef Red Raymundo — Private Chef · Performance Nutrition"
+    },
+    "meta_description": {
+      "type": "text",
+      "label": "Meta Description",
+      "default": "Chef Red Raymundo — Personal Chef and Certified Nutrition Coach serving professional athletes, celebrities, and elite clientele across the United States."
+    },
+    "canonical_url": {
+      "type": "url",
+      "label": "Canonical URL",
+      "default": "https://chefredraymundo.com/"
+    },
+    "robots": {
+      "type": "text",
+      "label": "Search Robots",
+      "default": "index, follow"
+    },
+    "og_title": {
+      "type": "text",
+      "label": "Social Share Title",
+      "default": "Chef Red Raymundo — Private Chef & Performance Nutrition | New Jersey"
+    },
+    "og_description": {
+      "type": "text",
+      "label": "Social Share Description",
+      "default": "New Jersey's premier private chef offering exclusive catering, private dining, and performance nutrition for athletes and VIP clientele across New Jersey, New York, and Connecticut."
+    },
+    "og_image": {
+      "type": "image",
+      "label": "Social Share Image",
+      "default": "https://chefredraymundo.com/storage/sites/3/images/hero-chef.jpg"
+    },
+    "og_locale": {
+      "type": "text",
+      "label": "OG Locale",
+      "default": "en_US"
+    },
+    "chef_person": {
+      "type": "text",
+      "label": "Chef (structured data Person)",
+      "default": "Chef Red Raymundo"
+    },
+    "chef_job_title": {
+      "type": "text",
+      "label": "Chef Title (structured data)",
+      "default": "Personal Chef and Certified Nutrition Coach"
+    },
+    "nav_1": {
+      "type": "text",
+      "label": "Nav Link 1",
+      "default": "About"
+    },
+    "nav_2": {
+      "type": "text",
+      "label": "Nav Link 2",
+      "default": "Services"
+    },
+    "nav_3": {
+      "type": "text",
+      "label": "Nav Link 3",
+      "default": "Gallery"
+    },
+    "nav_4": {
+      "type": "text",
+      "label": "Nav Link 4",
+      "default": "Cuisine"
+    },
+    "nav_5": {
+      "type": "text",
+      "label": "Nav Link 5 (Blog)",
+      "default": "Blog"
+    },
+    "nav_6": {
+      "type": "text",
+      "label": "Nav Link 6",
+      "default": "Contact"
+    },
+    "nav_cta": {
+      "type": "text",
+      "label": "Nav Button",
+      "default": "Book a Consultation"
+    },
+    "hero_eyebrow": {
+      "type": "text",
+      "label": "Hero Eyebrow",
+      "default": "Personal Chef & Nutrition Coach"
+    },
+    "hero_title": {
+      "type": "html",
+      "label": "Hero Heading",
+      "default": "Culinary<br>Excellence<br><em>Redefined</em>"
+    },
+    "hero_subtitle": {
+      "type": "text",
+      "label": "Hero Subheading",
+      "default": "Serving professional athletes, celebrities, and elite clientele across the United States with 20+ years of culinary mastery and performance nutrition expertise."
+    },
+    "hero_cta": {
+      "type": "text",
+      "label": "Hero Button",
+      "default": "Book a Consultation"
+    },
+    "hero_cta_2": {
+      "type": "text",
+      "label": "Hero Secondary Button",
+      "default": "View the Work"
+    },
+    "hero_image": {
+      "type": "image",
+      "label": "Hero Image",
+      "default": "/storage/sites/3/images/portrait-01.jpg?v=202605061520"
+    },
+    "hero_image_alt": {
+      "type": "text",
+      "label": "Hero Image Description",
+      "default": "Chef Red Raymundo"
+    },
+    "hero_scroll_hint": {
+      "type": "text",
+      "label": "Hero Scroll Hint",
+      "default": "Scroll to explore"
+    },
+    "stat_1_value": {
+      "type": "text",
+      "label": "Stat 1 Value",
+      "default": "20"
+    },
+    "stat_1_suffix": {
+      "type": "text",
+      "label": "Stat 1 Suffix",
+      "default": "+"
+    },
+    "stat_1_label": {
+      "type": "text",
+      "label": "Stat 1 Label",
+      "default": "Years of Experience"
+    },
+    "stat_2_value": {
+      "type": "text",
+      "label": "Stat 2 Value",
+      "default": "6"
+    },
+    "stat_2_suffix": {
+      "type": "text",
+      "label": "Stat 2 Suffix",
+      "default": ""
+    },
+    "stat_2_label": {
+      "type": "text",
+      "label": "Stat 2 Label",
+      "default": "Cuisine Traditions"
+    },
+    "stat_3_value": {
+      "type": "text",
+      "label": "Stat 3 Value",
+      "default": "100"
+    },
+    "stat_3_suffix": {
+      "type": "text",
+      "label": "Stat 3 Suffix",
+      "default": "%"
+    },
+    "stat_3_label": {
+      "type": "text",
+      "label": "Stat 3 Label",
+      "default": "Private Clientele"
+    },
+    "stat_4_value": {
+      "type": "text",
+      "label": "Stat 4 Value",
+      "default": "NJ·NY·CT"
+    },
+    "stat_4_suffix": {
+      "type": "text",
+      "label": "Stat 4 Suffix",
+      "default": ""
+    },
+    "stat_4_label": {
+      "type": "text",
+      "label": "Stat 4 Label",
+      "default": "Tri-State Service"
+    },
+    "about_eyebrow": {
+      "type": "text",
+      "label": "About Eyebrow",
+      "default": "The Chef"
+    },
+    "about_title": {
+      "type": "html",
+      "label": "About Heading",
+      "default": "More Than a Chef.<br><em>A Standard.</em>"
+    },
+    "about_text_1": {
+      "type": "html",
+      "label": "About Paragraph 1",
+      "default": "There's a certain kind of chef you come across once in a while—the kind who doesn't just cook, but <strong>understands people, performance, and precision</strong> at a level that goes far beyond the kitchen. That's exactly what you get with Chef Red."
+    },
+    "about_text_2": {
+      "type": "html",
+      "label": "About Paragraph 2",
+      "default": "With over 20 years in the culinary industry, Chef Red's journey began through the intensity and discipline of professional kitchens, training under highly skilled and respected chefs. Today, he operates at the <strong>intersection of culinary excellence and performance nutrition</strong> as a Personal Chef and Certified Nutrition Coach."
+    },
+    "about_text_3": {
+      "type": "html",
+      "label": "About Paragraph 3",
+      "default": "He brings a calm, professional presence into every home, operating with <strong>discretion, consistency, and an intuitive understanding of high-level expectations</strong>. He adapts seamlessly to each client's lifestyle, preferences, and nutritional needs."
+    },
+    "about_signature": {
+      "type": "text",
+      "label": "About Signature",
+      "default": "Chef Red"
+    },
+    "about_image": {
+      "type": "image",
+      "label": "About Image",
+      "default": "/storage/sites/3/images/hero-chef.jpg?v=202605061520"
+    },
+    "about_image_alt": {
+      "type": "text",
+      "label": "About Image Description",
+      "default": "Chef Red"
+    },
+    "about_caption": {
+      "type": "text",
+      "label": "About Image Caption",
+      "default": "Culinary Artistry"
+    },
+    "services_eyebrow": {
+      "type": "text",
+      "label": "Services Eyebrow",
+      "default": "What I Do"
+    },
+    "services_title": {
+      "type": "html",
+      "label": "Services Heading",
+      "default": "Services Built for<br><em>Elite Living</em>"
+    },
+    "service_1_title": {
+      "type": "text",
+      "label": "Service 1 Title",
+      "default": "Private Chef Services"
+    },
+    "service_1_text": {
+      "type": "text",
+      "label": "Service 1 Description",
+      "default": "Daily or weekly meal preparation tailored precisely to your lifestyle, schedule, and preferences. Every meal is crafted with the same precision and artistry expected at the finest restaurants."
+    },
+    "service_1_tag_1": {
+      "type": "text",
+      "label": "Service 1 Tag 1",
+      "default": "Daily Service"
+    },
+    "service_1_tag_2": {
+      "type": "text",
+      "label": "Service 1 Tag 2",
+      "default": "Event Dining"
+    },
+    "service_1_tag_3": {
+      "type": "text",
+      "label": "Service 1 Tag 3",
+      "default": "Meal Prep"
+    },
+    "service_2_title": {
+      "type": "text",
+      "label": "Service 2 Title",
+      "default": "Performance Nutrition"
+    },
+    "service_2_text": {
+      "type": "text",
+      "label": "Service 2 Description",
+      "default": "As a Certified Nutrition Coach, Chef Red designs menus that fuel peak athletic performance, support recovery, and optimize body composition—without compromising on taste or enjoyment."
+    },
+    "service_2_tag_1": {
+      "type": "text",
+      "label": "Service 2 Tag 1",
+      "default": "Athlete Nutrition"
+    },
+    "service_2_tag_2": {
+      "type": "text",
+      "label": "Service 2 Tag 2",
+      "default": "Recovery Meals"
+    },
+    "service_2_tag_3": {
+      "type": "text",
+      "label": "Service 2 Tag 3",
+      "default": "Body Composition"
+    },
+    "service_3_title": {
+      "type": "text",
+      "label": "Service 3 Title",
+      "default": "Wellness Cuisine"
+    },
+    "service_3_text": {
+      "type": "text",
+      "label": "Service 3 Description",
+      "default": "Clean, intentional eating that supports your health goals without sacrifice. Anti-inflammatory, gut-health, and longevity-focused menus built around your body's specific needs."
+    },
+    "service_3_tag_1": {
+      "type": "text",
+      "label": "Service 3 Tag 1",
+      "default": "Anti-Inflammatory"
+    },
+    "service_3_tag_2": {
+      "type": "text",
+      "label": "Service 3 Tag 2",
+      "default": "Gut Health"
+    },
+    "service_3_tag_3": {
+      "type": "text",
+      "label": "Service 3 Tag 3",
+      "default": "Longevity"
+    },
+    "service_4_title": {
+      "type": "text",
+      "label": "Service 4 Title",
+      "default": "Private Events & Dinners"
+    },
+    "service_4_text": {
+      "type": "text",
+      "label": "Service 4 Description",
+      "default": "Intimate dinner parties to large-scale private events. Chef Red orchestrates every detail—menu design, execution, and presentation—delivering a restaurant-grade experience in your home."
+    },
+    "service_4_tag_1": {
+      "type": "text",
+      "label": "Service 4 Tag 1",
+      "default": "Dinner Parties"
+    },
+    "service_4_tag_2": {
+      "type": "text",
+      "label": "Service 4 Tag 2",
+      "default": "Corporate Events"
+    },
+    "service_4_tag_3": {
+      "type": "text",
+      "label": "Service 4 Tag 3",
+      "default": "Celebrations"
+    },
+    "service_5_title": {
+      "type": "text",
+      "label": "Service 5 Title",
+      "default": "Travel Chef"
+    },
+    "service_5_text": {
+      "type": "text",
+      "label": "Service 5 Description",
+      "default": "Available to travel with clients wherever life takes you—international residences, private jets, yachts, and extended travel. Consistent quality, no matter the location."
+    },
+    "service_5_tag_1": {
+      "type": "text",
+      "label": "Service 5 Tag 1",
+      "default": "International"
+    },
+    "service_5_tag_2": {
+      "type": "text",
+      "label": "Service 5 Tag 2",
+      "default": "Private Jet"
+    },
+    "service_5_tag_3": {
+      "type": "text",
+      "label": "Service 5 Tag 3",
+      "default": "Yacht"
+    },
+    "service_6_title": {
+      "type": "text",
+      "label": "Service 6 Title",
+      "default": "Nutrition Consultation"
+    },
+    "service_6_text": {
+      "type": "text",
+      "label": "Service 6 Description",
+      "default": "One-on-one nutrition coaching that bridges the gap between food and performance. Macro planning, dietary analysis, and ongoing guidance to help you reach your goals."
+    },
+    "service_6_tag_1": {
+      "type": "text",
+      "label": "Service 6 Tag 1",
+      "default": "Macro Planning"
+    },
+    "service_6_tag_2": {
+      "type": "text",
+      "label": "Service 6 Tag 2",
+      "default": "Dietary Analysis"
+    },
+    "service_6_tag_3": {
+      "type": "text",
+      "label": "Service 6 Tag 3",
+      "default": "Coaching"
+    },
+    "gallery_eyebrow": {
+      "type": "text",
+      "label": "Gallery Eyebrow",
+      "default": "The Work"
+    },
+    "gallery_title": {
+      "type": "html",
+      "label": "Gallery Heading",
+      "default": "Every Plate, a<br><em>Statement</em>"
+    },
+    "gallery_1_image": {
+      "type": "image",
+      "label": "Gallery Image 1",
+      "default": "/storage/sites/3/images/dish-01.jpg?v=202605061520"
+    },
+    "gallery_2_image": {
+      "type": "image",
+      "label": "Gallery Image 2",
+      "default": "/storage/sites/3/images/dish-02.jpg?v=202605061520"
+    },
+    "gallery_3_image": {
+      "type": "image",
+      "label": "Gallery Image 3",
+      "default": "/storage/sites/3/images/dish-03.jpg?v=202605061520"
+    },
+    "gallery_4_image": {
+      "type": "image",
+      "label": "Gallery Image 4",
+      "default": "/storage/sites/3/images/dish-04.jpg?v=202605061520"
+    },
+    "gallery_5_image": {
+      "type": "image",
+      "label": "Gallery Image 5",
+      "default": "/storage/sites/3/images/dish-08.jpg?v=202605061520"
+    },
+    "gallery_6_image": {
+      "type": "image",
+      "label": "Gallery Image 6",
+      "default": "/storage/sites/3/images/dish-09.jpg?v=202605061520"
+    },
+    "gallery_7_image": {
+      "type": "image",
+      "label": "Gallery Image 7",
+      "default": "/storage/sites/3/images/dish-10.jpg?v=202605061520"
+    },
+    "gallery_8_image": {
+      "type": "image",
+      "label": "Gallery Image 8",
+      "default": "/storage/sites/3/images/dish-11.jpg?v=202605061520"
+    },
+    "gallery_9_image": {
+      "type": "image",
+      "label": "Gallery Image 9",
+      "default": "/storage/sites/3/images/dish-05.jpg?v=202605061520"
+    },
+    "gallery_10_image": {
+      "type": "image",
+      "label": "Gallery Image 10",
+      "default": "/storage/sites/3/images/dish-06.jpg?v=202605061520"
+    },
+    "gallery_11_image": {
+      "type": "image",
+      "label": "Gallery Image 11",
+      "default": "/storage/sites/3/images/dish-07.jpg?v=202605061520"
+    },
+    "gallery_12_image": {
+      "type": "image",
+      "label": "Gallery Image 12",
+      "default": "/storage/sites/3/images/dish-14.jpg?v=202605061520"
+    },
+    "philosophy_label": {
+      "type": "text",
+      "label": "Philosophy Label",
+      "default": "The Philosophy"
+    },
+    "philosophy_title": {
+      "type": "html",
+      "label": "Philosophy Heading",
+      "default": "Every Ingredient<br>Has a<br><em>Purpose</em>"
+    },
+    "philosophy_cta": {
+      "type": "text",
+      "label": "Philosophy Button",
+      "default": "Experience It"
+    },
+    "philosophy_image": {
+      "type": "image",
+      "label": "Philosophy Image",
+      "default": "/storage/sites/3/images/dish-07.jpg?v=202605061520"
+    },
+    "cuisines_eyebrow": {
+      "type": "text",
+      "label": "Cuisines Eyebrow",
+      "default": "Repertoire"
+    },
+    "cuisines_title": {
+      "type": "html",
+      "label": "Cuisines Heading",
+      "default": "A World of<br><em>Flavor</em>"
+    },
+    "cuisines_intro": {
+      "type": "text",
+      "label": "Cuisines Intro",
+      "default": "Chef Red's mastery spans classical traditions and global techniques, allowing him to craft menus that are both globally inspired and deeply personal."
+    },
+    "cuisines_image": {
+      "type": "image",
+      "label": "Cuisines Image",
+      "default": "/storage/sites/3/images/dish-06.jpg?v=202605061520"
+    },
+    "cuisine_1_title": {
+      "type": "text",
+      "label": "Cuisine 1",
+      "default": "Italian"
+    },
+    "cuisine_1_note": {
+      "type": "text",
+      "label": "Cuisine 1 Note",
+      "default": "Northern & Southern"
+    },
+    "cuisine_2_title": {
+      "type": "text",
+      "label": "Cuisine 2",
+      "default": "French"
+    },
+    "cuisine_2_note": {
+      "type": "text",
+      "label": "Cuisine 2 Note",
+      "default": "Classical & Modern"
+    },
+    "cuisine_3_title": {
+      "type": "text",
+      "label": "Cuisine 3",
+      "default": "Mediterranean"
+    },
+    "cuisine_3_note": {
+      "type": "text",
+      "label": "Cuisine 3 Note",
+      "default": "Levantine & Greek"
+    },
+    "cuisine_4_title": {
+      "type": "text",
+      "label": "Cuisine 4",
+      "default": "American"
+    },
+    "cuisine_4_note": {
+      "type": "text",
+      "label": "Cuisine 4 Note",
+      "default": "New & Traditional"
+    },
+    "cuisine_5_title": {
+      "type": "text",
+      "label": "Cuisine 5",
+      "default": "Spanish"
+    },
+    "cuisine_5_note": {
+      "type": "text",
+      "label": "Cuisine 5 Note",
+      "default": "Contemporary"
+    },
+    "cuisine_6_title": {
+      "type": "text",
+      "label": "Cuisine 6",
+      "default": "Southeast Asian"
+    },
+    "cuisine_6_note": {
+      "type": "text",
+      "label": "Cuisine 6 Note",
+      "default": "Filipino, Thai, Vietnamese"
+    },
+    "testimonials_eyebrow": {
+      "type": "text",
+      "label": "Testimonials Eyebrow",
+      "default": "Testimonials"
+    },
+    "testimonials_title": {
+      "type": "html",
+      "label": "Testimonials Heading",
+      "default": "Trusted by Those Who<br><em>Demand Excellence</em>"
+    },
+    "testimonial_1_quote": {
+      "type": "text",
+      "label": "Testimonial 1",
+      "default": "Chef Red doesn't just cook for you—he studies you. He understood my training schedule, my macros, my preferences, and delivered every single day without fail. I've never performed better."
+    },
+    "testimonial_1_role": {
+      "type": "text",
+      "label": "Testimonial 1 Author",
+      "default": "Professional NFL Athlete — Los Angeles"
+    },
+    "testimonial_2_quote": {
+      "type": "text",
+      "label": "Testimonial 2",
+      "default": "Having Chef Red in my home is like having a Michelin-star restaurant on call. The quality, the consistency, the discretion—everything is at the highest possible level."
+    },
+    "testimonial_2_role": {
+      "type": "text",
+      "label": "Testimonial 2 Author",
+      "default": "Entertainment Executive — Beverly Hills"
+    },
+    "testimonial_3_quote": {
+      "type": "text",
+      "label": "Testimonial 3",
+      "default": "He's not just a chef, he's a partner in our wellness journey. The food is extraordinary, but what sets him apart is how deeply he understands the connection between food and performance."
+    },
+    "testimonial_3_role": {
+      "type": "text",
+      "label": "Testimonial 3 Author",
+      "default": "Professional Tennis Player — Miami"
+    },
+    "process_eyebrow": {
+      "type": "text",
+      "label": "Process Eyebrow",
+      "default": "How It Works"
+    },
+    "process_title": {
+      "type": "html",
+      "label": "Process Heading",
+      "default": "A Seamless<br><em>Experience</em>"
+    },
+    "step_1_title": {
+      "type": "text",
+      "label": "Step 1 Title",
+      "default": "Discovery Consultation"
+    },
+    "step_1_body": {
+      "type": "text",
+      "label": "Step 1 Body",
+      "default": "A private conversation to understand your lifestyle, dietary goals, preferences, and any health or performance objectives."
+    },
+    "step_2_title": {
+      "type": "text",
+      "label": "Step 2 Title",
+      "default": "Custom Menu Design"
+    },
+    "step_2_body": {
+      "type": "text",
+      "label": "Step 2 Body",
+      "default": "A bespoke menu curated specifically for you—nutritionally optimized, seasonally informed, and tailored to your palate."
+    },
+    "step_3_title": {
+      "type": "text",
+      "label": "Step 3 Title",
+      "default": "White-Glove Preparation"
+    },
+    "step_3_body": {
+      "type": "text",
+      "label": "Step 3 Body",
+      "default": "Chef Red arrives at your home, sources the finest ingredients, and prepares everything with precision and complete discretion."
+    },
+    "step_4_title": {
+      "type": "text",
+      "label": "Step 4 Title",
+      "default": "Ongoing Partnership"
+    },
+    "step_4_body": {
+      "type": "text",
+      "label": "Step 4 Body",
+      "default": "Continuous refinement based on feedback, evolving needs, and performance data to ensure every meal exceeds expectations."
+    },
+    "contact_eyebrow": {
+      "type": "text",
+      "label": "Contact Eyebrow",
+      "default": "Begin Here"
+    },
+    "contact_title": {
+      "type": "html",
+      "label": "Contact Heading",
+      "default": "Reserve Your<br><em>Consultation</em>"
+    },
+    "contact_email": {
+      "type": "text",
+      "label": "Email",
+      "default": "chef@chefredraymundo.com"
+    },
+    "contact_website": {
+      "type": "text",
+      "label": "Website (shown)",
+      "default": "chefredraymundo.com"
+    },
+    "contact_phone": {
+      "type": "text",
+      "label": "Phone",
+      "default": "+1 862 290 5020"
+    },
+    "area_1": {
+      "type": "text",
+      "label": "Service Area 1",
+      "default": "New Jersey"
+    },
+    "area_2": {
+      "type": "text",
+      "label": "Service Area 2",
+      "default": "New York"
+    },
+    "area_3": {
+      "type": "text",
+      "label": "Service Area 3",
+      "default": "Connecticut"
+    },
+    "availability_title": {
+      "type": "text",
+      "label": "Availability Heading",
+      "default": "Currently accepting new clients."
+    },
+    "availability_text": {
+      "type": "text",
+      "label": "Availability Text",
+      "default": "Chef Red works with a limited number of clients to ensure every engagement receives his full attention and commitment."
+    },
+    "form_eyebrow": {
+      "type": "text",
+      "label": "Form Eyebrow",
+      "default": "Inquiry Form"
+    },
+    "form_title": {
+      "type": "html",
+      "label": "Form Heading",
+      "default": "Let's Start a<br><em>Conversation</em>"
+    },
+    "form_cta": {
+      "type": "text",
+      "label": "Form Button",
+      "default": "Send Inquiry →"
+    },
+    "form_success": {
+      "type": "text",
+      "label": "Form Thank-you Message",
+      "default": "✓ Thank you. Chef Red will be in touch within 24 hours."
+    },
+    "footer_copy": {
+      "type": "text",
+      "label": "Footer Legal",
+      "default": "© 2025 Chef Red Raymundo. All rights reserved."
+    },
+    "social_facebook": {
+      "type": "url",
+      "label": "Facebook",
+      "default": ""
+    },
+    "social_instagram": {
+      "type": "url",
+      "label": "Instagram",
+      "default": ""
+    },
+    "social_linkedin": {
+      "type": "url",
+      "label": "LinkedIn",
+      "default": ""
+    },
+    "social_x": {
+      "type": "url",
+      "label": "X",
+      "default": ""
+    },
+    "primary_color": {
+      "type": "color",
+      "label": "Primary Colour (gold)",
+      "default": "#C9943A"
+    },
+    "accent_color": {
+      "type": "color",
+      "label": "Accent Colour (light gold)",
+      "default": "#DFB96A"
+    },
+    "ink_color": {
+      "type": "color",
+      "label": "Background (ink)",
+      "default": "#0A0806"
+    },
+    "ink2_color": {
+      "type": "color",
+      "label": "Surface (ink 2)",
+      "default": "#131009"
+    },
+    "ink3_color": {
+      "type": "color",
+      "label": "Raised Surface (ink 3)",
+      "default": "#1C1812"
+    },
+    "cream_color": {
+      "type": "color",
+      "label": "Text (cream)",
+      "default": "#F2EBDF"
+    },
+    "stone_color": {
+      "type": "color",
+      "label": "Muted Text (stone)",
+      "default": "#8C7E6E"
+    },
+    "smoke_color": {
+      "type": "color",
+      "label": "Faint Text / Lines (smoke)",
+      "default": "#4A4238"
+    }
+  },
+  "social_fields": {
+    "facebook": "social_facebook",
+    "instagram": "social_instagram",
+    "linkedin": "social_linkedin",
+    "x": "social_x"
+  },
+  "blog": {
+    "enabled": true,
+    "index": "/blog/",
+    "post": "/blog/{slug}/"
+  },
+  "color_roles": {
+    "accent": "accent_color"
+  },
+  "palette_roles": {
+    "ink_color": "bg",
+    "ink2_color": "surface",
+    "ink3_color": "surface2",
+    "cream_color": "text",
+    "stone_color": "muted",
+    "smoke_color": "line"
+  }
+}
