@@ -90,26 +90,26 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
     st.textContent = [
         '#crm-root .crm2{max-width:1440px;margin:0 auto;font-family:var(--fb)}',
         '.crm2-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin:6px 0 18px}',
-        '.crm2-title{font-family:var(--fh);font-size:28px;font-weight:700;letter-spacing:-.01em;color:var(--t1);margin:0;line-height:1.15}',
+        '.crm2-title{font-family:var(--fh);font-size:28px;font-weight:600;letter-spacing:-.01em;color:var(--t1);margin:0;line-height:1.15}',
         '.crm2-sub{font-size:13px;color:var(--t3);margin-top:4px}',
         '.crm2-head-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}',
         '.crm2-biz{min-width:220px;max-width:320px}',
         '.crm2-tabs{display:flex;gap:4px;border-bottom:1px solid var(--bd);margin-bottom:20px;overflow-x:auto;scrollbar-width:none}',
         '.crm2-tabs::-webkit-scrollbar{display:none}',
-        '.crm2-tab{flex:0 0 auto;appearance:none;background:none;border:0;border-bottom:2px solid transparent;color:var(--t2);font:600 14px var(--fb);padding:12px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;min-height:44px}',
+        '.crm2-tab{flex:0 0 auto;appearance:none;background:none;border:0;border-bottom:2px solid transparent;color:var(--t2);font:500 14px var(--fb);padding:12px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;white-space:nowrap;min-height:44px}',
         '.crm2-tab:hover{color:var(--t1)}.crm2-tab[aria-selected=true]{color:var(--t1);border-bottom-color:var(--p)}',
         '.crm2-tab .n{font-size:11px;font-weight:700;background:var(--ps);color:var(--pu);border-radius:999px;padding:1px 7px}',
         '.crm2-card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);}',
         '.crm2-card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px 18px 10px}',
-        '.crm2-card-h h3{margin:0;font:600 15px var(--fb);color:var(--t1)}.crm2-card-h .more{font-size:12px;color:var(--t3)}',
+        '.crm2-card-h h3{margin:0;font:500 15px var(--fb);color:var(--t1)}.crm2-card-h .more{font-size:12px;color:var(--t3)}',
         '.crm2-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}',
-        '.crm2-kpi{padding:16px 18px}.crm2-kpi .l{font-size:12px;color:var(--t3);font-weight:600}.crm2-kpi .v{font:700 28px var(--fh);color:var(--t1);margin-top:6px}.crm2-kpi .h{font-size:12px;color:var(--t3);margin-top:2px}',
+        '.crm2-kpi{padding:16px 18px}.crm2-kpi .l{font-size:12px;color:var(--t3);font-weight:600}.crm2-kpi .v{font:600 28px var(--fh);color:var(--t1);margin-top:6px}.crm2-kpi .h{font-size:12px;color:var(--t3);margin-top:2px}',
         '.crm2-grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}',
         '.crm2-rows{list-style:none;margin:0;padding:0 8px 8px}',
         '.crm2-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;cursor:pointer}',
         '.crm2-row:hover{background:var(--s2)}.crm2-row+.crm2-row{border-top:1px solid var(--bd)}',
-        '.crm2-av{width:36px;height:36px;border-radius:50%;background:var(--ps);color:var(--pu);display:flex;align-items:center;justify-content:center;font:700 13px var(--fb);flex-shrink:0}',
-        '.crm2-row .main{flex:1;min-width:0}.crm2-row .nm{font-weight:600;color:var(--t1);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+        '.crm2-av{width:36px;height:36px;border-radius:50%;background:var(--ps);color:var(--pu);display:flex;align-items:center;justify-content:center;font:600 13px var(--fb);flex-shrink:0}',
+        '.crm2-row .main{flex:1;min-width:0}.crm2-row .nm{font-weight:500;color:var(--t1);font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
         '.crm2-row .meta{font-size:12px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}',
         '.crm2-row .side{font-size:12px;color:var(--t3);white-space:nowrap}',
         '.crm2-empty{padding:28px 18px 30px;text-align:center;color:var(--t3);font-size:13px}',
@@ -126,7 +126,7 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-table th{text-align:left;font-size:12px;font-weight:600;color:var(--t3);padding:12px 14px;border-bottom:1px solid var(--bd);white-space:nowrap}',
         '.crm2-table td{padding:12px 14px;border-bottom:1px solid var(--bd);color:var(--t2);vertical-align:middle}',
         '.crm2-table tr.r{cursor:pointer}.crm2-table tr.r:hover td{background:var(--s2)}.crm2-table tr.r.sel td{background:var(--ps)}',
-        '.crm2-table .who{display:flex;align-items:center;gap:12px;min-width:0}.crm2-table .who .nm{color:var(--t1);font-weight:600}',
+        '.crm2-table .who{display:flex;align-items:center;gap:12px;min-width:0}.crm2-table .who .nm{color:var(--t1);font-weight:500}',
         '.crm2-table .who .sub{font-size:12px;color:var(--t3);max-width:360px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
         '.crm2-cb{width:18px;height:18px;accent-color:var(--p);cursor:pointer}',
         '.crm2-bulk{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--s3);border:1px solid var(--bd2);border-radius:12px;padding:10px 14px;margin-bottom:12px}',
@@ -139,12 +139,12 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-col-b{padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;min-height:80px}',
         '.crm2-col-b.over{background:var(--ps);border-radius:0 0 var(--rg) var(--rg)}',
         '.crm2-bc{background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:12px;cursor:grab}',
-        '.crm2-bc:hover{border-color:var(--bd2)}.crm2-bc .nm{font-weight:600;color:var(--t1);font-size:14px}.crm2-bc .meta{font-size:12px;color:var(--t3);margin-top:4px}',
+        '.crm2-bc:hover{border-color:var(--bd2)}.crm2-bc .nm{font-weight:500;color:var(--t1);font-size:14px}.crm2-bc .meta{font-size:12px;color:var(--t3);margin-top:4px}',
         '.crm2-bc .foot{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px}',
         '.crm2-rec{display:grid;grid-template-columns:300px minmax(0,1fr) 300px;gap:16px;align-items:start}',
         '.crm2-rec-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}',
         '.crm2-rec-name{display:flex;align-items:center;gap:14px}.crm2-rec-name .crm2-av{width:52px;height:52px;font-size:17px}',
-        '.crm2-rec-name h2{margin:0;font:700 24px var(--fh);color:var(--t1)}.crm2-rec-name .sub{font-size:13px;color:var(--t3);margin-top:4px}',
+        '.crm2-rec-name h2{margin:0;font:600 24px var(--fh);color:var(--t1)}.crm2-rec-name .sub{font-size:13px;color:var(--t3);margin-top:4px}',
         '.crm2-acts{display:flex;gap:8px;flex-wrap:wrap}',
         '.crm2-act{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:600 13px var(--fb);text-decoration:none;cursor:pointer}',
         '.crm2-act:hover{background:var(--s2)}.crm2-act[aria-disabled=true]{opacity:.45;pointer-events:none}',
@@ -165,13 +165,13 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-comp-f{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:8px}',
         '.crm2-tl{list-style:none;margin:0;padding:6px 18px 12px}.crm2-tl li{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--bd)}.crm2-tl li:last-child{border-bottom:0}',
         '.crm2-tl .dot{width:30px;height:30px;border-radius:50%;background:var(--s2);color:var(--t2);display:flex;align-items:center;justify-content:center;flex-shrink:0}',
-        '.crm2-tl .dot.h{background:var(--ps);color:var(--pu)}.crm2-tl .b{flex:1;min-width:0}.crm2-tl .t{font-size:13px;color:var(--t1);font-weight:600}',
+        '.crm2-tl .dot.h{background:var(--ps);color:var(--pu)}.crm2-tl .b{flex:1;min-width:0}.crm2-tl .t{font-size:13px;color:var(--t1);font-weight:500}',
         '.crm2-tl .d{font-size:13px;color:var(--t2);margin-top:3px;white-space:pre-wrap;word-break:break-word}.crm2-tl .w{font-size:12px;color:var(--t3);white-space:nowrap}',
         '.crm2-tl .x{appearance:none;border:0;background:none;color:var(--t3);cursor:pointer;padding:4px;border-radius:6px;min-width:32px;min-height:32px}.crm2-tl .x:hover{color:var(--rd);background:var(--s2)}',
         '.crm2-task{display:flex;align-items:flex-start;gap:10px;padding:8px 0}.crm2-task+.crm2-task{border-top:1px solid var(--bd)}.crm2-task .t{font-size:13px;color:var(--t1)}.crm2-task .w{font-size:12px;color:var(--t3)}.crm2-task .w.late{color:var(--rd)}',
         '.crm2-bars{padding:6px 18px 16px}.crm2-bar{display:grid;grid-template-columns:130px minmax(0,1fr) 44px;gap:12px;align-items:center;padding:6px 0;font-size:13px}',
         '.crm2-bar .l{color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crm2-bar .tr{height:10px;background:var(--s2);border-radius:999px;overflow:hidden}',
-        '.crm2-bar .f{height:100%;background:var(--p);border-radius:999px}.crm2-bar .n{text-align:right;color:var(--t1);font-weight:600}',
+        '.crm2-bar .f{height:100%;background:var(--p);border-radius:999px}.crm2-bar .n{text-align:right;color:var(--t1);font-weight:500}',
         '.crm2-packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}',
         '.crm2-pack{text-align:left;appearance:none;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:14px;cursor:pointer;color:var(--t2);font:13px var(--fb);min-height:44px}',
         '.crm2-pack b{display:block;color:var(--t1);font-size:14px;margin-bottom:4px}.crm2-pack[aria-pressed=true]{border-color:var(--p);box-shadow:0 0 0 1px var(--p)}',
@@ -196,12 +196,12 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-rt td.n,.crm2-rt th.n{text-align:right;font-variant-numeric:tabular-nums}',
         '.crm2-stack{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--s2);margin:8px 18px}.crm2-stack span{height:100%}',
         '.crm2-it{display:flex;gap:10px;align-items:center;padding:8px 0}.crm2-it+.crm2-it{border-top:1px solid var(--bd)}',
-        '.crm2-it img{width:56px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--s2)}.crm2-it .t{font-size:13px;color:var(--t1);font-weight:600;line-height:1.3}',
+        '.crm2-it img{width:56px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--s2)}.crm2-it .t{font-size:13px;color:var(--t1);font-weight:500;line-height:1.3}',
         '.crm2-it .w{font-size:12px;color:var(--t3)}.crm2-it .why{font-size:11px;color:var(--ac)}.crm2-it input{accent-color:var(--p);width:18px;height:18px;flex-shrink:0}',
         '.crm2-pay{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0}.crm2-pay+.crm2-pay{border-top:1px solid var(--bd)}',
-        '.crm2-pay .t{font-size:13px;color:var(--t1);font-weight:600}.crm2-pay .w{font-size:12px;color:var(--t3);margin-top:2px}.crm2-pay .a{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}',
+        '.crm2-pay .t{font-size:13px;color:var(--t1);font-weight:500}.crm2-pay .w{font-size:12px;color:var(--t3);margin-top:2px}.crm2-pay .a{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}',
         '.crm2-lines{display:grid;gap:8px}.crm2-line{display:grid;grid-template-columns:minmax(0,1fr) 64px 104px 36px;gap:6px;align-items:center}',
-        '.crm2-line input{min-width:0}.crm2-tot{display:flex;justify-content:space-between;font:700 15px var(--fb);color:var(--t1);padding-top:6px;border-top:1px solid var(--bd)}',
+        '.crm2-line input{min-width:0}.crm2-tot{display:flex;justify-content:space-between;font:600 15px var(--fb);color:var(--t1);padding-top:6px;border-top:1px solid var(--bd)}',
         '@media (max-width:760px){.crm2-line{grid-template-columns:minmax(0,1fr) 56px 88px 36px}}',
         '@media (max-width:1180px){.crm2-rec{grid-template-columns:280px minmax(0,1fr)}.crm2-rec .rc{grid-column:1 / -1;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}}',
         '@media (max-width:900px){.crm2-grid2{grid-template-columns:minmax(0,1fr)}.crm2-grid2>*{min-width:0}.crm2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}',
@@ -210,7 +210,7 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '  .crm2-rec{grid-template-columns:1fr}.crm2-rec .lc{order:2}.crm2-rec .mc{order:1}.crm2-rec .rc{order:3;display:flex;flex-direction:column}',
         '  .crm2-tablewrap{display:none}.crm2-cards{display:flex;flex-direction:column;gap:10px}',
         '  .crm2-mc{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:14px;display:flex;gap:12px;align-items:flex-start}',
-        '  .crm2-mc .main{flex:1;min-width:0}.crm2-mc .nm{font-weight:600;color:var(--t1);font-size:15px}.crm2-mc .meta{font-size:13px;color:var(--t3);margin-top:4px}',
+        '  .crm2-mc .main{flex:1;min-width:0}.crm2-mc .nm{font-weight:500;color:var(--t1);font-size:15px}.crm2-mc .meta{font-size:13px;color:var(--t3);margin-top:4px}',
         '  .crm2-mc .row2{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}',
         '  .crm2-col{flex:0 0 calc(100vw - 56px);max-height:none}.crm2-board{scroll-snap-type:x mandatory}.crm2-col{scroll-snap-align:start}',
         '  .crm2-acts{width:100%;display:grid;grid-template-columns:repeat(4,1fr)}.crm2-act{justify-content:center;min-height:48px;padding:0 6px;flex-direction:column;gap:4px;font-size:12px}',
@@ -980,9 +980,32 @@ window._crm2 = {
 };
 
 // ── entry points ────────────────────────────────────────────────────────────
+async function boot() {
+    var j = await api('GET', '/boot' + qs(bizQ()));
+    S.biz = j.business_id || (S.biz === 'none' ? 'none' : ''); S.setup = j.setup; S.pack = j.setup.pack; S.today = j.today; S.drafts = j.drafts || [];
+    if (S.biz && S.biz !== 'none' && !bizById(S.biz)) S.biz = '';
+    try { if (S.biz) localStorage.setItem(BIZ_KEY, S.biz); } catch (x) {}
+    try { sessionStorage.setItem(BOOT_KEY(), JSON.stringify({biz: S.biz, setup: S.setup, today: S.today, drafts: S.drafts})); } catch (x) {}
+}
+function BOOT_KEY() { var w = ''; try { w = localStorage.getItem('lu_workspace_id') || ''; } catch (x) {} return 'lu_crm_boot_' + w; }
+function bootCached() {
+    try { var w = localStorage.getItem('lu_workspace_id'); if (!w) return false; var c = JSON.parse(sessionStorage.getItem(BOOT_KEY()) || 'null');
+        if (!c || !c.setup || !c.today) return false; S.biz = c.biz || ''; S.setup = c.setup; S.pack = c.setup.pack; S.today = c.today; S.drafts = c.drafts || []; return true; } catch (x) { return false; }
+}
 window.crmLoad = async function (el) {
     if (!el) return;
+    var curWs = ''; try { curWs = localStorage.getItem('lu_workspace_id') || ''; } catch (x) {}
+    if (S._ws !== curWs) { S.setup = null; S.today = null; S.drafts = []; S.rec = null; }   // another workspace: never show the last one's clients
+    S._ws = curWs;
+    if (!S.setup) bootCached();
+    if (S.setup && S.today) {   // came back to Clients: show what we had, then refresh it
+        S.tab = 'today'; render();
+        try { await boot(); if (S.tab === 'today' && root() === el) render(); } catch (e) {}
+        try { if (window._luRouter && window._luRouter.enabled()) window._luRouter.pushView('crm'); } catch (e) {}
+        return;
+    }
     busy(el);
+    try { await boot(); S.tab = 'today'; try { if (window._luRouter && window._luRouter.enabled()) window._luRouter.pushView('crm'); } catch (e) {} render(); return; } catch (e) { console.warn('[Clients] boot', e.message); }
     try { await loadSetup(); } catch (e) {
         el.innerHTML = '<div class="crm2-empty"><b>Clients could not load.</b>' + esc(e.message) + '<div style="margin-top:12px"><button class="btn btn-outline" onclick="window.crmLoad(document.getElementById(\'crm-root\'))">Try again</button></div></div>';
         return;

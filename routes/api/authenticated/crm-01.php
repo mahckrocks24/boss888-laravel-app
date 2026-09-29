@@ -49,6 +49,7 @@ use Illuminate\Support\Facades\Route;
         // CRM-UX-2 (Clients revamp Phase 2): the new Clients screens
         $k = \App\Engines\CRM\Http\Controllers\ClientsController::class;
         Route::get('/setup', [$k, 'setup']);
+        Route::get('/boot', [$k, 'boot']);
         Route::put('/setup/{businessId}', [$k, 'saveSetup'])->whereNumber('businessId');
         Route::get('/today-v2', [$k, 'today']);
         Route::get('/reports-v2', [$k, 'reports']);

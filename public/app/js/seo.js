@@ -7760,8 +7760,10 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       });
     }
 
+    var _dSc = row.closest('.lu-tscroll') || (row.closest('table') || {}).parentElement;   /* SEO-PGFIT-1 */
+    var _dW = Math.max(280, (_dSc && _dSc.clientWidth) || 900);
     var inner = ''
-      + '<td colspan="' + colCount + '" style="background:var(--lgse-bg2);padding:14px 18px;border-bottom:1px solid var(--lgse-border)">'
+      + '<td colspan="' + colCount + '" style="background:var(--lgse-bg2);padding:0;border-bottom:1px solid var(--lgse-border)"><div class="lgse-pg-dwrap" style="position:sticky;left:0;box-sizing:border-box;padding:14px 18px;white-space:normal;overflow-wrap:anywhere;width:' + _dW + 'px">'
         + '<div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px">'
 
           // ── Google preview ──
@@ -7823,9 +7825,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           + '</div>'
         + '</div>'
 
-      + '</td>';
+      + '</div></td>';
 
     detailTr.innerHTML = inner;
+    if (!window._lgsePgFitWired) { window._lgsePgFitWired = 1; window.addEventListener('resize', function () {   /* SEO-PGFIT-1: keep the panel the visible width */
+      document.querySelectorAll('.lgse-pg-dwrap').forEach(function (w) { var sc = w.closest('.lu-tscroll') || (w.closest('table') || {}).parentElement; if (sc && sc.clientWidth) w.style.width = Math.max(280, sc.clientWidth) + 'px'; });
+    }); }
     // Phase A (2026-05-16) — detect focus keyword in background. Free for
     // all tiers (deterministic, no AI, no credits).
     setTimeout(function () {

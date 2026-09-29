@@ -39,6 +39,21 @@ class ClientsController extends BaseEngineController
             ->all();
     }
 
+    /** GET /crm/boot?business_id= — CRM-FAST-1: everything the first screen needs in one round trip. */
+    public function boot(Request $r): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        if ($this->biz($r) === -1) $r->merge(['business_id' => null]);   // a remembered business that is gone → all businesses
+        $in = $r->input('business_id');
+        if ($in === null || $in === '') {
+            $ids = DB::table('businesses')->where('workspace_id', $ws)->whereNull('deleted_at')->pluck('id');
+            if ($ids->count() === 1) $r->merge(['business_id' => (int) $ids[0]]);
+        }
+        $drafts = [];
+        try { $drafts = $this->drafts($r)->getData(true)['drafts'] ?? []; } catch (\Throwable $e) {}
+        return $this->readJson(['business_id' => (string) ($r->input('business_id') ?? ''), 'setup' => $this->setup($r)->getData(true), 'today' => $this->today($r)->getData(true), 'drafts' => $drafts]);
+    }
+
     /** GET /crm/setup?business_id= — businesses, the pack in use, and the list of packs. */
     public function setup(Request $r): JsonResponse
     {
