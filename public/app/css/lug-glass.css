@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2b 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2c 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -1047,3 +1047,19 @@ html.lg-ui .lgse-fp { border-radius: 999px !important; display: inline-flex !imp
 /* Audit issue categories: a long name and its badge wrap inside the tile instead of spilling out */
 html.lg-ui .lgse-cat-item { min-width: 0; flex-wrap: wrap; row-gap: 4px; }
 html.lg-ui .lgse-cat-item > * { min-width: 0; }
+
+/* BUSINESS PROFILE DIALOG (Owner 09-29 phone shot): its tab strip joins the shared tab track (with the cut-off end
+   fading), "Change styles" gets its button shape back (its transparent fill vanished on the solid dialog), and toasts
+   are glass. On phones a toast sits under the header instead of the bottom, where it covered the dialog's Cancel / Save. */
+html.lg-ui .bz-pf-tabs { margin: 12px 24px 0 !important; padding: 4px !important; gap: 4px; border: 1px solid var(--lg-hairline) !important; border-bottom: 1px solid var(--lg-hairline) !important;
+  border-radius: 999px; background: var(--lg-fill-hover) !important; -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+html.lg-ui .bz-pf-tabs::after { content: ''; flex: 0 0 18px; }
+html.lg-ui .bz-pf-tab { border-radius: 999px !important; padding: 0 14px !important; min-height: 36px; color: var(--lg-ink-2) !important; font-weight: 500; }
+html.lg-ui .bz-pf-tab::after { display: none !important; }
+html.lg-ui .bz-pf-tab[aria-selected="true"] { background: var(--lg-raised) !important; color: var(--lg-ink) !important; font-weight: 600;
+  box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-1); }
+html.lg-ui .lbc-btn:not(.primary) { background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline) !important; color: var(--lg-ink) !important; }
+html.lg-ui .lbc-btn:not(.primary):hover { background: var(--lg-fill-press) !important; }
+html.lg-ui .lu-toast { background: var(--lg-glass-thick) !important; -webkit-backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat));
+  border: 1px solid var(--lg-hairline) !important; border-left-width: 3px !important; border-radius: 16px !important; color: var(--lg-ink) !important; box-shadow: 0 0 0 .5px var(--lg-edge), var(--lg-shadow-2); }
+@media (max-width: 640px) { html.lg-ui #lu-toast-stack { top: 72px; bottom: auto !important; } }
