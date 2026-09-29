@@ -28,6 +28,9 @@ var _wr = {
     savingVersion:false,        // version save in flight
     isDirty:      false,        // true when textarea/title has unsaved changes
     wsId:         1,            // workspace_id
+    page:         0,            // WRPAGE-1: list page (10 per page)
+    total:        0,            // articles matching the filters
+    statusCounts: null,         // per-status counts for the whole filtered list
     rootEl:       null,
     filterStatus: '',
     filterType:   '',
@@ -201,14 +204,18 @@ function _wrLoadingHTML() {
         '<style>@keyframes spin{to{transform:rotate(360deg)}}</style>';
 }
 
+var _WR_PAGE = 10;   // WRPAGE-1 (Owner 2026-09-29): load 10 at a time
 async function _wrBootstrap() {
     if (_wr.filterBiz === null) { try { _wr.filterBiz = localStorage.getItem('lu_write_biz:' + _wr.wsId) || ''; } catch (e) { _wr.filterBiz = ''; } }
-    var params = '?workspace_id=' + encodeURIComponent(_wr.wsId) + '&limit=500&fields=summary';
+    var params = '?workspace_id=' + encodeURIComponent(_wr.wsId) + '&limit=' + _WR_PAGE + '&offset=' + ((_wr.page || 0) * _WR_PAGE) + '&fields=summary';
     if (_wr.filterBiz)    params += '&business_id='  + encodeURIComponent(_wr.filterBiz);
     if (_wr.filterStatus) params += '&status='       + encodeURIComponent(_wr.filterStatus);
     if (_wr.filterType)   params += '&content_type=' + encodeURIComponent(_wr.filterType);
     var data = await _wrGet('/articles' + params).catch(function() { return { items: [] }; });
     _wr.items = data.items || [];
+    _wr.total = +data.total || _wr.items.length; _wr.statusCounts = data.status_counts || null;
+    // a page past the end (after a delete or a filter) steps back to the last page
+    if (!_wr.items.length && _wr.page > 0 && _wr.total > 0) { _wr.page = Math.max(0, Math.ceil(_wr.total / _WR_PAGE) - 1); return _wrBootstrap(); }
     _wr.businesses = data.businesses || []; _wr.unassigned = +data.unassigned || 0; _wr.websites = data.websites || [];
     // a remembered business that no longer exists falls back to all
     if (_wr.filterBiz && _wr.filterBiz !== 'none' && !_wr.businesses.some(function (b) { return String(b.id) === String(_wr.filterBiz); })) { _wr.filterBiz = ''; }
@@ -330,16 +337,32 @@ function _wrViewDashboard() {
                 '<tbody id="wr-items-tbody">' + tableRows + '</tbody>' +
             '</table>' +
         '</div>' +
+        _wrPager() +
         // Create modal (hidden)
         _wrCreateModal() +
     '</div>';
 }
 
+// WRPAGE-1: "1–10 of 198" with Previous / Next under the list
+function _wrPager() {
+    var n = _wr.total || 0; if (n <= _WR_PAGE) return '';
+    var from = _wr.page * _WR_PAGE + 1, to = Math.min(n, from + _wr.items.length - 1), last = Math.ceil(n / _WR_PAGE) - 1;
+    return '<div id="wr-pager" style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap;">' +
+        '<span style="font-size:12px;color:var(--t3,#777);">' + from + '–' + to + ' of ' + n + '</span>' +
+        '<span style="display:flex;gap:8px;">' +
+            '<button type="button" data-wr-page="-1" style="' + _wrBtnStyle('secondary') + '"' + (_wr.page <= 0 ? ' disabled' : '') + '>‹ Previous</button>' +
+            '<button type="button" data-wr-page="1" style="' + _wrBtnStyle('secondary') + '"' + (_wr.page >= last ? ' disabled' : '') + '>Next ›</button>' +
+        '</span>' +
+    '</div>';
+}
+
 function _wrDashStats() {
-    var total    = _wr.items.length;
-    var drafts   = _wr.items.filter(function(i){ return i.status === 'draft'; }).length;
-    var approved = _wr.items.filter(function(i){ return i.status === 'approved'; }).length;
-    var published= _wr.items.filter(function(i){ return i.status === 'published'; }).length;
+    // WRPAGE-1: the list is paged, so the cards count the whole filtered list (server counts)
+    var sc = _wr.statusCounts || {};
+    var total    = _wr.total || _wr.items.length;
+    var drafts   = _wr.statusCounts ? (+sc.draft || 0) : _wr.items.filter(function(i){ return i.status === 'draft'; }).length;
+    var approved = _wr.statusCounts ? (+sc.approved || 0) : _wr.items.filter(function(i){ return i.status === 'approved'; }).length;
+    var published= _wr.statusCounts ? (+sc.published || 0) : _wr.items.filter(function(i){ return i.status === 'published'; }).length;
     var stats = [
         { label: 'Total Items',  value: total,     color: 'var(--p,#6C5CE7)' },
         { label: 'Drafts',       value: drafts,    color: 'var(--t3,#888)' },
@@ -487,15 +510,8 @@ function _wrBindDashboard() {
             var res = await _wrDelete('/articles/' + btn.dataset.id + '?workspace_id=' + encodeURIComponent(_wr.wsId));
             if (res && res.success) {
                 _wrToast('Content deleted.', 'success');
-                _wr.items = _wr.items.filter(function(i) { return i.id !== parseInt(btn.dataset.id, 10); });
-                var tbody = document.getElementById('wr-items-tbody');
-                if (tbody) {
-                    var row = tbody.querySelector('[data-id="' + btn.dataset.id + '"]');
-                    if (row) row.remove();
-                }
-                // Re-render stats
-                var statsEl = _wr.rootEl ? _wr.rootEl.querySelector('#wr-stats-block') : null;
-                if (statsEl) statsEl.innerHTML = _wrDashStats();
+                // WRPAGE-1: reload the page so it refills to 10 and the counts stay true
+                await _wrBootstrap(); _wrRender(); return;
             } else {
                 _wrToast((res && res.message) || 'Delete failed.', 'error');
             }
@@ -519,10 +535,21 @@ function _wrBindDashboard() {
     // WRITE-BIZ-1: business picker
     var bizSelEl = document.getElementById('wr-filter-biz');
     if (bizSelEl) bizSelEl.addEventListener('change', async function () {
-        _wr.filterBiz = bizSelEl.value || '';
+        _wr.filterBiz = bizSelEl.value || ''; _wr.page = 0;
         try { localStorage.setItem('lu_write_biz:' + _wr.wsId, _wr.filterBiz); } catch (e) {}
         await _wrBootstrap();
         _wrRender();
+    });
+
+    // WRPAGE-1: Previous / Next
+    document.querySelectorAll('[data-wr-page]').forEach(function (b) {
+        b.addEventListener('click', async function () {
+            if (b.disabled) return;
+            _wr.page = Math.max(0, (_wr.page || 0) + parseInt(b.getAttribute('data-wr-page'), 10));
+            b.disabled = true; b.textContent = 'Loading…';
+            await _wrBootstrap(); _wrRender();
+            var top = _wr.rootEl && _wr.rootEl.querySelector('#wr-items-tbody'); if (top && top.getBoundingClientRect().top < 0) top.scrollIntoView({ block: 'start' });
+        });
     });
 
     // Filter
@@ -530,6 +557,7 @@ function _wrBindDashboard() {
     if (filterBtn) filterBtn.addEventListener('click', async function() {
         _wr.filterStatus = (document.getElementById('wr-filter-status') || {}).value || '';
         _wr.filterType   = (document.getElementById('wr-filter-type')   || {}).value || '';
+        _wr.page = 0;
         filterBtn.textContent = 'Loading…';
         filterBtn.disabled = true;
         await _wrBootstrap();

@@ -363,7 +363,12 @@ class WriteService
             $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(brief_json, '$.category')) = ?", [$filters['category']]);
         }
         $total = $q->count();
-        $articles = $q->orderByDesc('articles.updated_at')->limit(max(1, min(500, (int) ($filters['limit'] ?? 50))))->get();
+        // WRPAGE-1 (Owner 2026-09-29: "add pagination to make it faster, load only first 10"): offset pages the list;
+        // status_counts keep the page's Drafts / Approved / Published cards true for the whole filtered list.
+        $sc = clone $q; $sc->columns = null;
+        $statusCounts = $sc->selectRaw('articles.status as s, count(*) as n')->groupBy('articles.status')->pluck('n', 's')->map(fn ($n) => (int) $n)->all();
+        $articles = $q->orderByDesc('articles.updated_at')->orderByDesc('articles.id')
+            ->offset(max(0, (int) ($filters['offset'] ?? 0)))->limit(max(1, min(500, (int) ($filters['limit'] ?? 50))))->get();
         // every business of the workspace with its article count (a business with none still shows, at 0)
         $counts = DB::table('articles')->leftJoin('websites as w', 'w.id', '=', 'articles.website_id')
             ->where('articles.workspace_id', $wsId)->whereNull('articles.deleted_at')->groupBy('w.business_id')->selectRaw('w.business_id, count(*) as n')->pluck('n', 'business_id');
@@ -371,7 +376,7 @@ class WriteService
             ->map(fn ($x) => ['id' => (int) $x->id, 'name' => (string) $x->name, 'count' => (int) ($counts[$x->id] ?? 0)])->values()->all();
         $websites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->whereNotNull('business_id')->orderBy('id')->get(['id', 'name', 'business_id'])
             ->map(fn ($x) => ['id' => (int) $x->id, 'name' => (string) $x->name, 'business_id' => (int) $x->business_id])->values()->all();
-        return ['articles' => $articles, 'total' => $total, 'businesses' => $businesses, 'unassigned' => (int) ($counts[''] ?? 0), 'websites' => $websites];
+        return ['articles' => $articles, 'total' => $total, 'status_counts' => $statusCounts, 'businesses' => $businesses, 'unassigned' => (int) ($counts[''] ?? 0), 'websites' => $websites];
     }
 
     public function deleteArticle(int $articleId, ?int $wsId = null): void
