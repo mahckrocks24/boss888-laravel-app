@@ -1,29 +1,26 @@
 <?php
 /** @var array $page */ /** @var array $data */
 /*
- * Home — rebuilt 2026-09-08 on the Owner's structural review.
+ * Home — GLASS-HOME-2 (2026-09-30). The Liquid Glass home exactly as the Motion mockup v28
+ * (claude.ai/artifact/DYHZ3BZcM2imQ3AtuVwxBS). Owner 2026-09-30: "build the website's homepage now using that exact design.
+ * route accordingly", for staging.levelupgrowth.io and levelupgrowth.io.
  *
- * What was wrong: the page had three competing identities in the first three lines (an OS, a website builder, a
- * 19-agent workforce), then became a product tour — twelve sections of equal weight, each a feature with a
- * screenshot, in build order rather than in the order a visitor asks questions. The agent count was doing the work
- * a benefit should do, the workforce roster made people read an org chart before they understood the product, and
- * two demo businesses fought each other across the page.
+ * Desktop (from 901px): the glass hero — the brand headline (three fixed lines), the one glowing CTA, the SCROLL cue, and
+ * on the right Arthur building a site while the team speaks up in a group thread — then the template strip, the loop,
+ * Command Center, chatbot to lead, review queue and team, Build/Grow/Convert, pricing from the plans table, the close.
+ * Phones (to 900px): the site's own hero-top as served (the Owner's brand layout), then the same panels; the chatbot
+ * section shows only chatbot888. The site's header (floating as a glass bar on this page), footer and chatbot888 stay.
  *
- * What this is: one business (Saltmarsh Travel), one organising idea (Sarah is your growth manager), and nine
- * scenes in persuasion order — meet her, watch the loop, watch her build, check the numbers, meet the team behind
- * her, see the range, see the control, see what you own, then price and close.
+ * Not carried over from the mockup: its header, footer, legend, sticky pill and placeholder orb. Not on this page any
+ * more (the mockup is the exact design): Arthur's intake panel and the design gallery of the previous hero — the CTA routes
+ * to the signup door, where Arthur's intake lives. Every link routes to a real page; every number comes from $data.
  */
-$sc = require dirname(__DIR__) . '/showcase-data.php';
-$sr = require dirname(__DIR__) . '/seo-data.php';
-$jf = dirname(__DIR__) . '/journey-data.php';
-$j  = is_file($jf) ? require $jf : [];
 $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm'])));
 $page['title'] = '';
 $page['description'] = 'Meet Sarah, the AI growth manager for your business. Tell her about it once. She keeps the context, plans the work, brings in the right specialist, shows you the cost, and waits for your approval before anything goes live.';
 $plans = $data['plans'];
 $byPlan = fn (string $slug) => array_values(array_filter($plans, fn ($p) => $p['slug'] === $slug))[0] ?? null;
 $free = $byPlan('free'); $lite = $byPlan('ai-lite');
-$lead = $sc['sites'][0];   // the fastest recorded build, used in the hero facts
 $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'WebSite', 'name' => 'LevelUpGrowth', 'url' => 'https://levelupgrowth.io'];
 $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => array_map(fn ($q) => ['@type' => 'Question', 'name' => $q[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $q[1]]], home_faq($data))];
 $groups = [
@@ -31,94 +28,52 @@ $groups = [
   ['Grow',  'search', 'Search, articles, social and the numbers behind them.', [['SEO', '/next/product/seo/'], ['Content', '/next/product/content/'], ['Social', '/next/product/social/']]],
   ['Convert', 'message', 'Answer the visitor, capture the lead, keep the customer.', [['Chatbot', '/next/product/chatbot/'], ['CRM', '/next/product/crm/'], ['Calendar', '/next/product/calendar/']]],
 ];
-?>
-
-<?php /* 01 — Arthur, in the hero. The visitor describes the business, then signs up, then presses build. */ ?>
-<section class="hero-mr" id="top">
-  <div class="container">
-    <div class="hero-top">
-    <span class="pill">An AI Growth Team working for You 24/7</span>
-    <h1>Get&nbsp;found. Get&nbsp;booked.<br> <span class="grad">Level&nbsp;Up Your Business Today.</span></h1>
-    <p class="hero-sub">It's time every business gets an agency-level marketing without spending thousands of dollars. Describe your business below and Arthur will build and launch your website today. Sarah will lead your SEO, Social Media, Emails and more.</p>
-    <div class="hero-cta"><a class="btn-glow" href="<?= e(signup_href($data)) ?>" data-lu-signup><span class="lbl-out">Level Up Now <?= icon('arrow-right', 16) ?></span><span class="lbl-in">Dashboard <?= icon('arrow-right', 16) ?></span></a></div>
-    <button type="button" class="scroll-cue" aria-label="Scroll down" data-scroll-cue><span class="lbl">Scroll</span><span class="bar" aria-hidden="true"></span></button>
-    </div>
-
-    <?php // media carries a content hash so a re-encode can never be served from a stale edge
-    $mv = function (string $file): string {
-        $p = dirname(__DIR__) . '/assets/product/' . $file;
-        return '/next/assets/product/' . $file . (is_file($p) ? '?v=' . substr(md5_file($p), 0, 8) : '');
-    }; ?>
-
-    <div class="panel hero-panel ax" id="ax">
-      <noscript><p class="ax-fallback">Arthur needs JavaScript. <a href="/app/">Open the builder</a> instead.</p></noscript>
-    </div>
-
-    <?php
-    // TEMPLATE GALLERY (2026-09-11): every distinct live design's hero, shot from the platform's own preview.
-    $tplManifest = dirname(__DIR__) . '/assets/product/templates/templates.json';
-    $tplItems = is_file($tplManifest) ? (json_decode((string) file_get_contents($tplManifest), true)['items'] ?? []) : [];
-    $tplItems = array_values(array_filter($tplItems, fn ($t) => is_file(dirname(__DIR__) . '/assets/product/' . ($t['file'] ?? ''))));
-    if ($tplItems !== []): ?>
-    <div class="panel hero-panel tg-gallery" data-tg-gallery aria-roledescription="carousel" aria-label="Website designs Arthur builds from">
-      <div class="tg-stage">
-        <div class="tg-track" tabindex="0" aria-live="off">
-          <?php foreach ($tplItems as $i => $t):
-              $src = $mv('templates/' . basename($t['file']));
-              $eager = $i < 2; ?>
-          <figure class="tg-card" data-i="<?= $i ?>" data-slug="<?= htmlspecialchars($t['slug'], ENT_QUOTES) ?>"<?= ($t['slug'] ?? '') === 'it_services' ? ' data-featured="1"' : '' ?> aria-label="<?= htmlspecialchars($t['name'], ENT_QUOTES) ?>">
-            <div class="tg-frame">
-              <img src="<?= $src ?>" alt="" width="1440" height="900" <?= $eager ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"' ?> decoding="async" draggable="false">
-            </div>
-            <figcaption><span class="tg-name"><?= htmlspecialchars($t['name'], ENT_QUOTES) ?></span><span class="tg-ind"><?= htmlspecialchars($t['industry_label'] ?? '', ENT_QUOTES) ?></span></figcaption>
-          </figure>
-          <?php endforeach; ?>
-        </div>
-        <button type="button" class="tg-nav tg-prev" aria-label="Previous design"><?= icon('arrow-left', 16) ?></button>
-        <button type="button" class="tg-nav tg-next" aria-label="Next design"><?= icon('arrow-right', 16) ?></button>
-      </div>
-    </div>
-    <?php else: ?>
-    <figure class="panel hero-panel hero-result">
-      <div class="panel-in">
-        <img src="<?= $mv('82-plum-site.webp') ?>" alt="Saltmarsh Travel, the finished website, on the Royal Plum theme." width="1280" height="800" loading="lazy" decoding="async">
-      </div>
-      <figcaption>One Arthur built earlier, from four sentences. <a href="https://saltmarsh.levelupgrowth.io/" target="_blank" rel="noopener">Open it <?= icon('arrow-right', 13) ?></a></figcaption>
-    </figure>
-    <?php endif; ?>
-
-  </div>
-</section>
-
-<?php
-/*
- * GLASS-HOME-1 (Owner 2026-09-29: "push it to live on website's home page. make sure to route properly").
- * Below the site's own hero (Arthur's real intake + the design gallery, unchanged) the page continues as the Liquid Glass
- * home from the Motion mockup v19 (claude.ai/artifact/DYHZ3BZcM2imQ3AtuVwxBS): self-playing panels drawn as glass, never
- * screenshots. The mockup's own chrome (header, footer, legend, sticky pill, placeholder orb) is not carried over: the
- * site's header, footer and chatbot888 do those jobs. Every link routes to a real page; every number comes from $data.
- * The home follows the device's colour scheme (head script below); the other pages stay as they are until they are rebuilt.
- */
+// media carries a content hash so a re-encode can never be served from a stale edge
+$mv = function (string $file): string { $p = dirname(__DIR__) . '/assets/product/' . $file; return '/next/assets/product/' . $file . (is_file($p) ? '?v=' . substr(md5_file($p), 0, 8) : ''); };
 $mk = function (string $f): string { $p = dirname(__DIR__) . '/assets/mk/' . $f; return '/next/assets/mk/' . $f . (is_file($p) ? '?v=' . substr(md5_file($p), 0, 8) : ''); };
-$agentCount = count($data['agents']);
-$page['head'] = '<script>/* GLASS-HOME-1: the home follows the device (Owner 2026-09-29) */try{var t=localStorage.getItem("lug_theme");if(!t&&window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}</script>' . "\n"
+// the template strip: one of each hero family in turn (light copy, form card, dark) so no two alike sit side by side (Owner 09-29)
+$tpls = [['restaurant', 'Restaurant'], ['hotel', 'Hotel'], ['aesthetic_clinic', 'Aesthetic clinic'], ['gym', 'Gym'], ['dental', 'Dental'], ['cafe', 'Café'], ['resort', 'Resort'], ['interior_design', 'Interior design'], ['ecommerce', 'Shop'], ['architecture', 'Architecture'], ['catering', 'Catering'], ['consulting', 'Consulting']];
+$tpls = array_values(array_filter($tpls, fn ($t) => is_file(dirname(__DIR__) . '/assets/product/templates/' . $t[0] . '.webp')));
+$page['head'] = '<script>/* GLASS-HOME: the home follows the device (Owner 2026-09-29); the header floats as glass here */try{document.documentElement.classList.add("mk-home");var t=localStorage.getItem("lug_theme");if(!t&&window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}</script>' . "\n"
   . '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">' . "\n"
   . '<link rel="stylesheet" href="' . e($mk('lug-glass.css')) . '">' . "\n"
   . '<link rel="stylesheet" href="' . e($mk('home.css')) . '">';
 $page['scripts'] = '<script src="' . e($mk('motion.js')) . '" defer></script>' . "\n" . '<script src="' . e($mk('home.js')) . '" defer></script>';
 $signup = e(signup_href($data));
-$ctaOut = e(cta_label($data));
 $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
+$arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
 ?>
+
+<?php /* PHONES — the site's own hero-top, as served (Owner: "exactly the same as this"); hidden from 901px up */ ?>
+<section class="hero-mr mk-phone-hero" id="top">
+  <div class="container">
+    <div class="hero-top">
+    <span class="pill">An AI Growth Team working for You 24/7</span>
+    <h1>Get&nbsp;found. Get&nbsp;booked.<br> <span class="grad">Level&nbsp;Up Your Business Today.</span></h1>
+    <p class="hero-sub">It's time every business gets an agency-level marketing without spending thousands of dollars. Describe your business below and Arthur will build and launch your website today. Sarah will lead your SEO, Social Media, Emails and more.</p>
+    <div class="hero-cta"><a class="btn-glow" href="<?= $signup ?>" data-lu-signup><span class="lbl-out">Level Up Now <?= icon('arrow-right', 16) ?></span><span class="lbl-in">Dashboard <?= icon('arrow-right', 16) ?></span></a></div>
+    <button type="button" class="scroll-cue" aria-label="Scroll down" data-scroll-cue><span class="lbl">Scroll</span><span class="bar" aria-hidden="true"></span></button>
+    </div>
+  </div>
+</section>
 
 <div class="lg mk" id="glass-home">
   <div class="lg-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
   <div id="mk-progress" aria-hidden="true"></div>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="mkgrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8C25D2"></stop><stop offset=".55" stop-color="#4C86DE"></stop><stop offset="1" stop-color="#3FDFDF"></stop></linearGradient></defs></svg>
 
-  <?php /* 02 — what happens after you describe the business: Arthur builds, the team speaks up */ ?>
-  <section class="mk-sec" id="hx-sec" style="padding-top:56px;padding-bottom:40px">
+  <?php /* 01 — HERO: the brand headline and the one CTA; Arthur builds a site while the team speaks up (loops) */ ?>
+  <section class="mk-sec" id="hero-glass" style="padding-top:150px;padding-bottom:56px">
     <div class="mk-wrap mk-hero">
+      <div class="lg-stack gap-5 mk-hero__copy">
+        <span class="lg-badge lg-badge--brand mk-pill" data-hero="1" style="align-self:flex-start;height:30px;padding:0 12px;border-radius:999px"><span class="lg-dot"></span>An AI Growth Team working for You 24/7</span>
+        <h1 class="mk-h1" id="hero-h1">Get&nbsp;found.<br>Get&nbsp;booked. <span class="t-grad">Level&nbsp;Up<br>Your Business Today.</span></h1>
+        <p class="mk-lead" data-hero="3">It's time every business gets an agency-level marketing without spending thousands of dollars. Describe your business below and Arthur will build and launch your website today. Sarah will lead your SEO, Social Media, Emails and more.</p>
+        <div class="lg-row gap-3" data-hero="4" style="flex-wrap:wrap">
+          <span class="mk-glow"><a class="lg-btn lg-btn--primary lg-btn--lg mk-btn mk-cta" href="<?= $signup ?>" data-lu-signup><span class="lbl-out">Level Up Now<?= $arrow ?></span><span class="lbl-in">Dashboard<?= $arrow ?></span></a></span>
+        </div>
+      </div>
+
       <div class="mk-hero__visual" id="hero-visual">
         <div class="lg-glass lg-glass--thick lg-stack mk-chat" id="hx" data-hero-v="1">
           <div class="lg-row gap-3" style="padding:14px 16px;border-bottom:1px solid var(--hairline)">
@@ -141,7 +96,7 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
         <div class="mk-frame mk-site" data-hero-v="2">
           <div class="mk-frame__bar"><i></i><i></i><i></i><span class="mk-frame__url">blackdoor.levelupgrowth.io</span></div>
           <div class="mk-reveal" style="height:275px;background:var(--fill-hover)">
-            <img src="<?= e($mk('tpl-restaurant.webp')) ?>" id="hx-img" alt="Black Door restaurant website" width="1440" height="900" style="height:275px;width:100%;object-fit:cover;object-position:top" loading="lazy" decoding="async">
+            <img src="<?= e($mv('templates/restaurant.webp')) ?>" id="hx-img" alt="Black Door restaurant website" width="1440" height="900" style="height:275px;width:100%;object-fit:cover;object-position:top" decoding="async">
             <div class="mk-skel" id="hx-skel" hidden><div class="lg-skel" style="height:14px;width:40%"></div><div class="lg-skel" style="height:90px"></div><div class="lg-skel" style="height:14px;width:60%"></div><div class="lg-skel" style="height:14px;width:50%"></div></div>
           </div>
           <div style="padding:10px 12px;border-top:1px solid var(--hairline)" class="lg-stack gap-2">
@@ -151,7 +106,6 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
         </div>
 
         <div class="hx-frost" id="hx-frost" aria-hidden="true"></div>
-        <div class="hx-tag" id="hx-tag" aria-hidden="true"><span class="hx-tag__line" id="hx-line">Your AI growth team working for you <b class="t-grad">24/7</b>.</span></div>
         <div class="hx-agents" id="hx-agents">
           <div class="hx-say" data-agent="sarah"><span class="hx-say__av lg-presence"><img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="" width="36" height="36"></span><div class="hx-say__body"><div class="hx-say__bubble"><span class="hx-say__who"><b>Sarah</b> · Digital marketing manager</span>Hi Boss, I'm Sarah, your Digital Marketing Manager. Let's start your growth!</div></div></div>
           <div class="hx-say" data-agent="james"><span class="hx-say__av lg-presence"><img class="lg-avatar" src="<?= e($agentImg('james')) ?>" alt="" width="36" height="36"></span><div class="hx-say__body"><div class="hx-say__bubble"><span class="hx-say__who"><b>James</b> · SEO strategist</span>I'll run an SEO audit on the new site now.</div></div></div>
@@ -160,10 +114,23 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
         </div>
       </div>
     </div>
+    <button class="mk-scroll" data-hero="6" type="button" aria-label="Scroll down"><span>Scroll</span><i></i></button>
+  </section>
+
+  <?php /* 02 — TEMPLATES: the library glides past (no count: Owner rule) */ ?>
+  <section class="mk-tpls" id="tpls">
+    <div class="mk-wrap lg-row lg-between" style="margin-bottom:18px;gap:12px;flex-wrap:wrap"><span class="t-eyebrow" data-rv>Websites Arthur builds, for every kind of business</span><a class="t-footnote t-strong c-accent" href="/next/templates/" data-rv style="text-decoration:none">Browse the template library</a></div>
+    <div class="mk-glide-wrap">
+      <div class="mk-glide" id="mk-glide">
+        <?php foreach ([false, true] as $copy): foreach ($tpls as [$slug, $name]): ?>
+        <figure class="lg-glass mk-tpl"<?= $copy ? ' aria-hidden="true"' : '' ?>><img src="<?= e($mv('templates/' . $slug . '.webp')) ?>" alt="<?= $copy ? '' : e($name) ?>" width="1440" height="900" loading="lazy" decoding="async"><figcaption class="t-caption c-2" style="padding:10px 12px"><?= e($name) ?></figcaption></figure>
+        <?php endforeach; endforeach; ?>
+      </div>
+    </div>
   </section>
 
   <?php /* 03 — THE LOOP */ ?>
-  <section class="mk-sec" id="loop" style="padding-top:40px">
+  <section class="mk-sec" id="loop" style="padding-top:56px">
     <div class="mk-wrap lg-stack" style="gap:28px">
       <div class="lg-row lg-between" style="align-items:flex-end;gap:32px;flex-wrap:wrap">
         <div class="lg-stack gap-3" style="max-width:640px">
@@ -171,7 +138,7 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
           <h2 class="mk-h2" data-rv>Sarah runs it. You approve it.</h2>
           <p class="mk-lead" data-rv>Tell her about the business once. She plans, prices each job, hands it to the right specialist and brings the finished work to you before any of it goes live. Watch one go round.</p>
         </div>
-        <a class="lg-row gap-3" data-rv href="/next/product/ai-workforce/" style="color:inherit"><span class="lg-presence" style="display:inline-flex"><img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="Sarah" width="64" height="64" style="width:64px;height:64px"></span><div class="lg-stack"><span class="t-callout t-strong">Sarah</span><span class="t-footnote c-3">Digital marketing manager</span></div></a>
+        <div class="lg-row gap-3" data-rv><span class="lg-presence" style="display:inline-flex"><img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="Sarah" width="64" height="64" style="width:64px;height:64px"></span><div class="lg-stack"><span class="t-callout t-strong">Sarah</span><span class="t-footnote c-3">Digital marketing manager</span></div></div>
       </div>
       <div class="mk-steps" id="lp">
         <div class="lg-glass mk-step lg-stack gap-1" data-rv data-step="0"><span class="mk-num">01 · YOU</span><span class="t-title3">Ask</span><div class="mk-mini"><span class="t-caption c-3">In Sarah's chat</span><div style="margin-top:6px">"<span id="lp-typed">Can we put something on the site about cherry blossom season in Japan?</span><span class="mk-caret" id="lp-caret" hidden style="height:13px"></span></div></div></div>
@@ -199,7 +166,7 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
           <div class="mk-nav">Clients</div><div class="mk-nav">SEO</div><div class="mk-nav">Write</div><div class="mk-nav">Social</div>
         </aside>
         <div class="mk-main">
-          <div class="lg-row lg-between" style="gap:12px;flex-wrap:wrap"><div class="lg-stack"><span class="t-title2">Good morning, Owner.</span><span class="t-footnote c-3"><?= e(date('l j F')) ?> · 7 of <?= $agentCount ?> agents on this workspace</span></div><span class="lg-badge lg-badge--success" style="height:30px;padding:0 12px"><span class="lg-dot"></span>LIVE</span></div>
+          <div class="lg-row lg-between" style="gap:12px;flex-wrap:wrap"><div class="lg-stack"><span class="t-title2">Good morning, Owner.</span><span class="t-footnote c-3">Tuesday 29 September · 7 of <?= (int) count($data['agents']) ?> agents on this workspace</span></div><span class="lg-badge lg-badge--success" style="height:30px;padding:0 12px"><span class="lg-dot"></span>LIVE</span></div>
           <div class="lg-grid-4" style="gap:12px">
             <div class="lg-glass lg-card lg-stat lg-card--lift" style="padding:14px 16px"><span class="t-eyebrow">Tasks done</span><span class="lg-stat__value" data-count="51">51</span><span class="t-caption c-2">+10 this week</span></div>
             <div class="lg-glass lg-card lg-stat lg-card--lift" style="padding:14px 16px"><span class="t-eyebrow">Content published</span><span class="lg-stat__value" data-count="2">2</span><span class="t-caption c-2">1 in draft</span></div>
@@ -229,7 +196,7 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
     </div>
   </section>
 
-  <?php /* 05 — CHATBOT */ ?>
+  <?php /* 05 — CHATBOT to lead (phones: only the chatbot888 interface, Owner 09-29) */ ?>
   <section class="mk-sec" id="bot" style="padding-top:40px">
     <div class="mk-wrap mk-two">
       <div class="lg-stack gap-4 mk-two__copy">
@@ -241,11 +208,10 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
           <div class="lg-row gap-3" id="bt-lead"><span class="lg-avatar" style="width:36px;height:36px;background:var(--success-soft);color:var(--success);font:700 14px/1 var(--font)">E</span><div class="lg-stack lg-grow"><span class="t-subhead t-strong">Emma · 07700 900412</span><span class="t-caption c-2">Japan honeymoon, two weeks in April</span></div><span class="lg-badge lg-badge--success">New lead</span></div>
           <span class="t-caption c-3" id="bt-nolead" hidden>Listening on saltmarsh.levelupgrowth.io…</span>
         </div>
-        <a class="t-footnote t-strong c-accent" data-rv href="/next/product/chatbot/">How the chatbot works <?= icon('arrow-right', 13) ?></a>
       </div>
       <div class="mk-frame lg-grow mk-frame--travel" data-rv style="min-width:0;height:470px">
         <div class="mk-frame__bar"><i></i><i></i><i></i><span class="mk-frame__url">saltmarsh.levelupgrowth.io</span></div>
-        <img src="<?= e($mk('tpl-resort.webp')) ?>" alt="Saltmarsh Travel website" width="1440" height="900" style="height:436px;object-fit:cover;object-position:top" loading="lazy" decoding="async">
+        <img src="<?= e($mv('templates/resort.webp')) ?>" alt="Saltmarsh Travel website" width="1440" height="900" style="height:436px;object-fit:cover;object-position:top" loading="lazy" decoding="async">
         <div class="lg-glass lg-glass--thick lg-stack mk-bot" id="bt">
           <div class="lg-row lg-between" style="padding:10px 14px;background:var(--brand-grad);color:#fff"><span class="t-subhead t-strong" style="color:#fff">Chat with us</span><span class="t-caption" style="color:#fff;opacity:.85">Saltmarsh Travel</span></div>
           <div class="lg-stack gap-2" style="padding:12px;min-height:190px">
@@ -280,7 +246,7 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
       <div class="lg-glass lg-card lg-stack gap-3" data-rv style="padding:28px">
         <span class="t-eyebrow">She is not doing it alone</span>
         <h3 class="t-title1" style="margin:0">Sarah brings in the right specialist.</h3>
-        <p class="t-body c-2" style="margin:0"><?= $specialists ?> specialists, one context, one approval queue. You only ever talk to Sarah.</p>
+        <p class="t-body c-2" style="margin:0"><?= (int) $specialists ?> specialists, one context, one approval queue. You only ever talk to Sarah.</p>
         <div class="lg-stack gap-2" id="tm" style="margin-top:6px">
           <div class="lg-row gap-3" style="min-height:40px"><img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="" width="34" height="34" style="width:34px;height:34px"><div class="lg-stack" style="width:150px;flex:none"><span class="t-subhead t-strong">Sarah</span><span class="t-caption c-3">Digital marketing manager</span></div><span class="mk-status" data-status="Planning October|Pricing a campaign|Reviewing James's audit|Briefing Priya"><i></i><span>Planning October</span></span></div>
           <div class="lg-row gap-3" style="min-height:40px"><img class="lg-avatar" src="<?= e($agentImg('priya')) ?>" alt="" width="34" height="34" style="width:34px;height:34px"><div class="lg-stack" style="width:150px;flex:none"><span class="t-subhead t-strong">Priya</span><span class="t-caption c-3">Content manager</span></div><span class="mk-status" data-status="Writing: cherry blossom guide|Fixing 3 meta descriptions|Drafting the menu page|Idle"><i></i><span>Writing: cherry blossom guide</span></span></div>
@@ -288,7 +254,7 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
           <div class="lg-row gap-3" style="min-height:40px"><img class="lg-avatar" src="<?= e($agentImg('marcus')) ?>" alt="" width="34" height="34" style="width:34px;height:34px"><div class="lg-stack" style="width:150px;flex:none"><span class="t-subhead t-strong">Marcus</span><span class="t-caption c-3">Social media manager</span></div><span class="mk-status" data-status="Scheduling Friday 9:00|Drafting a carousel|Idle|Reading the week's results"><i></i><span>Scheduling Friday 9:00</span></span></div>
           <div class="lg-row gap-3" style="min-height:40px"><img class="lg-avatar" src="<?= e($agentImg('elena')) ?>" alt="" width="34" height="34" style="width:34px;height:34px"><div class="lg-stack" style="width:150px;flex:none"><span class="t-subhead t-strong">Elena</span><span class="t-caption c-3">Lead and CRM manager</span></div><span class="mk-status" data-status="Logging Emma's enquiry|Idle|Reminder: call Priya Raman|Cleaning duplicates"><i></i><span>Logging Emma's enquiry</span></span></div>
         </div>
-        <a class="t-footnote t-strong c-accent" href="/next/product/ai-workforce/">Meet all <?= $agentCount ?> <?= icon('arrow-right', 13) ?></a>
+        <a class="t-footnote t-strong c-accent" href="/next/product/ai-workforce/" style="text-decoration:none">Meet the team</a>
       </div>
     </div>
   </section>
@@ -329,7 +295,7 @@ $agentImg = fn (string $slug) => '/img/agents/' . $slug . '.webp';
       <img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="" width="72" height="72" style="width:72px;height:72px">
       <h2 class="mk-h2">Give Sarah your business.</h2>
       <p class="mk-lead" style="text-align:center">She will tell you what she would do first.</p>
-      <div class="lg-row gap-3" style="flex-wrap:wrap;justify-content:center"><a class="lg-btn lg-btn--primary lg-btn--lg mk-btn" href="<?= $signup ?>" data-lu-signup id="cta-main" style="position:relative;overflow:hidden"><span class="lbl-out"><?= $ctaOut ?></span><span class="lbl-in">Dashboard</span><span id="cta-shine" aria-hidden="true" style="position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%);pointer-events:none"></span></a><a class="lg-btn lg-btn--glass lg-btn--lg mk-btn" href="/next/pricing/">See pricing</a></div>
+      <div class="lg-row gap-3" style="flex-wrap:wrap;justify-content:center"><a class="lg-btn lg-btn--primary lg-btn--lg mk-btn" href="<?= $signup ?>" data-lu-signup id="cta-main" style="position:relative;overflow:hidden"><span class="lbl-out"><?= e(cta_label($data)) ?></span><span class="lbl-in">Dashboard</span><span id="cta-shine" aria-hidden="true" style="position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.45) 50%,transparent 70%);transform:translateX(-120%);pointer-events:none"></span></a><a class="lg-btn lg-btn--glass lg-btn--lg mk-btn" href="/next/pricing/">See pricing</a></div>
     </div></div>
   </section>
 </div>

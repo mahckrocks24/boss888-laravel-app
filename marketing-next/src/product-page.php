@@ -1,7 +1,7 @@
 <?php
 /** @var array $page */ /** @var array $data */ /** @var array $p (product) */
 $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm'])));
-$fill = fn (string $s) => str_replace(['{industries}', '{specialists}'], [(string) $data['template_count'], (string) $specialists], $s);
+$fill = fn (?string $s) => str_replace(['{industries}', '{specialists}'], [(string) $data['template_count'], (string) $specialists], (string) $s);
 $page['title'] = $p['name'];
 $page['description'] = $p['description'] ?? ($fill($p['promise']) . ' ' . mb_substr($fill($p['lede']), 0, 120));
 $plans = $data['plans'];
