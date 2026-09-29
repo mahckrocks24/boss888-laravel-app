@@ -78,6 +78,7 @@ html[data-theme="dark"] .hx-say__av .lg-avatar { border-color: #15172A; }
 .mk-rail i { display: block; height: 100%; width: 100%; background: var(--brand-grad); transform-origin: left; }
 .mk-mini { margin-top: 12px; padding: 10px 12px; border-radius: 14px; background: var(--fill-hover); border: 1px solid var(--hairline); min-height: 78px; font-size: 13px; line-height: 18px; color: var(--ink); }
 .mk-app { display: flex; border-radius: 22px; overflow: hidden; min-height: 520px; }
+@media (min-width: 980px) { .mk-app { zoom: .85; } }   /* Owner 09-30: the Command Center panel 15% smaller */
 .mk-side { width: 200px; flex: none; padding: 18px 14px; display: flex; flex-direction: column; gap: 6px; border-right: 1px solid var(--hairline); }
 .mk-nav { height: 36px; border-radius: 10px; padding: 0 12px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--ink-2); }
 .mk-nav.is-on { background: var(--raised); color: var(--ink); font-weight: 600; box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge); }
