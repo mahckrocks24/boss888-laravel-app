@@ -46,9 +46,28 @@
   // PERF (2026-09-29): every element is READ first, then all changes are WRITTEN in one go. Reading after
   // each write forced a fresh layout per element: a 166-row AEO list took 47 s instead of 50 ms.
   function isButton(el) { return el.tagName === 'BUTTON' || el.getAttribute('role') === 'button' || (el.tagName === 'A' && /btn|button/.test(el.className)); }
+  // phone table cards (lug-glass.css): each SEO table cell carries its column name so a row can read as a card
+  function headerFor(td, hr) {
+    var col = 0; for (var c = td.parentElement.firstElementChild; c && c !== td; c = c.nextElementSibling) col += c.colSpan || 1;
+    var i = 0; for (var h = hr.firstElementChild; h; h = h.nextElementSibling) { if (col >= i && col < i + (h.colSpan || 1)) return h.textContent.replace(/\s+/g, ' ').trim(); i += h.colSpan || 1; }
+    return '';
+  }
+  function cellLabel(el, w) {
+    if (el.tagName !== 'TD' || el.hasAttribute('data-label')) return;
+    var tb = el.closest('table.lgse-table'); if (!tb || !tb.tHead) return;
+    var hr = tb.tHead.rows[tb.tHead.rows.length - 1]; if (!hr) return;
+    var lbl = headerFor(el, hr);
+    w.push(['@data-label', lbl]);
+    // the row's title = its first cell with a column name (checkbox / expand cells before it stay small)
+    if (lbl) {
+      for (var p = el.previousElementSibling; p; p = p.previousElementSibling) if (headerFor(p, hr)) return;
+      w.push(['@data-lg-title', '']);
+    }
+  }
   function plan(el, out) {
     if (el.nodeType !== 1 || el.closest(SKIP)) return;
     var cs = null, w = [];
+    cellLabel(el, w);
     if (isButton(el) && !el.closest(NO_SHAPE)) {
       var r = el.getBoundingClientRect();
       if (r.width && r.height >= 24 && r.height <= 60 && r.width <= 420) {
@@ -83,7 +102,7 @@
   function apply(out) {
     for (var i = 0; i < out.length; i++) {
       var el = out[i][0], w = out[i][1];
-      for (var k = 0; k < w.length; k++) el.style.setProperty(w[k][0], w[k][1], 'important');
+      for (var k = 0; k < w.length; k++) { if (w[k][0].charAt(0) === '@') el.setAttribute(w[k][0].slice(1), w[k][1]); else el.style.setProperty(w[k][0], w[k][1], 'important'); }
     }
   }
   function collect(node, out) {

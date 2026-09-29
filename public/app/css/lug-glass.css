@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1u 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2b 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -1002,3 +1002,48 @@ html.lg-ui #cmd-kpis { overflow: visible !important; }
 html.lg-ui .cmd-kpi { padding-left: 16px !important; }
 html.lg-ui .cmd-kpi::before { display: none !important; }
 html.lg-ui .cmd-kpi-label { letter-spacing: .04em !important; }
+
+/* SEO ring tracks: today's dark track colour reads as a heavy black ring in light mode */
+html.lg-ui circle[stroke="#1e2235"], html.lg-ui circle[stroke="#1e293b"] { stroke: var(--lg-hairline); }
+
+/* PHONES — nothing hidden off the side (Owner 09-29: stat cards cut off, table columns cut off, empty gaps).
+   Stat grids: two columns that wrap (today's phone layer made them a sideways strip that clipped cards and shadows).
+   SEO tables: each row reads as a card — the first cell is the title, every other value sits under its column name. */
+@media (max-width: 767px) {
+  html.lg-ui [id^="view-"] :is(.lgse-kpi-grid, [style*="grid-template-columns:repeat(4,1fr)"], [style*="grid-template-columns:repeat(5,1fr)"], [style*="grid-template-columns:repeat(6,1fr)"]) {
+    display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; overflow: visible !important; padding-bottom: 0 !important; contain: none !important; gap: 10px !important; }
+  html.lg-ui [id^="view-"] :is(.lgse-kpi-grid, [style*="grid-template-columns:repeat(4,1fr)"], [style*="grid-template-columns:repeat(5,1fr)"], [style*="grid-template-columns:repeat(6,1fr)"]) > * {
+    width: auto !important; min-width: 0 !important; }
+  html.lg-ui [id^="view-"] .lgse-kpi-grid > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  html.lg-ui .lu-tscroll:has(> table.lgse-table), html.lg-ui div:has(> table.lgse-table) { overflow-x: visible !important; contain: none !important; }
+  html.lg-ui table.lgse-table { display: block !important; width: 100% !important; min-width: 0 !important; overflow: visible !important; }
+  html.lg-ui table.lgse-table thead { display: none !important; }
+  html.lg-ui table.lgse-table tbody { display: block !important; }
+  html.lg-ui table.lgse-table tr { display: flex !important; flex-wrap: wrap; align-items: flex-start; gap: 8px 18px; padding: 12px 14px; border-bottom: 1px solid var(--lg-hairline); }
+  html.lg-ui table.lgse-table tr:last-child { border-bottom: 0; }
+  html.lg-ui table.lgse-table td { display: block !important; padding: 0 !important; border: 0 !important; white-space: normal !important; min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere; }
+  html.lg-ui table.lgse-table td { text-align: left !important; }
+  html.lg-ui table.lgse-table td[data-lg-title] { flex: 1 1 0; min-width: 60% !important; font-weight: 600; order: -1; }
+  html.lg-ui table.lgse-table td[data-label=""] { flex: 0 0 auto; order: -2; align-self: center; }
+  html.lg-ui table.lgse-table td[data-lg-title] ~ td[data-label]:not([data-label=""]) { order: 0; }
+  html.lg-ui table.lgse-table td[colspan] { flex: 1 1 100%; text-align: center !important; }
+  html.lg-ui table.lgse-table td[data-label]:not([data-label=""]):not([data-lg-title])::before {
+    content: attr(data-label); display: block; margin-bottom: 3px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--lg-ink-3); }
+  html.lg-ui table.lgse-table .lgse-url, html.lg-ui table.lgse-table .lgse-url a { max-width: 100%; }
+}
+
+/* SEO SUB-TABS (Pages: Indexed Content / Images / CTR Optimizer, and the other engine sub-views): same track as the
+   engine tabs; today the row scrolled 1px shorter than the raised tab and cut it off at the bottom */
+html.lg-ui .lgse-subtabs { display: flex; width: max-content; max-width: 100%; gap: 4px; padding: 4px !important; margin-bottom: 14px;
+  background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline) !important; border-radius: 999px;
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none; box-sizing: border-box; }
+html.lg-ui .lgse-subtab { border: 0 !important; border-radius: 999px !important; min-height: 36px !important; height: auto !important;
+  padding: 0 14px !important; display: inline-flex; align-items: center; white-space: nowrap; color: var(--lg-ink-2) !important; background: transparent !important; box-shadow: none; }
+html.lg-ui .lgse-subtab.active { background: var(--lg-raised) !important; color: var(--lg-ink) !important; font-weight: 600;
+  box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge) !important; }
+/* filter chips (All / Low score / Missing title): true capsules at the phone's 44px touch height */
+html.lg-ui .lgse-fp { border-radius: 999px !important; display: inline-flex !important; align-items: center; justify-content: center; }
+/* Audit issue categories: a long name and its badge wrap inside the tile instead of spilling out */
+html.lg-ui .lgse-cat-item { min-width: 0; flex-wrap: wrap; row-gap: 4px; }
+html.lg-ui .lgse-cat-item > * { min-width: 0; }
