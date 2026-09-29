@@ -177,3 +177,18 @@ html .lg-site .lg.mk, html .lg-site .lg .lg { background: transparent; }
   html .lg-site > .lg-aurora i:nth-child(2) { width: 140%; right: -75%; top: 28%; }
   html .lg-site > .lg-aurora i:nth-child(3) { width: 150%; left: -35%; bottom: -36%; }
 }
+
+/* 15. phones (Owner 09-30 'getting glitches on fast scrolling', Android): a phone GPU cannot re-blur three viewport-size blobs and a backdrop blur on every card while it scrolls fast, and leaves tiles unpainted.
+   On phones the aurora is one static gradient (no filter, no layers) and only the header, the menus and the hero frost keep a backdrop blur; cards use the thick glass so they still read as glass. */
+@media (max-width: 979px) {
+  html .lg-site > .lg-aurora { background:
+      radial-gradient(90% 55% at 8% 4%, var(--blob-violet), transparent 70%),
+      radial-gradient(90% 55% at 100% 42%, var(--blob-blue), transparent 70%),
+      radial-gradient(100% 60% at 20% 100%, var(--blob-aqua), transparent 70%);
+    will-change: auto; transform: none; }
+  html .lg-site > .lg-aurora i { display: none; }
+  html .lg-site > .lg-aurora::after { display: none; }
+  html .lg-site * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; will-change: auto !important; }
+  html .lg-site header, html .lg-site .site-header, html .lg-site .nav-mobile, html .lg-site .hx-frost { -webkit-backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)) !important; backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)) !important; }
+  html .lg-site .lg-glass, html .lg-site .card, html .lg-site .plan, html .lg-site .post-card, html .lg-site .lv { background: var(--glass-thick); }
+}
