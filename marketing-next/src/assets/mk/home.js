@@ -8,7 +8,8 @@
   var phone = function () { return window.innerWidth <= 979; };
   // Owner 09-29: on phones every area starts the moment it reaches the middle of the screen, no waiting for a
   // share of it to be visible. The root is the top half of the viewport, so any part crossing the middle counts.
-  var MID = { amount: 0, margin: '0px 0px -50% 0px' };
+  // Owner 2026-09-30: no waiting - on phones a block comes in as soon as any part of it is about to enter the screen
+  var MID = { amount: 0, margin: '0px 0px 12% 0px' };
   var iv = function (desk) { return phone() ? MID : desk; };
   var $ = function (s, r) { return (r || document).querySelector(s); };
   var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
@@ -82,7 +83,6 @@
       await wait(250); await talk(sarah);
       for (var i = 0; i < order.length; i++) { await wait(900 + Math.random() * 800); if (!live()) return; await talk(order[i]); }
       fx('arthur', false);
-      if (phone()) { running = false; done = true; return; }   // phones: played once, the team stays on screen
       await wait(4600);
       if (!live()) return;
       // Owner 2026-09-30: no flying tagline. The thread fades, the frost lifts, and the build simply starts again.
@@ -90,14 +90,9 @@
       await M.animate(frost, { opacity: [1, 0] }, { duration: .5 });
       running = false; if (visible) run();
     }
-    M.inView('#hx', function () { visible = true; if (!running && !done) run(); return function () { visible = false; }; }, iv({ amount: .35 }));
-    // phones: only truly scrolling PAST the card (its bottom above the top of the screen) ends the play, finished, for good;
-    // a card that is merely low on the screen, or a viewport that shifts under a touch, never counts
-    if (phone()) M.inView('#hx', function () { return function (entry) {
-      var top = entry && entry.boundingClientRect ? entry.boundingClientRect.bottom <= 0 : $('#hx').getBoundingClientRect().bottom <= 0;
-      if (top && running) { gen++; running = false; done = true; finish(); }
-    }; }, { amount: 0 });
-    setTimeout(function () { if (!visible && !running) finish(); }, 100);
+    M.inView('#hx', function () { visible = true; if (!running) run(); return function () { visible = false; }; }, iv({ amount: .35 }));
+    // before the block is reached: desktop shows the finished state at rest, phones wait empty so the thread only ever arrives one message at a time
+    setTimeout(function () { if (!visible && !running) { if (phone()) reset(); else finish(); } }, 100);
   })();
 
   // 3. SECTION REVEALS: one rule for the whole page — below the fold only, once, staggered
@@ -126,7 +121,7 @@
     });
     // nothing may stay hidden: after 7 s anything that should have shown by now is shown (on phones only what has
     // already passed the middle of the screen; the rest still waits for its turn)
-    setTimeout(function () { pending.forEach(function (el) { if (!phone() || el.getBoundingClientRect().top < window.innerHeight * .5) el.style.opacity = 1; }); }, 7000);
+    setTimeout(function () { pending.forEach(function (el) { el.style.opacity = 1; }); }, 5000);   // nothing may stay hidden
   })();
 
   // 4. THE LOOP: five steps as one sequence, the rail linked to it — loops while on screen
@@ -194,16 +189,16 @@
   // 7. REVIEW QUEUE: approve, the card leaves, the gap closes, the queue clears — loops while on screen
   (function () {
     var cards = $$('.rq-card'), clear = $('#rq-clear'), pend = $('#rq-pending'), visible = false, running = false;
-    function reset() { cards.forEach(function (c) { c.hidden = false; c.style.cssText = 'padding:10px 12px;border-radius:14px;overflow:hidden'; $('.rq-pulse', c).hidden = true; }); show(clear, false); pend.textContent = '3'; }
+    function reset() { cards.forEach(function (c) { c.hidden = false; c.style.cssText = 'padding:10px 12px;border-radius:14px;overflow:hidden;transform:none'; $('.rq-pulse', c).hidden = true; }); show(clear, false); pend.textContent = '3'; }
     async function leave(c) {
-      await M.animate(c, { opacity: [1, 0], x: [0, 40], scale: [1, .96] }, { duration: .4, ease: [.32, .72, 0, 1] });
+      await M.animate(c, { opacity: [1, 0], transform: ['none', 'translateX(40px) scale(.96)'] }, { duration: .4, ease: [.32, .72, 0, 1] });
       var h = c.offsetHeight;
       await M.animate(c, { height: [h + 'px', '0px'], marginTop: ['0px', '-10px'], paddingTop: ['10px', '0px'], paddingBottom: ['10px', '0px'] }, { duration: .35, ease: [.32, .72, 0, 1] });
       c.hidden = true;
     }
     async function run() {
       running = true; fx('queue', true); reset();
-      await M.animate(cards, { opacity: [0, 1], y: [10, 0] }, { delay: M.stagger(.1), duration: .4 });
+      await M.animate(cards, { opacity: [0, 1], transform: ['translateY(10px)', 'none'] }, { delay: M.stagger(.1), duration: .4 });
       for (var i = 0; i < cards.length; i++) {
         var c = cards[i], p = $('.rq-pulse', c), b = $('.rq-approve', c);
         await wait(900); p.hidden = false; await wait(1200); p.hidden = true;

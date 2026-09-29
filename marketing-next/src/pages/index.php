@@ -31,7 +31,7 @@ $groups = [
 // media carries a content hash so a re-encode can never be served from a stale edge
 $mv = function (string $file): string { $p = dirname(__DIR__) . '/assets/product/' . $file; return '/next/assets/product/' . $file . (is_file($p) ? '?v=' . substr(md5_file($p), 0, 8) : ''); };
 $mk = function (string $f): string { $p = dirname(__DIR__) . '/assets/mk/' . $f; return '/next/assets/mk/' . $f . (is_file($p) ? '?v=' . substr(md5_file($p), 0, 8) : ''); };
-// the template strip: one of each hero family in turn (light copy, form card, dark) so no two alike sit side by side (Owner 09-29)
+// the strip of sites Arthur built: one of each hero family in turn (light copy, form card, dark) so no two alike sit side by side (Owner 09-29)
 $tpls = [['restaurant', 'Restaurant'], ['hotel', 'Hotel'], ['aesthetic_clinic', 'Aesthetic clinic'], ['gym', 'Gym'], ['dental', 'Dental'], ['cafe', 'Café'], ['resort', 'Resort'], ['interior_design', 'Interior design'], ['ecommerce', 'Shop'], ['architecture', 'Architecture'], ['catering', 'Catering'], ['consulting', 'Consulting']];
 $tpls = array_values(array_filter($tpls, fn ($t) => is_file(dirname(__DIR__) . '/assets/product/templates/' . $t[0] . '.webp')));
 $page['head'] = '<script>/* GLASS-HOME: the home follows the device (Owner 2026-09-29); the header floats as glass here */try{document.documentElement.classList.add("mk-home");var t=localStorage.getItem("lug_theme");if(!t&&window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}</script>' . "\n"
@@ -117,9 +117,9 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
     <button class="mk-scroll" data-hero="6" type="button" aria-label="Scroll down"><span>Scroll</span><i></i></button>
   </section>
 
-  <?php /* 02 — TEMPLATES: the library glides past (no count: Owner rule) */ ?>
+  <?php /* 02 — SITES ARTHUR BUILT glide past. Owner rules: never the word "template" (Arthur builds from scratch, we are just fast), no count, no link. */ ?>
   <section class="mk-tpls" id="tpls">
-    <div class="mk-wrap lg-row lg-between" style="margin-bottom:18px;gap:12px;flex-wrap:wrap"><span class="t-eyebrow" data-rv>Websites Arthur builds, for every kind of business</span><a class="t-footnote t-strong c-accent" href="/next/templates/" data-rv style="text-decoration:none">Browse the template library</a></div>
+    <div class="mk-wrap lg-row lg-between" style="margin-bottom:18px;gap:12px;flex-wrap:wrap"><span class="t-eyebrow" data-rv>Websites Arthur builds, for every kind of business</span></div>
     <div class="mk-glide-wrap">
       <div class="mk-glide" id="mk-glide">
         <?php foreach ([false, true] as $copy): foreach ($tpls as [$slug, $name]): ?>
