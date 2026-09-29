@@ -120,3 +120,16 @@ html .lg-site .footer-bottom { border-color: var(--hairline); }
 /* 8. reveals: hidden by the script only, never by CSS (no-JS readers see everything) */
 html .lg-site [data-lg-rv] { will-change: transform, opacity; }
 @media (prefers-reduced-motion: reduce) { html .lg-site .lg-aurora { display: none; } }
+
+/* 9. rhythm: lug-glass zeroes every margin for the app; the site's reading rhythm comes back here (the home and the live panels keep theirs) */
+html .lg-site h1, html .lg-site h2, html .lg-site h3, html .lg-site h4 { margin: 0 0 .5em; }
+html .lg-site p { margin: 0 0 1em; }
+html .lg-site .lede { margin: 0 0 1.4em; }
+html .lg-site .lg.mk :is(h1, h2, h3, h4, p), html .lg-site .lv :is(h1, h2, h3, h4, p) { margin: 0; }
+html .lg-site .section { padding: 84px 0; }
+html .lg-site .section-tight { padding: 56px 0; }
+html .lg-site .page-head { padding-top: 48px; }
+html .lg-site .matrix thead th { position: static; background: var(--glass-thick); }
+html .lg-site .tbl, html .lg-site .matrix-wrap { border-radius: var(--r-lg); }
+html .lg-site input[type=password] { padding-right: 68px; }
+html .lg-site input::-ms-reveal, html .lg-site input::-webkit-credentials-auto-fill-button { display: none; }
