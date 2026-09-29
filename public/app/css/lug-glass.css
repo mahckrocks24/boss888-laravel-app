@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2g 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2h 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -1103,3 +1103,22 @@ html.lg-ui :is(.modal-close, .lbc-x, .wr-delete-btn, .wsv2-tn-close, .wsv2-act-c
 /* drawn selects (LUSelect) read at the same size as the text around them (Owner phone review: "oversized dropdown text") */
 html.lg-ui .lu-sel, html.lg-ui .lu-sel * { font-size: 13px !important; }
 html.lg-ui .lu-sel { min-height: 40px; }
+
+/* BASIC MODE / NEEDS ATTENTION (Owner 09-29: "is this already the updated card design for glass?" - it was not):
+   the page shows the gradient, sections are glass, each item is a thin glass row, and the item's state (waiting,
+   booked, gated, failed) lives in the icon disc's colour instead of a thick coloured left rail. */
+html.lg-ui .bs { background: transparent !important; }
+html.lg-ui .bs-sec { background: var(--lg-glass) !important; -webkit-backdrop-filter: blur(var(--lg-blur-2)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-2)) saturate(var(--lg-glass-sat));
+  border: 1px solid var(--lg-rim) !important; border-radius: var(--lg-r-lg) !important; box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-2); }
+html.lg-ui .bs-row { background: var(--lg-glass-thin) !important; border: 1px solid var(--lg-hairline) !important; border-radius: 18px !important; box-shadow: inset 0 1px 0 var(--lg-rim-top); }
+html.lg-ui .bs-row.att, html.lg-ui .bs-row.gate, html.lg-ui .bs-row.book, html.lg-ui .bs-row.fail { border-left: 1px solid var(--lg-hairline) !important; }
+html.lg-ui .bs-row .ic { width: 38px !important; height: 38px !important; background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline); box-shadow: inset 0 1px 0 var(--lg-rim-top); }
+html.lg-ui .bs-row.att .ic { background: var(--lg-warning-soft) !important; color: var(--lg-warning); border-color: transparent; }
+html.lg-ui .bs-row.book .ic { background: var(--lg-success-soft) !important; color: var(--lg-success); border-color: transparent; }
+html.lg-ui .bs-row.gate .ic { background: var(--lg-info-soft) !important; color: var(--lg-info); border-color: transparent; }
+html.lg-ui .bs-row.fail .ic { background: var(--lg-danger-soft) !important; color: var(--lg-danger); border-color: transparent; }
+html.lg-ui .bs-kpi { background: var(--lg-glass-thin) !important; border: 1px solid var(--lg-hairline) !important; border-radius: 18px !important; }
+html.lg-ui .n { background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline); }
+html.lg-ui .bs-tag { background: var(--lg-fill-hover) !important; }
+html.lg-ui .bs-empty { border-color: var(--lg-hairline) !important; border-radius: 18px !important; }
+html.lg-ui .bs-reason { background: var(--lg-solid) !important; border: 1px solid var(--lg-hairline) !important; border-radius: 14px !important; }
