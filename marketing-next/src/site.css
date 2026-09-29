@@ -1847,3 +1847,16 @@ html.ax-active #cb888-bubble,html.ax-active #cb888-panel,html.ax-active #cb888-b
    fixed-bottom toast rises above the keyboard. html.kb-open + --kb/--ax-vvh/--ax-vvt are kept by site.js. */
 html.kb-open #ax.ax-tall{bottom:auto;top:calc(64px + var(--ax-vvt,0px));height:var(--ax-vvh,calc(100dvh - 64px))}
 html.kb-open .ax-toast{bottom:calc(26px + var(--kb,0px))}
+
+/* GLASS-HOME-1 (2026-09-29): the home follows the device. On a light device the hero (built dark-only) takes the site's
+   light palette; the Arthur panel and the design gallery stay their dark selves, like the CTA capsule. */
+html[data-theme="light"] .hero-mr h1{color:#050505}
+html[data-theme="light"] .hero-mr .hero-sub{color:#555555}
+html[data-theme="light"] .hero-mr .fine{color:#6B6B6B}
+html[data-theme="light"] .pill{border-color:rgba(15,13,10,.12);background:rgba(255,255,255,.6);color:#3D3D3D}
+html[data-theme="light"] .scroll-cue{color:#6B6B6B}
+html[data-theme="light"] .scroll-cue:hover{color:#050505}
+html[data-theme="light"] .btn-glow::before{opacity:.6}
+html[data-theme="light"] .nav-toggle{border-color:#DDDDDD;color:#050505}
+html[data-theme="light"] .tg-name{color:#050505}
+html[data-theme="light"] .tg-ind,html[data-theme="light"] .tg-legend{color:#6B6B6B}
