@@ -28,7 +28,11 @@ html .lg-site h1, html .lg-site h2, html .lg-site h3, html .lg-site h4 { color: 
 html .lg-site .fine, html .lg-site .mono { color: var(--ink-3); }
 html .lg-site .eyebrow { color: var(--accent-text); }
 html .lg-site .eyebrow-badge { background: var(--tint); border-color: var(--tint-rim); color: var(--accent-text); }
-html .lg-site a { color: var(--accent-text); }
+html .lg-site a:not(.btn):not(.btn-glow):not(.lg-btn) { color: var(--accent-text); }
+/* buttons keep their own text colour whatever the link colour is (Owner: the $49 and closing CTAs lost contrast) */
+html .lg-site a.lg-btn, html .lg-site .lg-btn { color: var(--ink); }
+html .lg-site a.lg-btn--primary, html .lg-site .lg-btn--primary, html .lg-site a.btn-primary, html .lg-site a.btn-glow { color: #fff; }
+html .lg-site a.lg-btn--primary:hover, html .lg-site a.btn-primary:hover { color: #fff; }
 
 /* 2. header: a floating glass bar (the same bar the home has); pages keep clear of it */
 html .lg-site .site-header { position: fixed; left: 16px; right: 16px; top: 12px; z-index: 50; border-radius: 18px; border: 1px solid var(--rim);
