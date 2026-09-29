@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2f 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg2g 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -1099,3 +1099,7 @@ html.lg-ui :is(.modal-close, .lbc-x, .wsv2-tn-close, .wsv2-act-close, .st-prod-o
 html.lg-ui :is(.lg-stat__value, .lg-kv > span:last-child, .t-num, .lg-zoom__val) { font-family: var(--lg-font) !important; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 html.lg-ui.lg-ui { --lgse-mono: var(--lg-font); --fm: var(--lg-font); }   /* the SEO engine's mono token becomes the platform face */
 html.lg-ui :is(.modal-close, .lbc-x, .wr-delete-btn, .wsv2-tn-close, .wsv2-act-close, .st-prod-ov-close, .sh-lb-close, .lu-mp-x, .lu-att-x, .bz-pf-x, .lu-toast-x, .lu-dlg-x) { aspect-ratio: 1 / 1; width: auto !important; }
+
+/* drawn selects (LUSelect) read at the same size as the text around them (Owner phone review: "oversized dropdown text") */
+html.lg-ui .lu-sel, html.lg-ui .lu-sel * { font-size: 13px !important; }
+html.lg-ui .lu-sel { min-height: 40px; }
