@@ -1955,7 +1955,7 @@ HTML;
       window.LU_CHATBOT_TOKEN = "{$tokenSafe}";
       window.LU_CHATBOT_API   = "{$apiBase}";
     </script>
-    <script src="{$apiBase}/chatbot-widget.js?v=20260923-look" defer></script>
+    <script src="{$apiBase}/chatbot-widget.js?v=20260929-tok" data-token="{$tokenSafe}" data-api="{$apiBase}/api/public/chatbot" defer></script>
 HTML;
     }
 

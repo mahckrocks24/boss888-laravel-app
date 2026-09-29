@@ -4561,7 +4561,7 @@ document.addEventListener("DOMContentLoaded",function(){
   });
 });
 </script>';
-    $html = str_replace('chatbot-widget.js?v=20260528-color', 'chatbot-widget.js?v=20260923-look', $html);   // CHATBOT-LOOK-1
+    $html = str_replace(['chatbot-widget.js?v=20260528-color', 'chatbot-widget.js?v=20260923-look', 'chatbot-widget.js?v=20260925-ai'], 'chatbot-widget.js?v=20260929-tok', $html);   // CHATBOT-LOOK-1 + CBTOK-1
     // HAMB-1 (2026-09-23): the preview shows the nav build the live site is served with (the block is versioned and replaced)
     try { $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html); } catch (\Throwable $e) {}
     if ($mode === 'view') {

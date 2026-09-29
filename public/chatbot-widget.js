@@ -7,11 +7,11 @@
     return s[s.length - 1];
   })();
 
-  var TOKEN    = script.getAttribute('data-token') || '';
+  var TOKEN    = script.getAttribute('data-token') || (window.LU_CHATBOT_TOKEN ? String(window.LU_CHATBOT_TOKEN) : '');   // CBTOK-1: template/builder sites pass the token on window
   var COLOR    = script.getAttribute('data-color') || '#6C5CE7';
   var THEME    = script.getAttribute('data-theme') || 'auto';
   var POSITION = script.getAttribute('data-position') || 'bottom-right';
-  var API      = script.getAttribute('data-api') || (window.location.origin + '/api/public/chatbot');
+  var API      = script.getAttribute('data-api') || (window.LU_CHATBOT_API ? String(window.LU_CHATBOT_API).replace(/\/+$/, '') + '/api/public/chatbot' : (window.location.origin + '/api/public/chatbot'));   // CBTOK-1: a custom domain talks to the platform, not to itself
   var ICON     = script.getAttribute('data-icon') || '';
   var BUBBLE   = script.getAttribute('data-bubble') || '';
   var GRAD     = script.getAttribute('data-gradient') || '';
