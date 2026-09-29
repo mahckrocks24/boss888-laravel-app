@@ -353,11 +353,12 @@ async function render() {
         else if (S.tab === 'clients') body = listHtml();
         else if (S.tab === 'board') body = boardHtml();
         else if (S.tab === 'reports') body = reportHtml();
-        else if (S.tab === 'settings') body = setupHtml();
+        else if (S.tab === 'settings') body = setupHtml() + '<section class="crm2-card" style="margin-top:16px"><div class="crm2-sec"><h4>Card payments</h4><div id="crm2-pay" class="crm2-note">Loading…</div></div></section>';
         else body = todayHtml();
         el.innerHTML = S.tab === 'record' ? '<div class="crm2">' + body + '</div>' : shell(body);
         if (S.tab === 'board') wireBoard();
         if (S.tab === 'settings' && S.biz && S.biz !== 'none') loadAutoreply();
+        if (S.tab === 'settings') loadPayCard();
     } catch (e) {
         console.error('[Clients] render', e);
         el.innerHTML = '<div class="crm2-empty"><b>Something went wrong showing this page.</b>' + esc(e.message) + '<div style="margin-top:12px"><button class="btn btn-outline" onclick="window.crmLoad(document.getElementById(\'crm-root\'))">Try again</button></div></div>';
@@ -653,6 +654,33 @@ function setupHtml() {
      '<input class="form-input" name="o" placeholder="Choices, separated by commas (for Choice)" style="grid-column:1 / -1"><button class="btn btn-outline btn-sm" type="submit" style="grid-column:1 / -1">' + I('add', 14) + ' Add detail</button></form></div></section></div>';
 }
 
+async function payApi(method, path, body) {
+    var res = await fetch('/api/builder/store-payments' + path, {method: method, headers: hdr(), body: body ? JSON.stringify(body) : undefined});
+    var j = {}; try { j = await res.json(); } catch (e) {}
+    if (!res.ok || j.success === false) throw new Error(j.message || ('HTTP ' + res.status));
+    return j;
+}
+async function startStripe(btn) {
+    if (btn) btn.disabled = true;
+    try { var j = await payApi('POST', '/connect-stripe', {back: 'crm'}); if (j.url) { location.href = j.url; return; } toast(j.message || 'Connected.'); loadPayCard(); }
+    catch (e) { toast(e.message, 'error'); if (btn) btn.disabled = false; }
+}
+async function loadPayCard() {
+    var box = document.getElementById('crm2-pay'); if (!box) return;
+    try {
+        var st = await payApi('GET', '');
+        box.className = '';
+        if (st.connected) {
+            box.innerHTML = '<div class="crm2-note">' + esc(st.message) + '</div><div class="crm2-note" style="margin-top:6px">' + esc(st.currency || '') + (st.via === 'connect' ? '' : ' · key ' + esc(st.key_hint || '')) + '</div>' +
+                '<div style="margin-top:10px"><button class="btn btn-outline btn-sm" onclick="window._crm2.payOff(this)">' + (st.via === 'connect' ? 'Turn off payments' : 'Disconnect') + '</button></div>';
+            return;
+        }
+        if (!st.connect_available) { box.innerHTML = '<div class="crm2-note">' + esc(st.message) + ' Open a website\'s settings › Payments to add a Stripe key.</div>'; return; }
+        box.innerHTML = '<div class="crm2-note">' + (st.onboarding ? esc(st.message) : 'Let clients pay quotes, deposits and invoices by card. The money goes straight to your own Stripe account; a ' + esc(String(st.fee_pct)) + '% platform fee applies to each payment. Stripe asks for your business and bank details once.') + '</div>' +
+            '<div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="window._crm2.stripe(this)">' + (st.onboarding ? 'Continue with Stripe' : 'Connect with Stripe') + '</button></div>';
+    } catch (e) { box.textContent = 'Could not load payment settings.'; }
+}
+
 async function loadAutoreply() {
     var box = document.getElementById('crm2-ar'); if (!box) return;
     try {
@@ -702,6 +730,13 @@ function fld(id, label, type, val, extra) { return '<div class="crm2-field" styl
 // ── actions ─────────────────────────────────────────────────────────────────
 window.S_clearImport = function () { S.lastImport = null; render(); };
 window._crm2 = {
+    stripe: function (btn) { return startStripe(btn); },   // PAY-CONNECT-1
+    payOff: async function (btn) {
+        var ok = true; try { if (typeof luConfirm === 'function') ok = await luConfirm('Turn off card payments? Pay buttons stop working until you connect again.'); } catch (e) {}
+        if (!ok) return; btn.disabled = true;
+        try { var j = await payApi('DELETE', ''); toast(j.message || 'Payments turned off.'); } catch (e) { toast(e.message, 'error'); }
+        loadPayCard();
+    },
     tab: function (t) { go(t); },
     biz: async function (v, tab) {
         S.biz = v || ''; try { v ? localStorage.setItem(BIZ_KEY, v) : localStorage.removeItem(BIZ_KEY); } catch (e) {}
@@ -994,6 +1029,15 @@ function bootCached() {
 }
 window.crmLoad = async function (el) {
     if (!el) return;
+    var sq = ''; try { sq = new URLSearchParams(location.search).get('stripe') || ''; if (sq) history.replaceState(history.state, '', location.pathname + location.hash); } catch (x) {}
+    if (sq === 'refresh') { busy(el); return startStripe(null); }   // PAY-CONNECT-1: Stripe's link expired — open a fresh one
+    if (sq === 'return') {
+        busy(el);
+        try { await boot(); } catch (e) {}
+        S.tab = 'settings'; render();
+        try { var ps = await payApi('GET', ''); toast(ps.connected ? 'Stripe is connected. Clients can pay you by card.' : 'Stripe still needs a few details. Press Continue with Stripe when you are ready.', ps.connected ? 'success' : 'info'); } catch (e) {}
+        return;
+    }
     var curWs = ''; try { curWs = localStorage.getItem('lu_workspace_id') || ''; } catch (x) {}
     if (S._ws !== curWs) { S.setup = null; S.today = null; S.drafts = []; S.rec = null; }   // another workspace: never show the last one's clients
     S._ws = curWs;

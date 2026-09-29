@@ -96,6 +96,12 @@ use Illuminate\Support\Facades\Route;
             if (! empty($res['success'])) { foreach (\Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->whereNull('deleted_at')->pluck('id') as $sid) { try { app(\App\Engines\Builder\Services\CatalogueService::class)->sync((int) $sid, null, 'payments_on'); } catch (\Throwable $e) {} } }
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
+        // PAY-CONNECT-1: connect the business's Stripe account through the platform (1% platform fee per payment)
+        Route::post('/store-payments/connect-stripe', function (\Illuminate\Http\Request $r) use ($pay) {
+            $back = rtrim((string) config('app.url'), '/') . '/app/' . (in_array($r->input('back'), ['crm', 'websites'], true) ? $r->input('back') : 'crm');
+            $res = app($pay)->connectStart((int) $r->attributes->get('workspace_id'), (string) optional($r->user())->email, $back);
+            return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
         Route::delete('/store-payments', function (\Illuminate\Http\Request $r) use ($pay) {
             $res = app($pay)->disconnect((int) $r->attributes->get('workspace_id'));
             foreach (\Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->whereNull('deleted_at')->pluck('id') as $sid) { try { app(\App\Engines\Builder\Services\CatalogueService::class)->sync((int) $sid, null, 'payments_off'); } catch (\Throwable $e) {} }

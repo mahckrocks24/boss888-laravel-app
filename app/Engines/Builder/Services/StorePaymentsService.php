@@ -30,16 +30,102 @@ class StorePaymentsService
     public function status(int $wsId): array
     {
         $a = $this->account($wsId);
-        if (! $a) return ['connected' => false, 'message' => 'No payment account connected. Paste a Stripe restricted key to take payments on your site.'];
+        if ($a && $this->isConnect($a) && $a->status !== 'active' && $a->connect_state !== 'disconnected') { $this->connectRefresh($wsId); $a = $this->account($wsId); }   // PAY-CONNECT-1: back from Stripe
+        $cx = ['connect_available' => $this->connectAvailable(), 'fee_pct' => $this->feePct($a)];
+        if ($a && $this->isConnect($a) && $a->status !== 'active') {
+            return $cx + ['connected' => false, 'via' => 'connect', 'onboarding' => $a->connect_state !== 'disconnected',
+                'message' => $a->connect_state === 'disconnected' ? 'Payments are off. Connect Stripe again to take payments.' : 'Stripe still needs a few details before you can take payments. Continue where you left off.'];
+        }
+        if (! $a) return $cx + ['connected' => false, 'message' => 'No payment account connected. Connect Stripe to take card payments.'];
+        if ($this->isConnect($a)) {
+            $orders = DB::table('catalogue_orders')->where('workspace_id', $wsId)->selectRaw("count(*) as n, sum(case when status='paid' then 1 else 0 end) as paid")->first();
+            return $cx + ['connected' => true, 'via' => 'connect', 'mode' => $a->mode, 'key_hint' => null, 'currency' => $a->currency, 'status' => $a->status, 'webhook' => false, 'label' => $a->account_label,
+                'orders' => (int) ($orders->n ?? 0), 'paid' => (int) ($orders->paid ?? 0),
+                'message' => 'Stripe connected' . ($a->account_label ? ' (' . $a->account_label . ')' : '') . ($a->mode === 'test' ? ', test mode' : '') . '. Card payments go straight to your Stripe account; a ' . $this->feePct($a) . '% platform fee applies to each payment.'];
+        }
         $orders = DB::table('catalogue_orders')->where('workspace_id', $wsId)->selectRaw("count(*) as n, sum(case when status='paid' then 1 else 0 end) as paid")->first();
         return ['connected' => true, 'mode' => $a->mode, 'key_hint' => $a->key_hint, 'currency' => $a->currency, 'status' => $a->status, 'webhook' => $a->webhook_id !== null, 'label' => $a->account_label,
             'orders' => (int) ($orders->n ?? 0), 'paid' => (int) ($orders->paid ?? 0),
-            'message' => 'Connected (' . $a->mode . ' mode' . ($a->webhook_id ? '' : ', confirming payments on return') . '). Items with a price show a payment button.'];
+            'message' => 'Connected (' . $a->mode . ' mode' . ($a->webhook_id ? '' : ', confirming payments on return') . '). Items with a price show a payment button.'] + $cx + ['via' => 'key'];
     }
 
     private function client(object $a): \Stripe\StripeClient
     {
         return new \Stripe\StripeClient(Crypt::decryptString($a->secret_key));
+    }
+
+    // ── PAY-CONNECT-1: Stripe Connect (Standard accounts, direct charges, platform fee) ─────────────────────
+    public function isConnect(?object $a): bool { return $a !== null && $a->provider === 'stripe_connect' && ! empty($a->connect_account_id); }
+
+    private function platform(): \Stripe\StripeClient { return new \Stripe\StripeClient((string) config('billing.stripe.secret_key')); }
+
+    public function connectAvailable(): bool { return (string) config('billing.stripe.secret_key') !== '' && file_exists(storage_path('app/payconnect.on')); }
+
+    public function feePct(?object $a): float { return round(((int) ($a->fee_bps ?? 100)) / 100, 2); }
+
+    /** [client, request options] for a payment account: Connect uses the platform key on the business's account. */
+    public function stripeFor(object $a): array
+    {
+        return $this->isConnect($a) ? [$this->platform(), ['stripe_account' => $a->connect_account_id]] : [$this->client($a), []];
+    }
+
+    /** The platform fee in the smallest currency unit (Connect only; a pasted key pays no fee). */
+    public function feeFor(object $a, int $amountMinor): int
+    {
+        if (! $this->isConnect($a)) return 0;
+        return (int) max(0, min($amountMinor - 1, (int) ceil($amountMinor * ((int) ($a->fee_bps ?? 100)) / 10000)));
+    }
+
+    /** Start (or continue) Stripe onboarding. Returns the Stripe page to send the owner to. */
+    public function connectStart(int $wsId, string $email, string $back): array
+    {
+        if (! $this->connectAvailable()) return ['success' => false, 'message' => 'Connecting Stripe is not available yet. You can paste a Stripe key instead.'];
+        $a = $this->account($wsId);
+        $s = $this->platform();
+        try {
+            $acct = ($a && ! empty($a->connect_account_id)) ? $a->connect_account_id : null;
+            if (! $acct) {
+                $biz = DB::table('businesses')->where('workspace_id', $wsId)->whereNull('deleted_at')->orderByDesc('is_default')->orderBy('id')->first(['name']);
+                $new = $s->accounts->create(array_filter(['type' => 'standard', 'email' => $email ?: null,
+                    'business_profile' => $biz && $biz->name ? ['name' => mb_substr($biz->name, 0, 100)] : null,
+                    'metadata' => ['workspace_id' => (string) $wsId, 'source' => 'levelupgrowth']]));
+                $acct = $new->id;
+                $mode = str_contains((string) config('billing.stripe.secret_key'), '_live_') ? 'live' : 'test';
+                // a pasted key's row becomes a Connect row only once Stripe says the account can take payments (connectRefresh)
+                if (! $a) DB::table('workspace_payment_accounts')->insert(['workspace_id' => $wsId, 'provider' => 'stripe_connect', 'connect_account_id' => $acct, 'fee_bps' => 100, 'connect_state' => 'onboarding',
+                    'secret_key' => null, 'mode' => $mode, 'currency' => 'USD', 'status' => 'onboarding', 'created_at' => now(), 'updated_at' => now()]);
+                else DB::table('workspace_payment_accounts')->where('workspace_id', $wsId)->update(['connect_account_id' => $acct, 'connect_state' => 'onboarding', 'updated_at' => now()]);
+            } elseif ($a->connect_state === 'disconnected') {
+                DB::table('workspace_payment_accounts')->where('workspace_id', $wsId)->update(['connect_state' => 'onboarding', 'updated_at' => now()]);
+                $r = $this->connectRefresh($wsId);
+                if (! empty($r['connected'])) return ['success' => true, 'done' => true, 'message' => 'Stripe is connected again.'];
+            }
+            $sep = str_contains($back, '?') ? '&' : '?';
+            $link = $s->accountLinks->create(['account' => $acct, 'type' => 'account_onboarding', 'refresh_url' => $back . $sep . 'stripe=refresh', 'return_url' => $back . $sep . 'stripe=return']);
+        } catch (\Throwable $e) {
+            Log::warning('[PayConnect] start failed', ['workspace' => $wsId, 'error' => $e->getMessage()]);
+            return ['success' => false, 'message' => 'Stripe could not be opened just now. Please try again in a moment.'];
+        }
+        return ['success' => true, 'url' => $link->url];
+    }
+
+    /** Ask Stripe where onboarding stands; switch payments on once the account can take charges. */
+    public function connectRefresh(int $wsId): array
+    {
+        $a = $this->account($wsId);
+        if (! $a || empty($a->connect_account_id)) return ['connected' => false];
+        try { $acct = $this->platform()->accounts->retrieve($a->connect_account_id, []); }
+        catch (\Throwable $e) { Log::info('[PayConnect] refresh failed', ['workspace' => $wsId, 'error' => $e->getMessage()]); return ['connected' => $a->status === 'active' && $this->isConnect($a)]; }
+        if (! empty($acct->charges_enabled) && $a->connect_state !== 'disconnected') {
+            $label = trim((string) (($acct->settings->dashboard->display_name ?? null) ?: ($acct->business_profile->name ?? '') ?: ($acct->email ?? '')));
+            if ($a->webhook_id && $a->secret_key) { try { $this->client($a)->webhookEndpoints->delete($a->webhook_id); } catch (\Throwable $e) {} }   // the pasted key's webhook is no longer used
+            DB::table('workspace_payment_accounts')->where('workspace_id', $wsId)->update(['provider' => 'stripe_connect', 'status' => 'active', 'connect_state' => 'active',
+                'currency' => strtoupper((string) ($acct->default_currency ?: 'usd')), 'account_label' => mb_substr($label, 0, 120) ?: null,
+                'secret_key' => null, 'key_hint' => null, 'webhook_id' => null, 'webhook_secret' => null, 'verified_at' => now(), 'updated_at' => now()]);
+            Log::info('[PayConnect] active', ['workspace' => $wsId, 'account' => $a->connect_account_id]);
+            return ['connected' => true];
+        }
+        return ['connected' => false, 'details_needed' => ! empty($acct->requirements->currently_due)];
     }
 
     /** Validate the key against Stripe, register the webhook, store encrypted. */
@@ -72,7 +158,7 @@ class StorePaymentsService
             $status = 'no_webhook';
         }
         DB::table('workspace_payment_accounts')->updateOrInsert(['workspace_id' => $wsId], [
-            'provider' => 'stripe', 'secret_key' => Crypt::encryptString($secret), 'publishable_key' => $publishable ? trim($publishable) : null, 'key_hint' => '…' . substr($secret, -4), 'mode' => $mode,
+            'provider' => 'stripe', 'connect_state' => null, 'secret_key' => Crypt::encryptString($secret), 'publishable_key' => $publishable ? trim($publishable) : null, 'key_hint' => '…' . substr($secret, -4), 'mode' => $mode,
             'webhook_id' => $webhookId, 'webhook_secret' => $webhookSecret ? Crypt::encryptString($webhookSecret) : null, 'currency' => $currency, 'status' => $status, 'account_label' => mb_substr($label, 0, 120) ?: null,
             'verified_at' => now(), 'updated_at' => now(), 'created_at' => now(),
         ]);
@@ -84,6 +170,11 @@ class StorePaymentsService
     {
         $a = $this->account($wsId);
         if (! $a) return ['success' => true, 'message' => 'No payment account was connected.'];
+        if ($this->isConnect($a) || ! empty($a->connect_account_id)) {   // PAY-CONNECT-1: keep the account id so reconnecting needs no new Stripe account
+            if ($a->webhook_id && $a->secret_key) { try { $this->client($a)->webhookEndpoints->delete($a->webhook_id); } catch (\Throwable $e) {} }
+            DB::table('workspace_payment_accounts')->where('workspace_id', $wsId)->update(['provider' => 'stripe_connect', 'status' => 'off', 'connect_state' => 'disconnected', 'secret_key' => null, 'key_hint' => null, 'webhook_id' => null, 'webhook_secret' => null, 'updated_at' => now()]);
+            return ['success' => true, 'message' => 'Payments turned off. Your Stripe account stays yours; connect again any time.'];
+        }
         if ($a->webhook_id) { try { $this->client($a)->webhookEndpoints->delete($a->webhook_id); } catch (\Throwable $e) {} }
         DB::table('workspace_payment_accounts')->where('workspace_id', $wsId)->delete();
         return ['success' => true, 'message' => 'Payments disconnected. Payment buttons disappear from the site on its next update.'];
@@ -108,20 +199,22 @@ class StorePaymentsService
         $currency = strtolower((string) ($item->currency ?: $a->currency));
         $amount = in_array(strtoupper($currency), self::ZERO_DECIMAL, true) ? (int) round((float) $item->price) : (int) round((float) $item->price * 100);
         $base = preg_replace('/[?#].*$/', '', $returnUrl) ?: $returnUrl;
+        $fee = $this->feeFor($a, $amount); [$sc, $opt] = $this->stripeFor($a);
         try {
-            $session = $this->client($a)->checkout->sessions->create([
+            $session = $sc->checkout->sessions->create(array_filter([
+                'payment_intent_data' => $fee > 0 ? ['application_fee_amount' => $fee] : null,   // PAY-CONNECT-1
                 'mode' => 'payment',
                 'line_items' => [['quantity' => 1, 'price_data' => ['currency' => $currency, 'unit_amount' => $amount, 'product_data' => array_filter(['name' => mb_substr((string) $item->title, 0, 120), 'description' => mb_substr((string) ($item->summary ?: ''), 0, 250) ?: null])]]],
                 'success_url' => $base . '?paid={CHECKOUT_SESSION_ID}',
                 'cancel_url' => $base . '?cancelled=1',
                 'customer_creation' => 'always',
                 'metadata' => ['workspace_id' => (string) $site->workspace_id, 'website_id' => (string) $websiteId, 'item_id' => (string) $itemId, 'kind' => $kind, 'source' => 'levelupgrowth'],
-            ]);
+            ]), $opt);
         } catch (\Throwable $e) {
             Log::warning('[StorePayments] checkout failed', ['website' => $websiteId, 'item' => $itemId, 'error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'The payment page could not be opened just now. Please try again in a moment.'];
         }
-        DB::table('catalogue_orders')->insert(['workspace_id' => (int) $site->workspace_id, 'website_id' => $websiteId, 'item_id' => $itemId, 'kind' => $kind, 'item_title' => $item->title, 'session_id' => $session->id, 'amount' => (float) $item->price, 'currency' => strtoupper($currency), 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('catalogue_orders')->insert(['workspace_id' => (int) $site->workspace_id, 'website_id' => $websiteId, 'item_id' => $itemId, 'kind' => $kind, 'item_title' => $item->title, 'session_id' => $session->id, 'amount' => (float) $item->price, 'platform_fee' => $fee > 0 ? (in_array(strtoupper($currency), self::ZERO_DECIMAL, true) ? $fee : $fee / 100) : null, 'currency' => strtoupper($currency), 'status' => 'pending', 'created_at' => now(), 'updated_at' => now()]);
         return ['success' => true, 'url' => $session->url, 'session_id' => $session->id];
     }
 
@@ -145,7 +238,7 @@ class StorePaymentsService
         if ($order->status === 'paid') return ['ok' => true, 'paid' => true, 'item' => $order->item_title];
         $a = $this->account((int) $order->workspace_id);
         if (! $a) return ['ok' => false, 'reason' => 'no_account'];
-        try { $s = $this->client($a)->checkout->sessions->retrieve($sessionId, []); }
+        try { [$sc, $opt] = $this->stripeFor($a); $s = $sc->checkout->sessions->retrieve($sessionId, [], $opt); }
         catch (\Throwable $e) { return ['ok' => false, 'reason' => 'lookup_failed']; }
         if (($s->payment_status ?? '') !== 'paid') return ['ok' => true, 'paid' => false];
         $r = $this->markPaid((int) $order->workspace_id, $sessionId, (string) ($s->customer_details->email ?? $s->customer_email ?? ''), (string) ($s->customer_details->name ?? ''), 'paid', json_decode(json_encode($s), true) ?: []);

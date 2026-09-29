@@ -177,19 +177,22 @@ class CrmPayments
         $cur = strtolower($p->currency);
         $amount = in_array(strtoupper($cur), self::ZERO_DECIMAL, true) ? (int) round((float) $p->total) : (int) round((float) $p->total * 100);
         $back = $this->link($p);
+        $sp = app(\App\Engines\Builder\Services\StorePaymentsService::class);
+        $fee = $sp->feeFor($a, $amount); [$sc, $opt] = $sp->stripeFor($a);
         try {
-            $s = (new \Stripe\StripeClient(Crypt::decryptString($a->secret_key)))->checkout->sessions->create([
+            $s = $sc->checkout->sessions->create(array_filter([
+                'payment_intent_data' => $fee > 0 ? ['application_fee_amount' => $fee] : null,   // PAY-CONNECT-1
                 'mode' => 'payment',
                 'line_items' => [['quantity' => 1, 'price_data' => ['currency' => $cur, 'unit_amount' => $amount, 'product_data' => ['name' => mb_substr(self::LABEL[$p->kind] . ' ' . $p->number . ' · ' . $p->title, 0, 120)]]]],
                 'success_url' => $back . '/done?session={CHECKOUT_SESSION_ID}', 'cancel_url' => $back,
                 'customer_email' => ClientIdentity::emailKey(DB::table('leads')->where('id', $p->lead_id)->value('email')) ?: null,
                 'metadata' => ['workspace_id' => (string) $p->workspace_id, 'payment_request_id' => (string) $p->id, 'source' => 'levelupgrowth_crm'],
-            ]);
+            ]), $opt);
         } catch (\Throwable $e) {
             Log::warning('[CRM-PAY] checkout failed', ['request' => $p->id, 'error' => $e->getMessage()]);
             return ['success' => false, 'message' => 'The payment page could not be opened just now. Please try again in a moment.'];
         }
-        DB::table('crm_payment_requests')->where('id', $p->id)->update(['session_id' => $s->id, 'updated_at' => now()]);
+        DB::table('crm_payment_requests')->where('id', $p->id)->update(['session_id' => $s->id, 'platform_fee' => $fee > 0 ? (in_array(strtoupper($cur), self::ZERO_DECIMAL, true) ? $fee : $fee / 100) : null, 'updated_at' => now()]);
         return ['success' => true, 'url' => $s->url];
     }
 
@@ -210,7 +213,7 @@ class CrmPayments
     {
         if ($p->status === 'paid') return true;
         if ($p->session_id !== $sessionId || ! ($a = $this->account((int) $p->workspace_id))) return false;
-        try { $s = (new \Stripe\StripeClient(Crypt::decryptString($a->secret_key)))->checkout->sessions->retrieve($sessionId, []); } catch (\Throwable $e) { return false; }
+        try { [$sc, $opt] = app(\App\Engines\Builder\Services\StorePaymentsService::class)->stripeFor($a); $s = $sc->checkout->sessions->retrieve($sessionId, [], $opt); } catch (\Throwable $e) { return false; }
         if (($s->payment_status ?? '') !== 'paid') return false;
         $zero = in_array(strtoupper($p->currency), self::ZERO_DECIMAL, true);
         $this->markPaidBySession((int) $p->workspace_id, $sessionId, $s->amount_total !== null ? ($zero ? (float) $s->amount_total : $s->amount_total / 100) : 0);

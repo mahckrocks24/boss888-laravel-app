@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // CAL-2: reminders for the owner's own calendar (Sarah in chat + notification + email); switch storage/app/remind1.on
         // CRM-SARAH-3: who to contact today, 08:00 in each owner's own time; switch storage/app/crmdaily.on
         $schedule->command('crm:daily')->when(fn () => is_file(storage_path('app/crmdaily.on')))->hourlyAt(1)->withoutOverlapping(50)->runInBackground();
+        $schedule->command('payments:sweep')->when(fn () => is_file(storage_path('app/paysweep.on')))->everyTenMinutes()->withoutOverlapping(9)->runInBackground();   // PAY-CONNECT-1
         $schedule->command('calendar:remind')->when(fn () => is_file(storage_path('app/remind1.on')))->everyMinute()->withoutOverlapping(5)->runInBackground();
         $schedule->command('campaigns:tick --ideas')->dailyAt('13:00')->withoutOverlapping(60)->runInBackground();
         // WATCH-1 (RFC-0019): Sarah acts on events, not only the clock — results inside the business, the world, the owner's answers
