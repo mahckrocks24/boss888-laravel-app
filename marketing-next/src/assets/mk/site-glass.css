@@ -133,3 +133,10 @@ html .lg-site .matrix thead th { position: static; background: var(--glass-thick
 html .lg-site .tbl, html .lg-site .matrix-wrap { border-radius: var(--r-lg); }
 html .lg-site input[type=password] { padding-right: 68px; }
 html .lg-site input::-ms-reveal, html .lg-site input::-webkit-credentials-auto-fill-button { display: none; }
+
+/* 10. what is read over busy content is never see-through (Owner 09-30: mega menu text unreadable): menus are solid */
+html .lg-site .mega, html .lg-site .nav-dd, html .lg-site .nav-mobile { background: #FCFCFE; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html[data-theme="dark"] .lg-site .mega, html[data-theme="dark"] .lg-site .nav-dd, html[data-theme="dark"] .lg-site .nav-mobile { background: #15172A; }
+html .lg-site .mega-name, html .lg-site .nav-dd-item, html .lg-site .mega-col-title { color: var(--ink); }
+html .lg-site .mega-desc { color: var(--ink-3); }
+html .lg-site .mega-item:hover .mega-name, html .lg-site .nav-dd-item:hover { color: var(--ink); }
