@@ -1,0 +1,117 @@
+/* GLASS-SITE-1 (2026-09-30): the Liquid Glass skin for every page of levelupgrowth.io (Owner: "continue working on all
+   other pages in accordance to my guidelines"). Loaded after site.css on every page; the whole page sits inside
+   .lg.lg-site (layout.php) so lug-glass.css's tokens apply, and this file re-skins site.css's own classes: the aurora
+   ground, a floating glass header, glass cards and panels, capsule buttons, Plus Jakarta Sans for reading text, Manrope
+   for headlines (the brand hero face). Nothing here changes a page's structure, only its material. */
+
+/* 0. ground: the page paints the gradient ground; the aurora is fixed behind everything */
+html.lg-glass, html.lg-glass body { background: #F3F4F9; }
+html.lg-glass[data-theme="dark"], html.lg-glass[data-theme="dark"] body { background: #0A0B16; }
+html .lg-site { position: static; overflow: visible; isolation: auto; background: transparent; color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.7; }
+html .lg-site > .lg-aurora { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
+html .lg-site .lg-aurora i { animation: none !important; }
+html .lg-site .lg.mk > .lg-aurora { display: none; }   /* the home brings its own; the page one serves it */
+html .lg-site #mk-progress { position: fixed; left: 0; top: 0; height: 3px; width: 100%; background: var(--brand-grad); transform-origin: left; transform: scaleX(0); z-index: 70; pointer-events: none; }
+
+/* 1. the site's tokens take glass values (site.css reads these everywhere) */
+html .lg-site {
+  --bg: var(--ground); --bg-2: transparent; --card: var(--glass); --card-2: var(--glass-thick);
+  --border: var(--hairline); --border-2: var(--rim);
+  --white: var(--ink); --text: var(--ink-2); --muted: var(--ink-3); --faint: var(--ink-3); --dim: var(--ink-3);
+  --violet: var(--accent-text); --purple: var(--action); --grad: var(--brand-grad);
+  --ff-b: var(--font); --r: 20px; --r-lg: 24px;
+  --shadow: var(--shadow-2); --paper: var(--ground); --surface: var(--glass); --rule: var(--hairline); --rule-2: var(--hairline);
+  --accent-ink: var(--accent-text); --accent-soft: var(--tint);
+}
+html .lg-site p, html .lg-site .lede, html .lg-site .prose { color: var(--ink-2); }
+html .lg-site h1, html .lg-site h2, html .lg-site h3, html .lg-site h4 { color: var(--ink); }
+html .lg-site .fine, html .lg-site .mono { color: var(--ink-3); }
+html .lg-site .eyebrow { color: var(--accent-text); }
+html .lg-site .eyebrow-badge { background: var(--tint); border-color: var(--tint-rim); color: var(--accent-text); }
+html .lg-site a { color: var(--accent-text); }
+
+/* 2. header: a floating glass bar (the same bar the home has); pages keep clear of it */
+html .lg-site .site-header { position: fixed; left: 16px; right: 16px; top: 12px; z-index: 50; border-radius: 18px; border: 1px solid var(--rim);
+  background: var(--glass-thick); -webkit-backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)); backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat));
+  box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .site-header .nav-row { height: 60px; }
+html:not(.mk-home) .lg-site main { padding-top: 96px; }
+html .lg-site .brand { color: var(--ink); }
+html .lg-site .nav-primary a, html .lg-site .nav-trigger { color: var(--ink-2); border-radius: 999px; font-family: var(--font); }
+html .lg-site .nav-primary a:hover, html .lg-site .nav-primary a[aria-current="page"], html .lg-site .nav-trigger:hover, html .lg-site .nav-trigger[aria-expanded="true"] { color: var(--ink); background: var(--fill-hover); }
+html .lg-site .nav-toggle { border-color: var(--rim); color: var(--ink); border-radius: 12px; background: var(--glass); }
+html .lg-site .mega, html .lg-site .nav-dd { background: var(--glass-thick); -webkit-backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)); backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat));
+  border: 1px solid var(--rim); border-radius: 24px; box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .mega-item:hover, html .lg-site .nav-dd-item:hover { background: var(--fill-hover); border-radius: 14px; }
+html .lg-site .mega-col-title { color: var(--ink-3); }
+html .lg-site .mega-name { color: var(--ink); } html .lg-site .mega-desc { color: var(--ink-3); }
+html .lg-site .nav-mobile { background: var(--glass-thick); -webkit-backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)); backdrop-filter: blur(var(--blur-3)) saturate(var(--glass-sat)); border-color: var(--hairline); }
+html .lg-site .nav-mobile a, html .lg-site .m-item, html .lg-site .m-link, html .lg-site .m-group summary { color: var(--ink); }
+html .lg-site .nav-backdrop { background: var(--scrim); }
+@media (max-width: 900px) {
+  html .lg-site .site-header { position: sticky; left: auto; right: auto; top: 0; border-radius: 0; border: 0; border-bottom: 1px solid var(--hairline); box-shadow: none; }
+  html .lg-site .site-header .nav-row { height: 64px; }
+  html:not(.mk-home) .lg-site main { padding-top: 0; }
+}
+
+/* 3. buttons: capsules, lit from above */
+html .lg-site .btn { border-radius: 999px; font-family: var(--font); font-weight: 600; transition: transform 200ms var(--ease-spring), box-shadow var(--d-base) var(--ease-out), background var(--d-fast); }
+html .lg-site .btn:hover { transform: translateY(-1px); text-decoration: none; }
+html .lg-site .btn-primary { background: var(--action-grad); color: #fff; border-color: transparent; box-shadow: inset 0 1px 0 rgba(255,255,255,.35), inset 0 -1px 0 rgba(30,8,80,.22), var(--glow); }
+html .lg-site .btn-primary:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.45), 0 12px 28px -8px rgba(107,59,223,.62); color: #fff; }
+html .lg-site .btn-secondary, html .lg-site .btn-ghost { background: var(--glass); border-color: var(--rim); color: var(--ink); -webkit-backdrop-filter: blur(var(--blur-1)); backdrop-filter: blur(var(--blur-1)); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-1); }
+html .lg-site .btn-secondary:hover, html .lg-site .btn-ghost:hover { background: var(--glass-thick); border-color: var(--rim); color: var(--ink); }
+html .lg-site .btn-glow { font-family: var(--ff-h); }
+
+/* 4. surfaces: cards, plans, frames, panels become glass (same size, same place) */
+html .lg-site :is(.card, .plan, .price-card, .frame, .crop, .chip, .avail-item, .log, .door, .os-item, .toc, .form-success, .peek, .tpl-card, .gal-card, .team-fig, .roster-col, .rep-counts, .sim-result, .sim-brief, .matrix-wrap, .legend, .post-card.card) {
+  background: var(--glass); border: 1px solid var(--rim); border-radius: var(--r-lg);
+  -webkit-backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-sat)); backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-sat));
+  box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); color: var(--ink); }
+html .lg-site .chip { border-radius: 999px; padding: 6px 12px; color: var(--ink-2); box-shadow: none; }
+html .lg-site .card:hover { transform: translateY(-4px); border-color: var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .card > .icon, html .lg-site .products .product > .icon { background: var(--tint); color: var(--accent-text); border-radius: 12px; }
+html .lg-site .plan { border-radius: var(--r-lg); }
+html .lg-site .plan.featured { background: var(--glass-thick); border-color: var(--tint-rim); box-shadow: inset 0 0 0 1.5px var(--accent-text), 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .frame, html .lg-site .frame-dark { background: var(--glass-thick); border-color: var(--rim); box-shadow: 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .frame-bar { background: var(--glass-thick); border-color: var(--hairline); }
+html .lg-site .frame-body { background: var(--fill-hover); }
+html .lg-site .crop { background: var(--glass-thick); box-shadow: 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .faq-item, html .lg-site .faq-item:last-child { border-color: var(--hairline); }
+html .lg-site .faq-item summary { color: var(--ink); font-family: var(--font); }
+html .lg-site .faq-item summary::after { color: var(--accent-text); font-family: var(--font); }
+html .lg-site .faq-item p { color: var(--ink-2); }
+html .lg-site .matrix th, html .lg-site .matrix td { border-color: var(--hairline); color: var(--ink-2); }
+html .lg-site .matrix th { color: var(--ink); }
+html .lg-site .feature-list li, html .lg-site .lead-list li { color: var(--ink-2); }
+html .lg-site .feature-list .icon, html .lg-site .hero-facts .icon, html .lg-site .matrix td.mark .icon { color: var(--success); }
+
+/* 5. bands and sections sit on the aurora; the dark "night" bands become thick glass slabs that read in both themes */
+html .lg-site .section-alt, html .lg-site .section-dark, html .lg-site .hero-sarah, html .lg-site .page-head, html .lg-site .hero { background: transparent; border-color: var(--hairline); }
+html .lg-site .night { background: var(--glass-thick); color: var(--ink); border-top: 1px solid var(--rim); border-bottom: 1px solid var(--rim);
+  -webkit-backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-sat)); backdrop-filter: blur(var(--blur-2)) saturate(var(--glass-sat)); }
+html .lg-site .night h2, html .lg-site .night h3, html .lg-site .night .display { color: var(--ink); }
+html .lg-site .night p, html .lg-site .night .say, html .lg-site .night .say-light { color: var(--ink-2); }
+html .lg-site .night .eyebrow { color: var(--accent-text); }
+html .lg-site .night .btn-ghost-light { background: var(--glass); border: 1px solid var(--rim); color: var(--ink); }
+html .lg-site .hero::before, html .lg-site .hero::after, html .lg-site .page-head::before { display: none; }   /* the aurora is the glow now */
+
+/* 6. forms and fields */
+html .lg-site .form label { color: var(--ink); }
+html .lg-site .form input[type=text], html .lg-site .form input[type=email], html .lg-site .form input[type=password], html .lg-site .form select, html .lg-site .form textarea,
+html .lg-site input[type=text], html .lg-site input[type=email], html .lg-site input[type=password], html .lg-site select, html .lg-site textarea {
+  background: var(--glass-thick); border: 1px solid var(--rim); color: var(--ink); border-radius: 14px; font-family: var(--font);
+  box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge); }
+html .lg-site .form input:focus, html .lg-site .form select:focus, html .lg-site .form textarea:focus, html .lg-site input:focus, html .lg-site textarea:focus { border-color: var(--action); box-shadow: var(--focus); outline: none; }
+html .lg-site ::placeholder { color: var(--ink-3); }
+
+/* 7. footer */
+html .lg-site .site-footer { background: transparent; border-top: 1px solid var(--hairline); }
+html .lg-site .site-footer a { color: var(--ink-2); } html .lg-site .site-footer a:hover { color: var(--ink); }
+html .lg-site .footer-h { color: var(--ink); font-family: var(--font); }
+html .lg-site .footer-brand p, html .lg-site .footer-fine, html .lg-site .footer-bottom { color: var(--ink-3); }
+html .lg-site .footer-bottom { border-color: var(--hairline); }
+
+/* 8. reveals: hidden by the script only, never by CSS (no-JS readers see everything) */
+html .lg-site [data-lg-rv] { will-change: transform, opacity; }
+@media (prefers-reduced-motion: reduce) { html .lg-site .lg-aurora { display: none; } }

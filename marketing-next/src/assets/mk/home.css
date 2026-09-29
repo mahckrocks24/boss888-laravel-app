@@ -108,6 +108,7 @@ html[data-theme="dark"] .hx-say__av .lg-avatar { border-color: #15172A; }
 .mk-price__cards > * { flex: 1; min-width: 0; }
 .mk-footgrid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 32px; }
 .mk-bot { position: absolute; right: 18px; bottom: 18px; width: 300px; border-radius: 20px; padding: 0; overflow: hidden; }
+@media (min-width: 980px) { .mk-bot { zoom: .8; right: 22px; bottom: 22px; } }   /* Owner 09-30: the widget was taller than the site frame */
 .lg-card--lift { will-change: transform; }
 .mk-w { display: inline-block; }
 .mk-scroll { display: none; }

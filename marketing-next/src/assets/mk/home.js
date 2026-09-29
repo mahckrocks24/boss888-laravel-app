@@ -65,7 +65,7 @@
       if (!live()) return;
       await pop(reply); await wait(400);
       var stages = ['Writing the copy', 'Laying out the pages', 'Menu, gallery, booking form'];
-      var build = 5.5;
+      var build = 2.75;   // Owner 09-30: the site reveal 50% faster
       stages.forEach(function (t, i) { setTimeout(function () { if (running) stage.textContent = t; }, i * build * 333); });
       await Promise.all([
         M.animate(img, { clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0% 0)'] }, { duration: build, ease: 'circOut' }),
@@ -161,7 +161,7 @@
       M.animate(feed, { opacity: [0, 1], x: [-18, 0] }, { delay: M.stagger(.9, { startDelay: .3 }), duration: .5, ease: [.25, .8, .3, 1] });
       feed.forEach(function (e, i) { setTimeout(function () { count.textContent = i + 1; }, 300 + i * 900); });
       fx('feed');
-      approval.style.opacity = 0; pend.textContent = '1';
+      var second = $('#cc-approval-2'); approval.style.opacity = 0; if (second) { second.style.opacity = 0; M.animate(second, { opacity: [0, 1], y: [10, 0] }, { duration: .5, delay: .8, ease: [.25, .8, .3, 1] }); } pend.textContent = '1';
       setTimeout(function () { pend.textContent = '2'; M.animate(approval, { opacity: [0, 1], y: [-10, 0], scale: [.96, 1] }, { type: 'spring', bounce: .35, visualDuration: .5 }); }, 4200);
     }, iv({ amount: .3 }));
   })();

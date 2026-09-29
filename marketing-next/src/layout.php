@@ -38,6 +38,11 @@ $jsonld = array_merge([[
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/next/site.css?v=<?= substr(md5_file(__DIR__ . '/site.css'), 0, 8) ?>">
+<?php /* GLASS-SITE-1 (2026-09-30): every page wears the Liquid Glass skin and follows the device's colour scheme */ ?>
+<script>try{document.documentElement.classList.add("lg-glass");var t=localStorage.getItem("lug_theme");if(!t&&window.matchMedia&&matchMedia("(prefers-color-scheme: light)").matches)t="light";if(t==="light")document.documentElement.setAttribute("data-theme","light");}catch(e){}</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/next/assets/mk/lug-glass.css?v=<?= substr(md5_file(__DIR__ . '/assets/mk/lug-glass.css'), 0, 8) ?>">
+<link rel="stylesheet" href="/next/assets/mk/site-glass.css?v=<?= substr(md5_file(__DIR__ . '/assets/mk/site-glass.css'), 0, 8) ?>">
 <?php foreach ($jsonld as $block): ?>
 <script type="application/ld+json"><?= json_encode($block, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
 <?php endforeach; ?>
@@ -45,6 +50,9 @@ $jsonld = array_merge([[
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
+<div class="lg lg-site">
+<div class="lg-aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<?php if ($page['route'] !== '/'): ?><div id="mk-progress" aria-hidden="true"></div><?php endif; ?>
 <header class="site-header">
   <div class="container nav-row">
     <a class="brand" href="/next/" aria-label="<?= e($site['name']) ?> home">
@@ -137,7 +145,12 @@ $jsonld = array_merge([[
   </div>
 </footer>
 <?php endif; ?>
+</div>
 <script src="/next/site.js?v=<?= substr(md5_file(__DIR__ . '/site.js'), 0, 8) ?>" defer></script>
+<?php if ($page['route'] !== '/'): ?>
+<script src="/next/assets/mk/motion.js?v=<?= substr(md5_file(__DIR__ . '/assets/mk/motion.js'), 0, 8) ?>" defer></script>
+<script src="/next/assets/mk/site-motion.js?v=<?= substr(md5_file(__DIR__ . '/assets/mk/site-motion.js'), 0, 8) ?>" defer></script>
+<?php endif; ?>
 <?php /* Chatbot888, run by the house workspace (Owner, 2026-09-12). Token is a public, domain-restricted widget key. */ ?>
 <script src="/chatbot-widget.js?v=20260925-ai" data-token="cwt_019cba3b517c458b30eae508ba28fdf055d9b2c5317157d0" data-color="#6D4AFF" data-theme="dark" data-position="bottom-right" data-icon="/img/logo-icon-48.png" data-bubble="#0B0B14" data-gradient="linear-gradient(135deg,#6D4AFF,#2FE0C8)" data-panel="#10141F" data-backdrop="3" defer></script>
 <?php if (! empty($page['scripts'])) { echo $page['scripts'], "\n"; } ?>
