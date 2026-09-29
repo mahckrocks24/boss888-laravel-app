@@ -2,8 +2,8 @@
    LUG MOTION — the one platform script for ambient motion (Liquid Glass).
    Runs only while <html> has .lg-ui. Styles live in lug-glass.css; this file
    only writes a few numbers and adds the background layer.
-   - Aurora: the logo gradient behind the app, drifting, leaning toward the
-     pointer with a 2 s ease (writes --lg-ax / --lg-ay).
+   - Aurora: the logo gradient behind the app, still; on desktop it leans
+     toward the mouse with a 2 s ease (writes --lg-ax / --lg-ay). No drift.
    - Scroll edges: the page scroller fades under its top / bottom edges while
      there is more to scroll (--lg-fade-t / --lg-fade-b) and bounces at the ends.
    - Reduced motion: no follow, no bounce.
@@ -44,7 +44,7 @@
     if (!raf) raf = requestAnimationFrame(frame);
   }
   window.addEventListener('pointermove', function (e) { if (e.pointerType === 'mouse' || e.pointerType === 'pen') aim(e.clientX, e.clientY); }, { passive: true });
-  window.addEventListener('pointerdown', function (e) { aim(e.clientX, e.clientY); }, { passive: true });
+  // taps on phones do not move the gradient (Owner: no movement on its own)
 
   /* ---- scroll edge fades ---- */
   var FADE = 28;

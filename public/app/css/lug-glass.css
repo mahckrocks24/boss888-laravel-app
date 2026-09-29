@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1i 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1l 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -166,6 +166,19 @@ html.lg-ui {
   --lg-hit: 44px;
 }
 /* breakpoints (mobile first): 600 large phone · 900 tablet/rail · 1280 desktop · 1600 wide */
+/* compact type on desktop (Owner: text read too large); phones keep the mobile scale above */
+@media (min-width: 1024px) {
+  html.lg-ui {
+    --lg-fs-display: 26px; --lg-lh-display: 32px;
+    --lg-fs-title1: 22px;  --lg-lh-title1: 28px;
+    --lg-fs-title2: 18px;  --lg-lh-title2: 24px;
+    --lg-fs-title3: 15px;  --lg-lh-title3: 22px;
+    --lg-fs-body: 14px;    --lg-lh-body: 21px;
+    --lg-fs-callout: 13px; --lg-lh-callout: 20px;
+    --lg-fs-subhead: 13px; --lg-lh-subhead: 19px;
+    --lg-fs-footnote: 12px; --lg-lh-footnote: 17px;
+  }
+}
 
 /* continuous (squircle) corners where the engine supports it */
 @supports (corner-shape: squircle) {
@@ -225,6 +238,10 @@ html.lg-ui:not([data-theme="light"]) .lg-aurora i { filter: blur(90px); }   /* a
 .lg-aurora.is-loading i:nth-child(1) { animation-duration: 6s; }
 .lg-aurora.is-loading i:nth-child(2) { animation-duration: 7s; }
 .lg-aurora.is-loading i:nth-child(3) { animation-duration: 8s; }
+
+/* Owner: no automatic movement — the gradient stays still (no drift, no loading motion);
+   only the slow lean toward the mouse on desktop remains (lug-motion.js). */
+.lg-aurora i, .lg-aurora.is-loading i { animation: none !important; }
 
 /* ---------- 4. GLASS MATERIALS ---------- */
 .lg-glass {
@@ -785,7 +802,11 @@ html.lg-ui .lu-drawer {
   -webkit-backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat));
   border-left: 1px solid var(--lg-rim); border-radius: var(--lg-r-xl) 0 0 var(--lg-r-xl);
 }
-html.lg-ui .lu-dlg-overlay, html.lg-ui .lu-mob-overlay.show { background: var(--lg-scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+html.lg-ui .lu-dlg-overlay { background: var(--lg-scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+/* phone menu drawer: no dark dim (Owner) — the page behind is only frosted */
+/* today's phone performance rule forces backdrop-filter:none and a 65% black on every overlay (!important); the menu drawer overrides both */
+html.lg-ui .lu-mob-overlay, html.lg-ui .lu-mob-overlay.show { background: transparent !important; opacity: 1; -webkit-backdrop-filter: blur(14px) saturate(120%) !important; backdrop-filter: blur(14px) saturate(120%) !important; }
+html.lg-ui .lu-mob-overlay:not(.show) { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; pointer-events: none; }
 
 /* 4. CONTROLS — buttons become capsules; the primary is brand glass lit from above */
 html.lg-ui :is(.lu-btn, .btn, .btn-primary, .btn-outline, .btn-ghost, .lgse-btn-primary, .lgse-btn-secondary, .cr-btn, .cr-btn-primary, .cr-btn-outline,
