@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1l 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1m 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -719,8 +719,8 @@ html.lg-ui .lg-aurora--page { position: fixed; inset: 0; z-index: -1; }   /* pai
 
 /* 1. today's tokens take glass values: every var()-styled surface follows (.lg-ui twice beats the theme blocks) */
 html.lg-ui.lg-ui {
-  --bg: transparent;
-  --s1: var(--lg-glass);
+  --bg: var(--lg-ground);          /* opaque: tool overlays and editors that paint --bg must never be see-through */
+  --s1: var(--lg-glass-thick);     /* un-curated surfaces stay readable; curated cards get real glass below */
   --s2: var(--lg-fill-hover);
   --s3: var(--lg-fill-press);
   --bd: var(--lg-hairline);
@@ -783,13 +783,20 @@ html.lg-ui #sb-mode-toggle .lu-mode-btn.active, html.lg-ui #sb-theme .lu-mode-bt
 html.lg-ui :is(.card, .lu-card, .cmd-panel, .cmd-kpi, .cmd-bar, .crm2-card, .crm2-summary, .crm2-draft, .crm2-mc, .crm2-bc, .crm2-pack, .crm2-act,
   .sh-card, .sh-top, .sh-item, .sh-brief, .sh-draft, .sh-orch, .sh-wsp, .dash-card, .dash-stat, .dash-insights, .lgse-kpi-card, .lgse-table-wrap,
   .lgse-empty-state, .rv-card, .gov-card, .ws-card, .st-tile, .st-as-card, .st-empty-card, .st-left, .st-right, .cm-panel, .cm-wait, .cm-it,
-  .kb-col, .wsv2-camp, .wsv2-activity, .wsv2-selection, .mtg-intel, .mtg-agents, .td-panel, .pub-box, .pe-side, .lu-table-wrap, .exec-action-row) {
+  .kb-col, .wsv2-camp, .wsv2-activity, .wsv2-selection, .mtg-intel, .mtg-agents, .td-panel, .pub-box, .lu-table-wrap, .exec-action-row) {
   background: var(--lg-glass);
   -webkit-backdrop-filter: blur(var(--lg-blur-2)) saturate(var(--lg-glass-sat)); backdrop-filter: blur(var(--lg-blur-2)) saturate(var(--lg-glass-sat));
   border-color: var(--lg-rim);
   border-radius: var(--lg-r-lg);
   box-shadow: inset 0 1px 0 var(--lg-rim-top), 0 0 0 .5px var(--lg-edge), var(--lg-shadow-2);
 }
+/* TOOL CHROME: the website editor bar and Arthur panel sit over busy previews — thick glass, deep blur, never see-through */
+html.lg-ui :is(.pe-bar, .pe-side, #t3-view-ov > div:first-child) {
+  background: var(--lg-glass-thick) !important;
+  -webkit-backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat)) !important; backdrop-filter: blur(var(--lg-blur-3)) saturate(var(--lg-glass-sat)) !important;
+  border-color: var(--lg-hairline) !important;
+}
+
 /* overlays: dialogs, modals, drawers — thick glass over a blurred scrim */
 html.lg-ui :is(.lu-dlg, .modal, .summary-modal, .note-modal, .dm-modal, .da-modal, .st-dlg) {
   background: var(--lg-glass-thick);
