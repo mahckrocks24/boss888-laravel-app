@@ -143,6 +143,10 @@ class CrmCatalogue
         Activity::create(['workspace_id' => $ws, 'activitable_type' => 'Lead', 'activitable_id' => (int) $lead->id, 'type' => 'email', 'completed' => 1, 'performed_by' => $userId,
             'subject' => 'Sent ' . $items->count() . ' to look at: ' . mb_substr($items->pluck('title')->implode(', '), 0, 200), 'metadata_json' => ['items' => $items->pluck('id')->all()]]);
         DB::table('leads')->where('id', $lead->id)->update(['last_contacted_at' => now()]);
+        if ($lead->status === 'new') {   // sending them something is contact
+            $pack = CrmPacks::forBusiness($lead->business_id ? (int) $lead->business_id : null);
+            DB::table('leads')->where('id', $lead->id)->update(['status' => 'contacted', 'stage' => collect($pack['stages'])->firstWhere('status', 'contacted')['key'] ?? null]);
+        }
         return ['success' => true, 'sent' => $items->count()];
     }
 }

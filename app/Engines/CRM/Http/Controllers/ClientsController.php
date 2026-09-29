@@ -542,7 +542,7 @@ class ClientsController extends BaseEngineController
         foreach ($pack['stages'] as $s) $stageCounts[$s['key']] = 0;
         $pb = $b ? [] : $this->packsByBiz($ws);
         foreach ($leads as $l) { $st = CrmPacks::stageOf($pack, $l->stage, $l->status); if (isset($stageCounts[$st])) $stageCounts[$st]++; }
-        $replyHours = [];
+        $replyHours = []; $first = [];
         if ($leads->count()) {
             $first = DB::table('activities')->whereIn('lead_id', $leads->pluck('id'))->whereIn('type', ['call', 'email', 'meeting', 'note'])
                 ->selectRaw('lead_id, MIN(created_at) t')->groupBy('lead_id')->pluck('t', 'lead_id');
@@ -551,7 +551,46 @@ class ClientsController extends BaseEngineController
         sort($replyHours);
         $median = $replyHours ? $replyHours[intdiv(count($replyHours), 2)] : null;
         $won = $leads->where('status', 'converted');
+        // CRM-PACKS-4e: the trend, conversion by channel, reply speed, no-shows, money, and businesses side by side
+        $weeks = [];
+        for ($i = 11; $i >= 0; $i--) { $st = now()->startOfWeek()->subWeeks($i); $weeks[$st->toDateString()] = ['week' => $st->format('j M'), 'new' => 0, 'won' => 0]; }
+        $from12 = now()->startOfWeek()->subWeeks(11);
+        $scoped = fn () => Lead::where('workspace_id', $ws)->when($b, fn ($q) => $q->where('business_id', $b));
+        foreach ($scoped()->where('created_at', '>=', $from12)->get(['created_at']) as $l) { $k = \Carbon\Carbon::parse($l->created_at)->startOfWeek()->toDateString(); if (isset($weeks[$k])) $weeks[$k]['new']++; }
+        foreach ($scoped()->whereNotNull('converted_at')->where('converted_at', '>=', $from12)->get(['converted_at']) as $l) { $k = \Carbon\Carbon::parse($l->converted_at)->startOfWeek()->toDateString(); if (isset($weeks[$k])) $weeks[$k]['won']++; }
+        $byCh = [];
+        foreach ($leads as $l) { $c = DB::table('leads')->where('id', $l->id)->value('channel') ?: 'other'; $byCh[$c] ??= ['channel' => $c, 'new' => 0, 'won' => 0]; $byCh[$c]['new']++; if ($l->status === 'converted') $byCh[$c]['won']++; }
+        $byCh = array_values($byCh); usort($byCh, fn ($x, $y) => $y['new'] <=> $x['new']);
+        foreach ($byCh as &$c) $c['rate'] = $c['new'] ? round($c['won'] / $c['new'] * 100) : 0; unset($c);
+        $speed = ['within_1h' => 0, 'within_24h' => 0, 'later' => 0, 'not_yet' => 0];
+        foreach ($leads as $l) {
+            $h = null;
+            foreach ($replyHours as $_) break;
+            $first = $first ?? [];
+            $t = $first[$l->id] ?? null;
+            if ($t === null) { $speed['not_yet']++; continue; }
+            $h = (strtotime($t) - strtotime((string) $l->created_at)) / 3600;
+            $h <= 1 ? $speed['within_1h']++ : ($h <= 24 ? $speed['within_24h']++ : $speed['later']++);
+        }
+        $ev = DB::table('calendar_events as e')->join('leads as l', 'l.id', '=', 'e.lead_id')->where('e.workspace_id', $ws)->when($b, fn ($q) => $q->where('l.business_id', $b))
+            ->where('e.starts_at', '>=', $since)->where('e.starts_at', '<=', now())->whereIn('e.category', ['appointment', 'booking_confirmed', 'meeting', 'call', 'callback_confirmed']);
+        $held = (clone $ev)->whereNotIn(DB::raw("COALESCE(e.status,'')"), ['cancelled'])->count();
+        $noShow = (clone $ev)->where('e.status', 'no_show')->count();
+        $pay = DB::table('crm_payment_requests as p')->where('p.workspace_id', $ws)->when($b, fn ($q) => $q->where('p.business_id', $b));
+        $money = ['collected' => round((float) (clone $pay)->where('p.status', 'paid')->where('p.paid_at', '>=', $since)->sum('p.paid_amount'), 2),
+            'outstanding' => round((float) (clone $pay)->whereIn('p.status', ['sent', 'viewed', 'accepted'])->where('p.kind', '!=', 'quote')->sum('p.total'), 2),
+            'quotes_open' => (clone $pay)->where('p.kind', 'quote')->whereIn('p.status', ['sent', 'viewed'])->count(),
+            'currency' => app(\App\Engines\CRM\Services\CrmPayments::class)->account($ws)->currency ?? 'USD'];
+        $perBiz = [];
+        if (! $b) foreach (DB::table('businesses')->where('workspace_id', $ws)->whereNull('deleted_at')->get(['id', 'name']) as $bz) {
+            $q = Lead::where('workspace_id', $ws)->where('business_id', $bz->id)->where('created_at', '>=', $since);
+            $n = (clone $q)->count(); if (! $n) continue;
+            $perBiz[] = ['name' => $bz->name, 'new' => $n, 'won' => (clone $q)->where('status', 'converted')->count(), 'value' => round((float) (clone $q)->where('status', 'converted')->sum('deal_value'), 2)];
+        }
         return $this->readJson([
+            'trend' => array_values($weeks), 'by_channel' => $byCh, 'reply_speed' => $speed,
+            'visits' => ['held' => $held, 'no_shows' => $noShow, 'no_show_rate' => $held ? round($noShow / $held * 100) : 0],
+            'money' => $money, 'per_business' => $perBiz,
             'days' => $days, 'pack' => $pack,
             'totals' => ['new' => $leads->count(), 'won' => $won->count(), 'lost' => $leads->where('status', 'lost')->count(),
                 'won_value' => round((float) $won->sum('deal_value'), 2), 'answered' => count($replyHours),

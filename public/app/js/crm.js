@@ -190,6 +190,11 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-radio{display:flex;flex-direction:column;gap:8px}.crm2-radio label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--bd);border-radius:12px;cursor:pointer;background:var(--s1)}',
         '.crm2-radio input{accent-color:var(--p);margin-top:3px;width:18px;height:18px}.crm2-radio label b{display:block;color:var(--t1);font-size:14px}.crm2-radio label span{font-size:13px;color:var(--t3)}',
         '.crm2-radio label:has(input:checked){border-color:var(--p);background:var(--ps)}',
+        '.crm2-chart{padding:8px 18px 16px}.crm2-chart svg{width:100%;height:auto;display:block}',
+        '.crm2-legend{display:flex;gap:14px;font-size:12px;color:var(--t3);padding:0 18px 12px}.crm2-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}',
+        '.crm2-rt{width:100%;border-collapse:collapse;font-size:13px}.crm2-rt th{text-align:left;color:var(--t3);font-weight:600;font-size:12px;padding:8px 18px;border-bottom:1px solid var(--bd)}.crm2-rt td{padding:10px 18px;border-bottom:1px solid var(--bd);color:var(--t1)}',
+        '.crm2-rt td.n,.crm2-rt th.n{text-align:right;font-variant-numeric:tabular-nums}',
+        '.crm2-stack{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--s2);margin:8px 18px}.crm2-stack span{height:100%}',
         '.crm2-it{display:flex;gap:10px;align-items:center;padding:8px 0}.crm2-it+.crm2-it{border-top:1px solid var(--bd)}',
         '.crm2-it img{width:56px;height:42px;object-fit:cover;border-radius:6px;flex-shrink:0;background:var(--s2)}.crm2-it .t{font-size:13px;color:var(--t1);font-weight:600;line-height:1.3}',
         '.crm2-it .w{font-size:12px;color:var(--t3)}.crm2-it .why{font-size:11px;color:var(--ac)}.crm2-it input{accent-color:var(--p);width:18px;height:18px;flex-shrink:0}',
@@ -580,8 +585,51 @@ function reportHtml() {
         kpi('New ' + esc(words().many.toLowerCase()), t.new || 0, '') + kpi('Won', t.won || 0, (t.conversion || 0) + '% of new') +
         kpi('Typical time to first reply', rh == null ? '—' : (rh < 1 ? Math.round(rh * 60) + ' min' : (rh < 48 ? rh + ' h' : Math.round(rh / 24) + ' days')), t.answered ? t.answered + ' answered' : 'None answered yet') +
         kpi('Won value', money(t.won_value) || '$0', '') + '</div>' +
-        '<div class="crm2-grid2"><section class="crm2-card"><div class="crm2-card-h"><h3>Where they came from</h3></div>' + (chBars ? '<div class="crm2-bars">' + chBars + '</div>' : '<div class="crm2-empty">No enquiries in this period.</div>') + '</section>' +
-        '<section class="crm2-card"><div class="crm2-card-h"><h3>Where they are now</h3></div>' + (stBars ? '<div class="crm2-bars">' + stBars + '</div>' : '<div class="crm2-empty">Nothing yet.</div>') + '</section></div>';
+        moreKpis(R) + trendChart(R.trend || []) +
+        '<div class="crm2-grid2" style="margin-top:16px"><section class="crm2-card"><div class="crm2-card-h"><h3>Where they came from</h3><span class="more">and how many were won</span></div>' + channelTable(R.by_channel || []) + '</section>' +
+        '<div style="display:flex;flex-direction:column;gap:16px"><section class="crm2-card"><div class="crm2-card-h"><h3>Where they are now</h3></div>' + (stBars ? '<div class="crm2-bars">' + stBars + '</div>' : '<div class="crm2-empty">Nothing yet.</div>') + '</section>' +
+        speedCard(R.reply_speed) + '</div></div>' + bizTable(R.per_business || []);
+}
+
+function moreKpis(R) {
+    var m = R.money || {}, v = R.visits || {}, cur = m.currency || 'USD', out = [];
+    var mny = function (x) { return (cur === 'USD' ? '$' : cur + ' ') + (parseFloat(x) || 0).toLocaleString('en-US', {maximumFractionDigits: 0}); };
+    if (m.collected || m.outstanding) out.push(['Collected online', mny(m.collected), m.outstanding ? mny(m.outstanding) + ' still to pay' : 'Nothing outstanding']);
+    if (m.quotes_open) out.push(['Quotes waiting', m.quotes_open, 'sent, not yet accepted']);
+    if (v.held) out.push(['No-show rate', v.no_show_rate + '%', v.no_shows + ' of ' + v.held + ' bookings']);
+    if (!out.length) return '';
+    return '<div class="crm2-kpis" style="grid-template-columns:repeat(' + Math.min(4, out.length) + ',minmax(0,1fr))">' + out.map(function (k) { return '<div class="crm2-card crm2-kpi"><div class="l">' + k[0] + '</div><div class="v">' + k[1] + '</div><div class="h">' + k[2] + '</div></div>'; }).join('') + '</div>';
+}
+function trendChart(t) {
+    if (!t.length) return '';
+    var W = 720, H = 190, pad = 28, max = Math.max.apply(null, [1].concat(t.map(function (w) { return Math.max(w.new, w.won); }))), bw = (W - pad * 2) / t.length;
+    var step = max <= 5 ? 1 : Math.ceil(max / 4), ticks = []; for (var y = 0; y <= max; y += step) ticks.push(y);
+    var Y = function (v) { return H - 24 - (v / (ticks[ticks.length - 1] || 1)) * (H - 44); };
+    var g = ticks.map(function (tk) { return '<line x1="' + pad + '" x2="' + (W - 8) + '" y1="' + Y(tk) + '" y2="' + Y(tk) + '" stroke="var(--bd)"/><text x="' + (pad - 6) + '" y="' + (Y(tk) + 4) + '" text-anchor="end" font-size="10" fill="var(--t3)">' + tk + '</text>'; }).join('');
+    var bars = t.map(function (w, i) { var x = pad + i * bw + bw * 0.14, b = bw * 0.34;
+        return '<rect x="' + x + '" y="' + Y(w.new) + '" width="' + b + '" height="' + Math.max(0, H - 24 - Y(w.new)) + '" rx="3" fill="var(--p)"><title>' + w.week + ': ' + w.new + ' new</title></rect>' +
+            '<rect x="' + (x + b + 2) + '" y="' + Y(w.won) + '" width="' + b + '" height="' + Math.max(0, H - 24 - Y(w.won)) + '" rx="3" fill="var(--ac)"><title>' + w.week + ': ' + w.won + ' won</title></rect>' +
+            (i % 2 === 0 || t.length < 8 ? '<text x="' + (pad + i * bw + bw / 2) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="10" fill="var(--t3)">' + w.week + '</text>' : ''); }).join('');
+    return '<section class="crm2-card"><div class="crm2-card-h"><h3>Last 12 weeks</h3></div><div class="crm2-chart"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="New and won each week for the last 12 weeks">' + g + bars + '</svg></div>' +
+        '<div class="crm2-legend"><span><i style="background:var(--p)"></i>New</span><span><i style="background:var(--ac)"></i>Won</span></div></section>';
+}
+function channelTable(rows) {
+    if (!rows.length) return '<div class="crm2-empty">No enquiries in this period.</div>';
+    return '<div style="overflow-x:auto"><table class="crm2-rt"><thead><tr><th>Channel</th><th class="n">New</th><th class="n">Won</th><th class="n">Won rate</th></tr></thead><tbody>' +
+        rows.map(function (r) { return '<tr><td>' + esc(chName(r.channel)) + '</td><td class="n">' + r.new + '</td><td class="n">' + r.won + '</td><td class="n">' + r.rate + '%</td></tr>'; }).join('') + '</tbody></table></div>';
+}
+function speedCard(sp) {
+    if (!sp) return '';
+    var tot = sp.within_1h + sp.within_24h + sp.later + sp.not_yet; if (!tot) return '';
+    var seg = [['within_1h', 'Within an hour', 'var(--ac)'], ['within_24h', 'Same day', 'var(--bl)'], ['later', 'Later', 'var(--am)'], ['not_yet', 'Not yet', 'var(--rd)']];
+    return '<section class="crm2-card"><div class="crm2-card-h"><h3>How fast they heard back</h3></div><div class="crm2-stack" role="img" aria-label="' + seg.map(function (s) { return s[1] + ' ' + sp[s[0]]; }).join(', ') + '">' +
+        seg.map(function (s) { return sp[s[0]] ? '<span style="width:' + (sp[s[0]] / tot * 100) + '%;background:' + s[2] + '"></span>' : ''; }).join('') + '</div>' +
+        '<div class="crm2-legend" style="flex-wrap:wrap;padding-top:6px">' + seg.map(function (s) { return '<span><i style="background:' + s[2] + '"></i>' + s[1] + ' ' + sp[s[0]] + '</span>'; }).join('') + '</div></section>';
+}
+function bizTable(rows) {
+    if (!rows.length || S.biz) return '';
+    return '<section class="crm2-card" style="margin-top:16px"><div class="crm2-card-h"><h3>Your businesses side by side</h3></div><div style="overflow-x:auto"><table class="crm2-rt"><thead><tr><th>Business</th><th class="n">New</th><th class="n">Won</th><th class="n">Won value</th></tr></thead><tbody>' +
+        rows.map(function (r) { return '<tr><td>' + esc(r.name) + '</td><td class="n">' + r.new + '</td><td class="n">' + r.won + '</td><td class="n">' + (money(r.value) || '—') + '</td></tr>'; }).join('') + '</tbody></table></div></section>';
 }
 
 // ── Setup ───────────────────────────────────────────────────────────────────
