@@ -732,7 +732,7 @@ function _msgAvoidNow(){
         var ix = Math.max(0, Math.min(r.right, b.right) - Math.max(r.left, b.left)), iy = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top));
         var ratio = (ix * iy) / Math.max(1, b.width * b.height);
         var cx = b.left + b.width/2, cy = b.top + b.height/2, centre = cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
-        if(ratio > 0.02 || centre || isField){   /* FLOATER-5 (Owner 09-29: SHOW button under the orb): ANY overlap with a control counts, not 35% */ if(ratio > worstRatio || !worst){ worst = n; worstRatio = Math.max(ratio, centre ? 0.5 : 0); } }
+        var small = (b.width * b.height) < 24000; if((small ? ratio > 0.02 : ratio >= 0.35) || centre || isField){   /* FLOATER-5b: any overlap counts for a button or field; a big click target (card, menu row) only when she covers 35% or its centre */   /* FLOATER-5 (Owner 09-29: SHOW button under the orb): ANY overlap with a control counts, not 35% */ if(ratio > worstRatio || !worst){ worst = n; worstRatio = Math.max(ratio, centre ? 0.5 : 0); } }
       }
     }
     return worst;

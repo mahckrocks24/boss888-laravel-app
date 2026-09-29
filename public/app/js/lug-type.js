@@ -55,7 +55,7 @@
   }
   function cellLabel(el, w) {
     if (el.tagName !== 'TD' || el.hasAttribute('data-label')) return;
-    var tb = el.closest('table.lgse-table'); if (!tb || !tb.tHead) return;
+    var tb = el.closest('table.lgse-table, table.cat-t'); if (!tb || !tb.tHead) return;
     var hr = tb.tHead.rows[tb.tHead.rows.length - 1]; if (!hr) return;
     var lbl = headerFor(el, hr);
     w.push(['@data-label', lbl]);

@@ -457,7 +457,7 @@ window.LU_LOADED_ENGINES['catalogue'] = true;
         var when = it.updated_at ? new Date(String(it.updated_at).replace(' ', 'T')) : null;
         var whenTxt = when && !isNaN(when) ? when.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '—';
         return '<tr data-id="' + it.id + '" tabindex="0">'
-          + '<td>' + (photo ? '<img class="th" src="' + esc(photo) + '" alt="" loading="lazy">' : '<span class="th" style="display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--t3)">🖼</span>') + '</td>'
+          + '<td>' + (photo ? '<img class="th' + (photo ? '' : ' nophoto') + '" src="' + esc(photo || '/img/logo-icon-40.png') + '" alt="" loading="lazy">' : '<span class="th" style="display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--t3)">🖼</span>') + '</td>'
           + '<td><span class="nm">' + esc(it.title) + '</span>' + (it.featured ? ' <span title="Featured">★</span>' : '') + '</td>'
           + '<td>' + flags(it, false) + '</td>'
           + '<td class="num">' + esc(it.price !== null || it.price_label ? it.price_display : '—') + '</td>'
