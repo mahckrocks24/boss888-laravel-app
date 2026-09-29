@@ -1,4 +1,4 @@
-/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1n 2026-09-29 · font: Plus Jakarta Sans (Owner)
+/* LUG GLASS — LevelUpGrowth platform stylesheet (Liquid Glass) · lg1o 2026-09-29 · font: Plus Jakarta Sans (Owner)
    Scoped to html.lg-ui: nothing here applies until the switch is on. */
 /* ==========================================================================
    LUG GLASS — the one LevelUpGrowth platform stylesheet (concept v1)
@@ -909,3 +909,6 @@ html.lg-ui .lg-fade-mask {
     --lg-fs-footnote: 12px; --lg-lh-footnote: 17px;
   }
 }
+
+/* the agent drawer waits just below the screen on phones; its shadow bled a grey band up into every page */
+html.lg-ui .agent-drawer:not(.open) { box-shadow: none !important; }

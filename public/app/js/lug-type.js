@@ -40,8 +40,20 @@
     for (var n = el.firstChild; n; n = n.nextSibling) if (n.nodeType === 3 && /\S/.test(n.nodeValue)) return true;
     return false;
   }
+  // SHAPE: buttons whose corners are written inline (e.g. border-radius:6px) become capsules like every other button.
+  // Skipped: calendar cells, colour swatches, pickers, editors, anything wider than a button.
+  var NO_SHAPE = '[class*="cal"], [class*="swatch"], [class*="lucp"], [class*="picker"], [class*="day"], [class*="grid"], [data-shape-keep]';
+  function shape(el) {
+    if (!(el.tagName === 'BUTTON' || el.getAttribute('role') === 'button' || (el.tagName === 'A' && /btn|button/.test(el.className)))) return;
+    if (el.closest(NO_SHAPE)) return;
+    var r = el.getBoundingClientRect(); if (!r.width || r.height < 24 || r.height > 60 || r.width > 420) return;
+    var cs = getComputedStyle(el), rad = parseFloat(cs.borderTopLeftRadius) || 0;
+    if (rad >= r.height / 2 - 1) return;                       // already a capsule or circle
+    el.style.setProperty('border-radius', '999px', 'important');
+  }
   function fix(el) {
     if (el.nodeType !== 1 || el.closest(SKIP)) return;
+    shape(el);
     if (!hasOwnText(el)) return;
     var cs = getComputedStyle(el);
     if (!UI.test(cs.fontFamily)) return;              // previews and special surfaces keep their own type
