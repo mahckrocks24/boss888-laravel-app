@@ -1177,7 +1177,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       : (startObj.toLocaleDateString('default', {month:'short',day:'numeric'}) + ' – ' + endObj.toLocaleDateString('default', {month:'short',day:'numeric',year:'numeric'}));
     var h = _lgsePipeCalNavBar('Week of ' + label) + _lgsePipeCalLegend();
     h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
-    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--s2);font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--s2);font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">';
     var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
     for (var i=0;i<7;i++) {
       var di = new Date(startObj); di.setDate(di.getDate()+i);
@@ -1185,7 +1185,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       h += '<div style="padding:8px 6px;border-right:1px solid var(--bd);text-align:center">'+hdr+'</div>';
     }
     h += '</div>';
-    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">';
     var today = _lgsePipeIsoDay(new Date());
     for (var i=0;i<7;i++) {
       var iso = _lgsePipeAddDays(weekStart, i);
@@ -1216,12 +1216,12 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
     var lastDay = new Date(year, mo, 0).getDate();
     var h = _lgsePipeCalNavBar(label) + _lgsePipeCalLegend();
     h += '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:10px;overflow:hidden">';
-    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--s2);font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:var(--s2);font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.5px">';
     ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function(d){
       h += '<div style="padding:8px 10px;border-right:1px solid var(--bd);text-align:center">'+d+'</div>';
     });
     h += '</div>';
-    h += '<div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+    h += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">';
     for (var i=0;i<firstDow;i++) {
       h += '<div style="min-height:80px;background:var(--s1);border-right:1px solid var(--bd);border-top:1px solid var(--bd)"></div>';
     }
@@ -9713,14 +9713,14 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
         } else if (view === 'week') {
           var ws3 = _weekStart(cursor);
           html += '<div style="background:#1e293b;border-radius:8px;overflow:hidden">';
-          html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);background:#0f172a;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">';
+          html += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));background:#0f172a;font-size:11px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px">';
           var dn = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
           for (var i=0;i<7;i++) {
             var dd = _parseIso(_addDays(ws3, i));
             html += '<div style="padding:8px 6px;border-right:1px solid #334155;text-align:center">' + dn[i] + ' ' + dd.getDate() + '</div>';
           }
           html += '</div>';
-          html += '<div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+          html += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr))">';
           var todayIso = _iso(new Date());
           for (var i=0;i<7;i++) {
             var iso = _addDays(ws3, i);
@@ -9759,7 +9759,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
           var mo = parseInt(mparts2[1], 10) - 1;
           var firstDay = new Date(yr, mo, 1).getDay();
           var daysInMonth = new Date(yr, mo + 1, 0).getDate();
-          html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+          html += '<div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px">';
           ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (d) {
             html += '<div style="text-align:center;font-size:11px;color:#64748b;padding:4px">' + d + '</div>';
           });

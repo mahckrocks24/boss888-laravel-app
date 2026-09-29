@@ -49,6 +49,8 @@
     var r = el.getBoundingClientRect(); if (!r.width || r.height < 24 || r.height > 60 || r.width > 420) return;
     var cs = getComputedStyle(el), rad = parseFloat(cs.borderTopLeftRadius) || 0;
     if (rad >= r.height / 2 - 1) return;                       // already a capsule or circle
+    // underline tabs (a bottom border only) keep their straight edge: rounding would curve the underline
+    if (parseFloat(cs.borderBottomWidth) > 0 && !parseFloat(cs.borderTopWidth) && !parseFloat(cs.borderLeftWidth)) return;
     el.style.setProperty('border-radius', '999px', 'important');
   }
   function fix(el) {
