@@ -180,6 +180,11 @@ class ClientsController extends BaseEngineController
             'client' => $row + ['city' => $l->city, 'country' => $l->country, 'website_id' => $l->website_id, 'converted_at' => $l->converted_at ? (string) $l->converted_at : null,
                 'first_message_full' => (string) ($meta['first_message'] ?? ''), 'duplicate_of' => $meta['possible_duplicate_of'] ?? []],
             'pack' => $pack, 'fields' => $fields, 'others' => $others, 'tasks' => $tasks, 'appointments' => $appts,
+            // CRM-PACKS-4a: quotes, deposits and invoices for this client
+            'payments' => DB::table('crm_payment_requests')->where('workspace_id', $ws)->where('lead_id', $l->id)->orderByDesc('id')->limit(20)->get(['id', 'kind', 'number', 'title', 'currency', 'total', 'status', 'due_date', 'sent_at', 'viewed_at', 'accepted_at', 'paid_at', 'paid_amount', 'token'])
+                ->map(function ($p) { $pay = app(\App\Engines\CRM\Services\CrmPayments::class); $o = (array) $p; $o['total_text'] = $pay->money($p->currency, (float) $p->total); $o['link'] = $pay->link($p); unset($o['token']); return $o; })->values(),
+            'payments_account' => (bool) app(\App\Engines\CRM\Services\CrmPayments::class)->account($ws),
+            'payments_currency' => app(\App\Engines\CRM\Services\CrmPayments::class)->account($ws)->currency ?? 'USD',
             'sarah' => ($meta['sarah_summary'] ?? null), // CRM-SARAH-3: refreshed by GET /clients/{id}/summary when stale
             'drafts' => DB::table('crm_reply_drafts')->where('workspace_id', $ws)->where('lead_id', $l->id)->where('status', 'draft')->orderByDesc('id')->limit(3)->get(['id', 'source', 'subject', 'body', 'reason', 'created_at'])->values(),
             'timeline' => $this->crm->leadTimeline($ws, $l->id),
@@ -330,6 +335,27 @@ class ClientsController extends BaseEngineController
     {
         $out = app(\App\Engines\CRM\Services\SarahClients::class)->summary($this->wsId($r), $id, $r->boolean('refresh'));
         return $out ? $this->readJson(['success' => true] + $out) : response()->json(['success' => false, 'message' => 'No summary yet.'], 404);
+    }
+
+    /** POST /crm/clients/{id}/payments {kind, title?, items[], currency?, due_date?, note?, send?} */
+    public function createPayment(Request $r, int $id): JsonResponse
+    {
+        $res = app(\App\Engines\CRM\Services\CrmPayments::class)->create($this->wsId($r), $id, $r->all(), $this->userId($r));
+        return ! empty($res['success']) ? $this->readJson($res, 201) : response()->json(['success' => false, 'message' => $res['error'] ?? 'Not created.'], 422);
+    }
+
+    /** POST /crm/payments/{id}/send — send (or send again) */
+    public function sendPayment(Request $r, int $id): JsonResponse
+    {
+        $res = app(\App\Engines\CRM\Services\CrmPayments::class)->send($this->wsId($r), $id, $this->userId($r));
+        return ! empty($res['sent']) ? $this->readJson(['success' => true] + $res) : response()->json(['success' => false, 'message' => $res['error'] ?? 'Not sent.', 'link' => $res['link'] ?? null], 422);
+    }
+
+    /** POST /crm/payments/{id}/cancel — withdraw a request that is not paid */
+    public function cancelPayment(Request $r, int $id): JsonResponse
+    {
+        $n = DB::table('crm_payment_requests')->where('workspace_id', $this->wsId($r))->where('id', $id)->whereNotIn('status', ['paid'])->update(['status' => 'cancelled', 'updated_at' => now()]);
+        return $n ? $this->readJson(['success' => true]) : response()->json(['success' => false, 'message' => 'Paid requests cannot be withdrawn.'], 422);
     }
 
     /** GET /crm/drafts — replies Sarah wrote that are waiting for the owner. */

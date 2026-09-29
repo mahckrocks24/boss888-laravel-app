@@ -9091,6 +9091,7 @@ Route::get('/public/img/{w}/{path}', [\App\Http\Controllers\Api\Widget\ImageVari
 if (file_exists(__DIR__ . '/api/public/plans.php')) { require __DIR__ . '/api/public/plans.php'; }
 if (file_exists(__DIR__ . '/api/public/arthur-public-01.php')) { require __DIR__ . '/api/public/arthur-public-01.php'; }   // Arthur, before the account exists
 if (file_exists(__DIR__ . '/api/public/domains-public-01.php')) { require __DIR__ . '/api/public/domains-public-01.php'; }   // domain search, before the account exists
+if (file_exists(__DIR__ . '/api/public/crm-pay-01.php')) { require __DIR__ . '/api/public/crm-pay-01.php'; }   // CRM-PACKS-4a: a client accepts a quote or pays, under the business's own address
 
 // ── STORE PAYMENTS PUBLIC (DEC-0051, 2026-09-15): Stripe Checkout on the customer's own account for priced catalogue items ──
 Route::middleware(['throttle:30,1'])->group(function () {

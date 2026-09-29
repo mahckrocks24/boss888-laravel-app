@@ -190,6 +190,11 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-radio{display:flex;flex-direction:column;gap:8px}.crm2-radio label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--bd);border-radius:12px;cursor:pointer;background:var(--s1)}',
         '.crm2-radio input{accent-color:var(--p);margin-top:3px;width:18px;height:18px}.crm2-radio label b{display:block;color:var(--t1);font-size:14px}.crm2-radio label span{font-size:13px;color:var(--t3)}',
         '.crm2-radio label:has(input:checked){border-color:var(--p);background:var(--ps)}',
+        '.crm2-pay{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:10px 0}.crm2-pay+.crm2-pay{border-top:1px solid var(--bd)}',
+        '.crm2-pay .t{font-size:13px;color:var(--t1);font-weight:600}.crm2-pay .w{font-size:12px;color:var(--t3);margin-top:2px}.crm2-pay .a{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}',
+        '.crm2-lines{display:grid;gap:8px}.crm2-line{display:grid;grid-template-columns:minmax(0,1fr) 64px 104px 36px;gap:6px;align-items:center}',
+        '.crm2-line input{min-width:0}.crm2-tot{display:flex;justify-content:space-between;font:700 15px var(--fb);color:var(--t1);padding-top:6px;border-top:1px solid var(--bd)}',
+        '@media (max-width:760px){.crm2-line{grid-template-columns:minmax(0,1fr) 56px 88px 36px}}',
         '@media (max-width:1180px){.crm2-rec{grid-template-columns:280px minmax(0,1fr)}.crm2-rec .rc{grid-column:1 / -1;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}}',
         '@media (max-width:900px){.crm2-grid2{grid-template-columns:minmax(0,1fr)}.crm2-grid2>*{min-width:0}.crm2-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}',
         '@media (max-width:760px){',
@@ -253,6 +258,20 @@ function sarahBox(R) {
         '<p>' + esc(sm ? sm.summary : 'Reading ' + c.name.split(' ')[0] + '\'s history…') + '</p>' +
         (sm && sm.next_step ? '<div class="nx"><b>Next:</b> ' + esc(sm.next_step) + '</div>' : '') +
         (c.first_message_full ? '<div class="q">“' + esc(c.first_message_full.slice(0, 400)) + '”</div>' : '') + '</section>';
+}
+var PAYST = {draft: ['Not sent', 'crm2-t-lost'], sent: ['Sent', 'crm2-t-contacted'], viewed: ['Opened', 'crm2-t-qualified'], accepted: ['Accepted', 'crm2-t-won'], paid: ['Paid', 'crm2-t-won'], cancelled: ['Withdrawn', 'crm2-t-lost']};
+var PAYK = {quote: 'Quote', deposit: 'Deposit', invoice: 'Invoice'};
+function payCard(R) {
+    var list = (R.payments || []).map(function (p) {
+        var st = PAYST[p.status] || PAYST.sent;
+        return '<div class="crm2-pay"><div style="min-width:0"><div class="t">' + esc(PAYK[p.kind] || p.kind) + ' ' + esc(p.number) + ' · ' + esc(p.total_text) + '</div><div class="w">' + esc(p.title) +
+            (p.paid_at ? ' · paid ' + esc(ago(p.paid_at)) : p.accepted_at ? ' · accepted ' + esc(ago(p.accepted_at)) : p.viewed_at ? ' · opened ' + esc(ago(p.viewed_at)) : p.sent_at ? ' · sent ' + esc(ago(p.sent_at)) : '') + '</div>' +
+            (p.status !== 'paid' && p.status !== 'cancelled' ? '<div class="a"><button class="btn btn-ghost btn-sm" onclick="window._crm2.payCopy(\'' + esc(p.link) + '\')">Copy link</button><button class="btn btn-ghost btn-sm" onclick="window._crm2.paySend(' + p.id + ')">' + (p.sent_at ? 'Send again' : 'Send') + '</button><button class="btn btn-ghost btn-sm" style="color:var(--rd)" onclick="window._crm2.payCancel(' + p.id + ')">Withdraw</button></div>' : '') +
+            '</div><span class="crm2-pill ' + st[1] + '">' + st[0] + '</span></div>';
+    }).join('');
+    return '<section class="crm2-card"><div class="crm2-sec"><h4>Quotes and payments</h4>' + (list || '<div class="crm2-note">Nothing sent yet.</div>') +
+        '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:12px" onclick="window._crm2.payNew()">' + I('add', 14) + ' Quote or payment request</button>' +
+        (R.payments_account ? '' : '<div class="crm2-note" style="margin-top:8px">To take card payments online, connect your Stripe account in Settings → Payments. Requests still go out; clients reply to arrange payment.</div>') + '</div></section>';
 }
 function draftCard(d, withName) {
     return '<article class="crm2-draft" data-draft="' + d.id + '"><div class="top"><b>' + esc(withName ? (d.name + ' · ' + (d.subject || '')) : (d.subject || 'Reply')) + '</b><span>' +
@@ -475,8 +494,8 @@ function recordHtml() {
     var comp = S.composer;
     var tl = (R.timeline || []).map(function (a) {
         var human = !a.system;
-        var ic = {note: 'edit', call: 'phone', email: 'mail', meeting: 'calendar', task: 'check', booked: 'calendar'}[a.type] || (a.type === 'repeat_enquiry' ? 'message' : 'clock');
-        var lab = {note: 'Note', call: 'Call', email: 'Email', meeting: 'Meeting', task: 'Task', status_changed: 'Stage changed', lead_created: 'Added', repeat_enquiry: 'Came back', assigned: 'Assigned', form_submission: 'Form', booked: 'Booking'}[a.type] || 'History';
+        var ic = {note: 'edit', call: 'phone', email: 'mail', meeting: 'calendar', task: 'check', booked: 'calendar', payment: 'check'}[a.type] || (a.type === 'repeat_enquiry' ? 'message' : 'clock');
+        var lab = {note: 'Note', call: 'Call', email: 'Email', meeting: 'Meeting', task: 'Task', status_changed: 'Stage changed', lead_created: 'Added', repeat_enquiry: 'Came back', assigned: 'Assigned', form_submission: 'Form', booked: 'Booking', payment: 'Payment'}[a.type] || 'History';
         return '<li><div class="dot' + (human ? ' h' : '') + '" aria-hidden="true">' + I(ic, 14) + '</div><div class="b"><div class="t">' + esc(lab) + (a.type === 'task' ? (a.status === 'done' ? ' · done' : (a.due_date ? ' · due ' + esc(when(a.due_date)) : '')) : '') + '</div>' +
             '<div class="d">' + esc(a.type === 'lead_created' ? 'Added to ' + p.many : a.title) + (a.description ? '\n' + esc(a.description) : '') + '</div></div><div class="w">' + esc(ago(a.created_at)) +
             (human ? '<br><button class="x" aria-label="Delete this ' + esc(lab.toLowerCase()) + '" onclick="window._crm2.delAct(\'' + a.id + '\')">' + I('delete', 14) + '</button>' : '') + '</div></li>';
@@ -499,6 +518,7 @@ function recordHtml() {
     var right = '<div class="rc" style="display:flex;flex-direction:column;gap:16px">' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Open tasks</h4>' + (tasks || '<div class="crm2-note">No open tasks.</div>') + '</div></section>' +
         '<section class="crm2-card"><div class="crm2-sec"><h4>Bookings</h4>' + (appts || '<div class="crm2-note">No bookings.</div>') + '<button class="btn btn-outline btn-sm" style="width:100%;margin-top:12px" onclick="window._crm2.book()">' + I('calendar', 14) + ' Book ' + esc(c.name.split(' ')[0]) + '</button><div class="crm2-note" style="margin-top:8px">Bookings also show in your Calendar.</div></div></section>' +
+        payCard(R) +
         (others ? '<section class="crm2-card"><div class="crm2-sec"><h4>Also a client of</h4>' + others + '</div></section>' : '') +
         ((c.duplicate_of || []).length ? '<section class="crm2-card"><div class="crm2-sec"><h4>Possible duplicate</h4><div class="crm2-note" style="margin-bottom:8px">Another record looks like the same person in this business.</div>' + c.duplicate_of.map(function (d) { return '<button class="btn btn-ghost btn-sm" onclick="window._crm2.open(' + d + ')">Open record #' + d + '</button>'; }).join('') + '</div></section>' : '') +
         '<button class="btn btn-ghost btn-sm" style="color:var(--rd);align-self:flex-start" onclick="window._crm2.archiveOne(' + c.id + ')">' + I('delete', 14) + ' Archive this ' + esc(w.one.toLowerCase()) + '</button></div>';
@@ -631,6 +651,34 @@ window._crm2 = {
         var sub = bd.querySelector('[type=submit]'); if (sub) sub.style.display = 'none';
     },
     stage: function (id, st) { moveTo(id, st); },
+    payNew: function () {
+        var R = S.rec, c = R.client, cur = R.payments_currency || 'USD';
+        var line = function (i) { return '<div class="crm2-line"><input class="form-input" aria-label="Line ' + i + ' description" name="d' + i + '" placeholder="' + (i === 1 ? 'What it is for' : '') + '"><input class="form-input" aria-label="Line ' + i + ' quantity" name="q' + i + '" type="number" min="0" step="1" value="1"><input class="form-input" aria-label="Line ' + i + ' price" name="u' + i + '" type="number" min="0" step="0.01" placeholder="0.00"><span></span></div>'; };
+        var bd = modal('Quote or payment request for ' + c.name,
+            '<div class="crm2-field" style="margin:0"><label for="pk">What are you sending?</label><select class="form-select" id="pk" name="pk"><option value="quote">A quote to accept</option><option value="deposit">A deposit to pay</option><option value="invoice" selected>An invoice to pay</option></select></div>' +
+            fld('pt', 'Title', 'text', '', ' maxlength="190" placeholder="e.g. Wedding catering, 14 June"') +
+            '<div class="crm2-field" style="margin:0"><label>Lines (' + esc(cur) + ')</label><div class="crm2-lines" id="plines">' + line(1) + line(2) + line(3) + '</div><button type="button" class="btn btn-ghost btn-sm" id="padd" style="margin-top:6px">' + I('add', 14) + ' Another line</button><div class="crm2-tot" style="margin-top:8px"><span>Total</span><span id="ptot">0.00</span></div></div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">' + fld('pdue', 'Due or valid until', 'date', '') + '<div></div></div>' +
+            '<div class="crm2-field" style="margin:0"><label for="pn">Note to the client (optional)</label><textarea class="form-input" id="pn" name="pn" rows="2"></textarea></div>' +
+            '<div class="crm2-note">' + (c.email ? 'It goes to ' + esc(c.email) + ' as an email from your business, with a link to ' + (R.payments_account ? 'accept or pay online.' : 'view it (card payment needs Stripe connected).') : 'This client has no email: it will be saved and you can copy the link to share it.') + '</div>',
+            async function (f) {
+                var items = []; for (var i = 1; i <= 12; i++) { if (!f['d' + i]) break; var d = f['d' + i].value.trim(); if (d) items.push({description: d, qty: parseFloat(f['q' + i].value) || 1, unit: parseFloat(f['u' + i].value) || 0}); }
+                if (!items.length) throw new Error('Add at least one line.');
+                var j = await api('POST', '/clients/' + c.id + '/payments', {kind: f.pk.value, title: f.pt.value.trim(), items: items, due_date: f.pdue.value || null, note: f.pn.value.trim(), send: !!c.email});
+                toast(c.email ? (j.sent ? 'Sent to ' + c.name + '.' : 'Saved, but not sent: ' + (j.error || '')) : 'Saved. Copy the link to share it.');
+                await loadRecord(c.id); render();
+            }, c.email ? 'Send' : 'Save');
+        var sum = function () { var t = 0; for (var i = 1; i <= 12; i++) { if (!bd.querySelector('[name=d' + i + ']')) break; t += (parseFloat(bd.querySelector('[name=q' + i + ']').value) || 0) * (parseFloat(bd.querySelector('[name=u' + i + ']').value) || 0); } bd.querySelector('#ptot').textContent = t.toFixed(2); };
+        bd.addEventListener('input', sum);
+        bd.querySelector('#padd').onclick = function () { var n = bd.querySelectorAll('.crm2-line').length + 1; if (n > 12) return; bd.querySelector('#plines').insertAdjacentHTML('beforeend', line(n)); };
+    },
+    payCopy: function (link) { try { navigator.clipboard.writeText(link); toast('Link copied.'); } catch (e) { toast(link); } },
+    paySend: async function (id) { try { var j = await api('POST', '/payments/' + id + '/send'); toast('Sent.'); } catch (e) { return toast('Not sent: ' + e.message, 'error'); } await loadRecord(S.recId); render(); },
+    payCancel: async function (id) {
+        var ok = typeof luConfirm === 'function' ? await luConfirm('Withdraw this request? The client\'s link will say it was withdrawn.', 'Withdraw', 'Withdraw', 'Keep') : true;
+        if (!ok) return;
+        try { await api('POST', '/payments/' + id + '/cancel'); toast('Withdrawn.'); } catch (e) { return toast(e.message, 'error'); } await loadRecord(S.recId); render();
+    },
     sendDraft: async function (id) {
         var ta = document.getElementById('crm2-d-' + id); var body = ta ? ta.value.trim() : '';
         if (!body) return toast('The message is empty.', 'error');

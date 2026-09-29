@@ -155,6 +155,8 @@ class StorePaymentsService
     private function markPaid(int $wsId, string $sessionId, string $email, string $name, string $paymentStatus, array $raw): array
     {
         $order = DB::table('catalogue_orders')->where('session_id', $sessionId)->where('workspace_id', $wsId)->first();
+        // CRM-PACKS-4a: the same Stripe account also takes payment for quotes, deposits and invoices sent from Clients
+        if (! $order && $paymentStatus === 'paid' && ($crm = app(\App\Engines\CRM\Services\CrmPayments::class)->markPaidBySession($wsId, $sessionId, (float) (($raw['amount_total'] ?? 0) / 100)))) return $crm;
         if (! $order) return ['ok' => false, 'reason' => 'unknown_session'];
         if ($order->status === 'paid') return ['ok' => true, 'reason' => 'already'];
         if ($paymentStatus !== 'paid' && $paymentStatus !== '') return ['ok' => true, 'reason' => 'not_paid'];

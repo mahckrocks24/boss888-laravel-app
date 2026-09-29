@@ -61,6 +61,10 @@ use Illuminate\Support\Facades\Route;
         // CRM-SARAH-3: Sarah in Clients
         Route::get('/clients/{id}/summary', [$k, 'summary'])->whereNumber('id');
         Route::get('/drafts', [$k, 'drafts']);
+        // CRM-PACKS-4a: quotes, deposits, invoices
+        Route::post('/clients/{id}/payments', [$k, 'createPayment'])->whereNumber('id');
+        Route::post('/payments/{id}/send', [$k, 'sendPayment'])->whereNumber('id');
+        Route::post('/payments/{id}/cancel', [$k, 'cancelPayment'])->whereNumber('id');
         Route::post('/drafts/{id}/send', [$k, 'sendDraft'])->whereNumber('id');
         Route::post('/drafts/{id}/skip', [$k, 'skipDraft'])->whereNumber('id');
         Route::match(['get', 'put'], '/autoreply/{businessId}', [$k, 'autoreply'])->whereNumber('businessId');
