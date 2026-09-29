@@ -197,3 +197,18 @@ html .lg-site .lg.mk, html .lg-site .lg .lg { background: transparent; }
 html .lg-site .nav-mobile a.btn, html .lg-site .nav-mobile .btn-primary, html .lg-site .nav-mobile .btn-glow { color: #FFFFFF; }
 html .lg-site .legal a, html .lg-site .fine a, html .lg-site .notice a { color: var(--accent-text); }
 html .lg-site .rep-pass .rep-tag { color: var(--success); }
+
+/* 17. Owner 09-30 phone shots: blocks that became glass cards get their inner padding (.log, .toc); the blog card image bleeds to both edges again (lug-glass caps img at 100%); the comparison table's long cells get a floor width so a row is not six lines tall; the table of contents is static on phones, never sticky over the article */
+html .lg-site .log { padding: 22px 24px; }
+html .lg-site .log + .log { margin-top: 14px; }
+html .lg-site .toc { padding: 18px 22px; }
+html .lg-site .toc a { color: var(--accent-text); }
+html .lg-site .post-card-img { max-width: none; }
+html .lg-site .matrix td { min-width: 150px; }
+html .lg-site .matrix tbody th { min-width: 150px; }
+@media (max-width: 900px) {
+  html .lg-site .toc { position: static; top: auto; }
+  html .lg-site .post-grid { gap: 24px; }
+}
+html .lg-site .post-grid { padding-left: var(--gutter, 24px); padding-right: var(--gutter, 24px); }   /* .post-grid's own padding zeroed the container's sides; the article kept no gutter on phones */
+html .lg-site .matrix td { min-width: 190px; }
