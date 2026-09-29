@@ -30,6 +30,11 @@ class ChatImageAttach
             return $add($m[1]) ? '' : $m[0];
         }, $text);
 
+        // 1b) markdown links [label](url) to a generated image — attach the image, keep the label as plain words (ATTACH-3)
+        $text = preg_replace_callback('#\[([^\]]*)\]\(([^)\s]+)\)#', function ($m) use ($add) {
+            return $add($m[2]) ? $m[1] : $m[0];
+        }, $text);
+
         // 2) bare URLs still left in the prose.
         if (preg_match_all('#https?://\S+#i', $text, $mm)) {
             foreach ($mm[0] as $raw) {

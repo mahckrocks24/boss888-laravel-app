@@ -52,6 +52,13 @@
       '.bs-row .ic{flex:none;width:34px;height:34px;border-radius:50%;background:var(--s3);display:flex;align-items:center;justify-content:center;font-size:14px}',
       '.bs-row .b{flex:1;min-width:0}.bs-row .t{font-weight:600;font-size:14px}.bs-row .d{font-size:12.5px;color:var(--t2);margin-top:2px;line-height:1.45}.bs-row .a{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}',
       '.bs-row.att{border-left:3px solid var(--am)}.bs-row.gate{border-left:3px solid var(--bl)}.bs-row.book{border-left:3px solid var(--ac)}.bs-row.fail{border-left:3px solid var(--rd)}',
+      /* ATTN-COLLAPSE-1 (Owner 2026-09-30): a card is closed by default and carries no buttons on its face; tap it for the details, the preview and the actions */
+      '.bs .bs-row.xr{flex-direction:column;gap:0;padding:0!important}.bs .bs-row.xr .hd{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;border-radius:inherit}.bs .bs-row.xr .hd:focus-visible{outline:2px solid var(--ac);outline-offset:-2px}',
+      '.bs .bs-row.xr .hb{flex:1;min-width:0}.bs .bs-row.xr .s{font-size:12.5px;color:var(--t2);margin-top:2px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bs .bs-row.xr.open .s{white-space:normal}',
+      '.bs .bs-row.xr .chev{flex:none;width:9px;height:9px;margin:9px 8px 0 0;border-right:2px solid var(--t3);border-bottom:2px solid var(--t3);transform:rotate(45deg);transition:transform .2s}.bs .bs-row.xr.open .chev{transform:rotate(225deg);margin-top:13px}',
+      '.bs .bs-row.xr .b{display:none;padding:0 14px 14px 60px}.bs .bs-row.xr.open .b{display:block}@media(max-width:640px){.bs .bs-row.xr .b{padding-left:14px}}',
+      '.bs .bs-row .pv{margin:2px 0 4px;font-size:13.5px;line-height:1.55;color:var(--t1)}.bs .bs-row .pv-img{display:block;width:100%;max-width:440px;border-radius:12px;margin:0 0 10px;border:1px solid var(--bd)}.bs .bs-row .pv-cap{white-space:pre-wrap}',
+      '.bs .bs-row .pv-tags{color:var(--ac);margin-top:6px;font-size:12.5px}.bs .bs-row .pv-meta{color:var(--t2);font-size:12.5px;margin-top:8px}.bs .bs-row .pv-line{color:var(--t2);font-size:12.5px;margin-top:4px}.bs .bs-row .pv ol,.bs .bs-row .pv ul{margin:6px 0 0;padding-left:18px}.bs .bs-row .pv li{margin:3px 0}',
       '.bs-empty{padding:22px;text-align:center;color:var(--t2);font-size:13.5px;border:1px dashed var(--bd2);border-radius:var(--r)}.bs-empty b{color:var(--t1);display:block;font:700 15px var(--fh);margin-bottom:4px}',
       '.bs-reason{width:100%;box-sizing:border-box;margin-top:8px;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r);color:var(--t1);padding:9px 12px;font:400 13px var(--fb);min-height:44px}.bs-reason:focus-visible{outline:2px solid var(--p);outline-offset:1px}',
       '.bs-field{display:flex;flex-direction:column;gap:6px}.bs-field label{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2)}',
@@ -72,7 +79,22 @@
   function btn(label, cls, onclick, attrs) { var b = document.createElement('button'); b.type = 'button'; b.className = 'bs-btn' + (cls ? ' ' + cls : ''); b.textContent = label; if (onclick) b.addEventListener('click', function () { onclick(b); }); if (attrs) Object.keys(attrs).forEach(function (k) { b.setAttribute(k, attrs[k]); }); return b; }
   function sec(title, count, sub) { var s = document.createElement('section'); s.className = 'bs-sec'; s.innerHTML = '<h2>' + esc(title) + (count != null ? '<span class="n">' + esc(count) + '</span>' : '') + '</h2>' + (sub ? '<p class="bs-sub">' + esc(sub) + '</p>' : ''); return s; }
   function empty(title, text) { var e = document.createElement('div'); e.className = 'bs-empty'; e.innerHTML = '<b>' + esc(title) + '</b>' + esc(text || ''); return e; }
-  function row(cls, icon, title, desc, actions) { var r = document.createElement('div'); r.className = 'bs-row ' + (cls || ''); r.innerHTML = '<div class="ic" aria-hidden="true">' + icon + '</div><div class="b"><div class="t">' + esc(title) + '</div>' + (desc ? '<div class="d">' + esc(desc) + '</div>' : '') + '</div>'; if (actions && actions.length) { var a = document.createElement('div'); a.className = 'a'; actions.forEach(function (x) { a.appendChild(x); }); r.querySelector('.b').appendChild(a); } return r; }
+  /* ATTN-COLLAPSE-1: a row with something to open (a preview or actions) is a closed card; the header is the only thing on its face */
+  function row(cls, icon, title, desc, actions, preview) {
+    var r = document.createElement('div'); var openable = !!(preview || (actions && actions.length));
+    r.className = 'bs-row ' + (cls || '') + (openable ? ' xr' : '');
+    if (!openable) { r.innerHTML = '<div class="ic" aria-hidden="true">' + icon + '</div><div class="b"><div class="t">' + esc(title) + '</div>' + (desc ? '<div class="d">' + esc(desc) + '</div>' : '') + '</div>'; return r; }
+    r.innerHTML = '<div class="hd" role="button" tabindex="0" aria-expanded="false"><div class="ic" aria-hidden="true">' + icon + '</div><div class="hb"><div class="t">' + esc(title) + '</div>' + (desc ? '<div class="s">' + esc(desc) + '</div>' : '') + '</div><span class="chev" aria-hidden="true"></span></div><div class="b"></div>';
+    var b = r.querySelector('.b');
+    if (preview) { if (typeof preview === 'string') { var pv = document.createElement('div'); pv.className = 'pv'; pv.innerHTML = preview; b.appendChild(pv); } else { b.appendChild(preview); } }
+    if (actions && actions.length) { var a = document.createElement('div'); a.className = 'a'; actions.forEach(function (x) { a.appendChild(x); }); b.appendChild(a); }
+    var hd = r.querySelector('.hd');
+    function tog() { var o = r.classList.toggle('open'); hd.setAttribute('aria-expanded', o ? 'true' : 'false'); }
+    hd.addEventListener('click', tog); hd.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
+    return r;
+  }
+  function pvImg(url) { return url ? '<img class="pv-img" src="' + esc(url) + '" alt="" loading="lazy" decoding="async">' : ''; }
+  function pvLine(s) { return s ? '<div class="pv-line">' + esc(s) + '</div>' : ''; }
   function kpi(label, value, meta, cls) { var k = document.createElement('div'); k.className = 'bs-kpi' + (cls ? ' ' + cls : ''); k.innerHTML = '<div class="l">' + esc(label) + '</div><div class="v">' + esc(value) + '</div>' + (meta ? '<div class="m">' + meta + '</div>' : ''); return k; }
   function skel(root, n) { root.innerHTML = ''; for (var i = 0; i < (n || 3); i++) { var s = document.createElement('div'); s.className = 'bs-sec'; s.innerHTML = '<div class="bs-skel" style="width:40%"></div><div class="bs-skel"></div><div class="bs-skel" style="width:70%"></div>'; root.appendChild(s); } }
   function fail(root, what, retry) { root.innerHTML = ''; var e = empty("Couldn't load " + what, 'Check your connection and try again.'); var b = btn('Try again', 'primary', retry); b.style.marginTop = '10px'; e.appendChild(b); root.appendChild(e); }
@@ -136,19 +158,29 @@
   function seePost(id) { if (!window.nav) return; nav('sarah'); var t = 0; (function w() { var c = document.querySelector('.sh-inline-post[data-post="' + id + '"]'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('sh-flash'); setTimeout(function () { c.classList.remove('sh-flash'); }, 1600); } else if (t++ < 40) setTimeout(w, 250); })(); }
   function postRow(x) {
     var plat = x.platform === 'instagram' ? 'Instagram' : x.platform === 'linkedin' ? 'LinkedIn' : 'Facebook'; var r;
-    var desc = (x.account && x.account.name ? x.account.name + ' · ' : '') + String(x.caption || 'No caption yet').replace(/\s+/g, ' ').slice(0, 140);
+    var biz = x.account && (x.account.business || x.account.name) ? (x.account.business || x.account.name) : null;
+    var desc = [biz, String(x.caption || 'No caption yet').replace(/\s+/g, ' ')].filter(Boolean).join(' · ');
+    var pv = (x.media_kind === 'video' ? pvLine('Video attached') : pvImg(x.media_url || x.image))
+      + '<div class="pv-cap">' + esc(String(x.caption || 'No caption yet')) + '</div>'
+      + ((x.hashtags || []).length ? '<div class="pv-tags">' + esc(x.hashtags.join(' ')) + '</div>' : '')
+      + (x.link ? '<div class="pv-meta">Link card: ' + esc(x.article_title || x.domain || x.link) + (x.domain && x.article_title ? ' · ' + esc(x.domain) : '') + '</div>' : '')
+      + '<div class="pv-meta">' + esc([plat, x.account && x.account.name ? x.account.name : null, x.created_at ? 'drafted ' + ago(x.created_at) : null].filter(Boolean).join(' · ')) + '</div>'
+      + (x.ready ? '' : '<div class="pv-meta">' + esc(x.account && x.account.problem ? x.account.problem : (String(x.caption || '').trim() ? 'No connected account for this platform yet.' : 'No caption yet.')) + '</div>');
     var acts = [];
     if (x.ready) acts.push(btn('Post it', 'primary', function (b) { if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Confirm — post now'; return; } rowAct('social/posts/' + x.post_id + '/publish', {}, 'Sent to ' + plat + ' — it shows under Results once confirmed.', b, r); }));
     acts.push(btn('View post', x.ready ? 'quiet' : 'primary', function () { seePost(x.post_id); }));
     acts.push(btn('Not now', 'quiet', function (b) { rowAct('social/posts/' + x.post_id + '/dismiss-preview', {}, 'Not now — it stays in Social › Drafts.', b, r); }));
-    r = row('att', '\u270E', 'Post ready: ' + plat, desc, acts); return r;
+    r = row('att', '\u270E', 'Post ready: ' + plat, desc, acts, pv); return r;
   }
   function campaignRow(p) {
     var r; var desc = [p.dates_label, p.target ? 'target: ' + p.target : null, (p.steps || []).length + ' steps', p.credits_up_to ? 'up to ' + p.credits_up_to + ' credits' : null].filter(Boolean).join(' · ');
     r = row('att', '\u2726', 'Campaign idea: ' + p.title, desc, [
       btn('Launch', 'primary', function (b) { if (!b.dataset.sure) { b.dataset.sure = '1'; b.textContent = 'Confirm launch'; return; } rowAct('growth/campaigns/' + p.campaign_id + '/launch', {}, 'Launched — Sarah\'s team is on it.', b, r); }),
       btn('View plan', 'quiet', function () { openCampaign(p.campaign_id); }),
-      btn('Not now', 'quiet', function (b) { rowAct('growth/campaigns/' + p.campaign_id + '/decline', { reason: 'Not now' }, 'Not now — Sarah will learn from it.', b, r); })]);
+      btn('Not now', 'quiet', function (b) { rowAct('growth/campaigns/' + p.campaign_id + '/decline', { reason: 'Not now' }, 'Not now — Sarah will learn from it.', b, r); })],
+      (p.summary || p.description || p.why || p.rationale ? '<div class="pv-cap">' + esc(String(p.summary || p.description || p.why || p.rationale)) + '</div>' : '')
+      + pvLine([p.dates_label, p.target ? 'Target: ' + p.target : null, p.credits_up_to ? 'Up to ' + p.credits_up_to + ' credits' : null].filter(Boolean).join(' · '))
+      + ((p.steps || []).length ? '<ol>' + p.steps.map(function (s) { if (typeof s === 'string') return '<li>' + esc(s) + '</li>'; var d = s.date_label || s.date || s.when || ''; var tt = s.title || s.label || s.description || s.action || ''; return '<li>' + esc((d ? d + ' — ' : '') + tt) + (s.agent ? ' <span class="pv-line" style="display:inline">(' + esc(s.agent) + ')</span>' : '') + '</li>'; }).join('') + '</ol>' : ''));
     return r;
   }
   function changeRow(x) {
@@ -156,7 +188,8 @@
     r = row('att', '\u2726', 'Campaign update: ' + x.campaign_title, desc, [
       btn('Approve' + (x.extra_credits ? ' · up to ' + x.extra_credits + ' credits' : ''), 'primary', function (b) { rowAct('growth/changes/' + x.change_id + '/approve', {}, 'Updated — the new steps are on the calendar.', b, r); }),
       btn('View campaign', 'quiet', function () { openCampaign(x.campaign_id); }),
-      btn('Keep as is', 'quiet', function (b) { rowAct('growth/changes/' + x.change_id + '/decline', {}, 'Kept as is — Sarah will learn from it.', b, r); })]);
+      btn('Keep as is', 'quiet', function (b) { rowAct('growth/changes/' + x.change_id + '/decline', {}, 'Kept as is — Sarah will learn from it.', b, r); })],
+      (x.reason ? '<div class="pv-cap">' + esc(x.reason) + '</div>' : '') + ((x.lines || []).length ? '<ul>' + x.lines.map(function (l) { return '<li>' + esc([l.label, l.title, l.date_label ? '(' + l.date_label + ')' : null].filter(Boolean).join(' ')) + '</li>'; }).join('') + '</ul>' : '') + pvLine(x.extra_credits ? 'Up to ' + x.extra_credits + ' more credits' : ''));
     return r;
   }
   function approvalRow(a) {
@@ -166,7 +199,8 @@
     var approve = btn('Approve', 'primary', function (b) { decide(a.id, 'approve', null, b, r); });
     var reject = btn('Reject', 'danger', function (b) { var box = r.querySelector('.bs-reason'); if (!box) { box = document.createElement('textarea'); box.className = 'bs-reason'; box.rows = 2; box.placeholder = 'Why not? Sarah learns from this'; box.setAttribute('aria-label', 'Reason for rejecting'); r.querySelector('.b').insertBefore(box, r.querySelector('.a')); box.focus(); b.textContent = 'Confirm reject'; return; } var reason = box.value.trim(); if (!reason) { box.focus(); showToast('Add a short reason so Sarah knows what to change.', 'warning'); return; } decide(a.id, 'reject', reason, b, r); });
     acts.push(approve, reject); if (link) acts.push(btn(link[2], 'quiet', function () { openAdvanced(link[0], link[1]); }));
-    var r = row('att', '✓', t.label || humanAction(t.action) || 'Something needs your OK', (t.description ? t.description + ' · ' : '') + who + ' · uses ' + cost + (a.time_ago ? ' · asked ' + a.time_ago : ''), acts);
+    var r = row('att', '✓', t.label || humanAction(t.action) || 'Something needs your OK', (t.description ? t.description + ' · ' : '') + who + ' · uses ' + cost + (a.time_ago ? ' · asked ' + a.time_ago : ''), acts,
+      (t.description ? '<div class="pv-cap">' + esc(t.description) + '</div>' : '') + pvLine('Proposed by ' + who + ' · uses ' + cost + (a.time_ago ? ' · asked ' + a.time_ago : '')));
     if (t.action === 'execute_plan' && t.payload) luPlanDecorate(r, t.payload);   // MANDATE-1
     return r;
   }
@@ -180,7 +214,7 @@
       box.innerHTML = '<div style="font-weight:600;color:var(--t1);margin-bottom:2px">' + lines.length + ' task' + (lines.length === 1 ? '' : 's') + ' · up to ' + (p.spend_ceiling || 0) + ' credit' + (p.spend_ceiling === 1 ? '' : 's') + ' · valid ' + (p.validity_days || 90) + ' days</div>' +
         '<ol style="margin:0;padding-left:18px">' + lines.map(function (l) { var d = document.createElement('div'); d.textContent = l; return '<li>' + d.innerHTML + '</li>'; }).join('') + '</ol>' +
         '<div style="margin-top:4px;color:var(--t3)">Approve once — Sarah\'s team runs every step without asking again. Anything that needs a target you have not named is held and shown to you.</div>';
-      var acts = r.querySelector('.acts'); if (acts) acts.parentNode.insertBefore(box, acts); else r.appendChild(box);
+      var host = r.querySelector('.b') || r; var acts = host.querySelector('.a') || r.querySelector('.acts'); if (acts && acts.parentNode === host) host.insertBefore(box, acts); else host.appendChild(box);   // ATTN-COLLAPSE-1
     } catch (e) {}
   };
   function decide(id, action, reason, b, r) {
@@ -192,8 +226,10 @@
   }
   function bookingRow(e) {
     var name = String(e.title || '').replace(/^Booking request — /, '') || 'a customer';
-    var r = row('book', '📅', name + ' asked for ' + when(e.starts_at), (e.description || '').replace(/\nStatus:.*$/m, '').slice(0, 160), [
-      btn('Confirm', 'primary', function (b) { bookDecide(e.id, 'confirm', b, r); }), btn('Decline', 'danger', function (b) { bookDecide(e.id, 'decline', b, r); }), btn('See the customer', 'quiet', function () { if (e.reference_type === 'Lead' && e.reference_id) openAdvanced('crm', e.reference_id); else openAdvanced('calendar'); })]);
+    var full = (e.description || '').replace(/\nStatus:.*$/m, '');
+    var r = row('book', '📅', name + ' asked for ' + when(e.starts_at), full.replace(/\s+/g, ' ').slice(0, 160), [
+      btn('Confirm', 'primary', function (b) { bookDecide(e.id, 'confirm', b, r); }), btn('Decline', 'danger', function (b) { bookDecide(e.id, 'decline', b, r); }), btn('See the customer', 'quiet', function () { if (e.reference_type === 'Lead' && e.reference_id) openAdvanced('crm', e.reference_id); else openAdvanced('calendar'); })],
+      (full ? '<div class="pv-cap">' + esc(full) + '</div>' : '') + pvLine('Asked for ' + when(e.starts_at)));
     return r;
   }
   function bookDecide(id, decision, b, r) {

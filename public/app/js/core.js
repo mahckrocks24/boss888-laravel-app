@@ -6728,6 +6728,8 @@ window._luCatalogueApplyNav = function (d) {
       if (window._luCatalogueGroup === g.slug && document.getElementById('view-catalogue') && document.getElementById('view-catalogue').classList.contains('active')) b.classList.add('active');
       b.title = (g.websites || []).length > 1 ? (g.websites.length + ' companies') : '';
       var t = b.querySelector('.ni-text'); if (t) t.textContent = g.label || 'Catalogue';
+      // CAT-NAV-2: several websites with catalogues -> say whose this one is
+      if (t && groups.length > 1 && (g.websites || []).length === 1) { var wn = ((d.websites || []).filter(function (w) { return +w.id === +g.websites[0]; })[0] || {}).name; if (wn) { var sm = document.createElement('small'); sm.className = 'ni-site'; sm.textContent = wn; t.appendChild(sm); } }
       b.onclick = function () { nav('catalogue', { tail: g.slug }); };
       after.insertAdjacentElement('afterend', b); after = b;
     });
@@ -6765,15 +6767,15 @@ async function _checkTrialStatus() {
       var barEl = document.getElementById('sb-credit-bar');
       var subEl = document.getElementById('sb-credit-sub');
       var badgeEl = document.getElementById('sb-plan-badge');
-      if (valEl) valEl.textContent = Math.round(balance);
+      if (valEl) valEl.textContent = Math.round(balance).toLocaleString('en-US');
       // MONEY-1: during the 3-day trial the meter is the trial grant, and the customer should see when it ends.
       if (subEl) subEl.textContent = s.is_trial
         ? ('trial credits · ends ' + (s.trial_expires_at ? new Date(s.trial_expires_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'soon'))
-        : (limit > 0 ? 'of ' + limit + ' monthly limit' : 'credits available');
+        : (limit > 0 ? 'left of ' + Number(limit).toLocaleString('en-US') + ' this month' : 'credits available');   // CREDITS-WIDGET-1
       if (barEl) {
         var pct = limit > 0 ? Math.min(100, (balance / limit) * 100) : (balance > 0 ? 100 : 0);
         barEl.style.width = pct + '%';
-        barEl.style.background = pct < 20 ? 'var(--rd)' : pct < 50 ? 'var(--am)' : 'var(--ac)';
+        barEl.style.background = pct < 20 ? 'var(--rd)' : 'var(--ac)';   // CREDITS-WIDGET-1: amber at 50 % read as a fault
       }
       if (badgeEl) badgeEl.textContent = (plan.charAt(0).toUpperCase() + plan.slice(1)) + (s.is_trial ? ' trial' : '');
     }
