@@ -8,38 +8,47 @@ $industries = ['Restaurant or cafe', 'Gym or fitness', 'Dental or medical clinic
 // select (a bottom sheet on phones), the visible error box, and the register call that stores the session and opens /app/.
 $page['head'] = <<<'HTML'
 <style id="lu-css-select">
+/* SELECT-GLASS-1: the drawn select wears the glass tokens (site-glass.css also skins the button and the inline list) */
 .select.lu-sel{position:relative}
 .select.lu-sel>select{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;left:0;top:0}
 .select.lu-sel>.select-icon{display:none}
-.lu-sel-btn{width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:#0b0e18;color:#fff;font:inherit;font-size:16px;text-align:left;cursor:pointer}
-.lu-sel-btn:focus-visible{outline:2px solid #7c5cff;outline-offset:2px}
-.lu-sel-btn .lu-sel-caret{width:16px;height:16px;flex:0 0 auto;opacity:.7;transition:transform .15s}
+.lu-sel-btn{width:100%;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px;border:1px solid var(--rim);border-radius:14px;background:var(--glass-thick);color:var(--ink);font:inherit;font-family:var(--font);font-size:16px;text-align:left;cursor:pointer}
+.lu-sel-btn:focus-visible{outline:2px solid var(--action);outline-offset:2px}
+.lu-sel-btn .lu-sel-caret{width:16px;height:16px;flex:0 0 auto;opacity:.6;transition:transform .15s}
 .lu-sel[data-open="1"] .lu-sel-btn .lu-sel-caret{transform:rotate(180deg)}
-.lu-sel-btn.is-placeholder{color:rgba(255,255,255,.6)}
-.lu-sel-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:50;margin:0;padding:6px;list-style:none;background:#101426;border:1px solid rgba(124,92,255,.5);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.55);max-height:min(60vh,420px);overflow:auto;-webkit-overflow-scrolling:touch}
+.lu-sel-btn.is-placeholder{color:var(--ink-3)}
+.lu-sel-list{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:50;margin:0;padding:6px;list-style:none;background:#FCFCFE;border:1px solid var(--rim);border-radius:14px;box-shadow:var(--shadow-3);max-height:min(50vh,360px);overflow:auto;-webkit-overflow-scrolling:touch;font-family:var(--font)}
+html[data-theme="dark"] .lu-sel-list{background:#15172A}
 .lu-sel-list[hidden]{display:none}
-.lu-sel-list li{padding:12px 12px;border-radius:8px;cursor:pointer;color:#fff;font-size:15px;line-height:1.3}
-.lu-sel-list li:hover,.lu-sel-list li.is-active{background:rgba(124,92,255,.18)}
-.lu-sel-list li[aria-selected="true"]{color:#c4b5fd;font-weight:600}
-/* phone: a bottom sheet drawn by the page */
-.lu-sheet-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:2147482000}
+.lu-sel-list li{padding:10px 12px;border-radius:10px;cursor:pointer;color:var(--ink);font-size:15px;line-height:1.3}
+.lu-sel-list li:hover,.lu-sel-list li.is-active{background:var(--tint)}
+.lu-sel-list li[aria-selected="true"]{color:var(--accent-text);font-weight:600}
+/* phone: a compact glass sheet drawn by the page, inside the .lg wrapper so the theme tokens reach it */
+.lu-sheet-backdrop{position:fixed;inset:0;background:rgba(13,15,28,.28);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);z-index:2147482000}
+html[data-theme="dark"] .lu-sheet-backdrop{background:rgba(0,0,0,.5)}
 .lu-sheet-backdrop[hidden]{display:none}
-.lu-sheet{position:fixed;left:0;right:0;bottom:0;z-index:2147482001;background:#101426;border:1px solid rgba(124,92,255,.5);border-bottom:0;border-radius:16px 16px 0 0;box-shadow:0 -14px 40px rgba(0,0,0,.55);display:flex;flex-direction:column;max-height:80vh;max-height:80dvh;padding-bottom:env(safe-area-inset-bottom)}
+.lu-sheet{position:fixed;left:8px;right:8px;bottom:8px;z-index:2147482001;background:#FCFCFE;border:1px solid var(--rim);border-radius:22px;box-shadow:inset 0 1px 0 var(--rim-top),0 0 0 .5px var(--edge),var(--shadow-3);display:flex;flex-direction:column;max-height:60vh;max-height:60dvh;padding-bottom:env(safe-area-inset-bottom);font-family:var(--font);color:var(--ink)}
+html[data-theme="dark"] .lu-sheet{background:#15172A}
+/* the glass card is its own stacking layer: lift it, its section and main above the footer (under the fixed header, z 50) while the list is open */
+html .lg-site section:has(.lu-sel[data-open="1"]){overflow:visible!important;position:relative;z-index:45}
+html .lg-site main:has(.lu-sel[data-open="1"]),html .lg-site .card:has(.lu-sel[data-open="1"]){position:relative;z-index:45}
 .lu-sheet[hidden]{display:none}
-.lu-sheet-head{display:flex;align-items:center;justify-content:space-between;padding:12px 8px 8px 16px;border-bottom:1px solid rgba(255,255,255,.1);font:600 15px system-ui,-apple-system,sans-serif;color:#fff}
-.lu-sheet-close{min-width:44px;height:44px;border:0;background:transparent;color:rgba(255,255,255,.75);font-size:20px;cursor:pointer;border-radius:10px}
-.lu-sheet-list{margin:0;padding:6px 8px 10px;list-style:none;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;flex:1 1 auto;min-height:0}
-.lu-sheet-list li{padding:14px 12px;min-height:48px;border-radius:10px;color:#fff;font-size:16px;line-height:1.3;cursor:pointer}
-.lu-sheet-list li[aria-selected="true"]{color:#c4b5fd;font-weight:600;background:rgba(124,92,255,.14)}
+.lu-sheet-head{display:flex;align-items:center;justify-content:space-between;padding:8px 6px 6px 18px;border-bottom:1px solid var(--hairline);font:600 14px/1.3 var(--font);color:var(--ink-2)}
+.lu-sheet-close{min-width:40px;height:40px;border:0;background:transparent;color:var(--ink-3);font-size:17px;cursor:pointer;border-radius:12px}
+.lu-sheet-close:hover{background:var(--tint)}
+.lu-sheet-list{margin:0;padding:6px;list-style:none;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;flex:1 1 auto;min-height:0}
+.lu-sheet-list li{display:flex;align-items:center;padding:10px 12px;min-height:44px;border-radius:12px;color:var(--ink);font-size:15px;line-height:1.3;cursor:pointer}
+.lu-sheet-list li:active{background:var(--tint)}
+.lu-sheet-list li[aria-selected="true"]{color:var(--accent-text);font-weight:600;background:var(--tint)}
 html.lu-sheet-open,html.lu-sheet-open body{overflow:hidden!important}
-/* consent tick box visible on the dark theme (Owner 2026-09-15) */
-.check .check-box{width:24px!important;height:24px!important;border:2px solid rgba(255,255,255,.6)!important;border-radius:7px!important;background:#0b0e18!important;display:inline-flex!important;align-items:center;justify-content:center;flex:0 0 auto}
+/* consent tick box follows the theme */
+.check .check-box{width:22px!important;height:22px!important;border:1.5px solid var(--ink-3)!important;border-radius:7px!important;background:var(--glass-thick)!important;display:inline-flex!important;align-items:center;justify-content:center;flex:0 0 auto}
 .check .check-box svg{opacity:0;color:#fff;transition:opacity .12s}
-.check input:checked ~ .check-box{background:#7c5cff!important;border-color:#7c5cff!important}
+.check input:checked ~ .check-box{background:var(--action)!important;border-color:var(--action)!important}
 .check input:checked ~ .check-box svg{opacity:1}
-.check input:focus-visible ~ .check-box{outline:2px solid #7c5cff;outline-offset:2px}
+.check input:focus-visible ~ .check-box{outline:2px solid var(--action);outline-offset:2px}
 </style>
-<style id="lu-start-error">#wl-error{color:#fecaca!important;background:rgba(248,113,113,.14);border:1px solid rgba(248,113,113,.45);border-radius:10px;padding:10px 12px;font-weight:600;font-size:15px;line-height:1.4;margin:10px 0}#wl-error[hidden]{display:none!important}form [aria-invalid="true"]{border-color:#f87171!important;box-shadow:0 0 0 3px rgba(248,113,113,.18)!important}</style>
+<style id="lu-start-error">#wl-error{color:#B42318!important;background:rgba(240,68,56,.08);border:1px solid rgba(240,68,56,.35);border-radius:12px;padding:10px 12px;font-weight:600;font-size:15px;line-height:1.4;margin:10px 0}html[data-theme="dark"] #wl-error{color:#fecaca!important;background:rgba(248,113,113,.14);border-color:rgba(248,113,113,.45)}#wl-error[hidden]{display:none!important}form [aria-invalid="true"]{border-color:#f87171!important;box-shadow:0 0 0 3px rgba(248,113,113,.18)!important}</style>
 HTML;
 $page['scripts'] = <<<'HTML'
 <script id="lu-css-select-js">
@@ -82,7 +91,7 @@ $page['scripts'] = <<<'HTML'
     document.addEventListener('click', function(e){ if (!list.hidden && !wrap.contains(e.target)) closeList(); });
     document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !sheet.hidden) close(); });
     sel.addEventListener('change', paint);
-    wrap.appendChild(btn); wrap.appendChild(list); document.body.appendChild(backdrop); document.body.appendChild(sheet); paint();
+    wrap.appendChild(btn); wrap.appendChild(list); var host = wrap.closest('.lg') || document.body; host.appendChild(backdrop); host.appendChild(sheet); paint();   // SELECT-GLASS-1: inside the glass wrapper
   }
   function init(){ Array.prototype.forEach.call(document.querySelectorAll('form .select'), build); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
