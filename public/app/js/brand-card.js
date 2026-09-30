@@ -195,7 +195,7 @@
     function refresh() {
       var ids = pickedIds();
       el.querySelectorAll('.lbl-tile').forEach(function (t) { var id = +t.getAttribute('data-id'), i = ids.indexOf(id); t.classList.toggle('on', i >= 0); t.setAttribute('aria-pressed', String(i >= 0)); t.querySelector('.lbl-n').textContent = i >= 0 ? String(i + 1) : ''; });
-      var c = el.querySelector('[data-count]'); if (c) c.textContent = st.picks.length + ' of ' + MAX + ' chosen';
+      el.querySelectorAll('[data-count]').forEach(function (c) { c.textContent = st.picks.length + ' of ' + MAX + ' chosen'; });
       var sv = el.querySelector('[data-a=save]'); if (sv) { sv.disabled = !st.picks.length; sv.innerHTML = st.picks.length ? IC.check + 'Save ' + st.picks.length + ' look' + (st.picks.length > 1 ? 's' : '') : 'Choose up to ' + MAX; }
     }
     function toggle(id) {
@@ -255,6 +255,9 @@
       el.querySelectorAll('.lbl-saved .lbl-i').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); sheet(+b.getAttribute('data-info')); }); });
       el.querySelector('[data-a=edit]').onclick = function () { st.saved = false; draw(); };
     }
+    /* ONE-SAVE-1: the overlay's footer saves; the picker exposes its save and hides its own bar */
+    function savePicks() { return api('POST', 'brand/library/picks', { business_id: biz, recipe_ids: pickedIds(), from: opts.settings ? 'settings' : 'chat' }).then(function (r) { if (r.ok && r.json.success) { st.picks = r.json.recipes || st.picks; st.saved = true; draw(); return true; } toast((r.json && r.json.error) || 'Could not save the looks.', 'error'); return false; }); }
+    if (opts.embedded && opts.host) { opts.host.__lbcSavePicks = function () { var ids = pickedIds(); var same = st.saved && ids.length === (card.recipes || []).length && ids.every(function (id, i) { return (card.recipes || [])[i] && (card.recipes || [])[i].id === id; }); return same ? Promise.resolve(null) : savePicks(); }; }
     function draw() {
       if (st.saved) { drawSaved(); return; }
       var fac = st.facets || {};
@@ -266,7 +269,7 @@
         '<div class="lbl-chips" data-quick>' + quick.map(function (x) { return '<button type="button" class="lbl-chip' + (st.f.industry === x.value ? ' on' : '') + '" data-f="industry" data-v="' + esc(x.value) + '">' + esc(x.label) + '</button>'; }).join('') + '<button type="button" class="lbl-chip' + (st.f.people === '1' ? ' on' : '') + '" data-f="people" data-v="1">With people</button><button type="button" class="lbl-chip' + (st.f.people === '0' ? ' on' : '') + '" data-f="people" data-v="0">No people</button></div>' +
         '<div class="lbl-more" hidden><div class="lbl-grp"><b>Industry</b>' + chips(fac.industry || [], 'industry', 'All') + '</div><div class="lbl-grp"><b>Layout</b>' + chips(fac.archetype || [], 'archetype', 'Any') + '</div><div class="lbl-grp"><b>Style</b>' + chips(fac.style || [], 'style', 'Any') + '</div><div class="lbl-grp"><b>Shape</b>' + chips(fac.format || [], 'format', 'Any') + '</div></div>' +
         '<div class="lbl-meta"><span>' + st.total + ' designs</span><span>Tap to pick · (i) for details</span></div><div class="lbl-grid" data-main></div><div class="lbl-foot"><button type="button" class="lbc-btn" data-a="more" hidden>Show more</button></div></div>' +
-        '<div class="lbl-bar"><span class="lbc-hint">' + (opts.settings ? 'Sarah uses the best fit for each request.' : 'Or send your own brand files with the <b>+</b> button.') + '</span><button type="button" class="lbc-btn primary" data-a="save"></button></div></div>';
+        (opts.embedded ? '<div class="lbl-bar" style="position:static;background:none"><span class="lbc-hint">Sarah uses the best fit for each request. <b>Save changes</b> below keeps your picks.</span><span class="lbc-count" data-count></span></div></div>' : '<div class="lbl-bar"><span class="lbc-hint">' + (opts.settings ? 'Sarah uses the best fit for each request.' : 'Or send your own brand files with the <b>+</b> button.') + '</span><button type="button" class="lbc-btn primary" data-a="save"></button></div></div>');
       var q = el.querySelector('.lbl-q input'), t = null;
       q.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { st.q = q.value.trim(); st.page = 1; load(false); }, 260); });
       el.querySelector('[data-a=filters]').onclick = function () { var m = el.querySelector('.lbl-more'); m.hidden = !m.hidden; this.setAttribute('aria-expanded', String(!m.hidden)); };
@@ -274,7 +277,7 @@
       var more = el.querySelector('[data-a=more]'); more.onclick = function () { st.page++; load(true); };
       var br = el.querySelector('[data-a=browse]'); if (br) br.onclick = function () { el.querySelector('[data-lib]').hidden = false; br.hidden = true; load(false); };
       var short = el.querySelector('[data-short]'); if (short) wireTiles(short);
-      el.querySelector('[data-a=save]').onclick = function () {
+      var __sv = el.querySelector('[data-a=save]'); if (__sv) __sv.onclick = function () {
         var sv = this; sv.disabled = true; sv.textContent = 'Saving…';
         api('POST', 'brand/library/picks', { business_id: biz, recipe_ids: pickedIds(), from: opts.settings ? 'settings' : 'chat' }).then(function (r) {
           if (r.ok && r.json.success) { st.picks = r.json.recipes || st.picks; st.saved = true; draw(); toast(opts.settings ? 'Design looks saved.' : 'Saved — Sarah will design from these looks.', 'success'); if (opts.onSaved) opts.onSaved(); }
@@ -633,7 +636,7 @@
       if (cs) cs.onclick = function () { var body = el.__lbcColours() || {}; body.business_id = j.business_id; cs.disabled = true;
         api('PUT', 'workspace/brand', body).then(function (x) { cs.disabled = false; if (x.ok && (x.json || {}).success !== false) { toast('Colours saved for ' + j.business_name + '.', 'success'); again(); } else toast(((x.json || {}).error) || 'Could not save the colours.', 'error'); }); };
       library(rulesRoot.querySelector('[data-slot=insp]'), j.business_id);   // VISION-INSPIRE-1
-      library2(stylesRoot.querySelector('[data-slot=pick]'), { business_id: j.business_id, max: 5, recipes: j.recipe_picks || [] }, { settings: true });   // DESIGN-LIBRARY-2: the searchable library, up to three looks
+      library2(stylesRoot.querySelector('[data-slot=pick]'), { business_id: j.business_id, max: 5, recipes: j.recipe_picks || [] }, { settings: true, embedded: !!P, host: el });   // DESIGN-LIBRARY-2 + ONE-SAVE-1: in the overlay the footer's Save changes saves the looks
       // rules re-render only their own part, so an unsaved colour change in the profile is never lost
       function rulesAgain() { api('GET', 'brand/profile?business_id=' + encodeURIComponent(j.business_id)).then(function (x) { var jj = x.json || {}; j.rules = jj.rules || []; var box = rulesRoot.querySelector('.lbc-rules, .lbc-rules-empty'); var list = (j.rules || []).length ? '<ul class="lbc-rules">' + j.rules.map(function (y, i) { return '<li>' + esc(y) + '<button type="button" class="lbc-x" data-rm="' + i + '" aria-label="Remove rule">Remove</button></li>'; }).join('') + '</ul>' : '<div class="lbc-s lbc-rules-empty" style="margin:0">No rules yet — for example “Never use red” or “Always show our Instagram handle”.</div>';
         var cur = rulesRoot.querySelector('.lbc-rules') || rulesRoot.querySelector('.lbc-add').previousElementSibling; if (cur) cur.outerHTML = list; wireRules(); }); }

@@ -109,7 +109,7 @@ window.LU_LOADED_ENGINES['businesses'] = true;
       + '.bz-pf-id p{margin:3px 0 0;font-size:12.5px;color:var(--t3)}'
       + '.bz-pf-x{width:40px;height:40px;border-radius:10px;border:1px solid var(--bd2,rgba(127,127,127,.25));background:transparent;color:var(--t2);font-size:18px;cursor:pointer;flex:0 0 auto}.bz-pf-x:hover{background:var(--s2)}'
       + '.bz-pf-top{flex:0 0 auto}.bz-pf-tabs{flex:0 0 auto;display:flex;gap:4px;padding:16px 24px 0;border-bottom:1px solid var(--bd,rgba(127,127,127,.18));overflow-x:auto;scrollbar-width:none}'
-      + '.bz-pf-tab{position:relative;background:none;border:0;padding:10px 14px 12px;font:600 13px var(--fb,system-ui);color:var(--t3);cursor:pointer;white-space:nowrap;border-radius:8px 8px 0 0}'
+      + '.bz-pf-tab{position:relative;flex:0 0 auto;background:none;border:0;padding:10px 14px 12px;font:600 13px var(--fb,system-ui);color:var(--t3);cursor:pointer;white-space:nowrap;border-radius:8px 8px 0 0}'
       + '.bz-pf-tab:hover{color:var(--t1)}.bz-pf-tab[aria-selected=true]{color:var(--t1)}.bz-pf-tab[aria-selected=true]::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:2px;background:var(--p,#6C5CE7)}'
       + '.bz-pf-tab:focus-visible{outline:2px solid var(--p,#6C5CE7);outline-offset:-2px}'
       + '.bz-pf-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:20px 24px 24px}'
@@ -203,8 +203,9 @@ window.LU_LOADED_ENGINES['businesses'] = true;
         if (b) await api('PUT', '/businesses/' + b.id, body); else await api('POST', '/businesses', body);
         var bodyEl = ov.querySelector('.bz-pf-body'); var cols = b && bodyEl.__lbcColours ? bodyEl.__lbcColours() : null;
         if (cols) await api('PUT', '/workspace/brand', Object.assign({ business_id: b.id }, cols));
+        var pickSaved = null; if (b && bodyEl.__lbcSavePicks) { try { pickSaved = await bodyEl.__lbcSavePicks(); } catch (_pe) { pickSaved = false; } if (pickSaved === false) { ok.disabled = false; ok.textContent = 'Save changes'; return; } }   // ONE-SAVE-1
         close(); await load();
-        showToast(b ? (cols ? 'Profile and colours saved.' : 'Profile saved.') : body.name + ' added — open it to set its brand.', 'success');
+        showToast(b ? (cols && pickSaved ? 'Profile, colours and looks saved.' : pickSaved ? 'Profile and looks saved.' : cols ? 'Profile and colours saved.' : 'Profile saved.') : body.name + ' added — open it to set its brand.', 'success');
         if (window.luLoadWorkspaceProfile) { try { window.luLoadWorkspaceProfile(); } catch (_e) {} }
       } catch (e) { ok.disabled = false; ok.textContent = b ? 'Save changes' : 'Add business'; showToast(e.message, 'error'); }
     };
