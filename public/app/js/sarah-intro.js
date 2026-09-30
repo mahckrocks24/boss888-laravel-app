@@ -44,7 +44,7 @@
       '#lsi *{box-sizing:border-box}#lsi button{font-family:inherit}',
       '#lsi .glass{background:var(--glass);border:1px solid var(--rim);box-shadow:inset 0 1px 0 var(--rimtop),var(--sh)}',
       '#lsi .thick{background:var(--thick);border:1px solid var(--rim);box-shadow:inset 0 1px 0 var(--rimtop),var(--sh)}',
-      '@media (min-width:900px){#lsi .lsi-frost{-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px)}#lsi .glass{-webkit-backdrop-filter:blur(26px) saturate(var(--sat));backdrop-filter:blur(26px) saturate(var(--sat))}#lsi .thick{-webkit-backdrop-filter:blur(34px) saturate(var(--sat));backdrop-filter:blur(34px) saturate(var(--sat))}}',
+      '@media (min-width:900px){#lsi .lsi-frost{-webkit-backdrop-filter:blur(5px) saturate(.9);backdrop-filter:blur(5px) saturate(.9)}#lsi .glass{-webkit-backdrop-filter:blur(26px) saturate(var(--sat));backdrop-filter:blur(26px) saturate(var(--sat))}#lsi .thick{-webkit-backdrop-filter:blur(34px) saturate(var(--sat));backdrop-filter:blur(34px) saturate(var(--sat))}}',
       '#lsi .gt{background:linear-gradient(135deg,#8C25D2 0%,#4C86DE 55%,#2FC4C4 100%);-webkit-background-clip:text;background-clip:text;color:transparent}',
       'html:not([data-theme="light"]) #lsi .gt{background:linear-gradient(135deg,#C08BFF 0%,#86B6F7 55%,#6CEDED 100%);-webkit-background-clip:text;background-clip:text;color:transparent}',
       '#lsi .ring,#lsi-bubble .ring{padding:3px;border-radius:50%;background:linear-gradient(135deg,#8C25D2,#4C86DE 55%,#3FDFDF);flex-shrink:0}',
