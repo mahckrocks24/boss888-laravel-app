@@ -743,6 +743,10 @@ function _msgAvoidNow(){
     if(el.style.getPropertyValue('--lu-fl-dx') !== vx) el.style.setProperty('--lu-fl-dx', vx);
     if(el.style.getPropertyValue('--lu-fl-dy') !== vy) el.style.setProperty('--lu-fl-dy', vy);
   };
+  /* FLOATER-6: on a phone she does not move away from controls - the controls under her are deactivated instead */
+  var mobile = false; try{ mobile = window.matchMedia('(pointer: coarse)').matches || window.innerWidth <= 768; }catch(e){}
+  if(mobile){ _msgDeactivateBehind(el, INTER); return; }
+  _msgDeactivateBehind(null, INTER);   /* desktop: nothing stays deactivated */
   if(_msgAvoidNow._busy) return; _msgAvoidNow._busy = true;
   var prevTransition = el.style.transition;
   el.style.transition = 'none';   /* FLOATER-3c: measure where she IS, not where a transition will put her */
@@ -767,6 +771,34 @@ function _msgAvoidNow(){
     void el.offsetWidth;
     el.style.transition = prevTransition;
     _msgAvoidNow._busy = false;
+  }
+}
+/* FLOATER-6: every control her footprint touches is marked lu-behind-sarah (pointer-events none, dimmed); marks are cleared
+   first on every pass, so a control is only ever deactivated while she is actually over it. Hidden floater = nothing marked. */
+function _msgDeactivateBehind(el, INTER){
+  var prev = document.querySelectorAll('.lu-behind-sarah');
+  for(var k=0;k<prev.length;k++){ prev[k].classList.remove('lu-behind-sarah'); prev[k].removeAttribute('data-lu-behind'); }
+  if(!el || getComputedStyle(el).display === 'none') return;
+  if(!document.getElementById('lu-behind-sarah-css')){ var st = document.createElement('style'); st.id = 'lu-behind-sarah-css'; st.textContent = '.lu-behind-sarah{pointer-events:none!important;opacity:.45!important;transition:opacity .15s}'; document.head.appendChild(st); }
+  var r = el.getBoundingClientRect(); if(r.width < 4 || r.height < 4) return;
+  var pts = [[r.left+r.width/2, r.top+r.height/2],[r.left+6,r.top+6],[r.right-6,r.top+6],[r.left+6,r.bottom-6],[r.right-6,r.bottom-6],[r.left+r.width/2,r.top+4],[r.left+r.width/2,r.bottom-4],[r.left+4,r.top+r.height/2],[r.right-4,r.top+r.height/2]];
+  var seen = [];
+  for(var i=0;i<pts.length;i++){
+    var list = document.elementsFromPoint(pts[i][0], pts[i][1]);
+    for(var j=0;j<list.length;j++){
+      var n = list[j];
+      if(n === el || el.contains(n) || (n.closest && n.closest('#lu-messages-floater,#lu-msg-modal'))) continue;
+      if(seen.indexOf(n) !== -1) continue; seen.push(n);
+      if(!(n.matches && n.matches(INTER))) continue;
+      if(n === document.body || n === document.documentElement) continue;
+      var b = n.getBoundingClientRect(); if(b.width < 4 || b.height < 4) continue;
+      if(b.width * b.height > window.innerWidth * window.innerHeight * 0.6) continue;
+      var ix = Math.max(0, Math.min(r.right, b.right) - Math.max(r.left, b.left)), iy = Math.max(0, Math.min(r.bottom, b.bottom) - Math.max(r.top, b.top));
+      var ratio = (ix * iy) / Math.max(1, b.width * b.height);
+      var cx = b.left + b.width/2, cy = b.top + b.height/2, centre = cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+      var small = (b.width * b.height) < 24000;
+      if((small ? ratio > 0.02 : ratio >= 0.35) || centre){ n.classList.add('lu-behind-sarah'); n.setAttribute('data-lu-behind', '1'); }
+    }
   }
 }
 function _msgAvoidSoon(){ clearTimeout(_msgAvoidTimer); _msgAvoidTimer = setTimeout(_msgAvoidNow, 180); }
