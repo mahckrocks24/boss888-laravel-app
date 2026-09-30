@@ -40,9 +40,35 @@ final class MechanicsScrub
         foreach (self::PHRASES as $re => $to) {
             $out = (string) preg_replace($re, $to, $out);
         }
+        // NO-IDS-1: internal numbers and action codes never reach the owner
+        $out = self::noIds($out);
         // tidy: doubled spaces and a space before punctuation left by a removal
         $out = (string) preg_replace('/[ \t]{2,}/', ' ', $out);
         $out = (string) preg_replace('/\s+([,.;!?])/', '$1', $out);
         return $out;
+    }
+
+    /**
+     * NO-IDS-1 (2026-09-30). "(approval #9093 / #9883, 0 credits)" -> "(0 credits)"; "Blocked (13): #33205, #33197 (internal
+     * link insertion)" -> "Blocked (13): (internal link insertion)"; "task #937" -> "a task"; "fix_orphans" -> "fix orphans".
+     * Four- and five-digit or seven-plus-digit numbers after # only, so a colour such as #0A0806 or #112233 is left alone.
+     */
+    public static function noIds(string $s): string
+    {
+        $num = '#\s?(?:\d{4,5}|\d{7,})\b';
+        $list = $num . '(?:\s*(?:\/|,|&|and)\s*' . $num . ')*';
+        $s = (string) preg_replace('/\b(?:approvals?|queue|tasks?|jobs?|requests?|proposals?|items?|tickets?|ids?|assets?|records?)\s*' . $list . '/iu', '', $s);
+        $s = (string) preg_replace('/(?<![\w&])' . $list . '/u', '', $s);
+        $s = (string) preg_replace('/\b(?:task|approval|job|record|asset)\s+(?:id\s+)?\d{3,}\b/iu', 'it', $s);
+        // action codes: two to four lowercase words joined by underscores, not inside a URL, path, e-mail or code span
+        $s = (string) preg_replace_callback('/(?<![\/\w.@`-])([a-z]{2,}(?:_[a-z]{2,}){1,3})(?![\w\/.@`-])/', fn ($m) => str_replace('_', ' ', $m[1]), $s);
+        // tidy what the removals leave
+        $s = (string) preg_replace('/\(\s*[,\/;&]\s*/u', '(', $s);
+        $s = (string) preg_replace('/\s*[,\/;&]\s*\)/u', ')', $s);
+        $s = (string) preg_replace('/\(\s*\)/u', '', $s);
+        $s = (string) preg_replace('/:\s*(?:,\s*)+/u', ': ', $s);
+        $s = (string) preg_replace('/(?:,\s*){2,}/u', ', ', $s);
+        $s = (string) preg_replace('/(^|[.!?]\s+)it\b/u', '$1It', $s);   // a sentence that began with the removed number
+        return $s;
     }
 }

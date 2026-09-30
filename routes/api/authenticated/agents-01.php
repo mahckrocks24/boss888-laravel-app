@@ -222,6 +222,9 @@ use Illuminate\Support\Facades\Route;
         $content = $r->input('content', '');
         $from = $r->input('from', 'User');
         $quickAction = $r->input('quick_action'); // my_tasks, recent_completions, whats_next
+        // NO-IDS-1: the chip's code never becomes the owner's words; it is asked as a plain question
+        $__qa = ['my_tasks' => 'What are you working on for me right now?', 'recent_completions' => 'What have you finished for me recently?', 'whats_next' => "What's next on your list for me?"];
+        if ($quickAction && isset($__qa[$quickAction]) && (trim((string) $content) === '' || trim((string) $content) === $quickAction)) { $content = $__qa[$quickAction]; }
         $image = $r->input('image'); // base64 image for vision
         // CHEF-RED-1: request values read ONCE here — $r is shadowed further down (fill result, row loops).
         $__siteUrlIn = trim((string) ($r->input('site_url') ?: $r->header('X-Lgse-Active-Site') ?: ''));
@@ -733,11 +736,11 @@ $withCorr = function (array $meta) use ($corr) {
 
         // ── Handle quick actions ──
         if ($quickAction === 'my_tasks') {
-            $content = "List all my current tasks with their status.";
+            $content = $__qa['my_tasks'];
         } elseif ($quickAction === 'recent_completions') {
-            $content = "Summarize what tasks I completed recently.";
+            $content = $__qa['recent_completions'];
         } elseif ($quickAction === 'whats_next') {
-            $content = "What are my upcoming tasks and priorities?";
+            $content = $__qa['whats_next'];
         }
 
         // ── Handle vision attachment ──
