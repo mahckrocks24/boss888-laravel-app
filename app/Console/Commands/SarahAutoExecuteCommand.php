@@ -89,6 +89,8 @@ class SarahAutoExecuteCommand extends Command
         $this->info("sarah:auto-execute — {$workspaces->count()} workspace(s)" . ($dry ? ' [DRY-RUN]' : ''));
 
         foreach ($workspaces as $ws) {
+            // SARAH-GATE-2 (2026-09-30): nothing auto-runs on a plan that does not include Sarah
+            try { if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah((int) $ws->id)) { $this->line("  – ws {$ws->id}: skipped (plan does not include Sarah)"); continue; } } catch (\Throwable $e) {}
             try {
                 $this->runForWorkspace($ws, $proactive, $msg, $dry, $force);
             } catch (\Throwable $e) {

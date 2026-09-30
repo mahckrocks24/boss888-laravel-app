@@ -487,6 +487,8 @@ class DerivedState
         } else {
             $s .= "  Websites           : none built yet\n";
         }
+        // TRIAL-AWARE-1 (Owner 2026-09-30): the plan standing and, on a trial, the aim to earn the upgrade.
+        try { $s .= app(\App\Core\Billing\TrialStanding::class)->render($wsId); } catch (\Throwable) {}
         $s .= "  These numbers are computed. Use them exactly as given; do not\n"
             . "  recount them from the lists below, which may be abridged.\n"
             . "  Name a website when you talk about it. Never answer a question\n"

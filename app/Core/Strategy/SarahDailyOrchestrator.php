@@ -447,6 +447,7 @@ class SarahDailyOrchestrator
             . "proposed actions for TODAY that respect the tier cadence.\n\n"
             . "Brief structure (markdown):\n"
             . (isset($wsId) ? \App\Core\Sarah888\LanguagePref::instruction((int) $wsId) . "\n" : '')
+            . "  - TRIAL (2026-09-30, TRIAL-AWARE-1): if state.tier_state.trial_line starts with PLAN & TRIAL, open the brief with that sentence word for word, propose only work that fits the trial credits and proves value before the end date, and close the brief with the upgrade case in one sentence using the plan and price given in trial_line; on the last day ask for the decision directly. If it says you are paused, write nothing.\n"
             . "  - BUDGET (2026-09-30): state.tier_state.budget_line is the budget sentence - use it word for word and never compute a percentage or a burn yourself; the plan limit can change mid-month and the balance does not restart.\n"
             . "  - HELD JOBS: if state.seo.orphan_fix_hold or state.seo.meta_fix_hold is present, put that sentence under RUNNING TODAY word for word instead of listing the job.\n"
             . "  - Greeting + day-of-month + budget status. If credit utilisation is LOW relative to the plan while goals are behind, frame the unused credits as UNDER-deployment to correct TODAY — NEVER present a low burn / 'plenty of room' as a good thing.\n"

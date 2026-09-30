@@ -193,6 +193,7 @@ class WorkspaceStateGatherer
             'days_in_month'         => $daysInMonth,
             'days_left_in_month'    => $daysLeft,
             'connected_platforms'   => $active['connected_platforms'],
+            'trial_line'            => (function () use ($wsId) { try { return app(\App\Core\Billing\TrialStanding::class)->line($wsId); } catch (\Throwable) { return ''; } })(),   // TRIAL-AWARE-1
         ];
     }
 

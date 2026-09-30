@@ -38,6 +38,7 @@ class CampaignsTick extends Command
         if ($this->option('workspace')) $q->where('id', (int) $this->option('workspace'));
         $queued = 0;
         foreach ($q->pluck('id') as $wsId) {
+            try { if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah((int) $wsId)) continue; } catch (\Throwable $e) {}   // SARAH-GATE-2 (2026-09-30)
             $bizList = DB::table('businesses')->where('workspace_id', $wsId)->whereNull('deleted_at')->orderByDesc('is_default')->limit(5)->pluck('id')->all() ?: [null];
             foreach ($bizList as $bizId) {
                 $recent = DB::table('marketing_campaigns')->where('workspace_id', $wsId)->where(fn ($w) => $bizId ? $w->where('business_id', $bizId) : $w->whereNull('business_id'))

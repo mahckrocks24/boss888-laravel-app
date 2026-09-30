@@ -47,6 +47,8 @@ class SarahMorningBriefCommand extends Command
 
         $ok = 0; $fail = 0; $skipped = 0;
         foreach ($workspaces as $w) {
+            // SARAH-GATE-2 (2026-09-30): a plan that does not include Sarah gets no brief and no proposals (an expired trial is Free)
+            try { if (! app(\App\Core\Billing\FeatureGateService::class)->canAccessSarah((int) $w->id)) { $skipped++; $this->line("  ws={$w->id}: skipped (plan does not include Sarah)"); continue; } } catch (\Throwable $e) {}
             // 2026-05-24 FIX 53 — TZ gate + idempotency. Hourly cron
             // calls this command; only fire when it's 08:00 in the
             // workspace's local time and we haven't already posted
