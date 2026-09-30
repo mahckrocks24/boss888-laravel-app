@@ -98,8 +98,16 @@ class ConfirmationClaimGuard
 
         if (!$this->solicitsConfirmation($norm)) return $out;
 
-        $verbs = $this->mutatingVerbs($norm);
-        if (!$verbs) return $out;                 // read-only confirmation: nothing to bind
+        // VOICE-2 (REPORT-0066 finding 3, 2026-09-30): the verb must sit IN the soliciting sentence. Matching the whole reply
+        // glued the footer onto answers whose only 'post' or 'publish' was a fact three sentences away (five times in the
+        // Owner's thread, once right after "Both are live now"). A reply that already states nothing is queued is left alone.
+        if (preg_match('/\b(nothing (is|was) (queued|created|scheduled)|nothing has been (created|queued))\b/', $norm)) return $out;
+        $verbs = [];
+        foreach (preg_split('/(?<=[.!?])\s+/u', $norm, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $__s) {
+            if ($this->solicitsConfirmation($__s)) { $verbs = array_merge($verbs, $this->mutatingVerbs($__s)); }
+        }
+        $verbs = array_values(array_unique($verbs));
+        if (!$verbs) return $out;                 // read-only confirmation, or the verb is elsewhere: nothing to bind
         $out['verbs'] = $verbs;
 
         try {
@@ -157,19 +165,18 @@ class ConfirmationClaimGuard
      */
     private function correct(string $reply): string
     {
-        $truth = "I haven't set that up yet — nothing is queued and nothing is waiting "
-               . "for your approval, so there is nothing for a \"yes\" to authorise. "
-               . "Tell me to do it and I'll put it in front of you properly, with the cost, "
-               . "before anything runs.";
+        // VOICE-2: one short true sentence, in Sarah's voice, in place of the promise
+        $truth = "Nothing is queued for that yet — tell me to go ahead and I'll set it up and show you the cost first.";
 
         $sentences = preg_split('/(?<=[.!?])\s+/u', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         if (!$sentences) return $truth;
 
         $kept = []; $replaced = false;
         foreach ($sentences as $s) {
-            if ($this->solicitsConfirmation($this->normalise($s))) {
+            // VOICE-2: only the soliciting sentence that carries a mutating verb is replaced; a plain question stays
+            if ($this->solicitsConfirmation($this->normalise($s)) && $this->mutatingVerbs($this->normalise($s))) {
                 if (!$replaced) { $kept[] = $truth; $replaced = true; }
-                continue;                          // drop every soliciting sentence
+                continue;
             }
             $kept[] = $s;
         }

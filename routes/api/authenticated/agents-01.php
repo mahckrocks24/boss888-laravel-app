@@ -307,7 +307,9 @@ use Illuminate\Support\Facades\Route;
             ]);
             // BRAND-B1 (RFC-0017 5d): Sarah's brand intake runs after she has answered this message (queued; never blocks the reply)
             if ($userMessageId && in_array((string) $slug, ['sarah', 'dmm'], true)) {
-                try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay(now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
+                try { \App\Core\Sarah888\LanguagePref::absorb((int) $wsId, (string) $content); } catch (\Throwable) {}   // SARAH-LANG-1
+                $__creativeAsk = (bool) preg_match('/\b(image|images|banner|banners|logo|poster|flyer|graphic|thumbnail|visual|design|artwork|video|reel|og image|cover photo)\b/i', (string) $content);   // INTAKE-FIRST-1
+                try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay($__creativeAsk ? now() : now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
                 // CHAT-FIRST-1: a plain-words answer to the question Sarah asked with a card ("twice a week", "launch 2", "approve", "done") acts here, so the companion app is a complete surface
                 $__reply = null;
                 try { $__reply = app(\App\Core\Growth\ChatReplies::class)->handle((int) $wsId, (int) ($userId ?? 0) ?: null, (string) $content); } catch (\Throwable $__cr) { \Illuminate\Support\Facades\Log::warning('[CHAT-FIRST-1] reply hook failed', ['e' => $__cr->getMessage()]); }
@@ -1272,6 +1274,19 @@ $withCorr = function (array $meta) use ($corr) {
                 $brandFacts['business_name'] = 'several businesses — see YOUR OWNER\'S BUSINESSES below';
             }
         }
+        // AWARE-2 (REPORT-0066 finding 6, 2026-09-30): the channel facts are recomputed live when the owner talks about a
+        // connection, or when the stored sentence is older than 15 minutes - the Facebook Page connected that morning was
+        // denied twice in the afternoon from a stale row.
+        try {
+            $__cfKey = \App\Core\Awareness\ConnectionFactsService::FACT_KEY;
+            $__cfAge = DB::table('workspace_memory')->where('workspace_id', $wsId)->where('key', $__cfKey)->value('updated_at');
+            $__cfStale = ! $__cfAge || strtotime((string) $__cfAge) < time() - 900;
+            $__cfAsked = (bool) preg_match('/\b(connect(ed|ion)?|facebook|fb|instagram|ig|linkedin|search console|gsc|analytics|ga4|social|linked|link(ed)? (the|my) (page|account))\b/i', (string) $content);
+            if ($__cfStale || $__cfAsked) {
+                $__cfNow = app(\App\Core\Awareness\ConnectionFactsService::class)->recompute((int) $wsId, false);
+                if (! empty($__cfNow['sentence'])) $brandFacts[$__cfKey] = (string) $__cfNow['sentence'];
+            }
+        } catch (\Throwable $__cfE) { \Illuminate\Support\Facades\Log::info('[AWARE-2] live recompute skipped: ' . $__cfE->getMessage()); }
         $brandFactsBlock = "AUTHORITATIVE WORKSPACE FACTS (these are GROUND TRUTH — use them, never echo back user typos or alternatives):\n";
         $brandFactsBlock .= "- Business name: " . ($brandFacts['business_name'] ?? $workspace->business_name ?? $workspace->name ?? 'this business') . "\n";
         if (! empty($brandFacts['domain']))   $brandFactsBlock .= "- Domain: " . $brandFacts['domain'] . "\n";
@@ -1284,6 +1299,10 @@ $withCorr = function (array $meta) use ($corr) {
         // proposing email/social work for a workspace that has no email service and
         // zero connected social accounts, filling the approval queue with items that
         // can never execute.
+        // SARAH-EYES-1 (RISK-0209): when the owner points at an image she showed, the model gets that image, described
+        try { $__eyes = \App\Core\Sarah888\LastImageContext::block((int) $wsId, (string) $content); if ($__eyes !== '') $brandFactsBlock .= "- " . str_replace("\n", "\n  ", $__eyes) . "\n"; } catch (\Throwable) {}
+        // SARAH-LANG-1: the language the owner asked for, persisted, applies to every reply
+        try { $__lang = \App\Core\Sarah888\LanguagePref::instruction((int) $wsId); if ($__lang !== '') $brandFactsBlock .= "- " . $__lang . "\n"; } catch (\Throwable) {}
         if (! empty($brandFacts['disconnected_engines'])) {
             $brandFactsBlock .= "- DISCONNECTED ENGINES (HARD CONSTRAINT): " . $brandFacts['disconnected_engines'] . "\n"
                 . "  Never propose, queue, or delegate work for a disconnected engine. Do not ask the owner to approve it.\n"
@@ -3132,7 +3151,7 @@ $withCorr = function (array $meta) use ($corr) {
                             return "your current plan doesn't include that";
                         }
                         if (str_contains($m, 'cadence') || str_contains($m, 'cap')) {
-                            return "it would exceed this month's plan limit";
+                            return "your plan doesn't include that yet";   // VOICE-3: 'plan limit' read as a credit cap the owner had not hit
                         }
                         if (str_contains($m, 'ask_first_proposed')) { // F-SOC-F3: this is the approval gate working, not a fault
                             return preg_match('/proposal #(\d+)/i', $e->getMessage(), $pm)
@@ -3871,7 +3890,7 @@ $withCorr = function (array $meta) use ($corr) {
                                     if (!$cadenceCheck['allowed']) {
                                         $taskSummaryFailed++;
                                         // 2026-06-10 — friendly, no internal "cadence cap:" wording.
-                                        $failFriendly = "it would exceed this month's plan limit";
+                                        $failFriendly = "your plan doesn't include that yet";   // VOICE-3
                                         $taskSummaryFailReasons[$failFriendly] = ($taskSummaryFailReasons[$failFriendly] ?? 0) + 1;
                                         \Illuminate\Support\Facades\Log::info('[SarahChat] cadence guard blocked task', [
                                             'workspace_id' => $wsId, 'action' => $taskAction,
@@ -4701,11 +4720,13 @@ $withCorr = function (array $meta) use ($corr) {
         // Enforced here, at the point the promise is made, for the same reason
         // ForbiddenOfferGuard is: the offer exists only in the sentence, so no
         // creation-time gate can see it.
+        // SARAH-VOICE-1 (REPORT-0066, 2026-09-30): the customer never hears about turns, tools, readers or logs.
+        try { $reply = \App\Core\Sarah888\MechanicsScrub::apply((string) $reply); } catch (\Throwable) {}
         // SARAH-CCG (2026-08-29): a promise backed by tasks created IN THIS TURN is not unbacked. The
         // guard used to replace "I'll queue Priya…" with "nothing is queued" in the same reply that ended
         // "✅ Queued 2 tasks · 2 credits reserved" (AI Lite pass, ws 999995). Skip it when work was queued.
         try {
-            if ((int) ($taskSummaryCreated ?? 0) === 0) {
+            if ((int) ($taskSummaryCreated ?? 0) === 0 && empty($__anyExec)) {   // VOICE-2: a turn that ran a tool or a read is not an empty promise
                 $__ccg = app(\App\Core\Sarah888\ConfirmationClaimGuard::class)
                             ->validate((string) $reply, (int) $wsId, $corr['conversation_id'] ?? null);
                 $reply = $__ccg['reply'];

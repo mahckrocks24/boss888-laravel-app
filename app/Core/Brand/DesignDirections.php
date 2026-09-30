@@ -172,7 +172,16 @@ final class DesignDirections
     public static function choose(array $picks, array $never, ?string $industry, string $request): ?array
     {
         $never = self::clean($never);
-        $pool = array_values(array_diff(self::clean($picks) ?: array_slice(array_values(array_diff(self::rankForIndustry($industry), $never)), 0, 3), $never));
+        $__picked = self::clean($picks);
+        if (! $__picked) {
+            // DIRECTION-DEFAULT-1: provisional pool = the industry's top three, minus the playful directions unless the
+            // industry is playful; never empty (editorial luxury, photo-first, clean minimal are the safe defaults)
+            $__playful = (bool) preg_match('/\b(kids?|children|toy|party|parties|club|bar|pub|gaming|games?|street|skate|festival|youth|teen|fun|candy|ice cream|arcade|comic|zine|music|dj)\b/i', (string) $industry);
+            $__ranked = array_values(array_diff(self::rankForIndustry($industry), $never, $__playful ? [] : ['D7', 'D8', 'D9']));
+            $pool = array_slice($__ranked, 0, 3) ?: array_values(array_diff(['D1', 'D5', 'D2'], $never));
+        } else {
+            $pool = array_values(array_diff($__picked, $never));
+        }
         if (! $pool) return null;
         $best = $pool[0]; $bestScore = -1;
         foreach ($pool as $rank => $id) {

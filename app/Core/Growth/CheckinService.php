@@ -70,6 +70,9 @@ final class CheckinService
         if (! $force && $pref === 'no_night' && $kind === 'night') return null;
         $date = $now->toDateString();
         if (DB::table('owner_checkins')->where('workspace_id', $wsId)->where('kind', $kind)->where('local_date', $date)->exists()) return null;
+        // CHECKIN-2 (REPORT-0066 finding 9, 2026-09-30): one check-in a day, any kind, and never two within 20 hours (18:02 and 23:02 the same Sunday)
+        if (! $force && $kind !== 'weekly_feedback' && DB::table('owner_checkins')->where('workspace_id', $wsId)->where('kind', '<>', 'weekly_feedback')
+            ->where(fn ($q) => $q->where('local_date', $date)->orWhere('created_at', '>=', now()->subHours(20)))->exists()) return null;
         if (! $force) {
             // never interrupt: the owner is talking with Sarah right now, or Sarah just posted something
             if (DB::table('agent_messages')->where('workspace_id', $wsId)->where('role', 'user')->where('created_at', '>=', now()->subMinutes(90))->exists()) return null;

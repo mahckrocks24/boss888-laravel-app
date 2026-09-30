@@ -144,7 +144,11 @@ class WorkspaceStateGatherer
         $daysInMonth = (int) now()->daysInMonth;
         $daysLeft = max(0, $daysInMonth - $dayOfMonth);
         $expectedConsumed = $planLimit > 0 ? (int) round($planLimit * ($dayOfMonth / $daysInMonth)) : 0;
-        $actualConsumed = max(0, $planLimit - $balance);
+        // BUDGET-1 (REPORT-0066 finding 10, 2026-09-30): what was SPENT this month comes from the ledger; 'limit minus balance'
+        // restarted the maths the day the plan limit changed (900 -> 2,500) and the brief announced '72.4% consumed'.
+        $spentThisMonth = 0;
+        try { $spentThisMonth = (int) DB::table('credit_transactions')->where('workspace_id', $wsId)->where('type', 'commit')->where('created_at', '>=', now()->startOfMonth())->sum('amount'); } catch (\Throwable) {}
+        $actualConsumed = $spentThisMonth > 0 ? $spentThisMonth : max(0, $planLimit - $balance);
         $consumedPct = $planLimit > 0 ? round(($actualConsumed / $planLimit) * 100, 1) : 0.0;
         $paceOver = ($expectedConsumed > 0) && ($actualConsumed > $expectedConsumed * 1.15);
 
@@ -179,6 +183,8 @@ class WorkspaceStateGatherer
             'plan_credit_limit'     => $planLimit,
             'credit_balance'        => $balance,
             'credits_consumed'      => $actualConsumed,
+            'spent_this_month'      => $spentThisMonth,
+            'budget_line'           => sprintf('%s credits left; %s used so far this month%s.', number_format($balance), number_format($actualConsumed), $planLimit > 0 ? ' on a ' . number_format($planLimit) . '-credit plan (' . $consumedPct . '%)' : ''),
             'expected_consumed'     => $expectedConsumed,
             'consumed_pct'          => $consumedPct,
             'burn_rate_status'      => $burnStatus,

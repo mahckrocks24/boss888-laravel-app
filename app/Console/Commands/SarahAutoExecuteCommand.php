@@ -227,7 +227,7 @@ class SarahAutoExecuteCommand extends Command
             try {
                 $res = $proactive->approveProposal($wsId, $approver, (int) $p->id);
                 if (! empty($res['success'])) {
-                    $executed[] = ['slug' => $slug, 'title' => $p->title, 'cost' => $cost];
+                    $executed[] = ['slug' => $slug, 'title' => $p->title, 'cost' => $cost, 'task_id' => (int) ($res['task_id'] ?? 0)];   // TRUTH-1: the row the digest will be read from
                     $remaining -= $budgetCost; $spent += $cost;
                 } else {
                     Log::info('[SarahAutoExecute] proposal not executed', [
@@ -276,11 +276,18 @@ class SarahAutoExecuteCommand extends Command
             // NOTIF-1: on the day the standing plan is announced and nothing was actually executed, the announcement IS the recap -
             // two pushes seconds apart saying the same thing was the incident.
             if (! ($announcedNow && empty($executed))) {
-                $msg->postAsAgent($wsId, 'sarah', $this->summary($executed, $readyDrafts, $spent), [
+                // TRUTH-1 (RISK-0210, 2026-09-30): the digest is read from the task rows, not from the plan. A proposal approved
+                // a moment ago is QUEUED, not done, and its price is not yet spent. 09-29 ws 2: 'five done, 12 credits' against
+                // one completed row and zero charged.
+                [$__done, $__queued, $__failed, $__charged, $__queuedCost] = $this->truth($executed);
+                $msg->postAsAgent($wsId, 'sarah', $this->summary($__done, $__queued, $__failed, $__charged, $__queuedCost, $readyDrafts), [
                     'kind'           => 'autonomous_execution',
-                    'executed'       => count($executed),
+                    'executed'       => count($__done),
+                    'queued'         => count($__queued),
+                    'failed'         => count($__failed),
                     'ready_publish'  => $readyDrafts,
-                    'credits_spent'  => $spent,
+                    'credits_spent'  => $__charged,
+                    'credits_queued' => $__queuedCost,
                 ]);
             }
             if (! $force) Cache::put($cacheKey, $localDate, now()->addDays(2));
@@ -369,21 +376,69 @@ class SarahAutoExecuteCommand extends Command
         } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[SarahAutoExecute] rememberSetting failed', ['ws' => $wsId, 'key' => $key, 'error' => $e->getMessage()]); }
     }
 
-    private function summary(array $executed, int $readyDrafts, int $spent): string
+    /**
+     * TRUTH-1: what the task rows say about the actions this run approved.
+     * @return array{0:string[],1:string[],2:string[],3:int,4:int} done, queued, failed, credits charged, credits still to come
+     */
+    private function truth(array $executed): array
     {
-        $lines = ["Here's what I got done for you today — no approval needed, this is the plan you already okayed:\n"];
+        $ids = array_values(array_filter(array_map(fn ($e) => (int) ($e['task_id'] ?? 0), $executed)));
+        $rows = $ids ? DB::table('tasks')->whereIn('id', $ids)->get(['id', 'status', 'result_json', 'credit_cost'])->keyBy('id') : collect();
+        $done = []; $queued = []; $failed = []; $charged = 0; $queuedCost = 0;
         foreach ($executed as $e) {
-            $lines[] = "• " . $this->humanize($e['slug']) . " — " . $this->trim($e['title']);
+            $label = $this->humanize($e['slug']) . ' — ' . $this->trim($e['title']);
+            $todo = $this->humanizeTodo($e['slug']) . ' — ' . $this->trim($e['title']);   // TRUTH-1b: not yet done, so not past tense
+            $t = $rows[(int) ($e['task_id'] ?? 0)] ?? null;
+            if (! $t) { $queued[] = $todo; $queuedCost += (int) ($e['cost'] ?? 0); continue; }
+            $r = json_decode((string) $t->result_json, true) ?: []; $d = is_array($r['data'] ?? null) ? $r['data'] : [];
+            if ($t->status === 'completed') {
+                $charged += (int) ($d['credits_charged'] ?? $t->credit_cost ?? 0);
+                if ($e['slug'] === 'fix_orphans') {
+                    $applied = (int) ($d['applied'] ?? 0);
+                    $label = $applied === 0
+                        ? 'Checked the orphan pages — no internal link could safely be inserted this time' . (isset($d['orphans_after']) ? ' (' . (int) $d['orphans_after'] . ' still without an inbound link)' : '')
+                        : "Linked orphan pages — {$applied} internal link" . ($applied === 1 ? '' : 's') . ' inserted';
+                }
+                $done[] = $label;
+            } elseif (in_array((string) $t->status, ['failed', 'cancelled', 'rejected'], true)) {
+                $failed[] = $todo;
+            } else {
+                $queued[] = $todo; $queuedCost += (int) ($e['cost'] ?? $t->credit_cost ?? 0);
+            }
         }
-        if (empty($executed)) {
+        return [$done, $queued, $failed, $charged, $queuedCost];
+    }
+
+    private function summary(array $done, array $queued, array $failed, int $charged, int $queuedCost, int $readyDrafts): string
+    {
+        $lines = ["Here's where today's routine work stands — no approval needed, this is the plan you already okayed:\n"];
+        if ($done) { $lines[] = 'Done:'; foreach ($done as $l) $lines[] = "• {$l}"; }
+        if ($queued) { $lines[] = ($done ? "\n" : '') . 'Queued — the team runs these next and I\'ll report each one as it lands:'; foreach ($queued as $l) $lines[] = "• {$l}"; }
+        if ($failed) { $lines[] = ($done || $queued ? "\n" : '') . "Couldn't run:"; foreach ($failed as $l) $lines[] = "• {$l}"; }
+        if (! $done && ! $queued && ! $failed) {
             $lines[] = "• Stayed on top of the routine work — nothing new needed today.";
         }
-        $lines[] = "\nThat's {$spent} credit(s) put to work.";
+        $lines[] = "\nCredits charged so far: {$charged}." . ($queuedCost > 0 ? " Up to {$queuedCost} more when the queued work runs." : '');
         if ($readyDrafts > 0) {
             $noun = $readyDrafts === 1 ? 'article is' : 'articles are';
             $lines[] = "\n📢 {$readyDrafts} finished {$noun} ready to go live — approve the \"Publish\" request whenever you want them public. That's the only thing I need you for.";
         }
         return implode("\n", $lines);
+    }
+
+    private function humanizeTodo(string $slug): string
+    {
+        return [
+            'write_article'          => 'Write a new article',
+            'insert_link'            => 'Add internal links',
+            'fix_orphans'            => 'Link orphan pages',
+            'generate_meta'          => 'Write SEO meta',
+            'expand_thin_pages'      => 'Expand thin content',
+            'apply_link_suggestions' => 'Apply link suggestions',
+            'link_suggestions'       => 'Build the internal-link plan',
+            'improve_draft'          => 'Improve a draft',
+            'generate_image'         => 'Generate an image',
+        ][$slug] ?? ucfirst(str_replace('_', ' ', $slug));
     }
 
     private function humanize(string $slug): string

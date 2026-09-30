@@ -41,7 +41,7 @@ class ProactiveRuleSet
 
         // RULE 1 — Orphan pages
         $orphans = (int) ($state['seo']['orphan_pages'] ?? 0);
-        if ($orphans > 0) {
+        if ($orphans > 0 && empty($state['seo']['orphan_fix_hold'])) {   // ROUTINE-HOLD-1: a job whose last run changed nothing is held, not repeated
             $candidates[] = [
                 'action'             => 'fix_orphans',
                 'priority_hint'      => $orphans > 10 ? 'high' : 'medium',
@@ -127,7 +127,7 @@ class ProactiveRuleSet
         }
 
         // RULE 5 — Missing meta (any article without meta_title or meta_description)
-        $missingMeta = (int) ($state['seo']['missing_meta'] ?? 0);
+        $missingMeta = ! empty($state['seo']['meta_fix_hold']) ? 0 : (int) ($state['seo']['missing_meta'] ?? 0);   // ROUTINE-HOLD-1
         if ($missingMeta > 0) {
             $candidates[] = [
                 'action'             => 'fix_missing_meta',

@@ -194,7 +194,9 @@ class SarahWeeklyOrchestrator
             . "  - Reference REAL signals from the JSON only. Never invent numbers.\n"
             . "  - Never name competitor brands.\n"
             . "  - Current year is " . date('Y') . " — never reference prior years.\n"
-            . "  - Quote real credit costs (write_article=3cr, social_create_post=1cr, etc.)\n\n"
+            . "  - Quote real credit costs (write_article=3cr, social_create_post=1cr, etc.)\n"
+            . "  - A write_article pivot's title IS the article's headline as a customer would read it on this business's blog, built on a tracked keyword or a real customer question (e.g. 'Private Chef Cost in NJ: What \$75-200/hr Buys'). NEVER a strategy label such as 'Targeted SEO Strategy for Unranked Keywords' or 'Engagement Strategies for …' - those became articles once. Same for social pivots: the post's own subject, never a label.\n"
+            . (isset($wsId) ? '  - ' . \App\Core\Sarah888\LanguagePref::instruction((int) $wsId) . "\n" : '') . "\n"
             . "Return ONLY this JSON (no preamble, no fences):\n"
             . "{\"retrospective_markdown\":\"...\",\"proposed_pivots\":[{\"action\":\"write_article\",\"title\":\"...\",\"reason\":\"...\",\"credit_cost\":3}]}\n\n"
             . "WORKSPACE WEEKLY DATA:\n" . $stateJson;
@@ -220,6 +222,12 @@ class SarahWeeklyOrchestrator
     {
         $ids = [];
         foreach ($pivots as $p) {
+            // PIVOT-1 (REPORT-0066 finding 11, 2026-09-30): a content pivot titled like a strategy memo is not commissioned
+            if (in_array((string) ($p['action'] ?? ''), ['write_article', 'social_create_post', 'create_article'], true)
+                && preg_match('/\b(strateg(y|ies|ic)|unranked|keywords?|seo|ctr|engagement strateg|internal link|orphan|meta description|pivot|retrospective)\b/i', (string) ($p['title'] ?? ''))) {
+                Log::info('[SarahWeekly] pivot dropped: meta title, not content', ['ws' => $wsId, 'title' => $p['title'] ?? '']);
+                continue;
+            }
             try {
                 $id = DB::table('strategy_proposals')->insertGetId([
                     'workspace_id'        => $wsId,

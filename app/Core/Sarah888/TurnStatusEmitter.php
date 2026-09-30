@@ -138,7 +138,7 @@ final class TurnStatusEmitter
             ]);
         }
 
-        $sep = str_starts_with($pick['text'], "\n") ? '' : "\n\n";
+        $sep = "\n\n";   // VOICE-4 (2026-09-30): a trailer that began with a newline was ltrim()ed below and joined with nothing ('…go ahead firstWhenever you're ready')
         return rtrim($reply) . $sep . ltrim($pick['text'], "\n");
     }
 

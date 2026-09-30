@@ -123,6 +123,7 @@ class SarahDailyOrchestrator
         // invent proposal types from scratch — often missing obvious
         // wins like "fix the 47 orphan pages" or "target the keyword
         // at #14 — opportunity zone".
+        $state = \App\Core\Strategy\RoutineHold::apply($wsId, $state);   // ROUTINE-HOLD-1 (2026-09-30)
         $candidates = $this->rules->emit($wsId, $state);
         $state['_rule_candidates'] = $candidates;
         // CAMPAIGNS-1: the campaigns the brief leads with
@@ -445,6 +446,9 @@ class SarahDailyOrchestrator
             . "Compose a SHORT morning brief (markdown) for the workspace owner, AND a list of "
             . "proposed actions for TODAY that respect the tier cadence.\n\n"
             . "Brief structure (markdown):\n"
+            . (isset($wsId) ? \App\Core\Sarah888\LanguagePref::instruction((int) $wsId) . "\n" : '')
+            . "  - BUDGET (2026-09-30): state.tier_state.budget_line is the budget sentence - use it word for word and never compute a percentage or a burn yourself; the plan limit can change mid-month and the balance does not restart.\n"
+            . "  - HELD JOBS: if state.seo.orphan_fix_hold or state.seo.meta_fix_hold is present, put that sentence under RUNNING TODAY word for word instead of listing the job.\n"
             . "  - Greeting + day-of-month + budget status. If credit utilisation is LOW relative to the plan while goals are behind, frame the unused credits as UNDER-deployment to correct TODAY — NEVER present a low burn / 'plenty of room' as a good thing.\n"
             . "  - AWAITING YOUR OK (2026-07-16 FOLLOW-UP): if state.approvals.count > 0, this section comes FIRST, right after the greeting. You are a DMM chasing a decision that is holding up results — direct, not a nag. Read state.approvals: lead with the OLDEST item (approvals.needs_owner_ok is oldest-first), say how many DAYS it has waited, and name the RESULT it is blocking (e.g. '30 finished articles are written and ready to go live — they've been waiting on your OK for 9 days and won't earn traffic until published. Approve to publish.'). ONE consolidated follow-up covering at most the top 3 by age; if more remain, add 'plus N more waiting'. NEVER re-list an item you already surfaced on a prior day as if it were new, and NEVER frame routine auto-run work as awaiting approval. If approvals.count is 0, OMIT this section entirely.\n"
             . "  - YESTERDAY: cross-engine wins (3-5 bullets max, only real signals from data)\n"

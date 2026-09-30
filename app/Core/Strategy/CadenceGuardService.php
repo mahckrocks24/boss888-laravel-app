@@ -46,6 +46,12 @@ class CadenceGuardService
 
         $cap = (int) ($cadence[$cadenceField] ?? 0);
         if ($cap === 0) {
+            // CREDIT-FIRST (FIX B, extended 2026-09-30): a tier without a slot for this action still runs it when the owner
+            // has credits - 'generate a better one' was refused as 'exceeds this month's plan limit' with 700+ credits left.
+            $__bal = 0; try { $__bal = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0); } catch (\Throwable) {}
+            if ($__bal > 0) {
+                return ['allowed' => true, 'reason' => '', 'warning' => "not_in_tier:{$actionType} on {$active['tier_name']} tier (credits cover it)", 'current' => 0, 'cap' => 0];
+            }
             return ['allowed' => false, 'reason' => "Tier {$active['tier_name']} doesn't include {$actionType}", 'current' => 0, 'cap' => 0];
         }
 
