@@ -780,7 +780,7 @@ use Illuminate\Support\Facades\Route;
             return response()->json([
                 'success'   => true,
                 'temp_url'  => $tempUrl,
-                'temp_path' => $tempPath, // server-side only; used later by generateWebsite
+                'temp_path' => \App\Engines\Builder\Support\Platform6::on() ? basename((string) $tempPath) : $tempPath,   // PLATFORM-6: a name, never a server path
                 'size'      => $size,
                 'mime'      => $mime,
                 'palettes'  => $palettes,

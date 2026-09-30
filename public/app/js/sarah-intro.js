@@ -153,7 +153,7 @@
   function d(s) { return 'animation-delay:' + s + 's'; }
 
   var CH = [
-    ['Your website is live', 'It’s live.', 'Your website is live, Boss. Arthur built it with you, and from here I take care of the growth.', 'Meet Sarah'],
+    ['Your website is live', 'It’s live.', 'Your website is live{first}. Arthur built it with you, and from here I take care of the growth.', 'Meet Sarah'],
     ['Meet your manager', 'I’m Sarah.', 'I’m Sarah, your Digital Marketing Manager. I plan your marketing and my team creates it. You approve it, and only then do I publish. Then I tell you plainly what worked.', 'Next'],
     ['How it works', 'A week with me', 'Here is what a normal week looks like. My specialists do the hands-on work, and I keep it moving on schedule.', 'Next'],
     ['Your OK comes first', 'You stay in charge', 'Nothing goes out without your OK. I bring you the plan, you approve it once, and I handle every step after that.', 'Next'],
@@ -340,7 +340,7 @@
 
   function render() {
     var root = document.getElementById('lsi'); if (!root) return;
-    var c = CH[S.step], n = CH.length;
+    var c = CH[S.step].map(function (t) { return typeof t === 'string' ? t.replace('{first}', S.first ? ', ' + S.first : '') : t; }), n = CH.length;   // PLATFORM-6: by name, never "Boss"
     root.querySelector('.lsi-count').textContent = (S.step + 1) + ' / ' + n;
     var segs = root.querySelectorAll('.lsi-segs span');
     for (var k = 0; k < segs.length; k++) { segs[k].className = k <= S.step ? ('on' + (k < S.step ? ' past' : '')) : ''; }
@@ -546,6 +546,7 @@
       /* act only on facts: a failed call is not an empty account (a network blip must never send anyone back to Arthur) */
       S.meKnown = !!(res[0] && res[0].user); S.sitesKnown = !!(res[1] && (Array.isArray(res[1]) || Array.isArray(res[1].websites) || Array.isArray(res[1].data)));
       S.me = res[0] || {}; S.prefs = (S.me && S.me.preferences) || {};
+      try { S.first = String(((S.me.user && S.me.user.name) || S.me.name || '')).trim().split(/\s+/)[0] || ''; if (/^(boss|admin|test|user)$/i.test(S.first)) S.first = ''; } catch (_fn) { S.first = ''; }   // PLATFORM-6
       var pi = S.prefs.page_intros; if (Array.isArray(pi)) pi.forEach(function (k) { S.seen[k] = 1; });
       S.sites = listOf(res[1]);
       var pubSite = S.sites.filter(isPub)[0];

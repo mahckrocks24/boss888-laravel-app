@@ -206,6 +206,22 @@ Route::get('/verify-email/{id}/{hash}', function (\Illuminate\Http\Request $requ
 })->middleware('signed')->name('verification.verify');
 
 // ── SaaS App (React SPA) ──────────────────────────────────────────────────────
+// PLATFORM-6 (RFC-0021 wave 6, REPORT-0067 #12): an unpublished draft is its owner's. nginx hands every .html under
+// /storage/sites/{id}/ to Laravel; a published site serves its frozen live copy, a draft needs a signed link (2 h) from
+// the owner's Websites list. Assets (pictures, logos) stay static: live sites reference them.
+Route::get('/storage/sites/{id}/{path?}', function (\Illuminate\Http\Request $r, $id, $path = 'index.html') {
+    $id = (int) $id; $path = trim((string) $path, '/'); if ($path === '' || str_ends_with($path, '/')) $path .= 'index.html';
+    if (str_contains($path, '..') || ! preg_match('#^[A-Za-z0-9_\-./]+\.html$#', $path)) abort(404);
+    $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->whereNull('deleted_at')->first(['id', 'status', 'name', 'template_variables']);
+    if (! $w) abort(404);
+    $published = (string) $w->status === 'published';
+    if (\App\Engines\Builder\Support\Platform6::on() && ! $published && ! \App\Engines\Builder\Support\Platform6::verifyDraft($id, $r->query('t'))) abort(404);
+    $base = storage_path('app/public/sites/' . $id); if ($published) $base = \App\Engines\Builder\Support\DraftEdits::servedRoot($base);
+    $file = $base . '/' . $path; if (! is_file($file)) $file = storage_path('app/public/sites/' . $id . '/' . $path);
+    if (! is_file($file)) { $tv = json_decode((string) ($w->template_variables ?? '{}'), true) ?: []; return response(\App\Engines\Builder\Support\Platform6::notFoundPage($w, $tv), 404)->header('Content-Type', 'text/html; charset=UTF-8'); }
+    return response()->file($file, ['Content-Type' => 'text/html; charset=UTF-8', 'Cache-Control' => 'no-cache', 'X-Robots-Tag' => $published ? 'none' : 'noindex']);
+})->where('path', '.*');
+
 Route::get('/app/{any?}', function (\Illuminate\Http\Request $request) {
     // MISSION-018 WS launch-switch (2026-08-24): the SPA-shell guard the
     // marketing config names ("re-enable the SPA-shell guard flag") did not

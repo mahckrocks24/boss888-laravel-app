@@ -191,6 +191,7 @@ class BuilderService
             $s->slug = \Illuminate\Support\Str::slug($s->name ?? '');
             $s->page_count = (int) ($pageCounts[$s->id] ?? 0);
             $s->publish_state = $s->published_at ? 'published' : 'draft';
+            if (\App\Engines\Builder\Support\Platform6::on() && $s->publish_state !== 'published') $s->draft_url = '/storage/sites/' . (int) $s->id . '/index.html?t=' . \App\Engines\Builder\Support\Platform6::signDraft((int) $s->id);   // PLATFORM-6: the owner's own way to a draft
             $s->description = (string) ((json_decode((string) ($s->settings_json ?: '{}'), true) ?: [])['description'] ?? '');   // SITE-ABOUT-1: the card's description lives in settings_json
             return $s;
         })->toArray();
@@ -232,6 +233,7 @@ class BuilderService
 
         // Invalidate published site cache
         $this->invalidatePublishedCache($websiteId);
+        if (\App\Engines\Builder\Support\Platform6::on()) { try { $__wr = DB::table('websites')->where('id', $websiteId)->first(['workspace_id', 'subdomain', 'name']); if ($__wr) \App\Engines\Builder\Support\Platform6::ensureSeoSiteUrl((int) $__wr->workspace_id, $websiteId, (string) $__wr->subdomain, (string) $__wr->name); } catch (\Throwable $__se) {} }   // PLATFORM-6
         if (\App\Engines\Builder\Support\DraftEdits::on()) { try { \App\Engines\Builder\Support\DraftEdits::promote($websiteId); } catch (\Throwable $__pe) { \Illuminate\Support\Facades\Log::warning('[Builder] publish changes failed: ' . $__pe->getMessage()); } }   // DRAFT-5
 
         // Wave 52 — Index all newly-published pages into seo_content_index
@@ -655,7 +657,7 @@ class BuilderService
                             'workspace_id' => $wsId,
                             'website_id'   => (int) $websiteId,
                             'key'          => 'site_url',
-                            'value'        => 'https://' . $sub . '.levelupgrowth.io',
+                            'value'        => 'https://' . (str_contains((string) $sub, '.') ? $sub : $sub . '.levelupgrowth.io'),   // PLATFORM-6: the subdomain column already carries the suffix
                             'created_at'   => now(),
                             'updated_at'   => now(),
                         ]);

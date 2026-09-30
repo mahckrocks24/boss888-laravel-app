@@ -4182,6 +4182,7 @@ PROMPT;
         // directly on the in-memory variables. Permanent copy happens
         // AFTER the website row exists (we need the websiteId for the path).
         $logoTempPath = $data['logo_temp_path'] ?? null;
+        if (is_string($logoTempPath) && $logoTempPath !== '' && ! str_starts_with($logoTempPath, '/')) { $logoTempPath = storage_path('app/public/tmp/logos/' . basename($logoTempPath)); }   // PLATFORM-6: the client holds a name
         $logoTempUrl  = $data['logo_url']       ?? null;
         if ($logoUploadOptIn && $logoTempUrl) {
             $variables['logo_url'] = $logoTempUrl; // transitional until we move it
@@ -4698,6 +4699,20 @@ PROMPT;
             }
         }
 
+        // PLATFORM-6 (RFC-0021 wave 6): the owner's uploads live with the site, not under /storage/tmp/
+        if (\App\Engines\Builder\Support\Platform6::on()) {
+            try {
+                [$__v2, $__mv] = \App\Engines\Builder\Support\Platform6::tmpImagesToSite($websiteId, $variables);
+                if ($__mv > 0) {
+                    $variables = $__v2;
+                    app(\App\Engines\Builder\Services\BuilderService::class)->updateTemplateVariables($websiteId, $variables);
+                    $html = \App\Engines\Builder\Support\TemplateArchetypes::removeBlocks($this->scrubSampleStaff($this->templates->render($industry, $variables)), $removeBlocks);
+                    $html = \App\Engines\Builder\Support\SectionLibrary::replaceBlock($html, 'services', $bespokeHtml);
+                    $html = $this->templates->stripDanglingNavAnchors($html);
+                    Log::info('[Arthur] uploads moved into the site folder', ['website_id' => $websiteId, 'moved' => $__mv]);
+                }
+            } catch (\Throwable $__me) { Log::warning('[Arthur] uploads move failed: ' . $__me->getMessage()); }
+        }
         // Deploy HTML
         // LEGACY: T3.4 — static-HTML-only path retained for backwards
         // compatibility (Chef Red-style sites). New sites also get a

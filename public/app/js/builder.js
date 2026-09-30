@@ -848,7 +848,7 @@ function wsRenderGrid(){
       var _liveUrlBtn;
       if (s.custom_domain) _liveUrlBtn = 'https://' + s.custom_domain;
       else if (s.subdomain) _liveUrlBtn = 'https://' + (String(s.subdomain).indexOf('.') === -1 ? s.subdomain + '.levelupgrowth.io' : s.subdomain);
-      else _liveUrlBtn = '/storage/sites/' + s.id + '/index.html';
+      else _liveUrlBtn = s.draft_url || ('/storage/sites/' + s.id + '/index.html');   // PLATFORM-6
 
       // D (2026-09-20): a published site can be taken offline from here — there was no unpublish control anywhere in the
       // customer app (only delete). Two clicks, site CSS, no native dialog.
@@ -879,7 +879,7 @@ function wsRenderGrid(){
     } else if (s.domain) {
       _liveUrl = 'https://' + s.domain;
     } else {
-      _liveUrl = '/storage/sites/' + s.id + '/index.html';
+      _liveUrl = s.draft_url || ('/storage/sites/' + s.id + '/index.html');   // PLATFORM-6
     }
     var _titleHtml = '<a href="' + bld_escH(_liveUrl) + '" target="_blank" rel="noopener" '
       + 'onclick="event.stopPropagation()" '
@@ -2768,7 +2768,7 @@ async function wsAddSectionToSite() {
   var hdr = {'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json'};
   var lib = null, home = '';
   try { var lr = await fetch(API + 'builder/library?website_id=' + wsCurrentSite.id, { headers: hdr }); lib = await lr.json(); } catch (e) { lib = null; }
-  try { var hr = await fetch('/storage/sites/' + wsCurrentSite.id + '/index.html?t=' + Date.now(), { cache: 'no-store' }); if (hr.ok) home = await hr.text(); } catch (e) { home = ''; }
+  try { var hr = await fetch((wsCurrentSite.draft_url || ('/storage/sites/' + wsCurrentSite.id + '/index.html?t=' + Date.now())), { cache: 'no-store', headers: Object.assign({}, _t3CatAuth()) });   /* PLATFORM-6 */ if (hr.ok) home = await hr.text(); } catch (e) { home = ''; }
   var sections = (lib && Array.isArray(lib.sections)) ? lib.sections : [];
   if (!sections.length) { showToast('No sections are available for this website yet.', 'warning'); return; }
   if (!home) { showToast('This website has no home page to add a section to yet.', 'warning'); return; }

@@ -371,7 +371,7 @@ class PublishedSiteMiddleware
 
         if (!$html) {
             Cache::forget($cacheKey);
-            return $this->render404();
+            return $this->render404($website ?? null);   // PLATFORM-6
         }
 
         $html = $this->injectBookingForms($html); // LEAD-1
@@ -1551,8 +1551,12 @@ JS;
         return (string) preg_replace($pattern, $tag, $html, 1);
     }
 
-    private function render404()
+    private function render404(?object $website = null)
     {
+        if ($website && \App\Engines\Builder\Support\Platform6::on()) {   // PLATFORM-6 (RFC-0021 wave 6): a missing page on a customer's site is the customer's page, not ours
+            $tv = json_decode((string) ($website->template_variables ?? \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $website->id)->value('template_variables') ?: '{}'), true) ?: [];
+            return response(\App\Engines\Builder\Support\Platform6::notFoundPage($website, $tv), 404)->header('Content-Type', 'text/html; charset=UTF-8');
+        }
         if (view()->exists('errors.site-not-found')) {
             return response()->view('errors.site-not-found', [], 404);
         }
