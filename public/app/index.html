@@ -5500,10 +5500,10 @@ document.addEventListener('keydown', function (e) {
      new site, the wizard is the only live thing on screen. The lock survives a reload (lu_arthur_lock) and lifts when a
      website exists or the build hands over to the editor. */
   try {
-    if (action === 'arthur') localStorage.setItem('lu_arthur_lock', '1');
+    if (action === 'arthur' || action === 'wizard') localStorage.setItem('lu_arthur_lock', '1');
     if (localStorage.getItem('lu_arthur_lock') === '1' && action !== 'wizard') action = 'arthur';
   } catch (_e) {}
-  if (action === 'arthur') {
+  if (action === 'arthur' || action === 'wizard') {   /* ARTHUR-LOCK-1b: the website-builder page hand-off is locked too */
     var root = document.documentElement; root.classList.add('lu-arthur-lock');
     var css = document.createElement('style'); css.id = 'lu-arthur-lock-css';
     css.textContent =
