@@ -1849,7 +1849,17 @@
     el.addEventListener('mousedown', function (e) { down(e.clientX, e.clientY, e); });
     window.addEventListener('mousemove', function (e) { move(e.clientX, e.clientY, e); });
     window.addEventListener('mouseup', up);
-    el.addEventListener('touchstart', function (e) { var t = e.touches[0]; if (t) down(t.clientX, t.clientY, e); }, { passive: true });
+    // CAMP-DBLTAP-1: double-tap-and-hold, exactly as the agent cards; a single touch arms the next one and nothing else
+    var tap = { at: 0, x: 0, y: 0 };
+    el.addEventListener('touchstart', function (e) {
+      var t = e.touches[0]; if (!t || e.touches.length !== 1) return;
+      if (e.target.closest && e.target.closest('button')) return;
+      e.stopPropagation();   // the canvas must not see it (no lasso, no pan under the card)
+      var now = Date.now();
+      if (now - tap.at < DBL_TAP_MS && Math.abs(t.clientX - tap.x) < DBL_TAP_PX && Math.abs(t.clientY - tap.y) < DBL_TAP_PX) {
+        tap = { at: 0, x: 0, y: 0 }; e.preventDefault(); down(t.clientX, t.clientY, e);
+      } else { tap = { at: now, x: t.clientX, y: t.clientY }; st = null; }
+    }, { passive: false });
     el.addEventListener('touchmove', function (e) { var t = e.touches[0]; if (t) move(t.clientX, t.clientY, e); }, { passive: false });
     el.addEventListener('touchend', up);
   }
