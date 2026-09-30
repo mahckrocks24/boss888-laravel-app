@@ -258,3 +258,4 @@ html .lg-site .lu-sel-list { background: #FCFCFE; color: var(--ink); border: 1px
 html[data-theme="dark"] .lg-site .lu-sel-list { background: #15172A; }
 html .lg-site .lu-sel-list li { color: var(--ink); }
 html .lg-site .lu-sel-list li:hover, html .lg-site .lu-sel-list li.is-active { background: var(--tint); color: var(--ink); }
+html[data-theme="light"] .lg-site .rep-pass .rep-tag { color: #0E7A50; }   /* the SEO report's Pass tag: 4.1:1 was the last light-theme node under 4.5 */
