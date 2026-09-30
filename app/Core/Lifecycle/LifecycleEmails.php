@@ -115,6 +115,10 @@ final class LifecycleEmails
 
     private function chat(int $wsId, string $text, string $type): void
     {
+        // ARTHUR-FIRST-1: Sarah does not speak in her thread before the website is published; the email still goes.
+        if ($type !== 'lifecycle_trial_ended') {
+            try { if (! DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('status', 'published')->exists()) return; } catch (\Throwable $e) {}
+        }
         try { app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $text, ['notification_type' => $type]); } catch (\Throwable $e) {}
     }
 

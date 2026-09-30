@@ -3535,6 +3535,9 @@ Route::post('/builder/websites/{id}/publish', function (\Illuminate\Http\Request
 
     \App\Http\Controllers\PublishedSiteController::invalidateCache($id);
 
+    // ONBOARD-PUBLISH-1b (Owner 2026-09-30): the published website is when Sarah meets the customer and starts work.
+    \App\Jobs\SarahDiscoveryJob::onPublished((int) $website->workspace_id, 'publish_button');
+
     $url = 'https://' . str_replace('.levelupgrowth.io', '', $subdomain) . '.levelupgrowth.io';
     return response()->json(['success' => true, 'url' => $url, 'subdomain' => $subdomain]);
 })->middleware('auth.jwt');

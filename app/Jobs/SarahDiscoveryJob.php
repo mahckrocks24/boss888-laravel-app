@@ -29,6 +29,24 @@ class SarahDiscoveryJob implements ShouldQueue
         $this->onQueue('default');
     }
 
+    /**
+     * ONBOARD-PUBLISH-1b: the one place every publish path calls (the Publish button's route in routes/api.php and
+     * BuilderService::publishWebsite for Sarah/Arthur/capabilities). Marks the workspace onboarded and wakes Sarah.
+     * Fail open: never breaks a publish.
+     */
+    public static function onPublished(int $wsId, string $source = 'website_published'): void
+    {
+        if ($wsId <= 0) return;
+        try {
+            if (! \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('onboarded')) {
+                \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->update(['onboarded' => 1, 'onboarded_at' => now(), 'updated_at' => now()]);
+            }
+            self::dispatch($wsId, $source)->delay(now()->addSeconds(20));
+        } catch (\Throwable $e) {
+            Log::warning('[Discovery] onPublished failed', ['ws' => $wsId, 'error' => $e->getMessage()]);
+        }
+    }
+
     public function handle(): void
     {
         try {

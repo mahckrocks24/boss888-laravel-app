@@ -137,7 +137,17 @@ class DiscoveryRunOrchestrator
 
     private function postWelcome(int $wsId): array
     {
-        $msg = "👋 **Welcome aboard. I'm Sarah, your Digital Marketing Manager.**\n\n"
+        // ARTHUR-FIRST-1: this is the customer's first message from Sarah, so it greets them by name and starts from the live site.
+        $who = ''; $site = '';
+        try {
+            $uid = \Illuminate\Support\Facades\DB::table('workspace_users')->where('workspace_id', $wsId)->orderBy('id')->value('user_id');
+            $name = $uid ? (string) \Illuminate\Support\Facades\DB::table('users')->where('id', $uid)->value('name') : '';
+            $who = trim((string) (explode(' ', trim($name))[0] ?? ''));
+            $w = \Illuminate\Support\Facades\DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('status', 'published')->orderBy('id')->first(['name', 'subdomain', 'custom_domain']);
+            if ($w) $site = (string) $w->name;
+        } catch (\Throwable $e) {}
+        $msg = "👋 **" . ($who !== '' ? "Hi {$who}, I'm" : "Welcome aboard. I'm") . " Sarah, your Digital Marketing Manager.**\n\n"
+             . ($site !== '' ? "{$site} is live, so my team and I take it from here: I plan your growth, brief the specialists and bring you the work to approve — nothing goes live without you.\n\n" : '')
              . "Today is day 1. I'm running a full audit of your business — "
              . "site health, indexed pages, brand context, SEO foundation, and competitor landscape.\n\n"
              . "Tomorrow morning at 8:00" . (function () use ($wsId) { try { $tz = (string) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC'); return $tz === 'UTC' ? ' UTC' : ' (' . str_replace('_', ' ', $tz) . ' time)'; } catch (\Throwable $e) { return ''; } })() . " I'll share a recommended 30-day game plan as a set of "

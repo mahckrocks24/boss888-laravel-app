@@ -5494,8 +5494,9 @@ document.addEventListener('keydown', function (e) {
      — putting "Meet Sarah" at z-index 9999 directly on top of the Arthur wizard this script had just
      opened. The flag is on window, not localStorage, so it cannot survive a reload and re-suppress
      onboarding for someone who genuinely needs it. */
-  try { window.__luArthurHandoff = (action === 'wizard'); } catch (_e) {}
-  if (action !== 'wizard') return;
+  /* ARTHUR-FIRST-1 (Owner 2026-09-30): 'arthur' = a fresh sign-up from the start page; Arthur opens first, empty. */
+  try { window.__luArthurHandoff = (action === 'wizard' || action === 'arthur'); } catch (_e) {}
+  if (action !== 'wizard' && action !== 'arthur') return;
 
   var tries = 0;
   var t = setInterval(function () {
@@ -5514,6 +5515,8 @@ document.addEventListener('keydown', function (e) {
         window._lgsc_set_visibility_mode('advanced', { skipNav: true });
       }
 
+      /* ARTHUR-FIRST-1: a fresh sign-up meets Arthur's own wizard, not a design picker. */
+      if (action === 'arthur' && typeof window.wsShowArthurWizard === 'function') { window.wsShowArthurWizard(); return; }
       /* No brief attached: this is a plain "open the wizard" landing. */
       if (!brief || !brief.build_data || !brief.build_data.business_name || !ready) {
         if (typeof window._bldShowTemplatePicker === 'function') { window._bldShowTemplatePicker(); }

@@ -129,6 +129,7 @@ $page['scripts'] = <<<'HTML'
             if (j.user && j.user.id) localStorage.setItem('lu_user_id', String(j.user.id));
             if (industry) localStorage.setItem('lu_signup_industry', industry);
             if (company) localStorage.setItem('lu_signup_business', company);
+            localStorage.setItem('lu_boot_action', 'arthur');   // ARTHUR-FIRST-1 (Owner 2026-09-30): every sign-up meets Arthur first
           } catch (_s) {}
           btn.textContent = 'Opening your workspace…';
           window.location.href = '/app/';

@@ -89,7 +89,10 @@ class AuthService
             $first = trim((string) (explode(' ', trim((string) $data['name']))[0] ?? ''));
             $biz   = !empty($data['workspace_name']) ? (string) $data['workspace_name'] : 'your business';
             $intro = "Hi" . ($first !== '' ? ' ' . $first : '') . ", I'm Sarah, your Digital Marketing Manager. I plan your growth, brief the specialists and bring you the work to approve — nothing goes live without you. Arthur builds and edits your website.\n\nTo start, tell me a bit about " . $biz . ": what you do, who you do it for, and what you would like to achieve first.";
-            DB::table('agent_messages')->insert([
+            // ARTHUR-FIRST-1 (Owner 2026-09-30, "make it happen"; OWNER RULE 2026-09-10: Sarah introduces herself only once
+            // the website is published): nothing is written to her thread at registration any more. Her introduction is the
+            // discovery welcome, posted when the site goes live (SarahDiscoveryJob::onPublished).
+            if (false) DB::table('agent_messages')->insert([
                 'workspace_id'  => $workspace->id,
                 'agent_slug'    => 'sarah',
                 'sender'        => 'Sarah',
