@@ -76,7 +76,7 @@
       '.sh-wsp button.ws.cur{border-color:var(--p);cursor:default}.sh-wsp button.ws .tag{margin-left:auto;font-size:11px;color:var(--t3)}',
       '.sh-ctx{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--t2);background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:6px 10px;max-width:100%}',
       '.sh-ctx b{color:var(--t1);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}',
-      '.sh-brief{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--s1);flex:none}',
+      '.sh-brief[hidden]{display:none!important}.sh-brief{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--bd);background:var(--s1);flex:none}',
       /* BRIEF-1 (Owner, mobile): the briefing chips are ONE row that scrolls sideways on small screens — no second line above the conversation. */
       '@media (max-width:767px){.sh-brief{flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;scroll-padding:0 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:8px 12px;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}.sh-brief::-webkit-scrollbar{display:none}.sh-brief .sh-chip{flex:none;white-space:nowrap;scroll-snap-align:start}}',
       '.sh-chip{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:4px 10px;border-radius:999px;background:var(--s2);border:1px solid var(--bd);font-size:12.5px;color:var(--t2)}',
@@ -235,7 +235,7 @@
             /* Owner 2026-09-21: a close button minimises Sarah — back to where the customer came from (the floater brings her back). */
             '<button type="button" class="sh-min" id="sh-min" data-adv="1" aria-label="Minimize Sarah" title="Minimize" onclick="sarahMinimize()"><svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 5l10 10M15 5L5 15"/></svg></button>' +
           '</div>' +
-          '<div class="sh-brief" id="sh-brief" aria-label="Today at a glance"></div>' +
+          '<div class="sh-brief" id="sh-brief" aria-label="Today at a glance" hidden></div>' +
           '<div class="sh-rail" id="sh-rail" aria-label="Needs your attention" hidden></div>' +
           '<div class="sh-feed" id="sh-feed" role="log" aria-live="polite" aria-relevant="additions" aria-label="Conversation with Sarah"></div>' +
           '<div class="sh-compose">' +
