@@ -212,3 +212,22 @@ html .lg-site .matrix tbody th { min-width: 150px; }
 }
 html .lg-site .post-grid { padding-left: var(--gutter, 24px); padding-right: var(--gutter, 24px); }   /* .post-grid's own padding zeroed the container's sides; the article kept no gutter on phones */
 html .lg-site .matrix td { min-width: 190px; }
+
+/* 18. Owner 09-30 ('contrast issue on animation', /product/website-builder/): the replayed conversations (.sim, .sim2) were hard-coded dark blocks and the bridge's ink rules painted dark text inside them in light. They are glass cards on the tokens now, in both themes. On phones a message or the result takes no space before it arrives. */
+html .lg-site .sim-chat, html .lg-site .sim2 { background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); color: var(--ink); }
+html .lg-site .sim-head, html .lg-site .sim2-head { color: var(--ink-3); border-bottom-color: var(--hairline); }
+html .lg-site .sim-dot, html .lg-site .sim2-head .sim-dot { background: var(--success); box-shadow: 0 0 10px var(--success-soft); }
+html .lg-site .sim-arthur { background: var(--glass-thick); border: 1px solid var(--hairline); color: var(--ink); }
+html .lg-site .sim-arthur p, html .lg-site .sim-msg p { color: inherit; }
+html .lg-site .sim-you, html .lg-site .sim-you p { color: #FFFFFF; }
+html .lg-site .sim-who { color: var(--accent-text); }
+html .lg-site .sim-priya .sim-who { color: var(--success); }
+html .lg-site .sim-build, html .lg-site .sim2-out { background: var(--glass-thick); border: 1px solid var(--hairline); color: var(--ink-2); }
+html .lg-site .sim-steps li { color: var(--ink-2); }
+html .lg-site .sim-steps .icon { color: var(--success); }
+html .lg-site .sim2-out h4 { color: var(--ink); }
+html .lg-site .sim2-meta li { color: var(--ink-2); } html .lg-site .sim2-meta b { color: var(--ink-3); }
+html .lg-site .sim-note, html .lg-site .sim2-note { color: var(--ink-3); }
+@media (max-width: 979px) {
+  html .lg-site .sim-armed .sim-msg:not(.on), html .lg-site .sim-armed .sim-build:not(.on), html .lg-site .sim-armed .sim-result:not(.on) { display: none; }
+}
