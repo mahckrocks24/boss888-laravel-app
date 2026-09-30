@@ -1118,7 +1118,7 @@ html.lg-ui .bs-row.book .ic { background: var(--lg-success-soft) !important; col
 html.lg-ui .bs-row.gate .ic { background: var(--lg-info-soft) !important; color: var(--lg-info); border-color: transparent; }
 html.lg-ui .bs-row.fail .ic { background: var(--lg-danger-soft) !important; color: var(--lg-danger); border-color: transparent; }
 html.lg-ui .bs-kpi { background: var(--lg-glass-thin) !important; border: 1px solid var(--lg-hairline) !important; border-radius: 18px !important; }
-html.lg-ui .n { background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline); }
+html.lg-ui :is(.bs-sec, .cm-sec) h2 .n { background: var(--lg-fill-hover) !important; border: 1px solid var(--lg-hairline); }   /* GLASS-N-1: count badges in section headings only - it boxed every .n (report number cells, stage counts) */
 html.lg-ui .bs-tag { background: var(--lg-fill-hover) !important; }
 html.lg-ui .bs-empty { border-color: var(--lg-hairline) !important; border-radius: 18px !important; }
 html.lg-ui .bs-reason { background: var(--lg-solid) !important; border: 1px solid var(--lg-hairline) !important; border-radius: 14px !important; }

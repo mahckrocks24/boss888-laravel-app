@@ -172,6 +172,8 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-bars{padding:6px 18px 16px}.crm2-bar{display:grid;grid-template-columns:130px minmax(0,1fr) 44px;gap:12px;align-items:center;padding:6px 0;font-size:13px}',
         '.crm2-bar .l{color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crm2-bar .tr{height:10px;background:var(--s2);border-radius:999px;overflow:hidden}',
         '.crm2-bar .f{height:100%;background:var(--p);border-radius:999px}.crm2-bar .n{text-align:right;color:var(--t1);font-weight:500}',
+        '.crm2-bar .tr,.crm2-bar .f{display:block}',   /* BAR-FILL-1: the fills were inline spans, so their width was ignored and every bar showed empty */
+        '.crm2-card:has(.crm2-rt){overflow:hidden}',   /* RT-ROUND-1: a report table never pokes past the card's rounded corners (only cards that hold one) */
         '.crm2-packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}',
         '.crm2-pack{text-align:left;appearance:none;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:14px;cursor:pointer;color:var(--t2);font:13px var(--fb);min-height:44px}',
         '.crm2-pack b{display:block;color:var(--t1);font-size:14px;margin-bottom:4px}.crm2-pack[aria-pressed=true]{border-color:var(--p);box-shadow:0 0 0 1px var(--p)}',
