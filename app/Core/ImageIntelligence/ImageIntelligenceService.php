@@ -317,7 +317,24 @@ class ImageIntelligenceService
      */
     private function attachCompilerContext(array $blueprint, array $ctx): array
     {
+        // REGEN-1: a regenerate asks for the text painted into the picture - the blueprint's typography is overridden
+        // here, whatever the reasoner chose, and the compiler gets the parameters to spell it out.
+        if (($ctx['force_typography_mode'] ?? '') === 'baked_in') {
+            $__ts = is_array($blueprint['typography_strategy'] ?? null) ? $blueprint['typography_strategy'] : [];
+            $__hl = trim((string) ($ctx['forced_headline'] ?? '')) ?: trim((string) ($__ts['headline'] ?? ''));
+            $blueprint['typography_strategy'] = [
+                'mode'            => 'baked_in',
+                'reason'          => 'regenerate: the owner asked for the words painted into the picture by the model',
+                'headline'        => $__hl,
+                'supporting_copy' => [],
+                'placement'       => trim((string) ($ctx['forced_placement'] ?? '')) ?: (string) ($__ts['placement'] ?? ''),
+                'style'           => trim((string) ($ctx['forced_style'] ?? '')) ?: (string) ($__ts['style'] ?? ''),
+            ];
+        }
         $blueprint['_context'] = [
+            'force_baked_in'    => ($ctx['force_typography_mode'] ?? '') === 'baked_in',
+            'retry_of_media_id' => (int) ($ctx['retry_of_media_id'] ?? 0),
+            'design_direction_id' => (string) ($ctx['brand']['design_direction_id'] ?? ''),
             'has_logo'          => (bool) ($ctx['has_logo'] ?? false),
             'logo_requested'    => (bool) ($ctx['logo_requested'] ?? false),
             'headline_requested' => (bool) ($ctx['headline_requested'] ?? false),

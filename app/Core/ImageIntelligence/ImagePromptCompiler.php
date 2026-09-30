@@ -14,6 +14,71 @@ namespace App\Core\ImageIntelligence;
  */
 class ImagePromptCompiler
 {
+    /**
+     * REGEN-1: the text, as parameters the image model can follow. Built from the brief's own words (style, placement),
+     * the brand palette and the design direction - the same brief the renderer honours, expressed for a painter.
+     */
+    public static function textSpec(string $headline, array $ts, array $bp): string
+    {
+        $style = (string) ($ts['style'] ?? ''); $place = (string) ($ts['placement'] ?? '');
+        $palette = array_values(array_filter(array_map('strval', (array) ($bp['color_palette'] ?? []))));
+        preg_match_all('/#[0-9a-fA-F]{6}\b/', $style, $hx); $hexes = array_values(array_unique($hx[0] ?? []));
+        $known = ['Playfair Display', 'DM Sans', 'Manrope', 'Inter', 'Syne', 'Anton', 'Archivo Black', 'Bebas Neue', 'Oswald', 'Fraunces', 'Cormorant Garamond', 'Libre Baskerville', 'Lora', 'Montserrat', 'Poppins', 'Raleway', 'Lato', 'Roboto', 'Cinzel', 'Merriweather', 'Barlow Condensed', 'Space Grotesk'];
+        $fonts = []; foreach ($known as $k) { if (stripos($style, $k) !== false) $fonts[] = $k; }
+        $serif = (bool) preg_match('/\b(serif|editorial|luxury|elegant|refined|classic)\b/i', $style) && ! preg_match('/\bsans[- ]serif\b/i', $style);
+        $bold  = (bool) preg_match('/\b(bold|impact|punchy|loud|oversized|block|condensed)\b/i', $style);
+        $face  = $fonts ? $fonts[0] . ($serif ? ' (a refined high-contrast serif)' : ' (a clean geometric sans-serif)')
+               : ($serif ? 'a refined high-contrast editorial serif like Playfair Display' : ($bold ? 'a heavy condensed sans-serif like Anton or Bebas Neue, all capitals' : 'a clean modern sans-serif like Manrope'));
+        $weight = preg_match('/\b(light|thin|delicate|hairline)[- ]?(weight|type|typeface|font|serif|sans|lettering|headline|capitals)\b/i', $style) ? 'light weight' : ($bold ? 'heavy weight' : 'medium-to-bold weight');
+        // the design direction the owner chose (or the industry's provisional one) fills what the brief leaves unsaid
+        $dir = null; try { $__id = (string) ($bp['_context']['design_direction_id'] ?? ''); if ($__id !== '') $dir = \App\Core\Brand\DesignDirections::get($__id); } catch (\Throwable) {}
+        $pv = is_array($dir['preview'] ?? null) ? $dir['preview'] : [];
+        if (! $fonts && ! empty($pv['font'])) {
+            $__pf = trim((string) preg_replace("/^['\"]?([^'\",]+)['\"]?.*$/", '$1', (string) $pv['font']));
+            if ($__pf !== '') { $face = $__pf . ($serif ? ' (a refined high-contrast serif)' : ' (as the brand\'s design direction sets it)'); }
+        }
+        $caseTxt = preg_match('/\b(all[- ]caps|capitals|uppercase)\b/i', $style) || (! $fonts && (($pv['case'] ?? '') === 'upper' || $bold)) ? ' in capitals' : '';
+        $lum = function (string $hex): float { $h = ltrim($hex, '#'); return strlen($h) === 6 ? (0.2126 * hexdec(substr($h, 0, 2)) + 0.7152 * hexdec(substr($h, 2, 2)) + 0.0722 * hexdec(substr($h, 4, 2))) / 255 : 0.5; };
+        $colour = $hexes[0] ?? null;
+        if (! $colour) { foreach ($palette as $c) { if (preg_match('/#[0-9a-fA-F]{6}/', $c, $m) && $lum($m[0]) > 0.08 && $lum($m[0]) < 0.85) { $colour = $m[0]; break; } } }   // the accent, never the ink or the paper
+        if (! $colour && ($pv['text'] ?? '') === 'light') $colour = '#FFFFFF';
+        $colourTxt = $colour ? 'in ' . self::colourName($colour) . " (exactly {$colour})" : 'in a single high-contrast colour that reads clearly against the background';
+        if (preg_match('/\b(gold|golden|metallic)\b/i', $style)) $colourTxt .= ' with a warm metallic gold finish';
+        if ($colour && $lum($colour) < 0.85) $colourTxt .= ' - not white, not cream, not grey: every letter in that colour';
+        if ($colour && $lum($colour) >= 0.85) $colourTxt .= ' - bright and clean, never tinted by the scene';
+        // the zone only: the brief's placement prose names the copy list and the renderer's layout, none of which the painter should see
+        $pl = strtolower($place);
+        $row = preg_match('/\b(top|upper)\b/', $pl) ? 'upper' : (preg_match('/\b(bottom|lower|band)\b/', $pl) ? 'lower' : (preg_match('/\b(middle|centre|center)\b/', $pl) ? 'middle' : ''));
+        $col = preg_match('/\bleft\b/', $pl) ? 'left' : (preg_match('/\bright\b/', $pl) ? 'right' : (preg_match('/\b(centre|center|centred|centered)\b/', $pl) ? 'centre' : ''));
+        $zone = trim($row . ' ' . $col) !== '' ? 'the ' . trim($row . ' ' . $col) . ' of the frame, inside generous margins' : 'the quietest area of the frame';
+        $where = $zone . (preg_match('/\b(two|2)\s+(short\s+)?lines\b/i', $place) ? ', set on two short lines' : '') . ', on the calmest, most shadowed part of the picture, away from faces and hands';
+        $letters = implode(' ', preg_split('//u', preg_replace('/\s+/', ' ', $headline), -1, PREG_SPLIT_NO_EMPTY));
+        $emph = '';
+        if (preg_match('/[\'"\x{2018}\x{2019}\x{201C}\x{201D}]([A-Za-z][\w-]*)[\'"\x{2018}\x{2019}\x{201C}\x{201D}]\s+(?:optionally\s+)?(?:the\s+only\s+)?(?:metallic|accent|italic|highlight)/iu', $style, $em)) $emph = " The word \"{$em[1]}\" may be set in italic as the one accented word; every other word upright.";
+        $rule = preg_match('/\b(rule|hairline|underline|divider)\b/i', $style) ? ' A short thin horizontal rule in the same colour sits directly beneath the headline.' : '';
+        return 'TEXT IN THE IMAGE - non-negotiable: paint exactly ONE line of text, the headline "' . $headline . '", spelled exactly, letter by letter: ' . $letters
+            . '. Nothing else is written anywhere: no sub-line, no tagline, no caption, no small print, no logo, no watermark, no signage, no numbers. '
+            . 'Typeface: ' . $face . ', ' . $weight . $caseTxt . ', correctly kerned, crisp vector-sharp edges, perfectly legible at feed size. '
+            . 'Colour: ' . $colourTxt . '. Placement: ' . $where . '. The words never cross a face, hands or the plated food; the composition leaves that area calm for them. '
+            . 'Size: the line spans roughly half of the image width' . ($bold ? ' (larger, poster-like, is welcome)' : '') . '. The text is part of the design, like a printed poster, not a sticker or a sign in the scene.' . $emph . $rule;
+    }
+
+    /** A plain colour name for a hex - image models follow words better than codes. */
+    public static function colourName(string $hex): string
+    {
+        $h = ltrim($hex, '#'); if (strlen($h) !== 6) return 'the colour ' . $hex;
+        $r = hexdec(substr($h, 0, 2)) / 255; $g = hexdec(substr($h, 2, 2)) / 255; $b = hexdec(substr($h, 4, 2)) / 255;
+        $max = max($r, $g, $b); $min = min($r, $g, $b); $l = ($max + $min) / 2; $d = $max - $min;
+        if ($d < 0.08) return $l > 0.9 ? ($r > $b + 0.02 ? 'soft cream white' : 'pure white') : ($l > 0.75 ? 'soft cream white' : ($l > 0.45 ? 'mid grey' : ($l > 0.15 ? 'charcoal' : 'near black')));
+        $s = $d / (1 - abs(2 * $l - 1));
+        $hue = $max === $r ? fmod(($g - $b) / $d, 6) : ($max === $g ? ($b - $r) / $d + 2 : ($r - $g) / $d + 4); $hue = fmod($hue * 60 + 360, 360);
+        $gold = $hue >= 28 && $hue < 56 && $s > 0.3 && $l > 0.3 && $l < 0.7;
+        $name = $gold ? 'warm metallic gold (old gold, antique brass)' : ($hue < 15 || $hue >= 345 ? 'red' : ($hue < 40 ? ($l > 0.5 ? 'warm amber orange' : 'burnt orange') : ($hue < 55 ? 'warm golden yellow' : ($hue < 70 ? 'yellow' : ($hue < 160 ? 'green' : ($hue < 200 ? 'teal' : ($hue < 250 ? ($l > 0.6 ? 'light sky blue' : 'deep blue') : ($hue < 290 ? 'violet purple' : ($hue < 345 ? 'magenta pink' : 'red')))))))));
+        if ($l < 0.25 && $name !== 'near black') $name = 'deep ' . $name;
+        if ($l > 0.8 && stripos($name, 'light') === false) $name = 'pale ' . $name;
+        return $name;
+    }
+
     private const NO_TEXT = ' Strict rule: NO text, NO words, NO letters, NO numbers, NO logos, NO watermarks, NO captions, NO typography of any kind — pure visual composition only, with clean deliberate negative space reserved for text to be added later.';
 
     /**
@@ -128,6 +193,30 @@ class ImagePromptCompiler
                     . (($ts['placement'] ?? '') !== '' ? 'placed ' . $ts['placement'] . ', ' : '')
                     . 'in a clean, correctly-spelled, high-contrast, professionally-kerned '
                     . (($ts['style'] ?? '') !== '' ? $ts['style'] . ' ' : '') . 'typeface. Do not add any other text.';
+            }
+            // REGEN-1: the second attempt is ONE generation with the words painted in - every parameter the brief holds is
+            // spelled out (the exact words, letter by letter; typeface family and weight; colour; placement away from the
+            // subject; size; nothing else written), and every 'no text' instruction from the first attempt is removed.
+            if (! empty($bp['_context']['force_baked_in']) && $headline !== '') {
+                // the text first, then a condensed scene: the painter reads the words before the picture
+                $__cut = fn ($v, int $n) => rtrim(trim(preg_replace('/\s+/', ' ', (string) $v)), ' .');
+                $__sc = [];
+                foreach ([['subject', 260], ['composition', 240], ['scene', 220], ['lighting', 160], ['mood', 120]] as [$__k, $__n]) {
+                    $__v = $__cut($bp[$__k] ?? '', $__n); if ($__v === '') continue;
+                    if (mb_strlen($__v) > $__n) {   // cut at a sentence end, else a clause, else a word - never mid-phrase
+                        $__v = mb_substr($__v, 0, $__n);
+                        $__s = mb_strrpos($__v, '. '); $__c = max((int) mb_strrpos($__v, ', '), (int) mb_strrpos($__v, '; ')); $__w = (int) mb_strrpos($__v, ' ');
+                        $__v = $__s !== false && $__s > 40 ? mb_substr($__v, 0, $__s) : ($__c > 40 ? mb_substr($__v, 0, $__c) : mb_substr($__v, 0, max(40, $__w)));
+                        $__v = rtrim($__v, ' ,;.');
+                    }
+                    $__sc[] = ($__k === 'subject' ? '' : ucfirst($__k) . ': ') . $__v;
+                }
+                $__hexOnly = []; foreach ($__colors as $__c0) { if (preg_match('/#[0-9a-fA-F]{6}/', $__c0, $__hm)) $__hexOnly[] = $__hm[0] . ' ' . self::colourName($__hm[0]); }
+                if ($__hexOnly) $__sc[] = 'Colour palette: ' . implode(', ', array_slice($__hexOnly, 0, 4));
+                $prompt = implode('. ', $__sc) . '.';
+                $prompt = (string) preg_replace('/[^.]*\b(no\s+text|text-?free|no\s+words|no\s+letters|no\s+typography|without\s+(any\s+)?(embedded\s+|visible\s+|drawn\s+)?(text|letters|words|typography)|free\s+of\s+(text|letters|words)|negative\s+space\s+for[^.]*text|reserve[^.]*(space|room)[^.]*|placed\s+later|typeset\s+over|typography\s+engine|reserved\s+(text|headline)\s+(area|block)|for\s+the\s+headline\s+block|text\s+side)[^.]*\.?/i', '', $prompt);
+                $prompt = trim((string) preg_replace('/\s{2,}/', ' ', $prompt));
+                $prompt = self::textSpec($headline, $ts, $bp) . ' SCENE: ' . ltrim($prompt) . ' Avoid: watermark; logos; any second line of text; letters that are not part of the headline.';
             }
         } else {
             // none OR separate_overlay → force text-free image (only append if not already stated)

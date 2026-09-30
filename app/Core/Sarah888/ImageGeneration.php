@@ -201,6 +201,12 @@ class ImageGeneration
             'cost'       => (int) ($spec['cost'] ?? 2),
             'asked_at'   => time(),
             'owner_text' => $ownerText,
+            // REGEN-1: the redo carries the brief's text parameters to the generation
+            'regen'             => ! empty($spec['regen']),
+            'headline'          => (string) ($spec['headline'] ?? ''),
+            'text_style'        => (string) ($spec['text_style'] ?? ''),
+            'text_placement'    => (string) ($spec['text_placement'] ?? ''),
+            'retry_of_media_id' => (int) ($spec['retry_of_media_id'] ?? 0),
         ], now()->addMinutes(self::TTL_MIN));
     }
 
@@ -281,7 +287,14 @@ class ImageGeneration
                     // image back into the chat with a thumbnail — bulk/featured images stay suppressed.
                     'created_via'  => 'sarah_image_request',
                     'user_request' => $ownerText,
-                ],
+                ] + (! empty($pending['regen']) ? [   // REGEN-1: the words painted in, from the first attempt's brief
+                    'typography_mode'   => 'baked_in',
+                    'headline'          => (string) ($pending['headline'] ?? ''),
+                    'text_style'        => (string) ($pending['text_style'] ?? ''),
+                    'text_placement'    => (string) ($pending['text_placement'] ?? ''),
+                    'retry_of_media_id' => (int) ($pending['retry_of_media_id'] ?? 0),
+                    'regen'             => true,
+                ] : []),
             ]);
             // Remember this prompt so a follow-up ("make it hyperrealistic", "a X version of it") can refine it.
             try { \Illuminate\Support\Facades\Cache::put(self::lastKey($wsId), $prompt, now()->addMinutes(120)); } catch (\Throwable $e) {}

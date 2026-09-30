@@ -537,9 +537,15 @@ class Orchestrator
                             $__rr = json_decode($root->result_json ?? '{}', true) ?: [];
                             $__imgUrl = (string) ($__rr['data']['url'] ?? $__rr['url'] ?? '');
                             if ($__imgUrl !== '') {
+                                // REGEN-1: a text-over-image result offers the redo; the redo says what it is
+                                $__imgLine = ! empty($rp['regen'])
+                                    ? "Here's the redo with the words painted into the picture — it's also saved under Results."
+                                    : (str_ends_with((string) $__imgUrl, '-composed.png')
+                                        ? "Here's your image — it's also saved under Results. If the words on it aren't right, say **regenerate** and I'll redo it as one picture with the text painted in."
+                                        : "Here's your image — it's also saved under Results.");
                                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent(
                                     (int) $root->workspace_id, 'sarah',
-                                    "Here's your image — it's also saved under Results.",
+                                    $__imgLine,
                                     ['completion_report' => true, 'root_task_id' => $rootId,
                                      'attachments' => [['kind' => 'image', 'url' => $__imgUrl, 'name' => 'Generated image']]]
                                 );

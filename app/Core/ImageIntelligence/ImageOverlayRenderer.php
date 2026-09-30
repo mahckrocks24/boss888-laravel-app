@@ -13,18 +13,34 @@ use Illuminate\Support\Facades\Storage;
  * here with actual fonts via the same headless-Chromium pipeline Studio uses
  * for design export (tools/studio-render.cjs).
  *
+ * RENDER-BRIEF-1 (RISK-0207, Owner 2026-09-30: "Use renderer but must honor prompt"). The renderer used to be ONE
+ * fixed template - Syne 800, white, centred at the top, a full-frame dark gradient, the accent bar in the first
+ * palette colour - whatever the blueprint's typography_strategy said. It now reads the brief:
+ *   - placement  ("upper-left negative space", "bottom band", "centred") -> the zone the text sits in;
+ *   - style      (font names, hex colours, "thin rule", "small caps-tracking", "italic", weights) -> the type;
+ *   - color_palette / fonts from the brand kit -> defaults when the style names none;
+ *   - the background itself (GD) -> the quietest zone near the asked placement, so the words never sit on the
+ *     subject, and light or dark type + a LOCAL scrim decided from what is actually behind the text.
+ *
  * Returns the composited PNG's public URL + storage path, or null on failure
  * (caller keeps the clean background so a render error never loses the image).
  */
 class ImageOverlayRenderer
 {
+    /** 3x3 zone grid: id => [col, row] */
+    private const ZONES = [
+        'upper-left' => [0, 0], 'upper-centre' => [1, 0], 'upper-right' => [2, 0],
+        'middle-left' => [0, 1], 'centre' => [1, 1], 'middle-right' => [2, 1],
+        'lower-left' => [0, 2], 'lower-centre' => [1, 2], 'lower-right' => [2, 2],
+    ];
+
     /**
      * @param string $bgStoragePath  public-disk relative path to the AI background (e.g. ai-images/1/x.png)
-     * @param array  $overlay        {headline, supporting_copy[], placement, style, color_palette[]}
+     * @param array  $overlay        {headline, supporting_copy[], placement, style, color_palette[], fonts?, text_tone?, accent?}
      * @param int    $w
      * @param int    $h
      * @param int    $wsId
-     * @return array{success:bool, url?:string, storage_path?:string, error?:string}
+     * @return array{success:bool, url?:string, storage_path?:string, error?:string, zone?:string}
      */
     public function render(string $bgStoragePath, array $overlay, int $w, int $h, int $wsId): array
     {
@@ -44,7 +60,8 @@ class ImageOverlayRenderer
         if (!$bytes) return ['success' => false, 'error' => 'bg_empty'];
         $bgData = 'data:image/png;base64,' . base64_encode($bytes);
 
-        $html = $this->buildHtml($bgData, $headline, $copy, $overlay, $w, $h);
+        $brief = $this->brief($overlay, $bytes, $w, $h);
+        $html  = $this->buildHtml($bgData, $headline, $copy, $brief, $w, $h);
 
         $tmpDir = storage_path('app/studio-render-tmp');
         if (!is_dir($tmpDir)) @mkdir($tmpDir, 0775, true);
@@ -96,72 +113,259 @@ class ImageOverlayRenderer
         }
         @unlink($tmpPng);
 
-        return ['success' => true, 'url' => Storage::disk('public')->url($outPath), 'storage_path' => $outPath];
+        Log::info('[ImageOverlayRenderer] RENDER-BRIEF-1', ['ws' => $wsId, 'zone' => $brief['zone'], 'asked' => $brief['asked_zone'], 'font' => $brief['font_head'], 'tone' => $brief['tone'], 'head_color' => $brief['head_color']]);
+        return ['success' => true, 'url' => Storage::disk('public')->url($outPath), 'storage_path' => $outPath, 'zone' => $brief['zone']];
     }
 
-    private function buildHtml(string $bgData, string $headline, array $copy, array $overlay, int $w, int $h): string
+    /* ─────────────────────────── the brief, read ─────────────────────────── */
+
+    /**
+     * Everything buildHtml needs, derived from the blueprint's words, the brand and the pixels.
+     * @return array{zone:string, asked_zone:string, font_head:string, font_body:string, head_color:string, body_color:string, accent:string, tone:string, italic_word:?string, rule:bool, caps_body:bool, weight:int, scrim:float, serif:bool}
+     */
+    private function brief(array $overlay, string $bytes, int $w, int $h): array
     {
-        $palette = array_values(array_filter((array) ($overlay['color_palette'] ?? [])));
-        $accent  = $this->firstHex($palette) ?: '#FFFFFF';
+        $style     = (string) ($overlay['style'] ?? '');
+        $placement = (string) ($overlay['placement'] ?? '');
+        $palette   = array_values(array_filter(array_map('strval', (array) ($overlay['color_palette'] ?? []))));
+        $fonts     = (array) ($overlay['fonts'] ?? []);
+        $text      = $style . ' ' . $placement;
 
-        // Adaptive sizes relative to canvas width + headline length.
-        $hlLen = mb_strlen($headline);
-        $hlSize = (int) round($w * 0.078);
-        if ($hlLen > 22) $hlSize = (int) round($hlSize * 0.84);
-        if ($hlLen > 34) $hlSize = (int) round($hlSize * 0.80);
-        if ($hlLen > 48) $hlSize = (int) round($hlSize * 0.82);
-        $hlSize = max(30, $hlSize);
-        $bodySize = max(18, (int) round($w * 0.030));
-        $pad = (int) round($w * 0.065);
+        // 1. the zone the brief asks for, then the quietest zone near it on the real background
+        $asked = $this->zoneFromWords($placement) ?? $this->zoneFromWords($style) ?? 'upper-left';
+        $keepClear = $this->clearSideFromWords($text);   // "right third stays clear" -> never put type on the right
+        $stats = $this->zoneStats($bytes);
+        $zone  = $this->pickZone($asked, $stats, $keepClear);
 
-        $hlEsc = htmlspecialchars($headline, ENT_QUOTES, 'UTF-8');
-        $copyHtml = '';
-        foreach ($copy as $line) {
-            $copyHtml .= '<p class="ln">' . htmlspecialchars($line, ENT_QUOTES, 'UTF-8') . '</p>';
+        // 2. type: named fonts first, then the brand's, then what the style words imply
+        $named = $this->fontsFromWords($style);
+        $serifWords = (bool) preg_match('/\b(serif|editorial|luxury|elegant|refined|classic|magazine)\b/i', $style) && ! preg_match('/\bsans[- ]serif\b/i', $style);
+        $fontHead = $named[0] ?? (string) ($fonts['heading'] ?? '') ?: ($serifWords ? 'Playfair Display' : ((bool) preg_match('/\b(bold|impact|punchy|loud|oversized|block)\b/i', $style) ? 'Anton' : ((bool) preg_match('/\b(handmade|cosy|cozy|organic|friendly serif|warm)\b/i', $style) ? 'Fraunces' : 'Manrope')));
+        $fontBody = $named[1] ?? (string) ($fonts['body'] ?? '') ?: ($fontHead === 'Playfair Display' ? 'DM Sans' : ($fontHead === 'Anton' ? 'Archivo' : 'Manrope'));
+        $weight = (bool) preg_match('/\b(light|thin|delicate|graceful)\b/i', $style) ? 400 : ((bool) preg_match('/\b(bold|heavy|black|impact|oversized)\b/i', $style) ? 800 : ($serifWords || $fontHead === 'Playfair Display' ? 600 : 700));
+        $italicWord = null;
+        if (preg_match('/\b(?:payoff|emphasi[sz]ed|italic|accented?)\s+word\s+[\'"\x{2018}\x{2019}\x{201C}\x{201D}]?([A-Za-z][\w-]*)/iu', $style, $m)) $italicWord = $m[1];
+        elseif (preg_match('/[\'"\x{2018}\x{2019}\x{201C}\x{201D}]([A-Za-z][\w-]*)[\'"\x{2018}\x{2019}\x{201C}\x{201D}]\s+(?:optionally\s+)?(?:the\s+only\s+)?(?:metallic|accent|italic|highlight)/iu', $style, $m)) $italicWord = $m[1];
+
+        // 3. colour: hex codes in the style (first = headline, second = body), else the brand palette,
+        //    tone from the pixels behind the chosen zone
+        $hexes = $this->hexesFromWords($style);
+        $dark  = $stats[$zone]['lum'] < 0.52;   // is the zone dark?
+        $tone  = (bool) preg_match('/\b(dark|charcoal|black)\s+(text|type|lettering|ink)\b/i', $style) ? 'dark' : ((bool) preg_match('/\b(white|cream|light)\s+(text|type|lettering|ink)\b/i', $style) ? 'light' : ($dark ? 'light' : 'dark'));
+        $accent = $this->accentFrom($palette, $hexes);
+        $headColor = $hexes[0] ?? ($tone === 'light' ? ($this->isLight($accent) ? $accent : '#FFFFFF') : ($this->isLight($accent) ? '#111111' : $accent));
+        $bodyColor = $hexes[1] ?? ($tone === 'light' ? '#F4F1EA' : '#1B1B1B');
+        // a headline colour that would vanish on the zone is corrected, never trusted blindly
+        if ($this->contrast($headColor, $stats[$zone]['lum']) < 2.2) $headColor = $tone === 'light' ? '#FFFFFF' : '#111111';
+        if ($this->contrast($bodyColor, $stats[$zone]['lum']) < 2.2) $bodyColor = $tone === 'light' ? '#F4F1EA' : '#1B1B1B';
+
+        return [
+            'zone' => $zone, 'asked_zone' => $asked, 'font_head' => $fontHead, 'font_body' => $fontBody,
+            'head_color' => $headColor, 'body_color' => $bodyColor, 'accent' => $accent, 'tone' => $tone,
+            'italic_word' => $italicWord, 'weight' => $weight, 'serif' => $serifWords || in_array($fontHead, ['Playfair Display', 'Fraunces', 'Cormorant Garamond', 'Libre Baskerville', 'Lora'], true),
+            'rule' => (bool) preg_match('/\b(rule|hairline|underline|divider|line beneath)\b/i', $style) || $serifWords,
+            'caps_body' => (bool) preg_match('/\b(caps|capitals|uppercase|tracking|small[- ]caps)\b/i', $style),
+            'scrim' => $this->scrimStrength($stats[$zone], $tone),
+        ];
+    }
+
+    private function zoneFromWords(string $s): ?string
+    {
+        $s = strtolower($s);
+        if ($s === '') return null;
+        $row = preg_match('/\b(top|upper|above)\b/', $s) ? 0 : (preg_match('/\b(bottom|lower|beneath|foot|band)\b/', $s) ? 2 : (preg_match('/\b(middle|centre|center|vertically)\b/', $s) ? 1 : null));
+        $col = preg_match('/\bleft\b/', $s) ? 0 : (preg_match('/\bright\b/', $s) ? 2 : (preg_match('/\b(centre|center|centred|centered|middle)\b/', $s) ? 1 : null));
+        if ($row === null && $col === null) return null;
+        $row ??= 0; $col ??= 0;
+        foreach (self::ZONES as $id => [$c, $r]) if ($c === $col && $r === $row) return $id;
+        return null;
+    }
+
+    /** "right third stays clear", "keep the left free" -> the column never used for type. */
+    private function clearSideFromWords(string $s): ?int
+    {
+        if (preg_match('/\b(right)[\w\s-]{0,30}\b(clear|free|unobstructed|empty|untouched)\b/i', $s) || preg_match('/\b(clear|free|keep)[\w\s-]{0,20}\bright\b/i', $s)) return 2;
+        if (preg_match('/\b(left)[\w\s-]{0,30}\b(clear|free|unobstructed|empty|untouched)\b/i', $s) || preg_match('/\b(clear|free|keep)[\w\s-]{0,20}\bleft\b/i', $s)) return 0;
+        return null;
+    }
+
+    /** Per-zone mean luminance (0..1) and busyness (std dev of luminance, 0..1) from a downscaled copy (GD). */
+    private function zoneStats(string $bytes): array
+    {
+        $stats = [];
+        foreach (self::ZONES as $id => $_) $stats[$id] = ['lum' => 0.35, 'busy' => 0.2];
+        if (! function_exists('imagecreatefromstring')) return $stats;
+        $im = @imagecreatefromstring($bytes);
+        if (! $im) return $stats;
+        $sw = 96; $sh = 96;
+        $small = imagecreatetruecolor($sw, $sh);
+        imagecopyresampled($small, $im, 0, 0, 0, 0, $sw, $sh, imagesx($im), imagesy($im));
+        $grid = [];
+        for ($y = 0; $y < $sh; $y++) for ($x = 0; $x < $sw; $x++) {
+            $rgb = imagecolorat($small, $x, $y);
+            $grid[$y][$x] = (0.2126 * (($rgb >> 16) & 255) + 0.7152 * (($rgb >> 8) & 255) + 0.0722 * ($rgb & 255)) / 255;
         }
+        imagedestroy($small); imagedestroy($im);
+        // the FOOTPRINT the text box will occupy in each zone (not the whole third): where the words actually land
+        $xr = [0 => [0.05, 0.58], 1 => [0.16, 0.84], 2 => [0.42, 0.95]];
+        $yr = [0 => [0.05, 0.42], 1 => [0.30, 0.70], 2 => [0.58, 0.95]];
+        foreach (self::ZONES as $id => [$c, $r]) {
+            $vals = []; $edges = 0; $cells = 0;
+            for ($y = (int) ($yr[$r][0] * $sh); $y < (int) ($yr[$r][1] * $sh); $y++) for ($x = (int) ($xr[$c][0] * $sw); $x < (int) ($xr[$c][1] * $sw); $x++) {
+                $vals[] = $grid[$y][$x];
+                // local contrast: a subject's edges (a shoe, a face, a plate) show as neighbour jumps
+                if ($x + 1 < $sw && $y + 1 < $sh) { $edges += abs($grid[$y][$x] - $grid[$y][$x + 1]) + abs($grid[$y][$x] - $grid[$y + 1][$x]); $cells++; }
+            }
+            $n = count($vals); $mean = array_sum($vals) / max(1, $n);
+            $var = 0; foreach ($vals as $v) $var += ($v - $mean) ** 2; $sd = sqrt($var / max(1, $n));
+            $stats[$id] = ['lum' => $mean, 'busy' => $sd * 0.6 + ($cells ? ($edges / $cells) * 2.4 : 0)];
+        }
+        return $stats;
+    }
 
-        // Brand fonts loaded best-effort from Google Fonts; robust system
-        // fallback if the render host has no network (Liberation/DejaVu present).
+    /** The asked zone if it is calm enough, else the calmest of its neighbours on the same row, then anywhere. */
+    private function pickZone(string $asked, array $stats, ?int $keepClear): string
+    {
+        $ok = fn (string $z) => $keepClear === null || self::ZONES[$z][0] !== $keepClear;
+        $busy = fn (string $z) => $stats[$z]['busy'];
+        if ($ok($asked) && $busy($asked) <= 0.32) return $asked;   // calibrated: a quiet corner measures ~0.28, a subject ~0.45+
+        [$ac, $ar] = self::ZONES[$asked];
+        $candidates = [];
+        foreach (self::ZONES as $id => [$c, $r]) {
+            if (! $ok($id)) continue;
+            $dist = abs($c - $ac) + abs($r - $ar) * 1.5;   // stay on the asked row when possible
+            $candidates[$id] = $busy($id) + $dist * 0.03;
+        }
+        if (! $candidates) return $asked;
+        asort($candidates);
+        return (string) array_key_first($candidates);
+    }
+
+    /** Font family names written in the brief ("Playfair Display (or equivalent refined serif) headline … 'Chef Red Raymundo' in DM Sans"). */
+    private function fontsFromWords(string $s): array
+    {
+        $known = ['Playfair Display', 'DM Sans', 'Manrope', 'Inter', 'Syne', 'Anton', 'Archivo Black', 'Archivo', 'Bebas Neue', 'Oswald', 'Fraunces', 'Cormorant Garamond', 'Libre Baskerville', 'Lora', 'Montserrat', 'Poppins', 'Raleway', 'Lato', 'Roboto', 'Open Sans', 'Nunito', 'Space Grotesk', 'Plus Jakarta Sans', 'Bricolage Grotesque', 'Great Vibes', 'Dancing Script', 'Pacifico', 'Josefin Sans', 'Cinzel', 'Merriweather', 'Source Serif 4', 'EB Garamond', 'Work Sans', 'Rubik', 'Barlow', 'Barlow Condensed'];
+        $found = [];
+        foreach ($known as $f) { $pos = stripos($s, $f); if ($pos !== false) $found[$pos] = $f; }
+        ksort($found);
+        return array_values($found);
+    }
+
+    private function hexesFromWords(string $s): array
+    {
+        preg_match_all('/#[0-9a-fA-F]{6}\b/', $s, $m);
+        return array_values(array_unique($m[0] ?? []));
+    }
+
+    /** The palette colour that is neither near-black nor near-white (the brand's accent), else a named hex, else gold. */
+    private function accentFrom(array $palette, array $hexes): string
+    {
+        foreach (array_merge($hexes, $palette) as $c) {
+            if (! preg_match('/#[0-9a-fA-F]{6}/', (string) $c, $m)) continue;
+            $l = $this->luminance($m[0]);
+            if ($l > 0.08 && $l < 0.85) return $m[0];
+        }
+        return '#C9943A';
+    }
+
+    private function luminance(string $hex): float
+    {
+        $hex = ltrim($hex, '#');
+        if (strlen($hex) !== 6) return 0.5;
+        [$r, $g, $b] = [hexdec(substr($hex, 0, 2)), hexdec(substr($hex, 2, 2)), hexdec(substr($hex, 4, 2))];
+        return (0.2126 * $r + 0.7152 * $g + 0.0722 * $b) / 255;
+    }
+
+    private function isLight(string $hex): bool { return $this->luminance($hex) >= 0.55; }
+
+    /** A rough contrast ratio between a text colour and the zone's mean luminance (both 0..1, +0.05). */
+    private function contrast(string $hex, float $zoneLum): float
+    {
+        $a = $this->luminance($hex) + 0.05; $b = $zoneLum + 0.05;
+        return $a > $b ? $a / $b : $b / $a;
+    }
+
+    /** How strong the LOCAL scrim behind the text should be: enough for the tone, never a full-frame wash. */
+    private function scrimStrength(array $zoneStat, string $tone): float
+    {
+        $lum = $zoneStat['lum']; $busy = $zoneStat['busy'];
+        if ($tone === 'light') return min(0.72, max(0.28, ($lum - 0.15) * 1.2 + $busy * 1.4));
+        return min(0.60, max(0.20, (0.85 - $lum) * 1.0 + $busy * 1.2));
+    }
+
+    /* ─────────────────────────── the page ─────────────────────────── */
+
+    private function buildHtml(string $bgData, string $headline, array $copy, array $b, int $w, int $h): string
+    {
+        [$col, $row] = self::ZONES[$b['zone']];
+        $pad    = (int) round($w * 0.062);
+        $boxW   = (int) round($w * ($col === 1 ? 0.70 : 0.56));
+        $hlLen  = mb_strlen($headline);
+        $hlSize = (int) round($w * ($b['serif'] ? 0.070 : 0.076));
+        if ($hlLen > 18) $hlSize = (int) round($hlSize * 0.86);
+        if ($hlLen > 28) $hlSize = (int) round($hlSize * 0.84);
+        if ($hlLen > 40) $hlSize = (int) round($hlSize * 0.84);
+        $hlSize   = max(28, $hlSize);
+        $bodySize = max(16, (int) round($w * ($b['caps_body'] ? 0.017 : 0.024)));
+        $align    = $col === 1 ? 'center' : 'left';
+
+        // position of the text box
+        $pos = ($col === 0 ? "left:{$pad}px;" : ($col === 2 ? "right:{$pad}px;" : "left:50%;transform:translateX(-50%);"))
+             . ($row === 0 ? "top:{$pad}px;" : ($row === 2 ? "bottom:{$pad}px;" : "top:50%;" . ($col === 1 ? "transform:translate(-50%,-50%);" : "transform:translateY(-50%);")));
+
+        // the LOCAL scrim: a soft ellipse behind the text zone in the ground colour the tone needs
+        $scrimRgb = $b['tone'] === 'light' ? '10,8,6' : '250,247,240';
+        $s = number_format($b['scrim'], 2, '.', '');
+        $s2 = number_format($b['scrim'] * 0.55, 2, '.', '');
+        $cx = $col === 0 ? '28%' : ($col === 2 ? '72%' : '50%');
+        $cy = $row === 0 ? '26%' : ($row === 2 ? '76%' : '50%');
+        $scrim = "background:radial-gradient(ellipse 62% 52% at {$cx} {$cy}, rgba({$scrimRgb},{$s}) 0%, rgba({$scrimRgb},{$s2}) 42%, rgba({$scrimRgb},0) 72%);";
+
+        // headline with the emphasised word in italic accent when the brief names one
+        $hlHtml = htmlspecialchars($headline, ENT_QUOTES, 'UTF-8');
+        if ($b['italic_word'] && $b['serif']) {
+            $hlHtml = preg_replace('/\b(' . preg_quote(htmlspecialchars($b['italic_word'], ENT_QUOTES, 'UTF-8'), '/') . ')\b/iu', '<em>$1</em>', $hlHtml, 1);
+        }
+        $copyHtml = '';
+        foreach ($copy as $line) $copyHtml .= '<p class="ln">' . htmlspecialchars($line, ENT_QUOTES, 'UTF-8') . '</p>';
+        $ruleHtml = $b['rule'] ? '<div class="rule"></div>' : '';
+
+        $fam = fn (string $f) => "'" . str_replace("'", '', $f) . "'";
+        $gf  = fn (string $f) => str_replace(' ', '+', $f);
+        $shadow = $b['tone'] === 'light' ? '0 2px 14px rgba(0,0,0,.45)' : '0 1px 10px rgba(255,255,255,.35)';
+        $fontLink = 'https://fonts.googleapis.com/css2?family=' . $gf($b['font_head']) . ':ital,wght@0,400;0,600;0,700;0,800;1,500;1,600&family=' . $gf($b['font_body']) . ':wght@400;500;600&display=swap';
+        $emColor = $this->isLight($b['accent']) === ($b['tone'] === 'light') ? $b['accent'] : $b['head_color'];
+        $bodyTransform = $b['caps_body'] ? 'text-transform:uppercase;letter-spacing:.16em;' : 'letter-spacing:.01em;';
+        $ruleAlign = $col === 1 ? 'margin:22px auto 16px;' : 'margin:22px 0 16px;';
+
         return <<<HTML
 <!doctype html><html><head><meta charset="utf-8">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link href="{$fontLink}" rel="stylesheet">
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   html,body { width:{$w}px; height:{$h}px; }
   .canvas { position:relative; width:{$w}px; height:{$h}px; overflow:hidden; background:#111; }
   .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-  .scrim-top { position:absolute; left:0; right:0; top:0; height:46%;
-    background:linear-gradient(to bottom, rgba(0,0,0,.60), rgba(0,0,0,0)); }
-  .scrim-bot { position:absolute; left:0; right:0; bottom:0; height:50%;
-    background:linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,0)); }
-  .headline { position:absolute; top:{$pad}px; left:{$pad}px; right:{$pad}px;
-    font-family:'Syne','Liberation Sans','DejaVu Sans',sans-serif; font-weight:800;
-    font-size:{$hlSize}px; line-height:1.06; color:#fff; text-align:center;
-    text-shadow:0 3px 18px rgba(0,0,0,.55); letter-spacing:-0.5px; }
-  .accent { width:96px; height:6px; background:{$accent}; border-radius:3px;
-    margin:22px auto 0; box-shadow:0 2px 10px rgba(0,0,0,.4); }
-  .copy { position:absolute; bottom:{$pad}px; left:{$pad}px; right:{$pad}px;
-    font-family:'DM Sans','Liberation Sans','DejaVu Sans',sans-serif; font-weight:500;
-    font-size:{$bodySize}px; line-height:1.4; color:#fff; text-align:left;
-    text-shadow:0 2px 12px rgba(0,0,0,.6); }
-  .copy .ln { margin-bottom:8px; }
+  .scrim { position:absolute; inset:0; {$scrim} }
+  .box { position:absolute; {$pos} width:{$boxW}px; max-width:calc(100% - {$pad}px * 2); text-align:{$align}; }
+  .headline { font-family:{$fam($b['font_head'])},'Liberation Serif','DejaVu Serif',serif; font-weight:{$b['weight']};
+    font-size:{$hlSize}px; line-height:1.04; color:{$b['head_color']}; letter-spacing:-0.012em; text-shadow:{$shadow}; text-wrap:balance; }
+  .headline em { font-style:italic; font-weight:500; color:{$emColor}; }
+  .rule { width:84px; height:2px; background:{$b['accent']}; border-radius:1px; {$ruleAlign} box-shadow:0 1px 6px rgba(0,0,0,.35); }
+  .copy { margin-top:18px; font-family:{$fam($b['font_body'])},'Liberation Sans','DejaVu Sans',sans-serif; font-weight:500;
+    font-size:{$bodySize}px; line-height:1.45; color:{$b['body_color']}; {$bodyTransform} text-shadow:{$shadow}; }
+  .copy .ln { margin-bottom:6px; }
 </style></head>
 <body><div class="canvas">
   <img class="bg" src="{$bgData}" alt="">
-  <div class="scrim-top"></div>
-  <div class="scrim-bot"></div>
-  <div class="headline">{$hlEsc}<div class="accent"></div></div>
-  <div class="copy">{$copyHtml}</div>
+  <div class="scrim"></div>
+  <div class="box">
+    <div class="headline">{$hlHtml}</div>
+    {$ruleHtml}
+    <div class="copy">{$copyHtml}</div>
+  </div>
 </div></body></html>
 HTML;
-    }
-
-    private function firstHex(array $palette): ?string
-    {
-        foreach ($palette as $c) {
-            if (preg_match('/#[0-9a-fA-F]{6}/', (string) $c, $m)) return $m[0];
-        }
-        return null;
     }
 }

@@ -35,11 +35,11 @@ final class LastImageContext
     }
 
     /** @return array{url:string,at:mixed,title:?string}|null */
-    public static function lastShown(int $wsId): ?array
+    public static function lastShown(int $wsId, int $hours = self::WINDOW_HOURS): ?array
     {
         try {
             $rows = DB::table('agent_messages')->where('workspace_id', $wsId)->where('role', 'agent')
-                ->where('created_at', '>=', now()->subHours(self::WINDOW_HOURS))->orderByDesc('id')->limit(40)->get(['id', 'content', 'metadata_json', 'created_at']);
+                ->where('created_at', '>=', now()->subHours($hours))->orderByDesc('id')->limit(60)->get(['id', 'content', 'metadata_json', 'created_at']);
             foreach ($rows as $r) {
                 $m = json_decode((string) $r->metadata_json, true) ?: [];
                 // 1) an image attachment on the message

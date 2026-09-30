@@ -285,8 +285,14 @@ class CreativeService
                 'user_prompt' => $prompt,
                 'requested_dimensions' => $params['dimensions'] ?? null,
                 'requested_quality'    => $params['quality'] ?? 'auto',
-                'include_text_preference' => $params['include_text_preference'] ?? 'auto',
+                'include_text_preference' => ($params['typography_mode'] ?? '') === 'baked_in' ? 'yes' : ($params['include_text_preference'] ?? 'auto'),
                 'style'       => $params['style'] ?? 'natural',
+                // REGEN-1: the second attempt paints the words in, from the first attempt's brief
+                'force_typography_mode' => $params['typography_mode'] ?? null,
+                'forced_headline'       => $params['headline'] ?? null,
+                'forced_style'          => $params['text_style'] ?? null,
+                'forced_placement'      => $params['text_placement'] ?? null,
+                'retry_of_media_id'     => $params['retry_of_media_id'] ?? null,
             ]);
         }
         $blueprint      = $plan['blueprint'];
