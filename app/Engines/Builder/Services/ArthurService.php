@@ -1799,7 +1799,9 @@ so they can review and optionally upload a logo. Return ONLY a JSON
 object with these fields:
   {"reply": "<summary message — see SUMMARY FORMAT below>",
    "ready_to_confirm": true,
-   "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","fonts":{"display":"<named font or null>","body":"<named font or null>"},"description":"..."}}
+   "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","phone":"<exactly as the customer wrote it, or null>","email":"<exactly as written, or null>","address":"<exactly as written, or null>","hours":"<exactly as written, or null>","fonts":{"display":"<named font or null>","body":"<named font or null>"},"description":"..."}}
+
+FACTS RULE — phone, email, address and hours are copied EXACTLY as the customer wrote them (same digits, same spelling, same domain); null when not given, never guessed. "services" lists only what the business sells or does — never hours, phone numbers, addresses or page names.
 
 SUMMARY FORMAT — when ready_to_confirm is true, the "reply" field
 MUST be the following summary, translated into the user's language
@@ -1815,6 +1817,10 @@ Here's what I have for your website:
 **Industry:** {industry}
 **Services:** {services}
 **Style:** {style}
+**Phone:** {phone, or "not given yet"}
+**Email:** {email, or "not given yet"}
+**Address:** {address, or "not given yet"}
+**Hours:** {hours, or "not given yet"}
 
 Add your logo, photos, and brand colors below — then I'll build it.
 
@@ -1953,6 +1959,7 @@ PROMPT;
         // ready_to_confirm, cache the build_data server-side so a follow-up
         // {confirm:true} POST can retrieve it without trusting client echo.
         // 5 minute TTL is plenty for a user to upload a logo + click build.
+        if ($readyToConfirm && \App\Engines\Builder\Support\ContactFacts::on() && is_array($buildData)) $buildData = \App\Engines\Builder\Support\ContactFacts::reconcileWithConversation($buildData, $newHistory);   // CONTACT-1: the owner's own words beat the model's tidying
         if ($readyToConfirm && !empty($buildData['business_name'])) {
             try {
                 \Illuminate\Support\Facades\Cache::put(
@@ -3417,8 +3424,9 @@ Return a JSON object (include the word "json") with these keys. Use null for fie
   [aesthetic_clinic, architecture, automotive, barbershop, beauty_salon, cafe, catering, childcare, construction, consulting, dental, ecommerce, event_venue, gym, home_services, hotel, interior_design, it_services, marketing_agency, medical_clinic, news_channel, online_courses, pet_services, real_estate_agency, resort, restaurant, retail_shop, short_term_rental, training_center, travel_agency, tutoring]
   GUIDE: pet shop / pet store / grooming / vet / kennel → "pet_services" (NEVER beauty_salon, NEVER retail_shop) · salon / spa / nails / lashes → "beauty_salon" · barber → "barbershop" · botox / fillers / cosmetic / med spa → "aesthetic_clinic" · dentist → "dental" · doctor / clinic / physio → "medical_clinic" · gym / yoga / pilates / trainer → "gym" · restaurant / bistro / diner → "restaurant" · café / coffee / bakery → "cafe" · catering → "catering" · hotel → "hotel" · resort / beach club → "resort" · holiday home / airbnb → "short_term_rental" · travel / tours / visa → "travel_agency" · wedding / venue → "event_venue" · nursery / daycare / kids → "childcare" · school / courses online → "online_courses" · tutor → "tutoring" · training / academy / institute → "training_center" · property / realtor / broker → "real_estate_agency" · architect → "architecture" · interior / fit-out / joinery → "interior_design" · builder / contractor → "construction" · plumber / electrician / cleaning / AC / maintenance → "home_services" · car / garage / detailing / rental → "automotive" · digital marketing / seo / social media / ads / web design → "marketing_agency" · IT / software / saas / app → "it_services" · lawyer / accountant / advisory / agency (other) → "consulting" · online store / dropshipping → "ecommerce" · physical shop / boutique / retail → "retail_shop" · magazine / news / media → "news_channel".
   If nothing fits, return the closest slug anyway — never invent a new label.
-- services: array of short strings (e.g. ["SEO","website design","social media","paid ads"])
+- services: array of short strings (e.g. ["SEO","website design","social media","paid ads"]) — only what the business sells or does; never hours, phone numbers, addresses or page names
 - location: string — ONLY a city/area the user actually wrote; if none was stated, return "" (never guess, never copy an example)
+- phone, email, address, hours: strings copied EXACTLY as the user wrote them (same digits, spelling and domain); null when not stated — never guess
 - target_market: string (who the business serves — e.g. "small and medium sized businesses")
 - colors: object {primary: string|null, secondary: string|null} — named color or hex
 - style: the customer's OWN words about look, feel or mood (e.g. "bubbly and colorful", "luxury and elegant", "clean and minimal"), copied verbatim; null if they said nothing about design
@@ -4881,8 +4889,8 @@ PROMPT;
             'contact_eyebrow'    => 'Get In Touch',
             'contact_title'      => 'Contact Us',
             'contact_form_title' => "Let's Start a Conversation",
-            'contact_email'      => 'info@' . $emailSlug . '.com',
-            'contact_website'    => strtolower(str_replace([' ', "'"], ['', ''], $name)) . '.com',
+            'contact_email'      => \App\Engines\Builder\Support\ContactFacts::on() ? '' : 'info@' . $emailSlug . '.com',   // CONTACT-1: never invented
+            'contact_website'    => \App\Engines\Builder\Support\ContactFacts::on() ? '' : strtolower(str_replace([' ', "'"], ['', ''], $name)) . '.com',   // CONTACT-1
             'contact_service_area' => $location,
             'contact_availability_text' => 'Currently accepting new clients' . ($location !== '' ? " in {$location}" : '') . '.',
             // Neutral blog title — LLM overwrites with industry-appropriate
@@ -4919,7 +4927,7 @@ PROMPT;
             $defaults['business_name'] = $name;
             $defaults['business_tagline'] = ucfirst(str_replace('_',' ', $industry)) . ($location !== '' ? ' · ' . $location : '');
             $defaults['meta_description'] = $location !== '' ? "{$name} — {$industry} in {$location}." : "{$name} — {$industry}.";
-            $defaults['contact_email']    = 'info@' . $emailSlug . '.com';
+            $defaults['contact_email']    = \App\Engines\Builder\Support\ContactFacts::on() ? '' : 'info@' . $emailSlug . '.com';   // CONTACT-1
             // ARTHUR-3 (2026-08-29): with no known location, strip the dangling " in ." / " · " artefacts
             // any default copy would otherwise carry. Never invent a city.
             if ($location === '') {
@@ -5176,7 +5184,9 @@ PROMPT;
                 if (!isset($items[$key])) $items[$key] = $p;
             }
         }
-        return array_slice(array_values($items), 0, 6);
+        $list = array_values($items);
+        if (\App\Engines\Builder\Support\ContactFacts::on()) $list = \App\Engines\Builder\Support\ContactFacts::scrubServices($list);   // CONTACT-1: never hours, phones, addresses or page names
+        return array_slice($list, 0, 6);
     }
 
     private function reconcileServiceCards(array $variables, array $data, array $manifest, string $industry): array
@@ -5901,6 +5911,8 @@ PROMPT;
             if (is_string($cur) && trim($cur) !== '') { $variables[$k] = ''; $cleared[] = $k; }
         }
         if ($cleared !== []) Log::info('[Arthur] facts cleared (customer supplies them)', ['keys' => $cleared]);
+        // CONTACT-1 (RFC-0021 wave 2): address and hours too, and never the copy model's guess — the given value verbatim, or empty.
+        if (\App\Engines\Builder\Support\ContactFacts::on()) $variables = \App\Engines\Builder\Support\ContactFacts::enforce($variables, $vars, \App\Engines\Builder\Support\ContactFacts::fromBuildData($data));
         return $variables;
     }
 
@@ -6470,6 +6482,40 @@ PROMPT;
             if (isset($vars[$v]) && ($hex = $resolve($vars[$v])) !== null) { return $hex; }
         }
         return '#FFFFFF';
+    }
+
+    /**
+     * CONTACT-1 (RFC-0021 wave 2, 2026-10-01): the owner's contact facts applied everywhere the design mentions them — the
+     * static export (a line the build stripped comes back from the template markup), the sub-pages, the tel:/mailto:
+     * links, the stored variables, the structured data — and recorded on the business profile. $facts: kind => value
+     * ('' clears). Free: the owner's own hands.
+     */
+    public function applyContactFacts(int $websiteId, array $facts): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->whereNull('deleted_at')->first();
+        if (! $site) return ['success' => false, 'message' => 'Website not found'];
+        $tv = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $keys = $this->templateFactKeys($websiteId, $site);
+        foreach (array_keys($tv) as $k) { if (\App\Engines\Builder\Support\ContactFacts::kindOfKey((string) $k) !== null && ! in_array((string) $k, $keys, true)) $keys[] = (string) $k; }
+        $applied = []; $snap = false;
+        foreach ($keys as $k) {
+            $kind = \App\Engines\Builder\Support\ContactFacts::kindOfKey($k);
+            if ($kind === null || ! array_key_exists($kind, $facts) || preg_match('/^(service|menu|listing|product)_\d+_/i', $k)) continue;
+            $v = (string) $facts[$kind];
+            if (! $snap) { try { $this->templates->snapshotToHistory($websiteId, 'contact_facts'); } catch (\Throwable $e) {} $snap = true; }
+            $ok = false; try { $ok = $this->templates->updateField($websiteId, $k, $v, false); } catch (\Throwable $e) { $ok = false; }
+            if (! $ok && $v !== '') { try { $ok = $this->reinsertTemplateField($websiteId, $site, $k, $v, $tv); } catch (\Throwable $e) {} }
+            try { $this->templates->patchFieldInSubPages($websiteId, $k, $v); } catch (\Throwable $e) {}
+            if ($v !== '') { try { $this->patchFactHref($websiteId, $k, $v); } catch (\Throwable $e) {} }
+            $tv[$k] = $v; $applied[$k] = (bool) $ok;
+        }
+        $this->templates->saveTemplateVariables($websiteId, $tv);   // Law 11: the Builder persists, Arthur does not
+        $index = storage_path("app/public/sites/{$websiteId}/index.html");
+        $root = dirname($index); $pages = is_file($index) ? [$index] : []; foreach ((glob($root . '/*/index.html') ?: []) as $f) { if (! str_contains($f, '/.history/')) $pages[] = $f; }
+        foreach ($pages as $f) { $h = (string) file_get_contents($f); $n = \App\Engines\Builder\Support\ContactFacts::linkFactElements($f === $index ? \App\Engines\Builder\Support\ContactFacts::refreshJsonLd($h, $tv) : $h); if ($n !== $h) file_put_contents($f, $n); }   // structured data + tap-to-call / mail links
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        \App\Engines\Builder\Support\ContactFacts::recordOnBusiness((int) $site->workspace_id, (int) ($site->business_id ?? 0) ?: null, array_filter($facts, fn ($v) => $v !== ''));
+        return ['success' => true, 'applied' => $applied, 'facts' => $facts];
     }
 
     /** The design's fact fields (phone, email, WhatsApp, address, hours, licence …) as data-field keys in its template. */

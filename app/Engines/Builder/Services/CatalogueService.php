@@ -213,9 +213,41 @@ class CatalogueService
         $out = [];
         foreach ($specs as $kind => $spec) {
             if ($spec['enabled'] && empty($spec['seeded_at'])) { $this->seedFromSite($wsId, $websiteId, $site, $spec); $spec = $this->spec($websiteId, $kind) ?: $spec; }
-            $out[$kind] = $this->publicSpec($spec) + ['items' => array_map(fn($r) => $this->present($spec, $r), $this->rows($websiteId, $kind))];
+            $rowsK = $this->rows($websiteId, $kind);
+            // CONTACT-1: the form's currency follows where the business is; its placeholder is the business's own first item
+            $tvC = json_decode((string) (DB::table('websites')->where('id', $websiteId)->value('template_variables') ?: '{}'), true) ?: [];
+            $whereC = (string) (DB::table('workspaces')->where('id', $wsId)->value('location') ?: ($tvC['contact_address'] ?? $tvC['location'] ?? ''));
+            $pub = $this->publicSpec($spec) + ['items' => array_map(fn($r) => $this->present($spec, $r), $rowsK)];
+            if ($whereC !== '') $pub['currency'] = \App\Engines\Builder\Support\ContactFacts::currencyFor($whereC);   // where the business is beats the design's default
+            $pub['example_title'] = isset($rowsK[0]) ? (string) $rowsK[0]->title : '';
+            $out[$kind] = $pub;
         }
         return ['catalogues' => $out, 'pages' => ['index' => '/<page_slug>/', 'detail' => '/<detail_prefix>-<slug>/']];
+    }
+
+    /**
+     * CONTACT-1 (RFC-0021 wave 2, REPORT-0068 #3): a catalogue-fed card edited in the preview writes through to its item,
+     * so the card and Services & prices never disagree (the next sync used to put the old title back). Returns the item
+     * touched, or null when the field is not a catalogue slot of this site.
+     */
+    public function writeThroughField(int $websiteId, string $field, string $value): ?array
+    {
+        if (! preg_match('/^([a-z]+)_(\d+)_([a-z_]+)$/i', $field, $m)) return null;
+        $family = strtolower($m[1]); $slot = (int) $m[2]; $suffix = strtolower($m[3]);
+        $site = $this->site($websiteId); if (! $site) return null;
+        foreach ($this->enabledSpecs($websiteId, $site) as $kind => $spec) {
+            if (($spec['family'] ?? '') !== $family) continue;
+            $col = in_array($suffix, CatalogueKinds::SHARED_SUFFIXES['title'], true) ? 'title' : (in_array($suffix, CatalogueKinds::SHARED_SUFFIXES['summary'], true) ? 'summary' : null);
+            if ($col === null) return null;
+            $open = array_values(array_filter($this->rows($websiteId, $kind), fn($r) => in_array($r->status, $spec['open'], true)));
+            $r = $open[$slot - 1] ?? null; if (! $r) return null;
+            $v = trim(html_entity_decode(strip_tags($value), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            if ($col === 'title' && $v === '') return null;
+            DB::table('catalogue_items')->where('id', (int) $r->id)->update([$col => mb_substr($v, 0, $col === 'title' ? 190 : 2000), 'updated_at' => now()]);
+            $this->sync($websiteId, $kind, 'card_edit');
+            return ['id' => (int) $r->id, 'kind' => $kind, 'column' => $col];
+        }
+        return null;
     }
 
     private function publicSpec(array $spec): array

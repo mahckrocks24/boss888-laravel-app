@@ -121,7 +121,9 @@ final class TemplateVariableNormalizer
             return htmlspecialchars($v, ENT_QUOTES, 'UTF-8');
         }
 
-        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        $esc = htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+        // TEXTSAFE-1 (RFC-0021 wave 1): a canonical text value keeps its line breaks; the site shows them as <br>.
+        return (str_contains($value, "\n") && InlineText::on()) ? str_replace("\n", '<br>', $esc) : $esc;
     }
 
     /**

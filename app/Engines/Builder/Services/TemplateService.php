@@ -324,6 +324,7 @@ class TemplateService
         // EV-1000: a fact the customer has not supplied (phone, email, WhatsApp, price …) renders as nothing — and the
         // label that introduced it ("Call", "Email") goes with it instead of standing over a blank line.
         $html = $this->stripEmptyFactRows($html);
+        if (\App\Engines\Builder\Support\ContactFacts::on()) $html = \App\Engines\Builder\Support\ContactFacts::linkFactElements($html);   // CONTACT-1: a phone or email shown as text is a tap-to-call / mail link
         $html = $this->stripDanglingNavAnchors($html);
         // Decode HTML entities (fixes &RARR; showing as literal text)
         $html = str_replace(['&RARR;', '&rarr;', '&amp;rarr;'], '→', $html);
@@ -351,6 +352,7 @@ class TemplateService
                     'description' => trim((string) ($variables['meta_description'] ?? $variables['hero_subheading'] ?? '')),
                     'image'       => trim((string) ($variables['hero_image'] ?? $variables['og_image'] ?? '')),
                 ], fn($v) => $v !== '' && $v !== null);
+                if (\App\Engines\Builder\Support\ContactFacts::on()) $schema += \App\Engines\Builder\Support\ContactFacts::jsonLdExtras($variables);   // CONTACT-1: telephone, email, address, openingHours
                 $json = json_encode($schema, JSON_HEX_TAG | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
                 if ($json !== false) {
                     $html = str_ireplace('</head>', '  <script type="application/ld+json">' . $json . '</script>' . "\n</head>", $html);
@@ -469,7 +471,8 @@ class TemplateService
      */
     private function stripEmptyFactRows(string $html): string
     {
-        $re = '/<(a|span|div|dd|p|b|strong|em)\b[^>]*\bdata-field="(?![^"]*_label")[a-z0-9_]*(?:price|fee|cost|rate|phone|whatsapp|fax|website|email)(?:_[a-z0-9_]*)?"[^>]*>\s*<\/\1>/i';
+        $kinds = 'price|fee|cost|rate|phone|whatsapp|fax|website|email' . (\App\Engines\Builder\Support\ContactFacts::on() ? '|address|hours|opening' : '');   // CONTACT-1
+        $re = '/<(a|span|div|dd|p|b|strong|em)\b[^>]*\bdata-field="(?![^"]*_label")[a-z0-9_]*(?:' . $kinds . ')(?:_[a-z0-9_]*)?"[^>]*>\s*<\/\1>/i';
         if (!preg_match_all($re, $html, $m, PREG_OFFSET_CAPTURE)) { return $html; }
         for ($i = count($m[0]) - 1; $i >= 0; $i--) {
             $elStart = $m[0][$i][1]; $elLen = strlen($m[0][$i][0]);
@@ -2042,6 +2045,10 @@ class TemplateService
         // "&amp;amp;". Decode once for text writes. XSS-safe: textContent +
         // saveHTML re-escape <>& so decoded markup serialises back inert.
         $textValue = html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        // TEXTSAFE-1 (RFC-0021 wave 1): a canonical value carries "\n" between lines (text) or the inline whitelist (html-typed);
+        // the export shows it exactly as the renderer does — <br> between lines — instead of a collapsed or literal tag.
+        $textSafe = ! $isImg && \App\Engines\Builder\Support\InlineText::on();
+        $textType = $textSafe ? \App\Engines\Builder\Support\InlineText::fieldType($websiteId, $fieldId) : 'text';
 
         foreach ($xpath->query("//*[@data-field='{$fieldId}']") as $el) {
             // RISK-0113 — never write into a <script>/<style> node (raw serialisation = XSS).
@@ -2055,7 +2062,8 @@ class TemplateService
                 if ($applyImg($el, $value)) { $found = true; }
                 elseif (! $wrapsOtherFields) { $el->textContent = $textValue; $found = true; } // empty text logo
             } elseif (! $wrapsOtherFields) {
-                $el->textContent = $textValue;
+                if ($textSafe) { \App\Engines\Builder\Support\InlineText::writeInto($el, $textType === 'html' ? $value : $textValue, $textType); }   // TEXTSAFE-1
+                else { $el->textContent = $textValue; }
                 $found = true;
             } else {
                 \Illuminate\Support\Facades\Log::warning('[Builder] updateField refused: text write would destroy nested fields', ['website_id' => $websiteId, 'field' => $fieldId]);

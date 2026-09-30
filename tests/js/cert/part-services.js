@@ -1,0 +1,25 @@
+  const liveTxt = async () => (await live()).replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+  const rowOf = b => { let n = b.parentElement; while (n && n.innerText.replace(/s+/g, " ").trim().length < 25) n = n.parentElement; return n; };
+  let before = await liveTxt(); rec('S0 live has Emergency / Insurers', { emergency: /Emergency/.test(before), insurers: /Insurers/.test(before) });
+  await click('.pe-bar button', 'Services'); await p.waitForTimeout(5000); await shot('s1-list');
+  rec('S1 rows', await p.evaluate(() => Array.from(document.querySelectorAll('[data-a="del"]')).map(b => { let n = b.parentElement; while (n && n.innerText.replace(/s+/g, " ").trim().length < 25) n = n.parentElement; return n.innerText.replace(/\s+/g, ' ').slice(0, 60); })));
+  let n0 = net.length;
+  const del = await p.evaluate(() => { for (const b of document.querySelectorAll('[data-a="del"]')) { let n = b.parentElement; while (n && n.innerText.replace(/s+/g, " ").trim().length < 25) n = n.parentElement; if (/^\s*Emergency/.test(n.innerText)) { b.click(); return true; } } return false; });
+  await p.waitForTimeout(800); await click('button', 'Yes, remove'); await p.waitForTimeout(5000);
+  rec('S2 delete Emergency', { clicked: del, calls: since(n0) });
+  n0 = net.length;
+  const ed = await p.evaluate(() => { for (const b of document.querySelectorAll('[data-a="edit"]')) { let n = b.parentElement; while (n && n.innerText.replace(/s+/g, " ").trim().length < 25) n = n.parentElement; if (/^\s*Insurers/.test(n.innerText)) { b.click(); return true; } } return false; });
+  await p.waitForTimeout(2500); await shot('s3-form');
+  rec('S3 edit form fields', { opened: ed, form: await p.evaluate(() => Array.from(document.querySelectorAll('input, textarea, select')).filter(i => i.getBoundingClientRect().width > 0 && !i.closest('.pe-side')).map(i => { const l = i.id && document.querySelector('label[for="' + i.id + '"]'); return (l ? l.innerText.trim() : (i.placeholder || i.name || i.id)).slice(0, 30) + ':' + i.type + '=' + String(i.value).slice(0, 30); })) });
+  await p.evaluate(() => { const ins = Array.from(document.querySelectorAll('input[type=text], input:not([type])')).filter(i => i.getBoundingClientRect().width > 0 && !i.closest('.pe-side')); if (ins[0]) { ins[0].focus(); ins[0].select(); } });
+  await p.keyboard.type('Insurance roof surveys', { delay: 5 });
+  const priceSet = await p.evaluate(() => { const i = Array.from(document.querySelectorAll('input')).find(i => i.getBoundingClientRect().width > 0 && /price|amount/i.test(i.id + ' ' + i.name + ' ' + i.placeholder + ' ' + ((document.querySelector('label[for="' + i.id + '"]') || {}).innerText || ''))); if (i) { i.focus(); i.select(); return i.id || i.name || i.placeholder; } return null; });
+  if (priceSet) await p.keyboard.type('295', { delay: 5 });
+  rec('S4 price field', priceSet);
+  await p.evaluate(() => { const x = document.getElementById('t3-cat-save'); x && x.click(); }); await p.waitForTimeout(6000); await shot('s4-saved');
+  rec('S4 save calls', since(n0)); rec('S4 form error', await p.evaluate(() => (document.getElementById('t3-cat-err') || {}).innerText || null));
+  const after = await liveTxt(); rec('S5 live home after', { emergency: /Emergency/.test(after), insurersOld: /\bInsurers\b/.test(after), renamed: /Insurance roof surveys/.test(after), price: /295/.test(after) });
+  const links = [...(await live()).matchAll(/href="([^"#]*services[^"]*)"/g)].map(m => m[1]); rec('S6 services links on live', [...new Set(links)].slice(0, 5));
+  for (const u of ['services/', 'services-prices/']) { const r = await fetch(LIVE + u + '?cb=' + Date.now(), { headers: { 'user-agent': 'Mozilla/5.0 Chrome/140' } }); const t = (await r.text()).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '); rec('S6 /' + u, { status: r.status, renamed: /Insurance roof surveys/.test(t), price: /295/.test(t), emergency: /Emergency/.test(t) }); }
+  await b.close();
+})();

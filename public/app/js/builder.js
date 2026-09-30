@@ -1727,6 +1727,8 @@ async function _t3FlushSaves(opts) {
           if (res.status === 409 && _j && _j.conflict) { return { field: field, ok: false, status: 409, conflict: true, current: _j.current, p: p }; }
           return { field: field, ok: false, status: res.status, error: _j && (_j.error || _j.message) || null };
         }
+        var _okj = null; try { _okj = await res.json(); } catch (_oj) { _okj = null; }
+        if (_okj && _okj.rendered != null) { try { var _pf = document.getElementById('t3-preview'); if (_pf) _pf.contentWindow.postMessage({ type: 'field-saved', field: field, html: _okj.rendered }, '*'); } catch (_pm) {} }   // TEXTSAFE-1: the preview shows what the site shows
         return { field: field, ok: true, status: res.status };
       } catch (e) {
         return { field: field, ok: false, status: 'network' };
@@ -4569,7 +4571,7 @@ function _t3CatForm(siteId, panel, spec, L) {
   var hasPrice = (spec.suffixes || []).indexOf('price') >= 0 || spec.kind === 'listing';
   var isListing = spec.kind === 'listing';
   var h = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button type="button" class="lu-btn lu-btn--sm" id="t3-cat-back">‹ Back</button><div style="font:600 13px var(--fh);color:var(--t1)">' + (L ? 'Edit ' : 'New ') + bld_escH(spec.singular) + '</div></div>'
-    + '<label>Name</label><input type="text" data-f="title" maxlength="190" placeholder="' + bld_escH(isListing ? '3-bed townhouse in Travis Heights' : 'Deep tissue massage') + '" value="' + bld_escH(v('title')) + '">'
+    + '<label>Name</label><input type="text" data-f="title" maxlength="190" placeholder="' + bld_escH(spec.example_title || (isListing ? 'Your first listing' : 'Your first ' + String(spec.singular || 'item').toLowerCase())) + '" value="' + bld_escH(v('title')) + '">'
     + '<label>Status</label><div class="seg" id="t3-cat-status">' + Object.keys(spec.statuses).map(function (k) { return '<button type="button" data-s="' + k + '" aria-pressed="' + (k === status ? 'true' : 'false') + '">' + bld_escH(spec.statuses[k]) + '</button>'; }).join('') + '</div>'
     + '<div class="three"><div><label>Price</label><input type="number" data-f="price" min="0" step="0.01" placeholder="' + (isListing ? '925000' : '90') + '" value="' + bld_escH(v('price')) + '"></div><div><label>Currency</label><input type="text" data-f="currency" maxlength="3" value="' + bld_escH(cur) + '"></div><div><label>Per</label><div class="seg" id="t3-cat-period">' + ['', 'month', 'week', 'night', 'hour', 'person', 'session'].map(function (p) { return '<button type="button" data-p="' + p + '" aria-pressed="' + (period === p ? 'true' : 'false') + '">' + (p || 'Total') + '</button>'; }).join('') + '</div></div></div>'
     + '<label>Price wording (optional — replaces the number, e.g. “From $120”, “POA”)</label><input type="text" data-f="price_label" maxlength="80" value="' + bld_escH(v('price_label')) + '">';
@@ -4654,10 +4656,16 @@ window.wsOpenSitePanel = async function (siteId) {
   var t = d.tracking || {};
   var inp = function (k, label, ph) { return '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">' + label + '</label><input type="text" data-t="' + k + '" placeholder="' + ph + '" value="' + bld_escH(t[k] || '') + '" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">'; };
   var ab = d.about || {};   // SITE-ABOUT-1
+  var cin = function (k, label, ph) { return '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">' + label + '</label><input type="text" id="t3-site-c-' + k + '" maxlength="200" placeholder="' + bld_escH(ph) + '" value="' + bld_escH((d.contact && d.contact[k]) || '') + '" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:8px 10px;font-size:13px;font-family:inherit">'; };   // CONTACT-1
   body.innerHTML = '<div style="font:600 13px var(--fh);color:var(--t1)">About this website</div><div style="font-size:12px;color:var(--t3)">The name and the short description shown on your Websites list.</div>'
     + '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">Name</label><input type="text" id="t3-site-title" maxlength="120" value="' + bld_escH(ab.title || '') + '" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:8px 10px;font:inherit;font-size:13px">'
     + '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">Description</label><textarea id="t3-site-desc" maxlength="500" rows="3" placeholder="One or two lines about this website" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:8px 10px;font:inherit;font-size:13px;resize:vertical">' + bld_escH(ab.description || '') + '</textarea>'
     + '<div style="display:flex;gap:8px;align-items:center;margin-top:10px"><button type="button" class="lu-btn" id="t3-site-about-save">Save</button><span id="t3-site-about-msg" style="font-size:12px;color:var(--t3)"></span></div>'
+    + (d.contact && d.contact.on ? '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'   /* CONTACT-1 */
+    + '<div style="font:600 13px var(--fh);color:var(--t1)">Contact details</div><div style="font-size:12px;color:var(--t3)">Shown wherever the site says how to reach you. The phone and email become tap-to-call and mail links, and search engines read them too.</div>'
+    + cin('phone', 'Phone', '+44 161 555 0199') + cin('email', 'Email', 'hello@yourbusiness.co.uk') + cin('address', 'Address', '12 Elm Hill, Norwich NR3 1HN')
+    + '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">Opening hours</label><textarea id="t3-site-c-hours" maxlength="300" rows="2" placeholder="Mon–Fri 8am–6pm, Sat 9am–1pm" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);border-radius:8px;color:var(--t1);padding:8px 10px;font-size:13px;font-family:inherit;resize:vertical">' + bld_escH(d.contact.hours || '') + '</textarea>'
+    + '<div style="display:flex;gap:8px;align-items:center;margin-top:10px"><button type="button" class="lu-btn" id="t3-site-contact-save">Save contact details</button><span id="t3-site-contact-msg" style="font-size:12px;color:var(--t3)"></span></div>' : '')
     + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
     + '<div style="font:600 13px var(--fh);color:var(--t1)">Tracking</div><div style="font-size:12px;color:var(--t3)">Paste the ids from your analytics or ads account. They go into every page of the site.</div>'
     + inp('ga4', 'Google Analytics 4 measurement id', 'G-XXXXXXXXXX') + inp('gtm', 'Google Tag Manager container id', 'GTM-XXXXXXX') + inp('meta_pixel', 'Meta (Facebook) pixel id', '1234567890123456') + inp('tiktok_pixel', 'TikTok pixel id', 'C0XXXXXXXXXXXXXXXX')
@@ -4668,6 +4676,18 @@ window.wsOpenSitePanel = async function (siteId) {
     + '<div style="font:600 13px var(--fh);color:var(--t1)">Payments</div><div id="t3-site-pay" style="font-size:12px;color:var(--t2);margin-top:4px">Loading…</div>'
     + '<hr style="border:0;border-top:1px solid var(--bd);margin:16px 0">'
     + '<div style="font:600 13px var(--fh);color:var(--t1)">Domain</div><div style="font-size:12px;color:var(--t2);margin-top:4px">' + bld_escH(d.domain && d.domain.text ? d.domain.text : 'No domain connected yet.') + '</div>';
+  var cbtn = body.querySelector('#t3-site-contact-save');   // CONTACT-1
+  if (cbtn) cbtn.addEventListener('click', async function () {
+    var msg = body.querySelector('#t3-site-contact-msg'); msg.textContent = 'Saving…'; msg.style.color = ''; cbtn.disabled = true;
+    var payload = { phone: body.querySelector('#t3-site-c-phone').value.trim(), email: body.querySelector('#t3-site-c-email').value.trim(), address: body.querySelector('#t3-site-c-address').value.trim(), hours: body.querySelector('#t3-site-c-hours').value.trim() };
+    try {
+      var rc = await fetch(API + 'builder/websites/' + siteId + '/contact', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify(payload) });
+      var jc = null; try { jc = await rc.json(); } catch (_j) { jc = {}; }
+      msg.textContent = (jc && jc.message) || (rc.ok ? 'Saved.' : 'That did not save.'); msg.style.color = rc.ok ? '' : '#F87171';
+      if (rc.ok) { try { _t3ReloadPreview(); } catch (_r) {} }
+    } catch (e) { msg.textContent = 'That did not save: ' + e.message; msg.style.color = '#F87171'; }
+    cbtn.disabled = false;
+  });
   body.querySelector('#t3-site-about-save').addEventListener('click', async function () {   // SITE-ABOUT-1
     var msg = body.querySelector('#t3-site-about-msg'), title = body.querySelector('#t3-site-title').value.trim(), desc = body.querySelector('#t3-site-desc').value.trim(); msg.textContent = 'Saving…';
     try {

@@ -114,7 +114,19 @@ use Illuminate\Support\Facades\Route;
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['error' => 'not_found'], 404);
             $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];
             $dom = $w->custom_domain ? ['domain' => $w->custom_domain, 'text' => $w->custom_domain . ($w->domain_verified ? ' — connected' : ' — waiting for DNS / SSL')] : ['domain' => null, 'text' => $w->subdomain ? 'Published at ' . $w->subdomain . '. A custom domain can be connected under Websites → Domain.' : 'No domain yet — set a subdomain to publish, then connect your own domain.'];
-            return response()->json(['tracking' => (array) ($s['tracking'] ?? []), 'domain' => $dom, 'subdomain' => $w->subdomain, 'status' => $w->status, 'about' => ['title' => (string) $w->name, 'description' => (string) ($s['description'] ?? '')]]);   // SITE-ABOUT-1
+            return response()->json(['tracking' => (array) ($s['tracking'] ?? []), 'domain' => $dom, 'subdomain' => $w->subdomain, 'status' => $w->status, 'about' => ['title' => (string) $w->name, 'description' => (string) ($s['description'] ?? '')],
+                'contact' => \App\Engines\Builder\Support\ContactFacts::on() ? (function () use ($w, $id) { $tvR = json_decode((string) ($w->template_variables ?? \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('template_variables') ?: '{}'), true) ?: []; $x = \App\Engines\Builder\Support\ContactFacts::jsonLdExtras($tvR); return ['on' => true, 'phone' => (string) ($x['telephone'] ?? ''), 'email' => (string) ($x['email'] ?? ''), 'address' => (string) ($x['address']['streetAddress'] ?? ''), 'hours' => (string) ($x['openingHours'] ?? '')]; })() : ['on' => false]]);   // SITE-ABOUT-1 / CONTACT-1
+        });
+        // CONTACT-1 (RFC-0021 wave 2, 2026-10-01): the owner's contact details have one home — every fact field of the design, the
+        // tel:/mailto: links, the structured data and the business profile follow this panel. Free (the owner's own hands).
+        Route::put('/websites/{id}/contact', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            if (! \App\Engines\Builder\Support\ContactFacts::on()) return response()->json(['success' => false, 'message' => 'Not available yet.'], 404);
+            [$facts, $errors] = \App\Engines\Builder\Support\ContactFacts::validate((array) $r->only(['phone', 'email', 'address', 'hours']));
+            if ($errors !== []) return response()->json(['success' => false, 'message' => implode(' ', $errors), 'errors' => $errors], 422);
+            if ($facts === []) return response()->json(['success' => false, 'message' => 'Nothing to save.'], 422);
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyContactFacts((int) $id, $facts);
+            return response()->json($res + ['message' => ! empty($res['success']) ? 'Saved. Your contact details are on the site.' : 'That did not save.'], ! empty($res['success']) ? 200 : 422);
         });
         // SITE-ABOUT-1 (Owner 2026-09-23): the website's name and description - what the Websites card shows - are editable
         Route::put('/websites/{id}/about', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {

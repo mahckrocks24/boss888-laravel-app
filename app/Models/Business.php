@@ -109,6 +109,14 @@ class Business extends Model
             'location' => DB::table('workspaces')->where('id', $wsId)->value('location'),
             'is_default' => $isFirst, 'sort_order' => (int) static::where('workspace_id', $wsId)->max('sort_order') + 1,
         ]);
+        if (\App\Engines\Builder\Support\ContactFacts::on()) {   // CONTACT-1 (RFC-0021 wave 2): the profile starts with the site's own contact facts
+            $tvF = json_decode((string) ($w->template_variables ?? '{}'), true) ?: [];
+            $pick = function (string $kind) use ($tvF): string { foreach ($tvF as $k => $v) { if (is_string($v) && trim($v) !== '' && \App\Engines\Builder\Support\ContactFacts::kindOfKey((string) $k) === $kind && ! preg_match('/^(service|menu|listing|product)_\d+_/i', (string) $k)) return trim($v); } return ''; };
+            if (($p = $pick('phone')) !== '') $b->phone = mb_substr($p, 0, 60);
+            if (($e = $pick('email')) !== '') $b->email = mb_substr($e, 0, 190);
+            if (($a = $pick('address')) !== '') $b->address_json = ['text' => $a];
+            if (($h = $pick('hours')) !== '') $b->opening_hours_json = ['text' => $h];
+        }
         $isFirst ? $b->save() : $b->saveQuietly();     // only the default mirrors onto workspaces.*
         DB::table('websites')->where('id', $websiteId)->update(['business_id' => $b->id]);
         return (int) $b->id;

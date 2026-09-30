@@ -4552,6 +4552,30 @@ document.addEventListener("DOMContentLoaded",function(){
   document.addEventListener("blur", function(e){
     if (_editingEl && e.target === _editingEl) _exitEdit();
   }, true);
+' . (\App\Engines\Builder\Support\InlineText::on() ? <<<'JS'
+  // TEXTSAFE-1 (RFC-0021 wave 1): Enter is a line break in a paragraph and commits a one-line field; a paste is plain text;
+  // after a save the field shows exactly what the site will show (the server's rendered value).
+  function _luSingleLine(el){ var f = (el.getAttribute("data-field") || "").toLowerCase(); if (/^(H[1-6]|SPAN|A|BUTTON|STRONG|EM|LABEL|SUMMARY)$/.test(el.tagName)) return true; return /(^|_)(title|eyebrow|name|role|label|value|cta|cta_\d|q|legal|heading|tagline|kicker|button|link)$|^(nav_|business_name$|hero_cta|contact_cta|nav_cta)/.test(f); }
+  document.addEventListener("keydown", function(e){
+    if (!_editingEl || e.target !== _editingEl) return;
+    if (e.key !== "Enter") return;
+    e.preventDefault();
+    if (_luSingleLine(_editingEl) || e.ctrlKey || e.metaKey) { _editingEl.blur(); return; }
+    var ok = false; try { ok = document.execCommand("insertLineBreak"); } catch(_x){}
+    if (!ok) { try { document.execCommand("insertHTML", false, "<br>"); } catch(_y){} }
+  }, true);
+  document.addEventListener("paste", function(e){
+    if (!_editingEl || (e.target !== _editingEl && !_editingEl.contains(e.target))) return;
+    e.preventDefault();
+    var t = ""; try { t = (e.clipboardData || window.clipboardData).getData("text/plain") || ""; } catch(_p){}
+    if (_luSingleLine(_editingEl)) t = t.replace(/\s*[\r\n]+\s*/g, " ");
+    try { document.execCommand("insertText", false, t); } catch(_i){}
+  }, true);
+  window.addEventListener("message", function(e){
+    var d = e.data || {}; if (d.type !== "field-saved" || !d.field || typeof d.html !== "string") return;
+    document.querySelectorAll("[data-field=\"" + d.field + "\"]").forEach(function(el){ if (el === _editingEl || el.tagName === "IMG" || el.querySelector("[data-field]")) return; el.innerHTML = d.html; });
+  });
+JS : '') . '
 
 
   // ── Fully-outside click: deselect block + element ──
@@ -4629,6 +4653,12 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     // 2026-09-10 05:41:25 from this exact line. Clearing a field is a legitimate edit, so the value is
     // normalised rather than refused; a non-scalar (array/object) becomes empty rather than crashing.
     $value = $value === null ? '' : (is_scalar($value) ? (string) $value : '');
+    // TEXTSAFE-1 (RFC-0021 wave 1, 2026-10-01): what the owner typed or pasted is stored in ONE canonical form — plain text with
+    // line breaks (or the inline whitelist for html-typed variables) — never contentEditable innerHTML. REPORT-0068 #1/#2: the
+    // renderer escaped that innerHTML and visitors read "<div>…</div>" as text. The response carries the canonical value and the
+    // exact HTML the site shows, so the editor displays what visitors will see. Off without storage/app/textsafe.on.
+    $__ttype = 'text'; $__textsafe = \App\Engines\Builder\Support\InlineText::on() && ! \App\Engines\Builder\Support\LogoFieldSemantics::isImageField((int) $id, (string) $field);
+    if ($__textsafe) { $__ttype = \App\Engines\Builder\Support\InlineText::fieldType((int) $id, (string) $field); $value = \App\Engines\Builder\Support\InlineText::canonical((string) $value, $__ttype, ! \App\Engines\Builder\Support\InlineText::isSingleLine((string) $field)); }
     // NAVEDIT-1 (Owner 2026-09-23): the menu label of an added page is edited like any nav link; the page takes the same
     // name, so a redeploy (which rebuilds menu links from the page title) keeps the customer's wording.
     if (preg_match('/^nav_page_([a-z0-9-]+)$/', (string) $field, $__np)) {
@@ -4650,7 +4680,9 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
     // preview both render from template_variables).
     // EDITOR CREDITS (2026-09-15): an inline text or image change is a change like any other — 1 credit when it took
     if (! \App\Engines\Builder\Support\EditorCredits::canAfford($__ow, 'inline')) return response()->json(['saved' => false, 'field' => $field, 'error' => \App\Engines\Builder\Support\EditorCredits::refusal('inline')], 402);
-    $exportPatched = $ts->updateField((int)$id, $field, $value);
+    // CONTACT-1 (RFC-0021 wave 2): a catalogue-fed card writes through to its Services & prices item, which re-syncs the page itself.
+    $__wt = null; if (\App\Engines\Builder\Support\ContactFacts::on()) { try { $__wt = app(\App\Engines\Builder\Services\CatalogueService::class)->writeThroughField((int) $id, (string) $field, (string) $value); } catch (\Throwable $e) { $__wt = null; } }
+    $exportPatched = $__wt ? true : $ts->updateField((int)$id, $field, $value);
     $__charged = $exportPatched ? \App\Engines\Builder\Support\EditorCredits::charge($__ow, 'inline', (int) $id, ['field' => $field]) : 0;
     if (preg_match('/^service_\d+_title$/', (string) $field)) { // STRESS C02 (2026-09-06): booking <select> follows the rename
         try { $__sv = json_decode((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->value('template_variables'), true) ?: []; $__sv[$field] = $value; $ts->refreshServiceSelects((int) $id, $__sv); } catch (\Throwable $e) {}
@@ -4693,8 +4725,11 @@ Route::put('/builder/websites/{id}/fields/{field}', function (\Illuminate\Http\R
         'saved'          => true,
         'field'          => $field,
         'redirected_from' => $__redirectedFrom,
+        'value'          => $value,   // TEXTSAFE-1: canonical
+        'rendered'       => $__textsafe ? \App\Engines\Builder\Support\InlineText::rendered($value, $__ttype) : null,   // TEXTSAFE-1: what the site shows
         'export_patched' => (bool) $exportPatched,
         'degraded'       => ! $exportPatched,
+        'catalogue'      => $__wt,   // CONTACT-1: the item this card wrote through to
     ]);
 })->middleware('auth.jwt');
 
