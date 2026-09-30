@@ -187,6 +187,11 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-draft .top b{color:var(--t1);font-size:14px}.crm2-draft .top span{font-size:12px;color:var(--t3)}',
         '.crm2-draft textarea{width:100%;min-height:120px;box-sizing:border-box;resize:vertical;font-size:14px;line-height:1.5}',
         '.crm2-draft .row{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:10px}',
+        '.crm2-draft.xr{padding:0}.crm2-draft.xr .hd{position:relative;padding:14px 40px 14px 14px;cursor:pointer;border-radius:inherit;-webkit-tap-highlight-color:transparent;min-width:0}.crm2-draft.xr .hd:focus-visible{outline:2px solid var(--ac,var(--p));outline-offset:-2px}',
+        '.crm2-draft.xr .top{margin-bottom:0;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}.crm2-draft.xr .top b,.crm2-draft.xr .top span{max-width:100%}',
+        '.crm2-draft.xr .top .pv{display:block;width:100%;font-size:13px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.crm2-draft.xr.open .top .pv{display:none}',
+        '.crm2-draft.xr .chev{position:absolute;right:16px;top:20px;width:9px;height:9px;border-right:2px solid var(--t3);border-bottom:2px solid var(--t3);transform:rotate(45deg);transition:transform .2s}.crm2-draft.xr.open .chev{transform:rotate(225deg);top:24px}',
+        '.crm2-draft.xr .b{padding:0 14px 14px}.crm2-draft textarea.form-input{height:auto;min-height:120px}',
         '.crm2-radio{display:flex;flex-direction:column;gap:8px}.crm2-radio label{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--bd);border-radius:12px;cursor:pointer;background:var(--s1)}',
         '.crm2-radio input{accent-color:var(--p);margin-top:3px;width:18px;height:18px}.crm2-radio label b{display:block;color:var(--t1);font-size:14px}.crm2-radio label span{font-size:13px;color:var(--t3)}',
         '.crm2-radio label:has(input:checked){border-color:var(--p);background:var(--ps)}',
@@ -316,13 +321,26 @@ function payCard(R) {
         (R.payments_account ? '' : '<div class="crm2-note" style="margin-top:8px">To take card payments online, connect your Stripe account in Settings → Payments. Requests still go out; clients reply to arrange payment.</div>') + '</div></section>';
 }
 function draftCard(d, withName) {
-    return '<article class="crm2-draft" data-draft="' + d.id + '"><div class="top"><b>' + esc(withName ? (d.name + ' · ' + (d.subject || '')) : (d.subject || 'Reply')) + '</b><span>' +
-        esc(d.source === 'daily' ? (d.reason || 'Follow-up') : 'Reply to their enquiry') + ' · written by Sarah ' + esc(ago(d.created_at)) + '</span></div>' +
-        '<label class="crm2-hide-d" for="crm2-d-' + d.id + '">Message</label><textarea class="form-input" id="crm2-d-' + d.id + '">' + esc(d.body) + '</textarea>' +
+    // DRAFT-CLOSED-1: closed in the overview (no buttons on the face); open on the client's own page
+    var closed = !!withName;
+    var first = String(d.body || '').replace(/^\s*(hi|hello|dear|hey)\b[^\n]*\n+/i, '').replace(/\s+/g, ' ').trim().slice(0, 140);
+    var head = '<div class="top"><b>' + esc(withName ? (d.name + ' · ' + (d.subject || '')) : (d.subject || 'Reply')) + '</b><span>' +
+        esc(d.source === 'daily' ? (d.reason || 'Follow-up') : 'Reply to their enquiry') + ' · written by Sarah ' + esc(ago(d.created_at)) + '</span>' +
+        (closed && first ? '<span class="pv">' + esc(first) + '</span>' : '') + '</div>';
+    var body = '<label class="crm2-hide-d" for="crm2-d-' + d.id + '">Message</label><textarea class="form-input" id="crm2-d-' + d.id + '" oninput="window._crm2dFit(this)">' + esc(d.body) + '</textarea>' +
         '<div class="row"><button class="btn btn-ghost btn-sm" onclick="window._crm2.skipDraft(' + d.id + ')">Skip</button>' +
         (withName ? '<button class="btn btn-outline btn-sm" onclick="window._crm2.open(' + d.lead_id + ')">Open ' + esc(String(d.name).split(' ')[0]) + '</button>' : '') +
-        '<button class="btn btn-primary btn-sm" onclick="window._crm2.sendDraft(' + d.id + ')">' + I('send', 14) + ' Send email</button></div></article>';
+        '<button class="btn btn-primary btn-sm" onclick="window._crm2.sendDraft(' + d.id + ')">' + I('send', 14) + ' Send email</button></div>';
+    if (!closed) return '<article class="crm2-draft" data-draft="' + d.id + '">' + head + body + '</article>';
+    return '<article class="crm2-draft xr" data-draft="' + d.id + '"><div class="hd" role="button" tabindex="0" aria-expanded="false" onclick="window._crm2dTog(this)" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();window._crm2dTog(this)}">' +
+        head + '<span class="chev" aria-hidden="true"></span></div><div class="b" hidden>' + body + '</div></article>';
 }
+window._crm2dFit = function (ta) { try { ta.style.height = 'auto'; ta.style.height = Math.max(120, ta.scrollHeight + 4) + 'px'; } catch (e) {} };
+window._crm2dTog = function (hd) {
+    var art = hd.closest('.crm2-draft'), b = art && art.querySelector('.b'); if (!b) return;
+    var open = b.hidden; b.hidden = !open; art.classList.toggle('open', open); hd.setAttribute('aria-expanded', open ? 'true' : 'false');
+    if (open) { var ta = b.querySelector('textarea'); if (ta) window._crm2dFit(ta); }
+};
 
 function root() { return document.getElementById('crm-root'); }
 function busy(el) { if (el) el.innerHTML = (typeof loadingCard === 'function') ? loadingCard(260) : '<div class="crm2-empty">Loading…</div>'; }
