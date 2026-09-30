@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="20260929-0356a9e9">
+<meta name="lu-build" content="20260930-8eff6fd8">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4922,7 +4922,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=cmp1-20260927"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=437059a06e"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=6a4d09923c"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
@@ -5494,7 +5494,70 @@ document.addEventListener('keydown', function (e) {
      — putting "Meet Sarah" at z-index 9999 directly on top of the Arthur wizard this script had just
      opened. The flag is on window, not localStorage, so it cannot survive a reload and re-suppress
      onboarding for someone who genuinely needs it. */
-  /* ARTHUR-FIRST-1 (Owner 2026-09-30): 'arthur' = a fresh sign-up from the start page; Arthur opens first, empty. */
+  /* ARTHUR-FIRST-1 (Owner 2026-09-30): 'arthur' = a fresh sign-up from the start page; Arthur opens first, empty.
+     ARTHUR-LOCK-1 (Owner 2026-09-30: "a floating modal at the middle … put a blur behind … deactivate all buttons outside
+     the modal. user should only do one thing, build his website. no x button. no closing"): until Arthur's build opens the
+     new site, the wizard is the only live thing on screen. The lock survives a reload (lu_arthur_lock) and lifts when a
+     website exists or the build hands over to the editor. */
+  try {
+    if (action === 'arthur') localStorage.setItem('lu_arthur_lock', '1');
+    if (localStorage.getItem('lu_arthur_lock') === '1' && action !== 'wizard') action = 'arthur';
+  } catch (_e) {}
+  if (action === 'arthur') {
+    var root = document.documentElement; root.classList.add('lu-arthur-lock');
+    var css = document.createElement('style'); css.id = 'lu-arthur-lock-css';
+    css.textContent =
+      'html.lu-arthur-lock,html.lu-arthur-lock body{overflow:hidden!important;overscroll-behavior:none}'
+      + 'html.lu-arthur-lock #arthur-modal{position:fixed!important;inset:0!important;top:0!important;left:0!important;right:0!important;bottom:0!important;'
+      + 'width:100vw!important;max-width:none!important;height:100vh!important;height:100dvh!important;max-height:none!important;margin:0!important;border-radius:0!important;'
+      + 'z-index:2147483000!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:16px!important;box-sizing:border-box!important;'
+      + 'background:rgba(8,9,20,.55)!important;-webkit-backdrop-filter:blur(16px) saturate(120%)!important;backdrop-filter:blur(16px) saturate(120%)!important}'
+      + 'html.lu-arthur-lock #arthur-modal .lu-arthur-modal{position:relative!important;inset:auto!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;'
+      + 'width:100%!important;max-width:600px!important;height:640px!important;max-height:calc(100dvh - 32px)!important;border-radius:20px!important;margin:0!important}'
+      + 'html.lu-arthur-lock #arthur-modal .lu-arthur-modal>div:first-child>button{display:none!important}';
+    (document.head || root).appendChild(css);
+    var unlocking = false;
+    var inertAll = function (on) {
+      var kids = document.body ? document.body.children : [];
+      for (var i = 0; i < kids.length; i++) {
+        var k = kids[i]; if (k.id === 'arthur-modal' || k.tagName === 'SCRIPT' || k.tagName === 'STYLE') continue;
+        if (on) { k.setAttribute('inert', ''); k.setAttribute('aria-hidden', 'true'); } else { k.removeAttribute('inert'); k.removeAttribute('aria-hidden'); }
+      }
+    };
+    window.__luArthurUnlock = function () {
+      unlocking = true;
+      try { localStorage.removeItem('lu_arthur_lock'); } catch (_e) {}
+      root.classList.remove('lu-arthur-lock'); var c = document.getElementById('lu-arthur-lock-css'); if (c) c.remove();
+      inertAll(false); if (window.__luArthurLockObs) window.__luArthurLockObs.disconnect();
+    };
+    var reopen = function () { if (!unlocking && typeof window.wsShowArthurWizard === 'function' && !document.getElementById('arthur-modal')) window.wsShowArthurWizard(); };
+    var watch = function () {
+      if (!document.body || window.__luArthurLockObs) return;
+      window.__luArthurLockObs = new MutationObserver(function () {
+        if (unlocking) return;
+        if (!document.getElementById('arthur-modal')) { setTimeout(reopen, 250); return; }
+        inertAll(true);
+      });
+      window.__luArthurLockObs.observe(document.body, { childList: true });
+      inertAll(true);
+    };
+    document.addEventListener('keydown', function (e) { if (!unlocking && e.key === 'Escape') { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+    /* a workspace that already has a website is past this step (built on another device, or a later visit) */
+    try {
+      fetch('/api/builder/websites', { headers: { Authorization: 'Bearer ' + (localStorage.getItem('lu_token') || ''), Accept: 'application/json' }, cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { var l = j && (j.websites || j.data || j); if (Array.isArray(l) && l.length) window.__luArthurUnlock(); })
+        .catch(function () {});
+    } catch (_e) {}
+    var wrapTries = 0, wrap = setInterval(function () {
+      wrapTries++; watch();
+      var f = window._arthurOpenBuiltSite;
+      if (typeof f === 'function' && !f.__luLock) {
+        var g = function () { window.__luArthurUnlock(); return f.apply(this, arguments); }; g.__luLock = true; window._arthurOpenBuiltSite = g;
+      }
+      if ((typeof f === 'function' && window.__luArthurLockObs) || wrapTries > 120) clearInterval(wrap);
+    }, 250);
+  }
   try { window.__luArthurHandoff = (action === 'wizard' || action === 'arthur'); } catch (_e) {}
   if (action !== 'wizard' && action !== 'arthur') return;
 
