@@ -249,6 +249,25 @@ class BuilderService
             ]);
         }
 
+        // ONBOARD-PUBLISH-1 (Owner 2026-09-30: "the trigger for her to know the user is after the website is published").
+        // A published website is the moment Sarah has something to run growth for: the workspace is onboarded from here
+        // (the flag the morning brief, weekly review and auto-execute select on, which nothing on the publish path set
+        // before), and her discovery run starts now rather than at the next 08:00 brief. Fail open: never fails the publish.
+        try {
+            $wsIdPub = (int) ($website->workspace_id ?? 0);
+            if ($wsIdPub > 0) {
+                $already = DB::table('workspaces')->where('id', $wsIdPub)->value('onboarded');
+                if (! $already) {
+                    DB::table('workspaces')->where('id', $wsIdPub)->update(['onboarded' => 1, 'onboarded_at' => now(), 'updated_at' => now()]);
+                }
+                \App\Jobs\SarahDiscoveryJob::dispatch($wsIdPub, 'website_published')->delay(now()->addSeconds(20));
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[BuilderService] post-publish onboarding hook failed', [
+                'website_id' => $websiteId, 'error' => $e->getMessage(),
+            ]);
+        }
+
         return ['published' => true];
     }
 

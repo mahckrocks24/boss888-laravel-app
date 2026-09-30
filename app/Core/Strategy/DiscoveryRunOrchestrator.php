@@ -140,7 +140,7 @@ class DiscoveryRunOrchestrator
         $msg = "👋 **Welcome aboard. I'm Sarah, your Digital Marketing Manager.**\n\n"
              . "Today is day 1. I'm running a full audit of your business — "
              . "site health, indexed pages, brand context, SEO foundation, and competitor landscape.\n\n"
-             . "Tomorrow morning at 8:00 UTC I'll share a recommended 30-day game plan as a set of "
+             . "Tomorrow morning at 8:00" . (function () use ($wsId) { try { $tz = (string) (\Illuminate\Support\Facades\DB::table('workspaces')->where('id', $wsId)->value('timezone') ?: 'UTC'); return $tz === 'UTC' ? ' UTC' : ' (' . str_replace('_', ' ', $tz) . ' time)'; } catch (\Throwable $e) { return ''; } })() . " I'll share a recommended 30-day game plan as a set of "
              . "proposed actions, each with its credit cost. You approve the ones you want, and I'll run those.\n\n"
              . "Nothing needed from you right now — I'll ping you when the plan is ready for your review.";
         try {
