@@ -53,7 +53,7 @@ final class RecipePainter
         if (! $ids) return null;
         $recipes = DB::table('design_recipes')->whereIn('id', $ids)->where('active', true)->get()->keyBy('id');
         if ($recipes->isEmpty()) return null;
-        $recipe = $this->choose(array_values(array_filter(array_map(fn ($id) => $recipes[$id] ?? null, $ids))), $prompt);
+        $recipe = $this->choose(array_values(array_filter(array_map(fn ($id) => $recipes[$id] ?? null, $ids))), $prompt, $wsId, $bizId);
         $brand = (array) ($ctx['brand'] ?? []);
         if (empty($brand['brand_name'])) $brand['brand_name'] = $biz->name ?? 'the business';
         try { $kit = app(WorkspaceBrandKitResolver::class)->resolve($wsId, $bizId); $brand += ['target_audience' => $kit['target_audience'] ?? null, 'primary_color' => $kit['primary_color'] ?? null, 'secondary_color' => $kit['secondary_color'] ?? null, 'accent_color' => $kit['accent_color'] ?? null]; if (empty($brand['heading_font'])) $brand['heading_font'] = $kit['heading_font'] ?? null; if (empty($brand['industry'])) $brand['industry'] = $kit['industry'] ?? null; } catch (\Throwable) {}
@@ -85,7 +85,7 @@ final class RecipePainter
         $p = $filled['prompt']; $textList = $filled['text_list'];
         for ($attempts = 1; $attempts <= 2; $attempts++) {
             $img = $this->runtime->imageGenerate($p, ['workspace_id' => $wsId, 'style' => $ctx['style'] ?? 'natural', 'size' => $filled['size'], 'quality' => 'high']);
-            if (empty($img['success']) || empty($img['url'])) break;
+            if (empty($img['success']) || empty($img['url'])) { Log::info('[RECIPE-1] generation failed', ['ws' => $wsId, 'attempt' => $attempts, 'error' => $img['error'] ?? null, 'keys' => array_keys((array) $img)]); break; }
             $tried[] = ['url' => $img['url'], 'quality' => $img['quality'] ?? null];
             [$verified, $seen, $failedOn] = $this->verify((string) $img['url'], $textList);
             if ($verified) break;
@@ -123,10 +123,18 @@ final class RecipePainter
         ];
     }
 
-    private function choose(array $recipes, string $prompt): object
+    /** The look for this post: the picks that fit the post's intent, rotated so consecutive posts do not repeat a look. */
+    private function choose(array $recipes, string $prompt, int $wsId = 0, ?int $bizId = null): object
     {
-        foreach (self::AFFINITY as $arch => $re) { if (preg_match($re, $prompt)) { foreach ($recipes as $r) if ($r->archetype === $arch) return $r; } }
-        return $recipes[0];
+        $fit = [];
+        foreach (self::AFFINITY as $arch => $re) { if (preg_match($re, $prompt)) { foreach ($recipes as $r) if ($r->archetype === $arch && ! in_array($r, $fit, true)) $fit[] = $r; } }
+        $pool = $fit ?: $recipes;
+        $key = 'recipe:last:' . $wsId . ':' . (int) $bizId;
+        $last = (int) \Illuminate\Support\Facades\Cache::get($key, 0);
+        $idx = 0; foreach ($pool as $i => $r) { if ((int) $r->id === $last) { $idx = ($i + 1) % count($pool); break; } }
+        $chosen = $pool[$idx];
+        \Illuminate\Support\Facades\Cache::put($key, (int) $chosen->id, now()->addDays(14));
+        return $chosen;
     }
 
     /** Sarah's copy for this post: the customer's exact words when given, else written in the brand voice. */

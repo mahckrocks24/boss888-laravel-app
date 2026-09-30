@@ -177,11 +177,11 @@
     '.lbl-sheet{position:fixed;inset:0;z-index:100010;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5)}@media(min-width:700px){.lbl-sheet{align-items:center}}' +
     '.lbl-sheet .box{width:min(560px,100%);max-height:88vh;overflow:auto;background:var(--s1);border:1px solid var(--bd);border-radius:18px 18px 0 0;padding:14px 16px 18px}@media(min-width:700px){.lbl-sheet .box{border-radius:18px}}' +
     '.lbl-sheet img{width:100%;border-radius:12px;display:block;margin:6px 0 10px}.lbl-sheet h3{margin:0;font:700 17px/1.25 var(--fh,var(--fb,inherit))}.lbl-sheet p{margin:6px 0;color:var(--t2)}.lbl-sheet ul{margin:6px 0;padding-left:18px;color:var(--t2)}.lbl-sheet .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}' +
-    '.lbl-saved{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}.lbl-saved .lbl-tile{cursor:default}';
+    '.lbl-saved{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin:10px 0}.lbl-saved .lbl-tile{cursor:default}';
   function lblCss() { if (document.getElementById('lbl-css')) return; var s = document.createElement('style'); s.id = 'lbl-css'; s.textContent = LBL_CSS; document.head.appendChild(s); }
   function library2(el, card, opts) {
     opts = opts || {}; css(); lblCss();
-    var MAX = card.max || 3, biz = card.business_id || null, bizQ = biz ? '&business_id=' + encodeURIComponent(biz) : '';
+    var MAX = card.max || 5, biz = card.business_id || null, bizQ = biz ? '&business_id=' + encodeURIComponent(biz) : '';
     var st = { picks: (card.recipes || []).slice(), saved: !!(card.recipes || []).length && !opts.alwaysOpen, q: '', f: { industry: '', archetype: '', style: '', format: '', people: '' }, page: 1, total: 0, items: [], facets: null, home: card.home_industry || null, more: false, shortlist: card.shortlist || [] };
     var byId = {}; (st.picks || []).forEach(function (r) { byId[r.id] = r; }); (st.shortlist || []).forEach(function (r) { byId[r.id] = r; });
     var IC = { search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>', check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>' };
@@ -633,7 +633,7 @@
       if (cs) cs.onclick = function () { var body = el.__lbcColours() || {}; body.business_id = j.business_id; cs.disabled = true;
         api('PUT', 'workspace/brand', body).then(function (x) { cs.disabled = false; if (x.ok && (x.json || {}).success !== false) { toast('Colours saved for ' + j.business_name + '.', 'success'); again(); } else toast(((x.json || {}).error) || 'Could not save the colours.', 'error'); }); };
       library(rulesRoot.querySelector('[data-slot=insp]'), j.business_id);   // VISION-INSPIRE-1
-      library2(stylesRoot.querySelector('[data-slot=pick]'), { business_id: j.business_id, max: 3, recipes: j.recipe_picks || [] }, { settings: true });   // DESIGN-LIBRARY-2: the searchable library, up to three looks
+      library2(stylesRoot.querySelector('[data-slot=pick]'), { business_id: j.business_id, max: 5, recipes: j.recipe_picks || [] }, { settings: true });   // DESIGN-LIBRARY-2: the searchable library, up to three looks
       // rules re-render only their own part, so an unsaved colour change in the profile is never lost
       function rulesAgain() { api('GET', 'brand/profile?business_id=' + encodeURIComponent(j.business_id)).then(function (x) { var jj = x.json || {}; j.rules = jj.rules || []; var box = rulesRoot.querySelector('.lbc-rules, .lbc-rules-empty'); var list = (j.rules || []).length ? '<ul class="lbc-rules">' + j.rules.map(function (y, i) { return '<li>' + esc(y) + '<button type="button" class="lbc-x" data-rm="' + i + '" aria-label="Remove rule">Remove</button></li>'; }).join('') + '</ul>' : '<div class="lbc-s lbc-rules-empty" style="margin:0">No rules yet — for example “Never use red” or “Always show our Instagram handle”.</div>';
         var cur = rulesRoot.querySelector('.lbc-rules') || rulesRoot.querySelector('.lbc-add').previousElementSibling; if (cur) cur.outerHTML = list; wireRules(); }); }

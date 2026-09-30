@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Storage;
  */
 final class DesignLibraryService
 {
-    public const MAX_PICKS = 3;
+    public const MAX_PICKS = 5;   // Owner 2026-10-01: "get users to choose 5"
     private const STYLE_NAMES = ['D1' => 'Editorial luxury', 'D2' => 'Clean minimal', 'D3' => 'Bold colour block', 'D4' => 'Warm organic', 'D5' => 'Authentic photo-first', 'D6' => 'Soft cinematic', 'D7' => 'Neon night', 'D8' => 'Layered collage', 'D9' => 'Playful retro', 'D10' => 'Technical blueprint'];
     private const ARCHETYPE_LABELS = ['statement over scene' => 'Statement over a photo', 'product hero' => 'Product hero', 'offer banner' => 'Offer or promo', 'quote card' => 'Quote card', 'before-after' => 'Before and after', 'listing card' => 'Listing card', 'checklist/tips' => 'Tips and checklists', 'testimonial' => 'Testimonial', 'announcement' => 'Announcement', 'event poster' => 'Event poster', 'menu/price card' => 'Menu or price card', 'team/portrait' => 'Team or portrait', 'lifestyle photo' => 'Lifestyle photo', 'editorial carousel cover' => 'Carousel cover', 'other' => 'Other'];
 

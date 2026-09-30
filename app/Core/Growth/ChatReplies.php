@@ -326,7 +326,7 @@ final class ChatReplies
                         $__sl = array_values(array_map('intval', $c['shortlist_ids'])); $__pk = [];
                         if (preg_match_all('/\b([1-9])\b/', $t, $mm) && preg_match('/^[\s\d,&+.and]+$|^(i like|i\'?d like|pick|choose|go with|use|love)\b/i', $t)) foreach ($mm[1] as $n) { if (isset($__sl[(int) $n - 1])) $__pk[] = $__sl[(int) $n - 1]; }
                         if (! $__pk) return null;
-                        $__r = app(\App\Core\Brand\DesignLibraryService::class)->setPicks($wsId, $bizId, array_slice(array_values(array_unique($__pk)), 0, 3), 'chat');
+                        $__r = app(\App\Core\Brand\DesignLibraryService::class)->setPicks($wsId, $bizId, array_slice(array_values(array_unique($__pk)), 0, AppCoreBrandDesignLibraryService::MAX_PICKS), 'chat');
                         if (! empty($__r['success'])) return ['turn' => 'reply', 'note' => 'The owner chose these design looks and they are saved: ' . implode(', ', $__r['names']) . '. Every banner, image and video will follow them. Confirm in one warm line, naming the looks in plain words, and say they can change them any time.'];
                         return null;
                     }

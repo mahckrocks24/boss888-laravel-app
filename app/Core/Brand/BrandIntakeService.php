@@ -72,7 +72,7 @@ final class BrandIntakeService
             'business' => $prev['business_name'], 'industry' => $prev['industry'],
             'brand_found' => $prev['brand_set'] ? 'yes, from their website/profile' : 'no colours found yet',
             'businesses_in_workspace' => count($list), 'what_to_ask' => 'existing brand guidelines, logo, fonts, colours, or posts/designs they like — upload a PDF or images, or just describe it; they can also skip and you will work from their website',
-            'picker' => 'the card below shows a shortlist of eight design looks from the design library (their industry first) and a button to browse all of them; they tap up to three they like',
+            'picker' => 'the card below shows a shortlist of eight design looks from the design library (their industry first) and a button to browse all of them; they tap up to five they like',
         ];
         $fallback = 'One quick thing so every banner, image and video looks like ' . $prev['business_name'] . ': do you have brand guidelines, a logo, fonts, colours or posts you like? Upload a PDF or images here, or just tell me. '
             . 'Below is a shortlist of design looks for your kind of business, and you can browse the whole library. Tap up to three you like and I\'ll design from them from now on. You can also skip, and I\'ll work from your website.';
