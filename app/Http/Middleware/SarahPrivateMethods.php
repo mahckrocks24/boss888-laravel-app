@@ -20,9 +20,9 @@ class SarahPrivateMethods
     /** Keys that are always private. */
     private const PRIVATE_KEYS = ['provider_prompt', 'enhanced_prompt', 'revised_prompt', 'reasoning_summary', 'design_direction', 'design_direction_id',
         'inspiration_ids', 'prompt_skeleton', 'recipe', 'directions_json', 'analysis_json', 'typography_strategy', 'historical_or_factual_constraints',
-        'brand_context', 'scene_prompt', 'style_additions'];   // VIDEO-F1 (2026-09-27): the video recipe
+        'brand_context', 'scene_prompt', 'style_additions', 'prompt_template', 'recipe_json', 'painter_prompt'];   // DESIGN-LIBRARY-2   // VIDEO-F1 (2026-09-27): the video recipe
 
-    private const FAST = '/"(provider_prompt|enhanced_prompt|revised_prompt|reasoning_summary|design_direction(_id)?|inspiration_ids|prompt_skeleton|recipe|directions_json|analysis_json|typography_strategy|historical_or_factual_constraints|prompt|brand_context|scene_prompt|style_additions)\\\\?"\s*:/';
+    private const FAST = '/"(provider_prompt|enhanced_prompt|revised_prompt|reasoning_summary|design_direction(_id)?|inspiration_ids|prompt_skeleton|recipe|directions_json|analysis_json|typography_strategy|historical_or_factual_constraints|prompt|brand_context|scene_prompt|style_additions|prompt_template|recipe_json|painter_prompt)\\\\?"\s*:/';
 
     public function handle(Request $request, Closure $next): Response
     {

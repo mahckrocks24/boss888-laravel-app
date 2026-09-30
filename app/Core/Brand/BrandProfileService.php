@@ -264,6 +264,8 @@ final class BrandProfileService
             'fonts' => ['heading' => $kit['heading_font'], 'body' => $kit['body_font']], 'logo_url' => $kit['logo_url'], 'tone' => $kit['tone'],
             'picks' => DesignDirections::clean((array) ($dirs['picks'] ?? [])), 'never' => DesignDirections::clean((array) ($dirs['never'] ?? [])),
             'picks_source' => $dirs['source'] ?? null,
+            'recipes' => array_values(array_filter(array_map('intval', (array) ($dirs['recipes'] ?? [])))),   // DESIGN-LIBRARY-2
+            'recipe_picks' => app(DesignLibraryService::class)->picks($wsId, $bizId),   // DESIGN-LIBRARY-2: public rows for the saved state
             'rules' => array_values(array_map(fn ($r) => (string) ($r['rule'] ?? ''), $row ? self::json($row, 'rules_json') : [])),
             'assets' => $row ? self::json($row, 'assets_json') : [],
             'intake_status' => $row->intake_status ?? null,

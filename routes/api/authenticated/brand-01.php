@@ -144,3 +144,44 @@ Route::delete('/brand/rules/{index}', function (Request $r, int $index) use ($br
     $ok = app(BrandProfileService::class)->removeRule($wsId, $bid, $index);
     return response()->json(['success' => $ok], $ok ? 200 : 422);
 });
+
+/* ── DESIGN-LIBRARY-2 (Owner 2026-10-01): the searchable library of reference designs replaces the ten fixed styles ──
+   GET  /brand/library            search + filters (q, industry, archetype, format, style, people, page)
+   GET  /brand/library/{id}       one design's public face (never the recipe or prompt - SECRET-1)
+   GET  /brand/library/picks      the business's chosen designs (up to three)
+   POST /brand/library/picks      save the choice {business_id, recipe_ids[]} */
+Route::get('/brand/library', function (Request $r) use ($brandBiz) {
+    $wsId = (int) $r->attributes->get('workspace_id');
+    $home = null;
+    try { [$bid] = $brandBiz($r, $wsId); $biz = app(BrandProfileService::class)->business($wsId, $bid); $home = $biz->industry ?? null; if ($home) { $map = ['restaurant' => 'Restaurant', 'private chef' => 'Private Chef', 'chef' => 'Private Chef', 'cafe' => 'Cafe', 'gym' => 'Gym & Fitness', 'fitness' => 'Gym & Fitness', 'dental' => 'Dental', 'real estate' => 'Real Estate Agency', 'salon' => 'Beauty Salon', 'beauty' => 'Beauty Salon', 'barber' => 'Barbershop', 'consult' => 'Consulting', 'marketing' => 'Marketing Agency', 'graphic' => 'Graphic Design', 'design' => 'Graphic Design', 'it ' => 'IT Services', 'software' => 'IT Services', 'retail' => 'Retail Shop', 'ecommerce' => 'E-commerce', 'hotel' => 'Hotel', 'event' => 'Event Venue', 'pet' => 'Pet Services', 'joinery' => 'Construction', 'construction' => 'Construction']; $h = strtolower($home); $home = null; foreach ($map as $k => $v) { if (str_contains($h, $k)) { $home = $v; break; } } } } catch (\Throwable) {}
+    $out = app(\App\Core\Brand\DesignLibraryService::class)->search($r->query(), $home);
+    return response()->json(['success' => true, 'home_industry' => $home, 'max_picks' => \App\Core\Brand\DesignLibraryService::MAX_PICKS] + $out);
+});
+
+Route::get('/brand/library/picks', function (Request $r) use ($brandBiz) {
+    $wsId = (int) $r->attributes->get('workspace_id');
+    [$bid, $err] = $brandBiz($r, $wsId); if ($err) return $err;
+    return response()->json(['success' => true, 'business_id' => $bid, 'max_picks' => \App\Core\Brand\DesignLibraryService::MAX_PICKS, 'recipes' => app(\App\Core\Brand\DesignLibraryService::class)->picks($wsId, $bid)]);
+});
+
+Route::get('/brand/library/{id}', function (Request $r, int $id) {
+    $row = app(\App\Core\Brand\DesignLibraryService::class)->get($id);
+    return $row ? response()->json(['success' => true, 'design' => $row]) : response()->json(['success' => false, 'error' => 'Not found.'], 404);
+})->whereNumber('id');
+
+Route::post('/brand/library/picks', function (Request $r) use ($brandWrite, $brandBiz) {
+    if ($e = $brandWrite($r)) return $e;
+    $wsId = (int) $r->attributes->get('workspace_id');
+    [$bid, $err] = $brandBiz($r, $wsId); if ($err) return $err;
+    $res = app(\App\Core\Brand\DesignLibraryService::class)->setPicks($wsId, $bid, (array) $r->input('recipe_ids', []), $r->input('from') === 'chat' ? 'chat_card' : 'library');
+    if (($res['success'] ?? false) && $r->input('from') === 'chat') {
+        try {
+            $svc = app(\App\Core\Brand\BrandIntakeService::class);
+            $biz = app(BrandProfileService::class)->business($wsId, $bid);
+            $fallback = 'Saved. For ' . ($biz->name ?? 'your business') . ' I will design from the looks you chose: ' . implode(', ', $res['names']) . '. You can change them any time in Settings › Business or just tell me.';
+            $words = $svc->sarahWords($wsId, 'brand_directions_saved', "Write Sarah's short confirmation (1-2 sentences): the design looks are saved for this business and she will use the best fit for each banner, image and video; they can change them any time by telling her or in Settings › Business. Name the looks in plain words.", ['business' => $biz->name ?? null, 'chosen_looks_in_order' => $res['names']], $fallback);
+            app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $words, ['notification_type' => 'brand_directions_saved']);
+        } catch (\Throwable $e) { /* the choice is saved either way */ }
+    }
+    return response()->json($res, ($res['success'] ?? false) ? 200 : 422);
+});

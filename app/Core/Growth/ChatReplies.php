@@ -321,6 +321,15 @@ final class ChatReplies
                     $bp = app(\App\Core\Brand\BrandProfileService::class);
                     $bizId = isset($c['business_id']) ? (int) $c['business_id'] : null;
                     if ($no || preg_match('/\b(use (my|our) (website|site)|skip)\b/i', $t)) { $bp->skip($wsId, $bizId); return ['turn' => 'reply', 'note' => 'The owner skipped the design styles; you will work from their website. Acknowledge in one line; they can tell you styles any time.', 'verified' => []]; }
+                    // DESIGN-LIBRARY-2: a library card carries its shortlist ids; numbers pick from those
+                    if (! empty($c['shortlist_ids']) && is_array($c['shortlist_ids'])) {
+                        $__sl = array_values(array_map('intval', $c['shortlist_ids'])); $__pk = [];
+                        if (preg_match_all('/\b([1-9])\b/', $t, $mm) && preg_match('/^[\s\d,&+.and]+$|^(i like|i\'?d like|pick|choose|go with|use|love)\b/i', $t)) foreach ($mm[1] as $n) { if (isset($__sl[(int) $n - 1])) $__pk[] = $__sl[(int) $n - 1]; }
+                        if (! $__pk) return null;
+                        $__r = app(\App\Core\Brand\DesignLibraryService::class)->setPicks($wsId, $bizId, array_slice(array_values(array_unique($__pk)), 0, 3), 'chat');
+                        if (! empty($__r['success'])) return ['turn' => 'reply', 'note' => 'The owner chose these design looks and they are saved: ' . implode(', ', $__r['names']) . '. Every banner, image and video will follow them. Confirm in one warm line, naming the looks in plain words, and say they can change them any time.'];
+                        return null;
+                    }
                     $ids = array_keys(\App\Core\Brand\DesignDirections::ALL);
                     $picks = [];
                     if (preg_match_all('/\b(10|[1-9])\b/', $t, $mm) && preg_match('/^[\s\d,&+.and]+$|^(i like|i\'?d like|pick|choose|go with|use|love)\b/i', $t)) foreach ($mm[1] as $n) { if (isset($ids[(int) $n - 1])) $picks[] = $ids[(int) $n - 1]; }

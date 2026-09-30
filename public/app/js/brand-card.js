@@ -155,6 +155,138 @@
     '@media (prefers-reduced-motion:reduce){.lbc-opt,.lbc-count,.lbc-btn{transition:none}.lbc-opt:hover{transform:none}}';
   function css() { if (document.getElementById('lbc-css')) return; var s = document.createElement('style'); s.id = 'lbc-css'; s.textContent = CSS + CSS2; document.head.appendChild(s); }
 
+  /* ── DESIGN-LIBRARY-2 (Owner 2026-10-01): the searchable library replaces the ten fixed styles ──
+     A business searches and filters all the reference designs and picks up to three. Tiles show OUR rendering of each
+     recipe. Site CSS only; phone first; a tap picks, the (i) opens the details sheet. Used in Settings › Business and in
+     Sarah's intake card (with her shortlist first and "Browse all" underneath). */
+  var LBL_CSS = '.lbl{position:relative;color:var(--t1);font:13.5px/1.4 var(--fb,inherit)}.lbl *{box-sizing:border-box}' +
+    '.lbl-q{display:flex;align-items:center;gap:8px;border:1px solid var(--bd2,var(--bd));background:var(--s2);border-radius:14px;padding:0 12px;min-height:44px;margin:10px 0 8px}.lbl-q svg{width:16px;height:16px;color:var(--t3);flex:none}' +
+    '.lbl-q input{flex:1;min-width:0;border:0;background:transparent;color:var(--t1);font:inherit;font-size:14px;outline:none;min-height:42px}.lbl-q input::placeholder{color:var(--t3)}.lbl-q button{border:0;background:transparent;color:var(--t3);cursor:pointer;font:inherit;padding:6px}' +
+    '.lbl-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 6px;margin:0 -2px}.lbl-chips::-webkit-scrollbar{display:none}' +
+    '.lbl-chip{flex:none;border:1px solid var(--bd2,var(--bd));background:var(--s1);color:var(--t2);border-radius:99px;padding:7px 12px;font:600 12px/1 var(--fb,inherit);cursor:pointer;white-space:nowrap;min-height:32px}.lbl-chip.on{background:var(--p);border-color:var(--p);color:#fff}.lbl-chip:focus-visible{outline:2px solid var(--p);outline-offset:2px}' +
+    '.lbl-more{margin:0 0 8px}.lbl-more[hidden]{display:none}.lbl-grp{margin:6px 0}.lbl-grp b{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:0 0 6px}.lbl-grp .lbl-chips{flex-wrap:wrap;overflow:visible}' +
+    '.lbl-meta{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:var(--t3);margin:2px 0 8px}' +
+    '.lbl-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media(min-width:640px){.lbl-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(min-width:1000px){.lbl-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}' +
+    '.lbl-tile{position:relative;border:2px solid transparent;border-radius:14px;overflow:hidden;background:var(--s2);cursor:pointer;-webkit-tap-highlight-color:transparent;outline:none}.lbl-tile:focus-visible{outline:2px solid var(--p);outline-offset:2px}.lbl-tile.on{border-color:var(--p)}' +
+    '.lbl-art{position:relative;aspect-ratio:4/5;background:var(--s3,var(--s2));display:flex;align-items:flex-end;padding:10px}.lbl-art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.lbl-art .ph{position:relative;font:700 15px/1.15 var(--fh,var(--fb,inherit));text-shadow:0 1px 8px rgba(0,0,0,.25)}' +
+    '.lbl-n{position:absolute;top:8px;left:8px;width:26px;height:26px;border-radius:50%;background:var(--p);color:#fff;display:none;align-items:center;justify-content:center;font:800 13px/1 var(--fb,inherit);box-shadow:0 2px 8px rgba(0,0,0,.3)}.lbl-tile.on .lbl-n{display:flex}' +
+    '.lbl-i{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:0;background:rgba(0,0,0,.45);color:#fff;font:700 13px/1 serif;cursor:pointer;display:flex;align-items:center;justify-content:center}' +
+    '.lbl-cap{padding:8px 10px 10px}.lbl-cap b{display:block;font-size:13px;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lbl-cap span{display:block;font-size:11.5px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}' +
+    '.lbl-foot{display:flex;justify-content:center;margin:12px 0 4px}.lbl-bar{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0 2px;margin-top:8px;background:linear-gradient(to top,var(--s1) 70%,transparent)}' +
+    '.lbl-empty{text-align:center;color:var(--t3);padding:28px 12px}' +
+    '.lbl-sheet{position:fixed;inset:0;z-index:100010;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.5)}@media(min-width:700px){.lbl-sheet{align-items:center}}' +
+    '.lbl-sheet .box{width:min(560px,100%);max-height:88vh;overflow:auto;background:var(--s1);border:1px solid var(--bd);border-radius:18px 18px 0 0;padding:14px 16px 18px}@media(min-width:700px){.lbl-sheet .box{border-radius:18px}}' +
+    '.lbl-sheet img{width:100%;border-radius:12px;display:block;margin:6px 0 10px}.lbl-sheet h3{margin:0;font:700 17px/1.25 var(--fh,var(--fb,inherit))}.lbl-sheet p{margin:6px 0;color:var(--t2)}.lbl-sheet ul{margin:6px 0;padding-left:18px;color:var(--t2)}.lbl-sheet .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}' +
+    '.lbl-saved{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:10px 0}.lbl-saved .lbl-tile{cursor:default}';
+  function lblCss() { if (document.getElementById('lbl-css')) return; var s = document.createElement('style'); s.id = 'lbl-css'; s.textContent = LBL_CSS; document.head.appendChild(s); }
+  function library2(el, card, opts) {
+    opts = opts || {}; css(); lblCss();
+    var MAX = card.max || 3, biz = card.business_id || null, bizQ = biz ? '&business_id=' + encodeURIComponent(biz) : '';
+    var st = { picks: (card.recipes || []).slice(), saved: !!(card.recipes || []).length && !opts.alwaysOpen, q: '', f: { industry: '', archetype: '', style: '', format: '', people: '' }, page: 1, total: 0, items: [], facets: null, home: card.home_industry || null, more: false, shortlist: card.shortlist || [] };
+    var byId = {}; (st.picks || []).forEach(function (r) { byId[r.id] = r; }); (st.shortlist || []).forEach(function (r) { byId[r.id] = r; });
+    var IC = { search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>', check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7"/></svg>' };
+    function pickedIds() { return st.picks.map(function (r) { return r.id; }); }
+    function tile(r) {
+      var i = pickedIds().indexOf(r.id); var c = r.colours || {};
+      var art = r.thumb ? '<img src="' + esc(r.thumb) + '" alt="" loading="lazy">' : '<div class="ph" style="color:' + esc(c.text || '#fff') + '">' + esc(r.title) + '</div>';
+      return '<div class="lbl-tile' + (i >= 0 ? ' on' : '') + '" role="button" tabindex="0" aria-pressed="' + (i >= 0) + '" data-id="' + r.id + '"><div class="lbl-art" style="background:' + esc(c.ground || 'var(--s2)') + '">' + art + '<span class="lbl-n">' + (i >= 0 ? i + 1 : '') + '</span><button type="button" class="lbl-i" data-info="' + r.id + '" aria-label="About this design">i</button></div>' +
+        '<div class="lbl-cap"><b>' + esc(r.title) + '</b><span>' + esc(r.industry) + ' · ' + esc(r.archetype_label || r.archetype) + '</span></div></div>';
+    }
+    function refresh() {
+      var ids = pickedIds();
+      el.querySelectorAll('.lbl-tile').forEach(function (t) { var id = +t.getAttribute('data-id'), i = ids.indexOf(id); t.classList.toggle('on', i >= 0); t.setAttribute('aria-pressed', String(i >= 0)); t.querySelector('.lbl-n').textContent = i >= 0 ? String(i + 1) : ''; });
+      var c = el.querySelector('[data-count]'); if (c) c.textContent = st.picks.length + ' of ' + MAX + ' chosen';
+      var sv = el.querySelector('[data-a=save]'); if (sv) { sv.disabled = !st.picks.length; sv.innerHTML = st.picks.length ? IC.check + 'Save ' + st.picks.length + ' look' + (st.picks.length > 1 ? 's' : '') : 'Choose up to ' + MAX; }
+    }
+    function toggle(id) {
+      var ids = pickedIds(), i = ids.indexOf(id);
+      if (i >= 0) st.picks.splice(i, 1); else { if (st.picks.length >= MAX) { toast('Up to ' + MAX + ' looks — untick one first.'); return; } if (byId[id]) st.picks.push(byId[id]); }
+      refresh();
+    }
+    function chips(list, key, allLabel) {
+      return '<div class="lbl-chips">' + (allLabel ? '<button type="button" class="lbl-chip' + (!st.f[key] ? ' on' : '') + '" data-f="' + key + '" data-v="">' + allLabel + '</button>' : '') +
+        list.map(function (x) { return '<button type="button" class="lbl-chip' + (st.f[key] === String(x.value) ? ' on' : '') + '" data-f="' + key + '" data-v="' + esc(String(x.value)) + '">' + esc(x.label) + '</button>'; }).join('') + '</div>';
+    }
+    function load(append) {
+      var p = 'brand/library?per_page=24&page=' + st.page + '&q=' + encodeURIComponent(st.q) + bizQ;
+      Object.keys(st.f).forEach(function (k) { if (st.f[k] !== '') p += '&' + k + '=' + encodeURIComponent(st.f[k]); });
+      var grid = el.querySelector('.lbl-grid'); if (grid && !append) grid.innerHTML = '<div class="lbl-empty" style="grid-column:1/-1">Loading…</div>';
+      return api('GET', p).then(function (r) {
+        var j = r.json || {}; if (!r.ok || !j.success) { if (grid) grid.innerHTML = '<div class="lbl-empty" style="grid-column:1/-1">Could not load the library — try again.</div>'; return; }
+        st.total = j.total || 0; st.facets = st.facets || j.facets; st.home = st.home || j.home_industry;
+        (j.items || []).forEach(function (x) { byId[x.id] = x; });
+        st.items = append ? st.items.concat(j.items || []) : (j.items || []);
+        drawGrid();
+      });
+    }
+    function drawGrid() {
+      var grid = el.querySelector('.lbl-grid'); if (!grid) return;
+      grid.innerHTML = st.items.length ? st.items.map(tile).join('') : '<div class="lbl-empty" style="grid-column:1/-1">No designs match — try fewer words or clear a filter.</div>';
+      var meta = el.querySelector('.lbl-meta span'); if (meta) meta.textContent = st.total + ' design' + (st.total === 1 ? '' : 's');
+      var more = el.querySelector('[data-a=more]'); if (more) more.hidden = st.items.length >= st.total;
+      wireTiles(grid); refresh();
+    }
+    function wireTiles(root) {
+      root.querySelectorAll('.lbl-tile').forEach(function (t) {
+        t.addEventListener('click', function (e) { if (e.target.closest('.lbl-i')) return; toggle(+t.getAttribute('data-id')); });
+        t.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(+t.getAttribute('data-id')); } });
+      });
+      root.querySelectorAll('.lbl-i').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); sheet(+b.getAttribute('data-info')); }); });
+    }
+    function sheet(id) {
+      api('GET', 'brand/library/' + id).then(function (r) {
+        var d = (r.json || {}).design; if (!d) return;
+        var ov = document.createElement('div'); ov.className = 'lbl-sheet'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+        var on = pickedIds().indexOf(id) >= 0;
+        ov.innerHTML = '<div class="box">' + (d.thumb ? '<img src="' + esc(d.thumb.replace('/thumbs/', '/')) + '" alt="">' : '') + '<h3>' + esc(d.title) + '</h3><p>' + esc(d.industry) + ' · ' + esc(d.archetype_label) + (d.styles && d.styles.length ? ' · ' + esc(d.styles.join(', ')) : '') + '</p>' +
+          (d.description ? '<p>' + esc(d.description) + '</p>' : '') + (d.why && d.why.length ? '<ul>' + d.why.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>' : '') +
+          (d.asks && d.asks.length ? '<p><b>Sarah will ask you for:</b> ' + esc(d.asks.join('; ')) + '.</p>' : '<p>No people, place or product to choose — Sarah fills the words and your brand.</p>') +
+          '<div class="row"><button type="button" class="lbc-btn ghost" data-a="close">Close</button><button type="button" class="lbc-btn primary" data-a="pick">' + (on ? 'Remove from my looks' : 'Pick this look') + '</button></div></div>';
+        document.body.appendChild(ov);
+        function close() { ov.remove(); }
+        ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+        ov.querySelector('[data-a=close]').onclick = close;
+        ov.querySelector('[data-a=pick]').onclick = function () { byId[id] = byId[id] || d; toggle(id); close(); };
+      });
+    }
+    function drawSaved() {
+      el.innerHTML = '<div class="lbl"><div class="lbc-hd"><span class="lbc-ic">' + IC.check + '</span><div class="lbc-hdt"><div class="lbc-t">Design looks saved</div><div class="lbc-s">Sarah designs every banner, image and video from these' + (opts.settings ? '.' : ' — change them here, by telling her, or in Settings › Business.') + '</div></div></div>' +
+        '<div class="lbl-saved">' + st.picks.map(tile).join('') + '</div><div class="lbc-bar lbc-bar-static"><span class="lbc-hint">Up to ' + MAX + ' looks. Sarah uses the best fit for each request.</span><button type="button" class="lbc-btn" data-a="edit">Change looks</button></div></div>';
+      el.querySelectorAll('.lbl-saved .lbl-i').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); sheet(+b.getAttribute('data-info')); }); });
+      el.querySelector('[data-a=edit]').onclick = function () { st.saved = false; draw(); };
+    }
+    function draw() {
+      if (st.saved) { drawSaved(); return; }
+      var fac = st.facets || {};
+      var quick = [{ value: '', label: 'All industries' }].concat(st.home ? [{ value: st.home, label: st.home }] : []);
+      el.innerHTML = '<div class="lbl"><div class="lbc-hd"><span class="lbc-ic">' + IC.search + '</span><div class="lbc-hdt"><div class="lbc-t">' + (opts.title || 'Choose your design looks') + '</div><div class="lbc-s">Search all the designs, filter them, and pick up to ' + MAX + '. Sarah makes them yours: your name, colours, words and people.</div></div><span class="lbc-count" data-count></span></div>' +
+        (st.shortlist.length && !opts.settings ? '<div class="lbc-s" style="margin:10px 0 6px"><b>Sarah\'s shortlist for you</b></div><div class="lbl-grid" data-short>' + st.shortlist.map(tile).join('') + '</div><div class="lbl-foot"><button type="button" class="lbc-btn" data-a="browse">Browse all designs</button></div>' : '') +
+        '<div data-lib' + (st.shortlist.length && !opts.settings ? ' hidden' : '') + '>' +
+        '<div class="lbl-q">' + IC.search + '<input type="search" placeholder="Search: dark, playful, offer, quote, minimal…" aria-label="Search designs" value="' + esc(st.q) + '"><button type="button" data-a="filters" aria-expanded="false">Filters</button></div>' +
+        '<div class="lbl-chips" data-quick>' + quick.map(function (x) { return '<button type="button" class="lbl-chip' + (st.f.industry === x.value ? ' on' : '') + '" data-f="industry" data-v="' + esc(x.value) + '">' + esc(x.label) + '</button>'; }).join('') + '<button type="button" class="lbl-chip' + (st.f.people === '1' ? ' on' : '') + '" data-f="people" data-v="1">With people</button><button type="button" class="lbl-chip' + (st.f.people === '0' ? ' on' : '') + '" data-f="people" data-v="0">No people</button></div>' +
+        '<div class="lbl-more" hidden><div class="lbl-grp"><b>Industry</b>' + chips(fac.industry || [], 'industry', 'All') + '</div><div class="lbl-grp"><b>Layout</b>' + chips(fac.archetype || [], 'archetype', 'Any') + '</div><div class="lbl-grp"><b>Style</b>' + chips(fac.style || [], 'style', 'Any') + '</div><div class="lbl-grp"><b>Shape</b>' + chips(fac.format || [], 'format', 'Any') + '</div></div>' +
+        '<div class="lbl-meta"><span>' + st.total + ' designs</span><span>Tap to pick · (i) for details</span></div><div class="lbl-grid" data-main></div><div class="lbl-foot"><button type="button" class="lbc-btn" data-a="more" hidden>Show more</button></div></div>' +
+        '<div class="lbl-bar"><span class="lbc-hint">' + (opts.settings ? 'Sarah uses the best fit for each request.' : 'Or send your own brand files with the <b>+</b> button.') + '</span><button type="button" class="lbc-btn primary" data-a="save"></button></div></div>';
+      var q = el.querySelector('.lbl-q input'), t = null;
+      q.addEventListener('input', function () { clearTimeout(t); t = setTimeout(function () { st.q = q.value.trim(); st.page = 1; load(false); }, 260); });
+      el.querySelector('[data-a=filters]').onclick = function () { var m = el.querySelector('.lbl-more'); m.hidden = !m.hidden; this.setAttribute('aria-expanded', String(!m.hidden)); };
+      el.addEventListener('click', function (e) { var c = e.target.closest('.lbl-chip'); if (!c) return; var k = c.getAttribute('data-f'), v = c.getAttribute('data-v'); st.f[k] = (st.f[k] === v && v !== '') ? '' : v; st.page = 1; el.querySelectorAll('.lbl-chip[data-f="' + k + '"]').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === st.f[k]); }); load(false); });
+      var more = el.querySelector('[data-a=more]'); more.onclick = function () { st.page++; load(true); };
+      var br = el.querySelector('[data-a=browse]'); if (br) br.onclick = function () { el.querySelector('[data-lib]').hidden = false; br.hidden = true; load(false); };
+      var short = el.querySelector('[data-short]'); if (short) wireTiles(short);
+      el.querySelector('[data-a=save]').onclick = function () {
+        var sv = this; sv.disabled = true; sv.textContent = 'Saving…';
+        api('POST', 'brand/library/picks', { business_id: biz, recipe_ids: pickedIds(), from: opts.settings ? 'settings' : 'chat' }).then(function (r) {
+          if (r.ok && r.json.success) { st.picks = r.json.recipes || st.picks; st.saved = true; draw(); toast(opts.settings ? 'Design looks saved.' : 'Saved — Sarah will design from these looks.', 'success'); if (opts.onSaved) opts.onSaved(); }
+          else { toast((r.json && r.json.error) || 'Could not save — try again.', 'error'); refresh(); }
+        });
+      };
+      refresh();
+      if (!(st.shortlist.length && !opts.settings)) load(false); else if (!st.facets) api('GET', 'brand/library?per_page=12' + bizQ).then(function (r) { var j = r.json || {}; st.facets = j.facets || null; st.home = st.home || j.home_industry; });
+    }
+    draw();
+  }
+
   /* ── the picker ── */
   function picker(el, card, opts) {
     opts = opts || {}; css(); loadFonts();
@@ -501,7 +633,7 @@
       if (cs) cs.onclick = function () { var body = el.__lbcColours() || {}; body.business_id = j.business_id; cs.disabled = true;
         api('PUT', 'workspace/brand', body).then(function (x) { cs.disabled = false; if (x.ok && (x.json || {}).success !== false) { toast('Colours saved for ' + j.business_name + '.', 'success'); again(); } else toast(((x.json || {}).error) || 'Could not save the colours.', 'error'); }); };
       library(rulesRoot.querySelector('[data-slot=insp]'), j.business_id);   // VISION-INSPIRE-1
-      picker(stylesRoot.querySelector('[data-slot=pick]'), { business_id: j.business_id, preview: j.preview, directions: j.directions, picks: j.picks, never: j.never, max: 4 }, { settings: true, saved: !!(j.picks && j.picks.length) });
+      library2(stylesRoot.querySelector('[data-slot=pick]'), { business_id: j.business_id, max: 3, recipes: j.recipe_picks || [] }, { settings: true });   // DESIGN-LIBRARY-2: the searchable library, up to three looks
       // rules re-render only their own part, so an unsaved colour change in the profile is never lost
       function rulesAgain() { api('GET', 'brand/profile?business_id=' + encodeURIComponent(j.business_id)).then(function (x) { var jj = x.json || {}; j.rules = jj.rules || []; var box = rulesRoot.querySelector('.lbc-rules, .lbc-rules-empty'); var list = (j.rules || []).length ? '<ul class="lbc-rules">' + j.rules.map(function (y, i) { return '<li>' + esc(y) + '<button type="button" class="lbc-x" data-rm="' + i + '" aria-label="Remove rule">Remove</button></li>'; }).join('') + '</ul>' : '<div class="lbc-s lbc-rules-empty" style="margin:0">No rules yet — for example “Never use red” or “Always show our Instagram handle”.</div>';
         var cur = rulesRoot.querySelector('.lbc-rules') || rulesRoot.querySelector('.lbc-add').previousElementSibling; if (cur) cur.outerHTML = list; wireRules(); }); }
@@ -573,7 +705,8 @@
     if (slot.__lbc) return; slot.__lbc = 1;
     var card; try { card = JSON.parse(decodeURIComponent(slot.getAttribute('data-card') || '')); } catch (e) { return; }
     slot.classList.add('lbc');
-    if (card.type === 'brand_directions') picker(slot, card);
+    if (card.type === 'brand_library') library2(slot, card);   // DESIGN-LIBRARY-2
+    else if (card.type === 'brand_directions') picker(slot, card);
     else if (card.type === 'brand_summary') summary(slot, card);
     else if (card.type === 'inspiration') inspiration(slot, card);   // VISION-INSPIRE-1
     else if (card.type === 'campaign_ideas') campaignIdeas(slot, card);   // CAMPAIGNS-1
