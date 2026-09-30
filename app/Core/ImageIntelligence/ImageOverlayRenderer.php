@@ -61,7 +61,16 @@ class ImageOverlayRenderer
         $bgData = 'data:image/png;base64,' . base64_encode($bytes);
 
         $brief = $this->brief($overlay, $bytes, $w, $h);
-        $html  = $this->buildHtml($bgData, $headline, $copy, $brief, $w, $h);
+        // LAYOUT-A1: the editorial-luxury direction gets the designed layout, with the brand kit
+        $kit = null;
+        try { $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId, isset($overlay['business_id']) ? (int) $overlay['business_id'] : null); } catch (\Throwable) {}
+        $dirId = (string) ($overlay['direction_id'] ?? '');
+        $useA1 = is_array($kit) && empty($kit['is_neutral'])
+            && ($dirId === 'D1' || ($dirId === '' && preg_match('/\b(editorial|luxury)\b/i', (string) ($kit['visual_style'] ?? ''))));
+        $brief['layout'] = $useA1 ? 'A1' : 'zone';
+        $html  = $useA1
+            ? $this->buildA1Html($bgData, $headline, $copy, $brief, $kit, (string) ($overlay['eyebrow'] ?? ''), $w, $h)
+            : $this->buildHtml($bgData, $headline, $copy, $brief, $w, $h);
 
         $tmpDir = storage_path('app/studio-render-tmp');
         if (!is_dir($tmpDir)) @mkdir($tmpDir, 0775, true);
@@ -113,7 +122,7 @@ class ImageOverlayRenderer
         }
         @unlink($tmpPng);
 
-        Log::info('[ImageOverlayRenderer] RENDER-BRIEF-1', ['ws' => $wsId, 'zone' => $brief['zone'], 'asked' => $brief['asked_zone'], 'font' => $brief['font_head'], 'tone' => $brief['tone'], 'head_color' => $brief['head_color']]);
+        Log::info('[ImageOverlayRenderer] RENDER-BRIEF-1', ['ws' => $wsId, 'zone' => $brief['zone'], 'asked' => $brief['asked_zone'], 'font' => $brief['font_head'], 'tone' => $brief['tone'], 'head_color' => $brief['head_color'], 'layout' => $brief['layout'] ?? 'zone']);
         return ['success' => true, 'url' => Storage::disk('public')->url($outPath), 'storage_path' => $outPath, 'zone' => $brief['zone']];
     }
 
@@ -365,6 +374,138 @@ class ImageOverlayRenderer
     {$ruleHtml}
     <div class="copy">{$copyHtml}</div>
   </div>
+</div></body></html>
+HTML;
+    }
+
+    /* ─────────────────────────── LAYOUT-A1: statement over scene ─────────────────────────── */
+
+    /**
+     * RFC-0017 5c, A1. Measured from the Owner's designer samples: one outer margin (5.5% of the width) shared by text
+     * and logo; text column on the fade side, 55-60% of the width; eyebrow in letter-spaced caps, headline, short rule,
+     * one or two subhead lines, nothing else; one accent on under 10% of the area (payoff word, rule, eyebrow,
+     * descriptor); legibility from a directional fade, never from text shadows; logo lockup bottom-left.
+     */
+    private function buildA1Html(string $bgData, string $headline, array $copy, array $b, array $kit, string $eyebrow, int $w, int $h): string
+    {
+        [$col, $row] = self::ZONES[$b['zone']];
+        $side = $col === 2 ? 'right' : 'left';
+        $m    = (int) round($w * 0.055);
+
+        // palette roles from the kit: ink = darkest, paper = lightest, accent = the most saturated mid tone
+        $cols = array_values(array_unique(array_filter(array_merge(
+            [(string) ($kit['primary_color'] ?? ''), (string) ($kit['secondary_color'] ?? ''), (string) ($kit['accent_color'] ?? '')],
+            array_map('strval', (array) ($kit['colors_json'] ?? []))
+        ), fn ($c) => (bool) preg_match('/^#[0-9a-f]{6}$/i', $c))));
+        if (! $cols) $cols = ['#0A0806', '#C9943A', '#F2EBDF'];
+        usort($cols, fn ($x, $y) => $this->luminance($x) <=> $this->luminance($y));
+        $ink   = $this->luminance($cols[0]) < 0.12 ? $cols[0] : '#0B0A09';
+        $paper = $this->luminance(end($cols)) > 0.75 ? end($cols) : '#F4F1EA';
+        $accent = $b['accent'];
+        $best = -1.0;
+        foreach ($cols as $c) {
+            [$r, $g, $bl] = sscanf($c, '#%02x%02x%02x');
+            $sat = (max($r, $g, $bl) - min($r, $g, $bl)) / 255; $lum = $this->luminance($c);
+            if ($lum > 0.18 && $lum < 0.8 && $sat > $best) { $best = $sat; $accent = $c; }
+        }
+        $rgb = fn (string $hex) => implode(',', sscanf($hex, '#%02x%02x%02x'));
+
+        // type: the brand's heading and body fonts
+        $fh = (string) ($kit['heading_font'] ?? '') ?: $b['font_head'];
+        $fb = (string) ($kit['body_font'] ?? '') ?: $b['font_body'];
+        $serif = in_array($fh, ['Playfair Display', 'Cormorant Garamond', 'Libre Baskerville', 'Lora', 'Fraunces', 'Marcellus', 'DM Serif Display', 'Bodoni Moda', 'EB Garamond'], true)
+            || (bool) preg_match('/serif/i', (string) ($kit['visual_style'] ?? ''));
+
+        // headline: the payoff word (named in the brief, else the last word) in the accent
+        $words = preg_split('/\s+/u', trim($headline)) ?: [];
+        $payoff = $b['italic_word'] ?: (count($words) > 1 ? end($words) : '');
+        $hl = htmlspecialchars($headline, ENT_QUOTES, 'UTF-8');
+        if ($payoff !== '') {
+            $pq = preg_quote(htmlspecialchars(rtrim($payoff, '.,!?;:'), ENT_QUOTES, 'UTF-8'), '/');
+            $hl = preg_replace('/(' . $pq . ')(?!.*' . $pq . ')/u', '<span class="pay">$1</span>', $hl, 1);
+        }
+        $len = mb_strlen($headline);
+        $hs  = $w * ($serif ? 0.088 : 0.094);
+        if ($len > 20) $hs *= 0.86; if ($len > 30) $hs *= 0.86; if ($len > 44) $hs *= 0.84;
+        $hs  = (int) round(max(30, $hs));
+
+        // the lockup carries the brand name, so a subhead that only repeats it is dropped
+        $brandName = trim((string) ($kit['brand_name'] ?? ''));
+        $copy = array_values(array_filter($copy, fn ($l) => mb_strtolower(trim($l)) !== mb_strtolower($brandName)));
+        $copy = array_slice($copy, 0, 2);
+        $sub = ''; foreach ($copy as $l) $sub .= '<p>' . htmlspecialchars($l, ENT_QUOTES, 'UTF-8') . '</p>';
+
+        $eb = trim($eyebrow);
+        $ebHtml = $eb !== '' ? '<div class="eb">' . htmlspecialchars($eb, ENT_QUOTES, 'UTF-8') . '</div>' : '';
+
+        // logo lockup: the logo file when there is one, else a wordmark with the descriptor under it
+        $logo = (string) ($kit['logo_url'] ?? '');
+        $desc = trim((string) ($kit['tagline'] ?? '')) ?: trim((string) ($kit['industry'] ?? ''));
+        $lockup = $logo !== ''
+            ? '<img class="logo" src="' . htmlspecialchars($logo, ENT_QUOTES, 'UTF-8') . '" alt="">'
+            : '<div class="wm">' . htmlspecialchars($brandName, ENT_QUOTES, 'UTF-8') . '</div>'
+              . ($desc !== '' ? '<div class="wd">' . htmlspecialchars($desc, ENT_QUOTES, 'UTF-8') . '</div>' : '');
+
+        // the fade: dark from the text side, stronger over a bright or busy scene; a low band for the lockup
+        $st = $b['scrim'];
+        $k  = min(1.0, max(0.78, 0.70 + $st * 0.5));
+        $a0 = number_format(0.92 * $k, 2, '.', ''); $a1 = number_format(0.74 * $k, 2, '.', '');
+        $a2 = number_format(0.30 * $k, 2, '.', '');
+        $dir = $side === 'left' ? 'to right' : 'to left';
+        $fade = "linear-gradient({$dir}, rgba({$rgb($ink)},{$a0}) 0%, rgba({$rgb($ink)},{$a1}) 28%, rgba({$rgb($ink)},{$a2}) 52%, rgba({$rgb($ink)},0) 70%),"
+              . "linear-gradient(to top, rgba({$rgb($ink)},0.62) 0%, rgba({$rgb($ink)},0) 26%)";
+
+        $colW = (int) round($w * 0.58);
+        $vpos = $row === 0 ? 'top:' . (int) round($m * 1.35) . 'px;' : ($row === 2 ? 'bottom:' . (int) round($h * 0.20) . 'px;' : 'top:50%;transform:translateY(-58%);');
+        $hpos = $side === 'left' ? "left:{$m}px;" : "right:{$m}px;";
+        $talign = $side === 'left' ? 'left' : 'right';
+        $lpos = $side === 'left' ? "left:{$m}px;" : "right:{$m}px;";
+
+        $fam = fn (string $f) => "'" . str_replace("'", '', $f) . "'";
+        $gf  = fn (string $f) => str_replace(' ', '+', $f);
+        $fontLink = 'https://fonts.googleapis.com/css2?family=' . $gf($fh) . ':ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=' . $gf($fb) . ':wght@400;500;600;700&display=swap';
+        $hw   = $serif ? 500 : 700;
+        $case = $serif ? 'none' : 'uppercase';
+        $track = $serif ? '-0.015em' : '0.005em';
+        $payStyle = $serif ? 'font-style:italic;font-weight:500;' : '';
+        $ebSize = max(12, (int) round($w * 0.0165)); $subSize = max(15, (int) round($w * 0.026));
+        $wmSize = max(13, (int) round($w * 0.0215)); $wdSize = max(10, (int) round($w * 0.0118));
+        $ruleW = (int) round($w * 0.07); $ruleH = max(2, (int) round($w / 560));
+        $gap = (int) round($w * 0.024);
+        $logoH = (int) round($w * 0.052);
+
+        return <<<HTML
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="{$fontLink}" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:{$w}px; height:{$h}px; }
+  .canvas { position:relative; width:{$w}px; height:{$h}px; overflow:hidden; background:{$ink}; }
+  .bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .fade { position:absolute; inset:0; background:{$fade}; }
+  .col { position:absolute; {$hpos} {$vpos} width:{$colW}px; text-align:{$talign}; }
+  .eb { font-family:{$fam($fb)},sans-serif; font-weight:600; font-size:{$ebSize}px; letter-spacing:.28em; text-transform:uppercase; color:{$accent}; margin-bottom:{$gap}px; }
+  .hl { font-family:{$fam($fh)},'DejaVu Serif',serif; font-weight:{$hw}; font-size:{$hs}px; line-height:1.02; letter-spacing:{$track}; text-transform:{$case}; color:{$paper}; text-wrap:balance; }
+  .hl .pay { color:{$accent}; {$payStyle} }
+  .rule { width:{$ruleW}px; height:{$ruleH}px; background:{$accent}; margin:{$gap}px 0 0; display:inline-block; }
+  .sub { margin-top:{$gap}px; font-family:{$fam($fb)},sans-serif; font-weight:400; font-size:{$subSize}px; line-height:1.4; color:rgba({$rgb($paper)},.86); }
+  .sub p + p { margin-top:4px; }
+  .lock { position:absolute; {$lpos} bottom:{$m}px; text-align:{$talign}; }
+  .wm { font-family:{$fam($fh)},serif; font-weight:500; font-size:{$wmSize}px; letter-spacing:.2em; text-transform:uppercase; color:{$paper}; }
+  .wd { margin-top:6px; font-family:{$fam($fb)},sans-serif; font-weight:600; font-size:{$wdSize}px; letter-spacing:.34em; text-transform:uppercase; color:{$accent}; }
+  .logo { height:{$logoH}px; width:auto; display:block; }
+</style></head>
+<body><div class="canvas">
+  <img class="bg" src="{$bgData}" alt="">
+  <div class="fade"></div>
+  <div class="col">
+    {$ebHtml}
+    <div class="hl">{$hl}</div>
+    <div class="rule"></div>
+    <div class="sub">{$sub}</div>
+  </div>
+  <div class="lock">{$lockup}</div>
 </div></body></html>
 HTML;
     }

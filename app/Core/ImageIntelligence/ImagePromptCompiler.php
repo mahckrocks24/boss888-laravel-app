@@ -223,6 +223,26 @@ class ImagePromptCompiler
             if (stripos($prompt, 'no text') === false && stripos($prompt, 'no words') === false) {
                 $prompt = rtrim($prompt, '. ') . '.' . self::NO_TEXT;
             }
+            // LAYOUT-A1c: no sentence may ask the model to paint the headline or any words
+            if ($mode === 'separate_overlay') {
+                $__hl = trim((string) ($ts['headline'] ?? ''));
+                $__parts = preg_split('/(?<=[.!?])\s+/u', $prompt) ?: [$prompt];
+                $__parts = array_filter($__parts, function ($s) use ($__hl) {
+                    if (stripos($s, 'Strict rule: NO text') !== false) return true;
+                    if ($__hl !== '' && mb_stripos($s, $__hl) !== false) return false;
+                    if (preg_match('/\bbaked[- ]in\b/i', $s)) return false;
+                    if (preg_match('/\b(include|add|place|write|display|feature|show)\b[^.]*\b(headline|text|words|title|caption|lettering)\b/i', $s)) return false;
+                    return true;
+                });
+                $prompt = implode(' ', $__parts);
+            }
+            // LAYOUT-A1b: name the empty side so the layout's text never lands on a face
+            if ($mode === 'separate_overlay') {
+                $__pl = mb_strtolower((string) ($ts['placement'] ?? '') . ' ' . (string) ($ts['style'] ?? ''));
+                $__side = str_contains($__pl, 'right') && ! str_contains($__pl, 'left') ? 'right' : 'left';
+                $__other = $__side === 'left' ? 'right' : 'left';
+                $prompt .= " Frame rule: every person, face and main subject sits in the {$__other} 45% of the frame; the {$__side} 55% is calm, softly lit, out-of-focus background only (no people, no heads, no hands, no faces there), darkening gently toward the {$__side} edge.";
+            }
         }
 
         // overlay instructions returned for the design/typography layer (fidelity path)
@@ -234,6 +254,7 @@ class ImagePromptCompiler
                 'placement'       => (string) ($ts['placement'] ?? 'upper-left negative space'),
                 'style'           => (string) ($ts['style'] ?? ''),
                 'color_palette'   => array_values((array) ($bp['color_palette'] ?? [])),
+                'direction_id'    => (string) ($bp['_context']['design_direction_id'] ?? ''),   // LAYOUT-A1
                 'note'            => 'Render this copy with real HTML/canvas/SVG typography in the Studio layer for exact fidelity — do NOT ask the image model to draw it.',
             ];
         }
