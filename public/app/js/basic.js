@@ -154,7 +154,7 @@
       else { all.forEach(function (x) { x.disabled = false; }); showToast(d.message || d.error || 'Could not do that — try again.', 'error'); }
     }).catch(function () { all.forEach(function (x) { x.disabled = false; }); showToast("Couldn't reach the server — try again.", 'error'); });
   }
-  function openCampaign(id) { if (!window.nav) return; nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(id); else if (t++ < 30) setTimeout(w, 150); })(); }
+  function openCampaign(id) { if (!window.nav) return; window.__luOpenCampaign = id; nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(id); else if (t++ < 30) setTimeout(w, 150); })(); }
   function seePost(id) { if (!window.nav) return; nav('sarah'); var t = 0; (function w() { var c = document.querySelector('.sh-inline-post[data-post="' + id + '"]'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('sh-flash'); setTimeout(function () { c.classList.remove('sh-flash'); }, 1600); } else if (t++ < 40) setTimeout(w, 250); })(); }
   function postRow(x) {
     var plat = x.platform === 'instagram' ? 'Instagram' : x.platform === 'linkedin' ? 'LinkedIn' : 'Facebook'; var r;

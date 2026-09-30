@@ -456,7 +456,7 @@
       else { buttons.forEach(function (x) { x.disabled = false; }); showToast(d.error || d.message || 'Could not do that — try again.', 'error'); }
     }).catch(function () { buttons.forEach(function (x) { x.disabled = false; }); showToast('Couldn\'t reach the server — try again.', 'error'); });
   }
-  function openCampaign(id) { if (window.nav) { nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(id); else if (t++ < 30) setTimeout(w, 150); })(); } }
+  function openCampaign(id) { if (window.nav) { window.__luOpenCampaign = id; nav('projects'); var t = 0; (function w() { if (typeof window.campaignsOpen === 'function') window.campaignsOpen(id); else if (t++ < 30) setTimeout(w, 150); })(); } }
   function campaignItem(p) {
     var desc = [p.dates_label, p.target ? 'target: ' + p.target : null, (p.steps || []).length + ' steps', p.credits_up_to ? 'up to ' + p.credits_up_to + ' credits' : null].filter(Boolean).join(' · ');
     var acts = [

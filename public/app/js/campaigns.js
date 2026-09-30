@@ -84,8 +84,8 @@
   function css() { _luCalLook(); if (document.getElementById('cm-css')) return; var s = document.createElement('style'); s.id = 'cm-css'; s.textContent = CSS; document.head.appendChild(s); }
 
   var root;
-  window.campaignsLoad = function (el) { root = el; css(); if (S.poll) { clearTimeout(S.poll); S.poll = null; } render(); };
-  window.campaignsOpen = function (id) { S.view = 'one'; S.id = id; render(); };
+  window.campaignsLoad = function (el) { root = el; css(); if (S.poll) { clearTimeout(S.poll); S.poll = null; } if (window.__luOpenCampaign) { S.view = 'one'; S.id = +window.__luOpenCampaign; window.__luOpenCampaign = null; } render(); };   // VIEW-PLAN-1
+  window.campaignsOpen = function (id) { window.__luOpenCampaign = null; S.view = 'one'; S.id = id; render(); };
   window.campaignsWatch = function () { S.view = 'watch'; render(); };   // WATCH-1
 
   function render() {
@@ -214,6 +214,7 @@
     root.querySelector('.cm-back').onclick = function () { S.view = 'list'; render(); };
     api('GET', 'growth/campaigns/' + S.id).then(function (r) {
       var c = (r.json || {}).campaign; if (!c) { S.view = 'list'; render(); return; }
+      if (c.business_id) S.biz = +c.business_id;   // VIEW-PLAN-1: Back lands on this business's campaigns
       var st = STAT[c.status] || [c.status, 'var(--t3)'];
       var acts = c.status === 'idea' ? '<button type="button" class="cm-btn primary" data-launch="' + c.id + '">' + ic('play', 14) + 'Launch</button><button type="button" class="cm-btn ghost" data-decline="' + c.id + '">Not now</button>'
         : c.status === 'active' ? '<button type="button" class="cm-btn" data-do="pause">' + ic('pause', 14) + 'Pause</button><button type="button" class="cm-btn ghost" data-do="complete">Finish now</button>'
