@@ -3060,7 +3060,7 @@ window._luShowSubdomainPicker = function (websiteId, businessName) {
     .replace(/-+/g, '-')
     .replace(/^-+|-+$/g, '')
     .substring(0, 30);
-  if (suggested.length < 3) suggested = 'my-site';
+  if (suggested.length < 3) suggested = ((window._t3IndustrySlug || 'site').replace(/_/g, '-') + '-' + Date.now().toString(36).slice(-4));   // ARTHUR-4: a name with no Latin letters still gets a real address
 
   var existing = document.getElementById('subdomain-modal');
   if (existing) existing.remove();

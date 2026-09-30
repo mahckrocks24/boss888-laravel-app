@@ -324,6 +324,7 @@ class TemplateService
         // EV-1000: a fact the customer has not supplied (phone, email, WhatsApp, price …) renders as nothing — and the
         // label that introduced it ("Call", "Email") goes with it instead of standing over a blank line.
         $html = $this->stripEmptyFactRows($html);
+        if (\App\Engines\Builder\Support\BuildQuality::on()) $html = \App\Engines\Builder\Support\BuildQuality::localiseChrome($html, $variables);   // ARTHUR-4: an Arabic business reads right to left, with Arabic chrome
         if (\App\Engines\Builder\Support\Editor3::on() && ! empty($variables['lu_hidden_blocks']) && is_array($variables['lu_hidden_blocks'])) $html = \App\Engines\Builder\Support\Editor3::applyHiddenBlocks($html, $variables['lu_hidden_blocks']);   // EDITOR-3: a re-render keeps hidden sections hidden
         if (\App\Engines\Builder\Support\ContactFacts::on()) $html = \App\Engines\Builder\Support\ContactFacts::linkFactElements($html);   // CONTACT-1: a phone or email shown as text is a tap-to-call / mail link
         $html = $this->stripDanglingNavAnchors($html);
@@ -891,6 +892,7 @@ class TemplateService
         $doc = '<!doctype html><html lang="' . e($c['lang']) . '">' . $head . '<body>'
              . $toHome($c['nav']) . '<main data-lu-page="' . e($slug) . '">' . $bodyHtml . '</main>' . $toHome($c['footer']) . $offset . '</body></html>';
         $doc = \App\Engines\Builder\Support\ResponsiveNav::inject($doc);
+        if (\App\Engines\Builder\Support\BuildQuality::on() && (string) ($c['lang'] ?? '') === 'ar') $doc = \App\Engines\Builder\Support\BuildQuality::localiseChrome($doc, ['business_name' => 'ع']);   // ARTHUR-4: the sub-page chrome speaks Arabic and reads right to left
         $doc = \App\Engines\Builder\Support\ScaleGuard::inject($doc, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20
         $doc = \App\Engines\Builder\Support\SiteScripts::inject($doc, $websiteId);
         $doc = $this->applyElementOps($websiteId, $doc);   // ELEMENT888: nav/footer element moves live on every page

@@ -1799,9 +1799,9 @@ so they can review and optionally upload a logo. Return ONLY a JSON
 object with these fields:
   {"reply": "<summary message — see SUMMARY FORMAT below>",
    "ready_to_confirm": true,
-   "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","phone":"<exactly as the customer wrote it, or null>","email":"<exactly as written, or null>","address":"<exactly as written, or null>","hours":"<exactly as written, or null>","fonts":{"display":"<named font or null>","body":"<named font or null>"},"description":"..."}}
+   "build_data": {"business_name":"...","industry":"...","location":"...","services":"...","style":"modern","pages":["<the pages the customer asked for, exactly as written; [] when none were named>"],"phone":"<exactly as the customer wrote it, or null>","email":"<exactly as written, or null>","address":"<exactly as written, or null>","hours":"<exactly as written, or null>","fonts":{"display":"<named font or null>","body":"<named font or null>"},"description":"..."}}
 
-FACTS RULE — phone, email, address and hours are copied EXACTLY as the customer wrote them (same digits, same spelling, same domain); null when not given, never guessed. "services" lists only what the business sells or does — never hours, phone numbers, addresses or page names.
+FACTS RULE — phone, email, address and hours are copied EXACTLY as the customer wrote them (same digits, same spelling, same domain); null when not given, never guessed. "services" lists only what the business sells or does — never hours, phone numbers, addresses or page names. "pages" lists only the pages the customer named, nothing assumed.
 
 SUMMARY FORMAT — when ready_to_confirm is true, the "reply" field
 MUST be the following summary, translated into the user's language
@@ -1821,6 +1821,7 @@ Here's what I have for your website:
 **Email:** {email, or "not given yet"}
 **Address:** {address, or "not given yet"}
 **Hours:** {hours, or "not given yet"}
+**Pages:** {the pages the customer named, or "Home and Blog to start — more can be added any time"}
 
 Add your logo, photos, and brand colors below — then I'll build it.
 
@@ -1959,13 +1960,19 @@ PROMPT;
         // ready_to_confirm, cache the build_data server-side so a follow-up
         // {confirm:true} POST can retrieve it without trusting client echo.
         // 5 minute TTL is plenty for a user to upload a logo + click build.
-        if ($readyToConfirm && \App\Engines\Builder\Support\ContactFacts::on() && is_array($buildData)) $buildData = \App\Engines\Builder\Support\ContactFacts::reconcileWithConversation($buildData, $newHistory);   // CONTACT-1: the owner's own words beat the model's tidying
+        if ($readyToConfirm && \App\Engines\Builder\Support\ContactFacts::on() && is_array($buildData)) $buildData = \App\Engines\Builder\Support\ContactFacts::reconcileWithConversation($buildData, $newHistory);
+        if ($readyToConfirm && \App\Engines\Builder\Support\BuildQuality::on() && is_array($buildData) && empty($buildData['colors'])) {   // ARTHUR-4: "navy and safety orange" in the brief become the build's colours
+            $__utxt = ''; foreach ($newHistory as $__h) { if (is_array($__h) && (($__h['role'] ?? '') === 'user') && is_string($__h['content'] ?? null)) $__utxt .= ' ' . $__h['content']; }
+            $__sc = \App\Engines\Builder\Support\BuildQuality::coloursFromText($__utxt); if ($__sc === []) { $__sc0 = $this->scanColorsServerSide($__utxt); foreach ($__sc0 as $__r => $__v) { if (is_string($__v) && preg_match('/^#[0-9a-f]{6}$/i', $__v)) $__sc[$__r] = strtoupper($__v); } }
+            if ($__sc !== []) $buildData['colors'] = $__sc;
+        }
+        if ($readyToConfirm && \App\Engines\Builder\Support\BuildQuality::on() && is_array($buildData) && empty($buildData['pages'])) { $__pg = \App\Engines\Builder\Support\BuildQuality::pagesFromConversation($newHistory); if ($__pg !== []) $buildData['pages'] = $__pg; }   // ARTHUR-4: "Pages: Home, Menu, About" typed by the customer counts even when the model's JSON left it out   // CONTACT-1: the owner's own words beat the model's tidying
         if ($readyToConfirm && !empty($buildData['business_name'])) {
             try {
                 \Illuminate\Support\Facades\Cache::put(
                     'arthur_build_data_' . $workspaceId,
                     $buildData,
-                    300
+                    1800   // ARTHUR-4: 30 minutes — a real owner uploads a logo and photos first
                 );
             } catch (\Throwable $e) {
                 Log::warning('[Arthur:chat] cache put failed: ' . $e->getMessage());
@@ -3100,6 +3107,20 @@ PROMPT;
      */
     public function themesFor(array $buildData, int $n = 4): array
     {
+        // ARTHUR-4 (RFC-0021 wave 4, D5): colours the customer stated lead the list, contrast-checked, as "Your colours".
+        $__mine = [];
+        if (\App\Engines\Builder\Support\BuildQuality::on() && is_array($buildData['colors'] ?? null) && ! empty($buildData['colors']['primary'])) {
+            $__h = \App\Engines\Builder\Support\ColorTheme::harmonise(['primary' => $buildData['colors']['primary'], 'secondary' => $buildData['colors']['secondary'] ?? $buildData['colors']['accent'] ?? $buildData['colors']['primary'], 'accent' => $buildData['colors']['accent'] ?? $buildData['colors']['secondary'] ?? $buildData['colors']['primary']]);
+            if (! empty($__h['primary'])) $__mine = [['id' => 'your_colours', 'label' => 'Your colours', 'primary' => $__h['primary'], 'secondary' => $__h['secondary'] ?? $__h['primary'], 'accent' => $__h['accent'] ?? $__h['primary'], 'bg' => '#FFFFFF', 'text' => '#111827', 'source' => 'brief', 'recommended' => true]];
+        }
+        try {
+            if ($__mine !== []) { $__rest = $this->themesForBase($buildData, max(1, $n - 1)); return array_merge($__mine, $__rest); }
+            return $this->themesForBase($buildData, $n);
+        } catch (\Throwable $e) { return array_merge($__mine, \App\Engines\Builder\Support\ColorTheme::propose($buildData['style'] ?? null, null, $n)); }
+    }
+
+    private function themesForBase(array $buildData, int $n = 4): array
+    {
         try {
             $raw  = (string) ($buildData['industry'] ?? '');
             $slug = $raw !== '' ? $this->resolveTemplateSlug($raw) : '';
@@ -4206,7 +4227,7 @@ PROMPT;
         // in the doctor_*_image, gallery_*_image slots — instead of the
         // hero leaking into every slot.
         try {
-            $imagePool = $this->buildImagePool($industry, $wsId, self::galleryTagFamily((string) (($manifest['industry'] ?? '') ?: ''), $industry, (string) ($copyIndustry ?? '')));
+            $imagePool = $this->buildImagePool($industry, $wsId, (\App\Engines\Builder\Support\BuildQuality::on() && $rawSlug !== $industry) ? \App\Engines\Builder\Support\BuildQuality::poolTagsFor((string) $rawIndustry, $servicesText, (string) ($data['description'] ?? '')) : self::galleryTagFamily((string) (($manifest['industry'] ?? '') ?: ''), $industry, (string) ($copyIndustry ?? '')));   // ARTHUR-4
             $this->injectImagesToTemplate(
                 $variables,
                 $manifestForImgs ?? ($this->templates->getManifest($industry) ?: []),
@@ -4455,6 +4476,9 @@ PROMPT;
             if ($__blankedDefaults !== []) Log::info('[Arthur] origin-place defaults blanked', ['workspace_id' => $wsId, 'keys' => $__blankedDefaults]);
         } catch (\Throwable $__e) { Log::warning('[Arthur] origin-place default check failed: ' . $__e->getMessage()); }
 
+        if (\App\Engines\Builder\Support\ContactFacts::on()) { try { $variables = \App\Engines\Builder\Support\ContactFacts::enforce($variables, is_array($manifest['variables'] ?? null) ? $manifest['variables'] : [], \App\Engines\Builder\Support\ContactFacts::fromBuildData($data)); } catch (\Throwable $__fe) { Log::warning('[Arthur] facts enforce failed: ' . $__fe->getMessage()); } }   // CONTACT-1: every build, whatever the coverage pass did
+        // ARTHUR-4 (RFC-0021 wave 4, REPORT-0067 #2): a design made for another trade must not leave its words on this business's site
+        if (\App\Engines\Builder\Support\BuildQuality::on() && $rawSlug !== $industry) { try { $variables = $this->foreignTradeLint($variables, is_array($manifest['variables'] ?? null) ? $manifest['variables'] : [], (string) $industry, (string) $rawIndustry, (string) $name, $servicesText, (string) ($data['location'] ?? ''), (string) ($data['description'] ?? '')); } catch (\Throwable $__lt) { Log::warning('[Arthur] foreign-trade lint failed: ' . $__lt->getMessage()); } }
         // Render template — TemplateService also carries industry-scoped
         // image defaults so even variables unknown to the manifest won't
         // render as hollow sections.
@@ -4511,7 +4535,7 @@ PROMPT;
         ];
 
         // User-requested pages (wizard state.pages[]), excluding Home + Blog.
-        $extraPages = $data['pages'] ?? [];
+        $extraPages = \App\Engines\Builder\Support\BuildQuality::on() ? [] : ($data['pages'] ?? []);   // ARTHUR-4: requested pages come from the page catalogue after the deploy, in the design's own chrome
         $seen = ['home' => true, 'blog' => true];
         if (is_array($extraPages)) {
             foreach ($extraPages as $p) {
@@ -4694,6 +4718,16 @@ PROMPT;
             ]);
         }
 
+        // ARTHUR-4 (RFC-0021 wave 4): the pages the customer named come from the page catalogue inside the build's 10 credits
+        // (D4, up to 5), and the sample reviews stay hidden until the owner adds real ones (D2).
+        if (\App\Engines\Builder\Support\BuildQuality::on()) {
+            if (empty($data['reviews'])) { try { $this->templates->setBlockVisibility($websiteId, 'testimonials', true); } catch (\Throwable $__e) { Log::warning('[Arthur] sample reviews hide failed: ' . $__e->getMessage()); } }
+            $__baseInd = (string) $industry; try { $__baseInd = (string) ($this->templates->industryOf((string) $industry) ?: $industry); } catch (\Throwable $__bi) {}   // the catalogue is offered by base trade, not design variant
+            foreach (\App\Engines\Builder\Support\BuildQuality::pagesFromRequest((array) ($data['pages'] ?? []), $__baseInd) as $__slug) {
+                try { $__pr = $this->handleSiteRequest($wsId, $websiteId, 'add a ' . str_replace('_', ' ', $__slug) . ' page', ['_no_brain' => true, '_free' => true, '_build' => true]); Log::info('[Arthur] build page', ['website_id' => $websiteId, 'page' => $__slug, 'ok' => (bool) ($__pr['success'] ?? false), 'code' => $__pr['code'] ?? null]); }
+                catch (\Throwable $__e) { Log::warning('[Arthur] build page failed: ' . $__e->getMessage(), ['page' => $__slug]); }
+            }
+        }
         // FIX 2 (2026-04-20) — always create default pages: Home (homepage)
         // + Blog for every generated website. Any other pages the wizard
         // extracted via state.pages[] also get created. Failures are
@@ -5024,7 +5058,7 @@ PROMPT;
         try {
             $prompt = "Generate complete website content for '{$name}', a {$copyIndustry} business in {$location}. "
                 . "Services: {$services}. "
-                . "INDUSTRY RULES: {$hint}\n\n"
+                . "INDUSTRY RULES: {$hint}\nFACTS RULE: never state policies, guarantees, delivery or shipping terms, returns, certifications, awards, years in business or opening hours unless the brief says so.\n\n"
                 . "Return a JSON object with the word json. ALL fields must have real, {$copyIndustry}-appropriate content — no placeholders:\n\n"
                 . "hero_title (short punchy headline, 3-6 words, plain text),\n"
                 . "hero_subtitle (one compelling sentence),\n"
@@ -5766,7 +5800,7 @@ PROMPT;
              . "Listings, rooms, menu items, plans and any price, rent or fee are illustrative inventory: realistic for the {$location} market, "
              . "in its local currency (symbol or ISO code), with local place names — the customer replaces them with real stock later. "
              . "Write every item as a real offer; NEVER use the words sample, placeholder, example, illustrative or dummy anywhere in the copy, "
-             . "and never put the business name inside an address."
+             . "and never put the business name inside an address. Never state policies, guarantees, delivery or shipping terms, returns, certifications, awards, years in business or opening hours unless the brief says so."
              . ($established ? '' : ' CRITICAL: this is a NEW business with NO track record yet — NEVER '
                 . 'fabricate numbers or claims of experience (no "X years", "X+ clients/projects", revenue '
                 . 'figures, awards, "trusted by", or big-name clients). For trust/badge/credential fields '
@@ -6297,6 +6331,7 @@ PROMPT;
                 $slug = $plan['page'];
                 $meta = \App\Engines\Builder\Services\ArthurService::PAGE_TEMPLATE_CATALOGUE[$slug] ?? [];
                 $title = (string) ($meta['label'] ?? ucfirst($slug));
+                if (\App\Engines\Builder\Support\BuildQuality::on() && \App\Engines\Builder\Support\BuildQuality::isArabic((string) $site->name)) { $__ar = array_flip(\App\Engines\Builder\Support\BuildQuality::PAGE_WORDS_AR); $__arTitles = ['menu' => 'القائمة', 'booking' => 'الحجز', 'contact' => 'اتصل بنا', 'about' => 'من نحن', 'services' => 'خدماتنا', 'pricing' => 'الأسعار', 'faq' => 'الأسئلة الشائعة', 'portfolio' => 'أعمالنا', 'events' => 'الفعاليات', 'locations' => 'الفروع', 'legal' => 'الشروط والخصوصية', 'before_after' => 'قبل وبعد', 'listing_browser' => 'المعروضات', 'listing_detail' => 'التفاصيل']; if (isset($__arTitles[$slug])) $title = $__arTitles[$slug]; }   // ARTHUR-4: an Arabic site
                 $urlSlug = str_replace('_', '-', $slug);
                 if (DB::table('pages')->where('website_id', $websiteId)->where('slug', $urlSlug)->exists()) {
                     return ['success' => false, 'code' => 'EXISTS', 'plan' => $plan, 'message' => "{$site->name} already has a {$title} page (/{$urlSlug}). I can rewrite it instead — tell me what to change."];
@@ -6311,7 +6346,7 @@ PROMPT;
                     $path = $this->templates->deployPage($websiteId, $urlSlug, $body, $title);
                     if ($path) { $this->templates->addNavLink($websiteId, $urlSlug, trim(explode('/', $title)[0])); $url = "/storage/sites/{$websiteId}/{$urlSlug}/index.html"; }
                 }
-                $credits->debit($wsId, $plan['credits'], 'builder_arthur_page', $websiteId, ['page' => $slug, 'page_id' => $pageId]);
+                if (empty($ctx['_free'])) $credits->debit($wsId, $plan['credits'], 'builder_arthur_page', $websiteId, ['page' => $slug, 'page_id' => $pageId]);   // ARTHUR-4: a page the build adds is inside the build's credits
                 Log::info('[Arthur] delegated page added', ['website_id' => $websiteId, 'page' => $slug, 'static' => $isStatic, 'credits' => $plan['credits']]);
                 return ['success' => true, 'kind' => 'page', 'plan' => $plan, 'page_id' => $pageId, 'slug' => $urlSlug, 'url' => $url, 'credits' => $plan['credits'],
                     'message' => "Added the {$title} page to {$site->name}" . ($url ? " — linked from the menu, in your palette" : '') . ". {$plan['credits']} credits."];
@@ -6516,6 +6551,38 @@ PROMPT;
         try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
         \App\Engines\Builder\Support\ContactFacts::recordOnBusiness((int) $site->workspace_id, (int) ($site->business_id ?? 0) ?: null, array_filter($facts, fn ($v) => $v !== ''));
         return ['success' => true, 'applied' => $applied, 'facts' => $facts];
+    }
+
+    /**
+     * ARTHUR-4 (RFC-0021 wave 4): the design was made for another trade. Every text that still carries that trade's words
+     * (roast, espresso, emergency, two-hour window …) or the design's own sample copy is rewritten for THIS business in one
+     * call; anything the model still gets wrong is logged. Facts stay untouched (CONTACT-1 owns them).
+     */
+    private function foreignTradeLint(array $variables, array $manifestVars, string $templateIndustry, string $rawIndustry, string $name, string $services, string $location, string $description): array
+    {
+        $brief = $name . ' ' . $rawIndustry . ' ' . $services . ' ' . $location . ' ' . $description;
+        $foreign = \App\Engines\Builder\Support\BuildQuality::foreignWords($templateIndustry, $brief);
+        $hits = \App\Engines\Builder\Support\BuildQuality::findForeign($variables, $manifestVars, $foreign);
+        if ($hits === []) return $variables;
+        $keys = array_slice(array_keys($hits), 0, 40);
+        $list = ''; foreach ($keys as $k) $list .= $k . ': ' . json_encode((string) $variables[$k], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
+        $never = implode(', ', array_slice($foreign, 0, 30));
+        $system = "You rewrite website text for {$name}, a {$rawIndustry}" . ($location !== '' ? " in {$location}" : '') . ". The page design was made for a {$templateIndustry} business and these fields still read like one.\n"
+            . "Rewrite EVERY field so it is true for {$name} only. What they do: {$services}. " . ($description !== '' ? "About them: {$description}. " : '')
+            . "Keep each field's role, tone and rough length (a menu label stays 1-2 words, a button stays short). Never use these words: {$never}. "
+            . "Never invent facts, prices, guarantees, policies, awards or years in business. Return ONLY a JSON object {\"<key>\": \"<text>\", ...} with exactly the keys given.";
+        $res = $this->runtime->chatJson($system, "FIELDS (key: current text)\n{$list}", ['task' => 'arthur_trade_lint'], 1800);
+        $parsed = ($res['success'] ?? false) && is_array($res['parsed'] ?? null) ? \App\Engines\Builder\Support\GenerationVariableContract::unwrapEnvelope($res['parsed']) : null;
+        $fixed = 0; $left = [];
+        if (is_array($parsed)) {
+            foreach ($keys as $k) {
+                $v = $parsed[$k] ?? null;
+                if (is_string($v) && trim($v) !== '' && ! \App\Engines\Builder\Support\BuildQuality::stillForeign($v, $foreign)) { $variables[$k] = trim($v); $fixed++; }
+                else $left[] = $k;
+            }
+        } else { $left = $keys; }
+        Log::info('[Arthur] foreign-trade lint', ['template' => $templateIndustry, 'business' => $rawIndustry, 'flagged' => count($hits), 'rewritten' => $fixed, 'left' => array_slice($left, 0, 20)]);
+        return $variables;
     }
 
     /** The design's fact fields (phone, email, WhatsApp, address, hours, licence …) as data-field keys in its template. */

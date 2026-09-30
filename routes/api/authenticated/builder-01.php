@@ -579,6 +579,15 @@ use Illuminate\Support\Facades\Route;
                     ], 400);
                 }
 
+                // ARTHUR-4 (RFC-0021 wave 4, REPORT-0067 #9): one build per confirm — a double submit gets the first result, never a second site and a second charge.
+                $__lock = null;
+                if (\App\Engines\Builder\Support\BuildQuality::on()) {
+                    $__bkey = $wsId . '_' . substr(md5(json_encode([$buildData['business_name'] ?? '', $buildData['industry'] ?? '', $buildData['pages'] ?? [], $buildData['services'] ?? '', $buildData['description'] ?? ''])), 0, 12);   // one result per brief, not per workspace
+                    $__prev = \Illuminate\Support\Facades\Cache::get('arthur_build_result_' . $__bkey);
+                    if (is_array($__prev) && ! empty($__prev['website_id'])) return response()->json($__prev + ['deduplicated' => true]);
+                    $__lock = \Illuminate\Support\Facades\Cache::lock('arthur_build_lock_' . $wsId, 180);
+                    if (! $__lock->get()) return response()->json(['type' => 'error', 'build_error' => 'Your website is already being built — one moment.', 'building' => true], 409);
+                }
                 try {
                     $built = $arthur->buildFromChat(
                         $wsId,
@@ -589,6 +598,7 @@ use Illuminate\Support\Facades\Route;
                         $r->user()?->id,
                     );
                     \Illuminate\Support\Facades\Cache::forget('arthur_build_data_' . $wsId);
+                    if ($__lock) { if ((($built['type'] ?? '') !== 'error') && ! empty($built['website_id'])) \Illuminate\Support\Facades\Cache::put('arthur_build_result_' . $__bkey, ['type' => 'complete', 'website_id' => (int) $built['website_id'], 'workspace_id' => $built['workspace_id'] ?? null, 'build_outcome' => 'ok', 'reply' => 'Your website is ready.'], 120); try { $__lock->release(); } catch (\Throwable $__lr) {} }   // ARTHUR-4
                     // BUILDER888 P1-8B (2026-08-10) — this used to return
                     // 'complete' unconditionally, so a failed build was labelled
                     // complete alongside build_outcome=error. A failed generation
