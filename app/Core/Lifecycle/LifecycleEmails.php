@@ -193,7 +193,11 @@ final class LifecycleEmails
         if ($r['articles']) $did[] = $r['articles'] . ' article' . ($r['articles'] === 1 ? '' : 's') . ' written';
         if ($r['leads']) $did[] = $r['leads'] . ' new lead' . ($r['leads'] === 1 ? '' : 's');
         $plans = $this->plans();
-        $this->chat($wsId, 'Your trial ends tomorrow. Your website, contacts and calendar stay yours on the Free plan; to keep me and the team working, choose a plan' . ($plans ? ' (from ' . $plans[0] . ')' : '') . '.', 'lifecycle_trial_ending');
+        // TRIAL-AWARE-1 (Owner 2026-09-30: "it has to sell value not subscriptions"): what was done, what the team keeps doing every month for this business, then the price once.
+        $standing = (function () use ($wsId) { try { return app(\App\Core\Billing\TrialStanding::class)->facts($wsId); } catch (\Throwable $e) { return []; } })();
+        $doneLine = preg_replace('/^Done so far in the trial \(exact\): /', '', (function ($aim) { foreach (explode("\n", (string) $aim) as $l) { $l = trim($l); if (str_starts_with($l, 'Done so far')) return $l; } return ''; })($standing['aim'] ?? ''));
+        $monthLine = (string) ($standing['month'] ?? '');
+        $this->chat($wsId, 'Your trial ends tomorrow.' . ($doneLine ? ' So far: ' . rtrim($doneLine, '.') . '.' : '') . ($monthLine ? ' If the team stays, every month it is ' . ltrim(preg_replace('/^on [^ ]+ [^ ]+\'s [0-9,]+ credits a month the team can do /i', '', $monthLine)) : '') . ($plans ? ' That is ' . $plans[0] . '; choose it under Settings › Plan & billing and nothing stops.' : '') . ' Your website, contacts and calendar stay yours either way.', 'lifecycle_trial_ending');
         return $this->send($wsId, $u, 'Your trial ends tomorrow', [
             'preheader' => 'Here is what we did together, and how to keep going.',
             'hero' => 'ending',

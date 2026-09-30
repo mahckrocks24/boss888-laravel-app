@@ -11,6 +11,15 @@ use Illuminate\Support\Facades\DB;
  */
 final class SarahPaused
 {
+    /** TRIAL-AWARE-1: what the team does every month for this business, from the record, so the pause sells value and not a plan. */
+    private static function valueLine(int $wsId): string
+    {
+        try { $m = (string) (app(TrialStanding::class)->facts($wsId)['month'] ?? ''); } catch (\Throwable $e) { return ''; }
+        if ($m === '') return '';
+        $m = preg_replace('/^on [^ ]+ [^ ]+\'s [0-9,]+ credits a month the team can do /i', '', $m);
+        return ': ' . rtrim($m, '.');
+    }
+
     public static function text(int $wsId): string
     {
         $lite = null;
@@ -22,6 +31,6 @@ final class SarahPaused
                 ? "Your free trial has ended, so I'm paused for now."
                 : "Your current plan doesn't include me and the team, so I'm paused for now.")
             . " Your website, contacts and calendar keep working as usual."
-            . " Choose a plan under Settings › Plan & billing and I'll pick straight up from here." . $offer;
+            . " Choose a plan under Settings › Plan & billing and I'll pick straight up from here" . self::valueLine($wsId) . "." . $offer;
     }
 }
