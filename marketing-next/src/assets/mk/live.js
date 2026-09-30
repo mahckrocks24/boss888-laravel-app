@@ -112,6 +112,10 @@
   panels.forEach(function (root) {
     var s = seq[root.getAttribute('data-live')]; if (!s) return;
     var visible = false, running = false;
+    // Owner 09-30 ('section appears and disappears like it is gonna explode'): a panel may grow while it plays but never shrink, so the page below it never jumps. The markup at rest is the finished state, so the lock is the fullest height from the first frame.
+    var lock = 0; var ratchet = function () { var h = root.getBoundingClientRect().height; if (h > lock + 1) { lock = h; root.style.minHeight = Math.ceil(h) + 'px'; } };
+    ratchet(); if (window.ResizeObserver) new ResizeObserver(ratchet).observe(root);
+    var rw = window.innerWidth; window.addEventListener('resize', function () { if (window.innerWidth === rw) return; rw = window.innerWidth; lock = 0; root.style.minHeight = ''; ratchet(); });
     async function cycle() { running = true; try { s.reset(root); await s.run(root); } catch (e) {} running = false; if (visible) cycle(); }
     M.inView(root, function () { visible = true; if (!running) cycle(); return function () { visible = false; }; }, { amount: .3, margin: '0px 0px 8% 0px' });
   });

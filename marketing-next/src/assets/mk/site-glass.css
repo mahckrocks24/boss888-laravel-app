@@ -228,9 +228,23 @@ html .lg-site .sim-steps .icon { color: var(--success); }
 html .lg-site .sim2-out h4 { color: var(--ink); }
 html .lg-site .sim2-meta li { color: var(--ink-2); } html .lg-site .sim2-meta b { color: var(--ink-3); }
 html .lg-site .sim-note, html .lg-site .sim2-note { color: var(--ink-3); }
+/* phones (Owner 09-30: "section appears and disappears like it is gonna explode"): the replay never animates on a phone; every message, the build list and the result sit at rest, the section keeps one height */
 @media (max-width: 979px) {
-  html .lg-site .sim-armed .sim-msg:not(.on), html .lg-site .sim-armed .sim-build:not(.on), html .lg-site .sim-armed .sim-result:not(.on) { display: none; }
+  html .lg-site .sim-armed .sim-msg, html .lg-site .sim-armed .sim-build, html .lg-site .sim-armed .sim-result, html .lg-site .sim-armed .sim-steps li { opacity: 1 !important; transform: none !important; transition: none !important; }
+  html .lg-site .sim-play { display: none !important; }
 }
 
 /* 19. Owner 09-30 phone shot (a screen of empty ground between sections): the 84 px section rhythm overrode site.css's phone value; phones breathe 52/40 */
 @media (max-width: 760px) { html .lg-site .section { padding: 52px 0; } html .lg-site .section-tight { padding: 40px 0; } html .lg-site .page-head { padding-top: 32px; } }
+
+/* 20. a product card is a link: hovering it never underlines its whole text */
+html .lg-site a.card:hover, html .lg-site a.card:hover * { text-decoration: none; }
+
+/* 21. ARTHUR-ON-PAGE (Owner 09-30): the app's own wizard in #ax on /product/website-builder/. Its surface tokens follow the theme; the host is a glass card. */
+html .lg-site #build-with-arthur .hero-panel { margin-top: 22px; }
+html .lg-site #ax { background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); }
+html[data-theme="light"] .lg-site #ax { --s1: #FFFFFF; --s2: #F3F4F9; --bd: rgba(13, 15, 28, .10); --t1: #0D0F1C; --t2: #454A61; --t3: #62677F; }
+html[data-theme="light"] .lg-site #ax #ax-signup-card ::placeholder { color: #8A90A6; }
+html .lg-site #ax .ax-fallback a { color: var(--accent-text); }
+/* the legacy legal bodies carry inline link colours; only !important reaches past an inline style */
+html .lg-site .legal a:not(.btn) { color: var(--accent-text) !important; }

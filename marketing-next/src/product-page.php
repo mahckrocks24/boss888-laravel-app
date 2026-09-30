@@ -3,6 +3,8 @@
 $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm'])));
 $fill = fn (?string $s) => str_replace(['{industries}', '{specialists}'], [(string) $data['template_count'], (string) $specialists], (string) $s);
 $page['title'] = $p['name'];
+$productName = $p['name'];   /* the evidence partial (require $__ev) may reuse $p; the plans heading reads the name captured here */
+$headingName = preg_match('/^[A-Z]{2,}\b/', $productName) || $productName === 'Aria' ? $productName : lcfirst($productName);   /* acronyms (SEO, CRM) keep their case */
 $page['description'] = $p['description'] ?? ($fill($p['promise']) . ' ' . mb_substr($fill($p['lede']), 0, 120));
 $plans = $data['plans'];
 $fmt = fn ($n) => $n >= 999999 ? 'Unlimited' : number_format((int) $n);
@@ -45,6 +47,20 @@ if ($soon) { $first = null; foreach ($availability as $i => $a) { $availability[
     <div><?php /* GLASS-SITE-2: a live panel where one fits the product, else the screenshot */ $lk = live_panel_for_product($p['slug']); if ($lk !== '') { echo live_panel($lk); } else { $ps = product_shot($p['slug']); if ($ps) { echo shot($ps['name'], $ps['caption'], $ps['url'], true, $ps['mode'] ?? 'responsive', $ps['tone'] ?? 'auto'); } } ?></div>
   </div>
 </section>
+
+<?php /* ARTHUR-ON-PAGE (Owner 2026-09-30: "on the old website we had an arthur website builder directly taking in instructions from users. add that same exact thing on the website builder page"): the same #ax host the old home carried; site.js mounts the app's own wizard (/app/js/arthur-chat.js) into it, sign-up after the summary, nothing copied. */ ?>
+<?php if (($p['slug'] ?? '') === 'website-builder'): ?>
+<section class="section-tight" id="build-with-arthur">
+  <div class="container">
+    <p class="eyebrow">Try him now</p>
+    <h2>Describe your business. Arthur starts building.</h2>
+    <p class="lede">This is Arthur himself, not a demo. Tell him what you do and where; he asks what he needs, shows you the plan, and the site is yours the moment you create your account.</p>
+    <div class="panel hero-panel ax" id="ax">
+      <noscript><p class="ax-fallback">Arthur needs JavaScript. <a href="/app/">Open the builder</a> instead.</p></noscript>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <?php /* The one product you can try before you join: a domain either is free or it is not. */ ?>
 <?php if (($p['slug'] ?? '') === 'domains'): ?>
@@ -97,8 +113,8 @@ if (! $soon && is_file($__ev)) { require $__ev; }
 
 <section class="section section-alt">
   <div class="container">
-    <h2>Which plans include <?= e(lcfirst($p['name']) === 'aria' ? 'Aria' : lcfirst($p['name'])) ?></h2>
-    <?php if ($soon): ?><p>Coming soon: no current plan includes <?= e(lcfirst($p['name'])) ?>, and it cannot be ordered today.</p><?php else: ?><p>Read from the plans table at build <span class="mono"><?= e($data['plans_version']) ?></span>, the same table the platform enforces.</p><?php endif; ?>
+    <h2>Which plans include <?= e($headingName) ?></h2>
+    <?php if ($soon): ?><p>Coming soon: no current plan includes <?= e($headingName) ?>, and it cannot be ordered today.</p><?php else: ?><p>Read from the plans table at build <span class="mono"><?= e($data['plans_version']) ?></span>, the same table the platform enforces.</p><?php endif; ?>
     <div class="avail">
       <?php foreach ($availability as $a): ?>
       <a class="avail-item<?= $a['on'] ? ' on' : '' ?>" href="/next/pricing/#<?= e($a['slug']) ?>">

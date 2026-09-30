@@ -155,3 +155,25 @@
   .lv-post { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; font-size: 12px; line-height: 16px; padding: 5px 8px; }
   .lv-post i { display: inline-block; vertical-align: middle; margin: -2px 6px 0 0; }
 }
+
+/* Owner 09-30 ("section appears and disappears"): a panel never changes height while it plays; the chat body reserves its fullest state */
+.lv-build .lv-chat__body { min-height: 292px; }
+@media (max-width: 599px) { .lv-build .lv-chat__body { min-height: 240px; } }
+/* each panel reserves its fullest measured state (desk / phone), so nothing below it moves even in the first loop */
+.lv[data-live="build"] { min-height: 572px; }
+.lv[data-live="team"] { min-height: 558px; }
+.lv[data-live="aria"] { min-height: 447px; }
+.lv[data-live="bot"] { min-height: 509px; }
+.lv[data-live="crm"] { min-height: 406px; }
+.lv[data-live="social"] { min-height: 445px; }
+.lv[data-live="write"] { min-height: 480px; }
+@media (max-width: 599px) {
+  .lv[data-live="build"] { min-height: 743px; }
+  .lv[data-live="team"] { min-height: 910px; }
+  .lv[data-live="aria"] { min-height: 532px; }
+  .lv[data-live="bot"] { min-height: 609px; }
+  .lv[data-live="crm"] { min-height: 646px; }
+  .lv[data-live="social"] { min-height: 780px; }
+  .lv[data-live="write"] { min-height: 652px; }
+  .lv[data-live="video"] { min-height: 443px; }
+}
