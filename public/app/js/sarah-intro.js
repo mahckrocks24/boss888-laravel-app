@@ -181,7 +181,7 @@
       '<div class="glass a-rise" style="position:absolute;left:10px;top:6px;width:330px;height:236px;border-radius:22px;overflow:hidden">' +
         '<div style="height:40px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid var(--hair)">' +
           '<div style="display:flex;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:var(--hair)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--hair)"></span><span style="width:8px;height:8px;border-radius:50%;background:var(--hair)"></span></div>' +
-          '<div style="flex:1;min-width:0;height:24px;border-radius:999px;background:var(--tint);font-size:11px;font-weight:600;color:var(--ink2);display:flex;align-items:center;padding:0 10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + host + '</div>' +
+          '<div style="flex:1;min-width:0;height:24px;border-radius:999px;background:var(--tint);font-size:10px;font-weight:600;color:var(--ink2);display:block;line-height:24px;padding:0 10px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">' + host + '</div>' +
           '<div style="display:flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;background:var(--oksoft);color:var(--ok);font-size:11px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok);animation:lsiLive 1.8s ease-in-out infinite"></span>Live</div>' +
         '</div>' +
         '<div style="position:relative;height:196px;background:linear-gradient(160deg,#1B2B3A 0%,#2E4A5C 45%,#6A45E4 140%);display:flex;flex-direction:column;justify-content:flex-end;padding:18px">' +
@@ -193,7 +193,7 @@
       '<div class="glass a-rise" style="' + d(.5) + ';position:absolute;left:30px;top:256px;width:290px;border-radius:18px;padding:12px 14px;display:flex;gap:10px;align-items:center">' + logoAv(34) +
         '<div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:var(--ink)">Arthur <span style="font-weight:500;color:var(--ink3)">· Website builder</span></div><div style="font-size:13px;color:var(--ink2)">Published. Your website is live.</div></div></div>' +
       '<div style="position:absolute;left:0;top:0;width:350px;height:330px;border-radius:24px;background:var(--scrim);animation:lsiFrost 1s cubic-bezier(.6,0,.2,1) 1.4s both" class="lsi-frost"></div>' +
-      '<div class="a-pop" style="' + d(2.2) + ';position:absolute;left:115px;top:104px;display:flex;flex-direction:column;align-items:center;gap:12px">' + av('sarah', 120) +
+      '<div class="a-pop" data-over="frost" style="' + d(2.2) + ';position:absolute;left:115px;top:44px;display:flex;flex-direction:column;align-items:center;gap:12px">' + av('sarah', 120) +
         '<div class="thick" style="height:32px;padding:0 14px;border-radius:999px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Sarah is joining you</div></div>';
 
     if (i === 1) {
@@ -266,7 +266,7 @@
       return '<div style="position:absolute;left:0;top:0;width:350px;height:390px">' +
         '<svg width="350" height="390" viewBox="0 0 350 390" style="position:absolute;inset:0" aria-hidden="true"><defs><linearGradient id="lsi-tl" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8C25D2"></stop><stop offset="1" stop-color="#3FDFDF"></stop></linearGradient></defs>' +
           team.map(function (t, k) { return '<line x1="175" y1="190" x2="' + (t[3] + 25) + '" y2="' + (t[4] + 25) + '" stroke="url(#lsi-tl)" stroke-width="1.5" stroke-dasharray="200" opacity=".6" style="animation:lsiLine 1s ease ' + (.6 + k * .18).toFixed(2) + 's both"></line>'; }).join('') + '</svg>' +
-        '<div class="a-pop" style="position:absolute;left:127px;top:142px;display:flex;flex-direction:column;align-items:center">' + av('sarah', 96) + '<span class="thick" style="margin-top:-10px;height:22px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:700;color:var(--ink);display:flex;align-items:center;position:relative">Sarah leads</span></div>' +
+        '<div class="a-pop" style="position:absolute;left:127px;top:142px;display:flex;flex-direction:column;align-items:center">' + av('sarah', 96) + '<span class="thick" style="margin-top:8px;height:22px;padding:0 10px;border-radius:999px;font-size:11px;font-weight:700;color:var(--ink);display:flex;align-items:center;position:relative">Sarah leads</span></div>' +
         team.map(function (t, k) {
           return '<div class="a-pop" style="' + d(.9 + k * .18) + ';position:absolute;left:' + (t[3] - 20) + 'px;top:' + t[4] + 'px;width:90px;display:flex;flex-direction:column;align-items:center;gap:4px">' +
             (t[0] === 'logo' ? logoAv(52) : av(t[0], 52)) +
@@ -312,14 +312,31 @@
   }
 
   /* ───────────── the wizard ───────────── */
+  /* The scene is sized by what it really holds (a menu with an item open is taller than a team diagram), measured with
+     the scale taken off, then scaled to fill its box and centred; nothing may reach Sarah's panel. */
+  function contentHeight(st) {
+    /* layout boxes (offsetTop/offsetHeight), never rects: a card still popping in at 60 % must count at its full size */
+    var max = 0, els = st.querySelectorAll('*');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i]; if (!(el instanceof HTMLElement) || !el.offsetHeight) continue;
+      var top = 0, n = el; while (n && n !== st) { top += n.offsetTop; n = n.offsetParent; }
+      if (n !== st) continue;
+      if (top + el.offsetHeight > max) max = top + el.offsetHeight;
+    }
+    return Math.max(200, Math.ceil(max + 16));
+  }
   function fit() {
     var root = document.getElementById('lsi'); if (!root) return;
     var box = root.querySelector('.lsi-fit'), st = root.querySelector('.lsi-stage'); if (!box || !st) return;
-    var w = box.clientWidth, h = box.clientHeight;
-    var sc = Math.min(w / 350, h / 390, phone() ? 1.15 : 1.45); if (!(sc > 0)) sc = 1;
+    var w = box.clientWidth, h = box.clientHeight, ch = contentHeight(st);
+    st.style.height = ch + 'px';
+    var sc = Math.min(w / 350, h / ch, phone() ? (window.innerWidth < 600 ? 1.15 : 1.7) : 2.1); if (!(sc > 0)) sc = 1;
     st.style.transform = 'translateX(-50%) scale(' + sc.toFixed(3) + ')';
-    st.style.marginTop = Math.max(0, (h - 390 * sc) / 2 * (phone() ? .6 : .9)) + 'px';
+    st.style.marginTop = Math.max(0, (h - ch * sc) / 2) + 'px';
   }
+
+  /* the app's own phone styles (touch-target heights, the type scale) land a moment after a chapter is drawn: measure again */
+  function refit() { fit(); [60, 250, 700, 1500, 3000].forEach(function (t) { setTimeout(fit, t); }); }
 
   function render() {
     var root = document.getElementById('lsi'); if (!root) return;
@@ -336,7 +353,7 @@
     toc.innerHTML = CH.map(function (ch, k) { return '<button type="button" data-jump="' + k + '" class="' + (k === S.step ? 'cur' : k < S.step ? 'past' : '') + '"' + (k > S.step ? ' disabled' : '') + '><i>' + (k < S.step ? '✓' : (k + 1)) + '</i>' + esc(ch[1]) + '</button>'; }).join('');
     var back = root.querySelector('.lsi-back'); back.style.visibility = S.step > 0 ? 'visible' : 'hidden';
     var next = root.querySelector('.lsi-next'); next.innerHTML = esc(c[3]) + ico('arrow', 18);
-    fit();
+    refit();
     try { next.focus({ preventScroll: true }); } catch (e) {}
   }
 
@@ -385,7 +402,7 @@
     css();
     S.running = true; S.step = Math.max(0, Math.min(CH.length - 1, fromStep || 0));
     var root = document.createElement('div');
-    root.id = 'lsi'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-labelledby', 'lsi-title');
+    root.id = 'lsi'; root.setAttribute('data-lu-nostrip', ''); root.setAttribute('role', 'dialog');   /* lu-responsive.js turns scaled grids into strips otherwise */ root.setAttribute('aria-modal', 'true'); root.setAttribute('aria-labelledby', 'lsi-title');
     root.innerHTML =
       '<header class="lsi-top"><img src="' + LOGO + '" alt=""><b>LevelUpGrowth</b><span class="lsi-count"></span></header>' +
       '<div class="lsi-segs" aria-hidden="true">' + CH.map(function () { return '<span></span>'; }).join('') + '</div>' +
@@ -403,7 +420,7 @@
       if (t.classList.contains('lsi-next')) { if (S.step >= CH.length - 1) finish(); else go(S.step + 1); return; }
       if (t.classList.contains('lsi-back')) { go(S.step - 1); return; }
       if (t.hasAttribute('data-jump')) { var j = +t.getAttribute('data-jump'); if (j <= S.step) go(j); return; }
-      if (t.hasAttribute('data-pick')) { S.pick = +t.getAttribute('data-pick'); var m = root.querySelector('.lsi-menu'); if (m) m.innerHTML = menuHtml(); var b = root.querySelector('[data-pick="' + S.pick + '"]'); if (b) try { b.focus({ preventScroll: true }); } catch (_f) {} }
+      if (t.hasAttribute('data-pick')) { S.pick = +t.getAttribute('data-pick'); var m = root.querySelector('.lsi-menu'); if (m) m.innerHTML = menuHtml(); refit(); var b = root.querySelector('[data-pick="' + S.pick + '"]'); if (b) try { b.focus({ preventScroll: true }); } catch (_f) {} }
     });
     document.addEventListener('keydown', onKey, true);
     window.addEventListener('resize', fit);
@@ -460,7 +477,7 @@
     putPrefs({ page_intros: [key] });
     var p = PAGES[key];
     var b = document.createElement('div');
-    b.id = 'lsi-bubble'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', 'Sarah introduces ' + p[0]);
+    b.id = 'lsi-bubble'; b.setAttribute('data-lu-nostrip', ''); b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', 'Sarah introduces ' + p[0]);
     b.innerHTML = '<div class="lsb-card"><div class="lsb-head">' + av('sarah', 32) + '<b>Sarah</b><span class="chip">' + esc(p[0]) + '</span></div>' +
       '<p>' + esc(p[1]) + '</p>' +
       '<div class="lsb-btns"><button type="button" class="btn-ghost" data-act="ask">Ask Sarah</button><button type="button" class="btn-go" data-act="ok">Got it</button></div>' +
@@ -532,7 +549,7 @@
       var pi = S.prefs.page_intros; if (Array.isArray(pi)) pi.forEach(function (k) { S.seen[k] = 1; });
       S.sites = listOf(res[1]);
       var pubSite = S.sites.filter(isPub)[0];
-      if (pubSite) { S.siteName = pubSite.title || pubSite.name || ''; S.siteUrl = pubSite.live_url || pubSite.url || (pubSite.subdomain ? 'https://' + pubSite.subdomain + '.levelupgrowth.io' : ''); }
+      if (pubSite) { S.siteName = pubSite.title || pubSite.name || ''; S.siteUrl = pubSite.live_url || pubSite.url || (pubSite.subdomain ? 'https://' + (String(pubSite.subdomain).indexOf('.') > 0 ? pubSite.subdomain : pubSite.subdomain + '.levelupgrowth.io') : ''); }
       if (!S.siteName) { try { var ws = (S.me.workspaces || []).filter(function (w) { return w.id === S.me.current_workspace_id; })[0]; S.siteName = (ws && (ws.business_name || ws.name)) || ''; } catch (_w) {} }
       S.booted = true;
       hookNav();
