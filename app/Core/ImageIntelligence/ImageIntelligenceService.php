@@ -71,6 +71,12 @@ class ImageIntelligenceService
         if ($wsId <= 0) return ['success' => false, 'error' => 'workspace_required'];
         if (trim((string) ($ctx['user_prompt'] ?? '')) === '') return ['success' => false, 'error' => 'prompt_required'];
 
+        // RECIPE-1 (Owner 2026-10-01): a business that chose its design looks gets its social image painted from one of
+        // them (strict prompt, high quality, words verified by vision); anything else, or a failed verification, runs the
+        // renderer path below unchanged.
+        try { $__rp = app(\App\Core\Brand\RecipePainter::class)->attempt($ctx); if ($__rp) return $__rp; }
+        catch (\Throwable $__re) { Log::warning('[RECIPE-1] painter path failed, renderer path continues', ['e' => $__re->getMessage()]); }
+
         // 1) LLM reasoning → ImageBlueprint
         $reason = $this->reasoner->reason($ctx);
         $blueprint = $this->attachCompilerContext($reason['blueprint'], $ctx);

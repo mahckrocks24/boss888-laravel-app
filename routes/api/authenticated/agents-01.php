@@ -311,6 +311,7 @@ use Illuminate\Support\Facades\Route;
             // BRAND-B1 (RFC-0017 5d): Sarah's brand intake runs after she has answered this message (queued; never blocks the reply)
             if ($userMessageId && in_array((string) $slug, ['sarah', 'dmm'], true)) {
                 try { \App\Core\Sarah888\LanguagePref::absorb((int) $wsId, (string) $content); } catch (\Throwable) {}   // SARAH-LANG-1
+                try { \App\Core\Brand\RecipeVariables::absorb((int) $wsId, (string) $content); } catch (\Throwable) {}   // RECIPE-1: "in my pictures use ..." is remembered
                 $__creativeAsk = (bool) preg_match('/\b(image|images|banner|banners|logo|poster|flyer|graphic|thumbnail|visual|design|artwork|video|reel|og image|cover photo)\b/i', (string) $content);   // INTAKE-FIRST-1
                 try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay($__creativeAsk ? now() : now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
                 // CHAT-FIRST-1: a plain-words answer to the question Sarah asked with a card ("twice a week", "launch 2", "approve", "done") acts here, so the companion app is a complete surface

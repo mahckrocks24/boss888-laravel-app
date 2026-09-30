@@ -547,6 +547,10 @@ class Orchestrator
                                     : (str_ends_with((string) $__imgUrl, '-composed.png')
                                         ? "Here's your image — it's also saved under Results. If the words on it aren't right, say **regenerate** and I'll redo it as one picture with the text painted in."
                                         : "Here's your image — it's also saved under Results.");
+                                // RECIPE-1: a recipe image names the look; Sarah asks once who should appear in the pictures
+                                $__rd = (array) ($__rr['data'] ?? $__rr);
+                                if (! empty($__rd['recipe']['title'])) $__imgLine = "Here's your image, made in your \"" . $__rd['recipe']['title'] . "\" look — it's also saved under Results.";
+                                if (! empty($__rd['ask_preferences'])) $__imgLine .= "\n\n" . $__rd['ask_preferences'];
                                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent(
                                     (int) $root->workspace_id, 'sarah',
                                     $__imgLine,
