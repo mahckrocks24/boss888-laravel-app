@@ -832,7 +832,7 @@ class RuntimeClient
                 'quality'      => $options['quality'] ?? null,
                 'format'       => $options['format'] ?? null,
                 'transparency' => $options['transparency'] ?? null,
-            ], fn($v) => $v !== null && $v !== ''), 120);
+            ], fn($v) => $v !== null && $v !== ''), 180);   // v2.37.14 image lane 150 s: provider 120 < lane 150 < client 180
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::imageGenerate connection failed', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => 'connection_failed: ' . $e->getMessage()];
@@ -976,7 +976,7 @@ class RuntimeClient
 
         try {
             // Vision can take 30-60s for complex images — 120s timeout.
-            $resp = $this->post('/internal/vision/analyze', $payload, 120);
+            $resp = $this->post('/internal/vision/analyze', $payload, 160);   // v2.37.14 image lane 150 s < client 160
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::visionAnalyze connection failed', ['error' => $e->getMessage()]);
             return ['success' => false, 'error' => 'connection_failed: ' . $e->getMessage()];
