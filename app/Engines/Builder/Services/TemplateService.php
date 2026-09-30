@@ -324,6 +324,7 @@ class TemplateService
         // EV-1000: a fact the customer has not supplied (phone, email, WhatsApp, price …) renders as nothing — and the
         // label that introduced it ("Call", "Email") goes with it instead of standing over a blank line.
         $html = $this->stripEmptyFactRows($html);
+        if (\App\Engines\Builder\Support\Editor3::on() && ! empty($variables['lu_hidden_blocks']) && is_array($variables['lu_hidden_blocks'])) $html = \App\Engines\Builder\Support\Editor3::applyHiddenBlocks($html, $variables['lu_hidden_blocks']);   // EDITOR-3: a re-render keeps hidden sections hidden
         if (\App\Engines\Builder\Support\ContactFacts::on()) $html = \App\Engines\Builder\Support\ContactFacts::linkFactElements($html);   // CONTACT-1: a phone or email shown as text is a tap-to-call / mail link
         $html = $this->stripDanglingNavAnchors($html);
         // Decode HTML entities (fixes &RARR; showing as literal text)
@@ -1984,7 +1985,8 @@ class TemplateService
             return null;
         };
 
-        $applyImg = function (\DOMElement $el, string $value) use ($cssUrl, $bgDecl) {
+        $altBase = \App\Engines\Builder\Support\Editor3::on() ? trim((string) \Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('name')) : '';   // EDITOR-3: alt text
+        $applyImg = function (\DOMElement $el, string $value) use ($cssUrl, $bgDecl, $altBase, $fieldId) {
             $done = false;
             // IMGRM-1 (2026-09-23): an emptied picture is hidden, never a broken icon; the editor shows the slot as a dashed target
             $empty = trim($value) === '';
@@ -1998,12 +2000,14 @@ class TemplateService
             };
             if (strtolower($el->nodeName) === 'img') {
                 $el->setAttribute('src', $imgSrc);
+                if (! $empty && \App\Engines\Builder\Support\Editor3::on() && trim((string) $el->getAttribute('alt')) === '') $el->setAttribute('alt', \App\Engines\Builder\Support\Editor3::altFor($altBase, $fieldId));   // EDITOR-3
                 if ($el->hasAttribute('srcset')) { if ($empty) $el->removeAttribute('srcset'); else $el->setAttribute('srcset', $value); }
                 $mark($el);
                 $done = true;
             }
             foreach ($el->getElementsByTagName('img') as $img) {
                 $img->setAttribute('src', $imgSrc);
+                if (! $empty && \App\Engines\Builder\Support\Editor3::on() && trim((string) $img->getAttribute('alt')) === '') $img->setAttribute('alt', \App\Engines\Builder\Support\Editor3::altFor($altBase, $fieldId));   // EDITOR-3
                 if ($img->hasAttribute('srcset')) { if ($empty) $img->removeAttribute('srcset'); else $img->setAttribute('srcset', $value); }
                 $mark($img);
                 $done = true;
@@ -2501,6 +2505,37 @@ class TemplateService
         $out = substr($html, 0, $start) . substr($html, $pos);
         return preg_replace('/\n{3,}/', "\n\n", $out) ?? $out;
     }
+    /**
+     * EDITOR-3 (RFC-0021 wave 3, REPORT-0068 #5): hide, remove or show a section of the export. Hidden = an attribute the
+     * editor reads (it shows the section dimmed with a Show button) and an inline display:none visitors get; removed =
+     * hidden plus its menu links. Remembered in template_variables.lu_hidden_blocks so a re-render keeps it; a snapshot
+     * first so Undo puts it back. Free: the owner's own hands.
+     */
+    public function setBlockVisibility(int $websiteId, string $block, bool $hidden, bool $remove = false): array
+    {
+        $block = (string) preg_replace('/[^a-z0-9_\-]/i', '', $block);
+        if ($block === '') return ['success' => false, 'message' => 'Which section?'];
+        $root = storage_path("app/public/sites/{$websiteId}"); $index = "{$root}/index.html";
+        if (! is_file($index)) return ['success' => false, 'message' => 'This site has no page to change.'];
+        $files = [$index]; foreach ((glob("{$root}/*/index.html") ?: []) as $f) { if (! str_contains($f, '/.history/')) $files[] = $f; }
+        try { $this->snapshotToHistory($websiteId, $hidden ? ($remove ? 'section_remove' : 'section_hide') : 'section_show'); } catch (\Throwable $e) {}
+        $touched = 0;
+        foreach ($files as $f) {
+            $h = (string) file_get_contents($f);
+            if (! str_contains($h, 'data-block="' . $block . '"') && ! str_contains($h, 'data-lu-hidden-link="' . $block . '"')) continue;
+            if ($hidden) { $n = \App\Engines\Builder\Support\Editor3::applyHiddenBlocks($h, [$block]); if ($remove) { $id = \App\Engines\Builder\Support\Editor3::sectionId($n, $block); if ($id) $n = \App\Engines\Builder\Support\Editor3::hideNavLinks($n, $id, $block); } }
+            else { $n = \App\Engines\Builder\Support\Editor3::unhide($h, $block); }
+            if ($n !== $h) { file_put_contents($f, $n); $touched++; }
+        }
+        $tv = json_decode((string) (\Illuminate\Support\Facades\DB::table('websites')->where('id', $websiteId)->value('template_variables') ?: '{}'), true) ?: [];
+        $list = array_values(array_filter((array) ($tv['lu_hidden_blocks'] ?? []), fn ($b) => (string) $b !== $block));
+        if ($hidden) $list[] = $block;
+        $tv['lu_hidden_blocks'] = $list;
+        $this->saveTemplateVariables($websiteId, $tv);
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        return ['success' => true, 'hidden' => $hidden, 'removed' => $hidden && $remove, 'block' => $block, 'files' => $touched];
+    }
+
     /** Law 11: template_variables are written here, never by Arthur. */
     public function saveTemplateVariables(int $websiteId, array $variables): bool
     {

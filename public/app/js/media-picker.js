@@ -43,7 +43,7 @@
       field:    options.field    || null,
       tab:      'library',           // library | uploads | upload
       page:     1,
-      search:   '',
+      search:   options.search || '',   // EDITOR-3: the builder opens the library on the business's trade
       selected: [],                  // array of media objects
       typeFilter: options.type === 'any' ? '' : (options.type || 'image'),
     };

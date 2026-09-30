@@ -992,7 +992,7 @@ function _wsShowTemplateEditor(site) {
         '<button type="button" id="t3-dev-desktop" onclick="_wsTplSetDevice(\'desktop\')" aria-label="Desktop preview" aria-pressed="true" title="Desktop" style="padding:5px 10px;border:none;background:var(--pu);color:#fff;cursor:pointer;font-size:13px">\uD83D\uDDA5</button>' +
         '<button type="button" id="t3-dev-mobile" onclick="_wsTplSetDevice(\'mobile\')" aria-label="Mobile preview" aria-pressed="false" title="Mobile" style="padding:5px 10px;border:none;background:transparent;color:var(--t2);cursor:pointer;font-size:13px">\uD83D\uDCF1</button>' +
       '</div>' +
-      '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Double-click text to edit \u00B7 click an image to replace it \u00B7 your own edits are free \u00B7 changes by Arthur cost 1 credit</span>' +
+      '<span class="pe-bar-hint" style="color:var(--t3);font-size:11px;flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Double-click text to edit \u00B7 click an image to replace it \u00B7 ' + (site.status === 'published' ? 'your edits go live at once' : 'your own edits are free') + ' \u00B7 changes by Arthur cost 1 credit</span>' +
       '<button type="button" id="t3-tour-btn" onclick="_t3StartTour(true)" aria-label="Take the editor tour" title="Take the tour \u2014 what everything here does" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);width:34px;height:30px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:700;font-family:var(--fb);flex:0 0 auto">?</button>' +   /* TOUR-1 */
       '<button type="button" id="t3-view-btn" onclick="_t3OpenSitePreview()" title="See the website as visitors will \u2014 full screen, no editing tools" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">\uD83D\uDC41 Preview</button>' +   /* VIEW-1 */
       '<button type="button" id="t3-undo" onclick="wsUndoLast(' + wsId + ')" title="Undo the last change — Arthur, palette or inline edit" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
@@ -1039,7 +1039,9 @@ function _wsShowTemplateEditor(site) {
     '</div>';
 
   document.body.insertAdjacentHTML('beforeend', html);
+  window._t3SiteStatus = site.status || ''; window._t3IndustrySlug = '';   // EDITOR-3
   _wsTplBindPage(wsId);
+  _t3LoadFlags(wsId).then(function (fl) { if (!fl || !fl.editor3) return; try { _t3FoldToolbar(); } catch (_f1) {} var _fr = document.getElementById('t3-preview'); var _go = function () { setTimeout(function () { try { _t3FinishChecklist(wsId); } catch (_f2) {} }, 1200); }; if (_fr && _fr.contentDocument && _fr.contentDocument.querySelector('[data-field]')) _go(); else if (_fr) _fr.addEventListener('load', _go, { once: true }); });   // EDITOR-3
   _t3LoadPreview(wsId, document.getElementById('t3-preview'));   // PREVIEW GATE: fetched with the bearer token, never a public URL
   try { _t3CatalogueGate(wsId); } catch (_e) {}   // Catalogue button only on designs that carry one
 }
@@ -1197,7 +1199,7 @@ async function _t3ElementOp(d) {
   } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); if (d.applied) { window._t3Reselect = d.field; _t3ReloadPreview(); } }
 }
 
-function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "chatbot-longpress") { _t3ChatbotLookDialog(); return; }   /* CHATBOT-LOOK-1 */  if (e.data.type === "edit-start") { window._t3EditingText = true; window._t3EditingSince = Date.now(); return; }  if (e.data.type === "edit-end") { window._t3EditingText = false; try { _t3FitPreview(window._t3DeviceKey || "desktop"); } catch (_fe) {} return; }  if (e.data.type === "edit-at-scale") { try { _wsTplSetDevice("mobile"); } catch (_ds) {} var _f = document.getElementById("t3-preview"), _fld = e.data.field; setTimeout(function () { try { _f.contentWindow.postMessage({ type: "begin-edit", field: _fld }, "*"); } catch (_bm) {} }, 350); return; }   /* TEXTEDIT-2 */  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "link-longpress") { _t3LinkSheet(e.data); return; }   // LONGPRESS-1
+function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data.type === "element-op") { _t3ElementOp(e.data); return; }  if (e.data.type === "block-op") { _t3BlockOp(e.data); return; }   /* EDITOR-3 */  if (e.data.type === "chatbot-longpress") { _t3ChatbotLookDialog(); return; }   /* CHATBOT-LOOK-1 */  if (e.data.type === "edit-start") { window._t3EditingText = true; window._t3EditingSince = Date.now(); return; }  if (e.data.type === "edit-end") { window._t3EditingText = false; try { _t3FitPreview(window._t3DeviceKey || "desktop"); } catch (_fe) {} return; }  if (e.data.type === "edit-at-scale") { try { _wsTplSetDevice("mobile"); } catch (_ds) {} var _f = document.getElementById("t3-preview"), _fld = e.data.field; setTimeout(function () { try { _f.contentWindow.postMessage({ type: "begin-edit", field: _fld }, "*"); } catch (_bm) {} }, 350); return; }   /* TEXTEDIT-2 */  if (e.data.type === "block-selected") {    window._t3SelectedBlock = e.data.block_id;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.block_label; lbl.style.color = "#6C5CE7"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { inp.placeholder = "Change " + e.data.block_label + "..."; }    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(e.data.block_id);    return;  }  if (e.data.type === "block-deselected") {    window._t3SelectedBlock = null;    window._t3SelectedElement = null;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Click a section"; lbl.style.color = ""; }    var inp = document.getElementById("t3-arthur-input");    if (inp) inp.placeholder = "Ask Arthur...";    if (typeof _t3ShowSuggestions === "function") _t3ShowSuggestions(null);    return;  }  if (e.data.type === "element-selected") {    if (e.data.block_id) window._t3SelectedBlock = e.data.block_id;    window._t3SelectedElement = e.data.element_key;    var lbl = document.getElementById("t3-context-label");    if (lbl) { lbl.textContent = "Editing: " + e.data.element_label; lbl.style.color = "#F97316"; }    var inp = document.getElementById("t3-arthur-input");    if (inp) { var tail = (e.data.element_label || "").split(" \u203A ").pop(); inp.placeholder = "Change " + tail + "..."; }    return;  }  if (e.data.type === "element-deselected") {    window._t3SelectedElement = null;    var lbl2 = document.getElementById("t3-context-label");    if (lbl2 && window._t3SelectedBlock) { var bn = window._t3SelectedBlock; lbl2.textContent = "Editing: " + bn.charAt(0).toUpperCase() + bn.slice(1) + " Section"; lbl2.style.color = "#6C5CE7"; }    var inp2 = document.getElementById("t3-arthur-input");    if (inp2 && window._t3SelectedBlock) inp2.placeholder = "Change " + window._t3SelectedBlock + "...";    return;  }  if (e.data.type === "link-longpress") { _t3LinkSheet(e.data); return; }   // LONGPRESS-1
   if (e.data.type === "editor-readonly-click") {   // PREVIEW-2: a link/button in a read-only preview does nothing but say so
     var now0 = Date.now(); if (!window._t3RoToastAt || now0 - window._t3RoToastAt > 4000) { window._t3RoToastAt = now0; if (typeof showToast === 'function') showToast('This preview is read-only. Ask Arthur to change this page.', 'info'); }
     return;
@@ -1226,6 +1228,75 @@ function _t3HandleMessage(e) {  if (!e.data || !e.data.type) return;  if (e.data
 // LINK-1 (Owner 2026-09-22): "the editor does not have option to link a button or text". The toolbox's 🔗 posts
 // element-op link; this dialog asks where it should go — a page of this site, a section, a full address, an email or
 // a phone — then re-enters _t3ElementOp with href_chosen, which posts /elements/link (snapshot for Undo, replayed on deploy).
+// EDITOR-3 (RFC-0021 wave 3): hide / show / remove a section from its bar in the preview; a note in the feed, Undo covers it
+async function _t3BlockOp(d) {
+  var f = document.getElementById('t3-preview'); var siteId = window._t3PreviewSiteId || (f && f.getAttribute('data-site')) || null;
+  if (!siteId || !d || !d.block || !d.op) return;
+  if (d.op === 'remove') { if (!(await luConfirm('Remove this section', 'Remove the ' + (d.label || 'section') + ' from your site? Undo puts it back.', { okLabel: 'Remove', cancelLabel: 'Keep', danger: true }))) return; }
+  var note = function (text, colour) { var feed = document.getElementById('t3-arthur-feed'); if (!feed) return; var n = document.createElement('div'); n.style.cssText = 'background:var(--s2);border-left:3px solid ' + colour + ';border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0'; n.textContent = text; feed.appendChild(n); try { feed.scrollTop = feed.scrollHeight; } catch (_s) {} };
+  try {
+    var r = await fetch('/api/builder/websites/' + siteId + '/blocks/' + encodeURIComponent(d.block) + '/visibility', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, _t3CatAuth()), body: JSON.stringify({ hidden: d.op !== 'show' ? 1 : 0, remove: d.op === 'remove' ? 1 : 0 }) });
+    var j = null; try { j = await r.json(); } catch (_j) { j = null; }
+    note((j && j.message) || (r.ok ? 'Done.' : 'That did not work.'), r.ok ? '#00E5A8' : '#F59E0B');
+    if (r.ok) { window._t3SelectedBlock = null; _t3ReloadPreview(); }
+  } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); }
+}
+
+// EDITOR-3: which waves are on (one call per editor open); the site's base industry seeds the picture library search
+function _t3LoadFlags(siteId) {
+  window._t3Flags = window._t3Flags || null;
+  window._t3FlagsPromise = fetch('/api/builder/flags?site=' + (siteId || 0), { headers: Object.assign({ 'Accept': 'application/json' }, _t3CatAuth()), cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { window._t3Flags = j || {}; window._t3IndustrySlug = (j && j.industry) || ''; return window._t3Flags; }).catch(function () { window._t3Flags = window._t3Flags || {}; return window._t3Flags; });
+  return window._t3FlagsPromise;
+}
+
+// EDITOR-3: the "Finish your site" card at the top of Arthur's feed — the draft is a start; these make it the owner's
+async function _t3FinishChecklist(siteId) {
+  var feed = document.getElementById('t3-arthur-feed'); if (!feed || document.getElementById('t3-finish')) return;
+  var local = null; try { local = localStorage.getItem('lu_finish_' + siteId); } catch (_l) {}
+  if (local === 'dismissed') return;
+  var hdr = Object.assign({ 'Accept': 'application/json' }, _t3CatAuth());
+  var me = null; try { me = await (await fetch('/api/auth/me', { headers: hdr, cache: 'no-store' })).json(); } catch (_m) {}
+  var fc = me && me.preferences && me.preferences.finish_checklist; if (fc && fc.dismissed_at && String(fc.site) === String(siteId)) return;
+  var st = null; try { st = await (await fetch('/api/builder/websites/' + siteId + '/site-settings', { headers: hdr, cache: 'no-store' })).json(); } catch (_s) {}
+  var pages = []; try { var pj = await (await fetch('/api/builder/websites/' + siteId + '/pages', { headers: hdr })).json(); pages = (pj && (pj.pages || pj.data)) || (Array.isArray(pj) ? pj : []); } catch (_p) {}
+  if (!document.getElementById('template-editor-view')) return;
+  var fr = document.getElementById('t3-preview'); var doc = null; try { doc = fr && fr.contentDocument; } catch (_d) {}
+  var imgs = doc ? Array.from(doc.querySelectorAll('img[data-field],[data-field$="_image"]')) : [];
+  var own = imgs.some(function (i) { var s = i.getAttribute('src') || (i.style && i.style.backgroundImage) || ''; return /\/storage\/(uploads|crops|sites\/\d+\/)/.test(s); });
+  var testi = doc && doc.querySelector('[data-block="testimonials"]'); var testiHidden = !!(testi && testi.hasAttribute('data-lu-hidden'));
+  var contactOk = !!(st && st.contact && st.contact.phone && st.contact.email);
+  var items = [
+    { k: 'contact', done: contactOk, label: 'Your contact details', hint: contactOk ? 'Phone and email are on the site.' : 'Add your phone, email, address and hours.', go: function () { wsOpenSitePanel(siteId); setTimeout(function () { var x = document.getElementById('t3-site-c-phone'); if (x) { try { x.scrollIntoView({ block: 'center' }); } catch (_v) {} x.focus(); } }, 1500); } },
+    { k: 'photos', done: own, label: 'Your own photos', hint: own ? 'At least one of your photos is in.' : 'Swap the stock pictures for yours: click any picture.', go: function () { var f = imgs[0] && imgs[0].getAttribute('data-field'); if (f && fr) fr.contentWindow.postMessage({ type: 'open-image', field: f }, '*'); } },
+    { k: 'reviews', done: !testi || testiHidden, label: 'Real reviews', hint: !testi ? 'No sample reviews on this site.' : (testiHidden ? 'The sample reviews are hidden.' : 'The reviews on the page are samples: replace them with real words, or hide the section.'), go: function () { if (fr) fr.contentWindow.postMessage({ type: 'select-block', block: 'testimonials' }, '*'); } },
+    { k: 'pages', done: (pages.length || 0) > 2, label: 'Your pages', hint: (pages.length || 0) > 2 ? pages.length + ' pages.' : 'Add the pages customers expect: About, Services, Contact.', go: function () { wsAddPageToSite(); } },
+    { k: 'colours', done: false, label: 'Your colours', hint: 'Pick the palette that matches your brand.', go: function () { wsOpenPalettes(siteId); } }
+  ];
+  var card = document.createElement('div'); card.id = 't3-finish'; card.style.cssText = 'background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px';
+  card.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px"><div style="font:700 12.5px var(--fh);color:var(--t1)">Finish your site</div><button type="button" id="t3-finish-x" aria-label="Done for now" title="Done for now" style="background:none;border:0;color:var(--t3);cursor:pointer;font-size:14px;line-height:1">✕</button></div><div style="font-size:11px;color:var(--t3);margin:2px 0 6px">Arthur made the draft. These make it yours.</div>'
+    + items.map(function (it) { return '<button type="button" data-fk="' + it.k + '" style="display:flex;gap:8px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--bd);padding:7px 0;cursor:pointer;color:var(--t1);font-family:inherit"><span style="flex:0 0 18px;width:18px;height:18px;border-radius:50%;border:1.5px solid ' + (it.done ? 'var(--ac,#00E5A8)' : 'var(--bd2,rgba(255,255,255,.2))') + ';background:' + (it.done ? 'var(--ac,#00E5A8)' : 'transparent') + ';color:#000;font-size:11px;line-height:16px;text-align:center">' + (it.done ? '✓' : '') + '</span><span style="min-width:0"><span style="display:block;font-size:12.5px;font-weight:600">' + it.label + '</span><span style="display:block;font-size:11px;color:var(--t3)">' + it.hint + '</span></span></button>'; }).join('');
+  feed.insertBefore(card, feed.firstChild);
+  card.querySelectorAll('button[data-fk]').forEach(function (b) { b.addEventListener('click', function () { var it = null; for (var i = 0; i < items.length; i++) if (items[i].k === b.getAttribute('data-fk')) it = items[i]; try { if (it) it.go(); } catch (_g) {} }); });
+  card.querySelector('#t3-finish-x').addEventListener('click', function () { card.remove(); try { localStorage.setItem('lu_finish_' + siteId, 'dismissed'); } catch (_l2) {} try { fetch('/api/user/preferences', { method: 'PUT', headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, _t3CatAuth()), body: JSON.stringify({ finish_checklist: { site: parseInt(siteId, 10), dismissed_at: new Date().toISOString() } }) }); } catch (_p2) {} });
+}
+
+// EDITOR-3: on a phone the toolbar folds into More; Back, the device toggle and Publish always stay on screen
+function _t3FoldToolbar() {
+  if (!(window.matchMedia && window.matchMedia('(max-width:820px)').matches)) return;
+  var bar = document.querySelector('#template-editor-view .pe-bar'); if (!bar || document.getElementById('t3-more-btn')) return;
+  var movers = []; var pub = null;
+  Array.from(bar.children).forEach(function (el) { if (el.tagName !== 'BUTTON') return; var t = (el.textContent || '').trim(); if (/Publish/.test(t)) { pub = el; return; } if (/^←/.test(t) || el.id === 'pe-back') return; movers.push(el); });
+  var ttl = bar.querySelector('.pe-bar-title'); if (ttl) { ttl.style.minWidth = '44px'; ttl.style.flex = '0 1 110px'; }
+  if (!movers.length) return;
+  var btn = document.createElement('button'); btn.type = 'button'; btn.id = 't3-more-btn'; btn.setAttribute('aria-haspopup', 'true'); btn.textContent = '⋯'; btn.setAttribute('aria-label', 'More tools'); btn.title = 'More tools'; btn.style.cssText = 'background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:6px 11px;font-weight:700;border-radius:6px;cursor:pointer;font-size:12.5px;white-space:nowrap;flex:0 0 auto;font-family:var(--fb)';
+  var menu = document.createElement('div'); menu.id = 't3-more-menu'; menu.setAttribute('role', 'menu'); menu.style.cssText = 'display:none;position:fixed;top:58px;right:8px;z-index:9500;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:6px;box-shadow:0 12px 40px rgba(0,0,0,.5);flex-direction:column;gap:4px;max-height:calc(100vh - 72px);overflow:auto;min-width:200px';
+  movers.forEach(function (el) { el.style.width = '100%'; el.style.textAlign = 'left'; el.style.padding = '10px 12px'; menu.appendChild(el); });
+  bar.insertBefore(btn, pub || null); document.getElementById('template-editor-view').appendChild(menu);
+  btn.addEventListener('click', function (e) { e.stopPropagation(); menu.style.display = menu.style.display === 'none' ? 'flex' : 'none'; });
+  menu.addEventListener('click', function () { setTimeout(function () { menu.style.display = 'none'; }, 50); });
+  document.addEventListener('click', function (e) { if (menu.style.display !== 'none' && !menu.contains(e.target) && e.target !== btn) menu.style.display = 'none'; }, true);
+}
+
 function _t3LinkDialog(d) {
   try { var _old = document.getElementById('t3-link-ov'); if (_old) _old.remove(); } catch (_e) {}
   var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); };
@@ -1430,8 +1501,9 @@ function _t3ImgChoose() {
     if (typeof showToast === 'function') showToast('Media picker unavailable', 'error');
     return;
   }
-  window.openMediaPicker({ type: 'image', context: 'builder', field: info.field }, function(file) {
+  window.openMediaPicker({ type: 'image', context: 'builder', field: info.field, search: (window._t3Flags && window._t3Flags.editor3 && window._t3IndustrySlug) || '' }, function(file) {   // EDITOR-3: the library opens on this business's trade
     if (!file) return;
+    try { var _fd = document.getElementById('t3-arthur-feed'); if (_fd) { var _nn = document.createElement('div'); _nn.style.cssText = 'background:var(--s2);border-left:3px solid var(--p);border-radius:8px;padding:7px 10px;font-size:12px;margin:4px 0'; _nn.textContent = 'Opening the crop tool\u2026'; _fd.appendChild(_nn); setTimeout(function () { try { _nn.remove(); } catch (_r) {} }, 12000); } } catch (_c) {}   // EDITOR-3: the wait is named
     var url = file.file_url || file.url || file.src || '';
     if (!url) return;
     // CROP TOOL 2026-09-06: every placement has a fixed size — the crop frame is locked to it
@@ -2741,7 +2813,7 @@ async function wsAddPageToSite() {
       '<a href="' + bld_escH(p.preview_url || '#') + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--p)">Preview ↗</a></div></button>';
   }).join('');
   ov.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;width:min(880px,100%);max-height:86vh;display:flex;flex-direction:column;overflow:hidden">' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--bd)"><div><div style="font-weight:700;color:var(--t1)">Add a page to ' + bld_escH(wsCurrentSite.title || 'your site') + '</div><div style="font-size:12px;color:var(--t3)">Arthur builds it from the template, in your palette, with copy written for your business.</div></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--bd)"><div><div style="font-weight:700;color:var(--t1)">Add a page to ' + bld_escH(wsCurrentSite.title || 'your site') + '</div><div style="font-size:12px;color:var(--t3)">Arthur writes it for your business, in your colours.</div></div>' +
     '<button type="button" id="ws-pp-close" style="background:none;border:none;color:var(--t3);font-size:20px;cursor:pointer">\u2715</button></div>' +
     '<div style="overflow:auto;padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">' + cards + '</div>' +
     '<div id="ws-pp-status" style="padding:10px 20px;border-top:1px solid var(--bd);font-size:12px;color:var(--t3);min-height:18px"></div></div>';
@@ -4260,7 +4332,7 @@ function _t3ExitChoice(n) {
     box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);padding:20px;width:min(440px,100%);font-family:var(--fb)';
     // EXIT-1: the copy says exactly what is and is not saved; the primary action is always Save and exit
     box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:6px">' + (n > 0 ? 'Save your edits before you leave?' : 'Leave the editor?') + '</div>'
-      + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">' + (n > 0 ? 'You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save and exit keeps ' + (n === 1 ? 'it' : 'them') + ' as a draft on this website.' : 'Everything you changed is already saved on this website — Arthur’s changes, colours, layout and your edits. Undo and Versions can put any of it back next time.') + '</div>'
+      + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">' + (n > 0 ? 'You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save and exit ' + (window._t3SiteStatus === 'published' ? 'puts ' + (n === 1 ? 'it' : 'them') + ' on your live site.' : 'keeps ' + (n === 1 ? 'it' : 'them') + ' as a draft on this website.') : 'Everything you changed is already saved on this website — Arthur’s changes, colours, layout and your edits. Undo and Versions can put any of it back next time.') + '</div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
       + '<button type="button" class="lu-btn lu-btn--sm" data-c="stay">Keep editing</button>'
       + (n > 0 ? '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Leave without saving</button>' : '')
@@ -4961,6 +5033,8 @@ function _t3StartTour(replay) {
 async function _t3MaybeTour() {
   try {
     if (window._t3TourShownThisSession || !window.luTour) return;
+    if (window._t3FlagsPromise) { try { await window._t3FlagsPromise; } catch (_fp) {} }
+    if (window._t3Flags && window._t3Flags.editor3) return;   // EDITOR-3: the Finish your site card replaces the automatic tour; ? still replays it
     if (!document.getElementById('template-editor-view') || document.getElementById('t3-view-ov')) return;
     if (document.querySelector('.lu-dlg-overlay, #t3-img-panel, #t3-cbl-ov')) return;   // never over a dialog
     var local = null; try { local = localStorage.getItem(_t3TourKey()); } catch (_l) {}

@@ -728,6 +728,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             'sarah_intro'     => 'sometimes|array', 'sarah_intro.version' => 'sometimes|integer|min:1|max:99', 'sarah_intro.done_at' => 'sometimes|nullable|string|max:40', 'sarah_intro.last_step' => 'sometimes|integer|min:0|max:20', 'sarah_intro.device' => 'sometimes|string|in:mobile,desktop',   // SARAH-INTRO-1
             'page_intros'     => 'sometimes|array|max:40', 'page_intros.*' => 'string|max:32|regex:/^[a-z_]+$/',   // SARAH-INTRO-1: pages Sarah has introduced
             'editor_tour'     => 'sometimes|array',   // TOUR-1 (RFC-0013): {version, done_at|skipped_at, last_step}
+            'finish_checklist' => 'sometimes|array', 'finish_checklist.site' => 'sometimes|integer', 'finish_checklist.dismissed_at' => 'sometimes|nullable|string|max:40',   // EDITOR-3: the Finish your site card
             'editor_tour.version' => 'sometimes|integer|min:1|max:99', 'editor_tour.done_at' => 'sometimes|nullable|string|max:40', 'editor_tour.skipped_at' => 'sometimes|nullable|string|max:40', 'editor_tour.last_step' => 'sometimes|integer|min:0|max:50', 'editor_tour.device' => 'sometimes|string|in:desktop,mobile',
         ]);
 
@@ -738,7 +739,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $current = is_string($row->preferences_json) ? (json_decode($row->preferences_json, true) ?: []) : [];
         if (! is_array($current)) $current = [];
 
-        $allowed = ['visibility_mode', 'theme', 'editor_tour'];
+        $allowed = ['visibility_mode', 'theme', 'editor_tour', 'finish_checklist'];   // EDITOR-3
         // SARAH-INTRO-1: merged, never replaced - a finished introduction stays finished, introduced pages accumulate
         if (array_key_exists('sarah_intro', $data)) { $prev = is_array($current['sarah_intro'] ?? null) ? $current['sarah_intro'] : []; $next = array_merge($prev, array_intersect_key((array) $data['sarah_intro'], array_flip(['version', 'done_at', 'last_step', 'device']))); if (! empty($prev['done_at']) && empty($data['sarah_intro']['done_at'])) { $next['done_at'] = $prev['done_at']; } $current['sarah_intro'] = $next; }
         if (array_key_exists('page_intros', $data)) { $current['page_intros'] = array_values(array_unique(array_merge(array_values((array) ($current['page_intros'] ?? [])), array_values((array) $data['page_intros'])))); }
@@ -4328,7 +4329,8 @@ document.addEventListener("DOMContentLoaded",function(){
       tb.style.cssText = "position:absolute;top:12px;right:12px;z-index:9999;background:#1E2230;border:1px solid #6C5CE7;border-radius:6px;padding:5px 12px;display:flex;align-items:center;gap:8px;font-family:system-ui;font-size:11px;color:#fff;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,0.5);pointer-events:none;";
       tb.innerHTML = "<span style=\"color:#6C5CE7\">&#x2B21;</span><span style=\"font-weight:600\">"+blabel+"</span><span style=\"color:rgba(255,255,255,0.45);font-size:10px\"> &middot; Hover any element, click to select</span>";
       block.appendChild(tb);
-      window.parent.postMessage({type:"block-selected",block_id:bid,block_label:blabel},"*");
+' . (\App\Engines\Builder\Support\Editor3::on() ? '      if (typeof _luUpgradeBlockBar === "function") _luUpgradeBlockBar(block, tb, bid);
+' : '') . '      window.parent.postMessage({type:"block-selected",block_id:bid,block_label:blabel},"*");
       e.stopPropagation();
     });
   });
@@ -4574,6 +4576,27 @@ document.addEventListener("DOMContentLoaded",function(){
   window.addEventListener("message", function(e){
     var d = e.data || {}; if (d.type !== "field-saved" || !d.field || typeof d.html !== "string") return;
     document.querySelectorAll("[data-field=\"" + d.field + "\"]").forEach(function(el){ if (el === _editingEl || el.tagName === "IMG" || el.querySelector("[data-field]")) return; el.innerHTML = d.html; });
+  });
+JS : '') . (\App\Engines\Builder\Support\Editor3::on() ? <<<'JS'
+  // EDITOR-3 (RFC-0021 wave 3): the section bar has hands — Photo, Hide / Show, Remove; a hidden section stays visible here, dimmed
+  try { var _e3css = document.createElement("style"); _e3css.textContent = "[data-lu-hidden]{display:block!important;opacity:.38;outline:2px dashed #F87171!important;outline-offset:-2px} .lu-block-toolbar button{border:0;border-radius:5px;padding:4px 9px;font:600 11px system-ui,sans-serif;cursor:pointer;background:rgba(255,255,255,.12);color:#fff;touch-action:manipulation} .lu-block-toolbar button:hover{background:#6C5CE7}"; document.head.appendChild(_e3css); } catch(_e3){}
+  function _luBlockImage(block){ var sel = "img[data-field],[data-field$=\"_image\"],[data-field$=\"_photo\"],[data-field$=\"_avatar\"],[data-field^=\"gallery_\"]"; if (block.hasAttribute("data-field") && block.matches(sel)) return block; return block.querySelector(sel); }
+  function _luUpgradeBlockBar(block, tb, bid){
+    tb.style.pointerEvents = "auto"; tb.style.gap = "6px";
+    var hidden = block.hasAttribute("data-lu-hidden"); var img = _luBlockImage(block);
+    var html = tb.innerHTML.replace(/<span style=\"color:rgba\(255,255,255,0\.45\)[^<]*<\/span>/, "");
+    if (hidden) html = "<span style=\"color:#FCA5A5;font-weight:700\">Hidden</span>" + html;
+    if (img) html += "<button type=\"button\" data-bop=\"photo\" title=\"Change the photo in this section\">Photo</button>";
+    html += "<button type=\"button\" data-bop=\"" + (hidden ? "show" : "hide") + "\" title=\"" + (hidden ? "Show this section to visitors again" : "Hide this section from visitors; you can show it again") + "\">" + (hidden ? "Show" : "Hide") + "</button>";
+    if (!hidden) html += "<button type=\"button\" data-bop=\"remove\" title=\"Remove this section from the site; Undo puts it back\" style=\"color:#FCA5A5\">Remove</button>";
+    tb.innerHTML = html;
+    tb.querySelectorAll("button[data-bop]").forEach(function(b){ b.addEventListener("click", function(ev){ ev.stopPropagation(); ev.preventDefault(); var op = b.getAttribute("data-bop");
+      if (op === "photo") { var im = _luBlockImage(block); if (im) { try { im.scrollIntoView({block:"center"}); } catch(_s){} im.dispatchEvent(new MouseEvent("click", {bubbles:true, cancelable:true})); } return; }
+      window.parent.postMessage({type:"block-op", op: op, block: bid, label: (bid.charAt(0).toUpperCase()+bid.slice(1)).replace(/[_-]/g, " ") + " section"}, "*"); }); });
+  }
+  window.addEventListener("message", function(e){ var d = e.data || {}; if (!d.type) return;
+    if (d.type === "open-image" && d.field) { var el = document.querySelector("[data-field=\"" + String(d.field).replace(/[^a-z0-9_\-]/gi, "") + "\"]"); if (el) { try { el.scrollIntoView({block:"center"}); } catch(_s){} el.dispatchEvent(new MouseEvent("click", {bubbles:true, cancelable:true})); } }
+    if (d.type === "select-block" && d.block) { var blk = document.querySelector("[data-block=\"" + String(d.block).replace(/[^a-z0-9_\-]/gi, "") + "\"]"); if (blk) { try { blk.scrollIntoView({block:"center"}); } catch(_s2){} if (window._selectedBlock !== d.block) blk.dispatchEvent(new MouseEvent("click", {bubbles:true, cancelable:true})); } }
   });
 JS : '') . '
 
