@@ -331,6 +331,20 @@ class ImageIntelligenceService
                 'style'           => trim((string) ($ctx['forced_style'] ?? '')) ?: (string) ($__ts['style'] ?? ''),
             ];
         }
+        // REGEN-3: first attempt = the renderer. Painted text is the regenerate's job; a reasoner that picked baked_in on its
+        // own is turned back to separate_overlay with the same headline, style and placement (quotes around the words removed).
+        if (($ctx['force_typography_mode'] ?? '') !== 'baked_in' && ($blueprint['typography_strategy']['mode'] ?? '') === 'baked_in') {
+            $blueprint['typography_strategy']['mode'] = 'separate_overlay';
+            $blueprint['typography_strategy']['reason'] = 'first attempt: exact typography rendered by the Studio layer over a text-free image; the painter is the regenerate';
+        }
+        if (empty($blueprint['typography_strategy']['supporting_copy']) && ($blueprint['typography_strategy']['mode'] ?? '') === 'separate_overlay'
+            && preg_match('/\b(my|our|the) (name|brand name|business name)\b|\bname (small|underneath|under|below)\b/i', (string) ($ctx['user_prompt'] ?? ''))) {
+            $__bn = trim((string) ($ctx['brand']['brand_name'] ?? $ctx['brand']['name'] ?? ''));
+            if ($__bn !== '') $blueprint['typography_strategy']['supporting_copy'] = [$__bn];   // RENDER-BRIEF-1b
+        }
+        if (isset($blueprint['typography_strategy']['headline'])) {
+            $blueprint['typography_strategy']['headline'] = trim((string) $blueprint['typography_strategy']['headline'], " \t\"'“”‘’");
+        }
         $blueprint['_context'] = [
             'force_baked_in'    => ($ctx['force_typography_mode'] ?? '') === 'baked_in',
             'retry_of_media_id' => (int) ($ctx['retry_of_media_id'] ?? 0),

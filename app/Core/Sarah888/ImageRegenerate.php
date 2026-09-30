@@ -41,12 +41,14 @@ final class ImageRegenerate
         $file = basename(parse_url((string) $last['url'], PHP_URL_PATH) ?: (string) $last['url']);
         // the composed file shares its stem with the text-free original; look both up
         $stem = preg_replace('/-composed(?=\.png$)/', '', $file);
-        $row = DB::table('media')->where('workspace_id', $wsId)->where(fn ($q) => $q->where('filename', $file)->orWhere('filename', $stem))->orderByDesc('id')->first();
-        if (! $row) return null;
+        // several media rows can share a file (the asset and its library copy): take the one that carries the brief
+        $rows = DB::table('media')->where('workspace_id', $wsId)->where(fn ($q) => $q->where('filename', $file)->orWhere('filename', $stem))->orderByDesc('id')->get();
+        if ($rows->isEmpty()) return null;
+        $row = $rows->first(fn ($r) => is_array((json_decode((string) $r->metadata_json, true) ?: [])['blueprint']['typography_strategy'] ?? null)) ?: $rows->first();
         $meta = json_decode((string) $row->metadata_json, true) ?: [];
         $bp   = is_array($meta['blueprint'] ?? null) ? $meta['blueprint'] : [];
         $ts   = is_array($bp['typography_strategy'] ?? null) ? $bp['typography_strategy'] : [];
-        $headline = trim((string) ($ts['headline'] ?? ''));
+        $headline = trim((string) ($ts['headline'] ?? ''), " \t\"'\u{201C}\u{201D}\u{2018}\u{2019}");
         $copy     = array_values(array_filter(array_map('trim', (array) ($ts['supporting_copy'] ?? []))));
         $original = trim((string) ($meta['original_prompt'] ?? ''));
         $subject  = trim((string) ($bp['subject'] ?? ''));

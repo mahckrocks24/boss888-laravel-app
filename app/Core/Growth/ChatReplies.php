@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class ChatReplies
 {
-    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily'];
+    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily', 'image_shown'];   // REGEN-2
     /** Text after this marker is the plain-words version of a card: the app shows it, the web hides it next to the card. */
     public const APP_PART = "\n\n\u{200B}";
 
@@ -82,6 +82,8 @@ final class ChatReplies
                 return ! \Illuminate\Support\Facades\Cache::has('pace-answered:' . $q['message_id']);
             case 'search_merge':   // PAGE-ONE-1
                 return DB::table('search_plans')->where('id', (int) ($c['plan_id'] ?? 0))->where('workspace_id', $wsId)->where('kind', 'merge')->where('status', 'proposed')->exists();
+            case 'image_shown':   // REGEN-2: the Regenerate chip lives under the image while it is Sarah's latest message
+                return ! empty($q['meta']['attachments']);
             case 'autoreply_ask': case 'lead_reply':   // CRM-SARAH-3: open while the reply Sarah wrote is still unsent
                 return DB::table('crm_reply_drafts')->where('id', (int) ($c['draft_id'] ?? 0))->where('workspace_id', $wsId)->where('status', 'draft')->exists();
             case 'crm_daily':
@@ -176,6 +178,7 @@ final class ChatReplies
                 ? [['label' => 'Launch it', 'text' => 'Launch it']]
                 : array_map(fn ($id) => ['label' => 'Launch #' . (array_search($id, $q['all_ids'], true) + 1), 'text' => 'Launch #' . (array_search($id, $q['all_ids'], true) + 1)], array_slice($q['open_ids'], 0, 4)),
                 [['label' => 'Not now', 'text' => 'None of these for now']]),
+            'image_shown' => [['label' => 'Regenerate · ' . \App\Core\Sarah888\ImageGeneration::costFor('generate_image') . ' credits', 'text' => 'regenerate now']],   // REGEN-2: the tap is the yes
             'brand_intake' => [['label' => 'Use my website', 'text' => 'Skip, use my website']],
             'brand_summary' => [['label' => 'Save', 'text' => 'Save'], ['label' => 'Discard', 'text' => 'Discard']],
             'campaign_step' => [['label' => 'Done', 'text' => 'Done'], ['label' => 'Skip', 'text' => 'Skip this step']],

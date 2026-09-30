@@ -243,6 +243,10 @@ class Orchestrator
             }
 
             $validatedParams = $resolution['params'];
+            // IMAGE-5: the image brief is not part of the validation rules - carry it through from the payload
+            if (in_array($task->action, ['generate_image', 'generate_image_mini', 'generate_image_high'], true)) {
+                $validatedParams += array_intersect_key((array) $payload, array_flip(['typography_mode', 'headline', 'text_style', 'text_placement', 'retry_of_media_id', 'regen', 'created_via', 'user_request', 'business_id', 'platform', 'asset_type', 'quality', 'aspect_ratio', 'include_text_preference']));
+            }
 
             // ── 6. Mark running ──────────────────────────────────────────
             $this->taskService->markRunning($task);
@@ -546,7 +550,7 @@ class Orchestrator
                                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent(
                                     (int) $root->workspace_id, 'sarah',
                                     $__imgLine,
-                                    ['completion_report' => true, 'root_task_id' => $rootId,
+                                    ['completion_report' => true, 'root_task_id' => $rootId, 'notification_type' => 'image_shown',   // REGEN-2
                                      'attachments' => [['kind' => 'image', 'url' => $__imgUrl, 'name' => 'Generated image']]]
                                 );
                                 \Illuminate\Support\Facades\DB::table('tasks')
@@ -876,7 +880,8 @@ class Orchestrator
         // that creative/generate_image already uses, so there is ONE authoritative
         // provider path. Governance (kernel → approval → async task → Orchestrator →
         // credits → creative_jobs → asset lineage) is untouched.
-        if ($task->engine === 'creative' && $action === 'generate_video') {
+        if ($task->engine === 'creative' && in_array($action, ['generate_video', 'generate_image', 'generate_image_mini', 'generate_image_high'], true)) {
+            // IMAGE-4 (2026-09-30): images too - the connector's execute('generate_image') is the legacy raw call (no brief, low quality)
             $connectorName = null;
         }
 

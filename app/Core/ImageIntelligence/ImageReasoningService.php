@@ -288,7 +288,9 @@ class ImageReasoningService
                 : 'no brand context available — neutral professional treatment',
             'historical_or_factual_constraints' => [],
             'negative_constraints' => ['no text', 'no watermark', 'no logos', 'no distorted anatomy', 'no artificial-looking composites'],
-            'typography_strategy' => ['mode' => 'none', 'reason' => 'fallback path — text handled by the Studio design layer', 'headline' => '', 'supporting_copy' => [], 'placement' => '', 'style' => ''],
+            'typography_strategy' => ($__fh = trim((string) (array_values(array_filter(array_map('strval', (array) ($c['exact_text'] ?? []))))[0] ?? ''))) !== ''
+                ? ['mode' => 'separate_overlay', 'reason' => 'fallback path — the customer named the headline, so the Studio layer renders it', 'headline' => $__fh, 'supporting_copy' => [], 'placement' => 'upper-left negative space', 'style' => '']   // REGEN-2
+                : ['mode' => 'none', 'reason' => 'fallback path — text handled by the Studio design layer', 'headline' => '', 'supporting_copy' => [], 'placement' => '', 'style' => ''],
             'provider_prompt' => $providerPrompt,
             'quality'    => in_array(strtolower((string) ($c['requested_quality'] ?? '')), ['low','medium','high'], true) ? strtolower((string) $c['requested_quality']) : 'medium',
             'provider'   => 'openai',

@@ -165,8 +165,9 @@ class ImageGeneration
     public static function actionFor(string $text): string
     {
         $t = mb_strtolower($text);
-        if (preg_match('/\b(mini|small|quick|thumbnail|tiny|little)\b/', $t)) return 'generate_image_mini';
-        if (preg_match('/\b(hi.?res|high.?res|high resolution|large|hd|ultra|detailed|premium)\b/', $t)) return 'generate_image_high';
+        // IMAGE-3 (2026-09-30): the size word must describe the IMAGE ('a quick image', 'small banner', 'mini'), not something in it ('my name small under it')
+        if (preg_match('/\b(mini|small|quick|thumbnail|tiny|little)\s+(image|images|picture|photo|graphic|banner|visual|version|one)\b/', $t) || preg_match('/^(mini|quick|small)\b/', $t)) return 'generate_image_mini';
+        if (preg_match('/\b(hi.?res|high.?res|high resolution|hd|ultra|premium)\b/', $t) || preg_match('/\b(large|detailed)\s+(image|images|picture|photo|graphic|banner|visual|version)\b/', $t)) return 'generate_image_high';
         return 'generate_image';
     }
 
@@ -181,6 +182,8 @@ class ImageGeneration
     public static function extractPrompt(string $text): string
     {
         $t = trim($text);
+        // IMAGE-3: a greeting is not part of the brief ('Hi Sarah, make me…')
+        $t = (string) preg_replace('/^\s*(hi|hello|hey|good (morning|afternoon|evening)|yo|hola|kumusta|kamusta)\b[,!.\s]*(sarah|there)?[,!.\s]*/iu', '', $t);
         // remove a leading command phrase up to and including the artefact + optional "of/showing/…"
         $stripped = preg_replace(
             '/^\s*(please\s+)?(can you|could you|i want|i need|i\x27d like|give me|generate|create|make|design|draw|produce|render|whip up|cook up)\b[^.]*?\b(image|images|picture|pictures|photo|photos|photograph|graphic|graphics|visual|visuals|artwork|illustration|drawing|logo|poster|banner|mockup|wallpaper|avatar|icon)s?\b\s*(of|showing|depicting|featuring|about|with|for)?\s*/i',

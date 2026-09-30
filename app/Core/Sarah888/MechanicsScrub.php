@@ -20,6 +20,8 @@ final class MechanicsScrub
         '/\bthe\s+delegation\s+log\s+(?:is|was)\s+[^,.;]*/iu'                    => 'my notes on that are incomplete',
         '/\bthe\s+delegation\s+log\b/iu'                                        => 'my notes',
         '/\s*\((?:logged|noted|flagged)\s+for\s+the\s+team\)/iu'                => '',
+        // tool-result narration: "(LevelUp AI, asset "Featured image: …":" / "(asset #12)" / "(task 937)"
+        '/\s*\((?:LevelUp AI,?\s*)?(?:asset|assets|task|tasks|job|record|row)\b[^)]{0,160}\)?:?/iu' => '',
         '/\bin\s+what\s+I\s+can\s+(?:see|read)\s+(?:this\s+turn|right\s+now|here)\b/iu' => 'from here',
         '/\bmy\s+own\s+record\b/iu'                                             => 'my notes',
         '/\bthe\s+record\s+(?:names|shows|says)\b/iu'                           => 'my notes show',

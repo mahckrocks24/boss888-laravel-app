@@ -894,11 +894,18 @@ $withCorr = function (array $meta) use ($corr) {
                     $__dpScope = $__dp->scope((int) $wsId);
                     $__qcReply = $__dp->describe((int) $wsId, $__dpScope);
                     if ($__dpScope['ready']->count() + $__dpScope['missing']->count() > 0) { $__dp->remember((int) $wsId, $__dpScope, (string) $content); } else { $__dp->forget((int) $wsId); }
-                } elseif (!\App\Core\Sarah888\SocialTurn::is($content) && \App\Core\Sarah888\ImageRegenerate::asks($content) && ($__rgSpec = \App\Core\Sarah888\ImageRegenerate::spec((int) $wsId)) !== null) {
+                } elseif (\App\Core\Sarah888\ImageRegenerate::asks($content) && ($__rgSpec = \App\Core\Sarah888\ImageRegenerate::spec((int) $wsId)) !== null) {
                     // REGEN-1 (RISK-0207): 'regenerate' / 'generate a better one' after an image Sarah showed -> the second attempt with the words painted in
                     $__ig = app(\App\Core\Sarah888\ImageGeneration::class);
-                    $__qcReply = \App\Core\Sarah888\ImageRegenerate::describe($__rgSpec); $__ig->remember((int) $wsId, $__rgSpec, (string) $content);
-                } elseif (!\App\Core\Sarah888\SocialTurn::is($content) && (\App\Core\Sarah888\ImageGeneration::asks($content) || \App\Core\Sarah888\ImageGeneration::isRefinement((int) $wsId, $content))) { // F-SOC-F1: "schedule that Facebook post" is not an image refinement
+                    if (preg_match('/\bregenerate now\b/i', (string) $content)) {   // REGEN-2: the chip stated the cost, so the tap is the yes
+                        $__rgRes = $__ig->execute((int) $wsId, $__rgSpec, (int) ($__reqUser->id ?? 0), (string) $content);
+                        $__qcReply = ($__rgRes['success'] ?? false)
+                            ? "On it — redoing it as one picture with the words painted in ({$__rgSpec['cost']} credits). Give it about half a minute; the redo lands right here."
+                            : $__ig->report($__rgRes);
+                    } else {
+                        $__qcReply = \App\Core\Sarah888\ImageRegenerate::describe($__rgSpec); $__ig->remember((int) $wsId, $__rgSpec, (string) $content);
+                    }
+                } elseif ((\App\Core\Sarah888\ImageGeneration::asks($content) || (!\App\Core\Sarah888\SocialTurn::is($content) && \App\Core\Sarah888\ImageGeneration::isRefinement((int) $wsId, $content)))) {   // IMAGE-2 (2026-09-30): an explicit 'make me a banner for my Facebook post' IS an image ask - the deterministic offer wins over the social classifier (F-SOC-F1 still keeps 'schedule that post' out via asks() itself) // F-SOC-F1: "schedule that Facebook post" is not an image refinement
                     // IMAGE-1 (2026-09-03): "generate an image of X" — state it + the cost, then a yes.
                     // Deterministic: turn 2's yes runs it without a second approval, so no repeat-confirmation.
                     $__ig = app(\App\Core\Sarah888\ImageGeneration::class);
@@ -4747,7 +4754,7 @@ $withCorr = function (array $meta) use ($corr) {
         try {
             // CHAT-FIRST-1: on a turn where the owner's words already changed something real (recorded before this reply — a watch
             // schedule, a launch, an approved update, saved styles), Sarah's confirmation of it is true; this guard only knows tasks.
-            if (empty($__replyVerified) && ! (isset($__watchTurn) && preg_match('/^(watch_stopped|watch_on|checkins_)/', (string) $__watchTurn))) {
+            if (empty($__replyVerified) && empty($__anyExec) && ! (isset($__watchTurn) && preg_match('/^(watch_stopped|watch_on|checkins_)/', (string) $__watchTurn))) {   // VOICE-5: a turn that ran a tool is not an empty claim
             $__vag = app(\App\Core\Sarah888\VerbalAuthorityGuard::class)
                         ->validate((string) $reply, (int) $wsId, $corr['conversation_id'] ?? null);
             $reply = $__vag['reply'];
