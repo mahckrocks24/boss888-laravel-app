@@ -3464,7 +3464,7 @@ window.luSwipeToClose = luSwipeToClose;
     <div id="view-infrastructure" class="view" style="display:none;flex-direction:column;overflow-y:auto"><div id="infrastructure-root"></div></div>   <!-- HOST-SCROLL-1 (Owner 2026-09-25: the Hosting page had no vertical scroller): .view is overflow:hidden; this view had no scroller of its own -->
     <div id="view-projects" class="view" style="display:none">
       <!-- REPORT-0061 B4 (2026-09-20): one page, three panels — Projects (list), Task board (stages), History (task history + work distribution, from the old Reports & History) -->
-      <style>/* PROJ-TABS-1 (Owner 2026-09-30): Basic shows Campaigns only - no Campaigns / Task board / History strip */html:not([data-mode="advanced"]) #proj-tabs{display:none!important}</style>
+      <style>/* PROJ-TABS-1b (Owner 2026-09-30: "just align center"): the Campaigns / Task board / History strip is centred, never hidden */html #view-projects > #proj-tabs{justify-content:center!important;margin-left:auto!important;margin-right:auto!important;align-self:center!important}</style>
       <div class="lu-view-tabs" id="proj-tabs" role="tablist" aria-label="Projects" style="display:flex;gap:2px;padding:14px 24px 0;border-bottom:1px solid var(--bd);flex-shrink:0">
         <button type="button" role="tab" data-proj-panel="projects" class="tab active" onclick="projShowPanel('projects')">Campaigns</button>
         <button type="button" role="tab" data-proj-panel="board" class="tab" onclick="projShowPanel('board')">Task board</button>
