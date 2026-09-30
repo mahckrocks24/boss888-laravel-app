@@ -232,6 +232,7 @@ class BuilderService
 
         // Invalidate published site cache
         $this->invalidatePublishedCache($websiteId);
+        if (\App\Engines\Builder\Support\DraftEdits::on()) { try { \App\Engines\Builder\Support\DraftEdits::promote($websiteId); } catch (\Throwable $__pe) { \Illuminate\Support\Facades\Log::warning('[Builder] publish changes failed: ' . $__pe->getMessage()); } }   // DRAFT-5
 
         // Wave 52 — Index all newly-published pages into seo_content_index
         // so the SEO Engine can see them. Fail open: indexing errors are

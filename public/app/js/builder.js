@@ -1041,7 +1041,7 @@ function _wsShowTemplateEditor(site) {
   document.body.insertAdjacentHTML('beforeend', html);
   window._t3SiteStatus = site.status || ''; window._t3IndustrySlug = '';   // EDITOR-3
   _wsTplBindPage(wsId);
-  _t3LoadFlags(wsId).then(function (fl) { if (!fl || !fl.editor3) return; try { _t3FoldToolbar(); } catch (_f1) {} var _fr = document.getElementById('t3-preview'); var _go = function () { setTimeout(function () { try { _t3FinishChecklist(wsId); } catch (_f2) {} }, 1200); }; if (_fr && _fr.contentDocument && _fr.contentDocument.querySelector('[data-field]')) _go(); else if (_fr) _fr.addEventListener('load', _go, { once: true }); });   // EDITOR-3
+  _t3LoadFlags(wsId).then(function (fl) { if (fl && fl.draftedits) { _t3RefreshDraftBadge(wsId); if (!window._t3DraftTimer) window._t3DraftTimer = setInterval(function () { if (!document.getElementById('template-editor-view')) { clearInterval(window._t3DraftTimer); window._t3DraftTimer = null; return; } _t3RefreshDraftBadge(wsId); }, 15000); } if (!fl || !fl.editor3) return; try { _t3FoldToolbar(); } catch (_f1) {} var _fr = document.getElementById('t3-preview'); var _go = function () { setTimeout(function () { try { _t3FinishChecklist(wsId); } catch (_f2) {} }, 1200); }; if (_fr && _fr.contentDocument && _fr.contentDocument.querySelector('[data-field]')) _go(); else if (_fr) _fr.addEventListener('load', _go, { once: true }); });   // EDITOR-3
   _t3LoadPreview(wsId, document.getElementById('t3-preview'));   // PREVIEW GATE: fetched with the bearer token, never a public URL
   try { _t3CatalogueGate(wsId); } catch (_e) {}   // Catalogue button only on designs that carry one
 }
@@ -1238,7 +1238,7 @@ async function _t3BlockOp(d) {
     var r = await fetch('/api/builder/websites/' + siteId + '/blocks/' + encodeURIComponent(d.block) + '/visibility', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json', 'Accept': 'application/json' }, _t3CatAuth()), body: JSON.stringify({ hidden: d.op !== 'show' ? 1 : 0, remove: d.op === 'remove' ? 1 : 0 }) });
     var j = null; try { j = await r.json(); } catch (_j) { j = null; }
     note((j && j.message) || (r.ok ? 'Done.' : 'That did not work.'), r.ok ? '#00E5A8' : '#F59E0B');
-    if (r.ok) { window._t3SelectedBlock = null; _t3ReloadPreview(); }
+    if (r.ok) { window._t3SelectedBlock = null; _t3ReloadPreview(); try { _t3RefreshDraftBadge(siteId); } catch (_rb) {} }
   } catch (e2) { note('The change could not be sent. Please try again.', '#F87171'); }
 }
 
@@ -1295,6 +1295,40 @@ function _t3FoldToolbar() {
   btn.addEventListener('click', function (e) { e.stopPropagation(); menu.style.display = menu.style.display === 'none' ? 'flex' : 'none'; });
   menu.addEventListener('click', function () { setTimeout(function () { menu.style.display = 'none'; }, 50); });
   document.addEventListener('click', function (e) { if (menu.style.display !== 'none' && !menu.contains(e.target) && e.target !== btn) menu.style.display = 'none'; }, true);
+}
+
+// DRAFT-5 (RFC-0021 wave 5): on a published site the editor works on a draft; Publish changes puts it live
+async function _t3RefreshDraftBadge(siteId) {
+  try {
+    if (!window._t3Flags || !window._t3Flags.draftedits || window._t3SiteStatus !== 'published') return;
+    var r = await fetch('/api/builder/websites/' + siteId + '/changes', { headers: Object.assign({ 'Accept': 'application/json' }, _t3CatAuth()), cache: 'no-store' });
+    var j = null; try { j = await r.json(); } catch (_j) { j = null; }
+    if (!j || !j.on || !j.has_live) return;
+    window._t3DraftChanges = j;
+    var n = parseInt(j.count || 0, 10);
+    var bs = document.querySelectorAll('#template-editor-view .pe-bar button, #t3-more-menu button');
+    for (var i = 0; i < bs.length; i++) { if (/Publish/.test(bs[i].textContent || '')) { bs[i].innerHTML = (bs[i].innerHTML.indexOf('<svg') === 0 ? bs[i].innerHTML.replace(/<\/svg>[\s\S]*$/, '</svg>') : '') + (n > 0 ? ' Publish changes <span style="display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:rgba(255,255,255,.28);font-size:11px;line-height:18px;text-align:center">' + n + '</span>' : ' Published'); bs[i].title = n > 0 ? n + ' change' + (n === 1 ? '' : 's') + ' on your draft. Publish puts them live.' : 'Everything is live. Your next edit starts a draft.'; } }
+    var cb = document.getElementById('t3-changes-btn');
+    if (!cb) { cb = document.createElement('button'); cb.type = 'button'; cb.id = 't3-changes-btn'; cb.style.cssText = 'background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap'; cb.onclick = function () { _t3ShowChanges(siteId); }; var menu = document.getElementById('t3-more-menu'); if (menu) { cb.style.width = '100%'; cb.style.textAlign = 'left'; cb.style.padding = '10px 12px'; menu.insertBefore(cb, menu.firstChild); } else { var pub = null; document.querySelectorAll('#template-editor-view .pe-bar > button').forEach(function (b) { if (/Publish/.test(b.textContent || '')) pub = b; }); var bar = document.querySelector('#template-editor-view .pe-bar'); if (bar) bar.insertBefore(cb, pub || null); } }
+    cb.textContent = n > 0 ? 'What changed (' + n + ')' : 'What changed'; cb.disabled = n === 0; cb.style.opacity = n === 0 ? '.6' : '1';
+    var hint = document.querySelector('#template-editor-view .pe-bar-hint'); if (hint) hint.textContent = 'Double-click text to edit \u00B7 click an image to replace it \u00B7 your edits save to a draft \u00B7 Publish changes puts them live \u00B7 changes by Arthur cost 1 credit';
+  } catch (_e) {}
+}
+function _t3ShowChanges(siteId) {
+  var j = window._t3DraftChanges || { count: 0, fields: [], pages_added: [], pages_removed: [], sections: [] };
+  var esc = function (v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;'); };
+  var rows = '';
+  (j.pages_added || []).forEach(function (p) { rows += '<div style="padding:8px 0;border-top:1px solid var(--bd)"><b>New page:</b> ' + esc(p) + '</div>'; });
+  (j.pages_removed || []).forEach(function (p) { rows += '<div style="padding:8px 0;border-top:1px solid var(--bd)"><b>Removed page:</b> ' + esc(p) + '</div>'; });
+  (j.sections || []).forEach(function (s) { rows += '<div style="padding:8px 0;border-top:1px solid var(--bd)"><b>' + esc(s.page) + ' \u00B7 ' + esc(s.section) + ' section:</b> now ' + esc(s.now) + '</div>'; });
+  (j.fields || []).forEach(function (f) { rows += '<div style="padding:8px 0;border-top:1px solid var(--bd)"><div style="font-size:11px;color:var(--t3)">' + esc(f.page) + ' \u00B7 ' + esc(String(f.field).replace(/_/g, ' ')) + '</div>' + (f.kind === 'picture' ? '<div>A different picture.</div>' : '<div style="color:var(--t3);text-decoration:line-through">' + esc(f.before == null ? '(nothing)' : f.before) + '</div><div>' + esc(f.after == null ? '(removed)' : f.after) + '</div>') + '</div>'; });
+  if (rows === '') rows = '<div style="padding:8px 0;color:var(--t3)">Nothing waiting. Everything you see is live.</div>';
+  var ov = document.createElement('div'); ov.id = 't3-changes-ov'; ov.style.cssText = 'position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,.62);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;font-family:var(--fb,system-ui,sans-serif)';
+  ov.innerHTML = '<div role="dialog" aria-modal="true" style="background:var(--s1,#171A21);border:1px solid var(--bd2,rgba(255,255,255,.13));border-radius:var(--rg,14px);width:100%;max-width:560px;max-height:calc(100vh - 32px);display:flex;flex-direction:column;overflow:hidden;color:var(--t1,#E8EDF5)"><div style="padding:18px 22px 4px;font:700 16px var(--fh,sans-serif)">What changed on your draft</div><div style="padding:4px 22px 10px;color:var(--t2,#8B97B0);font-size:13px">Visitors still see the live site. Publish changes puts all of this live at once.</div><div style="padding:0 22px 8px;overflow:auto;min-height:0;font-size:13px">' + rows + '</div><div style="display:flex;gap:10px;justify-content:flex-end;padding:12px 16px 16px;border-top:1px solid var(--bd,rgba(255,255,255,.07))"><button type="button" class="lu-btn lu-btn--sm" data-role="close">Close</button>' + (j.count > 0 ? '<button type="button" class="lu-btn lu-btn--sm lu-btn--primary" data-role="publish" style="background:var(--p);color:#fff;border-color:var(--p)">Publish changes</button>' : '') + '</div></div>';
+  document.body.appendChild(ov);
+  var close = function () { try { ov.remove(); } catch (_e) {} };
+  ov.querySelector('[data-role=close]').onclick = close; ov.addEventListener('mousedown', function (e) { if (e.target === ov) close(); });
+  var pb = ov.querySelector('[data-role=publish]'); if (pb) pb.onclick = function () { close(); var bs = document.querySelectorAll('#template-editor-view .pe-bar button, #t3-more-menu button'); for (var i = 0; i < bs.length; i++) { if (/Publish/.test(bs[i].textContent || '')) { bs[i].click(); break; } } };
 }
 
 function _t3LinkDialog(d) {
@@ -4332,7 +4366,7 @@ function _t3ExitChoice(n) {
     box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);padding:20px;width:min(440px,100%);font-family:var(--fb)';
     // EXIT-1: the copy says exactly what is and is not saved; the primary action is always Save and exit
     box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:6px">' + (n > 0 ? 'Save your edits before you leave?' : 'Leave the editor?') + '</div>'
-      + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">' + (n > 0 ? 'You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save and exit ' + (window._t3SiteStatus === 'published' ? 'puts ' + (n === 1 ? 'it' : 'them') + ' on your live site.' : 'keeps ' + (n === 1 ? 'it' : 'them') + ' as a draft on this website.') : 'Everything you changed is already saved on this website — Arthur’s changes, colours, layout and your edits. Undo and Versions can put any of it back next time.') + '</div>'
+      + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">' + (n > 0 ? 'You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save and exit ' + (window._t3SiteStatus === 'published' ? ((window._t3Flags && window._t3Flags.draftedits && window._t3DraftChanges && window._t3DraftChanges.has_live) ? 'keeps ' + (n === 1 ? 'it' : 'them') + ' on your draft; Publish changes puts the draft live.' : 'puts ' + (n === 1 ? 'it' : 'them') + ' on your live site.') : 'keeps ' + (n === 1 ? 'it' : 'them') + ' as a draft on this website.') : 'Everything you changed is already saved on this website — Arthur’s changes, colours, layout and your edits. Undo and Versions can put any of it back next time.') + '</div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">'
       + '<button type="button" class="lu-btn lu-btn--sm" data-c="stay">Keep editing</button>'
       + (n > 0 ? '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Leave without saving</button>' : '')

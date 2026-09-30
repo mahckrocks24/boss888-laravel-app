@@ -126,11 +126,17 @@ use Illuminate\Support\Facades\Route;
             $msg = ! empty($res['success']) ? ($res['hidden'] ? ($res['removed'] ? $label . ' removed. Undo puts it back.' : $label . ' hidden. Visitors will not see it; Show brings it back.') : $label . ' is showing again.') : (string) ($res['message'] ?? 'That did not work.');
             return response()->json($res + ['message' => $msg], ! empty($res['success']) ? 200 : 422);
         })->where('block', '[A-Za-z0-9_\-]+');
+        // DRAFT-5 (RFC-0021 wave 5): what the draft holds that visitors do not see yet
+        Route::get('/websites/{id}/changes', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['error' => 'not_found'], 404);
+            if (! \App\Engines\Builder\Support\DraftEdits::on()) return response()->json(['on' => false, 'count' => 0, 'has_live' => false]);
+            return response()->json(['on' => true, 'status' => (string) $w->status] + \App\Engines\Builder\Support\DraftEdits::changes((int) $id));
+        });
         // EDITOR-3: which waves are on, and the site's base industry (the picture library is tagged by it)
         Route::get('/flags', function (\Illuminate\Http\Request $r) {
             $ind = ''; $sid = (int) $r->query('site', 0);
             if ($sid > 0) { $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $sid)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first(['template_industry']); if ($w) { try { $ind = (string) app(\App\Engines\Builder\Services\TemplateService::class)->industryOf((string) $w->template_industry); } catch (\Throwable $e) { $ind = (string) $w->template_industry; } } }
-            return response()->json(['editor3' => \App\Engines\Builder\Support\Editor3::on(), 'textsafe' => \App\Engines\Builder\Support\InlineText::on(), 'contactfields' => \App\Engines\Builder\Support\ContactFacts::on(), 'industry' => $ind]);
+            return response()->json(['editor3' => \App\Engines\Builder\Support\Editor3::on(), 'draftedits' => \App\Engines\Builder\Support\DraftEdits::on(), 'textsafe' => \App\Engines\Builder\Support\InlineText::on(), 'contactfields' => \App\Engines\Builder\Support\ContactFacts::on(), 'industry' => $ind]);
         });
         // CONTACT-1 (RFC-0021 wave 2, 2026-10-01): the owner's contact details have one home — every fact field of the design, the
         // tel:/mailto: links, the structured data and the business profile follow this panel. Free (the owner's own hands).

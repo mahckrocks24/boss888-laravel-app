@@ -4724,6 +4724,11 @@ PROMPT;
             if (empty($data['reviews'])) { try { $this->templates->setBlockVisibility($websiteId, 'testimonials', true); } catch (\Throwable $__e) { Log::warning('[Arthur] sample reviews hide failed: ' . $__e->getMessage()); } }
             $__baseInd = (string) $industry; try { $__baseInd = (string) ($this->templates->industryOf((string) $industry) ?: $industry); } catch (\Throwable $__bi) {}   // the catalogue is offered by base trade, not design variant
             foreach (\App\Engines\Builder\Support\BuildQuality::pagesFromRequest((array) ($data['pages'] ?? []), $__baseInd) as $__slug) {
+                if ($__slug === 'menu' && \App\Engines\Builder\Support\DraftEdits::on() && \App\Engines\Builder\Support\DraftEdits::pageNeedsItems($websiteId, 'menu') !== null) {   // DRAFT-5: the menu page is built around the brief's own products, never a placeholder
+                    $__items = array_slice(array_values(array_filter(array_map('strval', (array) ($data['services'] ?? [])), fn ($s) => trim($s) !== '')), 0, 8);
+                    foreach ($__items as $__it) { try { app(\App\Engines\Builder\Services\CatalogueService::class)->create($wsId, $websiteId, 'menu', ['title' => mb_substr(trim($__it), 0, 120)], $actorId, 'build'); } catch (\Throwable $__ce) { Log::warning('[Arthur] menu seed failed: ' . $__ce->getMessage()); } }
+                    if ($__items === []) { Log::info('[Arthur] build page skipped: menu needs dishes', ['website_id' => $websiteId]); continue; }
+                }
                 try { $__pr = $this->handleSiteRequest($wsId, $websiteId, 'add a ' . str_replace('_', ' ', $__slug) . ' page', ['_no_brain' => true, '_free' => true, '_build' => true]); Log::info('[Arthur] build page', ['website_id' => $websiteId, 'page' => $__slug, 'ok' => (bool) ($__pr['success'] ?? false), 'code' => $__pr['code'] ?? null]); }
                 catch (\Throwable $__e) { Log::warning('[Arthur] build page failed: ' . $__e->getMessage(), ['page' => $__slug]); }
             }
@@ -6336,6 +6341,11 @@ PROMPT;
                 if (DB::table('pages')->where('website_id', $websiteId)->where('slug', $urlSlug)->exists()) {
                     return ['success' => false, 'code' => 'EXISTS', 'plan' => $plan, 'message' => "{$site->name} already has a {$title} page (/{$urlSlug}). I can rewrite it instead — tell me what to change."];
                 }
+                if (\App\Engines\Builder\Support\DraftEdits::on() && ($__needs = \App\Engines\Builder\Support\DraftEdits::pageNeedsItems($websiteId, $slug)) !== null) {   // DRAFT-5: never a placeholder page
+                    return ['success' => false, 'code' => 'NEEDS_ITEMS', 'kind' => 'page', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'needs' => $__needs,
+                        'message' => $__needs === 'menu' ? 'A menu page needs your dishes first — open Listings in the toolbar, add them with their prices, and I will build the page around them. No charge.' : 'A listings page needs your listings first — open Listings in the toolbar and add them, and I will build the page around them. No charge.'];
+                }
+                $identity['website_id'] = $websiteId;   // DRAFT-5: the page builder reads the site's own catalogue
                 $sections = $this->buildDefaultSectionsForPage($slug, $identity);
                 // persist the page row (published: the static export is what is served, the row keeps the editor + listing honest)
                 $created = app(\App\Engines\Builder\Services\BuilderService::class)->createPage($websiteId, ['title' => $title, 'slug' => $urlSlug, 'sections' => $sections, 'status' => 'published']);
@@ -8242,14 +8252,20 @@ PROMPT;
             case 'dishes':
             case 'drinks':
             case 'wine_list':
-                $menuItems = $featureItems
+                $__wid = (int) ($data['website_id'] ?? 0); $__real = [];
+                if (\App\Engines\Builder\Support\DraftEdits::on() && $__wid > 0) {   // DRAFT-5: the menu page shows the business's own dishes and prices, never a placeholder
+                    try { $__cat = app(\App\Engines\Builder\Services\CatalogueService::class); foreach (DB::table('catalogue_items')->where('website_id', $__wid)->where('kind', 'menu')->whereNull('deleted_at')->where('source', '!=', 'seed')->orderByDesc('featured')->orderBy('sort_order')->orderBy('id')->limit(24)->get() as $__it) { $__real[] = ['title' => (string) $__it->title, 'subtitle' => (string) ($__it->summary ?? ''), 'price' => $__cat->priceText($__it)]; } } catch (\Throwable $__ie) { $__real = []; }
+                }
+                $menuItems = $__real !== [] ? $__real : (\App\Engines\Builder\Support\DraftEdits::on()
+                    ? array_map(fn($s) => ['title' => $s, 'subtitle' => '', 'price' => ''], (array) $featureItems)
+                    : ($featureItems
                     ? array_map(fn($s) => ['title' => $s, 'subtitle' => 'Description goes here', 'price' => 'AED 00'], $featureItems)
                     : [
                         ['title' => 'Signature dish 1', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
                         ['title' => 'Signature dish 2', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
                         ['title' => 'Signature dish 3', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
                         ['title' => 'Signature dish 4', 'subtitle' => 'Short description of ingredients', 'price' => 'AED 00'],
-                    ];
+                    ]));
                 return [
                     ['type' => 'header'],
                     ['type' => 'hero',

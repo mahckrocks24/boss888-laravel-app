@@ -232,7 +232,7 @@ class PublishedSiteMiddleware
         }
 
         if ($website && preg_match('#^[a-z0-9/_\-.]*$#i', $path) && !str_contains($path, '..')) {
-            $siteRoot = storage_path('app/public/sites/' . $website->id);
+            $siteRoot = \App\Engines\Builder\Support\DraftEdits::servedRoot(storage_path('app/public/sites/' . $website->id));   // DRAFT-5 (RFC-0021 wave 5): the frozen live copy when it exists
             $staticCandidates = array_unique([
                 $siteRoot . '/' . $slug . '.html',
                 $siteRoot . '/' . $slug . '/index.html',

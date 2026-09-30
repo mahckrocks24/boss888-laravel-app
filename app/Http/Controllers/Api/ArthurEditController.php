@@ -136,6 +136,7 @@ class ArthurEditController
             if (($result['success'] ?? false)) {
                 $result['version'] = sha1((string) \Illuminate\Support\Facades\DB::table('pages')->where('id', $pageId)->value('sections_json'));
             }
+            if (\App\Engines\Builder\Support\DraftEdits::on() && ($result['success'] ?? false)) { try { $__ws = \Illuminate\Support\Facades\DB::table('pages')->join('websites', 'websites.id', '=', 'pages.website_id')->where('pages.id', $pageId)->first(['websites.id as wid', 'websites.status']); if ($__ws && (string) $__ws->status === 'published' && \App\Engines\Builder\Support\DraftEdits::hasLive((int) $__ws->wid)) { foreach (['message', 'reply'] as $__dk) { if (! empty($result[$__dk]) && is_string($result[$__dk])) $result[$__dk] = rtrim($result[$__dk]) . ' It is on your draft — Publish changes puts it live.'; } $result['draft'] = true; } } catch (\Throwable $__de) {} }   // DRAFT-5
             if (! empty($__meter['debited'])) { $result['chat_meter'] = 1; $result['credits_used'] = (int) ($result['credits_used'] ?? 0) + 1; foreach (['message', 'reply'] as $__k) { if (! empty($result[$__k]) && is_string($result[$__k])) { $result[$__k] = rtrim($result[$__k]) . ' (1 credit — every 5th chat message)'; } } }
             return response()->json($result);
         } catch (\Throwable $e) {

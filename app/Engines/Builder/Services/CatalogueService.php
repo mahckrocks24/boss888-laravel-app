@@ -477,6 +477,11 @@ class CatalogueService
                     if ($parts !== []) $title = implode(' ', $parts);
                 }
                 if ($title === null) continue;
+                if (\App\Engines\Builder\Support\DraftEdits::on()) {   // DRAFT-5: a slot still holding the design's sample (title equal to its manifest default) is not the business's item
+                    static $__mf = []; $__mf[$websiteId] = $__mf[$websiteId] ?? (\App\Engines\Builder\Support\LogoFieldSemantics::manifestFor($websiteId) ?: []);
+                    $__sample = false; foreach (CatalogueKinds::SHARED_SUFFIXES['title'] as $__ts) { $__d = trim((string) ($__mf[$websiteId]['variables']["{$family}_{$i}_{$__ts}"]['default'] ?? '')); if ($__d !== '' && trim((string) $title) === $__d) { $__sample = true; break; } }
+                    if ($__sample) continue;
+                }
                 $periodRaw = trim((string) ($this->slotValue($tv, $family, $i, ['period']) ?? ''), " /");
                 $badge = strtolower((string) ($this->slotValue($tv, $family, $i, ['badge']) ?? ''));
                 $status = $closedRow ? ($spec['closed_statuses'][0] ?? $spec['default_status']) : $spec['default_status'];

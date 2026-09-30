@@ -3540,6 +3540,7 @@ Route::post('/builder/websites/{id}/publish', function (\Illuminate\Http\Request
         ->where('website_id', $id)->update(['status' => 'published', 'updated_at' => now()]);
 
     \App\Http\Controllers\PublishedSiteController::invalidateCache($id);
+    if (\App\Engines\Builder\Support\DraftEdits::on()) { try { \Illuminate\Support\Facades\Log::info('[Builder] publish changes', ['website_id' => (int) $id] + \App\Engines\Builder\Support\DraftEdits::promote((int) $id)); } catch (\Throwable $__pe) { \Illuminate\Support\Facades\Log::warning('[Builder] publish changes failed: ' . $__pe->getMessage()); } }   // DRAFT-5: the draft becomes what visitors see
 
     // ONBOARD-PUBLISH-1b (Owner 2026-09-30): the published website is when Sarah meets the customer and starts work.
     \App\Jobs\SarahDiscoveryJob::onPublished((int) $website->workspace_id, 'publish_button');

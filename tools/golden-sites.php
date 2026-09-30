@@ -12,7 +12,7 @@ $scan = function () use ($root) {
         $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS));
         foreach ($it as $f) {
             $p = $f->getPathname(); $rel = substr($p, strlen($root) + 1);
-            if (strpos($rel, '/.history/') !== false) continue;
+            if (strpos($rel, '/.history/') !== false || strpos($rel, '/.live/') !== false || strpos($rel, '/.live-') !== false) continue;   // DRAFT-5: the live copy is derived
             $map[$rel] = ['sha' => sha1_file($p), 'size' => $f->getSize()];
         }
     }
