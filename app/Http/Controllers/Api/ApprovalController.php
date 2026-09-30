@@ -49,10 +49,13 @@ class ApprovalController
                 't.engine', 't.action', 't.category as task_category', 't.payload_json',
                 't.credit_cost', 't.priority', 't.status as task_status',
                 't.assigned_agents_json',
+                'a.engine as a_engine', 'a.action as a_action',   // RAIL-NAME-1
             ]);
 
         $items = $rows->map(function ($r) {
-            return $this->shapeApproval($r);
+            $x = $this->shapeApproval($r);
+            if (empty($x['task']) && empty($r->proposal_id ?? null)) $x['task'] = $this->orphanTask($r);   // RAIL-NAME-1
+            return $x;
         })->values();
 
         return response()->json([
@@ -807,5 +810,29 @@ class ApprovalController
             'system'    => '#8B97B0',
         ];
         return ['name' => $engine, 'color' => $colors[$engine] ?? '#8B97B0'];
+    }
+
+    /** RAIL-NAME-1: a task-shaped block for an approval that has no task, from the approval's own engine, action and data. */
+    private function orphanTask(object $r): ?array
+    {
+        $engine = (string) ($r->a_engine ?? ''); $action = (string) ($r->a_action ?? '');
+        if ($engine === '' && $action === '') return null;
+        $d = json_decode((string) ($r->a_data_json ?? ''), true) ?: [];
+        $plat = ['facebook' => 'Facebook', 'instagram' => 'Instagram', 'linkedin' => 'LinkedIn'][strtolower((string) ($d['platform'] ?? ''))] ?? 'social';
+        if ($action === 'article_share') {
+            $title = trim((string) ($d['article_title'] ?? ''));
+            return [
+                'id' => null, 'engine' => 'social', 'action' => 'article_share',
+                'label' => 'Share the article on ' . $plat,
+                'description' => $title !== '' ? '"' . $title . '"' : 'A published article, as a ' . $plat . ' post',
+                'payload' => array_filter(['article_id' => (int) ($d['article_id'] ?? 0) ?: null, 'post_id' => (int) ($d['share_id'] ?? 0) ?: null]),
+                'credit_cost' => 0, 'credit_cost_known' => true, 'credit_disclosed' => 0, 'credit_note' => null,
+                'priority' => 'normal', 'status' => null, 'assigned_agents' => [], 'primary_agent' => null,
+            ];
+        }
+        $words = ucfirst(str_replace('_', ' ', $action ?: $engine));
+        return ['id' => null, 'engine' => $engine ?: 'system', 'action' => $action, 'label' => $words, 'description' => null,
+            'payload' => $d, 'credit_cost' => 0, 'credit_cost_known' => true, 'credit_disclosed' => 0, 'credit_note' => null,
+            'priority' => 'normal', 'status' => null, 'assigned_agents' => [], 'primary_agent' => null];
     }
 }

@@ -183,7 +183,7 @@
       '.sh-rail-track{display:flex;flex-direction:row;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:thin;margin:0 -16px;padding:0 16px 8px;scroll-padding:0 16px}',
       '.sh-rail-track::-webkit-scrollbar{height:6px}.sh-rail-track::-webkit-scrollbar-thumb{background:var(--sb-thumb,var(--bd2));border-radius:99px}',
       '.sh-rail-track>.sh-item{flex:0 0 calc((100% - 10px) / 1.5);min-width:380px;max-width:none;scroll-snap-align:start;box-sizing:border-box}',
-      '.sh-rail-track>.sh-item .d{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}',
+      '.sh-rail-track{align-items:flex-start}',
       '.sh-rail-track>.sh-item .acts{margin-top:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}.sh-rail-track>.sh-item .acts::-webkit-scrollbar{display:none}',
       '.sh-rail-track>.sh-item .acts .sh-btn{min-height:36px;padding:0 11px;font-size:12.5px;white-space:nowrap;flex:none}.sh-rail-track>.sh-item .who{margin-top:4px}',
       /* after the strip mounts (or resizes), the thread keeps its place at the bottom */
@@ -198,10 +198,16 @@
       '@media (prefers-reduced-motion:reduce){.sh-rail-h .tog .chev{transition:none}}',
       /* RAIL-1: on small screens the rail is a horizontal snap strip — one card tall, swipe for the rest. */
       '@media (max-width:767px){.sh-rail{padding:8px 12px 0}.sh-rail-track{margin:0 -12px;padding:0 12px 6px;scroll-padding:0 12px;scrollbar-width:none;scroll-snap-stop:always}.sh-rail-track::-webkit-scrollbar{display:none}.sh-rail-track>.sh-item{flex-basis:86%;min-width:0;max-width:340px}}',
-      '.sh-item{display:flex;gap:12px;align-items:flex-start;background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--am);border-radius:var(--rg);padding:12px 14px}',
+      '.sh-item{display:block;background:var(--s1);border:1px solid var(--bd);border-left:3px solid var(--am);border-radius:var(--rg);padding:12px 14px;align-self:flex-start}',
+      '.sh-item .hd{display:flex;gap:12px;align-items:center;cursor:pointer;border-radius:8px;outline:none}.sh-item .hd:focus-visible{outline:2px solid var(--p);outline-offset:3px}',
+      '.sh-item .hm{flex:1;min-width:0}.sh-item .s{font-size:12.5px;color:var(--t2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.sh-item .hd .chev{flex:none;width:16px;height:16px;color:var(--t3);transition:transform var(--dur-fast,150ms)}.sh-item.open .hd .chev{transform:rotate(180deg)}',
+      '.sh-item .body{margin:10px 0 0 44px}.sh-item .body .d{margin-top:0}.sh-item .pv{margin-top:8px}.sh-item .pv img{display:block;width:100%;max-height:220px;object-fit:cover;border-radius:10px;border:1px solid var(--bd)}',
+      '.sh-item .pv .cap{font-size:12.5px;color:var(--t1);line-height:1.5;margin-top:8px;white-space:pre-wrap;max-height:180px;overflow:auto}.sh-item .pv .lk{font-size:11.5px;color:var(--t3);margin-top:6px;word-break:break-all}',
+      '@media (max-width:767px){.sh-item .body{margin-left:0}}',
       '.sh-item.gate{border-left-color:var(--bl)}.sh-item.book{border-left-color:var(--ac)}.sh-item.fail{border-left-color:var(--rd)}',
       '.sh-item .ic{flex:none;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--s2);font-size:14px}',
-      '.sh-item .body{flex:1;min-width:0}.sh-item .t{font-weight:600;font-size:13.5px;color:var(--t1)}.sh-item .d{font-size:12.5px;color:var(--t2);margin-top:2px;line-height:1.45}',
+      '.sh-item .t{font-weight:600;font-size:13.5px;color:var(--t1)}.sh-item .d{font-size:12.5px;color:var(--t2);margin-top:2px;line-height:1.45}',
       '.sh-item .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}',
       '.sh-item .who{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--t2);margin-top:6px}.sh-item .who b{color:var(--t1);font-weight:600}',
       '.sh-btn.danger{border-color:rgba(248,113,113,.55);color:var(--rd)}',
@@ -339,7 +345,7 @@
     var wrap = document.getElementById('sh-brief'); if (!wrap) return;
     api('GET', 'dashboard/overview').then(function (r) {
       var d = r.json || {}; var s = d.stats || {}; S.lastFacts = d; wrap.innerHTML = '';
-      var att = (d.approvals_pending_total || (d.pending_approvals || []).length || 0);
+      var att = S.railDecisions != null ? S.railDecisions : (d.approvals_pending_total || (d.pending_approvals || []).length || 0);   /* RAIL-CLOSED-1: the chip counts what the strip holds */
       if (att > 0) wrap.appendChild(chip(att === 1 ? 'thing needs your OK' : 'things need your OK', att, 'att', function () { if (window.nav) nav('attention'); }));
       if (s.tasks_today > 0) wrap.appendChild(chip('done today', s.tasks_today));
       else if (s.tasks_this_week > 0) wrap.appendChild(chip('done this week', s.tasks_this_week));
@@ -386,10 +392,17 @@
   }
 
   /* ── Attention rail: approvals · booking requests · provider gates (all real, all actionable) ── */
-  function railItem(cls, icon, title, desc, who, acts, id) {
+  function railItem(cls, icon, title, desc, who, acts, id, preview, summary) {
+    /* RAIL-CLOSED-1: closed card - icon, title, one summary line; the tap opens details, preview and actions */
     var el = document.createElement('div'); el.className = 'sh-item ' + cls; if (id) el.setAttribute('data-item', id);
-    el.innerHTML = '<div class="ic" aria-hidden="true">' + icon + '</div><div class="body"><div class="t">' + esc(title) + '</div>' + (desc ? '<div class="d">' + esc(desc) + '</div>' : '') +
+    var sum = summary != null ? summary : desc;
+    el.innerHTML = '<div class="hd" role="button" tabindex="0" aria-expanded="false"><div class="ic" aria-hidden="true">' + icon + '</div><div class="hm"><div class="t">' + esc(title) + '</div>' + (sum ? '<div class="s">' + esc(sum) + '</div>' : '') + '</div>' +
+      '<svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+      '<div class="body" hidden>' + (desc ? '<div class="d">' + esc(desc) + '</div>' : '') + (preview || '') +
       (who ? '<div class="who"><b>' + esc(who) + '</b><span>on your team</span></div>' : '') + (acts && acts.length ? '<div class="acts"></div>' : '') + '</div>';
+    var hd = el.querySelector('.hd'), bd = el.querySelector('.body');
+    function tog() { var open = bd.hidden; bd.hidden = !open; el.classList.toggle('open', open); hd.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+    hd.addEventListener('click', tog); hd.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } });
     var actsEl = el.querySelector('.acts');
     (acts || []).forEach(function (a) { var b = document.createElement('button'); b.type = 'button'; b.className = 'sh-btn' + (a.kind ? ' ' + a.kind : ''); b.textContent = a.label; b.addEventListener('click', function () { a.run(b, el); }); actsEl.appendChild(b); });
     return el;
@@ -431,7 +444,7 @@
           decide(a.id, 'reject', reason, b, el); } }
     ];
     if (link) acts.push({ label: link.label, run: function () { openAdvanced(link); } });
-    return railItem('appr', '✓', title, desc, who, acts, 'appr-' + a.id);
+    return railItem('appr', '✓', title, (t.description || ''), who, acts, 'appr-' + a.id, '', 'Uses ' + cost + (a.time_ago ? ' · asked ' + a.time_ago : ''));
   }
   /* CAMPAIGN-PREVIEW-2 (Owner 2026-09-27: "on Laravel it should be placed on the needs you pull down on sarah chat"):
      a campaign idea or a campaign update waiting for the owner is a rail item, decided right there. */
@@ -475,12 +488,13 @@
       { label: 'Not now', run: function (b, el) { S.dismissedDrafts = S.dismissedDrafts || {}; S.dismissedDrafts[String(x.post_id)] = 1; campAct('social/posts/' + x.post_id + '/dismiss-preview', {}, 'Not now — it stays in Social › Drafts.', b, el); var c = S.feed && S.feed.querySelector('.sh-inline-post[data-post="' + x.post_id + '"]'); if (c) c.remove(); } }
     ];
     function see() { var c = S.feed && S.feed.querySelector('.sh-inline-post[data-post="' + x.post_id + '"]'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.classList.add('sh-flash'); setTimeout(function () { c.classList.remove('sh-flash'); }, 1600); } else if (window.nav) nav('social'); }
-    return railItem('appr', '\u270E', 'Post ready: ' + plat, desc, 'Sarah', acts, 'post-' + x.post_id);
+    var pv = '<div class="pv">' + (x.image ? '<img src="' + esc(x.image) + '" alt="" loading="lazy">' : '') + (x.caption ? '<div class="cap">' + esc(String(x.caption)) + '</div>' : '') + (x.link ? '<div class="lk">' + esc(String(x.link)) + '</div>' : '') + '</div>';   /* RAIL-CLOSED-1 */
+    return railItem('appr', '\u270E', 'Post ready: ' + plat, (x.account && x.account.name ? x.account.name : ''), 'Sarah', acts, 'post-' + x.post_id, pv, desc);
   }
   function loadRail() {
     var rail = document.getElementById('sh-rail'); if (!rail) return;
     Promise.all([
-      api('GET', 'approvals?status=pending&per_page=5').catch(function () { return { json: null }; }),
+      api('GET', 'approvals?status=pending&per_page=20').catch(function () { return { json: null }; }),
       api('GET', 'agents/dmm/pending-actions').catch(function () { return { json: null }; }),   /* CAMPAIGN-PREVIEW-2 */
       api('GET', 'calendar/events').catch(function () { return { json: null }; }),
       api('GET', 'social/accounts').catch(function () { return { json: null }; }),
@@ -488,8 +502,10 @@
     ]).then(function (rs) {
       var items = [];
       var appr = (rs[0].json && rs[0].json.items) || [];
-      appr.forEach(function (a) { items.push(approvalItem(a)); });
       var pa = rs[1].json || {}; var camps = pa.campaigns || []; var chgs = pa.campaign_changes || [];   /* CAMPAIGN-PREVIEW-2 */
+      var __postIds = {}; (pa.drafts || []).forEach(function (x) { __postIds[String(x.post_id)] = 1; });   /* RAIL-CLOSED-1: a post shown as a post card is not shown again as its approval */
+      appr = appr.filter(function (a) { var pid = a.task && a.task.payload && a.task.payload.post_id; return !(pid && __postIds[String(pid)]); });
+      appr.forEach(function (a) { items.push(approvalItem(a)); });
       camps.forEach(function (p) { items.push(campaignItem(p)); }); chgs.forEach(function (x) { items.push(campaignChangeItem(x)); });
       var posts = (pa.drafts || []).filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }); posts.forEach(function (x) { items.push(postItem(x)); });   /* POST-TIMELINE-1 */
       rs.splice(1, 1);
@@ -508,6 +524,7 @@
       rail.innerHTML = '';
       if (!items.length) { rail.hidden = true; return; }
       var title = (appr.length || camps.length || chgs.length || posts.length) ? 'Needs your OK' : 'Worth knowing';
+      try { var __n = appr.length + camps.length + chgs.length + posts.length; S.railDecisions = __n; var __c = document.querySelector('#sh-brief .att'); if (__c) { if (__n > 0) __c.innerHTML = '<b>' + __n + '</b> ' + (__n === 1 ? 'thing needs your OK' : 'things need your OK'); else __c.remove(); } } catch (e) {}   /* RAIL-CLOSED-1 */
       var h = document.createElement('div'); h.className = 'sh-rail-h';
       h.innerHTML = '<button type="button" class="tog" aria-expanded="true" aria-controls="sh-rail-track" title="Minimise"><svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ttl">' + title + '</span></button><span class="pos" aria-live="polite"></span>';
       rail.appendChild(h);
