@@ -231,3 +231,6 @@ html .lg-site .sim-note, html .lg-site .sim2-note { color: var(--ink-3); }
 @media (max-width: 979px) {
   html .lg-site .sim-armed .sim-msg:not(.on), html .lg-site .sim-armed .sim-build:not(.on), html .lg-site .sim-armed .sim-result:not(.on) { display: none; }
 }
+
+/* 19. Owner 09-30 phone shot (a screen of empty ground between sections): the 84 px section rhythm overrode site.css's phone value; phones breathe 52/40 */
+@media (max-width: 760px) { html .lg-site .section { padding: 52px 0; } html .lg-site .section-tight { padding: 40px 0; } html .lg-site .page-head { padding-top: 32px; } }

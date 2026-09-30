@@ -25,6 +25,7 @@
 
   // 1. REVEALS: the direct blocks of every section (and every card in a grid), once, as they enter the screen
   (function () {
+    if (window.innerWidth <= 979) return;   // Owner 09-30 ("glitching"): phones show every block at rest, nothing waits for the scroll
     var SEL = '.section > .container > *, .section-tight > .container > *, .page-head > .container > *, .hero > .container > *, .hero-sarah > .container > *, .sec > .container > *, .grid-2 > *, .grid-3 > *, .grid-4 > *, .row-5-7 > *, .row-7-5 > *, .card, .plan, .post-card, .faq-item, .prose > *';
     var all = $$(SEL).filter(function (el) { return el.offsetParent !== null || getComputedStyle(el).position === 'fixed'; });
     var items = all.filter(function (el) { for (var p = el.parentElement; p; p = p.parentElement) if (all.indexOf(p) >= 0) return false; return true; });   // no nesting: a block inside a revealed block rides with it

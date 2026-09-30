@@ -100,6 +100,7 @@
 
   // 3. SECTION REVEALS: one rule for the whole page — below the fold only, once, staggered
   (function () {
+    if (phone()) return;   // Owner 09-30 ("glitching"): phones show every block at rest, nothing waits for the scroll
     var groups = $$('.mk-sec, .mk-tpls').filter(function (s) { return s.id !== 'hero-glass'; });
     var pending = [];
     groups.forEach(function (sec) {
