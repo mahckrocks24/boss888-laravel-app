@@ -725,6 +725,8 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         $data = $r->validate([
             'visibility_mode' => 'sometimes|string|in:basic,advanced',
             'theme'           => 'sometimes|string|in:dark,light,system', // LT-1 (2026-08-30)
+            'sarah_intro'     => 'sometimes|array', 'sarah_intro.version' => 'sometimes|integer|min:1|max:99', 'sarah_intro.done_at' => 'sometimes|nullable|string|max:40', 'sarah_intro.last_step' => 'sometimes|integer|min:0|max:20', 'sarah_intro.device' => 'sometimes|string|in:mobile,desktop',   // SARAH-INTRO-1
+            'page_intros'     => 'sometimes|array|max:40', 'page_intros.*' => 'string|max:32|regex:/^[a-z_]+$/',   // SARAH-INTRO-1: pages Sarah has introduced
             'editor_tour'     => 'sometimes|array',   // TOUR-1 (RFC-0013): {version, done_at|skipped_at, last_step}
             'editor_tour.version' => 'sometimes|integer|min:1|max:99', 'editor_tour.done_at' => 'sometimes|nullable|string|max:40', 'editor_tour.skipped_at' => 'sometimes|nullable|string|max:40', 'editor_tour.last_step' => 'sometimes|integer|min:0|max:50', 'editor_tour.device' => 'sometimes|string|in:desktop,mobile',
         ]);
@@ -737,6 +739,9 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         if (! is_array($current)) $current = [];
 
         $allowed = ['visibility_mode', 'theme', 'editor_tour'];
+        // SARAH-INTRO-1: merged, never replaced - a finished introduction stays finished, introduced pages accumulate
+        if (array_key_exists('sarah_intro', $data)) { $prev = is_array($current['sarah_intro'] ?? null) ? $current['sarah_intro'] : []; $next = array_merge($prev, array_intersect_key((array) $data['sarah_intro'], array_flip(['version', 'done_at', 'last_step', 'device']))); if (! empty($prev['done_at']) && empty($data['sarah_intro']['done_at'])) { $next['done_at'] = $prev['done_at']; } $current['sarah_intro'] = $next; }
+        if (array_key_exists('page_intros', $data)) { $current['page_intros'] = array_values(array_unique(array_merge(array_values((array) ($current['page_intros'] ?? [])), array_values((array) $data['page_intros'])))); }
         if (array_key_exists('editor_tour', $data)) { \Illuminate\Support\Facades\Log::info('[tour] editor', ['user' => $userId, 'ws' => (int) $r->attributes->get('workspace_id'), 'tour' => $data['editor_tour']]); }   // TOUR-1: completion analytics in the log until the platform-events subscriber lands
         foreach ($allowed as $k) {
             if (array_key_exists($k, $data)) {

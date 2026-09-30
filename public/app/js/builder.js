@@ -976,6 +976,7 @@ function _wsExtPluginInfo(siteId){
 
 // Template website editor view
 function _wsShowTemplateEditor(site) {
+  try { if (window.luSarahIntro) window.luSarahIntro.editorOpened(site); } catch (_si) {}   /* SARAH-INTRO-1 */
   var wsId = site.id;
   var previewUrl = '/api/builder/websites/' + wsId + '/preview';
   var siteName = bld_escH(site.title || site.name || 'Website');
@@ -1071,14 +1072,17 @@ async function _wsTplBindPage(websiteId) {
   }
 }
 
-async function wsCloseTemplateEditor() {
+async function wsCloseTemplateEditor(opts) {
+  opts = opts || {};
+  /* SARAH-INTRO-1 (Owner 2026-09-30): a first website is left only through Publish (html.lu-first-site, set by sarah-intro.js) */
+  if (document.documentElement.classList.contains('lu-first-site') && !opts.force) { if (typeof showToast === 'function') showToast('Publish your website to finish. It is the last step, and everything else opens after it.', 'info'); return; }
   if (window._wsSitesStale) { window._wsSitesStale = false; try { if (typeof wsLoadSites === 'function') setTimeout(wsLoadSites, 0); } catch (_e) {} }   // PUB-1
   // DEC-0046: the ONE confirmation in this editor. Arthur, palette and undo changes are already on the site
   // (Undo and Versions put them back); only inline text edits can still be pending, and those are what the
   // customer is asked about. Nothing pending: leave silently.
   var pending = 0;
   try { pending = Object.keys(_t3PendingFields).length; } catch (_e) {}
-  { // EXIT-1 (Owner 2026-09-23): always confirm the exit, so nobody leaves wondering whether their work was saved
+  if (opts.silent) { try { clearTimeout(_t3SaveTimer); await _t3FlushSaves(); } catch (_sv) {} } else { // EXIT-1 (Owner 2026-09-23): always confirm the exit, so nobody leaves wondering whether their work was saved
     var choice = await _t3ExitChoice(pending);
     if (choice === 'stay') return;
     if (choice === 'save') {
@@ -3130,6 +3134,7 @@ window._luConfirmSubdomain = async function (websiteId) {
 
     var url = pubD.url || ('https://' + slug + '.levelupgrowth.io');
     showToast('Website published! ' + url, 'success', { duration: 8000 });
+    try { document.dispatchEvent(new CustomEvent('lu:site-published', { detail: { websiteId: websiteId, url: url } })); } catch (_sp) {}   /* SARAH-INTRO-1: Sarah introduces herself */
 
     // PUB-1 (Owner 2026-09-22): a first publish from INSIDE the editor used to call wsLoadSites(), which rebuilt the
     // Websites grid and took the open editor down with it. In the editor: update the record in place, keep the editor,
