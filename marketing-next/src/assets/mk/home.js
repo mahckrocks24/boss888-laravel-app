@@ -181,8 +181,8 @@
     function finish() { msgs.forEach(function (m) { show(m, true); m.style.opacity = 1; }); show(typing, false); show(lead, true); lead.style.opacity = 1; show(nolead, false); }
     async function run() {
       running = true; fx('chat', true); reset();
-      await type(v1); await pop(msgs[0]); await wait(250); show(typing, true); await wait(1300); show(typing, false); await pop(msgs[1]); await wait(1100);
-      await type(v2); await pop(msgs[2]); await wait(250); show(typing, true); await wait(900); show(typing, false); await pop(msgs[3]); await wait(700);
+      await type(v1); await pop(msgs[0]); await wait(250); msgs[1].parentNode.insertBefore(typing, msgs[1]); show(typing, true); await wait(1300); show(typing, false); await pop(msgs[1]); await wait(1100);
+      await type(v2); await pop(msgs[2]); await wait(250); msgs[3].parentNode.insertBefore(typing, msgs[3]); show(typing, true); await wait(900);   /* DOTS-1: the dots move to just before the reply they announce, so they are always last on screen */ show(typing, false); await pop(msgs[3]); await wait(700);
       show(nolead, false); await pop(lead);
       fx('chat', false); await wait(3600); running = false; if (visible) run();
     }

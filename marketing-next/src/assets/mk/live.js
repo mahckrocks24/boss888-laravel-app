@@ -18,12 +18,13 @@
   function count(el, from, to, secs, fmt) { if (!el) return Promise.resolve(); return M.animate(from, to, { duration: secs, ease: 'circOut', onUpdate: function (v) { el.textContent = fmt ? fmt(v) : Math.round(v).toLocaleString('en-US'); } }); }
   function meter(el, to, secs) { if (!el) return Promise.resolve(); return M.animate(el, { scaleX: [0, to] }, { duration: secs, ease: 'circOut' }); }
   function stagger(els, o, gap, extra) { return M.animate(els, o, Object.assign({ delay: M.stagger(gap), duration: .45, ease: [.25, .8, .3, 1] }, extra || {})); }
+  function dots(r, next) { var t = one(r, 'typing'); if (!t) return; if (next && next.parentNode) next.parentNode.insertBefore(t, next); t.hidden = false; }   // DOTS-1: the dots always sit just before the message they announce, i.e. last on screen
   var seq = {};
 
   seq.build = { ask: 'A neighbourhood restaurant in Norwich. Twelve dishes, seasonal menu, private hire.',
     reset: function (r) { one(r, 'typed').textContent = ''; ['ask', 'reply', 'live'].forEach(function (k) { one(r, k).hidden = true; }); one(r, 'typing').hidden = true; one(r, 'img').style.clipPath = 'inset(0 0 100% 0)'; one(r, 'skel').hidden = false; one(r, 'stage').textContent = 'Waiting for your brief'; one(r, 'pct').textContent = '0'; one(r, 'meter').style.transform = 'scaleX(0)'; },
     run: async function (r) { var t = one(r, 'typed');
-      await type(t, one(r, 'caret'), this.ask, 3); await wait(300); t.textContent = ''; await pop(one(r, 'ask')); await wait(250); one(r, 'typing').hidden = false; await wait(1000); one(r, 'typing').hidden = true; await pop(one(r, 'reply')); await wait(300);
+      await type(t, one(r, 'caret'), this.ask, 3); await wait(300); t.textContent = ''; await pop(one(r, 'ask')); await wait(250); dots(r, one(r, 'reply')); await wait(1000); one(r, 'typing').hidden = true; await pop(one(r, 'reply')); await wait(300);
       var stages = ['Writing the copy', 'Laying out the pages', 'Menu, gallery, booking form']; stages.forEach(function (s, i) { setTimeout(function () { one(r, 'stage').textContent = s; }, i * 900); });
       await Promise.all([M.animate(one(r, 'img'), { clipPath: ['inset(0 0 100% 0)', 'inset(0 0 0% 0)'] }, { duration: 2.75, ease: 'circOut' }), meter(one(r, 'meter'), 1, 2.75), count(one(r, 'pct'), 0, 100, 2.75)]);
       one(r, 'skel').hidden = true; one(r, 'stage').textContent = 'Published'; await pop(one(r, 'live')); await wait(3500); } };
@@ -66,8 +67,8 @@
   seq.bot = { v1: 'Looking for a honeymoon in Japan. Any ideas?', v2: 'Yes please. Emma, 07700 900412.',
     reset: function (r) { lv(r, 'm').forEach(function (m) { m.hidden = true; }); one(r, 'typing').hidden = true; one(r, 'typed').textContent = ''; one(r, 'lead').hidden = true; one(r, 'nolead').hidden = false; },
     run: async function (r) { var m = lv(r, 'm'), t = one(r, 'typed'), c = one(r, 'caret');
-      await type(t, c, this.v1, 2.2); await wait(250); t.textContent = ''; await pop(m[0]); await wait(200); one(r, 'typing').hidden = false; await wait(1100); one(r, 'typing').hidden = true; await pop(m[1]); await wait(900);
-      await type(t, c, this.v2, 1.6); await wait(250); t.textContent = ''; await pop(m[2]); await wait(200); one(r, 'typing').hidden = false; await wait(800); one(r, 'typing').hidden = true; await pop(m[3]); await wait(500);
+      await type(t, c, this.v1, 2.2); await wait(250); t.textContent = ''; await pop(m[0]); await wait(200); dots(r, m[1]); await wait(1100); one(r, 'typing').hidden = true; await pop(m[1]); await wait(900);
+      await type(t, c, this.v2, 1.6); await wait(250); t.textContent = ''; await pop(m[2]); await wait(200); dots(r, m[3]); await wait(800); one(r, 'typing').hidden = true; await pop(m[3]); await wait(500);
       one(r, 'nolead').hidden = true; await pop(one(r, 'lead')); await wait(3500); } };
 
   seq.creative = { brief: 'Candlelit long table, twelve seats, autumn menu, warm and quiet. Our colours.',
@@ -88,8 +89,8 @@
   seq.aria = { q1: 'How do I connect the domain I already own?', q2: 'Yes please.',
     reset: function (r) { lv(r, 'm').forEach(function (m) { m.hidden = true; }); one(r, 'typing').hidden = true; one(r, 'typed').textContent = ''; },
     run: async function (r) { var m = lv(r, 'm'), t = one(r, 'typed'), c = one(r, 'caret');
-      await type(t, c, this.q1, 2); await wait(250); t.textContent = ''; await pop(m[0]); await wait(200); one(r, 'typing').hidden = false; await wait(1200); one(r, 'typing').hidden = true; await pop(m[1]); await wait(1400);
-      await type(t, c, this.q2, .7); await wait(200); t.textContent = ''; await pop(m[2]); await wait(200); one(r, 'typing').hidden = false; await wait(700); one(r, 'typing').hidden = true; await pop(m[3]); await wait(3500); } };
+      await type(t, c, this.q1, 2); await wait(250); t.textContent = ''; await pop(m[0]); await wait(200); dots(r, m[1]); await wait(1200); one(r, 'typing').hidden = true; await pop(m[1]); await wait(1400);
+      await type(t, c, this.q2, .7); await wait(200); t.textContent = ''; await pop(m[2]); await wait(200); dots(r, m[3]); await wait(700); one(r, 'typing').hidden = true; await pop(m[3]); await wait(3500); } };
 
   seq.domains = { reset: function (r) { one(r, 'typed').textContent = ''; hide(lv(r, 'dom')); hide(lv(r, 'step')); },
     run: async function (r) { await type(one(r, 'typed'), one(r, 'caret'), 'blackdoor.com', 1.3); await wait(400); var d = lv(r, 'dom'); for (var i = 0; i < d.length; i++) { await pop(d[i]); await wait(150); }
