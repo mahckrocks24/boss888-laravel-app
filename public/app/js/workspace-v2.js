@@ -1860,8 +1860,8 @@
         tap = { at: 0, x: 0, y: 0 }; e.preventDefault(); down(t.clientX, t.clientY, e);
       } else { tap = { at: now, x: t.clientX, y: t.clientY }; st = null; }
     }, { passive: false });
-    el.addEventListener('touchmove', function (e) { var t = e.touches[0]; if (t) move(t.clientX, t.clientY, e); }, { passive: false });
-    el.addEventListener('touchend', up);
+    el.addEventListener('touchmove', function (e) { if (st) e.stopPropagation(); /* CAMP-DBLTAP-1b: the viewport must not pan along */ var t = e.touches[0]; if (t) move(t.clientX, t.clientY, e); }, { passive: false });
+    el.addEventListener('touchend', function (e) { if (st) e.stopPropagation(); up(); });
   }
   (function campCss() {
     if (document.getElementById('wsv2-camp-css')) return;
