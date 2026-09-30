@@ -134,10 +134,13 @@ final class TrialStanding
     {
         $plays = [];
         $site = $done['site'];
+        // Owner 2026-09-30 ("why would she say she would build a website?"): the website is Arthur's work, never Sarah's pitch.
+        // Signup lands the customer in Arthur's wizard, so a workspace without a published site is the exception; when it
+        // happens Sarah hands off to Arthur and sells nothing about it. Her plays are growth: domain, channels, articles, leads.
         if (! $site) {
-            $plays[] = "No website yet: offer to have Arthur build one today from three sentences about the business, in their brand, so {$w['outcome']} have somewhere to land.";
+            $plays[] = "No website yet: that is Arthur's job, not yours and not a pitch. If it comes up, say Arthur builds it (builder.ask_arthur) and move on to what you do.";
         } elseif ($site->status !== 'published') {
-            $plays[] = "The website is built but not published: offer to publish it now so {$w['outcome']} can start.";
+            $plays[] = "The website is built but not published: publishing is Arthur's; if it comes up, hand off to Arthur (builder.ask_arthur) and move on.";
         } elseif (empty($site->custom_domain)) {
             $plays[] = "Their brand matters and the site sits on a levelupgrowth.io address: say a domain of their own makes it theirs, and offer to look for available names right now (the domain search is in the app).";
         }
