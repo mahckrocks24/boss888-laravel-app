@@ -490,10 +490,11 @@
       '.lu-mp-title{font-size:17px;font-weight:700;letter-spacing:-.01em;font-family:var(--fh,"Syne",sans-serif);color:var(--t1,#E8EDF5)}',
       '.lu-mp-x{background:none;border:none;color:var(--t2,#8B97B0);font-size:20px;cursor:pointer;padding:4px 8px;line-height:1;border-radius:6px}',
       '.lu-mp-x:hover{color:var(--t1,#fff);background:var(--s2,#1E2230)}',
-      '.lu-mp-tabs{display:flex;gap:4px;padding:10px 22px 0;border-bottom:1px solid var(--bd,rgba(255,255,255,.07));background:var(--s1,#171A21)}',
+      '.lu-mp-tabs{flex-shrink:0;display:flex;gap:4px;padding:10px 22px 0;border-bottom:1px solid var(--bd,rgba(255,255,255,.07));background:var(--s1,#171A21)}',
       '.lu-mp-tab{padding:10px 18px;background:transparent;border:none;color:var(--t2,#8B97B0);font-size:13px;font-weight:500;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.02em;font-family:inherit}',
       '.lu-mp-tab:hover{color:var(--t1,#fff)}',
       '.lu-mp-tab.active{color:var(--t1,#fff);border-bottom-color:var(--p,#6C5CE7)}',
+      'html.lg-ui .lu-mp-tabs{padding-bottom:8px;gap:6px;align-items:center}',   /* MP-TABS-1: glass pills need their height; the bar never shrinks */
       '.lu-mp-body{flex:1;overflow-y:auto;padding:20px 22px;min-height:320px}',
       '.lu-mp-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;border-top:1px solid var(--bd,rgba(255,255,255,.07));background:var(--s1,#171A21)}',
       '.lu-mp-footL{color:var(--t2,#8B97B0);font-size:13px}',
