@@ -35,7 +35,7 @@ class CanonicalUrlResolver
             return ['ok' => false, 'reason' => 'ARTICLE_HAS_NO_SLUG'];
         }
 
-        $host = $this->resolveHost($wsId);
+        $host = $this->resolveHost($wsId, (int) ($article->website_id ?? 0));
         if ($host === null) {
             return ['ok' => false, 'reason' => 'NO_PUBLIC_DOMAIN_FOR_WORKSPACE'];
         }
@@ -59,14 +59,18 @@ class CanonicalUrlResolver
      * Precedence: verified custom domain > subdomain > none.
      * Mirrors PublishedSiteMiddleware's canonical host selection.
      */
-    private function resolveHost(int $wsId): ?string
+    private function resolveHost(int $wsId, int $websiteId = 0): ?string
     {
-        $site = DB::table('websites')
-            ->where('workspace_id', $wsId)
-            ->whereNull('deleted_at')
-            ->where('status', 'published')
-            ->orderByDesc('published_at')
-            ->first(['custom_domain', 'domain_verified', 'subdomain']);
+        $cols = ['custom_domain', 'domain_verified', 'subdomain'];
+        $base = fn () => DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->where('status', 'published');
+        // LINK-SITE-1: the article's own website first - never another business's site
+        $site = $websiteId > 0 ? $base()->where('id', $websiteId)->first($cols) : null;
+        if (! $site && $websiteId > 0) { $this->lastSource = null; return null; }   // its site is not public: no link, never a wrong one
+        if (! $site) {
+            $defBiz = DB::table('businesses')->where('workspace_id', $wsId)->where('is_default', 1)->value('id');
+            $site = $defBiz ? $base()->where('business_id', $defBiz)->orderByDesc('published_at')->first($cols) : null;
+            $site = $site ?: $base()->orderBy('id')->first($cols);   // oldest = the workspace's first site
+        }
 
         if (!$site) { $this->lastSource = null; return null; }
 
