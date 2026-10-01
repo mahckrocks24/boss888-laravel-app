@@ -135,6 +135,7 @@ class ImageIntelligenceService
             'style'        => $ctx['style'] ?? 'natural',
             'size'         => $compiled['size'],
             'quality'      => $compiled['quality'],
+            'needs_text'   => (($compiled['typography']['mode'] ?? '') === 'baked_in'),   // RFC-0022: painted words -> text-capable provider
         ]);
         $elapsedMs = (int) round((microtime(true) - $t0) * 1000);
 

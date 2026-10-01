@@ -70,7 +70,7 @@ class SarahClients
             $r = app(RuntimeClient::class)->chatJson($sys, 'FACTS: ' . json_encode($facts, JSON_UNESCAPED_UNICODE), ['task' => 'crm_client_reply', 'workspace_id' => (string) $ws], 600);
             $p = (($r['success'] ?? false) && is_array($r['parsed'] ?? null)) ? $r['parsed'] : null;
             $subject = trim((string) ($p['subject'] ?? '')); $body = trim((string) ($p['body'] ?? ''));
-            if ($body === '' || mb_strlen($body) < 30 || preg_match('/\b(levelup|artificial intelligence|chatgpt|openai|deepseek|language model|an assistant)\b/i', $subject . ' ' . $body) || preg_match('/\bAI\b/', $subject . ' ' . $body)) return null;
+            if ($body === '' || mb_strlen($body) < 30 || preg_match('/\b(levelup|artificial intelligence|chatgpt|openai|deepseek|flux\.1|black forest labs|fal\.ai|language model|an assistant)\b/i', $subject . ' ' . $body) || preg_match('/\bAI\b/', $subject . ' ' . $body)) return null;
             return ['subject' => mb_substr($subject ?: 'Thanks for getting in touch', 0, 150), 'body' => mb_substr($body, 0, 2000)];
         } catch (\Throwable $e) {
             Log::warning('[CRM-SARAH-3] writeReply: ' . $e->getMessage());

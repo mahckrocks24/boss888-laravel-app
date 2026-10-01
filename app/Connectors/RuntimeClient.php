@@ -823,6 +823,7 @@ class RuntimeClient
      */
     public function imageGenerate(string $prompt, array $options = []): array
     {
+        $__t0 = microtime(true);
         try {
             // gpt-image-1 can take 30-60s; allow up to 120s.
             $resp = $this->post('/internal/image/generate', array_filter([
@@ -832,6 +833,7 @@ class RuntimeClient
                 'quality'      => $options['quality'] ?? null,
                 'format'       => $options['format'] ?? null,
                 'transparency' => $options['transparency'] ?? null,
+                'needs_text'   => ! empty($options['needs_text']) ? true : null,   // RFC-0022: painted words go to the text-capable provider
             ], fn($v) => $v !== null && $v !== ''), 180);   // v2.37.14 image lane 150 s: provider 120 < lane 150 < client 180
         } catch (ConnectionException $e) {
             Log::warning('RuntimeClient::imageGenerate connection failed', ['error' => $e->getMessage()]);
@@ -839,15 +841,18 @@ class RuntimeClient
         }
 
         $body = $resp->json() ?? [];
+        $this->logImageUsage('/internal/image/generate', $body, $__t0, $options, $resp->status());   // RFC-0022 phase 0: spend is visible
 
         if (! $resp->successful() || !($body['success'] ?? false)) {
             Log::warning('RuntimeClient::imageGenerate non-2xx or success=false', [
                 'http_code' => $resp->status(), 'body' => $body,
             ]);
             return [
-                'success' => false,
-                'error'   => $body['error'] ?? 'http_' . $resp->status(),
-                'raw'     => $body,
+                'success'    => false,
+                'error'      => $body['error'] ?? 'http_' . $resp->status(),
+                'error_code' => $body['error_code'] ?? null,
+                'provider'   => $body['provider'] ?? null,
+                'raw'        => $body,
             ];
         }
 
@@ -963,9 +968,12 @@ class RuntimeClient
      * @param string|null $imageUrl  Optional URL to an image (used instead of base64)
      * @return array{success: bool, analysis?: string, tokens_used?: int, model?: string, duration_ms?: int, error?: string}
      */
-    public function visionAnalyze(string $prompt, string $image = '', ?string $imageUrl = null): array
+    public function visionAnalyze(string $prompt, string $image = '', ?string $imageUrl = null, array $opts = []): array
     {
+        $__t0 = microtime(true);
         $payload = ['prompt' => $prompt];
+        if (! empty($opts['max_tokens'])) $payload['max_tokens'] = (int) $opts['max_tokens'];   // RFC-0022
+        if (! empty($opts['provider']))   $payload['provider']   = (string) $opts['provider'];
         if ($imageUrl) {
             $payload['image_url'] = $imageUrl;
         } elseif ($image !== '') {
@@ -983,14 +991,17 @@ class RuntimeClient
         }
 
         $body = $resp->json() ?? [];
+        $this->logImageUsage('/internal/vision/analyze', $body, $__t0, $opts, $resp->status());   // RFC-0022 phase 0
 
         if (! $resp->successful() || !($body['success'] ?? false)) {
             Log::warning('RuntimeClient::visionAnalyze non-2xx or success=false', [
-                'http_code' => $resp->status(), 'body_keys' => array_keys($body),
+                'http_code' => $resp->status(), 'error_code' => $body['error_code'] ?? null, 'error' => mb_substr((string) ($body['error'] ?? ''), 0, 160),
             ]);
             return [
-                'success' => false,
-                'error'   => $body['error'] ?? 'http_' . $resp->status(),
+                'success'    => false,
+                'error'      => $body['error'] ?? 'http_' . $resp->status(),
+                'error_code' => $body['error_code'] ?? null,
+                'provider'   => $body['provider'] ?? null,
             ];
         }
 
@@ -998,7 +1009,7 @@ class RuntimeClient
             'success'     => true,
             'analysis'    => $body['analysis'] ?? '',
             'tokens_used' => $body['tokens_used'] ?? 0,
-            'provider' => 'openai',
+            'provider'    => $body['provider'] ?? 'openai',
             'model'       => $body['model'] ?? 'gpt-4o',
             'duration_ms' => $body['duration_ms'] ?? null,
         ];
@@ -1408,6 +1419,75 @@ class RuntimeClient
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::debug('runtime classifyIntent failed: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /**
+     * RFC-0022 phase 4: masked image edit through the runtime (/internal/image/edit), which chooses the provider.
+     * Masks: $maskWhiteB64 = PNG where WHITE marks the area to change; $maskAlphaB64 = PNG where TRANSPARENT marks it.
+     * Returns ['success', 'bytes', 'width', 'height', 'size', 'model', 'provider'] or ['success'=>false,'error','error_code'].
+     */
+    public function imageEdit(string $prompt, string $imageB64, ?string $maskWhiteB64, ?string $maskAlphaB64, string $size, int $wsId = 0): array
+    {
+        $__t0 = microtime(true);
+        try {
+            $resp = $this->post('/internal/image/edit', array_filter([
+                'prompt' => $prompt, 'image_b64' => $imageB64, 'mask_white_b64' => $maskWhiteB64, 'mask_alpha_b64' => $maskAlphaB64, 'size' => $size,
+            ], fn ($v) => $v !== null && $v !== ''), 180);
+        } catch (ConnectionException $e) {
+            Log::warning('RuntimeClient::imageEdit connection failed', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'connection_failed: ' . $e->getMessage(), 'error_code' => 'connection_failed'];
+        }
+        $body = $resp->json() ?? [];
+        $this->logImageUsage('/internal/image/edit', $body, $__t0, ['workspace_id' => $wsId, 'size' => $size], $resp->status());
+        if (! $resp->successful() || ! ($body['success'] ?? false) || empty($body['b64_json'])) {
+            return ['success' => false, 'error' => $body['error'] ?? 'http_' . $resp->status(), 'error_code' => $body['error_code'] ?? ($resp->status() === 404 ? 'route_missing' : null), 'provider' => $body['provider'] ?? null];
+        }
+        $bytes = base64_decode((string) $body['b64_json'], true);
+        if ($bytes === false || $bytes === '') return ['success' => false, 'error' => 'base64_decode_failed', 'error_code' => 'provider_error'];
+        return ['success' => true, 'bytes' => $bytes, 'width' => (int) ($body['width'] ?? 0), 'height' => (int) ($body['height'] ?? 0), 'size' => (string) ($body['size'] ?? $size), 'model' => $body['model'] ?? null, 'provider' => $body['provider'] ?? null];
+    }
+
+    /**
+     * RFC-0022 phase 0: every image, edit and vision call becomes a priced row in api_usage_logs, success or failure,
+     * so spend is visible before any vendor moves (the two credit exhaustions came without warning because the ledger
+     * held chat rows only). Prices live in config/ai_provenance.php (image_pricing, vision_pricing).
+     */
+    private function logImageUsage(string $endpoint, array $body, float $t0, array $options, int $http): void
+    {
+        try {
+            $ok       = $http >= 200 && $http < 300 && ! empty($body['success']);
+            $provider = (string) ($body['provider'] ?? ($endpoint === '/internal/vision/analyze' ? 'openai' : 'openai'));
+            $model    = (string) ($body['model'] ?? ($endpoint === '/internal/vision/analyze' ? 'gpt-4o' : 'gpt-image-1'));
+            $wsId     = (int) ($options['workspace_id'] ?? 0) ?: null;
+            $duration = (int) ($body['duration_ms'] ?? round((microtime(true) - $t0) * 1000));
+            $tokensIn = (int) ($body['usage']['prompt_tokens'] ?? 0); $tokensOut = (int) ($body['usage']['completion_tokens'] ?? 0);
+            $total    = (int) ($body['tokens_used'] ?? ($tokensIn + $tokensOut));
+            [$cost, $source] = [0.0, 'unknown'];
+            if ($ok) {
+                if ($endpoint === '/internal/vision/analyze') {
+                    $p = config('ai_provenance.vision_pricing.' . $model);
+                    if (is_array($p)) { $in = $tokensIn ?: (int) round($total * 0.9); $out = $tokensOut ?: ($total - $in); $cost = ($in * (float) $p['input'] + $out * (float) $p['output']) / 1_000_000; $source = 'config'; }
+                } else {
+                    $size = (string) ($body['size'] ?? ($options['size'] ?? '1024x1024')); $quality = (string) ($body['quality'] ?? ($options['quality'] ?? 'low'));
+                    $p = config('ai_provenance.image_pricing.' . $model);
+                    if (is_array($p)) {
+                        if (isset($p['per_megapixel'])) { [$w, $h] = array_map('intval', array_pad(explode('x', $size), 2, 1024)); $mp = ($w * $h) / 1_000_000; $mp = ! empty($p['round_up']) ? ceil($mp) : $mp; $cost = $mp * (float) $p['per_megapixel']; $source = 'config'; }
+                        elseif (isset($p['per_image'])) { $cost = (float) $p['per_image']; $source = 'config'; }
+                        elseif (isset($p[$quality][$size])) { $cost = (float) $p[$quality][$size]; $source = 'config'; }
+                    }
+                }
+            }
+            DB::table('api_usage_logs')->insert([
+                'workspace_id' => $wsId, 'provider' => $provider, 'model' => $model,
+                'requested_provider' => $provider, 'requested_model' => $model, 'actual_provider' => $provider, 'actual_model' => $model, 'fallback_used' => 0,
+                'endpoint' => $endpoint, 'tokens_in' => $tokensIn, 'tokens_out' => $tokensOut, 'total_tokens' => $total,
+                'usage_source' => 'runtime', 'cost_usd' => round($cost, 6), 'pricing_source' => $source, 'duration_ms' => $duration,
+                'status' => $ok ? 'success' : 'failed', 'error' => $ok ? null : mb_substr((string) (($body['error_code'] ?? '') . ' ' . ($body['error'] ?? ('http_' . $http))), 0, 500),
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::debug('[ApiUsage] image usage row failed: ' . $e->getMessage());
         }
     }
 

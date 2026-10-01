@@ -28,6 +28,7 @@ class ChatbotGuardrails
     private const MAX_ANSWER_LEN = 2000;
     private const PROVIDER_LEAK_PATTERNS = [
         '/\bdeepseek\b/i', '/\bopenai\b/i', '/\bchat ?gpt\b/i', '/\bgpt[-\s]?\d/i',
+        '/\bflux\.1\b/i', '/\bflux schnell\b/i', '/\bblack forest labs?\b/i', '/\bfal\.ai\b/i',   // RFC-0022
         '/\bclaude\b/i', '/\banthropic\b/i', '/\b(?:large language model|llm)\b/i',
         '/\bas an ai\b/i', '/\bi.?m an ai\b/i', '/\bi am an ai\b/i',
     ];

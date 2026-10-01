@@ -17,6 +17,10 @@ return [
         'poll_interval_ms' => env('CREATIVE_POLL_INTERVAL', 2000),
         'min_asset_size' => env('CREATIVE_MIN_ASSET_SIZE', 1024),
         'image_model' => env('CREATIVE_IMAGE_MODEL', 'gpt-image-1'),
+        // RFC-0022 (2026-10-01): Studio masked edits go through the runtime (/internal/image/edit); the direct
+        // provider call below stays as the switch-back. Painted-text recipes: one attempt unless raised.
+        'edit_via_runtime'      => env('IMAGE_EDIT_VIA_RUNTIME', true),
+        'recipe_paint_attempts' => env('RECIPE_PAINT_ATTEMPTS', 1),
         'video_provider' => env('CREATIVE_VIDEO_PROVIDER', 'minimax'),
         'minimax_api_key' => env('MINIMAX_API_KEY', ''),
         'runway_api_key' => env('RUNWAY_API_KEY', ''),

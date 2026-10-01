@@ -35,8 +35,9 @@ class ImageEditService
     {
         $key  = config('llm.openai.api_key');
         $base = rtrim((string) config('llm.openai.base_url', 'https://api.openai.com'), '/');
-        if (! $key) {
-            return ['success' => false, 'error' => 'image_edit_unavailable: no OpenAI key configured'];
+        $viaRuntime = (bool) config('connectors.creative.edit_via_runtime', true);   // RFC-0022 phase 4
+        if (! $key && ! $viaRuntime) {
+            return ['success' => false, 'error' => 'image_edit_unavailable: no provider configured'];
         }
         if (trim($prompt) === '') {
             return ['success' => false, 'error' => 'prompt_required'];
@@ -63,7 +64,7 @@ class ImageEditService
         $srcPath = tempnam($tmpDir, 'st_src_') . '.png';
         file_put_contents($srcPath, $srcPng);
 
-        $maskPath = null;
+        $maskPath = null; $maskPng = null;
         if ($mode !== 'full') {
             $maskPng = $this->buildMask($mode, $selection, $tw, $th);
             if ($maskPng === null) {
@@ -72,6 +73,22 @@ class ImageEditService
             }
             $maskPath = tempnam($tmpDir, 'st_mask_') . '.png';
             file_put_contents($maskPath, $maskPng);
+        }
+
+        if ($viaRuntime) {
+            $white = $maskPng !== null ? $this->whiteMaskFromAlpha($maskPng, $tw, $th) : null;
+            $rt = app(\App\Connectors\RuntimeClient::class)->imageEdit($prompt, base64_encode($srcPng), $white !== null ? base64_encode($white) : null, $maskPng !== null ? base64_encode($maskPng) : null, $sizeStr);
+            if (! empty($rt['success']) && ! empty($rt['bytes'])) {
+                @unlink($srcPath); if ($maskPath) { @unlink($maskPath); }
+                return ['success' => true, 'bytes' => $rt['bytes'], 'width' => $tw, 'height' => $th, 'size' => $sizeStr, 'mode' => $mode, 'usage' => [], 'provider' => $rt['provider'] ?? null, 'model' => $rt['model'] ?? null];
+            }
+            $code = (string) ($rt['error_code'] ?? '');
+            if (! $key || ! in_array($code, ['provider_not_configured', 'connection_failed', 'route_missing'], true)) {
+                @unlink($srcPath); if ($maskPath) { @unlink($maskPath); }
+                Log::warning('[ImageEdit] runtime edit failed', ['code' => $code, 'error' => mb_substr((string) ($rt['error'] ?? ''), 0, 200)]);
+                return ['success' => false, 'error' => 'provider_error: ' . ($rt['error'] ?? 'edit failed'), 'error_code' => $code ?: null];
+            }
+            Log::info('[ImageEdit] runtime edit unavailable, direct provider path', ['code' => $code]);
         }
 
         $fields = [
@@ -177,6 +194,29 @@ class ImageEditService
         }
 
         return null;
+    }
+
+    /** RFC-0022: the same mask in the WHITE = change convention (FLUX Fill) from the TRANSPARENT = change PNG. */
+    private function whiteMaskFromAlpha(string $maskPng, int $w, int $h): ?string
+    {
+        $m = @imagecreatefromstring($maskPng);
+        if ($m === false) return null;
+        $out = imagecreatetruecolor($w, $h);
+        $black = imagecolorallocate($out, 0, 0, 0); $whiteC = imagecolorallocate($out, 255, 255, 255);
+        imagefilledrectangle($out, 0, 0, $w, $h, $black);
+        $mw = imagesx($m); $mh = imagesy($m);
+        for ($y = 0; $y < $h; $y++) {
+            $sy = (int) floor($y * $mh / max(1, $h));
+            for ($x = 0; $x < $w; $x++) {
+                $sx = (int) floor($x * $mw / max(1, $w));
+                $a = (imagecolorat($m, $sx, $sy) >> 24) & 0x7F;   // GD alpha: 0 opaque .. 127 transparent
+                if ($a >= 64) imagesetpixel($out, $x, $y, $whiteC);
+            }
+        }
+        imagedestroy($m);
+        $png = $this->pngBytes($out);
+        imagedestroy($out);
+        return $png;
     }
 
     private function pngBytes($im): string

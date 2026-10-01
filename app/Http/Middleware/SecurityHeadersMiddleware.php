@@ -60,7 +60,7 @@ class SecurityHeadersMiddleware
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                 "font-src 'self' https://fonts.gstatic.com",
                 "img-src 'self' data: blob: https:",
-                "connect-src 'self' wss: https://api.stripe.com https://api.openai.com https://api.deepseek.com",
+                "connect-src 'self' wss: https://api.stripe.com",   // RFC-0022: the browser never talks to a model vendor
                 "frame-src https://js.stripe.com https://hooks.stripe.com",
                 "worker-src 'self' blob:",
                 "object-src 'none'",

@@ -328,7 +328,7 @@ class EngineIntelligenceService
             ],
             'creative' => [
                 'create_asset' => ['description' => 'Create an asset record. Used for tracking uploaded and generated media.', 'metadata' => ['credit_cost' => 0]],
-                'generate_image' => ['description' => 'AI-generate an image. Provider: OpenAI gpt-image-1. Supports: various styles, sizes, brand-aligned generation.', 'metadata' => ['credit_cost' => 4]],
+                'generate_image' => ['description' => 'AI-generate an image. Provider: LevelUp AI Image. Supports: various styles, sizes, brand-aligned generation.', 'metadata' => ['credit_cost' => 4]],
                 'generate_video' => ['description' => 'AI-generate a video. Provider: MiniMax Hailuo-02 then Runway fallback. Async job queue. 6 seconds (10 seconds on request).', 'metadata' => ['credit_cost' => 28]],
                 'upscale_image' => ['description' => 'Upscale an image to higher resolution while preserving quality.', 'metadata' => ['credit_cost' => 1]],
             ],
@@ -357,7 +357,7 @@ class EngineIntelligenceService
             ],
             'beforeafter' => [
                 'create_design' => ['description' => 'Create an interior design record. Input: before image URL, room type, style. Status: processing to completed.', 'metadata' => ['credit_cost' => 2]],
-                'generate_after_image' => ['description' => 'AI-generate the after image via gpt-image-1. Includes Geometry Analyzer and 7-section design report.', 'metadata' => ['credit_cost' => 3]],
+                'generate_after_image' => ['description' => 'AI-generate the after image via LevelUp AI Image. Includes Geometry Analyzer and 7-section design report.', 'metadata' => ['credit_cost' => 3]],
                 'generate_design_report' => ['description' => 'Generate 7-section structured design report (room analysis, recommendations, palette, furniture, lighting, materials, budget).', 'metadata' => ['credit_cost' => 1]],
             ],
             'traffic' => [
@@ -431,7 +431,7 @@ class EngineIntelligenceService
                 'Send reminders 15 minutes before time-sensitive events',
             ],
             'beforeafter' => [
-                'Center-crop upload to nearest DALL-E aspect ratio',
+                'Center-crop upload to nearest supported aspect ratio',
                 'Run Geometry Analyzer before generation to understand room layout',
                 'Always generate the 7-section structured design report alongside the image',
                 'Use ResizeObserver for slider responsiveness',

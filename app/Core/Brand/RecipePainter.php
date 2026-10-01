@@ -83,8 +83,9 @@ final class RecipePainter
 
         $img = null; $attempts = 0; $verified = false; $seen = []; $tried = [];
         $p = $filled['prompt']; $textList = $filled['text_list'];
-        for ($attempts = 1; $attempts <= 2; $attempts++) {
-            $img = $this->runtime->imageGenerate($p, ['workspace_id' => $wsId, 'style' => $ctx['style'] ?? 'natural', 'size' => $filled['size'], 'quality' => 'high']);
+        $__maxAttempts = max(1, min(3, (int) config('connectors.creative.recipe_paint_attempts', 1)));   // RFC-0022 D4: painted text is a parameterised fallback
+        for ($attempts = 1; $attempts <= $__maxAttempts; $attempts++) {
+            $img = $this->runtime->imageGenerate($p, ['workspace_id' => $wsId, 'style' => $ctx['style'] ?? 'natural', 'size' => $filled['size'], 'quality' => 'high', 'needs_text' => true]);
             if (empty($img['success']) || empty($img['url'])) { Log::info('[RECIPE-1] generation failed', ['ws' => $wsId, 'attempt' => $attempts, 'error' => $img['error'] ?? null, 'keys' => array_keys((array) $img)]); break; }
             $tried[] = ['url' => $img['url'], 'quality' => $img['quality'] ?? null];
             [$verified, $seen, $failedOn] = $this->verify((string) $img['url'], $textList);

@@ -113,6 +113,24 @@ return [
     | Applied when the executed model is not in either table above. Recorded as
     | pricing_source='unknown' so it is visible rather than silently zero.
     */
+    /*
+    | RFC-0022 phase 0 (2026-10-01): image and vision calls are priced per row. gpt-image-1 = OpenAI list price per
+    | image by quality and size; fal = per megapixel rounded up (1024x1536 -> 2 MP); fill = per image. Vision per 1M tokens.
+    */
+    'image_pricing' => [
+        'gpt-image-1' => [
+            'low'    => ['1024x1024' => 0.011, '1024x1536' => 0.016, '1536x1024' => 0.016],
+            'medium' => ['1024x1024' => 0.042, '1024x1536' => 0.063, '1536x1024' => 0.063],
+            'high'   => ['1024x1024' => 0.167, '1024x1536' => 0.250, '1536x1024' => 0.250],
+        ],
+        'fal-ai/flux/schnell'     => ['per_megapixel' => 0.003, 'round_up' => true],
+        'fal-ai/flux-pro/v1/fill' => ['per_image' => 0.05],
+    ],
+    'vision_pricing' => [
+        'gpt-4o'                       => ['input' => 2.50, 'output' => 10.00],
+        'deepseek-v4-flash-vision-exp' => ['input' => 0.14, 'output' => 0.28],
+    ],
+
     'pricing_unknown_is_zero' => true,
 
     'pricing_source_url'      => 'https://api-docs.deepseek.com/quick_start/pricing',
