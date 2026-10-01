@@ -42,10 +42,10 @@ final class ChatReplies
     }
 
     /** The question still waiting on the owner, if any. */
-    public function openQuestion(int $wsId): ?array
+    public function openQuestion(int $wsId, ?string $only = null): ?array
     {
         $rows = DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')->where('created_at', '>=', now()->subDays(3))
-            ->whereIn(DB::raw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.notification_type'))"), self::TYPES)->orderByDesc('id')->limit(8)->get(['id', 'metadata_json']);
+            ->whereIn(DB::raw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.notification_type'))"), $only ? [$only] : self::TYPES)->orderByDesc('id')->limit(8)->get(['id', 'metadata_json']);
         $latest = (int) DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')
             ->where(fn ($q) => $q->whereNull('metadata_json')->orWhereRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.phase')), '') <> 'ack'"))->max('id');
         foreach ($rows as $m) {
@@ -75,7 +75,7 @@ final class ChatReplies
                 return (bool) $q['open_ids'];
             case 'brand_intake':
                 $row = app(\App\Core\Brand\BrandProfileService::class)->row($wsId, app(\App\Core\Brand\BrandProfileService::class)->business($wsId, isset($c['business_id']) ? (int) $c['business_id'] : null));
-                return $row && $row->intake_status === 'asked';
+                return $row && in_array((string) $row->intake_status, ['asked', 'confirmed'], true);   // PICKS-FIX-2: numbers still re-pick after a first choice
             case 'brand_summary':
                 return app(\App\Core\Brand\BrandProfileService::class)->proposalStatus($wsId, (string) ($c['token'] ?? '')) === 'pending';
             case 'credit_pace': case 'plan_nudge':   // PACE-1: open until answered, for 3 days
@@ -206,6 +206,8 @@ final class ChatReplies
         $t = trim($text);
         if ($t === '' || mb_strlen($t) > 160) return null;
         $q = $this->openQuestion($wsId);
+        // PICKS-FIX-3 (2026-10-01): "2, 3 and 7" answers the design-look card even when an image or a check-in was shown after it
+        if (preg_match('/^[\s\d,&+.]+(and[\s\d,&+.]+)*$/i', $t) && (! $q || ! in_array($q['type'], ['brand_intake', 'campaign_ideas'], true))) { $__bq = $this->openQuestion($wsId, 'brand_intake'); if ($__bq) $q = $__bq; }
         if (! $q) return null;
         $yes = (bool) preg_match(self::YES, $t);
         $no = (bool) preg_match(self::NO, $t);
@@ -326,7 +328,7 @@ final class ChatReplies
                         $__sl = array_values(array_map('intval', $c['shortlist_ids'])); $__pk = [];
                         if (preg_match_all('/\b([1-9])\b/', $t, $mm) && preg_match('/^[\s\d,&+.and]+$|^(i like|i\'?d like|pick|choose|go with|use|love)\b/i', $t)) foreach ($mm[1] as $n) { if (isset($__sl[(int) $n - 1])) $__pk[] = $__sl[(int) $n - 1]; }
                         if (! $__pk) return null;
-                        $__r = app(\App\Core\Brand\DesignLibraryService::class)->setPicks($wsId, $bizId, array_slice(array_values(array_unique($__pk)), 0, AppCoreBrandDesignLibraryService::MAX_PICKS), 'chat');
+                        $__r = app(\App\Core\Brand\DesignLibraryService::class)->setPicks($wsId, $bizId, array_slice(array_values(array_unique($__pk)), 0, \App\Core\Brand\DesignLibraryService::MAX_PICKS), 'chat');
                         if (! empty($__r['success'])) return ['turn' => 'reply', 'note' => 'The owner chose these design looks and they are saved: ' . implode(', ', $__r['names']) . '. Every banner, image and video will follow them. Confirm in one warm line, naming the looks in plain words, and say they can change them any time.'];
                         return null;
                     }

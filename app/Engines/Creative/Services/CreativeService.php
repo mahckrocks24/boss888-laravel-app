@@ -259,6 +259,33 @@ class CreativeService
         // the call is refused with preview_required and the caller must preview again. Without a
         // token (agents, chained steps, API callers that never previewed) the original single-plan
         // path runs as before.
+        // RECIPE-CHAT-1 (2026-10-01): a business that chose its design looks gets its chat / orchestrator image painted from one of
+        // them first (the Studio path already does this through ImageIntelligenceService::generate). A painter that cannot deliver
+        // hands its headline to the renderer path below, so the owner's words land on the picture either way.
+        if (trim((string) ($params['plan_token'] ?? '')) === '' && empty($params['typography_mode']) && empty($params['retry_of_media_id']) && ! $articleId && empty($params['no_recipe'])) {
+            try {
+                $__rp = app(\App\Core\Brand\RecipePainter::class)->attempt([
+                    'workspace_id' => $wsId, 'user_prompt' => $prompt, 'source' => $params['source'] ?? 'creative', 'platform' => $params['platform'] ?? null,
+                    'asset_type' => $params['asset_type'] ?? 'social_post', 'business_id' => $params['business_id'] ?? null, 'style' => $params['style'] ?? 'natural',
+                    'exact_text' => $params['exact_text'] ?? [], 'forced_headline' => $params['headline'] ?? null,
+                ]);
+                if ($__rp && ! empty($__rp['success']) && ! empty($__rp['url'])) {
+                    return $this->sanitize([
+                        'success' => true, 'asset_id' => $__rp['asset_id'] ?? null, 'type' => 'image', 'status' => 'completed', 'url' => $__rp['url'], 'article_id' => null,
+                        'featured_image_url' => $__rp['url'], 'featured_image_alt' => null, 'preview_bound' => false, 'provider_prompt_sha' => sha1((string) ($__rp['provider_prompt'] ?? '')),
+                        'recipe' => $__rp['recipe'] ?? null, 'typography_mode' => 'baked_in', 'credits_charged' => $__rp['credits_charged'] ?? null,
+                    ]);
+                }
+                $__fb = \App\Core\Brand\RecipePainter::$lastFallback;
+                if (is_array($__fb) && trim((string) ($__fb['headline'] ?? '')) !== '') {
+                    $params['headline'] = $params['headline'] ?? $__fb['headline'];
+                    $params['include_text_preference'] = 'require_text';
+                    if (empty($params['business_id']) && ! empty($__fb['business_id'])) $params['business_id'] = (int) $__fb['business_id'];
+                    \Illuminate\Support\Facades\Log::info('[RECIPE-CHAT-1] painter gave up, renderer path keeps the words', ['ws' => $wsId, 'recipe' => $__fb['recipe_id'] ?? null, 'headline' => $__fb['headline']]);
+                }
+            } catch (\Throwable $__re) { \Illuminate\Support\Facades\Log::warning('[RECIPE-CHAT-1] painter path failed, renderer path continues', ['e' => $__re->getMessage()]); }
+        }
+
         $planToken   = trim((string) ($params['plan_token'] ?? ''));
         $previewUsed = false;
         if ($planToken !== '') {

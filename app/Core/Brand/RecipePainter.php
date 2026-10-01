@@ -35,8 +35,12 @@ final class RecipePainter
     public function __construct(private RuntimeClient $runtime, private CreditService $credits, private CreativeService $creative) {}
 
     /** The finished result in the image service's own shape, or null when the renderer path should run. */
+    /** RECIPE-CHAT-1: what the renderer path should still say when the painter gave up (headline, subhead, recipe, business). */
+    public static ?array $lastFallback = null;
+
     public function attempt(array $ctx): ?array
     {
+        self::$lastFallback = null;
         $wsId = (int) ($ctx['workspace_id'] ?? 0); $prompt = trim((string) ($ctx['user_prompt'] ?? ''));
         if ($wsId <= 0 || $prompt === '') return null;
         if (! empty($ctx['force_typography_mode']) || ! empty($ctx['retry_of_media_id']) || ! empty($ctx['no_recipe']) || ! empty($ctx['article_id'])) return null;
@@ -46,6 +50,10 @@ final class RecipePainter
 
         $profiles = app(BrandProfileService::class);
         $bizId = (int) ($ctx['business_id'] ?? 0) ?: null;
+        // RECIPE-BIZ-1 (2026-10-01): the business named in the owner's words wins over the workspace default
+        if (! $bizId) { try { foreach ((array) $profiles->businesses($wsId) as $__b) { if ($__b && isset($__b->name) && mb_strlen((string) $__b->name) >= 3 && mb_stripos($prompt, (string) $__b->name) !== false) { $bizId = (int) $__b->id; break; } } } catch (\Throwable $e) {} }
+        // RECIPE-BIZ-1: with no name in the words and no default picks, the one business that has picks is the one meant
+        if (! $bizId) { try { $__d = $profiles->business($wsId, null); $__dr = $__d ? $profiles->row($wsId, $__d, false) : null; $__dp = $__dr ? (array) ((BrandProfileService::json($__dr, 'directions_json')['recipes'] ?? [])) : []; if (! $__dp) { $__with = []; foreach ((array) $profiles->businesses($wsId) as $__b) { $__r = $__b ? $profiles->row($wsId, $__b, false) : null; if ($__r && (array) ((BrandProfileService::json($__r, 'directions_json')['recipes'] ?? []))) $__with[] = (int) $__b->id; } if (count($__with) === 1) $bizId = $__with[0]; } } catch (\Throwable $e) {} }
         $biz = $profiles->business($wsId, $bizId); $bizId = $biz->id ?? $bizId;
         $row = $profiles->row($wsId, $biz, false); if (! $row) return null;
         $dirs = BrandProfileService::json($row, 'directions_json');
@@ -100,6 +108,7 @@ final class RecipePainter
             $this->credits->release($wsId, $resRef); $this->auditFail($jobId, $verified ? ($img['error'] ?? 'provider_failed') : 'text_not_verified', ['seen' => $seen]);
             if ($assetId) DB::table('assets')->where('id', $assetId)->update(['status' => 'failed', 'updated_at' => now()]);
             Log::info('[RECIPE-1] falling back to the renderer path', ['ws' => $wsId, 'recipe' => $recipe->id, 'verified' => $verified, 'error' => $img['error'] ?? null]);
+            self::$lastFallback = ['headline' => (string) ($copy['headline'] ?? ''), 'subhead' => (string) ($copy['subhead'] ?? ''), 'recipe_id' => (int) $recipe->id, 'recipe_title' => (string) $recipe->title, 'business_id' => $bizId, 'format' => $format];   // RECIPE-CHAT-1
             return null;
         }
         $actualQuality = strtolower((string) ($img['quality'] ?? 'high')); $actualSize = (string) ($img['size'] ?? $filled['size']);

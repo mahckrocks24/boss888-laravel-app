@@ -111,6 +111,8 @@ class ImageGeneration
         // was offered as a 2-credit image regeneration. Talk about posts, customers, sales, the shop or a score is never an image edit unless it names an image,
         // and nothing is while the owner is answering one of Sarah's check-ins.
         if (!$__img && preg_match('/\b(posts?|customers?|clients?|sales|orders?|marketing|business|shop|store|footfall|enquir(y|ies)|out of (5|five|10|ten)|\d\s*\/\s*(5|10))\b/', $t)) { return false; }
+        // REFINE-GUARD-2 (2026-10-01): "I want it to feel like a dinner invitation, not an ad" about the business was offered as a 4-credit regeneration.
+        if (!$__img && preg_match('/\b(brand|branding|voice|tone|feel like|feels like|invitation|menu|dish|dishes|guests?|dining|services?|offer|pricing|look and feel)\b/', $t)) { return false; }
         if (!$__img) { try { if (\Illuminate\Support\Facades\DB::table('owner_checkins')->where('workspace_id', $wsId)->where('status', 'asked')->where('created_at', '>=', now()->subHours(12))->exists()) { return false; } } catch (\Throwable $e) {} }
         if (preg_match('/^(where|why|how come|what happened)\b/', $t) && self::changeFrom($text) === '') { return false; }
         $hasChange = self::changeFrom($text) !== ''

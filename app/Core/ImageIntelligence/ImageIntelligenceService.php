@@ -349,6 +349,15 @@ class ImageIntelligenceService
             $__bn = trim((string) ($ctx['brand']['brand_name'] ?? $ctx['brand']['name'] ?? ''));
             if ($__bn !== '') $blueprint['typography_strategy']['supporting_copy'] = [$__bn];   // RENDER-BRIEF-1b
         }
+        // RECIPE-CHAT-1b (2026-10-01): a headline the caller fixed (the recipe's copy when the painter gave up) is rendered as real
+        // typography over the picture, whatever the reasoner chose.
+        if (($ctx['force_typography_mode'] ?? '') !== 'baked_in' && trim((string) ($ctx['forced_headline'] ?? '')) !== '') {
+            $__ts = is_array($blueprint['typography_strategy'] ?? null) ? $blueprint['typography_strategy'] : [];
+            $blueprint['typography_strategy'] = $__ts + ['supporting_copy' => [], 'placement' => '', 'style' => ''];
+            $blueprint['typography_strategy']['mode'] = 'separate_overlay';
+            $blueprint['typography_strategy']['headline'] = trim((string) $ctx['forced_headline']);
+            $blueprint['typography_strategy']['reason'] = 'the chosen design look sets the words; rendered as typography over a text-free picture';
+        }
         if (isset($blueprint['typography_strategy']['headline'])) {
             $blueprint['typography_strategy']['headline'] = trim((string) $blueprint['typography_strategy']['headline'], " \t\"'“”‘’");
         }

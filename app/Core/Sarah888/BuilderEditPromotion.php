@@ -31,7 +31,7 @@ final class BuilderEditPromotion
     // (Unit I builds the enterprise colour capability), so we decline honestly here.
     private const STYLE = '/\b(colou?rs?|palette|theme|brand colou?r|font|fonts|typography|typeface)\b/i';
     // Exclusions — blog/article content is the WRITE engine; images are Creative888.
-    private const NOT_BUILDER = '/\b(blog|article|draft|newsletter|campaign|email|social|post|image|images|photo|picture|logo|banner|graphic)\b/i';
+    private const NOT_BUILDER = '/\b(blog|article|draft|newsletter|campaign|email|social|post|posts|image|images|photo|picture|logo|banner|graphic|brand|branding|library|design looks?|instagram|facebook|linkedin|tiktok|reels?|stories)\b/i';   // BUILDER-PROMO-2
 
     /** @return array{type:string,command:string,page_hint:?string,page_template:?string}|null */
     public static function detect(string $message): ?array

@@ -18,7 +18,8 @@ final class LanguagePref
     /** @var array<string,string> pattern => language label */
     private const ASKS = [
         '/\btaglish\b/iu'                                        => 'Taglish (Tagalog mixed with English, the everyday Filipino way)',
-        '/\b(tagalog|filipino)\b/iu'                             => 'Tagalog',
+        '/\b(in|speak|write|reply|talk|answer|respond|use)\s+(tagalog|filipino)\b/iu' => 'Tagalog',   // SARAH-LANG-2: a request, never a mention ("Filipino-French menus")
+        '/\b(tagalog|filipino)\s+(please|na lang|nalang)\b/iu'   => 'Tagalog',
         '/\b(in|speak|write|reply|talk|answer)\s+(plain\s+)?english\b/iu' => 'English',
         '/\benglish\s+(please|na lang|nalang)\b/iu'              => 'English',
         '/\b(in|speak|write|reply|talk|answer)\s+(en\s+)?(spanish|espa[nñ]ol)\b/iu' => 'Spanish',

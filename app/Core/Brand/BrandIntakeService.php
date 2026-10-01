@@ -41,7 +41,7 @@ final class BrandIntakeService
         if (DB::table('owner_checkins')->where('workspace_id', $wsId)->where(fn ($q) => $q->where('answer_message_id', $userMessageId)->orWhere(fn ($w) => $w->where('status', 'asked')->where('created_at', '>=', now()->subHours(12))))->exists()) return 'checkin';
         // CHAT-FIRST-1: one setup question a day — never straight after the owner answered another one
         if (DB::table('business_watch')->where('workspace_id', $wsId)->where('asked_at', '>=', now()->subDay())->exists()) return 'nothing';
-        if ($this->ask($wsId)) return 'asked';
+        if ($this->ask($wsId, (string) $msg->content)) return 'asked';   // INTAKE-TARGET-1
         return app(\App\Core\Growth\WatchService::class)->ask($wsId) ? 'watch_asked' : 'nothing';   // WATCH-1: then, once, whether and how often to watch the market
     }
 
@@ -52,7 +52,7 @@ final class BrandIntakeService
             ->where('intake_asked_at', '>=', now()->subDays(14))->orderByDesc('intake_asked_at')->first();
     }
 
-    public function ask(int $wsId): bool
+    public function ask(int $wsId, string $hint = ''): bool
     {
         // at most one brand question per workspace per day, and never while a summary waits for confirmation
         if (\Illuminate\Support\Facades\Cache::has('campaign-ideas-pending:' . $wsId)) return false;   // CAMPAIGNS-1: one card at a time; ask another day
@@ -61,6 +61,13 @@ final class BrandIntakeService
         if ($recent || $pending) return false;
         $biz = null;
         $list = $this->profiles->businesses($wsId);
+        // INTAKE-TARGET-1: the business named in the owner's words comes first, then the newest
+        if ($list && $hint !== '') {
+            $arr = is_array($list) ? $list : (method_exists($list, 'all') ? $list->all() : (array) $list);
+            $named = fn ($b) => (int) ($b && isset($b->name) && mb_strlen((string) $b->name) >= 3 && mb_stripos($hint, (string) $b->name) !== false);
+            usort($arr, fn ($a, $b) => ($named($b) <=> $named($a)) ?: ((int) ($b->id ?? 0) <=> (int) ($a->id ?? 0)));
+            $list = $arr;
+        }
         foreach ($list ?: [null] as $b) {
             $row = $this->profiles->row($wsId, $b);
             if (! $row || $row->intake_status === null) { $biz = $b; $target = true; break; }
