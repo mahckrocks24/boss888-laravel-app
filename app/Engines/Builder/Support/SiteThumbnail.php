@@ -16,15 +16,21 @@ final class SiteThumbnail
 {
     public const DIR = 'site-thumbs';
 
-    public static function generate(int $websiteId): ?string
+    /** CONNECT-1 (2026-10-01): a connected (external) website is shot at its own public address. */
+    public static function generateForUrl(int $websiteId, string $url): ?string
+    {
+        return self::generate($websiteId, $url);
+    }
+
+    public static function generate(int $websiteId, ?string $urlOverride = null): ?string
     {
         $export = storage_path("app/public/sites/{$websiteId}/index.html");
-        if (! is_file($export)) { return null; }
+        if ($urlOverride === null && ! is_file($export)) { return null; }
         $dir = storage_path('app/public/' . self::DIR);
         if (! is_dir($dir)) { @mkdir($dir, 0775, true); }
         $out = "{$dir}/{$websiteId}.jpg";
         $tmp = "{$dir}/{$websiteId}.tmp.jpg";
-        $url = rtrim((string) config('app.url'), '/') . "/storage/sites/{$websiteId}/index.html?thumb=" . time();
+        $url = $urlOverride ?? (rtrim((string) config('app.url'), '/') . "/storage/sites/{$websiteId}/index.html?thumb=" . time());
         $tool = base_path('tools/site-thumb.cjs');
         @unlink($tmp);   // a leftover from an interrupted render (possibly another user's) must not block this one
         $cmd = 'HOME=/tmp PUPPETEER_CACHE_DIR=' . escapeshellarg(base_path('.puppeteer-cache')) . ' timeout 90 node '

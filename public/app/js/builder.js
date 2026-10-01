@@ -2122,8 +2122,8 @@ function wsShowConnectModal() {
     + '<div style="margin-top:20px;display:grid;gap:8px">'
     + '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><span style="color:var(--gn)">'+window.icon("check",14)+'</span> We take a snapshot of your website</div>'
     + '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><span style="color:var(--gn)">'+window.icon("check",14)+'</span> It appears in your websites list</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><span style="color:var(--gn)">'+window.icon("check",14)+'</span> Sarah can analyze and improve it</div>'
-    + '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><span style="color:var(--gn)">'+window.icon("check",14)+'</span> SEO engine starts auditing it</div></div>'
+    + '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><span style="color:var(--gn)">'+window.icon("check",14)+'</span> Sarah can read it and, on WordPress, publish to it</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t2)"><span style="color:var(--gn)">'+window.icon("check",14)+'</span> A first SEO audit runs right away (3 credits)</div></div>'
     + '<div id="ws-connect-status" style="margin-top:16px;min-height:20px"></div></div>';
 
   overlay.appendChild(modal);

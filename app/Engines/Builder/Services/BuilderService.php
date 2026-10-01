@@ -209,7 +209,7 @@ class BuilderService
             $s->slug = \Illuminate\Support\Str::slug($s->name ?? '');
             $s->page_count = (int) ($pageCounts[$s->id] ?? 0);
             $s->publish_state = $s->published_at ? 'published' : 'draft';
-            if (\App\Engines\Builder\Support\Platform6::on() && $s->publish_state !== 'published') $s->draft_url = '/storage/sites/' . (int) $s->id . '/index.html?t=' . \App\Engines\Builder\Support\Platform6::signDraft((int) $s->id);   // PLATFORM-6: the owner's own way to a draft
+            if (\App\Engines\Builder\Support\Platform6::on() && $s->publish_state !== 'published' && (string) ($s->type ?? '') !== 'external') $s->draft_url = '/storage/sites/' . (int) $s->id . '/index.html?t=' . \App\Engines\Builder\Support\Platform6::signDraft((int) $s->id);   // PLATFORM-6: the owner's own way to a draft
             $s->description = (string) ((json_decode((string) ($s->settings_json ?: '{}'), true) ?: [])['description'] ?? '');   // SITE-ABOUT-1: the card's description lives in settings_json
             return $s;
         })->toArray();

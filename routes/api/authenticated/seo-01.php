@@ -1553,7 +1553,7 @@ use Illuminate\Support\Facades\Route;
             $rows = \Illuminate\Support\Facades\DB::table('websites')
                 ->where('workspace_id', $wsId)
                 ->whereNull('deleted_at')
-                ->where('status', 'published')   // RFC-0011 (Owner rule): drafts are not visible in the engines
+                ->whereIn('status', ['published', 'connected'])   // RFC-0011 (Owner rule): drafts are not visible in the engines; CONNECT-1: a connected site is live
                 ->orderByDesc('id')
                 ->get(['id', 'name', 'domain', 'subdomain', 'custom_domain', 'platform', 'status']);
             foreach ($rows as $row) {

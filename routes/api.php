@@ -3410,7 +3410,10 @@ Route::post('/invite/{token}/accept', function (\Illuminate\Http\Request $r, str
 // single source of truth.
 
 // ═══ Website Publishing Pipeline ═══
-Route::post('/builder/websites/connect-existing', function (\Illuminate\Http\Request $request) {
+// CONNECT-1 (2026-10-01): behind the same guard as every other builder route (it used to decode the token by hand, outside
+// auth.jwt and traffic defence), only public http(s) hosts, our own screenshot instead of a third-party image service,
+// and the connected site is indexed in seo_settings so Sarah's discovery and the SEO picker see it.
+Route::middleware(['auth.jwt', 'traffic.defense'])->post('/builder/websites/connect-existing', function (\Illuminate\Http\Request $request) {
     // Resolve workspace from JWT (route is outside auth middleware group)
         $wsId = $request->attributes->get('workspace_id');
         if (!$wsId) {
@@ -3431,6 +3434,16 @@ Route::post('/builder/websites/connect-existing', function (\Illuminate\Http\Req
 
     if (empty($url) || !filter_var($url, FILTER_VALIDATE_URL)) {
         return response()->json(['success' => false, 'error' => 'Please enter a valid URL.'], 400);
+    }
+    // CONNECT-1: the server fetches and screenshots this address — public http(s) hosts only, never ourselves
+    $__scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME)); $__host = strtolower((string) parse_url($url, PHP_URL_HOST));
+    if ($__host !== '' && (str_ends_with($__host, '.levelupgrowth.io') || $__host === 'levelupgrowth.io')) {
+        return response()->json(['success' => false, 'error' => 'That is a LevelUpGrowth site — it is already in your Websites.'], 400);
+    }
+    $__ip = $__host !== '' ? (filter_var($__host, FILTER_VALIDATE_IP) ? $__host : gethostbyname($__host)) : '';
+    if (! in_array($__scheme, ['http', 'https'], true) || $__host === '' || $__host === 'localhost' || str_ends_with($__host, '.local')
+        || ! filter_var($__ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        return response()->json(['success' => false, 'error' => 'That address is not a public website.'], 400);
     }
 
     // 2026-06-26 — WEBSITE=WORKSPACE: quota counts across the user's pool-family,
@@ -3483,7 +3496,7 @@ Route::post('/builder/websites/connect-existing', function (\Illuminate\Http\Req
     elseif (stripos($html, 'squarespace') !== false) $platform = 'squarespace';
     elseif (stripos($html, 'wix.com') !== false) $platform = 'wix';
 
-    $thumbnailUrl = 'https://image.thum.io/get/width/400/crop/600/' . urlencode($url);
+    $thumbnailUrl = null;   // CONNECT-1: our own screenshot once the row exists (below), never a third-party image service
 
     $websiteId = \Illuminate\Support\Facades\DB::table('websites')->insertGetId([
         'workspace_id' => $wsId,
@@ -3500,6 +3513,10 @@ Route::post('/builder/websites/connect-existing', function (\Illuminate\Http\Req
         'created_at' => now(),
         'updated_at' => now(),
     ]);
+    // CONNECT-1: indexed like any other site (Sarah's discovery, the SEO picker) and shot by our own tool
+    try { \App\Engines\Builder\Support\Platform6::ensureSeoSiteUrl((int) $wsId, (int) $websiteId, (string) $__host, (string) $title); } catch (\Throwable $e) {}
+    // the shot takes Chrome 25-35 s on this host: it is taken after the reply is sent, and the card shows it on its next load
+    try { $__wid = (int) $websiteId; $__u = (string) $url; dispatch(function () use ($__wid, $__u) { try { \App\Engines\Builder\Support\SiteThumbnail::generateForUrl($__wid, $__u); } catch (\Throwable $e) {} })->afterResponse(); } catch (\Throwable $e) {}
 
     return response()->json([
         'success' => true,
