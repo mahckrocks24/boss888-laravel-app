@@ -168,11 +168,16 @@ class ImageOverlayRenderer
         if ($this->contrast($headColor, $stats[$zone]['lum']) < 2.2) $headColor = $tone === 'light' ? '#FFFFFF' : '#111111';
         if ($this->contrast($bodyColor, $stats[$zone]['lum']) < 2.2) $bodyColor = $tone === 'light' ? '#F4F1EA' : '#1B1B1B';
 
+        // RENDER-SPAN-1: explicit brief fields win over the words
+        if (! empty($overlay['accent_word'])) $italicWord = (string) $overlay['accent_word'];
+        $span = isset($overlay['headline_span']) ? max(0.3, min(0.95, (float) $overlay['headline_span'])) : null;
+        $ruleWanted = array_key_exists('rule', $overlay) ? (bool) $overlay['rule'] : null;
         return [
+            'span' => $span, 'rule_explicit' => $ruleWanted,
             'zone' => $zone, 'asked_zone' => $asked, 'font_head' => $fontHead, 'font_body' => $fontBody,
             'head_color' => $headColor, 'body_color' => $bodyColor, 'accent' => $accent, 'tone' => $tone,
             'italic_word' => $italicWord, 'weight' => $weight, 'serif' => $serifWords || in_array($fontHead, ['Playfair Display', 'Fraunces', 'Cormorant Garamond', 'Libre Baskerville', 'Lora'], true),
-            'rule' => (bool) preg_match('/\b(rule|hairline|underline|divider|line beneath)\b/i', $style) || $serifWords,
+            'rule' => $ruleWanted !== null ? $ruleWanted : ((bool) preg_match('/\b(rule|hairline|underline|divider|line beneath)\b/i', $style) || $serifWords),
             'caps_body' => (bool) preg_match('/\b(caps|capitals|uppercase|tracking|small[- ]caps)\b/i', $style),
             'scrim' => $this->scrimStrength($stats[$zone], $tone),
         ];
@@ -315,6 +320,14 @@ class ImageOverlayRenderer
         if ($hlLen > 28) $hlSize = (int) round($hlSize * 0.84);
         if ($hlLen > 40) $hlSize = (int) round($hlSize * 0.84);
         $hlSize   = max(28, $hlSize);
+        // RENDER-SPAN-1: a stated width share sizes the headline so its longest line spans that share of the canvas
+        if (! empty($b['span'])) {
+            $words = preg_split('/\s+/', trim($headline)) ?: [$headline]; $lines = [];
+            if (count($words) <= 2) $lines = [implode(' ', $words)]; else { $half = (int) ceil(count($words) / 2); $lines = [implode(' ', array_slice($words, 0, $half)), implode(' ', array_slice($words, $half))]; }
+            $longest = max(array_map('mb_strlen', $lines)); $em = $b['serif'] ? 0.5 : 0.56;
+            $hlSize = (int) round(max(28, min($w * 0.2, ($w * $b['span']) / max(1, $longest * $em))));
+            $boxW = (int) round($w * min(0.92, $b['span'] + 0.06));
+        }
         $bodySize = max(16, (int) round($w * ($b['caps_body'] ? 0.017 : 0.024)));
         $align    = $col === 1 ? 'center' : 'left';
 
