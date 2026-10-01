@@ -715,6 +715,9 @@ function bld_executeAiTool(tc) {
 
 async function wsLoadSites(){
   if (!window._luPolicyLoaded && window.LuAPI && LuAPI.refreshPolicy) { window._luPolicyLoaded = 1; try { LuAPI.refreshPolicy(); } catch (_e) {} }
+  // HIDE-CONNECT-1 (Owner 2026-10-01): the existing-website door shows only when the server says so (storage/app/connectexisting.on)
+  if (!window._luFlagsPromise) { window._luFlagsPromise = fetch('/api/builder/flags', { headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' }, cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (j) { window._luFlags = j || {}; return window._luFlags; }).catch(function () { window._luFlags = window._luFlags || {}; return window._luFlags; }); }
+  try { window._luFlagsPromise.then(function (j) { var b = document.getElementById('ws-connect-existing-btn'); if (b) b.style.display = (j && j.connect_existing) ? '' : 'none'; }); } catch (_f) {}
   try{
     // GET lu/v1/websites — Core endpoint reading lu_websites table
     const r=await fetch(API+'websites',{headers:{'Authorization':'Bearer '+(localStorage.getItem('lu_token')||''),'Accept':'application/json'}});
@@ -2101,6 +2104,7 @@ async function luCloneDebug(url) {
 window.luCloneDebug = luCloneDebug;
 
 function wsShowConnectModal() {
+  if (!(window._luFlags && window._luFlags.connect_existing)) { if (typeof wsShowCreate === 'function') wsShowCreate(); return; }   // HIDE-CONNECT-1
   var existing = document.getElementById('ws-connect-modal');
   if (existing) { existing.remove(); return; }
 

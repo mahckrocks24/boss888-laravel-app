@@ -144,7 +144,7 @@ use Illuminate\Support\Facades\Route;
         Route::get('/flags', function (\Illuminate\Http\Request $r) {
             $ind = ''; $sid = (int) $r->query('site', 0);
             if ($sid > 0) { $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $sid)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first(['template_industry']); if ($w) { try { $ind = (string) app(\App\Engines\Builder\Services\TemplateService::class)->industryOf((string) $w->template_industry); } catch (\Throwable $e) { $ind = (string) $w->template_industry; } } }
-            return response()->json(['editor3' => \App\Engines\Builder\Support\Editor3::on(), 'draftedits' => \App\Engines\Builder\Support\DraftEdits::on(), 'fonts' => \App\Engines\Builder\Support\FontPairs::on(), 'textsafe' => \App\Engines\Builder\Support\InlineText::on(), 'contactfields' => \App\Engines\Builder\Support\ContactFacts::on(), 'industry' => $ind]);
+            return response()->json(['editor3' => \App\Engines\Builder\Support\Editor3::on(), 'draftedits' => \App\Engines\Builder\Support\DraftEdits::on(), 'fonts' => \App\Engines\Builder\Support\FontPairs::on(), 'connect_existing' => is_file(storage_path('app/connectexisting.on')), 'textsafe' => \App\Engines\Builder\Support\InlineText::on(), 'contactfields' => \App\Engines\Builder\Support\ContactFacts::on(), 'industry' => $ind]);
         });
         // CONTACT-1 (RFC-0021 wave 2, 2026-10-01): the owner's contact details have one home — every fact field of the design, the
         // tel:/mailto: links, the structured data and the business profile follow this panel. Free (the owner's own hands).

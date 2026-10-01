@@ -3414,6 +3414,8 @@ Route::post('/invite/{token}/accept', function (\Illuminate\Http\Request $r, str
 // auth.jwt and traffic defence), only public http(s) hosts, our own screenshot instead of a third-party image service,
 // and the connected site is indexed in seo_settings so Sarah's discovery and the SEO picker see it.
 Route::middleware(['auth.jwt', 'traffic.defense'])->post('/builder/websites/connect-existing', function (\Illuminate\Http\Request $request) {
+    // HIDE-CONNECT-1 (Owner 2026-10-01): new users build a new website; the door stays shut until storage/app/connectexisting.on exists
+    if (! is_file(storage_path('app/connectexisting.on'))) return response()->json(['success' => false, 'error' => 'not_available'], 404);
     // Resolve workspace from JWT (route is outside auth middleware group)
         $wsId = $request->attributes->get('workspace_id');
         if (!$wsId) {

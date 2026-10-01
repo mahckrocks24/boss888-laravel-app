@@ -92,13 +92,7 @@ return [
 
     // The three doors before the footer. `live` is the truth test: a door that is not live says so and sells nothing.
     'doors' => [
-        [
-            'name' => 'WordPress plugin',
-            'icon' => 'globe',
-            'live' => true,
-            'href' => '/next/product/seo/',
-            'line' => 'Keep your WordPress site. The connector plugin puts the audits, keywords, quick wins and the chatbot inside your own admin.',
-        ],
+        // HIDE-CONNECT-1 (Owner 2026-10-01): the 'keep your WordPress site' door is withdrawn — new users build a new website.
         [
             'name' => 'Managed hosting',
             'icon' => 'server',

@@ -1187,6 +1187,8 @@ window.wsPreviewSite = function(websiteId) {
 // Option 1: Build with Arthur  → window.wsShowCreate()
 // Option 2: Use Existing Website → wsShowConnectModal()
 window._bldShowTemplatePicker = function() {
+    // HIDE-CONNECT-1 (Owner 2026-10-01): with the existing-website door shut there is one door, so it opens at once
+    if (!(window._luFlags && window._luFlags.connect_existing)) { if (typeof window.wsShowCreate === 'function') { window.wsShowCreate(); return; } }
     var existing = document.getElementById('lu-wizard-picker');
     if (existing) { existing.remove(); return; }
 

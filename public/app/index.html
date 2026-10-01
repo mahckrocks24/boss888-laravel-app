@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="20261001-b3969eab">
+<meta name="lu-build" content="20261001-3a3f3ebd">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4318,7 +4318,7 @@ window.luSwipeToClose = luSwipeToClose;
             <p style="color:var(--t2);font-size:13px">Build and publish full multi-page websites with AI</p>
           </div>
           <div style="display:flex;gap:10px">
-            <button class="ct-btn" onclick="wsShowConnectModal()" style="border:1px solid rgba(108,92,231,.4);color:var(--pu)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M8 12a4 4 0 005.657 0l2.828-2.828a4 4 0 00-5.657-5.657L9.172 5.17"/><path d="M12 8a4 4 0 00-5.657 0L3.515 10.83a4 4 0 005.657 5.657l1.656-1.657"/></svg> Use Existing Website</button>
+            <button class="ct-btn" id="ws-connect-existing-btn" onclick="wsShowConnectModal()" style="display:none;border:1px solid rgba(108,92,231,.4);color:var(--pu)"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" class="lu-icon" style="display:inline-block;vertical-align:-3px"><path d="M8 12a4 4 0 005.657 0l2.828-2.828a4 4 0 00-5.657-5.657L9.172 5.17"/><path d="M12 8a4 4 0 00-5.657 0L3.515 10.83a4 4 0 005.657 5.657l1.656-1.657"/></svg> Use Existing Website</button>
             <button class="ct-btn primary" onclick="wsShowCreate()" style="background:var(--p)">+ New Website</button>
           </div>
         </div>
@@ -4923,7 +4923,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=r192-20260919"></script>
 <script src="/app/js/launch-scope.js?v=cmp1-20260927"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=dad1fcc0fc"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=038ead81ae"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
