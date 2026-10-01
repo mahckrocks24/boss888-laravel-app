@@ -50,7 +50,7 @@ final class DraftEdits
     public static function promote(int $websiteId): array
     {
         $src = self::workingRoot($websiteId); $dst = self::liveRoot($websiteId);
-        if (! is_dir($src) || ! is_file($src . '/index.html')) return ['promoted' => false, 'reason' => 'no_export'];
+        if (! is_dir($src) || ! is_file($src . '/index.html')) return self::promoteRenderer($websiteId);   // DRAFT-5b: a renderer-served site's draft lives in the pages table
         $tmp = $src . '/.live-next';
         self::rmTree($tmp);
         $n = self::copyTree($src, $tmp);
@@ -63,6 +63,7 @@ final class DraftEdits
     public static function changes(int $websiteId): array
     {
         $src = self::workingRoot($websiteId); $dst = self::liveRoot($websiteId);
+        if (! is_file($src . '/index.html')) return self::rendererChanges($websiteId);   // DRAFT-5b
         $out = ['has_live' => is_dir($dst), 'count' => 0, 'pages_added' => [], 'pages_removed' => [], 'fields' => [], 'sections' => []];
         if (! is_dir($dst)) return $out;
         $work = self::htmlFiles($src); $live = self::htmlFiles($dst);
@@ -112,6 +113,101 @@ final class DraftEdits
         try { $n = DB::table('catalogue_items')->where('website_id', $websiteId)->where('kind', $kind)->whereNull('deleted_at')->where('source', '!=', 'seed')->count(); }   // a design's sample dishes are not the business's items
         catch (\Throwable $e) { $n = 0; }   // the test database has no catalogue table
         return $n > 0 ? null : $kind;
+    }
+
+    // ── DRAFT-5b (fix-all 2026-10-01): the 15 published sites without a static export are served by the renderer from
+    // pages.sections_json. Their draft is pages.draft_sections_json: the editor and Arthur write it, the owner previews it,
+    // visitors keep the published sections until Publish changes copies the draft over. Dynamic parts (jobs, listings,
+    // articles) stay dynamic: nothing is frozen to disk. Same switch. ──
+
+    /** A published site served by the renderer (no export), with the draft column in place. */
+    public static function rendererDraft(int $websiteId): bool
+    {
+        if (! self::on() || $websiteId <= 0 || is_file(self::workingRoot($websiteId) . '/index.html')) return false;
+        static $memo = [];
+        if (! array_key_exists($websiteId, $memo)) {
+            try {
+                $memo[$websiteId] = DB::table('websites')->where('id', $websiteId)->value('status') === 'published'
+                    && DB::getSchemaBuilder()->hasColumn('pages', 'draft_sections_json');
+            } catch (\Throwable $e) { $memo[$websiteId] = false; }
+        }
+        return $memo[$websiteId];
+    }
+
+    public static function rendererDraftForPage(int $pageId): bool
+    {
+        try { $wid = (int) DB::table('pages')->where('id', $pageId)->value('website_id'); } catch (\Throwable $e) { return false; }
+        return $wid > 0 && self::rendererDraft($wid);
+    }
+
+    private static function promoteRenderer(int $websiteId): array
+    {
+        $n = 0;
+        try {
+            if (! DB::getSchemaBuilder()->hasColumn('pages', 'draft_sections_json')) return ['promoted' => false, 'reason' => 'no_export'];
+            foreach (DB::table('pages')->where('website_id', $websiteId)->whereNotNull('draft_sections_json')->get(['id', 'draft_sections_json']) as $p) {
+                DB::table('pages')->where('id', $p->id)->update(['sections_json' => $p->draft_sections_json, 'draft_sections_json' => null, 'updated_at' => now()]);
+                $n++;
+            }
+            if ($n > 0) { self::forgetRendererCache($websiteId); }
+        } catch (\Throwable $e) { return ['promoted' => false, 'reason' => $e->getMessage()]; }
+        return ['promoted' => true, 'renderer' => true, 'pages' => $n];
+    }
+
+    private static function rendererChanges(int $websiteId): array
+    {
+        $out = ['has_live' => false, 'renderer' => true, 'count' => 0, 'pages_added' => [], 'pages_removed' => [], 'fields' => [], 'sections' => []];
+        try {
+            if (! self::rendererDraft($websiteId)) return $out;
+            $out['has_live'] = true;
+            foreach (DB::table('pages')->where('website_id', $websiteId)->whereNotNull('draft_sections_json')->get(['title', 'slug', 'sections_json', 'draft_sections_json']) as $p) {
+                $name = (string) ($p->title ?: ucfirst((string) $p->slug));
+                foreach (self::diffSectionTexts((string) $p->sections_json, (string) $p->draft_sections_json) as $d) { $out['fields'][] = ['page' => $name] + $d; }
+            }
+        } catch (\Throwable $e) {}
+        $out['count'] = count($out['fields']);
+        return $out;
+    }
+
+    /** What changed between two section documents, as the editor lists it: field, kind, before, after. */
+    public static function diffSectionTexts(string $liveJson, string $draftJson): array
+    {
+        $a = self::sectionTexts($liveJson); $b = self::sectionTexts($draftJson); $out = [];
+        foreach ($b as $k => $v) {
+            if (($a[$k] ?? null) === $v) continue;
+            $out[] = ['field' => $k, 'kind' => preg_match('/image|photo|img|src|background|video/i', $k) ? 'picture' : 'text', 'before' => $a[$k] ?? null, 'after' => $v];
+        }
+        foreach ($a as $k => $v) { if (! array_key_exists($k, $b)) $out[] = ['field' => $k, 'kind' => 'text', 'before' => $v, 'after' => null]; }
+        return $out;
+    }
+
+    /** Every string a sections document carries, keyed "section.type.path" (an index when a section has no type). */
+    public static function sectionTexts(string $json): array
+    {
+        $doc = json_decode($json, true);
+        if (is_array($doc) && isset($doc['sections']) && is_array($doc['sections'])) $doc = $doc['sections'];
+        if (! is_array($doc)) return [];
+        $out = [];
+        foreach (array_values($doc) as $i => $sec) {
+            if (! is_array($sec)) continue;
+            $label = (string) ($sec['type'] ?? $sec['id'] ?? $i);
+            $walk = function ($v, string $path) use (&$walk, &$out, $label) {
+                if (is_array($v)) { foreach ($v as $k => $x) { if ($k === 'type' && $path === '') continue; $walk($x, $path === '' ? (string) $k : $path . '.' . $k); } }
+                elseif (is_string($v) && trim($v) !== '') { $out[$label . '.' . $path] = mb_substr(trim((string) preg_replace('/\s+/u', ' ', strip_tags($v))), 0, 160); }
+            };
+            $walk($sec, '');
+        }
+        return $out;
+    }
+
+    private static function forgetRendererCache(int $websiteId): void
+    {
+        try {
+            $w = DB::table('websites')->where('id', $websiteId)->first(['subdomain']);
+            $sub = $w ? str_replace('.levelupgrowth.io', '', (string) $w->subdomain) : '';
+            if ($sub !== '') { foreach (DB::table('pages')->where('website_id', $websiteId)->pluck('slug') as $slug) { \Illuminate\Support\Facades\Cache::forget("published_site:{$sub}:{$slug}"); } }
+            \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId);
+        } catch (\Throwable $e) {}
     }
 
     private static function htmlFiles(string $root): array

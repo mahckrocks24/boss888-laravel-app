@@ -135,6 +135,53 @@ final class BuildQuality
         return $out;
     }
 
+    /**
+     * PAGE-NOT-SECTION: the customer's words ask for a PAGE the catalogue offers, the site has no such page, and the model read
+     * it as something else (an answer, a section, a question) — because a home-page section of that name exists. The page slug
+     * to add, or null when the model's reading stands.
+     */
+    public static function pageRequestOverride(string $request, string $intent, string $industry, int $websiteId): ?string
+    {
+        if (! preg_match('/\bpages?\b/iu', $request)) return null;
+        if (! in_array($intent, ['answer', 'unsupported', 'clarify', 'section_add', 'catalogue', 'copy_edit'], true)) return null;
+        $c = BuilderCapabilities::classify($request, $industry !== '' ? $industry : null);
+        $slug = (($c['kind'] ?? '') === 'page') ? (string) ($c['page'] ?? '') : '';
+        if ($slug === '' || ! preg_match('/^[a-z0-9_\-]+$/', $slug)) return null;
+        return is_file(storage_path("app/public/sites/{$websiteId}/{$slug}/index.html")) ? null : $slug;
+    }
+
+    /** The requested page names the catalogue has no page design for (Home and Blog are never missing). */
+    public static function unsupportedPages(array $pages, string $industry): array
+    {
+        $out = [];
+        foreach ($pages as $p) {
+            $name = trim((string) (is_array($p) ? ($p['title'] ?? $p['name'] ?? '') : $p));
+            $look = self::PAGE_WORDS_AR[$name] ?? $name;
+            if ($look === '' || preg_match('/^(home|blog|news|الرئيسية|الصفحة الرئيسية|المدونة)$/iu', $look)) continue;
+            $c = BuilderCapabilities::classify('add a ' . mb_strtolower($look) . ' page', $industry);
+            $slug = (($c['kind'] ?? '') === 'page') ? (string) ($c['page'] ?? '') : '';
+            if (($slug === '' || in_array($slug, ['cart', 'checkout', 'account'], true)) && ! in_array($name, $out, true)) $out[] = $name;
+        }
+        return $out;
+    }
+
+    /** Arthur's summary names the requested pages that have no page design, right under its Pages line. */
+    public static function pagesNote(string $reply, array $names): string
+    {
+        if ($names === []) return $reply;
+        $q = array_map(fn ($n) => '“' . $n . '”', $names);
+        $note = (count($names) === 1
+                ? 'I have no page design for ' . $q[0] . ' yet, so it is not in this build'
+                : 'I have no page designs for ' . implode(', ', array_slice($q, 0, -1)) . ' and ' . end($q) . ' yet, so they are not in this build')
+            . ' — once the site is up, ask me and I will find the closest fit.';
+        if (str_contains($reply, $note)) return $reply;
+        if (preg_match('/^.*\*\*Pages:\*\*[^\n]*/mu', $reply, $m, PREG_OFFSET_CAPTURE)) {
+            $end = $m[0][1] + strlen($m[0][0]);
+            return substr($reply, 0, $end) . "\n_" . $note . '_' . substr($reply, $end);
+        }
+        return rtrim($reply) . "\n\n" . $note;
+    }
+
     /** "Pages: Home, Menu, About, Contact" typed by the customer, when the model's JSON left pages out. */
     public static function pagesFromConversation(array $history): array
     {

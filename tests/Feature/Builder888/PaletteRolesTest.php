@@ -68,7 +68,8 @@ class PaletteRolesTest extends TestCase
             $this->assertContains('bg', array_values($roles), "$slug names its ground");
             $this->assertTrue(in_array('text', array_values($roles), true) || in_array('primary_text', array_values($roles), true) || (bool) preg_match('/--ink\s*:\s*#/', $tpl), "$slug names its text (a role, the primary as readable text, or a hard-coded --ink the block re-points)");
         }
-        $this->assertSame(32, $genA); $this->assertSame(62, $genB);
+        // fix-all 2026-10-01: 33 hand-made designs (chefred_signature joined on 09-29) and 201 generated ones (lug-template-generator v2, 09-25)
+        $this->assertSame(33, $genA); $this->assertSame(201, $genB);
     }
 
     public function test_the_painter_fills_neutrals_from_roles_and_the_render_carries_the_roles_block(): void

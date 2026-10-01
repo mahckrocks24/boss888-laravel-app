@@ -51,7 +51,7 @@ class ArthurService
             if ($info['kind'] === 'image') $css = "{$s}{display:block!important;margin-left:{$ml}!important;margin-right:{$mr}!important;justify-self:{$js}!important}";
         }
         if (! self::writeDesignExtras($websiteId, ['align_field_' . $info['field'] => $css], $tv)) return ['success' => false, 'message' => 'I could not write that change to the page.'];
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         $label = ($info['text'] !== '' ? '"' . mb_substr($info['text'], 0, 40) . '"' : 'the ' . str_replace(['_', '-'], ' ', $info['field']));
         return ['success' => true, 'message' => 'aligned ' . $label . ' to the ' . ($align === 'center' ? 'centre' : $align)];
     }
@@ -86,7 +86,7 @@ class ArthurService
         }
         try { $this->templates->snapshotToHistory($websiteId, 'element_size'); } catch (\Throwable $e) {}
         if (! self::writeDesignExtras($websiteId, [$key => $css], $tv)) return ['success' => false, 'message' => 'I could not write that change to the page.'];
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         return ['success' => true, 'message' => $said];
     }
     /* ═══════════════════ IMAGE-FIT-1 (Owner 2026-09-22) — how a picture sits in its frame ═══════════════════
@@ -115,7 +115,7 @@ class ArthurService
         $css = "{$s} img,img{$s}{object-fit:{$fit}!important;object-position:{$pos}!important}";
         try { $this->templates->snapshotToHistory($websiteId, 'element_fit'); } catch (\Throwable $e) {}
         if (! self::writeDesignExtras($websiteId, [$key => $css], $tv)) return ['success' => false, 'message' => 'I could not write that change to the page.'];
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         $label = 'the ' . str_replace(['_', '-'], ' ', $info['field']);
         $posName = array_search($pos, $named, true) ?: $pos;
         return ['success' => true, 'message' => 'set ' . $label . ' to ' . ($fit === 'cover' ? 'fill its frame' : 'show the whole picture') . ', keeping the ' . $posName . ' in view', 'state' => ['fit' => $fit, 'pos' => $pos]];
@@ -186,7 +186,7 @@ class ArthurService
         if ($rules === '') { unset($extras[$ruleKey]); $tv['design_extras'] = $extras; $ok = self::writeDesignExtras($websiteId, [], $tv); }
         else { $ok = self::writeDesignExtras($websiteId, [$ruleKey => $rules], $tv); }
         if (! $ok) return ['success' => false, 'message' => 'I could not write that change to the page.'];
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         return ['success' => true, 'message' => $said, 'state' => $st];
     }
 
@@ -969,6 +969,10 @@ class ArthurService
     //
     // Longest-match-wins (sorted by key length in resolveTemplateSlug).
     private const KEYWORD_TO_TEMPLATE = [
+        // fix-all 2026-10-01: the accounting and legal families (generated 09-25) have no base directory, so a brief that named
+        // the trade fell through to consulting; the lead design of each family is the family's door.
+        'accountant' => 'acct_brightwater', 'accounting' => 'acct_brightwater', 'bookkeep' => 'acct_brightwater', 'chartered' => 'acct_brightwater',
+        'law firm' => 'legal_ashcombe', 'solicitor' => 'legal_ashcombe', 'lawyer' => 'legal_ashcombe', 'attorney' => 'legal_ashcombe', 'legal practice' => 'legal_ashcombe', 'legal services' => 'legal_ashcombe',
         // a realtor / agent / broker is a PERSON: the portfolio design (longest match keeps 'real estate agency' an agency)
         'real estate agent' => 'realtor_profile', 'property agent' => 'realtor_profile', 'property broker' => 'realtor_profile',
         'real estate broker' => 'realtor_profile', 'property consultant' => 'realtor_profile', 'estate agent' => 'realtor_profile',
@@ -1967,6 +1971,17 @@ PROMPT;
             if ($__sc !== []) $buildData['colors'] = $__sc;
         }
         if ($readyToConfirm && \App\Engines\Builder\Support\BuildQuality::on() && is_array($buildData) && empty($buildData['pages'])) { $__pg = \App\Engines\Builder\Support\BuildQuality::pagesFromConversation($newHistory); if ($__pg !== []) $buildData['pages'] = $__pg; }   // ARTHUR-4: "Pages: Home, Menu, About" typed by the customer counts even when the model's JSON left it out   // CONTACT-1: the owner's own words beat the model's tidying
+        if ($readyToConfirm && \App\Engines\Builder\Support\BuildQuality::on() && is_array($buildData) && ! empty($buildData['pages'])) {   // fix-all 2026-10-01: a page the catalogue cannot offer is said, not silently dropped
+            try {
+                $__ind0 = (string) ($buildData['industry'] ?? ''); $__slug0 = $this->resolveTemplateSlug($__ind0); $__base0 = (string) ($this->templates->industryOf($__slug0) ?: $__slug0);
+                $__drop = \App\Engines\Builder\Support\BuildQuality::unsupportedPages((array) $buildData['pages'], $__base0);
+                if ($__drop !== []) {
+                    $reply = \App\Engines\Builder\Support\BuildQuality::pagesNote($reply, $__drop);
+                    $__last = array_key_last($newHistory); if ($__last !== null && (($newHistory[$__last]['role'] ?? '') === 'arthur')) $newHistory[$__last]['content'] = $reply;
+                    Log::info('[Arthur] pages without a design named in the summary', ['workspace' => $workspaceId, 'pages' => $__drop, 'industry' => $__base0]);
+                }
+            } catch (\Throwable $__pe) { Log::warning('[Arthur] pages note: ' . $__pe->getMessage()); }
+        }
         if ($readyToConfirm && !empty($buildData['business_name'])) {
             try {
                 \Illuminate\Support\Facades\Cache::put(
@@ -2075,7 +2090,7 @@ PROMPT;
             if (! $placed && $field === 'hero_image') { try { $placed = $this->templates->placeHeroPhotoFallback($websiteId, $url); if ($placed) Log::info('[Arthur] hero photo placed as section background', ['website' => $websiteId]); } catch (\Throwable $e) { Log::warning('[Arthur] hero fallback: ' . $e->getMessage()); } }
         }
         $tv[$field] = $url;
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         $charged = (int) ($res['credits'] ?? $res['credits_charged'] ?? 0);
         Log::info('[Arthur] image generated at edit time', ['website' => $websiteId, 'field' => $field, 'placed' => $placed, 'asset' => $res['asset_id'] ?? null, 'credits' => $charged]);
         if (! $placed) {
@@ -2250,7 +2265,7 @@ PROMPT;
         }
         $tv[$field] = $newUrl;
         $tv[$field . '_overlay'] = ['text' => $text, 'source' => $url, 'at' => now()->toIso8601String()];
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         app(\App\Core\Billing\CreditService::class)->debit($wsId, (int) $plan['credits'], 'builder_arthur_overlay', $websiteId, ['field' => $field, 'text' => mb_substr($text, 0, 120)]);
         try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
         Log::info('[Arthur] text overlaid on site image', ['website' => $websiteId, 'field' => $field, 'text' => $text, 'url' => $newUrl]);
@@ -2306,7 +2321,7 @@ PROMPT;
         $placed = false;
         try { $placed = $this->templates->updateField($websiteId, $field, $rel); } catch (\Throwable $e) { Log::warning('[Arthur] edited image not placed: ' . $e->getMessage()); }
         $tv[$field] = $rel;
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
         $charged = 2;
         Log::info('[Arthur] site image edited via studio', ['website' => $websiteId, 'field' => $field, 'op' => $op, 'asset' => $assetId, 'child' => $data['asset_id'] ?? null, 'placed' => $placed]);
@@ -2350,7 +2365,7 @@ PROMPT;
             // The workspace reviews video generation before it runs. The clip will exist only after someone approves,
             // so the watcher adopts it by prompt once it appears, and Arthur says exactly where the customer stands.
             $tv['pending_video'] = ['asset_id' => 0, 'approval_id' => $approvalId, 'requested_at' => now()->toIso8601String(), 'prompt' => $prompt, 'status' => 'awaiting_approval'];
-            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
             \App\Jobs\PlaceGeneratedVideoJob::dispatch($wsId, $websiteId, 0, $prompt)->delay(now()->addSeconds(60));
             Log::info('[Arthur] video generation awaiting approval', ['website' => $websiteId, 'approval' => $approvalId]);
             return ['success' => true, 'kind' => 'video', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'approval_id' => $approvalId, 'pending' => true,
@@ -2358,7 +2373,7 @@ PROMPT;
         }
         if (! $ok || $assetId <= 0) { return $this->honestKernelRefusal($res, $data, $plan, 'make a video', 8); }
         $tv['pending_video'] = ['asset_id' => $assetId, 'requested_at' => now()->toIso8601String(), 'prompt' => mb_substr($prompt, 0, 200), 'status' => 'rendering'];
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         \App\Jobs\PlaceGeneratedVideoJob::dispatch($wsId, $websiteId, $assetId, $prompt)->delay(now()->addSeconds(45));
         Log::info('[Arthur] video generation started', ['website' => $websiteId, 'asset' => $assetId, 'prompt' => mb_substr($prompt, 0, 160)]);
         return ['success' => true, 'kind' => 'video', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => 8, 'asset_id' => $assetId, 'pending' => true,
@@ -2393,7 +2408,7 @@ PROMPT;
         if ($placed) { try { app(\App\Engines\Builder\Services\BuilderService::class)->appendSectionToHomePage($websiteId, $sec); } catch (\Throwable $e) {} }
         unset($tv['pending_video']);
         $tv['video_url'] = $videoUrl;
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
         Log::info('[Arthur] generated video placed on site', ['website' => $websiteId, 'placed' => $placed, 'url' => $videoUrl]);
         return ['success' => $placed, 'url' => $videoUrl, 'error' => $placed ? null : 'not_placed'];
@@ -2634,9 +2649,7 @@ PROMPT;
         $settings['template'] = $design;
         $settings['layout_switched_at'] = now()->toIso8601String();
         $settings['layout_previous'] = $current;
-        DB::table('websites')->where('id', $websiteId)->update([
-            'settings_json' => json_encode($settings), 'template_variables' => json_encode($c['variables']), 'updated_at' => now(),
-        ]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveSettingsAndVariables($websiteId, $settings, $c['variables']);   // Law 11
         $charged = 0;
         if ($cost > 0 && $c['filled'] > 0) {
             $credits->debit($wsId, $cost, 'builder_arthur_layout', $websiteId, ['design' => $design, 'from' => $current, 'filled' => $c['filled']]);
@@ -2681,6 +2694,123 @@ PROMPT;
         usort($out, fn ($a, $b) => ((int) $b['recommended'] <=> (int) $a['recommended']));
         return ['success' => true, 'current' => $tv['palette'] ?? null, 'is_static' => $isStatic, 'industry' => $industry,
             'palettes' => $out, 'live' => $isStatic ? self::siteColorVars($websiteId) : []];
+    }
+
+    // ── FONTS-7 (RFC-0021 closure, 2026-10-01): curated font pairings in the editor — hover to preview, click to apply, free ──
+    public function fontsFor(int $wsId, int $websiteId): array
+    {
+        $FP = \App\Engines\Builder\Support\FontPairs::class;
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found', 'pairs' => []]; }
+        if (! $FP::on()) { return ['success' => false, 'error' => 'off', 'pairs' => []]; }
+        $tv = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $isStatic = is_file(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $style = (string) ($tv['design_style'] ?? '');
+        $colours = $this->fontLayerColours($websiteId, $tv, $isStatic);
+        $rec = $FP::recommended($style ?: null);
+        $first = ['id' => $FP::DESIGN, 'label' => "The design's own", 'note' => 'The typography this design was made with', 'display' => null, 'body' => null, 'moods' => [], 'recommended' => false,
+                  'layer' => $isStatic ? \App\Engines\Builder\Support\DesignStyle::layer($style ?: null, null, null, $colours) : ''];
+        $rest = [];
+        foreach ($FP::all() as $id => $p) {
+            $rest[] = ['id' => $id, 'label' => $p['label'], 'note' => $p['note'], 'display' => $p['display'], 'body' => $p['body'], 'moods' => $p['moods'],
+                       'recommended' => in_array($id, $rec, true), 'layer' => $isStatic ? $FP::layerFor($id, $style ?: null, $colours) : ''];
+        }
+        usort($rest, fn ($a, $b) => ((int) $b['recommended'] <=> (int) $a['recommended']));
+        return ['success' => true, 'current' => $FP::currentFor($tv), 'is_static' => $isStatic, 'style' => $style, 'pairs' => array_merge([$first], $rest), 'preview_css' => $FP::previewStylesheet()];
+    }
+
+    /** Apply a pairing (or the design's own) to a built site: snapshot → write the layer on every page → prove it from the file → record. Free. */
+    public function applyFonts(int $wsId, int $websiteId, string $pairId, ?int $actorId = null): array
+    {
+        $FP = \App\Engines\Builder\Support\FontPairs::class; $DS = \App\Engines\Builder\Support\DesignStyle::class;
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found', 'message' => 'That website is not in this workspace.']; }
+        if (! $FP::on()) { return ['success' => false, 'error' => 'off', 'message' => 'Font pairings are not available yet.']; }
+        $pairId = strtolower(trim($pairId));
+        $pair = $pairId === $FP::DESIGN ? null : $FP::find($pairId);
+        if ($pairId !== $FP::DESIGN && $pair === null) { return ['success' => false, 'error' => 'unknown_pair', 'message' => 'That pairing does not exist.']; }
+        if (! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) { return ['success' => false, 'error' => 'not_static', 'message' => 'This site is rendered live, so its fonts are set in the design settings.']; }
+        $tv = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $style = (string) ($tv['design_style'] ?? '');
+        $colours = $this->fontLayerColours($websiteId, $tv, true);
+        app(TemplateService::class)->snapshotToHistory($websiteId, 'fonts');
+        if ($pair === null) {
+            $layer = $DS::layer($style ?: null, null, null, $colours);
+            $ok = $layer === '' ? (self::stripDesignLayer($websiteId) >= 0) : self::writeDesignLayer($websiteId, $layer);
+            $expect = $layer === '' ? null : (string) (($DS::resolve($style ?: null, null, null) ?? [])['display'] ?? '');
+            unset($tv['font_display'], $tv['font_body'], $tv['font_pair']);
+            $label = "the design's own fonts";
+        } else {
+            $layer = $FP::layerFor($pairId, $style ?: null, $colours);
+            $ok = $layer !== '' && self::writeDesignLayer($websiteId, $layer);
+            $expect = (string) $pair['display'];
+            $tv['font_display'] = $pair['display']; $tv['font_body'] = $pair['body']; $tv['font_pair'] = $pairId;
+            $label = (string) $pair['label'];
+        }
+        self::restoreTemplateFontLinks($websiteId, $site, $settings);   // the design's own faces keep loading (writeDesignLayer strips every Google Fonts link)
+        // Proof comes from the file, never from the reply.
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $verified = ($expect === null || $expect === '')
+            ? (stripos($home, '--ds-font-display') === false)
+            : (strpos($home, "--ds-font-display:'" . htmlspecialchars($expect, ENT_QUOTES) . "'") !== false);
+        if (! $ok || ! $verified) {
+            app(TemplateService::class)->undoLatest($websiteId);
+            Log::warning('[Arthur] fonts write did not verify; rolled back', ['website' => $websiteId, 'pair' => $pairId, 'ok' => $ok, 'verified' => $verified]);
+            return ['success' => false, 'error' => 'verify_failed', 'message' => 'I could not switch the fonts cleanly, so I put the site back exactly as it was.'];
+        }
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        Log::info('[Arthur] fonts applied', ['website' => $websiteId, 'pair' => $pairId, 'actor' => $actorId]);
+        return ['success' => true, 'pair' => $pairId, 'label' => $label, 'credits' => 0, 'message' => $pair === null ? "Back to the design's own fonts." : "Switched to {$label}."];
+    }
+
+    /** The site's lead colours for a layer, the live export first (the same reading the style path uses). */
+    private function fontLayerColours(int $websiteId, array $tv, bool $isStatic): array
+    {
+        $live = $isStatic ? self::siteColorVars($websiteId) : [];
+        return ['accent' => $live['--cf1'] ?? ($tv['primary_color'] ?? null), 'secondary' => $live['--cf2'] ?? ($tv['secondary_color'] ?? null), 'primary' => $live['--cf1'] ?? ($tv['primary_color'] ?? null)];
+    }
+
+    /** Remove the design-style layer (and its font links) from every page; how many files changed. */
+    private static function stripDesignLayer(int $websiteId): int
+    {
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $files = glob("{$root}/*.html") ?: [];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $nested) { $files[] = $nested; }
+        $n = 0;
+        foreach (array_values(array_unique($files)) as $file) {
+            $html = @file_get_contents($file); if ($html === false) continue;
+            $new = preg_replace('~<link rel="preconnect" href="https://fonts\.(?:googleapis|gstatic)\.com"[^>]*>~i', '', $html) ?? $html;
+            $new = preg_replace('~<link[^>]+fonts\.googleapis\.com/css2[^>]*>~i', '', $new) ?? $new;
+            $new = preg_replace('~<style id="lug-design-style".*?</style>~is', '', $new) ?? $new;
+            if ($new !== $html) { file_put_contents($file, $new); $n++; }
+        }
+        return $n;
+    }
+
+    /** Put the design's own Google Fonts links back on every page that lost them (idempotent). */
+    private static function restoreTemplateFontLinks(int $websiteId, object $site, array $settings): int
+    {
+        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($settings['template'] ?? $settings['industry'] ?? ($site->template_industry ?? ''))));
+        $tpl = $slug !== '' ? (string) @file_get_contents(storage_path("templates/{$slug}/template.html")) : '';
+        if ($tpl === '' || ! preg_match_all('~<link[^>]+fonts\.googleapis\.com[^>]*>~i', $tpl, $m)) return 0;
+        $links = array_values(array_unique($m[0]));
+        $root = storage_path("app/public/sites/{$websiteId}");
+        $files = glob("{$root}/*.html") ?: [];
+        foreach ((glob("{$root}/*/index.html") ?: []) as $nested) { $files[] = $nested; }
+        $n = 0;
+        foreach (array_values(array_unique($files)) as $file) {
+            $html = @file_get_contents($file); if ($html === false || stripos($html, '</head>') === false) continue;
+            $missing = '';
+            foreach ($links as $l) { if (strpos($html, $l) === false) $missing .= $l . "\n"; }
+            if ($missing === '') continue;
+            // ahead of the layer when there is one, so the layer's faces still win
+            $pos = stripos($html, '<style id="lug-design-style"'); if ($pos === false) $pos = stripos($html, '</head>');
+            $html = substr($html, 0, $pos) . $missing . substr($html, $pos);
+            file_put_contents($file, $html); $n++;
+        }
+        return $n;
     }
 
     /**
@@ -2762,7 +2892,7 @@ PROMPT;
         $tv['primary_color']   = $theme['primary'];
         $tv['secondary_color'] = $theme['secondary'];
         $tv['accent_color']    = $theme['accent'];
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
         Log::info('[Arthur] palette applied', ['website' => $websiteId, 'palette' => $themeId, 'vars' => array_keys($vars), 'actor' => $actorId]);
         $__cleared = $isStatic ? $this->clearSectionTints($websiteId) : 0;   // PALETTE-TINT-1
@@ -2884,7 +3014,7 @@ PROMPT;
             if ($n === 0) return 0;
             $tv['element_fx'] = $fx; $tv['design_extras'] = $extras;
             if (! self::writeDesignExtras($websiteId, $rules, $tv)) return 0;
-            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
             return $n;
         } catch (\Throwable $e) { Log::warning('[PALETTE-TINT-1] could not clear section tints', ['website' => $websiteId, 'e' => $e->getMessage()]); return 0; }
     }
@@ -6206,6 +6336,16 @@ PROMPT;
                 $intent = array_merge(is_array($intent) ? $intent : [], ['intent' => 'image', 'confidence' => 0.99, 'normalized' => $request, 'question' => '', 'options' => []]);
                 Log::info('[Arthur] IMGSEL-1: image request aimed at the selected picture', ['website' => $websiteId, 'field' => $ctx['selected']['field']]);
             }
+            // PAGE-NOT-SECTION (fix-all 2026-10-01): "add a menu page" on a home page with a #menu section came back as an answer
+            // ("you already have a menu"). A section is not a page: when the words ask for a page the catalogue offers and the
+            // site has no such page, the intent is page_add whatever the model said.
+            if ($intent !== null && \App\Engines\Builder\Support\BuildQuality::on()) {
+                $__ps = \App\Engines\Builder\Support\BuildQuality::pageRequestOverride($request, (string) ($intent['intent'] ?? ''), (string) $industry, $websiteId);
+                if ($__ps !== null) {
+                    $intent = array_merge($intent, ['intent' => 'page_add', 'confidence' => 0.99, 'normalized' => 'Add a ' . str_replace('_', ' ', $__ps) . ' page', 'question' => '', 'options' => []]);
+                    Log::info('[Arthur] PAGE-NOT-SECTION: page request routed to page_add', ['website' => $websiteId, 'page' => $__ps, 'request' => mb_substr($request, 0, 120)]);
+                }
+            }
             if ($intent !== null && $brain !== null) {
                 $out = $this->dispatchIntent($wsId, $websiteId, $site, $request, $ctx, $tv, (string) $industry, $intent, $isStatic);
                 if ($out !== null) { $brain->remember($wsId, $websiteId, $ctx, $request, $out, $intent); return $out; }
@@ -6488,7 +6628,7 @@ PROMPT;
                 if ($new !== null && $new !== $h) { file_put_contents($f, $new); $n++; }
             }
             $tv['logo_url'] = ''; $tv['logo_text_display'] = 'display:block';
-            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
             if ($n > 0) { $did[] = "put the text logo “{$name}” back in the header — the logo image was blank, so nothing showed there"; return compact('did', 'missed', 'charge'); }
             $missed[] = 'The logo text could not be restored on this export — open the page editor and click the logo to set it.';
             return compact('did', 'missed', 'charge');
@@ -6503,7 +6643,7 @@ PROMPT;
         $fg = self::readableOn($bg);
         $rule = ['logo' => '.logo,.logo *,.brand-text,.nav-logo,.site-logo,[data-field="logo"],[data-field="logo"] *,[data-field="nav_logo"],[data-field="header_logo"]{color:' . $fg . '!important;opacity:1!important;visibility:visible!important}'];
         if (self::writeDesignExtras($websiteId, $rule, $tv)) {
-            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
             $did[] = 'set the logo to ' . ($fg === '#FFFFFF' ? 'white' : 'dark ink') . ' so it reads clearly on the ' . (self::luminance($bg) < 0.4 ? 'dark' : 'light') . ' header';
             $charge = true;
         } else {
@@ -6701,7 +6841,7 @@ PROMPT;
             if (isset($extras[$key]) && preg_match('/zoom:([\d.]+)/', (string) $extras[$key], $zm)) { $current = (float) $zm[1]; }
             $factor = max(0.6, min(1.8, round($current * ($up ? $step : 1 / $step), 3)));
             if (! self::writeDesignExtras($websiteId, [$key => '[data-field="' . $sf . '"]{zoom:' . $factor . '}'], $tv)) { return null; }
-            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
             return 'made the selected text' . (($this->selTarget['text'] ?? '') !== '' ? ' ("' . mb_substr((string) $this->selTarget['text'], 0, 40) . '")' : '') . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
         }
         $targets = [
@@ -6724,7 +6864,7 @@ PROMPT;
         $factor = max(0.6, min(1.8, round($current * ($up ? $step : 1 / $step), 3)));
         $rule = ['size_' . $picked => $selector . '{zoom:' . $factor . '}'];
         if (! self::writeDesignExtras($websiteId, $rule, $tv)) { return null; }
-        DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         return 'made ' . $label . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
     }
 
@@ -7002,7 +7142,7 @@ PROMPT;
             if ($tc !== null) {
                 $rules = self::targetedColourRules($tc['target'], $tc['hex'], $tc['mode'], $tc['block']);
                 if ($rules !== [] && self::writeDesignExtras($websiteId, $rules, $tv)) {
-                    DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+                    app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
                     $credits->debit($wsId, (int) $plan['credits'], 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => [$tc['label']]]);
                     Log::info('[Arthur] targeted colour', ['website' => $websiteId, 'target' => $tc['target'], 'mode' => $tc['mode'], 'hex' => $tc['hex']]);
                     return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $plan['credits'],
@@ -7021,9 +7161,7 @@ PROMPT;
             if ($isStatic) {
                 $rules = self::gradientRules($grad['target'], $grad['from'], $grad['to']);
                 if (self::writeDesignExtras($websiteId, $rules, $tv)) {
-                    DB::table('websites')->where('id', $websiteId)->update([
-                        'template_variables' => json_encode($tv), 'updated_at' => now(),
-                    ]);
+                    app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
                     $where = $grad['target'] === 'page' ? 'page background' : (str_starts_with($grad['target'], 'section:') ? str_replace(['_', '-'], ' ', substr($grad['target'], 8)) . ' section' : $grad['target']);
                     $did[] = "painted the {$where} with a gradient from {$grad['from']} to {$grad['to']}";
                     $skipColours = true;
@@ -7063,9 +7201,7 @@ PROMPT;
                             array_map(fn ($k) => strtolower((string) $k), array_keys($args))
                         )));
                     }
-                    DB::table('websites')->where('id', $websiteId)->update([
-                        'template_variables' => json_encode($tv), 'updated_at' => now(),
-                    ]);
+                    app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
                     if ($isStatic) { self::writeContrastGuard($websiteId, $args); }
                     $hit = 0;
                     foreach ($args as $vn => $_v) {
@@ -7093,7 +7229,7 @@ PROMPT;
                 if ($cur !== null) { $rules = self::targetedColourRules($part['target'], self::shiftLightness($cur, $dir0), 'background', $part['block']); }
                 else { $rules = self::overlayRules($part['target'], $dir0, $part['block']); }
                 if ($rules !== [] && self::writeDesignExtras($websiteId, $rules, $tv)) {
-                    DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+                    app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
                     $credits->debit($wsId, (int) $plan['credits'], 'builder_arthur_style', $websiteId, ['request' => mb_substr($request, 0, 200), 'changes' => ['made ' . $part['what'] . ' ' . strtolower($tm0[1])]]);
                     Log::info('[Arthur] targeted tone', ['website' => $websiteId, 'target' => $part['target'], 'dir' => $dir0, 'from' => $cur]);
                     return ['success' => true, 'kind' => 'style', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => $plan['credits'],
@@ -7158,9 +7294,7 @@ PROMPT;
                 $tv['design_style'] = $effStyle;
                 if ($fonts['display']) { $tv['font_display'] = $fonts['display']; }
                 if ($fonts['body'])    { $tv['font_body'] = $fonts['body']; }
-                DB::table('websites')->where('id', $websiteId)->update([
-                    'template_variables' => json_encode($tv), 'updated_at' => now(),
-                ]);
+                app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
             } elseif ($layer !== '' && ! $isStatic) {
                 $missed[] = 'this site is rendered live, so its style is set in the design settings';
             }
@@ -7556,7 +7690,7 @@ PROMPT;
         try {
             $tv = json_decode((string) (DB::table('websites')->where('id', $websiteId)->value('template_variables') ?: '{}'), true) ?: [];
             foreach ($values as $k => $v) { if (preg_match('/^added_[a-z0-9_]+_\d+$/', (string) $k)) $tv[$k] = (string) $v; }
-            DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)]);
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);   // Law 11
         } catch (\Throwable $e) { Log::warning('[Arthur] mirrorAddedFieldValues: ' . $e->getMessage()); }
     }
 
@@ -8722,7 +8856,7 @@ PROMPT;
                 if ($intent['intent'] === 'section_hide') { $rules = ['hide_' . $blk => '[data-block="' . $blk . '"],a[href="#' . $blk . '"]{display:none!important}']; }
                 else { unset($extras['hide_' . $blk]); $tv['design_extras'] = $extras; $rules = []; }
                 if ($rules !== [] ? ! self::writeDesignExtras($websiteId, $rules, $tv) : ! self::writeDesignExtras($websiteId, [], $tv)) return $base + ['success' => false, 'message' => 'I could not change that section just now.'];
-                DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($tv), 'updated_at' => now()]);
+                app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
                 $tc = \App\Engines\Builder\Support\EditorCredits::charge($wsId, 'section_toggle', $websiteId, ['block' => $blk, 'op' => $intent['intent']]);
                 return $base + ['success' => true, 'kind' => 'section', 'applied' => 1, 'actions_applied' => 1, 'credits' => $tc, 'message' => 'Done — the ' . str_replace('_', ' ', $blk) . ' section is now ' . ($intent['intent'] === 'section_hide' ? 'hidden (its menu link too). Say "show the ' . str_replace('_', ' ', $blk) . ' section" to bring it back.' : 'visible again.')];
             case 'tracking':
@@ -8733,7 +8867,7 @@ PROMPT;
                 foreach (['ga4' => '/^G-[A-Z0-9]{4,20}$/', 'gtm' => '/^GTM-[A-Z0-9]{4,12}$/', 'meta_pixel' => '/^\d{8,20}$/', 'tiktok_pixel' => '/^[A-Z0-9]{10,40}$/i'] as $k => $re) { if (! isset($tr[$k])) continue; $v = $k === 'tiktok_pixel' ? $tr[$k] : strtoupper($tr[$k]); if (preg_match($re, $v)) $cur[$k] = $v; else $bad[] = $tr[$k]; }
                 if ($bad !== []) return $base + ['success' => false, 'kind' => 'clarify', 'code' => 'CLARIFY', 'method' => 'clarify', 'message' => '“' . implode('”, “', $bad) . '” does not look like a valid id. GA4 ids look like G-XXXXXXXX, Tag Manager like GTM-XXXXXXX, a Meta pixel is a 15–16 digit number — can you check it?', 'options' => []];
                 $settings['tracking'] = $cur;
-                DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]);
+                app(\App\Engines\Builder\Services\BuilderService::class)->saveSettings($websiteId, $settings);   // Law 11
                 try { \Illuminate\Support\Facades\Artisan::call('sites:inject-scripts', ['--site' => $websiteId]); } catch (\Throwable $e) {}
                 return $base + ['success' => true, 'kind' => 'tracking', 'applied' => 1, 'actions_applied' => 1, 'message' => 'Done — tracking is now on every page of ' . $site->name . ' (' . implode(', ', array_map(fn($k) => ['ga4' => 'Google Analytics', 'gtm' => 'Tag Manager', 'meta_pixel' => 'Meta pixel', 'tiktok_pixel' => 'TikTok pixel'][$k] . ' ' . $cur[$k], array_keys($cur))) . ').'];
             case 'undo':   // UNDO-1 (2026-09-23): Arthur reverts the last saved change himself

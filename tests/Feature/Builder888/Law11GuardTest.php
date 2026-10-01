@@ -172,7 +172,9 @@ PHP);
 
         // Legit industries still resolve to their expected templates.
         $this->assertSame('dental', $m->invoke($svc, 'dental'));
-        $this->assertSame('restaurant', $m->invoke($svc, 'restaurant'));
+        // fix-all 2026-10-01: measured on disk, templates/restaurant/template.html is still the dental clone (40 'medical', 7 cert-check);
+        // CLONE_OVERRIDE sends it to cafe on purpose until a real restaurant base exists (ArthurService, 2026-09-10 note).
+        $this->assertSame('cafe', $m->invoke($svc, 'restaurant'));
         $this->assertSame('cafe', $m->invoke($svc, 'a coffee shop'));
         // The traversal form of a real template collapses to the clean template.
         $this->assertSame('dental', $m->invoke($svc, '../dental'));

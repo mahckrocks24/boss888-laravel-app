@@ -55,6 +55,8 @@ class ArthurEditService
         if (! $page) {
             throw new \RuntimeException("Page {$pageId} not found");
         }
+        // DRAFT-5b (fix-all 2026-10-01): a renderer-served site's draft is the thing Arthur edits next
+        if (\App\Engines\Builder\Support\DraftEdits::on() && isset($page->draft_sections_json) && $page->draft_sections_json !== null) { $page->sections_json = $page->draft_sections_json; }
         // TENANCY (B2/B7 IDOR): when a workspace context is supplied the page MUST
         // belong to it. Mirrors BuilderService::updatePage + the RISK-0092 sibling
         // guards (publish_website/generate_page/update_page). Without this the
@@ -255,7 +257,8 @@ PROMPT;
             }
 
             DB::table('pages')->where('id', $pageId)->update([
-                'sections_json' => json_encode($wrapped ? ['schemaVersion' => $schemaVersion, 'sections' => $newSections] : $newSections),
+                (\App\Engines\Builder\Support\DraftEdits::rendererDraftForPage($pageId) ? 'draft_sections_json' : 'sections_json')   // DRAFT-5b
+                                => json_encode($wrapped ? ['schemaVersion' => $schemaVersion, 'sections' => $newSections] : $newSections),
                 'updated_at'    => now(),
             ]);
         });

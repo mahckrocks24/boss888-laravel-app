@@ -43,7 +43,7 @@ class ResponsiveNavTest extends TestCase
         $this->assertStringContainsString('aria-controls', $out);
         $this->assertMatchesRegularExpression('/\.nav-links\{display:none!important/', $out,
             'the links start collapsed on a phone rather than wrapping');
-        $this->assertStringContainsString('.lu-nav-open .nav-links{display:flex!important}', $out);
+        $this->assertMatchesRegularExpression('/\.lu-nav-open \.nav-links\{display:flex!important[;}]/', $out);   // fix-all 2026-10-01: the open state also animates
     }
 
     /** A page with no nav is left completely alone. */

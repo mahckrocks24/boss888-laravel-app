@@ -85,7 +85,7 @@ class ArthurDelegationTest extends TestCase
 
             $n = $t->addNavLink($id, 'booking', 'Booking');
             $this->assertSame(3, $n, 'home, blog and the new page all get the link');
-            $this->assertMatchesRegularExpression('#<a href="booking/" class="nav-link lu-page-link" data-page="booking">Booking</a><a href="\#booking" class="nav-cta">#', file_get_contents($root . '/index.html'), 'inserted before the CTA, home-relative');
+            $this->assertMatchesRegularExpression('#<a href="booking/" class="nav-link lu-page-link" data-page="booking"[^>]*>Booking</a><a href="\#booking" class="nav-cta">#', file_get_contents($root . '/index.html'), 'inserted before the CTA, home-relative');
             $this->assertStringContainsString('href="../booking/"', file_get_contents($root . '/blog/index.html'), 'sub-pages link up one level');
             $this->assertSame(0, $t->addNavLink($id, 'booking', 'Booking'), 'idempotent');
             $this->assertSame(3, $t->addNavLink($id, 'services-2', 'Services'), 'a same-label template link is REPOINTED to the page, not duplicated');

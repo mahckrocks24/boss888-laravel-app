@@ -67,6 +67,14 @@ use Illuminate\Support\Facades\Route;
             if (! empty($res['success'])) { $res['credits'] = \App\Engines\Builder\Support\EditorCredits::charge($__ws, 'palette', (int) $id, ['theme' => (string) $r->input('theme', '')]); $res['message'] = rtrim((string) ($res['message'] ?? 'Palette applied.'), ' .') . '.' . \App\Engines\Builder\Support\EditorCredits::suffix((int) $res['credits']); }
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
         });
+        // FONTS-7 (RFC-0021 closure, 2026-10-01): curated font pairings — list with preview layers, apply (free, snapshotted, verified).
+        Route::get('/websites/{id}/fonts', fn(\Illuminate\Http\Request $r, $id) => response()->json(
+            app(\App\Engines\Builder\Services\ArthurService::class)->fontsFor((int) $r->attributes->get('workspace_id'), (int) $id)
+        ));
+        Route::post('/websites/{id}/fonts', function (\Illuminate\Http\Request $r, $id) {
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyFonts((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('pair', ''));
+            return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
         Route::post('/websites/{id}/undo', function (\Illuminate\Http\Request $r, $id) {
             $owned = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->whereNull('deleted_at')->exists();
             if (! $owned) { return response()->json(['undone' => false, 'error' => 'not_found'], 404); }
@@ -136,7 +144,7 @@ use Illuminate\Support\Facades\Route;
         Route::get('/flags', function (\Illuminate\Http\Request $r) {
             $ind = ''; $sid = (int) $r->query('site', 0);
             if ($sid > 0) { $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', $sid)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first(['template_industry']); if ($w) { try { $ind = (string) app(\App\Engines\Builder\Services\TemplateService::class)->industryOf((string) $w->template_industry); } catch (\Throwable $e) { $ind = (string) $w->template_industry; } } }
-            return response()->json(['editor3' => \App\Engines\Builder\Support\Editor3::on(), 'draftedits' => \App\Engines\Builder\Support\DraftEdits::on(), 'textsafe' => \App\Engines\Builder\Support\InlineText::on(), 'contactfields' => \App\Engines\Builder\Support\ContactFacts::on(), 'industry' => $ind]);
+            return response()->json(['editor3' => \App\Engines\Builder\Support\Editor3::on(), 'draftedits' => \App\Engines\Builder\Support\DraftEdits::on(), 'fonts' => \App\Engines\Builder\Support\FontPairs::on(), 'textsafe' => \App\Engines\Builder\Support\InlineText::on(), 'contactfields' => \App\Engines\Builder\Support\ContactFacts::on(), 'industry' => $ind]);
         });
         // CONTACT-1 (RFC-0021 wave 2, 2026-10-01): the owner's contact details have one home — every fact field of the design, the
         // tel:/mailto: links, the structured data and the business profile follow this panel. Free (the owner's own hands).

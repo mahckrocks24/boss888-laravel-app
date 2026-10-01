@@ -148,6 +148,24 @@ class BuilderService
         ]);
     }
 
+    /** Law 11 (fix-all 2026-10-01): Arthur's template_variables writes come through here, whatever JSON shape they carry. */
+    public function saveTemplateVariables(int $websiteId, array $variables, int $flags = 0): bool
+    {
+        return DB::table('websites')->where('id', $websiteId)->update(['template_variables' => json_encode($variables, $flags), 'updated_at' => now()]) >= 0;
+    }
+
+    /** Law 11: settings_json, the same way. */
+    public function saveSettings(int $websiteId, array $settings): bool
+    {
+        return DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'updated_at' => now()]) >= 0;
+    }
+
+    /** Law 11: a layout switch writes both in one statement. */
+    public function saveSettingsAndVariables(int $websiteId, array $settings, array $variables): bool
+    {
+        return DB::table('websites')->where('id', $websiteId)->update(['settings_json' => json_encode($settings), 'template_variables' => json_encode($variables), 'updated_at' => now()]) >= 0;
+    }
+
     /**
      * BUILDER888 P1-6 — set discrete website columns from a domain caller.
      * Whitelisted so no caller can smuggle arbitrary column writes through it.
@@ -730,6 +748,8 @@ class BuilderService
         if (isset($data['sections'])) $update['sections_json'] = json_encode($this->sanitizeSectionsForWrite($data['sections']));
         if (isset($data['seo'])) $update['seo_json'] = json_encode($data['seo']);
         $update['updated_at'] = now();
+        // DRAFT-5b (fix-all 2026-10-01): on a published renderer-served site the editor writes a draft; Publish changes puts it live
+        if (isset($update['sections_json']) && \App\Engines\Builder\Support\DraftEdits::rendererDraftForPage($pageId)) { $update['draft_sections_json'] = $update['sections_json']; unset($update['sections_json']); }
         DB::table('pages')->where('id', $pageId)->update($update);
 
         // Invalidate published site cache for this page's website
@@ -867,6 +887,8 @@ class BuilderService
         }
         $page = $q->first();
         if ($page) {
+            // DRAFT-5b: the owner edits the draft when there is one; visitors keep the published sections
+            if (\App\Engines\Builder\Support\DraftEdits::on() && isset($page->draft_sections_json) && $page->draft_sections_json !== null) { $page->sections_json = $page->draft_sections_json; $page->has_draft = true; }
             // RISK-0100 — optimistic-lock token: a content hash the editor can echo
             // back on save so a concurrent overwrite is detected (see updatePage).
             $page->version = sha1((string) ($page->sections_json ?? ''));

@@ -48,12 +48,20 @@ class BuilderTemplateRepointTest extends TestCase
         }
     }
 
-    /** 2026-09-05: the clones were un-shadowed into real templates (Owner decision) — each industry resolves to ITSELF. */
-    public function test_clone_industries_resolve_to_their_own_template(): void
+    /**
+     * 2026-09-05 said the clones were un-shadowed into real templates; 2026-09-10 measured the files and found the same dental
+     * skeleton under nine names (ArthurService::CLONE_OVERRIDE note). fix-all 2026-10-01: the test now pins the MEASURED truth —
+     * while a base file is still the clone (≥ 20 'medical' words), the industry must NOT resolve to it; the day a real base lands,
+     * it must resolve to itself. Either way the file must exist.
+     */
+    public function test_clone_industries_resolve_to_a_real_design(): void
     {
         foreach (['restaurant', 'catering', 'resort', 'short_term_rental', 'travel_agency', 'tutoring', 'online_courses', 'retail_shop', 'ecommerce'] as $industry) {
-            $this->assertSame($industry, $this->resolve($industry));
-            $this->assertFileExists(storage_path("templates/{$industry}/template.html"));
+            $file = storage_path("templates/{$industry}/template.html");
+            $this->assertFileExists($file);
+            $clone = substr_count(strtolower((string) file_get_contents($file)), 'medical') >= 20;
+            if ($clone) { $this->assertNotSame($industry, $this->resolve($industry), "{$industry} is still the dental clone on disk and must be re-pointed"); }
+            else { $this->assertSame($industry, $this->resolve($industry), "{$industry} has a real base and must resolve to itself"); }
         }
     }
 
