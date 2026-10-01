@@ -68,7 +68,7 @@ final class DesignLibraryService
             'styles' => array_values(array_filter(array_map(fn ($d) => preg_match('/^(D\d+)/', (string) $d, $m) ? (self::STYLE_NAMES[$m[1]] ?? null) : null, $fit))),
             'colours' => ['ground' => $colour['ground'] ?? null, 'text' => $colour['text'] ?? null, 'accent' => $colour['accent'] ?? null],
             'has_people' => (bool) $r->has_people,
-            'thumb' => $r->thumb_path ? Storage::disk('public')->url($r->thumb_path) : null,
+            'thumb' => $r->thumb_path ? Storage::disk('public')->url($r->thumb_path) . '?v=' . strtotime((string) ($r->updated_at ?? 'now')) : null,
         ];
         if ($detail) {
             $out['description'] = trim(implode(' ', array_filter([
