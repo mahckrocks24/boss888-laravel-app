@@ -65,7 +65,7 @@ class CertificationRemediationTest extends TestCase
     private function cleanup(): void
     {
         $ws = [self::WS, self::WS2, self::WS3];
-        foreach (['social_posts', 'tasks', 'approvals', 'credit_transactions', 'credits', 'websites', 'businesses', 'workspace_memory', 'agent_messages', 'owner_model_facts', 'owner_model_events', 'memory_events', 'outcome_ledger', 'notifications', 'repair_log', 'calendar_events', 'experience_owner_feedback', 'business_journal'] as $t) {
+        foreach (['marketing_campaigns', 'social_posts', 'tasks', 'approvals', 'credit_transactions', 'credits', 'websites', 'businesses', 'workspace_memory', 'agent_messages', 'owner_model_facts', 'owner_model_events', 'memory_events', 'outcome_ledger', 'notifications', 'repair_log', 'calendar_events', 'experience_owner_feedback', 'business_journal'] as $t) {
             try { DB::table($t)->whereIn('workspace_id', $ws)->delete(); } catch (\Throwable) {}
         }
         try { DB::table('workspaces')->whereIn('id', $ws)->delete(); } catch (\Throwable) {}
@@ -423,6 +423,21 @@ class CertificationRemediationTest extends TestCase
         $this->assertSame('named', $ctx['mode']);
         $this->assertSame($this->chef, (int) $ctx['business_id']);
         $this->assertSame('named', app(BusinessContext::class)->resolve(self::WS, 'Write a blog article for Golden Crust about rye')['mode']);
+    }
+
+    // ── v2.37.20 probe finding: a negated launch is never consent ──────────────────────────────────────────────────
+    public function test_LAUNCH_1_dont_launch_and_new_idea_requests_never_launch_an_open_idea(): void
+    {
+        $ids = [];
+        foreach (['Chef Red\'s Holiday Table: Private Dinners for the Season', 'Heritage Ingredient Spotlight'] as $title)
+            $ids[] = (int) DB::table('marketing_campaigns')->insertGetId(['workspace_id' => self::WS, 'business_id' => $this->chef, 'title' => $title, 'objective' => 'x', 'status' => 'idea', 'source' => 'sarah_chat', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('agent_messages')->insert(['workspace_id' => self::WS, 'agent_slug' => 'sarah', 'sender' => 'Sarah', 'role' => 'agent', 'content' => 'Here are your campaign ideas.',
+            'metadata_json' => json_encode(['notification_type' => 'campaign_ideas', 'card' => ['type' => 'campaign_ideas', 'ideas' => array_map(fn ($i) => ['id' => $i], $ids)]]), 'created_at' => now(), 'updated_at' => now()]);
+        $cr = app(\App\Core\Growth\ChatReplies::class);
+        foreach (['Give me three holiday-season campaign ideas for Chef Red, each different in angle. Don\'t launch anything.', 'Don\'t launch the holiday one yet', 'Give me some new campaign ideas for the holidays'] as $msg) {
+            $cr->handle(self::WS, null, $msg);
+            $this->assertSame(0, DB::table('marketing_campaigns')->whereIn('id', $ids)->where('status', '<>', 'idea')->count(), 'launched on: ' . $msg);
+        }
     }
 
     // ── F5 content for a named business ───────────────────────────────────────────────────────────────────────────

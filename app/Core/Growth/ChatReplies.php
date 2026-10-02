@@ -249,6 +249,11 @@ final class ChatReplies
                         return ['turn' => 'reply', 'note' => 'The owner wants to see exactly what is inside the campaign ideas before deciding. Write ONE or TWO warm sentences only: say that the full plan of each campaign is listed right below your message, step by step with dates, and that they can launch the one they like or say not now. Do not list any steps, dates or targets yourself — the exact plan is appended after your words.',
                             'verified' => ['plan', 'campaign'], 'append' => implode("\n\n", array_map(fn ($id) => self::planText($wsId, (int) $id, $q['all_ids']), $ids)) . "\n\nReply **" . (count($ids) === 1 ? 'launch it' : 'launch 1') . '**' . (count($ids) > 1 ? ', **launch 2**' : '') . ' or **not now**.'];
                     }
+                    // REPORT-0072 (v2.37.20 probe): "Give me three holiday campaign ideas ... Don't launch anything." LAUNCHED idea 1 - the word
+                    // "launch" plus "holiday" in a title was read as consent. A negated launch is never consent, and asking for (new) ideas is a
+                    // new request, not an answer to the open card: both fall through to the normal turn, which designs the ideas.
+                    if (preg_match('/\b(don\'?t|do not|never|no need to|without|not)\b[^.?!]{0,25}\b(launch|start|run)\w*/i', $t)) return null;
+                    if (preg_match('/\b(give|suggest|design|think of|come up with|send)\b[^.?!]{0,40}\bideas\b|\b(new|more|another|other|fresh|different)\b[^.?!]{0,15}\b(campaign|idea)s?\b/i', $t)) return null;
                     $pick = null;
                     $ordinals = ['first' => 1, 'second' => 2, 'third' => 3, 'fourth' => 4, 'one' => 1, 'two' => 2, 'three' => 3, 'four' => 4];
                     if (preg_match('/\b(?:launch|start|run|go with|do|pick|choose|option|number|idea|#)\s*(?:the\s+)?#?\s*(\d|first|second|third|fourth)\b/i', $t, $m) || preg_match('/^\s*#?(\d)\s*[.!]?\s*$/', $t, $m) || preg_match('/\b(first|second|third|fourth) one\b/i', $t, $m)) {
