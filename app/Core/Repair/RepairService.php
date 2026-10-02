@@ -141,13 +141,10 @@ class RepairService
         try {
             $taskId = $cause['task_id'] ?? null;
             if (! $taskId) return null;
-            $committed = (int) DB::table('credit_transactions')->where('workspace_id', $wsId)->where('reference_type', 'Task')->where('reference_id', $taskId)->where('type', 'commit')->sum('amount');
-            if ($committed <= 0) return null;
-            $already = DB::table('credit_transactions')->where('workspace_id', $wsId)->where('reference_type', 'Task')->where('reference_id', $taskId)->where('type', 'credit')
-                ->whereRaw("JSON_EXTRACT(metadata_json, '$.repair_refund') = true")->exists();
-            if ($already) return null;
-            $this->credits->credit($wsId, $committed, 'Task', (int) $taskId, ['repair_refund' => true, 'repair_log_id' => $episodeId, 'reason' => mb_substr($cause['why'], 0, 160)]);
-            $bal = $this->credits->getBalance($wsId)['balance'] ?? null;
+            // REPORT-0071: one refund path for every caller (quality gate, repair) - a task is refunded at most once
+            $__r = \App\Core\Billing\TaskRefund::refund($wsId, (int) $taskId, (string) $cause['why'], ['repair_refund' => true, 'repair_log_id' => $episodeId]);
+            if (! $__r) return null;
+            $committed = (int) $__r['credits']; $bal = $__r['balance'];
             $this->model->event($wsId, 'repair_refund', ['episode' => $episodeId, 'task' => $taskId, 'credits' => $committed]);
             $what = mb_strtolower(mb_substr(preg_replace('/\s+/', ' ', (string) $cause['what']), 0, 70));
             $line = "I've returned the {$committed} credit" . ($committed === 1 ? '' : 's') . " charged for " . rtrim($what, '.,;:') . ' on ' . date('j M', strtotime($cause['when'])) . '.' . ($bal !== null ? ' Your balance is now ' . (int) round((float) $bal) . '.' : '');

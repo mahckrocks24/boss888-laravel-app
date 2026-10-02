@@ -39,6 +39,7 @@ final class BuilderEditPromotion
         $m = trim($message);
         if ($m === '') return null;
         if (preg_match(self::NOT_BUILDER, $m)) return null;
+        if (CalendarPromotion::isScheduling($m)) return null;   // REPORT-0071 P1-1: the owner's calendar, not a website section
 
         // Colour/typography FIRST — never route a palette change to the section editor.
         if (preg_match(self::STYLE, $m)) {
@@ -91,7 +92,7 @@ final class BuilderEditPromotion
             $named = $svc->websiteNamesMentioned($wsId, $ownerMessage);
             if (count($named) === 1) { $siteId = (int) $named[0]['id']; $siteName = (string) $named[0]['name']; }
         } catch (\Throwable) {}
-        $sites = DB::table('websites')->where('workspace_id', $wsId)->get(['id', 'name']);
+        $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->get(['id', 'name']);   // REPORT-0071: deleted sites were listed (names twice)
         if ($siteId === null) {
             if ($sites->count() === 1) { $siteId = (int) $sites[0]->id; $siteName = (string) $sites[0]->name; }
             elseif ($sites->count() > 1) {

@@ -57,6 +57,11 @@ class BusinessContext
             return array_merge($base, ['mode' => 'named', 'business' => $named[0], 'business_id' => $named[0]->id, 'named' => $named, 'source' => 'named']);
         }
 
+        // REPORT-0071 P1-4: approvals, credits, the team's queue and "status" are workspace-wide - answer for every business, never ask which
+        if (\App\Core\Sarah888\OperationalFacts::topics($message)) {
+            return array_merge($base, ['mode' => 'portfolio', 'business' => null, 'business_id' => null, 'named' => [], 'source' => 'operational question']);
+        }
+
         // 3. sticky
         $sticky = $this->sticky($wsId, $all);
         if ($sticky) { return array_merge($base, ['mode' => 'sticky', 'business' => $sticky, 'business_id' => $sticky->id, 'source' => 'sticky']); }

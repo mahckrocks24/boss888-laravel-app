@@ -141,7 +141,14 @@ class SpendPolicy
             // class of verbs that actually describe work.
             . 'discussed|discuss|mentioned|mention|said|say|told|tell|talked|talk|'
             . 'know|knows|happen|happens|decided|decide|agreed|agree|covered|'
-            . 'would|should|will|need|want|let)\b/i', ' ', $t);
+            . 'would|should|will|need|want|let|'
+            // REPORT-0071 P1-2: "Make it pop for the weekend" spent 4 credits - "pop" and "weekend" survived as nouns. A quality
+            // wished for (pop, punchier, better, stand out) and a time (weekend, Friday, tonight) say HOW or WHEN, never WHAT.
+            . 'for|from|at|by|about|into|up|more|less|bit|little|lot|really|very|so|much|'
+            . 'pop|pops|punch|punchy|punchier|zing|zip|wow|shine|sing|stand|better|nicer|nice|great|stronger|catchier|catchy|snappier|snappy|'
+            . 'fresher|exciting|fun|bolder|brighter|cooler|sexier|slicker|amazing|awesome|special|attractive|appealing|engaging|'
+            . 'weekend|weekends|weekday|tonight|tomorrow|morning|afternoon|evening|week|month|later|soon|'
+            . 'monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/i', ' ', $t);
 
         $r = trim(preg_replace('/\s+/', ' ', preg_replace('/[^a-z0-9 ]+/i', ' ', $r)));
         if ($r === '') return false;

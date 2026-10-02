@@ -721,7 +721,9 @@ class TaskService
         try {
             $__gate = app(\App\Core\Sarah888\SarahQaGate::class);
             $__payload = is_array($task->payload_json) ? $task->payload_json : (json_decode((string) $task->payload_json, true) ?: []);
-            $__qa = $__gate->review((int) $task->workspace_id, (string) $task->action, $__payload, is_array($result) ? $result : []);
+            $__qa = $__gate->review((int) $task->workspace_id, (string) $task->action, $__payload, is_array($result) ? $result : [], (int) ($task->business_id ?? 0) ?: ((int) ($__payload['business_id'] ?? 0) ?: null));   // REPORT-0071 P0-2
+            // REPORT-0071 P0-2 / DEC-0073 D1: the engine committed the credits before QA ran; output Sarah's own gate rejects is unusable to the owner, so it is refunded (once per task)
+            if (($__qa['verdict'] ?? '') === \App\Core\Sarah888\SarahQaGate::REJECTED) { $__rf = \App\Core\Billing\TaskRefund::refund((int) $task->workspace_id, (int) $task->id, 'quality gate rejected: ' . implode(' ', $__qa['reasons'] ?? []), ['qa_rejected' => true]); if ($__rf) $__qa['refund'] = $__rf; }
         } catch (\Throwable $__qaErr) {
             \Illuminate\Support\Facades\Log::warning('[SarahQA] gate failed: ' . $__qaErr->getMessage(), ['task' => $task->id]);
             $__qa = ['verdict' => \App\Core\Sarah888\SarahQaGate::NEEDS_OWNER, 'checks' => [], 'reasons' => ['QA could not run: ' . mb_substr($__qaErr->getMessage(), 0, 160)], 'deliverable' => null];

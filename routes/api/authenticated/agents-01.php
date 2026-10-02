@@ -313,6 +313,7 @@ use Illuminate\Support\Facades\Route;
                 try { \App\Core\Sarah888\LanguagePref::absorb((int) $wsId, (string) $content); } catch (\Throwable) {}   // SARAH-LANG-1
                 try { \App\Core\Brand\RecipeVariables::absorb((int) $wsId, (string) $content); } catch (\Throwable) {}   // RECIPE-1: "in my pictures use ..." is remembered
                 $__creativeAsk = (bool) preg_match('/\b(image|images|banner|banners|logo|poster|flyer|graphic|thumbnail|visual|design|artwork|video|reel|og image|cover photo)\b/i', (string) $content);   // INTAKE-FIRST-1
+                try { if (! empty($__att['meta']) && \App\Core\Brand\InspirationService::isInspirationAsk((string) $content, (array) $__att['meta'])) \App\Core\Sarah888\ReplyOwnership::declare((int) $wsId, (int) $userMessageId, 'inspiration'); } catch (\Throwable) {}   // REPORT-0071 P1-3: this turn declares its follow-up
                 try { \App\Jobs\OwnerModelJob::dispatch((int) $wsId, (int) $userMessageId)->delay(now()->addSeconds(6)); } catch (\Throwable $__omj) { \Illuminate\Support\Facades\Log::info('[OWNER-MODEL] dispatch skipped: ' . $__omj->getMessage()); }   // RFC-0023 P1: the stated lane runs after the turn
                 try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay($__creativeAsk ? now() : now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
                 // CHAT-FIRST-1: a plain-words answer to the question Sarah asked with a card ("twice a week", "launch 2", "approve", "done") acts here, so the companion app is a complete surface
@@ -1861,6 +1862,9 @@ $withCorr = function (array $meta) use ($corr) {
                 $__slf = \App\Core\Sarah888\SessionLedgerFacts::render((int) $wsId, (string) $content);
                 if ($__slf !== '') $__evidenceBlock .= "\n" . $__slf . "\n";
             } catch (\Throwable $__slfErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] SessionLedgerFacts failed: ' . $__slfErr->getMessage(), ['ws' => $wsId]); }
+            // REPORT-0071 P1-4: operational questions are answered from live state (this workspace only), with what cannot be seen named
+            try { $__opf = \App\Core\Sarah888\OperationalFacts::render((int) $wsId, (string) ($__ownerMessage ?? $content)); if ($__opf !== '') $__evidenceBlock .= $__opf; }
+            catch (\Throwable $__opfErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] OperationalFacts failed: ' . $__opfErr->getMessage(), ['ws' => $wsId]); }
             // SARAH888 - the material an executive answer is made of. Computed,
             // never canned: a reply that names a dimension without using the
             // material still fails the measurement instrument's WORDING_TRAP.
@@ -2482,6 +2486,13 @@ $withCorr = function (array $meta) use ($corr) {
                 // SARAH-COMMENTS-1b: "Change your reply to Daniel…" is about a Page comment, not a website edit — while replies are
                 // waiting, a turn that talks about a reply/response/comment goes to Sarah, never to the builder-edit lane.
                 $__commentTurn = isset($__cw) && $__cw->count() > 0 && preg_match('/\b(repl(y|ies)|respon(d|se)|comments?|answer)\b/i', (string) $__ownerMessage);
+                // REPORT-0071 P1-1: a scheduling request goes to the owner's calendar (governed calendar.create_event), resolved before the website lane
+                if ($assist === null && ! $__commentTurn && \App\Core\Sarah888\CalendarPromotion::isScheduling((string) $__ownerMessage)) {
+                    try {
+                        $__cal = \App\Core\Sarah888\CalendarPromotion::promote($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, $slug, (int) ($__biz['business_id'] ?? 0) ?: null);
+                        if ($__cal && ! empty($__cal['reply'])) $assist = ['response' => $__cal['reply'], 'create_tasks' => [], 'tool_calls' => [], 'requires_sarah' => false, 'reasoning_path' => true, 'calendar_lane' => true];
+                    } catch (\Throwable $__calErr) { \Illuminate\Support\Facades\Log::warning('[CAL-PROMO] calendar lane failed, falling through: ' . $__calErr->getMessage(), ['ws' => $wsId]); }
+                }
                 if ($assist === null && ! $__commentTurn && ($__bei = \App\Core\Sarah888\BuilderEditPromotion::detect((string) $__ownerMessage)) !== null) {
                     try {
                         $__ber = \App\Core\Sarah888\BuilderEditPromotion::promote($toolSchemaSvc, (int) $wsId, (string) $__ownerMessage, $slug, $__bei);
@@ -3308,7 +3319,7 @@ $withCorr = function (array $meta) use ($corr) {
                     // message, the only site, or the site the app has open); on a multi-site workspace with nothing
                     // to go on, HOLD the content tasks and ask — never write for nobody.
                     $__ct = ['site' => null, 'sites' => [], 'named' => [], 'reason' => 'none'];
-                    try { $__ct = \App\Core\Sarah888\ContentTarget::resolve((int) $wsId, (string) $__ownerMessage, (string) $__siteUrlIn); } catch (\Throwable) {}
+                    try { $__ct = \App\Core\Sarah888\ContentTarget::resolve((int) $wsId, (string) $__ownerMessage, (string) $__siteUrlIn, in_array(($__biz['mode'] ?? ''), ['named', 'sticky'], true) ? ((int) ($__biz['business_id'] ?? 0) ?: null) : null); } catch (\Throwable) {}   // REPORT-0071 F5
                     $__contentHold = false;
                     // RISK-0186 (2026-09-17): several sites named → each task is bound from the owner's own clause (never the
                     // open site); a piece that cannot be placed is held and asked about by title.
@@ -3336,7 +3347,7 @@ $withCorr = function (array $meta) use ($corr) {
                             else { \Illuminate\Support\Facades\Log::info('[Sarah888] MULTISITE-2 fan-out not applied', ['ws' => $wsId, 'reason' => $__fanR['reason'] ?? '']); }
                         }
                     } catch (\Throwable $__fanErr) { \Illuminate\Support\Facades\Log::warning('[Sarah888] MULTISITE-2 fan-out failed', ['ws' => $wsId, 'error' => $__fanErr->getMessage()]); }
-                    if ($__ct['site'] === null && count($__ct['sites']) > 1 && ! $__contentPerTask && ! $__fanOutSites) {
+                    if ($__ct['site'] === null && (count($__ct['sites']) > 1 || (($__ct['reason'] ?? '') === 'business_without_site')) && ! $__contentPerTask && ! $__fanOutSites) {   // REPORT-0071 F5: no site for the named business holds too
                         foreach ($createTasks as $__c) { if (is_array($__c) && strtolower((string) ($__c['action'] ?? '')) === 'write_article') { $__contentHold = true; break; } }
                     }
                     $__contentSkipped = 0;
@@ -4053,7 +4064,7 @@ $withCorr = function (array $meta) use ($corr) {
                     } // end foreach createTasks
                     // EV-1045: nothing was written for nobody — the reply is the question, not the model's promise.
                     if (!empty($__contentHold) && $__contentSkipped > 0) {
-                        $reply = \App\Core\Sarah888\ContentTarget::askWhich($__ct['sites'], $__ct['named']);
+                        $reply = (($__ct['reason'] ?? '') === 'business_without_site') ? \App\Core\Sarah888\ContentTarget::noSiteFor((string) ($__ct['business'] ?? '')) : \App\Core\Sarah888\ContentTarget::askWhich($__ct['sites'], $__ct['named']);   // REPORT-0071 F5
                         \Illuminate\Support\Facades\Log::info('[Sarah888] content tasks held — website not resolved', ['ws' => $wsId, 'skipped' => $__contentSkipped, 'sites' => count($__ct['sites'])]);
                         // RISK-0186 (2026-09-17): the owner's one-line answer ("Put it on QA Signup Bakery.") completes THIS
                         // request — arm the same P6-g key the builder clarify path arms, so the answer is not read as a bare

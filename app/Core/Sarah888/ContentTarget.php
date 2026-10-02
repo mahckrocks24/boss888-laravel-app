@@ -68,9 +68,17 @@ class ContentTarget
     }
 
     /** @return array{site:?array, sites:array, named:array, reason:string} */
-    public static function resolve(int $wsId, string $message, string $uiSiteUrl = ''): array
+    public static function resolve(int $wsId, string $message, string $uiSiteUrl = '', ?int $businessId = null): array
     {
         $sites = self::sites($wsId);
+        // REPORT-0071 F5: the turn named a business - its content goes to ITS sites only; none means none (never "pick one of 12")
+        if ($businessId) {
+            $own = array_values(array_filter($sites, fn ($s) => in_array((int) $s['id'], DB::table('websites')->where('workspace_id', $wsId)->where('business_id', $businessId)->whereNull('deleted_at')->pluck('id')->map(fn ($i) => (int) $i)->all(), true)));
+            $bizName = (string) DB::table('businesses')->where('workspace_id', $wsId)->where('id', $businessId)->value('name');
+            if (! $own) return ['site' => null, 'sites' => [], 'named' => [], 'reason' => 'business_without_site', 'business' => $bizName];
+            if (count($own) === 1) return ['site' => $own[0], 'sites' => $own, 'named' => $own, 'reason' => 'business_site', 'business' => $bizName];
+            $sites = $own;
+        }
         $named = self::namedIn($message, $sites);
         if (count($named) === 1) return ['site' => $named[0], 'sites' => $sites, 'named' => $named, 'reason' => 'named'];
         if (count($sites) === 1) return ['site' => $sites[0], 'sites' => $sites, 'named' => $named, 'reason' => 'only_site'];
@@ -181,6 +189,13 @@ class ContentTarget
         $list = count($names) > 1 ? implode(', ', array_slice($names, 0, -1)) . ' or ' . end($names) : (string) ($names[0] ?? 'your website');
         $q = array_map(fn ($t) => '"' . $t . '"', $titles);
         return 'Before I write ' . implode(', ', array_slice($q, 0, -1)) . ' and ' . end($q) . ": which website should each go on — {$list}? Tell me the name for each and I will start them.";
+    }
+
+    /** REPORT-0071 F5: the honest answer when the business the owner named has no website to put content on. */
+    public static function noSiteFor(string $business): string
+    {
+        return ($business !== '' ? $business : 'That business') . " doesn't have a website yet, so there's nowhere to publish an article for it, and I haven't started or charged anything. "
+             . "I can build its website first, or turn the same idea into a social post or a caption you can use now. Which would you like?";
     }
 
     /** The question Sarah asks instead of writing for nobody. */

@@ -24,6 +24,14 @@ final class InspirationService
 
     public function __construct(private BrandProfileService $profiles) {}
 
+    /** REPORT-0071 P1-3: is this message sharing an image AS inspiration (asked for, or an image with no words)? */
+    public static function isInspirationAsk(string $text, array $atts): bool
+    {
+        $hasImage = (bool) array_filter($atts, fn ($a) => ($a['kind'] ?? '') === 'image');
+        $t = trim(preg_replace('/^I\'ve attached .*$/u', '', trim($text)));
+        return $hasImage && ($t === '' || preg_match(self::INSPIRE, $t) === 1) && ! (preg_match(self::ASSET, $t) && preg_match(self::INSPIRE, $t) !== 1);
+    }
+
     /** @return array{saved:int, rest:array} rest = attachments that are not inspiration (logos, guideline pages, assets) */
     public function study(int $wsId, string $text, array $atts, ?int $messageId = null): array
     {
@@ -42,7 +50,8 @@ final class InspirationService
             $a = $this->read($runtime, $url);
             $kind = strtolower((string) ($a['kind'] ?? 'other'));
             if (in_array($kind, ['logo', 'brand_guideline_page'], true)) { $rest[] = $img; continue; }            // brand material: the summary flow
-            if ($kind === 'photo' && ! $inspireWords && trim($text) !== '') { $rest[] = $img; continue; }        // a photo to use, not a concept
+            // REPORT-0071 P1-3: an image the owner asked a question about ("what do you think of this?") is not inspiration, whatever its kind
+            if (! $inspireWords && trim(preg_replace('/^I\'ve attached .*$/u', '', trim($text))) !== '') { $rest[] = $img; continue; }
             if (! $a || empty($a['prompt'])) { $rest[] = $img; continue; }
             if (! str_contains((string) $a['prompt'], '{subject}')) $a['prompt'] = '{subject} — ' . $a['prompt'];   // the slot the business's own subject fills
             $dirs = [];
@@ -57,7 +66,7 @@ final class InspirationService
             ]);
             $saved[] = ['id' => $id, 'a' => $a, 'title' => $title, 'url' => $url, 'dirs' => $dirs];
         }
-        foreach ($saved as $s) $this->announce($wsId, $biz, $s);
+        foreach ($saved as $s) { if (\App\Core\Sarah888\ReplyOwnership::mayFollowUp($wsId, (int) ($messageId ?? 0), 'inspiration')) $this->announce($wsId, $biz, $s); }   // REPORT-0071 P1-3: one answer per message
         return ['saved' => count($saved), 'rest' => $rest];
     }
 
