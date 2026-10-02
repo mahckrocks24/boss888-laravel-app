@@ -456,6 +456,20 @@ class CertificationRemediationTest extends TestCase
         $this->assertNotNull($r, 'a real question about the campaigns still gets the plan');
     }
 
+    public function test_IDGUARD_1_dates_and_counts_are_not_article_ids(): void
+    {
+        $g = app(\App\Core\Sarah888\ArticleIdClaimGuard::class);
+        foreach (['Chef Red Private Dining — sign every post as Chef Red, and no emojis. You told me both on 2 October.',
+                  'And yes, 24 things are waiting on you: 12 articles (36 credits), 11 sets of meta titles and descriptions and one social post (4 credits).',
+                  'The adobo post for Friday, October 2 at 7pm, for 6 guests, $165 a seat.'] as $reply) {
+            $r = $g->validate($reply, self::WS);
+            $this->assertFalse($r['corrected'], 'rewrote: ' . $reply);
+            $this->assertSame($reply, $r['reply']);
+        }
+        $bad = $g->validate('I can publish article #991183 and #991184 now.', self::WS);
+        $this->assertTrue($bad['corrected'], 'a foreign article id is still caught');
+    }
+
     // ── F5 content for a named business ───────────────────────────────────────────────────────────────────────────
     public function test_TOOLS_1_article_for_a_business_without_a_site_never_offers_other_businesses_sites(): void
     {

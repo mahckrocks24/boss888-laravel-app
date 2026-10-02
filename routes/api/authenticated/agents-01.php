@@ -4320,7 +4320,11 @@ $withCorr = function (array $meta) use ($corr) {
                         try { $reply = \App\Core\Sarah888\WebsiteScopeClaimGuard::apply((string) $reply, (int) $wsId, array_values(array_filter(array_map('intval', $createdTaskIds ?? [])))); } catch (\Throwable) {}
                         if ($taskSummaryCreated === 0 && $taskSummaryFailed > 0) {
                             // MONEY-1: nothing was queued — the reply must not read as "On it!"
-                            $reply .= "\n\nI couldn't start this:";
+                            // REPORT-0072 certification: the model's own "queued to Marcus" stayed above this note and contradicted it. Claims that work was queued, started or handed over are removed when nothing was created.
+$__parts = preg_split('/(?<=[.!?])\s+/u', (string) $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+$__kept = array_values(array_filter($__parts, fn ($p) => ! preg_match("/\\b(queued|queueing|i'?ve asked|asked \\w+ to|handed (it|this) to|on it\\b|started on|i'?ve started|i started|lands in your review queue)\\b/iu", $p)));
+if ($__kept && count($__kept) < count($__parts)) $reply = implode(' ', $__kept);
+$reply .= "\n\nI couldn't start this:";
                             foreach ($taskSummaryFailReasons as $reason => $count) {
                                 $reply .= "\n  • " . ($count > 1 ? "({$count}x) " : '') . $reason;
                             }

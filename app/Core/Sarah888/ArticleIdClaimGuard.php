@@ -132,6 +132,12 @@ class ArticleIdClaimGuard
             // reading the 0 in Sarah's own "0 articles" as a foreign article id and rewriting a
             // WRITE request into "There are no drafts left ready to publish" — nothing was written.
             '/\b\d{1,6}\s+(?:article|draft|post|piece|guide)s?\b/i',
+            // REPORT-0072 certification: "You told me both on 2 October" and "11 sets of meta" were read as foreign article ids and
+            // the whole answer was replaced by the drafts line. Dates, ordinals, money, clock times and counts of other things are not ids.
+            '/\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b/i',
+            '/\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b/i',
+            '/\b\d{1,4}(?:st|nd|rd|th)\b/i', '/[$€£]\s?\d[\d,\.]*/', '/\b\d{1,2}\s?(?:am|pm)\b/i', '/\b\d[\d,\.]*\s?%/',
+            '/\b\d{1,6}\s+(?:sets?|items?|things?|days?|weeks?|months?|hours?|minutes?|guests?|seats?|steps?|ideas?|campaigns?|people|leads?|businesses|sites?|websites?|rules?|times?|dinners?|courses?|covers?|nights?|pages?|meta|titles?|tasks?|approvals?|requests?|jobs?|reviews?|enquir\w*|bookings?)\b/i',
         ], ' ', $text);
         // An article id is never 0.
         preg_match_all('/[1-9]\d{0,5}/', (string) $t, $n);
