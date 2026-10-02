@@ -551,4 +551,20 @@ class CertificationRemediationTest extends TestCase
             \App\Engines\Social\Services\SocialService::dropUngroundedNumbers("One table, one chef. Book in October and take 10% off.", $g));
         $this->assertSame('', \App\Engines\Social\Services\SocialService::dropUngroundedNumbers("Seats for 8. Call 555-0101.\nChef Red", $g));
     }
+
+    public function test_banner5_frame_shape_never_reads_as_scenery(): void
+    {
+        $o = fn (string $t) => \App\Core\ImageIntelligence\ImagePromptCompiler::orientationWords($t);
+        $this->assertSame('Wide 3:2 horizontal photograph inside a professional kitchen', $o('Wide 3:2 landscape photograph inside a professional kitchen'));
+        $this->assertSame('Wide, feed-safe horizontal. Kitchen pass.', $o('Wide, feed-safe landscape. Kitchen pass.'));
+        $this->assertSame('A misty mountain landscape at dawn', $o('A misty mountain landscape at dawn'));
+        $this->assertSame('16:9 landscape of rice terraces', $o('16:9 landscape of rice terraces'));
+    }
+
+    public function test_banner4_painter_copy_keeps_possessives(): void
+    {
+        $src = file_get_contents(app_path('Core/Brand/RecipePainter.php'));
+        $this->assertStringContainsString("apostrophes kept in possessives", $src);
+        $this->assertStringNotContainsString('no emoji, no quotes,', $src);
+    }
 }

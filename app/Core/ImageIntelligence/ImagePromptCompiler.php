@@ -87,6 +87,15 @@ class ImagePromptCompiler
      *   typography:array, overlay:?array
      * }
      */
+    /** BANNER-5: the frame's shape never reads as a scenery request ("landscape photograph" -> "horizontal photograph"). */
+    public static function orientationWords(string $p): string
+    {
+        $p = (string) preg_replace('/\blandscape(?=[\s-]+(?:photograph|photo|image|format|orientation|composition|frame|shot|banner|layout|crop|aspect)\b)/iu', 'horizontal', $p);
+        $p = (string) preg_replace('/\b((?:wide|feed-safe|\d+:\d+)[,\s-]+(?:feed-safe[,\s-]+)?)landscape\b(?![\s-]+(?:of|with|scene|view|vista|painting)\b)/iu', '$1horizontal', $p);
+        $p = (string) preg_replace('/\b(?:in|as) (?:a )?landscape\b(?![\s-]+(?:of|with|scene|view|vista|painting)\b)/iu', 'in a horizontal frame', $p);
+        return $p;
+    }
+
     public function compile(array $bp): array
     {
         // F-STUDIO-PS-PROMPT-ASSEMBLY (2026-09-03): the LLM reasoner is instructed
@@ -250,6 +259,8 @@ class ImagePromptCompiler
                 $prompt .= " Frame rule: every person, face and main subject sits in the {$__other} 45% of the frame; the {$__side} 55% is calm, softly lit, out-of-focus background only (no people, no heads, no hands, no faces there), darkening gently toward the {$__side} edge.";
             }
         }
+
+        $prompt = self::orientationWords($prompt);   // BANNER-5
 
         // overlay instructions returned for the design/typography layer (fidelity path)
         $overlay = null;
