@@ -2748,7 +2748,10 @@ $withCorr = function (array $meta) use ($corr) {
                 // (no balanced block found because of truncation), replace it
                 // with a friendly fallback. assistLooksLikeEnvelope was set
                 // earlier to detect this case before extraction.
-                if (preg_match('/^\s*\{[^{}]*"(reply|create_tasks|tool_calls)"/s', $reply)) {
+                // REPORT-0072: an envelope that carries tool calls and an empty reply is not truncated - the tool follow-up writes the answer
+                if (preg_match('/^\s*\{[^{}]*"(reply|create_tasks|tool_calls)"/s', $reply) && ! empty($assist['tool_calls'] ?? null) && preg_match('/"reply"\s*:\s*""/', $reply)) {
+                    $reply = '';
+                } elseif (preg_match('/^\s*\{[^{}]*"(reply|create_tasks|tool_calls)"/s', $reply)) {
                     \Illuminate\Support\Facades\Log::warning('[AgentChat] reply still looks like raw envelope after extraction — masking', [
                         'agent' => $slug,
                         'reply_head' => mb_substr($reply, 0, 200),
@@ -2985,9 +2988,11 @@ $withCorr = function (array $meta) use ($corr) {
                         $resultsForFallback = [];
                         foreach ($toolResults as $tr) {
                             $resultsForLlm[] = $tr['tool'] . ' => ' . json_encode($tr['result'], JSON_UNESCAPED_UNICODE);
-                            $rText = $tr['result']['result'] ?? $tr['result']['error'] ?? json_encode($tr['result']);
-                            $resultsForFallback[] = '• ' . $rText;
+                            // REPORT-0072: the owner never sees raw tool output - only a short human result line, else nothing from this tool
+                            $rText = $tr['result']['result'] ?? $tr['result']['error'] ?? null;
+                            if (is_string($rText) && $rText !== '' && mb_strlen($rText) <= 400 && ! preg_match('/^\s*[\[{]/', $rText)) $resultsForFallback[] = '• ' . $rText;
                         }
+                        if (! $resultsForFallback) $resultsForFallback[] = "I pulled up what you asked for, but couldn't put the summary together just now. Ask me again in a moment and I'll go through it.";   // REPORT-0072
                         $followSystem = "You just called tools. Render a final reply in 1-3 sentences using the results below. Output JSON: {\"reply\":\"...\"}.";
                         $followUser = "Original user message: {$content}\n\nTool results:\n" . implode("\n", $resultsForLlm);
                         try {

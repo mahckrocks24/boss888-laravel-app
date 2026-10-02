@@ -440,6 +440,22 @@ class CertificationRemediationTest extends TestCase
         }
     }
 
+    public function test_LAUNCH_2_an_open_idea_card_does_not_answer_unrelated_questions(): void
+    {
+        $ids = [];
+        foreach (['Your Table, Their Thanks: Reviews from October Hosts', 'Give the Gift of a Table'] as $title)
+            $ids[] = (int) DB::table('marketing_campaigns')->insertGetId(['workspace_id' => self::WS, 'business_id' => $this->chef, 'title' => $title, 'objective' => 'x', 'status' => 'idea', 'source' => 'sarah_chat', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('agent_messages')->insert(['workspace_id' => self::WS, 'agent_slug' => 'sarah', 'sender' => 'Sarah', 'role' => 'agent', 'content' => 'Here are your campaign ideas.',
+            'metadata_json' => json_encode(['notification_type' => 'campaign_ideas', 'card' => ['type' => 'campaign_ideas', 'ideas' => array_map(fn ($i) => ['id' => $i], $ids)]]), 'created_at' => now(), 'updated_at' => now()]);
+        $cr = app(\App\Core\Growth\ChatReplies::class);
+        foreach (['Who on your team is working on what for me right now?', 'What do you think of this image for my Instagram? Be honest about what works and what doesn\'t.',
+                  'Look, just tell me it\'s posted. I don\'t want the details.', 'Last question: in one honest paragraph, what are you not able to do for me yet that a human marketing manager would?',
+                  'What needs my approval right now, and what happens if I approve each one?'] as $msg)
+            $this->assertNull($cr->handle(self::WS, null, $msg), 'hijacked: ' . $msg);
+        $r = $cr->handle(self::WS, null, 'What exactly is in campaign 2?');
+        $this->assertNotNull($r, 'a real question about the campaigns still gets the plan');
+    }
+
     // ── F5 content for a named business ───────────────────────────────────────────────────────────────────────────
     public function test_TOOLS_1_article_for_a_business_without_a_site_never_offers_other_businesses_sites(): void
     {

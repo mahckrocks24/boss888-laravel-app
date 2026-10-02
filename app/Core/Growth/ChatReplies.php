@@ -243,7 +243,10 @@ final class ChatReplies
                 }
                 case 'campaign_ideas': {
                     // CAMPAIGN-PREVIEW-1: "what exactly will be in the campaign?" / "show me the plan" / "what's in 2" → the real steps
-                    if (preg_match('/\b(what|show|see|explain|details?|inside|exactly|steps?|plan|breakdown|in it|involve|include)\b/i', $t) && ! preg_match('/\b(launch|start|run|go with|new|more|another|different|other ideas)\b/i', $t)) {
+                    // REPORT-0072 certification run: while a card was open, "Who on your team is working on what?", "What do you think of this image?"
+                    // and "I don't want the details" were answered with the campaign plans. A preview request has to be ABOUT the campaigns.
+                    $__aboutCampaigns = (bool) preg_match('/\b(campaigns?|ideas?|plans?|steps?|launch\w*|#\s*\d|(number|no\.?|option)\s*\d|(first|second|third|fourth) one|the (gift|holiday|heritage|review|hosts?|table)\b|in (it|them|each))\b/i', $t);
+                    if ($__aboutCampaigns && preg_match('/\b(what|show|see|explain|details?|inside|exactly|steps?|plan|breakdown|in it|involve|include)\b/i', $t) && ! preg_match('/\b(launch|start|run|go with|new|more|another|different|other ideas)\b/i', $t)) {
                         $only = preg_match('/\b(?:#|number|idea|campaign|no\.?)\s*(\d)\b|\b(\d)\b/i', $t, $mm) ? ($q['all_ids'][((int) ($mm[1] ?: $mm[2])) - 1] ?? null) : null;
                         $ids = $only && in_array($only, $q['open_ids'], true) ? [$only] : $q['open_ids'];
                         return ['turn' => 'reply', 'note' => 'The owner wants to see exactly what is inside the campaign ideas before deciding. Write ONE or TWO warm sentences only: say that the full plan of each campaign is listed right below your message, step by step with dates, and that they can launch the one they like or say not now. Do not list any steps, dates or targets yourself — the exact plan is appended after your words.',
