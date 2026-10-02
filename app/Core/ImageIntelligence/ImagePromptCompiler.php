@@ -226,15 +226,21 @@ class ImagePromptCompiler
             // LAYOUT-A1c: no sentence may ask the model to paint the headline or any words
             if ($mode === 'separate_overlay') {
                 $__hl = trim((string) ($ts['headline'] ?? ''));
+                $__exq = array_values(array_filter(array_map('strval', (array) ($bp['_context']['exact_text'] ?? []))));
                 $__parts = preg_split('/(?<=[.!?])\s+/u', $prompt) ?: [$prompt];
-                $__parts = array_filter($__parts, function ($s) use ($__hl) {
+                $__parts = array_filter($__parts, function ($s) use ($__hl, $__exq) {
                     if (stripos($s, 'Strict rule: NO text') !== false) return true;
                     if ($__hl !== '' && mb_stripos($s, $__hl) !== false) return false;
+                    // BANNER-2: 'render exactly one line of text, verbatim: "Fall Menu Now Served"' slipped past the list below
+                    foreach ($__exq as $__q) if (mb_stripos($s, $__q) !== false) return false;
+                    if (preg_match('/["\x{201C}\x{201D}][^"\x{201C}\x{201D}]{2,80}["\x{201C}\x{201D}]|\bverbatim\b|\bcorrectly spelled\b/iu', $s)) return false;
+                    if (preg_match('/\b(render|paint|print|draw|letter|typeset|inscribe|spell|emboss|overlay)\w*\b[^.]*\b(headline|text|words?|title|caption|lettering|slogan|tagline)\b/i', $s) && stripos($s, 'no text') === false) return false;
                     if (preg_match('/\bbaked[- ]in\b/i', $s)) return false;
                     if (preg_match('/\b(include|add|place|write|display|feature|show)\b[^.]*\b(headline|text|words|title|caption|lettering)\b/i', $s)) return false;
                     return true;
                 });
                 $prompt = implode(' ', $__parts);
+                if (stripos($prompt, 'Strict rule: NO text') === false) $prompt = rtrim($prompt, '. ') . '.' . self::NO_TEXT;   // BANNER-2: the filter never drops the rule itself
             }
             // LAYOUT-A1b: name the empty side so the layout's text never lands on a face
             if ($mode === 'separate_overlay') {

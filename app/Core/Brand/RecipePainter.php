@@ -151,6 +151,7 @@ final class RecipePainter
     private function copy(int $wsId, array $ctx, array $brand, string $prompt, int $maxWords, bool $wantSub): array
     {
         $exact = array_values(array_filter(array_map('strval', (array) ($ctx['exact_text'] ?? []))));
+        if (! $exact) $exact = \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText($prompt);   // BANNER-2
         $forced = trim((string) ($ctx['forced_headline'] ?? ''));
         if ($forced !== '' || $exact) return ['headline' => $forced !== '' ? $forced : $exact[0], 'subhead' => $exact[1] ?? ''];
         $fallback = ['headline' => ucwords(implode(' ', array_slice(preg_split('/\s+/', preg_replace('/[^\w\s]/', '', $prompt)) ?: [], 0, min(4, $maxWords)))), 'subhead' => ''];

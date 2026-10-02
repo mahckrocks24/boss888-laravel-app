@@ -515,4 +515,30 @@ class CertificationRemediationTest extends TestCase
         $planner = file_get_contents(app_path('Core/Campaigns/CampaignPlanner.php'));
         $this->assertSame(2, substr_count($planner, 'Never invent'));
     }
+
+    public function test_banner2_overlay_prompt_never_asks_the_model_to_paint_words(): void
+    {
+        $llm = 'Square 1:1 social media announcement image for a fall menu launch. A warm autumn dining scene with roasted squash. Compose the dish in the lower two-thirds and keep the upper third clean. '
+             . 'In that upper negative space, render exactly one line of text, verbatim and correctly spelled: "Fall Menu Now Served" — elegant warm serif, centered. Do not add any other text, letters or words.';
+        $out = app(\App\Core\ImageIntelligence\ImagePromptCompiler::class)->compile([
+            'subject' => 'a plated seasonal dish with roasted squash', 'composition' => 'dish in the lower two-thirds', 'lighting' => 'warm side light',
+            'provider_prompt' => $llm, 'quality' => 'high', 'aspect_ratio' => '1:1',
+            'typography_strategy' => ['mode' => 'separate_overlay', 'headline' => 'Fall Menu Now Served', 'supporting_copy' => [], 'placement' => 'top third', 'style' => 'serif'],
+            '_context' => ['exact_text' => ['Fall Menu Now Served']],
+        ]);
+        $this->assertStringNotContainsString('Fall Menu', $out['provider_prompt']);
+        $this->assertStringNotContainsString('verbatim', $out['provider_prompt']);
+        $this->assertStringContainsString('Strict rule: NO text', $out['provider_prompt']);
+        $this->assertSame('Fall Menu Now Served', $out['overlay']['headline']);
+    }
+
+    public function test_banner2_quoted_words_beat_a_rewritten_headline(): void
+    {
+        $svc = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class);
+        $m = new \ReflectionMethod($svc, 'attachCompilerContext'); $m->setAccessible(true);
+        $bp = $m->invoke($svc, ['typography_strategy' => ['mode' => 'separate_overlay', 'headline' => 'Fall Menu Served', 'supporting_copy' => []]],
+            ['exact_text' => ['Fall Menu Now Served'], 'forced_headline' => 'Fall Menu Served']);
+        $this->assertSame('Fall Menu Now Served', $bp['typography_strategy']['headline']);
+        $this->assertSame(['Fall Menu Now Served'], \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText("Announce the fall menu with the headline 'Fall Menu Now Served'."));
+    }
 }

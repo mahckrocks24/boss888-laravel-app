@@ -299,10 +299,7 @@ class ImageIntelligenceService
         $logoRequested = (bool) preg_match('/\blogo\b/i', $userPrompt);
         // A requested headline/caption/tagline is copy the customer wants WRITTEN — not an invented fact.
         $headlineRequested = (bool) preg_match('/\b(headline|caption|tagline|slogan|title text)\b/i', $userPrompt);
-        $exactText = [];
-        if (preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{1,80})["\x{201C}\x{201D}]|(?<![\p{L}\p{N}])[\x27\x{2018}]([^\x27\x{2018}\x{2019}]{2,80}?)[\x27\x{2019}](?![\p{L}\p{N}])/u', $userPrompt, $m)) {   // BANNER-1: "Chef Red's ... Chef Red's" is not a quote
-            foreach (array_merge($m[1], $m[2]) as $t) { $t = trim($t); if ($t !== '') { $exactText[] = $t; } }
-        }
+        $exactText = self::quotedText($userPrompt);   // BANNER-1/2: one reader for the service and the painter
 
         return array_merge([
             'source'      => 'studio',
@@ -322,6 +319,20 @@ class ImageIntelligenceService
      * on the blueprint itself, so compile() stays a pure function of its input and the same facts
      * travel with a cached preview (P1). Prefixed with '_' — never part of the LLM contract.
      */
+    /**
+     * BANNER-1/2: the words the customer quoted. A single-quoted span counts only with a real opening and closing quote, so
+     * the apostrophes in "Chef Red's kitchen ... Chef Red's dishes" are never read as one quoted headline.
+     * @return list<string>
+     */
+    public static function quotedText(string $s): array
+    {
+        $out = [];
+        if (preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{1,80})["\x{201C}\x{201D}]|(?<![\p{L}\p{N}])[\x27\x{2018}]([^\x27\x{2018}\x{2019}]{2,80}?)[\x27\x{2019}](?![\p{L}\p{N}])/u', $s, $m)) {
+            foreach (array_merge($m[1], $m[2]) as $t) { $t = trim($t); if ($t !== '' && ! in_array($t, $out, true)) { $out[] = $t; } }
+        }
+        return $out;
+    }
+
     private function attachCompilerContext(array $blueprint, array $ctx): array
     {
         // REGEN-1: a regenerate asks for the text painted into the picture - the blueprint's typography is overridden
@@ -360,6 +371,12 @@ class ImageIntelligenceService
         }
         if (isset($blueprint['typography_strategy']['headline'])) {
             $blueprint['typography_strategy']['headline'] = trim((string) $blueprint['typography_strategy']['headline'], " \t\"'“”‘’");
+        }
+        // BANNER-2: the words the customer quoted are the headline - a rewritten one ("Fall Menu Served" for "Fall Menu Now Served") never wins
+        $__ex = array_values(array_filter(array_map('strval', (array) ($ctx['exact_text'] ?? []))));
+        if ($__ex && is_array($blueprint['typography_strategy'] ?? null) && ($blueprint['typography_strategy']['mode'] ?? '') !== 'none') {
+            $__all = mb_strtolower((string) ($blueprint['typography_strategy']['headline'] ?? '') . "\n" . implode("\n", (array) ($blueprint['typography_strategy']['supporting_copy'] ?? [])));
+            if (mb_stripos($__all, $__ex[0]) === false) $blueprint['typography_strategy']['headline'] = $__ex[0];
         }
         $blueprint['_context'] = [
             'force_baked_in'    => ($ctx['force_typography_mode'] ?? '') === 'baked_in',
