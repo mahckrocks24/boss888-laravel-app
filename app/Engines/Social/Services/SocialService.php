@@ -140,6 +140,11 @@ class SocialService
             }
             if (empty($data['hashtags']) && !empty($gen['hashtags'])) $data['hashtags'] = $gen['hashtags'];
             $data['ai_generated'] = true;
+            // BANNER-3: a number the copywriter made up ("Three courses") never reaches the owner's draft
+            $__ground = implode(' ', array_map('strval', array_filter([$subject, $data['title'] ?? '', $data['topic'] ?? '', $data['description'] ?? '', $data['user_request'] ?? '', is_scalar($data['context'] ?? null) ? $data['context'] : json_encode($data['context'] ?? '')])));
+            $__clean = self::dropUngroundedNumbers($content, $__ground);
+            if ($__clean !== $content) { \Illuminate\Support\Facades\Log::info('[BANNER-3] ungrounded numbers removed from generated copy', ['ws' => $wsId]); }
+            $content = $__clean !== '' ? $__clean : mb_substr(self::bannerSubject(['title' => $data['title'] ?? '', 'topic' => $subject]), 0, 280);   // nothing grounded left: the brief's own words
         }
         $data['content'] = $content; $data['platform'] = $platform;
         // POST-MEDIA-1: a single image/video link is media too (Studio already speaks this shape) ...
@@ -441,6 +446,32 @@ class SocialService
      * sent to the image model they became painted words ("scens") and, through the quoted-text rule, a printed headline.
      * Quote marks are removed too, so nothing in the subject reads as exact customer copy.
      */
+    /**
+     * BANNER-3: sentences of generated copy that state a number (digits, or two..hundred in words) found nowhere in the
+     * brief are removed. "one" is left alone ("one table, one chef"). Returns '' when fewer than five words are left.
+     */
+    public static function dropUngroundedNumbers(string $copy, string $ground): string
+    {
+        $words = ['two'=>2,'three'=>3,'four'=>4,'five'=>5,'six'=>6,'seven'=>7,'eight'=>8,'nine'=>9,'ten'=>10,'eleven'=>11,'twelve'=>12,'thirteen'=>13,'fourteen'=>14,'fifteen'=>15,'sixteen'=>16,'seventeen'=>17,'eighteen'=>18,'nineteen'=>19,'twenty'=>20,'thirty'=>30,'forty'=>40,'fifty'=>50,'hundred'=>100,'dozen'=>12];
+        $nums = function (string $t) use ($words): array {
+            $out = [];
+            if (preg_match_all('/\d+(?:[.,]\d+)*/u', $t, $m)) foreach ($m[0] as $d) $out[(string) (float) str_replace(',', '', $d)] = true;
+            if (preg_match_all('/\b(' . implode('|', array_keys($words)) . ')\b/iu', $t, $m)) foreach ($m[1] as $w) $out[(string) (float) $words[mb_strtolower($w)]] = true;
+            return $out;
+        };
+        $known = $nums($ground);
+        $lines = preg_split('/\n/u', $copy) ?: [$copy];
+        foreach ($lines as &$line) {
+            $sents = preg_split('/(?<=[.!?])\s+/u', $line) ?: [$line];
+            $sents = array_filter($sents, function ($snt) use ($nums, $known) { foreach (array_keys($nums($snt)) as $n) if (! isset($known[$n])) return false; return true; });
+            $line = implode(' ', $sents);
+        }
+        unset($line);
+        $out = trim((string) preg_replace("/\n{3,}/u", "\n\n", implode("\n", $lines)));
+        // a sign-off alone is not a post
+        return count(preg_split('/\s+/u', $out, -1, PREG_SPLIT_NO_EMPTY) ?: []) < 5 ? '' : $out;
+    }
+
     public static function bannerSubject(array $data): string
     {
         $parts = [];

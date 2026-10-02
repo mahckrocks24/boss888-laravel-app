@@ -541,4 +541,14 @@ class CertificationRemediationTest extends TestCase
         $this->assertSame('Fall Menu Now Served', $bp['typography_strategy']['headline']);
         $this->assertSame(['Fall Menu Now Served'], \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText("Announce the fall menu with the headline 'Fall Menu Now Served'."));
     }
+
+    public function test_banner3_generated_copy_keeps_only_grounded_numbers(): void
+    {
+        $g = "Fall Menu Now Served. Part of the campaign for Chef Red. Offer: 10% off private dinners booked in October.";
+        $this->assertSame("Fall Menu Now Served.\nSquash, brown butter, sage.\nChef Red",
+            \App\Engines\Social\Services\SocialService::dropUngroundedNumbers("Fall Menu Now Served.\nSquash, brown butter, sage. Three courses, your table.\nChef Red", $g));
+        $this->assertSame("One table, one chef. Book in October and take 10% off.",
+            \App\Engines\Social\Services\SocialService::dropUngroundedNumbers("One table, one chef. Book in October and take 10% off.", $g));
+        $this->assertSame('', \App\Engines\Social\Services\SocialService::dropUngroundedNumbers("Seats for 8. Call 555-0101.\nChef Red", $g));
+    }
 }
