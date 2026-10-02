@@ -159,6 +159,7 @@ class ApprovalController
 
         try { app(\App\Core\OwnerModel\OwnerModelService::class)->observe($wsId, null, 'approval_approved', 'approval:' . $id, ['action' => $row->action ?? null, 'engine' => $row->engine ?? null]); } catch (\Throwable) {}   // RFC-0023 P1
         try { if (! empty($row->task_id)) app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->verdictForTask((int) $row->task_id, 'approved', null, (int) ($request->user()?->id ?? 0) ?: null); } catch (\Throwable) {}   // RFC-0023 P2
+        try { app(\App\Core\Repair\RepairService::class)->closeOnApproval($wsId, 'approval'); } catch (\Throwable) {}   // RFC-0023 P3: the fix landed
         // Idempotent: already approved
         if ($row->status === 'approved') {
             return response()->json(['success' => true, 'message' => 'already approved', 'approval_id' => $id]);

@@ -56,6 +56,7 @@ final class BrandIntakeService
     {
         // at most one brand question per workspace per day, and never while a summary waits for confirmation
         if (\Illuminate\Support\Facades\Cache::has('campaign-ideas-pending:' . $wsId)) return false;   // CAMPAIGNS-1: one card at a time; ask another day
+        if (\App\Core\Repair\RepairService::cooldownActive($wsId)) return false;   // RFC-0023 P3: never ask for anything new during a repair cool-down
         $recent = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->where('intake_asked_at', '>=', now()->subDay())->exists();
         $pending = DB::table('creative_brand_identities')->where('workspace_id', $wsId)->whereNotNull('proposal_json')->exists();
         if ($recent || $pending) return false;

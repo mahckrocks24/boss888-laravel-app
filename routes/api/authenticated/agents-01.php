@@ -1837,6 +1837,11 @@ $withCorr = function (array $meta) use ($corr) {
             $__memoryPack = '';
             try { if ($isSarah && file_exists(storage_path('app/memory1.on'))) $__memoryPack = app(\App\Core\OwnerModel\MemoryPack::class)->build((int) $wsId, (int) ($__biz['business_id'] ?? 0) ?: null, (string) $content); }
             catch (\Throwable $__mpE) { \Illuminate\Support\Facades\Log::warning('[OWNER-MODEL] pack failed: ' . $__mpE->getMessage(), ['ws' => $wsId]); }
+            // RFC-0023 P3: frustration and repair - name the failure, fix it, pay for it (DEC-0073 D1), go quiet for 48 h. Deterministic; the compensation line is exact figures appended after every guard.
+            $__repair = null;
+            try { if ($isSarah && file_exists(storage_path('app/memory1.on')) && ! empty($userMessageId)) { $__repair = app(\App\Core\Repair\RepairService::class)->onTurn((int) $wsId, (int) ($__biz['business_id'] ?? 0) ?: null, (int) ($userId ?? 0) ?: null, (int) $userMessageId, (string) $content); } }
+            catch (\Throwable $__rpE) { \Illuminate\Support\Facades\Log::warning('[REPAIR] onTurn failed: ' . $__rpE->getMessage(), ['ws' => $wsId]); }
+            if ($__repair) { $__memoryPack = $__repair['directive'] . $__memoryPack; if (! empty($__repair['append'])) { $__replyAppend = trim(((isset($__replyAppend) && $__replyAppend !== '') ? $__replyAppend . "\n\n" : '') . $__repair['append']); } }
 
             // SARAH888 — deterministic evidence for a turn the router would
             // otherwise have answered outright. Placed BEFORE the content

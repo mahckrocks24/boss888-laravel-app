@@ -74,6 +74,7 @@ final class CheckinService
         if (! $force && $kind !== 'weekly_feedback' && DB::table('owner_checkins')->where('workspace_id', $wsId)->where('kind', '<>', 'weekly_feedback')
             ->where(fn ($q) => $q->where('local_date', $date)->orWhere('created_at', '>=', now()->subHours(20)))->exists()) return null;
         if (! $force) {
+            if (\App\Core\Repair\RepairService::cooldownActive($wsId)) return null;   // RFC-0023 P3: quiet for 48 h after a strong frustration episode
             // never interrupt: the owner is talking with Sarah right now, or Sarah just posted something
             if (DB::table('agent_messages')->where('workspace_id', $wsId)->where('role', 'user')->where('created_at', '>=', now()->subMinutes(90))->exists()) return null;
             if (DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')->where('created_at', '>=', now()->subMinutes(60))->exists()) return null;

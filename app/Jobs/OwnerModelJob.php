@@ -44,6 +44,7 @@ class OwnerModelJob implements ShouldQueue
             $recent = DB::table('agent_messages')->where('workspace_id', $this->wsId)->where('role', 'agent')->where('created_at', '>=', now()->subMinutes(10))
                 ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.notification_type')) = 'owner_fact'")->exists();
             if ($recent) return;
+            if (\App\Core\Repair\RepairService::cooldownActive($this->wsId)) return;   // RFC-0023 P3
             app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($this->wsId, 'sarah', $line, ['notification_type' => 'owner_fact', 'card' => ['type' => 'owner_fact', 'fact_ids' => array_values(array_map(fn ($w) => (int) $w['id'], $written)), 'business_id' => $this->bizId]]);
             Log::info('[OWNER-MODEL] kept', ['ws' => $this->wsId, 'msg' => $this->userMessageId, 'n' => count($written)]);
         } catch (\Throwable $e) {
