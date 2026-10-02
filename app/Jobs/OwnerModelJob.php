@@ -29,6 +29,8 @@ class OwnerModelJob implements ShouldQueue
         if (! file_exists(storage_path('app/memory1.on'))) return;
         $msg = DB::table('agent_messages')->where('id', $this->userMessageId)->where('workspace_id', $this->wsId)->where('role', 'user')->first();
         if (! $msg) return;
+        // RFC-0023 P4: index this turn (the owner's line now, Sarah's reply once it exists) so recall sees it next time
+        try { if (\App\Core\Recall\MemoryRecall::enabled()) { $__ix = app(\App\Core\Recall\MemoryIndexer::class); $__ix->indexMessage($msg); foreach (DB::table('agent_messages')->where('workspace_id', $this->wsId)->where('agent_slug', 'sarah')->where('role', 'agent')->where('id', '>', $this->userMessageId)->orderBy('id')->limit(3)->get() as $__sm) $__ix->indexMessage($__sm); } } catch (\Throwable) {}
         $answered = DB::table('agent_messages')->where('workspace_id', $this->wsId)->where('agent_slug', 'sarah')->where('role', 'agent')->where('id', '>', $this->userMessageId)
             ->where(function ($q) { $q->whereNull('metadata_json')->orWhereRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.phase')), '') <> 'ack'"); })->exists();
         $newer = DB::table('agent_messages')->where('workspace_id', $this->wsId)->where('role', 'user')->where('id', '>', $this->userMessageId)->exists();

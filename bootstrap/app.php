@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // CAMPAIGNS-1: release dated campaign work, follow it, finish campaigns; monthly campaign ideas per business
         $schedule->command('campaigns:tick')->everyTenMinutes()->withoutOverlapping(15)->runInBackground();
         $schedule->command('outcomes:measure')->when(fn () => is_file(storage_path('app/memory1.on')))->hourlyAt(35)->withoutOverlapping(50)->runInBackground();   // RFC-0023 P2 Outcome Ledger
+        $schedule->command('memory:index')->when(fn () => is_file(storage_path('app/recall1.on')))->hourlyAt(50)->withoutOverlapping(50)->runInBackground();   // RFC-0023 P4 recall index
         $schedule->command('lifecycle:tick')->everyFifteenMinutes()->withoutOverlapping(20)->runInBackground();   // LIFECYCLE-1
         // CAL-2: reminders for the owner's own calendar (Sarah in chat + notification + email); switch storage/app/remind1.on
         // CRM-SARAH-3: who to contact today, 08:00 in each owner's own time; switch storage/app/crmdaily.on

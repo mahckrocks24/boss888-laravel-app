@@ -44,6 +44,9 @@ final class MemoryPack
             $jr = [];
             try { foreach (DB::table('business_journal')->where('workspace_id', $wsId)->where('created_at', '>=', now()->subDays(90))->orderByDesc('id')->limit(8)->get(['kind', 'text', 'created_at']) as $j) $jr[] = '  - ' . substr((string) $j->created_at, 0, 10) . ' ' . $j->kind . ': ' . mb_substr((string) $j->text, 0, 220); } catch (\Throwable) {}
             if ($jr) $sections[] = "WHAT THE OWNER TOLD YOU ABOUT THE BUSINESS (dated; follow up naturally):\n" . implode("\n", $jr);
+            // RFC-0023 P4: recall beyond the visible window, retrieved for this message (kill switch storage/app/recall1.on)
+            try { $rc = $message !== '' ? app(\App\Core\Recall\MemoryRecall::class)->recall($wsId, $bizId, $message) : []; } catch (\Throwable) { $rc = []; }
+            if ($rc) $sections[] = "RELEVANT EARLIER MOMENTS (retrieved from the whole history for this message; quote them with their date, never invent one, and say so when nothing earlier covers the question):\n" . implode("\n", $rc);
 
             $wants = array_map($line, $by['wants'] ?? []);
             $inter = array_map($line, $by['interests'] ?? []);
