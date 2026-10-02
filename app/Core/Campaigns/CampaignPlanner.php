@@ -53,7 +53,7 @@ final class CampaignPlanner
             . '"channels":["facebook|instagram|linkedin|website|email|in_person|phone"],"starts_in_days":0,"duration_days":14,"kpi":{"metric":"leads","target":10,"label":"10 new enquiries"},'
             . '"phases":[{"name":"Build-up","items":[{"kind":"post|article|email|image|video|event|owner_task","channel":"facebook","day_offset":0,"title":"","brief":""}]}]}]}';
         $user = 'FACTS: ' . json_encode($facts, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ($ask !== '' ? "\nOWNER ASKED: " . mb_substr($ask, 0, 600) : '');
-        $r = $runtime->chatJson($sys, $user, ['task' => 'campaign_ideas', 'workspace_id' => (string) $wsId], 6000);   // CAMPAIGN-CADENCE-1: a post a day is a longer plan (runtime cap 8192 = output + 2000 reasoning)
+        $r = $runtime->chatJson($sys, $user, ['task' => 'campaign_ideas', 'workspace_id' => (string) $wsId], 6000, ['workload' => 'synthesis']);   // REPORT-0072 / RISK-0166: background planning, no owner waiting - the 70 s lane, not the 30 s chat lane   // CAMPAIGN-CADENCE-1: a post a day is a longer plan (runtime cap 8192 = output + 2000 reasoning)
         $raw = (($r['success'] ?? false) && is_array($r['parsed']['campaigns'] ?? null)) ? $r['parsed']['campaigns'] : [];
         if (! $raw) Log::warning('[CAMPAIGNS-1] planner returned nothing', ['ws' => $wsId, 'err' => $r['error'] ?? null]);
         Log::info('[CAMPAIGNS-1] planner', ['ws' => $wsId, 'asked' => $count, 'returned' => count($raw)]);
