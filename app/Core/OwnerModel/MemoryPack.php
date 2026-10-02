@@ -30,13 +30,16 @@ final class MemoryPack
             $vg = array_merge(array_map($line, $by['identity'] ?? []), array_map($line, $by['goals'] ?? []));
             if ($vg) $sections[] = "THE OWNER'S VISION AND GOALS (in their words; measure progress against the campaigns, never assert it):\n" . implode("\n", $vg);
 
-            $pref = array_map($line, $by['preferences'] ?? []);
+            // REPORT-0071 rerun: only CONFIRMED preferences are rules; unconfirmed guesses are listed apart and never obeyed
+            $pref = array_map($line, array_values(array_filter($by['preferences'] ?? [], fn ($f) => $f->status === 'confirmed')));
+            $guesses = array_map($line, array_values(array_filter($by['preferences'] ?? [], fn ($f) => $f->status !== 'confirmed')));
             try {
                 foreach (DB::table('experience_owner_feedback')->where('workspace_id', $wsId)->where('created_at', '>=', now()->subDays(180))->orderByDesc('id')->limit(8)->get(['feedback_type', 'value', 'created_at']) as $fb) {
                     $pref[] = '  - ' . trim(mb_substr((string) $fb->value, 0, 160)) . ' (' . strtolower(str_replace('_', ' ', (string) $fb->feedback_type)) . ', ' . substr((string) $fb->created_at, 0, 10) . ')';
                 }
             } catch (\Throwable) {}
             if ($pref) $sections[] = "STANDING PREFERENCES AND CORRECTIONS (obey every one; the newest wins when two conflict):\n" . implode("\n", $pref);
+            if ($guesses) $sections[] = "THINGS YOU THINK YOU NOTICED (unconfirmed - do NOT act on them as rules; reply in the language of the owner's current message):\n" . implode("\n", array_slice($guesses, 0, 5));
 
             $out = app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->recent($wsId, $bizId, 3, $message) ?: $this->outcomes($wsId, $bizId);   // RFC-0023 P2: the ledger first
             if ($out) $sections[] = "LAST OUTCOMES (what the owner's campaigns and work produced; cite them, do not embellish):\n" . implode("\n", $out);

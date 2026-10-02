@@ -149,6 +149,9 @@ class BusinessContext
         foreach ($this->resolver->forWorkspace((int) $b->workspace_id) as $o) { if ((int) $o->id !== (int) $b->id) { foreach (preg_split('/\s+/', mb_strtolower(trim((string) $o->name))) as $w) { $others[$w] = true; } } }
         $own = array_values(array_filter(preg_split('/\s+/', mb_strtolower(trim((string) $b->name))), fn ($w) => $w !== '' && empty($others[$w])));
         if ($own && count($own) < count(preg_split('/\s+/', trim((string) $b->name)))) { $h[] = implode(' ', $own); }
+        // REPORT-0071 rerun: owners say "Chef Red", not "Chef Red Private Dining" - the first two words are a handle when both belong to this business alone
+        $words = preg_split('/\s+/', mb_strtolower(trim((string) $b->name)));
+        if (count($words) >= 3 && empty($others[$words[0]]) && empty($others[$words[1]]) && mb_strlen($words[0] . ' ' . $words[1]) >= 6) { $h[] = $words[0] . ' ' . $words[1]; }
         foreach ((array) ($b->aliases_json ?? []) as $a) { $a = mb_strtolower(trim((string) $a)); if ($a !== '') { $h[] = $a; } }
         foreach ($sites as $s) { $h[] = mb_strtolower($s['name']); foreach ($s['hosts'] as $host) { $h[] = $host; $h[] = preg_replace('/\.levelupgrowth\.io$/', '', $host); } }
         return array_values(array_unique(array_filter($h)));

@@ -373,6 +373,58 @@ class CertificationRemediationTest extends TestCase
         $this->assertArrayNotHasKey('skipped', $s->push(self::WS2), 'a failed push must not be remembered as synced (no stale state)');
     }
 
+    // ── rerun findings: memory extraction and business names ──────────────────────────────────────────────────────
+    private function extract(int $ws, string $text, array $cands): array
+    {
+        \App\Core\OwnerModel\OwnerModelExtractor::$candidateResolver = fn () => $cands;
+        try { return app(\App\Core\OwnerModel\OwnerModelExtractor::class)->run($ws, null, 1, $text); }
+        finally { \App\Core\OwnerModel\OwnerModelExtractor::$candidateResolver = null; }
+    }
+
+    public function test_EXTRACT_1_the_language_of_one_message_is_never_a_standing_preference(): void
+    {
+        $w = $this->extract(self::WS2, 'Pwede mo ba akong gawan ng isang linya para sa Undas para sa Chef Red? Isang caption lang, wag mo nang i-queue.',
+            [['group' => 'preferences', 'key' => 'writes_in_filipino', 'value' => 'The owner writes to the manager in Filipino (Tagalog).', 'durable' => true, 'quote' => 'Pwede mo ba akong gawan']]);
+        $this->assertSame([], $w);
+        $this->assertSame(0, DB::table('owner_model_facts')->where('workspace_id', self::WS2)->count());
+    }
+
+    public function test_EXTRACT_2_one_off_instructions_are_not_rules_and_model_durable_is_only_a_guess(): void
+    {
+        $w = $this->extract(self::WS2, 'Now something for the catering side: a short post about office lunch platters. Just the caption, don\'t queue anything.',
+            [['group' => 'preferences', 'key' => 'wants_copy_not_queued', 'value' => 'The owner wants copy as text only, nothing queued.', 'durable' => true, 'quote' => 'Just the caption, don\'t queue anything']]);
+        $this->assertSame([], $w, 'a request scoped to this turn is not a standing preference');
+        $g = $this->extract(self::WS2, 'I want 20 private dinners a month by December.',
+            [['group' => 'goals', 'key' => 'dinners_goal', 'value' => 'The owner wants 20 private dinners a month by December.', 'durable' => true, 'quote' => 'I want 20 private dinners a month']]);
+        $this->assertSame('proposed', $g[0]['status'] ?? null, 'the model calling it durable makes it a guess, not a confirmed rule');
+        $c = $this->extract(self::WS2, 'From now on always sign my posts as Chef Red and never use emojis.',
+            [['group' => 'preferences', 'key' => 'sign_chef_red', 'value' => 'The owner wants posts signed as Chef Red.', 'durable' => true, 'quote' => 'always sign my posts as Chef Red']]);
+        $this->assertSame('confirmed', $c[0]['status'] ?? null, 'the owner\'s own "always" makes it a rule');
+    }
+
+    public function test_EXTRACT_3_unconfirmed_guesses_are_never_presented_as_rules(): void
+    {
+        DB::table('owner_model_facts')->insert([
+            ['workspace_id' => self::WS2, 'business_id' => null, 'group' => 'preferences', 'key' => 'rule', 'value' => 'RULE: never use emojis.', 'source' => 'stated', 'confidence' => 0.9, 'status' => 'confirmed', 'first_seen_at' => now(), 'last_confirmed_at' => now(), 'created_at' => now(), 'updated_at' => now()],
+            ['workspace_id' => self::WS2, 'business_id' => null, 'group' => 'preferences', 'key' => 'guess', 'value' => 'GUESS: prefers short captions.', 'source' => 'inferred', 'confidence' => 0.6, 'status' => 'proposed', 'first_seen_at' => now(), 'last_confirmed_at' => null, 'created_at' => now(), 'updated_at' => now()],
+        ]);
+        $pack = app(\App\Core\OwnerModel\MemoryPack::class)->build(self::WS2, null, 'write a caption');
+        $rules = substr($pack, (int) strpos($pack, 'STANDING PREFERENCES'));
+        $rules = substr($rules, 0, (int) (strpos($rules, "\n\n") ?: strlen($rules)));
+        $this->assertStringContainsString('RULE: never use emojis.', $rules);
+        $this->assertStringNotContainsString('GUESS', $rules);
+        $this->assertStringContainsString('THINGS YOU THINK YOU NOTICED (unconfirmed', $pack);
+    }
+
+    public function test_BIZNAME_1_a_business_is_recognised_by_its_short_name(): void
+    {
+        config(['business.profiles' => true]);
+        $ctx = app(BusinessContext::class)->resolve(self::WS, 'Hold off on any new posts for Chef Red until I tell you otherwise.');
+        $this->assertSame('named', $ctx['mode']);
+        $this->assertSame($this->chef, (int) $ctx['business_id']);
+        $this->assertSame('named', app(BusinessContext::class)->resolve(self::WS, 'Write a blog article for Golden Crust about rye')['mode']);
+    }
+
     // ── F5 content for a named business ───────────────────────────────────────────────────────────────────────────
     public function test_TOOLS_1_article_for_a_business_without_a_site_never_offers_other_businesses_sites(): void
     {

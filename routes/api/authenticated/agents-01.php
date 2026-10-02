@@ -3214,6 +3214,9 @@ $withCorr = function (array $meta) use ($corr) {
                         if (str_contains($m, 'cadence') || str_contains($m, 'cap')) {
                             return "your plan doesn't include that yet";   // VOICE-3: 'plan limit' read as a credit cap the owner had not hit
                         }
+                        if (str_contains($m, 'unspecified_delegation')) { // REPORT-0071 rerun: the ambiguity guard working, never a "system issue"
+                            return "I wasn't sure which piece you meant, so nothing was queued or charged - tell me which one and what to change";
+                        }
                         if (str_contains($m, 'ask_first_proposed')) { // F-SOC-F3: this is the approval gate working, not a fault
                             return preg_match('/proposal #(\d+)/i', $e->getMessage(), $pm)
                                 ? "it needs your approval first — it's waiting as proposal #{$pm[1]}, nothing created or charged"
