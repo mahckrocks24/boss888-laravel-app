@@ -53,7 +53,9 @@ class CampaignIdeasJob implements ShouldQueue
                     else \Illuminate\Support\Facades\Log::warning('[CAMPAIGNS-1] quiet ideas gave up', ['ws' => $this->wsId, 'source' => $this->source]);
                     return;
                 }
-                app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($this->wsId, 'sarah', 'I could not finish the campaign ideas just now. I will try again shortly, or ask me again in a moment.', ['notification_type' => 'campaign_ideas_failed']);
+                // REPORT-0071: the owner asked - one real retry a minute later before saying anything; then an honest note with no promise the code does not keep
+                if ($this->attempts() < 2) { $this->release(60); return; }
+                app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($this->wsId, 'sarah', 'I couldn\'t finish the campaign ideas: my planning service isn\'t responding right now, even after a second try. Nothing was charged. Ask me again in a few minutes and I\'ll start over.', ['notification_type' => 'campaign_ideas_failed']);
                 return;
             }
             $biz = app(\App\Core\Brand\BrandProfileService::class)->business($this->wsId, $this->businessId);
