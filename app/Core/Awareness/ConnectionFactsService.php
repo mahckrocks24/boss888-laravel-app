@@ -83,6 +83,7 @@ final class ConnectionFactsService
         $changes = $this->diff(is_array($prev) ? $prev : null, $facts);
 
         $now = now();
+        try { app(BusinessFactsService::class)->recompute($wsId); } catch (\Throwable $__bf) { Log::info('[MEM-P0] business facts recompute skipped: ' . $__bf->getMessage()); }   // MEM-P0 (RFC-0023)
         // the turn expects a JSON STRING (it keeps only is_string() values) — write exactly that shape
         DB::table('workspace_memory')->updateOrInsert(['workspace_id' => $wsId, 'key' => self::FACT_KEY],
             ['value_json' => json_encode($sentence), 'ttl' => null, 'updated_at' => $now, 'created_at' => $now]);

@@ -715,7 +715,7 @@ $withCorr = function (array $meta) use ($corr) {
             ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(metadata_json, '$.agent_slug')) = ?", [$slug]);
         // RFC-0011 U4a: a single-business turn sees that business's conversation (and rows from before businesses existed)
         if (!empty($__biz['multi']) && !empty($__biz['business_id']) && in_array($__biz['mode'] ?? '', ['named', 'sticky', 'default'], true)) { \App\Core\Business\BusinessHistory::apply($__histQ, (int) $__biz['business_id']); }
-        $__histRows = $__histQ->orderByDesc('created_at')->limit(20)->get()->map(function ($row) {
+        $__histRows = $__histQ->orderByDesc('created_at')->limit(\App\Core\Sarah888\MemoryHorizon::VISIBLE_WINDOW)->get()->map(function ($row) {   // MEM-P0: one window, defined once
             $meta = json_decode($row->metadata_json, true);
             return ['t' => (string) $row->created_at, 'line' => ($meta['from'] ?? 'User') . ': ' . ($meta['content'] ?? '')];
         })->all();
@@ -1269,10 +1269,13 @@ $withCorr = function (array $meta) use ($corr) {
         // instead of using the canonical "levelupgrowth.io" from memory).
         $brandFacts = [];
         try {
-            $memRows = DB::table('workspace_memory')->where('workspace_id', $wsId)->get(['key','value_json']);
+            $memRows = DB::table('workspace_memory')->where('workspace_id', $wsId)->get(['key','value_json','ttl','updated_at']);
             foreach ($memRows as $row) {
+                // MEM-P0 (RFC-0023): an expired row is not a fact; a value the memory service wrapped as {"value":...} is one
+                if (! empty($row->ttl) && ! empty($row->updated_at) && strtotime((string) $row->updated_at) + (int) $row->ttl < time()) continue;
                 $val = is_string($row->value_json) ? json_decode($row->value_json, true) : $row->value_json;
-                if (is_string($val) && $val !== '') $brandFacts[$row->key] = $val;
+                if (is_array($val) && array_key_exists('value', $val) && count($val) <= 2) $val = $val['value'];
+                if (is_scalar($val) && trim((string) $val) !== '') $brandFacts[$row->key] = (string) $val;
             }
         } catch (\Throwable $e) {}
         // RFC-0011 U3: in a multi-business workspace the header facts are the ACTIVE business's, never a blend.
@@ -1308,6 +1311,8 @@ $withCorr = function (array $meta) use ($corr) {
         if (! empty($brandFacts['industry'])) $brandFactsBlock .= "- Industry: " . $brandFacts['industry'] . "\n";
         elseif (! empty($workspace->industry)) $brandFactsBlock .= "- Industry: " . $workspace->industry . "\n";
         if (! empty($brandFacts['location'])) $brandFactsBlock .= "- Location: " . $brandFacts['location'] . "\n";
+        elseif (! empty($workspace->location)) $brandFactsBlock .= "- Location: " . $workspace->location . "\n";   // MEM-P0: was chained to the channels branch below
+        if (! empty($brandFacts['business_facts_at'])) $brandFactsBlock .= "- (business facts recomputed from the business record at " . $brandFacts['business_facts_at'] . ")\n";
         // DISCONNECTED ENGINES (2026-07-19) — brandFacts loads EVERY memory key
         // but this block only rendered a hardcoded few, so a new key never reached
         // the model. Render it explicitly and as a HARD constraint: Sarah was
@@ -1323,7 +1328,6 @@ $withCorr = function (array $meta) use ($corr) {
                 . "  Never propose, queue, or delegate work for a disconnected engine. Do not ask the owner to approve it.\n"
                 . "  If they ask for it, say plainly that the channel is not connected yet and offer the SEO/content equivalent instead.\n";
         }
-        elseif (! empty($workspace->location)) $brandFactsBlock .= "- Location: " . $workspace->location . "\n";
         // Wave 16b (2026-05-19) — inject the user's currently-selected
         // website so Sarah (and every agent) tailors strategy + delegations
         // to that one site instead of the entire workspace.
@@ -2009,12 +2013,14 @@ $withCorr = function (array $meta) use ($corr) {
                         . ". If the owner says 'stop monitoring' or 'watch competitors weekly' it is done automatically; they can also manage it on the Campaigns page, Market watch tab. You react to results and to what happens in the world by suggesting campaign changes or ideas; the owner approves every new or updated campaign.\n";
                     $__ws7 = \Illuminate\Support\Facades\DB::table('growth_signals')->where('workspace_id', (int) $wsId)->where('created_at', '>=', now()->subDays(10))->whereIn('kind', ['trend', 'moment', 'competitor_move', 'mention', 'campaign_pace', 'leads_quiet', 'new_leads'])->orderByDesc('strength')->orderByDesc('id')->limit(6)->pluck('title');
                     if ($__ws7->count()) $__brandPrefBlock .= "WHAT YOU NOTICED LATELY (facts; use when relevant):\n" . $__ws7->map(fn ($t) => '  - ' . $t)->implode("\n") . "\n";
-                    $__jr = \Illuminate\Support\Facades\DB::table('business_journal')->where('workspace_id', (int) $wsId)->orderByDesc('id')->limit(8)->get(['kind', 'text', 'created_at']);
+                    $__jr = \Illuminate\Support\Facades\DB::table('business_journal')->where('workspace_id', (int) $wsId)->where('created_at', '>=', now()->subDays(90))->orderByDesc('id')->limit(8)->get(['kind', 'text', 'created_at']);   // MEM-P0: dated and no older than 90 days
                     if ($__jr->count()) $__brandPrefBlock .= "WHAT THE OWNER TOLD YOU ABOUT THE BUSINESS (remember it, follow up on it naturally):\n" . $__jr->map(fn ($j) => '  - ' . substr((string) $j->created_at, 0, 10) . ' ' . $j->kind . ': ' . $j->text)->implode("\n") . "\n";
                     $__chw = \Illuminate\Support\Facades\DB::table('campaign_changes')->where('workspace_id', (int) $wsId)->where('status', 'proposed')->count();
                     if ($__chw) $__brandPrefBlock .= $__chw . " campaign update(s) you suggested are waiting for the owner's approval (cards in this chat and on the Campaigns page).\n";
                 } catch (\Throwable $__we) {}
             } catch (\Throwable $__bpe) { $__brandPrefBlock = ''; }
+            // MEM-P0 (RFC-0023): the brand / inspirations / campaigns / journal block has a budget; the cut is disclosed, never silent
+            if (mb_strlen((string) $__brandPrefBlock) > 7000) { $__brandPrefBlock = mb_substr((string) $__brandPrefBlock, 0, 7000) . "\n[Brand and campaign context cut at 7,000 characters for this turn; ask for the rest when you need it.]\n"; \Illuminate\Support\Facades\Log::info('[MEM-P0] brand block truncated', ['ws' => $wsId]); }
             $__selectedStateBlocks = ($__ctxSel !== null ? (string) ($__ctxSel['context'] ?? '') : ($activeQueueBlock . $taskActivityBlock . $groundingBlock)) . $__commentsBlock . $__brandPrefBlock;
             // CAMPAIGNS-1: the owner asked for campaigns or growth ideas — the ideas are being designed right now and arrive as cards after this reply
             if (empty($__reply) && ! empty($__campaignTurn) || (empty($__reply) && isset($__ownerMessage) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage))) {   // decided from the owner's words at reply time
@@ -2312,6 +2318,7 @@ $withCorr = function (array $meta) use ($corr) {
                                   . (!empty($__shapeIsExecutive) ? $__execFrame : '') // ExecutiveFrame + capability/system map — analytical turns only (DEC-0029 A6: 10.6k chars a status question never needs)
                                   . $__expFrame             // Experience888: evidenced history, this workspace only
                                   . ($__brandPrefBlock ?? '')   // BRAND-B1 / CAMPAIGNS-1: brand, inspirations, campaigns on every turn
+                                  . "\n" . $insightsBlock      // MEM-P0: finished work is shown on the lean path too (it was marked read and never shown)
                                   . $__analyticalContract
                                   . ($__closingVoice ?? '');   // register, read last
 

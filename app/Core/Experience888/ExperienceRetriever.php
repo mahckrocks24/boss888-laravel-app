@@ -87,14 +87,18 @@ final class ExperienceRetriever
 
     public function forTurn(int $wsId, string $question = '', int $budget = self::BUDGET_CHARS): string
     {
-        if (!app(ExperienceEligibility::class)->isEnabled($wsId)) return ''; // F-X-F1: opted out = nothing retrieved
+        // MEM-P0 (RFC-0023): a workspace that captures owner corrections also reads them back; the learned patterns and
+        // playbooks still need the full Experience888 opt-in.
+        $__elig = app(ExperienceEligibility::class);
+        $__full = $__elig->isEnabled($wsId);
+        if (! $__full && ! $__elig->isFeedbackEnabled($wsId)) return ''; // F-X-F1: opted out = nothing retrieved
         if ($wsId <= 0) return '';
 
         $lines = [];
 
         // 3. Durable owner policy and preference - outranks every learned pattern.
         //    Except anything that grants authorisation: see grantsAuthorisation().
-        foreach ($this->feedback->standing($wsId, 3) as $f) {
+        foreach ($this->feedback->standing($wsId, 8) as $f) {   // MEM-P0: the budget decides, not a cap of three
             if ($this->grantsAuthorisation((string) $f->value)) continue;
             $lines[] = sprintf('Owner %s (%s, stated explicitly): %s',
                 strtolower(str_replace('_', ' ', $f->feedback_type)),
@@ -103,7 +107,7 @@ final class ExperienceRetriever
         }
 
         // 4. Active playbooks whose trigger matches the turn.
-        foreach ($this->playbooks->usable($wsId, null, 2) as $pb) {
+        foreach ($__full ? $this->playbooks->usable($wsId, null, 2) : [] as $pb) {
             if ($question !== '' && !$this->relevant($question, (string) $pb->name . ' ' . (string) $pb->trigger_type)) continue;
             $lines[] = sprintf('Playbook "%s" is %s here: %d successes / %d failures, confidence %s.',
                 $pb->name, strtolower($pb->status), (int) $pb->success_count,
@@ -111,7 +115,7 @@ final class ExperienceRetriever
         }
 
         // 5/6. Evidenced patterns, strongest first, relevance-filtered.
-        foreach ($this->relevantPatterns($wsId, $question, 4) as $p) {
+        foreach ($__full ? $this->relevantPatterns($wsId, $question, 4) : [] as $p) {
             $lines[] = $this->statePattern($p);
         }
 

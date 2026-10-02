@@ -85,6 +85,7 @@ Route::put('/businesses/{id}', function (Request $r, $id) use ($bizWrite, $bizAp
     if ($b->isDirty('name')) { $b->slug = Business::slugFor($wsId, (string) $b->name, (int) $b->id); }
     $b->save();
     app(BusinessProfileResolver::class)->forget($wsId);
+    try { app(\App\Core\Awareness\BusinessFactsService::class)->recompute($wsId); } catch (\Throwable) {}   // MEM-P0: one writer for the business facts
     $sites = DB::table('websites')->where('workspace_id', $wsId)->whereNull('deleted_at')->get(['id', 'name', 'subdomain', 'custom_domain', 'domain', 'status', 'business_id'])->all();
     return response()->json(['success' => true, 'business' => $bizPresent($b->fresh(), $sites, [])]);
 });
@@ -112,6 +113,7 @@ Route::post('/businesses/{id}/default', function (Request $r, $id) use ($bizWrit
         $b->is_default = true; $b->save(); // the model mirrors the new default onto workspaces.*
     });
     app(BusinessProfileResolver::class)->forget($wsId);
+    try { app(\App\Core\Awareness\BusinessFactsService::class)->recompute($wsId); } catch (\Throwable) {}   // MEM-P0
     return response()->json(['success' => true, 'default_id' => (int) $b->id]);
 });
 
