@@ -91,6 +91,7 @@ class RepairService
         DB::table('repair_log')->where('id', $id)->update(['compensation' => $comp, 'credits' => $credits, 'updated_at' => now()]);
         $this->model->event($wsId, 'repair_episode', ['episode' => $id, 'level' => $read['level'], 'score' => $read['score'], 'cues' => $read['cues'], 'cause' => $cause['ref'] ?? null, 'compensation' => $comp, 'credits' => $credits]);
         Log::info('[REPAIR] episode', ['ws' => $wsId, 'id' => $id, 'level' => $read['level'], 'score' => $read['score'], 'comp' => $comp, 'credits' => $credits]);
+        \App\Core\OwnerModel\RuntimeMemorySync::queue($wsId);   // RFC-0023 P6
 
         return ['directive' => $this->directive($read['level'], $read['cues'], $cause, $comp, 1, $credits), 'append' => $append, 'episode_id' => $id, 'level' => $read['level']];
     }
@@ -204,6 +205,7 @@ class RepairService
         $mins = (int) round((time() - strtotime((string) $ep->created_at)) / 60);
         $this->model->event((int) $ep->workspace_id, 'repair_closed', ['episode' => $episodeId, 'via' => $via, 'minutes_open' => $mins, 'hits' => $ep->hits, 'compensation' => $ep->compensation, 'credits' => $ep->credits]);
         Log::info('[REPAIR] closed', ['ws' => $ep->workspace_id, 'episode' => $episodeId, 'via' => $via, 'minutes' => $mins]);
+        \App\Core\OwnerModel\RuntimeMemorySync::queue((int) $ep->workspace_id);   // RFC-0023 P6
     }
 
     private function maxLevel(string $a, string $b): string

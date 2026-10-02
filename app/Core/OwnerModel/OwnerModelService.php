@@ -41,6 +41,7 @@ final class OwnerModelService
                 'last_confirmed_at' => ($status === 'confirmed') ? $now : $row->last_confirmed_at, 'expires_at' => $expires, 'updated_at' => $now,
             ]);
             $this->event($wsId, 'fact_written', ['key' => $key, 'changed' => ! $same, 'source' => $source]);
+            if (! $same) RuntimeMemorySync::queue($wsId);   // RFC-0023 P6
             return ['id' => (int) $row->id, 'changed' => ! $same, 'status' => $same ? $row->status : $status];
         }
         $id = DB::table('owner_model_facts')->insertGetId([
@@ -49,6 +50,7 @@ final class OwnerModelService
             'last_confirmed_at' => $status === 'confirmed' ? $now : null, 'expires_at' => $expires, 'created_at' => $now, 'updated_at' => $now,
         ]);
         $this->event($wsId, 'fact_written', ['key' => $key, 'changed' => true, 'source' => $source, 'new' => true]);
+        RuntimeMemorySync::queue($wsId);   // RFC-0023 P6
         return ['id' => $id, 'changed' => true, 'status' => $status];
     }
 
@@ -56,14 +58,14 @@ final class OwnerModelService
     {
         $n = DB::table('owner_model_facts')->where('workspace_id', $wsId)->whereIn('id', $ids)->whereIn('status', ['proposed', 'confirmed'])
             ->update(['status' => 'confirmed', 'last_confirmed_at' => now(), 'expires_at' => null, 'updated_at' => now()]);
-        if ($n) $this->event($wsId, 'fact_confirmed', ['ids' => $ids]);
+        if ($n) { $this->event($wsId, 'fact_confirmed', ['ids' => $ids]); RuntimeMemorySync::queue($wsId); }   // RFC-0023 P6
         return $n;
     }
 
     public function dismiss(int $wsId, array $ids): int
     {
         $n = DB::table('owner_model_facts')->where('workspace_id', $wsId)->whereIn('id', $ids)->update(['status' => 'dismissed', 'updated_at' => now()]);
-        if ($n) $this->event($wsId, 'fact_dismissed', ['ids' => $ids]);
+        if ($n) { $this->event($wsId, 'fact_dismissed', ['ids' => $ids]); RuntimeMemorySync::queue($wsId); }   // RFC-0023 P6
         return $n;
     }
 
@@ -76,6 +78,7 @@ final class OwnerModelService
         try { $out['journal'] = DB::table('business_journal')->where('workspace_id', $wsId)->delete(); } catch (\Throwable) {}
         try { $out['feedback'] = DB::table('experience_owner_feedback')->where('workspace_id', $wsId)->delete(); } catch (\Throwable) {}
         $this->event($wsId, 'erased', $out);
+        RuntimeMemorySync::queue($wsId, true);   // RFC-0023 P6 / D5: the runtime forgets in the same breath
         return $out;
     }
 

@@ -2859,6 +2859,7 @@ $withCorr = function (array $meta) use ($corr) {
                     // Sarah's JSON mid-string on 11-article chains, leaking
                     // raw envelope into chat. 4000 fits ~20 article chains.
                     $cj = $runtime->chatJson($systemPrompt, $userPrompt, [
+                        'workspace_id' => $wsId,   // RFC-0023 P6: the runtime appends the owner's memory when the prompt lacks it
                         'agent_slug' => $slug, 'agent_name' => $agent->name,
                         'workspace'  => $workspace->business_name ?? '',
                     ], 4000);

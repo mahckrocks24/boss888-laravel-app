@@ -55,6 +55,7 @@ final class BusinessFactsService
         }
         DB::table('workspace_memory')->updateOrInsert(['workspace_id' => $wsId, 'key' => self::AT_KEY],
             ['value_json' => json_encode($now->toDateTimeString()), 'ttl' => null, 'updated_at' => $now, 'created_at' => $now]);
+        try { \App\Core\OwnerModel\RuntimeMemorySync::queue($wsId); } catch (\Throwable) {}   // RFC-0023 P6
         return $facts;
     }
 

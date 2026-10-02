@@ -24,6 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('outcomes:measure')->when(fn () => is_file(storage_path('app/memory1.on')))->hourlyAt(35)->withoutOverlapping(50)->runInBackground();   // RFC-0023 P2 Outcome Ledger
         $schedule->command('memory:index')->when(fn () => is_file(storage_path('app/recall1.on')))->hourlyAt(50)->withoutOverlapping(50)->runInBackground();   // RFC-0023 P4 recall index
         $schedule->command('anticipate:scan')->when(fn () => is_file(storage_path('app/anticipate1.on')))->hourlyAt(10)->withoutOverlapping(50)->runInBackground();   // RFC-0023 P5 anticipation
+        $schedule->command('memory:sync-runtime')->when(fn () => is_file(storage_path('app/memory1.on')))->hourlyAt(55)->withoutOverlapping(50)->runInBackground();   // RFC-0023 P6 runtime always
         $schedule->command('lifecycle:tick')->everyFifteenMinutes()->withoutOverlapping(20)->runInBackground();   // LIFECYCLE-1
         // CAL-2: reminders for the owner's own calendar (Sarah in chat + notification + email); switch storage/app/remind1.on
         // CRM-SARAH-3: who to contact today, 08:00 in each owner's own time; switch storage/app/crmdaily.on
