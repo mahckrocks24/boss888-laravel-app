@@ -75,7 +75,7 @@ class RuntimeMemorySync
     }
 
     /** Push sarah_memory and the business profile for one workspace. Returns what happened (for logs and the command). */
-    public function push(int $wsId): array
+    public function push(int $wsId, bool $force = false): array
     {
         if (! self::enabled()) return ['ok' => false, 'why' => 'disabled'];
         $rt = app(RuntimeClient::class);
@@ -83,6 +83,9 @@ class RuntimeMemorySync
         $out = ['ok' => false, 'ws' => $wsId];
         try {
             $payload = $this->payload($wsId);
+            // P6b: unchanged memory is not re-sent (the 10-minute facts refresh touched every workspace: 1,070 pushes in one hour)
+            $__h = md5(json_encode(array_diff_key($payload, ['synced_at' => 1]) + ['_biz' => $this->business->facts($wsId)]));
+            if (! $force && \Illuminate\Support\Facades\Cache::get('rtmemsync:hash:' . $wsId) === $__h) return ['ok' => true, 'ws' => $wsId, 'skipped' => 'unchanged'];
             $r = $rt->post('/internal/workspace-memory', ['wsId' => $wsId, 'field' => self::FIELD, 'value' => $payload], 15);
             $out['memory_http'] = $r->status();
             $out['ok'] = $r->successful() && (bool) (($r->json() ?? [])['ok'] ?? false);
@@ -97,6 +100,7 @@ class RuntimeMemorySync
             $size = mb_strlen(json_encode($payload, JSON_UNESCAPED_UNICODE));
             $this->model->event($wsId, 'runtime_synced', ['ok' => $out['ok'], 'http' => $out['memory_http'] ?? null, 'facts' => count($payload['owner']['goals']) + count($payload['owner']['preferences']) + count($payload['owner']['identity']) + count($payload['owner']['interests']) + count($payload['owner']['wants']), 'debts' => count($payload['debts']), 'lessons' => count($payload['lessons']), 'erased' => (bool) $payload['erased_at']], $size);
             if (! $out['ok']) Log::warning('[RT-MEMORY] push not accepted', $out);
+            else \Illuminate\Support\Facades\Cache::put('rtmemsync:hash:' . $wsId, $__h, now()->addDays(7));
         } catch (\Throwable $e) {
             $out['error'] = mb_substr($e->getMessage(), 0, 200);
             Log::warning('[RT-MEMORY] push failed', $out);

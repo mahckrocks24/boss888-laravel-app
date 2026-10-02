@@ -45,6 +45,7 @@ final class BusinessFactsService
     {
         $facts = $this->facts($wsId);
         $now = now();
+        $__before = DB::table('workspace_memory')->where('workspace_id', $wsId)->whereIn('key', self::KEYS)->pluck('value_json', 'key')->all();   // P6b
         foreach (self::KEYS as $k) {
             if (isset($facts[$k])) {
                 DB::table('workspace_memory')->updateOrInsert(['workspace_id' => $wsId, 'key' => $k],
@@ -55,7 +56,7 @@ final class BusinessFactsService
         }
         DB::table('workspace_memory')->updateOrInsert(['workspace_id' => $wsId, 'key' => self::AT_KEY],
             ['value_json' => json_encode($now->toDateTimeString()), 'ttl' => null, 'updated_at' => $now, 'created_at' => $now]);
-        try { \App\Core\OwnerModel\RuntimeMemorySync::queue($wsId); } catch (\Throwable) {}   // RFC-0023 P6
+        try { $__after = DB::table('workspace_memory')->where('workspace_id', $wsId)->whereIn('key', self::KEYS)->pluck('value_json', 'key')->all(); ksort($__before); ksort($__after); if ($__before !== $__after) \App\Core\OwnerModel\RuntimeMemorySync::queue($wsId); } catch (\Throwable) {}   // RFC-0023 P6 / P6b: only when a fact changed
         return $facts;
     }
 
