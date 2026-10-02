@@ -111,6 +111,7 @@ final class DesignLibraryService
             'directions_json' => json_encode(['recipes' => $ids, 'picks' => $codes ?: ($prev['picks'] ?? []), 'never' => (array) ($prev['never'] ?? []), 'chosen_at' => now()->toIso8601String(), 'source' => $source]),
             'intake_status' => 'confirmed', 'confirmed_at' => $row->confirmed_at ?? now(),
         ], $source, 'design library picks chosen');
+        try { $__om = app(\App\Core\OwnerModel\OwnerModelService::class); $__om->observe($wsId, $biz->id ?? null, 'look_picked', 'recipes:' . implode(',', $ids), ['source' => $source]); $__om->upsert($wsId, $biz->id ?? null, 'preferences', 'visual_looks', 'Chose these design looks for posts: ' . implode(', ', array_map(fn ($id) => (string) $rows[$id]->title, $ids)) . '.', 'stated', 0.95, 'library_picks', 'confirmed'); } catch (\Throwable) {}   // RFC-0023 P1
         return ['success' => true, 'business_id' => $biz->id ?? null, 'recipes' => array_map(fn ($id) => $this->publicRow($rows[$id]), $ids), 'names' => array_map(fn ($id) => (string) $rows[$id]->title, $ids), 'picks' => $codes];
     }
 

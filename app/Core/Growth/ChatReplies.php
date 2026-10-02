@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class ChatReplies
 {
-    public const TYPES = ['watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily', 'image_shown'];   // REGEN-2
+    public const TYPES = ['owner_fact', 'watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily', 'image_shown'];   // REGEN-2
     /** Text after this marker is the plain-words version of a card: the app shows it, the web hides it next to the card. */
     public const APP_PART = "\n\n\u{200B}";
 
@@ -73,6 +73,9 @@ final class ChatReplies
                 $q['open_ids'] = array_values(array_filter($ids, fn ($i) => in_array($i, $open, true)));   // in the order Sarah numbered them
                 $q['all_ids'] = $ids;
                 return (bool) $q['open_ids'];
+            case 'owner_fact':   // RFC-0023 P1: open while any echoed fact still stands and the line is younger than two days
+                $ids = array_map('intval', (array) ($c['fact_ids'] ?? []));
+                return $ids && DB::table('owner_model_facts')->where('workspace_id', $wsId)->whereIn('id', $ids)->whereIn('status', ['proposed', 'confirmed'])->where('updated_at', '>=', now()->subDays(2))->exists();
             case 'brand_intake':
                 $row = app(\App\Core\Brand\BrandProfileService::class)->row($wsId, app(\App\Core\Brand\BrandProfileService::class)->business($wsId, isset($c['business_id']) ? (int) $c['business_id'] : null));
                 return $row && in_array((string) $row->intake_status, ['asked', 'confirmed'], true);   // PICKS-FIX-2: numbers still re-pick after a first choice
@@ -317,6 +320,13 @@ final class ChatReplies
                         foreach ($q['open_drafts'] as $id) $sc->skipDraft($wsId, (int) $id);
                         return ['turn' => 'reply', 'note' => 'The owner will not send today\'s follow-ups. Acknowledge in one short line; the people stay in Clients.', 'verified' => []];
                     }
+                    return null;
+                }
+                case 'owner_fact': {   // RFC-0023 P1
+                    $ids = array_map('intval', (array) ($c['fact_ids'] ?? []));
+                    $om = app(\App\Core\OwnerModel\OwnerModelService::class);
+                    if ($no || preg_match('/^\s*(that\'?s )?(wrong|not right|incorrect|not true|no,? that|remove that|delete that|forget that|scrap that)\b/i', $t)) { $om->dismiss($wsId, $ids); return ['turn' => 'reply', 'note' => 'The owner said the fact(s) you just noted were wrong; they are removed. Acknowledge in one short line and ask, in a few words, what the right version is.', 'verified' => ['memory', 'remember', 'noted']]; }
+                    if ($yes || preg_match('/^\s*(correct|right|exactly|that\'?s right|spot on)\b/i', $t)) { $om->confirm($wsId, $ids); return ['turn' => 'reply', 'note' => 'The owner confirmed the fact(s) you noted. One short line, then carry on with whatever else they said.', 'verified' => ['memory', 'remember', 'noted']]; }
                     return null;
                 }
                 case 'brand_intake': {

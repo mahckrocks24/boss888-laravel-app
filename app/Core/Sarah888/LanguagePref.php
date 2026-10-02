@@ -54,6 +54,7 @@ final class LanguagePref
             $s[self::KEY . '_set_at'] = now()->toIso8601String();
             DB::table('workspaces')->where('id', $wsId)->update(['settings_json' => json_encode($s, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'updated_at' => now()]);
             Log::info('[SARAH-LANG-1] language preference set', ['ws' => $wsId, 'language' => $lang]);
+            try { app(\App\Core\OwnerModel\OwnerModelService::class)->upsert($wsId, null, 'preferences', 'language', 'Wants replies in ' . $lang . '.', 'stated', 0.95, 'language_pref', 'confirmed'); } catch (\Throwable) {}   // RFC-0023 P1
         } catch (\Throwable $e) {
             Log::warning('[SARAH-LANG-1] could not persist', ['ws' => $wsId, 'e' => $e->getMessage()]);
         }

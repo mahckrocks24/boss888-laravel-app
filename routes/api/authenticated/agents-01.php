@@ -313,6 +313,7 @@ use Illuminate\Support\Facades\Route;
                 try { \App\Core\Sarah888\LanguagePref::absorb((int) $wsId, (string) $content); } catch (\Throwable) {}   // SARAH-LANG-1
                 try { \App\Core\Brand\RecipeVariables::absorb((int) $wsId, (string) $content); } catch (\Throwable) {}   // RECIPE-1: "in my pictures use ..." is remembered
                 $__creativeAsk = (bool) preg_match('/\b(image|images|banner|banners|logo|poster|flyer|graphic|thumbnail|visual|design|artwork|video|reel|og image|cover photo)\b/i', (string) $content);   // INTAKE-FIRST-1
+                try { \App\Jobs\OwnerModelJob::dispatch((int) $wsId, (int) $userMessageId)->delay(now()->addSeconds(6)); } catch (\Throwable $__omj) { \Illuminate\Support\Facades\Log::info('[OWNER-MODEL] dispatch skipped: ' . $__omj->getMessage()); }   // RFC-0023 P1: the stated lane runs after the turn
                 try { \App\Jobs\BrandIntakeJob::dispatch((int) $wsId, (int) $userMessageId)->delay($__creativeAsk ? now() : now()->addSeconds(8)); } catch (\Throwable $__bj) { \Illuminate\Support\Facades\Log::warning('[BRAND-B1] dispatch failed', ['e' => $__bj->getMessage()]); }
                 // CHAT-FIRST-1: a plain-words answer to the question Sarah asked with a card ("twice a week", "launch 2", "approve", "done") acts here, so the companion app is a complete surface
                 $__reply = null;
@@ -1153,6 +1154,21 @@ $withCorr = function (array $meta) use ($corr) {
             //
             // The deterministic answer is TRUE and stays. What changes is
             // whether it is the ANSWER or the EVIDENCE.
+            // RFC-0023 P1 (DEC-0073 D5): the owner's window on Sarah's memory, answered deterministically, never by the model
+            $__memoryRouter = false;
+            if ($routerReply === null && $slug === 'sarah' && file_exists(storage_path('app/memory1.on'))) {
+                $__mt = mb_strtolower(trim((string) $content));
+                if (preg_match('/^\s*yes,?\s*forget me\b/u', $__mt)) {
+                    $__er = app(\App\Core\OwnerModel\OwnerModelService::class)->erase((int) $wsId); $__memoryRouter = true;
+                    $routerReply = "Done. I've erased everything personal I kept about you: your stated goals and preferences, what I noticed about how you work, your journal notes and your corrections. Your business details stay, since they come from your business record. Tell me again whenever you like.";
+                } elseif (preg_match('/\b(forget me|forget (everything|all|what you (know|remember|have)) about me|(erase|delete|wipe) (everything|all|what you (know|remember))( about me)?)\b/u', $__mt)) {
+                    $__memoryRouter = true;
+                    $routerReply = "I can erase everything personal I hold about you: your goals, preferences, what I've noticed about how you work, your notes and corrections. Your business details stay. Say **yes, forget me** and it's gone.";
+                } elseif (preg_match('/\b(what|which|anything|everything) (do|did|have) you (remember|know|keep|hold|learn(ed|t)|note[d]?) (about|on|of) me\b|\bwhat (do you|have you) (remember|learn(ed|t))\b|\bshow me (your|the) (memory|notes) (about|on) me\b|\bwhat is in your memory\b/u', $__mt)) {
+                    $__memoryRouter = true;
+                    $routerReply = app(\App\Core\OwnerModel\OwnerModelService::class)->summary((int) $wsId, (int) ($__biz['business_id'] ?? 0) ?: null);
+                }
+            }
             if ($routerReply !== null) {
                 $__intent = ['mode' => \App\Core\Sarah888\RouterIntent::STATUS, 'why' => '', 'source' => 'skipped'];
                 try {
@@ -1170,7 +1186,7 @@ $withCorr = function (array $meta) use ($corr) {
                     'source' => $__intent['source'], 'why' => $__intent['why'],
                 ]);
 
-                if ($__intent['mode'] === \App\Core\Sarah888\RouterIntent::STATUS) {
+                if ($__intent['mode'] === \App\Core\Sarah888\RouterIntent::STATUS || ! empty($__memoryRouter)) {
                     DB::table('agent_messages')->insert([
                         'workspace_id'  => $wsId, 'agent_slug' => $slug, 'sender' => $agent->name,
                         'content'       => \App\Core\LaunchScope\LaunchScopeLanguageGuard::apply((string) $routerReply), /* W6 truthfulness guard */ 'role' => 'agent',
@@ -1817,6 +1833,11 @@ $withCorr = function (array $meta) use ($corr) {
                 ]);
             }
 
+            // RFC-0023 P1: the Memory Pack - what Sarah knows about this owner, bounded, dated, sourced (kill switch storage/app/memory1.on)
+            $__memoryPack = '';
+            try { if ($isSarah && file_exists(storage_path('app/memory1.on'))) $__memoryPack = app(\App\Core\OwnerModel\MemoryPack::class)->build((int) $wsId, (int) ($__biz['business_id'] ?? 0) ?: null, (string) $content); }
+            catch (\Throwable $__mpE) { \Illuminate\Support\Facades\Log::warning('[OWNER-MODEL] pack failed: ' . $__mpE->getMessage(), ['ws' => $wsId]); }
+
             // SARAH888 — deterministic evidence for a turn the router would
             // otherwise have answered outright. Placed BEFORE the content
             // rules so it reads as ground truth rather than as advice.
@@ -2026,7 +2047,7 @@ $withCorr = function (array $meta) use ($corr) {
             if (empty($__reply) && ! empty($__campaignTurn) || (empty($__reply) && isset($__ownerMessage) && preg_match('/\b(campaigns?|marketing plan|marketing ideas|growth ideas|promotion ideas|what should (we|i) (do|run|post|promote|focus on)|ideas (to|for) (grow|get|bring|attract|increase|promote)|how (can|do|could) (we|i) (grow|get more|attract))\b/i', (string) $__ownerMessage) && ! preg_match('/\b(comment|keyword) campaign\b/i', (string) $__ownerMessage))) {   // decided from the owner's words at reply time
                 $__selectedStateBlocks .= "\nTHIS TURN (overrides other guidance for this reply): the owner asked for campaign ideas. You are designing them right now from their business, audience, location and season, their brand and what has worked; the ideas appear as cards directly below your reply in about a minute. Reply in 1-2 warm sentences saying exactly that. Do not list ideas, do not refuse, do not say data is missing, do not create tasks.\n";
             }
-            $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . $__selectedStateBlocks . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
+            $systemPrompt = $conciseRule . $identityBlock . $brandFactsBlock . $sarahFrame . ($__memoryPack ?? '') . $__selectedStateBlocks . $__evidenceBlock . $__execFrame . $__expFrame . ($__closingVoice ?? '') . $sarahContentRules . "\n" . $sarahTierBlock . "\n"
                 . "You are Sarah, the Digital Marketing Manager and lead AI orchestrator for " . ($brandFacts['business_name'] ?? $workspace->business_name ?? 'this business') . ".\n"
                 . "You coordinate all specialist agents and manage the workspace.\n"
                 . "HARD RULE — DELEGATION: When the user asks you to WRITE, CREATE, BUILD, GENERATE, "
@@ -2311,6 +2332,7 @@ $withCorr = function (array $meta) use ($corr) {
                                   . $identityBlock          // who she is
                                   . $brandFactsBlock        // authoritative workspace facts
                                   . $sarahFrame             // CognitiveFrame: time, DerivedState, horizon, absence
+                                  . ($__memoryPack ?? '')   // RFC-0023 P1: the owner's memory pack on the lean path too
                                   . $activeQueueBlock       // live workspace state
                                   . $taskActivityBlock      // live workspace state
                                   . $groundingBlock         // what may and may not be claimed (GSC/no-data)
