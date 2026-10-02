@@ -158,6 +158,7 @@ class ApprovalController
         }
 
         try { app(\App\Core\OwnerModel\OwnerModelService::class)->observe($wsId, null, 'approval_approved', 'approval:' . $id, ['action' => $row->action ?? null, 'engine' => $row->engine ?? null]); } catch (\Throwable) {}   // RFC-0023 P1
+        try { if (! empty($row->task_id)) app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->verdictForTask((int) $row->task_id, 'approved', null, (int) ($request->user()?->id ?? 0) ?: null); } catch (\Throwable) {}   // RFC-0023 P2
         // Idempotent: already approved
         if ($row->status === 'approved') {
             return response()->json(['success' => true, 'message' => 'already approved', 'approval_id' => $id]);
@@ -299,7 +300,7 @@ class ApprovalController
         if ($reason === '') {
             return response()->json(['error' => 'reason_required', 'message' => 'A rejection reason is required.'], 422);
         }
-        try { $__ar = DB::table('approvals')->where('id', $id)->where('workspace_id', $wsId)->first(['action', 'engine']); if ($__ar) app(\App\Core\OwnerModel\OwnerModelService::class)->observe($wsId, null, 'approval_rejected', 'approval:' . $id, ['action' => $__ar->action, 'engine' => $__ar->engine, 'reason' => mb_substr($reason, 0, 200)]); } catch (\Throwable) {}   // RFC-0023 P1
+        try { $__ar = DB::table('approvals')->where('id', $id)->where('workspace_id', $wsId)->first(['action', 'engine', 'task_id']); if ($__ar) { app(\App\Core\OwnerModel\OwnerModelService::class)->observe($wsId, null, 'approval_rejected', 'approval:' . $id, ['action' => $__ar->action, 'engine' => $__ar->engine, 'reason' => mb_substr($reason, 0, 200)]); if (! empty($__ar->task_id)) app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->verdictForTask((int) $__ar->task_id, 'rejected', $reason, (int) ($request->user()?->id ?? 0) ?: null); } } catch (\Throwable) {}   // RFC-0023 P1 + P2
 
         $row = DB::table('approvals')->where('id', $id)->first(['id', 'workspace_id', 'task_id', 'proposal_id', 'status', 'batch_id', 'action', 'engine', 'requested_by']);
         if (!$row) return response()->json(['error' => 'approval_not_found'], 404);

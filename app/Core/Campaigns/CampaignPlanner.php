@@ -303,7 +303,7 @@ final class CampaignPlanner
             'design_styles' => array_map(fn ($d) => \App\Core\Brand\DesignDirections::ALL[$d]['name'] ?? $d, (array) ($brand['design_picks'] ?? [])),
             'saved_inspirations' => $insp,
             'last_30_days' => ['leads_by_source' => $leads, 'buying_comments' => $hot, 'posts_published' => $posts, 'articles_published' => $articles],
-            'active_goals' => $goals, 'past_campaigns' => $past,
+            'active_goals' => $goals, 'past_campaigns' => $past, 'what_worked_last_90_days' => app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->whatWorked($wsId, $bizId),   // RFC-0023 P2
             'posting_goal' => 'At least ' . self::POSTS_PER_DAY . ' social post every day',
             'calendar' => $this->calendarFacts($wsId, $bizId, $now),
             'search' => (function () use ($wsId, $bizId) { try { return \App\Core\Search\Performance::plannerFacts($wsId, $bizId) ?: null; } catch (\Throwable $e) { return null; } })(),   // PAGE-ONE-1 S4

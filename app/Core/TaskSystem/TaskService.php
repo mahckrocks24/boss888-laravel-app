@@ -738,6 +738,7 @@ class TaskService
             // tasks" issue where Sarah narrated finished work as current).
             'progress_message' => 'Completed: ' . str_replace('_', ' ', (string) $task->action),
         ]);
+        try { app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->recordTask($task->fresh() ?? $task, 'delivered', $result); } catch (\Throwable) {}   // RFC-0023 P2
 
         try {
             if (in_array($__qa['verdict'], [\App\Core\Sarah888\SarahQaGate::REJECTED, \App\Core\Sarah888\SarahQaGate::NEEDS_OWNER], true)) {
@@ -780,6 +781,7 @@ class TaskService
                 // 2026-06-08 — finalize progress_message (see markCompleted).
                 'progress_message' => 'Failed: ' . str_replace('_', ' ', (string) $task->action),
             ]);
+            try { app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->recordTask($task->fresh() ?? $task, 'failed', null, $error); } catch (\Throwable) {}   // RFC-0023 P2
             $this->notifications->send($task->workspace_id, 'task', 'task.failed', [
                 'task_id' => $task->id,
                 'error' => $error,

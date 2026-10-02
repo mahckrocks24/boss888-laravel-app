@@ -327,6 +327,7 @@ final class CampaignService
         DB::table('marketing_campaigns')->where('id', $id)->update(['status' => 'completed', 'results_json' => json_encode($res), 'completed_at' => now(), 'updated_at' => now()]);
         if ($c->mandate_id) DB::table('mandates')->where('id', $c->mandate_id)->where('status', 'live')->update(['status' => 'completed', 'completed_at' => now(), 'updated_at' => now()]);
         $this->syncCalendar($id);
+        try { app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->recordCampaign($id, 'completed'); } catch (\Throwable) {}   // RFC-0023 P2
         try {
             $facts = ['campaign' => $c->title, 'objective' => $c->objective, 'target' => json_decode((string) $c->kpi_json, true)['label'] ?? null, 'results' => $res];
             $fallback = 'The "' . $c->title . '" campaign has finished. ' . $res['summary'] . ' I will use what worked in the next ideas.';

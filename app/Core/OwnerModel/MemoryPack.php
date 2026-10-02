@@ -38,7 +38,7 @@ final class MemoryPack
             } catch (\Throwable) {}
             if ($pref) $sections[] = "STANDING PREFERENCES AND CORRECTIONS (obey every one; the newest wins when two conflict):\n" . implode("\n", $pref);
 
-            $out = $this->outcomes($wsId, $bizId);
+            $out = app(\App\Core\OutcomeLedger\OutcomeLedgerService::class)->recent($wsId, $bizId, 3, $message) ?: $this->outcomes($wsId, $bizId);   // RFC-0023 P2: the ledger first
             if ($out) $sections[] = "LAST OUTCOMES (what the owner's campaigns and work produced; cite them, do not embellish):\n" . implode("\n", $out);
 
             $jr = [];
