@@ -300,7 +300,7 @@ class ImageIntelligenceService
         // A requested headline/caption/tagline is copy the customer wants WRITTEN — not an invented fact.
         $headlineRequested = (bool) preg_match('/\b(headline|caption|tagline|slogan|title text)\b/i', $userPrompt);
         $exactText = [];
-        if (preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{1,80})["\x{201C}\x{201D}]|\x27([^\x27]{2,80})\x27/u', $userPrompt, $m)) {
+        if (preg_match_all('/["\x{201C}\x{201D}]([^"\x{201C}\x{201D}]{1,80})["\x{201C}\x{201D}]|(?<![\p{L}\p{N}])[\x27\x{2018}]([^\x27\x{2018}\x{2019}]{2,80}?)[\x27\x{2019}](?![\p{L}\p{N}])/u', $userPrompt, $m)) {   // BANNER-1: "Chef Red's ... Chef Red's" is not a quote
             foreach (array_merge($m[1], $m[2]) as $t) { $t = trim($t); if ($t !== '') { $exactText[] = $t; } }
         }
 

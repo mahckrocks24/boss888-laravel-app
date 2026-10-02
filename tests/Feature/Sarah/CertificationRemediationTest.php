@@ -482,4 +482,37 @@ class CertificationRemediationTest extends TestCase
         $this->assertSame('business_site', $b['reason']);
         $this->assertSame('Golden Crust', $b['site']['name']);
     }
+
+    // ── BANNER-1 (2026-10-02): live Facebook banners carried leaked instructions, painted words and invented customers ──
+
+    public function test_banner1_apostrophes_are_not_quoted_copy(): void
+    {
+        $svc = app(\App\Core\ImageIntelligence\ImageIntelligenceService::class);
+        $m = new \ReflectionMethod($svc, 'resolveContext'); $m->setAccessible(true);
+        $exact = fn (string $p) => $m->invoke($svc, ['workspace_id' => self::WS3, 'user_prompt' => $p])['exact_text'] ?? [];
+        $this->assertSame([], $exact("A look into Chef Red's kitchen as he prepares Chef Red's signature dishes"));
+        $this->assertSame([], $exact("The chefs' table: it's open and we don't close early"));
+        $this->assertSame(['Open Late Friday'], $exact("Banner that says 'Open Late Friday' in gold"));
+        $this->assertSame(['Fall Menu'], $exact('Headline "Fall Menu" over the photo'));
+        $this->assertSame(['Taco Tuesday'], $exact("Chef Red's banner for \u{2018}Taco Tuesday\u{2019}"));
+    }
+
+    public function test_banner1_image_subject_drops_team_instructions(): void
+    {
+        $s = \App\Engines\Social\Services\SocialService::bannerSubject([
+            'title' => 'Behind the Scenes',
+            'description' => 'Draft the Facebook post with a banner: Behind the Scenes',
+            'user_request' => "A look into Chef Red's kitchen \u{2014} with a banner image in our brand. Part of the campaign \"Fall Culinary Delights\" for Chef Red. Offer: 10% off private dinners.",
+        ]);
+        $this->assertSame("Behind the Scenes. A look into Chef Red's kitchen", $s);
+        foreach (['Draft the', 'banner', 'Part of the campaign', 'Offer', '"', '10%'] as $leak) $this->assertStringNotContainsString($leak, $s);
+    }
+
+    public function test_banner1_copy_prompts_forbid_invented_customers(): void
+    {
+        $social = (new \ReflectionClass(\App\Engines\Social\Services\SocialService::class))->getConstant('SOCIAL_SYSTEM_PROMPT');
+        $this->assertMatchesRegularExpression('/Never invent customers, names, quotes, reviews, testimonials/', (string) $social);
+        $planner = file_get_contents(app_path('Core/Campaigns/CampaignPlanner.php'));
+        $this->assertSame(2, substr_count($planner, 'Never invent'));
+    }
 }

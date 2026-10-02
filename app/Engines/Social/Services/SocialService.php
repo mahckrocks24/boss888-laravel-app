@@ -160,12 +160,13 @@ class SocialService
         // executor, so plan gating, credits and the image intelligence (one-line text rule) apply exactly as for any image.
         if (empty($data['media']) && empty($data['article_id']) && in_array(($data['created_via'] ?? ''), ['sarah_chat', 'campaign'], true)) {   // CAMPAIGNS-1: campaign posts too
             $brief = trim(implode(' ', array_filter([(string) ($data['title'] ?? ''), (string) ($data['description'] ?? ''), (string) ($data['user_request'] ?? '')])));
+            $__imgBrief = self::bannerSubject($data);   // BANNER-1: what the picture shows, without the team's instructions
             if ($brief !== '' && preg_match('/\b(banner|image|graphic|visual|photo|picture|artwork|poster)\b/i', $brief)
                 && ! preg_match('/\b(no|without)\s+(an?\s+)?(image|photo|picture|visual|graphic|banner)\b/i', $brief)) {
                 $ar = preg_match('/\b(1:1|4:3|3:4|16:9|9:16|4:5|3:2|2:3)\b/', $brief, $am) ? $am[1] : '1:1';
                 try {
                     $res = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute($wsId, 'creative', 'generate_image',
-                        ['prompt' => mb_substr($brief, 0, 1800), 'aspect_ratio' => $ar, 'platform' => $platform, 'asset_type' => 'social_post', 'source' => 'social'] + (! empty($data['business_id']) ? ['business_id' => (int) $data['business_id']] : []), // BRAND-B0
+                        ['prompt' => mb_substr($__imgBrief !== '' ? $__imgBrief : $brief, 0, 1800), 'aspect_ratio' => $ar, 'platform' => $platform, 'asset_type' => 'social_post', 'source' => 'social'] + (! empty($data['business_id']) ? ['business_id' => (int) $data['business_id']] : []), // BRAND-B0
                         ['source' => 'agent', 'agent_id' => 'sarah']);
                     $url = $res['data']['url'] ?? $res['url'] ?? ($res['data']['data']['url'] ?? null);
                     if (is_string($url) && preg_match('#^https://#', $url)) {
@@ -431,7 +432,39 @@ class SocialService
         . 'Ground every choice in the supplied brand context (brand_name, brand_voice, colours, industry, audience) and any learned_patterns. '
         . 'Honour platform norms: instagram 138-150 characters sweet spot with emojis welcome, facebook 40-80 characters organic, '
         . 'linkedin 1300-3000 characters professional, twitter/x 280 characters hard limit, tiktok 100-300 characters. '
+        . 'Never invent customers, names, quotes, reviews, testimonials, results or numbers that are not in the facts you were given: a customer story with no real story supplied is written about the experience in general terms, naming and quoting nobody. '   // BANNER-1
         . 'Never mention LevelUp, AI, or that this was generated. Return ONLY JSON: {"content": "...", "hashtags": ["#tag", ...], "best_time": "e.g. Tue 6pm"}.';
+
+    /**
+     * BANNER-1 (2026-10-02): the subject of a post's banner image. Campaign and chat tasks carry instructions for the team
+     * ("Draft the Facebook post with a banner: …", "— with a banner image in our brand. Part of the campaign …", "Offer: …");
+     * sent to the image model they became painted words ("scens") and, through the quoted-text rule, a printed headline.
+     * Quote marks are removed too, so nothing in the subject reads as exact customer copy.
+     */
+    public static function bannerSubject(array $data): string
+    {
+        $parts = [];
+        foreach (['title', 'topic', 'description', 'user_request'] as $k) {
+            $v = trim((string) ($data[$k] ?? ''));
+            if ($v === '') continue;
+            $v = preg_replace([
+                '/\bDraft the\s+\w*\s*post(?:\s+with a banner)?\s*:\s*/iu',
+                '/\s*[\x{2014}\x{2013}-]\s*with a banner image in our brand\.?/iu',
+                '/\bwith a banner image in our brand\.?/iu',
+                '/\bPart of the campaign\b[^.]*\.?/iu',
+                '/\bOffer:\s*[^.]*\.?/iu',
+                '/\bTarget search:\s*[^.]*\.?/iu',
+                '/\b(?:Create|Make|Write|Draft|Design|Generate)\s+(?:an?|the)\s+(?:\w+\s+)?(?:post|banner|image|graphic|caption)\s+(?:for|about|on)\s+/iu',
+                '/["\x{201C}\x{201D}]/u',
+            ], ' ', $v);
+            $v = trim(preg_replace('/\s+/u', ' ', $v), " \t.:;-\x{2014}");
+            if ($v !== '' && ! in_array(mb_strtolower($v), array_map('mb_strtolower', $parts), true)) $parts[] = $v;
+        }
+        // the title is usually repeated inside the description: keep each sentence once
+        $seen = []; $out = [];
+        foreach (preg_split('/(?<=[.!?])\s+/u', implode('. ', $parts)) ?: [] as $sent) { $key = mb_strtolower(trim($sent, " .")); if ($key === '' || isset($seen[$key])) continue; $seen[$key] = true; $out[] = trim($sent); }
+        return trim(implode(' ', $out));
+    }
 
     public function aiGeneratePost(int $wsId, array $params): array
     {
