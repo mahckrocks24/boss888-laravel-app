@@ -340,7 +340,11 @@ use Illuminate\Support\Facades\Route;
                     && ! (preg_match('/\b(what|show|see|explain|details?|inside|exactly|steps?|in it|which|the plan itself|confus)/i', (string) $content) && ! preg_match('/\b(new|more|another|different|other|fresh) (campaign|idea)|\b(give|suggest|design|think of|come up with)\b[^.?!]{0,30}\b(campaign|idea)/i', (string) $content))) {   // CAMPAIGN-PREVIEW-1
                     try {
                         $__cbiz = null; $__lc = mb_strtolower((string) $content);
-                        foreach (\Illuminate\Support\Facades\DB::table('businesses')->where('workspace_id', (int) $wsId)->whereNull('deleted_at')->get(['id', 'name']) as $__b) { if (str_contains($__lc, mb_strtolower($__b->name))) { $__cbiz = (int) $__b->id; break; } }
+                        // REPORT-0072 (v2.37.20 probe): the ideas belong to the business the owner means - the same resolver as the rest of the turn
+                        // (short names like "Chef Red", the active business); a full-name match only as the old fallback. The ideas were saved
+                        // under the workspace default while their text was about Chef Red.
+                        try { $__bc = app(\App\Core\Business\BusinessContext::class)->resolve((int) $wsId, (string) $content); if (in_array($__bc['mode'] ?? '', ['named', 'sticky'], true) && ! empty($__bc['business_id'])) $__cbiz = (int) $__bc['business_id']; } catch (\Throwable) {}
+                        if (! $__cbiz) foreach (\Illuminate\Support\Facades\DB::table('businesses')->where('workspace_id', (int) $wsId)->whereNull('deleted_at')->get(['id', 'name']) as $__b) { if (str_contains($__lc, mb_strtolower($__b->name))) { $__cbiz = (int) $__b->id; break; } }
                         \Illuminate\Support\Facades\Cache::put('campaign-ideas-pending:' . (int) $wsId, 1, now()->addMinutes(4));
                         $__campaignTurn = true;   // this turn's reply introduces the ideas (see the directive below)
                         \App\Jobs\CampaignIdeasJob::dispatch((int) $wsId, $__cbiz, 'sarah_chat', mb_substr((string) $content, 0, 600), (int) $userMessageId)->delay(now()->addSeconds(6));
