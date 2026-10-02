@@ -54,7 +54,8 @@ class CampaignIdeasJob implements ShouldQueue
                     return;
                 }
                 // REPORT-0071: the owner asked - one real retry a minute later before saying anything; then an honest note with no promise the code does not keep
-                if ($this->attempts() < 2) { $this->release(60); return; }
+                $__k = 'cideas-try:' . $this->wsId . ':' . (int) ($this->afterMessageId ?? 0) . ':' . md5((string) $this->ask); Cache::add($__k, 0, 900);
+                if (Cache::increment($__k) < 2) { $this->release(60); return; }   // planner tries counted apart: waiting for Sarah's reply also counts as an attempt
                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($this->wsId, 'sarah', 'I couldn\'t finish the campaign ideas: my planning service isn\'t responding right now, even after a second try. Nothing was charged. Ask me again in a few minutes and I\'ll start over.', ['notification_type' => 'campaign_ideas_failed']);
                 return;
             }
