@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class ChatReplies
 {
-    public const TYPES = ['owner_fact', 'watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily', 'image_shown'];   // REGEN-2
+    public const TYPES = ['anticipation', 'owner_fact', 'watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily', 'image_shown'];   // REGEN-2
     /** Text after this marker is the plain-words version of a card: the app shows it, the web hides it next to the card. */
     public const APP_PART = "\n\n\u{200B}";
 
@@ -73,6 +73,8 @@ final class ChatReplies
                 $q['open_ids'] = array_values(array_filter($ids, fn ($i) => in_array($i, $open, true)));   // in the order Sarah numbered them
                 $q['all_ids'] = $ids;
                 return (bool) $q['open_ids'];
+            case 'anticipation':   // RFC-0023 P5: open while the proposal is undecided
+                return DB::table('anticipation_proposals')->where('id', (int) ($c['proposal_id'] ?? 0))->where('workspace_id', $wsId)->where('status', 'proposed')->exists();
             case 'owner_fact':   // RFC-0023 P1: open while any echoed fact still stands and the line is younger than two days
                 $ids = array_map('intval', (array) ($c['fact_ids'] ?? []));
                 return $ids && DB::table('owner_model_facts')->where('workspace_id', $wsId)->whereIn('id', $ids)->whereIn('status', ['proposed', 'confirmed'])->where('updated_at', '>=', now()->subDays(2))->exists();
@@ -320,6 +322,14 @@ final class ChatReplies
                         foreach ($q['open_drafts'] as $id) $sc->skipDraft($wsId, (int) $id);
                         return ['turn' => 'reply', 'note' => 'The owner will not send today\'s follow-ups. Acknowledge in one short line; the people stay in Clients.', 'verified' => []];
                     }
+                    return null;
+                }
+                case 'anticipation': {   // RFC-0023 P5 (DEC-0073 D2: the yes is the approval; TaskService keeps its own rules)
+                    $pid = (int) ($c['proposal_id'] ?? 0);
+                    $accept = $yes || preg_match('/^\s*(yes|yeah|yep|yup|sure|ok(ay)?|go|absolutely|definitely|of course)\b/i', $t) || preg_match('/\b(go ahead|do it|please do|let\'?s do it|sounds good|book it|write it|draft it|start on it|get started|on pace|ahead|behind|still (want|on))\b/i', $t);
+                    $decline = $no || preg_match('/^\s*(no|nope|nah)\b/i', $t) || preg_match('/\b(not now|not yet|skip( it)?|no thanks|maybe later|leave it|hold off|not this time|don\'?t bother|no need)\b/i', $t);
+                    if ($accept && ! $decline) { $note = app(\App\Core\Anticipation\AnticipationEngine::class)->decide($wsId, $pid, true, $userId, $t); return $note ? ['turn' => 'reply', 'note' => $note, 'verified' => []] : null; }
+                    if ($decline) { $note = app(\App\Core\Anticipation\AnticipationEngine::class)->decide($wsId, $pid, false, $userId, $t); return $note ? ['turn' => 'reply', 'note' => $note, 'verified' => []] : null; }
                     return null;
                 }
                 case 'owner_fact': {   // RFC-0023 P1

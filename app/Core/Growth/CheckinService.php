@@ -75,6 +75,9 @@ final class CheckinService
             ->where(fn ($q) => $q->where('local_date', $date)->orWhere('created_at', '>=', now()->subHours(20)))->exists()) return null;
         if (! $force) {
             if (\App\Core\Repair\RepairService::cooldownActive($wsId)) return null;   // RFC-0023 P3: quiet for 48 h after a strong frustration episode
+            // RFC-0023 P5 / DEC-0073 D4: once the Owner Model holds a confirmed fact about this owner and the anticipation engine is on, the generic
+            // afternoon/night questions stop (107 asked, 0 answered); the engine asks specific ones instead. The weekly feedback check stays.
+            if ($kind !== 'weekly_feedback' && \App\Core\Anticipation\AnticipationEngine::enabled() && DB::table('owner_model_facts')->where('workspace_id', $wsId)->where('status', 'confirmed')->exists()) return null;
             // never interrupt: the owner is talking with Sarah right now, or Sarah just posted something
             if (DB::table('agent_messages')->where('workspace_id', $wsId)->where('role', 'user')->where('created_at', '>=', now()->subMinutes(90))->exists()) return null;
             if (DB::table('agent_messages')->where('workspace_id', $wsId)->where('agent_slug', 'sarah')->where('role', 'agent')->where('created_at', '>=', now()->subMinutes(60))->exists()) return null;

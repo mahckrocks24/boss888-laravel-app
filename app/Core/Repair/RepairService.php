@@ -158,7 +158,10 @@ class RepairService
     {
         try {
             $used = (int) DB::table('credit_transactions')->where('workspace_id', $wsId)->where('reference_type', 'repair_goodwill')->where('type', 'credit')->where('created_at', '>=', now()->startOfMonth())->sum('amount');
-            $n = min(self::GOODWILL, self::GOODWILL_CAP - $used);
+            // DEC-0073 D1: cap = 10% of the plan's monthly credits when the workspace carries one, else the flat cap
+            $allow = (int) DB::table('workspaces')->where('id', $wsId)->value('monthly_credit_allowance');
+            $cap = $allow > 0 ? max(self::GOODWILL, (int) floor($allow * 0.10)) : self::GOODWILL_CAP;
+            $n = min(self::GOODWILL, $cap - $used);
             if ($n <= 0) return null;
             $this->credits->credit($wsId, $n, 'repair_goodwill', $episodeId, ['repair_log_id' => $episodeId, 'cause' => $cause['ref'] ?? null]);
             $bal = $this->credits->getBalance($wsId)['balance'] ?? null;
