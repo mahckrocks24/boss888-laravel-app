@@ -8760,6 +8760,7 @@ PROMPT;
     {
         $customerWords = $request;   // the customer's own words — the model's normalised sentence replaces $request below
         $base = ['plan' => ['kind' => $intent['intent'], 'credits' => 0], 'credits' => 0, 'applied' => 0, 'actions_applied' => 0];
+        $credits = app(\App\Core\Billing\CreditService::class);   // TPLCERT-1 (REPORT-0069 defect 4): the section_move branch debited through $credits without ever assigning it
         $normalized = trim((string) ($intent['normalized'] ?? ''));
         switch ($intent['intent']) {
             case 'clarify':

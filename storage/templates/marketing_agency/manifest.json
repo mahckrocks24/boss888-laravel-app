@@ -392,7 +392,7 @@
         "orange": {
             "type": "color",
             "label": "Orange",
-            "default": "#FF5C00"
+            "default": "#CC4A00"
         },
         "orange_deep": {
             "type": "color",

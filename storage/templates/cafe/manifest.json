@@ -331,7 +331,7 @@
         "terra": {
             "type": "color",
             "label": "Terracotta",
-            "default": "#D4622A"
+            "default": "#BD5725"
         },
         "terra_deep": {
             "type": "color",

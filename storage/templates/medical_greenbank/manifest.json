@@ -689,17 +689,17 @@
         "primary_color": {
             "type": "color",
             "label": "Primary Colour",
-            "default": "#2E8B77"
+            "default": "#2B816F"
         },
         "primary_deep": {
             "type": "color",
             "label": "Primary (Deep)",
-            "default": "#267262"
+            "default": "#236A5B"
         },
         "accent_color": {
             "type": "color",
             "label": "Accent Colour",
-            "default": "#2E8B77"
+            "default": "#2B816F"
         },
         "secondary_color": {
             "type": "color",

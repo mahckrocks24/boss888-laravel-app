@@ -18,6 +18,19 @@ final class ScaleGuard
 {
     public const ID = 'lu-scale-guard';
 
+    /** Version of overflowCss(); a served page whose baked guard carries another version gets the current one in its place (TPLCERT-1). */
+    public const OVERFLOW_V = '2026-10-02';
+
+    /** TPLCERT-1 (REPORT-0069 defect 1, Owner 2026-10-02 'fix all defects'): designs whose nav is position:fixed. On a phone their hero
+     *  starts at the top of the page (min-height:auto, align-items:flex-start) and the first line sits under the bar; the hero gets
+     *  room for the bar at serve time, so templates, previews and every published site are covered. */
+    public const FIXED_NAV = ['aesthetic_clinic', 'aesthetic_clinic_commercial', 'barbershop', 'beauty_salon', 'catering', 'chefred_signature', 'dental', 'ecommerce', 'gym', 'interior_design', 'medical_clinic', 'online_courses', 'real_estate_agency', 'resort', 'restaurant', 'retail_shop', 'short_term_rental', 'travel_agency', 'tutoring'];
+
+    public static function fixedNavCss(): string
+    {
+        return '<style id="lu-fixednav-guard">/* LU fixed-nav guard 2026-10-02 */@media (max-width:820px){html body [data-block="hero"][data-block][data-block]{padding-top:112px!important}html body [data-block="hero"][data-block][data-block] .hero-inner{padding-top:0!important}}</style>';
+    }
+
     /** The designs that need it: the original bases + the commercial clone. Variants are excluded on purpose. */
     public const SLUGS = ['aesthetic_clinic', 'aesthetic_clinic_commercial', 'architecture', 'automotive', 'barbershop', 'beauty_salon', 'cafe', 'catering',
         'childcare', 'construction', 'consulting', 'dental', 'ecommerce', 'event_venue', 'gym', 'home_services', 'hotel', 'interior_design', 'it_services',
@@ -106,24 +119,36 @@ final class ScaleGuard
      */
     public static function overflowCss(): string
     {
-        return '<style id="lu-overflow-guard">/* LU overflow guard 2026-09-20 */'
+        return '<style id="lu-overflow-guard" data-v="' . self::OVERFLOW_V . '">/* LU overflow guard 2026-09-20 */'
             . '[data-block] > *,[data-block] [class*="grid"] > *,[data-block] [class*="cards"] > *,[data-block] [class*="metric"],[data-block] form,[data-block] [class*="form"]{min-width:0}'
             . '[data-block] input,[data-block] select,[data-block] textarea{min-width:0;max-width:100%;box-sizing:border-box}'
             . '[data-block] [class*="metric"]{overflow-wrap:anywhere}'
             . '@media (max-width:640px){[data-block] [class*="metrics"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}'
             . '@media (max-width:820px){[data-block="hero"] figure,[data-block="hero"] .hero-shot{width:100%!important;max-width:100%!important;height:auto!important;min-width:0}}'
-            . '[data-block="gallery"] .grid{display:flex!important;flex-wrap:wrap!important;overflow:visible!important;gap:12px!important}'
+            . '[data-block="gallery"] .grid{display:flex!important;flex-wrap:wrap!important;overflow:visible!important;gap:12px!important;background:transparent!important}'   /* TPLCERT-1 defect 2: the grid painted its own background through the cells no photo filled */
             . '[data-block="gallery"] .grid>.cell{flex:1 1 calc(33.333% - 12px)!important;max-width:calc(33.333% - 8px)!important;min-width:0}'
+            . '@media (min-width:900px){[data-block="gallery"] .grid:has(>.cell:nth-child(4):last-child)>.cell,[data-block="gallery"] .grid:has(>.cell:nth-child(8):last-child)>.cell{flex-basis:calc(25% - 9px)!important;max-width:calc(25% - 9px)!important}}'   /* four or eight photos: a full row, not three and one */
             . '@media (max-width:640px){[data-block="gallery"] .grid>.cell{flex-basis:calc(50% - 6px)!important;max-width:calc(50% - 6px)!important}}'
+            . '.lu-more-menu{max-width:calc(100vw - 24px)!important;box-sizing:border-box}'
+            . '@media (max-width:820px){.lu-more-menu{min-width:0!important;width:auto!important;margin-right:14px!important}.lu-more-menu .lu-page-link{white-space:nowrap}}'   /* TPLCERT-1 defect 5b: on a phone ResponsiveNav lays the More menu out STATIC in the bar (button hidden), so its 200px min-width is what overflowed; content width there - serve-time cover for every export */   /* TPLCERT-1 defect 5b: the More menu never wider than the screen, for exports published before 2026-10-02 */
+            . '[data-block="footer"] .brand,[data-block="footer"] [class*="brand"],[data-block="footer"] [class*="logo"],[data-block="footer"] .col>*{overflow-wrap:anywhere;min-width:0}'   /* TPLCERT-1 defect 5a: a long one-word name spilled out of the footer column */
             . '</style>';
     }
 
     /** Inject once before </head> (or </body>): the overflow guard for every design, the scale tiers where the design needs them. */
     public static function inject(string $html, ?string $designSlug): string
     {
+        if (str_contains($html, 'id="lu-overflow-guard"') && !str_contains($html, 'id="lu-overflow-guard" data-v="' . self::OVERFLOW_V . '"')) {
+            $html = preg_replace('#<style id="lu-overflow-guard"[^>]*>.*?</style>#is', self::overflowCss(), $html, 1);   // TPLCERT-1: a guard baked into the export at an earlier version gives way to the current one
+        }
         if (!str_contains($html, 'id="lu-overflow-guard"')) {
             $og = self::overflowCss();
             if (stripos($html, '</head>') !== false) $html = preg_replace('#</head>#i', $og . '</head>', $html, 1); elseif (stripos($html, '</body>') !== false) $html = preg_replace('#</body>#i', $og . '</body>', $html, 1); else $html .= $og;
+        }
+        $s = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $designSlug));
+        if ($s !== '' && in_array($s, self::FIXED_NAV, true) && !str_contains($html, 'id="lu-fixednav-guard"')) {
+            $fn = self::fixedNavCss();
+            if (stripos($html, '</head>') !== false) $html = preg_replace('#</head>#i', $fn . '</head>', $html, 1); elseif (stripos($html, '</body>') !== false) $html = preg_replace('#</body>#i', $fn . '</body>', $html, 1); else $html .= $fn;
         }
         if (!self::applies($designSlug) || str_contains($html, 'id="' . self::ID . '"')) return $html;
         $css = self::heroOnly($designSlug) ? self::heroCss() : self::css();
