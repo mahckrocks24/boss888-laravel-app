@@ -1,805 +1,716 @@
 {
     "id": "news_channel",
-    "name": "News Channel",
-    "version": "1.0.0",
+    "name": "News — The Gulf Tribune",
     "industry": "news_channel",
-    "description": "Premium editorial template for online news channels — breaking ticker, hero story, top stories grid, category strips, opinion columnists, newsletter capture. Playfair Display + Inter typography, broadcast-style red accent.",
-    "variation": "editorial",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-05-09",
-    "industry_tags": [
-        "news",
-        "media",
-        "journalism",
-        "editorial",
-        "press",
-        "broadcast"
-    ],
-    "is_news_channel": true,
-    "social_fields": [
-        "facebook_url",
-        "twitter_url",
-        "instagram_url",
-        "linkedin_url",
-        "youtube_url",
-        "tiktok_url",
-        "telegram_url"
-    ],
-    "blog": {
-        "enabled": true,
-        "posts_per_page": 12,
-        "categories": [
-            "Politics",
-            "Business",
-            "Technology",
-            "Sports",
-            "Culture",
-            "World"
+    "description": "Local reporting, funded by readers",
+    "thumbnail": "/storage/builder-heroes/news_channel.jpg",
+    "category": "media",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "oxblood",
+        "type": "swiss",
+        "scale": "wide",
+        "radius": "square",
+        "archetypes": {
+            "nav": "ledge",
+            "hero": "cover",
+            "stats": "cards",
+            "offers": "column",
+            "story": "measure",
+            "gallery": "columns",
+            "steps": "zigzag",
+            "tst": "spotlight",
+            "contact": "floating",
+            "footer": "mega",
+            "proof": "strip",
+            "faq": "cards",
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "offers",
+            "proof",
+            "story",
+            "gallery",
+            "stats",
+            "steps",
+            "faq",
+            "tst",
+            "cta",
+            "contact"
         ]
-    },
-    "contact_form": {
-        "enabled": true
     },
     "blocks": [
         {
-            "id": "ticker",
-            "name": "Breaking Ticker",
-            "fields": [
-                "ticker_label",
-                "ticker_text"
-            ]
-        },
-        {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ]
+            "elements": {
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
+            }
         },
         {
             "id": "hero",
-            "name": "Hero Story",
-            "fields": [
-                "hero_category",
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_byline",
-                "hero_date",
-                "hero_reading_time",
-                "hero_cta",
-                "hero_image"
-            ]
+            "name": "Hero",
+            "elements": {
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
+            }
         },
         {
-            "id": "top_stories",
-            "name": "Top Stories Grid",
-            "fields": [
-                "stories_eyebrow",
-                "stories_title"
-            ]
+            "id": "stats",
+            "name": "Stats",
+            "elements": []
         },
         {
-            "id": "category_strips",
-            "name": "Category Strips",
-            "fields": [
-                "cat_1_name",
-                "cat_2_name",
-                "cat_3_name",
-                "cat_4_name"
-            ]
+            "id": "services",
+            "name": "Services",
+            "elements": {
+                "service_1_title": "#services .offer-card h3"
+            }
         },
         {
-            "id": "video",
-            "name": "Featured Video",
-            "fields": [
-                "video_eyebrow",
-                "video_title",
-                "video_subtitle",
-                "video_url"
-            ]
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
-            "id": "opinion",
-            "name": "Opinion / Editorial",
-            "fields": [
-                "opinion_eyebrow",
-                "opinion_title"
-            ]
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
         },
         {
-            "id": "newsletter",
-            "name": "Newsletter CTA",
-            "fields": [
-                "newsletter_eyebrow",
-                "newsletter_title",
-                "newsletter_subtitle",
-                "newsletter_cta"
-            ]
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
         },
         {
             "id": "contact",
             "name": "Contact",
-            "fields": [
-                "contact_email",
-                "contact_phone"
-            ]
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "footer_text",
-                "footer_legal"
-            ]
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Channel Name",
+            "label": "Business Name",
             "default": "The Gulf Tribune"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Independent news from the Gulf · Dubai"
+            "default": "Local reporting, funded by readers"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "The Gulf Tribune — premium online news channel covering politics, business, technology, sports, and culture across the Gulf region."
+            "default": "An independent local newsroom funded by members, publishing council coverage, investigations and a daily briefing."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://thegulftribune.com"
-        },
-        "og_locale": {
-            "type": "text",
-            "label": "OG Locale",
-            "default": "en_US"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
             "label": "OG Image",
             "default": "/storage/builder-heroes/news_channel.jpg"
         },
-        "primary_color": {
-            "type": "color",
-            "label": "Primary (red)",
-            "default": "#C41E3A"
-        },
-        "secondary_color": {
-            "type": "color",
-            "label": "Secondary (navy)",
-            "default": "#1A1A2E"
-        },
-        "accent_color": {
-            "type": "color",
-            "label": "Accent (amber)",
-            "default": "#F5A623"
-        },
-        "bg_color": {
-            "type": "color",
-            "label": "Background",
-            "default": "#F8F8F8"
-        },
-        "ink_color": {
-            "type": "color",
-            "label": "Body Text",
-            "default": "#1F1F2A"
-        },
-        "muted_color": {
-            "type": "color",
-            "label": "Muted Text",
-            "default": "#6B6B78"
-        },
-        "border_color": {
-            "type": "color",
-            "label": "Border",
-            "default": "#E4E4ED"
-        },
-        "ticker_label": {
+        "og_locale": {
             "type": "text",
-            "label": "Ticker Label",
-            "default": "BREAKING"
+            "label": "OG Locale",
+            "default": "en_GB"
         },
-        "ticker_text": {
-            "type": "text",
-            "label": "Ticker Text",
-            "default": "Markets close higher on tech rally  ·  Cabinet approves new digital economy law  ·  Dubai metro extension breaks ground  ·  COP31 negotiators reach climate-finance deal  ·  Champions League draw confirmed"
-        },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Subscribe"
-        },
-        "nav_link_1": {
-            "type": "text",
-            "label": "Nav Link 1",
-            "default": "Politics"
-        },
-        "nav_link_2": {
-            "type": "text",
-            "label": "Nav Link 2",
-            "default": "Business"
-        },
-        "nav_link_3": {
-            "type": "text",
-            "label": "Nav Link 3",
-            "default": "Technology"
-        },
-        "nav_link_4": {
-            "type": "text",
-            "label": "Nav Link 4",
-            "default": "Sports"
-        },
-        "nav_link_5": {
-            "type": "text",
-            "label": "Nav Link 5",
-            "default": "Culture"
-        },
-        "nav_link_6": {
-            "type": "text",
-            "label": "Nav Link 6",
-            "default": "Opinion"
-        },
-        "hero_category": {
-            "type": "text",
-            "label": "Hero Category Tag",
-            "default": "POLITICS"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "LIVE COVERAGE"
+            "default": "Independent · Member funded"
         },
         "hero_title": {
             "type": "text",
-            "label": "Hero Title",
-            "default": "Cabinet votes to overhaul digital economy framework"
+            "label": "Hero Heading",
+            "default": "Somebody has to sit through the council meetings"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "The reforms — among the most significant in a decade — set new licensing rules, AI-governance standards, and protections for cross-border data flows. Implementation begins in Q3."
-        },
-        "hero_byline": {
-            "type": "text",
-            "label": "Hero Byline",
-            "default": "By Layla Al-Mansoori"
-        },
-        "hero_date": {
-            "type": "text",
-            "label": "Hero Date",
-            "default": "2 hours ago"
-        },
-        "hero_reading_time": {
-            "type": "text",
-            "label": "Hero Reading Time",
-            "default": "6 min read"
+            "label": "Hero Subheading",
+            "default": "Four reporters, no proprietor, no advertising-led coverage. Funded by readers and accountable to them, with our accounts published every year."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Hero CTA",
-            "default": "Read the full story"
+            "label": "Hero Button",
+            "default": "Become a member"
+        },
+        "hero_cta_2": {
+            "type": "text",
+            "label": "Hero Secondary Button",
+            "default": "Read the latest"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/news_channel.jpg"
         },
-        "stories_eyebrow": {
+        "offers_title": {
             "type": "text",
-            "label": "Top Stories Eyebrow",
-            "default": "TODAY'S COVERAGE"
+            "label": "Offers Heading",
+            "default": "What we publish"
         },
-        "stories_title": {
+        "offers_subtitle": {
             "type": "text",
-            "label": "Top Stories Title",
-            "default": "Top Stories"
+            "label": "Offers Subheading",
+            "default": "Everything is free to read. Membership pays for it, it does not unlock it."
         },
-        "story_1_category": {
+        "story_eyebrow": {
             "type": "text",
-            "label": "Story 1 Category",
-            "default": "BUSINESS"
+            "label": "Story Eyebrow",
+            "default": "Our story"
         },
-        "story_1_title": {
+        "story_title": {
             "type": "text",
-            "label": "Story 1 Headline",
-            "default": "Markets close higher as tech sector leads regional rally"
+            "label": "Story Heading",
+            "default": "No paywall, because the people who most need this cannot pay"
         },
-        "story_1_excerpt": {
+        "story_body": {
             "type": "text",
-            "label": "Story 1 Excerpt",
-            "default": "Strong earnings from cloud and semiconductor names lift the index for a third straight session."
+            "label": "Story Body",
+            "default": "A paywall would make the finances easier and the journalism pointless. Council reporting matters most to the people least able to subscribe. So everything stays free, members pay for it voluntarily, and we publish our accounts each year so you can see exactly where the money went."
         },
-        "story_1_byline": {
+        "gallery_title": {
             "type": "text",
-            "label": "Story 1 Byline",
-            "default": "Karim Hashem"
+            "label": "Gallery Heading",
+            "default": "From the newsroom"
         },
-        "story_1_date": {
+        "steps_title": {
             "type": "text",
-            "label": "Story 1 Date",
-            "default": "3 hours ago"
+            "label": "Process Heading",
+            "default": "How we work"
         },
-        "story_1_reading_time": {
+        "testimonials_title": {
             "type": "text",
-            "label": "Story 1 Read Time",
-            "default": "4 min"
+            "label": "Testimonials Heading",
+            "default": "What people say"
         },
-        "story_1_image": {
-            "type": "image",
-            "label": "Story 1 Image",
-            "default": "/storage/template-images/news_channel/gen-01-a-newsroom-of-desks-with-monitors-at-nig.jpg"
-        },
-        "story_2_category": {
-            "type": "text",
-            "label": "Story 2 Category",
-            "default": "TECHNOLOGY"
-        },
-        "story_2_title": {
-            "type": "text",
-            "label": "Story 2 Headline",
-            "default": "AI safety regulators to publish new audit framework next month"
-        },
-        "story_2_excerpt": {
-            "type": "text",
-            "label": "Story 2 Excerpt",
-            "default": "The framework will require independent evaluations for high-risk frontier models."
-        },
-        "story_2_byline": {
-            "type": "text",
-            "label": "Story 2 Byline",
-            "default": "Sara Bouchareb"
-        },
-        "story_2_date": {
-            "type": "text",
-            "label": "Story 2 Date",
-            "default": "5 hours ago"
-        },
-        "story_2_reading_time": {
-            "type": "text",
-            "label": "Story 2 Read Time",
-            "default": "7 min"
-        },
-        "story_2_image": {
-            "type": "image",
-            "label": "Story 2 Image",
-            "default": "/storage/template-images/news_channel/gen-04-a-control-room-with-a-wall-of-screens.jpg"
-        },
-        "story_3_category": {
-            "type": "text",
-            "label": "Story 3 Category",
-            "default": "SPORTS"
-        },
-        "story_3_title": {
-            "type": "text",
-            "label": "Story 3 Headline",
-            "default": "Champions League draw confirms heavyweight quarter-finals"
-        },
-        "story_3_excerpt": {
-            "type": "text",
-            "label": "Story 3 Excerpt",
-            "default": "First legs to be played in early April; broadcasters confirm regional kick-off times."
-        },
-        "story_3_byline": {
-            "type": "text",
-            "label": "Story 3 Byline",
-            "default": "Tarek Younes"
-        },
-        "story_3_date": {
-            "type": "text",
-            "label": "Story 3 Date",
-            "default": "6 hours ago"
-        },
-        "story_3_reading_time": {
-            "type": "text",
-            "label": "Story 3 Read Time",
-            "default": "3 min"
-        },
-        "story_3_image": {
-            "type": "image",
-            "label": "Story 3 Image",
-            "default": "/storage/template-images/news_channel/gen-07-a-city-skyline-at-dawn-from-a-rooftop.jpg"
-        },
-        "story_4_category": {
-            "type": "text",
-            "label": "Story 4 Category",
-            "default": "CULTURE"
-        },
-        "story_4_title": {
-            "type": "text",
-            "label": "Story 4 Headline",
-            "default": "Sharjah Biennial opens with focus on diaspora archives"
-        },
-        "story_4_excerpt": {
-            "type": "text",
-            "label": "Story 4 Excerpt",
-            "default": "Forty-three artists from twenty-one countries are showing across five venues."
-        },
-        "story_4_byline": {
-            "type": "text",
-            "label": "Story 4 Byline",
-            "default": "Noor Al-Khatib"
-        },
-        "story_4_date": {
-            "type": "text",
-            "label": "Story 4 Date",
-            "default": "Yesterday"
-        },
-        "story_4_reading_time": {
-            "type": "text",
-            "label": "Story 4 Read Time",
-            "default": "5 min"
-        },
-        "story_4_image": {
-            "type": "image",
-            "label": "Story 4 Image",
-            "default": "/storage/template-images/news_channel/gen-08-a-press-pass-and-a-notebook-on-a-desk.jpg"
-        },
-        "story_5_category": {
-            "type": "text",
-            "label": "Story 5 Category",
-            "default": "POLITICS"
-        },
-        "story_5_title": {
-            "type": "text",
-            "label": "Story 5 Headline",
-            "default": "Foreign ministers convene ahead of UN climate summit"
-        },
-        "story_5_excerpt": {
-            "type": "text",
-            "label": "Story 5 Excerpt",
-            "default": "Working groups will draft a joint position on the loss-and-damage fund this week."
-        },
-        "story_5_byline": {
-            "type": "text",
-            "label": "Story 5 Byline",
-            "default": "Yousef Daher"
-        },
-        "story_5_date": {
-            "type": "text",
-            "label": "Story 5 Date",
-            "default": "Yesterday"
-        },
-        "story_5_reading_time": {
-            "type": "text",
-            "label": "Story 5 Read Time",
-            "default": "8 min"
-        },
-        "story_5_image": {
-            "type": "image",
-            "label": "Story 5 Image",
-            "default": "/storage/template-images/news_channel/gen-09-a-satellite-dish-on-a-roof-against-a-clo.jpg"
-        },
-        "story_6_category": {
-            "type": "text",
-            "label": "Story 6 Category",
-            "default": "BUSINESS"
-        },
-        "story_6_title": {
-            "type": "text",
-            "label": "Story 6 Headline",
-            "default": "Logistics group lists $1.2bn green-bond tranche"
-        },
-        "story_6_excerpt": {
-            "type": "text",
-            "label": "Story 6 Excerpt",
-            "default": "Proceeds will fund electrified fleets and warehouse solar across the GCC."
-        },
-        "story_6_byline": {
-            "type": "text",
-            "label": "Story 6 Byline",
-            "default": "Karim Hashem"
-        },
-        "story_6_date": {
-            "type": "text",
-            "label": "Story 6 Date",
-            "default": "2 days ago"
-        },
-        "story_6_reading_time": {
-            "type": "text",
-            "label": "Story 6 Read Time",
-            "default": "4 min"
-        },
-        "story_6_image": {
-            "type": "image",
-            "label": "Story 6 Image",
-            "default": "/storage/template-images/news_channel/gen-10-a-microphone-with-a-station-flag-on-a-st.jpg"
-        },
-        "cat_1_name": {
-            "type": "text",
-            "label": "Category 1 Name",
-            "default": "Politics"
-        },
-        "cat_1_tagline": {
-            "type": "text",
-            "label": "Category 1 Tagline",
-            "default": "Power, policy, and the people who shape them."
-        },
-        "cat_2_name": {
-            "type": "text",
-            "label": "Category 2 Name",
-            "default": "Business"
-        },
-        "cat_2_tagline": {
-            "type": "text",
-            "label": "Category 2 Tagline",
-            "default": "Markets, deals, and the regional economy."
-        },
-        "cat_3_name": {
-            "type": "text",
-            "label": "Category 3 Name",
-            "default": "Technology"
-        },
-        "cat_3_tagline": {
-            "type": "text",
-            "label": "Category 3 Tagline",
-            "default": "AI, startups, and the fight for digital sovereignty."
-        },
-        "cat_4_name": {
-            "type": "text",
-            "label": "Category 4 Name",
-            "default": "Culture"
-        },
-        "cat_4_tagline": {
-            "type": "text",
-            "label": "Category 4 Tagline",
-            "default": "Art, ideas, and the stories behind the headlines."
-        },
-        "video_eyebrow": {
-            "type": "text",
-            "label": "Video Eyebrow",
-            "default": "WATCH"
-        },
-        "video_title": {
-            "type": "text",
-            "label": "Video Title",
-            "default": "Live: Special address from the Council of Ministers"
-        },
-        "video_subtitle": {
-            "type": "text",
-            "label": "Video Subtitle",
-            "default": "Coverage begins at 19:00 GST. Watch on the Tribune live channel."
-        },
-        "video_url": {
-            "type": "url",
-            "label": "Video URL",
-            "default": ""
-        },
-        "video_thumbnail": {
-            "type": "image",
-            "label": "Video Thumbnail",
-            "default": "/storage/template-images/news_channel/gen-11-an-outside-broadcast-van-with-the-mast-u.jpg"
-        },
-        "opinion_eyebrow": {
-            "type": "text",
-            "label": "Opinion Eyebrow",
-            "default": "OPINION"
-        },
-        "opinion_title": {
-            "type": "text",
-            "label": "Opinion Title",
-            "default": "From Our Columnists"
-        },
-        "opinion_1_name": {
-            "type": "text",
-            "label": "Columnist 1 Name",
-            "default": "Dr. Hala Saleh"
-        },
-        "opinion_1_role": {
-            "type": "text",
-            "label": "Columnist 1 Role",
-            "default": "Foreign Affairs"
-        },
-        "opinion_1_title": {
-            "type": "text",
-            "label": "Op-ed 1 Title",
-            "default": "The case for a Gulf-led mediation track on Sudan"
-        },
-        "opinion_1_excerpt": {
-            "type": "text",
-            "label": "Op-ed 1 Excerpt",
-            "default": "Two years into the conflict, the diplomatic vacuum is becoming the story."
-        },
-        "opinion_1_image": {
-            "type": "image",
-            "label": "Columnist 1 Photo",
-            "default": "/storage/template-images/news_channel/gen-02-a-broadcast-camera-on-a-pedestal-in-a-st.jpg"
-        },
-        "opinion_2_name": {
-            "type": "text",
-            "label": "Columnist 2 Name",
-            "default": "Tariq El-Amin"
-        },
-        "opinion_2_role": {
-            "type": "text",
-            "label": "Columnist 2 Role",
-            "default": "Markets"
-        },
-        "opinion_2_title": {
-            "type": "text",
-            "label": "Op-ed 2 Title",
-            "default": "Why the next IPO wave will be quieter — and bigger"
-        },
-        "opinion_2_excerpt": {
-            "type": "text",
-            "label": "Op-ed 2 Excerpt",
-            "default": "Strategic listings, not retail FOMO, are reshaping the regional pipeline."
-        },
-        "opinion_2_image": {
-            "type": "image",
-            "label": "Columnist 2 Photo",
-            "default": "/storage/template-images/news_channel/gen-05-a-stack-of-printed-pages-and-a-red-pen.jpg"
-        },
-        "newsletter_eyebrow": {
-            "type": "text",
-            "label": "Newsletter Eyebrow",
-            "default": "STAY INFORMED"
-        },
-        "newsletter_title": {
-            "type": "text",
-            "label": "Newsletter Title",
-            "default": "The Morning Brief"
-        },
-        "newsletter_subtitle": {
-            "type": "text",
-            "label": "Newsletter Subtitle",
-            "default": "Get the day's headlines in your inbox before 8am — Sunday through Thursday."
-        },
-        "newsletter_cta": {
-            "type": "text",
-            "label": "Newsletter CTA",
-            "default": "Subscribe"
-        },
-        "newsletter_input_placeholder": {
+        "contact_title": {
             "type": "text",
-            "label": "Email Placeholder",
-            "default": "your@email.com"
+            "label": "Contact Heading",
+            "default": "Get in touch, or join"
         },
-        "contact_email": {
+        "contact_subtitle": {
             "type": "text",
-            "label": "Newsroom Email",
-            "default": "newsroom@thegulftribune.com"
+            "label": "Contact Subheading",
+            "default": "Tips are read by a reporter. We can take documents securely if you need us to."
         },
         "contact_phone": {
             "type": "text",
-            "label": "Newsroom Phone",
-            "default": "+971 4 000 0000"
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
         },
         "contact_address": {
             "type": "text",
             "label": "Address",
-            "default": "Dubai Media City, Dubai, UAE"
+            "default": "12 Example Street, London"
         },
-        "footer_about": {
+        "contact_hours": {
             "type": "text",
-            "label": "Footer About",
-            "default": "Independent reporting for the Gulf and the broader region. Trusted, fearless, on the ground."
+            "label": "Opening Hours",
+            "default": "Newsroom Mon–Fri 8–7 · Briefing daily at 7am"
         },
-        "footer_text": {
+        "contact_cta": {
             "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 The Gulf Tribune. All rights reserved."
+            "label": "Contact Button",
+            "default": "Become a member"
+        },
+        "footer_blurb": {
+            "type": "text",
+            "label": "Footer Blurb",
+            "default": "Local reporting, funded by readers"
+        },
+        "footer_col_1": {
+            "type": "text",
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
+        },
+        "footer_col_2": {
+            "type": "text",
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
         },
         "footer_legal": {
             "type": "text",
-            "label": "Footer Legal Links",
-            "default": "Privacy · Terms · Editorial Standards · Contact"
+            "label": "Footer Legal",
+            "default": "All rights reserved."
         },
-        "facebook_url": {
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Latest"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "Investigations"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "About us"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Join"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Become a member"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "4"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Full-time reporters"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "0"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Paywalls"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "Annual"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Published accounts"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "Every"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Council meeting attended"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "The daily briefing"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "What happened here yesterday, in your inbox before seven."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "Free"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Council coverage"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Every full council and planning committee, reported by someone in the room."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "Free"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Investigations"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Long-form work, usually months, funded specifically by members."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "Free"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Data & documents"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "The FOI responses and datasets behind our stories, published in full."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "Free"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Membership"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "What pays the reporters. Cancel any month, no paywall either way."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "From £7/mo"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Corporate supporter"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "For local businesses. Named, never given editorial influence."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "From £120/mo"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Everything free to read — membership funds, it does not unlock"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Full accounts published annually, including every salary band"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "A corrections policy, applied publicly, with the original left visible"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/template-images/news_channel/gen-01-a-newsroom-of-desks-with-monitors-at-nig.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/template-images/news_channel/gen-02-a-broadcast-camera-on-a-pedestal-in-a-st.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/template-images/news_channel/gen-03-a-presenter-desk-with-the-studio-lights.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/template-images/news_channel/gen-04-a-control-room-with-a-wall-of-screens.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
+            "default": "/storage/template-images/news_channel/gen-05-a-stack-of-printed-pages-and-a-red-pen.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/news_channel/gen-06-a-radio-booth-with-a-microphone-and-a-cl.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "We turn up"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "To the meetings, the inquests and the planning committees. Every one."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "We show our working"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Documents, data and FOI responses published alongside the story."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "We correct in public"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Errors are corrected at the top of the piece, with the original visible."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "We publish the accounts"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Every year, in full, including what we pay ourselves."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "They were the only outlet in the room when the planning decision went through."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Member"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "The FOI documents published alongside the story changed how I read the story."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Member"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "Seven pounds a month for actual local reporting. It is the easiest money I spend."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Member"
+        },
+        "social_facebook": {
             "type": "url",
             "label": "Facebook",
             "default": ""
         },
-        "twitter_url": {
-            "type": "url",
-            "label": "X / Twitter",
-            "default": ""
-        },
-        "instagram_url": {
+        "social_instagram": {
             "type": "url",
             "label": "Instagram",
             "default": ""
         },
-        "linkedin_url": {
+        "social_linkedin": {
             "type": "url",
-            "label": "LinkedIn",
+            "label": "Linkedin",
             "default": ""
         },
-        "youtube_url": {
+        "social_x": {
             "type": "url",
-            "label": "YouTube",
+            "label": "X",
             "default": ""
         },
-        "tiktok_url": {
-            "type": "url",
-            "label": "TikTok",
-            "default": ""
-        },
-        "telegram_url": {
-            "type": "url",
-            "label": "Telegram",
-            "default": ""
-        },
-        "blog_section_title": {
+        "proof_1": {
             "type": "text",
-            "label": "Blog Section Title",
-            "default": "From The Tribune"
+            "label": "Reason 1",
+            "default": "Four full-time reporters"
         },
-        "blog_1_title": {
+        "faq_1_q": {
             "type": "text",
-            "label": "Blog 1 Title",
-            "default": "Behind the cabinet vote: how the digital-economy bill came together"
+            "label": "FAQ 1 Question",
+            "default": "Who funds the reporting?"
         },
-        "blog_1_excerpt": {
+        "faq_1_a": {
             "type": "text",
-            "label": "Blog 1 Excerpt",
-            "default": "Fourteen drafts, twenty-eight stakeholder meetings, and one final all-night session."
+            "label": "FAQ 1 Answer",
+            "default": "Readers, through membership. Corporate supporters are listed by name and have no say in what is covered. The accounts are published every year."
         },
-        "blog_1_category": {
+        "proof_2": {
             "type": "text",
-            "label": "Blog 1 Category",
-            "default": "Politics"
+            "label": "Reason 2",
+            "default": "No paywall"
         },
-        "blog_1_image": {
-            "type": "image",
-            "label": "Blog 1 Image",
-            "default": "/storage/template-images/news_channel/gen-03-a-presenter-desk-with-the-studio-lights.jpg"
-        },
-        "blog_2_title": {
+        "faq_2_q": {
             "type": "text",
-            "label": "Blog 2 Title",
-            "default": "What the new AI-audit rules mean for regional founders"
+            "label": "FAQ 2 Question",
+            "default": "Is there a paywall?"
         },
-        "blog_2_excerpt": {
+        "faq_2_a": {
             "type": "text",
-            "label": "Blog 2 Excerpt",
-            "default": "Five concrete things to do this quarter — and one thing you can safely ignore."
+            "label": "FAQ 2 Answer",
+            "default": "No. Every story is free to read. Membership pays for the reporting and comes with the briefing and the members' meetings, not a locked door."
         },
-        "blog_2_category": {
+        "proof_3": {
             "type": "text",
-            "label": "Blog 2 Category",
-            "default": "Technology"
+            "label": "Reason 3",
+            "default": "Accounts published annually"
         },
-        "blog_2_image": {
-            "type": "image",
-            "label": "Blog 2 Image",
-            "default": "/storage/template-images/news_channel/gen-06-a-radio-booth-with-a-microphone-and-a-cl.jpg"
-        },
-        "blog_3_title": {
+        "faq_3_q": {
             "type": "text",
-            "label": "Blog 3 Title",
-            "default": "Inside the green-bond market: how regional issuers won institutional flow"
+            "label": "FAQ 3 Question",
+            "default": "How do you handle corrections?"
         },
-        "blog_3_excerpt": {
+        "faq_3_a": {
             "type": "text",
-            "label": "Blog 3 Excerpt",
-            "default": "Spreads tightened, books were oversubscribed, and the marquee names paid less than expected."
+            "label": "FAQ 3 Answer",
+            "default": "In public, on the story, with the date and what changed. A corrections page lists every one."
         },
-        "blog_3_category": {
+        "proof_4": {
             "type": "text",
-            "label": "Blog 3 Category",
-            "default": "Business"
+            "label": "Reason 4",
+            "default": "Every council meeting attended"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "Do you cover every council meeting?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "Every full council and every planning committee, in person. The notes are published the same evening, before the minutes are."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Fund the reporting you read"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "From seven pounds a month. No paywall for anyone; a newsroom that turns up for everyone."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Become a member"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#8C3A3F"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#733034"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#8C3A3F"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#1A1113"
         }
     },
-    "color_roles": {
-        "accent": "primary_color",
-        "accent_deep": null,
-        "secondary": "secondary_color"
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
     },
-    "palette_scheme": "light",
-    "palette_roles": {
-        "primary_color": "primary",
-        "secondary_color": "secondary",
-        "accent_color": "accent",
-        "bg_color": "bg",
-        "ink_color": "text",
-        "muted_color": "muted",
-        "border_color": "line"
+    "blog": {
+        "enabled": true,
+        "index": "/blog",
+        "post": "/blog/{slug}"
+    },
+    "color_roles": {
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

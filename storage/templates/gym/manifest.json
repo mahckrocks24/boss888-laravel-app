@@ -1,403 +1,123 @@
 {
     "id": "gym",
-    "name": "Fitness & Athletic Club",
-    "version": "1.0.0",
+    "name": "Gym — FORGE Athletic Club",
     "industry": "gym",
-    "description": "Bold, high-energy template for gyms, personal training studios, and athletic clubs. Dark atmosphere, electric orange accents, condensed athletic type — built to convert training intent and class sign-ups.",
-    "variation": "luxury",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-04-18",
+    "description": "A gym with coaches on the floor",
+    "thumbnail": "/storage/builder-heroes/gym.jpg",
+    "category": "fitness",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "copper",
+        "type": "swiss",
+        "scale": "tall",
+        "radius": "hair",
+        "archetypes": {
+            "nav": "topbar",
+            "hero": "stage",
+            "stats": "bigband",
+            "offers": "tile",
+            "story": "inset",
+            "gallery": "columns",
+            "steps": "zigzag",
+            "tst": "feature",
+            "contact": "stack",
+            "footer": "mast",
+            "proof": "strip",
+            "faq": "accordion",
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "stats",
+            "offers",
+            "proof",
+            "story",
+            "steps",
+            "gallery",
+            "tst",
+            "cta",
+            "faq",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ],
             "elements": {
-                "logo": ".nav-logo",
-                "links": ".nav-links",
-                "link": ".nav-links li a",
-                "primary_button": "a.nav-cta",
-                "burger": ".nav-burger"
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
             }
         },
         {
             "id": "hero",
-            "name": "Hero Section",
-            "fields": [
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_cta",
-                "hero_cta_secondary",
-                "hero_image",
-                "hero_trust_badge"
-            ],
+            "name": "Hero",
             "elements": {
-                "eyebrow": ".hero-eyebrow",
-                "heading": "h1.hero-h1",
-                "subheading": "p.hero-sub",
-                "primary_button": "a.btn-primary",
-                "secondary_button": "a.btn-ghost",
-                "image": ".hero-media img",
-                "overlay": ".hero-overlay",
-                "trust_badge": ".hero-trust"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
             "id": "stats",
-            "name": "Stats Strip",
-            "fields": [
-                "stat_1_value",
-                "stat_1_label",
-                "stat_2_value",
-                "stat_2_label",
-                "stat_3_value",
-                "stat_3_label",
-                "stat_4_value",
-                "stat_4_label"
-            ],
-            "elements": {
-                "item": ".stat-item",
-                "number": ".stat-num",
-                "label": ".stat-label"
-            }
+            "name": "Stats",
+            "elements": []
         },
         {
             "id": "services",
-            "name": "Programs & Classes",
-            "fields": [
-                "services_eyebrow",
-                "services_title",
-                "services_intro",
-                "service_1_title",
-                "service_1_text",
-                "service_1_tag_1",
-                "service_1_tag_2",
-                "service_1_tag_3",
-                "service_2_title",
-                "service_2_text",
-                "service_2_tag_1",
-                "service_2_tag_2",
-                "service_2_tag_3",
-                "service_3_title",
-                "service_3_text",
-                "service_3_tag_1",
-                "service_3_tag_2",
-                "service_3_tag_3",
-                "service_4_title",
-                "service_4_text",
-                "service_4_tag_1",
-                "service_4_tag_2",
-                "service_4_tag_3",
-                "service_5_title",
-                "service_5_text",
-                "service_5_tag_1",
-                "service_5_tag_2",
-                "service_5_tag_3",
-                "service_6_title",
-                "service_6_text",
-                "service_6_tag_1",
-                "service_6_tag_2",
-                "service_6_tag_3"
-            ],
+            "name": "Services",
             "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".services-intro",
-                "grid": ".service-grid",
-                "card": ".service-card",
-                "number": ".service-num",
-                "card_title": ".service-title",
-                "card_description": ".service-desc",
-                "tag": ".service-tag"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "trainers",
-            "name": "Trainers",
-            "fields": [
-                "trainers_eyebrow",
-                "trainers_title",
-                "trainers_intro",
-                "trainer_1_name",
-                "trainer_1_specialty",
-                "trainer_1_bio",
-                "trainer_1_image",
-                "trainer_2_name",
-                "trainer_2_specialty",
-                "trainer_2_bio",
-                "trainer_2_image",
-                "trainer_3_name",
-                "trainer_3_specialty",
-                "trainer_3_bio",
-                "trainer_3_image",
-                "trainer_4_name",
-                "trainer_4_specialty",
-                "trainer_4_bio",
-                "trainer_4_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".trainers-intro",
-                "grid": ".trainer-grid",
-                "card": ".trainer-card",
-                "image": ".trainer-card img",
-                "trainer_name": ".trainer-name",
-                "trainer_specialty": ".trainer-specialty",
-                "trainer_bio": ".trainer-bio",
-                "overlay": ".trainer-overlay"
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
-            "id": "schedule",
-            "name": "Class Schedule",
-            "fields": [
-                "schedule_eyebrow",
-                "schedule_title",
-                "schedule_intro",
-                "session_1_time",
-                "session_1_name",
-                "session_1_trainer",
-                "session_2_time",
-                "session_2_name",
-                "session_2_trainer",
-                "session_3_time",
-                "session_3_name",
-                "session_3_trainer",
-                "session_4_time",
-                "session_4_name",
-                "session_4_trainer",
-                "session_5_time",
-                "session_5_name",
-                "session_5_trainer",
-                "session_6_time",
-                "session_6_name",
-                "session_6_trainer"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".schedule-intro",
-                "table": ".schedule-list",
-                "row": ".schedule-row",
-                "time": ".schedule-time",
-                "class_name": ".schedule-class",
-                "trainer": ".schedule-trainer"
-            }
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
         },
         {
-            "id": "transformations",
-            "name": "Transformations Gallery",
-            "fields": [
-                "trans_eyebrow",
-                "trans_title",
-                "trans_intro",
-                "trans_1_name",
-                "trans_1_result",
-                "trans_1_image",
-                "trans_2_name",
-                "trans_2_result",
-                "trans_2_image",
-                "trans_3_name",
-                "trans_3_result",
-                "trans_3_image",
-                "trans_4_name",
-                "trans_4_result",
-                "trans_4_image",
-                "trans_5_name",
-                "trans_5_result",
-                "trans_5_image",
-                "trans_6_name",
-                "trans_6_result",
-                "trans_6_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".trans-intro",
-                "grid": ".trans-grid",
-                "item": ".trans-item",
-                "image": ".trans-item img",
-                "caption": ".trans-caption",
-                "caption_name": ".trans-name",
-                "caption_result": ".trans-result",
-                "overlay": ".trans-overlay"
-            }
-        },
-        {
-            "id": "membership",
-            "name": "Membership Pricing",
-            "fields": [
-                "pricing_eyebrow",
-                "pricing_title",
-                "pricing_intro",
-                "plan_1_name",
-                "plan_1_price",
-                "plan_1_period",
-                "plan_1_feature_1",
-                "plan_1_feature_2",
-                "plan_1_feature_3",
-                "plan_1_feature_4",
-                "plan_1_cta",
-                "plan_2_name",
-                "plan_2_price",
-                "plan_2_period",
-                "plan_2_feature_1",
-                "plan_2_feature_2",
-                "plan_2_feature_3",
-                "plan_2_feature_4",
-                "plan_2_cta",
-                "plan_3_name",
-                "plan_3_price",
-                "plan_3_period",
-                "plan_3_feature_1",
-                "plan_3_feature_2",
-                "plan_3_feature_3",
-                "plan_3_feature_4",
-                "plan_3_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".pricing-intro",
-                "grid": ".pricing-grid",
-                "card": ".pricing-card",
-                "plan_name": ".plan-name",
-                "plan_price": ".plan-price",
-                "plan_period": ".plan-period",
-                "feature": ".plan-feature",
-                "primary_button": ".plan-cta"
-            }
+            "id": "process",
+            "name": "Process",
+            "elements": []
         },
         {
             "id": "testimonials",
-            "name": "Member Stories",
-            "fields": [
-                "testimonials_eyebrow",
-                "testimonials_title",
-                "testimonial_1_quote",
-                "testimonial_1_author",
-                "testimonial_1_achievement",
-                "testimonial_2_quote",
-                "testimonial_2_author",
-                "testimonial_2_achievement",
-                "testimonial_3_quote",
-                "testimonial_3_author",
-                "testimonial_3_achievement"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "track": ".testimonial-track",
-                "slide": ".testimonial-slide",
-                "quote": ".testimonial-quote",
-                "author": ".testimonial-author",
-                "achievement": ".testimonial-achievement",
-                "dot": ".testimonial-dot"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book a Class",
-            "fields": [
-                "booking_title",
-                "booking_intro",
-                "booking_cta"
-            ],
-            "elements": {
-                "heading": "h2.booking-h2",
-                "intro": ".booking-intro",
-                "form": ".booking-form",
-                "submit_button": "button.booking-submit",
-                "date_input": "input[name=\"preferred_date\"]",
-                "time_slot": ".booking-slot"
-            }
+            "name": "Testimonials",
+            "elements": []
         },
         {
             "id": "contact",
-            "name": "Contact & Location",
-            "fields": [
-                "contact_eyebrow",
-                "contact_title",
-                "contact_intro",
-                "contact_email",
-                "contact_phone",
-                "contact_address",
-                "contact_hours",
-                "contact_form_title",
-                "form_submit_text",
-                "form_success_message"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".contact-intro",
-                "info_label": ".contact-item-label",
-                "info_value": ".contact-item-value",
-                "form": ".contact-form",
-                "form_field": ".form-field",
-                "form_label": ".form-field label",
-                "form_input": ".form-field input, .form-field textarea, .form-field select",
-                "primary_button": "button.form-submit",
-                "success_message": "#form-success"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Blog Teaser",
-            "fields": [
-                "blog_eyebrow",
-                "blog_title",
-                "blog_intro",
-                "blog_post_1_title",
-                "blog_post_1_excerpt",
-                "blog_post_1_url",
-                "blog_post_2_title",
-                "blog_post_2_excerpt",
-                "blog_post_2_url",
-                "blog_post_3_title",
-                "blog_post_3_excerpt",
-                "blog_post_3_url",
-                "blog_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2",
-                "intro": ".section-subtitle",
-                "grid": ".blog-grid",
-                "card": ".blog-card",
-                "post_title": ".blog-card h3",
-                "post_excerpt": ".blog-card p",
-                "cta": ".blog-cta a"
-            },
-            "config": {
-                "enabled": true
-            }
+            "name": "Contact",
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "business_name",
-                "footer_tagline",
-                "footer_text",
-                "social_instagram",
-                "social_tiktok",
-                "social_youtube"
-            ],
-            "elements": {
-                "logo": ".footer-logo",
-                "tagline": ".footer-tagline",
-                "links": ".footer-links",
-                "link": ".footer-links li a",
-                "social": ".footer-social",
-                "social_link": ".footer-social a",
-                "copy": ".footer-copy"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
@@ -409,17 +129,17 @@
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Strength · Conditioning · Dubai"
+            "default": "A gym with coaches on the floor"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "FORGE — a premium athletic club in Dubai offering group classes, personal training, Olympic lifting, Hyrox programming, and a members-only recovery suite."
+            "default": "A strength and conditioning gym with coached sessions, no lock-in contract and a floor that is never oversold."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://forge.ae"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
@@ -429,1036 +149,573 @@
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Book a Class"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Athletic Club · Dubai Marina · Opened 2014"
+            "default": "Strength · Conditioning · Coached"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Train<br><em>like you mean it.</em>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "A coach on the floor at every hour we are open"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "A members-only athletic club in Dubai Marina. Strength, conditioning, Olympic lifting, Hyrox programming — coached in small groups by athletes who actually compete."
+            "label": "Hero Subheading",
+            "default": "Membership capped so the racks are free, coaching included rather than sold separately, and a rolling contract you can leave any month."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Start Training"
+            "label": "Hero Button",
+            "default": "Book a trial"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "See Schedule"
+            "label": "Hero Secondary Button",
+            "default": "See the timetable"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/gym.jpg"
         },
-        "hero_trust_badge": {
+        "offers_title": {
             "type": "text",
-            "label": "Hero Trust Badge",
-            "default": "1,200+ Members · 40+ Classes Weekly · Dubai Marina"
+            "label": "Offers Heading",
+            "default": "Membership and coaching"
         },
-        "stat_1_value": {
+        "offers_subtitle": {
             "type": "text",
-            "label": "Stat 1 Value",
-            "default": "1,200+"
+            "label": "Offers Subheading",
+            "default": "One membership. Coaching is included, not an upsell at the door."
         },
-        "stat_1_label": {
+        "story_eyebrow": {
             "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Active Members"
+            "label": "Story Eyebrow",
+            "default": "Our story"
         },
-        "stat_2_value": {
+        "story_title": {
             "type": "text",
-            "label": "Stat 2 Value",
-            "default": "14"
+            "label": "Story Heading",
+            "default": "We cap membership, which costs us money on purpose"
         },
-        "stat_2_label": {
+        "story_body": {
             "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Coaches"
+            "label": "Story Body",
+            "default": "A gym is only as good as the odds of getting on a rack at six in the evening. We cap the membership at a number that keeps those odds high, publish the current figure, and close the list when we hit it. It is the least commercial decision we have made and the reason people stay."
         },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "42"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Classes / Week"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "10"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Years in Dubai"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Programs Eyebrow",
-            "default": "Programs"
-        },
-        "services_title": {
-            "type": "html",
-            "label": "Programs Title",
-            "default": "The work<br><em>we put in.</em>"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Programs Intro",
-            "default": "Six programmes running daily. Small classes, capped attendance, coached by an athlete who has competed at the level they are teaching."
-        },
-        "service_1_title": {
-            "type": "text",
-            "label": "Program 1 Title",
-            "default": "Strength & Conditioning"
-        },
-        "service_1_text": {
-            "type": "text",
-            "label": "Program 1 Text",
-            "default": "Capacity-based strength blocks built around barbell, dumbbell, and accessory work. For members who want to get measurably stronger, with a test week every twelve."
-        },
-        "service_1_tag_1": {
-            "type": "text",
-            "label": "Program 1 Tag 1",
-            "default": "Barbell"
-        },
-        "service_1_tag_2": {
-            "type": "text",
-            "label": "Program 1 Tag 2",
-            "default": "Strength Blocks"
-        },
-        "service_1_tag_3": {
-            "type": "text",
-            "label": "Program 1 Tag 3",
-            "default": "Capacity Tests"
-        },
-        "service_2_title": {
-            "type": "text",
-            "label": "Program 2 Title",
-            "default": "HIIT & Conditioning"
-        },
-        "service_2_text": {
-            "type": "text",
-            "label": "Program 2 Text",
-            "default": "Fifty-minute metabolic conditioning — rowers, assault bikes, sled work, and loaded carries. High output, low injury risk."
-        },
-        "service_2_tag_1": {
-            "type": "text",
-            "label": "Program 2 Tag 1",
-            "default": "Rowers"
-        },
-        "service_2_tag_2": {
-            "type": "text",
-            "label": "Program 2 Tag 2",
-            "default": "Metcon"
-        },
-        "service_2_tag_3": {
-            "type": "text",
-            "label": "Program 2 Tag 3",
-            "default": "Sleds"
-        },
-        "service_3_title": {
-            "type": "text",
-            "label": "Program 3 Title",
-            "default": "Hyrox Prep"
-        },
-        "service_3_text": {
-            "type": "text",
-            "label": "Program 3 Text",
-            "default": "Dedicated Hyrox programming — eight stations, race-specific pacing, wall-ball and farmer-carry technique, and simulation races on Saturdays."
-        },
-        "service_3_tag_1": {
-            "type": "text",
-            "label": "Program 3 Tag 1",
-            "default": "Race Prep"
-        },
-        "service_3_tag_2": {
-            "type": "text",
-            "label": "Program 3 Tag 2",
-            "default": "Pacing"
-        },
-        "service_3_tag_3": {
-            "type": "text",
-            "label": "Program 3 Tag 3",
-            "default": "Simulation"
-        },
-        "service_4_title": {
-            "type": "text",
-            "label": "Program 4 Title",
-            "default": "Olympic Lifting"
-        },
-        "service_4_text": {
-            "type": "text",
-            "label": "Program 4 Text",
-            "default": "Snatch and clean & jerk, taught from first principles. Twice-weekly classes with two coaches on the platform at all times."
-        },
-        "service_4_tag_1": {
-            "type": "text",
-            "label": "Program 4 Tag 1",
-            "default": "Snatch"
-        },
-        "service_4_tag_2": {
-            "type": "text",
-            "label": "Program 4 Tag 2",
-            "default": "Clean & Jerk"
-        },
-        "service_4_tag_3": {
-            "type": "text",
-            "label": "Program 4 Tag 3",
-            "default": "Technique"
-        },
-        "service_5_title": {
-            "type": "text",
-            "label": "Program 5 Title",
-            "default": "Personal Training"
-        },
-        "service_5_text": {
-            "type": "text",
-            "label": "Program 5 Text",
-            "default": "One-to-one coaching in sixty-minute sessions, with programming written between sessions. Body comp goals, return-to-training, pre- and post-natal."
-        },
-        "service_5_tag_1": {
-            "type": "text",
-            "label": "Program 5 Tag 1",
-            "default": "1-on-1"
-        },
-        "service_5_tag_2": {
-            "type": "text",
-            "label": "Program 5 Tag 2",
-            "default": "Programmed"
-        },
-        "service_5_tag_3": {
-            "type": "text",
-            "label": "Program 5 Tag 3",
-            "default": "Goal-Based"
-        },
-        "service_6_title": {
-            "type": "text",
-            "label": "Program 6 Title",
-            "default": "Recovery & Mobility"
-        },
-        "service_6_text": {
-            "type": "text",
-            "label": "Program 6 Text",
-            "default": "Forty-five minute mobility and breathwork classes, plus a members-only recovery suite — sauna, cold plunge, and NormaTec compression."
-        },
-        "service_6_tag_1": {
-            "type": "text",
-            "label": "Program 6 Tag 1",
-            "default": "Sauna"
-        },
-        "service_6_tag_2": {
-            "type": "text",
-            "label": "Program 6 Tag 2",
-            "default": "Cold Plunge"
-        },
-        "service_6_tag_3": {
-            "type": "text",
-            "label": "Program 6 Tag 3",
-            "default": "Mobility"
-        },
-        "trainers_eyebrow": {
-            "type": "text",
-            "label": "Trainers Eyebrow",
-            "default": "Coaches"
-        },
-        "trainers_title": {
-            "type": "html",
-            "label": "Trainers Title",
-            "default": "Coached by<br><em>athletes.</em>"
-        },
-        "trainers_intro": {
-            "type": "text",
-            "label": "Trainers Intro",
-            "default": "Every coach on our floor still competes — powerlifting, Hyrox, weightlifting, or endurance. You learn from people who still do the thing, not people who used to."
-        },
-        "trainer_1_name": {
-            "type": "text",
-            "label": "Trainer 1 Name",
-            "default": "Marcus Idowu"
-        },
-        "trainer_1_specialty": {
-            "type": "text",
-            "label": "Trainer 1 Specialty",
-            "default": "Head of S&C"
-        },
-        "trainer_1_bio": {
-            "type": "text",
-            "label": "Trainer 1 Bio",
-            "default": "10 years coaching, former international rugby player. Specialises in return-from-injury and strength progression."
-        },
-        "trainer_1_image": {
+        "story_image": {
             "type": "image",
-            "label": "Trainer 1 Image",
-            "default": "/storage/template-images/gym/gen-01-a-squat-rack-with-plates-stacked-and-cha.jpg"
-        },
-        "trainer_2_name": {
-            "type": "text",
-            "label": "Trainer 2 Name",
-            "default": "Nadia Petrov"
-        },
-        "trainer_2_specialty": {
-            "type": "text",
-            "label": "Trainer 2 Specialty",
-            "default": "Olympic Lifting"
-        },
-        "trainer_2_bio": {
-            "type": "text",
-            "label": "Trainer 2 Bio",
-            "default": "National-team weightlifter, 2-x European masters bronze. Teaches snatch and clean & jerk from scratch."
-        },
-        "trainer_2_image": {
-            "type": "image",
-            "label": "Trainer 2 Image",
+            "label": "Story Image",
             "default": "/storage/template-images/gym/gen-03-rowing-machines-by-a-large-window.jpg"
         },
-        "trainer_3_name": {
+        "gallery_title": {
             "type": "text",
-            "label": "Trainer 3 Name",
-            "default": "Jordan Walker"
+            "label": "Gallery Heading",
+            "default": "The floor"
         },
-        "trainer_3_specialty": {
+        "steps_title": {
             "type": "text",
-            "label": "Trainer 3 Specialty",
-            "default": "Hyrox & Conditioning"
-        },
-        "trainer_3_bio": {
-            "type": "text",
-            "label": "Trainer 3 Bio",
-            "default": "Hyrox Pro division, sub-60 finisher. Writes all of FORGE's Hyrox programming and simulation-race days."
-        },
-        "trainer_3_image": {
-            "type": "image",
-            "label": "Trainer 3 Image",
-            "default": "/storage/template-images/gym/gen-05-a-boxing-bag-and-gloves-on-a-hook.jpg"
-        },
-        "trainer_4_name": {
-            "type": "text",
-            "label": "Trainer 4 Name",
-            "default": "Priya Menon"
-        },
-        "trainer_4_specialty": {
-            "type": "text",
-            "label": "Trainer 4 Specialty",
-            "default": "Mobility & Recovery"
-        },
-        "trainer_4_bio": {
-            "type": "text",
-            "label": "Trainer 4 Bio",
-            "default": "Yoga and FRC instructor. Runs all mobility classes and post-training breathwork sessions."
-        },
-        "trainer_4_image": {
-            "type": "image",
-            "label": "Trainer 4 Image",
-            "default": "/storage/template-images/gym/gen-07-the-front-desk-with-towels-and-a-water-f.jpg"
-        },
-        "schedule_eyebrow": {
-            "type": "text",
-            "label": "Schedule Eyebrow",
-            "default": "Today's Schedule"
-        },
-        "schedule_title": {
-            "type": "html",
-            "label": "Schedule Title",
-            "default": "What's on<br><em>the floor.</em>"
-        },
-        "schedule_intro": {
-            "type": "text",
-            "label": "Schedule Intro",
-            "default": "Typical Wednesday — full weekly schedule in the member app. Classes capped at twelve."
-        },
-        "session_1_time": {
-            "type": "text",
-            "label": "Session 1 Time",
-            "default": "06:00"
-        },
-        "session_1_name": {
-            "type": "text",
-            "label": "Session 1 Name",
-            "default": "Strength — Lower Body"
-        },
-        "session_1_trainer": {
-            "type": "text",
-            "label": "Session 1 Trainer",
-            "default": "Marcus"
-        },
-        "session_2_time": {
-            "type": "text",
-            "label": "Session 2 Time",
-            "default": "07:15"
-        },
-        "session_2_name": {
-            "type": "text",
-            "label": "Session 2 Name",
-            "default": "HIIT / Conditioning"
-        },
-        "session_2_trainer": {
-            "type": "text",
-            "label": "Session 2 Trainer",
-            "default": "Jordan"
-        },
-        "session_3_time": {
-            "type": "text",
-            "label": "Session 3 Time",
-            "default": "12:00"
-        },
-        "session_3_name": {
-            "type": "text",
-            "label": "Session 3 Name",
-            "default": "Olympic Lifting"
-        },
-        "session_3_trainer": {
-            "type": "text",
-            "label": "Session 3 Trainer",
-            "default": "Nadia"
-        },
-        "session_4_time": {
-            "type": "text",
-            "label": "Session 4 Time",
-            "default": "17:30"
-        },
-        "session_4_name": {
-            "type": "text",
-            "label": "Session 4 Name",
-            "default": "Hyrox Simulation"
-        },
-        "session_4_trainer": {
-            "type": "text",
-            "label": "Session 4 Trainer",
-            "default": "Jordan"
-        },
-        "session_5_time": {
-            "type": "text",
-            "label": "Session 5 Time",
-            "default": "19:00"
-        },
-        "session_5_name": {
-            "type": "text",
-            "label": "Session 5 Name",
-            "default": "Strength — Upper Body"
-        },
-        "session_5_trainer": {
-            "type": "text",
-            "label": "Session 5 Trainer",
-            "default": "Marcus"
-        },
-        "session_6_time": {
-            "type": "text",
-            "label": "Session 6 Time",
-            "default": "20:15"
-        },
-        "session_6_name": {
-            "type": "text",
-            "label": "Session 6 Name",
-            "default": "Mobility & Breathwork"
-        },
-        "session_6_trainer": {
-            "type": "text",
-            "label": "Session 6 Trainer",
-            "default": "Priya"
-        },
-        "trans_eyebrow": {
-            "type": "text",
-            "label": "Trans Eyebrow",
-            "default": "Transformations"
-        },
-        "trans_title": {
-            "type": "html",
-            "label": "Trans Title",
-            "default": "Members,<br><em>doing the work.</em>"
-        },
-        "trans_intro": {
-            "type": "text",
-            "label": "Trans Intro",
-            "default": "Six months or more. Programmed training, eating well, showing up. These are our members."
-        },
-        "trans_1_name": {
-            "type": "text",
-            "label": "Trans 1 Name",
-            "default": "Khalid M."
-        },
-        "trans_1_result": {
-            "type": "text",
-            "label": "Trans 1 Result",
-            "default": "+28kg Deadlift in 4 months"
-        },
-        "trans_1_image": {
-            "type": "image",
-            "label": "Trans 1 Image",
-            "default": "/storage/template-images/gym/gen-02-a-turf-lane-with-a-sled-at-the-end.jpg"
-        },
-        "trans_2_name": {
-            "type": "text",
-            "label": "Trans 2 Name",
-            "default": "Elena T."
-        },
-        "trans_2_result": {
-            "type": "text",
-            "label": "Trans 2 Result",
-            "default": "Sub-70 Hyrox Pro, Dubai 2025"
-        },
-        "trans_2_image": {
-            "type": "image",
-            "label": "Trans 2 Image",
-            "default": "/storage/template-images/gym/gen-04-kettlebells-in-a-row-by-weight.jpg"
-        },
-        "trans_3_name": {
-            "type": "text",
-            "label": "Trans 3 Name",
-            "default": "Omar B."
-        },
-        "trans_3_result": {
-            "type": "text",
-            "label": "Trans 3 Result",
-            "default": "−12kg body fat, +5kg muscle"
-        },
-        "trans_3_image": {
-            "type": "image",
-            "label": "Trans 3 Image",
-            "default": "/storage/template-images/gym/gen-06-a-stretching-area-with-mats-rolled-up.jpg"
-        },
-        "trans_4_name": {
-            "type": "text",
-            "label": "Trans 4 Name",
-            "default": "Sophia A."
-        },
-        "trans_4_result": {
-            "type": "text",
-            "label": "Trans 4 Result",
-            "default": "Return to training, post-natal"
-        },
-        "trans_4_image": {
-            "type": "image",
-            "label": "Trans 4 Image",
-            "default": "/storage/template-images/gym/gen-08-a-squat-rack-with-plates-stacked-and-cha.jpg"
-        },
-        "trans_5_name": {
-            "type": "text",
-            "label": "Trans 5 Name",
-            "default": "Imran K."
-        },
-        "trans_5_result": {
-            "type": "text",
-            "label": "Trans 5 Result",
-            "default": "First 100kg clean"
-        },
-        "trans_5_image": {
-            "type": "image",
-            "label": "Trans 5 Image",
-            "default": "/storage/template-images/gym/gen-09-a-dumbbell-rack-running-along-a-mirror.jpg"
-        },
-        "trans_6_name": {
-            "type": "text",
-            "label": "Trans 6 Name",
-            "default": "Yasmin H."
-        },
-        "trans_6_result": {
-            "type": "text",
-            "label": "Trans 6 Result",
-            "default": "Pull-up from scratch, 12 weeks"
-        },
-        "trans_6_image": {
-            "type": "image",
-            "label": "Trans 6 Image",
-            "default": "/storage/template-images/gym/gen-10-a-spin-studio-with-stationary-bikes-in.jpg"
-        },
-        "pricing_eyebrow": {
-            "type": "text",
-            "label": "Pricing Eyebrow",
-            "default": "Membership"
-        },
-        "pricing_title": {
-            "type": "html",
-            "label": "Pricing Title",
-            "default": "Simple<br><em>memberships.</em>"
-        },
-        "pricing_intro": {
-            "type": "text",
-            "label": "Pricing Intro",
-            "default": "Month-to-month, no fixed contracts. Freeze any time for up to thirty days."
-        },
-        "plan_1_name": {
-            "type": "text",
-            "label": "Plan 1 Name",
-            "default": "Classes"
-        },
-        "plan_1_price": {
-            "type": "text",
-            "label": "Plan 1 Price",
-            "default": "AED 850"
-        },
-        "plan_1_period": {
-            "type": "text",
-            "label": "Plan 1 Period",
-            "default": "/ month"
-        },
-        "plan_1_feature_1": {
-            "type": "text",
-            "label": "Plan 1 Feature 1",
-            "default": "Unlimited group classes"
-        },
-        "plan_1_feature_2": {
-            "type": "text",
-            "label": "Plan 1 Feature 2",
-            "default": "All 42 weekly sessions"
-        },
-        "plan_1_feature_3": {
-            "type": "text",
-            "label": "Plan 1 Feature 3",
-            "default": "Member app access"
-        },
-        "plan_1_feature_4": {
-            "type": "text",
-            "label": "Plan 1 Feature 4",
-            "default": "No contract — freeze any time"
-        },
-        "plan_1_cta": {
-            "type": "text",
-            "label": "Plan 1 CTA",
-            "default": "Start Classes"
-        },
-        "plan_2_name": {
-            "type": "text",
-            "label": "Plan 2 Name",
-            "default": "Full Access"
-        },
-        "plan_2_price": {
-            "type": "text",
-            "label": "Plan 2 Price",
-            "default": "AED 1,650"
-        },
-        "plan_2_period": {
-            "type": "text",
-            "label": "Plan 2 Period",
-            "default": "/ month"
-        },
-        "plan_2_feature_1": {
-            "type": "text",
-            "label": "Plan 2 Feature 1",
-            "default": "Everything in Classes"
-        },
-        "plan_2_feature_2": {
-            "type": "text",
-            "label": "Plan 2 Feature 2",
-            "default": "Recovery suite + sauna + plunge"
-        },
-        "plan_2_feature_3": {
-            "type": "text",
-            "label": "Plan 2 Feature 3",
-            "default": "InBody monthly assessment"
-        },
-        "plan_2_feature_4": {
-            "type": "text",
-            "label": "Plan 2 Feature 4",
-            "default": "Open gym 24/7"
-        },
-        "plan_2_cta": {
-            "type": "text",
-            "label": "Plan 2 CTA",
-            "default": "Join Full Access"
-        },
-        "plan_3_name": {
-            "type": "text",
-            "label": "Plan 3 Name",
-            "default": "Coached"
-        },
-        "plan_3_price": {
-            "type": "text",
-            "label": "Plan 3 Price",
-            "default": "AED 3,200"
-        },
-        "plan_3_period": {
-            "type": "text",
-            "label": "Plan 3 Period",
-            "default": "/ month"
-        },
-        "plan_3_feature_1": {
-            "type": "text",
-            "label": "Plan 3 Feature 1",
-            "default": "Everything in Full Access"
-        },
-        "plan_3_feature_2": {
-            "type": "text",
-            "label": "Plan 3 Feature 2",
-            "default": "4× personal training sessions"
-        },
-        "plan_3_feature_3": {
-            "type": "text",
-            "label": "Plan 3 Feature 3",
-            "default": "Custom programming"
-        },
-        "plan_3_feature_4": {
-            "type": "text",
-            "label": "Plan 3 Feature 4",
-            "default": "Quarterly goal review"
-        },
-        "plan_3_cta": {
-            "type": "text",
-            "label": "Plan 3 CTA",
-            "default": "Start Coached"
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Members"
+            "label": "Process Heading",
+            "default": "Starting here"
         },
         "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Members,<br><em>in their words.</em>"
-        },
-        "testimonial_1_quote": {
             "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "FORGE is the first gym I've walked into where the coaches actually know what they're doing — I've got stronger and stayed healthy at the same time, for the first time in my training life."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Khalid M."
-        },
-        "testimonial_1_achievement": {
-            "type": "text",
-            "label": "Testimonial 1 Achievement",
-            "default": "+28kg Deadlift"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "I came in for Hyrox prep and left with a whole new way of training. Jordan's programming got me to sub-70 in my first Pro heat — and I enjoyed every session."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Elena T."
-        },
-        "testimonial_2_achievement": {
-            "type": "text",
-            "label": "Testimonial 2 Achievement",
-            "default": "Sub-70 Hyrox Pro"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Four PT sessions a month with Nadia, and my Olympic lifts now actually feel good. It's the difference between a gym and a proper athletic club."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Omar B."
-        },
-        "testimonial_3_achievement": {
-            "type": "text",
-            "label": "Testimonial 3 Achievement",
-            "default": "First 100kg Clean"
-        },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "Book a<br><em>class.</em>"
-        },
-        "booking_intro": {
-            "type": "text",
-            "label": "Booking Intro",
-            "default": "Non-members welcome — your first class is on us. Pick a day, a time, and a programme."
-        },
-        "booking_cta": {
-            "type": "text",
-            "label": "Booking CTA",
-            "default": "Book a Class"
-        },
-        "booking_display": {
-            "type": "text",
-            "label": "Booking Display",
-            "default": ""
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
+            "label": "Testimonials Heading",
+            "default": "What people say"
         },
         "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Drop in or<br><em>message us.</em>"
-        },
-        "contact_intro": {
             "type": "text",
-            "label": "Contact Intro",
-            "default": "Or walk in — we're open from 5:30am and the front desk is always happy to show you around the floor."
+            "label": "Contact Heading",
+            "default": "Book a free trial session"
         },
-        "contact_email": {
+        "contact_subtitle": {
             "type": "text",
-            "label": "Contact Email",
-            "default": "hello@forge.ae"
+            "label": "Contact Subheading",
+            "default": "Trials are at peak times deliberately, so you see the gym at its busiest."
         },
         "contact_phone": {
             "type": "text",
-            "label": "Contact Phone",
-            "default": "+971 4 000 0000"
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
         },
         "contact_address": {
             "type": "text",
-            "label": "Contact Address",
-            "default": "Bay Square, Business Bay, Dubai"
+            "label": "Address",
+            "default": "12 Example Street, London"
         },
         "contact_hours": {
             "type": "text",
             "label": "Opening Hours",
-            "default": "Open 5:30am – 10pm  ·  7 days"
+            "default": "Mon–Fri 6–9.30 · Sat–Sun 8–4"
         },
-        "contact_form_title": {
-            "type": "html",
-            "label": "Form Title",
-            "default": "Send us<br><em>a message.</em>"
-        },
-        "form_submit_text": {
+        "contact_cta": {
             "type": "text",
-            "label": "Submit Button",
-            "default": "Send Message →"
+            "label": "Contact Button",
+            "default": "Book a trial"
         },
-        "form_success_message": {
+        "footer_blurb": {
             "type": "text",
-            "label": "Success Message",
-            "default": "✓ Thanks — we'll get back to you within one working day."
+            "label": "Footer Blurb",
+            "default": "A gym with coaches on the floor"
         },
-        "footer_tagline": {
+        "footer_col_1": {
             "type": "text",
-            "label": "Footer Tagline",
-            "default": "Strength, conditioning, and mobility — coached properly."
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
         },
-        "footer_text": {
+        "footer_col_2": {
             "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 FORGE Athletic Club. All rights reserved."
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
         },
-        "social_instagram": {
-            "type": "url",
-            "label": "Instagram URL",
-            "default": "#"
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
         },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok URL",
-            "default": "#"
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Membership"
         },
-        "social_youtube": {
-            "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "Coaching"
         },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk (Text)",
-            "default": "#F5F5F5"
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
         },
-        "chalk_soft": {
-            "type": "color",
-            "label": "Chalk Soft",
-            "default": "#C8C8C8"
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Timetable"
         },
-        "carbon": {
-            "type": "color",
-            "label": "Carbon (Background)",
-            "default": "#0D0D0D"
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Join"
         },
-        "carbon_soft": {
-            "type": "color",
-            "label": "Carbon Soft",
-            "default": "#161616"
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book a trial"
         },
-        "carbon_card": {
-            "type": "color",
-            "label": "Carbon Card",
-            "default": "#1E1E1E"
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "Capped"
         },
-        "orange": {
-            "type": "color",
-            "label": "Electric Orange",
-            "default": "#FF4D00"
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Membership, published monthly"
         },
-        "orange_deep": {
-            "type": "color",
-            "label": "Orange Deep",
-            "default": "#CC3D00"
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "Every hour"
         },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#8A8A8A"
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "A coach on the floor"
         },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#2A2A2A"
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "6 wks"
         },
-        "accent_muted": {
-            "type": "color",
-            "label": "Accent Muted",
-            "default": "#FFB08C"
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Programme review cycle"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "Rolling"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Monthly contract"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Full membership"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "All hours, all classes, and a coach on the floor throughout."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£62/mo"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Off-peak"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Weekdays between ten and four, when the floor is quietest."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£42/mo"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Personal training"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "One to one, with a written programme reviewed every six weeks."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£48/session"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Small group strength"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Four people, one coach, twice weekly, same group each time."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "£96/mo"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Beginner course"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Six weeks, from never having lifted, to training on your own."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "£180"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Day pass"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "Full access including classes. No sales conversation attached."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "£14"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Membership capped and the number published monthly"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "A qualified coach on the floor every open hour"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Rolling monthly contract — cancel any month, no fee"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/template-images/gym/gen-01-a-squat-rack-with-plates-stacked-and-cha.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/template-images/gym/gen-02-a-turf-lane-with-a-sled-at-the-end.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/template-images/gym/gen-03-rowing-machines-by-a-large-window.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/template-images/gym/gen-04-kettlebells-in-a-row-by-weight.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
+            "default": "/storage/template-images/gym/gen-05-a-boxing-bag-and-gloves-on-a-hook.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/gym/gen-06-a-stretching-area-with-mats-rolled-up.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Come and look"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "A free session at the time you would actually train, not a quiet Tuesday."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Movement assessment"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Forty minutes with a coach, before you are asked to join."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "A written programme"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Yours to keep, whether or not you become a member."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Reviewed every six weeks"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Included in membership. Progress gets measured or it is guesswork."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "First gym where a coach corrected my deadlift without being asked and without being smug."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Member"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "They closed the membership list rather than oversell the floor. That told me everything."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Member"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "Cancelled for three months when work got hard. Rejoined with no fee and no lecture."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Member"
         },
         "social_facebook": {
             "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
         },
         "social_linkedin": {
             "type": "url",
-            "label": "LinkedIn URL",
-            "default": "#"
+            "label": "Linkedin",
+            "default": ""
         },
-        "social_twitter": {
+        "social_x": {
             "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
+            "label": "X",
+            "default": ""
         },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
-        },
-        "blog_eyebrow": {
+        "proof_1": {
             "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Insights"
+            "label": "Reason 1",
+            "default": "Membership capped and published"
         },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "Latest from Our Blog"
-        },
-        "blog_intro": {
+        "faq_1_q": {
             "type": "text",
-            "label": "Blog Intro",
-            "default": "Tips, news and insights from our team."
+            "label": "FAQ 1 Question",
+            "default": "Why cap the membership?"
         },
-        "blog_post_1_title": {
+        "faq_1_a": {
             "type": "text",
-            "label": "Post 1 Title",
-            "default": "What to expect at your first visit"
+            "label": "FAQ 1 Answer",
+            "default": "Because a gym is only as good as the odds of getting on a rack at six in the evening. The cap is published every month, and when it is reached we close the list."
         },
-        "blog_post_1_excerpt": {
+        "proof_2": {
             "type": "text",
-            "label": "Post 1 Excerpt",
-            "default": "A short walk-through."
+            "label": "Reason 2",
+            "default": "A coach on the floor every hour"
         },
-        "blog_post_1_url": {
-            "type": "url",
-            "label": "Post 1 URL",
-            "default": "/blog/first-visit"
-        },
-        "blog_post_2_title": {
+        "faq_2_q": {
             "type": "text",
-            "label": "Post 2 Title",
-            "default": "Five questions worth asking"
+            "label": "FAQ 2 Question",
+            "default": "Is coaching really included?"
         },
-        "blog_post_2_excerpt": {
+        "faq_2_a": {
             "type": "text",
-            "label": "Post 2 Excerpt",
-            "default": "The questions that should be standard."
+            "label": "FAQ 2 Answer",
+            "default": "Yes. There is a qualified coach on the floor every open hour, and they will correct a lift without being asked. Personal training is separate; floor coaching is not."
         },
-        "blog_post_2_url": {
-            "type": "url",
-            "label": "Post 2 URL",
-            "default": "/blog/five-questions"
-        },
-        "blog_post_3_title": {
+        "proof_3": {
             "type": "text",
-            "label": "Post 3 Title",
-            "default": "The case for taking your time"
+            "label": "Reason 3",
+            "default": "Programmes reviewed every six weeks"
         },
-        "blog_post_3_excerpt": {
+        "faq_3_q": {
             "type": "text",
-            "label": "Post 3 Excerpt",
-            "default": "Why patience and care matters."
+            "label": "FAQ 3 Question",
+            "default": "Is there a contract?"
         },
-        "blog_post_3_url": {
-            "type": "url",
-            "label": "Post 3 URL",
-            "default": "/blog/taking-time"
-        },
-        "blog_cta": {
+        "faq_3_a": {
             "type": "text",
-            "label": "Blog CTA",
-            "default": "View All Posts →"
+            "label": "FAQ 3 Answer",
+            "default": "Rolling monthly, cancel by the end of any month. No joining fee, no notice period longer than that."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Rolling monthly contract"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "I have never lifted — where do I start?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "The beginner course: six weeks, small group, the main lifts taught properly, then a written programme reviewed every six weeks."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Train here first, then decide"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "A free trial session at peak time, deliberately, so you see the floor at its busiest."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Book a trial"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#9E5B2E"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#824B26"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#9E5B2E"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#191310"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "orange",
-        "accent_deep": "orange_deep",
-        "secondary": null
-    },
-    "palette_scheme": "dark",
-    "palette_roles": {
-        "orange": "accent",
-        "orange_deep": "accent_deep",
-        "chalk": "text",
-        "chalk_soft": "muted",
-        "carbon": "bg",
-        "carbon_soft": "surface",
-        "carbon_card": "surface2",
-        "warm_grey": "muted",
-        "divider": "line",
-        "accent_muted": "accent_soft"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

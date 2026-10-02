@@ -1,401 +1,140 @@
 {
     "id": "ecommerce",
-    "name": "eCommerce Brand",
-    "version": "1.0.0",
+    "name": "Shop — Northpoint Goods",
     "industry": "ecommerce",
-    "description": "Direct-to-consumer eCommerce template — confident brand blue, product-led, conversion-focused. Built around featured products, categories, brand story, reviews, newsletter.",
-    "variation": "luxury",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-04-18",
+    "description": "Made in small batches, shipped the same day",
+    "thumbnail": "/storage/builder-heroes/ecommerce.jpg",
+    "category": "retail",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "ember",
+        "type": "couture",
+        "scale": "compact",
+        "radius": "card",
+        "archetypes": {
+            "nav": "topbar",
+            "hero": "cinema",
+            "stats": "none",
+            "offers": "carousel",
+            "story": "pullquote",
+            "gallery": "masonry",
+            "steps": "horizontal",
+            "tst": "wall",
+            "contact": "wide",
+            "footer": "split",
+            "proof": "strip",
+            "faq": "cards",
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "offers",
+            "stats",
+            "story",
+            "proof",
+            "steps",
+            "tst",
+            "gallery",
+            "cta",
+            "faq",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ],
             "elements": {
-                "logo": ".nav-logo",
-                "links": ".nav-links",
-                "link": ".nav-links li a",
-                "primary_button": "a.nav-cta",
-                "burger": ".nav-burger"
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
             }
         },
         {
             "id": "hero",
-            "name": "Hero Section",
-            "fields": [
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_cta",
-                "hero_cta_secondary",
-                "hero_image",
-                "hero_trust_badge"
-            ],
+            "name": "Hero",
             "elements": {
-                "eyebrow": ".hero-eyebrow",
-                "heading": "h1.hero-h1",
-                "subheading": "p.hero-sub",
-                "primary_button": "a.btn-primary",
-                "secondary_button": "a.btn-ghost",
-                "image": ".hero-media img",
-                "overlay": ".hero-overlay",
-                "trust_badge": ".hero-trust"
-            }
-        },
-        {
-            "id": "stats",
-            "name": "Stats Strip",
-            "fields": [
-                "stat_1_value",
-                "stat_1_label",
-                "stat_2_value",
-                "stat_2_label",
-                "stat_3_value",
-                "stat_3_label",
-                "stat_4_value",
-                "stat_4_label"
-            ],
-            "elements": {
-                "item": ".stat-item",
-                "number": ".stat-num",
-                "label": ".stat-label"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
             "id": "services",
-            "name": "Specialties",
-            "fields": [
-                "services_eyebrow",
-                "services_title",
-                "services_intro",
-                "service_1_title",
-                "service_1_text",
-                "service_1_tag_1",
-                "service_1_tag_2",
-                "service_1_tag_3",
-                "service_2_title",
-                "service_2_text",
-                "service_2_tag_1",
-                "service_2_tag_2",
-                "service_2_tag_3",
-                "service_3_title",
-                "service_3_text",
-                "service_3_tag_1",
-                "service_3_tag_2",
-                "service_3_tag_3",
-                "service_4_title",
-                "service_4_text",
-                "service_4_tag_1",
-                "service_4_tag_2",
-                "service_4_tag_3",
-                "service_5_title",
-                "service_5_text",
-                "service_5_tag_1",
-                "service_5_tag_2",
-                "service_5_tag_3",
-                "service_6_title",
-                "service_6_text",
-                "service_6_tag_1",
-                "service_6_tag_2",
-                "service_6_tag_3"
-            ],
+            "name": "Services",
             "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".services-intro",
-                "grid": ".service-grid",
-                "card": ".service-card",
-                "icon": ".service-icon",
-                "card_title": ".service-title",
-                "card_description": ".service-desc",
-                "tag": ".service-tag"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "doctors",
-            "name": "Doctors & Team",
-            "fields": [
-                "doctors_eyebrow",
-                "doctors_title",
-                "doctors_intro",
-                "doctor_1_name",
-                "doctor_1_title",
-                "doctor_1_specialty",
-                "doctor_1_bio",
-                "doctor_1_image",
-                "doctor_2_name",
-                "doctor_2_title",
-                "doctor_2_specialty",
-                "doctor_2_bio",
-                "doctor_2_image",
-                "doctor_3_name",
-                "doctor_3_title",
-                "doctor_3_specialty",
-                "doctor_3_bio",
-                "doctor_3_image",
-                "doctor_4_name",
-                "doctor_4_title",
-                "doctor_4_specialty",
-                "doctor_4_bio",
-                "doctor_4_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".doctors-intro",
-                "grid": ".doctor-grid",
-                "card": ".doctor-card",
-                "image": ".doctor-card img",
-                "doctor_name": ".doctor-name",
-                "doctor_title": ".doctor-role",
-                "doctor_specialty": ".doctor-specialty",
-                "doctor_bio": ".doctor-bio"
-            }
-        },
-        {
-            "id": "process",
-            "name": "How It Works",
-            "fields": [
-                "process_eyebrow",
-                "process_title",
-                "process_1_title",
-                "process_1_text",
-                "process_2_title",
-                "process_2_text",
-                "process_3_title",
-                "process_3_text",
-                "process_4_title",
-                "process_4_text"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "step": ".process-step",
-                "number": ".process-num",
-                "step_title": ".process-title",
-                "step_description": ".process-desc"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Client Stories",
-            "fields": [
-                "testimonials_eyebrow",
-                "testimonials_title",
-                "testimonial_1_quote",
-                "testimonial_1_author",
-                "testimonial_1_condition",
-                "testimonial_2_quote",
-                "testimonial_2_author",
-                "testimonial_2_condition",
-                "testimonial_3_quote",
-                "testimonial_3_author",
-                "testimonial_3_condition"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "track": ".testimonial-track",
-                "slide": ".testimonial-slide",
-                "quote": ".testimonial-quote",
-                "author": ".testimonial-author",
-                "condition": ".testimonial-condition",
-                "dot": ".testimonial-dot"
-            }
-        },
-        {
-            "id": "certifications",
-            "name": "Accreditations & Trust",
-            "fields": [
-                "cert_eyebrow",
-                "cert_title",
-                "cert_intro",
-                "cert_1_name",
-                "cert_1_desc",
-                "cert_2_name",
-                "cert_2_desc",
-                "cert_3_name",
-                "cert_3_desc",
-                "cert_4_name",
-                "cert_4_desc",
-                "cert_5_name",
-                "cert_5_desc",
-                "cert_6_name",
-                "cert_6_desc"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.cert-heading",
-                "intro": ".cert-intro",
-                "grid": ".cert-grid",
-                "item": ".cert-item",
-                "cert_name": ".cert-name",
-                "cert_description": ".cert-desc"
-            }
-        },
-        {
-            "id": "cta_banner",
-            "name": "CTA Banner",
-            "fields": [
-                "cta_banner_eyebrow",
-                "cta_banner_title",
-                "cta_banner_subtitle",
-                "cta_banner_cta"
-            ],
-            "elements": {
-                "eyebrow": ".cta-eyebrow",
-                "heading": "h2.cta-title",
-                "subheading": "p.cta-subtitle",
-                "primary_button": "a.cta-button"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact & Location",
-            "fields": [
-                "contact_eyebrow",
-                "contact_title",
-                "contact_intro",
-                "contact_email",
-                "contact_phone",
-                "contact_address",
-                "contact_hours",
-                "contact_emergency",
-                "contact_form_title",
-                "form_submit_text",
-                "form_success_message"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".contact-intro",
-                "info_label": ".contact-item-label",
-                "info_value": ".contact-item-value",
-                "emergency": ".contact-emergency",
-                "form": ".contact-form",
-                "form_field": ".form-field",
-                "form_label": ".form-field label",
-                "form_input": ".form-field input, .form-field textarea, .form-field select",
-                "primary_button": "button.form-submit",
-                "success_message": "#form-success"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book a Consultation",
-            "fields": [
-                "booking_title",
-                "booking_intro",
-                "booking_cta"
-            ],
-            "elements": {
-                "heading": "h2.booking-h2",
-                "intro": ".booking-intro",
-                "form": ".booking-form",
-                "submit_button": "button.booking-submit",
-                "date_input": "input[name=\"preferred_date\"]",
-                "time_slot": ".booking-slot"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Blog Teaser",
-            "fields": [
-                "blog_eyebrow",
-                "blog_title",
-                "blog_intro",
-                "blog_post_1_title",
-                "blog_post_1_excerpt",
-                "blog_post_1_url",
-                "blog_post_2_title",
-                "blog_post_2_excerpt",
-                "blog_post_2_url",
-                "blog_post_3_title",
-                "blog_post_3_excerpt",
-                "blog_post_3_url",
-                "blog_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".blog-intro",
-                "grid": ".blog-grid",
-                "card": ".blog-card",
-                "post_title": ".blog-card-title",
-                "post_excerpt": ".blog-card-excerpt",
-                "cta": ".blog-cta"
-            },
-            "config": {
-                "enabled": true
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
             "id": "gallery",
             "name": "Gallery",
-            "fields": [
-                "gallery_eyebrow",
-                "gallery_title",
-                "gallery_intro",
-                "gallery_1",
-                "gallery_2",
-                "gallery_3",
-                "gallery_4",
-                "gallery_5"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".gallery-intro",
-                "grid": ".gallery-grid",
-                "item": ".gallery-item"
-            }
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "business_name",
-                "footer_tagline",
-                "footer_text",
-                "social_facebook",
-                "social_instagram",
-                "social_linkedin"
-            ],
-            "elements": {
-                "logo": ".footer-logo",
-                "tagline": ".footer-tagline",
-                "links": ".footer-links",
-                "link": ".footer-links li a",
-                "social": ".footer-social",
-                "social_link": ".footer-social a",
-                "copy": ".footer-copy"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Clinic Name",
+            "label": "Business Name",
             "default": "Northpoint Goods"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Considered Everyday Essentials · Worldwide Shipping"
+            "default": "Made in small batches, shipped the same day"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Northpoint Goods — considered everyday essentials, designed in-house and shipped worldwide. Premium materials, fair pricing, free returns."
+            "default": "A direct-to-customer brand making a short range in small batches, with same-day dispatch and a no-questions returns policy."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://ecommerce.example.com"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
@@ -405,817 +144,307 @@
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Shop the Range"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Considered Everyday Essentials · Worldwide Shipping"
+            "default": "Small batch · Ships same day"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Better basics,<br><em>fairer prices.</em>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "One range, made in small batches, sent out the day you order it"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "A small DTC brand making everyday essentials — bags, leather goods, knitwear, home — designed in-house, made by family-run factories, sold direct."
+            "label": "Hero Subheading",
+            "default": "We make eleven products. Every one is finished in our own workshop, dispatched before five, and covered for two years."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Shop the Range"
+            "label": "Hero Button",
+            "default": "Shop now"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "Read Our Story"
+            "label": "Hero Secondary Button",
+            "default": "See the range"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/ecommerce.jpg"
         },
-        "hero_trust_badge": {
+        "offers_title": {
             "type": "text",
-            "label": "Hero Trust Badge",
-            "default": "Free Shipping over $80 · Free Returns · 5-Year Repair Guarantee"
+            "label": "Offers Heading",
+            "default": "The range"
         },
-        "stat_1_value": {
+        "offers_subtitle": {
             "type": "text",
-            "label": "Stat 1 Value",
-            "default": "38,000+"
+            "label": "Offers Subheading",
+            "default": "Eleven products. We would rather make these well than make ninety badly."
         },
-        "stat_1_label": {
+        "story_eyebrow": {
             "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Customers"
+            "label": "Story Eyebrow",
+            "default": "Our story"
         },
-        "stat_2_value": {
+        "story_title": {
             "type": "text",
-            "label": "Stat 2 Value",
-            "default": "4.91★"
+            "label": "Story Heading",
+            "default": "Eleven products, one workshop, no warehouse"
         },
-        "stat_2_label": {
+        "story_body": {
             "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Reviews"
+            "label": "Story Body",
+            "default": "We do not hold stock in a third-party warehouse and we do not run seasonal drops. Everything is finished in the workshop, packed by the person who made it, and posted the same afternoon. The range grows by roughly one product a year."
         },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "100%"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Made-to-Order"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "5yr"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Repair Guarantee"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Services Eyebrow",
-            "default": "Categories"
-        },
-        "services_title": {
-            "type": "html",
-            "label": "Services Title",
-            "default": "Six categories,<br><em>built to last.</em>"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Services Intro",
-            "default": "What we make — and what we don't. Each category designed in-house, manufactured by a small number of family-run partners."
-        },
-        "service_1_title": {
-            "type": "text",
-            "label": "Service 1 Title",
-            "default": "Bags & Carry"
-        },
-        "service_1_text": {
-            "type": "text",
-            "label": "Service 1 Text",
-            "default": "Backpacks, totes, and weekenders in heavyweight cotton canvas and full-grain Italian leather — made in a family workshop in Tuscany."
-        },
-        "service_1_tag_1": {
-            "type": "text",
-            "label": "Service 1 Tag 1",
-            "default": "Backpack"
-        },
-        "service_1_tag_2": {
-            "type": "text",
-            "label": "Service 1 Tag 2",
-            "default": "Tote"
-        },
-        "service_1_tag_3": {
-            "type": "text",
-            "label": "Service 1 Tag 3",
-            "default": "Weekender"
-        },
-        "service_2_title": {
-            "type": "text",
-            "label": "Service 2 Title",
-            "default": "Leather Goods"
-        },
-        "service_2_text": {
-            "type": "text",
-            "label": "Service 2 Text",
-            "default": "Wallets, card holders, belts, key fobs in vegetable-tanned leather — patina'd in by hand over the first year of wear."
-        },
-        "service_2_tag_1": {
-            "type": "text",
-            "label": "Service 2 Tag 1",
-            "default": "Wallet"
-        },
-        "service_2_tag_2": {
-            "type": "text",
-            "label": "Service 2 Tag 2",
-            "default": "Cardholder"
-        },
-        "service_2_tag_3": {
-            "type": "text",
-            "label": "Service 2 Tag 3",
-            "default": "Belt"
-        },
-        "service_3_title": {
-            "type": "text",
-            "label": "Service 3 Title",
-            "default": "Knitwear"
-        },
-        "service_3_text": {
-            "type": "text",
-            "label": "Service 3 Text",
-            "default": "Heavy-gauge wool sweaters, cardigans, beanies — knitted in a small mill in Yorkshire from British Bluefaced Leicester wool."
-        },
-        "service_3_tag_1": {
-            "type": "text",
-            "label": "Service 3 Tag 1",
-            "default": "Sweater"
-        },
-        "service_3_tag_2": {
-            "type": "text",
-            "label": "Service 3 Tag 2",
-            "default": "Cardigan"
-        },
-        "service_3_tag_3": {
-            "type": "text",
-            "label": "Service 3 Tag 3",
-            "default": "Beanie"
-        },
-        "service_4_title": {
-            "type": "text",
-            "label": "Service 4 Title",
-            "default": "Shirts & Tees"
-        },
-        "service_4_text": {
-            "type": "text",
-            "label": "Service 4 Text",
-            "default": "Heavyweight oxford shirts, premium cotton tees, and overshirts — Portuguese-made, cut for proper fit, designed to wash well."
-        },
-        "service_4_tag_1": {
-            "type": "text",
-            "label": "Service 4 Tag 1",
-            "default": "Oxford"
-        },
-        "service_4_tag_2": {
-            "type": "text",
-            "label": "Service 4 Tag 2",
-            "default": "Tee"
-        },
-        "service_4_tag_3": {
-            "type": "text",
-            "label": "Service 4 Tag 3",
-            "default": "Overshirt"
-        },
-        "service_5_title": {
-            "type": "text",
-            "label": "Service 5 Title",
-            "default": "Home Goods"
-        },
-        "service_5_text": {
-            "type": "text",
-            "label": "Service 5 Text",
-            "default": "Ceramic mugs, throw blankets, hand towels, and candles — made in small batches by makers we work with directly."
-        },
-        "service_5_tag_1": {
-            "type": "text",
-            "label": "Service 5 Tag 1",
-            "default": "Mugs"
-        },
-        "service_5_tag_2": {
-            "type": "text",
-            "label": "Service 5 Tag 2",
-            "default": "Blankets"
-        },
-        "service_5_tag_3": {
-            "type": "text",
-            "label": "Service 5 Tag 3",
-            "default": "Candles"
-        },
-        "service_6_title": {
-            "type": "text",
-            "label": "Service 6 Title",
-            "default": "Limited Editions"
-        },
-        "service_6_text": {
-            "type": "text",
-            "label": "Service 6 Text",
-            "default": "Quarterly limited-edition drops — collaborations with artists, makers, and other brands. Usually sell out within the week."
-        },
-        "service_6_tag_1": {
-            "type": "text",
-            "label": "Service 6 Tag 1",
-            "default": "Quarterly"
-        },
-        "service_6_tag_2": {
-            "type": "text",
-            "label": "Service 6 Tag 2",
-            "default": "Drops"
-        },
-        "service_6_tag_3": {
-            "type": "text",
-            "label": "Service 6 Tag 3",
-            "default": "Collab"
-        },
-        "doctors_eyebrow": {
-            "type": "text",
-            "label": "Team Eyebrow",
-            "default": "Behind the Brand"
-        },
-        "doctors_title": {
-            "type": "html",
-            "label": "Team Title",
-            "default": "A small team,<br><em>doing it properly.</em>"
-        },
-        "doctors_intro": {
-            "type": "text",
-            "label": "Team Intro",
-            "default": "A team of seven — founders, designers, and a customer service lead. No outsourced anything. We pick up the phone."
-        },
-        "doctor_1_name": {
-            "type": "text",
-            "label": "Team 1 Name",
-            "default": "Tom Whitfield"
-        },
-        "doctor_1_title": {
-            "type": "text",
-            "label": "Team 1 Title",
-            "default": "Founder & Creative Director"
-        },
-        "doctor_1_specialty": {
-            "type": "text",
-            "label": "Team 1 Specialty",
-            "default": "Design"
-        },
-        "doctor_1_bio": {
-            "type": "text",
-            "label": "Team 1 Bio",
-            "default": "Industrial designer — twelve years at studios in London and Stockholm before starting Northpoint."
-        },
-        "doctor_1_image": {
+        "story_image": {
             "type": "image",
-            "label": "Team 1 Image",
-            "default": "/storage/template-images/ecommerce/gen-01-kraft-boxes-stacked-with-tissue-paper-an.jpg"
+            "label": "Story Image",
+            "default": "/storage/template-images/ecommerce/gallery_3.jpg"
         },
-        "doctor_2_name": {
+        "gallery_title": {
             "type": "text",
-            "label": "Team 2 Name",
-            "default": "Anna Kowalski"
+            "label": "Gallery Heading",
+            "default": "From the workshop"
         },
-        "doctor_2_title": {
+        "steps_title": {
             "type": "text",
-            "label": "Team 2 Title",
-            "default": "Co-Founder & Operations"
-        },
-        "doctor_2_specialty": {
-            "type": "text",
-            "label": "Team 2 Specialty",
-            "default": "Operations"
-        },
-        "doctor_2_bio": {
-            "type": "text",
-            "label": "Team 2 Bio",
-            "default": "Supply chain background — manages the factory partners, materials sourcing, and fulfilment."
-        },
-        "doctor_2_image": {
-            "type": "image",
-            "label": "Team 2 Image",
-            "default": "/storage/template-images/ecommerce/gen-02-a-flat-lay-of-a-candle-a-card-and-twine.jpg"
-        },
-        "doctor_3_name": {
-            "type": "text",
-            "label": "Team 3 Name",
-            "default": "Rita Ferreira"
-        },
-        "doctor_3_title": {
-            "type": "text",
-            "label": "Team 3 Title",
-            "default": "Head of Product"
-        },
-        "doctor_3_specialty": {
-            "type": "text",
-            "label": "Team 3 Specialty",
-            "default": "Product"
-        },
-        "doctor_3_bio": {
-            "type": "text",
-            "label": "Team 3 Bio",
-            "default": "Designs the bags and leather range — twelve years working with Italian and Portuguese leather workshops."
-        },
-        "doctor_3_image": {
-            "type": "image",
-            "label": "Team 3 Image",
-            "default": "/storage/template-images/ecommerce/gen-03-shelving-with-numbered-bins-in-a-small-w.jpg"
-        },
-        "doctor_4_name": {
-            "type": "text",
-            "label": "Team 4 Name",
-            "default": "Customer Care"
-        },
-        "doctor_4_title": {
-            "type": "text",
-            "label": "Team 4 Title",
-            "default": "In-House Team"
-        },
-        "doctor_4_specialty": {
-            "type": "text",
-            "label": "Team 4 Specialty",
-            "default": "Service"
-        },
-        "doctor_4_bio": {
-            "type": "text",
-            "label": "Team 4 Bio",
-            "default": "A small in-house team — replies to every email, picks up every call. Average response under 2 hours."
-        },
-        "doctor_4_image": {
-            "type": "image",
-            "label": "Team 4 Image",
-            "default": "/storage/template-images/ecommerce/gen-04-a-parcel-being-taped-on-a-packing-bench.jpg"
-        },
-        "process_eyebrow": {
-            "type": "text",
-            "label": "Process Eyebrow",
-            "default": "Service"
-        },
-        "process_title": {
-            "type": "html",
-            "label": "Process Title",
-            "default": "How we look<br><em>after our customers.</em>"
-        },
-        "process_1_title": {
-            "type": "text",
-            "label": "Step 1 Title",
-            "default": "Order"
-        },
-        "process_1_text": {
-            "type": "text",
-            "label": "Step 1 Text",
-            "default": "Free shipping worldwide on orders over $80. Express shipping available — orders placed by 3pm GMT ship same day."
-        },
-        "process_2_title": {
-            "type": "text",
-            "label": "Step 2 Title",
-            "default": "Receive"
-        },
-        "process_2_text": {
-            "type": "text",
-            "label": "Step 2 Text",
-            "default": "Wrapped in tissue, in a recyclable box. A handwritten thank-you on every order — and a small sample of something new."
-        },
-        "process_3_title": {
-            "type": "text",
-            "label": "Step 3 Title",
-            "default": "Wear"
-        },
-        "process_3_text": {
-            "type": "text",
-            "label": "Step 3 Text",
-            "default": "Made to last. If anything breaks within 5 years, we'll repair it for free — or replace it if it can't be repaired."
-        },
-        "process_4_title": {
-            "type": "text",
-            "label": "Step 4 Title",
-            "default": "Repair"
-        },
-        "process_4_text": {
-            "type": "text",
-            "label": "Step 4 Text",
-            "default": "Heavy-use repair service after 5 years — at-cost, with a turnaround of 2-3 weeks. Better than replacing with new."
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Customer Stories"
+            "label": "Process Heading",
+            "default": "Ordering"
         },
         "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Customers,<br><em>in their words.</em>"
-        },
-        "testimonial_1_quote": {
             "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Brilliant from start to finish. The team listened, delivered exactly what we needed and made the whole experience effortless."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Hana Y. — Dubai Marina"
-        },
-        "testimonial_1_condition": {
-            "type": "text",
-            "label": "Testimonial 1 Condition",
-            "default": "Family Medicine"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Ahmed & Laila K."
-        },
-        "testimonial_2_condition": {
-            "type": "text",
-            "label": "Testimonial 2 Condition",
-            "default": "Paediatrics"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Heart palpitations had three previous team shrug and send me home. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Roberto P. — JLT"
-        },
-        "testimonial_3_condition": {
-            "type": "text",
-            "label": "Testimonial 3 Condition",
-            "default": "Cardiology"
-        },
-        "cert_eyebrow": {
-            "type": "text",
-            "label": "Cert Eyebrow",
-            "default": "Why People Buy"
-        },
-        "cert_title": {
-            "type": "text",
-            "label": "Cert Title",
-            "default": "What customers tell us"
-        },
-        "cert_intro": {
-            "type": "text",
-            "label": "Cert Intro",
-            "default": "We don't run sales, we don't run influencer campaigns, we don't dropship anything."
-        },
-        "cert_1_name": {
-            "type": "text",
-            "label": "Cert 1 Name",
-            "default": "4.91★ Trustpilot"
-        },
-        "cert_1_desc": {
-            "type": "text",
-            "label": "Cert 1 Desc",
-            "default": "4.91 Trustpilot rating across 9,400+ verified reviews"
-        },
-        "cert_2_name": {
-            "type": "text",
-            "label": "Cert 2 Name",
-            "default": "5-Year Guarantee"
-        },
-        "cert_2_desc": {
-            "type": "text",
-            "label": "Cert 2 Desc",
-            "default": "5-year repair-or-replace guarantee on every product, no questions asked"
-        },
-        "cert_3_name": {
-            "type": "text",
-            "label": "Cert 3 Name",
-            "default": "Free Returns"
-        },
-        "cert_3_desc": {
-            "type": "text",
-            "label": "Cert 3 Desc",
-            "default": "Free returns worldwide — pre-paid label in every order"
-        },
-        "cert_4_name": {
-            "type": "text",
-            "label": "Cert 4 Name",
-            "default": "Fair Wages"
-        },
-        "cert_4_desc": {
-            "type": "text",
-            "label": "Cert 4 Desc",
-            "default": "All factories audited annually for living wages and working conditions"
-        },
-        "cert_5_name": {
-            "type": "text",
-            "label": "Cert 5 Name",
-            "default": "Carbon Neutral"
-        },
-        "cert_5_desc": {
-            "type": "text",
-            "label": "Cert 5 Desc",
-            "default": "Carbon-neutral shipping worldwide — verified by Pachama"
-        },
-        "cert_6_name": {
-            "type": "text",
-            "label": "Cert 6 Name",
-            "default": "Made to Order"
-        },
-        "cert_6_desc": {
-            "type": "text",
-            "label": "Cert 6 Desc",
-            "default": "Made to order, no warehouses of dead stock — your order is made when you place it"
-        },
-        "cta_banner_eyebrow": {
-            "type": "text",
-            "label": "CTA Banner Eyebrow",
-            "default": "Same-day appointments"
-        },
-        "cta_banner_title": {
-            "type": "html",
-            "label": "CTA Banner Title",
-            "default": "Ready when you are."
-        },
-        "cta_banner_subtitle": {
-            "type": "text",
-            "label": "CTA Banner Subtitle",
-            "default": "Get in touch — we'll respond within an hour during business hours."
-        },
-        "cta_banner_cta": {
-            "type": "text",
-            "label": "CTA Banner CTA",
-            "default": "Shop the Range"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
+            "label": "Testimonials Heading",
+            "default": "What people say"
         },
         "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Visit or<br><em>call us.</em>"
-        },
-        "contact_intro": {
             "type": "text",
-            "label": "Contact Intro",
-            "default": "We reply to all enquiries within thirty minutes during opening hours."
+            "label": "Contact Heading",
+            "default": "Questions, orders, repairs"
         },
-        "contact_email": {
+        "contact_subtitle": {
             "type": "text",
-            "label": "Contact Email",
-            "default": "reception@atrium-team.ae"
+            "label": "Contact Subheading",
+            "default": "The inbox is read by the people who make the things, so answers are specific."
         },
         "contact_phone": {
             "type": "text",
-            "label": "Contact Phone",
-            "default": "+971 4 000 0000"
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
         },
         "contact_address": {
             "type": "text",
-            "label": "Contact Address",
-            "default": "Dubai Healthcare City, Block F, Floor 3"
+            "label": "Address",
+            "default": "12 Example Street, London"
         },
         "contact_hours": {
             "type": "text",
             "label": "Opening Hours",
-            "default": "Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm"
+            "default": "Workshop Mon–Fri 8–5 · Dispatch cut-off 3pm"
         },
-        "contact_emergency": {
+        "contact_cta": {
             "type": "text",
-            "label": "Emergency Line",
-            "default": "For team emergencies dial 998 (Dubai Police / Ambulance)."
+            "label": "Contact Button",
+            "default": "Shop now"
         },
-        "contact_form_title": {
-            "type": "html",
-            "label": "Form Title",
-            "default": "Request a<br><em>callback.</em>"
-        },
-        "form_submit_text": {
+        "footer_blurb": {
             "type": "text",
-            "label": "Submit Button",
-            "default": "Request Callback →"
+            "label": "Footer Blurb",
+            "default": "Made in small batches, shipped the same day"
         },
-        "form_success_message": {
+        "footer_col_1": {
             "type": "text",
-            "label": "Success Message",
-            "default": "✓ Thank you. Reception will call you back within thirty minutes."
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
         },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "Book a<br><em>visit.</em>"
-        },
-        "booking_intro": {
+        "footer_col_2": {
             "type": "text",
-            "label": "Booking Intro",
-            "default": "Choose a service and a time that suits you. We'll confirm within thirty minutes."
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
         },
-        "booking_cta": {
+        "footer_legal": {
             "type": "text",
-            "label": "Booking CTA",
-            "default": "Book Now"
+            "label": "Footer Legal",
+            "default": "All rights reserved."
         },
-        "booking_display": {
+        "nav_1": {
             "type": "text",
-            "label": "Booking Display",
-            "default": ""
+            "label": "Nav Link 1",
+            "default": "Shop"
         },
-        "footer_tagline": {
+        "nav_2": {
             "type": "text",
-            "label": "Footer Tagline",
-            "default": "eCommerce Brand — Considered Everyday Essentials · Worldwide Shipping."
+            "label": "Nav Link 2",
+            "default": "The workshop"
         },
-        "footer_text": {
+        "nav_3": {
             "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 Northpoint Goods. All rights reserved."
-        },
-        "social_facebook": {
-            "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
-        },
-        "social_instagram": {
-            "type": "url",
-            "label": "Instagram URL",
-            "default": "#"
-        },
-        "social_linkedin": {
-            "type": "url",
-            "label": "LinkedIn URL",
-            "default": "#"
-        },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk (Background)",
-            "default": "#FFFFFF"
-        },
-        "chalk_soft": {
-            "type": "color",
-            "label": "Soft Background",
-            "default": "#F7FAFC"
-        },
-        "carbon": {
-            "type": "color",
-            "label": "Ink (Primary Text)",
-            "default": "#0F1A2A"
-        },
-        "carbon_soft": {
-            "type": "color",
-            "label": "Soft Ink",
-            "default": "#344458"
-        },
-        "medical_blue": {
-            "type": "color",
-            "label": "Medical Blue",
-            "default": "#1D4ED8"
-        },
-        "medical_deep": {
-            "type": "color",
-            "label": "Medical Deep",
-            "default": "#1E3A8A"
-        },
-        "sage": {
-            "type": "color",
-            "label": "Sage Accent",
-            "default": "#BFDBFE"
-        },
-        "sage_soft": {
-            "type": "color",
-            "label": "Sage Soft",
-            "default": "#D6E4DD"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#6B7A8F"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#E2E8F0"
-        },
-        "social_twitter": {
-            "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
-        },
-        "social_youtube": {
-            "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
-        },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok URL",
-            "default": "#"
-        },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
-        },
-        "blog_eyebrow": {
-            "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Insights"
-        },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "From the<br><em>journal.</em>"
-        },
-        "blog_intro": {
-            "type": "text",
-            "label": "Blog Intro",
-            "default": "Practical guides, expert opinion, and behind-the-scenes notes — written by our team."
-        },
-        "blog_post_1_title": {
-            "type": "text",
-            "label": "Post 1 Title",
-            "default": "What to expect at your first appointment"
-        },
-        "blog_post_1_excerpt": {
-            "type": "text",
-            "label": "Post 1 Excerpt",
-            "default": "A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect."
-        },
-        "blog_post_1_url": {
-            "type": "url",
-            "label": "Post 1 URL",
-            "default": "/blog/first-appointment"
-        },
-        "blog_post_2_title": {
-            "type": "text",
-            "label": "Post 2 Title",
-            "default": "Five questions worth asking your provider"
-        },
-        "blog_post_2_excerpt": {
-            "type": "text",
-            "label": "Post 2 Excerpt",
-            "default": "The questions that should be standard — but rarely are. Use this as a checklist before any visit."
-        },
-        "blog_post_2_url": {
-            "type": "url",
-            "label": "Post 2 URL",
-            "default": "/blog/five-questions"
-        },
-        "blog_post_3_title": {
-            "type": "text",
-            "label": "Post 3 Title",
-            "default": "The case for unhurried appointments"
-        },
-        "blog_post_3_excerpt": {
-            "type": "text",
-            "label": "Post 3 Excerpt",
-            "default": "Why a thirty-minute visit isn't a luxury — it's the bare minimum for thoughtful care."
-        },
-        "blog_post_3_url": {
-            "type": "url",
-            "label": "Post 3 URL",
-            "default": "/blog/unhurried"
-        },
-        "blog_cta": {
-            "type": "text",
-            "label": "Blog CTA",
-            "default": "Read More →"
-        },
-        "gallery_eyebrow": {
-            "type": "text",
-            "label": "Gallery Eyebrow",
+            "label": "Nav Link 3",
             "default": "Gallery"
         },
-        "gallery_title": {
-            "type": "html",
-            "label": "Gallery Title",
-            "default": "From the<br><em>archive.</em>"
-        },
-        "gallery_intro": {
+        "nav_4": {
             "type": "text",
-            "label": "Gallery Intro",
-            "default": "Recent moments — captured for posterity."
+            "label": "Nav Link 4",
+            "default": "Delivery"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Contact"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Shop now"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "11"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Products in the range"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "Same day"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Dispatch before 3pm"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "2 yrs"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Guarantee as standard"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "The everyday bag"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Waxed canvas and bridle leather, cut and stitched to order."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£165"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Weekender"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Four days of clothes, a laptop, and a base that survives an airport floor."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£240"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Card wallet"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Six cards and notes, made from the offcuts of everything else."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£45"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Wash bag"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Wipe-clean lining, and a hook that fits the back of a hotel door."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "£68"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Repairs"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Any product, any age, restitched and re-waxed for the cost of postage."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "From £0"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Gift card"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "No expiry, no balance checking, no small print at all."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "From £25"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Cut, stitched and finished in our own workshop"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Two-year guarantee, and repairs for life after that"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Free returns for ninety days, no reason required"
         },
         "gallery_1": {
             "type": "image",
@@ -1241,65 +470,237 @@
             "type": "image",
             "label": "Gallery Image 5",
             "default": "/storage/template-images/ecommerce/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/ecommerce/gen-01-kraft-boxes-stacked-with-tissue-paper-an.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Order before three"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Everything in stock leaves the same working day."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Tracked delivery"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Free over £75, next day across the UK, three to five internationally."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Ninety days to decide"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Send it back unused, or used, and we will still refund it."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Repairs, forever"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Post it to us at any point in its life and we will put it right."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "Six years of daily use. They re-waxed it for free and it came back better than new."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Customer"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "Ordered at ten past two, it was posted by four. Genuinely."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Customer"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "Eleven products and every one of them is the best version of that thing I own."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Customer"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "proof_1": {
+            "type": "text",
+            "label": "Reason 1",
+            "default": "Same-day despatch before two o'clock"
+        },
+        "faq_1_q": {
+            "type": "text",
+            "label": "FAQ 1 Question",
+            "default": "When will my order arrive?"
+        },
+        "faq_1_a": {
+            "type": "text",
+            "label": "FAQ 1 Answer",
+            "default": "Ordered before two, it leaves the same working day. Tracked delivery is two to three days, and the tracking number comes by email when the parcel is collected, not when the label is printed."
+        },
+        "proof_2": {
+            "type": "text",
+            "label": "Reason 2",
+            "default": "Thirty-day returns, postage refunded"
+        },
+        "faq_2_q": {
+            "type": "text",
+            "label": "FAQ 2 Question",
+            "default": "What if it is not right?"
+        },
+        "faq_2_a": {
+            "type": "text",
+            "label": "FAQ 2 Answer",
+            "default": "Send it back within thirty days, used or not, and we refund the item and the original postage. The return label is free and inside the box."
+        },
+        "proof_3": {
+            "type": "text",
+            "label": "Reason 3",
+            "default": "Free return label in every box"
+        },
+        "faq_3_q": {
+            "type": "text",
+            "label": "FAQ 3 Question",
+            "default": "Is anything ever out of stock after I have ordered?"
+        },
+        "faq_3_a": {
+            "type": "text",
+            "label": "FAQ 3 Answer",
+            "default": "Rarely, and if it happens we email the same day with a date or a refund, your choice. We do not hold your money against a maybe."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Guest checkout, no account needed"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "Can I order without an account?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "Yes. Checkout as a guest and you will still get tracking and a receipt by email. An account only exists to save you typing next time."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Have a look round"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "Everything in stock is on the site, and what is on the site is in stock."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Browse the shop"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#B4453E"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#943933"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#B4453E"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#1B1214"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "medical_blue",
-        "accent_deep": null,
-        "secondary": "sage"
-    },
-    "palette_scheme": "light",
-    "palette_roles": {
-        "medical_blue": "accent",
-        "sage": "secondary",
-        "sage_soft": "secondary_soft",
-        "chalk": "bg",
-        "chalk_soft": "surface",
-        "carbon": "text",
-        "carbon_soft": "muted",
-        "medical_deep": "accent_deep",
-        "warm_grey": "muted",
-        "divider": "line"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

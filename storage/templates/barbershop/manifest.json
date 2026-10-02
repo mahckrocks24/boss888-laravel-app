@@ -1,382 +1,140 @@
 {
     "id": "barbershop",
-    "name": "Barbershop",
-    "version": "1.0.0",
+    "name": "Barbershop — Bulldog & Sons",
     "industry": "barbershop",
-    "description": "Classic-modern barbershop template — dark masculine palette, vintage Edison-bulb atmosphere, cuts/fades/shaves/grooming focus. Built for traditional barbers and modern grooming clubs.",
-    "variation": "luxury",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-04-18",
+    "description": "A proper barbershop, walk in or book",
+    "thumbnail": "/storage/builder-heroes/barbershop.jpg",
+    "category": "personal_care",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "copper",
+        "type": "swiss",
+        "scale": "tall",
+        "radius": "hair",
+        "archetypes": {
+            "nav": "topbar",
+            "hero": "cinema",
+            "stats": "none",
+            "offers": "pricing",
+            "story": "measure",
+            "gallery": "feature",
+            "steps": "numbered",
+            "tst": "marquee",
+            "contact": "darkband",
+            "footer": "mega",
+            "proof": "tiles",
+            "faq": "accordion",
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "offers",
+            "stats",
+            "story",
+            "proof",
+            "steps",
+            "tst",
+            "gallery",
+            "cta",
+            "faq",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ],
             "elements": {
-                "logo": ".nav-logo",
-                "links": ".nav-links",
-                "link": ".nav-links li a",
-                "primary_button": "a.nav-cta",
-                "burger": ".nav-burger"
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
             }
         },
         {
             "id": "hero",
             "name": "Hero",
-            "fields": [
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_cta",
-                "hero_cta_secondary",
-                "hero_image",
-                "hero_trust_badge"
-            ],
             "elements": {
-                "eyebrow": ".hero-eyebrow",
-                "heading": "h1.hero-h1",
-                "subheading": "p.hero-sub",
-                "primary_button": "a.btn-primary",
-                "secondary_button": "a.btn-ghost",
-                "image": ".hero-media img",
-                "overlay": ".hero-overlay",
-                "trust_badge": ".hero-trust"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
-            "id": "stats",
-            "name": "Stats",
-            "fields": [
-                "stat_1_value",
-                "stat_1_label",
-                "stat_2_value",
-                "stat_2_label",
-                "stat_3_value",
-                "stat_3_label",
-                "stat_4_value",
-                "stat_4_label"
-            ],
+            "id": "services",
+            "name": "Services",
             "elements": {
-                "item": ".stat-item",
-                "number": ".stat-num",
-                "label": ".stat-label"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "services_menu",
-            "name": "Services Menu",
-            "fields": [
-                "services_eyebrow",
-                "services_title",
-                "services_intro",
-                "service_1_title",
-                "service_1_text",
-                "service_1_price",
-                "service_1_duration",
-                "service_1_tag_1",
-                "service_1_tag_2",
-                "service_2_title",
-                "service_2_text",
-                "service_2_price",
-                "service_2_duration",
-                "service_2_tag_1",
-                "service_2_tag_2",
-                "service_3_title",
-                "service_3_text",
-                "service_3_price",
-                "service_3_duration",
-                "service_3_tag_1",
-                "service_3_tag_2",
-                "service_4_title",
-                "service_4_text",
-                "service_4_price",
-                "service_4_duration",
-                "service_4_tag_1",
-                "service_4_tag_2",
-                "service_5_title",
-                "service_5_text",
-                "service_5_price",
-                "service_5_duration",
-                "service_5_tag_1",
-                "service_5_tag_2",
-                "service_6_title",
-                "service_6_text",
-                "service_6_price",
-                "service_6_duration",
-                "service_6_tag_1",
-                "service_6_tag_2"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".services-intro",
-                "grid": ".service-grid",
-                "card": ".service-card",
-                "card_title": ".service-title",
-                "card_description": ".service-desc",
-                "price": ".service-price",
-                "duration": ".service-duration",
-                "tag": ".service-tag"
-            }
-        },
-        {
-            "id": "team",
-            "name": "Team",
-            "fields": [
-                "team_eyebrow",
-                "team_title",
-                "team_intro",
-                "team_1_name",
-                "team_1_title",
-                "team_1_specialty",
-                "team_1_bio",
-                "team_1_image",
-                "team_2_name",
-                "team_2_title",
-                "team_2_specialty",
-                "team_2_bio",
-                "team_2_image",
-                "team_3_name",
-                "team_3_title",
-                "team_3_specialty",
-                "team_3_bio",
-                "team_3_image",
-                "team_4_name",
-                "team_4_title",
-                "team_4_specialty",
-                "team_4_bio",
-                "team_4_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".team-intro",
-                "grid": ".team-grid",
-                "card": ".team-card",
-                "image": ".team-card img",
-                "team_name": ".team-name",
-                "team_title": ".team-role",
-                "team_specialty": ".team-specialty",
-                "team_bio": ".team-bio"
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
             "id": "gallery",
             "name": "Gallery",
-            "fields": [
-                "gallery_eyebrow",
-                "gallery_title",
-                "gallery_intro",
-                "gallery_1_title",
-                "gallery_1_category",
-                "gallery_1_image",
-                "gallery_2_title",
-                "gallery_2_category",
-                "gallery_2_image",
-                "gallery_3_title",
-                "gallery_3_category",
-                "gallery_3_image",
-                "gallery_4_title",
-                "gallery_4_category",
-                "gallery_4_image",
-                "gallery_5_title",
-                "gallery_5_category",
-                "gallery_5_image",
-                "gallery_6_title",
-                "gallery_6_category",
-                "gallery_6_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".gallery-intro",
-                "grid": ".gallery-grid",
-                "item": ".gallery-item",
-                "image": ".gallery-item img",
-                "caption": ".gallery-caption",
-                "caption_title": ".gallery-title",
-                "caption_category": ".gallery-category",
-                "overlay": ".gallery-overlay"
-            }
+            "elements": []
         },
         {
-            "id": "brands",
-            "name": "Brands",
-            "fields": [
-                "brands_eyebrow",
-                "brands_title",
-                "brand_1_name",
-                "brand_2_name",
-                "brand_3_name",
-                "brand_4_name",
-                "brand_5_name",
-                "brand_6_name",
-                "brand_7_name",
-                "brand_8_name"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.brands-heading",
-                "strip": ".brands-strip",
-                "brand": ".brand-item"
-            }
+            "id": "process",
+            "name": "Process",
+            "elements": []
         },
         {
             "id": "testimonials",
             "name": "Testimonials",
-            "fields": [
-                "testimonials_eyebrow",
-                "testimonials_title",
-                "testimonial_1_quote",
-                "testimonial_1_author",
-                "testimonial_1_service",
-                "testimonial_2_quote",
-                "testimonial_2_author",
-                "testimonial_2_service",
-                "testimonial_3_quote",
-                "testimonial_3_author",
-                "testimonial_3_service"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "track": ".testimonial-track",
-                "slide": ".testimonial-slide",
-                "quote": ".testimonial-quote",
-                "author": ".testimonial-author",
-                "service": ".testimonial-service",
-                "dot": ".testimonial-dot"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Blog / Journal",
-            "fields": [
-                "blog_eyebrow",
-                "blog_title",
-                "blog_intro",
-                "blog_1_category",
-                "blog_1_title",
-                "blog_1_excerpt",
-                "blog_1_image",
-                "blog_2_category",
-                "blog_2_title",
-                "blog_2_excerpt",
-                "blog_2_image",
-                "blog_3_category",
-                "blog_3_title",
-                "blog_3_excerpt",
-                "blog_3_image",
-                "blog_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".blog-intro",
-                "grid": ".blog-grid",
-                "article": ".blog-card",
-                "image": ".blog-image img",
-                "article_category": ".blog-category",
-                "article_title": ".blog-title",
-                "article_excerpt": ".blog-excerpt",
-                "article_link": ".blog-link",
-                "primary_button": ".blog-cta-btn"
-            },
-            "config": {
-                "enabled": true
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book Appointment",
-            "fields": [
-                "booking_title",
-                "booking_intro",
-                "booking_cta"
-            ],
-            "elements": {
-                "heading": "h2.booking-h2",
-                "intro": ".booking-intro",
-                "form": ".booking-form",
-                "submit_button": "button.booking-submit",
-                "date_input": "input[name=\"preferred_date\"]",
-                "time_slot": ".booking-slot"
-            }
+            "elements": []
         },
         {
             "id": "contact",
             "name": "Contact",
-            "fields": [
-                "contact_eyebrow",
-                "contact_title",
-                "contact_intro",
-                "contact_email",
-                "contact_phone",
-                "contact_address",
-                "contact_hours",
-                "contact_form_title",
-                "form_submit_text",
-                "form_success_message"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".contact-intro",
-                "info_label": ".contact-item-label",
-                "info_value": ".contact-item-value",
-                "form": ".contact-form",
-                "form_field": ".form-field",
-                "form_label": ".form-field label",
-                "form_input": ".form-field input, .form-field textarea, .form-field select",
-                "primary_button": "button.form-submit",
-                "success_message": "#form-success"
-            }
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "business_name",
-                "footer_tagline",
-                "footer_text",
-                "social_instagram",
-                "social_tiktok",
-                "social_pinterest"
-            ],
-            "elements": {
-                "logo": ".footer-logo",
-                "tagline": ".footer-tagline",
-                "links": ".footer-links",
-                "link": ".footer-links li a",
-                "social": ".footer-social",
-                "social_link": ".footer-social a",
-                "copy": ".footer-copy"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Studio Name",
+            "label": "Business Name",
             "default": "Bulldog & Sons Barbers"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Classic Barbershop · Dubai"
+            "default": "A proper barbershop, walk in or book"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Bulldog & Sons — a classic-modern barbershop in Dubai. Skin fades, scissor cuts, hot-towel shaves, beard sculpting, and grooming for men."
+            "default": "Traditional barbering with hot towel shaves, six chairs and walk-ins welcome six days a week."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://bulldog-and-sons.example.com"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
@@ -386,910 +144,558 @@
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Book Appointment"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Classic Barbershop · Dubai"
+            "default": "Six chairs · Walk-ins welcome"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Sharp cuts.<br><em>Honest shaves.</em>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "Six chairs, no appointment necessary, and a shave done properly"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "A traditional barbershop where masters take their time. Skin fades, scissor cuts, hot-towel shaves, and beard sculpting — done right the first time, with a whisky on the side if you fancy one."
+            "label": "Hero Subheading",
+            "default": "Cuts from twenty-two pounds, hot towel shaves, and a queue that moves. Book if you like, or just turn up."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Book a Chair"
+            "label": "Hero Button",
+            "default": "Book a chair"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "View the Cuts"
+            "label": "Hero Secondary Button",
+            "default": "See the price list"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/barbershop.jpg"
         },
-        "hero_trust_badge": {
+        "offers_title": {
             "type": "text",
-            "label": "Trust Badge",
-            "default": "Master Barbers · Walk-Ins Welcome · Beard Sculpting Specialists"
+            "label": "Offers Heading",
+            "default": "Cuts and shaves"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Offers Subheading",
+            "default": "Straightforward prices. No consultation fee, no product hard-sell."
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "Our story"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Heading",
+            "default": "Open since 1997, same corner, same chairs"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "The chairs were reclaimed from a shop in Salford that closed the year we opened. Three of the barbers have been here more than a decade. We have never taken a booking deposit and we have never turned away a walk-in who was prepared to wait."
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Heading",
+            "default": "In the shop"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Heading",
+            "default": "How it works"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Heading",
+            "default": "What people say"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Heading",
+            "default": "Book, or just come in"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "The live queue on this page updates every few minutes during opening hours."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Opening Hours",
+            "default": "Tue–Fri 9–7 · Sat 8–5 · Sun 10–3"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Book a chair"
+        },
+        "footer_blurb": {
+            "type": "text",
+            "label": "Footer Blurb",
+            "default": "A proper barbershop, walk in or book"
+        },
+        "footer_col_1": {
+            "type": "text",
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
+        },
+        "footer_col_2": {
+            "type": "text",
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Services"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "The shop"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Our barbers"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Book"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book a chair"
         },
         "stat_1_value": {
             "type": "text",
-            "label": "Stat 1",
-            "default": "9"
+            "label": "Stat 1 Value",
+            "default": "1997"
         },
         "stat_1_label": {
             "type": "text",
             "label": "Stat 1 Label",
-            "default": "Years Open"
+            "default": "Opened"
         },
         "stat_2_value": {
             "type": "text",
-            "label": "Stat 2",
+            "label": "Stat 2 Value",
             "default": "6"
         },
         "stat_2_label": {
             "type": "text",
             "label": "Stat 2 Label",
-            "default": "Stylists"
+            "default": "Chairs"
         },
         "stat_3_value": {
             "type": "text",
-            "label": "Stat 3",
-            "default": "4,200+"
+            "label": "Stat 3 Value",
+            "default": "40 min"
         },
         "stat_3_label": {
             "type": "text",
             "label": "Stat 3 Label",
-            "default": "Clients Served"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4",
-            "default": "4.9★"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Client Rating"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Menu Eyebrow",
-            "default": "The Menu"
-        },
-        "services_title": {
-            "type": "html",
-            "label": "Menu Title",
-            "default": "A considered<br><em>service menu.</em>"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Menu Intro",
-            "default": "A short, curated list. Every service is individually timed and begins with a fifteen-minute consultation — we would rather do six things beautifully than forty things adequately."
+            "default": "Every cut"
         },
         "service_1_title": {
             "type": "text",
-            "label": "S1 Title",
-            "default": "Skin Fade"
+            "label": "Service 1 Title",
+            "default": "Cut"
         },
         "service_1_text": {
             "type": "text",
-            "label": "S1 Text",
-            "default": "High, mid, or low skin fades — clean lines, sharp transitions, finished with hot-towel detail and aftershave splash."
+            "label": "Service 1 Description",
+            "default": "Clippers or scissors, washed and finished. Forty minutes."
         },
         "service_1_price": {
             "type": "text",
-            "label": "S1 Price",
-            "default": "from AED 950"
-        },
-        "service_1_duration": {
-            "type": "text",
-            "label": "S1 Duration",
-            "default": "2.5 hrs"
-        },
-        "service_1_tag_1": {
-            "type": "text",
-            "label": "S1 Tag 1",
-            "default": "High"
-        },
-        "service_1_tag_2": {
-            "type": "text",
-            "label": "S1 Tag 2",
-            "default": "Mid"
+            "label": "Service 1 Price / Detail",
+            "default": "£22"
         },
         "service_2_title": {
             "type": "text",
-            "label": "S2 Title",
-            "default": "Scissor Cut"
+            "label": "Service 2 Title",
+            "default": "Cut & beard"
         },
         "service_2_text": {
             "type": "text",
-            "label": "S2 Text",
-            "default": "Classic scissor-over-comb cuts — taper, square, side-part, or full restyle, finished with pomade or matte clay."
+            "label": "Service 2 Description",
+            "default": "The full sit-down, with the beard shaped and lined out."
         },
         "service_2_price": {
             "type": "text",
-            "label": "S2 Price",
-            "default": "from AED 550"
-        },
-        "service_2_duration": {
-            "type": "text",
-            "label": "S2 Duration",
-            "default": "90 min"
-        },
-        "service_2_tag_1": {
-            "type": "text",
-            "label": "S2 Tag 1",
-            "default": "Classic"
-        },
-        "service_2_tag_2": {
-            "type": "text",
-            "label": "S2 Tag 2",
-            "default": "Taper"
+            "label": "Service 2 Price / Detail",
+            "default": "£32"
         },
         "service_3_title": {
             "type": "text",
-            "label": "S3 Title",
-            "default": "Hot-Towel Shave"
+            "label": "Service 3 Title",
+            "default": "Hot towel shave"
         },
         "service_3_text": {
             "type": "text",
-            "label": "S3 Text",
-            "default": "Full straight-razor wet shave — pre-shave oil, hot lather, traditional cut-throat work, post-shave balm and ice press."
+            "label": "Service 3 Description",
+            "default": "Three towels, two passes, a proper cut-throat. Fifty minutes."
         },
         "service_3_price": {
             "type": "text",
-            "label": "S3 Price",
-            "default": "from AED 700"
-        },
-        "service_3_duration": {
-            "type": "text",
-            "label": "S3 Duration",
-            "default": "90 min"
-        },
-        "service_3_tag_1": {
-            "type": "text",
-            "label": "S3 Tag 1",
-            "default": "Full"
-        },
-        "service_3_tag_2": {
-            "type": "text",
-            "label": "S3 Tag 2",
-            "default": "Express"
+            "label": "Service 3 Price / Detail",
+            "default": "£35"
         },
         "service_4_title": {
             "type": "text",
-            "label": "S4 Title",
-            "default": "Beard Sculpting"
+            "label": "Service 4 Title",
+            "default": "Skin fade"
         },
         "service_4_text": {
             "type": "text",
-            "label": "S4 Text",
-            "default": "Beard line-up, neckline, edge work, and shaping with hot towel and oil treatment — designed around your jawline."
+            "label": "Service 4 Description",
+            "default": "Taken down properly and blended, by the barbers who actually enjoy them."
         },
         "service_4_price": {
             "type": "text",
-            "label": "S4 Price",
-            "default": "AED 280"
-        },
-        "service_4_duration": {
-            "type": "text",
-            "label": "S4 Duration",
-            "default": "60 min"
-        },
-        "service_4_tag_1": {
-            "type": "text",
-            "label": "S4 Tag 1",
-            "default": "Sculpt"
-        },
-        "service_4_tag_2": {
-            "type": "text",
-            "label": "S4 Tag 2",
-            "default": "Line-Up"
+            "label": "Service 4 Price / Detail",
+            "default": "£26"
         },
         "service_5_title": {
             "type": "text",
-            "label": "S5 Title",
-            "default": "Hair Wash & Style"
+            "label": "Service 5 Title",
+            "default": "Under 12s"
         },
         "service_5_text": {
             "type": "text",
-            "label": "S5 Text",
-            "default": "Deep-cleanse shampoo, scalp massage, and finish styling — perfect on its own or before any cut."
+            "label": "Service 5 Description",
+            "default": "Any day before four, with no expectation of sitting still."
         },
         "service_5_price": {
             "type": "text",
-            "label": "S5 Price",
-            "default": "from AED 650"
-        },
-        "service_5_duration": {
-            "type": "text",
-            "label": "S5 Duration",
-            "default": "75 min"
-        },
-        "service_5_tag_1": {
-            "type": "text",
-            "label": "S5 Tag 1",
-            "default": "Deep"
-        },
-        "service_5_tag_2": {
-            "type": "text",
-            "label": "S5 Tag 2",
-            "default": "Massage"
+            "label": "Service 5 Price / Detail",
+            "default": "£14"
         },
         "service_6_title": {
             "type": "text",
-            "label": "S6 Title",
-            "default": "Grooming Package"
+            "label": "Service 6 Title",
+            "default": "Wedding party"
         },
         "service_6_text": {
             "type": "text",
-            "label": "S6 Text",
-            "default": "The full hour — cut, shave, beard work, hot towel, finishing splash, and a complimentary single-malt or espresso."
+            "label": "Service 6 Description",
+            "default": "The shop to yourselves before opening, coffee included."
         },
         "service_6_price": {
             "type": "text",
-            "label": "S6 Price",
-            "default": "AED 420"
+            "label": "Service 6 Price / Detail",
+            "default": "From £180"
         },
-        "service_6_duration": {
+        "story_point_1": {
             "type": "text",
-            "label": "S6 Duration",
-            "default": "60 min"
+            "label": "Story Point 1",
+            "default": "Walk-ins always welcome, every day we are open"
         },
-        "service_6_tag_1": {
+        "story_point_2": {
             "type": "text",
-            "label": "S6 Tag 1",
-            "default": "Cut"
+            "label": "Story Point 2",
+            "default": "Barbers are on a wage plus tips, not on commission"
         },
-        "service_6_tag_2": {
+        "story_point_3": {
             "type": "text",
-            "label": "S6 Tag 2",
-            "default": "Shave"
+            "label": "Story Point 3",
+            "default": "Same price whoever cuts your hair"
         },
-        "team_eyebrow": {
-            "type": "text",
-            "label": "Team Eyebrow",
-            "default": "The Studio"
-        },
-        "team_title": {
-            "type": "html",
-            "label": "Team Title",
-            "default": "The people<br><em>at the chair.</em>"
-        },
-        "team_intro": {
-            "type": "text",
-            "label": "Team Intro",
-            "default": "Six senior stylists, each with a decade or more of client work behind them — and every treatment on our menu is delivered personally, not handed to an assistant."
-        },
-        "team_1_name": {
-            "type": "text",
-            "label": "Team 1 Name",
-            "default": "Lila Hadid"
-        },
-        "team_1_title": {
-            "type": "text",
-            "label": "Team 1 Title",
-            "default": "Creative Director"
-        },
-        "team_1_specialty": {
-            "type": "text",
-            "label": "Team 1 Specialty",
-            "default": "Hair Colour"
-        },
-        "team_1_bio": {
-            "type": "text",
-            "label": "Team 1 Bio",
-            "default": "Trained at Vidal Sassoon, London. Sixteen years colouring editorial and private client hair."
-        },
-        "team_1_image": {
+        "gallery_1": {
             "type": "image",
-            "label": "Team 1 Image",
+            "label": "Gallery Image 1",
             "default": "/storage/template-images/barbershop/gen-01-a-leather-barber-chair-with-a-folded-hot.jpg"
         },
-        "team_2_name": {
-            "type": "text",
-            "label": "Team 2 Name",
-            "default": "Priya Desai"
-        },
-        "team_2_title": {
-            "type": "text",
-            "label": "Team 2 Title",
-            "default": "Senior Stylist"
-        },
-        "team_2_specialty": {
-            "type": "text",
-            "label": "Team 2 Specialty",
-            "default": "Cut & Styling"
-        },
-        "team_2_bio": {
-            "type": "text",
-            "label": "Team 2 Bio",
-            "default": "Eleven years — specialist in curl cutting and dry-cut technique for mixed-texture hair."
-        },
-        "team_2_image": {
+        "gallery_2": {
             "type": "image",
-            "label": "Team 2 Image",
-            "default": "/storage/template-images/barbershop/gen-04-a-row-of-clippers-on-hooks-under-a-mirro.jpg"
-        },
-        "team_3_name": {
-            "type": "text",
-            "label": "Team 3 Name",
-            "default": "Sofia Moreau"
-        },
-        "team_3_title": {
-            "type": "text",
-            "label": "Team 3 Title",
-            "default": "Lead Facialist"
-        },
-        "team_3_specialty": {
-            "type": "text",
-            "label": "Team 3 Specialty",
-            "default": "Skin & Face"
-        },
-        "team_3_bio": {
-            "type": "text",
-            "label": "Team 3 Bio",
-            "default": "CIDESCO qualified. Trained under Dr. Haut in Paris — focus on skin barrier repair and manual lymphatic drainage."
-        },
-        "team_3_image": {
-            "type": "image",
-            "label": "Team 3 Image",
-            "default": "/storage/template-images/barbershop/gen-07-black-and-white-floor-tiles-and-the-base.jpg"
-        },
-        "team_4_name": {
-            "type": "text",
-            "label": "Team 4 Name",
-            "default": "Nadia Chen"
-        },
-        "team_4_title": {
-            "type": "text",
-            "label": "Team 4 Title",
-            "default": "Nail Specialist"
-        },
-        "team_4_specialty": {
-            "type": "text",
-            "label": "Team 4 Specialty",
-            "default": "Natural Nails"
-        },
-        "team_4_bio": {
-            "type": "text",
-            "label": "Team 4 Bio",
-            "default": "Thirteen years — known for restorative manicures and a no-gel, no-drill philosophy."
-        },
-        "team_4_image": {
-            "type": "image",
-            "label": "Team 4 Image",
-            "default": "/storage/template-images/barbershop/gen-10-an-old-cash-register-and-a-bowl-of-mints.jpg"
-        },
-        "gallery_eyebrow": {
-            "type": "text",
-            "label": "Gallery Eyebrow",
-            "default": "Recent Work"
-        },
-        "gallery_title": {
-            "type": "html",
-            "label": "Gallery Title",
-            "default": "Looks from<br><em>the studio.</em>"
-        },
-        "gallery_intro": {
-            "type": "text",
-            "label": "Gallery Intro",
-            "default": "A small selection of client work, shared with permission. Full portfolio available in-studio on request."
-        },
-        "gallery_1_title": {
-            "type": "text",
-            "label": "G1 Title",
-            "default": "Bronde Balayage"
-        },
-        "gallery_1_category": {
-            "type": "text",
-            "label": "G1 Category",
-            "default": "Colour"
-        },
-        "gallery_1_image": {
-            "type": "image",
-            "label": "G1 Image",
+            "label": "Gallery Image 2",
             "default": "/storage/template-images/barbershop/gen-02-straight-razors-and-a-badger-brush-on-a.jpg"
         },
-        "gallery_2_title": {
-            "type": "text",
-            "label": "G2 Title",
-            "default": "Soft Bridal Glow"
-        },
-        "gallery_2_category": {
-            "type": "text",
-            "label": "G2 Category",
-            "default": "Makeup"
-        },
-        "gallery_2_image": {
+        "gallery_3": {
             "type": "image",
-            "label": "G2 Image",
+            "label": "Gallery Image 3",
+            "default": "/storage/template-images/barbershop/gen-03-a-striped-pole-outside-a-small-shop-fron.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/template-images/barbershop/gen-04-a-row-of-clippers-on-hooks-under-a-mirro.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
             "default": "/storage/template-images/barbershop/gen-05-the-waiting-bench-with-newspapers-and-a.jpg"
         },
-        "gallery_3_title": {
-            "type": "text",
-            "label": "G3 Title",
-            "default": "Curl-Cut Restore"
-        },
-        "gallery_3_category": {
-            "type": "text",
-            "label": "G3 Category",
-            "default": "Cutting"
-        },
-        "gallery_3_image": {
+        "gallery_6": {
             "type": "image",
-            "label": "G3 Image",
-            "default": "/storage/template-images/barbershop/gen-08-a-cape-draped-over-a-chair-in-front-of-a.jpg"
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/barbershop/gen-06-a-bottle-of-bay-rum-and-a-comb-in-a-jar.jpg"
         },
-        "gallery_4_title": {
+        "step_1_title": {
             "type": "text",
-            "label": "G4 Title",
-            "default": "Almond Nude Nail"
+            "label": "Step 1 Title",
+            "default": "Turn up or book"
         },
-        "gallery_4_category": {
+        "step_1_body": {
             "type": "text",
-            "label": "G4 Category",
-            "default": "Nails"
+            "label": "Step 1 Body",
+            "default": "The live queue is on the site. Booking just skips the wait."
         },
-        "gallery_4_image": {
-            "type": "image",
-            "label": "G4 Image",
-            "default": "/storage/template-images/barbershop/gen-11-a-leather-barber-chair-with-a-folded-hot.jpg"
-        },
-        "gallery_5_title": {
+        "step_2_title": {
             "type": "text",
-            "label": "G5 Title",
-            "default": "Lift & Glow Facial"
+            "label": "Step 2 Title",
+            "default": "Tell the barber"
         },
-        "gallery_5_category": {
+        "step_2_body": {
             "type": "text",
-            "label": "G5 Category",
-            "default": "Skin"
+            "label": "Step 2 Body",
+            "default": "Or show a photo. Nobody here will pretend to know what you meant."
         },
-        "gallery_5_image": {
-            "type": "image",
-            "label": "G5 Image",
-            "default": "/storage/template-images/barbershop/gen-12-a-stack-of-folded-white-towels-beside.jpg"
-        },
-        "gallery_6_title": {
+        "step_3_title": {
             "type": "text",
-            "label": "G6 Title",
-            "default": "Editorial Updo"
+            "label": "Step 3 Title",
+            "default": "Sit down properly"
         },
-        "gallery_6_category": {
+        "step_3_body": {
             "type": "text",
-            "label": "G6 Category",
-            "default": "Styling"
+            "label": "Step 3 Body",
+            "default": "Cuts are forty minutes. We are not turning chairs over in twenty."
         },
-        "gallery_6_image": {
-            "type": "image",
-            "label": "G6 Image",
-            "default": "/storage/template-images/barbershop/gen-13-a-wall-of-small-framed-photographs-abo.jpg"
-        },
-        "brands_eyebrow": {
+        "step_4_title": {
             "type": "text",
-            "label": "Brands Eyebrow",
-            "default": "What we use"
+            "label": "Step 4 Title",
+            "default": "Come back when you need to"
         },
-        "brands_title": {
+        "step_4_body": {
             "type": "text",
-            "label": "Brands Title",
-            "default": "Products we trust"
-        },
-        "brand_1_name": {
-            "type": "text",
-            "label": "Brand 1",
-            "default": "Oribe"
-        },
-        "brand_2_name": {
-            "type": "text",
-            "label": "Brand 2",
-            "default": "Kérastase"
-        },
-        "brand_3_name": {
-            "type": "text",
-            "label": "Brand 3",
-            "default": "Davines"
-        },
-        "brand_4_name": {
-            "type": "text",
-            "label": "Brand 4",
-            "default": "Biologique Recherche"
-        },
-        "brand_5_name": {
-            "type": "text",
-            "label": "Brand 5",
-            "default": "Augustinus Bader"
-        },
-        "brand_6_name": {
-            "type": "text",
-            "label": "Brand 6",
-            "default": "Charlotte Tilbury"
-        },
-        "brand_7_name": {
-            "type": "text",
-            "label": "Brand 7",
-            "default": "Hourglass"
-        },
-        "brand_8_name": {
-            "type": "text",
-            "label": "Brand 8",
-            "default": "Zoya"
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Clients"
-        },
-        "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Clients,<br><em>in their words.</em>"
+            "label": "Step 4 Body",
+            "default": "No membership, no package, no reminder texts."
         },
         "testimonial_1_quote": {
             "type": "text",
-            "label": "T1 Quote",
-            "default": "Lila is the first colourist in Dubai who has genuinely listened to what I wanted — and my colour has finally stopped getting more orange every season. I would not go anywhere else."
+            "label": "Testimonial 1",
+            "default": "Been coming since I was nine. Now I bring my son. Same chair, same price structure."
         },
-        "testimonial_1_author": {
+        "testimonial_1_name": {
             "type": "text",
-            "label": "T1 Author",
-            "default": "Maria L. — Dubai Marina"
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
         },
-        "testimonial_1_service": {
+        "testimonial_1_role": {
             "type": "text",
-            "label": "T1 Service",
-            "default": "Couture Colour"
+            "label": "Testimonial 1 Role",
+            "default": "Customer"
         },
         "testimonial_2_quote": {
             "type": "text",
-            "label": "T2 Quote",
-            "default": "Sofia's facials are the best I have had anywhere in the world, and I live between Dubai and Paris. The results are skin that feels different, not just looks different for an evening."
+            "label": "Testimonial 2",
+            "default": "The hot towel shave is worth the money and then some."
         },
-        "testimonial_2_author": {
+        "testimonial_2_name": {
             "type": "text",
-            "label": "T2 Author",
-            "default": "Clémence R. — Paris & Dubai"
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
         },
-        "testimonial_2_service": {
+        "testimonial_2_role": {
             "type": "text",
-            "label": "T2 Service",
-            "default": "Bespoke Facial"
+            "label": "Testimonial 2 Role",
+            "default": "Customer"
         },
         "testimonial_3_quote": {
             "type": "text",
-            "label": "T3 Quote",
-            "default": "I stopped getting gels a year ago and my nails have never been stronger. Nadia reshaped them after years of damage and now they grow properly for the first time."
+            "label": "Testimonial 3",
+            "default": "Never been upsold a product. Not once in twelve years."
         },
-        "testimonial_3_author": {
+        "testimonial_3_name": {
             "type": "text",
-            "label": "T3 Author",
-            "default": "Amira K. — JLT"
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
         },
-        "testimonial_3_service": {
+        "testimonial_3_role": {
             "type": "text",
-            "label": "T3 Service",
-            "default": "Natural Manicure"
+            "label": "Testimonial 3 Role",
+            "default": "Customer"
         },
-        "blog_eyebrow": {
-            "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Journal"
-        },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "The<br><em>journal.</em>"
-        },
-        "blog_intro": {
-            "type": "text",
-            "label": "Blog Intro",
-            "default": "Skin, hair, and nail notes from the team — evidence-first, no trend-chasing, updated monthly."
-        },
-        "blog_1_category": {
-            "type": "text",
-            "label": "B1 Cat",
-            "default": "Skin"
-        },
-        "blog_1_title": {
-            "type": "text",
-            "label": "B1 Title",
-            "default": "Why Your Skin Barrier Matters More Than Your Serum"
-        },
-        "blog_1_excerpt": {
-            "type": "text",
-            "label": "B1 Excerpt",
-            "default": "Sofia on the twelve-week protocol she runs with clients whose skin has been over-exfoliated into sensitivity."
-        },
-        "blog_1_image": {
-            "type": "image",
-            "label": "B1 Image",
-            "default": "/storage/template-images/barbershop/gen-03-a-striped-pole-outside-a-small-shop-fron.jpg"
-        },
-        "blog_2_category": {
-            "type": "text",
-            "label": "B2 Cat",
-            "default": "Hair Colour"
-        },
-        "blog_2_title": {
-            "type": "text",
-            "label": "B2 Title",
-            "default": "The Real Difference Between Ammonia and Ammonia-Free Colour"
-        },
-        "blog_2_excerpt": {
-            "type": "text",
-            "label": "B2 Excerpt",
-            "default": "Lila on what actually changes in the hair cortex — and why the trade-offs aren't what most people think."
-        },
-        "blog_2_image": {
-            "type": "image",
-            "label": "B2 Image",
-            "default": "/storage/template-images/barbershop/gen-06-a-bottle-of-bay-rum-and-a-comb-in-a-jar.jpg"
-        },
-        "blog_3_category": {
-            "type": "text",
-            "label": "B3 Cat",
-            "default": "Nails"
-        },
-        "blog_3_title": {
-            "type": "text",
-            "label": "B3 Title",
-            "default": "Restoring a Natural Nail After Years of Gel"
-        },
-        "blog_3_excerpt": {
-            "type": "text",
-            "label": "B3 Excerpt",
-            "default": "Nadia walks through the twelve-week recovery plan that has worked for more than 300 clients."
-        },
-        "blog_3_image": {
-            "type": "image",
-            "label": "B3 Image",
-            "default": "/storage/template-images/barbershop/gen-09-the-back-room-with-a-kettle-mugs-and-a.jpg"
-        },
-        "blog_cta": {
-            "type": "text",
-            "label": "Blog CTA",
-            "default": "Read the Journal"
-        },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "Book an<br><em>appointment.</em>"
-        },
-        "booking_intro": {
-            "type": "text",
-            "label": "Booking Intro",
-            "default": "Choose a service, a stylist if you have a preference, and a date. We'll confirm your appointment within the hour during opening times."
-        },
-        "booking_cta": {
-            "type": "text",
-            "label": "Booking CTA",
-            "default": "Book Appointment"
-        },
-        "booking_display": {
-            "type": "text",
-            "label": "Booking Display",
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
             "default": ""
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
-        },
-        "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Find the<br><em>studio.</em>"
-        },
-        "contact_intro": {
-            "type": "text",
-            "label": "Contact Intro",
-            "default": "We're tucked quietly above a boutique on Marina Walk — please call ahead rather than walking in."
-        },
-        "contact_email": {
-            "type": "text",
-            "label": "Contact Email",
-            "default": "hello@ateliersoiree.ae"
-        },
-        "contact_phone": {
-            "type": "text",
-            "label": "Contact Phone",
-            "default": "+971 4 000 0000"
-        },
-        "contact_address": {
-            "type": "text",
-            "label": "Contact Address",
-            "default": "Marina Walk, Floor 2, Dubai Marina"
-        },
-        "contact_hours": {
-            "type": "text",
-            "label": "Hours",
-            "default": "Tue–Sun · 10am–8pm  ·  Mon closed"
-        },
-        "contact_form_title": {
-            "type": "html",
-            "label": "Form Title",
-            "default": "Say<br><em>hello.</em>"
-        },
-        "form_submit_text": {
-            "type": "text",
-            "label": "Submit",
-            "default": "Send Message →"
-        },
-        "form_success_message": {
-            "type": "text",
-            "label": "Success",
-            "default": "✓ Thank you. We'll be in touch within the hour during opening times."
-        },
-        "footer_tagline": {
-            "type": "text",
-            "label": "Footer Tagline",
-            "default": "Sharp cuts. Honest shaves. Old-school standards."
-        },
-        "footer_text": {
-            "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 Bulldog & Sons Barbers. All rights reserved."
         },
         "social_instagram": {
             "type": "url",
             "label": "Instagram",
-            "default": "#"
-        },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok",
-            "default": "#"
-        },
-        "social_pinterest": {
-            "type": "url",
-            "label": "Pinterest",
-            "default": "#"
-        },
-        "chalk": {
-            "type": "color",
-            "label": "Blush (Background)",
-            "default": "#FBF7F4"
-        },
-        "chalk_soft": {
-            "type": "color",
-            "label": "Blush Soft",
-            "default": "#EDD7CE"
-        },
-        "carbon": {
-            "type": "color",
-            "label": "Ink",
-            "default": "#2B2224"
-        },
-        "carbon_soft": {
-            "type": "color",
-            "label": "Ink Soft",
-            "default": "#4D3B3F"
-        },
-        "rose": {
-            "type": "color",
-            "label": "Rose Gold",
-            "default": "#A5606A"
-        },
-        "rose_deep": {
-            "type": "color",
-            "label": "Rose Deep",
-            "default": "#8D4E58"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#524545"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#E3CFC5"
-        },
-        "accent_muted": {
-            "type": "color",
-            "label": "Accent Muted",
-            "default": "#D8B3B9"
-        },
-        "social_facebook": {
-            "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
+            "default": ""
         },
         "social_linkedin": {
             "type": "url",
-            "label": "LinkedIn URL",
-            "default": "#"
+            "label": "Linkedin",
+            "default": ""
         },
-        "social_twitter": {
+        "social_x": {
             "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
+            "label": "X",
+            "default": ""
         },
-        "social_youtube": {
-            "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
+        "proof_1": {
+            "type": "text",
+            "label": "Reason 1",
+            "default": "Walk-ins every day"
         },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
+        "faq_1_q": {
+            "type": "text",
+            "label": "FAQ 1 Question",
+            "default": "Do you take walk-ins?"
+        },
+        "faq_1_a": {
+            "type": "text",
+            "label": "FAQ 1 Answer",
+            "default": "Always. Book if you want a particular barber or a particular time; otherwise come in and the wait is usually one or two cuts."
+        },
+        "proof_2": {
+            "type": "text",
+            "label": "Reason 2",
+            "default": "One barber, one chair, no double-booking"
+        },
+        "faq_2_q": {
+            "type": "text",
+            "label": "FAQ 2 Question",
+            "default": "How long does a cut take?"
+        },
+        "faq_2_a": {
+            "type": "text",
+            "label": "FAQ 2 Answer",
+            "default": "Half an hour for a cut, three quarters with a beard, an hour for a cut-throat shave. We do not double-book chairs, so the time you are given is the time you get."
+        },
+        "proof_3": {
+            "type": "text",
+            "label": "Reason 3",
+            "default": "Cut-throat shaves by appointment"
+        },
+        "faq_3_q": {
+            "type": "text",
+            "label": "FAQ 3 Question",
+            "default": "Can I ask for the same barber each time?"
+        },
+        "faq_3_a": {
+            "type": "text",
+            "label": "FAQ 3 Answer",
+            "default": "Yes, and most people do. Book by name online or ask at the counter and we will keep you with them."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Under-elevens at a lower price"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "Do you cut children's hair?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "From about four upwards, and there is a lower price for under-elevens. Bring them earlier in the day if they would rather it was quiet."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Get in the chair"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "Walk in, or book a barber by name. Either way you will not be rushed."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Book a chair"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#9E5B2E"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#824B26"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#9E5B2E"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#191310"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "rose",
-        "accent_deep": "rose_deep",
-        "secondary": null
-    },
-    "palette_scheme": "light",
-    "palette_roles": {
-        "rose": "accent",
-        "rose_deep": "accent_deep",
-        "chalk": "bg",
-        "chalk_soft": "surface",
-        "carbon": "text",
-        "carbon_soft": "muted",
-        "warm_grey": "muted",
-        "divider": "line",
-        "accent_muted": "accent_soft"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

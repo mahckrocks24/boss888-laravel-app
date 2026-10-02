@@ -1,1175 +1,716 @@
 {
     "id": "it_services",
-    "name": "Technology / SaaS",
+    "name": "IT Services — Nexora",
     "industry": "it_services",
-    "description": "Modern B2B SaaS template — dark gradient hero, feature cards, how-it-works, integrations strip, three-tier pricing, engineering blog, and demo booking. Built for developer-tool and AI-infrastructure companies.",
+    "description": "Managed IT with an engineer who knows your network",
     "thumbnail": "/storage/builder-heroes/it_services.jpg",
-    "category": "saas",
+    "category": "professional",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "midnight",
+        "type": "grotesque",
+        "scale": "tall",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "ledge",
+            "hero": "editorial",
+            "stats": "inline",
+            "offers": "arcade",
+            "story": "drift",
+            "gallery": "strip",
+            "steps": "slabs",
+            "tst": "marquee",
+            "contact": "stack",
+            "footer": "mast",
+            "proof": "tiles",
+            "faq": "accordion",
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "stats",
+            "offers",
+            "proof",
+            "story",
+            "steps",
+            "gallery",
+            "tst",
+            "cta",
+            "faq",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
             "elements": {
                 "logo": "nav .logo",
-                "nav_1": "nav .nav-links a:nth-child(1)",
-                "nav_2": "nav .nav-links a:nth-child(2)",
-                "nav_3": "nav .nav-links a:nth-child(3)",
-                "nav_4": "nav .nav-links a:nth-child(4)",
-                "nav_login": "nav .nav-login",
                 "nav_cta": "nav .nav-cta"
-            }
-        },
-        {
-            "id": "announcement",
-            "name": "Announcement Bar",
-            "elements": {
-                "announcement_text": ".announcement-text",
-                "announcement_link": ".announcement-link"
             }
         },
         {
             "id": "hero",
             "name": "Hero",
             "elements": {
-                "hero_image": "section.hero",
-                "hero_eyebrow": ".hero-eyebrow",
-                "hero_title": ".hero-title",
-                "hero_subtitle": ".hero-subtitle",
-                "hero_cta": ".hero-cta",
-                "hero_cta_secondary": ".hero-cta-secondary",
-                "hero_code_title": ".hero-code-title",
-                "hero_code_body": ".hero-code-body"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
             "id": "stats",
-            "name": "Metrics Bar",
+            "name": "Stats",
+            "elements": []
+        },
+        {
+            "id": "services",
+            "name": "Services",
             "elements": {
-                "stat_1_value": ".stat-1-value",
-                "stat_1_label": ".stat-1-label",
-                "stat_2_value": ".stat-2-value",
-                "stat_2_label": ".stat-2-label",
-                "stat_3_value": ".stat-3-value",
-                "stat_3_label": ".stat-3-label",
-                "stat_4_value": ".stat-4-value",
-                "stat_4_label": ".stat-4-label"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "features",
-            "name": "Feature Grid",
-            "elements": {
-                "features_eyebrow": ".features-eyebrow",
-                "features_title": ".features-title",
-                "features_intro": ".features-intro",
-                "feature_1_title": ".feature-1-title",
-                "feature_1_text": ".feature-1-text",
-                "feature_2_title": ".feature-2-title",
-                "feature_2_text": ".feature-2-text",
-                "feature_3_title": ".feature-3-title",
-                "feature_3_text": ".feature-3-text",
-                "feature_4_title": ".feature-4-title",
-                "feature_4_text": ".feature-4-text",
-                "feature_5_title": ".feature-5-title",
-                "feature_5_text": ".feature-5-text",
-                "feature_6_title": ".feature-6-title",
-                "feature_6_text": ".feature-6-text"
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
-            "id": "how_it_works",
-            "name": "How It Works",
-            "elements": {
-                "how_eyebrow": ".how-eyebrow",
-                "how_title": ".how-title",
-                "how_intro": ".how-intro",
-                "step_1_title": ".step-1-title",
-                "step_1_text": ".step-1-text",
-                "step_2_title": ".step-2-title",
-                "step_2_text": ".step-2-text",
-                "step_3_title": ".step-3-title",
-                "step_3_text": ".step-3-text",
-                "step_4_title": ".step-4-title",
-                "step_4_text": ".step-4-text"
-            }
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
         },
         {
-            "id": "integrations",
-            "name": "Integrations",
-            "elements": {
-                "integrations_eyebrow": ".integrations-eyebrow",
-                "integrations_title": ".integrations-title",
-                "integration_1": ".integration-1",
-                "integration_2": ".integration-2",
-                "integration_3": ".integration-3",
-                "integration_4": ".integration-4",
-                "integration_5": ".integration-5",
-                "integration_6": ".integration-6",
-                "integration_7": ".integration-7",
-                "integration_8": ".integration-8"
-            }
-        },
-        {
-            "id": "use_cases",
-            "name": "Use Cases",
-            "elements": {
-                "usecases_eyebrow": ".usecases-eyebrow",
-                "usecases_title": ".usecases-title",
-                "usecase_1_title": ".usecase-1-title",
-                "usecase_1_text": ".usecase-1-text",
-                "usecase_1_metric": ".usecase-1-metric",
-                "usecase_2_title": ".usecase-2-title",
-                "usecase_2_text": ".usecase-2-text",
-                "usecase_2_metric": ".usecase-2-metric",
-                "usecase_3_title": ".usecase-3-title",
-                "usecase_3_text": ".usecase-3-text",
-                "usecase_3_metric": ".usecase-3-metric"
-            }
+            "id": "process",
+            "name": "Process",
+            "elements": []
         },
         {
             "id": "testimonials",
-            "name": "Engineer Testimonials",
-            "elements": {
-                "testimonials_eyebrow": ".testimonials-eyebrow",
-                "testimonials_title": ".testimonials-title",
-                "testimonial_1_quote": ".testimonial-1-quote",
-                "testimonial_1_author": ".testimonial-1-author",
-                "testimonial_1_role": ".testimonial-1-role",
-                "testimonial_2_quote": ".testimonial-2-quote",
-                "testimonial_2_author": ".testimonial-2-author",
-                "testimonial_2_role": ".testimonial-2-role",
-                "testimonial_3_quote": ".testimonial-3-quote",
-                "testimonial_3_author": ".testimonial-3-author",
-                "testimonial_3_role": ".testimonial-3-role"
-            }
-        },
-        {
-            "id": "pricing",
-            "name": "Pricing",
-            "elements": {
-                "pricing_eyebrow": ".pricing-eyebrow",
-                "pricing_title": ".pricing-title",
-                "pricing_intro": ".pricing-intro",
-                "plan_1_name": ".plan-1-name",
-                "plan_1_price": ".plan-1-price",
-                "plan_1_period": ".plan-1-period",
-                "plan_1_desc": ".plan-1-desc",
-                "plan_1_feat_1": ".plan-1-feat-1",
-                "plan_1_feat_2": ".plan-1-feat-2",
-                "plan_1_feat_3": ".plan-1-feat-3",
-                "plan_1_feat_4": ".plan-1-feat-4",
-                "plan_1_cta": ".plan-1-cta",
-                "plan_2_name": ".plan-2-name",
-                "plan_2_price": ".plan-2-price",
-                "plan_2_period": ".plan-2-period",
-                "plan_2_desc": ".plan-2-desc",
-                "plan_2_feat_1": ".plan-2-feat-1",
-                "plan_2_feat_2": ".plan-2-feat-2",
-                "plan_2_feat_3": ".plan-2-feat-3",
-                "plan_2_feat_4": ".plan-2-feat-4",
-                "plan_2_feat_5": ".plan-2-feat-5",
-                "plan_2_cta": ".plan-2-cta",
-                "plan_3_name": ".plan-3-name",
-                "plan_3_price": ".plan-3-price",
-                "plan_3_period": ".plan-3-period",
-                "plan_3_desc": ".plan-3-desc",
-                "plan_3_feat_1": ".plan-3-feat-1",
-                "plan_3_feat_2": ".plan-3-feat-2",
-                "plan_3_feat_3": ".plan-3-feat-3",
-                "plan_3_feat_4": ".plan-3-feat-4",
-                "plan_3_feat_5": ".plan-3-feat-5",
-                "plan_3_cta": ".plan-3-cta"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Engineering Blog",
-            "elements": {
-                "blog_eyebrow": ".blog-eyebrow",
-                "blog_title": ".blog-title",
-                "blog_intro": ".blog-intro",
-                "blog_1_category": ".blog-1-category",
-                "blog_1_read_time": ".blog-1-read-time",
-                "blog_1_title": ".blog-1-title",
-                "blog_1_excerpt": ".blog-1-excerpt",
-                "blog_1_image": ".blog-1-image",
-                "blog_2_category": ".blog-2-category",
-                "blog_2_read_time": ".blog-2-read-time",
-                "blog_2_title": ".blog-2-title",
-                "blog_2_excerpt": ".blog-2-excerpt",
-                "blog_2_image": ".blog-2-image",
-                "blog_3_category": ".blog-3-category",
-                "blog_3_read_time": ".blog-3-read-time",
-                "blog_3_title": ".blog-3-title",
-                "blog_3_excerpt": ".blog-3-excerpt",
-                "blog_3_image": ".blog-3-image",
-                "blog_cta": ".blog-cta"
-            },
-            "config": {
-                "enabled": true
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book a Demo",
-            "elements": {
-                "booking_title": ".booking-title",
-                "booking_intro": ".booking-intro",
-                "booking_cta": ".booking-cta",
-                "booking_display": ".booking-display"
-            }
+            "name": "Testimonials",
+            "elements": []
         },
         {
             "id": "contact",
             "name": "Contact",
-            "elements": {
-                "contact_eyebrow": ".contact-eyebrow",
-                "contact_title": ".contact-title",
-                "contact_intro": ".contact-intro",
-                "contact_email": ".contact-email",
-                "contact_support": ".contact-support",
-                "contact_address": ".contact-address",
-                "contact_hours": ".contact-hours",
-                "form_submit_text": ".form-submit-text",
-                "form_success_message": ".form-success-message"
-            }
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "elements": {
-                "footer_tagline": ".footer-tagline",
-                "footer_text": ".footer-text",
-                "social_github": ".social-github",
-                "social_x": ".social-x",
-                "social_linkedin": ".social-linkedin"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Product Name",
+            "label": "Business Name",
             "default": "Nexora"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "AI Observability Platform"
+            "default": "Managed IT with an engineer who knows your network"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Nexora — end-to-end observability for AI-powered applications. Trace prompts, monitor latency, catch hallucinations, and ship reliable LLM products."
+            "default": "Managed IT support and cyber security for small businesses, with named engineers and published response times."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://nexora.dev"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
             "label": "OG Image",
             "default": "/storage/builder-heroes/it_services.jpg"
         },
-        "hero_image": {
-            "type": "image",
-            "label": "Hero Background",
-            "default": "/storage/builder-heroes/it_services.jpg"
-        },
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "announcement_text": {
-            "type": "text",
-            "label": "Announcement",
-            "default": "Trusted IT partner for businesses across the UAE."
-        },
-        "announcement_link": {
-            "type": "text",
-            "label": "Announcement Link",
-            "default": "Learn more →"
-        },
-        "nav_1": {
-            "type": "text",
-            "label": "Nav 1",
-            "default": "Services"
-        },
-        "nav_2": {
-            "type": "text",
-            "label": "Nav 2",
-            "default": "Industries"
-        },
-        "nav_3": {
-            "type": "text",
-            "label": "Nav 3",
-            "default": "Why Us"
-        },
-        "nav_4": {
-            "type": "text",
-            "label": "Nav 4",
-            "default": "Insights"
-        },
-        "nav_login": {
-            "type": "text",
-            "label": "Nav Login",
-            "default": "Client Portal"
-        },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Book Demo"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Observability for AI applications"
+            "default": "Managed IT · Cyber Essentials"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Ship reliable<br>LLM products<br><span class=\"accent\">without guessing.</span>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "A named engineer who has actually seen your network"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "Nexora traces every prompt, response, and tool call across your AI stack — so you know exactly why a user saw a slow, wrong, or hallucinated answer. Integrate in one line. Get answers in minutes."
+            "label": "Hero Subheading",
+            "default": "Published response times we pay penalties against, an engineer assigned to your account, and documentation you own rather than rent."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Book a Demo"
+            "label": "Hero Button",
+            "default": "Book an assessment"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "Explore Services"
+            "label": "Hero Secondary Button",
+            "default": "See the services"
         },
-        "hero_code_title": {
-            "type": "text",
-            "label": "Code Panel Title",
-            "default": "systems-status"
-        },
-        "hero_code_body": {
-            "type": "text",
-            "label": "Code Body",
-            "default": "[ OK ]  Network monitoring ....... 24/7 active\n[ OK ]  Endpoint security ........ all devices protected\n[ OK ]  Cloud backups ............ completed 03:00 GST\n[ OK ]  Helpdesk SLA ............. < 15 min response\n\n> Your systems, proactively managed."
-        },
-        "stat_1_value": {
-            "type": "text",
-            "label": "Stat 1 Value",
-            "default": "99.9%"
-        },
-        "stat_1_label": {
-            "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Uptime SLA"
-        },
-        "stat_2_value": {
-            "type": "text",
-            "label": "Stat 2 Value",
-            "default": "<15min"
-        },
-        "stat_2_label": {
-            "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Response Time"
-        },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "24/7"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Monitoring"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "ISO 27001"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Security Standard"
-        },
-        "features_eyebrow": {
-            "type": "text",
-            "label": "Features Eyebrow",
-            "default": "The Platform"
-        },
-        "features_title": {
-            "type": "html",
-            "label": "Features Title",
-            "default": "Built for teams shipping<br><span class=\"accent\">AI in production.</span>"
-        },
-        "features_intro": {
-            "type": "text",
-            "label": "Features Intro",
-            "default": "Six primitives that cover the whole LLM application lifecycle — from development and evals, through to production monitoring and incident response."
-        },
-        "feature_1_title": {
-            "type": "text",
-            "label": "F1 Title",
-            "default": "Distributed Tracing"
-        },
-        "feature_1_text": {
-            "type": "text",
-            "label": "F1 Text",
-            "default": "Every prompt, tool call, and retrieval recorded as a span — with nested timing down to the token. Works with OpenAI, Anthropic, Cohere, and any custom endpoint."
-        },
-        "feature_2_title": {
-            "type": "text",
-            "label": "F2 Title",
-            "default": "Eval Framework"
-        },
-        "feature_2_text": {
-            "type": "text",
-            "label": "F2 Text",
-            "default": "Run LLM-as-a-judge, regex, or code-based evals on every request — score quality, faithfulness, and format drift in CI or continuously in production."
-        },
-        "feature_3_title": {
-            "type": "text",
-            "label": "F3 Title",
-            "default": "Cost & Token Tracking"
-        },
-        "feature_3_text": {
-            "type": "text",
-            "label": "F3 Text",
-            "default": "Attribute every cent — by user, feature, model, or tenant. Get alerted the moment a prompt regression doubles your monthly burn rate."
-        },
-        "feature_4_title": {
-            "type": "text",
-            "label": "F4 Title",
-            "default": "Prompt Playground"
-        },
-        "feature_4_text": {
-            "type": "text",
-            "label": "F4 Text",
-            "default": "Replay any production trace with a new prompt, model, or temperature — and see the diff in output, latency, and cost side by side before you ship."
-        },
-        "feature_5_title": {
-            "type": "text",
-            "label": "F5 Title",
-            "default": "Alerting & Incidents"
-        },
-        "feature_5_text": {
-            "type": "text",
-            "label": "F5 Text",
-            "default": "Define SLOs on latency, error rate, or eval scores. Route pages to PagerDuty, Slack, or OpsGenie — with a full trace attached, not a useless metric snapshot."
-        },
-        "feature_6_title": {
-            "type": "text",
-            "label": "F6 Title",
-            "default": "Self-Hosted Option"
-        },
-        "feature_6_text": {
-            "type": "text",
-            "label": "F6 Text",
-            "default": "Run the entire Nexora control plane inside your own VPC. Ship the same SDK. Keep every trace, prompt, and user record on your infrastructure."
-        },
-        "how_eyebrow": {
-            "type": "text",
-            "label": "How Eyebrow",
-            "default": "How It Works"
-        },
-        "how_title": {
-            "type": "html",
-            "label": "How Title",
-            "default": "From install to<br><span class=\"accent\">first insight in four steps.</span>"
-        },
-        "how_intro": {
-            "type": "text",
-            "label": "How Intro",
-            "default": "Built to be instrumented in an afternoon and useful by the following morning."
-        },
-        "step_1_title": {
-            "type": "text",
-            "label": "Step 1 Title",
-            "default": "Install the SDK"
-        },
-        "step_1_text": {
-            "type": "text",
-            "label": "Step 1 Text",
-            "default": "One line — pip install nexora or npm i @nexora/trace. Drop in a project key and every LLM call is automatically captured."
-        },
-        "step_2_title": {
-            "type": "text",
-            "label": "Step 2 Title",
-            "default": "Deploy to Production"
-        },
-        "step_2_text": {
-            "type": "text",
-            "label": "Step 2 Text",
-            "default": "Traces flow to your Nexora workspace in under 40ms of ingest overhead — no proxy, no sidecar, no config soup."
-        },
-        "step_3_title": {
-            "type": "text",
-            "label": "Step 3 Title",
-            "default": "Build Dashboards"
-        },
-        "step_3_text": {
-            "type": "text",
-            "label": "Step 3 Text",
-            "default": "Pin any query as a widget. Filter by user, model, feature flag, or prompt version. Share views with the rest of the team."
-        },
-        "step_4_title": {
-            "type": "text",
-            "label": "Step 4 Title",
-            "default": "Catch Regressions"
-        },
-        "step_4_text": {
-            "type": "text",
-            "label": "Step 4 Text",
-            "default": "Set SLOs. Wire up evals. Get paged when latency, quality, or cost drift — before a user opens a support ticket."
-        },
-        "integrations_eyebrow": {
-            "type": "text",
-            "label": "Integrations Eyebrow",
-            "default": "Certified Expertise"
-        },
-        "integrations_title": {
-            "type": "html",
-            "label": "Integrations Title",
-            "default": "Certified across the platforms<br>your business <span class=\"accent\">actually runs on.</span>"
-        },
-        "integration_1": {
-            "type": "text",
-            "label": "Int 1",
-            "default": "Microsoft 365"
-        },
-        "integration_2": {
-            "type": "text",
-            "label": "Int 2",
-            "default": "Microsoft Azure"
-        },
-        "integration_3": {
-            "type": "text",
-            "label": "Int 3",
-            "default": "AWS"
-        },
-        "integration_4": {
-            "type": "text",
-            "label": "Int 4",
-            "default": "Google Workspace"
-        },
-        "integration_5": {
-            "type": "text",
-            "label": "Int 5",
-            "default": "Cisco"
-        },
-        "integration_6": {
-            "type": "text",
-            "label": "Int 6",
-            "default": "Fortinet"
-        },
-        "integration_7": {
-            "type": "text",
-            "label": "Int 7",
-            "default": "VMware"
-        },
-        "integration_8": {
-            "type": "text",
-            "label": "Int 8",
-            "default": "Veeam"
-        },
-        "usecases_eyebrow": {
-            "type": "text",
-            "label": "Use Cases Eyebrow",
-            "default": "Use Cases"
-        },
-        "usecases_title": {
-            "type": "html",
-            "label": "Use Cases Title",
-            "default": "Three problems<br><span class=\"accent\">Nexora was built to solve.</span>"
-        },
-        "usecase_1_title": {
-            "type": "text",
-            "label": "UC1 Title",
-            "default": "LLM Latency Debugging"
-        },
-        "usecase_1_text": {
-            "type": "text",
-            "label": "UC1 Text",
-            "default": "When chatbots get slow, it is rarely one thing. Nexora waterfalls retrieval, prompting, and tool calls so you know exactly which span blew the p95 — in the one trace that matters."
-        },
-        "usecase_1_metric": {
-            "type": "text",
-            "label": "UC1 Metric",
-            "default": "73% faster root-cause"
-        },
-        "usecase_2_title": {
-            "type": "text",
-            "label": "UC2 Title",
-            "default": "Hallucination Detection"
-        },
-        "usecase_2_text": {
-            "type": "text",
-            "label": "UC2 Text",
-            "default": "Run faithfulness and groundedness evals on every response in production — flag drift before a user does, and route bad outputs to a human-review queue."
-        },
-        "usecase_2_metric": {
-            "type": "text",
-            "label": "UC2 Metric",
-            "default": "92% catch rate"
-        },
-        "usecase_3_title": {
-            "type": "text",
-            "label": "UC3 Title",
-            "default": "Cost Governance"
-        },
-        "usecase_3_text": {
-            "type": "text",
-            "label": "UC3 Text",
-            "default": "Attribute spend to the feature, team, or customer that actually drove it. Alert on anomalies before finance does — and know which prompt version doubled your bill."
-        },
-        "usecase_3_metric": {
-            "type": "text",
-            "label": "UC3 Metric",
-            "default": "31% avg saving"
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Engineers on Nexora"
-        },
-        "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Loved by the teams<br><span class=\"accent\">shipping AI to scale.</span>"
-        },
-        "testimonial_1_quote": {
-            "type": "text",
-            "label": "T1 Quote",
-            "default": "We replaced three internal tools and a spreadsheet with Nexora. Every LLM incident we have had since has been triaged in minutes instead of hours — the trace view is the single biggest unlock our AI team has had in two years."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "T1 Author",
-            "default": "Amira Youssef"
-        },
-        "testimonial_1_role": {
-            "type": "text",
-            "label": "T1 Role",
-            "default": "Staff AI Engineer · Cortix"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "T2 Quote",
-            "default": "Nexora's evals-in-production setup is the only reason we caught a silent regression after a model swap. Without it, thousands of customers would have seen broken answers for a week before anyone noticed."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "T2 Author",
-            "default": "Daniel Park"
-        },
-        "testimonial_2_role": {
-            "type": "text",
-            "label": "T2 Role",
-            "default": "Head of AI Platform · Helix"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "T3 Quote",
-            "default": "The cost attribution view pays for the platform on its own. We knew we were burning too much on one badly-tuned agent — Nexora told us exactly which one, and by how much, inside 24 hours of rollout."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "T3 Author",
-            "default": "Leena Thomas"
-        },
-        "testimonial_3_role": {
-            "type": "text",
-            "label": "T3 Role",
-            "default": "CTO · Ayun Labs"
-        },
-        "pricing_eyebrow": {
-            "type": "text",
-            "label": "Pricing Eyebrow",
-            "default": "Pricing"
-        },
-        "pricing_title": {
-            "type": "html",
-            "label": "Pricing Title",
-            "default": "Simple pricing.<br><span class=\"accent\">No seats. No surprises.</span>"
-        },
-        "pricing_intro": {
-            "type": "text",
-            "label": "Pricing Intro",
-            "default": "Pay per million spans ingested — unlimited seats, unlimited projects, and the full feature set on every plan."
-        },
-        "plan_1_name": {
-            "type": "text",
-            "label": "Plan 1 Name",
-            "default": "Starter"
-        },
-        "plan_1_price": {
-            "type": "text",
-            "label": "Plan 1 Price",
-            "default": "Free"
-        },
-        "plan_1_period": {
-            "type": "text",
-            "label": "Plan 1 Period",
-            "default": "forever"
-        },
-        "plan_1_desc": {
-            "type": "text",
-            "label": "Plan 1 Desc",
-            "default": "For solo builders and side projects getting to first traction."
-        },
-        "plan_1_feat_1": {
-            "type": "text",
-            "label": "P1 F1",
-            "default": "50K spans / month"
-        },
-        "plan_1_feat_2": {
-            "type": "text",
-            "label": "P1 F2",
-            "default": "7-day retention"
-        },
-        "plan_1_feat_3": {
-            "type": "text",
-            "label": "P1 F3",
-            "default": "Unlimited seats"
-        },
-        "plan_1_feat_4": {
-            "type": "text",
-            "label": "P1 F4",
-            "default": "Community support"
-        },
-        "plan_1_cta": {
-            "type": "text",
-            "label": "P1 CTA",
-            "default": "Start Free"
-        },
-        "plan_2_name": {
-            "type": "text",
-            "label": "Plan 2 Name",
-            "default": "Scale"
-        },
-        "plan_2_price": {
-            "type": "text",
-            "label": "Plan 2 Price",
-            "default": "$299"
-        },
-        "plan_2_period": {
-            "type": "text",
-            "label": "Plan 2 Period",
-            "default": "/ month"
-        },
-        "plan_2_desc": {
-            "type": "text",
-            "label": "Plan 2 Desc",
-            "default": "For growing product teams shipping AI to thousands of users."
-        },
-        "plan_2_feat_1": {
-            "type": "text",
-            "label": "P2 F1",
-            "default": "10M spans / month"
-        },
-        "plan_2_feat_2": {
-            "type": "text",
-            "label": "P2 F2",
-            "default": "30-day retention"
-        },
-        "plan_2_feat_3": {
-            "type": "text",
-            "label": "P2 F3",
-            "default": "Eval framework"
-        },
-        "plan_2_feat_4": {
-            "type": "text",
-            "label": "P2 F4",
-            "default": "SLO alerting + PagerDuty"
-        },
-        "plan_2_feat_5": {
-            "type": "text",
-            "label": "P2 F5",
-            "default": "Email + Slack support"
-        },
-        "plan_2_cta": {
-            "type": "text",
-            "label": "P2 CTA",
-            "default": "Start 14-Day Trial"
-        },
-        "plan_3_name": {
-            "type": "text",
-            "label": "Plan 3 Name",
-            "default": "Enterprise"
-        },
-        "plan_3_price": {
-            "type": "text",
-            "label": "Plan 3 Price",
-            "default": "Custom"
-        },
-        "plan_3_period": {
-            "type": "text",
-            "label": "Plan 3 Period",
-            "default": "annual"
-        },
-        "plan_3_desc": {
-            "type": "text",
-            "label": "Plan 3 Desc",
-            "default": "For AI platforms and regulated teams running LLMs at scale."
-        },
-        "plan_3_feat_1": {
-            "type": "text",
-            "label": "P3 F1",
-            "default": "Unlimited spans"
-        },
-        "plan_3_feat_2": {
-            "type": "text",
-            "label": "P3 F2",
-            "default": "Custom retention + audit logs"
-        },
-        "plan_3_feat_3": {
-            "type": "text",
-            "label": "P3 F3",
-            "default": "Self-hosted control plane"
-        },
-        "plan_3_feat_4": {
-            "type": "text",
-            "label": "P3 F4",
-            "default": "SSO / SCIM / private VPC"
-        },
-        "plan_3_feat_5": {
-            "type": "text",
-            "label": "P3 F5",
-            "default": "Dedicated solutions engineer"
-        },
-        "plan_3_cta": {
-            "type": "text",
-            "label": "P3 CTA",
-            "default": "Talk to Sales"
-        },
-        "blog_eyebrow": {
-            "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Engineering Blog"
-        },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "Notes from<br><span class=\"accent\">the Nexora team.</span>"
-        },
-        "blog_intro": {
-            "type": "text",
-            "label": "Blog Intro",
-            "default": "Deep dives on LLM observability, evals, cost, and the infrastructure we build to run Nexora at scale. Published monthly."
-        },
-        "blog_1_category": {
-            "type": "text",
-            "label": "B1 Category",
-            "default": "Evals"
-        },
-        "blog_1_read_time": {
-            "type": "text",
-            "label": "B1 Read Time",
-            "default": "12 min read"
-        },
-        "blog_1_title": {
-            "type": "text",
-            "label": "B1 Title",
-            "default": "Why LLM-as-a-Judge Gets Faithfulness Wrong (and How We Fixed It)"
-        },
-        "blog_1_excerpt": {
-            "type": "text",
-            "label": "B1 Excerpt",
-            "default": "We audited 2.4M production eval verdicts and found 18% of 'passes' were false negatives. This is what we changed — and why a dual-judge setup now outperforms a single strong model at a fraction of the cost."
-        },
-        "blog_1_image": {
+        "hero_image": {
             "type": "image",
-            "label": "B1 Image",
-            "default": "/storage/template-images/it_services/gen-01-a-server-rack-with-neat-cable-ties-and-b.jpg"
+            "label": "Hero Image",
+            "default": "/storage/builder-heroes/it_services.jpg"
         },
-        "blog_2_category": {
+        "offers_title": {
             "type": "text",
-            "label": "B2 Category",
-            "default": "Infrastructure"
+            "label": "Offers Heading",
+            "default": "Services"
         },
-        "blog_2_read_time": {
+        "offers_subtitle": {
             "type": "text",
-            "label": "B2 Read Time",
-            "default": "18 min read"
+            "label": "Offers Subheading",
+            "default": "Everything priced per user per month, with no minimum term after year one."
         },
-        "blog_2_title": {
+        "story_eyebrow": {
             "type": "text",
-            "label": "B2 Title",
-            "default": "Ingesting 2.4B Spans a Day Without Kafka"
+            "label": "Story Eyebrow",
+            "default": "Our story"
         },
-        "blog_2_excerpt": {
+        "story_title": {
             "type": "text",
-            "label": "B2 Excerpt",
-            "default": "How we rebuilt the ingest pipeline on ClickHouse + a custom buffered writer — cut p95 ingest latency from 340ms to 38ms, and deleted half the infra bill."
+            "label": "Story Heading",
+            "default": "Documentation you own, not documentation we hold hostage"
         },
-        "blog_2_image": {
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "The commonest trick in managed IT is keeping the network documentation, the admin credentials and the licence tenancy in the provider's name, so leaving costs more than staying. Everything we build is in your tenancy, in your name, exported to you quarterly."
+        },
+        "story_image": {
             "type": "image",
-            "label": "B2 Image",
-            "default": "/storage/template-images/it_services/gen-02-a-workshop-bench-with-an-open-laptop-and.jpg"
-        },
-        "blog_3_category": {
-            "type": "text",
-            "label": "B3 Category",
-            "default": "Product"
-        },
-        "blog_3_read_time": {
-            "type": "text",
-            "label": "B3 Read Time",
-            "default": "9 min read"
-        },
-        "blog_3_title": {
-            "type": "text",
-            "label": "B3 Title",
-            "default": "Trace 3.0 — What Changed and Why"
-        },
-        "blog_3_excerpt": {
-            "type": "text",
-            "label": "B3 Excerpt",
-            "default": "A full rewrite of the span model. Stream-level timings, tool-call nesting, and a new SDK that is 4× smaller. Release notes and migration guide in one post."
-        },
-        "blog_3_image": {
-            "type": "image",
-            "label": "B3 Image",
+            "label": "Story Image",
             "default": "/storage/template-images/it_services/gen-03-a-monitoring-screen-with-graphs-in-a-dar.jpg"
         },
-        "blog_cta": {
+        "gallery_title": {
             "type": "text",
-            "label": "Blog CTA",
-            "default": "Read the Blog"
+            "label": "Gallery Heading",
+            "default": "The team at work"
         },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "See Nexora<br><span class=\"accent\">on your stack.</span>"
-        },
-        "booking_intro": {
+        "steps_title": {
             "type": "text",
-            "label": "Booking Intro",
-            "default": "Book a 30-minute walkthrough with a solutions engineer. We'll show you real production traces, discuss your stack, and spin up a trial workspace live in the call."
+            "label": "Process Heading",
+            "default": "Onboarding"
         },
-        "booking_cta": {
+        "testimonials_title": {
             "type": "text",
-            "label": "Booking CTA",
-            "default": "Book a Demo"
-        },
-        "booking_display": {
-            "type": "text",
-            "label": "Booking Display",
-            "default": ""
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
+            "label": "Testimonials Heading",
+            "default": "What people say"
         },
         "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Need something<br><span class=\"accent\">more specific?</span>"
-        },
-        "contact_intro": {
             "type": "text",
-            "label": "Contact Intro",
-            "default": "Whether it is a sales question, a private security review, or a gnarly integration — the Nexora team answers every inbound within one working day."
+            "label": "Contact Heading",
+            "default": "Book a free assessment"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "Two days on site, a written report, and no obligation to do anything with it."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
         },
         "contact_email": {
             "type": "text",
-            "label": "Sales Email",
-            "default": "hello@nexora.dev"
-        },
-        "contact_support": {
-            "type": "text",
-            "label": "Support Email",
-            "default": "support@nexora.dev"
+            "label": "Email",
+            "default": "hello@example.com"
         },
         "contact_address": {
             "type": "text",
             "label": "Address",
-            "default": "DIFC Innovation Hub, Gate Avenue, Dubai"
+            "default": "12 Example Street, London"
         },
         "contact_hours": {
             "type": "text",
-            "label": "Hours",
-            "default": "Support 24×7 · Sales Mon–Fri · 9am–6pm GST"
+            "label": "Opening Hours",
+            "default": "Support Mon–Fri 8–6 · Security monitored 24/7"
         },
-        "form_submit_text": {
+        "contact_cta": {
             "type": "text",
-            "label": "Submit",
-            "default": "Send Message"
+            "label": "Contact Button",
+            "default": "Book an assessment"
         },
-        "form_success_message": {
+        "footer_blurb": {
             "type": "text",
-            "label": "Success",
-            "default": "Thanks. One of the team will be in touch within one working day."
+            "label": "Footer Blurb",
+            "default": "Managed IT with an engineer who knows your network"
         },
-        "footer_tagline": {
+        "footer_col_1": {
             "type": "text",
-            "label": "Footer Tagline",
-            "default": "Nexora — observability for AI that actually ships."
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
         },
-        "footer_text": {
+        "footer_col_2": {
             "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 Nexora Labs FZ-LLC. All rights reserved."
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
         },
-        "social_github": {
-            "type": "url",
-            "label": "GitHub",
-            "default": "#"
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
         },
-        "social_x": {
-            "type": "url",
-            "label": "X / Twitter",
-            "default": "#"
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Services"
         },
-        "social_linkedin": {
-            "type": "url",
-            "label": "LinkedIn",
-            "default": "#"
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "Security"
         },
-        "void": {
-            "type": "color",
-            "label": "Void (Background)",
-            "default": "#0A0E1A"
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
         },
-        "void_soft": {
-            "type": "color",
-            "label": "Void Soft",
-            "default": "#0F1424"
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Onboarding"
         },
-        "panel": {
-            "type": "color",
-            "label": "Panel Surface",
-            "default": "#131827"
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book an assessment"
         },
-        "panel_border": {
-            "type": "color",
-            "label": "Panel Border",
-            "default": "#1F2940"
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "15 min"
         },
-        "ink": {
-            "type": "color",
-            "label": "Ink (Text)",
-            "default": "#E8ECF4"
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "First response, published"
         },
-        "muted": {
-            "type": "color",
-            "label": "Muted Text",
-            "default": "#7A8599"
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "24/7"
         },
-        "cyan": {
-            "type": "color",
-            "label": "Cyan (Accent)",
-            "default": "#00E5FF"
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Security monitoring"
         },
-        "violet": {
-            "type": "color",
-            "label": "Violet (Accent 2)",
-            "default": "#7B5CFF"
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "Quarterly"
         },
-        "danger": {
-            "type": "color",
-            "label": "Danger",
-            "default": "#FF5C7A"
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Documentation handed to you"
         },
-        "success": {
-            "type": "color",
-            "label": "Success",
-            "default": "#2EE59D"
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "Your name"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Every credential and tenancy"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Managed support"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Unlimited tickets, a named engineer, and a fifteen-minute first response."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£38/user/mo"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Cyber security"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Endpoint, email and identity, monitored around the clock."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£16/user/mo"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Cloud & Microsoft 365"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Licensing at cost, tenant hardening, and backup that is actually tested."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£12/user/mo"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Projects & migration"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Fixed-price, out of hours, with a rollback plan written first."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "Fixed quote"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Cyber Essentials"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Assessment, remediation and certification, in six to eight weeks."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "£2,400"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Virtual IT director"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "A day a month on strategy, budget and risk, at board level."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "£980/mo"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "All credentials and tenancies held in your name, not ours"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Documentation exported to you every quarter, automatically"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Response times published, with service credits when we miss them"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/template-images/it_services/gen-01-a-server-rack-with-neat-cable-ties-and-b.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/template-images/it_services/gen-02-a-workshop-bench-with-an-open-laptop-and.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/template-images/it_services/gen-03-a-monitoring-screen-with-graphs-in-a-dar.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/template-images/it_services/gen-04-a-stack-of-routers-with-labels.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
+            "default": "/storage/template-images/it_services/gen-05-a-desk-with-two-monitors-and-a-headset.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/it_services/gen-06-a-tangle-of-ethernet-cables-being-sorted.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "A free assessment"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Two days on site, documenting what you actually have."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "A written report"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Risks, costs and priorities — yours to keep whether you sign or not."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Transition"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Run in parallel with your current provider for thirty days."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Steady state"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "A named engineer, a monthly review, and quarterly documentation."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "The assessment report was more useful than the last two years of our previous provider."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Finance Director"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "They handed over every credential in our name on day one. Unheard of."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Finance Director"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "Fifteen-minute response, honoured, at 6.40 on a Friday evening."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Finance Director"
         },
         "social_facebook": {
             "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
+            "label": "Facebook",
+            "default": ""
         },
         "social_instagram": {
             "type": "url",
-            "label": "Instagram URL",
-            "default": "#"
+            "label": "Instagram",
+            "default": ""
         },
-        "social_twitter": {
+        "social_linkedin": {
             "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
+            "label": "Linkedin",
+            "default": ""
         },
-        "social_youtube": {
+        "social_x": {
             "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
+            "label": "X",
+            "default": ""
         },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok URL",
-            "default": "#"
+        "proof_1": {
+            "type": "text",
+            "label": "Reason 1",
+            "default": "Fifteen-minute first response, published"
         },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
+        "faq_1_q": {
+            "type": "text",
+            "label": "FAQ 1 Question",
+            "default": "What is the first response time?"
+        },
+        "faq_1_a": {
+            "type": "text",
+            "label": "FAQ 1 Answer",
+            "default": "Fifteen minutes in office hours, by a named engineer who knows your network, not a queue. It is published, and we report against it monthly."
+        },
+        "proof_2": {
+            "type": "text",
+            "label": "Reason 2",
+            "default": "Twenty-four-hour security monitoring"
+        },
+        "faq_2_q": {
+            "type": "text",
+            "label": "FAQ 2 Question",
+            "default": "Who owns our accounts and licences?"
+        },
+        "faq_2_a": {
+            "type": "text",
+            "label": "FAQ 2 Answer",
+            "default": "You do. Every credential, tenancy and domain is in your name from day one, and the documentation is handed to you quarterly."
+        },
+        "proof_3": {
+            "type": "text",
+            "label": "Reason 3",
+            "default": "Documentation handed to you quarterly"
+        },
+        "faq_3_q": {
+            "type": "text",
+            "label": "FAQ 3 Question",
+            "default": "What does the security service cover?"
+        },
+        "faq_3_a": {
+            "type": "text",
+            "label": "FAQ 3 Answer",
+            "default": "Twenty-four-hour monitoring, patching, backups tested by restore, and the controls for Cyber Essentials — which we take you through as a fixed-price project."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Everything in your name"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "What if we want to leave?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "Thirty days' notice, and because you already hold the documentation and the credentials, the next provider can start the same week."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Start with the free assessment"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "Two days on your network and a written report you keep — what is at risk, what it costs to fix, and what we would do first."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Book an assessment"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#5B5BD6"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#4B4BAF"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#5B5BD6"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#0E1018"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "cyan",
-        "accent_deep": null,
-        "secondary": "violet"
-    },
-    "palette_scheme": "dark",
-    "palette_roles": {
-        "cyan": "accent",
-        "violet": "secondary",
-        "danger": "keep",
-        "success": "keep",
-        "void": "bg",
-        "void_soft": "surface",
-        "panel": "surface2",
-        "panel_border": "line",
-        "ink": "text",
-        "muted": "muted"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

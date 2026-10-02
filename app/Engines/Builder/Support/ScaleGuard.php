@@ -145,6 +145,7 @@ final class ScaleGuard
             $og = self::overflowCss();
             if (stripos($html, '</head>') !== false) $html = preg_replace('#</head>#i', $og . '</head>', $html, 1); elseif (stripos($html, '</body>') !== false) $html = preg_replace('#</body>#i', $og . '</body>', $html, 1); else $html .= $og;
         }
+        if (str_contains($html, 'content="lug-template-generator v2"')) return $html;   // BASE-REDESIGN-1 (2026-10-02): a v2 page (the remade bases) never takes the v1 scale/fixed-nav guard; the overflow guard above is enough
         $s = preg_replace('/[^a-z0-9_]/', '', strtolower((string) $designSlug));
         if ($s !== '' && in_array($s, self::FIXED_NAV, true) && !str_contains($html, 'id="lu-fixednav-guard"')) {
             $fn = self::fixedNavCss();

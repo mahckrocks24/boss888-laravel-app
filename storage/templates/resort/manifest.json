@@ -1,401 +1,140 @@
 {
     "id": "resort",
-    "name": "Resort & Spa",
-    "version": "1.0.0",
+    "name": "Resort — Coral Reef",
     "industry": "resort",
-    "description": "Luxury tropical resort template — ocean blues, spa serenity, infinity pool romance. Built around suites, amenities, dining, and bookings.",
-    "variation": "luxury",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-04-18",
+    "description": "A coastal resort built around the shoreline, not over it",
+    "thumbnail": "/storage/builder-heroes/resort.jpg",
+    "category": "hospitality",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "oxblood",
+        "type": "civic",
+        "scale": "tall",
+        "radius": "hair",
+        "archetypes": {
+            "nav": "glass",
+            "hero": "cinema",
+            "stats": "none",
+            "offers": "carousel",
+            "story": "statement",
+            "gallery": "filmstrip",
+            "steps": "numbered",
+            "tst": "trio",
+            "contact": "darkband",
+            "footer": "minimal",
+            "proof": "strip",
+            "faq": "accordion",
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "offers",
+            "stats",
+            "story",
+            "proof",
+            "steps",
+            "tst",
+            "gallery",
+            "cta",
+            "faq",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ],
             "elements": {
-                "logo": ".nav-logo",
-                "links": ".nav-links",
-                "link": ".nav-links li a",
-                "primary_button": "a.nav-cta",
-                "burger": ".nav-burger"
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
             }
         },
         {
             "id": "hero",
-            "name": "Hero Section",
-            "fields": [
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_cta",
-                "hero_cta_secondary",
-                "hero_image",
-                "hero_trust_badge"
-            ],
+            "name": "Hero",
             "elements": {
-                "eyebrow": ".hero-eyebrow",
-                "heading": "h1.hero-h1",
-                "subheading": "p.hero-sub",
-                "primary_button": "a.btn-primary",
-                "secondary_button": "a.btn-ghost",
-                "image": ".hero-media img",
-                "overlay": ".hero-overlay",
-                "trust_badge": ".hero-trust"
-            }
-        },
-        {
-            "id": "stats",
-            "name": "Stats Strip",
-            "fields": [
-                "stat_1_value",
-                "stat_1_label",
-                "stat_2_value",
-                "stat_2_label",
-                "stat_3_value",
-                "stat_3_label",
-                "stat_4_value",
-                "stat_4_label"
-            ],
-            "elements": {
-                "item": ".stat-item",
-                "number": ".stat-num",
-                "label": ".stat-label"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
             "id": "services",
-            "name": "Specialties",
-            "fields": [
-                "services_eyebrow",
-                "services_title",
-                "services_intro",
-                "service_1_title",
-                "service_1_text",
-                "service_1_tag_1",
-                "service_1_tag_2",
-                "service_1_tag_3",
-                "service_2_title",
-                "service_2_text",
-                "service_2_tag_1",
-                "service_2_tag_2",
-                "service_2_tag_3",
-                "service_3_title",
-                "service_3_text",
-                "service_3_tag_1",
-                "service_3_tag_2",
-                "service_3_tag_3",
-                "service_4_title",
-                "service_4_text",
-                "service_4_tag_1",
-                "service_4_tag_2",
-                "service_4_tag_3",
-                "service_5_title",
-                "service_5_text",
-                "service_5_tag_1",
-                "service_5_tag_2",
-                "service_5_tag_3",
-                "service_6_title",
-                "service_6_text",
-                "service_6_tag_1",
-                "service_6_tag_2",
-                "service_6_tag_3"
-            ],
+            "name": "Services",
             "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".services-intro",
-                "grid": ".service-grid",
-                "card": ".service-card",
-                "icon": ".service-icon",
-                "card_title": ".service-title",
-                "card_description": ".service-desc",
-                "tag": ".service-tag"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "doctors",
-            "name": "Doctors & Team",
-            "fields": [
-                "doctors_eyebrow",
-                "doctors_title",
-                "doctors_intro",
-                "doctor_1_name",
-                "doctor_1_title",
-                "doctor_1_specialty",
-                "doctor_1_bio",
-                "doctor_1_image",
-                "doctor_2_name",
-                "doctor_2_title",
-                "doctor_2_specialty",
-                "doctor_2_bio",
-                "doctor_2_image",
-                "doctor_3_name",
-                "doctor_3_title",
-                "doctor_3_specialty",
-                "doctor_3_bio",
-                "doctor_3_image",
-                "doctor_4_name",
-                "doctor_4_title",
-                "doctor_4_specialty",
-                "doctor_4_bio",
-                "doctor_4_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".doctors-intro",
-                "grid": ".doctor-grid",
-                "card": ".doctor-card",
-                "image": ".doctor-card img",
-                "doctor_name": ".doctor-name",
-                "doctor_title": ".doctor-role",
-                "doctor_specialty": ".doctor-specialty",
-                "doctor_bio": ".doctor-bio"
-            }
-        },
-        {
-            "id": "process",
-            "name": "How It Works",
-            "fields": [
-                "process_eyebrow",
-                "process_title",
-                "process_1_title",
-                "process_1_text",
-                "process_2_title",
-                "process_2_text",
-                "process_3_title",
-                "process_3_text",
-                "process_4_title",
-                "process_4_text"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "step": ".process-step",
-                "number": ".process-num",
-                "step_title": ".process-title",
-                "step_description": ".process-desc"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Client Stories",
-            "fields": [
-                "testimonials_eyebrow",
-                "testimonials_title",
-                "testimonial_1_quote",
-                "testimonial_1_author",
-                "testimonial_1_condition",
-                "testimonial_2_quote",
-                "testimonial_2_author",
-                "testimonial_2_condition",
-                "testimonial_3_quote",
-                "testimonial_3_author",
-                "testimonial_3_condition"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "track": ".testimonial-track",
-                "slide": ".testimonial-slide",
-                "quote": ".testimonial-quote",
-                "author": ".testimonial-author",
-                "condition": ".testimonial-condition",
-                "dot": ".testimonial-dot"
-            }
-        },
-        {
-            "id": "certifications",
-            "name": "Accreditations & Trust",
-            "fields": [
-                "cert_eyebrow",
-                "cert_title",
-                "cert_intro",
-                "cert_1_name",
-                "cert_1_desc",
-                "cert_2_name",
-                "cert_2_desc",
-                "cert_3_name",
-                "cert_3_desc",
-                "cert_4_name",
-                "cert_4_desc",
-                "cert_5_name",
-                "cert_5_desc",
-                "cert_6_name",
-                "cert_6_desc"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.cert-heading",
-                "intro": ".cert-intro",
-                "grid": ".cert-grid",
-                "item": ".cert-item",
-                "cert_name": ".cert-name",
-                "cert_description": ".cert-desc"
-            }
-        },
-        {
-            "id": "cta_banner",
-            "name": "CTA Banner",
-            "fields": [
-                "cta_banner_eyebrow",
-                "cta_banner_title",
-                "cta_banner_subtitle",
-                "cta_banner_cta"
-            ],
-            "elements": {
-                "eyebrow": ".cta-eyebrow",
-                "heading": "h2.cta-title",
-                "subheading": "p.cta-subtitle",
-                "primary_button": "a.cta-button"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact & Location",
-            "fields": [
-                "contact_eyebrow",
-                "contact_title",
-                "contact_intro",
-                "contact_email",
-                "contact_phone",
-                "contact_address",
-                "contact_hours",
-                "contact_emergency",
-                "contact_form_title",
-                "form_submit_text",
-                "form_success_message"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".contact-intro",
-                "info_label": ".contact-item-label",
-                "info_value": ".contact-item-value",
-                "emergency": ".contact-emergency",
-                "form": ".contact-form",
-                "form_field": ".form-field",
-                "form_label": ".form-field label",
-                "form_input": ".form-field input, .form-field textarea, .form-field select",
-                "primary_button": "button.form-submit",
-                "success_message": "#form-success"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book a Consultation",
-            "fields": [
-                "booking_title",
-                "booking_intro",
-                "booking_cta"
-            ],
-            "elements": {
-                "heading": "h2.booking-h2",
-                "intro": ".booking-intro",
-                "form": ".booking-form",
-                "submit_button": "button.booking-submit",
-                "date_input": "input[name=\"preferred_date\"]",
-                "time_slot": ".booking-slot"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Blog Teaser",
-            "fields": [
-                "blog_eyebrow",
-                "blog_title",
-                "blog_intro",
-                "blog_post_1_title",
-                "blog_post_1_excerpt",
-                "blog_post_1_url",
-                "blog_post_2_title",
-                "blog_post_2_excerpt",
-                "blog_post_2_url",
-                "blog_post_3_title",
-                "blog_post_3_excerpt",
-                "blog_post_3_url",
-                "blog_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".blog-intro",
-                "grid": ".blog-grid",
-                "card": ".blog-card",
-                "post_title": ".blog-card-title",
-                "post_excerpt": ".blog-card-excerpt",
-                "cta": ".blog-cta"
-            },
-            "config": {
-                "enabled": true
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
             "id": "gallery",
             "name": "Gallery",
-            "fields": [
-                "gallery_eyebrow",
-                "gallery_title",
-                "gallery_intro",
-                "gallery_1",
-                "gallery_2",
-                "gallery_3",
-                "gallery_4",
-                "gallery_5"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".gallery-intro",
-                "grid": ".gallery-grid",
-                "item": ".gallery-item"
-            }
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "business_name",
-                "footer_tagline",
-                "footer_text",
-                "social_facebook",
-                "social_instagram",
-                "social_linkedin"
-            ],
-            "elements": {
-                "logo": ".footer-logo",
-                "tagline": ".footer-tagline",
-                "links": ".footer-links",
-                "link": ".footer-links li a",
-                "social": ".footer-social",
-                "social_link": ".footer-social a",
-                "copy": ".footer-copy"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Clinic Name",
+            "label": "Business Name",
             "default": "Coral Reef Resort & Spa"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Five-Star Beach Resort · Maldives"
+            "default": "A coastal resort built around the shoreline, not over it"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Coral Reef Resort & Spa — a five-star beachfront resort and spa in the Maldives. Eighty private villas, three restaurants, a dedicated dive centre, and an over-water spa."
+            "default": "Forty-eight rooms and villas on a protected stretch of coast, with a spa, two restaurants and a dive centre."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://resort.example.com"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
@@ -405,817 +144,287 @@
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Check Availability"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Five-Star Beach Resort · Maldives"
+            "default": "Coastal resort · Spa · Dive centre"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Quiet luxury,<br><em>at the water's edge.</em>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "The sea is thirty steps away, and everything else can wait"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "Eighty private beachfront and over-water villas on a private island in the Baa Atoll. Three restaurants, a PADI dive centre, a tennis academy, and an over-water spa pavilion."
+            "label": "Hero Subheading",
+            "default": "Forty-eight rooms across nine acres of coastline, a spa built into the rock, and a kitchen that buys from the boats each morning."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Check Availability"
+            "label": "Hero Button",
+            "default": "Check dates"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "Explore Suites"
+            "label": "Hero Secondary Button",
+            "default": "Explore the resort"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/resort.jpg"
         },
-        "hero_trust_badge": {
+        "offers_title": {
             "type": "text",
-            "label": "Hero Trust Badge",
-            "default": "Five-Star · Forbes Travel · UNESCO Biosphere Reserve"
+            "label": "Offers Heading",
+            "default": "Where you might stay"
         },
-        "stat_1_value": {
+        "offers_subtitle": {
             "type": "text",
-            "label": "Stat 1 Value",
-            "default": "80"
+            "label": "Offers Subheading",
+            "default": "Every room faces water. The difference is how much of it you get, and how far you walk."
         },
-        "stat_1_label": {
+        "story_eyebrow": {
             "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Villas"
+            "label": "Story Eyebrow",
+            "default": "Our story"
         },
-        "stat_2_value": {
+        "story_title": {
             "type": "text",
-            "label": "Stat 2 Value",
-            "default": "3"
+            "label": "Story Heading",
+            "default": "Nine acres, and a promise about what stays wild"
         },
-        "stat_2_label": {
+        "story_body": {
             "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Restaurants"
+            "label": "Story Body",
+            "default": "When the site was bought there was a plan for a hundred and forty keys. We built forty-eight and gave the rest of the headland back to the scrub. It costs us money every year and it is the reason people come."
         },
-        "stat_3_value": {
+        "gallery_title": {
             "type": "text",
-            "label": "Stat 3 Value",
-            "default": "18"
+            "label": "Gallery Heading",
+            "default": "The coast, the rooms, the water"
         },
-        "stat_3_label": {
+        "steps_title": {
             "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Spa Treatments"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "5★"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Forbes"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Services Eyebrow",
-            "default": "Suites & Villas"
-        },
-        "services_title": {
-            "type": "html",
-            "label": "Services Title",
-            "default": "Eighty villas,<br><em>each with its own pool.</em>"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Services Intro",
-            "default": "Three villa categories — beach, lagoon, over-water — each with private pool, outdoor deck, butler service, and direct ocean access."
-        },
-        "service_1_title": {
-            "type": "text",
-            "label": "Service 1 Title",
-            "default": "Beach Villas"
-        },
-        "service_1_text": {
-            "type": "text",
-            "label": "Service 1 Text",
-            "default": "Forty beachfront villas with private plunge pool, outdoor rain shower, and direct sand access — perfect for families and couples."
-        },
-        "service_1_tag_1": {
-            "type": "text",
-            "label": "Service 1 Tag 1",
-            "default": "Pool"
-        },
-        "service_1_tag_2": {
-            "type": "text",
-            "label": "Service 1 Tag 2",
-            "default": "Beach"
-        },
-        "service_1_tag_3": {
-            "type": "text",
-            "label": "Service 1 Tag 3",
-            "default": "Family"
-        },
-        "service_2_title": {
-            "type": "text",
-            "label": "Service 2 Title",
-            "default": "Lagoon Villas"
-        },
-        "service_2_text": {
-            "type": "text",
-            "label": "Service 2 Text",
-            "default": "Twenty lagoon-side villas set on stilts, with overwater hammocks, glass-floor lounges, and steps directly into the lagoon."
-        },
-        "service_2_tag_1": {
-            "type": "text",
-            "label": "Service 2 Tag 1",
-            "default": "Stilts"
-        },
-        "service_2_tag_2": {
-            "type": "text",
-            "label": "Service 2 Tag 2",
-            "default": "Hammock"
-        },
-        "service_2_tag_3": {
-            "type": "text",
-            "label": "Service 2 Tag 3",
-            "default": "Lagoon"
-        },
-        "service_3_title": {
-            "type": "text",
-            "label": "Service 3 Title",
-            "default": "Over-Water Suites"
-        },
-        "service_3_text": {
-            "type": "text",
-            "label": "Service 3 Text",
-            "default": "Twenty over-water suites with infinity pool, sun deck, glass-floor bedroom, and private champagne bar — adults only."
-        },
-        "service_3_tag_1": {
-            "type": "text",
-            "label": "Service 3 Tag 1",
-            "default": "Adults"
-        },
-        "service_3_tag_2": {
-            "type": "text",
-            "label": "Service 3 Tag 2",
-            "default": "Pool"
-        },
-        "service_3_tag_3": {
-            "type": "text",
-            "label": "Service 3 Tag 3",
-            "default": "Champagne"
-        },
-        "service_4_title": {
-            "type": "text",
-            "label": "Service 4 Title",
-            "default": "Spa & Wellness"
-        },
-        "service_4_text": {
-            "type": "text",
-            "label": "Service 4 Text",
-            "default": "An over-water spa pavilion with eighteen treatments, a steam room, hammam, and sunset yoga deck overlooking the reef."
-        },
-        "service_4_tag_1": {
-            "type": "text",
-            "label": "Service 4 Tag 1",
-            "default": "Massage"
-        },
-        "service_4_tag_2": {
-            "type": "text",
-            "label": "Service 4 Tag 2",
-            "default": "Hammam"
-        },
-        "service_4_tag_3": {
-            "type": "text",
-            "label": "Service 4 Tag 3",
-            "default": "Yoga"
-        },
-        "service_5_title": {
-            "type": "text",
-            "label": "Service 5 Title",
-            "default": "Dining"
-        },
-        "service_5_text": {
-            "type": "text",
-            "label": "Service 5 Text",
-            "default": "Three restaurants — modern Maldivian, Italian wood-fired pizzas on the beach, and an over-water teppanyaki counter for ten."
-        },
-        "service_5_tag_1": {
-            "type": "text",
-            "label": "Service 5 Tag 1",
-            "default": "Maldivian"
-        },
-        "service_5_tag_2": {
-            "type": "text",
-            "label": "Service 5 Tag 2",
-            "default": "Italian"
-        },
-        "service_5_tag_3": {
-            "type": "text",
-            "label": "Service 5 Tag 3",
-            "default": "Teppanyaki"
-        },
-        "service_6_title": {
-            "type": "text",
-            "label": "Service 6 Title",
-            "default": "Activities"
-        },
-        "service_6_text": {
-            "type": "text",
-            "label": "Service 6 Text",
-            "default": "PADI five-star dive centre, sunset dolphin cruises, sandbank picnics, kite-surfing, and a tennis academy with two courts."
-        },
-        "service_6_tag_1": {
-            "type": "text",
-            "label": "Service 6 Tag 1",
-            "default": "Diving"
-        },
-        "service_6_tag_2": {
-            "type": "text",
-            "label": "Service 6 Tag 2",
-            "default": "Sailing"
-        },
-        "service_6_tag_3": {
-            "type": "text",
-            "label": "Service 6 Tag 3",
-            "default": "Tennis"
-        },
-        "doctors_eyebrow": {
-            "type": "text",
-            "label": "Team Eyebrow",
-            "default": "Hosts"
-        },
-        "doctors_title": {
-            "type": "html",
-            "label": "Team Title",
-            "default": "Your hosts,<br><em>by name.</em>"
-        },
-        "doctors_intro": {
-            "type": "text",
-            "label": "Team Intro",
-            "default": "A host assigned to your stay before you arrive — they meet you at the seaplane, plan your week, and are on call throughout your visit."
-        },
-        "doctor_1_name": {
-            "type": "text",
-            "label": "Team 1 Name",
-            "default": "Mariam Latheef"
-        },
-        "doctor_1_title": {
-            "type": "text",
-            "label": "Team 1 Title",
-            "default": "General Manager"
-        },
-        "doctor_1_specialty": {
-            "type": "text",
-            "label": "Team 1 Specialty",
-            "default": "Hospitality"
-        },
-        "doctor_1_bio": {
-            "type": "text",
-            "label": "Team 1 Bio",
-            "default": "Eighteen years across Maldives and Mauritius — opened the resort in 2019, lives on the island."
-        },
-        "doctor_1_image": {
-            "type": "image",
-            "label": "Team 1 Image",
-            "default": "/storage/template-images/resort/gen-01-an-infinity-pool-at-dawn-with-mist-over.jpg"
-        },
-        "doctor_2_name": {
-            "type": "text",
-            "label": "Team 2 Name",
-            "default": "Andre Coetzee"
-        },
-        "doctor_2_title": {
-            "type": "text",
-            "label": "Team 2 Title",
-            "default": "Executive Chef"
-        },
-        "doctor_2_specialty": {
-            "type": "text",
-            "label": "Team 2 Specialty",
-            "default": "Modern Maldivian"
-        },
-        "doctor_2_bio": {
-            "type": "text",
-            "label": "Team 2 Bio",
-            "default": "Previously Six Senses Laamu — Champion of the local-fishermen sourcing programme."
-        },
-        "doctor_2_image": {
-            "type": "image",
-            "label": "Team 2 Image",
-            "default": "/storage/template-images/resort/gen-02-loungers-under-palms-with-folded-towels.jpg"
-        },
-        "doctor_3_name": {
-            "type": "text",
-            "label": "Team 3 Name",
-            "default": "Yui Nakamura"
-        },
-        "doctor_3_title": {
-            "type": "text",
-            "label": "Team 3 Title",
-            "default": "Head of Spa"
-        },
-        "doctor_3_specialty": {
-            "type": "text",
-            "label": "Team 3 Specialty",
-            "default": "Wellness"
-        },
-        "doctor_3_bio": {
-            "type": "text",
-            "label": "Team 3 Bio",
-            "default": "Trained in Bali and Kyoto — brought hammam and Japanese onsen rituals to the over-water pavilion."
-        },
-        "doctor_3_image": {
-            "type": "image",
-            "label": "Team 3 Image",
-            "default": "/storage/template-images/resort/gen-03-a-villa-terrace-with-a-breakfast-tray.jpg"
-        },
-        "doctor_4_name": {
-            "type": "text",
-            "label": "Team 4 Name",
-            "default": "Ali Adam"
-        },
-        "doctor_4_title": {
-            "type": "text",
-            "label": "Team 4 Title",
-            "default": "Dive Centre Manager"
-        },
-        "doctor_4_specialty": {
-            "type": "text",
-            "label": "Team 4 Specialty",
-            "default": "PADI Course Director"
-        },
-        "doctor_4_bio": {
-            "type": "text",
-            "label": "Team 4 Bio",
-            "default": "Local dive master, fifteen years on the reef — knows every cleaning station within an hour's boat ride."
-        },
-        "doctor_4_image": {
-            "type": "image",
-            "label": "Team 4 Image",
-            "default": "/storage/template-images/resort/gen-04-a-beach-path-through-dune-grass.jpg"
-        },
-        "process_eyebrow": {
-            "type": "text",
-            "label": "Process Eyebrow",
-            "default": "Your Stay"
-        },
-        "process_title": {
-            "type": "html",
-            "label": "Process Title",
-            "default": "From arrival<br><em>to farewell.</em>"
-        },
-        "process_1_title": {
-            "type": "text",
-            "label": "Step 1 Title",
-            "default": "Arrive"
-        },
-        "process_1_text": {
-            "type": "text",
-            "label": "Step 1 Text",
-            "default": "Met at Malé airport by your host. Forty-minute seaplane transfer to the island. Welcome ritual, fresh coconut water, your villa pre-cooled."
-        },
-        "process_2_title": {
-            "type": "text",
-            "label": "Step 2 Title",
-            "default": "Settle"
-        },
-        "process_2_text": {
-            "type": "text",
-            "label": "Step 2 Text",
-            "default": "Unpack while your host walks you through the resort. Schedule a planning chat for the next morning over breakfast."
-        },
-        "process_3_title": {
-            "type": "text",
-            "label": "Step 3 Title",
-            "default": "Explore"
-        },
-        "process_3_text": {
-            "type": "text",
-            "label": "Step 3 Text",
-            "default": "Diving, snorkelling, spa, dining, beach time — your host coordinates everything based on the rhythm you set."
-        },
-        "process_4_title": {
-            "type": "text",
-            "label": "Step 4 Title",
-            "default": "Depart"
-        },
-        "process_4_text": {
-            "type": "text",
-            "label": "Step 4 Text",
-            "default": "Late check-out as a default. Seaplane back to Malé arranged. Farewell gift in your villa — usually something the chefs made."
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Guest Stories"
+            "label": "Process Heading",
+            "default": "Planning your stay"
         },
         "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Guests,<br><em>in their words.</em>"
-        },
-        "testimonial_1_quote": {
             "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Brilliant from start to finish. The team listened, delivered exactly what we needed and made the whole experience effortless."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Hana Y. — Dubai Marina"
-        },
-        "testimonial_1_condition": {
-            "type": "text",
-            "label": "Testimonial 1 Condition",
-            "default": "Family Medicine"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Ahmed & Laila K."
-        },
-        "testimonial_2_condition": {
-            "type": "text",
-            "label": "Testimonial 2 Condition",
-            "default": "Paediatrics"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Heart palpitations had three previous team shrug and send me home. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Roberto P. — JLT"
-        },
-        "testimonial_3_condition": {
-            "type": "text",
-            "label": "Testimonial 3 Condition",
-            "default": "Cardiology"
-        },
-        "cert_eyebrow": {
-            "type": "text",
-            "label": "Cert Eyebrow",
-            "default": "Recognition"
-        },
-        "cert_title": {
-            "type": "text",
-            "label": "Cert Title",
-            "default": "Awards & sustainability"
-        },
-        "cert_intro": {
-            "type": "text",
-            "label": "Cert Intro",
-            "default": "Five-star awards and a serious environmental programme."
-        },
-        "cert_1_name": {
-            "type": "text",
-            "label": "Cert 1 Name",
-            "default": "Forbes Travel 5★"
-        },
-        "cert_1_desc": {
-            "type": "text",
-            "label": "Cert 1 Desc",
-            "default": "Forbes Travel Guide Five-Star rating, 2023, 2024, 2025"
-        },
-        "cert_2_name": {
-            "type": "text",
-            "label": "Cert 2 Name",
-            "default": "Condé Nast Top 100"
-        },
-        "cert_2_desc": {
-            "type": "text",
-            "label": "Cert 2 Desc",
-            "default": "Condé Nast Traveler Top 100 Hotels Worldwide, 2024"
-        },
-        "cert_3_name": {
-            "type": "text",
-            "label": "Cert 3 Name",
-            "default": "Travel + Leisure"
-        },
-        "cert_3_desc": {
-            "type": "text",
-            "label": "Cert 3 Desc",
-            "default": "World's Best Awards — #14 Resort, Indian Ocean"
-        },
-        "cert_4_name": {
-            "type": "text",
-            "label": "Cert 4 Name",
-            "default": "Reef Programme"
-        },
-        "cert_4_desc": {
-            "type": "text",
-            "label": "Cert 4 Desc",
-            "default": "Coral restoration partner — UNESCO Biosphere Reserve programme"
-        },
-        "cert_5_name": {
-            "type": "text",
-            "label": "Cert 5 Name",
-            "default": "Carbon Neutral"
-        },
-        "cert_5_desc": {
-            "type": "text",
-            "label": "Cert 5 Desc",
-            "default": "Carbon-neutral operations since 2022 — solar + ocean-current desalination"
-        },
-        "cert_6_name": {
-            "type": "text",
-            "label": "Cert 6 Name",
-            "default": "Plastic-Free"
-        },
-        "cert_6_desc": {
-            "type": "text",
-            "label": "Cert 6 Desc",
-            "default": "Single-use plastic free since 2020 — glass water filtration on site"
-        },
-        "cta_banner_eyebrow": {
-            "type": "text",
-            "label": "CTA Banner Eyebrow",
-            "default": "Same-day appointments"
-        },
-        "cta_banner_title": {
-            "type": "html",
-            "label": "CTA Banner Title",
-            "default": "Ready when you are."
-        },
-        "cta_banner_subtitle": {
-            "type": "text",
-            "label": "CTA Banner Subtitle",
-            "default": "Get in touch — we'll respond within an hour during business hours."
-        },
-        "cta_banner_cta": {
-            "type": "text",
-            "label": "CTA Banner CTA",
-            "default": "Check Availability"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
+            "label": "Testimonials Heading",
+            "default": "What people say"
         },
         "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Visit or<br><em>call us.</em>"
-        },
-        "contact_intro": {
             "type": "text",
-            "label": "Contact Intro",
-            "default": "We reply to all enquiries within thirty minutes during opening hours."
+            "label": "Contact Heading",
+            "default": "Reservations"
         },
-        "contact_email": {
+        "contact_subtitle": {
             "type": "text",
-            "label": "Contact Email",
-            "default": "reception@atrium-team.ae"
+            "label": "Contact Subheading",
+            "default": "One team handles rooms, spa and dining, so nothing gets lost between departments."
         },
         "contact_phone": {
             "type": "text",
-            "label": "Contact Phone",
-            "default": "+971 4 000 0000"
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
         },
         "contact_address": {
             "type": "text",
-            "label": "Contact Address",
-            "default": "Dubai Healthcare City, Block F, Floor 3"
+            "label": "Address",
+            "default": "12 Example Street, London"
         },
         "contact_hours": {
             "type": "text",
             "label": "Opening Hours",
-            "default": "Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm"
+            "default": "Reservations 8–8 daily · Resort open year round"
         },
-        "contact_emergency": {
+        "contact_cta": {
             "type": "text",
-            "label": "Emergency Line",
-            "default": "For team emergencies dial 998 (Dubai Police / Ambulance)."
+            "label": "Contact Button",
+            "default": "Check dates"
         },
-        "contact_form_title": {
-            "type": "html",
-            "label": "Form Title",
-            "default": "Request a<br><em>callback.</em>"
-        },
-        "form_submit_text": {
+        "footer_legal": {
             "type": "text",
-            "label": "Submit Button",
-            "default": "Request Callback →"
+            "label": "Footer Legal",
+            "default": "All rights reserved."
         },
-        "form_success_message": {
+        "nav_1": {
             "type": "text",
-            "label": "Success Message",
-            "default": "✓ Thank you. Reception will call you back within thirty minutes."
+            "label": "Nav Link 1",
+            "default": "Stay"
         },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "Book a<br><em>visit.</em>"
-        },
-        "booking_intro": {
+        "nav_2": {
             "type": "text",
-            "label": "Booking Intro",
-            "default": "Choose a service and a time that suits you. We'll confirm within thirty minutes."
+            "label": "Nav Link 2",
+            "default": "Spa"
         },
-        "booking_cta": {
+        "nav_3": {
             "type": "text",
-            "label": "Booking CTA",
-            "default": "Book Now"
-        },
-        "booking_display": {
-            "type": "text",
-            "label": "Booking Display",
-            "default": ""
-        },
-        "footer_tagline": {
-            "type": "text",
-            "label": "Footer Tagline",
-            "default": "Resort & Spa — Five-Star Beach Resort · Maldives."
-        },
-        "footer_text": {
-            "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 Coral Reef Resort & Spa. All rights reserved."
-        },
-        "social_facebook": {
-            "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
-        },
-        "social_instagram": {
-            "type": "url",
-            "label": "Instagram URL",
-            "default": "#"
-        },
-        "social_linkedin": {
-            "type": "url",
-            "label": "LinkedIn URL",
-            "default": "#"
-        },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk (Background)",
-            "default": "#FFFFFF"
-        },
-        "chalk_soft": {
-            "type": "color",
-            "label": "Soft Background",
-            "default": "#F7FAFC"
-        },
-        "carbon": {
-            "type": "color",
-            "label": "Ink (Primary Text)",
-            "default": "#0F1A2A"
-        },
-        "carbon_soft": {
-            "type": "color",
-            "label": "Soft Ink",
-            "default": "#344458"
-        },
-        "medical_blue": {
-            "type": "color",
-            "label": "Medical Blue",
-            "default": "#0891B2"
-        },
-        "medical_deep": {
-            "type": "color",
-            "label": "Medical Deep",
-            "default": "#0E7490"
-        },
-        "sage": {
-            "type": "color",
-            "label": "Sage Accent",
-            "default": "#A5F3FC"
-        },
-        "sage_soft": {
-            "type": "color",
-            "label": "Sage Soft",
-            "default": "#D6E4DD"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#6B7A8F"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#E2E8F0"
-        },
-        "social_twitter": {
-            "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
-        },
-        "social_youtube": {
-            "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
-        },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok URL",
-            "default": "#"
-        },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
-        },
-        "blog_eyebrow": {
-            "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Insights"
-        },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "From the<br><em>journal.</em>"
-        },
-        "blog_intro": {
-            "type": "text",
-            "label": "Blog Intro",
-            "default": "Practical guides, expert opinion, and behind-the-scenes notes — written by our team."
-        },
-        "blog_post_1_title": {
-            "type": "text",
-            "label": "Post 1 Title",
-            "default": "What to expect at your first appointment"
-        },
-        "blog_post_1_excerpt": {
-            "type": "text",
-            "label": "Post 1 Excerpt",
-            "default": "A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect."
-        },
-        "blog_post_1_url": {
-            "type": "url",
-            "label": "Post 1 URL",
-            "default": "/blog/first-appointment"
-        },
-        "blog_post_2_title": {
-            "type": "text",
-            "label": "Post 2 Title",
-            "default": "Five questions worth asking your provider"
-        },
-        "blog_post_2_excerpt": {
-            "type": "text",
-            "label": "Post 2 Excerpt",
-            "default": "The questions that should be standard — but rarely are. Use this as a checklist before any visit."
-        },
-        "blog_post_2_url": {
-            "type": "url",
-            "label": "Post 2 URL",
-            "default": "/blog/five-questions"
-        },
-        "blog_post_3_title": {
-            "type": "text",
-            "label": "Post 3 Title",
-            "default": "The case for unhurried appointments"
-        },
-        "blog_post_3_excerpt": {
-            "type": "text",
-            "label": "Post 3 Excerpt",
-            "default": "Why a thirty-minute visit isn't a luxury — it's the bare minimum for thoughtful care."
-        },
-        "blog_post_3_url": {
-            "type": "url",
-            "label": "Post 3 URL",
-            "default": "/blog/unhurried"
-        },
-        "blog_cta": {
-            "type": "text",
-            "label": "Blog CTA",
-            "default": "Read More →"
-        },
-        "gallery_eyebrow": {
-            "type": "text",
-            "label": "Gallery Eyebrow",
+            "label": "Nav Link 3",
             "default": "Gallery"
         },
-        "gallery_title": {
-            "type": "html",
-            "label": "Gallery Title",
-            "default": "From the<br><em>archive.</em>"
-        },
-        "gallery_intro": {
+        "nav_4": {
             "type": "text",
-            "label": "Gallery Intro",
-            "default": "Recent moments — captured for posterity."
+            "label": "Nav Link 4",
+            "default": "Dining"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Book"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Check dates"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "48"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Rooms and villas"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "9"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Acres of coast"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "2/3"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Of the estate left wild"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Garden room"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Ground floor, private terrace, a short path down through the pines."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "From £210"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Sea-view suite"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "A full aspect over the bay, with an outdoor bath on the terrace."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "From £395"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Cliff villa"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Two bedrooms, a private pool, and nobody within sight of it."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "From £680"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Spa journey"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Half a day in the rock pools, two treatments and lunch on the terrace."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "£180"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Dive package"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Four guided dives on the reef, equipment and boat transfer included."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "£340"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Whole-resort hire"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "Every room, both restaurants, and the beach, for three nights."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "On request"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Two thirds of the estate is left unbuilt and replanted"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Fish bought from four local boats, never from a wholesaler"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Ninety per cent of staff live within twenty miles"
         },
         "gallery_1": {
             "type": "image",
@@ -1241,65 +450,237 @@
             "type": "image",
             "label": "Gallery Image 5",
             "default": "/storage/template-images/resort/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/resort/gen-01-an-infinity-pool-at-dawn-with-mist-over.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Pick your dates"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "The bay is calmest May to October; the spa is best in winter."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Choose a room"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Or tell us what matters — quiet, steps, a bath, a view — and we will choose."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Arrange the extras"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Transfers, dives, treatments and dinner, all before you arrive."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Arrive and stop"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Check-in happens wherever you are sitting, with a drink in your hand."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "We have been four times. It has not got bigger, louder or worse, which is rare."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Returning guest"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "The dive team took our fourteen-year-old on her first reef dive and she has not stopped talking about it."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Returning guest"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "They kept the headland wild. You feel it the moment you arrive."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Returning guest"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "proof_1": {
+            "type": "text",
+            "label": "Reason 1",
+            "default": "Breakfast, pool and gym in the rate"
+        },
+        "faq_1_q": {
+            "type": "text",
+            "label": "FAQ 1 Question",
+            "default": "What is included in the rate?"
+        },
+        "faq_1_a": {
+            "type": "text",
+            "label": "FAQ 1 Answer",
+            "default": "The room, breakfast, the pool and the gym. Treatments, excursions and dinner are extra and priced on the site, so the bill at the end holds no surprises."
+        },
+        "proof_2": {
+            "type": "text",
+            "label": "Reason 2",
+            "default": "Free cancellation to seventy-two hours"
+        },
+        "faq_2_q": {
+            "type": "text",
+            "label": "FAQ 2 Question",
+            "default": "Can we come for the day?"
+        },
+        "faq_2_a": {
+            "type": "text",
+            "label": "FAQ 2 Answer",
+            "default": "Yes, day passes include the pool, the loungers and lunch, and they are limited so it never feels crowded."
+        },
+        "proof_3": {
+            "type": "text",
+            "label": "Reason 3",
+            "default": "Cots and extra beds at no charge"
+        },
+        "faq_3_q": {
+            "type": "text",
+            "label": "FAQ 3 Question",
+            "default": "Is it suitable for children?"
+        },
+        "faq_3_a": {
+            "type": "text",
+            "label": "FAQ 3 Answer",
+            "default": "Very, and there is an adults-only terrace for the hours when you would rather it was quiet. Cots and extra beds are free."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Day passes limited each day"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "How late can we cancel?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "Free up to seventy-two hours before arrival. Inside that we charge the first night only, and never the whole stay."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Check the dates"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "See what is free, what it costs and what is included, before you give anyone a card number."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Check availability"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#8C3A3F"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#733034"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#8C3A3F"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#1A1113"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "medical_blue",
-        "accent_deep": null,
-        "secondary": "sage"
-    },
-    "palette_scheme": "light",
-    "palette_roles": {
-        "medical_blue": "accent",
-        "medical_deep": "accent_deep",
-        "sage": "secondary",
-        "sage_soft": "secondary_soft",
-        "chalk": "bg",
-        "chalk_soft": "surface",
-        "carbon": "text",
-        "carbon_soft": "muted",
-        "warm_grey": "muted",
-        "divider": "line"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

@@ -1,380 +1,145 @@
 {
     "id": "medical_clinic",
-    "name": "Medical Clinic",
-    "version": "1.0.0",
+    "name": "Medical Clinic — Greenleaf",
     "industry": "medical_clinic",
-    "description": "Multi-specialty medical clinic template — emerald greens, calm sage, friendly clinical voice. Built for general practice, family medicine, and same-day specialist consultations.",
-    "variation": "luxury",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-04-18",
+    "description": "Private GP care with time to listen",
+    "thumbnail": "/storage/builder-heroes/medical_clinic.jpg",
+    "category": "health",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "forest",
+        "type": "civic",
+        "scale": "stately",
+        "radius": "card",
+        "archetypes": {
+            "nav": "centered",
+            "hero": "frame",
+            "stats": "bigband",
+            "offers": "tile",
+            "story": "timeline",
+            "gallery": "mosaic",
+            "steps": "slabs",
+            "tst": "banner",
+            "contact": "stack",
+            "footer": "mast",
+            "proof": "tiles",
+            "faq": "accordion",
+            "cta": "split",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "stats",
+            "offers",
+            "proof",
+            "story",
+            "steps",
+            "gallery",
+            "tst",
+            "cta",
+            "faq",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ],
             "elements": {
-                "logo": ".nav-logo",
-                "links": ".nav-links",
-                "link": ".nav-links li a",
-                "primary_button": "a.nav-cta",
-                "burger": ".nav-burger"
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
             }
         },
         {
             "id": "hero",
-            "name": "Hero Section",
-            "fields": [
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_cta",
-                "hero_cta_secondary",
-                "hero_image",
-                "hero_trust_badge"
-            ],
+            "name": "Hero",
             "elements": {
-                "eyebrow": ".hero-eyebrow",
-                "heading": "h1.hero-h1",
-                "subheading": "p.hero-sub",
-                "primary_button": "a.btn-primary",
-                "secondary_button": "a.btn-ghost",
-                "image": ".hero-media img",
-                "overlay": ".hero-overlay",
-                "trust_badge": ".hero-trust"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
             "id": "stats",
-            "name": "Stats Strip",
-            "fields": [
-                "stat_1_value",
-                "stat_1_label",
-                "stat_2_value",
-                "stat_2_label",
-                "stat_3_value",
-                "stat_3_label",
-                "stat_4_value",
-                "stat_4_label"
-            ],
-            "elements": {
-                "item": ".stat-item",
-                "number": ".stat-num",
-                "label": ".stat-label"
-            }
+            "name": "Stats",
+            "elements": []
         },
         {
             "id": "services",
-            "name": "Specialties",
-            "fields": [
-                "services_eyebrow",
-                "services_title",
-                "services_intro",
-                "service_1_title",
-                "service_1_text",
-                "service_1_tag_1",
-                "service_1_tag_2",
-                "service_1_tag_3",
-                "service_2_title",
-                "service_2_text",
-                "service_2_tag_1",
-                "service_2_tag_2",
-                "service_2_tag_3",
-                "service_3_title",
-                "service_3_text",
-                "service_3_tag_1",
-                "service_3_tag_2",
-                "service_3_tag_3",
-                "service_4_title",
-                "service_4_text",
-                "service_4_tag_1",
-                "service_4_tag_2",
-                "service_4_tag_3",
-                "service_5_title",
-                "service_5_text",
-                "service_5_tag_1",
-                "service_5_tag_2",
-                "service_5_tag_3",
-                "service_6_title",
-                "service_6_text",
-                "service_6_tag_1",
-                "service_6_tag_2",
-                "service_6_tag_3"
-            ],
+            "name": "Services",
             "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".services-intro",
-                "grid": ".service-grid",
-                "card": ".service-card",
-                "icon": ".service-icon",
-                "card_title": ".service-title",
-                "card_description": ".service-desc",
-                "tag": ".service-tag"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "doctors",
-            "name": "Doctors & Team",
-            "fields": [
-                "doctors_eyebrow",
-                "doctors_title",
-                "doctors_intro",
-                "doctor_1_name",
-                "doctor_1_title",
-                "doctor_1_specialty",
-                "doctor_1_bio",
-                "doctor_1_image",
-                "doctor_2_name",
-                "doctor_2_title",
-                "doctor_2_specialty",
-                "doctor_2_bio",
-                "doctor_2_image",
-                "doctor_3_name",
-                "doctor_3_title",
-                "doctor_3_specialty",
-                "doctor_3_bio",
-                "doctor_3_image",
-                "doctor_4_name",
-                "doctor_4_title",
-                "doctor_4_specialty",
-                "doctor_4_bio",
-                "doctor_4_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".doctors-intro",
-                "grid": ".doctor-grid",
-                "card": ".doctor-card",
-                "image": ".doctor-card img",
-                "doctor_name": ".doctor-name",
-                "doctor_title": ".doctor-role",
-                "doctor_specialty": ".doctor-specialty",
-                "doctor_bio": ".doctor-bio"
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
+        },
+        {
+            "id": "gallery",
+            "name": "Gallery",
+            "elements": []
         },
         {
             "id": "process",
-            "name": "How It Works",
-            "fields": [
-                "process_eyebrow",
-                "process_title",
-                "process_1_title",
-                "process_1_text",
-                "process_2_title",
-                "process_2_text",
-                "process_3_title",
-                "process_3_text",
-                "process_4_title",
-                "process_4_text"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "step": ".process-step",
-                "number": ".process-num",
-                "step_title": ".process-title",
-                "step_description": ".process-desc"
-            }
+            "name": "Process",
+            "elements": []
         },
         {
             "id": "testimonials",
-            "name": "Patient Stories",
-            "fields": [
-                "testimonials_eyebrow",
-                "testimonials_title",
-                "testimonial_1_quote",
-                "testimonial_1_author",
-                "testimonial_1_condition",
-                "testimonial_2_quote",
-                "testimonial_2_author",
-                "testimonial_2_condition",
-                "testimonial_3_quote",
-                "testimonial_3_author",
-                "testimonial_3_condition"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "track": ".testimonial-track",
-                "slide": ".testimonial-slide",
-                "quote": ".testimonial-quote",
-                "author": ".testimonial-author",
-                "condition": ".testimonial-condition",
-                "dot": ".testimonial-dot"
-            }
-        },
-        {
-            "id": "certifications",
-            "name": "Accreditations & Trust",
-            "fields": [
-                "cert_eyebrow",
-                "cert_title",
-                "cert_intro",
-                "cert_1_name",
-                "cert_1_desc",
-                "cert_2_name",
-                "cert_2_desc",
-                "cert_3_name",
-                "cert_3_desc",
-                "cert_4_name",
-                "cert_4_desc",
-                "cert_5_name",
-                "cert_5_desc",
-                "cert_6_name",
-                "cert_6_desc"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.cert-heading",
-                "intro": ".cert-intro",
-                "grid": ".cert-grid",
-                "item": ".cert-item",
-                "cert_name": ".cert-name",
-                "cert_description": ".cert-desc"
-            }
-        },
-        {
-            "id": "cta_banner",
-            "name": "CTA Banner",
-            "fields": [
-                "cta_banner_eyebrow",
-                "cta_banner_title",
-                "cta_banner_subtitle",
-                "cta_banner_cta"
-            ],
-            "elements": {
-                "eyebrow": ".cta-eyebrow",
-                "heading": "h2.cta-title",
-                "subheading": "p.cta-subtitle",
-                "primary_button": "a.cta-button"
-            }
+            "name": "Testimonials",
+            "elements": []
         },
         {
             "id": "contact",
-            "name": "Contact & Location",
-            "fields": [
-                "contact_eyebrow",
-                "contact_title",
-                "contact_intro",
-                "contact_email",
-                "contact_phone",
-                "contact_address",
-                "contact_hours",
-                "contact_emergency",
-                "contact_form_title",
-                "form_submit_text",
-                "form_success_message"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".contact-intro",
-                "info_label": ".contact-item-label",
-                "info_value": ".contact-item-value",
-                "emergency": ".contact-emergency",
-                "form": ".contact-form",
-                "form_field": ".form-field",
-                "form_label": ".form-field label",
-                "form_input": ".form-field input, .form-field textarea, .form-field select",
-                "primary_button": "button.form-submit",
-                "success_message": "#form-success"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book a Consultation",
-            "fields": [
-                "booking_title",
-                "booking_intro",
-                "booking_cta"
-            ],
-            "elements": {
-                "heading": "h2.booking-h2",
-                "intro": ".booking-intro",
-                "form": ".booking-form",
-                "submit_button": "button.booking-submit",
-                "date_input": "input[name=\"preferred_date\"]",
-                "time_slot": ".booking-slot"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Blog Teaser",
-            "fields": [
-                "blog_eyebrow",
-                "blog_title",
-                "blog_intro",
-                "blog_post_1_title",
-                "blog_post_1_excerpt",
-                "blog_post_1_url",
-                "blog_post_2_title",
-                "blog_post_2_excerpt",
-                "blog_post_2_url",
-                "blog_post_3_title",
-                "blog_post_3_excerpt",
-                "blog_post_3_url",
-                "blog_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".blog-intro",
-                "grid": ".blog-grid",
-                "card": ".blog-card",
-                "post_title": ".blog-card-title",
-                "post_excerpt": ".blog-card-excerpt",
-                "cta": ".blog-cta"
-            },
-            "config": {
-                "enabled": true
-            }
+            "name": "Contact",
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "business_name",
-                "footer_tagline",
-                "footer_text",
-                "social_facebook",
-                "social_instagram",
-                "social_linkedin"
-            ],
-            "elements": {
-                "logo": ".footer-logo",
-                "tagline": ".footer-tagline",
-                "links": ".footer-links",
-                "link": ".footer-links li a",
-                "social": ".footer-social",
-                "social_link": ".footer-social a",
-                "copy": ".footer-copy"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Clinic Name",
+            "label": "Business Name",
             "default": "Greenleaf Medical"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Family Medicine · Dubai"
+            "default": "Private GP care with time to listen"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Greenleaf Medical — a family-run private clinic in Dubai offering general practice, health checks, vaccinations, women's health, and same-day specialist consultations."
+            "default": "Private general practice with thirty-minute appointments, same-day access and continuity with a named doctor."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://medical-clinic.example.com"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
@@ -384,861 +149,573 @@
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Book now"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Family Medicine · Dubai"
+            "default": "Private GP · CQC registered"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Health care,<br><em>centred on you.</em>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "Thirty-minute appointments, with the same doctor each time"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "A multi-specialty private clinic where doctors actually have time to listen. Same-day appointments, longer consultations, direct insurance billing, and joined-up care across general practice, paediatrics, and women's health."
+            "label": "Hero Subheading",
+            "default": "Same-day access, a named GP who knows your history, and referrals written the day they are agreed rather than weeks later."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Book Consultation"
+            "label": "Hero Button",
+            "default": "Book an appointment"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "Meet the Doctors"
+            "label": "Hero Secondary Button",
+            "default": "What we provide"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/medical_clinic.jpg"
         },
-        "hero_trust_badge": {
+        "offers_title": {
             "type": "text",
-            "label": "Hero Trust Badge",
-            "default": "DHA Licensed · ISO 9001 · Same-Day Appointments · Direct Billing"
+            "label": "Offers Heading",
+            "default": "What we provide"
         },
-        "stat_1_value": {
+        "offers_subtitle": {
             "type": "text",
-            "label": "Stat 1 Value",
-            "default": "12"
+            "label": "Offers Subheading",
+            "default": "Full general practice, plus the things that usually mean another waiting list."
         },
-        "stat_1_label": {
+        "story_eyebrow": {
             "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Consultants"
+            "label": "Story Eyebrow",
+            "default": "Our story"
         },
-        "stat_2_value": {
+        "story_title": {
             "type": "text",
-            "label": "Stat 2 Value",
-            "default": "9"
+            "label": "Story Heading",
+            "default": "Time is the treatment most people are missing"
         },
-        "stat_2_label": {
+        "story_body": {
             "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Specialties"
+            "label": "Story Body",
+            "default": "A ten-minute appointment forces a doctor to treat the first thing you mention. Thirty minutes lets them find the thing you came in about. That is the entire reason this practice exists, and it is why we cap each doctor at twelve patients a day."
         },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "18,000+"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Patients Seen"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "4.9★"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Patient Rating"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Services Eyebrow",
-            "default": "Specialties"
-        },
-        "services_title": {
-            "type": "html",
-            "label": "Services Title",
-            "default": "Care for the<br><em>whole family.</em>"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Services Intro",
-            "default": "All under one roof — general practice, paediatrics, women's health, men's health, mental health, and chronic disease management."
-        },
-        "service_1_title": {
-            "type": "text",
-            "label": "Service 1 Title",
-            "default": "General Practice"
-        },
-        "service_1_text": {
-            "type": "text",
-            "label": "Service 1 Text",
-            "default": "Routine consultations, acute illness, prescriptions, referrals, and ongoing chronic-condition management for adults and children."
-        },
-        "service_1_tag_1": {
-            "type": "text",
-            "label": "Service 1 Tag 1",
-            "default": "Adults"
-        },
-        "service_1_tag_2": {
-            "type": "text",
-            "label": "Service 1 Tag 2",
-            "default": "Children"
-        },
-        "service_1_tag_3": {
-            "type": "text",
-            "label": "Service 1 Tag 3",
-            "default": "Same-Day"
-        },
-        "service_2_title": {
-            "type": "text",
-            "label": "Service 2 Title",
-            "default": "Health Checks"
-        },
-        "service_2_text": {
-            "type": "text",
-            "label": "Service 2 Text",
-            "default": "Comprehensive annual health screenings with bloods, ECG, body composition, and a written report you take home."
-        },
-        "service_2_tag_1": {
-            "type": "text",
-            "label": "Service 2 Tag 1",
-            "default": "Annual"
-        },
-        "service_2_tag_2": {
-            "type": "text",
-            "label": "Service 2 Tag 2",
-            "default": "Bloods"
-        },
-        "service_2_tag_3": {
-            "type": "text",
-            "label": "Service 2 Tag 3",
-            "default": "ECG"
-        },
-        "service_3_title": {
-            "type": "text",
-            "label": "Service 3 Title",
-            "default": "Vaccinations"
-        },
-        "service_3_text": {
-            "type": "text",
-            "label": "Service 3 Text",
-            "default": "All routine immunisations for children and adults, plus travel vaccines, flu, COVID boosters, and yellow fever certification."
-        },
-        "service_3_tag_1": {
-            "type": "text",
-            "label": "Service 3 Tag 1",
-            "default": "Routine"
-        },
-        "service_3_tag_2": {
-            "type": "text",
-            "label": "Service 3 Tag 2",
-            "default": "Travel"
-        },
-        "service_3_tag_3": {
-            "type": "text",
-            "label": "Service 3 Tag 3",
-            "default": "Flu"
-        },
-        "service_4_title": {
-            "type": "text",
-            "label": "Service 4 Title",
-            "default": "Women's Health"
-        },
-        "service_4_text": {
-            "type": "text",
-            "label": "Service 4 Text",
-            "default": "Smear tests, contraception advice, pre-conception planning, menopause support, and referrals for gynaecology and obstetrics."
-        },
-        "service_4_tag_1": {
-            "type": "text",
-            "label": "Service 4 Tag 1",
-            "default": "Smear"
-        },
-        "service_4_tag_2": {
-            "type": "text",
-            "label": "Service 4 Tag 2",
-            "default": "HRT"
-        },
-        "service_4_tag_3": {
-            "type": "text",
-            "label": "Service 4 Tag 3",
-            "default": "Pre-Natal"
-        },
-        "service_5_title": {
-            "type": "text",
-            "label": "Service 5 Title",
-            "default": "Paediatrics"
-        },
-        "service_5_text": {
-            "type": "text",
-            "label": "Service 5 Text",
-            "default": "Newborn checks through to adolescence — vaccinations, developmental assessments, and a quiet, child-friendly waiting space."
-        },
-        "service_5_tag_1": {
-            "type": "text",
-            "label": "Service 5 Tag 1",
-            "default": "Newborn"
-        },
-        "service_5_tag_2": {
-            "type": "text",
-            "label": "Service 5 Tag 2",
-            "default": "Vaccines"
-        },
-        "service_5_tag_3": {
-            "type": "text",
-            "label": "Service 5 Tag 3",
-            "default": "Development"
-        },
-        "service_6_title": {
-            "type": "text",
-            "label": "Service 6 Title",
-            "default": "Specialist Referrals"
-        },
-        "service_6_text": {
-            "type": "text",
-            "label": "Service 6 Text",
-            "default": "Direct, same-week referral pathways to cardiology, dermatology, orthopaedics, ENT, and gastroenterology consultants in Dubai and abroad."
-        },
-        "service_6_tag_1": {
-            "type": "text",
-            "label": "Service 6 Tag 1",
-            "default": "Cardiology"
-        },
-        "service_6_tag_2": {
-            "type": "text",
-            "label": "Service 6 Tag 2",
-            "default": "Derm"
-        },
-        "service_6_tag_3": {
-            "type": "text",
-            "label": "Service 6 Tag 3",
-            "default": "Orthopaedics"
-        },
-        "doctors_eyebrow": {
-            "type": "text",
-            "label": "Doctors Eyebrow",
-            "default": "Our Team"
-        },
-        "doctors_title": {
-            "type": "html",
-            "label": "Doctors Title",
-            "default": "Doctors<br><em>you can call by name.</em>"
-        },
-        "doctors_intro": {
-            "type": "text",
-            "label": "Doctors Intro",
-            "default": "A small, stable team of family doctors — each holding a minimum of ten years' experience and dedicated to longer appointments and continuity of care."
-        },
-        "doctor_1_name": {
-            "type": "text",
-            "label": "Doctor 1 Name",
-            "default": "Dr. Aisha Rahman"
-        },
-        "doctor_1_title": {
-            "type": "text",
-            "label": "Doctor 1 Title",
-            "default": "Medical Director"
-        },
-        "doctor_1_specialty": {
-            "type": "text",
-            "label": "Doctor 1 Specialty",
-            "default": "Family Medicine"
-        },
-        "doctor_1_bio": {
-            "type": "text",
-            "label": "Doctor 1 Bio",
-            "default": "MBBS Imperial College London, MRCGP. Sixteen years in private and NHS practice."
-        },
-        "doctor_1_image": {
+        "story_image": {
             "type": "image",
-            "label": "Doctor 1 Image",
-            "default": "/storage/template-images/medical_clinic/gen-01-a-consultation-room-with-a-desk-a-blood.jpg"
-        },
-        "doctor_2_name": {
-            "type": "text",
-            "label": "Doctor 2 Name",
-            "default": "Dr. Omar Al-Sayed"
-        },
-        "doctor_2_title": {
-            "type": "text",
-            "label": "Doctor 2 Title",
-            "default": "Consultant Cardiologist"
-        },
-        "doctor_2_specialty": {
-            "type": "text",
-            "label": "Doctor 2 Specialty",
-            "default": "Cardiology"
-        },
-        "doctor_2_bio": {
-            "type": "text",
-            "label": "Doctor 2 Bio",
-            "default": "MB BCh, MD Cardiology. Previously Consultant at Royal Brompton Hospital, London."
-        },
-        "doctor_2_image": {
-            "type": "image",
-            "label": "Doctor 2 Image",
-            "default": "/storage/template-images/medical_clinic/gen-02-waiting-area-chairs-in-a-row-by-a-window.jpg"
-        },
-        "doctor_3_name": {
-            "type": "text",
-            "label": "Doctor 3 Name",
-            "default": "Dr. Sarah Nakamura"
-        },
-        "doctor_3_title": {
-            "type": "text",
-            "label": "Doctor 3 Title",
-            "default": "Consultant Paediatrician"
-        },
-        "doctor_3_specialty": {
-            "type": "text",
-            "label": "Doctor 3 Specialty",
-            "default": "Paediatrics"
-        },
-        "doctor_3_bio": {
-            "type": "text",
-            "label": "Doctor 3 Bio",
-            "default": "MBBS, MRCPCH. Fellowship in paediatric allergy, Great Ormond Street Hospital."
-        },
-        "doctor_3_image": {
-            "type": "image",
-            "label": "Doctor 3 Image",
+            "label": "Story Image",
             "default": "/storage/template-images/medical_clinic/gen-03-the-reception-window-with-a-sign-in-shee.jpg"
         },
-        "doctor_4_name": {
+        "gallery_title": {
             "type": "text",
-            "label": "Doctor 4 Name",
-            "default": "Dr. James Whitfield"
+            "label": "Gallery Heading",
+            "default": "The clinic"
         },
-        "doctor_4_title": {
+        "steps_title": {
             "type": "text",
-            "label": "Doctor 4 Title",
-            "default": "Consultant Dermatologist"
-        },
-        "doctor_4_specialty": {
-            "type": "text",
-            "label": "Doctor 4 Specialty",
-            "default": "Dermatology"
-        },
-        "doctor_4_bio": {
-            "type": "text",
-            "label": "Doctor 4 Bio",
-            "default": "MBBS, FRCP. Previously Consultant Dermatologist at Chelsea & Westminster."
-        },
-        "doctor_4_image": {
-            "type": "image",
-            "label": "Doctor 4 Image",
-            "default": "/storage/template-images/medical_clinic/gen-04-a-treatment-couch-with-a-paper-roll.jpg"
-        },
-        "process_eyebrow": {
-            "type": "text",
-            "label": "Process Eyebrow",
-            "default": "What to Expect"
-        },
-        "process_title": {
-            "type": "html",
-            "label": "Process Title",
-            "default": "Your visit,<br><em>from booking to follow-up.</em>"
-        },
-        "process_1_title": {
-            "type": "text",
-            "label": "Step 1 Title",
-            "default": "Book"
-        },
-        "process_1_text": {
-            "type": "text",
-            "label": "Step 1 Text",
-            "default": "Call, message, or use the online booking form. Same-day slots are available daily; weekends open for urgent appointments."
-        },
-        "process_2_title": {
-            "type": "text",
-            "label": "Step 2 Title",
-            "default": "Consult"
-        },
-        "process_2_text": {
-            "type": "text",
-            "label": "Step 2 Text",
-            "default": "A thirty-minute appointment as standard — long enough to listen, examine properly, and discuss options without rushing."
-        },
-        "process_3_title": {
-            "type": "text",
-            "label": "Step 3 Title",
-            "default": "Diagnose"
-        },
-        "process_3_text": {
-            "type": "text",
-            "label": "Step 3 Text",
-            "default": "Tests and imaging on site where possible, with written explanations you can take home and results routed to your GP."
-        },
-        "process_4_title": {
-            "type": "text",
-            "label": "Step 4 Title",
-            "default": "Follow-Up"
-        },
-        "process_4_text": {
-            "type": "text",
-            "label": "Step 4 Text",
-            "default": "A short call or secure message after the appointment to check in, review results, and answer any further questions."
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Patient Stories"
+            "label": "Process Heading",
+            "default": "How it works"
         },
         "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Patients,<br><em>in their words.</em>"
-        },
-        "testimonial_1_quote": {
             "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Dr. Rahman took the time to actually listen — the first doctor in years who didn't rush me out in ten minutes. My symptoms were explained clearly and the plan made sense."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Hana Y. — Dubai Marina"
-        },
-        "testimonial_1_condition": {
-            "type": "text",
-            "label": "Testimonial 1 Condition",
-            "default": "Family Medicine"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Dr. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Ahmed & Laila K."
-        },
-        "testimonial_2_condition": {
-            "type": "text",
-            "label": "Testimonial 2 Condition",
-            "default": "Paediatrics"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Heart palpitations had three previous doctors shrug and send me home. Dr. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Roberto P. — JLT"
-        },
-        "testimonial_3_condition": {
-            "type": "text",
-            "label": "Testimonial 3 Condition",
-            "default": "Cardiology"
-        },
-        "cert_eyebrow": {
-            "type": "text",
-            "label": "Cert Eyebrow",
-            "default": "Accreditations"
-        },
-        "cert_title": {
-            "type": "text",
-            "label": "Cert Title",
-            "default": "Held to international standards"
-        },
-        "cert_intro": {
-            "type": "text",
-            "label": "Cert Intro",
-            "default": "Our clinical and governance standards are audited annually by three independent bodies."
-        },
-        "cert_1_name": {
-            "type": "text",
-            "label": "Cert 1 Name",
-            "default": "JCI Accredited"
-        },
-        "cert_1_desc": {
-            "type": "text",
-            "label": "Cert 1 Desc",
-            "default": "Joint Commission International clinical standards"
-        },
-        "cert_2_name": {
-            "type": "text",
-            "label": "Cert 2 Name",
-            "default": "DHA Licensed"
-        },
-        "cert_2_desc": {
-            "type": "text",
-            "label": "Cert 2 Desc",
-            "default": "Dubai Health Authority registered facility"
-        },
-        "cert_3_name": {
-            "type": "text",
-            "label": "Cert 3 Name",
-            "default": "ISO 9001:2015"
-        },
-        "cert_3_desc": {
-            "type": "text",
-            "label": "Cert 3 Desc",
-            "default": "Quality management system certified"
-        },
-        "cert_4_name": {
-            "type": "text",
-            "label": "Cert 4 Name",
-            "default": "Board Certified"
-        },
-        "cert_4_desc": {
-            "type": "text",
-            "label": "Cert 4 Desc",
-            "default": "All consultants UK/EU board-certified"
-        },
-        "cert_5_name": {
-            "type": "text",
-            "label": "Cert 5 Name",
-            "default": "GDPR Aligned"
-        },
-        "cert_5_desc": {
-            "type": "text",
-            "label": "Cert 5 Desc",
-            "default": "Patient data protected to EU standards"
-        },
-        "cert_6_name": {
-            "type": "text",
-            "label": "Cert 6 Name",
-            "default": "Direct Billing"
-        },
-        "cert_6_desc": {
-            "type": "text",
-            "label": "Cert 6 Desc",
-            "default": "Partnered with major UAE and international insurers"
-        },
-        "cta_banner_eyebrow": {
-            "type": "text",
-            "label": "CTA Banner Eyebrow",
-            "default": "Same-day appointments"
-        },
-        "cta_banner_title": {
-            "type": "html",
-            "label": "CTA Banner Title",
-            "default": "Speak with a doctor today."
-        },
-        "cta_banner_subtitle": {
-            "type": "text",
-            "label": "CTA Banner Subtitle",
-            "default": "Book online in two minutes — morning, afternoon, or evening slots available every day of the week."
-        },
-        "cta_banner_cta": {
-            "type": "text",
-            "label": "CTA Banner CTA",
-            "default": "Book Consultation"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
+            "label": "Testimonials Heading",
+            "default": "What people say"
         },
         "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Visit or<br><em>call us.</em>"
-        },
-        "contact_intro": {
             "type": "text",
-            "label": "Contact Intro",
-            "default": "We reply to all enquiries within thirty minutes during opening hours."
+            "label": "Contact Heading",
+            "default": "Register or book"
         },
-        "contact_email": {
+        "contact_subtitle": {
             "type": "text",
-            "label": "Contact Email",
-            "default": "reception@atrium-clinic.ae"
+            "label": "Contact Subheading",
+            "default": "Reception can usually offer something the same day, including evenings."
         },
         "contact_phone": {
             "type": "text",
-            "label": "Contact Phone",
-            "default": "+971 4 000 0000"
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
         },
         "contact_address": {
             "type": "text",
-            "label": "Contact Address",
-            "default": "Dubai Healthcare City, Block F, Floor 3"
+            "label": "Address",
+            "default": "12 Example Street, London"
         },
         "contact_hours": {
             "type": "text",
             "label": "Opening Hours",
-            "default": "Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm"
+            "default": "Mon–Fri 8–7 · Sat 9–1"
         },
-        "contact_emergency": {
+        "contact_cta": {
             "type": "text",
-            "label": "Emergency Line",
-            "default": "For medical emergencies dial 998 (Dubai Police / Ambulance)."
+            "label": "Contact Button",
+            "default": "Book an appointment"
         },
-        "contact_form_title": {
-            "type": "html",
-            "label": "Form Title",
-            "default": "Request a<br><em>callback.</em>"
-        },
-        "form_submit_text": {
+        "footer_blurb": {
             "type": "text",
-            "label": "Submit Button",
-            "default": "Request Callback →"
+            "label": "Footer Blurb",
+            "default": "Private GP care with time to listen"
         },
-        "form_success_message": {
+        "footer_col_1": {
             "type": "text",
-            "label": "Success Message",
-            "default": "✓ Thank you. Reception will call you back within thirty minutes."
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
         },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "Book a<br><em>consultation.</em>"
-        },
-        "booking_intro": {
+        "footer_col_2": {
             "type": "text",
-            "label": "Booking Intro",
-            "default": "Choose a specialty, a doctor if you have a preference, and a time that suits you. We'll confirm within thirty minutes."
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
         },
-        "booking_cta": {
+        "footer_legal": {
             "type": "text",
-            "label": "Booking CTA",
-            "default": "Book Consultation"
+            "label": "Footer Legal",
+            "default": "All rights reserved."
         },
-        "booking_display": {
+        "nav_1": {
             "type": "text",
-            "label": "Booking Display",
-            "default": ""
+            "label": "Nav Link 1",
+            "default": "Services"
         },
-        "footer_tagline": {
+        "nav_2": {
             "type": "text",
-            "label": "Footer Tagline",
-            "default": "Medical Clinic — Family Medicine · Dubai."
+            "label": "Nav Link 2",
+            "default": "Our doctors"
         },
-        "footer_text": {
+        "nav_3": {
             "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 Greenleaf Medical. All rights reserved."
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "How it works"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Book"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Book an appointment"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "30 min"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Standard appointment"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "12"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Patients per doctor, per day"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "Same day"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Access as standard"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "CQC"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Registered and inspected"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Standard consultation"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Thirty minutes with your named GP, in person or by video."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£145"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Extended appointment"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "An hour, for complex problems or several issues at once."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£240"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Health assessment"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Bloods, examination and a written report you can take to anyone."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£495"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Travel & vaccination"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Country-specific advice and stock held on site."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "From £45"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Referrals & imaging"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "Written and sent the same day, with a choice of consultant."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "Included"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Annual membership"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "Unlimited consultations, prescriptions and referrals for a family."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "From £1,850/yr"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "Thirty minutes as standard, never ten"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "A named GP, so your history is known not read"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Twelve patients per doctor per day, capped"
+        },
+        "gallery_1": {
+            "type": "image",
+            "label": "Gallery Image 1",
+            "default": "/storage/template-images/medical_clinic/gen-01-a-consultation-room-with-a-desk-a-blood.jpg"
+        },
+        "gallery_2": {
+            "type": "image",
+            "label": "Gallery Image 2",
+            "default": "/storage/template-images/medical_clinic/gen-02-waiting-area-chairs-in-a-row-by-a-window.jpg"
+        },
+        "gallery_3": {
+            "type": "image",
+            "label": "Gallery Image 3",
+            "default": "/storage/template-images/medical_clinic/gen-03-the-reception-window-with-a-sign-in-shee.jpg"
+        },
+        "gallery_4": {
+            "type": "image",
+            "label": "Gallery Image 4",
+            "default": "/storage/template-images/medical_clinic/gen-04-a-treatment-couch-with-a-paper-roll.jpg"
+        },
+        "gallery_5": {
+            "type": "image",
+            "label": "Gallery Image 5",
+            "default": "/storage/template-images/medical_clinic/gen-05-a-shelf-of-labelled-sample-pots-and-glov.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/medical_clinic/gen-06-a-stethoscope-on-a-desk-beside-a-keyboar.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Register"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Ten minutes online, including your previous records if you want them."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Book same or next day"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "In person, by video, or a home visit within five miles."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "A proper consultation"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Thirty minutes, with examination and time for questions."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Follow-through"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "Prescriptions, referrals and results chased by us, not by you."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "Half an hour with a doctor who had read my file first. I had forgotten that was possible."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Patient"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "They found something two previous ten-minute appointments had not had time to look for."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Patient"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "The referral was written and sent before I had left the building."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Patient"
         },
         "social_facebook": {
             "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
+            "label": "Facebook",
+            "default": ""
         },
         "social_instagram": {
             "type": "url",
-            "label": "Instagram URL",
-            "default": "#"
+            "label": "Instagram",
+            "default": ""
         },
         "social_linkedin": {
             "type": "url",
-            "label": "LinkedIn URL",
-            "default": "#"
+            "label": "Linkedin",
+            "default": ""
         },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk (Background)",
-            "default": "#FFFFFF"
-        },
-        "chalk_soft": {
-            "type": "color",
-            "label": "Soft Background",
-            "default": "#F7FAFC"
-        },
-        "carbon": {
-            "type": "color",
-            "label": "Ink (Primary Text)",
-            "default": "#0F1A2A"
-        },
-        "carbon_soft": {
-            "type": "color",
-            "label": "Soft Ink",
-            "default": "#344458"
-        },
-        "medical_blue": {
-            "type": "color",
-            "label": "Medical Blue",
-            "default": "#0B815A"
-        },
-        "medical_deep": {
-            "type": "color",
-            "label": "Medical Deep",
-            "default": "#047857"
-        },
-        "sage": {
-            "type": "color",
-            "label": "Sage Accent",
-            "default": "#A7F3D0"
-        },
-        "sage_soft": {
-            "type": "color",
-            "label": "Sage Soft",
-            "default": "#D6E4DD"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#6B7A8F"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#E2E8F0"
-        },
-        "social_twitter": {
+        "social_x": {
             "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
+            "label": "X",
+            "default": ""
         },
-        "social_youtube": {
-            "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
-        },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok URL",
-            "default": "#"
-        },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
-        },
-        "blog_eyebrow": {
+        "proof_1": {
             "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Insights"
+            "label": "Reason 1",
+            "default": "Routine appointments within three days"
         },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "From the<br><em>journal.</em>"
-        },
-        "blog_intro": {
+        "faq_1_q": {
             "type": "text",
-            "label": "Blog Intro",
-            "default": "Practical guides, expert opinion, and behind-the-scenes notes — written by our team."
+            "label": "FAQ 1 Question",
+            "default": "How quickly can I be seen?"
         },
-        "blog_post_1_title": {
+        "faq_1_a": {
             "type": "text",
-            "label": "Post 1 Title",
-            "default": "What to expect at your first appointment"
+            "label": "FAQ 1 Answer",
+            "default": "Routine appointments within three working days, and the same day for anything urgent. If we cannot see you in time we will say so when you ring."
         },
-        "blog_post_1_excerpt": {
+        "proof_2": {
             "type": "text",
-            "label": "Post 1 Excerpt",
-            "default": "A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect."
+            "label": "Reason 2",
+            "default": "Same-day urgent slots"
         },
-        "blog_post_1_url": {
-            "type": "url",
-            "label": "Post 1 URL",
-            "default": "/blog/first-appointment"
-        },
-        "blog_post_2_title": {
+        "faq_2_q": {
             "type": "text",
-            "label": "Post 2 Title",
-            "default": "Five questions worth asking your provider"
+            "label": "FAQ 2 Question",
+            "default": "Do I see the same clinician each time?"
         },
-        "blog_post_2_excerpt": {
+        "faq_2_a": {
             "type": "text",
-            "label": "Post 2 Excerpt",
-            "default": "The questions that should be standard — but rarely are. Use this as a checklist before any consultation."
+            "label": "FAQ 2 Answer",
+            "default": "Where you want to, yes. Ask when you book and we will hold you with them; continuity matters more than speed for anything ongoing."
         },
-        "blog_post_2_url": {
-            "type": "url",
-            "label": "Post 2 URL",
-            "default": "/blog/five-questions"
-        },
-        "blog_post_3_title": {
+        "proof_3": {
             "type": "text",
-            "label": "Post 3 Title",
-            "default": "The case for unhurried appointments"
+            "label": "Reason 3",
+            "default": "Twenty minutes as standard, forty when needed"
         },
-        "blog_post_3_excerpt": {
+        "faq_3_q": {
             "type": "text",
-            "label": "Post 3 Excerpt",
-            "default": "Why a thirty-minute consultation isn't a luxury — it's the bare minimum for thoughtful care."
+            "label": "FAQ 3 Question",
+            "default": "How long is an appointment?"
         },
-        "blog_post_3_url": {
-            "type": "url",
-            "label": "Post 3 URL",
-            "default": "/blog/unhurried"
-        },
-        "blog_cta": {
+        "faq_3_a": {
             "type": "text",
-            "label": "Blog CTA",
-            "default": "Read More →"
+            "label": "FAQ 3 Answer",
+            "default": "Twenty minutes as standard, forty for a first visit or anything complex. If you need longer, say so when booking and we will allocate it."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Fees published, extras quoted first"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "What do you charge?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "Per appointment, published on the site, with tests and reports priced separately. You will be told the cost of anything additional before it is done."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Book an appointment"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "Routine within three working days, urgent the same day, and the price known before you come in."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Book an appointment"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#3E6B4B"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#33583E"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#3E6B4B"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#121A14"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "medical_blue",
-        "accent_deep": null,
-        "secondary": "sage"
-    },
-    "palette_scheme": "light",
-    "palette_roles": {
-        "medical_blue": "accent",
-        "medical_deep": "accent_deep",
-        "sage": "secondary",
-        "sage_soft": "secondary_soft",
-        "chalk": "bg",
-        "chalk_soft": "surface",
-        "carbon": "text",
-        "carbon_soft": "muted",
-        "warm_grey": "muted",
-        "divider": "line"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

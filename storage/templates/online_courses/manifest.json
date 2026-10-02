@@ -1,401 +1,145 @@
 {
     "id": "online_courses",
-    "name": "Online Courses",
-    "version": "1.0.0",
+    "name": "Courses — Beacon Online Academy",
     "industry": "online_courses",
-    "description": "Online courses template — emerald green, e-learning energy. Built around featured courses, learning outcomes, instructor bio, enrolment.",
-    "variation": "luxury",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-04-18",
+    "description": "Short courses that finish what they start",
+    "thumbnail": "/storage/builder-heroes/online_courses.jpg",
+    "category": "education",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "navyrose",
+        "type": "warm",
+        "scale": "wide",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "topbar",
+            "hero": "editorial",
+            "stats": "bigband",
+            "offers": "pricing",
+            "story": "drift",
+            "gallery": "mosaic",
+            "steps": "zigzag",
+            "tst": "spotlight",
+            "contact": "floating",
+            "footer": "bar",
+            "proof": "strip",
+            "faq": "accordion",
+            "cta": "centered",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "stats",
+            "offers",
+            "proof",
+            "story",
+            "steps",
+            "gallery",
+            "tst",
+            "cta",
+            "faq",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ],
             "elements": {
-                "logo": ".nav-logo",
-                "links": ".nav-links",
-                "link": ".nav-links li a",
-                "primary_button": "a.nav-cta",
-                "burger": ".nav-burger"
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
             }
         },
         {
             "id": "hero",
-            "name": "Hero Section",
-            "fields": [
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_cta",
-                "hero_cta_secondary",
-                "hero_image",
-                "hero_trust_badge"
-            ],
+            "name": "Hero",
             "elements": {
-                "eyebrow": ".hero-eyebrow",
-                "heading": "h1.hero-h1",
-                "subheading": "p.hero-sub",
-                "primary_button": "a.btn-primary",
-                "secondary_button": "a.btn-ghost",
-                "image": ".hero-media img",
-                "overlay": ".hero-overlay",
-                "trust_badge": ".hero-trust"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
             "id": "stats",
-            "name": "Stats Strip",
-            "fields": [
-                "stat_1_value",
-                "stat_1_label",
-                "stat_2_value",
-                "stat_2_label",
-                "stat_3_value",
-                "stat_3_label",
-                "stat_4_value",
-                "stat_4_label"
-            ],
-            "elements": {
-                "item": ".stat-item",
-                "number": ".stat-num",
-                "label": ".stat-label"
-            }
+            "name": "Stats",
+            "elements": []
         },
         {
             "id": "services",
-            "name": "Specialties",
-            "fields": [
-                "services_eyebrow",
-                "services_title",
-                "services_intro",
-                "service_1_title",
-                "service_1_text",
-                "service_1_tag_1",
-                "service_1_tag_2",
-                "service_1_tag_3",
-                "service_2_title",
-                "service_2_text",
-                "service_2_tag_1",
-                "service_2_tag_2",
-                "service_2_tag_3",
-                "service_3_title",
-                "service_3_text",
-                "service_3_tag_1",
-                "service_3_tag_2",
-                "service_3_tag_3",
-                "service_4_title",
-                "service_4_text",
-                "service_4_tag_1",
-                "service_4_tag_2",
-                "service_4_tag_3",
-                "service_5_title",
-                "service_5_text",
-                "service_5_tag_1",
-                "service_5_tag_2",
-                "service_5_tag_3",
-                "service_6_title",
-                "service_6_text",
-                "service_6_tag_1",
-                "service_6_tag_2",
-                "service_6_tag_3"
-            ],
+            "name": "Services",
             "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".services-intro",
-                "grid": ".service-grid",
-                "card": ".service-card",
-                "icon": ".service-icon",
-                "card_title": ".service-title",
-                "card_description": ".service-desc",
-                "tag": ".service-tag"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "doctors",
-            "name": "Doctors & Team",
-            "fields": [
-                "doctors_eyebrow",
-                "doctors_title",
-                "doctors_intro",
-                "doctor_1_name",
-                "doctor_1_title",
-                "doctor_1_specialty",
-                "doctor_1_bio",
-                "doctor_1_image",
-                "doctor_2_name",
-                "doctor_2_title",
-                "doctor_2_specialty",
-                "doctor_2_bio",
-                "doctor_2_image",
-                "doctor_3_name",
-                "doctor_3_title",
-                "doctor_3_specialty",
-                "doctor_3_bio",
-                "doctor_3_image",
-                "doctor_4_name",
-                "doctor_4_title",
-                "doctor_4_specialty",
-                "doctor_4_bio",
-                "doctor_4_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".doctors-intro",
-                "grid": ".doctor-grid",
-                "card": ".doctor-card",
-                "image": ".doctor-card img",
-                "doctor_name": ".doctor-name",
-                "doctor_title": ".doctor-role",
-                "doctor_specialty": ".doctor-specialty",
-                "doctor_bio": ".doctor-bio"
-            }
-        },
-        {
-            "id": "process",
-            "name": "How It Works",
-            "fields": [
-                "process_eyebrow",
-                "process_title",
-                "process_1_title",
-                "process_1_text",
-                "process_2_title",
-                "process_2_text",
-                "process_3_title",
-                "process_3_text",
-                "process_4_title",
-                "process_4_text"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "step": ".process-step",
-                "number": ".process-num",
-                "step_title": ".process-title",
-                "step_description": ".process-desc"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Client Stories",
-            "fields": [
-                "testimonials_eyebrow",
-                "testimonials_title",
-                "testimonial_1_quote",
-                "testimonial_1_author",
-                "testimonial_1_condition",
-                "testimonial_2_quote",
-                "testimonial_2_author",
-                "testimonial_2_condition",
-                "testimonial_3_quote",
-                "testimonial_3_author",
-                "testimonial_3_condition"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "track": ".testimonial-track",
-                "slide": ".testimonial-slide",
-                "quote": ".testimonial-quote",
-                "author": ".testimonial-author",
-                "condition": ".testimonial-condition",
-                "dot": ".testimonial-dot"
-            }
-        },
-        {
-            "id": "certifications",
-            "name": "Accreditations & Trust",
-            "fields": [
-                "cert_eyebrow",
-                "cert_title",
-                "cert_intro",
-                "cert_1_name",
-                "cert_1_desc",
-                "cert_2_name",
-                "cert_2_desc",
-                "cert_3_name",
-                "cert_3_desc",
-                "cert_4_name",
-                "cert_4_desc",
-                "cert_5_name",
-                "cert_5_desc",
-                "cert_6_name",
-                "cert_6_desc"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.cert-heading",
-                "intro": ".cert-intro",
-                "grid": ".cert-grid",
-                "item": ".cert-item",
-                "cert_name": ".cert-name",
-                "cert_description": ".cert-desc"
-            }
-        },
-        {
-            "id": "cta_banner",
-            "name": "CTA Banner",
-            "fields": [
-                "cta_banner_eyebrow",
-                "cta_banner_title",
-                "cta_banner_subtitle",
-                "cta_banner_cta"
-            ],
-            "elements": {
-                "eyebrow": ".cta-eyebrow",
-                "heading": "h2.cta-title",
-                "subheading": "p.cta-subtitle",
-                "primary_button": "a.cta-button"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact & Location",
-            "fields": [
-                "contact_eyebrow",
-                "contact_title",
-                "contact_intro",
-                "contact_email",
-                "contact_phone",
-                "contact_address",
-                "contact_hours",
-                "contact_emergency",
-                "contact_form_title",
-                "form_submit_text",
-                "form_success_message"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".contact-intro",
-                "info_label": ".contact-item-label",
-                "info_value": ".contact-item-value",
-                "emergency": ".contact-emergency",
-                "form": ".contact-form",
-                "form_field": ".form-field",
-                "form_label": ".form-field label",
-                "form_input": ".form-field input, .form-field textarea, .form-field select",
-                "primary_button": "button.form-submit",
-                "success_message": "#form-success"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book a Consultation",
-            "fields": [
-                "booking_title",
-                "booking_intro",
-                "booking_cta"
-            ],
-            "elements": {
-                "heading": "h2.booking-h2",
-                "intro": ".booking-intro",
-                "form": ".booking-form",
-                "submit_button": "button.booking-submit",
-                "date_input": "input[name=\"preferred_date\"]",
-                "time_slot": ".booking-slot"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Blog Teaser",
-            "fields": [
-                "blog_eyebrow",
-                "blog_title",
-                "blog_intro",
-                "blog_post_1_title",
-                "blog_post_1_excerpt",
-                "blog_post_1_url",
-                "blog_post_2_title",
-                "blog_post_2_excerpt",
-                "blog_post_2_url",
-                "blog_post_3_title",
-                "blog_post_3_excerpt",
-                "blog_post_3_url",
-                "blog_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".blog-intro",
-                "grid": ".blog-grid",
-                "card": ".blog-card",
-                "post_title": ".blog-card-title",
-                "post_excerpt": ".blog-card-excerpt",
-                "cta": ".blog-cta"
-            },
-            "config": {
-                "enabled": true
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
             "id": "gallery",
             "name": "Gallery",
-            "fields": [
-                "gallery_eyebrow",
-                "gallery_title",
-                "gallery_intro",
-                "gallery_1",
-                "gallery_2",
-                "gallery_3",
-                "gallery_4",
-                "gallery_5"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".gallery-intro",
-                "grid": ".gallery-grid",
-                "item": ".gallery-item"
-            }
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "business_name",
-                "footer_tagline",
-                "footer_text",
-                "social_facebook",
-                "social_instagram",
-                "social_linkedin"
-            ],
-            "elements": {
-                "logo": ".footer-logo",
-                "tagline": ".footer-tagline",
-                "links": ".footer-links",
-                "link": ".footer-links li a",
-                "social": ".footer-social",
-                "social_link": ".footer-social a",
-                "copy": ".footer-copy"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Clinic Name",
+            "label": "Business Name",
             "default": "Beacon Online Academy"
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Online Professional Courses · Global"
+            "default": "Short courses that finish what they start"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Beacon Online Academy — premium online professional courses in design, code, business, and creative skills. Lifetime access, certified completion, instructor support."
+            "default": "Practical online courses with real assessment, tutor feedback and a completion rate we are willing to publish."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://online-courses.example.com"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
@@ -405,817 +149,317 @@
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Browse Courses"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Online Professional Courses · Global"
+            "default": "Online learning · Tutor-marked"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Skills you can<br><em>actually use.</em>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "Courses with a tutor at the end of them, not just a video player"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "Premium online courses in design, code, business, and creative skills — taught by working professionals, with lifetime access, certified completion, and weekly live office hours."
+            "label": "Hero Subheading",
+            "default": "Six-week programmes with marked assignments, live sessions and a named tutor. Sixty-eight per cent of enrolments finish — and we publish that number for a reason."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Browse Courses"
+            "label": "Hero Button",
+            "default": "See courses"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "View Outcomes"
+            "label": "Hero Secondary Button",
+            "default": "How it works"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/online_courses.jpg"
         },
-        "hero_trust_badge": {
+        "offers_title": {
             "type": "text",
-            "label": "Hero Trust Badge",
-            "default": "12,400+ Students · 4.92★ · Lifetime Access · Certified"
+            "label": "Offers Heading",
+            "default": "Current programmes"
         },
-        "stat_1_value": {
+        "offers_subtitle": {
             "type": "text",
-            "label": "Stat 1 Value",
-            "default": "18"
+            "label": "Offers Subheading",
+            "default": "Each runs six weeks, with two live sessions and four marked assignments."
         },
-        "stat_1_label": {
+        "story_eyebrow": {
             "type": "text",
-            "label": "Stat 1 Label",
-            "default": "Courses"
+            "label": "Story Eyebrow",
+            "default": "Our story"
         },
-        "stat_2_value": {
+        "story_title": {
             "type": "text",
-            "label": "Stat 2 Value",
-            "default": "12,400"
+            "label": "Story Heading",
+            "default": "We publish our completion rate because most providers will not"
         },
-        "stat_2_label": {
+        "story_body": {
             "type": "text",
-            "label": "Stat 2 Label",
-            "default": "Students"
+            "label": "Story Body",
+            "default": "Anyone can sell a course. Very few will tell you how many people finish it. Ours is sixty-eight per cent across all programmes, measured as assignments submitted and marked, and it is on this page because it is the only number that tells you whether teaching is happening."
         },
-        "stat_3_value": {
-            "type": "text",
-            "label": "Stat 3 Value",
-            "default": "4.92★"
-        },
-        "stat_3_label": {
-            "type": "text",
-            "label": "Stat 3 Label",
-            "default": "Avg Rating"
-        },
-        "stat_4_value": {
-            "type": "text",
-            "label": "Stat 4 Value",
-            "default": "65%"
-        },
-        "stat_4_label": {
-            "type": "text",
-            "label": "Stat 4 Label",
-            "default": "Completion"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Services Eyebrow",
-            "default": "Courses"
-        },
-        "services_title": {
-            "type": "html",
-            "label": "Services Title",
-            "default": "What you can<br><em>learn here.</em>"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Services Intro",
-            "default": "Six core programmes — designed to take you from beginner to confident professional in 30 to 90 hours."
-        },
-        "service_1_title": {
-            "type": "text",
-            "label": "Service 1 Title",
-            "default": "UI / UX Design"
-        },
-        "service_1_text": {
-            "type": "text",
-            "label": "Service 1 Text",
-            "default": "From wireframes to interactive prototypes in Figma — building real client-grade interfaces, design systems, and case studies for your portfolio."
-        },
-        "service_1_tag_1": {
-            "type": "text",
-            "label": "Service 1 Tag 1",
-            "default": "Figma"
-        },
-        "service_1_tag_2": {
-            "type": "text",
-            "label": "Service 1 Tag 2",
-            "default": "Systems"
-        },
-        "service_1_tag_3": {
-            "type": "text",
-            "label": "Service 1 Tag 3",
-            "default": "Portfolio"
-        },
-        "service_2_title": {
-            "type": "text",
-            "label": "Service 2 Title",
-            "default": "Frontend Development"
-        },
-        "service_2_text": {
-            "type": "text",
-            "label": "Service 2 Text",
-            "default": "HTML, CSS, JavaScript, React, Tailwind — build production-grade websites and web apps from scratch over 12 weeks."
-        },
-        "service_2_tag_1": {
-            "type": "text",
-            "label": "Service 2 Tag 1",
-            "default": "HTML"
-        },
-        "service_2_tag_2": {
-            "type": "text",
-            "label": "Service 2 Tag 2",
-            "default": "React"
-        },
-        "service_2_tag_3": {
-            "type": "text",
-            "label": "Service 2 Tag 3",
-            "default": "Tailwind"
-        },
-        "service_3_title": {
-            "type": "text",
-            "label": "Service 3 Title",
-            "default": "Brand Identity"
-        },
-        "service_3_text": {
-            "type": "text",
-            "label": "Service 3 Text",
-            "default": "Building brand identity systems end-to-end — strategy, naming, logo, type, colour, tone of voice, and the deliverable kit."
-        },
-        "service_3_tag_1": {
-            "type": "text",
-            "label": "Service 3 Tag 1",
-            "default": "Strategy"
-        },
-        "service_3_tag_2": {
-            "type": "text",
-            "label": "Service 3 Tag 2",
-            "default": "Logo"
-        },
-        "service_3_tag_3": {
-            "type": "text",
-            "label": "Service 3 Tag 3",
-            "default": "System"
-        },
-        "service_4_title": {
-            "type": "text",
-            "label": "Service 4 Title",
-            "default": "Product Management"
-        },
-        "service_4_text": {
-            "type": "text",
-            "label": "Service 4 Text",
-            "default": "From product discovery through launch — interviews, prioritisation, roadmaps, sprint planning, metrics, stakeholder management."
-        },
-        "service_4_tag_1": {
-            "type": "text",
-            "label": "Service 4 Tag 1",
-            "default": "Discovery"
-        },
-        "service_4_tag_2": {
-            "type": "text",
-            "label": "Service 4 Tag 2",
-            "default": "Roadmaps"
-        },
-        "service_4_tag_3": {
-            "type": "text",
-            "label": "Service 4 Tag 3",
-            "default": "Metrics"
-        },
-        "service_5_title": {
-            "type": "text",
-            "label": "Service 5 Title",
-            "default": "Copywriting"
-        },
-        "service_5_text": {
-            "type": "text",
-            "label": "Service 5 Text",
-            "default": "Long-form, sales-page, email, and SaaS copy — frameworks, exercises, and weekly assignments graded by a working copywriter."
-        },
-        "service_5_tag_1": {
-            "type": "text",
-            "label": "Service 5 Tag 1",
-            "default": "Long-Form"
-        },
-        "service_5_tag_2": {
-            "type": "text",
-            "label": "Service 5 Tag 2",
-            "default": "Sales"
-        },
-        "service_5_tag_3": {
-            "type": "text",
-            "label": "Service 5 Tag 3",
-            "default": "SaaS"
-        },
-        "service_6_title": {
-            "type": "text",
-            "label": "Service 6 Title",
-            "default": "Photography"
-        },
-        "service_6_text": {
-            "type": "text",
-            "label": "Service 6 Text",
-            "default": "Light, composition, post-production — from shooting on a phone through to studio work with strobes and tethered capture."
-        },
-        "service_6_tag_1": {
-            "type": "text",
-            "label": "Service 6 Tag 1",
-            "default": "Light"
-        },
-        "service_6_tag_2": {
-            "type": "text",
-            "label": "Service 6 Tag 2",
-            "default": "Composition"
-        },
-        "service_6_tag_3": {
-            "type": "text",
-            "label": "Service 6 Tag 3",
-            "default": "Edit"
-        },
-        "doctors_eyebrow": {
-            "type": "text",
-            "label": "Team Eyebrow",
-            "default": "Instructors"
-        },
-        "doctors_title": {
-            "type": "html",
-            "label": "Team Title",
-            "default": "Instructors<br><em>who do the work.</em>"
-        },
-        "doctors_intro": {
-            "type": "text",
-            "label": "Team Intro",
-            "default": "Every course is taught by a working professional — not a full-time educator. They charge real clients in the daytime and teach you in the evenings."
-        },
-        "doctor_1_name": {
-            "type": "text",
-            "label": "Team 1 Name",
-            "default": "Léa Martins"
-        },
-        "doctor_1_title": {
-            "type": "text",
-            "label": "Team 1 Title",
-            "default": "Lead Instructor — UX"
-        },
-        "doctor_1_specialty": {
-            "type": "text",
-            "label": "Team 1 Specialty",
-            "default": "Senior at Linear"
-        },
-        "doctor_1_bio": {
-            "type": "text",
-            "label": "Team 1 Bio",
-            "default": "Senior product designer at Linear — eight years designing systems for SaaS companies."
-        },
-        "doctor_1_image": {
+        "story_image": {
             "type": "image",
-            "label": "Team 1 Image",
-            "default": "/storage/template-images/online_courses/gen-01-a-ring-light-and-a-laptop-with-slides-on.jpg"
+            "label": "Story Image",
+            "default": "/storage/template-images/online_courses/gallery_3.jpg"
         },
-        "doctor_2_name": {
+        "gallery_title": {
             "type": "text",
-            "label": "Team 2 Name",
-            "default": "Yusuf Al-Hassan"
+            "label": "Gallery Heading",
+            "default": "Inside the courses"
         },
-        "doctor_2_title": {
+        "steps_title": {
             "type": "text",
-            "label": "Team 2 Title",
-            "default": "Lead Instructor — Frontend"
-        },
-        "doctor_2_specialty": {
-            "type": "text",
-            "label": "Team 2 Specialty",
-            "default": "Independent"
-        },
-        "doctor_2_bio": {
-            "type": "text",
-            "label": "Team 2 Bio",
-            "default": "Independent frontend developer — has shipped at Stripe, Vercel, and a few well-known startups."
-        },
-        "doctor_2_image": {
-            "type": "image",
-            "label": "Team 2 Image",
-            "default": "/storage/template-images/online_courses/gen-02-a-microphone-on-a-boom-arm-in-front-of-a.jpg"
-        },
-        "doctor_3_name": {
-            "type": "text",
-            "label": "Team 3 Name",
-            "default": "Beatrice Okafor"
-        },
-        "doctor_3_title": {
-            "type": "text",
-            "label": "Team 3 Title",
-            "default": "Lead Instructor — Brand"
-        },
-        "doctor_3_specialty": {
-            "type": "text",
-            "label": "Team 3 Specialty",
-            "default": "Founder, Kessel"
-        },
-        "doctor_3_bio": {
-            "type": "text",
-            "label": "Team 3 Bio",
-            "default": "Founded Kessel brand studio — clients include three Y Combinator companies and a unicorn."
-        },
-        "doctor_3_image": {
-            "type": "image",
-            "label": "Team 3 Image",
-            "default": "/storage/template-images/online_courses/gen-03-a-notebook-with-a-course-outline-and-a-p.jpg"
-        },
-        "doctor_4_name": {
-            "type": "text",
-            "label": "Team 4 Name",
-            "default": "Marco Bianchi"
-        },
-        "doctor_4_title": {
-            "type": "text",
-            "label": "Team 4 Title",
-            "default": "Lead Instructor — Product"
-        },
-        "doctor_4_specialty": {
-            "type": "text",
-            "label": "Team 4 Specialty",
-            "default": "Senior PM, ex-Spotify"
-        },
-        "doctor_4_bio": {
-            "type": "text",
-            "label": "Team 4 Bio",
-            "default": "Ex-Spotify senior PM — now consults to early-stage startups and teaches PM at Beacon."
-        },
-        "doctor_4_image": {
-            "type": "image",
-            "label": "Team 4 Image",
-            "default": "/storage/template-images/online_courses/gen-04-a-webcam-clipped-to-a-monitor-with-a-pla.jpg"
-        },
-        "process_eyebrow": {
-            "type": "text",
-            "label": "Process Eyebrow",
-            "default": "How It Works"
-        },
-        "process_title": {
-            "type": "html",
-            "label": "Process Title",
-            "default": "Enrol once,<br><em>access forever.</em>"
-        },
-        "process_1_title": {
-            "type": "text",
-            "label": "Step 1 Title",
-            "default": "Browse"
-        },
-        "process_1_text": {
-            "type": "text",
-            "label": "Step 1 Text",
-            "default": "Free 20-minute previews on every course — see the instructor, the format, and the first lesson before you commit."
-        },
-        "process_2_title": {
-            "type": "text",
-            "label": "Step 2 Title",
-            "default": "Enrol"
-        },
-        "process_2_text": {
-            "type": "text",
-            "label": "Step 2 Text",
-            "default": "One-time payment, lifetime access. No monthly subscription, no expiry, no upsells."
-        },
-        "process_3_title": {
-            "type": "text",
-            "label": "Step 3 Title",
-            "default": "Learn"
-        },
-        "process_3_text": {
-            "type": "text",
-            "label": "Step 3 Text",
-            "default": "Watch lessons at your pace. Submit assignments for instructor feedback. Join the weekly live office hours on Zoom."
-        },
-        "process_4_title": {
-            "type": "text",
-            "label": "Step 4 Title",
-            "default": "Certify"
-        },
-        "process_4_text": {
-            "type": "text",
-            "label": "Step 4 Text",
-            "default": "Complete the course, build the final project, get a verified completion certificate signed by the instructor."
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Learner Stories"
+            "label": "Process Heading",
+            "default": "How a course runs"
         },
         "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Learners,<br><em>in their words.</em>"
-        },
-        "testimonial_1_quote": {
             "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Brilliant from start to finish. The team listened, delivered exactly what we needed and made the whole experience effortless."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Hana Y. — Dubai Marina"
-        },
-        "testimonial_1_condition": {
-            "type": "text",
-            "label": "Testimonial 1 Condition",
-            "default": "Family Medicine"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Ahmed & Laila K."
-        },
-        "testimonial_2_condition": {
-            "type": "text",
-            "label": "Testimonial 2 Condition",
-            "default": "Paediatrics"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Heart palpitations had three previous team shrug and send me home. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Roberto P. — JLT"
-        },
-        "testimonial_3_condition": {
-            "type": "text",
-            "label": "Testimonial 3 Condition",
-            "default": "Cardiology"
-        },
-        "cert_eyebrow": {
-            "type": "text",
-            "label": "Cert Eyebrow",
-            "default": "Trust"
-        },
-        "cert_title": {
-            "type": "text",
-            "label": "Cert Title",
-            "default": "What students are saying"
-        },
-        "cert_intro": {
-            "type": "text",
-            "label": "Cert Intro",
-            "default": "Built and run by working professionals — not edu-influencers selling a dream."
-        },
-        "cert_1_name": {
-            "type": "text",
-            "label": "Cert 1 Name",
-            "default": "4.92★ Trustpilot"
-        },
-        "cert_1_desc": {
-            "type": "text",
-            "label": "Cert 1 Desc",
-            "default": "4.92 Trustpilot rating across 2,400+ verified reviews"
-        },
-        "cert_2_name": {
-            "type": "text",
-            "label": "Cert 2 Name",
-            "default": "Lifetime Access"
-        },
-        "cert_2_desc": {
-            "type": "text",
-            "label": "Cert 2 Desc",
-            "default": "Buy once, access for life. No monthly subscription, no expiry."
-        },
-        "cert_3_name": {
-            "type": "text",
-            "label": "Cert 3 Name",
-            "default": "Certified Completion"
-        },
-        "cert_3_desc": {
-            "type": "text",
-            "label": "Cert 3 Desc",
-            "default": "Verified completion certificate signed by your instructor"
-        },
-        "cert_4_name": {
-            "type": "text",
-            "label": "Cert 4 Name",
-            "default": "65% Completion Rate"
-        },
-        "cert_4_desc": {
-            "type": "text",
-            "label": "Cert 4 Desc",
-            "default": "65% of enrolled students finish the course — vs 5-15% industry average"
-        },
-        "cert_5_name": {
-            "type": "text",
-            "label": "Cert 5 Name",
-            "default": "Money Back"
-        },
-        "cert_5_desc": {
-            "type": "text",
-            "label": "Cert 5 Desc",
-            "default": "30-day no-questions-asked money-back guarantee on every course"
-        },
-        "cert_6_name": {
-            "type": "text",
-            "label": "Cert 6 Name",
-            "default": "Office Hours"
-        },
-        "cert_6_desc": {
-            "type": "text",
-            "label": "Cert 6 Desc",
-            "default": "Weekly live office hours on Zoom with the lead instructor for every course"
-        },
-        "cta_banner_eyebrow": {
-            "type": "text",
-            "label": "CTA Banner Eyebrow",
-            "default": "Same-day appointments"
-        },
-        "cta_banner_title": {
-            "type": "html",
-            "label": "CTA Banner Title",
-            "default": "Ready when you are."
-        },
-        "cta_banner_subtitle": {
-            "type": "text",
-            "label": "CTA Banner Subtitle",
-            "default": "Get in touch — we'll respond within an hour during business hours."
-        },
-        "cta_banner_cta": {
-            "type": "text",
-            "label": "CTA Banner CTA",
-            "default": "Browse Courses"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
+            "label": "Testimonials Heading",
+            "default": "What people say"
         },
         "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Visit or<br><em>call us.</em>"
-        },
-        "contact_intro": {
             "type": "text",
-            "label": "Contact Intro",
-            "default": "We reply to all enquiries within thirty minutes during opening hours."
+            "label": "Contact Heading",
+            "default": "Enrol or ask a question"
         },
-        "contact_email": {
+        "contact_subtitle": {
             "type": "text",
-            "label": "Contact Email",
-            "default": "reception@atrium-team.ae"
+            "label": "Contact Subheading",
+            "default": "Course questions are answered by tutors, not by a sales team."
         },
         "contact_phone": {
             "type": "text",
-            "label": "Contact Phone",
-            "default": "+971 4 000 0000"
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
         },
         "contact_address": {
             "type": "text",
-            "label": "Contact Address",
-            "default": "Dubai Healthcare City, Block F, Floor 3"
+            "label": "Address",
+            "default": "12 Example Street, London"
         },
         "contact_hours": {
             "type": "text",
             "label": "Opening Hours",
-            "default": "Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm"
+            "default": "Support Mon–Fri 9–6 · Cohorts start monthly"
         },
-        "contact_emergency": {
+        "contact_cta": {
             "type": "text",
-            "label": "Emergency Line",
-            "default": "For team emergencies dial 998 (Dubai Police / Ambulance)."
+            "label": "Contact Button",
+            "default": "See courses"
         },
-        "contact_form_title": {
-            "type": "html",
-            "label": "Form Title",
-            "default": "Request a<br><em>callback.</em>"
-        },
-        "form_submit_text": {
+        "footer_blurb": {
             "type": "text",
-            "label": "Submit Button",
-            "default": "Request Callback →"
+            "label": "Footer Blurb",
+            "default": "Short courses that finish what they start"
         },
-        "form_success_message": {
+        "footer_col_1": {
             "type": "text",
-            "label": "Success Message",
-            "default": "✓ Thank you. Reception will call you back within thirty minutes."
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
         },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "Book a<br><em>visit.</em>"
-        },
-        "booking_intro": {
+        "footer_col_2": {
             "type": "text",
-            "label": "Booking Intro",
-            "default": "Choose a service and a time that suits you. We'll confirm within thirty minutes."
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
         },
-        "booking_cta": {
+        "footer_legal": {
             "type": "text",
-            "label": "Booking CTA",
-            "default": "Book Now"
+            "label": "Footer Legal",
+            "default": "All rights reserved."
         },
-        "booking_display": {
+        "nav_1": {
             "type": "text",
-            "label": "Booking Display",
-            "default": ""
+            "label": "Nav Link 1",
+            "default": "Courses"
         },
-        "footer_tagline": {
+        "nav_2": {
             "type": "text",
-            "label": "Footer Tagline",
-            "default": "Online Courses — Online Professional Courses · Global."
+            "label": "Nav Link 2",
+            "default": "How it works"
         },
-        "footer_text": {
+        "nav_3": {
             "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 Beacon Online Academy. All rights reserved."
-        },
-        "social_facebook": {
-            "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
-        },
-        "social_instagram": {
-            "type": "url",
-            "label": "Instagram URL",
-            "default": "#"
-        },
-        "social_linkedin": {
-            "type": "url",
-            "label": "LinkedIn URL",
-            "default": "#"
-        },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk (Background)",
-            "default": "#FFFFFF"
-        },
-        "chalk_soft": {
-            "type": "color",
-            "label": "Soft Background",
-            "default": "#F7FAFC"
-        },
-        "carbon": {
-            "type": "color",
-            "label": "Ink (Primary Text)",
-            "default": "#0F1A2A"
-        },
-        "carbon_soft": {
-            "type": "color",
-            "label": "Soft Ink",
-            "default": "#344458"
-        },
-        "medical_blue": {
-            "type": "color",
-            "label": "Medical Blue",
-            "default": "#059669"
-        },
-        "medical_deep": {
-            "type": "color",
-            "label": "Medical Deep",
-            "default": "#065F46"
-        },
-        "sage": {
-            "type": "color",
-            "label": "Sage Accent",
-            "default": "#A7F3D0"
-        },
-        "sage_soft": {
-            "type": "color",
-            "label": "Sage Soft",
-            "default": "#D6E4DD"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#6B7A8F"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#E2E8F0"
-        },
-        "social_twitter": {
-            "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
-        },
-        "social_youtube": {
-            "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
-        },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok URL",
-            "default": "#"
-        },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
-        },
-        "blog_eyebrow": {
-            "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Insights"
-        },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "From the<br><em>journal.</em>"
-        },
-        "blog_intro": {
-            "type": "text",
-            "label": "Blog Intro",
-            "default": "Practical guides, expert opinion, and behind-the-scenes notes — written by our team."
-        },
-        "blog_post_1_title": {
-            "type": "text",
-            "label": "Post 1 Title",
-            "default": "What to expect at your first appointment"
-        },
-        "blog_post_1_excerpt": {
-            "type": "text",
-            "label": "Post 1 Excerpt",
-            "default": "A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect."
-        },
-        "blog_post_1_url": {
-            "type": "url",
-            "label": "Post 1 URL",
-            "default": "/blog/first-appointment"
-        },
-        "blog_post_2_title": {
-            "type": "text",
-            "label": "Post 2 Title",
-            "default": "Five questions worth asking your provider"
-        },
-        "blog_post_2_excerpt": {
-            "type": "text",
-            "label": "Post 2 Excerpt",
-            "default": "The questions that should be standard — but rarely are. Use this as a checklist before any visit."
-        },
-        "blog_post_2_url": {
-            "type": "url",
-            "label": "Post 2 URL",
-            "default": "/blog/five-questions"
-        },
-        "blog_post_3_title": {
-            "type": "text",
-            "label": "Post 3 Title",
-            "default": "The case for unhurried appointments"
-        },
-        "blog_post_3_excerpt": {
-            "type": "text",
-            "label": "Post 3 Excerpt",
-            "default": "Why a thirty-minute visit isn't a luxury — it's the bare minimum for thoughtful care."
-        },
-        "blog_post_3_url": {
-            "type": "url",
-            "label": "Post 3 URL",
-            "default": "/blog/unhurried"
-        },
-        "blog_cta": {
-            "type": "text",
-            "label": "Blog CTA",
-            "default": "Read More →"
-        },
-        "gallery_eyebrow": {
-            "type": "text",
-            "label": "Gallery Eyebrow",
+            "label": "Nav Link 3",
             "default": "Gallery"
         },
-        "gallery_title": {
-            "type": "html",
-            "label": "Gallery Title",
-            "default": "From the<br><em>archive.</em>"
-        },
-        "gallery_intro": {
+        "nav_4": {
             "type": "text",
-            "label": "Gallery Intro",
-            "default": "Recent moments — captured for posterity."
+            "label": "Nav Link 4",
+            "default": "Process"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Enrol"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "See courses"
+        },
+        "stat_1_value": {
+            "type": "text",
+            "label": "Stat 1 Value",
+            "default": "68%"
+        },
+        "stat_1_label": {
+            "type": "text",
+            "label": "Stat 1 Label",
+            "default": "Completion rate, published"
+        },
+        "stat_2_value": {
+            "type": "text",
+            "label": "Stat 2 Value",
+            "default": "6 wks"
+        },
+        "stat_2_label": {
+            "type": "text",
+            "label": "Stat 2 Label",
+            "default": "Per programme"
+        },
+        "stat_3_value": {
+            "type": "text",
+            "label": "Stat 3 Value",
+            "default": "4"
+        },
+        "stat_3_label": {
+            "type": "text",
+            "label": "Stat 3 Label",
+            "default": "Marked assignments"
+        },
+        "stat_4_value": {
+            "type": "text",
+            "label": "Stat 4 Value",
+            "default": "14 days"
+        },
+        "stat_4_label": {
+            "type": "text",
+            "label": "Stat 4 Label",
+            "default": "Full refund window"
+        },
+        "service_1_title": {
+            "type": "text",
+            "label": "Service 1 Title",
+            "default": "Data analysis foundations"
+        },
+        "service_1_text": {
+            "type": "text",
+            "label": "Service 1 Description",
+            "default": "Spreadsheets to SQL, with a real dataset and a real brief each week."
+        },
+        "service_1_price": {
+            "type": "text",
+            "label": "Service 1 Price / Detail",
+            "default": "£420"
+        },
+        "service_2_title": {
+            "type": "text",
+            "label": "Service 2 Title",
+            "default": "Copywriting for business"
+        },
+        "service_2_text": {
+            "type": "text",
+            "label": "Service 2 Description",
+            "default": "Six briefs, six rounds of line-by-line feedback from a working writer."
+        },
+        "service_2_price": {
+            "type": "text",
+            "label": "Service 2 Price / Detail",
+            "default": "£380"
+        },
+        "service_3_title": {
+            "type": "text",
+            "label": "Service 3 Title",
+            "default": "Project delivery"
+        },
+        "service_3_text": {
+            "type": "text",
+            "label": "Service 3 Description",
+            "default": "Planning, estimating and the conversations nobody teaches you to have."
+        },
+        "service_3_price": {
+            "type": "text",
+            "label": "Service 3 Price / Detail",
+            "default": "£450"
+        },
+        "service_4_title": {
+            "type": "text",
+            "label": "Service 4 Title",
+            "default": "Bookkeeping essentials"
+        },
+        "service_4_text": {
+            "type": "text",
+            "label": "Service 4 Description",
+            "default": "Enough to run a small company's books without fear of the year end."
+        },
+        "service_4_price": {
+            "type": "text",
+            "label": "Service 4 Price / Detail",
+            "default": "£340"
+        },
+        "service_5_title": {
+            "type": "text",
+            "label": "Service 5 Title",
+            "default": "Team leadership"
+        },
+        "service_5_text": {
+            "type": "text",
+            "label": "Service 5 Description",
+            "default": "For people promoted last month who have had no training at all."
+        },
+        "service_5_price": {
+            "type": "text",
+            "label": "Service 5 Price / Detail",
+            "default": "£495"
+        },
+        "service_6_title": {
+            "type": "text",
+            "label": "Service 6 Title",
+            "default": "Employer cohorts"
+        },
+        "service_6_text": {
+            "type": "text",
+            "label": "Service 6 Description",
+            "default": "A private run for six or more of your staff, dates to suit you."
+        },
+        "service_6_price": {
+            "type": "text",
+            "label": "Service 6 Price / Detail",
+            "default": "From £280pp"
+        },
+        "story_point_1": {
+            "type": "text",
+            "label": "Story Point 1",
+            "default": "A named tutor who marks your work, not a bot"
+        },
+        "story_point_2": {
+            "type": "text",
+            "label": "Story Point 2",
+            "default": "Two live sessions per course, recorded if you cannot attend"
+        },
+        "story_point_3": {
+            "type": "text",
+            "label": "Story Point 3",
+            "default": "Full refund within fourteen days, including after you have started"
         },
         "gallery_1": {
             "type": "image",
@@ -1241,65 +485,237 @@
             "type": "image",
             "label": "Gallery Image 5",
             "default": "/storage/template-images/online_courses/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/online_courses/gen-01-a-ring-light-and-a-laptop-with-slides-on.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Enrol on a start date"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Cohorts begin monthly, so you learn alongside other people."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "Weekly brief"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "Materials on Monday, assignment due Sunday, marked by Wednesday."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Live sessions"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Two per course, small groups, with your actual work on screen."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "Assessed and certified"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "A certificate that lists what you did, not just that you attended."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "The feedback on assignment three rewrote how I work. It was two pages long and specific."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Graduate"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "I have bought a lot of online courses. This is the only one I finished."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Graduate"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "We put nine of the team through it. Six have since changed how they run their reporting."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Graduate"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "proof_1": {
+            "type": "text",
+            "label": "Reason 1",
+            "default": "Lifetime access, updates included"
+        },
+        "faq_1_q": {
+            "type": "text",
+            "label": "FAQ 1 Question",
+            "default": "How long do I have access?"
+        },
+        "faq_1_a": {
+            "type": "text",
+            "label": "FAQ 1 Answer",
+            "default": "For good. Buy a course once and it stays in your account, including every update we make to it afterwards."
+        },
+        "proof_2": {
+            "type": "text",
+            "label": "Reason 2",
+            "default": "Thirty-day refund, no questions"
+        },
+        "faq_2_q": {
+            "type": "text",
+            "label": "FAQ 2 Question",
+            "default": "Is it live or recorded?"
+        },
+        "faq_2_a": {
+            "type": "text",
+            "label": "FAQ 2 Answer",
+            "default": "Recorded lessons you work through at your own pace, plus a live question session each month you can come to or skip."
+        },
+        "proof_3": {
+            "type": "text",
+            "label": "Reason 3",
+            "default": "Monthly live question session"
+        },
+        "faq_3_q": {
+            "type": "text",
+            "label": "FAQ 3 Question",
+            "default": "What if it is not for me?"
+        },
+        "faq_3_a": {
+            "type": "text",
+            "label": "FAQ 3 Answer",
+            "default": "Thirty days, full refund, no form to fill in. Email and it is done the same working day."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Finish with real work, not just a certificate"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "Do I get anything at the end?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "A certificate, and more usefully the finished piece of work you built during the course, which is the thing worth showing anyone."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Start the first lesson"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "The opening module is free and takes about twenty minutes. Decide after that."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Start free"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#A95E6E"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#8B4D5A"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#A95E6E"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#0F1524"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "medical_blue",
-        "accent_deep": null,
-        "secondary": "sage"
-    },
-    "palette_scheme": "light",
-    "palette_roles": {
-        "medical_blue": "accent",
-        "medical_deep": "accent_deep",
-        "sage": "secondary",
-        "sage_soft": "secondary_soft",
-        "chalk": "bg",
-        "chalk_soft": "surface",
-        "carbon": "text",
-        "carbon_soft": "muted",
-        "warm_grey": "muted",
-        "divider": "line"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }

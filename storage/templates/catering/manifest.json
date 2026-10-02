@@ -1,401 +1,145 @@
 {
     "id": "catering",
-    "name": "Catering Company",
-    "version": "1.0.0",
+    "name": "Catering — Lumière",
     "industry": "catering",
-    "description": "Full-service catering template — warm orange, banquet elegance, event-driven. Built around weddings, corporate, private, and outdoor events.",
-    "variation": "luxury",
-    "preview_image": "preview.jpg",
-    "created_at": "2026-04-18",
+    "description": "Event catering that arrives early and leaves clean",
+    "thumbnail": "/storage/builder-heroes/catering.jpg",
+    "category": "hospitality",
+    "version": "2.0.0",
+    "variation": "base",
+    "is_active": false,
+    "design": {
+        "generated": "2026-10-02",
+        "generator": "lug-template-generator v2",
+        "palette": "forest",
+        "type": "industrial",
+        "scale": "tall",
+        "radius": "soft",
+        "archetypes": {
+            "nav": "topbar",
+            "hero": "bento",
+            "stats": "cards",
+            "offers": "tile",
+            "story": "facing",
+            "gallery": "mosaic",
+            "steps": "horizontal",
+            "tst": "wall",
+            "contact": "wide",
+            "footer": "split",
+            "proof": "tiles",
+            "faq": "cards",
+            "cta": "band",
+            "listings": "none",
+            "sold": "none"
+        },
+        "order": [
+            "offers",
+            "proof",
+            "story",
+            "gallery",
+            "stats",
+            "steps",
+            "faq",
+            "tst",
+            "cta",
+            "contact"
+        ]
+    },
     "blocks": [
         {
             "id": "nav",
             "name": "Navigation",
-            "fields": [
-                "business_name",
-                "nav_cta"
-            ],
             "elements": {
-                "logo": ".nav-logo",
-                "links": ".nav-links",
-                "link": ".nav-links li a",
-                "primary_button": "a.nav-cta",
-                "burger": ".nav-burger"
+                "logo": "nav .logo",
+                "nav_cta": "nav .nav-cta"
             }
         },
         {
             "id": "hero",
-            "name": "Hero Section",
-            "fields": [
-                "hero_eyebrow",
-                "hero_title",
-                "hero_subtitle",
-                "hero_cta",
-                "hero_cta_secondary",
-                "hero_image",
-                "hero_trust_badge"
-            ],
+            "name": "Hero",
             "elements": {
-                "eyebrow": ".hero-eyebrow",
-                "heading": "h1.hero-h1",
-                "subheading": "p.hero-sub",
-                "primary_button": "a.btn-primary",
-                "secondary_button": "a.btn-ghost",
-                "image": ".hero-media img",
-                "overlay": ".hero-overlay",
-                "trust_badge": ".hero-trust"
+                "hero_title": ".hero h1",
+                "hero_subtitle": ".hero p"
             }
         },
         {
             "id": "stats",
-            "name": "Stats Strip",
-            "fields": [
-                "stat_1_value",
-                "stat_1_label",
-                "stat_2_value",
-                "stat_2_label",
-                "stat_3_value",
-                "stat_3_label",
-                "stat_4_value",
-                "stat_4_label"
-            ],
-            "elements": {
-                "item": ".stat-item",
-                "number": ".stat-num",
-                "label": ".stat-label"
-            }
+            "name": "Stats",
+            "elements": []
         },
         {
             "id": "services",
-            "name": "Specialties",
-            "fields": [
-                "services_eyebrow",
-                "services_title",
-                "services_intro",
-                "service_1_title",
-                "service_1_text",
-                "service_1_tag_1",
-                "service_1_tag_2",
-                "service_1_tag_3",
-                "service_2_title",
-                "service_2_text",
-                "service_2_tag_1",
-                "service_2_tag_2",
-                "service_2_tag_3",
-                "service_3_title",
-                "service_3_text",
-                "service_3_tag_1",
-                "service_3_tag_2",
-                "service_3_tag_3",
-                "service_4_title",
-                "service_4_text",
-                "service_4_tag_1",
-                "service_4_tag_2",
-                "service_4_tag_3",
-                "service_5_title",
-                "service_5_text",
-                "service_5_tag_1",
-                "service_5_tag_2",
-                "service_5_tag_3",
-                "service_6_title",
-                "service_6_text",
-                "service_6_tag_1",
-                "service_6_tag_2",
-                "service_6_tag_3"
-            ],
+            "name": "Services",
             "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".services-intro",
-                "grid": ".service-grid",
-                "card": ".service-card",
-                "icon": ".service-icon",
-                "card_title": ".service-title",
-                "card_description": ".service-desc",
-                "tag": ".service-tag"
+                "service_1_title": "#services .offer-card h3"
             }
         },
         {
-            "id": "doctors",
-            "name": "Doctors & Team",
-            "fields": [
-                "doctors_eyebrow",
-                "doctors_title",
-                "doctors_intro",
-                "doctor_1_name",
-                "doctor_1_title",
-                "doctor_1_specialty",
-                "doctor_1_bio",
-                "doctor_1_image",
-                "doctor_2_name",
-                "doctor_2_title",
-                "doctor_2_specialty",
-                "doctor_2_bio",
-                "doctor_2_image",
-                "doctor_3_name",
-                "doctor_3_title",
-                "doctor_3_specialty",
-                "doctor_3_bio",
-                "doctor_3_image",
-                "doctor_4_name",
-                "doctor_4_title",
-                "doctor_4_specialty",
-                "doctor_4_bio",
-                "doctor_4_image"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".doctors-intro",
-                "grid": ".doctor-grid",
-                "card": ".doctor-card",
-                "image": ".doctor-card img",
-                "doctor_name": ".doctor-name",
-                "doctor_title": ".doctor-role",
-                "doctor_specialty": ".doctor-specialty",
-                "doctor_bio": ".doctor-bio"
-            }
-        },
-        {
-            "id": "process",
-            "name": "How It Works",
-            "fields": [
-                "process_eyebrow",
-                "process_title",
-                "process_1_title",
-                "process_1_text",
-                "process_2_title",
-                "process_2_text",
-                "process_3_title",
-                "process_3_text",
-                "process_4_title",
-                "process_4_text"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "step": ".process-step",
-                "number": ".process-num",
-                "step_title": ".process-title",
-                "step_description": ".process-desc"
-            }
-        },
-        {
-            "id": "testimonials",
-            "name": "Client Stories",
-            "fields": [
-                "testimonials_eyebrow",
-                "testimonials_title",
-                "testimonial_1_quote",
-                "testimonial_1_author",
-                "testimonial_1_condition",
-                "testimonial_2_quote",
-                "testimonial_2_author",
-                "testimonial_2_condition",
-                "testimonial_3_quote",
-                "testimonial_3_author",
-                "testimonial_3_condition"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "track": ".testimonial-track",
-                "slide": ".testimonial-slide",
-                "quote": ".testimonial-quote",
-                "author": ".testimonial-author",
-                "condition": ".testimonial-condition",
-                "dot": ".testimonial-dot"
-            }
-        },
-        {
-            "id": "certifications",
-            "name": "Accreditations & Trust",
-            "fields": [
-                "cert_eyebrow",
-                "cert_title",
-                "cert_intro",
-                "cert_1_name",
-                "cert_1_desc",
-                "cert_2_name",
-                "cert_2_desc",
-                "cert_3_name",
-                "cert_3_desc",
-                "cert_4_name",
-                "cert_4_desc",
-                "cert_5_name",
-                "cert_5_desc",
-                "cert_6_name",
-                "cert_6_desc"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.cert-heading",
-                "intro": ".cert-intro",
-                "grid": ".cert-grid",
-                "item": ".cert-item",
-                "cert_name": ".cert-name",
-                "cert_description": ".cert-desc"
-            }
-        },
-        {
-            "id": "cta_banner",
-            "name": "CTA Banner",
-            "fields": [
-                "cta_banner_eyebrow",
-                "cta_banner_title",
-                "cta_banner_subtitle",
-                "cta_banner_cta"
-            ],
-            "elements": {
-                "eyebrow": ".cta-eyebrow",
-                "heading": "h2.cta-title",
-                "subheading": "p.cta-subtitle",
-                "primary_button": "a.cta-button"
-            }
-        },
-        {
-            "id": "contact",
-            "name": "Contact & Location",
-            "fields": [
-                "contact_eyebrow",
-                "contact_title",
-                "contact_intro",
-                "contact_email",
-                "contact_phone",
-                "contact_address",
-                "contact_hours",
-                "contact_emergency",
-                "contact_form_title",
-                "form_submit_text",
-                "form_success_message"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".contact-intro",
-                "info_label": ".contact-item-label",
-                "info_value": ".contact-item-value",
-                "emergency": ".contact-emergency",
-                "form": ".contact-form",
-                "form_field": ".form-field",
-                "form_label": ".form-field label",
-                "form_input": ".form-field input, .form-field textarea, .form-field select",
-                "primary_button": "button.form-submit",
-                "success_message": "#form-success"
-            }
-        },
-        {
-            "id": "booking",
-            "name": "Book a Consultation",
-            "fields": [
-                "booking_title",
-                "booking_intro",
-                "booking_cta"
-            ],
-            "elements": {
-                "heading": "h2.booking-h2",
-                "intro": ".booking-intro",
-                "form": ".booking-form",
-                "submit_button": "button.booking-submit",
-                "date_input": "input[name=\"preferred_date\"]",
-                "time_slot": ".booking-slot"
-            }
-        },
-        {
-            "id": "blog",
-            "name": "Blog Teaser",
-            "fields": [
-                "blog_eyebrow",
-                "blog_title",
-                "blog_intro",
-                "blog_post_1_title",
-                "blog_post_1_excerpt",
-                "blog_post_1_url",
-                "blog_post_2_title",
-                "blog_post_2_excerpt",
-                "blog_post_2_url",
-                "blog_post_3_title",
-                "blog_post_3_excerpt",
-                "blog_post_3_url",
-                "blog_cta"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".blog-intro",
-                "grid": ".blog-grid",
-                "card": ".blog-card",
-                "post_title": ".blog-card-title",
-                "post_excerpt": ".blog-card-excerpt",
-                "cta": ".blog-cta"
-            },
-            "config": {
-                "enabled": true
-            }
+            "id": "about",
+            "name": "About / Story",
+            "elements": []
         },
         {
             "id": "gallery",
             "name": "Gallery",
-            "fields": [
-                "gallery_eyebrow",
-                "gallery_title",
-                "gallery_intro",
-                "gallery_1",
-                "gallery_2",
-                "gallery_3",
-                "gallery_4",
-                "gallery_5"
-            ],
-            "elements": {
-                "eyebrow": ".eyebrow",
-                "heading": "h2.section-h2",
-                "intro": ".gallery-intro",
-                "grid": ".gallery-grid",
-                "item": ".gallery-item"
-            }
+            "elements": []
+        },
+        {
+            "id": "process",
+            "name": "Process",
+            "elements": []
+        },
+        {
+            "id": "testimonials",
+            "name": "Testimonials",
+            "elements": []
+        },
+        {
+            "id": "contact",
+            "name": "Contact",
+            "elements": []
         },
         {
             "id": "footer",
             "name": "Footer",
-            "fields": [
-                "business_name",
-                "footer_tagline",
-                "footer_text",
-                "social_facebook",
-                "social_instagram",
-                "social_linkedin"
-            ],
-            "elements": {
-                "logo": ".footer-logo",
-                "tagline": ".footer-tagline",
-                "links": ".footer-links",
-                "link": ".footer-links li a",
-                "social": ".footer-social",
-                "social_link": ".footer-social a",
-                "copy": ".footer-copy"
-            }
+            "elements": []
+        },
+        {
+            "id": "why_us",
+            "name": "Why us",
+            "elements": []
+        },
+        {
+            "id": "faq",
+            "name": "FAQ",
+            "elements": []
+        },
+        {
+            "id": "cta",
+            "name": "Call to action",
+            "elements": []
         }
     ],
     "variables": {
         "business_name": {
             "type": "text",
-            "label": "Clinic Name",
+            "label": "Business Name",
             "default": "Lumière Catering Co."
         },
         "business_tagline": {
             "type": "text",
             "label": "Tagline",
-            "default": "Full-Service Event Catering · Dubai"
+            "default": "Event catering that arrives early and leaves clean"
         },
         "meta_description": {
             "type": "text",
             "label": "Meta Description",
-            "default": "Lumière Catering Co. — full-service event catering in Dubai for weddings, corporate functions, and private dinners. From canapés for ten to banquets for a thousand."
+            "default": "Full-service catering for weddings, corporate events and private dinners, with menus built around your guests rather than our stock list."
         },
         "canonical_url": {
             "type": "url",
             "label": "Canonical URL",
-            "default": "https://catering.example.com"
+            "default": "https://example.com"
         },
         "og_image": {
             "type": "image",
@@ -405,102 +149,212 @@
         "og_locale": {
             "type": "text",
             "label": "OG Locale",
-            "default": "en_US"
+            "default": "en_GB"
         },
-        "nav_cta": {
-            "type": "text",
-            "label": "Nav CTA",
-            "default": "Request a Quote"
+        "logo_url": {
+            "type": "image",
+            "label": "Logo",
+            "default": ""
         },
         "hero_eyebrow": {
             "type": "text",
             "label": "Hero Eyebrow",
-            "default": "Full-Service Event Catering · Dubai"
+            "default": "Weddings · Corporate · Private"
         },
         "hero_title": {
-            "type": "html",
-            "label": "Hero Title",
-            "default": "Beautiful food,<br><em>flawlessly delivered.</em>"
+            "type": "text",
+            "label": "Hero Heading",
+            "default": "The food people actually remember, at the scale you actually need"
         },
         "hero_subtitle": {
             "type": "text",
-            "label": "Hero Subtitle",
-            "default": "From weddings for three hundred to intimate boardroom lunches for eight — full kitchen, full-service, full responsibility, with our own staff and equipment."
+            "label": "Hero Subheading",
+            "default": "From a boardroom lunch for twelve to a marquee for four hundred. One team, one contact, one invoice with nothing hidden in it."
         },
         "hero_cta": {
             "type": "text",
-            "label": "Primary CTA",
-            "default": "Request a Quote"
+            "label": "Hero Button",
+            "default": "Request a quote"
         },
-        "hero_cta_secondary": {
+        "hero_cta_2": {
             "type": "text",
-            "label": "Secondary CTA",
-            "default": "View Gallery"
+            "label": "Hero Secondary Button",
+            "default": "See the menus"
         },
         "hero_image": {
             "type": "image",
             "label": "Hero Image",
             "default": "/storage/builder-heroes/catering.jpg"
         },
-        "hero_trust_badge": {
+        "offers_title": {
             "type": "text",
-            "label": "Hero Trust Badge",
-            "default": "DHA Food Safety · 12 Years · 850+ Events Catered"
+            "label": "Offers Heading",
+            "default": "What we cater"
+        },
+        "offers_subtitle": {
+            "type": "text",
+            "label": "Offers Subheading",
+            "default": "Every menu is written for the event. These are the shapes most of them take."
+        },
+        "story_eyebrow": {
+            "type": "text",
+            "label": "Story Eyebrow",
+            "default": "Our story"
+        },
+        "story_title": {
+            "type": "text",
+            "label": "Story Heading",
+            "default": "Fifteen years of other people's big days"
+        },
+        "story_body": {
+            "type": "text",
+            "label": "Story Body",
+            "default": "We started with one van and a wedding for sixty in a field with no power. That taught us more than any kitchen ever has: plan for the site, not the menu. We now run four kitchens and a fleet, and we still walk every venue before we quote it."
+        },
+        "story_image": {
+            "type": "image",
+            "label": "Story Image",
+            "default": "/storage/template-images/catering/gallery_3.jpg"
+        },
+        "gallery_title": {
+            "type": "text",
+            "label": "Gallery Heading",
+            "default": "Recent events"
+        },
+        "steps_title": {
+            "type": "text",
+            "label": "Process Heading",
+            "default": "From enquiry to service"
+        },
+        "testimonials_title": {
+            "type": "text",
+            "label": "Testimonials Heading",
+            "default": "What people say"
+        },
+        "contact_title": {
+            "type": "text",
+            "label": "Contact Heading",
+            "default": "Tell us about your event"
+        },
+        "contact_subtitle": {
+            "type": "text",
+            "label": "Contact Subheading",
+            "default": "We will come back with real numbers within two working days, not a brochure."
+        },
+        "contact_phone": {
+            "type": "text",
+            "label": "Phone",
+            "default": "+44 20 7946 0100"
+        },
+        "contact_email": {
+            "type": "text",
+            "label": "Email",
+            "default": "hello@example.com"
+        },
+        "contact_address": {
+            "type": "text",
+            "label": "Address",
+            "default": "12 Example Street, London"
+        },
+        "contact_hours": {
+            "type": "text",
+            "label": "Opening Hours",
+            "default": "Office Mon–Fri 9–6 · Events seven days"
+        },
+        "contact_cta": {
+            "type": "text",
+            "label": "Contact Button",
+            "default": "Request a quote"
+        },
+        "footer_blurb": {
+            "type": "text",
+            "label": "Footer Blurb",
+            "default": "Event catering that arrives early and leaves clean"
+        },
+        "footer_col_1": {
+            "type": "text",
+            "label": "Footer Column 1 Title",
+            "default": "Explore"
+        },
+        "footer_col_2": {
+            "type": "text",
+            "label": "Footer Column 2 Title",
+            "default": "Contact"
+        },
+        "footer_legal": {
+            "type": "text",
+            "label": "Footer Legal",
+            "default": "All rights reserved."
+        },
+        "nav_1": {
+            "type": "text",
+            "label": "Nav Link 1",
+            "default": "Menus"
+        },
+        "nav_2": {
+            "type": "text",
+            "label": "Nav Link 2",
+            "default": "How we work"
+        },
+        "nav_3": {
+            "type": "text",
+            "label": "Nav Link 3",
+            "default": "Gallery"
+        },
+        "nav_4": {
+            "type": "text",
+            "label": "Nav Link 4",
+            "default": "Process"
+        },
+        "nav_5": {
+            "type": "text",
+            "label": "Nav Link 5",
+            "default": "Enquire"
+        },
+        "nav_cta": {
+            "type": "text",
+            "label": "Nav Button",
+            "default": "Request a quote"
         },
         "stat_1_value": {
             "type": "text",
             "label": "Stat 1 Value",
-            "default": "850+"
+            "default": "15 yrs"
         },
         "stat_1_label": {
             "type": "text",
             "label": "Stat 1 Label",
-            "default": "Events"
+            "default": "Catering events"
         },
         "stat_2_value": {
             "type": "text",
             "label": "Stat 2 Value",
-            "default": "12yr"
+            "default": "400"
         },
         "stat_2_label": {
             "type": "text",
             "label": "Stat 2 Label",
-            "default": "Trading"
+            "default": "Largest single service"
         },
         "stat_3_value": {
             "type": "text",
             "label": "Stat 3 Value",
-            "default": "40"
+            "default": "4"
         },
         "stat_3_label": {
             "type": "text",
             "label": "Stat 3 Label",
-            "default": "Catering Staff"
+            "default": "Production kitchens"
         },
         "stat_4_value": {
             "type": "text",
             "label": "Stat 4 Value",
-            "default": "4.9★"
+            "default": "0"
         },
         "stat_4_label": {
             "type": "text",
             "label": "Stat 4 Label",
-            "default": "Client Rating"
-        },
-        "services_eyebrow": {
-            "type": "text",
-            "label": "Services Eyebrow",
-            "default": "Services"
-        },
-        "services_title": {
-            "type": "html",
-            "label": "Services Title",
-            "default": "Catering for<br><em>every occasion.</em>"
-        },
-        "services_intro": {
-            "type": "text",
-            "label": "Services Intro",
-            "default": "Four core service lines, all with the same kitchen brigade and the same uncompromising approach to ingredients and presentation."
+            "default": "Hidden line items"
         },
         "service_1_title": {
             "type": "text",
@@ -509,713 +363,103 @@
         },
         "service_1_text": {
             "type": "text",
-            "label": "Service 1 Text",
-            "default": "Bespoke wedding catering for fifty to five hundred — multi-course banquets, canapé receptions, late-night street-food stations."
+            "label": "Service 1 Description",
+            "default": "Canapés through to the late-night plate, with a tasting for two before you commit."
         },
-        "service_1_tag_1": {
+        "service_1_price": {
             "type": "text",
-            "label": "Service 1 Tag 1",
-            "default": "Banquet"
-        },
-        "service_1_tag_2": {
-            "type": "text",
-            "label": "Service 1 Tag 2",
-            "default": "Canapé"
-        },
-        "service_1_tag_3": {
-            "type": "text",
-            "label": "Service 1 Tag 3",
-            "default": "Late-Night"
+            "label": "Service 1 Price / Detail",
+            "default": "From £68pp"
         },
         "service_2_title": {
             "type": "text",
             "label": "Service 2 Title",
-            "default": "Corporate Catering"
+            "default": "Corporate"
         },
         "service_2_text": {
             "type": "text",
-            "label": "Service 2 Text",
-            "default": "Daily lunches, board dinners, conference catering, and full-day event catering with on-site chef teams and bespoke menu design."
+            "label": "Service 2 Description",
+            "default": "Breakfasts, working lunches and awards dinners, delivered to a fixed time."
         },
-        "service_2_tag_1": {
+        "service_2_price": {
             "type": "text",
-            "label": "Service 2 Tag 1",
-            "default": "Lunch"
-        },
-        "service_2_tag_2": {
-            "type": "text",
-            "label": "Service 2 Tag 2",
-            "default": "Boardroom"
-        },
-        "service_2_tag_3": {
-            "type": "text",
-            "label": "Service 2 Tag 3",
-            "default": "Conference"
+            "label": "Service 2 Price / Detail",
+            "default": "From £22pp"
         },
         "service_3_title": {
             "type": "text",
             "label": "Service 3 Title",
-            "default": "Private Events"
+            "default": "Private dining"
         },
         "service_3_text": {
             "type": "text",
-            "label": "Service 3 Text",
-            "default": "Birthday dinners, anniversaries, and intimate dinner parties at your home or venue — chef in your kitchen, your menu, your wines."
+            "label": "Service 3 Description",
+            "default": "A chef and a server in your kitchen for the evening, plus the washing up."
         },
-        "service_3_tag_1": {
+        "service_3_price": {
             "type": "text",
-            "label": "Service 3 Tag 1",
-            "default": "Birthday"
-        },
-        "service_3_tag_2": {
-            "type": "text",
-            "label": "Service 3 Tag 2",
-            "default": "Anniversary"
-        },
-        "service_3_tag_3": {
-            "type": "text",
-            "label": "Service 3 Tag 3",
-            "default": "At-Home"
+            "label": "Service 3 Price / Detail",
+            "default": "From £95pp"
         },
         "service_4_title": {
             "type": "text",
             "label": "Service 4 Title",
-            "default": "Outdoor & Festival"
+            "default": "Canapé receptions"
         },
         "service_4_text": {
             "type": "text",
-            "label": "Service 4 Text",
-            "default": "Beach weddings, desert dinners, festival catering, and pop-up activations — full mobile kitchen rig, generators, refrigeration on site."
+            "label": "Service 4 Description",
+            "default": "Eight pieces per guest, passed, with a bar package if you want one."
         },
-        "service_4_tag_1": {
+        "service_4_price": {
             "type": "text",
-            "label": "Service 4 Tag 1",
-            "default": "Beach"
-        },
-        "service_4_tag_2": {
-            "type": "text",
-            "label": "Service 4 Tag 2",
-            "default": "Desert"
-        },
-        "service_4_tag_3": {
-            "type": "text",
-            "label": "Service 4 Tag 3",
-            "default": "Pop-Up"
+            "label": "Service 4 Price / Detail",
+            "default": "From £34pp"
         },
         "service_5_title": {
             "type": "text",
             "label": "Service 5 Title",
-            "default": "Drinks & Bars"
+            "default": "Festival & film unit"
         },
         "service_5_text": {
             "type": "text",
-            "label": "Service 5 Text",
-            "default": "Cocktail bars, mobile coffee carts, juice stations, and shisha lounges — full beverage operations with trained mixologists and baristas."
+            "label": "Service 5 Description",
+            "default": "High-volume hot food on location, seven days a week if that is the shoot."
         },
-        "service_5_tag_1": {
+        "service_5_price": {
             "type": "text",
-            "label": "Service 5 Tag 1",
-            "default": "Cocktails"
-        },
-        "service_5_tag_2": {
-            "type": "text",
-            "label": "Service 5 Tag 2",
-            "default": "Coffee"
-        },
-        "service_5_tag_3": {
-            "type": "text",
-            "label": "Service 5 Tag 3",
-            "default": "Shisha"
+            "label": "Service 5 Price / Detail",
+            "default": "By tender"
         },
         "service_6_title": {
             "type": "text",
             "label": "Service 6 Title",
-            "default": "Equipment & Staffing"
+            "default": "Drop-and-go"
         },
         "service_6_text": {
             "type": "text",
-            "label": "Service 6 Text",
-            "default": "Equipment hire and trained event staff — chefs, waiters, bartenders, hostesses — for clients managing their own catering."
+            "label": "Service 6 Description",
+            "default": "Cold platters and hot boxes delivered ready to serve, no staff required."
         },
-        "service_6_tag_1": {
+        "service_6_price": {
             "type": "text",
-            "label": "Service 6 Tag 1",
-            "default": "Hire"
+            "label": "Service 6 Price / Detail",
+            "default": "From £16pp"
         },
-        "service_6_tag_2": {
+        "story_point_1": {
             "type": "text",
-            "label": "Service 6 Tag 2",
-            "default": "Staff"
+            "label": "Story Point 1",
+            "default": "Every venue visited before a price is given"
         },
-        "service_6_tag_3": {
+        "story_point_2": {
             "type": "text",
-            "label": "Service 6 Tag 3",
-            "default": "Add-On"
+            "label": "Story Point 2",
+            "default": "Dietary requirements costed in, never surcharged"
         },
-        "doctors_eyebrow": {
+        "story_point_3": {
             "type": "text",
-            "label": "Team Eyebrow",
-            "default": "The Team"
-        },
-        "doctors_title": {
-            "type": "html",
-            "label": "Team Title",
-            "default": "The team behind<br><em>your event.</em>"
-        },
-        "doctors_intro": {
-            "type": "text",
-            "label": "Team Intro",
-            "default": "An event manager assigned from day one, an executive chef on every event, and a brigade trained in our own kitchens."
-        },
-        "doctor_1_name": {
-            "type": "text",
-            "label": "Team 1 Name",
-            "default": "Hassan El-Najjar"
-        },
-        "doctor_1_title": {
-            "type": "text",
-            "label": "Team 1 Title",
-            "default": "Founder & Executive Chef"
-        },
-        "doctor_1_specialty": {
-            "type": "text",
-            "label": "Team 1 Specialty",
-            "default": "Levantine + French"
-        },
-        "doctor_1_bio": {
-            "type": "text",
-            "label": "Team 1 Bio",
-            "default": "Eighteen years in catering — opened Lumière in 2013 after a decade with Constellations Dubai."
-        },
-        "doctor_1_image": {
-            "type": "image",
-            "label": "Team 1 Image",
-            "default": "/storage/template-images/catering/gen-01-a-tray-of-canap-s-being-finished-on-a-st.jpg"
-        },
-        "doctor_2_name": {
-            "type": "text",
-            "label": "Team 2 Name",
-            "default": "Fatima Rashid"
-        },
-        "doctor_2_title": {
-            "type": "text",
-            "label": "Team 2 Title",
-            "default": "Head of Events"
-        },
-        "doctor_2_specialty": {
-            "type": "text",
-            "label": "Team 2 Specialty",
-            "default": "Wedding Specialist"
-        },
-        "doctor_2_bio": {
-            "type": "text",
-            "label": "Team 2 Bio",
-            "default": "350+ weddings personally managed — runs every wedding event from briefing to bar pack-down."
-        },
-        "doctor_2_image": {
-            "type": "image",
-            "label": "Team 2 Image",
-            "default": "/storage/template-images/catering/gen-02-a-long-linen-table-set-outdoors-with-gla.jpg"
-        },
-        "doctor_3_name": {
-            "type": "text",
-            "label": "Team 3 Name",
-            "default": "Pierre Bouchard"
-        },
-        "doctor_3_title": {
-            "type": "text",
-            "label": "Team 3 Title",
-            "default": "Head Chef — Corporate"
-        },
-        "doctor_3_specialty": {
-            "type": "text",
-            "label": "Team 3 Specialty",
-            "default": "European"
-        },
-        "doctor_3_bio": {
-            "type": "text",
-            "label": "Team 3 Bio",
-            "default": "Trained at the Savoy London — leads corporate, conference, and boardroom catering."
-        },
-        "doctor_3_image": {
-            "type": "image",
-            "label": "Team 3 Image",
-            "default": "/storage/template-images/catering/gen-03-chafing-dishes-lined-up-on-a-buffet-with.jpg"
-        },
-        "doctor_4_name": {
-            "type": "text",
-            "label": "Team 4 Name",
-            "default": "Aisha Mansoor"
-        },
-        "doctor_4_title": {
-            "type": "text",
-            "label": "Team 4 Title",
-            "default": "Head of Operations"
-        },
-        "doctor_4_specialty": {
-            "type": "text",
-            "label": "Team 4 Specialty",
-            "default": "Logistics"
-        },
-        "doctor_4_bio": {
-            "type": "text",
-            "label": "Team 4 Bio",
-            "default": "Manages the warehouse, equipment, transport, and staffing for every event."
-        },
-        "doctor_4_image": {
-            "type": "image",
-            "label": "Team 4 Image",
-            "default": "/storage/template-images/catering/gen-04-a-delivery-van-boot-packed-with-insulate.jpg"
-        },
-        "process_eyebrow": {
-            "type": "text",
-            "label": "Process Eyebrow",
-            "default": "How It Works"
-        },
-        "process_title": {
-            "type": "html",
-            "label": "Process Title",
-            "default": "From brief<br><em>to thank-you.</em>"
-        },
-        "process_1_title": {
-            "type": "text",
-            "label": "Step 1 Title",
-            "default": "Brief"
-        },
-        "process_1_text": {
-            "type": "text",
-            "label": "Step 1 Text",
-            "default": "Tell us your date, venue, guest count, and budget. We send a detailed quote and three menu directions within forty-eight hours."
-        },
-        "process_2_title": {
-            "type": "text",
-            "label": "Step 2 Title",
-            "default": "Tasting"
-        },
-        "process_2_text": {
-            "type": "text",
-            "label": "Step 2 Text",
-            "default": "Confirmed bookings get a complimentary tasting for two — full sit-down with the chef, refining the menu over two hours."
-        },
-        "process_3_title": {
-            "type": "text",
-            "label": "Step 3 Title",
-            "default": "Event"
-        },
-        "process_3_text": {
-            "type": "text",
-            "label": "Step 3 Text",
-            "default": "Our team arrives the morning of the event — full kitchen setup, dressing the room, briefing service staff, plating to table."
-        },
-        "process_4_title": {
-            "type": "text",
-            "label": "Step 4 Title",
-            "default": "Wrap"
-        },
-        "process_4_text": {
-            "type": "text",
-            "label": "Step 4 Text",
-            "default": "Equipment packed, kitchen restored, leftovers packaged for the family. Invoice settled, photos sent within seven days."
-        },
-        "testimonials_eyebrow": {
-            "type": "text",
-            "label": "Testimonials Eyebrow",
-            "default": "Client Stories"
-        },
-        "testimonials_title": {
-            "type": "html",
-            "label": "Testimonials Title",
-            "default": "Clients,<br><em>in their words.</em>"
-        },
-        "testimonial_1_quote": {
-            "type": "text",
-            "label": "Testimonial 1 Quote",
-            "default": "Brilliant from start to finish. The team listened, delivered exactly what we needed and made the whole experience effortless."
-        },
-        "testimonial_1_author": {
-            "type": "text",
-            "label": "Testimonial 1 Author",
-            "default": "Hana Y. — Dubai Marina"
-        },
-        "testimonial_1_condition": {
-            "type": "text",
-            "label": "Testimonial 1 Condition",
-            "default": "Family Medicine"
-        },
-        "testimonial_2_quote": {
-            "type": "text",
-            "label": "Testimonial 2 Quote",
-            "default": "Brought our six-month-old in for a rash at 9pm on a Saturday. Nakamura saw us within the hour, calmly reassured us, and followed up the next morning. Impeccable."
-        },
-        "testimonial_2_author": {
-            "type": "text",
-            "label": "Testimonial 2 Author",
-            "default": "Ahmed & Laila K."
-        },
-        "testimonial_2_condition": {
-            "type": "text",
-            "label": "Testimonial 2 Condition",
-            "default": "Paediatrics"
-        },
-        "testimonial_3_quote": {
-            "type": "text",
-            "label": "Testimonial 3 Quote",
-            "default": "Heart palpitations had three previous team shrug and send me home. Al-Sayed ran proper tests, found the cause, and had me seen by a specialist in London the same week."
-        },
-        "testimonial_3_author": {
-            "type": "text",
-            "label": "Testimonial 3 Author",
-            "default": "Roberto P. — JLT"
-        },
-        "testimonial_3_condition": {
-            "type": "text",
-            "label": "Testimonial 3 Condition",
-            "default": "Cardiology"
-        },
-        "cert_eyebrow": {
-            "type": "text",
-            "label": "Cert Eyebrow",
-            "default": "Trust"
-        },
-        "cert_title": {
-            "type": "text",
-            "label": "Cert Title",
-            "default": "Why clients keep coming back"
-        },
-        "cert_intro": {
-            "type": "text",
-            "label": "Cert Intro",
-            "default": "Twelve years of catering experience, audited annually for food safety and standards."
-        },
-        "cert_1_name": {
-            "type": "text",
-            "label": "Cert 1 Name",
-            "default": "DHA Food Safety"
-        },
-        "cert_1_desc": {
-            "type": "text",
-            "label": "Cert 1 Desc",
-            "default": "Dubai Health Authority licensed and inspected"
-        },
-        "cert_2_name": {
-            "type": "text",
-            "label": "Cert 2 Name",
-            "default": "HACCP Certified"
-        },
-        "cert_2_desc": {
-            "type": "text",
-            "label": "Cert 2 Desc",
-            "default": "Full Hazard Analysis Critical Control Point compliance"
-        },
-        "cert_3_name": {
-            "type": "text",
-            "label": "Cert 3 Name",
-            "default": "ISO 22000"
-        },
-        "cert_3_desc": {
-            "type": "text",
-            "label": "Cert 3 Desc",
-            "default": "International food safety management system certified"
-        },
-        "cert_4_name": {
-            "type": "text",
-            "label": "Cert 4 Name",
-            "default": "Halal Certified"
-        },
-        "cert_4_desc": {
-            "type": "text",
-            "label": "Cert 4 Desc",
-            "default": "Full halal compliance from sourcing to service"
-        },
-        "cert_5_name": {
-            "type": "text",
-            "label": "Cert 5 Name",
-            "default": "Public Liability"
-        },
-        "cert_5_desc": {
-            "type": "text",
-            "label": "Cert 5 Desc",
-            "default": "AED 5M public liability insurance on every event"
-        },
-        "cert_6_name": {
-            "type": "text",
-            "label": "Cert 6 Name",
-            "default": "Awards"
-        },
-        "cert_6_desc": {
-            "type": "text",
-            "label": "Cert 6 Desc",
-            "default": "Best Caterer 2024 — UAE Wedding Awards · Time Out Editor's Pick"
-        },
-        "cta_banner_eyebrow": {
-            "type": "text",
-            "label": "CTA Banner Eyebrow",
-            "default": "Same-day appointments"
-        },
-        "cta_banner_title": {
-            "type": "html",
-            "label": "CTA Banner Title",
-            "default": "Ready when you are."
-        },
-        "cta_banner_subtitle": {
-            "type": "text",
-            "label": "CTA Banner Subtitle",
-            "default": "Get in touch — we'll respond within an hour during business hours."
-        },
-        "cta_banner_cta": {
-            "type": "text",
-            "label": "CTA Banner CTA",
-            "default": "Request a Quote"
-        },
-        "contact_eyebrow": {
-            "type": "text",
-            "label": "Contact Eyebrow",
-            "default": "Contact"
-        },
-        "contact_title": {
-            "type": "html",
-            "label": "Contact Title",
-            "default": "Visit or<br><em>call us.</em>"
-        },
-        "contact_intro": {
-            "type": "text",
-            "label": "Contact Intro",
-            "default": "We reply to all enquiries within thirty minutes during opening hours."
-        },
-        "contact_email": {
-            "type": "text",
-            "label": "Contact Email",
-            "default": "reception@atrium-team.ae"
-        },
-        "contact_phone": {
-            "type": "text",
-            "label": "Contact Phone",
-            "default": "+971 4 000 0000"
-        },
-        "contact_address": {
-            "type": "text",
-            "label": "Contact Address",
-            "default": "Dubai Healthcare City, Block F, Floor 3"
-        },
-        "contact_hours": {
-            "type": "text",
-            "label": "Opening Hours",
-            "default": "Mon–Sat · 8am–8pm  ·  Sun · 10am–4pm"
-        },
-        "contact_emergency": {
-            "type": "text",
-            "label": "Emergency Line",
-            "default": "For team emergencies dial 998 (Dubai Police / Ambulance)."
-        },
-        "contact_form_title": {
-            "type": "html",
-            "label": "Form Title",
-            "default": "Request a<br><em>callback.</em>"
-        },
-        "form_submit_text": {
-            "type": "text",
-            "label": "Submit Button",
-            "default": "Request Callback →"
-        },
-        "form_success_message": {
-            "type": "text",
-            "label": "Success Message",
-            "default": "✓ Thank you. Reception will call you back within thirty minutes."
-        },
-        "booking_title": {
-            "type": "html",
-            "label": "Booking Title",
-            "default": "Book a<br><em>visit.</em>"
-        },
-        "booking_intro": {
-            "type": "text",
-            "label": "Booking Intro",
-            "default": "Choose a service and a time that suits you. We'll confirm within thirty minutes."
-        },
-        "booking_cta": {
-            "type": "text",
-            "label": "Booking CTA",
-            "default": "Book Now"
-        },
-        "booking_display": {
-            "type": "text",
-            "label": "Booking Display",
-            "default": ""
-        },
-        "footer_tagline": {
-            "type": "text",
-            "label": "Footer Tagline",
-            "default": "Catering Company — Full-Service Event Catering · Dubai."
-        },
-        "footer_text": {
-            "type": "text",
-            "label": "Footer Copyright",
-            "default": "© 2026 Lumière Catering Co.. All rights reserved."
-        },
-        "social_facebook": {
-            "type": "url",
-            "label": "Facebook URL",
-            "default": "#"
-        },
-        "social_instagram": {
-            "type": "url",
-            "label": "Instagram URL",
-            "default": "#"
-        },
-        "social_linkedin": {
-            "type": "url",
-            "label": "LinkedIn URL",
-            "default": "#"
-        },
-        "chalk": {
-            "type": "color",
-            "label": "Chalk (Background)",
-            "default": "#FFFFFF"
-        },
-        "chalk_soft": {
-            "type": "color",
-            "label": "Soft Background",
-            "default": "#F7FAFC"
-        },
-        "carbon": {
-            "type": "color",
-            "label": "Ink (Primary Text)",
-            "default": "#0F1A2A"
-        },
-        "carbon_soft": {
-            "type": "color",
-            "label": "Soft Ink",
-            "default": "#344458"
-        },
-        "medical_blue": {
-            "type": "color",
-            "label": "Medical Blue",
-            "default": "#AF5D14"
-        },
-        "medical_deep": {
-            "type": "color",
-            "label": "Medical Deep",
-            "default": "#A04A0A"
-        },
-        "sage": {
-            "type": "color",
-            "label": "Sage Accent",
-            "default": "#F4D6B5"
-        },
-        "sage_soft": {
-            "type": "color",
-            "label": "Sage Soft",
-            "default": "#D6E4DD"
-        },
-        "warm_grey": {
-            "type": "color",
-            "label": "Warm Grey",
-            "default": "#6B7A8F"
-        },
-        "divider": {
-            "type": "color",
-            "label": "Divider",
-            "default": "#E2E8F0"
-        },
-        "social_twitter": {
-            "type": "url",
-            "label": "X / Twitter URL",
-            "default": "#"
-        },
-        "social_youtube": {
-            "type": "url",
-            "label": "YouTube URL",
-            "default": "#"
-        },
-        "social_tiktok": {
-            "type": "url",
-            "label": "TikTok URL",
-            "default": "#"
-        },
-        "social_whatsapp": {
-            "type": "url",
-            "label": "WhatsApp URL",
-            "default": "#"
-        },
-        "blog_eyebrow": {
-            "type": "text",
-            "label": "Blog Eyebrow",
-            "default": "Insights"
-        },
-        "blog_title": {
-            "type": "html",
-            "label": "Blog Title",
-            "default": "From the<br><em>journal.</em>"
-        },
-        "blog_intro": {
-            "type": "text",
-            "label": "Blog Intro",
-            "default": "Practical guides, expert opinion, and behind-the-scenes notes — written by our team."
-        },
-        "blog_post_1_title": {
-            "type": "text",
-            "label": "Post 1 Title",
-            "default": "What to expect at your first appointment"
-        },
-        "blog_post_1_excerpt": {
-            "type": "text",
-            "label": "Post 1 Excerpt",
-            "default": "A short walk-through of the first visit — from arrival to follow-up — so you know exactly what to expect."
-        },
-        "blog_post_1_url": {
-            "type": "url",
-            "label": "Post 1 URL",
-            "default": "/blog/first-appointment"
-        },
-        "blog_post_2_title": {
-            "type": "text",
-            "label": "Post 2 Title",
-            "default": "Five questions worth asking your provider"
-        },
-        "blog_post_2_excerpt": {
-            "type": "text",
-            "label": "Post 2 Excerpt",
-            "default": "The questions that should be standard — but rarely are. Use this as a checklist before any visit."
-        },
-        "blog_post_2_url": {
-            "type": "url",
-            "label": "Post 2 URL",
-            "default": "/blog/five-questions"
-        },
-        "blog_post_3_title": {
-            "type": "text",
-            "label": "Post 3 Title",
-            "default": "The case for unhurried appointments"
-        },
-        "blog_post_3_excerpt": {
-            "type": "text",
-            "label": "Post 3 Excerpt",
-            "default": "Why a thirty-minute visit isn't a luxury — it's the bare minimum for thoughtful care."
-        },
-        "blog_post_3_url": {
-            "type": "url",
-            "label": "Post 3 URL",
-            "default": "/blog/unhurried"
-        },
-        "blog_cta": {
-            "type": "text",
-            "label": "Blog CTA",
-            "default": "Read More →"
-        },
-        "gallery_eyebrow": {
-            "type": "text",
-            "label": "Gallery Eyebrow",
-            "default": "Gallery"
-        },
-        "gallery_title": {
-            "type": "html",
-            "label": "Gallery Title",
-            "default": "From the<br><em>archive.</em>"
-        },
-        "gallery_intro": {
-            "type": "text",
-            "label": "Gallery Intro",
-            "default": "Recent moments — captured for posterity."
+            "label": "Story Point 3",
+            "default": "Our own crockery, glass and linen — no third-party hire markup"
         },
         "gallery_1": {
             "type": "image",
@@ -1241,65 +485,237 @@
             "type": "image",
             "label": "Gallery Image 5",
             "default": "/storage/template-images/catering/gallery_5.jpg"
+        },
+        "gallery_6": {
+            "type": "image",
+            "label": "Gallery Image 6",
+            "default": "/storage/template-images/catering/gen-01-a-tray-of-canap-s-being-finished-on-a-st.jpg"
+        },
+        "step_1_title": {
+            "type": "text",
+            "label": "Step 1 Title",
+            "default": "Tell us the shape of it"
+        },
+        "step_1_body": {
+            "type": "text",
+            "label": "Step 1 Body",
+            "default": "Numbers, date, venue, and roughly what you had in mind."
+        },
+        "step_2_title": {
+            "type": "text",
+            "label": "Step 2 Title",
+            "default": "We visit and quote"
+        },
+        "step_2_body": {
+            "type": "text",
+            "label": "Step 2 Body",
+            "default": "A written proposal with the full cost, including staff and hire."
+        },
+        "step_3_title": {
+            "type": "text",
+            "label": "Step 3 Title",
+            "default": "Tasting"
+        },
+        "step_3_body": {
+            "type": "text",
+            "label": "Step 3 Body",
+            "default": "Two of you, four courses, in our kitchen. Change anything you like."
+        },
+        "step_4_title": {
+            "type": "text",
+            "label": "Step 4 Title",
+            "default": "We run the day"
+        },
+        "step_4_body": {
+            "type": "text",
+            "label": "Step 4 Body",
+            "default": "We arrive early, work around your schedule, and leave the site clean."
+        },
+        "testimonial_1_quote": {
+            "type": "text",
+            "label": "Testimonial 1",
+            "default": "Four hundred covers in a field and every plate went out hot. I still do not know how."
+        },
+        "testimonial_1_name": {
+            "type": "text",
+            "label": "Testimonial 1 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_1_role": {
+            "type": "text",
+            "label": "Testimonial 1 Role",
+            "default": "Event organiser"
+        },
+        "testimonial_2_quote": {
+            "type": "text",
+            "label": "Testimonial 2",
+            "default": "The quote we signed was the invoice we paid. In this industry that is remarkable."
+        },
+        "testimonial_2_name": {
+            "type": "text",
+            "label": "Testimonial 2 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_2_role": {
+            "type": "text",
+            "label": "Testimonial 2 Role",
+            "default": "Event organiser"
+        },
+        "testimonial_3_quote": {
+            "type": "text",
+            "label": "Testimonial 3",
+            "default": "They handled fourteen dietaries without once making a guest feel like an inconvenience."
+        },
+        "testimonial_3_name": {
+            "type": "text",
+            "label": "Testimonial 3 Name",
+            "default": "Customer Name"
+        },
+        "testimonial_3_role": {
+            "type": "text",
+            "label": "Testimonial 3 Role",
+            "default": "Event organiser"
+        },
+        "social_facebook": {
+            "type": "url",
+            "label": "Facebook",
+            "default": ""
+        },
+        "social_instagram": {
+            "type": "url",
+            "label": "Instagram",
+            "default": ""
+        },
+        "social_linkedin": {
+            "type": "url",
+            "label": "Linkedin",
+            "default": ""
+        },
+        "social_x": {
+            "type": "url",
+            "label": "X",
+            "default": ""
+        },
+        "proof_1": {
+            "type": "text",
+            "label": "Reason 1",
+            "default": "Itemised quotes, hire at cost"
+        },
+        "faq_1_q": {
+            "type": "text",
+            "label": "FAQ 1 Question",
+            "default": "How far ahead do you need to know numbers?"
+        },
+        "faq_1_a": {
+            "type": "text",
+            "label": "FAQ 1 Answer",
+            "default": "Final numbers seven days before. Small changes after that are usually fine; we will tell you straight away if one is not."
+        },
+        "proof_2": {
+            "type": "text",
+            "label": "Reason 2",
+            "default": "Tastings for thirty covers and over"
+        },
+        "faq_2_q": {
+            "type": "text",
+            "label": "FAQ 2 Question",
+            "default": "Can you work around allergies and diets?"
+        },
+        "faq_2_a": {
+            "type": "text",
+            "label": "FAQ 2 Answer",
+            "default": "Yes, and properly: separate preparation, labelled plates and a named person on the day who knows which plate is whose. Tell us at the tasting."
+        },
+        "proof_3": {
+            "type": "text",
+            "label": "Reason 3",
+            "default": "Allergens prepared separately and labelled"
+        },
+        "faq_3_q": {
+            "type": "text",
+            "label": "FAQ 3 Question",
+            "default": "Is there a tasting?"
+        },
+        "faq_3_a": {
+            "type": "text",
+            "label": "FAQ 3 Answer",
+            "default": "For anything over thirty covers, yes, and it is deducted from the final bill if you book. You taste the actual dishes, not a version of them."
+        },
+        "proof_4": {
+            "type": "text",
+            "label": "Reason 4",
+            "default": "Final numbers seven days out"
+        },
+        "faq_4_q": {
+            "type": "text",
+            "label": "FAQ 4 Question",
+            "default": "What is included in the quote?"
+        },
+        "faq_4_a": {
+            "type": "text",
+            "label": "FAQ 4 Answer",
+            "default": "Food, staff, service, and the crockery and linen we bring. Anything hired in is listed separately at cost, so you can see what is ours and what is not."
+        },
+        "faq_eyebrow": {
+            "type": "text",
+            "label": "FAQ Eyebrow",
+            "default": "Good questions"
+        },
+        "faq_title": {
+            "type": "text",
+            "label": "FAQ Heading",
+            "default": "Things people ask before they book"
+        },
+        "cta_title": {
+            "type": "text",
+            "label": "Call-to-action Heading",
+            "default": "Tell us about the day"
+        },
+        "cta_body": {
+            "type": "text",
+            "label": "Call-to-action Body",
+            "default": "Numbers, place and the kind of food you had in mind. We will come back with a written quote, itemised."
+        },
+        "cta_button": {
+            "type": "text",
+            "label": "Call-to-action Button",
+            "default": "Ask for a quote"
+        },
+        "primary_color": {
+            "type": "color",
+            "label": "Primary Colour",
+            "default": "#3E6B4B"
+        },
+        "primary_deep": {
+            "type": "color",
+            "label": "Primary (Deep)",
+            "default": "#33583E"
+        },
+        "accent_color": {
+            "type": "color",
+            "label": "Accent Colour",
+            "default": "#3E6B4B"
+        },
+        "secondary_color": {
+            "type": "color",
+            "label": "Secondary Colour",
+            "default": "#121A14"
         }
     },
-    "social_fields": [
-        {
-            "slug": "facebook",
-            "label": "Facebook",
-            "key": "social_facebook"
-        },
-        {
-            "slug": "instagram",
-            "label": "Instagram",
-            "key": "social_instagram"
-        },
-        {
-            "slug": "linkedin",
-            "label": "LinkedIn",
-            "key": "social_linkedin"
-        },
-        {
-            "slug": "twitter",
-            "label": "X / Twitter",
-            "key": "social_twitter"
-        },
-        {
-            "slug": "youtube",
-            "label": "YouTube",
-            "key": "social_youtube"
-        },
-        {
-            "slug": "tiktok",
-            "label": "TikTok",
-            "key": "social_tiktok"
-        },
-        {
-            "slug": "whatsapp",
-            "label": "WhatsApp",
-            "key": "social_whatsapp"
-        }
-    ],
+    "social_fields": {
+        "facebook": "social_facebook",
+        "instagram": "social_instagram",
+        "linkedin": "social_linkedin",
+        "x": "social_x"
+    },
     "blog": {
         "enabled": true,
-        "posts_per_page": 6
+        "index": "/blog",
+        "post": "/blog/{slug}"
     },
     "color_roles": {
-        "accent": "medical_blue",
-        "accent_deep": null,
-        "secondary": "sage"
-    },
-    "palette_scheme": "light",
-    "palette_roles": {
-        "medical_blue": "accent",
-        "medical_deep": "accent_deep",
-        "sage": "secondary",
-        "sage_soft": "secondary_soft",
-        "chalk": "bg",
-        "chalk_soft": "surface",
-        "carbon": "text",
-        "carbon_soft": "muted",
-        "warm_grey": "muted",
-        "divider": "line"
+        "accent": "accent_color",
+        "accent_deep": "primary_deep",
+        "secondary": "secondary_color"
     }
 }
