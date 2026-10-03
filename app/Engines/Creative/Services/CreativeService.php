@@ -521,6 +521,17 @@ class CreativeService
         return parse_url($url, PHP_URL_HOST) === $own && str_contains((string) parse_url($url, PHP_URL_PATH), '/storage/') ? $url : null;
     }
 
+    /** RFC-0025 P3: every photo of a several-photo request, each checked to be this workspace's own media. @return list<string> */
+    public static function ownPhotoUrls(int $wsId, array $params): array
+    {
+        $out = [];
+        foreach (array_slice((array) ($params['source_images'] ?? []), 0, 3) as $u) {
+            $ok = self::ownPhotoUrl($wsId, ['image_url' => (string) $u]);
+            if ($ok !== null) $out[] = $ok;
+        }
+        return $out;
+    }
+
     public function generateVideo(int $wsId, array $params): array
     {
         $prompt = $params['prompt'] ?? '';
@@ -537,7 +548,8 @@ class CreativeService
             'brand_context' => $videoBp['brand_context'] ?? '',
             'has_logo'    => (bool) ($videoBp['has_logo'] ?? false),
             'business_name' => ! empty($params['business_id']) ? (string) DB::table('businesses')->where('id', (int) $params['business_id'])->where('workspace_id', $wsId)->value('name') : '',   // VIDEO-CERT-1
-            'from_photo'  => self::ownPhotoUrl($wsId, $params) !== null,                 // RFC-0025 P2
+            'from_photo'  => self::ownPhotoUrl($wsId, $params) !== null || count(self::ownPhotoUrls($wsId, $params)) > 1,   // RFC-0025 P2/P3
+            'photos'      => self::ownPhotoUrls($wsId, $params),
             'photo_description' => (string) ($params['photo_description'] ?? ''),
         ]);
         // RFC-0009 P6: the planner's output is the single truth for the scene count; the blueprint
@@ -563,10 +575,11 @@ class CreativeService
         DB::table('assets')->where('id', $assetId)->update(['status' => 'in_progress', 'updated_at' => now()]);
 
         $jobIds = [];
-        foreach ($scenes as $scene) {
+        $__photos = self::ownPhotoUrls($wsId, $params);   // RFC-0025 P3: several photos, one scene each
+        foreach (array_values($scenes) as $__si => $scene) {
             $job      = $this->scenePlanner->dispatchSceneJob($wsId, $assetId, $scene, array_filter([
                 'aspect_ratio' => $params['aspect_ratio'] ?? '16:9',
-                'source_image' => self::ownPhotoUrl($wsId, $params),   // RFC-0025 P2: the owner's photo is the first frame
+                'source_image' => count($__photos) > 1 ? ($__photos[$__si] ?? null) : self::ownPhotoUrl($wsId, $params),   // RFC-0025 P2: the owner's photo is the first frame
             ]));
             $jobIds[] = $job['id'] ?? null;
         }

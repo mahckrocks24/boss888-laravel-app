@@ -53,6 +53,8 @@ class CreativeConnector extends BaseConnector
                 'business_id' => 'nullable|integer',
                 'platform' => 'nullable|string|max:40',            // RFC-0025: safe-zone profile
                 'source_media_id' => 'nullable|integer',           // RFC-0025 P2: the owner's photo (image_url) as the first frame
+                'source_images' => 'nullable|array|max:3',         // RFC-0025 P3: several photos, one shot each, in order
+                'source_images.*' => 'string|max:500',
                 'photo_description' => 'nullable|string|max:1500',
                 'campaign_id' => 'nullable|integer',
                 'campaign_item_id' => 'nullable|integer',

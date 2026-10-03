@@ -117,7 +117,11 @@ class ScenePlannerService
             . "Refer to people only by role (the chef, a guest); never give a named real person a face - show hands, plates, the table and the room. "
             . "These rules are for you: never restate them inside a scene prompt — scene prompts describe only what the camera sees.";
 
-        if (! empty($options['from_photo'])) {   // RFC-0025 P2: the owner's photo is the first frame - describe motion, never new content
+        if (! empty($options['from_photo']) && count((array) ($options['photos'] ?? [])) > 1) {   // RFC-0025 P3: one scene per photo, in order
+            $sceneCount = count((array) $options['photos']);
+            $systemPrompt .= " Scene N starts from the owner's photo N (" . mb_substr(trim((string) ($options['photo_description'] ?? '')), 0, 900) . ")"
+                . ": keep everything in each photo exactly as it is. Describe only natural motion of what is already there and the camera move; add nothing new; keep the scenes in the photos' order.";
+        } elseif (! empty($options['from_photo'])) {   // RFC-0025 P2: the owner's photo is the first frame - describe motion, never new content
             $sceneCount = 1;
             $systemPrompt .= " The first frame is the owner's own photo" . (trim((string) ($options['photo_description'] ?? '')) !== '' ? ' (' . mb_substr(trim((string) $options['photo_description']), 0, 600) . ')' : '')
                 . ": keep everything in it exactly as it is - the same people, objects, places and colours. Describe only natural motion of what is already there and the camera move; add nothing new.";
@@ -488,17 +492,23 @@ EOT;
             return ['success' => false, 'error' => 'No video URLs found'];
         }
 
-        // MVP: return first scene URL as final output.
-        // Multi-scene stitching via ffmpeg is a D1+ enhancement.
-        $finalUrl = $urls[0];
+        // RFC-0025 P3: several scenes are joined into one clip (in scene order) - never the first scene alone
+        if (count($urls) > 1) {
+            $asset = DB::table('assets')->where('id', $assetId)->first(['workspace_id', 'metadata_json']);
+            $am = json_decode((string) ($asset->metadata_json ?? ''), true) ?: [];
+            $ordered = DB::table('creative_video_jobs')->where('asset_id', $assetId)->where('status', 'completed')->orderBy('scene_index')->pluck('video_url')->filter()->values()->all();
+            $st = app(\App\Engines\Creative\Services\VideoAssembler::class)->stitch((int) ($asset->workspace_id ?? 0), $assetId, $ordered ?: $urls,
+                (float) ($am['duration'] ?? 10), (string) ($am['aspect_ratio'] ?? '9:16'));
+            if (! ($st['success'] ?? false)) return ['success' => false, 'error' => 'stitch_failed: ' . ($st['error'] ?? '')];
+            return ['success' => true, 'url' => $st['url'], 'scene_urls' => $urls, 'scene_count' => count($urls), 'stitched' => true];
+        }
 
         return [
             'success'    => true,
-            'url'        => $finalUrl,
+            'url'        => $urls[0],
             'scene_urls' => $urls,
-            'scene_count'=> count($urls),
-            'stitched'   => count($urls) === 1 ? false : false, // full stitching pending
-            'note'       => count($urls) > 1 ? 'Multi-scene stitching queued — first scene delivered as preview' : null,
+            'scene_count'=> 1,
+            'stitched'   => false,
         ];
     }
 

@@ -28,7 +28,7 @@ final class VideoGeneration
         $t = mb_strtolower(trim($text));
         if ($t === '' || mb_strlen($t) > 600) return false;
         // RFC-0025 P2: a photo attached with "animate this", "bring it to life", "make it move" is a video request
-        if ($hasImage && preg_match('/\b(animate|animated|bring (it|this|them) to life|make (it|this|them|the \w+) move|into a (short )?(video|clip|reel)|(video|clip|reel) (of|from) (this|it|the photo))\b/u', $t)
+        if ($hasImage && preg_match('/\b(animate|animated|bring (it|this|them) to life|make (it|this|them|the \w+) move|into a (short )?(video|clip|reel)|(video|clip|reel) (of|from) (this|it|the photo)|(video|clip|reel|reels) (of|from|with|using) (these|my|the|those|all) (\w+ )?(photos|pictures|images|pics|shots))\b/u', $t)
             && ! preg_match('/\b(how many|which|did you|have you|what happened|status of)\b/', $t)) return true;
         if (! preg_match('/\b(videos?|clips?|reels?|tiktoks?|shorts|animation|animated|motion graphic)\b/', $t)) return false;
         $verb = preg_match('/\b(make|create|generate|produce|shoot|film|render|animate|do|put together|whip up)\b/', $t)
@@ -47,7 +47,8 @@ final class VideoGeneration
     /** What will be made, from the owner's words. */
     public static function spec(int $wsId, string $text, array $images = []): array
     {
-        $photo = $images[0] ?? null;   // RFC-0025 P2: the owner's photo (several photos: P3)
+        $photo = $images[0] ?? null;   // RFC-0025 P2: the owner's photo
+        $photos = array_values(array_slice(array_filter($images, fn ($i) => ! empty($i['url'])), 0, 3));   // RFC-0025 P3: up to three, in order
         $t = mb_strtolower($text);
         $duration = (preg_match('/\b(\d{1,2})\s*(-|\s)?(s|sec|secs|second|seconds)\b/', $t, $m) && (int) $m[1] >= 8) || preg_match('/\b(ten|10)[- ]second/', $t) ? 10 : 6;
         $aspect = '9:16';
@@ -61,6 +62,9 @@ final class VideoGeneration
         if ($photo) {
             $prompt = trim((string) preg_replace('/^\s*(please\s+)?(can you\s+|could you\s+|would you\s+)?(animate|bring\b.*?\bto life|make\b.*?\bmove)\s*(this|the|my|it|them)?\s*(photo|picture|image|pic|shot)?\s*(into a (short )?(video|clip|reel))?\s*[-,:;.]?\s*(with\s+)?/iu', '', $text));
             $prompt = trim((string) preg_replace('/\b(for (our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin|pinterest))\b[.!?]*/iu', '', $prompt), " ,.;:-");
+            // RFC-0025 P3: "make a video from these photos", "turn these photos into a reel" are the ask, not the motion
+            $prompt = trim((string) preg_replace('/^\s*(please\s+)?(can you\s+|could you\s+)?((make|create|put together|do)\s+(me\s+)?(a|an)?\s*(short\s+|quick\s+)?(video|clip|reel)\s+(from|of|with|using)\s+(these|my|the|those|all)\s+(\w+\s+)?(photos|pictures|images|pics|shots)|turn\s+(these|my|the|those)\s+(\w+\s+)?(photos|pictures|images|pics)\s+into\s+(a|an)\s+(short\s+)?(video|clip|reel))\s*[-,:;.]?\s*(with\s+)?/iu', '', $prompt), " ,.;:-");
+            if (preg_match('/^["\x{201C}\x{2018}\']{1}[^"\x{201C}\x{201D}]{1,80}["\x{201D}\x{2019}\']\s+as\s+the\s+(title|headline)\.?$/iu', $prompt)) $prompt = 'gentle, natural motion with a slow push in, ' . $prompt;
             if (mb_strlen($prompt) < 4) $prompt = 'gentle, natural motion with a slow push in';
             if (! preg_match('/\b(youtube|website|web site|landscape|horizontal|widescreen|16:9|banner|tv|square|1:1|vertical|reel|reels|story|stories|tiktok|9:16|pinterest)\b/', $t)) {
                 $aspect = self::photoShape((string) ($photo['url'] ?? ''));   // the photo's own orientation
@@ -75,8 +79,14 @@ final class VideoGeneration
                 if (! empty($r['business_id']) && ($r['mode'] ?? '') !== 'portfolio' && empty($r['ask'])) $biz = (int) $r['business_id'];
             } catch (\Throwable) {}
         }
+        if (count($photos) > 1) $duration = 10;   // several photos make one 10-second video, priced as one
         $spec = ['prompt' => mb_substr($prompt, 0, 600), 'duration' => $duration, 'aspect_ratio' => $aspect, 'business_id' => $biz, 'cost' => self::costFor($duration)];
-        if ($photo) {
+        if (count($photos) > 1) {
+            $spec['source_images'] = array_map(fn ($i) => (string) $i['url'], $photos);
+            $checks = array_map(fn ($i) => self::photoChecks((string) $i['url']), $photos);
+            $spec['photo_checks'] = ['people' => (bool) array_filter(array_column($checks, 'people')), 'text' => (bool) array_filter(array_column($checks, 'text')),
+                'description' => implode('; ', array_map(fn ($k, $c) => 'photo ' . ($k + 1) . ': ' . ($c['description'] ?? ''), array_keys($checks), $checks))];
+        } elseif ($photo) {
             $spec['source_image'] = (string) ($photo['url'] ?? '');
             $spec['source_media_id'] = (int) ($photo['media_id'] ?? 0);
             $spec['photo_checks'] = self::photoChecks($spec['source_image']);
@@ -132,6 +142,17 @@ final class VideoGeneration
     /** Turn 1 — exactly what will be made, the cost and the wait; nothing runs yet. */
     public function describe(array $spec): string
     {
+        if (! empty($spec['source_images']) && count($spec['source_images']) > 1) {   // RFC-0025 P3: several photos
+            $pc = (array) ($spec['photo_checks'] ?? []);
+            $n = count($spec['source_images']);
+            return "I'll turn your $n photos into one **" . (int) $spec['duration'] . '-second ' . self::shapeWords((string) $spec['aspect_ratio']) . '** video: one moving shot per photo, in the order you sent them, joined with soft crossfades'
+                . (mb_strlen((string) $spec['prompt']) > 3 && ! str_starts_with((string) $spec['prompt'], 'gentle, natural motion') ? ' - ' . rtrim((string) $spec['prompt'], '.?! ') : '') . '. '
+                . 'Everything in the photos stays as it is; only the motion and the camera are added. '
+                . (! empty($pc['text']) ? 'Writing in a photo, like signs or labels, can bend once it moves - any headline goes on afterwards as a clean title. ' : '')
+                . (($__q = \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText((string) $spec['prompt'])) ? 'The words "' . $__q[0] . '" go on as a clean title. ' : '')
+                . "It costs **" . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . " credits** and takes about three minutes — I'll post it right here when it's ready.\n\n"
+                . (! empty($pc['people']) ? 'The photos show people, so reply **yes** only if you have their permission to animate them - or **no**.' : 'Reply **yes** to go ahead, or **no**.');
+        }
         if (! empty($spec['source_image'])) {   // RFC-0025 P2: animate the owner's photo
             $pc = (array) ($spec['photo_checks'] ?? []);
             return "I'll animate your photo into a **" . (int) $spec['duration'] . '-second ' . self::shapeWords((string) $spec['aspect_ratio']) . '** video: ' . rtrim((string) $spec['prompt'], '.?! ') . '. '
@@ -162,6 +183,7 @@ final class VideoGeneration
                     'prompt' => $spec['prompt'], 'duration' => (int) $spec['duration'], 'aspect_ratio' => (string) $spec['aspect_ratio'], 'business_id' => $spec['business_id'] ?? null,
                     'title' => 'Video: ' . mb_substr((string) $spec['prompt'], 0, 80), 'created_via' => 'sarah_video_request', 'user_request' => (string) ($spec['owner_text'] ?? ''),
                     'image_url' => $spec['source_image'] ?? null, 'source_media_id' => ! empty($spec['source_media_id']) ? (int) $spec['source_media_id'] : null,   // RFC-0025 P2
+                    'source_images' => ! empty($spec['source_images']) ? array_values($spec['source_images']) : null,   // RFC-0025 P3
                     'photo_description' => $spec['photo_checks']['description'] ?? null,
                 ], fn ($v) => $v !== null && $v !== ''),
             ]);
@@ -179,6 +201,10 @@ final class VideoGeneration
             return preg_match('/credit/i', (string) ($res['error'] ?? ''))
                 ? "I couldn't start the video — there aren't enough credits for it (it needs " . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . '). Nothing was charged.'
                 : "I couldn't start the video just now — nothing was charged. Try again in a moment.";
+        }
+        if (! empty($spec['source_images']) && count($spec['source_images']) > 1) {   // RFC-0025 P3
+            return "I'm making your " . count($spec['source_images']) . '-photo, ' . (int) $spec['duration'] . '-second ' . explode(' ', self::shapeWords((string) $spec['aspect_ratio']))[0] . ' video now ('
+                . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . " credits). It takes about three minutes; I'll post it here as soon as it's ready.";
         }
         return "I'm making your " . (int) $spec['duration'] . '-second ' . explode(' ', self::shapeWords((string) $spec['aspect_ratio']))[0] . ' video now (' . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . " credits). It takes about two minutes; I'll post it here as soon as it's ready.";
     }
