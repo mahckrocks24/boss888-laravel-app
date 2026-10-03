@@ -18,10 +18,10 @@ $counters = ['max_tracked_keywords' => 'Tracked keywords', 'chatbot_messages_per
 $blurbs = [
     'free' => 'Build and publish your site, capture leads and take bookings. No card, no time limit, no ongoing AI.',
     'starter' => 'The site you own on your own domain, with the CRM and calendar. No ongoing AI.',
-    'ai-lite' => 'The full AI Growth OS at its smallest capacity: Sarah, specialists, SEO, content, creative and the chatbot.',
+    'ai-lite' => 'AI Growth at its smallest capacity: Sarah, specialists, SEO, content, creative and the chatbot.',
     'growth' => 'More capacity, more sites, more credits for the workforce to spend, and the companion app.',
     'pro' => 'Ten sites, priority processing and the companion app.',
-    'agency' => 'White-label, unlimited team, twenty-five client sites under one roof.',
+    'agency' => 'White-label, unlimited team, fifty client sites under one roof.',
 ];
 $fmtNum = fn ($n) => $n >= 999999 ? 'Unlimited' : number_format((int) $n);
 $trial = trial_line($data);
@@ -42,7 +42,7 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
   <div class="container">
     <p class="eyebrow">Pricing</p>
     <h1>Start free. <span class="grad">Add Sarah when you are ready.</span></h1>
-    <p class="lede"><?= count($plans) ?> plans from <?= money($plans[0]['price_monthly'] ?? 0) ?>. Monthly billing, no contracts, cancel anytime. <?= e($trial) ?>.</p>
+    <p class="lede"><?= count($plans) ?> plans from <?= money($plans[0]['price_monthly'] ?? 0) ?>. Monthly billing, no contracts, cancel anytime. <?= e($trial) ?> - <a href="/next/free-trial/">how the free trial works</a>.</p>
   </div>
 </section>
 
@@ -50,7 +50,7 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
   <div class="container plan-grid" id="plans" data-plans-version="<?= e($data['plans_version']) ?>">
     <?php foreach ($plans as $p): $f = $p['features']; ?>
     <article class="plan<?= $p['slug'] === $featured ? ' featured' : '' ?>" id="<?= e($p['slug']) ?>">
-      <?php if ($p['slug'] === $featured): ?><span class="plan-tag">Where the AI Growth OS starts</span><?php endif; ?>
+      <?php if ($p['slug'] === $featured): ?><span class="plan-tag">Where the AI Growth starts</span><?php endif; ?>
       <h2 class="plan-name"><?= e($p['name']) ?></h2>
       <p class="plan-desc"><?= e($blurbs[$p['slug']] ?? '') ?></p>
       <div class="plan-price"><span class="amount"><?= money($p['price_monthly']) ?></span><small>/month</small></div>
@@ -83,10 +83,10 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
     <h2 class="mt">Which plan is for me?</h2>
     <div class="plan-pick">
       <div><b>I want a site, and I will run the marketing myself.</b>Free on our subdomain; Starter on your own domain. Both include the CRM and calendar, neither includes ongoing AI.</div>
-      <div><b>I want Sarah and the workforce running my growth.</b>AI Lite is the full AI Growth OS at its smallest capacity. Growth and Pro add sites, credits and specialists.</div>
-      <div><b>I run several businesses or clients.</b>Agency: twenty-five sites, unlimited team, white-label, ten senior specialists.</div>
+      <div><b>I want Sarah and the workforce running my growth.</b>Every AI plan has the same team - Sarah plus 5 specialists. AI Lite is the full platform at its smallest capacity; Growth and Pro add websites, credits and team seats.</div>
+      <div><b>I run several businesses or clients.</b>Agency: fifty websites, unlimited team, white-label, and the same team of Sarah plus 5 specialists.</div>
     </div>
-    <p class="fine">Specialist counts and levels (junior, specialist, senior) are read from the plans table; add more on any AI plan for the flat price shown on the card.</p>
+    <p class="fine">Plans differ by credits, websites and team seats; the AI team is the same on every AI plan. Add a specialist on any AI plan for the flat price shown on the card.</p>
   </div>
 </section>
 

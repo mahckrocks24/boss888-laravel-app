@@ -133,7 +133,7 @@ $jsonld = array_merge([[
     </div>
     <div>
       <h3 class="footer-h">Resources</h3>
-      <a href="/next/blog/">Blog</a><a href="/next/help/">Help centre</a><a href="/next/changelog/">Changelog</a><a href="/next/compare/">Compare</a><a href="/next/pricing/">Pricing</a>
+      <a href="/next/blog/">Blog</a><a href="/next/help/">Help centre</a><a href="/next/changelog/">Changelog</a><a href="/next/compare/">Compare</a><a href="/next/pricing/">Pricing</a><a href="/next/free-trial/">Free trial</a>
     </div>
     <div>
       <h3 class="footer-h">Legal</h3>

@@ -2,7 +2,7 @@
 /** @var array $page */ /** @var array $data */
 $pd = require dirname(__DIR__, 2) . '/product-data.php';
 $page['title'] = 'Products';
-$page['description'] = 'The engines behind the AI Growth OS: website builder, the AI workforce, SEO, content, social planning, CRM, calendar, chatbot, creative and video, plus domains, in one account you own.';
+$page['description'] = 'The engines behind the AI Growth: website builder, the AI workforce, SEO, content, social planning, CRM, calendar, chatbot, creative and video, plus domains, in one account you own.';
 $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm'])));
 $fill = fn (string $s) => str_replace(['{industries}', '{specialists}'], [(string) $data['template_count'], (string) $specialists], $s);
 $products = $pd['launched'];

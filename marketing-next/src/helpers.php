@@ -271,7 +271,7 @@ function home_faq(array $data): array
     $lite = array_values(array_filter($data['plans'], fn ($p) => $p['slug'] === 'ai-lite'))[0] ?? null;
     return [
         ['Does anything go live without me?', 'No. Every publish, post or send waits for your approval, and Sarah reviews finished work for alignment, metadata and provenance before it reaches you. Rejected work returns to draft and is never counted as done.'],
-        ['What does it cost?', 'Free is $0 with one website and no ongoing AI. The AI Growth OS starts on ' . ($lite ? $lite['name'] . ' at ' . money($lite['price_monthly']) . '/month with ' . number_format((int) $lite['credits_per_month']) . ' credits' : 'AI Lite') . '. Credits meter the workforce\'s work; Sarah states the cost before anything runs and every credit is visible in Billing.'],
+        ['What does it cost?', 'Free is $0 with one website and no ongoing AI. The AI Growth starts on ' . ($lite ? $lite['name'] . ' at ' . money($lite['price_monthly']) . '/month with ' . number_format((int) $lite['credits_per_month']) . ' credits' : 'AI Lite') . '. Credits meter the workforce\'s work; Sarah states the cost before anything runs and every credit is visible in Billing.'],
         ['Do I own what gets built?', 'Yes. Your sites publish on your own subdomain or domain, your domain is registered to you, and your contacts and leads export as a CSV at any time.'],
         ['Can one account run more than one website?', 'Yes. A workspace is your business and can hold several websites, all run by the same Sarah, the same specialists and one credit balance. Limits per plan are on the pricing page.'],
     ];
