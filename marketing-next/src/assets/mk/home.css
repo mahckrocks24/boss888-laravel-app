@@ -210,3 +210,14 @@ html[data-theme="dark"] .hx-say__av .lg-avatar { border-color: #15172A; }
 @media (prefers-reduced-motion: reduce) {
   .mk-glide, .mk-caret, .mk-pulse { animation: none !important; }
 }
+
+/* STAGE-1 (Owner 2026-10-04): on phones Arthur's chat, the site build and the agents' chat share one stage (home.js adds
+   .mk-staged before anything is measured), so the block is as tall as its tallest panel and never shows an empty space.
+   One panel shows at a time; the others wait to the side and slide in from the right. Reduced motion keeps the stack. */
+@media (max-width: 979px) {
+  .mk-hero__visual.mk-staged { flex: none; height: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; overflow-x: clip; overflow-y: visible; padding: 6px 2px 14px; margin: -6px -2px 0; }   /* overflow hidden would let the hero column shrink the stage to nothing */
+  .mk-hero__visual.mk-staged > #hx, .mk-hero__visual.mk-staged > .mk-site, .mk-hero__visual.mk-staged > .hx-agents { grid-area: 1 / 1; align-self: center; min-width: 0; will-change: transform, opacity; }
+  .mk-hero__visual.mk-staged > .mk-site, .mk-hero__visual.mk-staged > .hx-agents { opacity: 0; transform: translateX(104%); pointer-events: none; }
+  .mk-hero__visual.mk-staged > .hx-agents[hidden] { display: grid !important; }   /* a panel waiting to the side still holds its size */
+  .mk-hero__visual.mk-staged > .mk-site[hidden] { display: block !important; }
+}

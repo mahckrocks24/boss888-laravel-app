@@ -30,6 +30,8 @@
   // STABLE-1 (Owner 10-03: "involuntary movement of the visible frame when animations are looping"): every looping demo keeps the
   // size of its finished state (the markup at rest, measured before any loop resets it), so showing and hiding its messages, cards
   // and steps never pushes the page around it. A box may grow once if a state is taller, never shrink; a width change re-measures.
+  // STAGE-1 (Owner 10-04): on phones Arthur's chat, the site build and the agents' chat share one stage, before anything is measured
+  if (phone() && $('#hero-visual')) $('#hero-visual').classList.add('mk-staged');
   (function () {
     var boxes = ['#hx', '#lp', '#cc .mk-app', '#bt', '#rq', '#tm'].reduce(function (all, q) { var e = $(q); if (e) { all.push(e); var sec = e.closest('section'); if (sec && all.indexOf(sec) < 0) all.push(sec); } return all; }, []), w = window.innerWidth;   // the demo's own frame (an empty chat stays a full-size chat) and its whole section (the hero's chat and agents sit outside the frame)
     function lock() { boxes.forEach(function (b) { b.style.minHeight = ''; b.style.minHeight = b.offsetHeight + 'px'; }); }
@@ -67,8 +69,19 @@
     var site = $('.mk-site'), agents = $('#hx-agents'), ph = phone();
     // phones (Owner 09-29): the build plays ONCE; once the reader has passed the section it stays at rest, finished
     var visible = false, running = false, done = false, gen = 0;
+    // STAGE-1: on phones one panel at a time - the chat, then the site, then the agents - each slides out left as the next slides in
+    var panels = [$('#hx'), site, agents], staged = ph && $('#hero-visual') && $('#hero-visual').classList.contains('mk-staged');
+    function stageSet(i) { if (!staged) return; panels.forEach(function (p, k) { if (!p) return; p.hidden = false; p.style.transform = k === i ? 'none' : (k < i ? 'translateX(-104%)' : 'translateX(104%)'); p.style.opacity = k === i ? '1' : '0'; p.style.pointerEvents = k === i ? '' : 'none'; }); }
+    function slide(a, b) {
+      if (!staged) return Promise.resolve();
+      var A = panels[a], B = panels[b], o = { duration: 560, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' };
+      B.hidden = false; B.style.pointerEvents = 'none';
+      var x = A.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(-104%)', opacity: 0 }], o);
+      var y = B.animate([{ transform: 'translateX(104%)', opacity: 0 }, { transform: 'none', opacity: 1 }], o);
+      return Promise.all([x.finished, y.finished]).catch(function () {}).then(function () { stageSet(b); x.cancel(); y.cancel(); });
+    }
     function pop(el) { show(el, true); return M.animate(el, { opacity: [0, 1], y: [8, 0], scale: [.96, 1] }, { type: 'spring', bounce: .3, visualDuration: .4 }); }
-    function reset() { typed.textContent = ''; show(caret, true); [askB, typing, reply, liveB].forEach(function (e) { show(e, false); }); says.forEach(function (c) { c.style.opacity = 0; }); frost.style.opacity = 0; img.style.clipPath = 'inset(0 0 100% 0)'; show(skel, true); stage.textContent = 'Waiting for your brief'; pct.textContent = '0'; meter.style.transform = 'scaleX(0)'; if (ph) { show(site, false); show(agents, false); says.forEach(function (c) { show(c, false); }); }   /* Owner 09-30: on phones nothing reserves space before it has loaded */ }
+    function reset() { typed.textContent = ''; show(caret, true); [askB, typing, reply, liveB].forEach(function (e) { show(e, false); }); says.forEach(function (c) { c.style.opacity = 0; }); frost.style.opacity = 0; img.style.clipPath = 'inset(0 0 100% 0)'; show(skel, true); stage.textContent = 'Waiting for your brief'; pct.textContent = '0'; meter.style.transform = 'scaleX(0)'; if (ph) { if (staged) stageSet(0); else { show(site, false); show(agents, false); says.forEach(function (c) { show(c, false); }); } }   /* STAGE-1: the staged phone shows the chat; the others wait off to the right */ }
     function finish() { typed.textContent = ''; show(caret, false); [askB, reply, liveB].forEach(function (e) { show(e, true); e.style.opacity = 1; }); show(typing, false); says.forEach(function (c) { c.style.opacity = 1; }); frost.style.opacity = 1; img.style.clipPath = ''; show(skel, false); stage.textContent = 'Published'; pct.textContent = '100'; meter.style.transform = ''; show(site, true); show(agents, true); says.forEach(function (c) { show(c, true); }); }
     async function run() {
       var my = ++gen; var live = function () { return my === gen; };
@@ -79,7 +92,7 @@
       await pop(askB); await wait(300); show(typing, true); await wait(1200); show(typing, false);
       if (!live()) return;
       await pop(reply); await wait(400);
-      if (ph) { site.style.opacity = 0; show(site, true); await M.animate(site, { opacity: [0, 1], y: [16, 0] }, { duration: .45, ease: 'easeOut' }); if (!live()) return; }   /* phones: the frame arrives as the build starts */
+      if (ph) { if (staged) { await wait(500); await slide(0, 1); } else { site.style.opacity = 0; show(site, true); await M.animate(site, { opacity: [0, 1], y: [16, 0] }, { duration: .45, ease: 'easeOut' }); } if (!live()) return; }   /* phones: the chat slides out left as the site build slides in */
       var stages = ['Writing the copy', 'Laying out the pages', 'Menu, gallery, booking form'];
       var build = 2.75;   // Owner 09-30: the site reveal 50% faster
       stages.forEach(function (t, i) { setTimeout(function () { if (running) stage.textContent = t; }, i * build * 333); });
@@ -91,6 +104,7 @@
       if (!live()) return;
       show(skel, false); stage.textContent = 'Published';
       await pop(liveB); await wait(500);
+      if (ph && staged) { await wait(900); await slide(1, 2); if (!live()) return; }   /* STAGE-1: the live site slides out left, the agents' chat slides in */
       // the team shows up: Sarah first, then the specialists in a random order, each after a random pause, as if talking
       var order = team.slice().sort(function () { return Math.random() - .5; });
       var talk = function (el) { show(el, true); return M.animate(el, { opacity: [0, 1], y: [14, 0], scale: [.92, 1] }, { type: 'spring', bounce: .4, visualDuration: .55 }); };
@@ -104,9 +118,10 @@
       // Owner 2026-09-30: no flying tagline. The thread fades, the frost lifts, and the build simply starts again.
       await M.animate(says, { opacity: [1, 0], y: [0, -8] }, { delay: M.stagger(.06), duration: .3 });
       await M.animate(frost, { opacity: [1, 0] }, { duration: .5 });
-      if (ph) { says.forEach(function (c) { show(c, false); }); show(agents, false); await M.animate(site, { opacity: [1, 0] }, { duration: .4 }); if (!live()) return; }
+      if (ph) { if (staged) { await slide(2, 0); } else { says.forEach(function (c) { show(c, false); }); show(agents, false); await M.animate(site, { opacity: [1, 0] }, { duration: .4 }); } if (!live()) return; }   /* STAGE-1: the agents slide out, Arthur's chat comes back */
       running = false; if (visible) run();
     }
+    if (staged) { var finish0 = finish; finish = function () { finish0(); stageSet(2); }; }   /* STAGE-1: at rest the staged phone shows the team's thread */
     M.inView('#hx', function () { visible = true; if (!running) run(); return function () { visible = false; }; }, iv({ amount: .35 }));
     // before the block is reached: desktop shows the finished state at rest, phones wait empty so the thread only ever arrives one message at a time
     setTimeout(function () { if (!visible && !running) { if (phone()) reset(); else finish(); } }, 100);
