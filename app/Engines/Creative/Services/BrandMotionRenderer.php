@@ -101,7 +101,7 @@ final class BrandMotionRenderer
         $page = app(\App\Core\ImageIntelligence\ImageOverlayRenderer::class)->layerHtml(array_filter([
             'headline' => $headline !== '' ? $headline : ' ',
             'supporting_copy' => array_values(array_filter(array_map('strval', (array) ($ctx['supporting'] ?? [])))),
-            'placement' => 'upper-left',
+            'placement' => (string) ($ctx['placement'] ?? 'upper-left'),   // RFC-0025 P4: the gate can move it
             'style' => (string) ($kit['visual_style'] ?? ''),
             'business_id' => $biz,
             'direction_id' => (string) ($kit['design_direction_id'] ?? ''),
@@ -169,7 +169,7 @@ final class BrandMotionRenderer
 
         // legibility glow behind the text block - opacity and colour from the brief's tone (light text gets a dark glow)
         $glow = ($b['tone'] ?? 'light') === 'light' ? '8,6,4' : '250,247,240';
-        $css .= "$sel{isolation:isolate}\n$sel::before{content:'';position:absolute;inset:-24% -18%;z-index:-1;background:radial-gradient(closest-side,rgba($glow,.70),rgba($glow,.38) 55%,rgba($glow,0))}\n";
+        $css .= "$sel{isolation:isolate}\n$sel::before{content:'';position:absolute;inset:-24% -18%;z-index:-1;background:radial-gradient(closest-side,rgba($glow," . (! empty($ctx['strong_glow']) ? '.88' : '.70') . "),rgba($glow," . (! empty($ctx['strong_glow']) ? '.55' : '.38') . ") 55%,rgba($glow,0))}\n";   // RFC-0025 P4: the contrast gate can ask for more
         // states: each screenshot shows one part of the layer; ffmpeg animates them at the clip's own frame rate
         $css .= "body.s-text .blogo,body.s-text .lock,body.s-text .ec{display:none!important}\n"
             . "body.s-logo .box,body.s-logo .col,body.s-logo .scrim,body.s-logo .fade,body.s-logo .ec{display:none!important}\n"
@@ -196,7 +196,14 @@ final class BrandMotionRenderer
         if (getenv('BM_KEEP')) @copy($htmlPath, '/tmp/bm-last.html');
         @unlink($htmlPath);
         $rec = json_decode((string) trim((string) strrchr("\n" . trim((string) $stdout), "\n")), true) ?: [];
-        $clean = function () use ($shots) { foreach ($shots as $p) @unlink($p); };
+        // RFC-0025 P4: the quality gate measures contrast and the safe zone on the real text pixels - keep the text state
+        $keptText = null;
+        $clean = function () use ($shots, $file, &$keptText) {
+            foreach ($shots as $k => $p) {
+                if ($k === 'text' && is_file($p)) { $keptText = preg_replace('/\.mp4$/i', '', $file) . '-textlayer.png'; @rename($p, $keptText); continue; }
+                @unlink($p);
+            }
+        };
         if ($status !== 0 || empty($rec['ok']) || array_filter($shots, fn ($p) => ! is_file($p))) {
             $clean();
             Log::warning('[RFC-0025] brand layer shots failed', ['file' => basename($file), 'out' => mb_substr($stdout . $stderr, 0, 400)]);
@@ -234,7 +241,8 @@ final class BrandMotionRenderer
         if (! is_file($raw)) rename($file, $raw);
         rename($out, $file);
         $res = ['success' => true, 'layout' => $layout, 'zone' => (string) ($b['zone'] ?? ''), 'profile' => $profile, 'fonts_loaded' => (array) ($rec['fontsLoaded'] ?? []),
-            'logo' => $logoOn, 'end_card' => $endOn, 'shots' => count($shots), 'headline' => $headline, 'timing_s' => $__t];
+            'logo' => $logoOn, 'end_card' => $endOn, 'shots' => count($shots), 'headline' => $headline, 'timing_s' => $__t, 'text_png' => $keptText, 'profile_safe' => self::SAFE[$profile],
+            'logo_expected' => $logoUrl !== '' && $bizKnown && ($ctx['logo'] ?? true), 'head_font' => $useHead];
         Log::info('[RFC-0025] brand motion layer composited', ['file' => basename($file)] + $res);
         return $res;
     }

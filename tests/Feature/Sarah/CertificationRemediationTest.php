@@ -702,4 +702,17 @@ class CertificationRemediationTest extends TestCase
         $this->assertNull(\App\Engines\Creative\Services\CreativeService::ownPhotoUrl(self::WS, ['image_url' => 'https://example.com/storage/uploads/photo.jpg']));
         $this->assertNull(\App\Engines\Creative\Services\CreativeService::ownPhotoUrl(self::WS, ['image_url' => rtrim((string) config('app.url'), '/') . '/api/secret']));
     }
+
+    public function test_rfc25_p4_quality_gate_measures_a_clean_clip(): void
+    {
+        $clip = sys_get_temp_dir() . '/rfc25-gate-' . uniqid() . '.mp4';
+        shell_exec('ffmpeg -v error -y -f lavfi -i color=c=0x2a3b4c:s=540x960:d=6:r=24 -c:v libx264 -pix_fmt yuv420p -movflags +faststart ' . escapeshellarg($clip));
+        $asset = (object) ['id' => 0, 'workspace_id' => self::WS, 'task_id' => null];
+        $r = app(\App\Engines\Creative\Services\VideoQualityGate::class)->check($asset, $clip, [], ['headline' => '', 'aspect' => '9:16', 'duration' => 6], fn ($o) => []);
+        $this->assertTrue($r['gates']['technical']['pass'], json_encode($r['gates']['technical']));
+        $this->assertTrue($r['gates']['foreign_words']['pass']);
+        $this->assertNull($r['fatal']);
+        $this->assertArrayNotHasKey('money', $r['gates'], 'no task, no money gate claimed');
+        @unlink($clip);
+    }
 }

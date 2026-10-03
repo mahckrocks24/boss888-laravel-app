@@ -712,6 +712,36 @@ class CreativeService
                         $__meta['brand_layer'] = $__bl; DB::table('assets')->where('id', $assetId)->update(['metadata_json' => json_encode($__meta)]);
                     }
                 } catch (\Throwable $__te) { \Illuminate\Support\Facades\Log::warning('[VIDEO-CERT-1] titling skipped', ['asset' => $assetId, 'e' => $__te->getMessage()]); }
+                // RFC-0025 P4: the quality gates - measured before the owner sees anything; a clip with words the model invented is
+                // never delivered (credits back, an honest note), the brand layer is re-rendered for free when copy, contrast or
+                // placement fail
+                if (\App\Engines\Creative\Services\VideoQualityGate::enabled((int) $asset->workspace_id) && ! empty($durable['storage_path'])) {
+                    try {
+                        $__abs2 = \Illuminate\Support\Facades\Storage::disk('public')->path($durable['storage_path']);
+                        $__m2 = json_decode((string) (DB::table('assets')->where('id', $assetId)->value('metadata_json') ?? ''), true) ?: [];
+                        $__t2 = $asset->task_id ? (json_decode((string) DB::table('tasks')->where('id', $asset->task_id)->value('payload_json'), true) ?: []) : [];
+                        $__biz2 = $__m2['business_id'] ?? $__t2['business_id'] ?? null;
+                        $__hl2 = isset($__q) && $__q ? (string) $__q[0] : '';
+                        $__photos2 = DB::table('creative_video_jobs')->where('asset_id', $assetId)->orderBy('scene_index')->pluck('metadata_json')
+                            ->map(fn ($j) => (json_decode((string) $j, true) ?: [])['photo_source'] ?? null)->filter()->values()->all();
+                        $__base = ['ws' => (int) $asset->workspace_id, 'business_id' => $__biz2, 'headline' => $__hl2 ?: null, 'platform' => $__m2['platform'] ?? $__t2['platform'] ?? null];
+                        $__rerender = fn (array $over) => \App\Engines\Creative\Services\BrandMotionRenderer::enabled((int) $asset->workspace_id)
+                            ? app(\App\Engines\Creative\Services\BrandMotionRenderer::class)->apply($__abs2, $over + $__base) : [];
+                        $__qg = app(\App\Engines\Creative\Services\VideoQualityGate::class)->check($asset, $__abs2, (array) ($__m2['brand_layer'] ?? []), [
+                            'headline' => $__hl2, 'photo_paths' => $__photos2, 'aspect' => (string) ($__m2['aspect_ratio'] ?? '9:16'), 'duration' => (int) ($__m2['duration'] ?? 6),
+                            'business_name' => $__biz2 ? (string) DB::table('businesses')->where('id', (int) $__biz2)->value('name') : '',
+                        ], $__rerender);
+                        $__m2['quality'] = $__qg;
+                        DB::table('assets')->where('id', $assetId)->update(['metadata_json' => json_encode($__m2)]);
+                        clearstatcache(true, $__abs2); $durable['file_size'] = filesize($__abs2) ?: ($durable['file_size'] ?? null);
+                        if (! empty($__qg['fatal'])) {
+                            $this->refundFailedVideo($assetId);
+                            $this->failAsset($assetId, 'Quality gate: ' . $__qg['fatal']);
+                            $this->tellVideoInChat($assetId, false, '');
+                            return $this->sanitize(['status' => 'failed', 'asset_id' => $assetId, 'quality' => 'failed']);
+                        }
+                    } catch (\Throwable $__qe) { \Illuminate\Support\Facades\Log::warning('[RFC-0025] quality gate error', ['asset' => $assetId, 'e' => $__qe->getMessage()]); }
+                }
                 $this->completeAsset($assetId, [
                     'url'          => $durable['url'],
                     'storage_path' => $durable['storage_path'],
