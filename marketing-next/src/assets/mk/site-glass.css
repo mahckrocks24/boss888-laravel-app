@@ -399,3 +399,32 @@ html .lg-site .pr-close-cta { display: flex; flex-wrap: wrap; justify-content: c
   html .lg-site .pr-benefits { grid-template-columns: 1fr; }
   html .lg-site .pr-close-cta .btn { width: 100%; justify-content: center; }
 }
+
+/* Enterprise (Owner 2026-10-03: "like the services oracle would give to a top 1% corp"): top = copy + engagement panel; then the
+   department grid; all inside the midnight panel */
+html .lg-site .pr-ent-wrap { display: block; padding: 60px 56px 56px; }
+html .lg-site .pr-ent-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 48px; align-items: start; }
+html .lg-site .pr-ent-wrap h2 { font-size: clamp(2rem, 3.8vw, 2.85rem); line-height: 1.08; max-width: 16ch; margin-bottom: 18px; }
+html .lg-site .pr-ent-proof { list-style: none; margin: 30px 0 0; padding: 26px 0 0; border-top: 1px solid var(--hairline); display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+html .lg-site .pr-ent-proof li { font-size: .875rem; line-height: 1.5; color: var(--ink-2); }
+html .lg-site .pr-ent-proof b { display: block; margin-bottom: 4px; font-family: var(--ff-h); font-size: 1rem; color: #FFFFFF; letter-spacing: -.01em; }
+html .lg-site .pr-depts-head { margin: 56px 0 22px; padding-top: 40px; border-top: 1px solid var(--hairline); }
+html .lg-site .pr-depts-head .eyebrow { margin-bottom: 8px; }
+html .lg-site .pr-depts-head h3 { font-family: var(--ff-h); font-size: clamp(1.3rem, 2.4vw, 1.65rem); letter-spacing: -.02em; line-height: 1.2; color: #FFFFFF; margin: 0; max-width: 30ch; }
+html .lg-site .pr-depts { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; border-radius: 18px; overflow: hidden; background: var(--hairline); border: 1px solid var(--hairline); }
+html .lg-site .pr-depts li { display: flex; flex-direction: column; gap: 8px; padding: 24px 22px 26px; background: rgba(10, 9, 24, .72); transition: background var(--d-base, 200ms) ease; }
+html .lg-site .pr-depts li:hover { background: rgba(28, 20, 60, .78); }
+html .lg-site .pr-depts .icon { width: 36px; height: 36px; padding: 8px; border-radius: 10px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(205, 184, 255, .22); color: var(--accent-text); margin-bottom: 6px; }
+html .lg-site .pr-depts b { font-family: var(--ff-h); font-size: 1rem; color: #FFFFFF; letter-spacing: -.01em; }
+html .lg-site .pr-depts span { font-size: .85rem; line-height: 1.55; color: var(--ink-2); }
+html .lg-site .pr-ent-wrap .pr-steps li { padding-left: 38px; }
+@media (max-width: 1100px) {
+  html .lg-site .pr-ent-top { grid-template-columns: 1fr; gap: 32px; }
+  html .lg-site .pr-depts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html .lg-site .pr-ent-wrap { padding: 44px 36px; }
+}
+@media (max-width: 720px) {
+  html .lg-site .pr-ent-wrap { padding: 32px 20px; }
+  html .lg-site .pr-ent-proof { grid-template-columns: 1fr; gap: 16px; }
+  html .lg-site .pr-depts { grid-template-columns: 1fr; }
+}

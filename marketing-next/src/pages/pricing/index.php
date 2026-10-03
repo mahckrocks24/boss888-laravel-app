@@ -223,35 +223,50 @@ $groups = [
 </section>
 <?php endif; ?>
 
-<section class="pr-group" id="custom">
+<section class="pr-group" id="enterprise">
   <div class="container">
-    <div class="pr-feature pr-custom">
-      <div class="pr-feature-copy">
-        <p class="eyebrow">Custom · For enterprises and groups</p>
-        <h2>Bespoke intelligence, engineered around your enterprise</h2>
-        <p class="pr-feature-lede">For corporations and multi-brand groups, we architect the systems your business runs on: AI woven into every process, sales and marketing machinery built to your playbook, and an operational backbone of CRM, ERP and financial intelligence, designed, built and run as one.</p>
-        <ul class="pr-benefits">
-          <li><?= icon('bot', 20) ?><span><b>AI integration and automation</b>Agents and models connected to your data and tools, automating the work between teams: approvals, follow-ups, reporting and hand-offs.</span></li>
-          <li><?= icon('share', 20) ?><span><b>Custom sales and marketing systems</b>Pipelines, campaigns, lead scoring and attribution engineered to your playbook, with Sarah's team running the day-to-day.</span></li>
-          <li><?= icon('users', 20) ?><span><b>Custom-built CRM</b>Your stages, your fields, your rules. Every customer, conversation, deal and booking in one record your teams trust.</span></li>
-          <li><?= icon('server', 20) ?><span><b>ERP and operations</b>Orders, inventory, procurement and workflows unified in one system shaped around how you operate.</span></li>
-          <li><?= icon('chart', 20) ?><span><b>P&amp;L and financial intelligence</b>Live profit and loss, budgets and forecasts by brand, branch or region, with AI that explains what moved and why.</span></li>
-          <li><?= icon('pen', 20) ?><span><b>A flagship digital presence</b>A corporate website and design language made only for you, with a chatbot that knows your company inside out.</span></li>
-        </ul>
-      </div>
-      <div class="pr-feature-side">
-        <div class="plan pr-card pr-side pr-ent">
-          <h3 class="pr-name">Custom</h3>
-          <div class="pr-price pr-price-word"><span class="amount">By engagement</span></div>
-          <p class="pr-desc">A dedicated engagement team, one point of contact, and systems that belong to you.</p>
-          <ol class="pr-steps">
-            <li><b>Discovery and architecture</b>We map your processes, data and goals, and design the system.</li>
-            <li><b>Build and integrate</b>Delivered in stages, connected to the tools you already use, for your sign-off.</li>
-            <li><b>Run and evolve</b>Automations monitored and refined, with reporting to your leadership.</li>
-          </ol>
-          <a class="btn btn-primary pr-cta" href="/next/contact/?topic=enterprise">Request a private consultation</a>
+    <div class="pr-feature pr-custom pr-ent-wrap">
+      <div class="pr-ent-top">
+        <div class="pr-feature-copy">
+          <p class="eyebrow">Enterprise</p>
+          <h2>Enterprise AI, architected around your strategy</h2>
+          <p class="pr-feature-lede">For the organisations that set the pace in their industry. We begin with your strategy, not a product: the goals, systems and data of every department, mapped and joined into one intelligent operating layer. AI runs end to end, from the boardroom dashboard to the front desk, governed to the standard your board and your regulators expect.</p>
+          <ul class="pr-ent-proof">
+            <li><b>Strategy first</b>Every build traces back to an objective your leadership has signed.</li>
+            <li><b>End to end</b>One architecture across departments, not a tool per team.</li>
+            <li><b>Yours</b>The systems, the data and the intellectual property belong to you.</li>
+          </ul>
+        </div>
+        <div class="pr-feature-side">
+          <div class="plan pr-card pr-side pr-ent">
+            <h3 class="pr-name">Enterprise</h3>
+            <div class="pr-price pr-price-word"><span class="amount">By engagement</span></div>
+            <p class="pr-desc">A dedicated engagement team with one accountable lead, from strategy to steady state.</p>
+            <ol class="pr-steps">
+              <li><b>Strategy and discovery</b>Executive workshops and department interviews map goals, processes, systems and data.</li>
+              <li><b>Architecture and roadmap</b>One blueprint, sequenced by business value and signed off by your leadership.</li>
+              <li><b>Build and integrate</b>Delivered in stages and connected to the systems you run today.</li>
+              <li><b>Operate and evolve</b>Monitored, measured and refined, with reporting to your executive team.</li>
+            </ol>
+            <a class="btn btn-primary pr-cta" href="/next/contact/?topic=enterprise">Request a private consultation</a>
+            <p class="pr-addon">Every engagement is scoped individually and held in confidence.</p>
+          </div>
         </div>
       </div>
+      <div class="pr-depts-head">
+        <p class="eyebrow">Department by department</p>
+        <h3>One intelligent operating layer across the whole organisation</h3>
+      </div>
+      <ul class="pr-depts">
+        <li><?= icon('chart', 20) ?><b>Executive office</b><span>Live KPIs across brands and regions, board-ready briefings written by AI, and decisions backed by one source of truth.</span></li>
+        <li><?= icon('users', 20) ?><b>Sales</b><span>A CRM built around your process, pipelines and lead scoring, and proposals and RFP responses drafted in hours, not weeks.</span></li>
+        <li><?= icon('share', 20) ?><b>Marketing and communications</b><span>Brand, content, search and AI-search visibility, press relations and media intelligence, run by an AI team to your voice.</span></li>
+        <li><?= icon('message', 20) ?><b>Customer experience</b><span>An AI concierge on every channel, trained on your knowledge and handing over to your people at the right moment.</span></li>
+        <li><?= icon('server', 20) ?><b>Operations</b><span>ERP, orders, inventory and procurement in one system, with the work between teams automated end to end.</span></li>
+        <li><?= icon('layers', 20) ?><b>Finance</b><span>P&amp;L, budgets and forecasts by entity, brand or branch, with AI that explains every variance before the meeting.</span></li>
+        <li><?= icon('building', 20) ?><b>People</b><span>Careers portals, applications captured and routed, onboarding and internal knowledge your teams can ask.</span></li>
+        <li><?= icon('shield', 20) ?><b>Technology and governance</b><span>Single sign-on, role-based access, encrypted offsite backups, and AI with approval chains, budgets, kill switches and a full audit trail.</span></li>
+      </ul>
     </div>
   </div>
 </section>
