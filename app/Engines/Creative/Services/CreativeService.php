@@ -534,7 +534,7 @@ class CreativeService
             'prompt'       => $prompt,
             'task_id'      => $params['task_id'] ?? null,
             'aspect_ratio' => $params['aspect_ratio'] ?? '16:9',
-            'metadata'     => ['scene_count' => count($scenes), 'scene_count_predicted' => $videoBp['scene_count'] ?? null, 'scene_duration_total' => $videoBp['scene_duration_total'], 'duration' => $params['duration'] ?? 10, 'brand_context' => $videoBp['brand_context'] ?? null, 'credits_charged' => app(\App\Core\EngineKernel\CapabilityMapService::class)->creditCostFor('generate_video', $params)],
+            'metadata'     => ['business_id' => $params['business_id'] ?? null, 'platform' => $params['platform'] ?? null, 'scene_count' => count($scenes), 'scene_count_predicted' => $videoBp['scene_count'] ?? null, 'scene_duration_total' => $videoBp['scene_duration_total'], 'duration' => $params['duration'] ?? 10, 'brand_context' => $videoBp['brand_context'] ?? null, 'credits_charged' => app(\App\Core\EngineKernel\CapabilityMapService::class)->creditCostFor('generate_video', $params)],
         ]);
         $assetId = $asset['asset_id'];
 
@@ -660,7 +660,20 @@ class CreativeService
                     $__q = \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText((string) ($asset->prompt ?? ''));
                     if ($__q && ! empty($durable['storage_path'])) {
                         $__abs = \Illuminate\Support\Facades\Storage::disk('public')->path($durable['storage_path']);
-                        if (\App\Engines\Creative\Services\VideoTitler::apply($__abs, $__q[0])) { clearstatcache(true, $__abs); $durable['file_size'] = filesize($__abs) ?: ($durable['file_size'] ?? null); }
+                        if (! \App\Engines\Creative\Services\BrandMotionRenderer::enabled((int) $asset->workspace_id) && \App\Engines\Creative\Services\VideoTitler::apply($__abs, $__q[0])) { clearstatcache(true, $__abs); $durable['file_size'] = filesize($__abs) ?: ($durable['file_size'] ?? null); }
+                    }
+                    // RFC-0025 P1: the brand motion layer (fonts, palette, zone, logo, end card, motion), VideoTitler when it fails
+                    if (\App\Engines\Creative\Services\BrandMotionRenderer::enabled((int) $asset->workspace_id) && ! empty($durable['storage_path'])) {
+                        $__abs = \Illuminate\Support\Facades\Storage::disk('public')->path($durable['storage_path']);
+                        $__meta = json_decode((string) ($asset->metadata_json ?? ''), true) ?: [];
+                        $__task = $asset->task_id ? (json_decode((string) DB::table('tasks')->where('id', $asset->task_id)->value('payload_json'), true) ?: []) : [];
+                        $__bl = app(\App\Engines\Creative\Services\BrandMotionRenderer::class)->apply($__abs, [
+                            'ws' => (int) $asset->workspace_id, 'business_id' => $__meta['business_id'] ?? $__task['business_id'] ?? null,
+                            'headline' => $__q[0] ?? null, 'platform' => $__meta['platform'] ?? $__task['platform'] ?? null,
+                        ]);
+                        if (! ($__bl['success'] ?? false) && $__q) \App\Engines\Creative\Services\VideoTitler::apply($__abs, $__q[0]);
+                        clearstatcache(true, $__abs); $durable['file_size'] = filesize($__abs) ?: ($durable['file_size'] ?? null);
+                        $__meta['brand_layer'] = $__bl; DB::table('assets')->where('id', $assetId)->update(['metadata_json' => json_encode($__meta)]);
                     }
                 } catch (\Throwable $__te) { \Illuminate\Support\Facades\Log::warning('[VIDEO-CERT-1] titling skipped', ['asset' => $assetId, 'e' => $__te->getMessage()]); }
                 $this->completeAsset($assetId, [

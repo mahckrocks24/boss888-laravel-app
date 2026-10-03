@@ -656,4 +656,39 @@ class CertificationRemediationTest extends TestCase
         $this->assertSame(\App\Core\Sarah888\VideoGeneration::costFor(10), (int) $t->credit_cost);
         $this->assertSame(\App\Core\EngineKernel\CapabilityMapService::VIDEO_10S_CREDITS, (int) $t->credit_cost);
     }
+
+    // ── RFC-0025 P0/P1 (2026-10-03): provider request and the brand motion layer ──
+
+    public function test_rfc25_provider_payload_asks_for_1080p_and_no_prompt_rewrite(): void
+    {
+        $p6 = \App\Connectors\CreativeConnector::minimaxVideoPayload('MiniMax-Hailuo-02', 'x', ['duration' => 6]);
+        $this->assertSame('1080P', $p6['resolution']);
+        $this->assertFalse($p6['prompt_optimizer']);
+        $p10 = \App\Connectors\CreativeConnector::minimaxVideoPayload('MiniMax-Hailuo-02', 'x', ['duration' => 10, 'last_frame_image' => 'y']);
+        $this->assertSame('768P', $p10['resolution']);
+        $this->assertSame('y', $p10['last_frame_image']);
+        $this->assertSame('[Push in] ', \App\Engines\Creative\Services\ScenePlannerService::cameraTag('slow dolly forward'));
+    }
+
+    public function test_rfc25_safe_zone_profiles_and_switch(): void
+    {
+        $this->assertSame('instagram_reels', \App\Engines\Creative\Services\BrandMotionRenderer::profileFor(1080, 1920, null));
+        $this->assertSame('pinterest', \App\Engines\Creative\Services\BrandMotionRenderer::profileFor(1000, 1500, 'pinterest'));
+        $this->assertSame('website', \App\Engines\Creative\Services\BrandMotionRenderer::profileFor(1920, 1080, 'instagram'));
+        $this->assertSame([0.14, 0.30, 0.06, 0.20], \App\Engines\Creative\Services\BrandMotionRenderer::SAFE['instagram_reels']);
+    }
+
+    public function test_rfc25_brand_layer_composites_onto_a_real_clip(): void
+    {
+        $clip = sys_get_temp_dir() . '/rfc25-test-' . uniqid() . '.mp4';
+        shell_exec('ffmpeg -v error -y -f lavfi -i color=c=0x334455:s=540x960:d=6:r=24 -pix_fmt yuv420p ' . escapeshellarg($clip));
+        $this->assertFileExists($clip);
+        $r = app(\App\Engines\Creative\Services\BrandMotionRenderer::class)->apply($clip, ['ws' => self::WS, 'headline' => 'Fresh from our oven']);
+        $this->assertTrue($r['success'], json_encode($r));
+        $this->assertSame('instagram_reels', $r['profile']);
+        $this->assertTrue($r['end_card']);
+        $this->assertFileExists(preg_replace('/\.mp4$/', '', $clip) . '-raw.mp4');
+        $this->assertContains(true, array_values($r['fonts_loaded']));
+        @unlink($clip); @unlink(preg_replace('/\.mp4$/', '', $clip) . '-raw.mp4');
+    }
 }

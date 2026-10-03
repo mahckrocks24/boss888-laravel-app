@@ -324,6 +324,29 @@ class CreativeConnector extends BaseConnector
         ), '/');
     }
 
+    /**
+     * RFC-0025 P0: the request we send. Until now no resolution was sent (every clip came back 768P) and the provider's
+     * prompt optimizer stayed on, free to rewrite our text-free scene prompt. 1080P is available for 6-second clips only
+     * ($0.49 vs $0.28 per clip at list price); MINIMAX_RES_6S switches it back. prompt_optimizer is set after the filter
+     * because array_filter drops false.
+     */
+    public static function minimaxVideoPayload(string $model, string $prompt, array $options): array
+    {
+        $dur = in_array((int) ($options['duration'] ?? 0), [6, 10], true) ? (int) $options['duration'] : 6;
+        $p = array_filter([
+            'model'    => $model,
+            'prompt'   => $prompt,
+            // VIDEO-3: Hailuo-02 accepts duration 6|10 (seconds). Aspect ratio is NOT a T2V parameter on this API.
+            'duration' => $dur,
+            'resolution' => $dur === 10 ? '768P' : (string) env('MINIMAX_RES_6S', '1080P'),
+            // VIDEO-2: image-to-video — the clip takes the shape of this first frame (vertical/square)
+            'first_frame_image' => $options['first_frame_image'] ?? null,
+            'last_frame_image'  => $options['last_frame_image'] ?? null,
+        ]);
+        $p['prompt_optimizer'] = false;
+        return $p;
+    }
+
     private function minimaxGenerateVideo(string $prompt, array $options): array
     {
         $apiKey  = config('services.minimax.api_key', env('MINIMAX_API_KEY', ''));
@@ -355,15 +378,7 @@ class CreativeConnector extends BaseConnector
                     'Authorization' => "Bearer {$apiKey}",
                     'Content-Type'  => 'application/json',
                 ])
-                ->post($url, array_filter([
-                    'model'    => $model,
-                    'prompt'   => $prompt,
-                    // VIDEO-3: Hailuo-02 accepts duration 6|10 (seconds). Aspect ratio is NOT a T2V
-                    // parameter on this API — clips come back landscape; the asset keeps the request.
-                    'duration' => in_array((int) ($options['duration'] ?? 0), [6, 10], true) ? (int) $options['duration'] : null,
-                    // VIDEO-2: image-to-video — the clip takes the shape of this first frame (vertical/square)
-                    'first_frame_image' => $options['first_frame_image'] ?? null,
-                ]));
+                ->post($url, self::minimaxVideoPayload($model, $prompt, $options));
 
             if ($response->failed()) {
                 \Illuminate\Support\Facades\Log::warning('[MiniMax] Video generation failed', [

@@ -153,7 +153,7 @@ EOT;
                 // make the durations add up to the request, and let the caller record count(scenes).
                 $norm = self::normaliseScenes((array) $result['parsed']['scenes'], $duration);
                 $__titled = (bool) \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText($prompt);   // VIDEO-CERT-3: a title is coming - keep its space clear
-                if ($norm) return array_map(fn ($sc) => ['prompt' => self::cleanScenePrompt((string) ($sc['prompt'] ?? ''), (string) ($options['business_name'] ?? '')) . ($__titled ? ' Keep the upper quarter of the frame calm, dark-to-mid toned and free of the main subject.' : '')] + $sc, $norm);   // VIDEO-CERT-1
+                if ($norm) return array_map(fn ($sc) => ['prompt' => self::cameraTag((string) ($sc['camera'] ?? '')) . self::cleanScenePrompt((string) ($sc['prompt'] ?? ''), (string) ($options['business_name'] ?? '')) . ($__titled ? ' Keep the upper quarter of the frame calm, dark-to-mid toned and free of the main subject.' : '')] + $sc, $norm);   // VIDEO-CERT-1, RFC-0025 P0 camera
             }
         } catch (\Throwable $e) {
             Log::warning('ScenePlannerService::planScenes runtime call failed', ['error' => $e->getMessage()]);
@@ -261,6 +261,28 @@ EOT;
         if ($p === '') $p = 'A warm, natural, well-lit scene that matches the brief.';
         if (! preg_match('/[.!?]$/u', $p)) $p .= '.';
         return $p . ' No on-screen text, captions, letters, numbers, logos or watermarks anywhere in the frame.';
+    }
+
+    /** RFC-0025 P0: the planner's camera word as the provider's bracketed camera instruction (Hailuo-02 vocabulary). */
+    public static function cameraTag(string $camera): string
+    {
+        $c = mb_strtolower(trim($camera));
+        $map = [
+            '/\b(dolly|push)( in| forward)?\b|\bmove (in|forward)\b/' => '[Push in]',
+            '/\b(pull|dolly)( out| back)\b/'                          => '[Pull out]',
+            '/\bzoom in\b/'                                          => '[Zoom in]',
+            '/\bzoom out\b/'                                         => '[Zoom out]',
+            '/\bpan left\b/'                                         => '[Pan left]',
+            '/\bpan right\b/'                                        => '[Pan right]',
+            '/\btilt up\b/'                                          => '[Tilt up]',
+            '/\btilt down\b/'                                        => '[Tilt down]',
+            '/\btruck left\b|\bslide left\b/'                        => '[Truck left]',
+            '/\btruck right\b|\bslide right\b/'                      => '[Truck right]',
+            '/\b(track|tracking|follow)\b/'                          => '[Tracking shot]',
+            '/\b(static|locked|still|fixed)\b/'                      => '[Static shot]',
+        ];
+        foreach ($map as $re => $tag) if (preg_match($re, $c)) return $tag . ' ';
+        return '';
     }
 
     public static function needsFrame(string $aspect): bool

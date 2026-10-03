@@ -126,6 +126,29 @@ class ImageOverlayRenderer
         return ['success' => true, 'url' => Storage::disk('public')->url($outPath), 'storage_path' => $outPath, 'zone' => $brief['zone']];
     }
 
+    /**
+     * RFC-0025 P1: the same page render() draws - brief from the words, the brand and the pixels of $frameBytes, then the
+     * zone or A1 layout - returned as HTML for the video brand layer (BrandMotionRenderer) instead of a screenshot.
+     * @return array{html:string, brief:array, layout:string, row:int, col:int}
+     */
+    public function layerHtml(array $overlay, string $frameBytes, int $w, int $h, int $wsId): array
+    {
+        $headline = trim((string) ($overlay['headline'] ?? ''));
+        $copy     = array_values(array_filter(array_map('trim', (array) ($overlay['supporting_copy'] ?? []))));
+        $bgData   = 'data:image/png;base64,' . base64_encode($frameBytes);
+        $brief    = $this->brief($overlay, $frameBytes, $w, $h);
+        $kit = null;
+        try { $kit = app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($wsId, isset($overlay['business_id']) ? (int) $overlay['business_id'] : null); } catch (\Throwable) {}
+        $dirId = (string) ($overlay['direction_id'] ?? '');
+        $useA1 = is_array($kit) && empty($kit['is_neutral'])
+            && ($dirId === 'D1' || ($dirId === '' && preg_match('/\b(editorial|luxury)\b/i', (string) ($kit['visual_style'] ?? ''))));
+        $brief['layout'] = $useA1 ? 'A1' : 'zone';
+        $html = $useA1
+            ? $this->buildA1Html($bgData, $headline, $copy, $brief, $kit, (string) ($overlay['eyebrow'] ?? ''), $w, $h)
+            : $this->buildHtml($bgData, $headline, $copy, $brief, $w, $h);
+        [$col, $row] = self::ZONES[$brief['zone']] ?? [0, 0];
+        return ['html' => $html, 'brief' => $brief, 'layout' => $brief['layout'], 'row' => $row, 'col' => $col];
+    }
     /* ─────────────────────────── the brief, read ─────────────────────────── */
 
     /**

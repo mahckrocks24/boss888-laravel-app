@@ -55,7 +55,7 @@ final class VideoTitler
         $out = preg_replace('/\.mp4$/i', '', $file) . '-titled.mp4';
         $step = (int) round($size * 1.42);
         // VIDEO-CERT-3: the title lives in the calm upper part of the frame (the planner keeps it clear), never on the subject
-        $top = (int) round($vertical ? $h * 0.12 : $h * 0.10);
+        $top = (int) round($vertical ? $h * 0.18 : $h * 0.10);   // RFC-0025 P0: Reels/TikTok keep the top 14 % for their own UI
         $txts = []; $draws = [];
         foreach ($lines as $i => $line) {
             $t = tempnam(sys_get_temp_dir(), 'vtitle'); file_put_contents($t, $line); $txts[] = $t;
