@@ -136,12 +136,29 @@ final class BrandMotionRenderer
         $logoHtml = '';
         if ($logoOn && $layout !== 'A1') {
             $lh = $vertical ? $px(0.10, $w) : $px(0.11, $h);
-            $side = $col === 2 ? 'left:' . $px(max($sL, 0.06), $w) . 'px' : 'right:' . $px($sR + 0.02, $w) . 'px';
-            // certification round A: on a tall frame a top logo shared the row with the headline - there the logo goes to the
-            // bottom corner, just above the platform's own bar; wide frames keep the top corner opposite the text
+            // certification round A: a fixed corner put the logo on a patient's face and, on tall frames, in the headline row.
+            // The logo takes the CALMEST free corner of the clip's own frame (least detail = background, not a face or the
+            // subject); the text's own corner and, on tall frames, the text's row are never candidates.
             $tall = $h > $w;
-            $vpos = ($row === 0 && ($tall || $col === 1)) ? 'bottom:' . $px($sB + 0.02, $h) . 'px' : 'top:' . $px($sT + 0.02, $h) . 'px';
-            if ($tall && $row === 0) $side = 'right:' . $px($sR + 0.02, $w) . 'px';
+            $edgeL = $px(max($sL, 0.06), $w); $edgeR = $px($sR + 0.02, $w); $edgeT = $px($sT + 0.02, $h); $edgeB = $px($sB + 0.02, $h);
+            $cands = [];
+            foreach (['top', 'bottom'] as $vy) foreach (['left', 'right'] as $hx) {
+                $cr = $vy === 'top' ? 0 : 2; $cc = $hx === 'left' ? 0 : 2;
+                if ($cr === $row && ($tall || $cc === $col || $col === 1)) continue;   // never the text's row on tall frames, never its corner
+                $cands[] = [$vy, $hx];
+            }
+            if (! $cands) $cands = [['bottom', $col === 2 ? 'left' : 'right']];
+            $boxW = $px(0.30, $w); $boxH = $lh + 2 * (int) round($lh * 0.16);
+            $best = null; $bestScore = INF;
+            foreach ($cands as [$vy, $hx]) {
+                $x = $hx === 'left' ? $edgeL : $w - $edgeR - $boxW;
+                $y = $vy === 'top' ? $edgeT : $h - $edgeB - $boxH;
+                $score = self::detail($frameBytes, $w, $h, $x, $y, $boxW, $boxH);
+                if ($score < $bestScore) { $bestScore = $score; $best = [$vy, $hx]; }
+            }
+            [$vy, $hx] = $best;
+            $side = $hx === 'left' ? 'left:' . $edgeL . 'px' : 'right:' . $edgeR . 'px';
+            $vpos = $vy === 'top' ? 'top:' . $edgeT . 'px' : 'bottom:' . $edgeB . 'px';
             // a backing plate the logo can always be read on: dark behind a light logo, light behind a dark one
             $plate = self::logoIsLight($logoUrl) ? 'rgba(10,10,12,.42)' : 'rgba(250,248,244,.80)';
             $padY = (int) round($lh * 0.16); $padX = (int) round($lh * 0.26);
@@ -181,14 +198,15 @@ final class BrandMotionRenderer
         // states: each screenshot shows one part of the layer; ffmpeg animates them at the clip's own frame rate
         $css .= "body.s-text .blogo,body.s-text .lock,body.s-text .ec{display:none!important}\n"
             . "body.s-logo .box,body.s-logo .col,body.s-logo .scrim,body.s-logo .fade,body.s-logo .ec{display:none!important}\n"
-            . "body.s-end .box,body.s-end .col,body.s-end .scrim,body.s-end .fade,body.s-end .blogo,body.s-end .lock{display:none!important}\n";
+            . "body.s-end .box,body.s-end .col,body.s-end .scrim,body.s-end .fade,body.s-end .blogo,body.s-end .lock{display:none!important}\n"
+            . "body.s-glyph .scrim,body.s-glyph .fade,body.s-glyph .blogo,body.s-glyph .lock,body.s-glyph .ec{display:none!important}body.s-glyph .rule{visibility:hidden!important}body.s-glyph $sel::before{display:none!important}\n";   // the letters alone, for the quality gate
         $html = str_replace('</style>', $css . '</style>', $html);
         $html = str_replace('</div></body>', $logoHtml . $endHtml . '</div></body>', $html);
 
         $htmlPath = "$tmp/bm-$stamp.html";
         file_put_contents($htmlPath, $html);
         $shots = [];
-        if ($headline !== '') $shots['text'] = "$tmp/bm-$stamp-text.png";
+        if ($headline !== '') { $shots['text'] = "$tmp/bm-$stamp-text.png"; $shots['glyph'] = "$tmp/bm-$stamp-glyph.png"; }
         if ($logoHtml !== '' || $layout === 'A1') $shots['logo'] = "$tmp/bm-$stamp-logo.png";
         if ($endOn) $shots['end'] = "$tmp/bm-$stamp-end.png";
         if (! $shots) { @unlink($htmlPath); return ['success' => false, 'error' => 'nothing_to_draw']; }
@@ -208,7 +226,7 @@ final class BrandMotionRenderer
         $keptText = null;
         $clean = function () use ($shots, $file, &$keptText) {
             foreach ($shots as $k => $p) {
-                if ($k === 'text' && is_file($p)) { $keptText = preg_replace('/\.mp4$/i', '', $file) . '-textlayer.png'; @rename($p, $keptText); continue; }
+                if ($k === 'glyph' && is_file($p)) { $keptText = preg_replace('/\.mp4$/i', '', $file) . '-textlayer.png'; @rename($p, $keptText); continue; }
                 @unlink($p);
             }
         };
@@ -224,6 +242,7 @@ final class BrandMotionRenderer
         $rise = max(10, $px(0.014, $h));
         $inputs = ' -i ' . escapeshellarg($src); $graph = []; $last = '[0:v]'; $n = 1;
         foreach ($shots as $k => $p) {
+            if ($k === 'glyph') continue;   // measured by the gate, never composited
             $inputs .= ' -loop 1 -framerate ' . $fps . ' -t ' . number_format($dur, 3, '.', '') . ' -i ' . escapeshellarg($p);
             if ($k === 'text') {
                 $graph[] = "[$n:v]format=rgba,fade=t=in:st=0.35:d=0.6:alpha=1" . ($endOn ? ",fade=t=out:st=$o:d=0.4:alpha=1" : '') . "[l$n]";
@@ -253,6 +272,24 @@ final class BrandMotionRenderer
             'logo_expected' => $logoUrl !== '' && $bizKnown && ($ctx['logo'] ?? true), 'head_font' => $useHead];
         Log::info('[RFC-0025] brand motion layer composited', ['file' => basename($file)] + $res);
         return $res;
+    }
+
+    /** How much detail a region of the frame carries (mean absolute neighbour difference of luminance, 0..255). */
+    public static function detail(string $frameBytes, int $w, int $h, int $x, int $y, int $bw, int $bh): float
+    {
+        static $cache = [];
+        $key = md5($frameBytes);
+        $im = $cache[$key] ??= @imagecreatefromstring($frameBytes);
+        if (! $im) return 0.0;
+        $sx = imagesx($im) / max(1, $w); $sy = imagesy($im) / max(1, $h);
+        $x0 = (int) max(0, $x * $sx); $y0 = (int) max(0, $y * $sy); $x1 = (int) min(imagesx($im) - 2, ($x + $bw) * $sx); $y1 = (int) min(imagesy($im) - 2, ($y + $bh) * $sy);
+        $lum = fn ($c) => 0.2126 * (($c >> 16) & 255) + 0.7152 * (($c >> 8) & 255) + 0.0722 * ($c & 255);
+        $sum = 0.0; $n = 0; $step = max(2, (int) (($x1 - $x0) / 50));
+        for ($yy = $y0; $yy < $y1; $yy += $step) for ($xx = $x0; $xx < $x1; $xx += $step) {
+            $c = $lum(imagecolorat($im, $xx, $yy));
+            $sum += abs($c - $lum(imagecolorat($im, $xx + 1, $yy))) + abs($c - $lum(imagecolorat($im, $xx, $yy + 1))); $n++;
+        }
+        return $n ? $sum / $n : 0.0;
     }
 
     /** Is the logo mostly light (a white wordmark) - measured on its opaque pixels. */

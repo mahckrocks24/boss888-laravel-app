@@ -69,7 +69,7 @@ final class VideoGeneration
             $prompt = trim((string) preg_replace('/^\s*(please\s+)?(can you\s+|could you\s+)?((make|create|put together|do)\s+(me\s+)?(a|an)?\s*(short\s+|quick\s+)?(video|clip|reel)\s+(from|of|with|using)\s+(these|my|the|those|all)\s+(\w+\s+)?(photos|pictures|images|pics|shots)|turn\s+(these|my|the|those)\s+(\w+\s+)?(photos|pictures|images|pics)\s+into\s+(a|an)\s+(short\s+)?(video|clip|reel))\s*[-,:;.]?\s*(with\s+)?/iu', '', $prompt), " ,.;:-");
             if (preg_match('/^["\x{201C}\x{2018}\']{1}[^"\x{201C}\x{201D}]{1,80}["\x{201D}\x{2019}\']\s+as\s+the\s+(title|headline)\.?$/iu', $prompt)) $prompt = 'gentle, natural motion with a slow push in, ' . $prompt;
             if (mb_strlen($prompt) < 4) $prompt = 'gentle, natural motion with a slow push in';
-            if (! preg_match('/\b(youtube|website|web site|landscape|horizontal|widescreen|16:9|banner|tv|square|1:1|vertical|reel|reels|story|stories|tiktok|9:16|pinterest)\b/', $t)) {
+            if (! preg_match('/\b(youtube|website|web site|landscape|horizontal|widescreen|16:9|banner|tv|square|1:1|vertical|reel|reels|story|stories|tiktok|9:16|pinterest|instagram|insta|ig)\b/', $t)) {   // round A: Instagram = 9:16
                 $aspect = self::photoShape((string) ($photo['url'] ?? ''));   // the photo's own orientation
             }
             if (preg_match('/\bpinterest\b/', $t)) $aspect = '2:3';

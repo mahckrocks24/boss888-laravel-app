@@ -283,6 +283,10 @@ EOT;
         $parts = preg_split('/(?<=[.;!?])\s+/u', trim($p)) ?: [];
         $parts = array_filter($parts, fn ($c) => ! preg_match('/\b(on-?screen|captions?|subtitles?|titles?|headlines?|labels?|lower[- ]thirds?|overlays?|lettering|text|words?|typography|signs?|signage|banners?|logos?|watermarks?|reading|reads|says|written)\b/iu', $c));
         $p = trim(implode(' ', $parts));
+        // round A: "Teal (#0E7C7B) accent cabinets" -> the model painted "#F2A541"; a code after a colour word goes, a bare code becomes its name
+        $p = (string) preg_replace('/\s*\(\s*#[0-9a-f]{3,8}\s*\)/iu', '', $p);
+        $p = (string) preg_replace_callback('/#[0-9a-f]{6}\b/iu', fn ($m) => \App\Core\ImageIntelligence\ImagePromptCompiler::colourName($m[0]), $p);
+        $p = (string) preg_replace('/#[0-9a-f]{3,8}\b/iu', '', $p);
         if ($business !== '') $p = (string) preg_replace('/\b' . preg_quote($business, '/') . '\b/iu', 'the venue', $p);
         $p = (string) preg_replace('/\bChef\s+\p{Lu}[\p{L}-]*(?:\s+\p{Lu}[\p{L}-]*)?/u', 'the chef', $p);
         $p = trim((string) preg_replace('/\s{2,}/u', ' ', $p), " ;,");
