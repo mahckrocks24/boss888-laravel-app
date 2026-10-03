@@ -127,6 +127,11 @@ class EngineExecutionService
             return ['success' => false, 'error' => $planCheck['reason'] ?? 'Plan does not allow this action', 'code' => 'PLAN_GATED'];
         }
 
+        // VIDEO-BAL-1: no video work is accepted (or charged) while the provider has no balance
+        if ($action === 'generate_video' && \App\Connectors\CreativeConnector::videoPaused()) {
+            return ['success' => false, 'code' => 'PROVIDER_UNAVAILABLE', 'no_charge' => true,
+                'error' => 'Video making is paused on our side for a short while, so nothing was started or charged. Please try again a little later.'];
+        }
         // ─── Step 3: Check credits (for AI-powered actions) ──
         $creditCost = $capability['credit_cost'] ?? 0;
         if ($action === 'generate_video' && (int) ($params['duration'] ?? 0) === 10) $creditCost = \App\Core\EngineKernel\CapabilityMapService::VIDEO_10S_CREDITS;   // PRICE-1

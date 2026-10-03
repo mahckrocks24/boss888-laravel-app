@@ -724,4 +724,17 @@ class CertificationRemediationTest extends TestCase
         $this->assertGreaterThan(0, \App\Engines\Creative\Services\ScenePlannerService::providerWait(), 'a full minute budget makes the next call wait');
         \Illuminate\Support\Facades\Cache::forget('minimax:rpm');
     }
+
+    public function test_videobal1_an_empty_provider_account_pauses_video_without_charging(): void
+    {
+        \Illuminate\Support\Facades\Cache::put('video:provider_paused', ['code' => 1008], 60);
+        $this->assertTrue(\App\Connectors\CreativeConnector::videoPaused());
+        $vg = app(\App\Core\Sarah888\VideoGeneration::class);
+        $this->assertStringContainsString('paused on our side', $vg->describe(['prompt' => 'x', 'duration' => 6, 'aspect_ratio' => '9:16', 'cost' => 28]));
+        $this->assertSame('video_paused', $vg->execute(self::WS, ['prompt' => 'x', 'duration' => 6, 'aspect_ratio' => '9:16'], null)['error'] ?? null);
+        $r = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute(self::WS, 'creative', 'generate_video', ['prompt' => 'x', 'duration' => 6], ['source' => 'agent', 'agent_id' => 'sarah']);
+        $this->assertSame('PROVIDER_UNAVAILABLE', $r['code'] ?? null);
+        \Illuminate\Support\Facades\Cache::forget('video:provider_paused');
+        $this->assertFalse(\App\Connectors\CreativeConnector::videoPaused());
+    }
 }

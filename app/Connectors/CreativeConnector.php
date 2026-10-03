@@ -352,6 +352,12 @@ class CreativeConnector extends BaseConnector
         return $p;
     }
 
+    /** VIDEO-BAL-1: true while the provider account has reported no balance (cleared by the first successful call). */
+    public static function videoPaused(): bool
+    {
+        return (bool) \Illuminate\Support\Facades\Cache::get('video:provider_paused');
+    }
+
     private function minimaxGenerateVideo(string $prompt, array $options): array
     {
         $apiKey  = config('services.minimax.api_key', env('MINIMAX_API_KEY', ''));
@@ -396,6 +402,12 @@ class CreativeConnector extends BaseConnector
             $data   = $response->json();
             $taskId = $data['task_id'] ?? null;
 
+            // VIDEO-BAL-1: an empty provider account pauses video for everyone until a call succeeds again
+            if (! $taskId && (int) ($data['base_resp']['status_code'] ?? 0) === 1008) {
+                \Illuminate\Support\Facades\Cache::put('video:provider_paused', ['code' => 1008, 'at' => now()->toIso8601String()], now()->addMinutes(30));
+                \Illuminate\Support\Facades\Log::error('[VIDEO-BAL-1] video provider has no balance - video paused for 30 minutes (top up the provider account)');
+            }
+            if ($taskId) \Illuminate\Support\Facades\Cache::forget('video:provider_paused');
             if (!$taskId) {
                 // VIDEO-F1: keep the provider's own reason (balance, plan, content, parameters) in the log — never shown to customers
                 \Illuminate\Support\Facades\Log::warning('[MiniMax] video refused', ['code' => $data['base_resp']['status_code'] ?? null, 'msg' => $data['base_resp']['status_msg'] ?? null, 'duration' => $options['duration'] ?? null, 'prompt_len' => mb_strlen($prompt)]);

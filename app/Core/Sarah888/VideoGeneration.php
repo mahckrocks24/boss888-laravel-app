@@ -149,6 +149,9 @@ final class VideoGeneration
     /** Turn 1 — exactly what will be made, the cost and the wait; nothing runs yet. */
     public function describe(array $spec): string
     {
+        if (\App\Connectors\CreativeConnector::videoPaused()) {   // VIDEO-BAL-1: never offer what cannot be made right now
+            return "Video making is paused on our side for a short while, so I can't start that one yet - nothing has been charged. Ask me again a little later and I'll make it.";
+        }
         if (! empty($spec['source_images']) && count($spec['source_images']) > 1) {   // RFC-0025 P3: several photos
             $pc = (array) ($spec['photo_checks'] ?? []);
             $n = count($spec['source_images']);
@@ -178,6 +181,7 @@ final class VideoGeneration
     /** Turn 2 — the owner's yes is the commission: the video task runs under it. */
     public function execute(int $wsId, array $spec, ?int $userId): array
     {
+        if (\App\Connectors\CreativeConnector::videoPaused()) return ['success' => false, 'error' => 'video_paused'];   // VIDEO-BAL-1
         try {
             app(SpendContext::class)->setTurn(['specifies_action' => true, 'authorized' => true, 'classification' => 'authorisation',
                 'reason' => 'the owner said yes to Sarah\'s video offer (VIDEO-2)'], $wsId);
