@@ -428,3 +428,126 @@ html .lg-site .pr-ent-wrap .pr-steps li { padding-left: 38px; }
   html .lg-site .pr-ent-proof { grid-template-columns: 1fr; gap: 16px; }
   html .lg-site .pr-depts { grid-template-columns: 1fr; }
 }
+
+/* 20. SOLUTIONS-2 (Owner 2026-10-03: "Solutions ... scored 2/10, make it enterprise level per industry"): the solutions index
+   and every industry page, on the glass tokens (pricing's pr-* blocks are reused for heads, questions and the closing band). */
+html .lg-site .pr-custom .btn-secondary { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .22); color: #FFFFFF; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+html .lg-site .pr-custom .btn-secondary:hover { background: rgba(255, 255, 255, .12); color: #FFFFFF; }
+
+/* index: the industry grid */
+html .lg-site .sol-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+html .lg-site .sol-card { display: flex; flex-direction: column; padding: 24px 22px 22px; color: var(--ink); text-decoration: none; transition: transform 240ms var(--ease-out, ease), box-shadow 240ms ease; }
+html .lg-site .sol-card:hover { transform: translateY(-4px); text-decoration: none; box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .sol-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+html .lg-site .sol-card-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--tint); color: var(--accent-text); }
+html .lg-site .sol-faces { display: flex; }
+html .lg-site .sol-faces img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid var(--glass-thick); margin-left: -8px; background: var(--tint); }
+html .lg-site .sol-card h2 { font-family: var(--ff-h); font-size: 1.15rem; line-height: 1.25; letter-spacing: -.01em; margin: 0 0 8px; color: var(--ink); }
+html .lg-site .sol-card > p { margin: 0 0 14px; font-size: .9rem; line-height: 1.5; color: var(--ink-2); }
+html .lg-site .sol-card ul { list-style: none; margin: 0 0 18px; padding: 14px 0 0; border-top: 1px solid var(--hairline); display: grid; gap: 8px; }
+html .lg-site .sol-card li { display: flex; gap: 8px; align-items: flex-start; font-size: .84rem; line-height: 1.4; color: var(--ink-2); }
+html .lg-site .sol-card li .icon { flex: 0 0 auto; margin-top: 2px; color: var(--success); }
+html .lg-site .sol-fit-go { display: inline-flex; align-items: center; gap: 6px; margin-top: auto; font-size: .9rem; font-weight: 600; color: var(--accent-text); }
+html .lg-site .sol-common { list-style: none; padding: 0; }
+html .lg-site .sol-ent { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); align-items: center; }
+html .lg-site .sol-ent h2 { max-width: 20ch; }
+html .lg-site .sol-ent .pr-feature-lede { margin-bottom: 0; }
+html .lg-site .sol-ent-cta { display: flex; flex-direction: column; gap: 12px; }
+html .lg-site .sol-ent-cta .btn { justify-content: center; }
+
+/* industry page: hero with the example dashboard */
+html .lg-site .sol-hero { padding: 40px 0 8px; }
+html .lg-site .sol-hero-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 48px; align-items: center; }
+html .lg-site .sol-hero h1 { font-family: var(--ff-h); font-size: clamp(2.1rem, 4.2vw, 3.2rem); line-height: 1.07; letter-spacing: -.025em; margin: 0 0 18px; }
+html .lg-site .sol-hero .lede { max-width: 58ch; }
+html .lg-site .sol-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+html .lg-site .sol-facts { justify-content: flex-start; flex-direction: column; gap: 8px; margin-top: 24px; }
+html .lg-site .sol-dash { padding: 22px; border-radius: var(--r-lg); background: var(--glass-thick); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .sol-dash-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+html .lg-site .sol-dash-who { display: flex; align-items: center; gap: 10px; }
+html .lg-site .sol-dash-who img, html .lg-site .sol-tasks img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; background: var(--tint); }
+html .lg-site .sol-dash-who b, html .lg-site .sol-tasks b { display: block; font-size: .92rem; color: var(--ink); line-height: 1.25; }
+html .lg-site .sol-dash-who small, html .lg-site .sol-tasks small { display: block; font-size: .78rem; color: var(--ink-3); line-height: 1.3; }
+html .lg-site .sol-chip { font-size: .7rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; color: var(--ink-3); border: 1px solid var(--hairline); }
+html .lg-site .sol-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+html .lg-site .sol-kpis > div { padding: 14px; border-radius: 14px; background: var(--glass); border: 1px solid var(--hairline); }
+html .lg-site .sol-kpis small { display: block; font-size: .76rem; color: var(--ink-3); }
+html .lg-site .sol-kpis b { display: block; margin-top: 4px; font-family: var(--ff-h); font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+html .lg-site .sol-dash-sub { margin: 18px 0 8px; font-size: .74rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); }
+html .lg-site .sol-tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+html .lg-site .sol-tasks li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--glass); border: 1px solid var(--hairline); }
+html .lg-site .sol-tasks img { width: 30px; height: 30px; }
+html .lg-site .sol-tasks em { font-style: normal; font-size: .72rem; font-weight: 700; padding: 4px 9px; border-radius: 999px; white-space: nowrap; }
+html .lg-site .sol-tasks em.is-wait { background: var(--warning-soft, rgba(255, 200, 87, .16)); color: var(--warning-ink, #8A5A00); }
+html .lg-site .sol-tasks em.is-ok { background: var(--tint); color: var(--accent-text); }
+html .lg-site .sol-tasks em.is-live { background: var(--success-soft); color: var(--success); }
+html[data-theme="dark"] .lg-site .sol-tasks em.is-wait { color: #FFC857; }
+
+/* the challenge: problem then answer */
+html .lg-site .sol-pains { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+html .lg-site .sol-pain { display: flex; flex-direction: column; padding: 26px 24px; }
+html .lg-site .sol-pain:hover { transform: none; }
+html .lg-site .sol-num { font-family: var(--ff-h); font-size: .85rem; font-weight: 800; color: var(--accent-text); letter-spacing: .04em; }
+html .lg-site .sol-pain h3 { font-family: var(--ff-h); font-size: 1.15rem; letter-spacing: -.01em; margin: 10px 0 8px; color: var(--ink); }
+html .lg-site .sol-problem { margin: 0 0 18px; font-size: .9rem; line-height: 1.55; color: var(--ink-3); }
+html .lg-site .sol-answer { display: flex; gap: 10px; align-items: flex-start; margin: auto 0 0; padding-top: 16px; border-top: 1px solid var(--hairline); font-size: .9rem; line-height: 1.55; color: var(--ink); }
+html .lg-site .sol-answer .icon { flex: 0 0 auto; margin-top: 3px; color: var(--success); }
+
+/* the system */
+html .lg-site .sol-pillars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; border-radius: var(--r-lg); overflow: hidden; background: var(--hairline); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); margin: 0; }
+html .lg-site .sol-pillar { display: flex; flex-direction: column; padding: 26px 24px; background: var(--glass-thick); }
+html .lg-site .sol-pillar .icon { width: 40px; height: 40px; padding: 9px; border-radius: 11px; background: var(--tint); color: var(--accent-text); margin-bottom: 14px; }
+html .lg-site .sol-pillar h3 { font-family: var(--ff-h); font-size: 1.05rem; margin: 0 0 6px; color: var(--ink); }
+html .lg-site .sol-pillar p { margin: 0; font-size: .88rem; line-height: 1.55; color: var(--ink-2); }
+html .lg-site .sol-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto !important; padding-top: 14px; }
+html .lg-site .sol-links a { font-size: .76rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--hairline); color: var(--ink-2); text-decoration: none; }
+html .lg-site .sol-links a:hover { border-color: var(--tint-rim); color: var(--accent-text); }
+
+/* the team */
+html .lg-site .sol-team { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px; align-items: center; padding: 40px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); }
+html .lg-site .sol-team h2 { font-family: var(--ff-h); font-size: clamp(1.6rem, 3vw, 2.1rem); letter-spacing: -.02em; line-height: 1.15; margin: 0 0 12px; }
+html .lg-site .sol-team-lead > p { margin: 0; color: var(--ink-2); }
+html .lg-site .sol-sarah { display: flex; gap: 16px; align-items: center; margin-top: 24px; padding: 18px; border-radius: 18px; background: var(--glass-thick); border: 1px solid var(--tint-rim); }
+html .lg-site .sol-sarah img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: var(--tint); }
+html .lg-site .sol-sarah b, html .lg-site .sol-roster b { display: block; font-size: 1rem; color: var(--ink); }
+html .lg-site .sol-sarah small, html .lg-site .sol-roster small { display: block; font-size: .8rem; color: var(--accent-text); font-weight: 600; }
+html .lg-site .sol-sarah em, html .lg-site .sol-roster em { display: block; margin-top: 4px; font-style: normal; font-size: .86rem; line-height: 1.45; color: var(--ink-2); }
+html .lg-site .sol-roster { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+html .lg-site .sol-roster li { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: 16px; background: var(--glass-thick); border: 1px solid var(--hairline); }
+html .lg-site .sol-roster img { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; flex: 0 0 auto; background: var(--tint); }
+
+/* thirty days */
+html .lg-site .sol-weeks { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; counter-reset: w; }
+html .lg-site .sol-weeks li { position: relative; padding: 24px 22px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-1, none); }
+html .lg-site .sol-weeks li::before { content: ""; position: absolute; left: 22px; right: 22px; top: 0; height: 3px; border-radius: 0 0 3px 3px; background: var(--brand-grad); opacity: .85; }
+html .lg-site .sol-week { font-size: .74rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--accent-text); }
+html .lg-site .sol-weeks h3 { font-family: var(--ff-h); font-size: 1.05rem; margin: 8px 0 6px; color: var(--ink); }
+html .lg-site .sol-weeks p { margin: 0; font-size: .88rem; line-height: 1.55; color: var(--ink-2); }
+
+/* plan fit */
+html .lg-site .sol-fit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+html .lg-site .sol-fit-card { display: flex; flex-direction: column; padding: 24px; color: var(--ink); text-decoration: none; }
+html .lg-site .sol-fit-card:hover { text-decoration: none; transform: translateY(-3px); }
+html .lg-site .sol-fit-card small { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+html .lg-site .sol-fit-card b { display: block; margin: 10px 0 8px; font-family: var(--ff-h); font-size: 1.4rem; letter-spacing: -.02em; color: var(--ink); }
+html .lg-site .sol-fit-card b span { font-family: var(--font); font-size: .9rem; font-weight: 500; color: var(--ink-3); letter-spacing: 0; }
+html .lg-site .sol-fit-card p { margin: 0 0 16px; font-size: .9rem; line-height: 1.5; color: var(--ink-2); }
+html .lg-site .sol-fit-card.is-ent { color: #FFFFFF; border: 0; background: radial-gradient(80% 100% at 0% 0%, rgba(140, 37, 210, .4), transparent 60%), linear-gradient(160deg, #120E2A, #0A0918 60%, #0B1222); }
+html .lg-site .sol-fit-card.is-ent small, html .lg-site .sol-fit-card.is-ent b span { color: #9CA1BA; }
+html .lg-site .sol-fit-card.is-ent b { color: #FFFFFF; }
+html .lg-site .sol-fit-card.is-ent p { color: #C4C8DA; }
+html .lg-site .sol-fit-card.is-ent .sol-fit-go { color: #D9C8FF; }
+
+@media (max-width: 1100px) {
+  html .lg-site .sol-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html .lg-site .sol-hero-grid, html .lg-site .sol-team { grid-template-columns: 1fr; gap: 32px; }
+  html .lg-site .sol-pillars, html .lg-site .sol-weeks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html .lg-site .sol-ent { grid-template-columns: 1fr; }
+}
+@media (max-width: 720px) {
+  html .lg-site .sol-grid, html .lg-site .sol-pains, html .lg-site .sol-pillars, html .lg-site .sol-weeks, html .lg-site .sol-fit { grid-template-columns: 1fr; }
+  html .lg-site .sol-team { padding: 24px 20px; }
+  html .lg-site .sol-actions .btn { flex: 1 1 auto; justify-content: center; }
+  html .lg-site .sol-tasks li { grid-template-columns: 30px minmax(0, 1fr); }
+  html .lg-site .sol-tasks em { grid-column: 2; justify-self: start; }
+}

@@ -44,7 +44,6 @@ return function (array $data): array {
         'journey' => [],
         'featured' => ['label' => 'All products', 'href' => '/next/product/'],
         'resources' => [
-            ['building', 'Solutions by industry', '/next/solutions/'],
             ['users', 'For agencies', '/next/agencies/'],
             ['search', 'Compare', '/next/compare/'],
             ['message', 'Help centre', '/next/help/'],
