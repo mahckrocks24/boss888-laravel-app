@@ -9,7 +9,7 @@ Priya and the content team write articles from keyword briefs and your brand not
 Links: /product/content/
 
 ## How does social work?
-Marcus plans thirty days at a time; Maya, Zara, Tyler and Zoe write per channel; every post waits in the queue for your approval. Publishing goes through the channel connections you authorise; until a channel is connected, posts are prepared and scheduled but not sent. Included from Starter. Open Social in Advanced.
+Marcus plans thirty days at a time; Maya, Zara, Tyler and Zoe write per channel; every post waits in the queue for your approval. Publishing goes through the channel connections you authorise; until a channel is connected, posts are prepared and scheduled but not sent. Included from AI Lite. Open Social in Advanced.
 Links: /product/social/
 
 ## What is the CRM?
@@ -29,7 +29,7 @@ The Studio makes images, ad creatives and video. Images follow your brand notes 
 Links: /product/creative/, /product/video/
 
 ## What is Automation?
-Deterministic rules that run themselves inside your account: when a lead arrives, when a booking is made, when a form is submitted, do this (notify, tag, change stage, remind). Rules do not use credits and never send bulk marketing email. Included from Starter; rules live in the CRM.
+Deterministic rules that run themselves inside your account: when a lead arrives, when a booking is made, when a form is submitted, do this (notify, tag, change stage, remind). Rules do not use credits and never send bulk marketing email. Included from AI Lite; rules live in the CRM.
 Links: /product/automation/
 
 ## Where are my generated images?

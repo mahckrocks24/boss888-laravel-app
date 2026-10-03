@@ -21,7 +21,7 @@ Links: /legal/terms/, /legal/privacy/
 Write to hello@levelupgrowth.io, or ask Sarah in the app. Aria answers platform questions here at any time.
 
 ## Why can I not generate video or use a feature?
-Most limits are plan limits: SEO, content, images, video, the chatbot and the workforce start on AI Lite; custom domains, social and automations on Starter. Check Billing and upgrade, or ask Aria what your plan includes.
+Most limits are plan limits: SEO, content, images, video, the chatbot, social, automations and the workforce start on AI Lite; your own domain and an ad-free site start on Starter. Check Billing and upgrade, or ask Aria what your plan includes.
 
 ## The app looks different from what I expected. Why?
 You may be in Basic view. Switch to Advanced with the toggle at the top of the sidebar to see every tool. Dark, light and auto appearance are at the bottom of the sidebar.

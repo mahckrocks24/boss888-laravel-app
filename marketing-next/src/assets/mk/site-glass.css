@@ -313,7 +313,24 @@ html .lg-site .pr-wide .pr-price { margin-bottom: 22px; }
 
 /* groups 3 and 4: a full row that sells */
 html .lg-site .pr-feature { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 40px; align-items: center; padding: 40px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); }
-html .lg-site .pr-custom { background: linear-gradient(135deg, var(--tint), transparent 60%), var(--glass); }
+/* Custom (Owner: "super sophisticated and luxury"): a midnight panel in both themes, its own ink, a hairline gradient edge */
+html .lg-site .pr-custom {
+  --ink: #F5F6FC; --ink-2: #C4C8DA; --ink-3: #9CA1BA; --accent-text: #D9C8FF; --tint: rgba(205, 184, 255, .12); --tint-rim: rgba(205, 184, 255, .26);
+  --hairline: rgba(255, 255, 255, .09); --rim: rgba(255, 255, 255, .12); --success: #7EE0C0;
+  position: relative; isolation: isolate; color: var(--ink); border: 0; padding: 52px 48px;
+  background: radial-gradient(70% 90% at 0% 0%, rgba(140, 37, 210, .38), transparent 60%), radial-gradient(60% 80% at 100% 100%, rgba(63, 223, 223, .16), transparent 60%), linear-gradient(160deg, #120E2A 0%, #0A0918 55%, #0B1222 100%);
+  box-shadow: 0 30px 80px -30px rgba(20, 8, 60, .65), 0 0 0 .5px rgba(255, 255, 255, .06); }
+html .lg-site .pr-custom::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(135deg, rgba(205, 184, 255, .55), rgba(255, 255, 255, .06) 40%, rgba(63, 223, 223, .4));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+html .lg-site .pr-custom .eyebrow { color: var(--accent-text); letter-spacing: .14em; }
+html .lg-site .pr-custom h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); letter-spacing: -.025em; color: #FFFFFF; }
+html .lg-site .pr-custom .pr-feature-lede { color: var(--ink-2); }
+html .lg-site .pr-custom .pr-benefits .icon { background: rgba(255, 255, 255, .06); border: 1px solid rgba(205, 184, 255, .22); color: var(--accent-text); }
+html .lg-site .pr-custom .pr-benefits b { color: #FFFFFF; }
+html .lg-site .pr-custom .pr-side { background: rgba(255, 255, 255, .045); border: 1px solid rgba(255, 255, 255, .12); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08); -webkit-backdrop-filter: none; backdrop-filter: none; }
+html .lg-site .pr-custom .pr-name, html .lg-site .pr-custom .pr-price { color: #FFFFFF; }
+html .lg-site .pr-price-word .amount { font-size: 2rem; letter-spacing: -.02em; }
 html .lg-site .pr-feature-copy .eyebrow { margin-bottom: 8px; }
 html .lg-site .pr-feature-lede { margin: 0 0 26px; color: var(--ink-2); font-size: 1.02rem; max-width: 60ch; }
 html .lg-site .pr-benefits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 28px; }

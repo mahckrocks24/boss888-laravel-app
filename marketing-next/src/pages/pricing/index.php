@@ -26,8 +26,8 @@ $companion = fn ($p) => in_array($p['slug'], ['growth', 'pro', 'agency'], true);
 $isAi = fn ($p) => ! empty($p['agents']['includes_dmm']);
 $team = 'Sarah + ' . (int) (($bySlug[$featured]['agents']['count'] ?? 5)) . ' specialists';
 $blurbs = [
-    'free' => 'Build and publish your site on a free address, capture leads and take bookings.',
-    'starter' => 'Your site on your own domain, with social planning and automations.',
+    'free' => 'Build and publish your site on a free address, capture leads and take bookings. Your site carries our ads.',
+    'starter' => 'Everything in Free, on your own domain and with no ads on your site.',
     'ai-lite' => 'Sarah, five specialists and the website chatbot working for one business.',
     'growth' => 'For a business with more than one site: three websites, more credits and a small team.',
     'pro' => 'For a business that runs on its marketing: ten websites, five users and priority processing.',
@@ -46,7 +46,8 @@ $adds = function ($p, $prev) use ($flagLabels, $fmtNum, $companion, $isAi, $team
     if ($multiBiz($p)) $out[] = 'Multi-business profile management';
     if ($isAi($p) && (! $prev || ! $isAi($prev))) { $out[] = $team; $out[] = 'Website chatbot that answers visitors and captures leads'; }
     foreach ($flagLabels as $k => $label) if (! empty($p['features'][$k]) && (! $prev || empty($prev['features'][$k]))) $out[] = $label;
-    if (! $prev) $out[] = 'Publish on a free address';
+    if (! $prev) $out[] = 'Publish on a free address, with LevelUpGrowth ads';
+    if ($prev && $prev['slug'] === 'free') $out[] = 'No ads on your website';   // Owner 2026-10-03: Starter = Free + own domain + no ads
     if ($prev) foreach (['max_tracked_keywords' => '%s tracked keywords', 'chatbot_kb_max_docs' => '%s chatbot knowledge documents'] as $k => $fmt) {
         $a = (int) ($p['features'][$k] ?? 0); $b = (int) ($prev['features'][$k] ?? 0);
         if ($b > 0 && ($a > $b || ($a === -1 && $b !== -1))) $out[] = sprintf($fmt, $a === -1 ? 'Unlimited' : $fmtNum($a));
@@ -134,6 +135,7 @@ $groups = [
         ['Multi-business profile management', fn ($p) => $mark($multiBiz($p))],
         ['Website builder', fn ($p) => $mark(! empty($p['features']['website_builder']))],
         ['Your own domain', fn ($p) => $mark(! empty($p['features']['custom_domain']))],
+        ['No ads on your website', fn ($p) => $mark($p['slug'] !== 'free')],
         ['CRM and lead capture', fn ($p) => $mark(! empty($p['features']['crm']))],
         ['Calendar and booking', fn ($p) => $mark(! empty($p['features']['calendar']))],
     ],
@@ -225,29 +227,29 @@ $groups = [
   <div class="container">
     <div class="pr-feature pr-custom">
       <div class="pr-feature-copy">
-        <p class="eyebrow">Custom, for large organisations</p>
-        <h2>A digital presence built around your company</h2>
-        <p class="pr-feature-lede">For corporations and multi-brand groups we design and build a dedicated setup: a design made for your brand, a corporate website with the depth your buyers expect, and an AI team that writes to your voice and follows your approval rules.</p>
+        <p class="eyebrow">Custom · For enterprises and groups</p>
+        <h2>Bespoke intelligence, engineered around your enterprise</h2>
+        <p class="pr-feature-lede">For corporations and multi-brand groups, we architect the systems your business runs on: AI woven into every process, sales and marketing machinery built to your playbook, and an operational backbone of CRM, ERP and financial intelligence, designed, built and run as one.</p>
         <ul class="pr-benefits">
-          <li><?= icon('pen', 20) ?><span><b>A design made for your brand</b>Your own visual system, colours and type, built for you and not chosen from a gallery.</span></li>
-          <li><?= icon('building', 20) ?><span><b>A corporate website with depth</b>Service lines, industries, case studies, an insights hub, leadership and careers pages.</span></li>
-          <li><?= icon('mail', 20) ?><span><b>RFP and discovery briefs</b>Structured enquiry forms that arrive in your CRM as qualified leads.</span></li>
-          <li><?= icon('message', 20) ?><span><b>A chatbot that knows your company</b>Trained on your services and documents, answering buyers at any hour.</span></li>
-          <li><?= icon('search', 20) ?><span><b>Thought leadership on schedule</b>Sarah's team drafts insights and case studies in your voice for your sign-off.</span></li>
-          <li><?= icon('server', 20) ?><span><b>Your domains, procurement and invoicing</b>Domains connected and secured, volume credits, invoicing and dedicated onboarding.</span></li>
+          <li><?= icon('bot', 20) ?><span><b>AI integration and automation</b>Agents and models connected to your data and tools, automating the work between teams: approvals, follow-ups, reporting and hand-offs.</span></li>
+          <li><?= icon('share', 20) ?><span><b>Custom sales and marketing systems</b>Pipelines, campaigns, lead scoring and attribution engineered to your playbook, with Sarah's team running the day-to-day.</span></li>
+          <li><?= icon('users', 20) ?><span><b>Custom-built CRM</b>Your stages, your fields, your rules. Every customer, conversation, deal and booking in one record your teams trust.</span></li>
+          <li><?= icon('server', 20) ?><span><b>ERP and operations</b>Orders, inventory, procurement and workflows unified in one system shaped around how you operate.</span></li>
+          <li><?= icon('chart', 20) ?><span><b>P&amp;L and financial intelligence</b>Live profit and loss, budgets and forecasts by brand, branch or region, with AI that explains what moved and why.</span></li>
+          <li><?= icon('pen', 20) ?><span><b>A flagship digital presence</b>A corporate website and design language made only for you, with a chatbot that knows your company inside out.</span></li>
         </ul>
       </div>
       <div class="pr-feature-side">
         <div class="plan pr-card pr-side pr-ent">
           <h3 class="pr-name">Custom</h3>
-          <div class="pr-price"><span class="amount">Let's talk</span></div>
-          <p class="pr-desc">A plan and a build shaped around your organisation, with one point of contact from discovery to launch.</p>
+          <div class="pr-price pr-price-word"><span class="amount">By engagement</span></div>
+          <p class="pr-desc">A dedicated engagement team, one point of contact, and systems that belong to you.</p>
           <ol class="pr-steps">
-            <li><b>Discovery</b>We learn your brand, buyers and goals.</li>
-            <li><b>Design and build</b>Your site, chatbot and content plan, for your review.</li>
-            <li><b>Launch and run</b>Sarah's team keeps it current, with your approval.</li>
+            <li><b>Discovery and architecture</b>We map your processes, data and goals, and design the system.</li>
+            <li><b>Build and integrate</b>Delivered in stages, connected to the tools you already use, for your sign-off.</li>
+            <li><b>Run and evolve</b>Automations monitored and refined, with reporting to your leadership.</li>
           </ol>
-          <a class="btn btn-primary pr-cta" href="/next/contact/?topic=enterprise">Talk to us</a>
+          <a class="btn btn-primary pr-cta" href="/next/contact/?topic=enterprise">Request a private consultation</a>
         </div>
       </div>
     </div>
