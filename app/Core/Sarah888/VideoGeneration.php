@@ -54,11 +54,14 @@ final class VideoGeneration
         $aspect = '9:16';
         if (preg_match('/\b(youtube|website|web site|landscape|horizontal|widescreen|16:9|banner|tv)\b/', $t)) $aspect = '16:9';
         elseif (preg_match('/\b(square|1:1)\b/', $t)) $aspect = '1:1';
+        if (preg_match('/\bpinterest\b/', $t)) $aspect = '2:3';   // RFC-0025: Pinterest's own shape
+        $platform = preg_match('/\b(instagram|insta|ig|reels?|stories)\b/', $t) ? 'instagram' : (preg_match('/\btiktok\b/', $t) ? 'tiktok' : (preg_match('/\b(facebook|fb)\b/', $t) ? 'facebook'
+            : (preg_match('/\bpinterest\b/', $t) ? 'pinterest' : (preg_match('/\b(youtube|shorts)\b/', $t) ? 'youtube' : (preg_match('/\b(website|web site)\b/', $t) ? 'website' : null)))));
         $prompt = trim((string) preg_replace('/^\s*(hey sarah[,!]?\s*|sarah[,!]?\s*)?(please\s+)?(can you|could you|would you|i want|i need|i\'d like|give me|let\'s have|make me|make|create|generate|produce|shoot|film|put together|do)\b[^.]*?\b(videos?|clips?|reels?|tiktoks?|shorts|animation)\b\s*(of|showing|about|with|featuring|for)?\s*/iu', '', $text, 1));
-        $prompt = trim((string) preg_replace('/\b(for (our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin))\b[.!?]*\s*$/iu', '', $prompt));
+        $prompt = trim((string) preg_replace('/\b(for (our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin|pinterest))\b[.!?]*\s*$/iu', '', $prompt));
         $prompt = trim((string) preg_replace('/\b\d{1,2}\s*-?\s*(s|sec|secs|second|seconds)\b\s*(long)?/iu', '', $prompt));
         // VIDEO-CERT-2: "for Instagram of the kare-kare ..." - where it will run is not what is filmed
-        $prompt = trim((string) preg_replace('/^\s*(a\s+)?(short\s+|quick\s+)?(vertical\s+|square\s+|landscape\s+|horizontal\s+)?((for\s+)?(our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin)\s+)?(of|showing|about|with|featuring)?\s+/iu', '', ' ' . $prompt));
+        $prompt = trim((string) preg_replace('/^\s*(a\s+)?(short\s+|quick\s+)?(vertical\s+|square\s+|landscape\s+|horizontal\s+)?((for\s+)?(our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin|pinterest)\s+)?(of|showing|about|with|featuring)?\s+/iu', '', ' ' . $prompt));
         if ($photo) {
             $prompt = trim((string) preg_replace('/^\s*(please\s+)?(can you\s+|could you\s+|would you\s+)?(animate|bring\b.*?\bto life|make\b.*?\bmove)\s*(this|the|my|it|them)?\s*(photo|picture|image|pic|shot)?\s*(into a (short )?(video|clip|reel))?\s*[-,:;.]?\s*(with\s+)?/iu', '', $text));
             $prompt = trim((string) preg_replace('/\b(for (our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin|pinterest))\b[.!?]*/iu', '', $prompt), " ,.;:-");
@@ -80,7 +83,11 @@ final class VideoGeneration
             } catch (\Throwable) {}
         }
         if (count($photos) > 1) $duration = 10;   // several photos make one 10-second video, priced as one
-        $spec = ['prompt' => mb_substr($prompt, 0, 600), 'duration' => $duration, 'aspect_ratio' => $aspect, 'business_id' => $biz, 'cost' => self::costFor($duration)];
+        if ($biz) {   // "for Smile Studio Dental" names whose video it is, not what is in it
+            $bn = (string) DB::table('businesses')->where('id', $biz)->value('name');
+            if ($bn !== '') $prompt = trim((string) preg_replace('/\s*\b(for|at|of)\s+' . preg_quote($bn, '/') . '\b/iu', '', $prompt), " ,.;:-");
+        }
+        $spec = ['prompt' => mb_substr($prompt, 0, 600), 'duration' => $duration, 'aspect_ratio' => $aspect, 'business_id' => $biz, 'cost' => self::costFor($duration), 'platform' => $platform];
         if (count($photos) > 1) {
             $spec['source_images'] = array_map(fn ($i) => (string) $i['url'], $photos);
             $checks = array_map(fn ($i) => self::photoChecks((string) $i['url']), $photos);
@@ -136,7 +143,7 @@ final class VideoGeneration
 
     public static function shapeWords(string $aspect): string
     {
-        return ['9:16' => 'vertical (for Reels, Stories and TikTok)', '16:9' => 'landscape (for YouTube and your website)', '1:1' => 'square (for the feed)'][$aspect] ?? 'vertical';
+        return ['9:16' => 'vertical (for Reels, Stories and TikTok)', '16:9' => 'landscape (for YouTube and your website)', '1:1' => 'square (for the feed)', '2:3' => 'tall (for Pinterest)'][$aspect] ?? 'vertical';
     }
 
     /** Turn 1 — exactly what will be made, the cost and the wait; nothing runs yet. */
@@ -181,6 +188,7 @@ final class VideoGeneration
                 'auto_approve' => true, 'requires_approval' => false, 'user_confirmed' => true, 'priority' => 'normal',
                 'payload' => array_filter([
                     'prompt' => $spec['prompt'], 'duration' => (int) $spec['duration'], 'aspect_ratio' => (string) $spec['aspect_ratio'], 'business_id' => $spec['business_id'] ?? null,
+                    'platform' => $spec['platform'] ?? null,   // RFC-0025: the safe-zone profile
                     'title' => 'Video: ' . mb_substr((string) $spec['prompt'], 0, 80), 'created_via' => 'sarah_video_request', 'user_request' => (string) ($spec['owner_text'] ?? ''),
                     'image_url' => $spec['source_image'] ?? null, 'source_media_id' => ! empty($spec['source_media_id']) ? (int) $spec['source_media_id'] : null,   // RFC-0025 P2
                     'source_images' => ! empty($spec['source_images']) ? array_values($spec['source_images']) : null,   // RFC-0025 P3
