@@ -713,7 +713,7 @@ GET,HEAD|api/workspace/trial-status||Closure||api,auth.jwt,connector.brand,traff
 POST|api/workspace/trial/activate||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/team/members||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/team/seats||Closure||api,auth.jwt,connector.brand,traffic.defense
-POST|api/team/invite||Closure||api,auth.jwt,connector.brand,plan:agent,team.role:admin,traffic.defense
+POST|api/team/invite||Closure||api,auth.jwt,connector.brand,team.role:admin,traffic.defense
 GET,HEAD|api/team/invites||Closure||api,auth.jwt,connector.brand,team.role:admin,traffic.defense
 DELETE|api/team/invites/{id}||Closure||api,auth.jwt,connector.brand,team.role:admin,traffic.defense
 PUT|api/team/members/{userId}/role||Closure||api,auth.jwt,connector.brand,team.role:admin,traffic.defense

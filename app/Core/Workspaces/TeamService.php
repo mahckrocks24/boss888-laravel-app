@@ -378,7 +378,10 @@ class TeamService
         if ($total >= $max) {
             return [
                 'allowed' => false,
-                'reason'  => "Team seat limit reached ({$current} members + {$pending} pending invites / {$max} max on your plan)",
+                // SEATS-1: say what the plan allows and where more users start
+                'reason'  => $max <= 1
+                    ? 'Your plan is for one user. Inviting team members starts on Growth ($99) with 3 users; Pro has 5 and Agency is unlimited.'
+                    : "Your plan has {$max} users and all of them are taken ({$current} members" . ($pending ? " and {$pending} pending invite" . ($pending === 1 ? '' : 's') : '') . "). Pro has 5 users and Agency is unlimited.",
                 'current' => $current,
                 'pending' => $pending,
                 'max'     => $max,

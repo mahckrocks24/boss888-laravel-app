@@ -2357,7 +2357,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
                 $r->input('role', 'member')
             );
             return response()->json($result, $result['success'] ? 201 : 422);
-        })->middleware(['team.role:admin', 'plan:agent']);
+        })->middleware('team.role:admin');   // SEATS-1: the seat limit (TeamService::checkSeatQuota) decides invites
 
         // List pending invites
         Route::get('/invites', function (\Illuminate\Http\Request $r) use ($t) {
