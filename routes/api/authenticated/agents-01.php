@@ -4322,12 +4322,21 @@ $withCorr = function (array $meta) use ($corr) {
                             // MONEY-1: nothing was queued — the reply must not read as "On it!"
                             // REPORT-0072 certification: the model's own "queued to Marcus" stayed above this note and contradicted it. Claims that work was queued, started or handed over are removed when nothing was created.
 $__parts = preg_split('/(?<=[.!?])\s+/u', (string) $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-$__kept = array_values(array_filter($__parts, fn ($p) => ! preg_match("/\\b(queued|queueing|i'?ve asked|asked \\w+ to|handed (it|this) to|on it\\b|started on|i'?ve started|i started|lands in your review queue)\\b/iu", $p)));
+$__kept = array_values(array_filter($__parts, fn ($p) => ! preg_match("/\\b(queued|queueing|i'?ve asked|asked \\w+ to|handed (it|this) to|on it\\b|started on|i'?ve started|i started|lands in your review queue|i'?ve (pinned|drafted|prepared|lined up|set (it|this) up|put together|made)|i'?m (working on|drafting|preparing))\\b/iu", $p)));   // CERT-13: wider
 if ($__kept && count($__kept) < count($__parts)) $reply = implode(' ', $__kept);
+// CERT-13: when the only reason is that Sarah could not tell which piece was meant, the model's text was written for work that
+// never started - the reply is the clarifying question alone.
+$__onlyAmbiguous = $taskSummaryFailReasons && ! array_filter(array_keys($taskSummaryFailReasons), fn ($r) => ! preg_match("/wasn'?t sure which|which (piece|one) you meant/i", (string) $r));
+if ($__onlyAmbiguous) {
+    $__r = (string) array_key_first($taskSummaryFailReasons);
+    $__r = preg_replace('/\s+-\s+(tell me)/u', ' — $1', $__r);
+    $reply = rtrim(ucfirst(trim($__r)), '.') . '.';
+} else {
 $reply .= "\n\nI couldn't start this:";
                             foreach ($taskSummaryFailReasons as $reason => $count) {
                                 $reply .= "\n  • " . ($count > 1 ? "({$count}x) " : '') . $reason;
                             }
+}
                         } elseif ($taskSummaryCreated > 0 && $taskSummaryFailed === 0) {
                             $reply .= "\n\n" . ($byAgentStr !== '' ? "I've asked {$byAgentStr} to get started" : "I've got the team started") . ($taskSummaryCreated > 1 ? " on {$taskSummaryCreated} things" : '') . '.' . $__costLine;
                         } elseif ($taskSummaryCreated > 0) {

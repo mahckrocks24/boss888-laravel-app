@@ -103,6 +103,9 @@ final class DenialGuard
         // leaves mid-sentence debris.
         $sentences = preg_split('/(?<=[.!?])\s+|\n+/', $reply, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $out = [];
+        // CERT-13: a reply about what the platform did (posted, published, sent, charged ...) answers from records Sarah reads,
+        // not from memory. There an "it didn't happen" sentence is dropped, never turned into the partial-memory caveat.
+        $aboutPlatformState = (bool) preg_match('/\b(post(?:ed|s)?|publish(?:ed)?|went\s+out|gone\s+out|sent|launch(?:ed)?|charged|scheduled|queued|live\s+on)\b/i', $reply);
 
         foreach ($sentences as $sentence) {
             $s = $sentence;
@@ -113,7 +116,7 @@ final class DenialGuard
             }
             if (!$completeSearchPerformed && $this->isAbsoluteDenial($s)) {
                 $rewritten[] = ['type' => 'denial', 'was' => mb_substr(trim($s), 0, 160)];
-                $s = $this->rewriteDenial($s);
+                $s = ($aboutPlatformState && self::isEventDenial($s)) ? '' : $this->rewriteDenial($s);   // CERT-13
             }
 
             if (trim($s) !== '') $out[] = trim($s);
@@ -130,6 +133,12 @@ final class DenialGuard
             ]);
         }
         return ['reply' => $final, 'rewritten' => $rewritten];
+    }
+
+    /** CERT-13: "it never happened" / "that didn't happen" - a claim about an event, not about what was said. */
+    public static function isEventDenial(string $s): bool
+    {
+        return (bool) preg_match('/\b(?:that|it|this)\s+(?:never\s+happened|(?:did\s+not|didn\'t)\s+happen)\b/i', $s);
     }
 
     private function isAbsoluteDenial(string $s): bool

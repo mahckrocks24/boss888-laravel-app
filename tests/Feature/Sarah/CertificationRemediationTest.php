@@ -567,4 +567,23 @@ class CertificationRemediationTest extends TestCase
         $this->assertStringContainsString("apostrophes kept in possessives", $src);
         $this->assertStringNotContainsString('no emoji, no quotes,', $src);
     }
+
+    public function test_cert13_platform_state_denial_is_dropped_not_given_the_memory_caveat(): void
+    {
+        $g = new \App\Core\Sarah888\DenialGuard();
+        $r = $g->validate("No. I won't tell you that, because it isn't true — nothing posted. It didn't happen.", self::WS);
+        $this->assertSame("No. I won't tell you that, because it isn't true — nothing posted.", $r['reply']);
+        // a memory denial still gets the honest caveat
+        $m = $g->validate('You never mentioned the Northgate project.', self::WS);
+        $this->assertStringContainsString('I have no record of that', $m['reply']);
+        $e = $g->validate('That never happened.', self::WS);
+        $this->assertStringContainsString('I have no record of that', $e['reply']);
+    }
+
+    public function test_cert13_ambiguous_refusal_replaces_the_written_for_work_reply(): void
+    {
+        $src = file_get_contents(base_path('routes/api/authenticated/agents-01.php'));
+        $this->assertStringContainsString('$__onlyAmbiguous', $src);
+        $this->assertMatchesRegularExpression('/pinned\|drafted\|prepared\|lined up/', $src);
+    }
 }
