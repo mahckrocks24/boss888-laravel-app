@@ -586,4 +586,32 @@ class CertificationRemediationTest extends TestCase
         $this->assertStringContainsString('$__onlyAmbiguous', $src);
         $this->assertMatchesRegularExpression('/pinned\|drafted\|prepared\|lined up/', $src);
     }
+
+    // ── VIDEO-CERT-1 (2026-10-03): rendered video probes ──
+
+    public function test_videocert1_scene_prompt_is_text_free_and_names_no_face(): void
+    {
+        $p = "Warm close-up: a chef's hands plate a fall dish; in the lower-left corner, a small lower-third label fades in reading 'Fall Menu Now Served' with a second line '10% off private dinners booked in October'; Chef Red smiles at the pass inside Chef Red Private Dining.";
+        $c = \App\Engines\Creative\Services\ScenePlannerService::cleanScenePrompt($p, 'Chef Red Private Dining');
+        foreach (['Fall Menu', '10%', 'lower-third', 'Chef Red'] as $leak) $this->assertStringNotContainsString($leak, $c);
+        $this->assertStringContainsString("a chef's hands plate a fall dish", $c);
+        $this->assertStringEndsWith('No on-screen text, captions, letters, numbers, logos or watermarks anywhere in the frame.', $c);
+    }
+
+    public function test_videocert1_campaign_media_steps_carry_no_campaign_note(): void
+    {
+        $c = (object) ['id' => 0, 'workspace_id' => self::WS, 'business_id' => null, 'title' => 'Fall Culinary Delights', 'offer' => '10% off'];
+        $svc = app(\App\Core\Campaigns\CampaignService::class);
+        foreach (['video', 'image'] as $kind) {
+            $t = $svc->planTask($c, (object) ['id' => 0, 'kind' => $kind, 'channel' => 'instagram', 'title' => 'Fall Menu', 'brief' => 'The new menu.', 'scheduled_at' => now()]);
+            $this->assertStringNotContainsString('Part of the campaign', $t['params']['prompt']);
+            $this->assertStringNotContainsString('Offer', $t['params']['prompt']);
+        }
+    }
+
+    public function test_videocert1_titles_wrap_into_balanced_lines(): void
+    {
+        $this->assertSame(['Behind the', 'Scenes of Chef', "Red's Dinners"], \App\Engines\Creative\Services\VideoTitler::wrap("Behind the Scenes of Chef Red's Dinners", 16));
+        $this->assertSame(['Fall Menu Now Served'], \App\Engines\Creative\Services\VideoTitler::wrap('Fall Menu Now Served', 30));
+    }
 }

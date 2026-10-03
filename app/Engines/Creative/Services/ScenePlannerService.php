@@ -113,7 +113,8 @@ class ScenePlannerService
             . "GROUNDING RULES: use only the facts in the concept and the brand context; never invent metrics, revenue figures, awards, testimonials, product claims or people's appearance. "
             . ($hasLogo ? "A brand logo asset exists and may be shown. " : "There is NO logo asset — never depict, mention or place a logo or watermark. ")
             . $subjectRule
-            . "Keep any quoted customer text verbatim. Do not add on-screen text, captions or titles unless the concept asks for them. "
+            . "Never put words on screen - no captions, titles, labels, signs or lower thirds, even when the concept quotes a headline: words are added afterwards by a separate titling step. "   // VIDEO-CERT-1
+            . "Refer to people only by role (the chef, a guest); never give a named real person a face - show hands, plates, the table and the room. "
             . "These rules are for you: never restate them inside a scene prompt — scene prompts describe only what the camera sees.";
 
         $userPrompt = <<<EOT
@@ -151,7 +152,7 @@ EOT;
                 // RFC-0009 P6: the model may return more or fewer scenes than asked; keep its content,
                 // make the durations add up to the request, and let the caller record count(scenes).
                 $norm = self::normaliseScenes((array) $result['parsed']['scenes'], $duration);
-                if ($norm) return $norm;
+                if ($norm) return array_map(fn ($sc) => ['prompt' => self::cleanScenePrompt((string) ($sc['prompt'] ?? ''), (string) ($options['business_name'] ?? ''))] + $sc, $norm);   // VIDEO-CERT-1
             }
         } catch (\Throwable $e) {
             Log::warning('ScenePlannerService::planScenes runtime call failed', ['error' => $e->getMessage()]);
@@ -161,7 +162,7 @@ EOT;
         return [[
             'index'       => 1,
             'duration'    => $duration,
-            'prompt'      => $prompt . ($style ? ". Style: {$style}" : ''),
+            'prompt'      => self::cleanScenePrompt($prompt . ($style ? ". Style: {$style}" : ''), (string) ($options['business_name'] ?? '')),   // VIDEO-CERT-1
             'camera'      => 'static',
             'description' => 'Main video content',
         ]];
@@ -239,6 +240,26 @@ EOT;
         }
 
         return DB::table('creative_video_jobs')->where('id', $jobId)->first() ? (array) DB::table('creative_video_jobs')->where('id', $jobId)->first() : ['id' => $jobId, 'status' => 'failed'];
+    }
+
+    /**
+     * VIDEO-CERT-1: what reaches the video model. Quoted words and every clause asking for on-screen words are removed (the
+     * model painted "10% of private dinnœs s boukd in October"); the business name and "Chef <Name>" become roles (the model
+     * gave Chef Red an invented face); the no-text rule always closes the prompt.
+     */
+    public static function cleanScenePrompt(string $p, string $business = ''): string
+    {
+        $p = (string) preg_replace('/["\x{201C}\x{201D}][^"\x{201C}\x{201D}]{1,160}["\x{201C}\x{201D}]/u', '', $p);
+        $p = (string) preg_replace("/(?<![\\p{L}\\p{N}])['\x{2018}][^'\x{2018}\x{2019}]{1,160}['\x{2019}](?![\\p{L}\\p{N}])/u", '', $p);
+        $parts = preg_split('/(?<=[.;!?])\s+/u', trim($p)) ?: [];
+        $parts = array_filter($parts, fn ($c) => ! preg_match('/\b(on-?screen|captions?|subtitles?|titles?|headlines?|labels?|lower[- ]thirds?|overlays?|lettering|text|words?|typography|signs?|signage|banners?|logos?|watermarks?|reading|reads|says|written)\b/iu', $c));
+        $p = trim(implode(' ', $parts));
+        if ($business !== '') $p = (string) preg_replace('/\b' . preg_quote($business, '/') . '\b/iu', 'the venue', $p);
+        $p = (string) preg_replace('/\bChef\s+\p{Lu}[\p{L}-]*(?:\s+\p{Lu}[\p{L}-]*)?/u', 'the chef', $p);
+        $p = trim((string) preg_replace('/\s{2,}/u', ' ', $p), " ;,");
+        if ($p === '') $p = 'A warm, natural, well-lit scene that matches the brief.';
+        if (! preg_match('/[.!?]$/u', $p)) $p .= '.';
+        return $p . ' No on-screen text, captions, letters, numbers, logos or watermarks anywhere in the frame.';
     }
 
     public static function needsFrame(string $aspect): bool

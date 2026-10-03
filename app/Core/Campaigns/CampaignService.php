@@ -75,9 +75,9 @@ final class CampaignService
 ]+)/i', (string) $it->brief, $__tk) ? strtolower(trim($__tk[1])) : null])],
             'email' => null,   // email marketing is out of launch scope: the owner sends it personally (a "You" step)
             'image' => ['engine' => 'creative', 'action' => 'generate_image', 'agent' => 'studio', 'description' => 'Design: ' . $it->title,
-                'params' => $common + ['prompt' => $brief . ' ' . $ctx, 'platform' => in_array($it->channel, ['facebook', 'instagram', 'linkedin'], true) ? $it->channel : 'instagram', 'asset_type' => 'social_post', 'source' => 'campaign']],
+                'params' => $common + ['prompt' => $brief, 'platform' => in_array($it->channel, ['facebook', 'instagram', 'linkedin'], true) ? $it->channel : 'instagram', 'asset_type' => 'social_post', 'source' => 'campaign']],
             'video' => ['engine' => 'creative', 'action' => 'generate_video', 'agent' => 'studio', 'description' => 'Make the video: ' . $it->title,   // VIDEO-2
-                'params' => $common + ['prompt' => $brief . ' ' . $ctx, 'duration' => 6, 'aspect_ratio' => $it->channel === 'website' ? '16:9' : '9:16', 'title' => 'Video: ' . $it->title, 'created_via' => 'campaign']],
+                'params' => $common + ['prompt' => $brief, 'duration' => 6, 'aspect_ratio' => $it->channel === 'website' ? '16:9' : '9:16', 'title' => 'Video: ' . $it->title, 'created_via' => 'campaign']],
             'event' => ['engine' => 'calendar', 'action' => 'create_event', 'agent' => 'sarah', 'description' => 'Put on the calendar: ' . $it->title,
                 'params' => $common + ['title' => $it->title, 'description' => $brief, 'starts_at' => Carbon::parse($it->scheduled_at)->toIso8601String()]],
             default => null,

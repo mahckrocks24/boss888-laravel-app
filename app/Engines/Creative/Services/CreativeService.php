@@ -516,6 +516,7 @@ class CreativeService
             'aspect_ratio'=> $params['aspect_ratio'] ?? '16:9',
             'brand_context' => $videoBp['brand_context'] ?? '',
             'has_logo'    => (bool) ($videoBp['has_logo'] ?? false),
+            'business_name' => ! empty($params['business_id']) ? (string) DB::table('businesses')->where('id', (int) $params['business_id'])->where('workspace_id', $wsId)->value('name') : '',   // VIDEO-CERT-1
         ]);
         // RFC-0009 P6: the planner's output is the single truth for the scene count; the blueprint
         // predicted with the same rule, and the asset records what was actually planned.
@@ -594,10 +595,12 @@ class CreativeService
             $task = DB::table('tasks')->where('id', $a->task_id)->first(['payload_json']);
             $p = json_decode((string) ($task->payload_json ?? ''), true) ?: [];
             $what = trim((string) ($p['title'] ?? $p['description'] ?? 'your video'));
+            $what = (string) preg_replace('/^Video:\s*/i', '', $what);   // VIDEO-CERT-1
+            $__fromCampaign = ($p['created_via'] ?? '') === 'campaign';
             if ($url !== '' && ! preg_match('#^https?://#', $url)) $url = rtrim((string) config('app.url'), '/') . '/' . ltrim($url, '/');
             $bi = app(\App\Core\Brand\BrandIntakeService::class);
             if ($ok) {
-                $words = $bi->sarahWords((int) $a->workspace_id, 'video_ready', "Write Sarah's short chat message (1-2 sentences): the video the owner asked for is ready and it is right below this message. Offer one natural next step (use it in a post, or make another version). No emojis, never mention how it was made.",
+                $words = $bi->sarahWords((int) $a->workspace_id, 'video_ready', "Write Sarah's short chat message (1-2 sentences): " . ($__fromCampaign ? "the video for the campaign step FACTS.what is ready (the campaign made it on its date; the owner did not ask for it in chat) and it is right below this message." : "the video the owner asked for is ready and it is right below this message.") . " Offer one natural next step (use it in a post, or make another version). No emojis, never mention how it was made.",
                     ['what' => $what, 'seconds' => $meta['duration'] ?? null], 'Your video is ready: ' . $what . '.');
                 $words .= "\n\n[▶ Watch the video](" . $url . ')';
                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent((int) $a->workspace_id, 'sarah', $words, ['notification_type' => 'video_ready', 'asset_id' => $assetId,
@@ -652,6 +655,14 @@ class CreativeService
                     ]);
                 }
 
+                // VIDEO-CERT-1: the customer's quoted headline is burned on by us - the scene itself is always text-free
+                try {
+                    $__q = \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText((string) ($asset->prompt ?? ''));
+                    if ($__q && ! empty($durable['storage_path'])) {
+                        $__abs = \Illuminate\Support\Facades\Storage::disk('public')->path($durable['storage_path']);
+                        if (\App\Engines\Creative\Services\VideoTitler::apply($__abs, $__q[0])) { clearstatcache(true, $__abs); $durable['file_size'] = filesize($__abs) ?: ($durable['file_size'] ?? null); }
+                    }
+                } catch (\Throwable $__te) { \Illuminate\Support\Facades\Log::warning('[VIDEO-CERT-1] titling skipped', ['asset' => $assetId, 'e' => $__te->getMessage()]); }
                 $this->completeAsset($assetId, [
                     'url'          => $durable['url'],
                     'storage_path' => $durable['storage_path'],
