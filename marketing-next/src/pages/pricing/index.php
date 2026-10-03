@@ -39,8 +39,11 @@ $flagLabels = [
     'seo_suite' => 'SEO suite with keyword tracking', 'content_writing' => 'Content writing', 'image_generation' => 'AI images and ad creatives',
     'video_generation' => 'AI video', 'meeting_room' => 'Strategy Room with Sarah',
 ];
-$adds = function ($p, $prev) use ($flagLabels, $fmtNum, $companion, $isAi, $team) {
+// Owner 2026-10-03: "on growth, pro and agency, add Multi-business Profile Management" - every plan with more than one business
+$multiBiz = fn ($p) => (int) (($p['features']['max_businesses'] ?? null) ?: $p['max_websites']) > 1;
+$adds = function ($p, $prev) use ($flagLabels, $fmtNum, $companion, $isAi, $team, $multiBiz) {
     $out = [];
+    if ($multiBiz($p)) $out[] = 'Multi-business profile management';
     if ($isAi($p) && (! $prev || ! $isAi($prev))) { $out[] = $team; $out[] = 'Website chatbot that answers visitors and captures leads'; }
     foreach ($flagLabels as $k => $label) if (! empty($p['features'][$k]) && (! $prev || empty($prev['features'][$k]))) $out[] = $label;
     if (! $prev) $out[] = 'Publish on a free address';
@@ -128,6 +131,7 @@ $groups = [
         ['Automations', fn ($p) => $mark(! empty($p['features']['automation']))],
     ],
     'Website and customers' => [
+        ['Multi-business profile management', fn ($p) => $mark($multiBiz($p))],
         ['Website builder', fn ($p) => $mark(! empty($p['features']['website_builder']))],
         ['Your own domain', fn ($p) => $mark(! empty($p['features']['custom_domain']))],
         ['CRM and lead capture', fn ($p) => $mark(! empty($p['features']['crm']))],
@@ -189,7 +193,7 @@ $groups = [
         <h2>Run fifty client businesses from one account</h2>
         <p class="pr-feature-lede">Give every client a website, a chatbot and a marketing team, without hiring one. Sarah and her specialists work on each client business in its own brand, and you approve the work before the client sees it.</p>
         <ul class="pr-benefits">
-          <li><?= icon('layers', 20) ?><span><b><?= e($sites($ag)) ?> websites and businesses</b>Each client keeps its own brand, website, contacts and calendar.</span></li>
+          <li><?= icon('layers', 20) ?><span><b>Multi-business profile management</b><?= e($sites($ag)) ?> websites and businesses; each client keeps its own brand profile, website, contacts and calendar.</span></li>
           <li><?= icon('shield', 20) ?><span><b>One login, every client</b>Switch between client businesses in one account; nothing reaches a client without your approval.</span></li>
           <li><?= icon('users', 20) ?><span><b><?= e($users($ag)) ?> users</b>Bring in your team and your clients, each with their own login and role.</span></li>
           <li><?= icon('message', 20) ?><span><b>A chatbot for every client</b><?= $chat($ag) === 'Unlimited' ? 'Unlimited messages' : e($chat($ag)) ?> across your client websites.</span></li>
