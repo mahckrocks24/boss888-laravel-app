@@ -627,4 +627,24 @@ class CertificationRemediationTest extends TestCase
         $this->assertStringContainsString('The words "Kare-kare, our way" go on as a clean title.', $d);
         $this->assertStringNotContainsString('On it', app(\App\Core\Sarah888\VideoGeneration::class)->report(['success' => true], $s));
     }
+
+    public function test_govdedupe1_repeat_of_an_approved_request_never_runs_unapproved(): void
+    {
+        app(\App\Core\Billing\CreditService::class)->credit(self::WS, 500, 'test_topup');
+        $this->mock(\App\Core\PlanGating\PlanGatingService::class, fn ($m) => $m->shouldReceive('canExecute')->andReturn(['allowed' => true]));
+        $p = ['prompt' => 'govdedupe probe ' . uniqid(), 'duration' => 6, 'aspect_ratio' => '9:16'];
+        $ees = app(\App\Core\EngineKernel\EngineExecutionService::class);
+        $r1 = $ees->execute(self::WS, 'creative', 'generate_video', $p, ['source' => 'agent', 'agent_id' => 'sarah']);
+        $this->assertSame('AWAITING_APPROVAL', $r1['code'] ?? null, json_encode($r1));
+        // the owner approved it and it ran
+        $tid = DB::table('approvals')->where('id', $r1['approval_id'])->value('task_id');
+        DB::table('approvals')->where('id', $r1['approval_id'])->update(['status' => 'approved']);
+        DB::table('tasks')->where('id', $tid)->update(['status' => 'completed', 'approval_status' => 'approved']);
+        $bal = (float) DB::table('credits')->where('workspace_id', self::WS)->value('balance');
+        $r2 = $ees->execute(self::WS, 'creative', 'generate_video', $p, ['source' => 'agent', 'agent_id' => 'sarah']);
+        $this->assertSame('DUPLICATE_REQUEST', $r2['code'] ?? null, json_encode($r2));
+        $this->assertSame((int) $tid, (int) $r2['task_id']);
+        $this->assertSame($bal, (float) DB::table('credits')->where('workspace_id', self::WS)->value('balance'));
+        $this->assertSame(0, DB::table('assets')->where('workspace_id', self::WS)->where('prompt', $p['prompt'])->count());
+    }
 }

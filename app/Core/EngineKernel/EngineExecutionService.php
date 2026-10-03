@@ -367,6 +367,20 @@ class EngineExecutionService
                 return ['success' => true, 'pending_approval' => true, 'approval_id' => $approval['id'],
                         'message' => 'Action requires approval', 'code' => 'AWAITING_APPROVAL'];
             }
+            // GOV-DEDUPE-1: fail closed. No task was created for this request and there is no pending approval to wait on
+            // (the same request already exists and was approved or ran, or the fallback produced nothing): it must not run.
+            if (! $createdTask || $createdTask->requires_approval) {
+                if (isset($reservationId)) $this->creditService->release($wsId, $reservationId);
+                $__dupId = isset($existingTask) && $existingTask ? (int) $existingTask->id : null;
+                if (! $__dupId && $approval) { $__at = is_object($approval) ? ($approval->task_id ?? null) : ($approval['task_id'] ?? null); $__dupId = $__at ? (int) $__at : null; }   // the same request's earlier, already-decided approval
+                if (! $__dupId) { $__pl = $params; if (is_array($__pl)) ksort($__pl); $__dupId = (int) (\App\Models\Task::where('workspace_id', $wsId)->where('idempotency_key', hash('sha256', "{$wsId}:{$action}:" . json_encode($__pl)))->orderByDesc('id')->value('id') ?: 0) ?: null; }   // TaskService returns null (no throw) for a duplicate
+                Log::warning('[EES] GOV-DEDUPE-1 refused to run without an approval', ['ws' => $wsId, 'engine' => $engine, 'action' => $action, 'existing_task' => $__dupId, 'agent' => $agentId]);
+                return $__dupId
+                    ? ['success' => false, 'code' => 'DUPLICATE_REQUEST', 'task_id' => $__dupId, 'no_charge' => true,
+                       'error' => "This exact request already exists (task #{$__dupId}), so nothing new was started or charged. Change the request to make another version."]
+                    : ['success' => false, 'code' => 'APPROVAL_UNAVAILABLE', 'no_charge' => true,
+                       'error' => 'This needs your go-ahead first, so nothing was started or charged.'];
+            }
         }
 
         // ─── Step 5: Execute the actual engine action ────────
