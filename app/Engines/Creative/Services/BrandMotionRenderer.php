@@ -137,8 +137,16 @@ final class BrandMotionRenderer
         if ($logoOn && $layout !== 'A1') {
             $lh = $vertical ? $px(0.10, $w) : $px(0.11, $h);
             $side = $col === 2 ? 'left:' . $px(max($sL, 0.06), $w) . 'px' : 'right:' . $px($sR + 0.02, $w) . 'px';
-            $vpos = $row === 0 && $col === 1 ? 'bottom:' . $px($sB + 0.02, $h) . 'px' : 'top:' . $px($sT + 0.02, $h) . 'px';
-            $logoHtml = '<img class="blogo" src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="" style="position:absolute;' . $side . ';' . $vpos . ';height:' . $lh . 'px;width:auto;filter:drop-shadow(0 2px 8px rgba(0,0,0,.35))">';
+            // certification round A: on a tall frame a top logo shared the row with the headline - there the logo goes to the
+            // bottom corner, just above the platform's own bar; wide frames keep the top corner opposite the text
+            $tall = $h > $w;
+            $vpos = ($row === 0 && ($tall || $col === 1)) ? 'bottom:' . $px($sB + 0.02, $h) . 'px' : 'top:' . $px($sT + 0.02, $h) . 'px';
+            if ($tall && $row === 0) $side = 'right:' . $px($sR + 0.02, $w) . 'px';
+            // a backing plate the logo can always be read on: dark behind a light logo, light behind a dark one
+            $plate = self::logoIsLight($logoUrl) ? 'rgba(10,10,12,.42)' : 'rgba(250,248,244,.80)';
+            $padY = (int) round($lh * 0.16); $padX = (int) round($lh * 0.26);
+            $logoHtml = '<div class="blogo" style="position:absolute;' . $side . ';' . $vpos . ';padding:' . $padY . 'px ' . $padX . 'px;border-radius:' . (int) round($lh * 0.3) . 'px;background:' . $plate . '">'
+                . '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="" style="display:block;height:' . (int) round($lh * 0.78) . 'px;width:auto"></div>';
         }
 
         // end card: only facts in the business record
@@ -245,6 +253,27 @@ final class BrandMotionRenderer
             'logo_expected' => $logoUrl !== '' && $bizKnown && ($ctx['logo'] ?? true), 'head_font' => $useHead];
         Log::info('[RFC-0025] brand motion layer composited', ['file' => basename($file)] + $res);
         return $res;
+    }
+
+    /** Is the logo mostly light (a white wordmark) - measured on its opaque pixels. */
+    public static function logoIsLight(string $url): bool
+    {
+        try {
+            $own = rtrim((string) config('app.url'), '/') . '/storage/';
+            $bytes = str_starts_with($url, $own) && \Illuminate\Support\Facades\Storage::disk('public')->exists(substr($url, strlen($own)))
+                ? (string) \Illuminate\Support\Facades\Storage::disk('public')->get(substr($url, strlen($own)))
+                : (string) \Illuminate\Support\Facades\Http::timeout(10)->get($url)->body();
+            $im = @imagecreatefromstring($bytes);
+            if (! $im) return true;
+            $w = imagesx($im); $h = imagesy($im); $sum = 0.0; $n = 0;
+            $step = max(1, (int) floor(min($w, $h) / 60));
+            for ($y = 0; $y < $h; $y += $step) for ($x = 0; $x < $w; $x += $step) {
+                $c = imagecolorat($im, $x, $y); $a = ($c >> 24) & 0x7F;
+                if ($a > 40) continue;   // mostly transparent
+                $sum += (0.2126 * (($c >> 16) & 255) + 0.7152 * (($c >> 8) & 255) + 0.0722 * ($c & 255)) / 255; $n++;
+            }
+            return $n === 0 ? true : ($sum / $n) > 0.55;
+        } catch (\Throwable) { return true; }
     }
 
     private static function rmdir(string $d): void
