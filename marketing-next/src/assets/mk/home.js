@@ -27,6 +27,20 @@
 
   if (!M || reduce) return;   // the markup already shows every panel at rest
 
+  // STABLE-1 (Owner 10-03: "involuntary movement of the visible frame when animations are looping"): every looping demo keeps the
+  // size of its finished state (the markup at rest, measured before any loop resets it), so showing and hiding its messages, cards
+  // and steps never pushes the page around it. A box may grow once if a state is taller, never shrink; a width change re-measures.
+  (function () {
+    var boxes = ['#hx', '#lp', '#cc .mk-app', '#bt', '#rq', '#tm'].reduce(function (all, q) { var e = $(q); if (e) { all.push(e); var sec = e.closest('section'); if (sec && all.indexOf(sec) < 0) all.push(sec); } return all; }, []), w = window.innerWidth;   // the demo's own frame (an empty chat stays a full-size chat) and its whole section (the hero's chat and agents sit outside the frame)
+    function lock() { boxes.forEach(function (b) { b.style.minHeight = ''; b.style.minHeight = b.offsetHeight + 'px'; }); }
+    lock();
+    if (window.ResizeObserver) {
+      var ro = new ResizeObserver(function (es) { es.forEach(function (e) { var b = e.target, h = b.offsetHeight; if (h > (parseFloat(b.style.minHeight) || 0)) b.style.minHeight = h + 'px'; }); });
+      boxes.forEach(function (b) { ro.observe(b); });
+    }
+    window.addEventListener('resize', function () { if (window.innerWidth !== w) { w = window.innerWidth; lock(); } });   // the phone's address bar changes the height only
+  })();
+
   // the CSS spring: one easing string from spring(), used by the loop steps and every transition below
   try { var s = String(M.spring(0.4, 0.3)); if (/linear\(/.test(s)) document.documentElement.style.setProperty('--spring-t', s); } catch (e) {}
 
@@ -197,7 +211,11 @@
     async function leave(c) {
       await M.animate(c, { opacity: [1, 0], transform: ['none', 'translateX(40px) scale(.96)'] }, { duration: .4, ease: [.32, .72, 0, 1] });
       var h = c.offsetHeight;
-      await M.animate(c, { height: [h + 'px', '0px'], marginTop: ['0px', '-10px'], paddingTop: ['10px', '0px'], paddingBottom: ['10px', '0px'] }, { duration: .35, ease: [.32, .72, 0, 1] });
+      // STABLE-1: the browser's own animation closes the gap; the library's height animation restored window scroll on every frame,
+      // which fought a finger mid-scroll on phones
+      var a = c.animate([{ height: h + 'px', marginTop: '0px', paddingTop: '10px', paddingBottom: '10px' }, { height: '0px', marginTop: '-10px', paddingTop: '0px', paddingBottom: '0px' }], { duration: 350, easing: 'cubic-bezier(.32,.72,0,1)', fill: 'forwards' });
+      try { await a.finished; } catch (e) {}
+      a.cancel();
       c.hidden = true;
     }
     async function run() {
