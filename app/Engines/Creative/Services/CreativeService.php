@@ -706,6 +706,7 @@ class CreativeService
                         $__bl = app(\App\Engines\Creative\Services\BrandMotionRenderer::class)->apply($__abs, [
                             'ws' => (int) $asset->workspace_id, 'business_id' => $__meta['business_id'] ?? $__task['business_id'] ?? null,
                             'headline' => $__q[0] ?? null, 'platform' => $__meta['platform'] ?? $__task['platform'] ?? null,
+                            'supporting' => array_slice((array) ($__q ?? []), 1, 1),   // RFC-0025 P5: a second quoted line, for silent viewing
                         ]);
                         if (! ($__bl['success'] ?? false) && $__q) \App\Engines\Creative\Services\VideoTitler::apply($__abs, $__q[0]);
                         clearstatcache(true, $__abs); $durable['file_size'] = filesize($__abs) ?: ($durable['file_size'] ?? null);
@@ -724,7 +725,8 @@ class CreativeService
                         $__hl2 = isset($__q) && $__q ? (string) $__q[0] : '';
                         $__photos2 = DB::table('creative_video_jobs')->where('asset_id', $assetId)->orderBy('scene_index')->pluck('metadata_json')
                             ->map(fn ($j) => (json_decode((string) $j, true) ?: [])['photo_source'] ?? null)->filter()->values()->all();
-                        $__base = ['ws' => (int) $asset->workspace_id, 'business_id' => $__biz2, 'headline' => $__hl2 ?: null, 'platform' => $__m2['platform'] ?? $__t2['platform'] ?? null];
+                        $__base = ['ws' => (int) $asset->workspace_id, 'business_id' => $__biz2, 'headline' => $__hl2 ?: null, 'platform' => $__m2['platform'] ?? $__t2['platform'] ?? null,
+                            'supporting' => isset($__q) ? array_slice((array) $__q, 1, 1) : []];
                         $__rerender = fn (array $over) => \App\Engines\Creative\Services\BrandMotionRenderer::enabled((int) $asset->workspace_id)
                             ? app(\App\Engines\Creative\Services\BrandMotionRenderer::class)->apply($__abs2, $over + $__base) : [];
                         $__qg = app(\App\Engines\Creative\Services\VideoQualityGate::class)->check($asset, $__abs2, (array) ($__m2['brand_layer'] ?? []), [
