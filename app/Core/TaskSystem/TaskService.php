@@ -204,7 +204,7 @@ class TaskService
         // Resolve approval mode from capability map (kept as a safety net /
         // narrower override; category is now the primary authority).
         $approvalMode = $this->capabilityMap->getApprovalMode($action);
-        $creditCost = $data['credit_cost'] ?? $this->capabilityMap->getCreditCost($action);
+        $creditCost = $data['credit_cost'] ?? $this->capabilityMap->creditCostFor($action, is_array($data['payload'] ?? null) ? $data['payload'] : []);   // PRICE-2: the price that depends on the request (10 s video)
         // RISK-0189 (2026-09-17): the capability map prices ask_arthur at 0 because Arthur decides the real action when he
         // runs — so the approval card said "Uses no credits" for a 1-credit edit (EV-1056/EV-1058). Read the request through
         // the classifier and registry Arthur charges from; a kind whose charge is set elsewhere is recorded as UNKNOWN (never

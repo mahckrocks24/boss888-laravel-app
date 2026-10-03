@@ -90,7 +90,7 @@ final class VideoGeneration
     /** Turn 1 — exactly what will be made, the cost and the wait; nothing runs yet. */
     public function describe(array $spec): string
     {
-        return "I'll make a **" . (int) $spec['duration'] . '-second ' . self::shapeWords((string) $spec['aspect_ratio']) . '** video: ' . rtrim((string) $spec['prompt'], '. ') . '. '
+        return "I'll make a **" . (int) $spec['duration'] . '-second ' . self::shapeWords((string) $spec['aspect_ratio']) . '** video: ' . rtrim((string) $spec['prompt'], '.?! ') . '. '
             . (($__q = \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText((string) $spec['prompt'])) ? 'The words "' . $__q[0] . '" go on as a clean title. ' : '')   // VIDEO-CERT-2
             . "It follows your brand and design styles. It costs **" . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . " credits** and takes about two minutes — I'll post it right here when it's ready.\n\n"
             . 'Reply **yes** to go ahead, or **no**.';

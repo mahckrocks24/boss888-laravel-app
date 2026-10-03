@@ -647,4 +647,13 @@ class CertificationRemediationTest extends TestCase
         $this->assertSame($bal, (float) DB::table('credits')->where('workspace_id', self::WS)->value('balance'));
         $this->assertSame(0, DB::table('assets')->where('workspace_id', self::WS)->where('prompt', $p['prompt'])->count());
     }
+
+    public function test_price2_a_ten_second_video_task_costs_what_sarah_quoted(): void
+    {
+        $t = app(\App\Core\TaskSystem\TaskService::class)->create(self::WS, ['engine' => 'creative', 'action' => 'generate_video', 'source' => 'agent',
+            'payload' => ['prompt' => 'price2 probe ' . uniqid(), 'duration' => 10, 'aspect_ratio' => '16:9'], 'requires_approval' => true]);
+        $this->assertNotNull($t);
+        $this->assertSame(\App\Core\Sarah888\VideoGeneration::costFor(10), (int) $t->credit_cost);
+        $this->assertSame(\App\Core\EngineKernel\CapabilityMapService::VIDEO_10S_CREDITS, (int) $t->credit_cost);
+    }
 }
