@@ -49,8 +49,11 @@ class CreativeConnector extends BaseConnector
                 'duration' => 'nullable|integer|min:2|max:30',
                 'model' => 'nullable|string',
                 // VIDEO-2: the resolver keeps only fields listed here — the shape, the business and the campaign must survive to the video engine
-                'aspect_ratio' => 'nullable|in:1:1,16:9,9:16,4:3,3:4,4:5',
+                'aspect_ratio' => 'nullable|in:1:1,16:9,9:16,4:3,3:4,4:5,2:3',
                 'business_id' => 'nullable|integer',
+                'platform' => 'nullable|string|max:40',            // RFC-0025: safe-zone profile
+                'source_media_id' => 'nullable|integer',           // RFC-0025 P2: the owner's photo (image_url) as the first frame
+                'photo_description' => 'nullable|string|max:1500',
                 'campaign_id' => 'nullable|integer',
                 'campaign_item_id' => 'nullable|integer',
                 'title' => 'nullable|string|max:300',

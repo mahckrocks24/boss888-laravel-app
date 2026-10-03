@@ -501,6 +501,26 @@ class CreativeService
         }
     }
 
+    /**
+     * RFC-0025 P2: the owner's photo, only when it is this workspace's own media on our own disk (never a remote URL - the
+     * frame job reads it from storage, so nothing outside can be fetched through this).
+     */
+    public static function ownPhotoUrl(int $wsId, array $params): ?string
+    {
+        $url = trim((string) ($params['image_url'] ?? ''));
+        $mid = (int) ($params['source_media_id'] ?? 0);
+        try {
+            if ($mid > 0) {
+                $m = DB::table('media')->where('id', $mid)->where('workspace_id', $wsId)->first(['url', 'mime_type']);
+                if ($m && str_starts_with((string) ($m->mime_type ?? 'image/'), 'image/')) $url = (string) $m->url;
+            }
+        } catch (\Throwable) {}
+        if ($url === '') return null;
+        if (! preg_match('#^https?://#', $url)) $url = rtrim((string) config('app.url'), '/') . '/' . ltrim($url, '/');
+        $own = parse_url(rtrim((string) config('app.url'), '/'), PHP_URL_HOST);
+        return parse_url($url, PHP_URL_HOST) === $own && str_contains((string) parse_url($url, PHP_URL_PATH), '/storage/') ? $url : null;
+    }
+
     public function generateVideo(int $wsId, array $params): array
     {
         $prompt = $params['prompt'] ?? '';
@@ -517,6 +537,8 @@ class CreativeService
             'brand_context' => $videoBp['brand_context'] ?? '',
             'has_logo'    => (bool) ($videoBp['has_logo'] ?? false),
             'business_name' => ! empty($params['business_id']) ? (string) DB::table('businesses')->where('id', (int) $params['business_id'])->where('workspace_id', $wsId)->value('name') : '',   // VIDEO-CERT-1
+            'from_photo'  => self::ownPhotoUrl($wsId, $params) !== null,                 // RFC-0025 P2
+            'photo_description' => (string) ($params['photo_description'] ?? ''),
         ]);
         // RFC-0009 P6: the planner's output is the single truth for the scene count; the blueprint
         // predicted with the same rule, and the asset records what was actually planned.
@@ -542,9 +564,10 @@ class CreativeService
 
         $jobIds = [];
         foreach ($scenes as $scene) {
-            $job      = $this->scenePlanner->dispatchSceneJob($wsId, $assetId, $scene, [
+            $job      = $this->scenePlanner->dispatchSceneJob($wsId, $assetId, $scene, array_filter([
                 'aspect_ratio' => $params['aspect_ratio'] ?? '16:9',
-            ]);
+                'source_image' => self::ownPhotoUrl($wsId, $params),   // RFC-0025 P2: the owner's photo is the first frame
+            ]));
             $jobIds[] = $job['id'] ?? null;
         }
 

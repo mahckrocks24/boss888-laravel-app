@@ -87,8 +87,11 @@ final class BrandMotionRenderer
         $kit = [];
         try { $kit = (array) app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($ws, $biz); } catch (\Throwable) {}
         $logoUrl = trim((string) ($kit['logo_url'] ?? ''));
-        $logoOn = ($ctx['logo'] ?? true) && $logoUrl !== '';
-        $endOn = ($ctx['end_card'] ?? true) && $dur >= 5.5;
+        // a logo and an end card speak for ONE business: only when the clip belongs to a known business of this workspace
+        // (photo probe: an unattributed clip showed the workspace's own name and another business's website)
+        $bizKnown = $biz && DB::table('businesses')->where('id', $biz)->where('workspace_id', $ws)->whereNull('deleted_at')->exists();
+        $logoOn = ($ctx['logo'] ?? true) && $logoUrl !== '' && $bizKnown;
+        $endOn = ($ctx['end_card'] ?? true) && $dur >= 5.5 && $bizKnown;
 
         // the business's own type and palette, as the banner path passes them (a neutral kit lets the brief choose)
         $first = fn ($v) => trim(explode(',', (string) $v)[0] ?? '', " '\"");
@@ -146,7 +149,7 @@ final class BrandMotionRenderer
             $site = null;
             try {
                 $q = DB::table('websites')->where('workspace_id', $ws)->whereNull('deleted_at')->whereNotNull('published_at');
-                if ($biz) $q->where('business_id', $biz);
+                $q->where('business_id', $biz);   // only this business's own site
                 $sr = $q->orderByDesc('published_at')->first(['custom_domain', 'domain_verified', 'domain', 'subdomain']);
                 if ($sr) $site = ($sr->custom_domain && $sr->domain_verified ? $sr->custom_domain : null) ?: ($sr->domain ?: $sr->subdomain);
             } catch (\Throwable) {}

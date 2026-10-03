@@ -686,9 +686,20 @@ class CertificationRemediationTest extends TestCase
         $r = app(\App\Engines\Creative\Services\BrandMotionRenderer::class)->apply($clip, ['ws' => self::WS, 'headline' => 'Fresh from our oven']);
         $this->assertTrue($r['success'], json_encode($r));
         $this->assertSame('instagram_reels', $r['profile']);
-        $this->assertTrue($r['end_card']);
+        $this->assertFalse($r['end_card'], 'no business, no end card: it would speak for nobody');
         $this->assertFileExists(preg_replace('/\.mp4$/', '', $clip) . '-raw.mp4');
         $this->assertContains(true, array_values($r['fonts_loaded']));
         @unlink($clip); @unlink(preg_replace('/\.mp4$/', '', $clip) . '-raw.mp4');
+    }
+
+    public function test_rfc25_p2_an_attached_photo_can_be_animated_and_only_our_own_media_is_used(): void
+    {
+        $this->assertTrue(\App\Core\Sarah888\VideoGeneration::asks('Animate this - steam rising, slow push in', true));
+        $this->assertTrue(\App\Core\Sarah888\VideoGeneration::asks('Can you bring this to life for my website?', true));
+        $this->assertFalse(\App\Core\Sarah888\VideoGeneration::asks('Animate this - steam rising', false));
+        $own = rtrim((string) config('app.url'), '/') . '/storage/uploads/photo.jpg';
+        $this->assertSame($own, \App\Engines\Creative\Services\CreativeService::ownPhotoUrl(self::WS, ['image_url' => $own]));
+        $this->assertNull(\App\Engines\Creative\Services\CreativeService::ownPhotoUrl(self::WS, ['image_url' => 'https://example.com/storage/uploads/photo.jpg']));
+        $this->assertNull(\App\Engines\Creative\Services\CreativeService::ownPhotoUrl(self::WS, ['image_url' => rtrim((string) config('app.url'), '/') . '/api/secret']));
     }
 }

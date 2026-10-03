@@ -117,6 +117,11 @@ class ScenePlannerService
             . "Refer to people only by role (the chef, a guest); never give a named real person a face - show hands, plates, the table and the room. "
             . "These rules are for you: never restate them inside a scene prompt — scene prompts describe only what the camera sees.";
 
+        if (! empty($options['from_photo'])) {   // RFC-0025 P2: the owner's photo is the first frame - describe motion, never new content
+            $sceneCount = 1;
+            $systemPrompt .= " The first frame is the owner's own photo" . (trim((string) ($options['photo_description'] ?? '')) !== '' ? ' (' . mb_substr(trim((string) $options['photo_description']), 0, 600) . ')' : '')
+                . ": keep everything in it exactly as it is - the same people, objects, places and colours. Describe only natural motion of what is already there and the camera move; add nothing new.";
+        }
         $userPrompt = <<<EOT
 Break this video into {$sceneCount} scenes:
 
@@ -205,7 +210,12 @@ EOT;
         ]);
 
         // VIDEO-2: a vertical or square video starts from a first frame in that shape (queued: the frame takes ~30 s)
-        if (self::needsFrame((string) ($options['aspect_ratio'] ?? '16:9'))) {
+        // RFC-0025 P2: the owner's photo always goes through the frame path, whatever the shape
+        if (! empty($options['source_image'])) {
+            $__m = json_decode((string) DB::table('creative_video_jobs')->where('id', $jobId)->value('metadata_json'), true) ?: [];
+            DB::table('creative_video_jobs')->where('id', $jobId)->update(['metadata_json' => json_encode($__m + ['source_image' => (string) $options['source_image']])]);
+        }
+        if (self::needsFrame((string) ($options['aspect_ratio'] ?? '16:9')) || ! empty($options['source_image'])) {
             DB::table('creative_video_jobs')->where('id', $jobId)->update(['status' => 'framing', 'updated_at' => now()]);
             \App\Jobs\VideoFirstFrameJob::dispatch($jobId);
             return (array) DB::table('creative_video_jobs')->where('id', $jobId)->first();
@@ -305,13 +315,22 @@ EOT;
             Log::warning('[VIDEO-2] first frame path failed', ['job' => $jobId, 'why' => $why]);
             return ['success' => false, 'error' => $why];
         };
-        $img = $this->connector->generateImage('The very first frame of a short ' . ($aspect === '1:1' ? 'square' : 'vertical') . ' video. ' . $job->scene_prompt
-            . ' Photographic and natural, composed for a ' . ($aspect === '1:1' ? 'square' : 'tall phone') . ' screen. No text, captions, logos or watermarks.',
-            ['aspect_ratio' => $aspect === '1:1' ? '1:1' : '9:16', 'workspace_id' => (int) $job->workspace_id, 'quality' => 'high']);
+        if (! empty($meta['source_image'])) {
+            // RFC-0025 P2: the owner's own photo, read from our disk (ownPhotoUrl guaranteed it is ours)
+            $rel = ltrim((string) preg_replace('#^.*?/storage/#', '', (string) parse_url((string) $meta['source_image'], PHP_URL_PATH)), '/');
+            $disk0 = \Illuminate\Support\Facades\Storage::disk('public');
+            if ($rel === '' || ! $disk0->exists($rel)) return $fail('own photo missing');
+            $bytes = (string) $disk0->get($rel);
+            $meta['photo_source'] = $rel;
+        } else {
+        $img = $this->connector->generateImage('The very first frame of a short ' . ($aspect === '1:1' ? 'square' : ($aspect === '16:9' ? 'landscape' : 'vertical')) . ' video. ' . $job->scene_prompt
+            . ' Photographic and natural, composed for a ' . ($aspect === '1:1' ? 'square' : ($aspect === '16:9' ? 'wide' : 'tall phone')) . ' screen. No text, captions, logos or watermarks.',
+            ['aspect_ratio' => $aspect === '1:1' ? '1:1' : ($aspect === '16:9' ? '16:9' : '9:16'), 'workspace_id' => (int) $job->workspace_id, 'quality' => 'high']);
         if (empty($img['success']) || empty($img['url'])) return $fail('first frame: ' . ($img['error'] ?? 'no image'));
         try {
             $bytes = \Illuminate\Support\Facades\Http::timeout(60)->get($img['url'])->body();
         } catch (\Throwable $e) { return $fail('first frame download: ' . $e->getMessage()); }
+        }
         if (strlen($bytes) < 2000) return $fail('first frame empty');
         $mime = (new \finfo(FILEINFO_MIME_TYPE))->buffer($bytes) ?: 'image/png';
         $ext = $mime === 'image/jpeg' ? 'jpg' : ($mime === 'image/webp' ? 'webp' : 'png');
@@ -319,7 +338,7 @@ EOT;
         \Illuminate\Support\Facades\Storage::disk('public')->put($path, $bytes);
         // the image model makes 2:3 portraits; the clip takes the frame's shape, so the frame is cut to exactly 9:16 (or 1:1) first
         $disk = \Illuminate\Support\Facades\Storage::disk('public');
-        $target = $aspect === '1:1' ? [1, 1] : [9, 16];
+        $target = ['1:1' => [1, 1], '16:9' => [16, 9], '2:3' => [2, 3], '4:5' => [4, 5], '3:4' => [3, 4], '4:3' => [4, 3]][$aspect] ?? [9, 16];   // RFC-0025 P2: every shape
         $size = @getimagesizefromstring($bytes);
         if ($size && abs($size[0] / max(1, $size[1]) - $target[0] / $target[1]) > 0.01) {
             $cropped = preg_replace('/\.\w+$/', '-cut.png', $path);

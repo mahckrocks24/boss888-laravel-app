@@ -887,11 +887,11 @@ $withCorr = function (array $meta) use ($corr) {
             try {
                 $__qc = app(\App\Core\Sarah888\QueueCancellation::class);
                 $__qcReply = null;
-                if (\App\Core\Sarah888\VideoGeneration::asks($content)) {
+                if (\App\Core\Sarah888\VideoGeneration::asks($content, ! empty($__att['images'] ?? []))) {   // RFC-0025 P2: an attached photo can be animated
                     // VIDEO-2: "make a short video of … for Instagram" — say exactly what will be made, the cost and the wait, then a yes.
                     // A platform named in the request is a shape hint (vertical for Reels), never a reason to refuse.
                     $__vg = app(\App\Core\Sarah888\VideoGeneration::class);
-                    $__vgSpec = \App\Core\Sarah888\VideoGeneration::spec((int) $wsId, (string) $content);
+                    $__vgSpec = \App\Core\Sarah888\VideoGeneration::spec((int) $wsId, (string) $content, (array) ($__att['images'] ?? []));
                     $__qcReply = $__vg->describe($__vgSpec);
                     $__vg->remember((int) $wsId, $__vgSpec, (string) $content);
                 } elseif (\App\Core\Sarah888\QueueCancellation::asks($content)) {
