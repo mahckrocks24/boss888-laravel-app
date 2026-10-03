@@ -733,14 +733,14 @@ class CreativeService
                             'headline' => $__hl2, 'photo_paths' => $__photos2, 'aspect' => (string) ($__m2['aspect_ratio'] ?? '9:16'), 'duration' => (int) ($__m2['duration'] ?? 6),
                             'business_name' => $__biz2 ? (string) DB::table('businesses')->where('id', (int) $__biz2)->value('name') : '',
                         ], $__rerender);
-                        $__m2['quality'] = $__qg;
+                        $__m2['quality_gates'] = $__qg;   // not 'quality': that key is the render quality setting
                         DB::table('assets')->where('id', $assetId)->update(['metadata_json' => json_encode($__m2)]);
                         clearstatcache(true, $__abs2); $durable['file_size'] = filesize($__abs2) ?: ($durable['file_size'] ?? null);
                         if (! empty($__qg['fatal'])) {
                             $this->refundFailedVideo($assetId);
                             $this->failAsset($assetId, 'Quality gate: ' . $__qg['fatal']);
                             $this->tellVideoInChat($assetId, false, '');
-                            return $this->sanitize(['status' => 'failed', 'asset_id' => $assetId, 'quality' => 'failed']);
+                            return $this->sanitize(['status' => 'failed', 'asset_id' => $assetId, 'quality_gates' => 'failed']);
                         }
                     } catch (\Throwable $__qe) { \Illuminate\Support\Facades\Log::warning('[RFC-0025] quality gate error', ['asset' => $assetId, 'e' => $__qe->getMessage()]); }
                 }

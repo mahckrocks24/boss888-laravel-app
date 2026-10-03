@@ -715,4 +715,13 @@ class CertificationRemediationTest extends TestCase
         $this->assertArrayNotHasKey('money', $r['gates'], 'no task, no money gate claimed');
         @unlink($clip);
     }
+
+    public function test_videorpm1_provider_calls_wait_in_line_instead_of_being_refused(): void
+    {
+        \Illuminate\Support\Facades\Cache::forget('minimax:rpm');
+        $this->assertSame(0, \App\Engines\Creative\Services\ScenePlannerService::providerWait());
+        for ($i = 0; $i < max(1, (int) env('MINIMAX_RPM', 4)); $i++) \App\Engines\Creative\Services\ScenePlannerService::providerTick();
+        $this->assertGreaterThan(0, \App\Engines\Creative\Services\ScenePlannerService::providerWait(), 'a full minute budget makes the next call wait');
+        \Illuminate\Support\Facades\Cache::forget('minimax:rpm');
+    }
 }

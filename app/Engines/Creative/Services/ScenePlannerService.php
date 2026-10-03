@@ -225,8 +225,15 @@ EOT;
             return (array) DB::table('creative_video_jobs')->where('id', $jobId)->first();
         }
 
+        // VIDEO-RPM-1: over the provider's per-minute budget - wait in line instead of being refused
+        if (self::providerWait() > 0) {
+            $__m = json_decode((string) DB::table('creative_video_jobs')->where('id', $jobId)->value('metadata_json'), true) ?: [];
+            $this->retryLater($jobId, $__m + ['no_frame' => true], self::providerWait(), 'paced');
+            return (array) DB::table('creative_video_jobs')->where('id', $jobId)->first();
+        }
         // Try providers in waterfall order (mock excluded outside local/testing)
         $dispatched = false;
+        $__lastErr = '';
         foreach ($this->activeProviders() as $provider) {
             try {
                 $result = $this->dispatchToProvider($provider, $scene, $options);
@@ -241,11 +248,18 @@ EOT;
                     $dispatched = true;
                     break;
                 }
+                $__lastErr = (string) ($result['error'] ?? $__lastErr);
             } catch (\Throwable $e) {
                 Log::warning("ScenePlannerService: provider {$provider} failed", ['error' => $e->getMessage()]);   // VIDEO-F1: refusals are logged by the connector with the provider's reason
             }
         }
 
+        if (! $dispatched && preg_match('/\b1002\b|rate limit|too many requests|\b429\b/i', $__lastErr)) {   // VIDEO-RPM-1
+            $__m = json_decode((string) DB::table('creative_video_jobs')->where('id', $jobId)->value('metadata_json'), true) ?: [];
+            $this->retryLater($jobId, $__m + ['no_frame' => true, 'provider_retries' => 1], 45, 'rate_limited');
+            return (array) DB::table('creative_video_jobs')->where('id', $jobId)->first();
+        }
+        self::providerTick();   // a call was made either way
         if (!$dispatched) {
             DB::table('creative_video_jobs')->where('id', $jobId)->update([
                 'status'     => 'failed',
@@ -319,6 +333,17 @@ EOT;
             Log::warning('[VIDEO-2] first frame path failed', ['job' => $jobId, 'why' => $why]);
             return ['success' => false, 'error' => $why];
         };
+        // VIDEO-RPM-1: a retry never paints the frame twice; a text-only clip waiting for the provider has no frame at all
+        $__disk0 = \Illuminate\Support\Facades\Storage::disk('public');
+        if (! empty($meta['no_frame'])) {
+            return $this->sendToProvider($jobId, $job, $meta, ['provider' => 'minimax', 'duration' => (int) ($meta['duration'] ?? 6)], $fail);
+        }
+        if (! empty($meta['first_frame_path']) && $__disk0->exists((string) $meta['first_frame_path'])) {
+            $__b = (string) $__disk0->get((string) $meta['first_frame_path']);
+            $__mi = (new \finfo(FILEINFO_MIME_TYPE))->buffer($__b) ?: 'image/png';
+            return $this->sendToProvider($jobId, $job, $meta, ['provider' => 'minimax', 'duration' => (int) ($meta['duration'] ?? 6),
+                'first_frame_image' => 'data:' . $__mi . ';base64,' . base64_encode($__b)], $fail);
+        }
         if (! empty($meta['source_image'])) {
             // RFC-0025 P2: the owner's own photo, read from our disk (ownPhotoUrl guaranteed it is ours)
             $rel = ltrim((string) preg_replace('#^.*?/storage/#', '', (string) parse_url((string) $meta['source_image'], PHP_URL_PATH)), '/');
@@ -352,13 +377,58 @@ EOT;
         }
         $frameUrl = rtrim((string) config('app.url'), '/') . '/storage/' . $path;
         $meta['first_frame'] = $frameUrl;
-        $res = $this->connector->generateVideoViaProvider((string) $job->scene_prompt, ['provider' => 'minimax', 'duration' => (int) ($meta['duration'] ?? 6),
-            'first_frame_image' => 'data:' . $mime . ';base64,' . base64_encode($bytes)]);
-        if (empty($res['success'])) return $fail('provider: ' . ($res['error'] ?? 'refused'));
+        $meta['first_frame_path'] = $path;   // VIDEO-RPM-1: kept for a retry
+        return $this->sendToProvider($jobId, $job, $meta, ['provider' => 'minimax', 'duration' => (int) ($meta['duration'] ?? 6),
+            'first_frame_image' => 'data:' . $mime . ';base64,' . base64_encode($bytes)], $fail);
+    }
+
+    /** VIDEO-RPM-1: one paced provider call; a rate-limit refusal is retried later, anything else fails as before. */
+    private function sendToProvider(int $jobId, object $job, array $meta, array $opts, callable $fail): array
+    {
+        $wait = self::providerWait();
+        if ($wait > 0) return $this->retryLater($jobId, $meta, $wait, 'paced');
+        self::providerTick();
+        $res = $this->connector->generateVideoViaProvider((string) $job->scene_prompt, $opts);
+        if (empty($res['success'])) {
+            $err = (string) ($res['error'] ?? 'refused');
+            $tries = (int) ($meta['provider_retries'] ?? 0);
+            if (preg_match('/\b1002\b|rate limit|too many requests|\b429\b/i', $err) && $tries < 6) {
+                $meta['provider_retries'] = $tries + 1;
+                return $this->retryLater($jobId, $meta, 45 * ($tries + 1), 'rate_limited');
+            }
+            return $fail('provider: ' . $err);
+        }
         DB::table('creative_video_jobs')->where('id', $jobId)->update(['provider' => 'minimax', 'provider_job_id' => $res['job_id'] ?? null, 'status' => 'in_progress',
-            'metadata_json' => json_encode($meta), 'updated_at' => now()]);
-        Log::info('[VIDEO-2] first frame made and sent to animate', ['job' => $jobId, 'aspect' => $aspect]);
+            'metadata_json' => json_encode($meta), 'error' => null, 'updated_at' => now()]);
+        Log::info('[VIDEO-2] sent to animate', ['job' => $jobId, 'retries' => (int) ($meta['provider_retries'] ?? 0)]);
         return ['success' => true];
+    }
+
+    /** VIDEO-RPM-1: back to "framing" (counted as in progress) and the frame job runs again after $delay seconds. */
+    private function retryLater(int $jobId, array $meta, int $delay, string $why): array
+    {
+        DB::table('creative_video_jobs')->where('id', $jobId)->update(['status' => 'framing', 'metadata_json' => json_encode($meta), 'error' => null, 'updated_at' => now()]);
+        \App\Jobs\VideoFirstFrameJob::dispatch($jobId)->delay(now()->addSeconds(max(5, $delay)));
+        Log::info('[VIDEO-RPM-1] provider call deferred', ['job' => $jobId, 'why' => $why, 'in_s' => $delay, 'retries' => (int) ($meta['provider_retries'] ?? 0)]);
+        return ['deferred' => true, 'in' => $delay];
+    }
+
+    /** VIDEO-RPM-1: seconds until a provider call fits the per-minute budget (0 = now). */
+    public static function providerWait(): int
+    {
+        $rpm = max(1, (int) env('MINIMAX_RPM', 4));
+        $ts = array_values(array_filter((array) \Illuminate\Support\Facades\Cache::get('minimax:rpm', []), fn ($t) => $t > time() - 60));
+        if (count($ts) < $rpm) return 0;
+        return max(5, 61 - (time() - min($ts)) + random_int(0, 8));
+    }
+
+    public static function providerTick(): void
+    {
+        \Illuminate\Support\Facades\Cache::lock('minimax:rpm:lock', 5)->block(5, function () {
+            $ts = array_values(array_filter((array) \Illuminate\Support\Facades\Cache::get('minimax:rpm', []), fn ($t) => $t > time() - 60));
+            $ts[] = time();
+            \Illuminate\Support\Facades\Cache::put('minimax:rpm', $ts, 120);
+        });
     }
 
     // ═══════════════════════════════════════════════════════
