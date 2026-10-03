@@ -5,7 +5,7 @@ $agency = array_values(array_filter($data['plans'], fn ($p) => $p['slug'] === 'a
 $pro = array_values(array_filter($data['plans'], fn ($p) => $p['slug'] === 'pro'))[0] ?? null;
 $cmp = require dirname(__DIR__, 2) . '/compare-data.php';
 $rivals = array_values(array_filter($cmp['competitors'], fn ($c) => in_array($c['slug'], ['gohighlevel', 'markty'], true)));
-$page['description'] = 'Run every client from one account: white-label, ' . ($agency ? (int) $agency['max_websites'] . ' sites, unlimited team, ' : '') . 'an AI workforce per workspace, and a price that does not charge you per client.';
+$page['description'] = 'Run every client from one account: ' . ($agency ? (int) $agency['max_websites'] . ' sites, unlimited team, ' : '') . 'an AI workforce per workspace, and a price that does not charge you per client.';
 $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm'])));
 ?>
 <section class="hero">
@@ -13,12 +13,12 @@ $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm']
     <div>
       <p class="eyebrow">Agencies</p>
       <h1>Every client in one account. Your brand on all of it.</h1>
-      <p class="lede">Client workspaces, white-label, an AI workforce that does the production work, and an approval flow you can run with a small team. Priced as one plan, not per client.</p>
+      <p class="lede">Every client business in one account, an AI workforce that does the production work, and an approval flow you can run with a small team. Priced as one plan, not per client.</p>
       <div class="hero-actions">
         <a class="btn btn-primary btn-lg" href="<?= e(signup_href($data, $agency['slug'] ?? null)) ?>">Start with <?= e($agency['name'] ?? 'Agency') ?> <?= icon('arrow-right', 18) ?></a>
         <a class="btn btn-secondary btn-lg" href="/next/contact/?topic=enterprise">Talk to us about more</a>
       </div>
-      <?php if ($agency): ?><p class="fine"><?= e($agency['name']) ?>: <?= money($agency['price_monthly']) ?>/month, <?= (int) $agency['max_websites'] ?> sites, <?= $agency['unlimited_team'] ? 'unlimited team' : (int) $agency['max_team_members'] . ' team members' ?>, <?= number_format((int) $agency['credits_per_month']) ?> credits, white-label. Read from the plans table.</p><?php endif; ?>
+      <?php if ($agency): ?><p class="fine"><?= e($agency['name']) ?>: <?= money($agency['price_monthly']) ?>/month, <?= (int) $agency['max_websites'] ?> sites, <?= $agency['unlimited_team'] ? 'unlimited team' : (int) $agency['max_team_members'] . ' team members' ?>, <?= number_format((int) $agency['credits_per_month']) ?> credits a month.</p><?php endif; ?>
     </div>
     <div><?= live_panel('workspaces', 'One workspace per client, each with its own sites, Clients, Calendar and credits, under your name.') ?></div>
   </div>
@@ -27,7 +27,7 @@ $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm']
 <section class="section">
   <div class="container grid-3">
     <div class="card"><?= icon('layers', 22) ?><h3>Client workspaces</h3><p>Each client gets a workspace with its own site, CRM, calendar, content and chatbot. Your team switches between them; nothing leaks across.</p></div>
-    <div class="card"><?= icon('shield', 22) ?><h3>White-label</h3><p>Your brand on the sites and the client-facing surfaces. The platform stays in the background.</p></div>
+    <div class="card"><?= icon('shield', 22) ?><h3>Approval before the client sees it</h3><p>Sarah's team drafts the work for each client; nothing reaches a client's site or channels until you approve it.</p></div>
     <div class="card"><?= icon('users', 22) ?><h3>The workforce does production</h3><p>Sarah plus <?= $agency ? (int) $agency['agents']['count'] . ' specialists' : 'specialists' ?> on the Agency plan; your account managers approve instead of producing.</p></div>
   </div>
 </section>
@@ -39,7 +39,7 @@ $specialists = count(array_filter($data['agents'], fn ($a) => empty($a['is_dmm']
     <div class="tbl"><table class="matrix cmp">
       <thead><tr><th>Platform</th><th>Entry</th><th>Top</th><th>What you get</th><th>Where it is thin</th></tr></thead>
       <tbody>
-        <tr class="us"><th scope="row">LevelUpGrowth <?= e($agency['name'] ?? '') ?></th><td class="num"><?= $pro ? 'Pro ' . money($pro['price_monthly']) . '/mo' : '' ?></td><td class="num"><?= $agency ? 'Agency ' . money($agency['price_monthly']) . '/mo' : '' ?></td><td>White-label, <?= $agency ? (int) $agency['max_websites'] : '' ?> client sites, unlimited team, an AI workforce per workspace, owned assets for every client.</td><td>Customer stories only when real.</td></tr>
+        <tr class="us"><th scope="row">LevelUpGrowth <?= e($agency['name'] ?? '') ?></th><td class="num"><?= $pro ? 'Pro ' . money($pro['price_monthly']) . '/mo' : '' ?></td><td class="num"><?= $agency ? 'Agency ' . money($agency['price_monthly']) . '/mo' : '' ?></td><td><?= $agency ? (int) $agency['max_websites'] : '' ?> client sites, unlimited team, an AI workforce per workspace, owned assets for every client.</td><td>Customer stories only when real.</td></tr>
         <?php foreach ($rivals as $c): ?>
         <tr><th scope="row"><a href="/next/compare/<?= e($c['slug']) ?>/"><?= e($c['name']) ?></a></th><td class="num"><?= e($c['entry']) ?></td><td class="num"><?= e($c['top']) ?></td><td><?= e($c['sells']) ?></td><td><?= e($c['thin']) ?></td></tr>
         <?php endforeach; ?>

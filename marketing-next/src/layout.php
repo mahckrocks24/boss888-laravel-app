@@ -121,7 +121,7 @@ $jsonld = array_merge([[
     <div class="footer-brand">
       <a class="brand" href="/next/"><img src="/img/logo-icon-40.png" alt="" width="24" height="24"><span>LevelUpGrowth</span></a>
       <p>The business you own, run by an AI workforce you approve.</p>
-      <p class="footer-fine">Plans and limits on this site are read from the platform at build time. Build <?= e($data['plans_version']) ?>.</p>
+      <!-- build <?= e($data['plans_version']) ?> -->
     </div>
     <div>
       <h3 class="footer-h">Products</h3>

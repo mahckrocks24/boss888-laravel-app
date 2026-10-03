@@ -259,3 +259,126 @@ html[data-theme="dark"] .lg-site .lu-sel-list { background: #15172A; }
 html .lg-site .lu-sel-list li { color: var(--ink); }
 html .lg-site .lu-sel-list li:hover, html .lg-site .lu-sel-list li.is-active { background: var(--tint); color: var(--ink); }
 html[data-theme="light"] .lg-site .rep-pass .rep-tag { color: #0E7A50; }   /* the SEO report's Pass tag: 4.1:1 was the last light-theme node under 4.5 */
+
+/* 19. PRICING-2 (Owner 2026-10-03: "The pricing page is not enterprise"; "group them into 4"): the pricing page's own layout
+   on the glass tokens. Group 1 Free/Starter/AI Lite in three cards; group 2 Growth/Pro as two wide cards (price and button
+   left, capacity and what it adds right); Agency and Custom each a full row that sells (copy and benefits left, a plan
+   panel right); a grouped comparison that fits a laptop and keeps its first column on phones; two-column questions. */
+html .lg-site .pr-hero { padding: 56px 0 12px; text-align: center; }
+html .lg-site .pr-hero h1 { font-family: var(--ff-h); font-size: clamp(2.1rem, 4.6vw, 3.4rem); line-height: 1.08; letter-spacing: -.025em; margin: 0 auto 16px; max-width: 18ch; }
+html .lg-site .pr-hero .lede { margin: 0 auto; max-width: 56ch; font-size: 1.08rem; }
+html .lg-site .pr-facts { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 22px; }
+html .lg-site .pr-facts li { display: inline-flex; align-items: center; gap: 7px; font-size: .9rem; color: var(--ink-2); }
+html .lg-site .pr-facts .icon { color: var(--success); }
+
+html .lg-site .pr-group { padding: 56px 0 0; }
+html .lg-site .pr-group-head { max-width: 680px; margin: 0 0 24px; }
+html .lg-site .pr-group-head .eyebrow { margin-bottom: 8px; }
+html .lg-site .pr-group-head h2, html .lg-site .pr-feature h2, html .lg-site .pr-compare h2, html .lg-site .pr-faq h2, html .lg-site .pr-close h2 { font-family: var(--ff-h); font-size: clamp(1.6rem, 3vw, 2.1rem); letter-spacing: -.02em; line-height: 1.15; margin: 0 0 10px; }
+html .lg-site .pr-group-head > p:last-child { margin: 0; color: var(--ink-2); }
+
+html .lg-site .pr-grid { display: grid; gap: 18px; align-items: stretch; }
+html .lg-site .pr-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+html .lg-site .pr-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+html .lg-site .pr-card { display: flex; flex-direction: column; gap: 0; padding: 26px 24px 22px; }
+html .lg-site .pr-card:hover { transform: none; }
+html .lg-site .pr-card-main, html .lg-site .pr-card-detail { display: flex; flex-direction: column; }
+html .lg-site .pr-card-detail { flex: 1 1 auto; }
+html .lg-site .pr-tag { align-self: flex-start; white-space: nowrap; font-size: .72rem; font-weight: 700; letter-spacing: .02em; padding: 4px 10px; margin: -4px 0 10px; border-radius: 999px; background: var(--tint); color: var(--accent-text); border: 1px solid var(--tint-rim); }
+html .lg-site .pr-name { font-family: var(--ff-h); font-weight: 800; font-size: 1.25rem; margin: 0; color: var(--ink); letter-spacing: -.01em; }
+html .lg-site .pr-desc { margin: 8px 0 0; font-size: .9rem; line-height: 1.55; color: var(--ink-2); }
+html .lg-site .pr-std .pr-desc { min-height: 2.9em; }
+html .lg-site .pr-price { display: flex; align-items: baseline; gap: 4px; margin: 18px 0 0; font-family: var(--ff-h); color: var(--ink); line-height: 1; }
+html .lg-site .pr-price .amount { font-size: 2.6rem; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+html .lg-site .pr-price small { font-family: var(--font); font-size: .9rem; font-weight: 500; color: var(--ink-3); }
+html .lg-site .pr-cta { width: 100%; justify-content: center; margin: 18px 0 0; }
+html .lg-site .pr-specs { margin: 20px 0 0; padding: 2px 0; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+html .lg-site .pr-specs > div { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; padding: 9px 0; }
+html .lg-site .pr-specs > div + div { border-top: 1px dashed var(--hairline); }
+html .lg-site .pr-specs dt { font-size: .85rem; color: var(--ink-3); margin: 0; }
+html .lg-site .pr-specs dd { margin: 0; font-weight: 700; font-size: .95rem; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+html .lg-site .pr-specs .is-chat dd { color: var(--accent-text); }
+html .lg-site .pr-specs .is-off dd { color: var(--ink-3); font-weight: 500; }
+html .lg-site .pr-list-head { margin: 18px 0 10px; font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); }
+html .lg-site .pr-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; }
+html .lg-site .pr-list li { display: flex; gap: 9px; align-items: flex-start; font-size: .9rem; line-height: 1.45; color: var(--ink-2); }
+html .lg-site .pr-list .icon { flex: 0 0 auto; margin-top: 2px; color: var(--success); }
+html .lg-site .pr-addon { margin: auto 0 0; padding-top: 18px; font-size: .82rem; color: var(--ink-3); }
+
+/* group 2: a wide card in two columns */
+html .lg-site .pr-wide { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; padding: 28px; }
+html .lg-site .pr-wide .pr-specs { margin-top: 0; }
+html .lg-site .pr-wide .pr-cta { margin-top: auto; }
+html .lg-site .pr-wide .pr-price { margin-bottom: 22px; }
+
+/* groups 3 and 4: a full row that sells */
+html .lg-site .pr-feature { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 40px; align-items: center; padding: 40px; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); }
+html .lg-site .pr-custom { background: linear-gradient(135deg, var(--tint), transparent 60%), var(--glass); }
+html .lg-site .pr-feature-copy .eyebrow { margin-bottom: 8px; }
+html .lg-site .pr-feature-lede { margin: 0 0 26px; color: var(--ink-2); font-size: 1.02rem; max-width: 60ch; }
+html .lg-site .pr-benefits { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px 28px; }
+html .lg-site .pr-benefits li { display: flex; gap: 12px; align-items: flex-start; }
+html .lg-site .pr-benefits .icon { flex: 0 0 auto; width: 36px; height: 36px; padding: 8px; border-radius: 10px; background: var(--tint); color: var(--accent-text); }
+html .lg-site .pr-benefits b { display: block; font-size: .95rem; color: var(--ink); margin-bottom: 2px; }
+html .lg-site .pr-benefits span { font-size: .875rem; line-height: 1.5; color: var(--ink-2); }
+html .lg-site .pr-side { background: var(--glass-thick); }
+html .lg-site .pr-side .pr-price { margin-top: 12px; }
+html .lg-site .pr-more { display: inline-flex; align-self: center; text-align: center; align-items: center; justify-content: center; gap: 6px; margin-top: 14px; font-size: .9rem; font-weight: 600; }
+html .lg-site .pr-ent { border-style: solid; }
+html .lg-site .pr-steps { list-style: none; counter-reset: s; margin: 18px 0 0; padding: 0; display: grid; gap: 12px; }
+html .lg-site .pr-steps li { counter-increment: s; position: relative; padding-left: 36px; font-size: .875rem; line-height: 1.45; color: var(--ink-2); }
+html .lg-site .pr-steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: .75rem; font-weight: 700; background: var(--tint); color: var(--accent-text); }
+html .lg-site .pr-steps b { display: block; color: var(--ink); font-size: .9rem; }
+
+html .lg-site .pr-compare { padding: 72px 0 0; }
+html .lg-site .pr-compare h2 { margin-bottom: 20px; }
+html .lg-site .pr-swipe { display: none; }
+html .lg-site .pr-tbl { overflow-x: auto; border-radius: var(--r-lg); background: var(--glass); border: 1px solid var(--rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-2); }
+html .lg-site .pr-matrix { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; font-size: .9rem; }
+html .lg-site .pr-matrix th, html .lg-site .pr-matrix td { min-width: 0; padding: 12px 14px; text-align: center; vertical-align: middle; border-bottom: 1px solid var(--hairline); color: var(--ink-2); font-variant-numeric: tabular-nums; }
+html .lg-site .pr-matrix thead th { padding: 18px 10px 16px; background: var(--glass-thick); border-bottom: 1px solid var(--rim); vertical-align: bottom; }
+html .lg-site .pr-matrix .pr-corner { width: 25%; }
+html .lg-site .pr-th-name { display: block; font-family: var(--ff-h); font-weight: 800; font-size: 1rem; color: var(--ink); }
+html .lg-site .pr-th-price { display: block; margin-top: 2px; font-size: .82rem; font-weight: 500; color: var(--ink-3); }
+html .lg-site .pr-matrix tbody th[scope="row"] { text-align: left; font-weight: 500; color: var(--ink); }
+html .lg-site .pr-matrix .pr-group-row th { text-align: left; padding: 22px 14px 8px; font-size: .75rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--accent-text); background: transparent; }
+html .lg-site .pr-matrix tbody:first-of-type .pr-group-row th { padding-top: 16px; }
+html .lg-site .pr-matrix .is-f { background: var(--tint); }
+html .lg-site .pr-matrix td .icon { display: block; margin: 0 auto; color: var(--success); }
+html .lg-site .pr-dash { color: var(--ink-3); opacity: .7; }
+html .lg-site .pr-matrix tbody:last-of-type tr:last-child > * { border-bottom: 0; }
+
+html .lg-site .pr-faq { padding: 72px 0 0; }
+html .lg-site .pr-faq-in { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 48px; align-items: start; }
+html .lg-site .pr-faq-side p { color: var(--ink-2); margin: 0; }
+html .lg-site .pr-faq .faq { max-width: none; }
+
+html .lg-site .pr-close { padding: 72px 0 88px; }
+html .lg-site .pr-close-in { text-align: center; padding: 48px 28px; border-radius: var(--r-lg); background: var(--glass-thick); border: 1px solid var(--tint-rim); box-shadow: inset 0 1px 0 var(--rim-top), 0 0 0 .5px var(--edge), var(--shadow-3); }
+html .lg-site .pr-close-in h2 { margin: 0 auto 10px; max-width: 22ch; }
+html .lg-site .pr-close-in > p { margin: 0 auto; color: var(--ink-2); }
+html .lg-site .pr-close-cta { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 24px !important; }
+
+@media (max-width: 1100px) {
+  html .lg-site .pr-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  html .lg-site .pr-grid-2 { grid-template-columns: 1fr; }
+  html .lg-site .pr-feature { grid-template-columns: 1fr; gap: 28px; padding: 32px; }
+  html .lg-site .pr-faq-in { grid-template-columns: 1fr; gap: 24px; }
+}
+@media (max-width: 900px) {
+  html .lg-site .pr-hero { padding-top: 40px; }
+  html .lg-site .pr-swipe { display: block; margin: -8px 0 12px; font-size: .85rem; color: var(--ink-3); }
+  html .lg-site .pr-matrix { min-width: 760px; }
+  html .lg-site .pr-matrix .pr-corner, html .lg-site .pr-matrix tbody th[scope="row"] { position: sticky; left: 0; z-index: 1; width: 150px; background: var(--glass-thick); box-shadow: 1px 0 0 var(--hairline); }
+  html .lg-site .pr-matrix tbody th[scope="row"] { font-size: .85rem; }
+}
+@media (max-width: 720px) {
+  html .lg-site .pr-grid-3 { grid-template-columns: 1fr; }
+  html .lg-site .pr-std .pr-desc { min-height: 0; }
+  html .lg-site .pr-wide { grid-template-columns: 1fr; gap: 0; padding: 26px 24px 22px; }
+  html .lg-site .pr-wide .pr-price { margin-bottom: 0; }
+  html .lg-site .pr-wide .pr-specs { margin-top: 20px; }
+  html .lg-site .pr-feature { padding: 24px 20px; }
+  html .lg-site .pr-benefits { grid-template-columns: 1fr; }
+  html .lg-site .pr-close-cta .btn { width: 100%; justify-content: center; }
+}

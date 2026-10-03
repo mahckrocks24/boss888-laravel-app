@@ -19,7 +19,7 @@ $agency = array_values(array_filter($plans, fn ($p) => $p['slug'] === 'agency'))
     <div class="tbl"><table class="matrix cmp">
       <thead><tr><th>Product</th><th>Camp</th><th>Entry price</th><th>Mid and top</th><th>Where it is thin</th></tr></thead>
       <tbody>
-        <tr class="us"><th scope="row">LevelUpGrowth</th><td>All four</td><td class="num"><?= money($plans[0]['price_monthly'] ?? 0) ?> · <?= $growth ? money($growth['price_monthly']) . '/mo with the workforce' : '' ?></td><td class="num"><?= $agency ? money($agency['price_monthly']) . '/mo agency, white-label, ' . (int) $agency['max_websites'] . ' sites' : '' ?></td><td>Customer stories are published only when they are real.</td></tr>
+        <tr class="us"><th scope="row">LevelUpGrowth</th><td>All four</td><td class="num"><?= money($plans[0]['price_monthly'] ?? 0) ?> · <?= $growth ? money($growth['price_monthly']) . '/mo with the workforce' : '' ?></td><td class="num"><?= $agency ? money($agency['price_monthly']) . '/mo agency, ' . (int) $agency['max_websites'] . ' sites' : '' ?></td><td>Customer stories are published only when they are real.</td></tr>
         <?php foreach ($cmp['competitors'] as $c): ?>
         <tr><th scope="row"><a href="/next/compare/<?= e($c['slug']) ?>/"><?= e($c['name']) ?></a></th><td><?= e($c['camp']) ?></td><td class="num"><?= e($c['entry']) ?></td><td class="num"><?= e($c['top']) ?></td><td><?= e($c['thin']) ?></td></tr>
         <?php endforeach; ?>
