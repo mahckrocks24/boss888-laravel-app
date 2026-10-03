@@ -54,7 +54,8 @@ final class VideoTitler
         // one drawtext per line so every line is centred; each line sits on its own soft band
         $out = preg_replace('/\.mp4$/i', '', $file) . '-titled.mp4';
         $step = (int) round($size * 1.42);
-        $top = (int) round(($vertical ? $h * 0.70 : $h * 0.76) - (count($lines) * $step) / 2);
+        // VIDEO-CERT-3: the title lives in the calm upper part of the frame (the planner keeps it clear), never on the subject
+        $top = (int) round($vertical ? $h * 0.12 : $h * 0.10);
         $txts = []; $draws = [];
         foreach ($lines as $i => $line) {
             $t = tempnam(sys_get_temp_dir(), 'vtitle'); file_put_contents($t, $line); $txts[] = $t;

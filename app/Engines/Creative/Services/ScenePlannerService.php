@@ -152,7 +152,8 @@ EOT;
                 // RFC-0009 P6: the model may return more or fewer scenes than asked; keep its content,
                 // make the durations add up to the request, and let the caller record count(scenes).
                 $norm = self::normaliseScenes((array) $result['parsed']['scenes'], $duration);
-                if ($norm) return array_map(fn ($sc) => ['prompt' => self::cleanScenePrompt((string) ($sc['prompt'] ?? ''), (string) ($options['business_name'] ?? ''))] + $sc, $norm);   // VIDEO-CERT-1
+                $__titled = (bool) \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText($prompt);   // VIDEO-CERT-3: a title is coming - keep its space clear
+                if ($norm) return array_map(fn ($sc) => ['prompt' => self::cleanScenePrompt((string) ($sc['prompt'] ?? ''), (string) ($options['business_name'] ?? '')) . ($__titled ? ' Keep the upper quarter of the frame calm, dark-to-mid toned and free of the main subject.' : '')] + $sc, $norm);   // VIDEO-CERT-1
             }
         } catch (\Throwable $e) {
             Log::warning('ScenePlannerService::planScenes runtime call failed', ['error' => $e->getMessage()]);

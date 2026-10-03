@@ -52,10 +52,25 @@ final class VideoGeneration
         $prompt = trim((string) preg_replace('/^\s*(hey sarah[,!]?\s*|sarah[,!]?\s*)?(please\s+)?(can you|could you|would you|i want|i need|i\'d like|give me|let\'s have|make me|make|create|generate|produce|shoot|film|put together|do)\b[^.]*?\b(videos?|clips?|reels?|tiktoks?|shorts|animation)\b\s*(of|showing|about|with|featuring|for)?\s*/iu', '', $text, 1));
         $prompt = trim((string) preg_replace('/\b(for (our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin))\b[.!?]*\s*$/iu', '', $prompt));
         $prompt = trim((string) preg_replace('/\b\d{1,2}\s*-?\s*(s|sec|secs|second|seconds)\b\s*(long)?/iu', '', $prompt));
+        // VIDEO-CERT-2: "for Instagram of the kare-kare ..." - where it will run is not what is filmed
+        $prompt = trim((string) preg_replace('/^\s*(a\s+)?(short\s+|quick\s+)?(vertical\s+|square\s+|landscape\s+|horizontal\s+)?((for\s+)?(our |my )?(instagram|insta|ig|facebook|fb|tiktok|reels?|stories|youtube|website|linkedin)\s+)?(of|showing|about|with|featuring)?\s+/iu', '', ' ' . $prompt));
         if (mb_strlen($prompt) < 4) $prompt = trim($text);
         $biz = null;
         foreach (DB::table('businesses')->where('workspace_id', $wsId)->whereNull('deleted_at')->get(['id', 'name']) as $b) { if (str_contains($t, mb_strtolower($b->name))) { $biz = (int) $b->id; break; } }
-        return ['prompt' => mb_substr($prompt, 0, 600), 'duration' => $duration, 'aspect_ratio' => $aspect, 'business_id' => $biz, 'cost' => self::COST];
+        if (! $biz) {   // VIDEO-CERT-2: the business the owner is talking about (sticky), as every other Sarah path
+            try {
+                $r = app(\App\Core\Business\BusinessContext::class)->resolve($wsId, $text);
+                if (! empty($r['business_id']) && ($r['mode'] ?? '') !== 'portfolio' && empty($r['ask'])) $biz = (int) $r['business_id'];
+            } catch (\Throwable) {}
+        }
+        return ['prompt' => mb_substr($prompt, 0, 600), 'duration' => $duration, 'aspect_ratio' => $aspect, 'business_id' => $biz, 'cost' => self::costFor($duration)];
+    }
+
+    /** VIDEO-CERT-2: the price Sarah says is the price the kernel charges (28 for 6 s, 52 for 10 s today) - never a constant. */
+    public static function costFor(int $duration): int
+    {
+        try { return (int) app(\App\Core\EngineKernel\CapabilityMapService::class)->creditCostFor('generate_video', ['duration' => $duration]); }
+        catch (\Throwable) { return $duration === 10 ? 52 : 28; }
     }
 
     public function remember(int $wsId, array $spec, string $ownerText): void
@@ -76,7 +91,8 @@ final class VideoGeneration
     public function describe(array $spec): string
     {
         return "I'll make a **" . (int) $spec['duration'] . '-second ' . self::shapeWords((string) $spec['aspect_ratio']) . '** video: ' . rtrim((string) $spec['prompt'], '. ') . '. '
-            . "It follows your brand and design styles. It costs **" . (int) $spec['cost'] . " credits** and takes about two minutes — I'll post it right here when it's ready.\n\n"
+            . (($__q = \App\Core\ImageIntelligence\ImageIntelligenceService::quotedText((string) $spec['prompt'])) ? 'The words "' . $__q[0] . '" go on as a clean title. ' : '')   // VIDEO-CERT-2
+            . "It follows your brand and design styles. It costs **" . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . " credits** and takes about two minutes — I'll post it right here when it's ready.\n\n"
             . 'Reply **yes** to go ahead, or **no**.';
     }
 
@@ -108,9 +124,9 @@ final class VideoGeneration
     {
         if (! ($res['success'] ?? false)) {
             return preg_match('/credit/i', (string) ($res['error'] ?? ''))
-                ? "I couldn't start the video — there aren't enough credits for it (it needs " . self::COST . '). Nothing was charged.'
+                ? "I couldn't start the video — there aren't enough credits for it (it needs " . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . '). Nothing was charged.'
                 : "I couldn't start the video just now — nothing was charged. Try again in a moment.";
         }
-        return "On it — I'm making your " . (int) $spec['duration'] . '-second ' . explode(' ', self::shapeWords((string) $spec['aspect_ratio']))[0] . ' video now (' . self::COST . " credits). It takes about two minutes; I'll post it here as soon as it's ready.";
+        return "I'm making your " . (int) $spec['duration'] . '-second ' . explode(' ', self::shapeWords((string) $spec['aspect_ratio']))[0] . ' video now (' . (int) ($spec['cost'] ?? self::costFor((int) $spec['duration'])) . " credits). It takes about two minutes; I'll post it here as soon as it's ready.";
     }
 }

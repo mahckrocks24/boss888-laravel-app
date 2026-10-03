@@ -614,4 +614,17 @@ class CertificationRemediationTest extends TestCase
         $this->assertSame(['Behind the', 'Scenes of Chef', "Red's Dinners"], \App\Engines\Creative\Services\VideoTitler::wrap("Behind the Scenes of Chef Red's Dinners", 16));
         $this->assertSame(['Fall Menu Now Served'], \App\Engines\Creative\Services\VideoTitler::wrap('Fall Menu Now Served', 30));
     }
+
+    public function test_videocert2_sarah_quotes_the_price_the_kernel_charges(): void
+    {
+        $map = app(\App\Core\EngineKernel\CapabilityMapService::class);
+        $s = \App\Core\Sarah888\VideoGeneration::spec(self::WS, "Make me a short vertical video for Instagram of the kare-kare being plated, with the words 'Kare-kare, our way' on it.");
+        $this->assertSame($map->creditCostFor('generate_video', ['duration' => 6]), $s['cost']);
+        $this->assertSame($map->creditCostFor('generate_video', ['duration' => 10]), \App\Core\Sarah888\VideoGeneration::costFor(10));
+        $this->assertStringStartsWith('the kare-kare being plated', $s['prompt']);
+        $d = app(\App\Core\Sarah888\VideoGeneration::class)->describe($s);
+        $this->assertStringContainsString('**' . $s['cost'] . ' credits**', $d);
+        $this->assertStringContainsString('The words "Kare-kare, our way" go on as a clean title.', $d);
+        $this->assertStringNotContainsString('On it', app(\App\Core\Sarah888\VideoGeneration::class)->report(['success' => true], $s));
+    }
 }

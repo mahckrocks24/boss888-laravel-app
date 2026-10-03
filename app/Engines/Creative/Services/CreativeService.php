@@ -600,7 +600,7 @@ class CreativeService
             if ($url !== '' && ! preg_match('#^https?://#', $url)) $url = rtrim((string) config('app.url'), '/') . '/' . ltrim($url, '/');
             $bi = app(\App\Core\Brand\BrandIntakeService::class);
             if ($ok) {
-                $words = $bi->sarahWords((int) $a->workspace_id, 'video_ready', "Write Sarah's short chat message (1-2 sentences): " . ($__fromCampaign ? "the video for the campaign step FACTS.what is ready (the campaign made it on its date; the owner did not ask for it in chat) and it is right below this message." : "the video the owner asked for is ready and it is right below this message.") . " Offer one natural next step (use it in a post, or make another version). No emojis, never mention how it was made.",
+                $words = $bi->sarahWords((int) $a->workspace_id, 'video_ready', "Write Sarah's short chat message (1-2 sentences): " . ($__fromCampaign ? "the video for the campaign step FACTS.what has been made and is right below this message; it has NOT been posted anywhere (never say it went out, launched or was published), and the owner did not ask for it in chat." : "the video the owner asked for is ready and it is right below this message.") . " Offer one natural next step (use it in a post, or make another version). No emojis, never mention how it was made.",
                     ['what' => $what, 'seconds' => $meta['duration'] ?? null], 'Your video is ready: ' . $what . '.');
                 $words .= "\n\n[▶ Watch the video](" . $url . ')';
                 app(\App\Core\Agents\AgentMessageService::class)->postAsAgent((int) $a->workspace_id, 'sarah', $words, ['notification_type' => 'video_ready', 'asset_id' => $assetId,
