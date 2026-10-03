@@ -513,6 +513,21 @@ class FeatureGateService
         return $this->getAgentQuotaStatus($wsId, $max)['reached'];
     }
 
+    /**
+     * TIERS-2 (Owner 2026-10-03: "$49 only gets 1 website - 1 business, $99 3 websites, $199 10 websites, $399 50 websites"):
+     * how many businesses this workspace's plan holds - plans.features_json.max_businesses, else the plan's website count.
+     * No active plan = 1.
+     */
+    public function businessLimit(int $wsId): int
+    {
+        $plan = $this->getActivePlan($wsId);
+        if (! $plan) return 1;
+        $f = $plan->features_json ?? null;
+        if (is_string($f)) $f = json_decode($f, true);
+        $f = is_array($f) ? $f : [];
+        return max(1, (int) ($f['max_businesses'] ?? $plan->max_websites ?? 1));
+    }
+
     public function siteQuotaReached(int $wsId): bool
     {
         $plan = $this->getActivePlan($wsId);

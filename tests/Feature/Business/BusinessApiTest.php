@@ -30,6 +30,7 @@ class BusinessApiTest extends TestCase
 
     public function test_list_create_edit_default_and_delete_rules(): void
     {
+        $this->partialMock(\App\Core\Billing\FeatureGateService::class, fn ($m) => $m->shouldReceive('businessLimit')->andReturn(25));   // TIERS-2: a plan that holds several businesses
         $this->withHeader('Accept', 'application/json')->getJson('/api/businesses')->assertStatus(401);
         $r = $this->api()->getJson('/api/businesses'); $r->assertOk();
         $this->assertCount(1, $r->json('businesses')); $this->assertTrue($r->json('businesses.0.is_default')); $this->assertSame('Chef Api', $r->json('businesses.0.name'));
@@ -80,5 +81,14 @@ class BusinessApiTest extends TestCase
         $this->assertSame((int) $default->id, Business::stampWebsite($this->ws, $b, (int) $foreign->id), 'another workspace business is never accepted');
         $this->assertSame((int) $gym->id, (int) DB::table('websites')->where('id', $a)->value('business_id'));
         $this->assertSame((int) $default->id, (int) DB::table('websites')->where('id', $b)->value('business_id'));
+    }
+    public function test_tiers2_the_plan_limits_how_many_businesses_a_workspace_holds(): void
+    {
+        $this->partialMock(\App\Core\Billing\FeatureGateService::class, fn ($m) => $m->shouldReceive('businessLimit')->andReturn(1));
+        $r = $this->api()->postJson('/api/businesses', ['name' => 'Second Business']);
+        $r->assertStatus(422);
+        $this->assertSame('BUSINESS_LIMIT', $r->json('code'));
+        $this->assertSame(1, $r->json('limit'));
+        $this->assertStringContainsString('Upgrade your plan', (string) $r->json('error'));
     }
 }

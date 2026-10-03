@@ -65,7 +65,13 @@ Route::post('/businesses', function (Request $r) use ($bizWrite, $bizApply, $biz
     $wsId = (int) $r->attributes->get('workspace_id');
     $name = trim((string) $r->input('name', ''));
     if ($name === '') { return response()->json(['error' => 'A business needs a name.'], 422); }
-    if (Business::where('workspace_id', $wsId)->count() >= 25) { return response()->json(['error' => 'This workspace already holds 25 businesses.'], 422); }
+    // TIERS-2: the plan sets how many businesses a workspace holds ($49: 1, $99: 3, $199: 10, $399: 50); existing ones are kept
+    $__bizLimit = app(\App\Core\Billing\FeatureGateService::class)->businessLimit($wsId);
+    if (Business::where('workspace_id', $wsId)->count() >= $__bizLimit) {
+        $__planName = (string) (app(\App\Core\Billing\FeatureGateService::class)->getActivePlanFor($wsId)?->name ?? 'current');
+        return response()->json(['error' => "Your {$__planName} plan includes {$__bizLimit} business" . ($__bizLimit === 1 ? '' : 'es') . '. Upgrade your plan to add another.',
+            'code' => 'BUSINESS_LIMIT', 'limit' => $__bizLimit, 'upgrade' => true], 422);
+    }
     $b = new Business(['workspace_id' => $wsId, 'name' => mb_substr($name, 0, 160), 'slug' => Business::slugFor($wsId, $name), 'is_default' => Business::where('workspace_id', $wsId)->count() === 0, 'sort_order' => (int) Business::where('workspace_id', $wsId)->max('sort_order') + 1]);
     $bizApply($b, $r, $bizFields);
     $b->save();
