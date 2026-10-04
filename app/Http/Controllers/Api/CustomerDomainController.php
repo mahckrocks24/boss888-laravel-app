@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use Illuminate\Support\Facades\DB;
 use App\Jobs\SyncCustomerDomainJob;
 use App\Models\CustomerDomain;
 use App\Models\DomainOrder;
@@ -186,6 +187,26 @@ class CustomerDomainController
             $q->where('website_id', (int) $request->query('website_id'));
         }
         $domains = $q->get()->map(fn (CustomerDomain $d) => $this->presentDomain($d));
+        // DOMAIN-LIST-1: the full list also shows domains the owner brought and connected to a website.
+        if ((int) $request->query('website_id', 0) <= 0) {
+            $owned = $domains->pluck('domain')->map(fn ($x) => strtolower((string) $x))->all();
+            $connected = DB::table('custom_domains as c')->leftJoin('websites as w', 'w.id', '=', 'c.website_id')
+                ->where('c.workspace_id', $wsId)->whereNull('w.deleted_at')
+                ->whereIn('c.state', ['connected', 'pending', 'verifying', 'provisioning'])
+                ->orderBy('c.domain')->get(['c.id', 'c.domain', 'c.state', 'c.ssl_status', 'c.website_id', 'c.created_at', 'w.name as website_name']);
+            foreach ($connected as $c) {
+                if (in_array(strtolower((string) $c->domain), $owned, true)) { continue; }
+                $live = $c->state === 'connected';
+                $domains->push([
+                    'id' => 'c' . $c->id, 'kind' => 'connected', 'domain' => $c->domain,
+                    'status' => $live ? 'connected' : 'connecting', 'status_label' => $live ? 'Connected' : 'Connecting',
+                    'registered_on' => null, 'expires_on' => null, 'days_until_expiry' => null, 'expiring_soon' => false,
+                    'auto_renew' => null, 'website_id' => $c->website_id ? (int) $c->website_id : null,
+                    'website_name' => $c->website_name, 'secure' => $c->ssl_status === 'active',
+                    'journey' => ['complete' => $live],
+                ]);
+            }
+        }
 
         return response()->json([
             'domains'  => $domains,

@@ -313,7 +313,7 @@
     if (_table.page > pages) { _table.page = pages; }
     var slice = rows.slice((_table.page - 1) * _table.per, _table.page * _table.per);
 
-    var active = _domains.filter(function (d) { return d.status === 'active'; }).length;
+    var active = _domains.filter(function (d) { return d.status === 'active' || d.status === 'connected'; }).length;   // DOMAIN-LIST-1
     var expiring = _domains.filter(function (d) { return d.expiring_soon; }).length;
 
     var metrics = ctx.metricStrip([
@@ -361,8 +361,8 @@
           'border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:400 13px var(--fb);">' +
         '<select id="lud-status" aria-label="Filter by status" style="min-height:38px;padding:0 var(--sp-3);border-radius:var(--r);' +
           'border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:400 13px var(--fb);">' +
-          ['all', 'active', 'expiring', 'expired'].map(function (s) {
-            var l = s === 'all' ? 'All statuses' : s === 'expiring' ? 'Expiring soon' : s.charAt(0).toUpperCase() + s.slice(1);
+          ['all', 'active', 'connected', 'expiring', 'expired'].map(function (s) {
+            var l = s === 'all' ? 'All statuses' : s === 'expiring' ? 'Expiring soon' : s === 'active' ? 'Bought here' : s.charAt(0).toUpperCase() + s.slice(1);
             return '<option value="' + s + '"' + (_table.status === s ? ' selected' : '') + '>' + l + '</option>';
           }).join('') +
         '</select>' +
@@ -386,6 +386,7 @@
         '<th scope="col" style="padding:0 var(--sp-4) 9px;"><span class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">Actions</span></th>' +
       '</tr></thead><tbody>' +
       slice.map(function (d) {
+        if (d.kind === 'connected') { return connectedRow(d); }
         var tone = d.status === 'active' ? (d.expiring_soon ? 'var(--am)' : 'var(--ac)') : 'var(--t3)';
         return '<tr style="border-bottom:1px solid var(--bd);">' +
           '<td style="padding:var(--sp-4);font:600 14px var(--fb);color:var(--t1);word-break:break-all;">' + esc(d.domain) + '</td>' +
@@ -414,7 +415,27 @@
     return head + table + pager;
   }
 
+  /* DOMAIN-LIST-1: a domain the owner bought elsewhere and connected. Renewal stays with their registrar. */
+  function connectedRow(d) {
+    var live = d.status === 'connected';
+    var dash = '<span style="color:var(--t3);">—</span>';
+    return '<tr style="border-bottom:1px solid var(--bd);">' +
+      '<td style="padding:var(--sp-4);font:600 14px var(--fb);color:var(--t1);word-break:break-all;">' + esc(d.domain) +
+        '<div style="font:400 11px var(--fb);color:var(--t3);">Renews with your own registrar</div></td>' +
+      '<td style="padding:var(--sp-4);">' + ctx.statusPill(d.status_label, live ? 'var(--ac)' : 'var(--am)') + '</td>' +
+      '<td style="padding:var(--sp-4);">' + dash + '</td><td style="padding:var(--sp-4);">' + dash + '</td><td style="padding:var(--sp-4);">' + dash + '</td>' +
+      '<td style="padding:var(--sp-4);font:400 13px var(--fb);color:var(--t2);">' + (d.website_id ? esc(d.website_name || ('Website #' + d.website_id)) +
+        '<div>' + ctx.statusPill(live ? (d.secure ? 'Live, secure' : 'Live') : 'Setting up', live ? 'var(--ac)' : 'var(--am)') + '</div>' : dash) + '</td>' +
+      '<td style="padding:var(--sp-4);text-align:right;white-space:nowrap;">' + (d.website_id
+        ? '<button class="lud-site" data-site="' + esc(d.website_id) + '" style="min-height:34px;padding:0 var(--sp-4);border-radius:var(--r);' +
+          'cursor:pointer;font:600 12px var(--fb);background:transparent;color:var(--t1);border:1px solid var(--bd2);">Open website</button>' : '') +
+      '</td></tr>';
+  }
+
   function bindList() {
+    Array.prototype.forEach.call(document.querySelectorAll('.lud-site'), function (b) {
+      b.addEventListener('click', function () { if (ctx.openWebsite) { ctx.openWebsite(parseInt(b.getAttribute('data-site'), 10)); } });
+    });
     on('lud-go', 'click', function () { doSearch(h('lud-q') ? h('lud-q').value : ''); });
     on('lud-q', 'keydown', function (e) { if (e.key === 'Enter') { doSearch(e.target.value); } });
     Array.prototype.forEach.call(document.querySelectorAll('input[name="lud-term"]'), function (i) {
