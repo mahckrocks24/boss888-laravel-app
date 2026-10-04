@@ -364,6 +364,11 @@ class TeamService
     {
         $plan = $this->getActivePlan($wsId);
         $max  = $plan ? (int) $plan->max_team_members : 1;
+        // SEATS-4: extra users bought at $20 a month each sit on top of the plan's users (team plans only)
+        $planSeats = $max; $canBuy = $max > 1 && $max < 999;
+        $extra = $canBuy ? (int) (DB::table('subscriptions')->where('workspace_id', $wsId)->whereIn('status', \App\Models\Subscription::ENTITLED_STATUSES)->orderByDesc('id')->value('extra_seats') ?? 0) : 0;
+        $max += $extra;
+        $seatInfo = ['plan_seats' => $planSeats, 'extra' => $extra, 'can_buy' => $canBuy, 'seat_price' => \App\Core\Billing\StripeService::SEAT_PRICE_USD];
 
         $current = DB::table('workspace_users')->where('workspace_id', $wsId)->count();
         $pending = DB::table('pending_invites')
@@ -384,12 +389,12 @@ class TeamService
                 'allowed' => false,
                 // SEATS-1: say what the plan allows and where more users start
                 'reason'  => $max <= 1
-                    ? 'Your plan is for one user. Team members start on Pro ($199) with 5 users; Agency is unlimited.'   // SEATS-2
-                    : "Your plan has {$max} users and all of them are taken ({$current} members" . ($pending ? " and {$pending} pending invite" . ($pending === 1 ? '' : 's') : '') . "). " . ($max >= 5 ? 'Agency has unlimited users.' : 'Pro has 5 users and Agency is unlimited.'),   // TEAM-1: name the next plan up
+                    ? 'Your plan is for one user. Team members start on Pro ($199) with 3 users; Agency has 10.'   // SEATS-2, SEATS-3
+                    : "Your plan has {$max} users and all of them are taken ({$current} members" . ($pending ? " and {$pending} pending invite" . ($pending === 1 ? '' : 's') : '') . "). Add another user for $20 a month.",   // TEAM-1, SEATS-4
                 'current' => $current,
                 'pending' => $pending,
                 'max'     => $max,
-            ];
+            ] + $seatInfo;
         }
 
         return [
@@ -398,7 +403,7 @@ class TeamService
             'pending'   => $pending,
             'max'       => $max,
             'remaining' => $max - $total,
-        ];
+        ] + $seatInfo;
     }
 
     // ═══════════════════════════════════════════════════════════

@@ -420,21 +420,27 @@ function _tmRender() {
     '<p class="pf-sub">The people who work in this workspace with you and Sarah&rsquo;s team. Admins can invite and manage people; only the owner handles the plan and billing.</p>';
 
   if (solo) {
-    h += '<div class="tm-up"><p><strong style="color:var(--t1)">Your plan is for one user.</strong> Team members start on Pro ($199) with 5 users; Agency is unlimited.</p>' +
+    h += '<div class="tm-up"><p><strong style="color:var(--t1)">Your plan is for one user.</strong> Team members start on Pro ($199) with 3 users; Agency has 10.</p>' +
       '<button type="button" class="pf-btn" onclick="nav(\'billing\')">See plans</button></div>';
   } else {
     var pct = unlimited ? 12 : Math.min(100, Math.round(used / Math.max(1, Number(max)) * 100));
-    h += '<div class="tm-seat"><b>' + used + (unlimited ? '' : ' of ' + Number(max)) + '</b><span style="font-size:13px;color:var(--t2)">' + (unlimited ? 'users &middot; unlimited on your plan' : 'users on your plan') + (Number(seats.pending || 0) ? ' &middot; ' + Number(seats.pending) + ' invited' : '') + '</span>' +
+    var extra = Number(seats.extra || 0), canBuy = !!seats.can_buy, sPrice = Number(seats.seat_price || 20);   // SEATS-4
+    var addBtn = canBuy ? '<button type="button" class="pf-btn" onclick="_tmSeats(1)">Add a user &middot; $' + sPrice + '/month</button>' : '';
+    h += '<div class="tm-seat"><b>' + used + (unlimited ? '' : ' of ' + Number(max)) + '</b><span style="font-size:13px;color:var(--t2)">' + (unlimited ? 'users &middot; unlimited on your plan' : 'users' + (extra ? ' &middot; ' + Number(seats.plan_seats || 0) + ' with your plan + ' + extra + ' extra' : ' on your plan')) + (Number(seats.pending || 0) ? ' &middot; ' + Number(seats.pending) + ' invited' : '') + '</span>' +
       (unlimited ? '' : '<span class="tm-bar"><i style="width:' + pct + '%"></i></span>') + '</div>';
     if (canManage) {
       if (seats.allowed === false) {
-        h += '<div class="tm-up"><p>' + _tmEsc(seats.reason || 'Every seat on your plan is taken.') + '</p><button type="button" class="pf-btn" onclick="nav(\'billing\')">See plans</button></div>';
+        h += '<div class="tm-up"><p>' + _tmEsc(seats.reason || 'Every seat on your plan is taken.') + '</p>' + (addBtn || '<button type="button" class="pf-btn" onclick="nav(\'billing\')">See plans</button>') + '</div>';
       } else {
         h += '<div class="tm-inv">' +
           '<div class="pf-field"><label for="tm-email">Invite by email</label><input id="tm-email" type="email" class="pf-inp" placeholder="name@company.com" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();sendInvite();}"></div>' +
           '<div class="pf-field"><label for="tm-role">Role</label><select id="tm-role" class="pf-inp"><option value="member">Member</option><option value="admin">Admin</option></select></div>' +
           '<button type="button" class="pf-btn" id="tm-send" onclick="sendInvite()">Send invite</button></div>' +
           '<div class="tm-help"><b style="color:var(--t2)">Member</b> works with Sarah and the AI team on the business. <b style="color:var(--t2)">Admin</b> can also invite and manage people. They get an email with a link that works for 3 days.</div>';
+      }
+      if (canBuy) {   // SEATS-4
+        h += '<div class="tm-help">' + (seats.allowed === false ? '' : 'Need more people? Each extra user is $' + sPrice + ' a month. <button type="button" class="tm-ghost" onclick="_tmSeats(1)">Add a user</button>') +
+          (extra > 0 && Number(seats.remaining || 0) > 0 ? ' <button type="button" class="tm-ghost" onclick="_tmSeats(-1)">Remove an unused extra user</button>' : '') + '</div>';
       }
     }
   }
@@ -558,6 +564,23 @@ async function _tmInvite(email, role, verb) {
     }
   } catch (e) { showToast('The invitation was not sent. Please try again.', 'error'); }
   finally { _tm.busy = false; if (btn) { btn.disabled = false; btn.textContent = 'Send invite'; } }
+}
+/* SEATS-4 (Owner 2026-10-05): extra human team members on Pro and Agency, $20 a month each, always confirmed first. */
+async function _tmSeats(delta) {
+  var s = (_tm.data && _tm.data.seats) || {}, extra = Number(s.extra || 0), next = Math.max(0, extra + delta), price = Number(s.seat_price || 20);
+  var total = Number(s.plan_seats || 0) + next;
+  var body = delta > 0
+    ? 'Your workspace will have ' + total + ' users. Each extra person is $' + price + ' a month on top of your plan' + (next > 1 ? ' (' + next + ' extra, $' + (price * next) + ' a month)' : '') + '. Today you pay only for the rest of this billing month; then it renews with your plan. This is for people on your team; Sarah and the AI team are already included.'
+    : 'Your workspace will have ' + total + ' users. The $' + price + ' a month stops from your next renewal. Nothing is refunded for this month.';
+  var ok = await luConfirm(delta > 0 ? 'Add a team member?' : 'Remove an extra user?', body, { okLabel: delta > 0 ? 'Add for $' + price + '/month' : 'Remove extra user', cancelLabel: 'Cancel', danger: delta < 0 });
+  if (!ok) return;
+  try {
+    var r = await _luFetch('POST', '/billing/seats', { quantity: next });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.success) showToast(delta > 0 ? 'Added. You can invite another person now.' : 'The extra user was removed.', 'success');
+    else { showToast(d.error || 'That did not go through. Nothing was charged.', 'error'); if (d.needs_payment && d.invoice_url) window.open(d.invoice_url, '_blank', 'noopener'); }
+  } catch (e) { showToast('That did not go through. Nothing was charged.', 'error'); }
+  loadTeam();
 }
 function sendInvite() {
   var el = document.getElementById('tm-email'), role = document.getElementById('tm-role');

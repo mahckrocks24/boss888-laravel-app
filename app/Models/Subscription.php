@@ -11,6 +11,7 @@ use Throwable;
 class Subscription extends Model
 {
     protected $fillable = [
+        'extra_seats', 'extra_seats_item_id',   // SEATS-4
         'workspace_id', 'plan_id', 'provider', 'provider_subscription_id',
         'stripe_subscription_id', 'stripe_customer_id',
         'status', 'starts_at', 'ends_at', 'cancelled_at',

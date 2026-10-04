@@ -621,7 +621,8 @@ class StripeService
             $ss = $stripe->subscriptions->retrieve($currentSub->stripe_subscription_id);
             $addonPriceId = config('billing.chatbot_addon_price_id', env('CHATBOT_ADDON_PRICE_ID', ''));
             $item = null;
-            foreach (($ss->items->data ?? []) as $it) { if (($it->price->id ?? '') !== $addonPriceId) { $item = $it; break; } }
+            $seatItem = null;   // SEATS-4: the extra-users item is not the plan item
+            foreach (($ss->items->data ?? []) as $it) { $p = $it->price->id ?? ''; if ($p !== '' && $p === self::seatPriceId()) { $seatItem = $it; continue; } if ($p !== $addonPriceId && ! $item) { $item = $it; } }
             if (! $item) return ['success' => false, 'error' => 'Your subscription could not be read. Please write to us.'];
             $periodEnd = (int) ($item->current_period_end ?? $ss->current_period_end ?? 0);
 
@@ -656,7 +657,10 @@ class StripeService
                 return ['success' => true, 'action' => 'upgraded', 'plan' => $newPlan->slug];
             }
 
-            $stripe->subscriptions->update($ss->id, ['items' => [['id' => $item->id, 'price' => $newPlan->stripe_price_id]], 'proration_behavior' => 'none']);
+            // SEATS-4: a plan for one user has no extra users - the extra-users item goes with the move (no refund for this month)
+            $dItems = [['id' => $item->id, 'price' => $newPlan->stripe_price_id]];
+            if ($seatItem && (int) $newPlan->max_team_members <= 1) { $dItems[] = ['id' => $seatItem->id, 'deleted' => true]; $currentSub->update(['extra_seats' => 0, 'extra_seats_item_id' => null]); }
+            $stripe->subscriptions->update($ss->id, ['items' => $dItems, 'proration_behavior' => 'none']);
             Log::info('[BILL-2] downgrade scheduled', ['ws' => $workspaceId, 'from' => $curPlan->slug ?? null, 'to' => $newPlan->slug, 'at' => $periodEnd]);
             $this->tellOwner($workspaceId, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED, 'Your move to ' . $newPlan->name . ' is booked',
                 'You keep ' . ($curPlan->name ?? 'your plan') . ' until ' . ($periodEnd ? date('j F Y', $periodEnd) : 'your next renewal') . ', then move to ' . $newPlan->name . ' at $'
@@ -667,6 +671,71 @@ class StripeService
             return ['success' => false, 'error' => 'The plan change did not go through. Nothing was charged. Please try again or write to us.'];
         }
     }
+    /**
+     * SEATS-4 (Owner 2026-10-05: "add 20$ per extra user" - "I mean human team member"). Extra human team members on the plans
+     * that have a team (Pro 3 users, Agency 10), $20 a month each: one subscription item whose quantity is the number of extra
+     * users. Adding is invoiced at once for the rest of the month and only counts once paid; removing stops from the next renewal.
+     */
+    public const SEAT_PRICE_USD = 20;
+
+    public static function seatPriceId(): string
+    {
+        return (string) config('billing.seat_addon_price_id', env('SEAT_ADDON_PRICE_ID', ''));
+    }
+
+    public function setExtraSeats(int $workspaceId, int $quantity, int $userId): array
+    {
+        $sub = Subscription::where('workspace_id', $workspaceId)->whereIn('status', Subscription::ENTITLED_STATUSES)->with('plan')->orderByDesc('id')->first();
+        if (! $sub || ! $sub->plan || (int) $sub->plan->max_team_members <= 1) return ['success' => false, 'error' => 'Extra team members come with Pro and Agency.'];
+        if ($quantity < 0 || $quantity > 100) return ['success' => false, 'error' => 'Choose between 0 and 100 extra users.'];
+        if (! $this->enabled || ! $sub->stripe_subscription_id || self::seatPriceId() === '') {
+            return ['success' => false, 'error' => 'Extra users can be added once your plan is paid by card. Nothing was charged.'];
+        }
+        $planSeats = (int) $sub->plan->max_team_members;
+        $q = app(\App\Core\Workspaces\TeamService::class)->checkSeatQuota($workspaceId);
+        $inUse = (int) ($q['current'] ?? 0) + (int) ($q['pending'] ?? 0);
+        if ($planSeats + $quantity < $inUse) {
+            return ['success' => false, 'error' => 'All ' . $inUse . ' places are in use (people and open invites). Remove someone or cancel an invite first.'];
+        }
+        $current = (int) ($sub->extra_seats ?? 0);
+        if ($quantity === $current) return ['success' => true, 'extra_seats' => $current, 'unchanged' => true];
+        $more = $quantity > $current;
+
+        try {
+            $stripe = new \Stripe\StripeClient($this->secretKey);
+            $ss = $stripe->subscriptions->retrieve($sub->stripe_subscription_id);
+            $seatItem = null;
+            foreach (($ss->items->data ?? []) as $it) { if (($it->price->id ?? '') === self::seatPriceId()) { $seatItem = $it; break; } }
+            if ($quantity === 0) $items = $seatItem ? [['id' => $seatItem->id, 'deleted' => true]] : [];
+            elseif ($seatItem) $items = [['id' => $seatItem->id, 'quantity' => $quantity]];
+            else $items = [['price' => self::seatPriceId(), 'quantity' => $quantity]];
+
+            $params = ['items' => $items, 'proration_behavior' => $more ? 'always_invoice' : 'none', 'expand' => ['latest_invoice']];
+            if ($more) $params['payment_behavior'] = 'pending_if_incomplete';   // the card must pay before the user counts
+            $upd = $items ? $stripe->subscriptions->update($ss->id, $params) : $ss;
+            if ($more && ! empty($upd->pending_update)) {
+                return ['success' => false, 'needs_payment' => true, 'invoice_url' => $upd->latest_invoice->hosted_invoice_url ?? null,
+                    'error' => 'Your card did not go through, so no user was added. Pay the invoice to add them.'];
+            }
+            $itemId = null;
+            foreach (($upd->items->data ?? []) as $it) { if (($it->price->id ?? '') === self::seatPriceId()) { $itemId = $it->id; break; } }
+            $sub->update(['extra_seats' => $quantity, 'extra_seats_item_id' => $quantity ? $itemId : null]);
+            $this->auditLog->log($workspaceId, $userId, 'billing.extra_seats_changed', 'Subscription', $sub->id, ['from' => $current, 'to' => $quantity, 'item_id' => $itemId]);
+
+            $total = $planSeats + $quantity;
+            $paid = $more ? (int) ($upd->latest_invoice->amount_paid ?? 0) / 100 : 0;
+            $this->tellOwner($workspaceId, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED,
+                $more ? 'Extra team member added' : 'Extra team member removed',
+                'Your workspace now has ' . $total . ' users: ' . $planSeats . ' with your ' . $sub->plan->name . ' plan' . ($quantity ? ' and ' . $quantity . ' extra at $' . self::SEAT_PRICE_USD . ' a month each' : '') . '. '
+                . ($more ? 'You paid $' . number_format($paid, 2) . ' today for the rest of this billing month.' : 'The change applies from your next renewal. Nothing is refunded for this month.'));
+
+            return ['success' => true, 'extra_seats' => $quantity, 'users' => $total, 'paid' => $paid];
+        } catch (\Throwable $e) {
+            Log::error('StripeService::setExtraSeats failed', ['workspace_id' => $workspaceId, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'That did not go through. Nothing was charged. Please try again or write to us.'];
+        }
+    }
+
     /**
      * Get or create Stripe Customer Portal URL for self-service billing.
      * Allows customers to update payment methods, view invoices, cancel.
@@ -1254,7 +1323,7 @@ class StripeService
                 $live = (new \Stripe\StripeClient($this->secretKey))->subscriptions->retrieve($invoiceSubId);
                 $addonPriceId = config('billing.chatbot_addon_price_id', env('CHATBOT_ADDON_PRICE_ID', ''));
                 foreach (($live->items->data ?? []) as $it) {
-                    $pid = $it->price->id ?? ''; if ($pid === '' || $pid === $addonPriceId) continue;
+                    $pid = $it->price->id ?? ''; if ($pid === '' || $pid === $addonPriceId || $pid === self::seatPriceId()) continue;   // SEATS-4
                     $billed = Plan::where('stripe_price_id', $pid)->first();
                     $livePeriod = [(int) ($it->current_period_start ?? $live->current_period_start ?? 0), (int) ($it->current_period_end ?? $live->current_period_end ?? 0)];
                     if ($billed && (int) $billed->id !== (int) $sub->plan_id) { Log::info('[BILL-2] plan follows the billed price', ['ws' => $sub->workspace_id, 'from' => $sub->plan_id, 'to' => $billed->id]); $prevPlan = Plan::find($sub->plan_id); $sub->update(['plan_id' => $billed->id]); $planMoved = $billed; }
@@ -1413,6 +1482,16 @@ class StripeService
                     'addon_item_id' => $foundAddonItemId,
                     'state'         => $foundAddonItemId ? 'granted' : 'revoked',
                 ]);
+            }
+
+            // SEATS-4: extra users follow the extra-users item's quantity (paid later, or removed in Stripe)
+            $seatPid = self::seatPriceId(); $seatQty = 0; $seatItemId = null;
+            if ($seatPid !== '') {
+                foreach ($items as $item) { if (($item->price->id ?? null) === $seatPid) { $seatQty = (int) ($item->quantity ?? 0); $seatItemId = $item->id; break; } }
+                if ((int) ($sub->extra_seats ?? 0) !== $seatQty) {
+                    $sub->update(['extra_seats' => $seatQty, 'extra_seats_item_id' => $seatItemId]);
+                    Log::info('[SEATS-4] extra users synced from Stripe', ['workspace_id' => $sub->workspace_id, 'extra_seats' => $seatQty]);
+                }
             }
 
             // P0 hardening 2026-05-01: suspend / reactivate WP site connections

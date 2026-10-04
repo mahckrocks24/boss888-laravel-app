@@ -2436,6 +2436,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand', 'team.activ
         ));
     })->middleware('team.role:admin');   // BILL-2: only an owner or admin changes the plan
 
+    // SEATS-4: extra human team members, $20 a month each - owner or admin, as for the plan
+    Route::post('/billing/seats', function (\Illuminate\Http\Request $r) {
+        $r->validate(['quantity' => 'required|integer|min:0|max:100']);
+        return response()->json(app(\App\Core\Billing\StripeService::class)->setExtraSeats(
+            (int) $r->attributes->get('workspace_id'), (int) $r->input('quantity'), (int) $r->user()->id));
+    })->middleware(['team.role:admin', 'verified.email']);
+
     Route::get('/billing/portal', function (\Illuminate\Http\Request $r) {
         $stripe = app(\App\Core\Billing\StripeService::class);
         return response()->json($stripe->getPortalUrl(

@@ -88,7 +88,7 @@ class PlanSeeder extends Seeder
                 'credit_limit' => 2500,
                 'ai_access' => 'full', 'includes_dmm' => true,
                 'agent_count' => 5, 'agent_level' => 'junior', 'agent_addon_price' => 20.00,
-                'max_websites' => 10, 'max_team_members' => 5,
+                'max_websites' => 10, 'max_team_members' => 3,
                 'companion_app' => true, 'white_label' => false, 'priority_processing' => true,
                 'features_json' => [
                     'website_builder' => true, 'custom_domain' => true,
@@ -106,7 +106,7 @@ class PlanSeeder extends Seeder
                 'credit_limit' => 10000,
                 'ai_access' => 'full', 'includes_dmm' => true,
                 'agent_count' => 10, 'agent_level' => 'senior', 'agent_addon_price' => 10.00,
-                'max_websites' => 50, 'max_team_members' => 999,
+                'max_websites' => 50, 'max_team_members' => 10,
                 'companion_app' => true, 'white_label' => true, 'priority_processing' => true,
                 'features_json' => [
                     'website_builder' => true, 'custom_domain' => true,
