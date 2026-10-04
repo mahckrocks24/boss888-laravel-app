@@ -4594,7 +4594,7 @@ window.wsOpenLayouts = async function (siteId) {
     + '#template-editor-view .pe-bar button{padding:6px 10px!important;font-size:12px!important}'
     + '#template-editor-view .pe-bar-hint,#template-editor-view .pe-bar-spacer{display:none!important}'
     + '#template-editor-view .pe-bar-title{flex:1 1 auto;font-size:13px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '#t3-lay,#t3-pal,#t3-cat,#t3-site{top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:min(62vh,100%)!important;border-radius:14px 14px 0 0!important;box-shadow:0 -12px 40px rgba(0,0,0,.5)!important}'
+    + '#t3-lay,#t3-pal,#t3-cat,.pe-stage>#t3-site{top:auto!important;bottom:0!important;left:0!important;right:0!important;width:100%!important;max-height:min(62vh,100%)!important;border-radius:14px 14px 0 0!important;box-shadow:0 -12px 40px rgba(0,0,0,.5)!important}'
     + '#t3-lay-bar{left:8px!important;right:8px!important;top:8px!important;transform:none!important;flex-wrap:wrap;border-radius:12px!important;padding:10px 12px!important;gap:8px!important}'
     + '#t3-lay-bar span{flex:1 1 100%;font-size:12px;line-height:1.35}'
     + '#t3-lay-bar button{flex:1 1 calc(50% - 4px);white-space:nowrap}'
@@ -4939,7 +4939,7 @@ window.wsOpenSitePanel = async function (siteId, opts) {
   var _inEditor = !opts.fromList && _edStage && _edStage.offsetParent !== null;
   var _ov = null;
   if (!_inEditor) {
-    _ov = document.createElement('div'); _ov.id = 't3-site-ov';
+    _ov = document.createElement('div'); _ov.id = 't3-site-ov'; if (!document.getElementById('t3-site-ov-css')) { var _oc = document.createElement('style'); _oc.id = 't3-site-ov-css'; _oc.textContent = '@media (max-width:760px){#t3-site-ov{padding:10px 10px 24px!important}#t3-site-ov>#t3-site{width:100%!important;max-height:none!important;border-radius:14px!important}}'; document.head.appendChild(_oc); }   // SITECARD-2: on a phone the overlay scrolls the whole panel (the editor sheet rule capped it at 62vh)
     _ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(5,7,12,.55);display:flex;align-items:flex-start;justify-content:center;padding:max(16px,4vh) 16px 16px;overflow:auto';
     _ov.addEventListener('click', function (ev) { if (ev.target === _ov) _ov.remove(); });
     var _esc = function (ev) { if (ev.key === 'Escape' && document.getElementById('t3-site-ov')) { _ov.remove(); document.removeEventListener('keydown', _esc); } };
