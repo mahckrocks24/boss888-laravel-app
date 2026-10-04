@@ -9239,3 +9239,4 @@ Route::post('/public/store-webhook/{wsId}', function (\Illuminate\Http\Request $
 
 // RFC-0026: the partner program's portal API
 require __DIR__ . '/api/partner.php';
+require __DIR__ . '/api/admin-partners.php';   // RFC-0026: /admin -> Partners
