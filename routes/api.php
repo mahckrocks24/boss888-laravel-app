@@ -110,7 +110,7 @@ Route::get('/partners/code/{code}', function (string $code) {
     $res = \App\Core\Partners\PartnerProgram::resolveCode($code);
     if (! $res['ok']) return response()->json(['ok' => false, 'error' => $res['error']]);
     return response()->json(['ok' => true, 'code' => $res['voucher']->code, 'message' => \App\Core\Partners\PartnerProgram::describe($res['voucher']), 'partner' => $res['affiliate']->display_name ?? null]);
-})->where('code', '[A-Za-z0-9 -]{1,40}')->middleware('throttle:30,1');
+})->where('code', '[A-Za-z0-9 -]{1,40}')->middleware('throttle:30,1,pcode');
 
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
@@ -2454,7 +2454,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand', 'team.activ
     Route::post('/billing/promo-code', function (\Illuminate\Http\Request $r) {
         $r->validate(['code' => 'required|string|max:40']);
         return response()->json(\App\Core\Partners\Attribution::applyCode((int) $r->attributes->get('workspace_id'), (int) $r->user()->id, (string) $r->input('code')));
-    })->middleware(['team.role:admin', 'throttle:10,1']);
+    })->middleware(['team.role:admin', 'throttle:10,1,ppromo']);
 
     // SEATS-4: extra human team members, $20 a month each - owner or admin, as for the plan
     Route::post('/billing/seats', function (\Illuminate\Http\Request $r) {
@@ -9236,3 +9236,6 @@ Route::post('/public/store-webhook/{wsId}', function (\Illuminate\Http\Request $
     catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[StorePayments] webhook error', ['workspace' => $wsId, 'error' => $e->getMessage()]); $res = ['ok' => false, 'reason' => 'error']; }
     return response()->json($res, 200);   // always 200: Stripe retries 5xx for hours
 })->where('wsId', '[0-9]+');
+
+// RFC-0026: the partner program's portal API
+require __DIR__ . '/api/partner.php';

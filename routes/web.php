@@ -1088,9 +1088,12 @@ Route::get('/plugin-connect', function (\Illuminate\Http\Request $r) {
 // method+uri and OVERWRITES, so for a URI defined in both places the LAST registration wins.
 // Included first, every legacy page below silently re-claimed / and /pricing. Deleting these
 // five lines is the complete rollback: the legacy routes above are untouched.
+// RFC-0026: the partner portal (its own sign-in; affiliates have no workspace)
+Route::get('/partners/portal', fn () => response()->file(resource_path('views/partner-portal.html'), ['Content-Type' => 'text/html; charset=utf-8', 'Cache-Control' => 'no-cache, must-revalidate', 'X-Robots-Tag' => 'noindex']));
+
 // RFC-0026: a partner's link - levelupgrowth.io/r/{handle} or /r/{handle}/{video}
 Route::get('/r/{handle}/{sub?}', fn (\Illuminate\Http\Request $r, string $handle, ?string $sub = null) => \App\Core\Partners\Attribution::click($r, $handle, $sub))
-    ->where('handle', '[A-Za-z0-9_-]{2,32}')->where('sub', '[A-Za-z0-9_-]{1,40}')->middleware('throttle:60,1');
+    ->where('handle', '[A-Za-z0-9_-]{2,32}')->where('sub', '[A-Za-z0-9_-]{1,40}')->middleware('throttle:60,1,pref');
 
 if (file_exists(__DIR__ . '/marketing-next.php')) { require __DIR__ . '/marketing-next.php'; }
 

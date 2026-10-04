@@ -678,6 +678,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'auth.jwt'        => \App\Http\Middleware\JwtAuthMiddleware::class,
+            'partner.auth'    => \App\Http\Middleware\PartnerAuth::class,   // RFC-0026: the partner portal (no workspace)
             'desk.context'    => \App\Http\Middleware\DeskContext::class, // PUBLISHER888 Unit 1
             // Phase 2B-R2 — MFA step-up for privileged control-plane ops. Self-
             // disables below the two-MFA-admin governance bar (fail-safe, not fail-open).
