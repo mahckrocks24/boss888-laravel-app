@@ -1378,7 +1378,7 @@ class WriteService
         // up writing it as the article's meta_title (FIX 36 incident).
         // Heuristic: if $title looks like a task-payload string and we
         // have an articleId, prefer the article's real title from DB.
-        if ($articleId && $title !== '' && preg_match('/^(Article\s+\d+|Meta\s+title|generate\s+meta)/i', $title)) {
+        if ($articleId && $title !== '') {   // META-TITLE-1: an existing article's own title always wins over a payload title (was: only when it looked like 'Article 1: …' - 'test legit' went live on Chef Red)
             $dbTitle = \Illuminate\Support\Facades\DB::table('articles')
                 ->where('id', $articleId)->where('workspace_id', $wsId)
                 ->value('title');

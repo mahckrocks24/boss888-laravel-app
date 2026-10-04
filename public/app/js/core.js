@@ -355,108 +355,176 @@ async function saveApiKeys() {
   }
 }
 
-// ── Team Management ──────────────────────────────────────────────
-async function loadTeam() {
-  var list = document.getElementById('team-members-list');
-  var invites = document.getElementById('team-invites-list');
-  var seats = document.getElementById('team-seats-info');
-  if (!list) return;
+// ── Team Management (TEAM-1, Owner 2026-10-04: "add a tab for human and ai agents") ──────────────
+// Settings → Team members: the people in this workspace, their roles, the seats the plan gives, invitations.
+// Settings → AI agents keeps Sarah's team. The API (routes/api.php /team/*) decides every rule; this only shows it.
+var _tm = { data: null, busy: false };
+function _tmEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function _tmInitials(n, e) { var s = String(n || e || '?').trim(); var p = s.split(/\s+/); return ((p[0] || '')[0] || '?').toUpperCase() + ((p[1] || '')[0] || '').toUpperCase(); }
+function _tmRoleLabel(r) { return r === 'owner' ? 'Owner' : r === 'admin' ? 'Admin' : r === 'viewer' ? 'Viewer' : 'Member'; }
+function _tmCss() {
+  if (document.getElementById('tm-styles')) return;
+  var st = document.createElement('style'); st.id = 'tm-styles';
+  st.textContent = [
+    '#team-people-section .tm-seat{display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:14px 16px;margin:0 0 18px}',
+    '#team-people-section .tm-seat b{font:700 20px var(--fh);color:var(--t1)}',
+    '#team-people-section .tm-seat .tm-bar{flex:1 1 160px;height:6px;border-radius:99px;background:var(--s1);overflow:hidden;min-width:120px}',
+    '#team-people-section .tm-seat .tm-bar i{display:block;height:100%;border-radius:99px;background:var(--p)}',
+    '#team-people-section .tm-up{border:1px solid color-mix(in srgb,var(--p) 40%,var(--bd));background:color-mix(in srgb,var(--p) 8%,var(--s1));border-radius:var(--r);padding:16px 18px;margin:0 0 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}',
+    '#team-people-section .tm-up p{flex:1 1 260px;margin:0;font-size:13px;color:var(--t2);line-height:1.55}',
+    '#team-people-section .tm-inv{display:grid;grid-template-columns:minmax(0,1fr) 160px auto;gap:10px;align-items:end;margin:0 0 6px}',
+    '#team-people-section .tm-help{font-size:11.5px;color:var(--t3);margin:6px 0 18px;line-height:1.5}',
+    '#team-people-section .tm-list{border:1px solid var(--bd);border-radius:var(--r);overflow:hidden}',
+    '#team-people-section .tm-row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--bd);min-width:0}',
+    '#team-people-section .tm-row:first-child{border-top:none}',
+    '#team-people-section .tm-av{width:36px;height:36px;border-radius:50%;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font:700 12.5px var(--fh);color:#fff;background:linear-gradient(135deg,var(--p),#8b5cf6)}',
+    '#team-people-section .tm-av.tm-pend{background:var(--s2);color:var(--t3);border:1px dashed var(--bd)}',
+    '#team-people-section .tm-who{flex:1 1 auto;min-width:0}',
+    '#team-people-section .tm-who .n{font:600 13.5px var(--fh);color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '#team-people-section .tm-who .e{font-size:12px;color:var(--t3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '#team-people-section .tm-act{display:flex;align-items:center;gap:8px;flex:0 0 auto}',
+    '#team-people-section .tm-act select{width:auto;min-width:118px;padding:7px 10px;font-size:12.5px}',
+    '#team-people-section .tm-ghost{background:none;border:1px solid var(--bd);color:var(--t2);border-radius:var(--r);padding:7px 12px;font:600 12px var(--fh);cursor:pointer}',
+    '#team-people-section .tm-ghost:hover{border-color:var(--t3);color:var(--t1)}',
+    '#team-people-section .tm-ghost.tm-red{color:var(--rd,#ef4444)}',
+    '#team-people-section .tm-ghost.tm-red:hover{border-color:var(--rd,#ef4444)}',
+    '#team-people-section .tm-h{font:700 11px var(--fb);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:22px 0 8px}',
+    '@media (max-width:640px){#team-people-section .tm-inv{grid-template-columns:1fr}#team-people-section .tm-row{flex-wrap:wrap}#team-people-section .tm-act{width:100%;justify-content:flex-end}}'
+  ].join('\n');
+  document.head.appendChild(st);
+}
 
-  list.innerHTML = loadingCard(200);
+async function loadTeam() {
+  var host = document.getElementById('team-people-section'); if (!host) return;
+  _tmCss();
+  if (!_tm.data) host.innerHTML = '<div class="pf-hd">Team members</div><div style="padding:24px 0;color:var(--t3);font-size:13px">Loading your team…</div>';
   try {
     var r = await _luFetch('GET', '/team/members');
-    var d = await r.json();
-    var members = d.members || d || [];
-
-    if (members.length === 0) {
-      list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t3)"><div style="font-size:32px;margin-bottom:8px">\U0001f465</div><p>No team members yet. Invite your first teammate!</p></div>';
-    } else {
-      var h = '<div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Members (' + members.length + ')</div>';
-      h += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-      h += '<thead><tr><th style="text-align:left;padding:10px 12px;color:var(--t3);font-size:10px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--bd)">Name</th><th style="text-align:left;padding:10px 12px;color:var(--t3);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--bd)">Email</th><th style="padding:10px 12px;color:var(--t3);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--bd)">Role</th><th style="padding:10px 12px;border-bottom:1px solid var(--bd)"></th></tr></thead><tbody>';
-      members.forEach(function(m) {
-        var isOwner = m.role === 'owner';
-        h += '<tr><td style="padding:10px 12px;color:var(--t1);border-bottom:1px solid rgba(255,255,255,.04)">' + (m.name || m.user_name || '\u2014') + '</td>';
-        h += '<td style="padding:10px 12px;color:var(--t2);border-bottom:1px solid rgba(255,255,255,.04)">' + (m.email || m.user_email || '') + '</td>';
-        h += '<td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)"><span style="font-size:11px;font-weight:600;color:' + (isOwner ? 'var(--p)' : 'var(--t2)') + ';text-transform:uppercase">' + m.role + '</span></td>';
-        h += '<td style="padding:10px 12px;text-align:center;border-bottom:1px solid rgba(255,255,255,.04)">';
-        if (!isOwner) h += '<button class="btn btn-outline btn-sm" style="font-size:10px;color:var(--rd)" onclick="removeMember(' + (m.user_id || m.id) + ')">Remove</button>';
-        h += '</td></tr>';
-      });
-      h += '</tbody></table>';
-      list.innerHTML = h;
-    }
-
-    // Load pending invites
-    if (invites) {
-      var ir = await _luFetch('GET', '/team/invites');
-      var id = await ir.json();
-      var inv = id.invites || id || [];
-      if (inv.length > 0) {
-        var ih = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:20px"><div style="font-size:13px;font-weight:700;color:var(--t1);margin-bottom:14px">Pending Invites (' + inv.length + ')</div>';
-        inv.forEach(function(i) {
-          ih += '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px"><span style="color:var(--t2)">' + (i.email || '') + ' \u2014 ' + (i.role || 'member') + '</span><button class="btn btn-outline btn-sm" style="font-size:10px" onclick="cancelInvite(' + i.id + ')">Cancel</button></div>';
-        });
-        ih += '</div>';
-        invites.innerHTML = ih;
-      } else {
-        invites.innerHTML = '';
-      }
-    }
-
-    // Load seat info
-    if (seats) {
-      var sr = await _luFetch('GET', '/team/seats');
-      var sd = await sr.json();
-      seats.textContent = 'Seats: ' + (sd.used || members.length) + ' / ' + (sd.limit || 'unlimited');
-    }
-  } catch(e) {
-    list.innerHTML = '<div style="padding:20px;color:var(--rd)">Failed to load team: ' + e.message + '</div>';
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _tm.data = await r.json();
+    _tmRender();
+  } catch (e) {
+    host.innerHTML = '<div class="pf-hd">Team members</div><p class="pf-sub" style="margin-left:0">We could not load your team just now.</p><button type="button" class="tm-ghost" onclick="loadTeam()">Try again</button>';
   }
 }
 
-function showInviteForm() {
-  var form = document.getElementById('team-invite-form');
-  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+function _tmRender() {
+  var host = document.getElementById('team-people-section'); if (!host || !_tm.data) return;
+  var d = _tm.data, me = Number(d.me || 0), my = d.my_role || 'member';
+  var canManage = my === 'owner' || my === 'admin';
+  var seats = d.seats || {}, max = seats.max, used = Number(seats.current || 0) + Number(seats.pending || 0);
+  var unlimited = max === 'unlimited' || Number(max) >= 999, solo = !unlimited && Number(max) <= 1;
+  var members = d.members || [], pend = d.pending_invites || [];
+  var icon = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="6.5" r="2.8"/><path d="M2.5 16c0-2.6 2.2-4.2 5-4.2s5 1.6 5 4.2"/><circle cx="14" cy="7.2" r="2.2"/><path d="M13.4 11.9c2.4.1 4.1 1.6 4.1 3.9"/></svg>';
+  var h = '<div class="pf-hd">' + icon + 'Team members</div>' +
+    '<p class="pf-sub">The people who work in this workspace with you and Sarah&rsquo;s team. Admins can invite and manage people; only the owner handles the plan and billing.</p>';
+
+  if (solo) {
+    h += '<div class="tm-up"><p><strong style="color:var(--t1)">Your plan is for one user.</strong> Team members start on Growth ($99) with 3 users; Pro has 5 and Agency is unlimited.</p>' +
+      '<button type="button" class="pf-btn" onclick="nav(\'billing\')">See plans</button></div>';
+  } else {
+    var pct = unlimited ? 12 : Math.min(100, Math.round(used / Math.max(1, Number(max)) * 100));
+    h += '<div class="tm-seat"><b>' + used + (unlimited ? '' : ' of ' + Number(max)) + '</b><span style="font-size:13px;color:var(--t2)">' + (unlimited ? 'users &middot; unlimited on your plan' : 'users on your plan') + (Number(seats.pending || 0) ? ' &middot; ' + Number(seats.pending) + ' invited' : '') + '</span>' +
+      (unlimited ? '' : '<span class="tm-bar"><i style="width:' + pct + '%"></i></span>') + '</div>';
+    if (canManage) {
+      if (seats.allowed === false) {
+        h += '<div class="tm-up"><p>' + _tmEsc(seats.reason || 'Every seat on your plan is taken.') + '</p><button type="button" class="pf-btn" onclick="nav(\'billing\')">See plans</button></div>';
+      } else {
+        h += '<div class="tm-inv">' +
+          '<div class="pf-field"><label for="tm-email">Invite by email</label><input id="tm-email" type="email" class="pf-inp" placeholder="name@company.com" autocomplete="off" onkeydown="if(event.key===\'Enter\'){event.preventDefault();sendInvite();}"></div>' +
+          '<div class="pf-field"><label for="tm-role">Role</label><select id="tm-role" class="pf-inp"><option value="member">Member</option><option value="admin">Admin</option></select></div>' +
+          '<button type="button" class="pf-btn" id="tm-send" onclick="sendInvite()">Send invite</button></div>' +
+          '<div class="tm-help"><b style="color:var(--t2)">Member</b> works with Sarah and the AI team on the business. <b style="color:var(--t2)">Admin</b> can also invite and manage people. They get an email with a link that works for 3 days.</div>';
+      }
+    }
+  }
+
+  h += '<div class="tm-h">People (' + members.length + ')</div><div class="tm-list">';
+  members.forEach(function (m) {
+    var id = Number(m.id), isMe = id === me, isOwner = m.role === 'owner';
+    var act = '';
+    if (canManage && !isOwner && !isMe) {
+      act = '<select class="pf-inp" aria-label="Role for ' + _tmEsc(m.name || m.email) + '" onchange="updateMemberRole(' + id + ', this.value)">' +
+        ['member', 'admin'].map(function (r) { return '<option value="' + r + '"' + (m.role === r ? ' selected' : '') + '>' + _tmRoleLabel(r) + '</option>'; }).join('') + '</select>' +
+        '<button type="button" class="tm-ghost tm-red" onclick="removeMember(' + id + ')">Remove</button>';
+    } else {
+      act = '<span class="pf-pill"' + (isOwner ? ' style="border-color:var(--p);color:var(--p)"' : '') + '>' + _tmRoleLabel(m.role) + '</span>';
+    }
+    h += '<div class="tm-row"><div class="tm-av">' + _tmEsc(_tmInitials(m.name, m.email)) + '</div>' +
+      '<div class="tm-who"><div class="n">' + _tmEsc(m.name || m.email) + (isMe ? ' <span style="font:600 11px var(--fb);color:var(--t3)">(you)</span>' : '') + '</div><div class="e">' + _tmEsc(m.email || '') + '</div></div>' +
+      '<div class="tm-act">' + act + '</div></div>';
+  });
+  h += '</div>';
+
+  if (pend.length) {
+    h += '<div class="tm-h">Invited, not joined yet (' + pend.length + ')</div><div class="tm-list">';
+    pend.forEach(function (i) {
+      var days = Math.max(0, Math.ceil((new Date(String(i.expires_at).replace(' ', 'T') + 'Z') - Date.now()) / 86400000));
+      h += '<div class="tm-row"><div class="tm-av tm-pend">' + _tmEsc(_tmInitials('', i.email)) + '</div>' +
+        '<div class="tm-who"><div class="n">' + _tmEsc(i.email) + '</div><div class="e">' + _tmRoleLabel(i.role) + ' &middot; the link works ' + (days <= 1 ? 'for less than a day' : 'for ' + days + ' more days') + '</div></div>' +
+        (canManage ? '<div class="tm-act"><button type="button" class="tm-ghost" onclick="resendInvite(\'' + _tmEsc(i.email) + '\',\'' + _tmEsc(i.role) + '\')">Resend</button><button type="button" class="tm-ghost tm-red" onclick="cancelInvite(' + Number(i.id) + ')">Cancel</button></div>' : '') +
+        '</div>';
+    });
+    h += '</div>';
+  }
+  host.innerHTML = h;
 }
 
-async function sendInvite() {
-  var email = document.getElementById('invite-email');
-  var role = document.getElementById('invite-role');
-  var msg = document.getElementById('invite-msg');
-  if (!email || !email.value) { showToast('Enter an email.', 'error'); return; }
+async function _tmInvite(email, role, verb) {
+  if (_tm.busy) return; _tm.busy = true;
+  var btn = document.getElementById('tm-send'); if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
   try {
-    var r = await _luFetch('POST', '/team/invite', { email: email.value, role: role ? role.value : 'member' });
-    var d = await r.json();
-    if (r.ok) {
-      showToast('Invite sent!', 'success');
-      email.value = '';
-      if (msg) msg.textContent = '';
-      document.getElementById('team-invite-form').style.display = 'none';
-      loadTeam();
+    var r = await _luFetch('POST', '/team/invite', { email: email, role: role });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.success) {
+      showToast((verb || 'Invitation sent') + ' to ' + email + (d.emailed === false ? ' (the email could not be sent; check the address)' : ''), d.emailed === false ? 'error' : 'success');
+      await loadTeam();
     } else {
-      if (msg) msg.textContent = d.message || d.error || 'Failed';
-      showToast(d.message || 'Invite failed.', 'error');
+      showToast(d.error || d.message || 'The invitation was not sent.', 'error');
     }
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+  } catch (e) { showToast('The invitation was not sent. Please try again.', 'error'); }
+  finally { _tm.busy = false; if (btn) { btn.disabled = false; btn.textContent = 'Send invite'; } }
+}
+function sendInvite() {
+  var el = document.getElementById('tm-email'), role = document.getElementById('tm-role');
+  var email = el ? el.value.trim() : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (el) el.classList.add('pf-bad'); showToast('Enter a valid email address.', 'error'); return; }
+  if (el) el.classList.remove('pf-bad');
+  return _tmInvite(email, role ? role.value : 'member');
+}
+function resendInvite(email, role) { return _tmInvite(email, role || 'member', 'A new invitation was sent'); }
+function showInviteForm() { var el = document.getElementById('tm-email'); if (el) el.focus(); }
+
+async function updateMemberRole(userId, role) {
+  try {
+    var r = await _luFetch('PUT', '/team/members/' + userId + '/role', { role: role });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.success) showToast('Role changed to ' + _tmRoleLabel(role) + '.', 'success');
+    else showToast(d.error || 'The role was not changed.', 'error');
+  } catch (e) { showToast('The role was not changed. Please try again.', 'error'); }
+  loadTeam();
 }
 
 async function removeMember(userId) {
-  var ok = await luConfirm('Remove this member from your workspace?', 'Remove Member', 'Remove', 'Cancel');
+  var m = ((_tm.data && _tm.data.members) || []).filter(function (x) { return Number(x.id) === Number(userId); })[0] || {};
+  var ok = await luConfirm('Remove ' + (m.name || m.email || 'this person') + '?', 'They lose access to this workspace straight away. Their work stays. You can invite them again later.', { okLabel: 'Remove', cancelLabel: 'Keep' });
   if (!ok) return;
   try {
     var r = await _luFetch('DELETE', '/team/members/' + userId);
-    if (r.ok) { showToast('Member removed.', 'success'); loadTeam(); }
-    else { var d = await r.json(); showToast(d.message || 'Failed.', 'error'); }
-  } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.success !== false) { showToast('Removed from the team.', 'success'); loadTeam(); }
+    else showToast(d.error || 'They were not removed.', 'error');
+  } catch (e) { showToast('They were not removed. Please try again.', 'error'); }
 }
 
 async function cancelInvite(id) {
+  var ok = await luConfirm('Cancel this invitation?', 'The link in their email stops working. You can invite them again later.', { okLabel: 'Cancel invitation', cancelLabel: 'Keep' });
+  if (!ok) return;
   try {
     var r = await _luFetch('DELETE', '/team/invites/' + id);
-    if (r.ok) { showToast('Invite cancelled.', 'success'); loadTeam(); }
-    else { showToast('Failed.', 'error'); }
-  } catch(e) { showToast('Error.', 'error'); }
+    if (r.ok) { showToast('Invitation cancelled.', 'success'); loadTeam(); }
+    else showToast('The invitation was not cancelled.', 'error');
+  } catch (e) { showToast('The invitation was not cancelled.', 'error'); }
 }
 
 // ── PLATFORM888 Phase 6: governed background-service lifecycle (luBg) ──
@@ -527,12 +595,14 @@ function _luSettingsTabs(){
 }
 function setShowTab(tab, silent){
   if (tab === 'brand') tab = 'business';   // Owner 2026-09-21: the Brand tab is retired; old links land on Business
-  setTab = ['profile','business','team','apikeys','billing'].indexOf(tab) !== -1 ? tab : 'profile';
+  if (tab === 'people') tab = 'members';
+  setTab = ['profile','business','members','team','apikeys','billing'].indexOf(tab) !== -1 ? tab : 'profile';
   var view = document.getElementById('view-settings'); if (!view) return;
   // a class, not inline style: the cards' own scripts set style.display when their data arrives and must not resurface a card on another tab
   view.querySelectorAll('[data-set-tab]').forEach(function (el) { el.classList.toggle('lu-set-hidden', el.getAttribute('data-set-tab') !== setTab); });
   view.querySelectorAll('[data-set-tab-btn]').forEach(function (b) { var on = b.getAttribute('data-set-tab-btn') === setTab; b.classList.toggle('active', on); b.setAttribute('aria-selected', on ? 'true' : 'false'); });
   if (setTab === 'billing' && typeof window.loadBilling === 'function') { try { window.loadBilling(); } catch (_e) {} }
+  if (setTab === 'members') { try { loadTeam(); } catch (_e) {} }   // TEAM-1
   if (!silent) { try { if (window._luRouter && window._luRouter.pushView) window._luRouter.pushView('settings', setTab === 'profile' ? null : setTab); } catch (_e) {} }
 }
 function loadSettings() {
@@ -1368,7 +1438,7 @@ async function nav(view, opts){
   if(view==='agents')     { if (window.luRenderAgentsGrid) { try { luRenderAgentsGrid(); } catch (_e) {} } loadTasks(); loadAgentStats(); }
   if(view==='governance') loadGovernance();
   if(view==='previews')   { loadPreviews(); _previewAutoRefreshStart(); } else { _previewAutoRefreshStop(); }
-  if(view==='settings') { loadSettings(); (async function(){ try { await luLoadEngine('businesses'); var _bz=document.getElementById('businesses-section'); if(_bz && typeof window.businessesLoad==='function') window.businessesLoad(_bz); } catch(_e) {} })(); /* RFC-0011 U5b */ try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} try{ _luSettingsTabs(); setShowTab((opts&&opts.tail&&['profile','business','brand','team','apikeys','billing'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'profile', true); }catch(e){} } /* P1R-6/7; B5 tabs */
+  if(view==='settings') { loadSettings(); (async function(){ try { await luLoadEngine('businesses'); var _bz=document.getElementById('businesses-section'); if(_bz && typeof window.businessesLoad==='function') window.businessesLoad(_bz); } catch(_e) {} })(); /* RFC-0011 U5b */ try{ if(window.luLoadWorkspaceProfile) window.luLoadWorkspaceProfile(); if(window.luGroupSettings) window.luGroupSettings(); }catch(e){} try{ _luSettingsTabs(); setShowTab((opts&&opts.tail&&['profile','business','brand','members','team','apikeys','billing'].indexOf(String(opts.tail).toLowerCase())!==-1)?String(opts.tail).toLowerCase():'profile', true); }catch(e){} } /* P1R-6/7; B5 tabs */
   if(view==='builder') {
     // Builder engine loaded via builder-spa.js (injected by builder plugin)
     if (typeof _bldPrefetchDynamic === 'function') _bldPrefetchDynamic();

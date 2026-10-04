@@ -122,6 +122,34 @@ final class LifecycleEmails
         try { app(\App\Core\Agents\AgentMessageService::class)->postAsAgent($wsId, 'sarah', $text, ['notification_type' => $type]); } catch (\Throwable $e) {}
     }
 
+    // ── TEAM-1: an invitation to join a team (sent the moment the owner or an admin invites) ─────────────
+    public static function sendTeamInvite(string $email, string $inviter, string $workspace, string $role, string $url): bool
+    {
+        if (! self::deliverable($email)) return false;
+        $who = trim($inviter) !== '' ? trim($inviter) : 'Your team';
+        $biz = trim($workspace) !== '' ? trim($workspace) : 'their business';
+        $roleWords = $role === 'admin' ? 'an admin: you can manage the team and every part of the workspace except billing'
+            : 'a team member: you work with Sarah and the AI team on the business';
+        $layout = [
+            'preheader' => "$who invited you to join $biz on LevelUpGrowth.",
+            'eyebrow' => 'You are invited',
+            'heading' => "Join $biz on LevelUpGrowth",
+            'lead' => "$who has invited you to join the team as $roleWords.",
+            'paragraphs' => ['Accept the invitation to create your login, or to add this business to the account you already have.'],
+            'button' => ['Accept the invitation', $url],
+            'after' => ['The invitation works for 3 days. Not expecting it? You can ignore this email; nothing happens unless you accept.'],
+            'signoff' => 'team',
+            'reason' => 'You received this email because ' . $who . ' invited this address to a team on LevelUpGrowth.',
+        ];
+        try {
+            \Illuminate\Support\Facades\Mail::to($email)->queue(new LifecycleMail('team_invite', "$who invited you to join $biz", $layout));
+            return true;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[TEAM-1] invite email failed', ['e' => $e->getMessage()]);
+            return false;
+        }
+    }
+
     // ── 1. Welcome (replaces the plain confirm email) ──────────────────────────────────────────────────
     public static function welcomeLayout(string $name, string $verifyUrl): array
     {

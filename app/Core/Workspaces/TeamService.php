@@ -54,7 +54,9 @@ class TeamService
 
         // Validate seat quota before creating invite
         $seatCheck = $this->checkSeatQuota($wsId);
-        if (!$seatCheck['allowed']) {
+        $replacesPending = DB::table('pending_invites')->where('workspace_id', $wsId)->where('email', strtolower(trim($email)))
+            ->where('status', 'pending')->where('expires_at', '>', now())->exists();   // TEAM-1: a resend takes the same seat
+        if (!$seatCheck['allowed'] && ! $replacesPending) {
             return ['success' => false, 'error' => $seatCheck['reason'], 'code' => 'SEAT_LIMIT_REACHED'];
         }
 
@@ -74,7 +76,7 @@ class TeamService
         // Cancel any existing pending invite for this email+workspace
         DB::table('pending_invites')
             ->where('workspace_id', $wsId)
-            ->where('email', $email)
+            ->where('email', strtolower(trim($email)))
             ->where('status', 'pending')
             ->update(['status' => 'cancelled', 'updated_at' => now()]);
 
@@ -150,6 +152,7 @@ class TeamService
                     'email'    => $invite->email,
                     'password' => Hash::make($userData['password']),
                 ]);
+                $user->forceFill(['email_verified_at' => now()])->save();   // TEAM-1: the invitation link went to this address, so it is proven
             }
 
             // Add to workspace (upsert in case of concurrent accepts)
@@ -242,7 +245,7 @@ class TeamService
             ->where('status', 'pending')
             ->where('expires_at', '>', now())
             ->orderByDesc('created_at')
-            ->get()
+            ->get(['id', 'email', 'role', 'invited_by', 'expires_at', 'created_at'])   // TEAM-1: never the token (any member can read this list)
             ->toArray();
     }
 
@@ -381,7 +384,7 @@ class TeamService
                 // SEATS-1: say what the plan allows and where more users start
                 'reason'  => $max <= 1
                     ? 'Your plan is for one user. Inviting team members starts on Growth ($99) with 3 users; Pro has 5 and Agency is unlimited.'
-                    : "Your plan has {$max} users and all of them are taken ({$current} members" . ($pending ? " and {$pending} pending invite" . ($pending === 1 ? '' : 's') : '') . "). Pro has 5 users and Agency is unlimited.",
+                    : "Your plan has {$max} users and all of them are taken ({$current} members" . ($pending ? " and {$pending} pending invite" . ($pending === 1 ? '' : 's') : '') . "). " . ($max >= 5 ? 'Agency has unlimited users.' : 'Pro has 5 users and Agency is unlimited.'),   // TEAM-1: name the next plan up
                 'current' => $current,
                 'pending' => $pending,
                 'max'     => $max,

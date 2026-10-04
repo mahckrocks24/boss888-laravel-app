@@ -1089,3 +1089,6 @@ Route::get('/plugin-connect', function (\Illuminate\Http\Request $r) {
 // Included first, every legacy page below silently re-claimed / and /pricing. Deleting these
 // five lines is the complete rollback: the legacy routes above are untouched.
 if (file_exists(__DIR__ . '/marketing-next.php')) { require __DIR__ . '/marketing-next.php'; }
+
+// FAVICON-1 (2026-10-04): the platform's own icon. A website's address is answered earlier by PublishedSiteMiddleware.
+Route::get('/favicon.ico', fn () => response(file_get_contents(public_path('img/favicon-platform.ico')), 200)->header('Content-Type', 'image/x-icon')->header('Cache-Control', 'public, max-age=86400'));

@@ -32,3 +32,5 @@ $page['chrome'] = 'minimal';   // Owner 2026-09-15 (EV-1037): the login page is 
     </form>
   </div>
 </section>
+<script>/* LOGIN-EARLY-1: hold a sign-in pressed before the page script is ready */(function(){var f=document.getElementById('login');if(!f)return;var ready=false;document.addEventListener('DOMContentLoaded',function(){setTimeout(function(){ready=true;},0);});f.addEventListener('submit',function(e){if(ready)return;e.preventDefault();var t=setInterval(function(){if(!ready)return;clearInterval(t);if(f.requestSubmit)f.requestSubmit();else{var b=f.querySelector('[type=submit]');if(b)b.click();}},120);},true);})();</script>
+<script>/* TEAM-1: an invitation hands over the address */try{var _e=new URLSearchParams(location.search).get('email');var _i=document.getElementById('li-email');if(_e&&_i&&!_i.value){_i.value=_e;var _p=document.getElementById('li-pass');if(_p)_p.focus();}}catch(_x){}</script>

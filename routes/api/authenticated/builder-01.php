@@ -118,6 +118,34 @@ use Illuminate\Support\Facades\Route;
         Route::get('/store-payments/orders', fn(\Illuminate\Http\Request $r) => response()->json(['orders' => \Illuminate\Support\Facades\DB::table('catalogue_orders')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->orderByDesc('id')->limit(50)->get()]));
         // SITE SETTINGS (DEC-0051, 2026-09-15) — tracking ids into every page, a zip export the customer owns, domain state.
         $siteOwned = function (\Illuminate\Http\Request $r, $id) { $w = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->whereNull('deleted_at')->first(); return ($w && (int) $w->workspace_id === (int) $r->attributes->get('workspace_id')) ? $w : null; };
+        // FAVICON-1 (Owner 2026-10-04): the site icon - the first letter of the website's name by default, or the owner's image
+        Route::post('/websites/{id}/site-icon', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $f = $r->file('icon');
+            if (! $f || ! $f->isValid()) return response()->json(['success' => false, 'message' => 'Choose an image to upload.'], 422);
+            if ($f->getSize() > 4 * 1024 * 1024) return response()->json(['success' => false, 'message' => 'That image is larger than 4 MB.'], 422);
+            if (! in_array(strtolower((string) $f->getMimeType()), ['image/png', 'image/jpeg', 'image/webp', 'image/gif'], true)) return response()->json(['success' => false, 'message' => 'Use a PNG, JPG or WebP image.'], 422);
+            $rel = \App\Engines\Builder\Support\SiteIcon::storeUpload((int) $id, $f->getRealPath());
+            if (! $rel) return response()->json(['success' => false, 'message' => 'That image could not be read, or it is smaller than 48 × 48 pixels.'], 422);
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: []; $s['site_icon_upload'] = $rel;
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveSettings((int) $id, $s);
+            try { \App\Http\Controllers\PublishedSiteController::invalidateCache((int) $id); } catch (\Throwable $e) {}
+            $icon = \App\Engines\Builder\Support\SiteIcon::ensure(\App\Engines\Builder\Support\SiteIcon::website((int) $id));
+            return response()->json(['success' => true, 'icon' => $icon, 'message' => 'Your icon is on the site. Browsers and search engines pick it up on their next visit.']);
+        });
+        Route::delete('/websites/{id}/site-icon', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['success' => false, 'message' => 'Website not found'], 404);
+            $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: []; unset($s['site_icon_upload']);
+            app(\App\Engines\Builder\Services\BuilderService::class)->saveSettings((int) $id, $s);
+            try { \App\Http\Controllers\PublishedSiteController::invalidateCache((int) $id); } catch (\Throwable $e) {}
+            $icon = \App\Engines\Builder\Support\SiteIcon::ensure(\App\Engines\Builder\Support\SiteIcon::website((int) $id));
+            return response()->json(['success' => true, 'icon' => $icon, 'message' => 'Back to the letter icon.']);
+        });
+        Route::get('/websites/{id}/site-icon', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
+            $w = $siteOwned($r, $id); if (! $w) return response()->json(['error' => 'not_found'], 404);
+            $own = \App\Engines\Builder\Support\SiteIcon::hasOwnSet($w);
+            return response()->json(['icon' => $own ? null : \App\Engines\Builder\Support\SiteIcon::ensure($w), 'designed_set' => $own]);
+        });
         Route::get('/websites/{id}/site-settings', function (\Illuminate\Http\Request $r, $id) use ($siteOwned) {
             $w = $siteOwned($r, $id); if (! $w) return response()->json(['error' => 'not_found'], 404);
             $s = json_decode((string) ($w->settings_json ?: '{}'), true) ?: [];

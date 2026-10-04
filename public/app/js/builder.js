@@ -842,7 +842,7 @@ function wsRenderGrid(){
       actions=`<a href="${extUrl}" target="_blank" rel="noopener" class="ct-btn" style="font-size:11px;padding:4px 10px;text-decoration:none;white-space:nowrap" onclick="event.stopPropagation()">Visit&nbsp;↗</a>`
         +`<button class="ct-btn" onclick="event.stopPropagation();_wsExtSeoAudit(${s.id},'${extUrl.replace(/'/g,"\\'")}')" style="font-size:11px;padding:4px 10px">SEO Audit</button>`
         +(platform==='wordpress'?`<button class="ct-btn" onclick="event.stopPropagation();_wsExtPluginInfo()" style="font-size:11px;padding:4px 10px;color:var(--bl)">Install Plugin</button>`:'')
-        +`<button aria-label="Delete website" title="Delete website" onclick="event.stopPropagation();wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
+        +`<button class="ct-btn" onclick="event.stopPropagation();wsOpenSitePanel(${s.id},{fromList:true})" title="Name, contact details, tracking, domain, take offline or delete" style="font-size:11px;padding:4px 10px;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>Settings</button>`;   // SITECARD-1: delete lives in Settings
     }else{
       // PATCH (FIX 1, 2026-05-09) — published sites get View↗ instead of
       // Publish. Live URL precedence: custom_domain > subdomain > /storage
@@ -857,12 +857,11 @@ function wsRenderGrid(){
       // customer app (only delete). Two clicks, site CSS, no native dialog.
       var _publishOrView = _isPub
         ? `<a href="${bld_escH(_liveUrlBtn)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="ct-btn primary" style="font-size:11px;padding:4px 10px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;white-space:nowrap">View&nbsp;↗</a>`
-          + `<button class="ct-btn" id="ws-offline-${s.id}" onclick="event.stopPropagation();wsTakeOffline(${s.id})" title="Unpublish — the address stops serving until you publish again" style="font-size:11px;padding:4px 10px">Take offline</button>`
         : `<button class="ct-btn primary" onclick="wsShowPublish(${s.id})" style="font-size:11px;padding:4px 10px">Publish</button>`;
 
       actions=`<button class="ct-btn" onclick="wsOpenSite(${s.id})" style="font-size:11px;padding:4px 10px">Edit</button>`
         + _publishOrView
-        +`<button aria-label="Delete website" title="Delete website" onclick="wsDelete(${s.id})" style="background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.2);border-radius:5px;color:#F87171;padding:4px 7px;font-size:11px;cursor:pointer">✕</button>`;
+        +`<button class="ct-btn" onclick="event.stopPropagation();wsOpenSitePanel(${s.id},{fromList:true})" title="Name, contact details, tracking, domain, take offline or delete" style="font-size:11px;padding:4px 10px;display:inline-flex;align-items:center;gap:5px"><svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="10" r="2.6"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/></svg>Settings</button>`;   // SITECARD-1 (Owner 2026-10-04): 'it should just be Edit, View/Publish, Settings'
     }
 
     // PATCH (clickable site names, 2026-05-09) — title links to the live
@@ -4853,24 +4852,119 @@ function _t3CatForm(siteId, panel, spec, L) {
   });
 }
 
+
+/* FAVICON-1 (Owner 2026-10-04): "must have initial letter of the website name as default and add a section in website
+   settings for users to upload". The icon in the browser tab, on phone home screens and next to the site in Google. */
+async function _t3SiteIcon(siteId, panel) {
+  var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
+  var box = document.createElement('div'); box.id = 't3-site-icon';
+  box.style.cssText = 'margin-top:18px;padding-top:16px;border-top:1px solid var(--bd)';
+  var st = document.getElementById('t3-site-status'); if (st) panel.insertBefore(box, st); else panel.appendChild(box);
+  var draw = function (d) {
+    if (d && d.designed_set) { box.innerHTML = '<div style="font:600 13px var(--fh);color:var(--t1)">Site icon</div><div style="font-size:12px;color:var(--t3);margin-top:2px">This website uses its own designed icon set.</div>'; return; }
+    var ic = (d && d.icon) || null;
+    box.innerHTML = '<div style="font:600 13px var(--fh);color:var(--t1)">Site icon</div>'
+      + '<div style="font-size:12px;color:var(--t3);margin:2px 0 12px">Shown in the browser tab, on phone home screens and next to your site in Google. ' + (ic && ic.uploaded ? 'You are using your own image.' : 'Until you upload one, it is the first letter of your website&rsquo;s name on your brand colour.') + '</div>'
+      + '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
+      + (ic ? '<img src="' + bld_escH(ic.png192) + '" alt="Site icon" width="56" height="56" style="width:56px;height:56px;border-radius:12px;border:1px solid var(--bd);background:var(--s2)">'
+            + '<img src="' + bld_escH(ic.png32) + '" alt="" width="16" height="16" style="width:16px;height:16px;opacity:.9" title="Tab size">' : '')
+      + '<label class="ct-btn" style="font-size:12px;padding:7px 14px;cursor:pointer;margin:0">Upload an image<input type="file" id="t3-icon-file" accept="image/png,image/jpeg,image/webp" style="display:none"></label>'
+      + (ic && ic.uploaded ? '<button type="button" class="ct-btn" id="t3-icon-reset" style="font-size:12px;padding:7px 14px">Use the letter instead</button>' : '')
+      + '</div><div id="t3-icon-msg" style="font-size:11.5px;color:var(--t3);margin-top:8px">A square PNG, JPG or WebP, at least 48 &times; 48 pixels (512 &times; 512 looks best).</div>';
+    var f = box.querySelector('#t3-icon-file');
+    if (f) f.addEventListener('change', async function () {
+      if (!f.files || !f.files[0]) return; var m = box.querySelector('#t3-icon-msg'); m.textContent = 'Uploading…';
+      var fd = new FormData(); fd.append('icon', f.files[0]);
+      try { var r = await fetch(API + 'builder/websites/' + siteId + '/site-icon', { method: 'POST', headers: auth, body: fd }); var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || !j.success) throw new Error(j.message || ('HTTP ' + r.status));
+        draw({ icon: j.icon }); if (typeof showToast === 'function') showToast(j.message || 'Icon saved.', 'success');
+      } catch (e) { m.textContent = e.message; m.style.color = '#F87171'; }
+    });
+    var rs = box.querySelector('#t3-icon-reset');
+    if (rs) rs.addEventListener('click', async function () {
+      rs.disabled = true;
+      try { var r = await fetch(API + 'builder/websites/' + siteId + '/site-icon', { method: 'DELETE', headers: auth }); var j = await r.json().catch(function () { return {}; });
+        if (!r.ok || !j.success) throw new Error(j.message || ('HTTP ' + r.status)); draw({ icon: j.icon }); if (typeof showToast === 'function') showToast(j.message || 'Back to the letter icon.', 'success');
+      } catch (e) { rs.disabled = false; if (typeof showToast === 'function') showToast(e.message, 'error'); }
+    });
+  };
+  box.innerHTML = '<div style="font:600 13px var(--fh);color:var(--t1)">Site icon</div><div class="lu-skel" style="width:60%;margin-top:8px"></div>';
+  try { var r = await fetch(API + 'builder/websites/' + siteId + '/site-icon', { headers: auth, cache: 'no-store' }); draw(r.ok ? await r.json() : null); } catch (e) { draw(null); }
+}
+
+/* SITECARD-1 (Owner 2026-10-04): "remove take offline and put it inside the settings", "put delete website inside settings".
+   The last section of Site settings: where the site stands, take it offline, delete it. */
+function _t3SiteStatus(siteId, panel, close) {
+  var site = (typeof wsSites !== 'undefined' && wsSites) ? wsSites.find(function (x) { return Number(x.id) === Number(siteId); }) : null;
+  var isPub = !!(site && (site.publish_state === 'published' || site.status === 'published'));
+  var isExt = !!(site && (site.is_external || site.external_url) && !site.subdomain);
+  var url = site ? (site.custom_domain ? 'https://' + site.custom_domain : (site.subdomain ? 'https://' + (String(site.subdomain).indexOf('.') === -1 ? site.subdomain + '.levelupgrowth.io' : site.subdomain) : '')) : '';
+  var box = document.createElement('div'); box.id = 't3-site-status';
+  box.style.cssText = 'margin-top:18px;padding-top:16px;border-top:1px solid var(--bd)';
+  var h = '<div style="font:600 13px var(--fh);color:var(--t1)">Status and danger zone</div>';
+  if (!isExt) {
+    h += isPub
+      ? '<div style="font-size:12px;color:var(--t3);margin:2px 0 10px">Live' + (url ? ' at <a href="' + bld_escH(url) + '" target="_blank" rel="noopener" style="color:var(--p)">' + bld_escH(url.replace(/^https:\/\//, '')) + '</a>' : '') + '. Taking it offline stops the address serving until you publish again; nothing is deleted.</div>'
+        + '<button type="button" class="ct-btn" id="ws-offline-' + Number(siteId) + '" style="font-size:12px;padding:7px 14px">Take offline</button>'
+      : '<div style="font-size:12px;color:var(--t3);margin:2px 0 10px">Not published. Publish it from the card or from the editor when you are ready.</div>';
+  }
+  h += '<div style="margin-top:14px;border:1px solid rgba(248,113,113,.35);background:rgba(248,113,113,.06);border-radius:var(--r,10px);padding:12px 14px">'
+    + '<div style="font:600 12.5px var(--fh);color:#F87171">Delete this website</div>'
+    + '<div style="font-size:12px;color:var(--t3);margin:3px 0 10px">The website and all its pages are removed permanently. This cannot be undone.</div>'
+    + '<button type="button" id="t3-site-del" style="background:transparent;border:1px solid rgba(248,113,113,.55);color:#F87171;border-radius:var(--r,8px);padding:7px 14px;font:600 12px var(--fh);cursor:pointer">Delete website</button></div>';
+  box.innerHTML = h;
+  panel.appendChild(box);
+  var off = box.querySelector('#ws-offline-' + Number(siteId));
+  if (off) off.addEventListener('click', async function () {
+    await wsTakeOffline(siteId);
+    var s2 = (typeof wsSites !== 'undefined' && wsSites) ? wsSites.find(function (x) { return Number(x.id) === Number(siteId); }) : null;
+    if (s2 && s2.publish_state === 'unpublished') close();
+  });
+  box.querySelector('#t3-site-del').addEventListener('click', async function () {
+    var before = (typeof wsSites !== 'undefined' && wsSites) ? wsSites.length : null;
+    await wsDelete(siteId);
+    var still = (typeof wsSites !== 'undefined' && wsSites) ? wsSites.some(function (x) { return Number(x.id) === Number(siteId); }) : true;
+    if (!still) { close(); var ed = document.getElementById('template-editor-view'); if (ed && ed.offsetParent !== null && typeof nav === 'function') nav('websites'); }
+  });
+}
+
 /* ══════════════ SITE panel — tracking ids, export, domain (DEC-0051 gap closure, 2026-09-15) ══════════════ */
-window.wsOpenSitePanel = async function (siteId) {
+window.wsOpenSitePanel = async function (siteId, opts) {
+  opts = opts || {};
   var old = document.getElementById('t3-site');
-  if (old) { old.remove(); return; }
+  var oldOv = document.getElementById('t3-site-ov');
+  if (old || oldOv) { if (oldOv) oldOv.remove(); if (old) old.remove(); if (!opts.fromList) return; }
+  // SITECARD-1: outside the editor (the Websites list) the panel opens as a centred overlay
+  var _edStage = document.querySelector('#template-editor-view .pe-stage');
+  var _inEditor = !opts.fromList && _edStage && _edStage.offsetParent !== null;
+  var _ov = null;
+  if (!_inEditor) {
+    _ov = document.createElement('div'); _ov.id = 't3-site-ov';
+    _ov.style.cssText = 'position:fixed;inset:0;z-index:9500;background:rgba(5,7,12,.55);display:flex;align-items:flex-start;justify-content:center;padding:max(16px,4vh) 16px 16px;overflow:auto';
+    _ov.addEventListener('click', function (ev) { if (ev.target === _ov) _ov.remove(); });
+    var _esc = function (ev) { if (ev.key === 'Escape' && document.getElementById('t3-site-ov')) { _ov.remove(); document.removeEventListener('keydown', _esc); } };
+    document.addEventListener('keydown', _esc);
+    document.body.appendChild(_ov);
+  }
   ['t3-pal', 't3-lay', 't3-cat'].forEach(function (id) { var e = document.getElementById(id); if (e) e.remove(); });
-  var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
+  var stage = _ov || _edStage || document.body;
   var panel = document.createElement('div');
   panel.id = 't3-site'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Site settings');
   panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(460px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--r,12px);box-shadow:0 20px 60px rgba(0,0,0,.45);padding:14px 14px 16px;font-family:var(--fb)';
   var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
   panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Site settings</div><button type="button" id="t3-site-x" aria-label="Close" style="background:none;border:0;color:var(--t2);font-size:18px;cursor:pointer;line-height:1">×</button></div>'
-    + '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Tracking, export and domain for this website.</div><div id="t3-site-body"><div class="lu-skel" style="width:80%"></div></div>';
+    + '<div style="font-size:12px;color:var(--t3);margin-bottom:12px">Name, contact details, site icon, tracking, domain and status for this website.</div><div id="t3-site-body"><div class="lu-skel" style="width:80%"></div></div>';
+  if (_ov) panel.style.cssText += ';position:relative;top:auto;right:auto;width:min(520px,100%);max-height:none;margin:0 auto';
   stage.appendChild(panel);
-  panel.querySelector('#t3-site-x').addEventListener('click', function () { panel.remove(); });
+  var _closePanel = function () { if (_ov) _ov.remove(); else panel.remove(); };
+  panel.querySelector('#t3-site-x').addEventListener('click', _closePanel);
+  _t3SiteStatus(siteId, panel, _closePanel);   // SITECARD-1: status, take offline, delete
+  _t3SiteIcon(siteId, panel);   // FAVICON-1: the site icon, above the status
   var body = panel.querySelector('#t3-site-body');
   var d = null;
   try { var r = await fetch(API + 'builder/websites/' + siteId + '/site-settings', { headers: auth, cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); d = await r.json(); }
   catch (e) { body.innerHTML = '<div class="lu-empty"><b>Couldn’t load settings</b>' + bld_escH(e.message) + '</div>'; return; }
+  if (!document.body.contains(panel)) return;
   var t = d.tracking || {};
   var inp = function (k, label, ph) { return '<label style="display:block;font-size:11.5px;font-weight:600;color:var(--t2);margin:10px 0 4px">' + label + '</label><input type="text" data-t="' + k + '" placeholder="' + ph + '" value="' + bld_escH(t[k] || '') + '" style="width:100%;box-sizing:border-box;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px">'; };
   var ab = d.about || {};   // SITE-ABOUT-1

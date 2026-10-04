@@ -2340,7 +2340,13 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
 
         // List members + pending invites (all roles can view)
         Route::get('/members', function (\Illuminate\Http\Request $r) use ($t) {
-            return response()->json(app($t)->getMembers($r->attributes->get('workspace_id')));
+            // TEAM-1: the screen needs to know who is looking (their row, and whether they may manage the team)
+            $wsId = (int) $r->attributes->get('workspace_id');
+            $out = app($t)->getMembers($wsId);
+            $out['me'] = (int) $r->user()->id;
+            $out['my_role'] = app($t)->getUserRole($wsId, (int) $r->user()->id);
+            $out['seats'] = app($t)->checkSeatQuota($wsId);
+            return response()->json($out);
         });
 
         // Seat quota check
@@ -2351,12 +2357,19 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         // Invite member — admin or owner only, Growth+ plan
         Route::post('/invite', function (\Illuminate\Http\Request $r) use ($t) {
             $wsId = $r->attributes->get('workspace_id');
+            $email = strtolower(trim((string) $r->input('email', '')));
+            if (! filter_var($email, FILTER_VALIDATE_EMAIL)) return response()->json(['success' => false, 'error' => 'Enter a valid email address.'], 422);
             $result = app($t)->inviteMember(
                 $wsId,
                 $r->user()->id,
-                $r->input('email', ''),
+                $email,
                 $r->input('role', 'member')
             );
+            // TEAM-1: the invite is emailed (was: created and never sent - "sending is the caller's responsibility")
+            if ($result['success']) {
+                $result['emailed'] = \App\Core\Lifecycle\LifecycleEmails::sendTeamInvite($email, (string) ($result['invited_by'] ?? ''), (string) ($result['workspace'] ?? ''), (string) $result['role'], (string) $result['invite_url']);
+                unset($result['token']);   // the link travels by email only
+            }
             return response()->json($result, $result['success'] ? 201 : 422);
         })->middleware('team.role:admin');   // SEATS-1: the seat limit (TeamService::checkSeatQuota) decides invites
 

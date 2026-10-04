@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="20261004-2a37bc5c">
+<meta name="lu-build" content="20261004-b4f79171">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -3828,7 +3828,8 @@ window.luSwipeToClose = luSwipeToClose;
           <button type="button" role="tab" data-set-tab-btn="profile" class="tab active" onclick="setShowTab('profile')">Profile</button>
           <button type="button" role="tab" data-set-tab-btn="business" class="tab" onclick="setShowTab('business')">Business</button>
           <!-- Owner 2026-09-21: Brand tab retired — each website's look is set in its editor; the brand kit Studio, emails and social use lives in Studio › Brand. -->
-          <button type="button" role="tab" data-set-tab-btn="team" class="tab" onclick="setShowTab('team')">Team</button>
+          <button type="button" role="tab" data-set-tab-btn="members" class="tab" onclick="setShowTab('members')">Team members</button><!-- TEAM-1 (Owner 2026-10-04): people -->
+          <button type="button" role="tab" data-set-tab-btn="team" class="tab" onclick="setShowTab('team')">AI agents</button>
           <button type="button" role="tab" data-set-tab-btn="apikeys" class="tab" onclick="setShowTab('apikeys')">API keys</button><!-- SET-APIKEYS-1 (Owner 2026-09-25) -->
           <button type="button" role="tab" data-set-tab-btn="billing" class="tab" onclick="setShowTab('billing')">Plan &amp; billing</button>
         </div>
@@ -3837,6 +3838,7 @@ window.luSwipeToClose = luSwipeToClose;
         <!-- ── GOVERNANCE: Workspace Intelligence Profile ── -->
         <!-- RFC-0011 U5b: the businesses of this workspace (cards, no switcher) — populated by businesses.js -->
         <div id="businesses-section" data-set-tab="business"></div>
+        <div id="team-people-section" class="pf-card" data-set-tab="members"></div><!-- TEAM-1: Settings → Team members (core.js loadTeam) -->
         <!-- BIZ-BRAND-2 (Owner 2026-09-28): colours, design styles, rules and inspirations live inside each business profile (Edit profile & brand) -->
         <!-- RFC-0011 U7 (Owner 2026-09-22): the "Workspace Intelligence Profile Incomplete" gate is RETIRED. The Strategy Room resolves the business from the topic and runs across all website profiles like Sarah; there is no workspace-level profile to complete. -->
 
@@ -4923,7 +4925,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=fs1-20261004"></script>
 <script src="/app/js/launch-scope.js?v=cmp1-20260927"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=3655a34627"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=57cf83baec"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the

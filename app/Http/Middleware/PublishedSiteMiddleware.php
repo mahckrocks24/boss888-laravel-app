@@ -152,6 +152,12 @@ class PublishedSiteMiddleware
         if ($slug === 'robots.txt') {
             return $this->serveRobots($subdomain);
         }
+        // FAVICON-1: /favicon.ico answers with this website's own icon (was the platform's 0-byte file)
+        if ($slug === 'favicon.ico') {
+            $__fw = $website ?? DB::table('websites')->where('subdomain', $subdomain . '.levelupgrowth.io')->whereNull('deleted_at')->first();
+            $__ico = \App\Engines\Builder\Support\SiteIcon::icoBytes($__fw);
+            if ($__ico !== null) return response($__ico, 200)->header('Content-Type', 'image/x-icon')->header('Cache-Control', 'public, max-age=86400');
+        }
 
         // 2026-05-23 FIX 25 — IndexNow key file. Search engines (Bing,
         // Yandex, DuckDuckGo) verify ownership by GETting {host}/{key}.txt
@@ -271,6 +277,7 @@ class PublishedSiteMiddleware
                     // SCALE GUARD (2026-09-20, Owner): the original base designs render too large at every width — the
                     // guard is injected at serve time so every live site on one gets it without rewriting its files.
                     try { $__scSet = $website->settings_json ?? '{}'; if (is_string($__scSet)) $__scSet = json_decode($__scSet, true) ?: []; $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, (string) ($__scSet['template'] ?? $__scSet['industry'] ?? $website->template_industry ?? '')); } catch (\Throwable $e) {}
+                    $html = \App\Engines\Builder\Support\SiteIcon::apply($html, $website);   // FAVICON-1
                     return response($html, 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
@@ -285,7 +292,7 @@ class PublishedSiteMiddleware
             // RESUME888 — reserved slugs under /jobs are pages, not listings: /jobs/resume → pages.slug 'resume'.
             if (preg_match('#^jobs/(resume|post|saved)/?$#i', $path, $rm)) {
                 $rHtml = app(\App\Engines\Builder\Services\BuilderRenderer::class)->renderWebsite($subdomain, strtolower($rm[1]));
-                if ($rHtml !== null && $rHtml !== '') return response($rHtml, 200)->header('Content-Type', 'text/html; charset=utf-8')->header('Cache-Control', 'no-store')->header('X-Served-By', 'reserved-page');
+                if ($rHtml !== null && $rHtml !== '') return response(\App\Engines\Builder\Support\SiteIcon::apply($rHtml, $website), 200)->header('Content-Type', 'text/html; charset=utf-8')->header('Cache-Control', 'no-store')->header('X-Served-By', 'reserved-page');
             }
             // RESUME888 — signed download + magic link live in routes/web.php; let them through on the site host.
             if (str_starts_with($path, 'resume-download/') || str_starts_with($path, 'resume/continue/')) return $next($request);
@@ -294,7 +301,7 @@ class PublishedSiteMiddleware
                 $jobHtml = app(\App\Engines\Builder\Services\BuilderRenderer::class)->renderJob($subdomain, $jm[1]);
                 if ($jobHtml !== null) {
                     $jobHtml = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($jobHtml, (int) $website->id);
-                    return response($jobHtml, 200)->header('Content-Type', 'text/html; charset=utf-8')
+                    return response(\App\Engines\Builder\Support\SiteIcon::apply($jobHtml, $website), 200)->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')->header('X-Served-By', 'dynamic-job');
                 }
                 return redirect('/jobs', 302)->header('X-Served-By', 'job-not-found');
@@ -326,7 +333,7 @@ class PublishedSiteMiddleware
                 if ($dynHtml !== null) {
                     $dynHtml = $this->injectChatbotWidget($dynHtml, (int) ($website->workspace_id ?? 0), (int) $website->id);
                     $dynHtml = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($dynHtml, (int) $website->id);
-                    return response($dynHtml, 200)
+                    return response(\App\Engines\Builder\Support\SiteIcon::apply($dynHtml, $website), 200)
                         ->header('Content-Type', 'text/html; charset=utf-8')
                         ->header('Cache-Control', 'public, max-age=60, s-maxage=60')
                         ->header('X-Served-By', 'dynamic-article');
@@ -378,6 +385,7 @@ class PublishedSiteMiddleware
         $html = $this->injectChatbotWidget($html, (int) ($website->workspace_id ?? 0), (int) ($website->id ?? 0));
         $html = app(\App\Engines\Ads\Services\AdSlotInjector::class)->inject($html, (int) ($website->id ?? 0));
         $html = $this->absolutizeSocialMeta($html, $website, (string) $slug);
+        $html = \App\Engines\Builder\Support\SiteIcon::apply($html, $website);   // FAVICON-1
 
         return response($html, 200)
             ->header('Content-Type', 'text/html; charset=utf-8')

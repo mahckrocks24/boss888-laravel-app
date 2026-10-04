@@ -3,127 +3,99 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Join LevelUp — Team Invitation</title>
+  <meta name="robots" content="noindex,nofollow">
+  <title>Join your team · LevelUpGrowth</title>
+  <link rel="icon" href="/img/logo-icon-40.png">
   <style>
+    /* TEAM-1 (2026-10-04): was a script error (APP_URL declared twice) that left the page on "Loading invitation…" */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root { --bg: #0F1117; --s1: #171A21; --s2: #1E2230; --p: #6C5CE7; --ac: #00E5A8; --rd: #F87171; --text: #E2E8F0; --muted: #94A3B8; --border: #2D3748; }
-    body { background: var(--bg); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .card { background: var(--s1); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 100%; max-width: 420px; }
-    .logo { font-family: 'Syne', system-ui, sans-serif; font-size: 22px; font-weight: 700; background: linear-gradient(135deg, var(--p), var(--ac)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; margin-bottom: 24px; }
-    .invite-info { background: rgba(108,92,231,.08); border: 1px solid rgba(108,92,231,.2); border-radius: 10px; padding: 16px; margin-bottom: 24px; }
-    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
-    input { width: 100%; background: var(--s2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text); font-size: 14px; outline: none; margin-bottom: 14px; }
-    input:focus { border-color: var(--p); }
-    .btn { width: 100%; background: var(--p); color: #fff; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 600; cursor: pointer; transition: opacity .2s; margin-top: 4px; }
-    .btn:hover { opacity: .85; }
-    .btn:disabled { opacity: .5; }
-    .error { background: rgba(248,113,113,.1); border: 1px solid var(--rd); border-radius: 8px; padding: 10px 14px; color: var(--rd); font-size: 13px; margin-bottom: 12px; display: none; }
-    .success { background: rgba(0,229,168,.1); border: 1px solid var(--ac); border-radius: 8px; padding: 10px 14px; color: var(--ac); font-size: 13px; margin-bottom: 12px; display: none; }
-    .loading { text-align: center; color: var(--muted); padding: 20px; }
-    a { color: var(--p); text-decoration: none; }
+    body { background: radial-gradient(1200px 600px at 50% -10%, rgba(108,92,231,.18), transparent 60%), var(--bg); color: var(--text); font-family: 'DM Sans', system-ui, -apple-system, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+    .card { background: var(--s1); border: 1px solid var(--border); border-radius: 18px; padding: 36px 32px; width: 100%; max-width: 440px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+    .brand { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 26px; font: 700 20px 'Syne', system-ui, sans-serif; letter-spacing: -.01em; }
+    .brand img { width: 30px; height: 30px; object-fit: contain; }
+    .eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--p); text-align: center; }
+    h1 { font: 700 24px 'Syne', system-ui, sans-serif; text-align: center; margin: 8px 0 6px; line-height: 1.2; }
+    .lead { font-size: 14px; color: var(--muted); text-align: center; line-height: 1.55; margin-bottom: 22px; }
+    .who { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 22px; }
+    .pill { font-size: 11.5px; font-weight: 700; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--border); color: var(--text); background: var(--s2); }
+    label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
+    input { width: 100%; background: var(--s2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 14px; color: var(--text); font-size: 15px; outline: none; margin-bottom: 14px; }
+    input:focus { border-color: var(--p); box-shadow: 0 0 0 3px rgba(108,92,231,.2); }
+    input[readonly] { color: var(--muted); }
+    .btn { width: 100%; background: var(--p); color: #fff; border: none; border-radius: 10px; padding: 13px; font-size: 15px; font-weight: 700; cursor: pointer; transition: filter .15s; margin-top: 4px; }
+    .btn:hover { filter: brightness(1.08); }
+    .btn:disabled { opacity: .55; cursor: wait; }
+    .note { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 14px; line-height: 1.5; }
+    .msg { border-radius: 10px; padding: 11px 14px; font-size: 13px; margin-bottom: 14px; display: none; line-height: 1.5; }
+    .msg.err { background: rgba(248,113,113,.1); border: 1px solid var(--rd); color: var(--rd); }
+    .msg.ok { background: rgba(0,229,168,.1); border: 1px solid var(--ac); color: var(--ac); }
+    .loading { text-align: center; color: var(--muted); padding: 28px 0; font-size: 14px; }
+    a { color: var(--p); text-decoration: none; font-weight: 600; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo" style="display:flex;align-items:center;justify-content:center;gap:8px"><img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain"><span>LevelUp</span></div>
-    <div id="invite-preview" class="loading">Loading invitation…</div>
-    <div id="error" class="error"></div>
-    <div id="success" class="success"></div>
-    <div id="form-container" style="display:none"></div>
-  </div>
+  <main class="card">
+    <div class="brand"><img src="/img/logo-icon-40.png" alt=""><span>LevelUpGrowth</span></div>
+    <div id="body"><div class="loading">Opening your invitation…</div></div>
+  </main>
 
   <script>
-    const token = '{{ $token }}';
-    // MEDIUM-06 FIX: Use absolute API URL so this page works when served from
-    // levelupgrowth.io (marketing domain) while the API lives at app.levelupgrowth.io
-    const API_BASE = '{{ rtrim(config("app.url"), "/") }}/api';
-    const APP_URL  = '{{ config("app.url") }}';
+    const TOKEN = @json($token);
+    const API_BASE = @json(rtrim(config('app.url'), '/') . '/api');
+    const APP_URL = @json(rtrim(config('app.url'), '/'));
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const roleWords = r => r === 'admin' ? 'Admin' : r === 'viewer' ? 'Viewer' : 'Team member';
+    let invite = null;
 
-    async function loadInvite() {
+    function show(kind, text) { const el = document.getElementById('msg'); if (!el) return; el.className = 'msg ' + kind; el.textContent = text; el.style.display = 'block'; }
+
+    async function load() {
+      const body = document.getElementById('body');
       try {
-        const res  = await fetch(`${API_BASE}/invite/${token}`);
+        const res = await fetch(`${API_BASE}/invite/${encodeURIComponent(TOKEN)}`);
         const data = await res.json();
-
         if (!data.valid) {
-          document.getElementById('invite-preview').innerHTML =
-            `<div style="color:var(--rd);text-align:center">${data.error || 'Invalid invitation'}</div>`;
+          body.innerHTML = `<div class="eyebrow">Invitation</div><h1>This link no longer works</h1><p class="lead">${esc(data.error === 'Invite has expired' ? 'The invitation has expired.' : 'The invitation was already used or cancelled.')} Ask the person who invited you to send a new one.</p><a class="btn" style="display:block;text-align:center" href="${APP_URL}/login/">Sign in</a>`;
           return;
         }
-
-        document.getElementById('invite-preview').innerHTML = `
-          <div class="invite-info">
-            <div style="font-size:18px;font-weight:600">📌 ${data.workspace}</div>
-            <div style="font-size:13px;color:var(--muted);margin-top:4px">You're invited as <strong>${data.role}</strong></div>
-            <div style="font-size:12px;color:var(--muted);margin-top:8px">Invited by ${data.invited_by}</div>
-          </div>`;
-
-        const fc = document.getElementById('form-container');
-        fc.style.display = 'block';
-        fc.innerHTML = data.user_exists
-          ? `<p style="font-size:14px;color:var(--muted);margin-bottom:16px">
-               Your account (<strong>${data.email}</strong>) already exists. Accept to join.
-             </p>
-             <button class="btn" onclick="accept(false)">Accept Invitation</button>`
-          : `<p style="font-size:13px;color:var(--muted);margin-bottom:16px">
-               Create your account to join <strong>${data.workspace}</strong>.
-             </p>
-             <label>Full Name</label>
-             <input type="text" id="name" placeholder="Your full name">
-             <label>Password</label>
-             <input type="password" id="pass" placeholder="Min 8 characters">
-             <button class="btn" onclick="accept(true)">Create Account & Join</button>
-             <div style="font-size:13px;color:var(--muted);text-align:center;margin-top:12px">
-               Already have an account? <a href="${APP_URL}/app">Sign in</a>
-             </div>`;
-      } catch(e) {
-        document.getElementById('invite-preview').innerHTML =
-          '<div style="color:var(--rd)">Failed to load invitation. Please try again.</div>';
+        invite = data;
+        const head = `<div class="eyebrow">You are invited</div><h1>Join ${esc(data.workspace)}</h1>
+          <p class="lead">${esc(data.invited_by || 'The owner')} invited you to work on ${esc(data.workspace)} with the team and Sarah, its AI marketing manager.</p>
+          <div class="who"><span class="pill">${esc(roleWords(data.role))}</span><span class="pill">${esc(data.email)}</span></div><div id="msg" class="msg"></div>`;
+        body.innerHTML = data.user_exists
+          ? head + `<button class="btn" id="go" onclick="accept(false)">Accept and join</button><p class="note">You already have a LevelUpGrowth login with this email. After joining, sign in as usual and pick ${esc(data.workspace)}.</p>`
+          : head + `<label for="name">Your full name</label><input id="name" type="text" autocomplete="name" placeholder="First and last name">
+             <label for="pass">Choose a password</label><input id="pass" type="password" autocomplete="new-password" placeholder="At least 8 characters">
+             <button class="btn" id="go" onclick="accept(true)">Create my login and join</button>
+             <p class="note">Already use LevelUpGrowth with another email? Ask for the invitation to be sent to that address instead.</p>`;
+      } catch (e) {
+        body.innerHTML = '<div class="loading">We could not open the invitation. Please refresh the page.</div>';
       }
     }
 
     async function accept(isNew) {
-      const errEl = document.getElementById('error');
-      const sucEl = document.getElementById('success');
-      errEl.style.display = 'none';
-
-      const body = {};
+      const payload = {};
       if (isNew) {
-        body.name     = document.getElementById('name')?.value?.trim();
-        body.password = document.getElementById('pass')?.value;
-        if (!body.name || !body.password || body.password.length < 8) {
-          errEl.textContent = 'Please enter your name and a password (min 8 characters)';
-          errEl.style.display = 'block';
-          return;
-        }
+        payload.name = (document.getElementById('name').value || '').trim();
+        payload.password = document.getElementById('pass').value || '';
+        if (!payload.name) return show('err', 'Enter your name.');
+        if (payload.password.length < 8) return show('err', 'Choose a password of at least 8 characters.');
       }
-
-      const btn = document.querySelector('.btn');
-      btn.disabled = true;
-      btn.textContent = 'Joining…';
-
+      const btn = document.getElementById('go'); btn.disabled = true; btn.textContent = 'Joining…';
       try {
-        const res  = await fetch(`${API_BASE}/invite/${token}/accept`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
+        const res = await fetch(`${API_BASE}/invite/${encodeURIComponent(TOKEN)}/accept`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(payload) });
         const data = await res.json();
-
-        if (!data.success) throw new Error(data.error || 'Failed to accept invitation');
-
-        sucEl.textContent = `Welcome to ${data.workspace}! Redirecting…`;
-        sucEl.style.display = 'block';
-        document.getElementById('form-container').style.display = 'none';
-        setTimeout(() => window.location.href = `${APP_URL}/app`, 2000);
-      } catch(e) {
-        errEl.textContent = e.message;
-        errEl.style.display = 'block';
-        btn.disabled = false;
-        btn.textContent = isNew ? 'Create Account & Join' : 'Accept Invitation';
+        if (!data.success) throw new Error(data.error || 'The invitation could not be accepted.');
+        show('ok', `You have joined ${data.workspace || invite.workspace}. Taking you to sign in…`);
+        btn.style.display = 'none';
+        setTimeout(() => { window.location.href = `${APP_URL}/login/?email=${encodeURIComponent(invite.email)}`; }, 1800);
+      } catch (e) {
+        show('err', e.message);
+        btn.disabled = false; btn.textContent = isNew ? 'Create my login and join' : 'Accept and join';
       }
     }
-
-    loadInvite();
+    load();
   </script>
   <script src="/app/js/lu-keyboard.js?v=kb3"></script>
 </body>
