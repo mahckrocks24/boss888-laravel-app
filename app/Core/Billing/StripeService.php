@@ -92,6 +92,8 @@ class StripeService
             // Step 2: create the Checkout Session using the pre-created Price
             $session = $stripe->checkout->sessions->create([
                 'mode'        => 'subscription',
+                // RFC-0026: a referred business's partner discount (6 monthly payments), when its code gives one
+                ...(($__pd = \App\Core\Partners\Attribution::planDiscount($workspaceId, 'monthly')) && ! empty($__pd['coupon']) ? ['discounts' => [['coupon' => $__pd['coupon']]]] : []),
                 'customer'    => $customerId,
                 'line_items'  => [[
                     'price'    => $plan->stripe_price_id,
@@ -176,6 +178,21 @@ class StripeService
 
             $lineItems = [];
 
+            // RFC-0026: a referred business's domain discount - new registrations only, never below our cost
+            $__cut = []; $__saved = 0; $__ref = \App\Core\Partners\Attribution::domainDiscount((int) $order->workspace_id);
+            if ($__ref && (int) $__ref->discount_domain_bps > 0) {
+                foreach ($order->items as $it) {
+                    if (($it->action ?? 'register') !== 'register' || (int) $it->retail_minor <= (int) $it->registrar_cost_minor) continue;
+                    $__cut[$it->id] = min((int) round($it->retail_minor * (int) $__ref->discount_domain_bps / 10000), (int) $it->markup_minor);
+                    $__saved += $__cut[$it->id];
+                }
+            }
+            if ($__ref) {
+                $__m = json_decode((string) ($order->getRawOriginal('metadata_json') ?? ''), true) ?: [];
+                $__m['partner'] = ['referral_id' => (int) $__ref->id, 'bps' => (int) $__ref->discount_domain_bps, 'saved_minor' => $__saved];
+                \Illuminate\Support\Facades\DB::table('domain_orders')->where('id', $order->id)->update(['total_minor' => max(0, (int) $order->subtotal_minor + (int) $order->tax_minor - $__saved), 'metadata_json' => json_encode($__m), 'updated_at' => now()]);
+            }
+
             foreach ($order->items as $item) {
                 $years = (int) $item->years;
 
@@ -183,7 +200,7 @@ class StripeService
                     'quantity'   => 1,
                     'price_data' => [
                         'currency'     => strtolower($order->currency ?: 'USD'),
-                        'unit_amount'  => (int) $item->retail_minor,
+                        'unit_amount'  => (int) $item->retail_minor - ($__cut[$item->id] ?? 0),   // RFC-0026
                         'product_data' => [
                             // Customer-facing copy. LevelUpGrowth is the seller;
                             // the registrar and the internal engine are never named.
@@ -518,7 +535,9 @@ class StripeService
                 // below assume a plan, which a domain order does not have.
                 if ((($session->metadata->order_type ?? null) === 'domain')
                     || (($session->mode ?? null) === 'payment' && ! empty($session->metadata->domain_order_id))) {
-                    return $this->handleDomainCheckoutCompleted($event, $session);
+                    $__r = $this->handleDomainCheckoutCompleted($event, $session);
+                    \App\Core\Partners\Commissions::safe(fn ($c) => $c->onDomainPaid($event, $session));   // RFC-0026
+                    return $__r;
                 }
 
                 // FIX-A: Idempotency pivoted to session->id (always present at event time).
@@ -543,7 +562,15 @@ class StripeService
                 return $this->handleCheckoutCompleted($session);
 
             case 'invoice.paid':
-                return $this->handleInvoicePaid($event->data->object);
+                $__r = $this->handleInvoicePaid($event->data->object);
+                \App\Core\Partners\Commissions::safe(fn ($c) => $c->onInvoicePaid($event));   // RFC-0026: never affects billing
+                return $__r;
+
+            // RFC-0026: a refund or a dispute reverses the matching partner commission
+            case 'charge.refunded':
+            case 'charge.dispute.created':
+                \App\Core\Partners\Commissions::safe(fn ($c) => $c->onRefundOrDispute($event));
+                return ['handled' => true, 'type' => $event->type];
 
             case 'invoice.payment_failed':
                 return $this->handlePaymentFailed($event->data->object);

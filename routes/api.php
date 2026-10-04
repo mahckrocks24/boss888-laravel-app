@@ -104,6 +104,14 @@ use App\Http\Controllers\Api\ManualExecutionController;
 */
 
 // ── Public Auth ──────────────────────────────────────────────────────────
+// RFC-0026: check a partner or promotion code before signup (the sign-up page's "Have a code?")
+Route::get('/partners/code/{code}', function (string $code) {
+    if (! \App\Core\Partners\PartnerProgram::enabled()) return response()->json(['ok' => false, 'error' => 'Codes are not available right now.']);
+    $res = \App\Core\Partners\PartnerProgram::resolveCode($code);
+    if (! $res['ok']) return response()->json(['ok' => false, 'error' => $res['error']]);
+    return response()->json(['ok' => true, 'code' => $res['voucher']->code, 'message' => \App\Core\Partners\PartnerProgram::describe($res['voucher']), 'partner' => $res['affiliate']->display_name ?? null]);
+})->where('code', '[A-Za-z0-9 -]{1,40}')->middleware('throttle:30,1');
+
 Route::prefix('auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::middleware('throttle:10,5')->post('/login', [AuthController::class, 'login']);
@@ -2435,6 +2443,18 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand', 'team.activ
             $r->attributes->get('workspace_id'), (int) $r->input('plan_id'), $r->user()->id
         ));
     })->middleware('team.role:admin');   // BILL-2: only an owner or admin changes the plan
+
+    // RFC-0026: a code typed in Billing or the domain cart, before the business ever paid (new customers only)
+    Route::get('/billing/promo-code', function (\Illuminate\Http\Request $r) {
+        $ref = \Illuminate\Support\Facades\DB::table('referrals')->where('workspace_id', (int) $r->attributes->get('workspace_id'))->first();
+        if (! $ref || ! \App\Core\Partners\PartnerProgram::enabled()) return response()->json(['active' => false, 'available' => \App\Core\Partners\PartnerProgram::enabled()]);
+        $v = $ref->voucher_id ? \Illuminate\Support\Facades\DB::table('vouchers')->where('id', $ref->voucher_id)->first() : null;
+        return response()->json(['active' => in_array($ref->status, ['signed_up', 'paying'], true), 'code' => $v->code ?? null, 'message' => $v ? \App\Core\Partners\PartnerProgram::describe($v) : null, 'locked' => (bool) $ref->locked_at, 'available' => true]);
+    });
+    Route::post('/billing/promo-code', function (\Illuminate\Http\Request $r) {
+        $r->validate(['code' => 'required|string|max:40']);
+        return response()->json(\App\Core\Partners\Attribution::applyCode((int) $r->attributes->get('workspace_id'), (int) $r->user()->id, (string) $r->input('code')));
+    })->middleware(['team.role:admin', 'throttle:10,1']);
 
     // SEATS-4: extra human team members, $20 a month each - owner or admin, as for the plan
     Route::post('/billing/seats', function (\Illuminate\Http\Request $r) {

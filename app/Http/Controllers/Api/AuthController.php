@@ -43,12 +43,15 @@ class AuthController
             ],
             'workspace_name' => 'nullable|string|max:255',
             'industry' => 'nullable|string|max:120',   // EV-1043: from the sign-up page
+            'promo_code' => 'nullable|string|max:40',  // RFC-0026: "Have a code?"
         ], [
             'password.regex' => 'Password must contain at least one uppercase letter and one number.',
             'password.confirmed' => 'Passwords do not match.',
         ]);
 
         $result = $this->authService->register($data);
+        // RFC-0026: who brought this business (a typed code, else the partner link cookie). Never fails signup.
+        \App\Core\Partners\Attribution::captureSignup((int) ($result['user']['id'] ?? 0), $request);
 
         // T_NOTIF — notify platform admin (user_id=1) of new signup. Wrapped in try/catch
         // so a notification failure never blocks user registration.

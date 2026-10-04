@@ -1088,6 +1088,10 @@ Route::get('/plugin-connect', function (\Illuminate\Http\Request $r) {
 // method+uri and OVERWRITES, so for a URI defined in both places the LAST registration wins.
 // Included first, every legacy page below silently re-claimed / and /pricing. Deleting these
 // five lines is the complete rollback: the legacy routes above are untouched.
+// RFC-0026: a partner's link - levelupgrowth.io/r/{handle} or /r/{handle}/{video}
+Route::get('/r/{handle}/{sub?}', fn (\Illuminate\Http\Request $r, string $handle, ?string $sub = null) => \App\Core\Partners\Attribution::click($r, $handle, $sub))
+    ->where('handle', '[A-Za-z0-9_-]{2,32}')->where('sub', '[A-Za-z0-9_-]{1,40}')->middleware('throttle:60,1');
+
 if (file_exists(__DIR__ . '/marketing-next.php')) { require __DIR__ . '/marketing-next.php'; }
 
 // FAVICON-1 (2026-10-04): the platform's own icon. A website's address is answered earlier by PublishedSiteMiddleware.
