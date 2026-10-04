@@ -25,6 +25,12 @@ class PartnerProgram
     public const MIN_PAYOUT_MINOR = 5000;      // $50
     public const RESERVED = ['LEVELUP', 'LEVELUPGROWTH', 'LUG', 'SARAH', 'ARIA', 'ADMIN', 'SUPPORT', 'FREE', 'TEST', 'STAFF', 'OFFICIAL', 'STRIPE', 'REFUND', 'BILLING', 'PARTNER', 'PARTNERS', 'AFFILIATE'];
 
+    /** Yearly plans are not on sale yet (RFC-0026 P0 waits for the yearly price, D12): codes do not mention them until then. */
+    public static function yearlyLive(): bool
+    {
+        return is_file(storage_path('app/yearly1.on'));
+    }
+
     public static function enabled(): bool
     {
         return is_file(storage_path('app/aff1.on'));
@@ -109,7 +115,7 @@ class PartnerProgram
     {
         $p = []; $m = (int) $voucher->discount_monthly_bps; $y = (int) $voucher->discount_yearly_bps; $d = (int) $voucher->discount_domain_bps;
         if ($voucher->applies_plans && $m) $p[] = ($m / 100) . '% off your first ' . (int) $voucher->months . ' monthly payments';
-        if ($voucher->applies_plans && $y) $p[] = ($y / 100) . '% off a yearly plan';
+        if ($voucher->applies_plans && $y && self::yearlyLive()) $p[] = ($y / 100) . '% off a yearly plan';
         if ($voucher->applies_domains && $d) $p[] = ($d / 100) . '% off new domains';
         return $p ? ucfirst(implode(', ', $p)) . '.' : 'This code links you to your partner. It gives no discount.';
     }

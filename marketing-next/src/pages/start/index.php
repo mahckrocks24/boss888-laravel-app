@@ -121,12 +121,14 @@ $page['scripts'] = <<<'HTML'
     var pass = form.querySelector('[name=password]').value || '';
     var company = (form.querySelector('[name=company]').value || '').trim();
     var industry = (form.querySelector('[name=industry]') || {}).value || '';
+    var code = (form.querySelector('[name=promo_code]') || {}).value || '';
+    if (code && form.querySelector('[name=promo_code]').getAttribute('data-bad') === '1') { mark('promo_code'); show('That code is not valid. Check it, or clear it to sign up without one.'); btn.disabled = false; btn.innerHTML = label; return; }
     var mark = function(k){ var i = form.querySelector('[name=' + k + ']'); if (i) i.setAttribute('aria-invalid', 'true'); };
     if (name.length < 2) { mark('name'); show('Please tell us your name.'); btn.disabled = false; btn.innerHTML = label; return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { mark('email'); show('Please enter a valid email address.'); btn.disabled = false; btn.innerHTML = label; return; }
     if (pass.length < 8 || !/[A-Z]/.test(pass) || !/[0-9]/.test(pass)) { mark('password'); show('Your password needs at least 8 characters, one capital letter and one number.'); btn.disabled = false; btn.innerHTML = label; return; }
     var done = function(){ btn.disabled = false; btn.innerHTML = label; };
-    fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ name: name, email: email, password: pass, password_confirmation: pass, workspace_name: company || null, industry: industry || null }) })
+    fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ name: name, email: email, password: pass, password_confirmation: pass, workspace_name: company || null, industry: industry || null, promo_code: code || null }) })
       .then(function(r){ return r.json().catch(function(){ return {}; }).then(function(j){ return { status: r.status, json: j }; }); })
       .then(function(res){
         var j = res.json || {};
@@ -156,6 +158,28 @@ $page['scripts'] = <<<'HTML'
       })
       .catch(function(){ show('Network problem. Please try again.'); done(); });
   });
+  // RFC-0026: Have a code?
+  var cOpen = document.getElementById('wl-code-open'), cBox = document.getElementById('wl-code-box'), cIn = document.getElementById('wl-code'), cMsg = document.getElementById('wl-code-msg'), cBtn = document.getElementById('wl-code-check');
+  if (cOpen && cBox && cIn) {
+    var openCode = function(){ cBox.hidden = false; cOpen.hidden = true; cOpen.setAttribute('aria-expanded', 'true'); };
+    var checkCode = function(){
+      var v = (cIn.value || '').replace(/[^A-Za-z0-9]/g, '').toUpperCase(); cIn.value = v; cIn.removeAttribute('data-bad'); cIn.removeAttribute('aria-invalid');
+      if (!v) { cMsg.textContent = ''; return; }
+      cMsg.textContent = 'Checking\u2026';
+      fetch('/api/partners/code/' + encodeURIComponent(v), { headers: { 'Accept': 'application/json' } })
+        .then(function(r){ return r.json(); })
+        .then(function(j){
+          if (j && j.ok) { cMsg.textContent = '\u2713 ' + j.message + (j.partner ? ' From ' + j.partner + '.' : ''); }
+          else { cMsg.textContent = (j && j.error) || 'That code is not valid.'; cIn.setAttribute('data-bad', '1'); cIn.setAttribute('aria-invalid', 'true'); }
+        })
+        .catch(function(){ cMsg.textContent = 'We could not check the code just now. It is checked again when you sign up.'; });
+    };
+    cOpen.addEventListener('click', function(){ openCode(); cIn.focus(); });
+    cBtn.addEventListener('click', checkCode);
+    cIn.addEventListener('keydown', function(e){ if (e.key === 'Enter') { e.preventDefault(); checkCode(); } });
+    cIn.addEventListener('change', checkCode);
+    try { var q = new URLSearchParams(location.search).get('code'); if (q) { openCode(); cIn.value = q; checkCode(); } } catch (_q) {}
+  }
   // password show/hide (site.js binds its own only on the login page)
   var t = form.querySelector('[data-pw-toggle]'); var pw = document.getElementById('wl-pass');
   if (t && pw) t.addEventListener('click', function(){ var vis = pw.type === 'text'; pw.type = vis ? 'password' : 'text'; t.textContent = vis ? 'Show' : 'Hide'; t.setAttribute('aria-label', vis ? 'Show password' : 'Hide password'); });
@@ -199,6 +223,17 @@ HTML;
               <option value="">Choose</option>
               <?php foreach ($industries as $i): ?><option value="<?= e($i) ?>"><?= e($i) ?></option><?php endforeach; ?>            </select>
             <?= icon('arrow-right', 16, 'select-icon') ?>          </div>
+        </div>
+      </div>
+      <div class="form-row" id="wl-code-row">
+        <button type="button" id="wl-code-open" aria-expanded="false" aria-controls="wl-code-box" style="background:none;border:0;padding:0;font:inherit;font-size:14px;color:inherit;opacity:.85;text-decoration:underline;text-underline-offset:3px;cursor:pointer">Have a code?</button>
+        <div id="wl-code-box" hidden>
+          <label for="wl-code">Partner or promotion code</label>
+          <div class="pw-wrap">
+            <input id="wl-code" name="promo_code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" style="text-transform:uppercase">
+            <button type="button" class="pw-toggle" id="wl-code-check">Apply</button>
+          </div>
+          <p class="fine" id="wl-code-msg" role="status" aria-live="polite" style="margin:6px 0 0"></p>
         </div>
       </div>
       <div class="hp" aria-hidden="true"><label>Leave this empty<input type="text" name="website_confirm" tabindex="-1" autocomplete="off"></label></div>

@@ -19,8 +19,8 @@ class Attribution
 
     public static function click(Request $r, string $handle, ?string $sub = null)
     {
-        $to = self::safeTarget((string) $r->query('to', '/'));
         $code = PartnerProgram::normalizeCode((string) $r->query('code', ''));
+        $to = self::safeTarget((string) $r->query('to', $code ? '/start/' : '/'));   // a link with a code goes straight to sign-up
         if ($code) $to .= (str_contains($to, '?') ? '&' : '?') . 'code=' . $code;
         $resp = (new \Illuminate\Http\RedirectResponse($to, 302))->header('Cache-Control', 'no-store')->header('X-Robots-Tag', 'noindex');
         if (! PartnerProgram::enabled()) return $resp;
