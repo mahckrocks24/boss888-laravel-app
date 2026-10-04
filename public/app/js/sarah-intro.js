@@ -201,7 +201,7 @@
       '<div class="glass a-rise" style="' + d(.5) + ';position:absolute;left:30px;top:256px;width:290px;border-radius:18px;padding:12px 14px;display:flex;gap:10px;align-items:center">' + logoAv(34) +
         '<div style="display:flex;flex-direction:column;gap:2px"><div style="font-size:12px;font-weight:700;color:var(--ink)">Arthur <span style="font-weight:500;color:var(--ink3)">· Website builder</span></div><div style="font-size:13px;color:var(--ink2)">Published. Your website is live.</div></div></div>' +
       '<div style="position:absolute;left:0;top:0;width:350px;height:330px;border-radius:24px;background:var(--scrim);animation:lsiFrost 1s cubic-bezier(.6,0,.2,1) 1.4s both" class="lsi-frost"></div>' +
-      '<div class="a-pop" data-over="frost" style="' + d(2.2) + ';position:absolute;left:115px;top:44px;display:flex;flex-direction:column;align-items:center;gap:12px">' + av('sarah', 120) +
+      '<div class="a-pop" data-over="frost" style="' + d(2.2) + ';position:absolute;left:0;width:350px;top:44px;display:flex;flex-direction:column;align-items:center;gap:12px">' + av('sarah', 120) +
         '<div class="thick" style="height:32px;padding:0 14px;border-radius:999px;display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--ink);white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:var(--ok)"></span>Sarah is joining you</div></div>';
 
     if (i === 1) {
