@@ -720,7 +720,7 @@ PUT|api/team/members/{userId}/role||Closure||api,auth.jwt,connector.brand,team.r
 DELETE|api/team/members/{userId}||Closure||api,auth.jwt,connector.brand,team.role:admin,traffic.defense
 GET,HEAD|api/billing/status||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/billing/checkout||Closure||api,auth.jwt,connector.brand,traffic.defense,verified.email
-POST|api/billing/upgrade||Closure||api,auth.jwt,connector.brand,traffic.defense
+POST|api/billing/upgrade||Closure||api,auth.jwt,connector.brand,team.role:admin,traffic.defense
 GET,HEAD|api/billing/portal||Closure||api,auth.jwt,connector.brand,traffic.defense
 POST|api/billing/cancel||Closure||api,auth.jwt,connector.brand,traffic.defense
 GET,HEAD|api/billing/workspace-usage||Closure||api,auth.jwt,connector.brand,traffic.defense
