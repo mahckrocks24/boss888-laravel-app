@@ -785,7 +785,13 @@ function _msgDeactivateBehind(el, INTER){
   var seen = [];
   for(var i=0;i<pts.length;i++){
     var list = document.elementsFromPoint(pts[i][0], pts[i][1]);
-    for(var j=0;j<list.length;j++){
+    // INTRO-UNSTICK (Owner 10-04, stuck on the intro's Meet Sarah): only what lies UNDER her counts. elementsFromPoint lists the
+    // topmost first, so anything before her own element is drawn above her (a full-screen intro, a dialog) and stays usable; if she
+    // is not in the list at all she is covered there and dims nothing.
+    var at = -1;
+    for(var q=0;q<list.length;q++){ if(list[q] === el || el.contains(list[q])){ at = q; break; } }
+    if(at === -1) continue;
+    for(var j=at+1;j<list.length;j++){
       var n = list[j];
       if(n === el || el.contains(n) || (n.closest && n.closest('#lu-messages-floater,#lu-msg-modal'))) continue;
       if(seen.indexOf(n) !== -1) continue; seen.push(n);
