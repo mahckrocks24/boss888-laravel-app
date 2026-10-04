@@ -34,6 +34,7 @@ class NotificationTypes
     public const BILLING_SUBSCRIPTION_CREATED   = 'billing.subscription_created';
     public const BILLING_SUBSCRIPTION_CANCELLED = 'billing.subscription_cancelled';
     public const BILLING_SUBSCRIPTION_RENEWED   = 'billing.subscription_renewed';
+    public const BILLING_PLAN_CHANGED           = 'billing.plan_changed';   // TIERMAIL-1: upgrade, booked downgrade, downgrade landed
     public const BILLING_PAYMENT_FAILED         = 'billing.payment_failed';
     public const BILLING_PAYMENT_RETRY          = 'billing.payment_retry';
     public const BILLING_CHATBOT_ADDON_ADDED    = 'billing.chatbot_addon_added';
@@ -100,6 +101,8 @@ class NotificationTypes
         return in_array($type, [
             self::BILLING_PAYMENT_FAILED,
             self::BILLING_SUBSCRIPTION_CANCELLED,
+            self::BILLING_SUBSCRIPTION_RENEWED,   // TIERMAIL-1: money moved - always told
+            self::BILLING_PLAN_CHANGED,
             self::BILLING_TRIAL_EXPIRED,
             self::SYSTEM_PASSWORD_CHANGED,
             self::SYSTEM_RUNTIME_DOWN,

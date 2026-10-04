@@ -571,6 +571,15 @@ class StripeService
      * In Stripe: updates the subscription item price.
      * In dev mode: directly activates the new plan.
      */
+    /** TIERMAIL-1: one billing notice to the workspace owner (in-app, and by email for the always-email billing types). */
+    private function tellOwner(int $wsId, string $type, string $title, string $body, string $severity = 'info'): void
+    {
+        try {
+            $ownerId = (int) \Illuminate\Support\Facades\DB::table('workspace_users')->where('workspace_id', $wsId)->where('role', 'owner')->value('user_id');
+            if ($ownerId) $this->notifications->dispatch(type: $type, userId: $ownerId, title: $title, workspaceId: $wsId, body: $body, severity: $severity, actionUrl: '/billing');
+        } catch (\Throwable $e) { Log::warning('[TIERMAIL-1] owner notice failed', ['ws' => $wsId, 'type' => $type, 'error' => $e->getMessage()]); }
+    }
+
     public function changePlan(int $workspaceId, int $newPlanId, int $userId): array
     {
         // BILL-2: one plan switch for every case. An upgrade starts now and charges only the difference for the rest of the period
@@ -596,6 +605,8 @@ class StripeService
             // nothing is given away. Every move up is paid through checkout first (BILL-1: never handed over).
             if ($currentSub && $currentSub->status === 'active' && $curPrice > 0 && $newPrice < $curPrice) {
                 $r = $this->devActivate($workspaceId, $newPlanId, $userId);
+                $this->tellOwner($workspaceId, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED, 'You are now on ' . $newPlan->name,
+                    'Your plan changed from ' . ($curPlan->name ?? 'your plan') . ' to ' . $newPlan->name . ' today, with ' . number_format((int) $newPlan->credit_limit) . ' credits a month. Nothing was charged.');
                 return $r + ['action' => 'downgraded', 'plan' => $newPlan->slug];
             }
             return $this->createCheckoutSession($workspaceId, $newPlanId, $userId);
@@ -634,11 +645,18 @@ class StripeService
                 Credit::updateOrCreate(['workspace_id' => $workspaceId], ['balance' => $newPlan->credit_limit]);   // reserved credits (jobs running) are left alone
                 $this->ledgerAllocation($workspaceId, $newPlan, 'plan_upgraded');
                 Log::info('[BILL-2] plan upgraded', ['ws' => $workspaceId, 'from' => $curPlan->slug ?? null, 'to' => $newPlan->slug]);
+                $paid = (int) ($upd->latest_invoice->amount_paid ?? 0) / 100;
+                $this->tellOwner($workspaceId, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED, 'You are now on ' . $newPlan->name,
+                    'Your plan changed from ' . ($curPlan->name ?? 'your plan') . ' to ' . $newPlan->name . ' today. You paid $' . number_format($paid, 2) . ' for the rest of this billing month (only the difference), and your '
+                    . number_format((int) $newPlan->credit_limit) . ' monthly credits are ready. From your next renewal' . ($periodEnd ? ' on ' . date('j F Y', $periodEnd) : '') . ': $' . rtrim(rtrim(number_format((float) $newPlan->price, 2), '0'), '.') . ' a month.');
                 return ['success' => true, 'action' => 'upgraded', 'plan' => $newPlan->slug];
             }
 
             $stripe->subscriptions->update($ss->id, ['items' => [['id' => $item->id, 'price' => $newPlan->stripe_price_id]], 'proration_behavior' => 'none']);
             Log::info('[BILL-2] downgrade scheduled', ['ws' => $workspaceId, 'from' => $curPlan->slug ?? null, 'to' => $newPlan->slug, 'at' => $periodEnd]);
+            $this->tellOwner($workspaceId, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED, 'Your move to ' . $newPlan->name . ' is booked',
+                'You keep ' . ($curPlan->name ?? 'your plan') . ' until ' . ($periodEnd ? date('j F Y', $periodEnd) : 'your next renewal') . ', then move to ' . $newPlan->name . ' at $'
+                . rtrim(rtrim(number_format((float) $newPlan->price, 2), '0'), '.') . ' a month. Nothing is charged today. Changed your mind? Choose ' . ($curPlan->name ?? 'your plan') . ' again in Billing before then.');
             return ['success' => true, 'action' => 'downgrade_scheduled', 'plan' => $newPlan->slug, 'effective_at' => $periodEnd ? date('c', $periodEnd) : null];
         } catch (\Throwable $e) {
             Log::error('StripeService::changePlan failed', ['error' => $e->getMessage()]);
@@ -805,14 +823,14 @@ class StripeService
             ->where('workspace_id', $workspaceId)
             ->where('role', 'owner')
             ->value('user_id');
-        if ($ownerId) {
+        if ($ownerId && \Illuminate\Support\Facades\Cache::add('billing:cancel_notice:' . ($sub->stripe_subscription_id ?: 'local-' . $sub->id), 1, now()->addDays(3))) {   // TIERMAIL-1: once
             try {
                 $this->notifications->dispatch(
                     type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CANCELLED,
                     userId: (int) $ownerId,
-                    title: 'Subscription cancelled',
+                    title: 'Your plan is cancelled',
                     workspaceId: $workspaceId,
-                    body: 'Your subscription has been cancelled. Your workspace has been downgraded to the Free plan.',
+                    body: 'Your plan is cancelled and your account is now on the Free plan. Your website stays live, with your contacts and calendar. Sarah and the AI team are paused until you choose a plan again.',
                     severity: 'warning',
                     actionUrl: '/billing'
                 );
@@ -1215,7 +1233,7 @@ class StripeService
                 foreach (($live->items->data ?? []) as $it) {
                     $pid = $it->price->id ?? ''; if ($pid === '' || $pid === $addonPriceId) continue;
                     $billed = Plan::where('stripe_price_id', $pid)->first();
-                    if ($billed && (int) $billed->id !== (int) $sub->plan_id) { Log::info('[BILL-2] plan follows the billed price', ['ws' => $sub->workspace_id, 'from' => $sub->plan_id, 'to' => $billed->id]); $sub->update(['plan_id' => $billed->id]); }
+                    if ($billed && (int) $billed->id !== (int) $sub->plan_id) { Log::info('[BILL-2] plan follows the billed price', ['ws' => $sub->workspace_id, 'from' => $sub->plan_id, 'to' => $billed->id]); $sub->update(['plan_id' => $billed->id]); $planMoved = $billed; }
                     break;
                 }
             } catch (\Throwable $e) { Log::warning('[BILL-2] could not read the billed price', ['error' => $e->getMessage()]); }
@@ -1226,6 +1244,14 @@ class StripeService
             Credit::where('workspace_id', $sub->workspace_id)
                 ->update(['balance' => $plan->credit_limit, 'updated_at' => now()]);
             $this->ledgerAllocation((int) $sub->workspace_id, $plan, 'invoice_paid_renewal');
+            // TIERMAIL-1: a renewal is told once per invoice (Stripe may deliver invoice.paid more than once)
+            if (($invoice->billing_reason ?? '') === 'subscription_cycle' && \Illuminate\Support\Facades\Cache::add('billing:renewal_notice:' . ($invoice->id ?? ''), 1, now()->addDays(3))) {
+                $amount = '$' . number_format(((int) ($invoice->amount_paid ?? 0)) / 100, 2);
+                if (! empty($planMoved)) $this->tellOwner((int) $sub->workspace_id, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED, 'You are now on ' . $plan->name,
+                    'Your move to ' . $plan->name . ' took effect at today\'s renewal: ' . $amount . ' paid, and your ' . number_format((int) $plan->credit_limit) . ' monthly credits are ready.');
+                else $this->tellOwner((int) $sub->workspace_id, \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_RENEWED, 'Your ' . $plan->name . ' plan has renewed',
+                    $amount . ' paid. Your ' . number_format((int) $plan->credit_limit) . ' credits for this month are ready.');
+            }
         }
 
         Log::info("Credits refreshed for workspace {$sub->workspace_id} on invoice.paid");
@@ -1300,14 +1326,14 @@ class StripeService
                 ->where('workspace_id', $sub->workspace_id)
                 ->where('role', 'owner')
                 ->value('user_id');
-            if ($ownerId) {
+            if ($ownerId && \Illuminate\Support\Facades\Cache::add('billing:cancel_notice:' . $subscription->id, 1, now()->addDays(3))) {   // TIERMAIL-1: once (cancel() may have told already)
                 try {
                     $this->notifications->dispatch(
                         type: \App\Core\Notifications\NotificationTypes::BILLING_SUBSCRIPTION_CANCELLED,
                         userId: (int) $ownerId,
-                        title: 'Subscription cancelled',
+                        title: 'Your plan is cancelled',
                         workspaceId: (int) $sub->workspace_id,
-                        body: 'Your subscription has been cancelled. Your workspace has been downgraded to the Free plan.',
+                        body: 'Your plan is cancelled and your account is now on the Free plan. Your website stays live, with your contacts and calendar. Sarah and the AI team are paused until you choose a plan again.',
                         severity: 'warning',
                         actionUrl: '/billing'
                     );

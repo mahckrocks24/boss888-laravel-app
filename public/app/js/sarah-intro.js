@@ -162,6 +162,14 @@
     ['What powers it', 'The engines', 'Behind every plan are the engines we work with: a chatbot for your visitors, Clients for every lead, a calendar for your schedule, and more.', 'Next'],
     ['Ready', 'Let’s grow.', 'That’s the tour. I’ll be in the corner of every page whenever you need me. Let’s start your first campaign.', 'Start with Sarah']
   ];
+  /* TOUR-TIER-1: the same tour on a plan without Sarah and the team says what the plan does today and what AI Lite adds */
+  var CH_NO_AI = {
+    1: ['Meet your manager', 'I’m Sarah.', 'I’m Sarah, your Digital Marketing Manager. Your plan runs the website you own today. When you add the AI team, from AI Lite, I plan your marketing and my team creates it, with your OK first.', 'Next'],
+    2: ['How it works', 'A week with the team', 'This is what a normal week looks like once the AI team is on: my specialists do the hands-on work, and I keep it moving on schedule.', 'Next'],
+    4: ['Who does what', 'Meet the team', 'Arthur looks after your website and Aria answers any question about the platform, both on your plan now. My specialists join you from AI Lite.', 'Next'],
+    6: ['What powers it', 'The engines', 'On your plan today: your website, Clients for every lead, a calendar for your schedule, and hosting. The website chatbot, content and social join from AI Lite.', 'Next'],
+    7: ['Ready', 'Let’s grow.', 'That’s the tour. Your website is ready, and Arthur is here for any change. When you want me and the team working on your growth, choose AI Lite or above.', 'See the plans']
+  };
   var MENU = [
     ['Sarah', 'sarah', 'Talk to me here, in plain words. Every update and every question from me lands in this thread.'],
     ['Needs attention', 'attention', 'Anything waiting on your OK, one closed card each. Open a card to approve or decline.'],
@@ -296,7 +304,7 @@
       '<div class="a-pop">' + av('sarah', 88) + '</div>' +
       '<div class="a-rise" style="' + d(.3) + ';margin-top:12px;font-size:28px;font-weight:800;letter-spacing:-.6px;line-height:1.1;text-align:center;color:var(--ink)">Let’s grow<br><span class="gt">' + site + '</span></div>' +
       '<div class="glass a-rise" style="' + d(.6) + ';margin-top:16px;width:330px;border-radius:20px;padding:8px 14px;display:flex;flex-direction:column">' +
-        ['Your website is live', 'Your team is ready', 'You know your way around', 'Your first campaign is next'].map(function (t, k) {
+        (S.noAI ? ['Your website is live', 'Arthur is on hand for any change', 'You know your way around', 'Sarah and the team join from AI Lite'] : ['Your website is live', 'Your team is ready', 'You know your way around', 'Your first campaign is next'])   /* TOUR-TIER-1 */.map(function (t, k) {
           return '<div style="height:44px;display:flex;align-items:center;gap:10px;' + (k < 3 ? 'border-bottom:1px solid var(--hair);' : '') + '"><span class="a-pop" style="' + d(.9 + k * .2) + ';width:24px;height:24px;border-radius:50%;background:' + (k < 3 ? 'var(--oksoft)' : 'var(--tint)') + ';color:' + (k < 3 ? 'var(--ok)' : 'var(--acc)') + ';display:flex;align-items:center;justify-content:center">' + (k < 3 ? ico('check', 14) : ico('arrow', 14)) + '</span><span style="font-size:14px;font-weight:600;color:var(--ink)">' + t + '</span></div>';
         }).join('') + '</div></div>';
   }
@@ -374,8 +382,9 @@
     (function sweep() {
       var p = (editorOpen() && typeof window.wsCloseTemplateEditor === 'function') ? Promise.resolve(window.wsCloseTemplateEditor({ silent: true, force: true })).catch(function () {}) : Promise.resolve();
       p.then(function () {
-        if (!navd) { navd = true; try { if (typeof window.nav === 'function') window.nav('projects'); } catch (e) {} }
-        else if (!editorOpen() && pageKey(curView()) === 'projects' && !S.seen.projects && !document.getElementById('lsi-bubble')) showBubble('projects');
+        /* TOUR-TIER-1: without the AI team the tour ends on the plans, not on Campaigns (which only Sarah fills) */
+        if (!navd) { navd = true; try { if (typeof window.nav === 'function') window.nav(S.noAI ? 'billing' : 'projects'); } catch (e) {} }
+        else if (!S.noAI && !editorOpen() && pageKey(curView()) === 'projects' && !S.seen.projects && !document.getElementById('lsi-bubble')) showBubble('projects');
         if (Date.now() < until) setTimeout(sweep, 700);
       });
     })();
@@ -542,7 +551,10 @@
   function boot() {
     if (booting) return booting;
     if (!tok()) return Promise.resolve();
-    booting = Promise.all([getJ('/api/auth/me'), getJ('/api/builder/websites')]).then(function (res) {
+    booting = Promise.all([getJ('/api/auth/me'), getJ('/api/builder/websites'), getJ('/api/workspace/status')]).then(function (res) {
+      /* TOUR-TIER-1: only a definite "no Sarah on this plan" changes the words; an unknown answer keeps the full tour */
+      S.noAI = !!(res[2] && res[2].sarah_included === false);
+      if (S.noAI) Object.keys(CH_NO_AI).forEach(function (k) { CH[+k] = CH_NO_AI[k]; });
       /* act only on facts: a failed call is not an empty account (a network blip must never send anyone back to Arthur) */
       S.meKnown = !!(res[0] && res[0].user); S.sitesKnown = !!(res[1] && (Array.isArray(res[1]) || Array.isArray(res[1].websites) || Array.isArray(res[1].data)));
       S.me = res[0] || {}; S.prefs = (S.me && S.me.preferences) || {};

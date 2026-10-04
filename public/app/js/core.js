@@ -7950,10 +7950,20 @@ async function _billFetchAndRender() {
   var root = document.getElementById('bill-root');
   if (!root) return;
   try {
-    var [statusR, plansR] = await Promise.all([
-      _luFetch('GET', '/billing/status').then(r => r.json()),
-      _luFetch('GET', '/billing/plans').then(r => r.json()),
-    ]);
+    // BILL-LOAD-1: a failed request is never drawn as "Free, no plans" - retry once, then say so
+    var load = function () { return Promise.all([
+      _luFetch('GET', '/billing/status').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+      _luFetch('GET', '/billing/plans').then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; }),
+    ]); };
+    var good = function (x) { return x[0] && (x[0].plan_slug || x[0].plan) && x[1] && Array.isArray(x[1].plans) && x[1].plans.length; };
+    var got = await load();
+    if (!good(got)) { await new Promise(function (r) { setTimeout(r, 1500); }); got = await load(); }
+    if (!good(got)) {
+      root.querySelector('#bill-current').innerHTML = '<div class="cmd-empty">We could not load your plan just now. Your plan has not changed.<div style="margin-top:10px"><button class="aq-btn aq-btn-approve" onclick="_billFetchAndRender()">Try again</button></div></div>';
+      var pe = root.querySelector('#bill-plans'); if (pe) pe.innerHTML = '';
+      return;
+    }
+    var statusR = got[0], plansR = got[1];
     _billRender(statusR || {}, (plansR && plansR.plans) || []);
     _billRenderWorkspaceUsage();
   } catch (e) {

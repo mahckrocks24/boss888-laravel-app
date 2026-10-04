@@ -207,9 +207,9 @@ final class LifecycleEmails
             'hero' => 'ending',
             'eyebrow' => 'Your trial · 1 day left',
             'heading' => 'Your trial ends tomorrow',
-            'lead' => 'Here is what we built together so far, and how to keep the team working for you.',
+            'lead' => ($r['posts'] + $r['articles'] + $r['leads']) > 0 ? 'Here is what we built together so far, and how to keep the team working for you.' : 'Here is what the team can do for your business every month, and how to keep it working for you.',
             'greeting' => 'Hi ' . $this->first($u) . ',',
-            'stats' => [[(string) $r['posts'], 'Posts drafted'], [(string) $r['articles'], 'Articles written'], [(string) $r['leads'], 'New leads']],
+            'stats' => ($r['posts'] + $r['articles'] + $r['leads']) > 0 ? [[(string) $r['posts'], 'Posts drafted'], [(string) $r['articles'], 'Articles written'], [(string) $r['leads'], 'New leads']] : [],   // TIERMAIL-1: no row of zeros
             'paragraphs' => $r['site'] ? ['Your website is live at <a href="' . htmlspecialchars($r['site']['url'], ENT_QUOTES) . '" style="color:' . EmailLayout::PURPLE . ';font-weight:600">' . htmlspecialchars(preg_replace('#^https://#', '', $r['site']['url']), ENT_QUOTES) . '</a>.'] : [],
             'callout' => 'After tomorrow your website, contacts and calendar keep working on the Free plan. Choose a plan to keep me and the team working.',
             'plans' => $this->planCards(),
@@ -347,14 +347,14 @@ final class LifecycleEmails
         $list[] = 'No ads on your website from now on.';
         $list[] = 'Your own domain: connect one you own, or buy one in the app.';
         if ($has('companion_app')) $list[] = 'The companion app on your phone: approve posts and chat with me on the go.';
-        if ((int) $p->max_team_members > 1) $list[] = 'Invite up to ' . ((int) $p->max_team_members >= 999 ? 'unlimited' : (int) $p->max_team_members) . ' team members.';
+        if ((int) $p->max_team_members > 1) $list[] = ((int) $p->max_team_members >= 999 ? 'Unlimited users: invite your whole team.' : 'Up to ' . (int) $p->max_team_members . ' users, you included: invite your team.');   // TIERMAIL-1: the owner is a seat
         if ($p->includes_dmm) $this->chat($wsId, 'Welcome to ' . $p->name . '. I am back at work: your posts and campaigns pick up from where we left off.', 'lifecycle_welcome_plan');
         return $this->send($wsId, $u, 'Welcome to ' . $p->name . ': here is what is new', [
             'preheader' => 'Your plan is active. Here is everything it includes.',
             'hero' => 'plan',
             'eyebrow' => 'Plan active',
             'heading' => 'Welcome to ' . $p->name,
-            'lead' => 'Thank you. Your plan is active and I am back at work on your business. Here is what it gives you:',
+            'lead' => $p->includes_dmm ? 'Thank you. Your plan is active and I am back at work on your business. Here is what it gives you:' : 'Thank you. Your plan is active. Here is what it gives you:',   // TIERMAIL-1: no Sarah on this plan
             'greeting' => 'Hi ' . $this->first($u) . ',',
             'list' => $list,
             'button' => ['Open LevelUpGrowth', $this->link('/app/')],
@@ -377,7 +377,8 @@ final class LifecycleEmails
         $this->setFlag($wsId, $key);
         $left = (int) floor($bal);
         $this->chat($wsId, 'Heads up: ' . $left . ' credits left this month. That covers about ' . intdiv($left, 6) . ' more published posts. Your credits refill at renewal, or you can move up a plan.', 'lifecycle_credits_low');
-        return $this->send($wsId, $u, 'You have used 80% of this month\'s credits', [
+        $usedPct = (int) min(100, round((1 - $bal / max(1, (int) $p->credit_limit)) * 100));   // TIERMAIL-1: the real share, not a fixed 80%
+        return $this->send($wsId, $u, 'You have used ' . $usedPct . '% of this month\'s credits', [
             'preheader' => $left . ' credits left this month.',
             'hero' => 'credits',
             'eyebrow' => 'This month',
