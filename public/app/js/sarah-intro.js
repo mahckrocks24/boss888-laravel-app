@@ -575,6 +575,8 @@
     var pubSite = (S.sites || []).filter(isPub)[0];
     {
       /* ARTHUR-LOCK-1 lifts itself when a website exists; wait for it rather than act under it */
+      /* FIRST-SCREEN-1: the lock lifts when a website exists - with a published one already known, lift it now instead of polling (it cost ~2 s) */
+      if (lockedToArthur() && pubSite && typeof window.__luArthurUnlock === 'function') { try { window.__luArthurUnlock(); } catch (_u) {} }
       if (lockedToArthur()) { if (S.sites.length && tries < 12) setTimeout(function () { decide(tries + 1); }, 700); return; }
       if (!S.meKnown) return;
       if (introDone()) { onNav(curView()); return; }

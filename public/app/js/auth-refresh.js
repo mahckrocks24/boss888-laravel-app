@@ -173,4 +173,30 @@
   };
 
   console.info('[luAuth] 401 refresh-and-retry interceptor installed');
+
+  // FIRST-SCREEN-1 (2026-10-04): identical API reads share one request. The server has one core, so a read fired twice costs a
+  // second turn in the same queue (the boot read workspace/status three times). A read already in flight, or answered in the last
+  // 2.5 s, is handed to the next caller as its own copy. Any write clears every shared read, so nothing is stale after a change.
+  // Never shared: other sites, non-API paths, streams, cancellable requests, and answers that were not OK.
+  (function () {
+    var inner = window.fetch, TTL = 2500, memo = {};
+    window.fetch = function (input, init) {
+      var abs, method;
+      try {
+        abs = new URL(typeof input === 'string' ? input : (input && input.url) || String(input), location.href);
+        method = String((init && init.method) || (input && typeof input !== 'string' && input.method) || 'GET').toUpperCase();
+      } catch (e) { return inner(input, init); }
+      if (abs.origin !== location.origin || abs.pathname.indexOf('/api/') !== 0) return inner(input, init);
+      if (method !== 'GET') { memo = {}; return inner(input, init); }
+      if ((init && init.signal) || (input && typeof input !== 'string' && input.signal && input.signal.aborted !== undefined && init == null && input.signal.reason !== undefined) || /stream|\/sse|events\/live/.test(abs.pathname)) return inner(input, init);
+      var who = '';
+      try { var h = new Headers((init && init.headers) || (input && typeof input !== 'string' && input.headers) || {}); who = (h.get('Authorization') || '') + '|' + (h.get('X-Workspace-Id') || '') + '|' + (h.get('X-Website-Id') || ''); } catch (e) {}
+      var k = abs.href + '#' + who, now = Date.now(), m = memo[k];
+      if (m && (m.pending || now - m.at < TTL)) return m.p.then(function (r) { return r.clone(); });
+      var p = inner(input, init), entry = { p: p, pending: true, at: now };
+      memo[k] = entry;
+      p.then(function (r) { entry.pending = false; entry.at = Date.now(); if (!r.ok && memo[k] === entry) delete memo[k]; }, function () { if (memo[k] === entry) delete memo[k]; });
+      return p.then(function (r) { return r.clone(); });
+    };
+  })();
 })();

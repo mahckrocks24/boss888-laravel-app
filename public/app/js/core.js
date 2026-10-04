@@ -6225,7 +6225,10 @@ async function _appBootstrap() {
   var _boot;
   if (_expMs - Date.now() > 120000) {
     _boot = {};
-    _luBootRefresh(refreshToken).then(function (res) {
+    // FIRST-SCREEN-1: a token issued in the last ten minutes (a fresh sign-in) needs no renewal at boot - it only queued behind the
+    // first screen's reads on the one-core server. Older tokens renew behind the boot exactly as before.
+    var _iatMs = 0; try { _iatMs = (JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).iat || 0) * 1000; } catch (_i) { _iatMs = 0; }
+    if (!_iatMs || Date.now() - _iatMs > 600000) _luBootRefresh(refreshToken).then(function (res) {
       if (res && res.expired) { localStorage.removeItem('lu_token'); localStorage.removeItem('lu_refresh_token'); window.location.replace(window.location.pathname + window.location.search); }
       else if (res && res.transient) { console.warn('[LU] session renewal unavailable at boot (' + res.reason + '); continuing with the held token'); }
     }).catch(function () {});
