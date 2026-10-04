@@ -578,9 +578,15 @@ class StripeService
             ->whereIn('status', Subscription::ENTITLED_STATUSES) // MONEY-1: a Stripe trial is a live sub
             ->orderByDesc('id')->first();
 
-        if (! $this->enabled || ! ($currentSub?->stripe_subscription_id)) {
-            // Dev mode or no Stripe subscription — direct swap
+        if (! $this->enabled) {
+            // Dev mode (no Stripe key) — direct swap
             return $this->devActivate($workspaceId, $newPlanId, $userId);
+        }
+        if (! ($currentSub?->stripe_subscription_id)) {
+            // BILL-1: Stripe is live and this workspace has no Stripe subscription (Free, a trial, a comped plan). A paid plan is
+            // reached through checkout, never handed over: devActivate here gave any Free account any plan, and its credits, for nothing.
+            if ((float) $newPlan->price <= 0) return ['success' => false, 'error' => 'Use Downgrade to Free for the free plan.'];
+            return $this->createCheckoutSession($workspaceId, $newPlanId, $userId);
         }
 
         try {

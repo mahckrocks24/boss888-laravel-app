@@ -8101,11 +8101,21 @@ function _billRender(status, plans) {
         var features = _billPlanFeatures(p);
         var isFree = p.slug === 'free';
         var canStripe = !!p.stripe_price_id && !isFree;
+        // BILL-1 (Owner 10-04: Pro was offered AI Lite and Growth as "upgrades"): a dearer plan is an upgrade, a cheaper one a switch.
+        // A customer who already pays changes plan in Manage billing (a checkout would start a second subscription); a plan we
+        // manage (comped, no billing account) says so instead of offering a checkout.
+        var curPrice = parseFloat(status.plan_price || 0) || 0, pPrice = parseFloat(p.price || 0) || 0, up = pPrice > curPrice;
+        var hasBilling = !!status.stripe_customer_id, managed = !hasBilling && curPrice > 0;
+        var label = (up ? 'Upgrade to ' : 'Switch to ') + _cmdcEsc(p.name);
         var btn = isFree
           ? '<button class="aq-btn aq-btn-reject" onclick="_billDowngradeToFree()">Downgrade to Free</button>'
-          : (canStripe
-            ? '<button class="aq-btn aq-btn-approve" onclick="_billCheckout(' + p.id + ',\'' + _cmdcEsc(p.slug) + '\')">Upgrade to ' + _cmdcEsc(p.name) + ' →</button>'
-            : '<button class="aq-btn aq-btn-approve" disabled style="opacity:.5;cursor:not-allowed">Not yet configured</button>');
+          : (!canStripe
+            ? '<button class="aq-btn aq-btn-approve" disabled style="opacity:.5;cursor:not-allowed">Not yet configured</button>'
+            : (hasBilling
+              ? '<button class="aq-btn ' + (up ? 'aq-btn-approve' : 'aq-btn-reject') + '" onclick="_billOpenPortal()">' + label + (up ? ' →' : '') + '</button>'
+              : (managed
+                ? '<span style="font-size:12px;color:var(--t3)">Your plan is managed by LevelUpGrowth. Write to us to change it.</span>'
+                : '<button class="aq-btn aq-btn-approve" onclick="_billCheckout(' + p.id + ',\'' + _cmdcEsc(p.slug) + '\')">' + label + ' →</button>')));
         return '<div class="cmd-panel" style="padding:16px 18px">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
             '<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1)">' + _cmdcEsc(p.name) + '</div>' +
