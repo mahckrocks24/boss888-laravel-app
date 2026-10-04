@@ -420,7 +420,7 @@ function _tmRender() {
     '<p class="pf-sub">The people who work in this workspace with you and Sarah&rsquo;s team. Admins can invite and manage people; only the owner handles the plan and billing.</p>';
 
   if (solo) {
-    h += '<div class="tm-up"><p><strong style="color:var(--t1)">Your plan is for one user.</strong> Team members start on Growth ($99) with 3 users; Pro has 5 and Agency is unlimited.</p>' +
+    h += '<div class="tm-up"><p><strong style="color:var(--t1)">Your plan is for one user.</strong> Team members start on Pro ($199) with 5 users; Agency is unlimited.</p>' +
       '<button type="button" class="pf-btn" onclick="nav(\'billing\')">See plans</button></div>';
   } else {
     var pct = unlimited ? 12 : Math.min(100, Math.round(used / Math.max(1, Number(max)) * 100));

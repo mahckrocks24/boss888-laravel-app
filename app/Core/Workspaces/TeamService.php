@@ -384,7 +384,7 @@ class TeamService
                 'allowed' => false,
                 // SEATS-1: say what the plan allows and where more users start
                 'reason'  => $max <= 1
-                    ? 'Your plan is for one user. Inviting team members starts on Growth ($99) with 3 users; Pro has 5 and Agency is unlimited.'
+                    ? 'Your plan is for one user. Team members start on Pro ($199) with 5 users; Agency is unlimited.'   // SEATS-2
                     : "Your plan has {$max} users and all of them are taken ({$current} members" . ($pending ? " and {$pending} pending invite" . ($pending === 1 ? '' : 's') : '') . "). " . ($max >= 5 ? 'Agency has unlimited users.' : 'Pro has 5 users and Agency is unlimited.'),   // TEAM-1: name the next plan up
                 'current' => $current,
                 'pending' => $pending,

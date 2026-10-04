@@ -29,7 +29,7 @@ $blurbs = [
     'free' => 'Build and publish your site on a free address, capture leads and take bookings. Your site carries our ads.',
     'starter' => 'Everything in Free, on your own domain and with no ads on your site.',
     'ai-lite' => 'Sarah, five specialists and the website chatbot working for one business.',
-    'growth' => 'For a business with more than one site: three websites, more credits and a small team.',
+    'growth' => 'For a business with more than one site: three websites and more credits.',
     'pro' => 'For a business that runs on its marketing: ten websites, five users and priority processing.',
 ];
 // what a plan adds over the one before it (credits, websites, users and the chatbot sit in the capacity rows)
@@ -95,7 +95,7 @@ $faq = [
     ['What are AI credits?', 'Credits are the meter for the team\'s work: research, writing, images, video, and every change Arthur makes to a site (one credit per change; edits you make yourself in the editor are free). Conversation is metered lightly: one credit for every five messages with Sarah or Arthur. Every AI plan includes a monthly allowance that resets each month. Sarah states the cost before anything runs, and every credit is visible in Billing.'],
     ['What does the website chatbot do?', 'It sits on your website, answers visitors from what it knows about your business, and turns conversations into leads in your CRM. It is included from AI Lite, with a monthly message allowance on each plan.'],
     ['Is there a free trial?', $trial . '. It starts the moment you create the account, so you can meet Sarah and her team before choosing a plan.'],
-    ['What counts as a user?', 'A user is a person you invite into your account, with their own login and a role (admin or member). Free, Starter and AI Lite are for one user, the owner. More users start on Growth: ' . $seatLine . '.'],
+    ['What counts as a user?', 'A user is a person you invite into your account, with their own login and a role (admin or member). Free, Starter, AI Lite and Growth are for one user, the owner. More users start on Pro: ' . $seatLine . '.'],
     ['Is the AI team different on bigger plans?', 'No. Every AI plan has the same team, ' . strtolower($team) . '. Bigger plans add credits, websites and users. You can add a specialist on any AI plan for ' . money($bySlug[$featured]['agents']['addon_price'] ?? 20) . ' a month.'],
     ['Can I change plans or cancel?', 'Yes. Upgrade or downgrade at any time from Billing; upgrades apply immediately and downgrades at the next renewal. Monthly plans have no contract: cancel from your account and keep access until the end of the period you paid for.'],
     ['Do I own my website and data?', 'Yes. Your sites publish on your own subdomain or domain, your domain is registered to you, and your contacts and leads can be exported at any time.'],

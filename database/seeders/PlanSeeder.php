@@ -34,7 +34,7 @@ class PlanSeeder extends Seeder
                 'credit_limit' => 0,
                 'ai_access' => 'none', 'includes_dmm' => false,
                 'agent_count' => 0, 'agent_level' => null, 'agent_addon_price' => null,
-                'max_websites' => 1, 'max_team_members' => 3,
+                'max_websites' => 1, 'max_team_members' => 1,
                 'companion_app' => false, 'white_label' => false, 'priority_processing' => false,
                 'features_json' => [
                     'website_builder' => true, 'custom_domain' => true,
@@ -52,7 +52,7 @@ class PlanSeeder extends Seeder
                 'credit_limit' => 300,   // CREDIT-CERT-1: = the live plans table (PRICE-1)
                 'ai_access' => 'research', 'includes_dmm' => false,
                 'agent_count' => 0, 'agent_level' => null, 'agent_addon_price' => null,
-                'max_websites' => 1, 'max_team_members' => 3,
+                'max_websites' => 1, 'max_team_members' => 1,
                 'companion_app' => false, 'white_label' => false, 'priority_processing' => false,
                 'features_json' => [
                     'website_builder' => true, 'custom_domain' => true,
@@ -70,7 +70,7 @@ class PlanSeeder extends Seeder
                 'credit_limit' => 900,
                 'ai_access' => 'full', 'includes_dmm' => true,
                 'agent_count' => 2, 'agent_level' => 'specialist', 'agent_addon_price' => 20.00,
-                'max_websites' => 3, 'max_team_members' => 5,
+                'max_websites' => 3, 'max_team_members' => 1,
                 'companion_app' => false, 'white_label' => false, 'priority_processing' => false,
                 'features_json' => [
                     'website_builder' => true, 'custom_domain' => true,
@@ -88,7 +88,7 @@ class PlanSeeder extends Seeder
                 'credit_limit' => 2500,
                 'ai_access' => 'full', 'includes_dmm' => true,
                 'agent_count' => 5, 'agent_level' => 'junior', 'agent_addon_price' => 20.00,
-                'max_websites' => 10, 'max_team_members' => 10,
+                'max_websites' => 10, 'max_team_members' => 5,
                 'companion_app' => true, 'white_label' => false, 'priority_processing' => true,
                 'features_json' => [
                     'website_builder' => true, 'custom_domain' => true,
