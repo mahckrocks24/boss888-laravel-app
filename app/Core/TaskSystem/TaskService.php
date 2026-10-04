@@ -564,7 +564,7 @@ class TaskService
                 'engine' => $engine,
                 'action' => $action,
                 'category' => $category,
-                'payload_json' => $payload ?: null,
+                'payload_json' => (function ($pl) { $a = \App\Core\Workspaces\TeamActivity::actor(); if ($a > 0 && is_array($pl) && empty($pl['_acting_user_id'])) $pl['_acting_user_id'] = $a; return $pl ?: null; })($payload),   // TEAM-ACTIVITY-1: the person behind the task travels with it
                 'source' => $data['source'] ?? 'manual',
                 'assigned_agents_json' => $data['assigned_agents'] ?? null,
                 'priority' => $data['priority'] ?? 'normal',

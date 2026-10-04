@@ -675,7 +675,7 @@ Route::get('/seo/gsc/oauth/callback', function (\Illuminate\Http\Request $r) {
 // ADDED 2026-04-12 (Phase 2J / doc 12): traffic.defense middleware applied to
 // the entire authenticated workspace surface. Wires TrafficDefenseService into
 // the request pipeline. Fails open on errors.
-Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(function () {
+Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand', 'team.activity'])->group(function () {   // TEAM-ACTIVITY-1: what each person does
 
     // Auth
     Route::post('/auth/logout', [AuthController::class, 'logout']);
@@ -2385,6 +2385,12 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
             $wsId    = $r->attributes->get('workspace_id');
             $deleted = app($t)->cancelInvite($wsId, (int) $id);
             return response()->json(['cancelled' => $deleted]);
+        })->middleware('team.role:admin');
+
+        // TEAM-ACTIVITY-1: what the people in this workspace did, and what each spent (owner and admins)
+        Route::get('/activity', function (\Illuminate\Http\Request $r) {
+            $uid = (int) $r->query('user_id', 0);
+            return response()->json(\App\Core\Workspaces\TeamActivity::feed((int) $r->attributes->get('workspace_id'), $uid ?: null, (int) $r->query('days', 30), (int) $r->query('limit', 60), (int) $r->query('before', 0)));
         })->middleware('team.role:admin');
 
         // Update member role — admin or owner only

@@ -690,6 +690,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'runtime.secret'  => \App\Http\Middleware\RuntimeSecretMiddleware::class,
             'plan'            => \App\Http\Middleware\PlanMiddleware::class,
             'team.role'       => \App\Http\Middleware\TeamRoleMiddleware::class,
+            'team.activity'   => \App\Http\Middleware\TeamActivityMiddleware::class,   // TEAM-ACTIVITY-1
             // ADDED 2026-04-12 (Phase 2J / doc 12): wires the previously-orphan
             // TrafficDefenseService into the request pipeline. Apply via
             // Route::middleware(['auth.jwt', 'traffic.defense']).

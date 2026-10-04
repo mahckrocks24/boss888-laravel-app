@@ -53,6 +53,8 @@ class Orchestrator
         // and never read this binding).
         try {
             app()->instance('lu.current_workspace_id', (int) $task->workspace_id);
+            $__actor = (int) (((array) ($task->payload_json ?? []))['_acting_user_id'] ?? 0);   // TEAM-ACTIVITY-1: credits this task spends belong to the person who asked
+            if ($__actor > 0) app()->instance('lu.acting_user_id', $__actor); elseif (app()->bound('lu.acting_user_id')) app()->forgetInstance('lu.acting_user_id');
         } catch (\Throwable) {
             // Container unavailable — non-fatal; image pathing falls back to 0.
         }

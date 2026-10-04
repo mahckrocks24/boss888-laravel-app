@@ -467,7 +467,81 @@ function _tmRender() {
     });
     h += '</div>';
   }
+  if (canManage) h += '<div id="tm-activity"></div>';   // TEAM-ACTIVITY-1
   host.innerHTML = h;
+  if (canManage) _taMount(members);
+}
+
+// ── Team activity (TEAM-ACTIVITY-1, Owner 2026-10-04: "owner(user) should see the activities of human team members") ──
+var _ta = { user: 0, days: 30, items: [], next: null };
+function _taRel(ts) {
+  var d = new Date(String(ts).replace(' ', 'T') + 'Z'); var s = Math.round((Date.now() - d) / 1000);
+  if (isNaN(s)) return ''; if (s < 60) return 'just now'; if (s < 3600) return Math.floor(s / 60) + ' min ago'; if (s < 86400) return Math.floor(s / 3600) + ' h ago';
+  var days = Math.floor(s / 86400); return days === 1 ? 'yesterday' : days + ' days ago';
+}
+function _taDay(ts) { var d = new Date(String(ts).replace(' ', 'T') + 'Z'); return d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }); }
+function _taTime(ts) { var d = new Date(String(ts).replace(' ', 'T') + 'Z'); return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }); }
+async function _taLoad(more) {
+  var box = document.getElementById('tm-activity'); if (!box) return;
+  var list = document.getElementById('ta-list');
+  if (!more) { _ta.items = []; _ta.next = null; if (list) list.innerHTML = '<div style="padding:16px;color:var(--t3);font-size:13px">Loading activity…</div>'; }
+  try {
+    var q = '/team/activity?days=' + _ta.days + '&limit=60' + (_ta.user ? '&user_id=' + _ta.user : '') + (more && _ta.next ? '&before=' + _ta.next : '');
+    var r = await _luFetch('GET', q); if (!r.ok) throw new Error('HTTP ' + r.status);
+    var d = await r.json();
+    _ta.items = _ta.items.concat(d.items || []); _ta.next = d.more ? d.next_before : null;
+    if (!more) _taPeople(d.people || []);
+    _taList();
+  } catch (e) { if (list) list.innerHTML = '<div style="padding:16px;color:var(--t3);font-size:13px">We could not load the activity just now. <button type="button" class="tm-ghost" onclick="_taLoad()">Try again</button></div>'; }
+}
+function _taPeople(people) {
+  var el = document.getElementById('ta-people'); if (!el) return;
+  el.innerHTML = people.map(function (p) {
+    return '<button type="button" class="ta-person' + (Number(_ta.user) === Number(p.user_id) ? ' on' : '') + '" onclick="_taPick(' + Number(p.user_id) + ')">'
+      + '<span class="tm-av" style="width:30px;height:30px;font-size:11px">' + _tmEsc(_tmInitials(p.name, '')) + '</span>'
+      + '<span style="min-width:0;text-align:left"><b>' + _tmEsc(p.name) + '</b><i>' + Number(p.actions) + ' action' + (p.actions === 1 ? '' : 's') + ' &middot; ' + Number(p.credits_spent) + ' credit' + (p.credits_spent === 1 ? '' : 's') + (p.last_seen ? ' &middot; ' + _taRel(p.last_seen) : '') + '</i></span></button>';
+  }).join('');
+}
+function _taList() {
+  var list = document.getElementById('ta-list'); if (!list) return;
+  if (!_ta.items.length) { list.innerHTML = '<div style="padding:18px;color:var(--t3);font-size:13px">No activity in this period yet.</div>'; return; }
+  var h = '', day = '';
+  _ta.items.forEach(function (it) {
+    var dd = _taDay(it.at); if (dd !== day) { day = dd; h += '<div class="ta-day">' + _tmEsc(dd) + '</div>'; }
+    h += '<div class="ta-row"><span class="ta-time">' + _tmEsc(_taTime(it.at)) + '</span><span class="tm-av" style="width:26px;height:26px;font-size:10px;flex:0 0 auto">' + _tmEsc(_tmInitials(it.name, '')) + '</span>'
+      + '<span class="ta-text"><b>' + _tmEsc(it.name) + '</b> ' + _tmEsc(it.text) + '</span></div>';
+  });
+  if (_ta.next) h += '<div style="padding:12px 0 2px"><button type="button" class="tm-ghost" onclick="_taLoad(true)">Show earlier activity</button></div>';
+  list.innerHTML = h;
+}
+function _taPick(uid) { _ta.user = Number(_ta.user) === Number(uid) ? 0 : uid; var s = document.getElementById('ta-who'); if (s) s.value = String(_ta.user); _taLoad(); }
+function _taMount(members) {
+  var box = document.getElementById('tm-activity'); if (!box) return;
+  if (!document.getElementById('ta-styles')) { var st = document.createElement('style'); st.id = 'ta-styles'; st.textContent = [
+    '#tm-activity .ta-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 12px}',
+    '#tm-activity .ta-bar select{width:auto;min-width:150px;padding:7px 10px;font-size:12.5px}',
+    '#tm-activity .ta-people{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin:0 0 14px}',
+    '#tm-activity .ta-person{display:flex;align-items:center;gap:10px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);padding:9px 11px;cursor:pointer;color:var(--t1);font:inherit;min-width:0}',
+    '#tm-activity .ta-person.on{border-color:var(--p);box-shadow:0 0 0 2px color-mix(in srgb,var(--p) 25%,transparent)}',
+    '#tm-activity .ta-person b{display:block;font:600 12.5px var(--fh);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
+    '#tm-activity .ta-person i{display:block;font-style:normal;font-size:11px;color:var(--t3)}',
+    '#tm-activity .ta-list{border:1px solid var(--bd);border-radius:var(--r);padding:4px 14px 10px;max-height:520px;overflow:auto}',
+    '#tm-activity .ta-day{font:700 10.5px var(--fb);letter-spacing:.06em;text-transform:uppercase;color:var(--t3);margin:14px 0 6px}',
+    '#tm-activity .ta-row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-top:1px solid color-mix(in srgb,var(--bd) 60%,transparent);font-size:13px;color:var(--t2);line-height:1.45}',
+    '#tm-activity .ta-day+.ta-row{border-top:none}',
+    '#tm-activity .ta-time{flex:0 0 44px;font-size:11.5px;color:var(--t3);padding-top:4px}',
+    '#tm-activity .ta-text{min-width:0;overflow-wrap:anywhere}',
+    '#tm-activity .ta-text b{color:var(--t1);font-weight:600}'
+  ].join('\n'); document.head.appendChild(st); }
+  box.innerHTML = '<div class="tm-h">Activity</div>'
+    + '<div class="tm-help" style="margin-top:0">What each person in this workspace did, and the credits their work used. Sarah&rsquo;s own background work is not listed here.</div>'
+    + '<div class="ta-bar"><select id="ta-who" class="pf-inp" aria-label="Person" onchange="_ta.user=Number(this.value);_taLoad()"><option value="0">Everyone</option>'
+    + members.map(function (m) { return '<option value="' + Number(m.id) + '">' + _tmEsc(m.name || m.email) + '</option>'; }).join('') + '</select>'
+    + '<select id="ta-days" class="pf-inp" aria-label="Period" onchange="_ta.days=Number(this.value);_taLoad()"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select></div>'
+    + '<div class="ta-people" id="ta-people"></div><div class="ta-list" id="ta-list"></div>';
+  var s = document.getElementById('ta-who'); if (s) s.value = String(_ta.user || 0);
+  var dsel = document.getElementById('ta-days'); if (dsel) dsel.value = String(_ta.days);
+  _taLoad();
 }
 
 async function _tmInvite(email, role, verb) {

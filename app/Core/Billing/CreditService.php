@@ -171,7 +171,7 @@ class CreditService
                 'reservation_status' => 'pending',
                 'reservation_reference' => $ref,
                 // P1-U1 (2026-08-30): authoritative pool provenance — which wallet this reserve hit.
-                'metadata_json' => ['pool_workspace_id' => $poolWs],
+                'metadata_json' => ['pool_workspace_id' => $poolWs] + (\App\Core\Workspaces\TeamActivity::actor() > 0 ? ['acting_user_id' => \App\Core\Workspaces\TeamActivity::actor()] : []),   // TEAM-ACTIVITY-1: who spent it
             ]);
         });
     }

@@ -170,6 +170,7 @@ class TeamService
             ]);
 
             DB::commit();
+            try { DB::table('audit_logs')->insert(['workspace_id' => $invite->workspace_id, 'user_id' => $user->id, 'action' => 'team.joined', 'entity_type' => 'User', 'entity_id' => $user->id, 'metadata_json' => json_encode(['text' => 'Joined the team as ' . ($invite->role === 'admin' ? 'an admin' : 'a member')]), 'created_at' => now()]); } catch (\Throwable $e) {}   // TEAM-ACTIVITY-1
 
             $workspace = Workspace::find($invite->workspace_id);
 
