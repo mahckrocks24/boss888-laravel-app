@@ -2005,9 +2005,10 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         \Illuminate\Support\Facades\Log::warning("[CREDIT888] Kill switch activated: {$action} for workspace {$wsId}");
         // Cancel all running tasks for this workspace
         if ($action !== 'resume') {
-            \App\Models\Task::where('workspace_id', $wsId)
-                ->whereIn('status', ['pending', 'queued', 'running'])
-                ->update(['status' => 'cancelled']);
+            // CREDIT-CERT-1: cancelled tasks give back what they held (was: cancelled, holds left pending)
+            $__ids = \App\Models\Task::where('workspace_id', $wsId)->whereIn('status', ['pending', 'queued', 'running'])->pluck('id');
+            \App\Models\Task::whereIn('id', $__ids)->update(['status' => 'cancelled']);
+            foreach ($__ids as $__tid) { try { app(\App\Core\Billing\CreditService::class)->releaseReservedCredits('task_' . $__tid); } catch (\Throwable $e) {} }
         }
         return response()->json(['action' => $action, 'success' => true]);
     });
@@ -2426,7 +2427,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
     Route::post('/billing/cancel', function (\Illuminate\Http\Request $r) {
         $stripe = app(\App\Core\Billing\StripeService::class);
         return response()->json($stripe->cancel($r->attributes->get('workspace_id')));
-    });
+    })->middleware('team.role:admin');   // CREDIT-CERT-1 (M5): only an owner or admin cancels the plan, as for upgrade
 
     // 2026-06-24 — Agency billing: shared credit pool, usage broken down PER
     // website-workspace, with optional per-workspace allocation caps.
@@ -2684,21 +2685,9 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])
                 ->where('id', $id)->where('is_house_account', true)->first();
             if (!$ws) return response()->json(['error' => 'House account not found'], 404);
 
-            $credits = \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $id)->first();
-            $oldBalance = $credits->balance ?? 0;
-            $newBalance = $oldBalance + $amount;
-
-            \Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $id)
-                ->update(['balance' => $newBalance, 'updated_at' => now()]);
-
-            \Illuminate\Support\Facades\DB::table('credit_transactions')->insert([
-                'workspace_id' => (int) $id,
-                'type' => 'credit',
-                'amount' => $amount,
-                'reference_type' => 'house_account_manual_topup',
-                'metadata_json' => json_encode(['previous_balance' => $oldBalance, 'new_balance' => $newBalance, 'topped_up_by' => 'admin']),
-                'created_at' => now(),
-            ]);
+            // CREDIT-CERT-1 (M11): locked add through the wallet (was an unlocked read-modify-write)
+            app(\App\Core\Billing\CreditService::class)->credit((int) $id, $amount, 'house_account_manual_topup', null, ['topped_up_by' => 'admin']);
+            $newBalance = (int) (\Illuminate\Support\Facades\DB::table('credits')->where('workspace_id', $id)->value('balance') ?? 0);
 
             return response()->json(['success' => true, 'new_balance' => $newBalance]);
         });
@@ -7698,7 +7687,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
             'context' => 'nullable|string|max:500',
         ]);
 
-        $IMAGE_COST = 1;
+        $IMAGE_COST = \App\Core\EngineKernel\CapabilityMapService::imageCreditsFor('standard');   // CREDIT-CERT-1: 4 (PRICE-1), was 1
         $balance = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0) /* CRED-1: pooled ledger balance */;
         if ($balance < $IMAGE_COST) {
             return response()->json([
@@ -8135,7 +8124,7 @@ Route::middleware(['api.key', 'connector.brand'])->prefix('connector')->group(fu
                     'retryable'       => false,
                     'provider_called' => false,
                     'persistence'     => ['user_message_saved' => $_seoSaved, 'assistant_message_saved' => false],
-                    'action'          => ['label' => 'Top up credits', 'href' => '/app/billing'],
+                    'action'          => ['label' => 'See plans', 'href' => '/app/billing'],
                 ],
             ], 402);
         }

@@ -281,6 +281,10 @@ class CreditService
         ?array $meta = null,
     ): CreditTransaction {
         $reservation = $this->reserveCredits($workspaceId, $amount, $refType, $refId);
+        // CREDIT-CERT-1: the caller's "what" was dropped; keep it on the ledger row
+        if ($meta && $reservation->exists) {
+            try { $reservation->update(['metadata_json' => array_merge((array) ($reservation->metadata_json ?? []), $meta)]); } catch (\Throwable $e) {}
+        }
         $this->commitReservedCredits($reservation->reservation_reference);
 
         return $reservation;
@@ -323,6 +327,60 @@ class CreditService
                 'metadata_json' => array_merge(is_array($meta) ? $meta : [], ['pool_workspace_id' => $poolWs]),
             ]);
         });
+    }
+
+    /**
+     * CREDIT-CERT-1 (2026-10-04): the ONE way to SET a wallet (plan grant, renewal reset, trial expiry, cancel, house
+     * allowance). Before this, ten call sites wrote credits.balance directly and the ledger recorded the plan limit as a
+     * "credit" even when the balance was set, not added - so 151 of 159 wallets could not be explained by their history.
+     * The difference (target - current) is written as a credit or debit row, so the ledger always adds up to the balance.
+     * Held credits (jobs still running) are kept: the balance never drops below what is held, so a running job that
+     * finishes after a reset or expiry can still commit without driving the wallet negative.
+     */
+    public function setBalance(int $workspaceId, int $target, string $refType, array $meta = [], ?int $refId = null): int
+    {
+        $poolWs = $this->poolWorkspaceId($workspaceId);
+        return $this->txRetry(function () use ($poolWs, $workspaceId, $target, $refType, $meta, $refId) {
+            $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->first();
+            if (! $credit) {
+                try { Credit::create(['workspace_id' => $poolWs, 'balance' => 0, 'reserved_balance' => 0]); } catch (\Illuminate\Database\QueryException $e) {}
+                $credit = Credit::where('workspace_id', $poolWs)->lockForUpdate()->firstOrFail();
+            }
+            $before = (int) $credit->balance;
+            $held = max(0, (int) $credit->reserved_balance);
+            $after = max(max(0, $target), $held);
+            $delta = $after - $before;
+            if ($delta !== 0) {
+                $credit->balance = $after;
+                $credit->save();
+                CreditTransaction::create([
+                    'workspace_id' => $workspaceId,
+                    'type' => $delta > 0 ? 'credit' : 'debit',
+                    'amount' => abs($delta),
+                    'reference_type' => mb_substr($refType, 0, 255),
+                    'reference_id' => $refId,
+                    'metadata_json' => array_merge($meta, ['pool_workspace_id' => $poolWs, 'balance_before' => $before, 'balance_after' => $after, 'set_to' => $target, 'held' => $held]),
+                ]);
+            }
+            return $delta;
+        });
+    }
+
+    /**
+     * CREDIT-CERT-1: how a finished action's result settles its hold. 'self' = the engine priced and charged the work itself
+     * (Arthur's website build, an edit Arthur handed to himself), so the caller's hold is released, never charged on top;
+     * 'none' = nothing billable happened (a returned error, a delegated stub that wrote nothing); null = charge as usual.
+     */
+    public static function resultBilling(mixed $result): ?string
+    {
+        if (! is_array($result)) return null;
+        if (! empty($result['self_billed']) || ($result['delegated'] ?? null) === true) return 'self';
+        if (($result['type'] ?? null) === 'error') return 'none';
+        $st = strtolower((string) ($result['status'] ?? ''));
+        if (in_array($st, ['failed', 'error', 'delegated'], true)) return 'none';
+        if (($result['no_charge'] ?? false) === true) return 'none';
+        if (! empty($result['error']) && ! array_key_exists('success', $result) && empty($result['id']) && empty($result['asset_id'])) return 'none';
+        return null;
     }
 
     /**

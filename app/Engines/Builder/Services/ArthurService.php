@@ -2315,7 +2315,8 @@ PROMPT;
         $data = (is_array($res) && isset($res['data']) && is_array($res['data'])) ? $res['data'] : (is_array($res) ? $res : []);
         $ok   = (bool) ($res['success'] ?? ($data['success'] ?? false));
         $new  = (string) ($data['url'] ?? '');
-        if (! $ok || $new === '') { return $this->honestKernelRefusal($res, $data, $plan, 'edit that image', 2); }
+        $__ep = (int) app(\App\Core\EngineKernel\CapabilityMapService::class)->getCreditCost('edit_image');   // CREDIT-CERT-1: the real price (was a hard 2; the kernel charges 6)
+        if (! $ok || $new === '') { return $this->honestKernelRefusal($res, $data, $plan, 'edit that image', $__ep); }
         $pp  = parse_url($new);
         $rel = (! empty($pp['path']) && str_starts_with((string) $pp['path'], '/storage/')) ? (string) $pp['path'] : $new;
         $placed = false;
@@ -2323,7 +2324,7 @@ PROMPT;
         $tv[$field] = $rel;
         app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
-        $charged = 2;
+        $charged = (int) ($res['credits_used'] ?? $__ep);
         Log::info('[Arthur] site image edited via studio', ['website' => $websiteId, 'field' => $field, 'op' => $op, 'asset' => $assetId, 'child' => $data['asset_id'] ?? null, 'placed' => $placed]);
         if (! $placed) {
             return ['success' => false, 'code' => 'NOT_PLACED', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => $charged, 'url' => $rel,
@@ -2354,6 +2355,7 @@ PROMPT;
         } else {
             $prompt .= " — for {$name}, a {$ind}. Cinematic, natural light, no text, no logos.";
         }
+        $__vp = (int) app(\App\Core\EngineKernel\CapabilityMapService::class)->creditCostFor('generate_video', ['duration' => 6]);   // CREDIT-CERT-1: 28, was quoted 8
         $res  = app(\App\Core\EngineKernel\EngineExecutionService::class)->execute($wsId, 'creative', 'generate_video',
             ['prompt' => $prompt, 'duration' => 6, 'aspect_ratio' => '16:9'],
             ['user_id' => $ctx['user_id'] ?? null, 'source' => 'manual', 'origin' => 'arthur_chat']);   // manual + user_id = the customer's own click authorises the spend
@@ -2369,15 +2371,15 @@ PROMPT;
             \App\Jobs\PlaceGeneratedVideoJob::dispatch($wsId, $websiteId, 0, $prompt)->delay(now()->addSeconds(60));
             Log::info('[Arthur] video generation awaiting approval', ['website' => $websiteId, 'approval' => $approvalId]);
             return ['success' => true, 'kind' => 'video', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0, 'approval_id' => $approvalId, 'pending' => true,
-                'message' => "Video generation in this workspace needs a quick approval first — it is waiting under Approvals. Once approved, the studio renders a 6-second clip (about two minutes, 8 credits) and I add it to {$name}'s home page automatically."];
+                'message' => "Video generation in this workspace needs a quick approval first — it is waiting under Approvals. Once approved, the studio renders a 6-second clip (about two minutes, {$__vp} credits) and I add it to {$name}'s home page automatically."];
         }
-        if (! $ok || $assetId <= 0) { return $this->honestKernelRefusal($res, $data, $plan, 'make a video', 8); }
+        if (! $ok || $assetId <= 0) { return $this->honestKernelRefusal($res, $data, $plan, 'make a video', $__vp); }
         $tv['pending_video'] = ['asset_id' => $assetId, 'requested_at' => now()->toIso8601String(), 'prompt' => mb_substr($prompt, 0, 200), 'status' => 'rendering'];
         app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
         \App\Jobs\PlaceGeneratedVideoJob::dispatch($wsId, $websiteId, $assetId, $prompt)->delay(now()->addSeconds(45));
         Log::info('[Arthur] video generation started', ['website' => $websiteId, 'asset' => $assetId, 'prompt' => mb_substr($prompt, 0, 160)]);
-        return ['success' => true, 'kind' => 'video', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => 8, 'asset_id' => $assetId, 'pending' => true,
-            'message' => "Your video is rendering now — about two minutes for a 6-second clip. I'll add it to {$name}'s home page just before the contact section the moment it is ready; refresh the preview then. 8 credits (video studio)."];
+        return ['success' => true, 'kind' => 'video', 'plan' => $plan, 'applied' => 1, 'actions_applied' => 1, 'credits' => (int) ($res['credits_used'] ?? $__vp), 'asset_id' => $assetId, 'pending' => true,
+            'message' => "Your video is rendering now — about two minutes for a 6-second clip. I'll add it to {$name}'s home page just before the contact section the moment it is ready; refresh the preview then. " . (int) ($res['credits_used'] ?? $__vp) . " credits (video studio)."];
     }
 
     /** Called by PlaceGeneratedVideoJob once the studio has finished: put the finished clip on the home page. */
@@ -3864,6 +3866,8 @@ PROMPT;
                 Log::warning('[Arthur] draft credit settlement failed: ' . $e->getMessage(), ['workspace_id' => $wsId, 'ref' => $resRef]);
             }
         }
+        // CREDIT-CERT-1 (D1): the build is priced here (10, once); a kernel or task hold around it is released, not added
+        if (is_array($result)) $result['self_billed'] = true;
         return $result;
     }
 
@@ -6411,6 +6415,18 @@ PROMPT;
             }
         }
         $dryRun   = !empty($ctx['dry_run']);
+
+        // CREDIT-CERT-1 (B-D3): a priced change is checked against what this workspace can spend BEFORE anything on the
+        // site changes. The executors below charge after a verified change; without this gate a short balance meant the
+        // change went live, the charge threw, and the customer was told it failed.
+        $__price = (int) ($plan['credits'] ?? 0);
+        if ($__price > 0 && ! $dryRun && empty($ctx['_free']) && ! in_array((string) ($plan['kind'] ?? ''), ['image', 'video', 'image_edit', 'clarify', 'unsupported'], true)) {
+            $__avail = (int) (app(\App\Core\Billing\CreditService::class)->getBalance($wsId)['available'] ?? 0);
+            if ($__avail < $__price) {
+                return ['success' => false, 'code' => 'INSUFFICIENT_CREDITS', 'plan' => $plan, 'applied' => 0, 'actions_applied' => 0, 'credits' => 0,
+                    'message' => "That change costs {$__price} credit" . ($__price === 1 ? '' : 's') . " and this workspace has {$__avail} available, so I have not changed anything. More credits come with a bigger plan or your monthly renewal."];
+            }
+        }
 
         // Shop pages need the store engine (live cart / checkout / account); a static template site cannot run them yet.
         if ($plan['kind'] === 'page' && $isStatic && in_array($plan['page'], ['cart', 'checkout', 'account'], true)) {

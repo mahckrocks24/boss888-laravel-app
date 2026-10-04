@@ -1147,7 +1147,7 @@ class SeoAssistantService
             // preserving existing behaviour for that path.
             if (! $this->credits->hasBalance($wsId, $billable)) {
                 return [
-                    'narration' => "You do not have enough credits to run that — it needs **{$billable}**. Top up and I will pick it straight back up.",
+                    'narration' => "You do not have enough credits to run that — it needs **{$billable}**. When credits come back (a bigger plan or your monthly renewal) I will pick it straight back up.",
                     'result'    => ['error' => 'insufficient_credits', 'required' => $billable],
                 ];
             }
@@ -1543,7 +1543,7 @@ class SeoAssistantService
         $this->currentUserId = $userId;
 
         // Plan-gate: at minimum need credits for one insert.
-        $balance = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $balance = (int) ((app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0);
         if ($balance < 2) {
             return [
                 'success' => false,
@@ -1929,7 +1929,7 @@ class SeoAssistantService
         $json = $resp->json() ?: [];
         $n = (int) ($json['updated'] ?? count($posts));
         return [
-            'narration' => "Generated metas for **{$n} pages**. Check the Pages tab. **1 credit used.**",
+            'narration' => "Generated metas for **{$n} pages**. Check the Pages tab. **" . $n . " credit" . ($n === 1 ? '' : 's') . " used** (1 per page).",
             'result'    => $json,
         ];
     }
@@ -1977,9 +1977,9 @@ class SeoAssistantService
 
         // Plan-gate check for paid actions.
         if ($proposal['cost'] > 0) {
-            $balance = (int) DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0;
+            $balance = (int) (app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0;
             if ($balance < $proposal['cost']) {
-                $reply = "You only have **{$balance} credits**, but this needs **{$proposal['cost']}**. Top up at levelupgrowth.io/billing, then come back and ask again.";
+                $reply = "You only have **{$balance} credits**, but this needs **{$proposal['cost']}**. See Billing for plans, or ask again after your monthly renewal.";
                 $this->appendTurn($wsId, 'assistant', $reply);
                 return ['response' => $reply, 'suggestions' => []];
             }
@@ -2330,7 +2330,7 @@ class SeoAssistantService
         $insights = DB::table('seo_insights')->where('workspace_id', $wsId)
             ->whereNull('dismissed_at')->orderBy('priority')->limit(5)
             ->pluck('title')->toArray();
-        $credits = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $credits = (int) ((app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0);
         $plan = (string) (DB::table('subscriptions')
             ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
             ->where('subscriptions.workspace_id', $wsId)
@@ -2737,11 +2737,12 @@ class SeoAssistantService
         $p[] = '- Full site audit (deep_audit):              3 credits';
         $p[] = '- SERP / competitor analysis:                1 credit';
         $p[] = '- AI report generation:                      2 credits';
-        $p[] = '- Write article (text only):                 1 credit';
-        $p[] = '- Write article + featured image:            2 credits';
-        $p[] = '- Internal link suggestions (generate):      1 credit';
-        $p[] = '- Autonomous SEO goal:                       5 credits';
-        $p[] = '- Generate image (auto/mini):                1 credit';
+        $p[] = '- Write article (with its featured image):   2 credits';
+        $p[] = '- Internal link suggestions:                 1 credit';
+        $p[] = '- Insert an internal link:                   2 credits';
+        $p[] = '- Meta description:                          1 credit per page';
+        $p[] = '- Generate image:                            4 credits (quick draft 2)';
+        $p[] = '- Chat with the assistant:                   1 credit per 5 messages';
         $p[] = '- Quick wins, page scoring, viewing data:    FREE';
 
         $p[] = '';
@@ -3144,9 +3145,9 @@ class SeoAssistantService
         $cost = $count * $perArticle;
 
         // Plan-gate.
-        $balance = (int) DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0;
+        $balance = (int) (app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0;
         if ($balance < $cost) {
-            $reply = "You only have **{$balance} credits**, but {$count} articles need **{$cost} credits**. Top up at levelupgrowth.io/billing, then come back and ask again.";
+            $reply = "You only have **{$balance} credits**, but {$count} articles need **{$cost} credits**. See Billing for plans, or ask again after your monthly renewal.";
             $this->appendTurn($wsId, 'assistant', $reply);
             return ['response' => $reply, 'suggestions' => []];
         }
@@ -3353,7 +3354,7 @@ class SeoAssistantService
         $narration .= "). You'll see each one progress through the Pipeline tab — write → meta → image → internal links — and the finished draft will appear in WordPress → Posts → Drafts automatically.\n\n";
         $narration .= "Total cost: **" . (($aeoOn ? 3 : 2) * $createdCount) . " credits** (debited per article as the chain completes).\n\n";
         if ($deferredCount > 0) {
-            $narration .= "Want the deferred {$deferredCount} articles? Either: (a) wait for next month's cadence reset, (b) upgrade your tier, or (c) top up credits.\n\n";
+            $narration .= "Want the deferred {$deferredCount} articles? Either: (a) wait for next month's cadence reset, or (b) upgrade your plan.\n\n";
         }
         $narration .= "Watch progress in the Pipeline + Calendar tabs.";
 
@@ -3477,7 +3478,7 @@ class SeoAssistantService
             $cost = count($articles) * $perArticle;
 
             // Plan-gate.
-            $balance = (int) DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0;
+            $balance = (int) (app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0;
             if ($balance < $cost) {
                 Log::info('[SEO Assistant] recover-batch — insufficient balance', [
                     'workspace_id' => $wsId, 'need' => $cost, 'have' => $balance,

@@ -63,9 +63,9 @@ YOUR AI TEAM (agents)
 - Studio: images & video generation.
 
 CREDITS & PLANS
-- AI actions cost credits: image = 2 (mini 1, high 4), video = 8, a design = 5, editing an image = 2. Publishing content is FREE (you already paid to create it).
-- Features are gated by plan. Notably VIDEO generation needs Pro or above (companion app plans). If a customer can't generate video, it's a plan limit — point them to Billing/upgrade.
-- Credits show in the workspace; balance and top-ups are under Billing.
+- AI actions cost credits: an article = 2, a social post draft = 4 (+2 to publish it), an image = 4 (mini 2, high quality 21), a video = 28 (10 seconds = 52), a design = 5, editing an image = 6. Chat costs 1 credit per 5 messages. Publishing an article is free. Website work by Arthur: first draft 10, a page 5, a section 2, a change 1; the customer's own edits in the editor are free.
+- Every AI plan (AI Lite and up) and the free trial include Sarah, the team, images and video. Free and Starter have no AI. If a customer can't use an AI feature, it's a plan limit — point them to Billing/upgrade.
+- Credits show in the workspace and under Billing. Credits come with the plan each month; there is no separate top-up — more credits come from a bigger plan or the next monthly renewal.
 
 COMMON HOW-TOs (walk the customer through these)
 - Write a blog post: tell Sarah the topic (or "write about X") → Priya drafts it → review → say "publish" to make it live. Failed/other tasks never block publishing.
@@ -80,7 +80,7 @@ FAQ
 - "Where are my generated images?" → In AI Studio → Results, and they now appear inline here in chat when Sarah makes them.
 - "How do I publish?" → Just tell Sarah "publish" (she'll confirm what goes live), or Advanced → Content/Write.
 - "Why doesn't the image show the exact logo / brand?" → AI image models can't reproduce specific logos or exact text; they garble it. For an exact logo it must be overlaid as a real graphic.
-- "How do credits work?" → Each AI action costs credits (see above); publishing is free; top up under Billing.
+- "How do credits work?" → Each AI action costs credits (see above); publishing an article is free; credits come with the plan each month (Billing).
 - "I can't find a feature." → Turn on "Advanced" mode (sidebar), which reveals all tools.
 - "Can't generate video." → Video needs a Pro+ plan; check Billing/upgrade.
 - "How do I edit my website?" → Builder (page sections, copy, images), or ask Arthur.

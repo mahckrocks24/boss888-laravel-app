@@ -75,7 +75,9 @@ final class RecipePainter
         $filled = RecipePromptCompiler::fill($recipe, $brand, $copy, $vars['values'], $format);
 
         // credits: high quality, reserved up front; the renderer path is the fallback when we cannot reserve
-        $reserved = self::CREDITS['high'];
+        // CREDIT-CERT-1: a design-look image is a standard image to the customer (quoted 4), and is not charged again when the
+        // caller already charged for it (CreativeService::generateImage under the kernel/queue charge - was 4 + 4)
+        $reserved = ! empty($ctx['prepaid']) ? 0 : \App\Core\EngineKernel\CapabilityMapService::imageCreditsFor((string) ($ctx['requested_quality'] ?? 'standard'));
         try { $resRef = $this->credits->reserve($wsId, $reserved, 'image_recipe:' . ($ctx['source'] ?? 'creative')); } catch (\Throwable $e) { return null; }
 
         $jobUuid = (string) Str::uuid(); $t0 = microtime(true);
@@ -117,7 +119,7 @@ final class RecipePainter
             $this->creative->completeAsset($assetId, ['url' => $img['url'], 'storage_path' => $img['storage_path'] ?? null, 'width' => $w, 'height' => $h, 'mime_type' => 'image/png']);
             try { $m = json_decode((string) DB::table('assets')->where('id', $assetId)->value('metadata_json'), true) ?: []; $m['text_verified'] = true; $m['attempts'] = $attempts; $m['words_seen'] = array_slice($seen, 0, 40); DB::table('assets')->where('id', $assetId)->update(['metadata_json' => json_encode($m, JSON_UNESCAPED_UNICODE), 'updated_at' => now()]); } catch (\Throwable) {}
         }
-        $actual = min($reserved, self::CREDITS[$actualQuality] ?? $reserved);
+        $actual = $reserved;   // CREDIT-CERT-1: the quoted price, once
         if ($actual === $reserved) $this->credits->commit($wsId, $resRef, $reserved);
         else { $this->credits->release($wsId, $resRef); if ($actual > 0) $this->credits->debit($wsId, $actual, 'image_recipe', $assetId, ['reason' => 'delivered_quality_settlement', 'requested_credits' => $reserved, 'delivered_quality' => $actualQuality]); }
         $this->auditComplete($jobId, ['url' => $img['url'], 'quality' => $actualQuality, 'size' => $actualSize, 'attempts' => $attempts, 'credits' => $actual, 'asset_id' => $assetId]);

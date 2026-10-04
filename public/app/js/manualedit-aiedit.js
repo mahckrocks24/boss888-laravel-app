@@ -16,7 +16,7 @@
   var CREATIVE = window.location.origin + '/api/creative';
   var token = function () { return localStorage.getItem('lu_token') || ''; };
   var headers = function () { return { 'Authorization': 'Bearer ' + token(), 'Content-Type': 'application/json', 'Accept': 'application/json' }; };
-  var EDIT_COST = 2, MAX_SCALE = 8, MIN_FACTOR = 0.1, UNDO_LIMIT = 25;
+  var EDIT_COST = 6, MAX_SCALE = 8, MIN_FACTOR = 0.1, UNDO_LIMIT = 25;
 
   // ── coordinate transforms (proven) ──
   function fitScale(sw, sh, vw, vh) { return (sw <= 0 || sh <= 0) ? 1 : Math.min(vw / sw, vh / sh); }

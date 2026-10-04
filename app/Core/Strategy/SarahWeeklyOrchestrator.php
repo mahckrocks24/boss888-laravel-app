@@ -194,7 +194,7 @@ class SarahWeeklyOrchestrator
             . "  - Reference REAL signals from the JSON only. Never invent numbers.\n"
             . "  - Never name competitor brands.\n"
             . "  - Current year is " . date('Y') . " — never reference prior years.\n"
-            . "  - Quote real credit costs (write_article=3cr, social_create_post=1cr, etc.)\n"
+            . "  - Quote real credit costs (write_article=2cr, social_create_post=4cr, social_publish_post=2cr, generate_image=4cr, generate_video=28cr)\n"
             . "  - A write_article pivot's title IS the article's headline as a customer would read it on this business's blog, built on a tracked keyword or a real customer question (e.g. 'Private Chef Cost in NJ: What \$75-200/hr Buys'). NEVER a strategy label such as 'Targeted SEO Strategy for Unranked Keywords' or 'Engagement Strategies for …' - those became articles once. Same for social pivots: the post's own subject, never a label.\n"
             . (isset($wsId) ? '  - ' . \App\Core\Sarah888\LanguagePref::instruction((int) $wsId) . "\n" : '') . "\n"
             . "Return ONLY this JSON (no preamble, no fences):\n"

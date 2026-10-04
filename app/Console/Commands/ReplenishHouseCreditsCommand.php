@@ -34,37 +34,8 @@ class ReplenishHouseCreditsCommand extends Command
             $oldBalance = $credits->balance ?? 0;
             $allowance = $ws->monthly_credit_allowance;
 
-            if ($credits) {
-                DB::table('credits')->where('workspace_id', $ws->id)->update([
-                    'balance' => $allowance,
-                    'reserved_balance' => 0,
-                    'updated_at' => now(),
-                ]);
-            } else {
-                DB::table('credits')->insert([
-                    'workspace_id' => $ws->id,
-                    'balance' => $allowance,
-                    'reserved_balance' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-            }
-
-            // Log the transaction
-            DB::table('credit_transactions')->insert([
-                'workspace_id' => $ws->id,
-                'type' => 'credit',
-                'amount' => $allowance,
-                'reference_type' => 'house_account_replenish',
-                'reference_id' => null,
-                'metadata_json' => json_encode([
-                    'previous_balance' => $oldBalance,
-                    'new_balance' => $allowance,
-                    'monthly_allowance' => $allowance,
-                    'replenish_date' => now()->toDateString(),
-                ]),
-                'created_at' => now(),
-            ]);
+            // CREDIT-CERT-1: set through the wallet; the ledger records the real difference (was the full allowance as a credit)
+            app(\App\Core\Billing\CreditService::class)->setBalance((int) $ws->id, (int) $allowance, 'house_account_replenish', ['monthly_allowance' => (int) $allowance, 'replenish_date' => now()->toDateString()]);
 
             $this->line("  ✓ WS {$ws->id} ({$ws->name}): {$oldBalance} → {$allowance} credits");
             Log::info("House account credit replenish", [

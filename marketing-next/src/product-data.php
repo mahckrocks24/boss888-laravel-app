@@ -54,7 +54,7 @@ return [
             'lede' => 'The chatbot answers from the knowledge you give it, only on the domains you allow, and hands the conversation to you when it should. Names, phone numbers and booking requests go straight into the CRM.',
             'capabilities' => [['Knows your business', 'Upload documents and pages; the number of knowledge documents follows the plan.'], ['Stays in scope', 'Answers what it knows, says so when it does not, and never invents a price or a promise.'], ['Captures leads', 'Contact details and booking requests become CRM leads with the conversation attached.']],
             'limit' => 'The chatbot runs on sites you connect and within the monthly message allowance of your plan.',
-            'faq' => [['Can it be embedded on a site not built here?', 'Yes, on domains you allow for your workspace.'], ['What does a message cost?', 'One credit per exchange, within the plan\'s monthly allowance.'], ['Can it book appointments?', 'It captures booking requests into the CRM and calendar for confirmation.']]],
+            'faq' => [['Can it be embedded on a site not built here?', 'Yes, on domains you allow for your workspace.'], ['What does a message cost?', 'One credit covers five messages, from the plan\'s monthly credits.'], ['Can it book appointments?', 'It captures booking requests into the CRM and calendar for confirmation.']]],
         ['slug' => 'creative', 'icon' => 'image', 'name' => 'Creative', 'engine' => 'Creative and image engine', 'flag' => 'image_generation',
             'promise' => 'Images and ad creatives in every size your channels need.',
             'lede' => 'Brand-consistent images for the site, the blog and social, produced in the sizes each channel requires, with your subject kept in the frame.',

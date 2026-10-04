@@ -134,7 +134,7 @@
       typing.remove();
       var j = r.json || {};
       if (!r.ok) {
-        var msg = r.status === 402 ? (j.error || 'This workspace has no credits left. Chat is 1 credit for every 5 messages; top up under Billing.')
+        var msg = r.status === 402 ? (j.error || 'This workspace has no credits left. Chat is 1 credit for every 5 messages; more credits come with a bigger plan or your monthly renewal (Billing).')
           : r.status === 429 ? 'Too many questions in a minute. Give it a moment.'
           : (j.error || j.message || 'Aria could not answer just now. Try again.');
         renderAria({ answer: msg, sources: [], followups: [] });

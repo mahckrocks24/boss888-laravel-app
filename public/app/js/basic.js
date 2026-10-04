@@ -385,7 +385,7 @@
       g.appendChild(kpi('Credits available', (bill.credit_available != null ? bill.credit_available : ws.credit_balance || 0), 'of ' + (bill.monthly_credit_limit || ws.monthly_credit_limit || 0) + ' this month'));
       g.appendChild(kpi('Websites', ws.website_count != null ? ws.website_count : '—', ws.plan && ws.plan.max_websites ? 'of ' + ws.plan.max_websites + ' on your plan' : ''));
       var a4 = document.createElement('div'); a4.className = 'bs-acts'; s4.appendChild(a4);
-      a4.appendChild(btn('Change plan or top up', 'primary', function () { if (window.nav) { if (typeof window._lgsc_set_visibility_mode === 'function' && document.documentElement.getAttribute('data-mode') !== 'advanced') window._lgsc_set_visibility_mode('advanced', { skipNav: true }); nav('billing'); } }));
+      a4.appendChild(btn('See plans', 'primary', function () { if (window.nav) { if (typeof window._lgsc_set_visibility_mode === 'function' && document.documentElement.getAttribute('data-mode') !== 'advanced') window._lgsc_set_visibility_mode('advanced', { skipNav: true }); nav('billing'); } }));
       if (bill.stripe_customer_id) a4.appendChild(btn('Invoices & payment method', 'quiet', function () { if (typeof window._openBillingPortal === 'function') window._openBillingPortal(); else openAdvanced('billing'); }));
     }).catch(function () { fail(body, 'your account', function () { window.basicAccountLoad(root); }); });
   };

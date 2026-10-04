@@ -43,7 +43,8 @@ class StripeService
         $user = User::find($userId);
 
         if (! $this->enabled) {
-            // Development mode — activate plan without payment
+            // CREDIT-CERT-1 (H2): without a working payment key a plan is handed over only on a developer machine, never here
+            if (! app()->environment('local', 'testing')) return ['success' => false, 'error' => 'Payments are not available right now. Nothing was charged. Please try again later.'];
             return $this->devActivate($workspaceId, $planId, $userId);
         }
 
@@ -595,7 +596,8 @@ class StripeService
         $newPrice = (float) $newPlan->price;
 
         if (! $this->enabled) {
-            // Dev mode (no Stripe key) — direct swap
+            // Dev mode (no Stripe key) — direct swap, on a developer machine only (CREDIT-CERT-1 H2)
+            if (! app()->environment('local', 'testing')) return ['success' => false, 'error' => 'Payments are not available right now. Nothing was charged. Please try again later.'];
             return $this->devActivate($workspaceId, $newPlanId, $userId);
         }
         if ($newPrice <= 0) return ['success' => false, 'error' => 'Use Downgrade to Free for the free plan.'];
@@ -642,13 +644,15 @@ class StripeService
                         'error' => 'The upgrade payment needs your confirmation. Your plan stays as it is until it is paid.'];
                 }
                 $currentSub->update(['plan_id' => $newPlan->id]);
-                Credit::updateOrCreate(['workspace_id' => $workspaceId], ['balance' => $newPlan->credit_limit]);   // reserved credits (jobs running) are left alone
-                $this->ledgerAllocation($workspaceId, $newPlan, 'plan_upgraded');
+                // CREDIT-CERT-1 (H1): was "balance = the whole new allowance" - Growth to Pro on day 29 cost $3 and gave 2,500
+                $periodStart = (int) ($item->current_period_start ?? $ss->current_period_start ?? 0);
+                $extra = $this->proratedUpgradeCredits($curPlan, $newPlan, $periodStart, $periodEnd);
+                if ($extra > 0) app(CreditService::class)->credit($workspaceId, $extra, 'plan/upgrade_prorated', (int) $newPlan->id, ['from' => $curPlan->slug ?? null, 'to' => $newPlan->slug]);
                 Log::info('[BILL-2] plan upgraded', ['ws' => $workspaceId, 'from' => $curPlan->slug ?? null, 'to' => $newPlan->slug]);
                 $paid = (int) ($upd->latest_invoice->amount_paid ?? 0) / 100;
                 $this->tellOwner($workspaceId, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED, 'You are now on ' . $newPlan->name,
-                    'Your plan changed from ' . ($curPlan->name ?? 'your plan') . ' to ' . $newPlan->name . ' today. You paid $' . number_format($paid, 2) . ' for the rest of this billing month (only the difference), and your '
-                    . number_format((int) $newPlan->credit_limit) . ' monthly credits are ready. From your next renewal' . ($periodEnd ? ' on ' . date('j F Y', $periodEnd) : '') . ': $' . rtrim(rtrim(number_format((float) $newPlan->price, 2), '0'), '.') . ' a month.');
+                    'Your plan changed from ' . ($curPlan->name ?? 'your plan') . ' to ' . $newPlan->name . ' today. You paid $' . number_format($paid, 2) . ' for the rest of this billing month (only the difference), and ' . number_format($extra) . ' extra credits were added for the rest of this month. You get '
+                    . number_format((int) $newPlan->credit_limit) . ' credits a month from your next renewal' . ($periodEnd ? ' on ' . date('j F Y', $periodEnd) : '') . ': $' . rtrim(rtrim(number_format((float) $newPlan->price, 2), '0'), '.') . ' a month.');
                 return ['success' => true, 'action' => 'upgraded', 'plan' => $newPlan->slug];
             }
 
@@ -712,6 +716,10 @@ class StripeService
      */
     private function ledgerAllocation(int $wsId, Plan $plan, string $reason): void
     {
+        // CREDIT-CERT-1: set the wallet to the plan allowance and record the actual difference (was: wrote the full limit
+        // as a "credit" row while the balance was SET, so the ledger could not explain any wallet)
+        app(CreditService::class)->setBalance($wsId, (int) $plan->credit_limit, 'plan/allocation', ['reason' => $reason, 'plan_slug' => $plan->slug], (int) $plan->id);
+        return;
         try {
             \Illuminate\Support\Facades\DB::table('credit_transactions')->insert([
                 'workspace_id'   => $wsId,
@@ -725,6 +733,18 @@ class StripeService
         } catch (\Throwable $e) {
             Log::warning('StripeService::ledgerAllocation failed', ['ws' => $wsId, 'error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * CREDIT-CERT-1 (H1): an upgrade mid-month adds the bigger allowance only for the part of the month that is left,
+     * the same way Stripe charges only the prorated difference. Growth (900) to Pro (2,500) halfway through = +800.
+     */
+    private function proratedUpgradeCredits(?Plan $from, Plan $to, int $periodStart, int $periodEnd): int
+    {
+        $diff = (int) $to->credit_limit - (int) ($from->credit_limit ?? 0);
+        if ($diff <= 0 || $periodStart <= 0 || $periodEnd <= $periodStart) return 0;
+        $left = max(0.0, min(1.0, ($periodEnd - time()) / ($periodEnd - $periodStart)));
+        return (int) round($diff * $left);
     }
 
     public function getBillingStatus(int $workspaceId): array
@@ -817,6 +837,16 @@ class StripeService
         // customer.subscription.deleted, whose handler ALSO creates a Free row; observed live as
         // two active Free subscriptions (#140 manual + #141 system). One is enough.
         $this->ensureFreeSubscription((int) $workspaceId, 'manual');
+
+        // CREDIT-CERT-1 (M4): a cancelled trial or managed plan is on Free now - its credits go too (only the Stripe
+        // webhook zeroed them, and it never fires for a plan Stripe does not bill), and a cancelled trial is over.
+        app(CreditService::class)->setBalance((int) $workspaceId, 0, 'plan/cancelled', ['subscription_id' => $sub->id]);
+        try {
+            $flags = ['updated_at' => now()];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('workspaces', 'is_trial')) $flags['is_trial'] = 0;
+            if (\Illuminate\Support\Facades\Schema::hasColumn('workspaces', 'trial_credits')) $flags['trial_credits'] = 0;
+            \Illuminate\Support\Facades\DB::table('workspaces')->where('id', $workspaceId)->update($flags);
+        } catch (\Throwable $e) {}
 
         // T_NOTIF — manual cancel (user-facing, email-required)
         $ownerId = \Illuminate\Support\Facades\DB::table('workspace_users')
@@ -1053,10 +1083,6 @@ class StripeService
 
             // Refresh credits to new plan limit
             if ($plan) {
-                Credit::where('workspace_id', $wsId)->lockForUpdate()->first()
-                    ? Credit::where('workspace_id', $wsId)
-                        ->update(['balance' => $plan->credit_limit, 'reserved_balance' => 0, 'updated_at' => now()])
-                    : Credit::create(['workspace_id' => $wsId, 'balance' => $plan->credit_limit, 'reserved_balance' => 0]);
                 $this->ledgerAllocation($wsId, $plan, 'checkout_completed');
             }
         });
@@ -1149,9 +1175,6 @@ class StripeService
                     $q->whereNull('stripe_subscription_id')->orWhere('stripe_subscription_id', '!=', $subscription->id);
                 })
                 ->update(['status' => 'superseded']);
-            Credit::where('workspace_id', $wsId)->lockForUpdate()->first()
-                ? Credit::where('workspace_id', $wsId)->update(['balance' => $plan->credit_limit, 'reserved_balance' => 0, 'updated_at' => now()])
-                : Credit::create(['workspace_id' => $wsId, 'balance' => $plan->credit_limit, 'reserved_balance' => 0]);
             $this->ledgerAllocation($wsId, $plan, 'subscription_created');
         });
         if (! $provisioned) return ['handled' => true, 'action' => 'already_provisioned', 'type' => 'customer.subscription.created'];
@@ -1233,7 +1256,8 @@ class StripeService
                 foreach (($live->items->data ?? []) as $it) {
                     $pid = $it->price->id ?? ''; if ($pid === '' || $pid === $addonPriceId) continue;
                     $billed = Plan::where('stripe_price_id', $pid)->first();
-                    if ($billed && (int) $billed->id !== (int) $sub->plan_id) { Log::info('[BILL-2] plan follows the billed price', ['ws' => $sub->workspace_id, 'from' => $sub->plan_id, 'to' => $billed->id]); $sub->update(['plan_id' => $billed->id]); $planMoved = $billed; }
+                    $livePeriod = [(int) ($it->current_period_start ?? $live->current_period_start ?? 0), (int) ($it->current_period_end ?? $live->current_period_end ?? 0)];
+                    if ($billed && (int) $billed->id !== (int) $sub->plan_id) { Log::info('[BILL-2] plan follows the billed price', ['ws' => $sub->workspace_id, 'from' => $sub->plan_id, 'to' => $billed->id]); $prevPlan = Plan::find($sub->plan_id); $sub->update(['plan_id' => $billed->id]); $planMoved = $billed; }
                     break;
                 }
             } catch (\Throwable $e) { Log::warning('[BILL-2] could not read the billed price', ['error' => $e->getMessage()]); }
@@ -1241,9 +1265,17 @@ class StripeService
 
         $plan = Plan::find($sub->plan_id);
         if ($plan) {
-            Credit::where('workspace_id', $sub->workspace_id)
-                ->update(['balance' => $plan->credit_limit, 'updated_at' => now()]);
-            $this->ledgerAllocation((int) $sub->workspace_id, $plan, 'invoice_paid_renewal');
+            // CREDIT-CERT-1 (H1): only a new month (or the first invoice) resets the allowance. The invoice for an upgrade's
+            // prorated difference is not a new month: its extra credits are added by changePlan, or here when the upgrade
+            // waited for its payment (the plan moves only now).
+            if ((string) ($invoice->billing_reason ?? '') === 'subscription_update') {
+                if (! empty($planMoved) && ! empty($prevPlan) && (float) $plan->price > (float) $prevPlan->price) {
+                    $extra = $this->proratedUpgradeCredits($prevPlan, $plan, (int) ($livePeriod[0] ?? 0), (int) ($livePeriod[1] ?? 0));
+                    if ($extra > 0) app(CreditService::class)->credit((int) $sub->workspace_id, $extra, 'plan/upgrade_prorated', (int) $plan->id, ['invoice' => $invoice->id ?? null]);
+                }
+            } else {
+                $this->ledgerAllocation((int) $sub->workspace_id, $plan, 'invoice_paid_renewal');
+            }
             // TIERMAIL-1: a renewal is told once per invoice (Stripe may deliver invoice.paid more than once)
             if (($invoice->billing_reason ?? '') === 'subscription_cycle' && \Illuminate\Support\Facades\Cache::add('billing:renewal_notice:' . ($invoice->id ?? ''), 1, now()->addDays(3))) {
                 $amount = '$' . number_format(((int) ($invoice->amount_paid ?? 0)) / 100, 2);
@@ -1314,9 +1346,8 @@ class StripeService
             // Downgrade to free plan (idempotent with cancel())
             $this->ensureFreeSubscription((int) $sub->workspace_id, 'system');
 
-            // Zero credits
-            Credit::where('workspace_id', $sub->workspace_id)
-                ->update(['balance' => 0, 'reserved_balance' => 0]);
+            // Zero credits (CREDIT-CERT-1: recorded in the ledger; a job still running keeps its hold)
+            app(CreditService::class)->setBalance((int) $sub->workspace_id, 0, 'plan/cancelled', ['subscription' => $subscription->id ?? null]);
 
             // P0 hardening 2026-05-01: suspend WP site connections (reversible).
             $this->suspendBillingForWorkspace($sub->workspace_id, 'subscription_cancelled');
@@ -1500,10 +1531,6 @@ class StripeService
 
         $plan = Plan::find($planId);
         if ($plan) {
-            Credit::updateOrCreate(
-                ['workspace_id' => $wsId],
-                ['balance' => $plan->credit_limit, 'reserved_balance' => 0]
-            );
             $this->ledgerAllocation($wsId, $plan, 'plan_assigned');
         }
 

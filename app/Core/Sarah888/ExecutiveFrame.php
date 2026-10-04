@@ -160,7 +160,7 @@ MAP;
         // WHAT WOULD REVERSE THE DECISION. A recommendation without a condition
         // that retires it cannot be reviewed later; it can only be defended.
         try {
-            $balR   = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
+            $balR   = (int) ((app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0);
             $done7R = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'completed')->where(fn ($__q) => $__q->whereNull('qa_status')->orWhereNotIn('qa_status', ['rejected', 'needs_owner']))
                         ->where('created_at', '>', now()->subDays(7))->count();
             $failWR = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status', 'failed')
@@ -209,7 +209,7 @@ MAP;
                 $price = function (string $a) use ($map): int {
                     try { return (int) $map->getCreditCost($a); } catch (\Throwable) { return 0; }
                 };
-                $balance   = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
+                $balance   = (int) ((app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0);
                 $drafts    = (int) DB::table('articles')->where('workspace_id', $wsId)->where('status','draft')->count();
                 $awaiting  = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status','awaiting_approval')->count();
                 $failedWk  = (int) DB::table('tasks')->where('workspace_id', $wsId)->where('status','failed')
@@ -621,7 +621,7 @@ MAP;
                 $out['capacity and cost'][] = "{$open} task(s) are open against {$done7} completed in the last 7 days"
                     . ($weeks !== null ? " - roughly {$weeks} weeks of queue at current throughput." : '.');
             }
-            $credits = (int) (DB::table('credits')->where('workspace_id',$wsId)->value('balance') ?? 0);
+            $credits = (int) ((app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0);
             $out['capacity and cost'][] = "Credit balance is {$credits}. Every credit spent on one thing is "
                                         . "not available for another.";
 

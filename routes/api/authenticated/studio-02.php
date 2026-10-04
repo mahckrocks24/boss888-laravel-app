@@ -2965,7 +2965,15 @@ HTMLSCRIPT;
             }
         })->middleware('throttle:20,1');
         Route::post('/ai/suggest-copy',    fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'suggestCopy',    1, 'studio_ai_suggest_copy'));
-        Route::post('/ai/chat',            fn(\Illuminate\Http\Request $r) => $studioAiGate($r, 'chat',           1, 'studio_ai_chat'));
+        // CREDIT-CERT-1 (C-D5): Studio chat is metered like every chat surface, 1 credit per 5 messages (was 1 per message)
+        Route::post('/ai/chat', function (\Illuminate\Http\Request $r) use ($studioAiGate) {
+            $wsId = (int) $r->attributes->get('workspace_id');
+            if ($wsId > 0 && app(\App\Core\Billing\FeatureGateService::class)->canUseAI($wsId)) {
+                $m = app(\App\Core\Billing\CreditService::class)->meterChat($wsId, 'studio_message');
+                if (empty($m['sufficient'])) return response()->json(['error' => 'Out of credits. One credit covers 5 messages; you get more at your monthly renewal or by upgrading your plan.', 'reason' => 'insufficient_credits'], 402);
+            }
+            return $studioAiGate($r, 'chat', 0, 'studio_ai_chat');
+        });
 
         // Phase 5 — publish + thumbnail + resize
         Route::post('/designs/{id}/publish-social', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($studio)->publishToSocial((int) $id, (int) $r->attributes->get('workspace_id'), $r->all())));

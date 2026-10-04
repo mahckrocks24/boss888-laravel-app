@@ -81,7 +81,7 @@ window._lgseUpdateChatMeter = function (counter, debited) {
       el.innerHTML = '<span style="font-weight:500">💬 5 chats = 1 credit (0.2 cr each)</span>';
       return;
     }
-    el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 10 chats toward next credit</span>';
+    el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 5 messages toward the next credit</span>';
   });
 };
 // Wave 23 — Intercept fetch globally to read X-Chat-Meter-* headers from
@@ -212,7 +212,7 @@ async function _seoApplyTopLinks(limit) {
     var d = await _seoApi('POST', '/links/apply-bulk', { limit: limit, mode: 'orphans_first' });
     if (d.success === false) {
       if (d.error === 'insufficient_credits') {
-        showToast('Not enough credits — top up at levelupgrowth.io/billing.', 'error');
+        showToast('Not enough credits — see Billing for plans.', 'error');
       } else {
         showToast('Bulk apply failed: ' + (d.error || 'unknown'), 'error');
       }
@@ -356,12 +356,12 @@ window._seoPageSave = async function(id, field, value, inputEl) {
 // route's auth middleware accepts X-API-KEY or JWT, and the underlying
 // services respect Wave-9 context-aware agent routing for notifications.
 window._seoFixOrphan = async function(url) {
-  if (!(await luConfirm('Apply queued link suggestions?', 'Up to 20 queued link suggestions targeting this page will be inserted. Each link that successfully inserts costs 1 credit — you only pay for links that actually go in.', { okLabel: 'Apply links (1 credit each)' }))) return;
+  if (!(await luConfirm('Apply queued link suggestions?', 'Up to 20 queued link suggestions targeting this page will be inserted. Each link that successfully inserts costs 2 credits — you only pay for links that actually go in.', { okLabel: 'Apply links (2 credits each)' }))) return;
   try {
     var d = await _seoApi('POST', '/links/apply-bulk', { target_url: url, mode: 'orphans_first', limit: 20 });
     if (d.success === false) {
       if (d.error === 'insufficient_credits') {
-        showToast('Not enough credits — top up at levelupgrowth.io/billing.', 'error');
+        showToast('Not enough credits — see Billing for plans.', 'error');
       } else {
         showToast('Fix-orphan failed: ' + (d.error || 'unknown'), 'error');
       }
@@ -398,7 +398,7 @@ window._seoFixAllOrphans = async function() {
     var d = await _seoApi('POST', '/links/apply-bulk', { mode: 'orphans_first', limit: Math.min(100, orphans.length * 3) });
     if (d.success === false) {
       if (d.error === 'insufficient_credits') {
-        showToast('Not enough credits — top up at levelupgrowth.io/billing.', 'error');
+        showToast('Not enough credits — see Billing for plans.', 'error');
       } else {
         showToast('Fix-all-orphans failed: ' + (d.error || 'unknown'), 'error');
       }
@@ -9814,7 +9814,7 @@ window._seoApplyLink = async function () { try { console.warn('[LU SEO 15.5] dea
       +       '<textarea id="lgse-w-context" rows="2" placeholder="Target audience, specific points to cover, location..." '
       +         'style="width:100%;background:#1e293b;border:1px solid #334155;border-radius:6px;padding:10px 12px;color:#fff;font-size:13px;box-sizing:border-box;resize:vertical"></textarea>'
       +     '</div>'
-      +     '<p style="color:#64748b;font-size:12px;margin:0">💳 This will use <strong style="color:#7C3AED">4 credits</strong> (2 text + 2 featured image).</p>'
+      +     '<p style="color:#64748b;font-size:12px;margin:0">💳 This will use <strong style="color:#7C3AED">2 credits</strong> (the article and its featured image).</p>'
       +     '<button id="lgse-w-btn" onclick="window._lgseWriteGenerate()" '
       +       'style="background:linear-gradient(135deg,#7C3AED,#3B82F6);color:#fff;border:none;border-radius:8px;padding:12px 24px;font-size:14px;font-weight:600;cursor:pointer;width:100%">Generate Article</button>'
       +     '<div id="lgse-w-result" style="display:none;background:#1e293b;border-radius:8px;padding:16px;margin-top:8px">'

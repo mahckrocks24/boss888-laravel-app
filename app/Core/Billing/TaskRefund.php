@@ -18,6 +18,10 @@ final class TaskRefund
     /** @return array{credits:int, balance:?int}|null null when nothing was charged or it was already refunded */
     public static function refund(int $wsId, int $taskId, string $reason, array $meta = []): ?array
     {
+        // CREDIT-CERT-1 (G-D13): two refund paths can reach one task at the same moment (a failed video's poller and the quality
+        // gate); check-then-credit is done under one lock per task so it pays back once
+        $lock = \Illuminate\Support\Facades\Cache::lock('task_refund:' . $taskId, 15);
+        if (! $lock->block(10)) return null;
         try {
             $committed = (int) DB::table('credit_transactions')->where('workspace_id', $wsId)->where('reference_type', 'Task')->where('reference_id', $taskId)->whereIn('type', ['commit', 'debit'])->sum('amount');
             if ($committed <= 0) return null;
@@ -27,6 +31,7 @@ final class TaskRefund
             Log::info('[TaskRefund] refunded', ['ws' => $wsId, 'task' => $taskId, 'credits' => $committed, 'reason' => mb_substr($reason, 0, 120)]);
             return ['credits' => $committed, 'balance' => $bal !== null ? (int) round((float) $bal) : null];
         } catch (\Throwable $e) { Log::warning('[TaskRefund] failed: ' . $e->getMessage(), ['ws' => $wsId, 'task' => $taskId]); return null; }
+        finally { try { $lock->release(); } catch (\Throwable $e) {} }
     }
 
     public static function alreadyRefunded(int $wsId, int $taskId): bool

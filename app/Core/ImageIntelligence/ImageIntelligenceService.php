@@ -98,7 +98,9 @@ class ImageIntelligenceService
 
         // 3) cost estimate + canonical credit reserve
         $estCost = $this->estimateCost($compiled['size'], $compiled['quality'], $compiled['provider_prompt']);
-        $credits = self::CREDIT_BY_QUALITY[$compiled['quality']] ?? 2;
+        // CREDIT-CERT-1: the customer pays the tier they asked for (quoted in the Studio), not the provider quality the planner
+        // picked; a caller that already charged for this image (the kernel, a priced route) passes prepaid and nothing is held here
+        $credits = ! empty($ctx['prepaid']) ? 0 : \App\Core\EngineKernel\CapabilityMapService::imageCreditsFor((string) ($ctx['requested_quality'] ?? $ctx['quality'] ?? 'standard'));
         $reason_str = 'image_intelligence:' . ($ctx['source'] ?? 'studio');
         try {
             $resRef = $this->credits->reserve($wsId, $credits, $reason_str);
@@ -199,8 +201,7 @@ class ImageIntelligenceService
         // gpt-image-1 to 'low'); the customer must only pay for what was
         // actually produced. The reservation was the upper bound.
         $reservedCredits = $credits;
-        $actualCredits = self::CREDIT_BY_QUALITY[$actualQuality] ?? $reservedCredits;
-        if ($actualCredits > $reservedCredits) $actualCredits = $reservedCredits; // never exceed reserved
+        $actualCredits = $reservedCredits;   // CREDIT-CERT-1: the quoted tier price (the provider's quality label is not the customer's tier)
         if ($actualCredits === $reservedCredits) {
             $this->credits->commit($wsId, $resRef, $reservedCredits);
         } else {

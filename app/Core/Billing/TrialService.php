@@ -256,10 +256,8 @@ class TrialService
                 ]);
             }
 
-            // Zero out trial credit balance (don't debit — just reset)
-            DB::table('credits')
-                ->where('workspace_id', $wsId)
-                ->update(['balance' => 0, 'reserved_balance' => 0, 'updated_at' => now()]);
+            // Zero out trial credit balance - CREDIT-CERT-1: recorded in the ledger (was a silent reset, 50 -> 0 with no row)
+            app(\App\Core\Billing\CreditService::class)->setBalance((int) $wsId, 0, 'trial/expired');
 
             // FIXED 2026-08-24 (MISSION-018 WS-2): expiry cancelled the
             // subscription and zeroed credits but left the workspace flags

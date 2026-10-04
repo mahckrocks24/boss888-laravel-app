@@ -134,14 +134,14 @@ class EngineExecutionService
 
         // ─── Step 3: Check credits (for AI-powered actions) ──
         $creditCost = $capability['credit_cost'] ?? 0;
-        if ($action === 'generate_video' && (int) ($params['duration'] ?? 0) === 10) $creditCost = \App\Core\EngineKernel\CapabilityMapService::VIDEO_10S_CREDITS;   // PRICE-1
+        if ($action === 'generate_video') { $params['duration'] = CapabilityMapService::videoSeconds($params); $creditCost = app(CapabilityMapService::class)->creditCostFor('generate_video', $params); }   // PRICE-1, CREDIT-CERT-1: one rule, one length
         if ($creditCost > 0) {
             $hasCredits = $this->creditService->hasBalance($wsId, $creditCost);
             if (!$hasCredits) {
                 return [
                     'success' => false,
                     'error'   => "Not enough credits to run this action. {$creditCost} credit"
-                                 . ($creditCost === 1 ? '' : 's') . " required — top up to continue.",
+                                 . ($creditCost === 1 ? '' : 's') . " required — upgrade your plan or wait for your monthly renewal.",
                     'code'    => 'NO_CREDITS',
                     'required_credits' => $creditCost,
                 ];
@@ -280,7 +280,7 @@ class EngineExecutionService
                     'action'          => $action,
                     'payload'         => $params,
                     'source'          => $source,
-                    'auto_approve'    => $__directUserAction ? true : ($params['auto_approve'] ?? null),
+                    'auto_approve'    => $__directUserAction ? true : ($source === 'agent' ? null : ($params['auto_approve'] ?? null)),   // CREDIT-CERT-1 (K-D3): an agent cannot approve itself through its own tool arguments (the task was queued AND run, charged twice)
                     'priority'        => $priority,
                     'assigned_agents' => $agentId ? [$agentId] : null,
                     // INFRA888 Phase 1D — carry the REQUESTER through so the
@@ -521,9 +521,31 @@ class EngineExecutionService
             return ['success' => true, 'data' => $result, 'credits_used' => 0, 'triggers_fired' => [], 'source' => $source];
         }
 
+        // ─── Step 5g (CREDIT-CERT-1): a result that charged itself, or did nothing billable, releases the hold ──
+        // (was: Arthur's website build paid 10 + 10 and a failed build paid 10; an edit Arthur priced himself paid 1 more;
+        // seo/write_article's delegated stub paid 2 for no article; a returned {error} was committed for most engines)
+        $__bill = CreditService::resultBilling($result);
+        if ($__bill !== null) {
+            if (isset($reservationId) && $creditCost > 0) $this->creditService->release($wsId, $reservationId);
+            if ($__bill === 'none') {
+                $this->cjSafe(fn () => $__cjs->fail($__cjob, (string) ($result['error'] ?? $result['message'] ?? 'no_effect')));
+                Log::info('[EES] nothing billable, hold released', ['ws' => $wsId, 'engine' => $engine, 'action' => $action]);
+                return ['success' => false, 'error' => (string) ($result['message'] ?? $result['error'] ?? 'That did not go through. Nothing was charged.'), 'code' => 'NO_EFFECT', 'data' => $result, 'credits_used' => 0];
+            }
+            $creditCost = 0;   // 'self': the engine charged; the normal finish below runs with nothing more to commit
+        }
+
         // ─── Step 6: Commit credits ──────────────────────────
         if (isset($reservationId) && $creditCost > 0) {
             $this->creditService->commit($wsId, $reservationId, $creditCost);
+            // CREDIT-CERT-1 (D11): an async video records WHICH charge paid for it, so a later failure refunds exactly that
+            if ($action === 'generate_video' && is_array($result) && isset($result['asset_id']) && is_numeric($result['asset_id'])) {
+                try {
+                    DB::table('assets')->where('id', (int) $result['asset_id'])->where('workspace_id', $wsId)->update([
+                        'metadata_json' => DB::raw("JSON_SET(COALESCE(metadata_json,'{}'), '$.billed_ref', " . DB::getPdo()->quote((string) $reservationId) . ", '$.credits_charged', " . (int) $creditCost . ")"),
+                    ]);
+                } catch (\Throwable $e) { Log::warning('[EES] could not stamp the video charge', ['asset' => $result['asset_id'], 'e' => $e->getMessage()]); }
+            }
         }
 
         // ─── Step 6b (Phase I): finalize the observational CreativeJob ──
@@ -982,8 +1004,8 @@ class EngineExecutionService
             // RISK-0091 (2026-08-25): mini/high were async-only; sync tool_calls threw
             // "Unknown Creative action". Route to the same real image generation (tier is
             // metered via the cap-map; quality handling is Runtime-side, RISK-0090).
-            'generate_image_mini' => $svc->generateImage($wsId, $params),
-            'generate_image_high' => $svc->generateImage($wsId, $params),
+            'generate_image_mini' => $svc->generateImage($wsId, ['quality' => 'mini'] + $params),   // CREDIT-CERT-1: made at the tier charged
+            'generate_image_high' => $svc->generateImage($wsId, ['quality' => 'high'] + $params),
             // STUDIO888 Phase O — masked/local image editing (non-destructive child version).
             'edit_image'     => $svc->editImage($wsId, $params),
             'create_asset'   => $svc->createAsset($wsId, $params),
@@ -1120,8 +1142,9 @@ class EngineExecutionService
     {
         $svc = app(\App\Engines\BeforeAfter\Services\BeforeAfterService::class);
         return match ($action) {
-            'ba_transform', 'create_design' => $svc->createDesign($wsId, $params),
-            'ba_design_report' => (function() use ($svc, $params, $wsId) { $svc->generateReport((int) ($params['design_id'] ?? 0), $wsId); return ['status' => 'generated']; })(),  // Phase 3: was missing
+            // CREDIT-CERT-1 (K-D10): the transform never produced an image (generateDesign is not wired) and the report committed
+            // whether or not the design existed. Refused until the engine delivers; the refusal releases the hold.
+            'ba_transform', 'create_design', 'ba_design_report' => ['success' => false, 'error' => 'Before-and-after designs are not available yet. Nothing was charged.'],
             default => throw new \RuntimeException("Unknown BeforeAfter action: {$action}"),
         };
     }

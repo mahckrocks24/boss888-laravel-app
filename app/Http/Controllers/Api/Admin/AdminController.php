@@ -365,11 +365,11 @@ class AdminController
         ]);
         $amount = (int) $v['amount'];
 
-        $balance = DB::transaction(function () use ($id, $amount, $v, $r) {
-            $credit = Credit::firstOrCreate(
-                ['workspace_id' => $id],
-                ['balance' => 0, 'reserved_balance' => 0]
-            );
+        // CREDIT-CERT-1 (M11): a website workspace spends from its billing pool; the grant goes where it is read
+        $poolId = (int) (DB::table('workspaces')->where('id', $id)->value('billing_workspace_id') ?: $id);
+        $balance = DB::transaction(function () use ($id, $poolId, $amount, $v, $r) {
+            $credit = Credit::where('workspace_id', $poolId)->lockForUpdate()->first()
+                ?? Credit::create(['workspace_id' => $poolId, 'balance' => 0, 'reserved_balance' => 0]);
             // Never let an adjustment drive the balance negative.
             if ($amount < 0 && (int) $credit->balance + $amount < 0) {
                 abort(422, 'Adjustment would take the balance below zero (current: ' . (int) $credit->balance . ').');
@@ -384,6 +384,7 @@ class AdminController
                 'reference_id'   => $r->user()->id,
                 'metadata_json'  => json_encode([
                     'reason'       => $v['reason'],
+                    'pool_workspace_id' => $poolId,
                     'signed_amount'=> $amount,
                     'admin_id'     => $r->user()->id,
                     'at'           => now()->toIso8601String(),

@@ -37,7 +37,7 @@ class StudioHeroCtaTest extends TestCase
     {
         $this->assertStringContainsString('id="st-hero-cta"', $this->src, 'The CTA element must be rendered in the editor.');
         $this->assertStringContainsString('_st2GenerateHeroImage', $this->src, 'The CTA click handler must exist.');
-        $this->assertStringContainsString('Uses 1 image credit', $this->src, 'The CTA must disclose the 1-credit cost.');
+        $this->assertStringContainsString('Creates a hero image from your design prompt · 4 credits', $this->src, 'The CTA must disclose its real cost (a standard image, 4 credits - CREDIT-CERT-1).');
     }
 
     public function test_cta_reuses_generate_image_and_never_calls_arthur(): void

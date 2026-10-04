@@ -268,6 +268,7 @@ class CreativeService
                     'workspace_id' => $wsId, 'user_prompt' => $prompt, 'source' => $params['source'] ?? 'creative', 'platform' => $params['platform'] ?? null,
                     'asset_type' => $params['asset_type'] ?? 'social_post', 'business_id' => $params['business_id'] ?? null, 'style' => $params['style'] ?? 'natural',
                     'exact_text' => $params['exact_text'] ?? [], 'forced_headline' => $params['headline'] ?? null,
+                    'prepaid' => true,   // CREDIT-CERT-1 (D1): whoever called generateImage prices the image; the painter must not charge again
                 ]);
                 if ($__rp && ! empty($__rp['success']) && ! empty($__rp['url'])) {
                     return $this->sanitize([
@@ -539,6 +540,7 @@ class CreativeService
             throw new \InvalidArgumentException('Prompt required');
         }
 
+        $params['duration'] = \App\Core\EngineKernel\CapabilityMapService::videoSeconds($params);   // CREDIT-CERT-1: the length made = the length priced
         $videoBp = $this->blueprint->getVideoBlueprint($wsId, $prompt, $params);
 
         $scenes = $this->scenePlanner->planScenes($prompt, [
@@ -1121,25 +1123,50 @@ class CreativeService
     private function refundFailedVideo(int $assetId): void
     {
         try {
-            $a = DB::table('assets')->where('id', $assetId)->first(['workspace_id', 'metadata_json', 'type']);
+            $a = DB::table('assets')->where('id', $assetId)->first(['workspace_id', 'metadata_json', 'type', 'task_id']);
             if (! $a || ($a->type ?? '') !== 'video') return;
             $meta = json_decode($a->metadata_json ?? '{}', true) ?: [];
             if (! empty($meta['video_refunded_at'])) return; // already refunded — idempotent
-            // PRICE-1: refund what this video was charged (recorded on the asset); videos made before it paid 8.
-            $cost = (int) ($meta['credits_charged'] ?? 8);
-            app(\App\Core\Billing\CreditService::class)->credit(
-                (int) $a->workspace_id, $cost, 'refund/generate_video', $assetId,
-                ['reason' => 'video generation failed — automatic refund']
-            );
-            DB::table('assets')->where('id', $assetId)->update([
-                'metadata_json' => DB::raw("JSON_SET(COALESCE(metadata_json,'{}'), '$.video_refunded_at', " . DB::getPdo()->quote(now()->toIso8601String()) . ", '$.video_refunded_credits', " . (int) $cost . ")"),
+            // CREDIT-CERT-1 (D11/D13): claim the refund atomically FIRST (two pollers can fail the same video at once), then pay
+            // back only what the ledger shows was actually charged for this video. Was: credited the price written on the asset
+            // (or 8) whether or not anything had been charged - a free video that failed minted 28 or 52 credits.
+            $claimed = DB::table('assets')->where('id', $assetId)->whereRaw("JSON_EXTRACT(COALESCE(metadata_json,'{}'), '$.video_refunded_at') IS NULL")->update([
+                'metadata_json' => DB::raw("JSON_SET(COALESCE(metadata_json,'{}'), '$.video_refunded_at', " . DB::getPdo()->quote(now()->toIso8601String()) . ")"),
                 'updated_at' => now(),
             ]);
-            \Illuminate\Support\Facades\Log::info('[Video billing] refunded failed video', ['asset' => $assetId, 'ws' => $a->workspace_id, 'credits' => $cost]);
+            if ($claimed !== 1) return;
+            $ws = (int) $a->workspace_id; $cost = 0;
+            if (! empty($a->task_id)) {
+                // charged as a task (the queue): the task refund is the one door, idempotent with the quality-gate and repair refunds
+                $r = \App\Core\Billing\TaskRefund::refund($ws, (int) $a->task_id, 'video generation failed — automatic refund', ['asset_id' => $assetId]);
+                $cost = (int) ($r['credits'] ?? 0);
+            } elseif (! empty($meta['billed_ref'])) {
+                // charged directly by the engine kernel: its commit carries the reservation reference stamped on the asset
+                $cost = (int) DB::table('credit_transactions')->where('reservation_reference', (string) $meta['billed_ref'])->where('type', 'commit')->sum('amount');
+                if ($cost > 0) {
+                    app(\App\Core\Billing\CreditService::class)->credit($ws, $cost, 'refund/generate_video', $assetId,
+                        ['reason' => 'video generation failed — automatic refund', 'billed_ref' => (string) $meta['billed_ref']]);
+                }
+            }
+            DB::table('assets')->where('id', $assetId)->update([
+                'metadata_json' => DB::raw("JSON_SET(COALESCE(metadata_json,'{}'), '$.video_refunded_credits', " . (int) $cost . ")"),
+                'updated_at' => now(),
+            ]);
+            \Illuminate\Support\Facades\Log::info('[Video billing] failed video', ['asset' => $assetId, 'ws' => $ws, 'refunded' => $cost]);
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[Video billing] refund failed', ['asset' => $assetId, 'error' => $e->getMessage()]);
         }
     }
+    /**
+     * CREDIT-CERT-1 (G-D14): a video still "in progress" long after any render could finish (a stitch or download that
+     * never completed) is failed and refunded, instead of staying charged forever. Called by video:finalize-pending.
+     */
+    public function expireStuckVideo(int $assetId, string $reason = 'video did not finish in time'): void
+    {
+        $this->failAsset($assetId, $reason);
+        $this->refundFailedVideo($assetId);
+    }
+
     public function failAsset(int $assetId, string $reason): void
     {
         DB::table('assets')->where('id', $assetId)->update([

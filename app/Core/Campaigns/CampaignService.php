@@ -279,7 +279,7 @@ final class CampaignService
     {
         $r = trim((string) $raw);
         if ($r === '') return null;
-        if (preg_match('/credit/i', $r)) return 'Not enough credits to run this step. Top up or wait for your monthly renewal, then Sarah will pick it up.';
+        if (preg_match('/credit/i', $r)) return 'Not enough credits to run this step. Upgrade your plan or wait for your monthly renewal, then Sarah will pick it up.';
         if (preg_match('/LAUNCH_SCOPE|removed capability|not part of|UNMAPPED|no capability/i', $r)) return 'This kind of step is not available yet, so it is yours to do.';
         if (preg_match('/NEEDS:|website URL|which lead/i', $r)) return 'Sarah needs a detail before this step can run: ' . trim(preg_replace('/^.*NEEDS:\s*/i', '', $r)) . '.';
         if (preg_match('/connect|not connected|account/i', $r)) return 'Connect the account this step posts to, then Sarah will run it.';

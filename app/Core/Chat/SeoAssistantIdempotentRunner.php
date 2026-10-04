@@ -59,7 +59,7 @@ final class SeoAssistantIdempotentRunner
                     'provider_called' => false,
                     'correlation_id'  => $correlationId,
                     'persistence'     => ['user_message_saved' => $saved, 'assistant_message_saved' => false],
-                    'action'          => ['label' => 'Top up credits', 'href' => '/app/billing'],
+                    'action'          => ['label' => 'See plans', 'href' => '/app/billing'],
                 ],
             ], 402];
         }

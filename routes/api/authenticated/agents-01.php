@@ -451,7 +451,8 @@ $withCorr = function (array $meta) use ($corr) {
             $__runtimeNative = app(\App\Core\Sarah888\RuntimeNativeTurn::class)
                 ->handle($wsId, $slug, (string) $agent->name, (string) $content, $corr);
             if ($__runtimeNative !== null) {
-                return response()->json($__runtimeNative);
+                $__rnRefused = ($__runtimeNative['success'] ?? true) === false && in_array((string) ($__runtimeNative['reason'] ?? ''), ['insufficient_credits', 'plan_required'], true);
+                return response()->json($__runtimeNative, $__rnRefused ? 402 : 200);   // CREDIT-CERT-1 (C-D3)
             }
         } catch (\Throwable $__rnFatal) {
             \Illuminate\Support\Facades\Log::error(
@@ -512,7 +513,8 @@ $withCorr = function (array $meta) use ($corr) {
         ]);
 
         // Wave 22 — 10-chat batched metering (0.1 cr effective per chat).
-        $_meter = app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'agent_message');
+        $_meter = app()->bound('sarah.chat_meter') ? app('sarah.chat_meter')   // CREDIT-CERT-1 (C-D1): already counted by the runtime-native path
+            : app(\App\Core\Billing\CreditService::class)->meterChat((int) $wsId, 'agent_message');
         // Wave 24 — surface counter via JSON only (raw header() unreliable).
         if (!$_meter['sufficient']) {
             // ── INCIDENT FIX 2026-07-26 — HUMAN ERROR COPY ─────────────────
@@ -527,7 +529,7 @@ $withCorr = function (array $meta) use ($corr) {
                 'sender'        => $agentName,
                 'content'       => (($_meter['reason'] ?? '') === 'plan_required') ? \App\Core\Billing\SarahPaused::text((int) $wsId)   // SARAH-GATE-1
                                  : "I can't reply just yet — this workspace is out of credits. "
-                                 . "Your message is saved, so top up and I'll pick straight up from here.",
+                                 . "Your message is saved: when credits come back (a bigger plan, or your monthly renewal) I'll pick straight up from here.",
                 'role'          => 'agent',
                 'metadata_json' => $withCorr(['phase' => 'final', 'error' => (($_meter['reason'] ?? '') !== 'plan_required'), 'reason' => ($_meter['reason'] ?? 'insufficient_credits')]),
                 'created_at'    => now(),
@@ -543,7 +545,7 @@ $withCorr = function (array $meta) use ($corr) {
                 'message_saved'     => true,
                 'required_credits'  => 1,
                 'chat_counter'      => $_meter['counter'],
-                'action_label'      => (($_meter['reason'] ?? '') === 'plan_required') ? 'Choose a plan' : 'Top up credits',
+                'action_label'      => (($_meter['reason'] ?? '') === 'plan_required') ? 'Choose a plan' : 'See plans',
             ], 402);
         }
 

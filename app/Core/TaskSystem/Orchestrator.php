@@ -259,6 +259,11 @@ class Orchestrator
             // TaskService::create time with chain-bundle override applied for
             // Sarah chains). CapabilityMap is only a seed/fallback.
             $creditCost = $task->credit_cost ?? ($capability['credit_cost'] ?? 0);
+            // CREDIT-CERT-1 (D6): a re-run of a task that already paid is not charged again
+            if ($creditCost > 0 && \App\Models\CreditTransaction::where('reservation_reference', "task_{$task->id}")->where('type', 'commit')->exists()) {
+                $this->progress->recordEvent($task->id, 'credits_already_paid', 'running', message: 'This task was already paid for; running it again costs nothing');
+                $creditCost = 0;
+            }
             if ($creditCost > 0) {
                 $reservation = $this->creditService->reserveCredits(
                     $task->workspace_id, $creditCost, 'Task', $task->id, "task_{$task->id}"
@@ -305,6 +310,13 @@ class Orchestrator
             }
 
             // ── 9. Commit credits ────────────────────────────────────────
+            // CREDIT-CERT-1: work the engine priced itself (Arthur's build, an edit Arthur took over) releases the task hold
+            if ($reservationRef && $reservationRef !== 'zero_cost' && count($results) === 1
+                && \App\Core\Billing\CreditService::resultBilling($results[0]['data'] ?? null) === 'self') {
+                $this->creditService->releaseReservedCredits($reservationRef);
+                $this->progress->recordEvent($task->id, 'credits_released', 'running', message: 'Priced by the engine itself; task hold released');
+                $reservationRef = null;
+            }
             if ($reservationRef && $reservationRef !== 'zero_cost') {
                 $this->creditService->commitReservedCredits($reservationRef);
                 $this->progress->recordEvent($task->id, 'credits_committed', 'running',
@@ -1722,7 +1734,8 @@ class Orchestrator
             // never happened. Detect a returned failure and propagate it so the
             // task is marked FAILED, not completed.
             $innerFailed = (isset($raw['success']) && $raw['success'] === false)
-                || (isset($raw['status']) && in_array(strtolower((string) $raw['status']), ['failed', 'error'], true));
+                || (isset($raw['status']) && in_array(strtolower((string) $raw['status']), ['failed', 'error'], true))
+                || \App\Core\Billing\CreditService::resultBilling($raw) === 'none';   // CREDIT-CERT-1: {type:error}, {error} and a delegated stub are not deliveries
             if ($innerFailed) {
                 $reason = $raw['error'] ?? $raw['message'] ?? 'action reported failure';
                 return [

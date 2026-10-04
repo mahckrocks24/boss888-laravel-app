@@ -1211,7 +1211,7 @@
     if (typeof window.studioVideoUseTemplate === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe13';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidcc1';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -1231,7 +1231,7 @@
     if (typeof window.studioVideoLoad === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe13';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidcc1';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -1249,7 +1249,7 @@
     if (typeof window.studioVideoOpenDesign === 'function') { go(); return; }
     var s = document.createElement('script');
     var bust = (window.LU_CFG && window.LU_CFG.version) || Date.now();
-    s.src = '/app/js/studio-video.js?v=' + bust + '-vidfe13';
+    s.src = '/app/js/studio-video.js?v=' + bust + '-vidcc1';
     s.onload = go;
     s.onerror = function(){ if (typeof showToast==='function') showToast('Failed to load video editor','error'); };
     document.head.appendChild(s);
@@ -1314,7 +1314,7 @@
             // Click reuses the existing /studio/ai/generate-image flow with the stored
             // prompt and replaces ONLY the hero image field. Hidden by default.
             '<div id="st-hero-cta" style="display:none;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px;padding:10px 14px;border:1px solid rgba(108,92,231,0.5);background:linear-gradient(90deg,rgba(108,92,231,0.18),rgba(108,92,231,0.06));border-radius:8px">' +
-              '<span style="font-size:13px;line-height:1.35">✦ <strong>Generate Matching AI Image</strong><br><span style="opacity:0.7;font-size:11px">Creates a hero image from your design prompt · Uses 1 image credit</span></span>' +
+              '<span style="font-size:13px;line-height:1.35">✦ <strong>Generate Matching AI Image</strong><br><span style="opacity:0.7;font-size:11px">Creates a hero image from your design prompt · 4 credits</span></span>' +
               '<button id="st-hero-cta-btn" style="background:#6C5CE7;border:1px solid #6C5CE7;color:#fff;padding:8px 14px;border-radius:6px;cursor:pointer;font:600 13px/1 inherit;white-space:nowrap" onclick="_st2GenerateHeroImage()">✦ Generate Matching AI Image</button>' +
             '</div>' +
             '<div class="st-chat-msgs" id="st-chat-msgs" style="display:none"></div>' +

@@ -753,7 +753,7 @@ use Illuminate\Support\Facades\Route;
                     return response()->json([
                         'success' => false,
                         'error'   => 'INSUFFICIENT_CREDITS',
-                        'message' => 'Top up to enrich more pages.',
+                        'message' => 'More credits come with a bigger plan or your monthly renewal.',
                     ], 402);
                 }
                 throw $e;
@@ -3158,7 +3158,7 @@ use Illuminate\Support\Facades\Route;
             if (!$credits->hasBalance($wsId, $cost)) {
                 return response()->json(['success' => false, 'error' => "Not enough credits — competitor analysis costs {$cost} credit.", 'required_credits' => $cost], 402);
             }
-            $credits->debit($wsId, $cost, 'seo/competitor_serp');
+            // CREDIT-CERT-1 (M1): charged below, only when competitors came back (was charged first, never refunded)
             $wsId = (int) $r->attributes->get('workspace_id');
             $data = $r->validate([
                 'keyword'       => 'required|string|max:200',
@@ -3211,10 +3211,12 @@ use Illuminate\Support\Facades\Route;
                 ];
             }
             usort($competitors, fn ($a, $b) => $a['rank'] <=> $b['rank']);
+            if (! empty($competitors)) { try { $credits->debit($wsId, $cost, 'seo/competitor_serp'); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CREDIT-CERT-1] competitor analyze charge failed', ['ws' => $wsId, 'e' => $e->getMessage()]); } }
 
             return response()->json([
                 'success'         => true,
                 'competitors'     => $competitors,
+                'credits_used'    => ! empty($competitors) ? $cost : 0,
                 'keyword'         => $data['keyword'],
                 'location_code'   => $locationCode,
                 'estimated_volume'=> $result['estimated_volume'] ?? null,
@@ -3238,7 +3240,7 @@ use Illuminate\Support\Facades\Route;
             if (!$credits->hasBalance($wsId, $cost)) {
                 return response()->json(['success' => false, 'error' => "Not enough credits — AI gap analysis costs {$cost} credits.", 'required_credits' => $cost], 402);
             }
-            $credits->debit($wsId, $cost, 'seo/competitor_gaps');
+            // CREDIT-CERT-1 (M1): charged below, only when gaps came back (was 3 credits even with no search data or a failed AI call)
             $wsId = (int) $r->attributes->get('workspace_id');
             $data = $r->validate(['keyword' => 'required|string|max:200']);
             $keyword = $data['keyword'];
@@ -3299,10 +3301,12 @@ use Illuminate\Support\Facades\Route;
                 ]);
             }
 
+            if (! empty($gaps)) { try { $credits->debit($wsId, $cost, 'seo/competitor_gaps'); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CREDIT-CERT-1] competitor gaps charge failed', ['ws' => $wsId, 'e' => $e->getMessage()]); } }
             return response()->json([
                 'success' => true,
                 'gaps'    => $gaps,
                 'keyword' => $keyword,
+                'credits_used' => ! empty($gaps) ? $cost : 0,
                 'message' => empty($gaps)
                     ? 'AI runtime returned no parseable gaps. Try a more specific keyword or re-run Analyze.'
                     : null,
@@ -3315,11 +3319,7 @@ use Illuminate\Support\Facades\Route;
         Route::post('/competitors/compare', function (\Illuminate\Http\Request $r) use ($locationFromString) {
             $wsId = (int) $r->attributes->get('workspace_id');
             $credits = app(\App\Core\Billing\CreditService::class);
-            $cost = 1;
-            if (!$credits->hasBalance($wsId, $cost)) {
-                return response()->json(['success' => false, 'error' => "Not enough credits — competitor compare costs {$cost} credit.", 'required_credits' => $cost], 402);
-            }
-            $credits->debit($wsId, $cost, 'seo/competitor_serp');
+            // CREDIT-CERT-1 (M1): the compare reads results already paid for by Analyze - it is free (was 1 credit)
             $wsId = (int) $r->attributes->get('workspace_id');
             $data = $r->validate([
                 'your_url' => 'required|string|max:500',

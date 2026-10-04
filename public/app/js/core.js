@@ -3362,7 +3362,7 @@ async function sendAgentMessage(quickAction, overrideMessage){
           nd.className = 'msg-from-agent msg-from-agent-notice';
           nd.style.alignSelf = 'flex-start';
           nd.innerHTML = '<div style="font-size:9px;font-weight:700;color:'+(ag402.color||'var(--t2)')+';margin-bottom:3px">'+_luEsc(ag402.name||currentAgent)+'</div>'+fmt(e.body.error||e.message)
-            + '<div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="if(window.nav)nav(\'billing\')">'+_luEsc(e.body.action_label||'Top up credits')+'</button></div>'
+            + '<div style="margin-top:8px"><button class="btn btn-primary btn-sm" onclick="if(window.nav)nav(\'billing\')">'+_luEsc(e.body.action_label||'See plans')+'</button></div>'
             + '<div class="msg-ts">'+new Date().toLocaleTimeString()+'</div>';
           feed402.appendChild(nd); feed402.scrollTop = feed402.scrollHeight;
         }
@@ -8610,7 +8610,7 @@ window._rotateWebhookSecret = async function _rotateWebhookSecret() {
         el.innerHTML = '<span style="font-weight:500">💬 5 chats = 1 credit · 0.2 cr each</span>';
         return;
       }
-      el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 10 chats toward next credit</span>';
+      el.innerHTML = '<span style="font-weight:500">💬 ' + c + ' / 5 messages toward the next credit</span>';
     });
   };
 

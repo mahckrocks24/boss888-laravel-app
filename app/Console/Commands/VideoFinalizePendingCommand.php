@@ -46,7 +46,14 @@ class VideoFinalizePendingCommand extends Command
         }
 
         $done = 0; $failed = 0; $still = 0;
+        // CREDIT-CERT-1 (G-D14): a render takes minutes; three hours "in progress" means it will never finish - fail and refund it
+        $stuck = DB::table('assets')->whereIn('id', $assetIds)->where('created_at', '<', now()->subHours(3))->pluck('id')->all();
         foreach ($assetIds as $assetId) {
+            if (in_array($assetId, $stuck, true)) {
+                try { $creative->expireStuckVideo((int) $assetId); $failed++; $this->line("  asset {$assetId} → expired and refunded"); }
+                catch (\Throwable $e) { Log::warning('[video:finalize-pending] expire failed', ['asset' => $assetId, 'error' => $e->getMessage()]); }
+                continue;
+            }
             try {
                 $res    = $creative->pollVideoJob((int) $assetId);
                 $status = $res['status'] ?? 'unknown';

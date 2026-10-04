@@ -69,13 +69,14 @@ use Illuminate\Support\Facades\Route;
             }
             $creditSvc = app(\App\Core\Billing\CreditService::class);
             $balance = (int) ($creditSvc->getBalance($wsId)['available'] ?? 0); // AEO-1b: pooled balance
-            if ($balance < 1) {
+            $__price = \App\Core\EngineKernel\CapabilityMapService::imageCreditsFor('mini');   // CREDIT-CERT-1: 2 (PRICE-1), was 1
+            if ($balance < $__price) {
                 return response()->json([
                     'success' => false, 'error' => 'insufficient_credits',
-                    'required_credits' => 1, 'available' => $balance,
+                    'required_credits' => $__price, 'available' => $balance,
                 ], 402);
             }
-            $reservation = $creditSvc->reserveCredits($wsId, 1, 'Article', $articleId, 'gen_img_' . uniqid());
+            $reservation = $creditSvc->reserveCredits($wsId, $__price, 'Article', $articleId, 'gen_img_' . uniqid());
             $reservationRef = $reservation->reservation_reference;
             try {
                 $result = app(\App\Engines\Creative\Services\CreativeService::class)
@@ -86,13 +87,13 @@ use Illuminate\Support\Facades\Route;
                     ]);
                 $imgUrl = $result['url'] ?? $result['featured_image_url'] ?? null;
                 if ($imgUrl) {
-                    $creditSvc->commit($wsId, $reservationRef, 1);
+                    $creditSvc->commit($wsId, $reservationRef, $__price);
                     return response()->json([
                         'success' => true,
                         'image_url' => $imgUrl,
                         'image_alt' => $result['featured_image_alt'] ?? null,
-                        'credits_used' => 1,
-                        'credits_remaining' => max(0, $balance - 1),
+                        'credits_used' => $__price,
+                        'credits_remaining' => max(0, $balance - $__price),
                     ]);
                 }
                 $creditSvc->release($wsId, $reservationRef);

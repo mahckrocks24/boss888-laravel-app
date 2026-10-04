@@ -94,8 +94,8 @@ class CreditIntegrityTest extends TestCase
             'amount' => 50,
             'reservation_status' => 'pending',
             'reservation_reference' => 'rsv_orphan',
-            'created_at' => now()->subHour(),
         ]);
+        \Illuminate\Support\Facades\DB::table('credit_transactions')->where('reservation_reference', 'rsv_orphan')->update(['created_at' => now()->subHour()]);
 
         // Manually increment reserved_balance to simulate
         $credit = $this->getCredit();

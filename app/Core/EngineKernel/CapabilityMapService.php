@@ -61,7 +61,7 @@ class CapabilityMapService
         'dismiss_link'        => ['engine'=>'seo',       'connector'=>null,       'action'=>'dismiss_link',        'approval_mode'=>'auto',      'credit_cost'=>0],
         'outbound_links'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'outbound_links',      'approval_mode'=>'auto',      'credit_cost'=>2],
         'check_outbound'      => ['engine'=>'seo',       'connector'=>null,       'action'=>'check_outbound',      'approval_mode'=>'auto',      'credit_cost'=>2],
-        'autonomous_goal'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'autonomous_goal',     'approval_mode'=>'protected', 'credit_cost'=>5],
+        'autonomous_goal'     => ['engine'=>'seo',       'connector'=>null,       'action'=>'autonomous_goal',     'approval_mode'=>'protected', 'credit_cost'=>0],   // CREDIT-CERT-1: records a goal; the work it leads to is priced per action
         'agent_status'        => ['engine'=>'seo',       'connector'=>null,       'action'=>'agent_status',        'approval_mode'=>'auto',      'credit_cost'=>0],
         'list_goals'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'list_goals',          'approval_mode'=>'auto',      'credit_cost'=>0],
         'pause_goal'          => ['engine'=>'seo',       'connector'=>null,       'action'=>'pause_goal',          'approval_mode'=>'auto',      'credit_cost'=>0],
@@ -88,7 +88,7 @@ class CapabilityMapService
         // Re-added by Wave 23 in error; see the Phase 2A removal note below. Reversible — uncomment to restore.
         // 'upscale_image'       => ['engine'=>'creative',  'connector'=>'creative', 'action'=>'upscale_image',       'approval_mode'=>'auto',      'credit_cost'=>1],
         'social_ai_post'      => ['engine'=>'social',    'connector'=>null,       'action'=>'social_ai_post',      'approval_mode'=>'review',    'credit_cost'=>4],
-        'social_image'        => ['engine'=>'social',    'connector'=>'creative', 'action'=>'social_image',        'approval_mode'=>'auto',      'credit_cost'=>1],
+        'social_image'        => ['engine'=>'social',    'connector'=>'creative', 'action'=>'social_image',        'approval_mode'=>'auto',      'credit_cost'=>4],   // CREDIT-CERT-1: an image is 4 (PRICE-1)
         'hashtag_suggestions' => ['engine'=>'social',    'connector'=>null,       'action'=>'hashtag_suggestions', 'approval_mode'=>'auto',      'credit_cost'=>1],
         'ai_followup_draft'   => ['engine'=>'crm',       'connector'=>null,       'action'=>'ai_followup_draft',   'approval_mode'=>'review',    'credit_cost'=>1],
         // Sarah × CRM Phase 1 — generate_outreach is the lead-stage entry point (Elena drafts cold outreach) /* b5-crm-capmap */
@@ -347,9 +347,29 @@ class CapabilityMapService
     public const VIDEO_10S_CREDITS = 52;
 
     /** The charge for one run of $action with these params — the one place a price depends on the request. */
+    /** CREDIT-CERT-1 (D8/D9): the two video lengths we sell. Missing = 6 s, anything 10 s or longer = 10 s (was: priced 6 s, made 10 s or 30 s). */
+    public static function videoSeconds(array $params): int
+    {
+        return (int) ($params['duration'] ?? 0) >= 10 ? 10 : 6;
+    }
+
+    /**
+     * CREDIT-CERT-1: the ONE image price, by the tier the customer asked for - mini 2, standard 4, high 21 (PRICE-1).
+     * Every self-billing image path (ImageIntelligenceService, RecipePainter) prices through here; they had their own
+     * 1/2/4 ladder keyed to the provider's quality knob, so a Studio image quoted at 4 was charged 1 or 2.
+     */
+    public static function imageCreditsFor(?string $tier): int
+    {
+        $t = strtolower(trim((string) $tier));
+        $map = app(self::class);
+        if (in_array($t, ['mini', 'low', 'draft'], true)) return $map->getCreditCost('generate_image_mini');
+        if (in_array($t, ['high', 'premium', 'hd'], true)) return $map->getCreditCost('generate_image_high');
+        return $map->getCreditCost('generate_image');
+    }
+
     public function creditCostFor(string $action, array $params = []): int
     {
-        if ($action === 'generate_video' && (int) ($params['duration'] ?? 0) === 10) return self::VIDEO_10S_CREDITS;
+        if ($action === 'generate_video' && self::videoSeconds($params) === 10) return self::VIDEO_10S_CREDITS;
         return $this->getCreditCost($action);
     }
 

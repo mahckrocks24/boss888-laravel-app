@@ -165,7 +165,7 @@ class AriaService
         $top = $passages[0];
         $text = '**' . $top['title'] . "**\n" . $top['text'];
         if ($mode === 'out_of_credits') {
-            $text .= "\n\nThis workspace has no credits left, so this is the documentation answer without a conversation. Chat is 1 credit for every 5 messages; top up under **Billing**.";
+            $text .= "\n\nThis workspace has no credits left, so this is the documentation answer without a conversation. Chat is 1 credit for every 5 messages; more credits come with a bigger plan or your monthly renewal (**Billing**).";
         }
         $followups = [];
         foreach (array_slice($passages, 1, 3) as $p) $followups[] = $p['title'];

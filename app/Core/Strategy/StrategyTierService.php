@@ -22,12 +22,13 @@ use Illuminate\Support\Facades\Redis;
 class StrategyTierService
 {
     // ── Per-asset credit costs ────────────────────────────────────────
-    public const COST_ARTICLE_CHAIN     = 3;   // write + meta + image + links + AEO bundled
-    public const COST_AUTOSHARE_PER_PLATFORM = 0.5;  // caption only (image from article)
-    public const COST_SOCIAL_IMAGE      = 1;   // image generation only (caption added per platform)
-    public const COST_CAPTION_PER_PLATFORM = 1; // per-platform tailored caption
-    public const COST_VIDEO             = 8;   // video file gen
-    public const COST_EMAIL             = 1;   // subject + body
+    // CREDIT-CERT-1 (2026-10-04): the prices the code charges (PRICE-1). Were 3 / 0.5 / 1 / 1 / 8 / 1 from before PRICE-1.
+    public const COST_ARTICLE_CHAIN     = 2;   // the article, with its featured image
+    public const COST_AUTOSHARE_PER_PLATFORM = 1;  // share caption per platform (image from article)
+    public const COST_SOCIAL_IMAGE      = 4;   // a social post draft with its image
+    public const COST_CAPTION_PER_PLATFORM = 2; // publishing it, per platform
+    public const COST_VIDEO             = 28;  // a 6-second video
+    public const COST_EMAIL             = 3;   // an AI-written email
     public const COST_AUDIT             = 3;
     public const COST_STRATEGY_MEETING  = 8;
     public const COST_RETARGETING_REFRESH = 6;
@@ -50,7 +51,7 @@ class StrategyTierService
                 'slug' => self::TIER_NORMAL,
                 'name' => 'Normal',
                 'tagline' => 'Steady professional baseline',
-                'description' => 'Consumes the full Growth $99 / 300cr allowance. Sustainable; builds compound SEO authority over months.',
+                'description' => 'Steady baseline that fits a Growth allowance (about 480 credits a month). Sustainable; builds compound SEO authority over months.',
                 'cadence' => [
                     'articles_per_month'       => 24,
                     'standalone_socials_per_month' => 12,
@@ -69,7 +70,7 @@ class StrategyTierService
                 'slug' => self::TIER_AGGRESSIVE,
                 'name' => 'Aggressive',
                 'tagline' => 'Active growth campaign',
-                'description' => 'For users targeting visible rank gains within one quarter. Fits Pro $199; Growth users need a +300cr top-up.',
+                'description' => 'For users targeting visible rank gains within one quarter. Fits a Pro allowance (about 1,050 credits a month).',
                 'cadence' => [
                     'articles_per_month'       => 50,
                     'standalone_socials_per_month' => 30,
@@ -89,7 +90,7 @@ class StrategyTierService
                 'slug' => self::TIER_SUPER_AGGRESSIVE,
                 'name' => 'Super Aggressive',
                 'tagline' => 'Agency-equivalent push',
-                'description' => 'Pro / Agency tier territory. Growth users would need a 1,200cr top-up — recommend upgrade instead.',
+                'description' => 'Agency-equivalent push (about 2,100 credits a month): the top of a Pro allowance, comfortable on Agency.',
                 'cadence' => [
                     'articles_per_month'       => 90,
                     'standalone_socials_per_month' => 60,
@@ -256,7 +257,7 @@ class StrategyTierService
         } elseif ($pct <= 85) {
             $reason .= ", which uses your allowance fully but stays within budget.";
         } else {
-            $reason .= " — this will require either a top-up or upgrade to sustain.";
+            $reason .= " — this needs a bigger plan to sustain (credits come with the plan; there are no top-ups).";
         }
         return $reason;
     }
@@ -360,16 +361,17 @@ class StrategyTierService
                 . "Expected: {$t['expected_outcome']}\n";
         }
         $p .= "\nPER-ASSET COSTS (use these for any credit math):\n";
-        $p .= "  - Article (full chain): 3cr bundled\n";
-        $p .= "  - Auto-share to socials: 0.5cr per connected platform (caption only)\n";
-        $p .= "  - Standalone social: 1cr image + 1cr per platform caption\n";
-        $p .= "  - Video post: 8cr video + 1cr per platform caption\n";
-        $p .= "  - Email: 1cr. Audit: 3cr. Strategy meeting: 8cr. Retargeting refresh: 6cr.\n";
+        $p .= "  - Article (with its featured image): " . self::COST_ARTICLE_CHAIN . "cr\n";
+        $p .= "  - Auto-share to socials: " . self::COST_AUTOSHARE_PER_PLATFORM . "cr per connected platform (caption)\n";
+        $p .= "  - Standalone social: " . self::COST_SOCIAL_IMAGE . "cr post draft with image + " . self::COST_CAPTION_PER_PLATFORM . "cr to publish, per platform\n";
+        $p .= "  - Video post: " . self::COST_VIDEO . "cr for 6 seconds (52cr for 10 seconds) + " . self::COST_CAPTION_PER_PLATFORM . "cr to publish, per platform\n";
+        $p .= "  - Email: " . self::COST_EMAIL . "cr. Audit: " . self::COST_AUDIT . "cr. Strategy meeting: " . self::COST_STRATEGY_MEETING . "cr. Retargeting refresh: " . self::COST_RETARGETING_REFRESH . "cr.\n";
+        $p .= "  - Chat: 1cr per 5 messages. Credits come with the plan each month; there are NO top-ups.\n";
 
         $p .= "\nRECOMMENDATION RULES when user expresses an ambitious goal:\n";
         $p .= "  1. Quote realistic TIMELINE (Normal 6-12mo, Aggressive 3-6mo, Super Aggressive 2-4mo) — never promise faster.\n";
         $p .= "  2. Recommend the tier that fits the user's plan with >=15% headroom (use computeMonthlyBurn against plan_credit_limit).\n";
-        $p .= "  3. If user wants a higher tier than plan supports, offer BOTH options transparently: top-up (per-credit cost) vs upgrade (next plan). State which is better value at sustained use.\n";
+        $p .= "  3. If user wants a higher tier than plan supports, recommend the plan that covers it (there are no top-ups; credits come with the plan) or a lighter cadence on the current plan.\n";
         $p .= "  4. ASK the user for cadence overrides within the chosen tier — they may want 2/wk articles instead of the default 6/wk.\n";
         $p .= "  5. Quote ALL hard disclaimers below before locking the tier.\n";
 

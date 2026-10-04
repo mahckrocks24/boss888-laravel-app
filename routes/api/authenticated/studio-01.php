@@ -66,6 +66,8 @@ use Illuminate\Support\Facades\Route;
             $wsId   = $r->attributes->get('workspace_id');
             $engine = $r->input('engine', 'creative');
             $type   = $r->input('type', 'content');
+            // CREDIT-CERT-1 (D10): images and videos are made only through the priced, plan-gated routes (this door charged nothing)
+            if (in_array($type, ['image', 'video'], true)) return response()->json(['success' => false, 'error' => 'Images and videos are made in the Studio.'], 422);
             return response()->json(app($s)->generateThroughBlueprint($engine, $type, $wsId, $r->except(['engine', 'type'])));
         });
 
@@ -86,7 +88,11 @@ use Illuminate\Support\Facades\Route;
         })->middleware('throttle:20,1');
 
         // Video job polling
-        Route::get('/assets/{id}/poll', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->pollVideoJob((int) $id)));
+        Route::get('/assets/{id}/poll', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            // CREDIT-CERT-1 (G-D15): only the workspace that owns the video can drive it (was any signed-in user, any video)
+            if ((int) \Illuminate\Support\Facades\DB::table('assets')->where('id', (int) $id)->value('workspace_id') !== (int) $r->attributes->get('workspace_id')) return response()->json(['status' => 'not_found'], 404);
+            return response()->json(app($s)->pollVideoJob((int) $id));
+        });
 
         // STUDIO888 Phase O — masked/local prompt edit (through the kernel: credit
         // reserve/commit/release + idempotency + workspace scoping). Creates a
@@ -172,7 +178,10 @@ use Illuminate\Support\Facades\Route;
         });
 
         // ── Video job status (creative-engine.js polls this path) ──
-        Route::get('/video/jobs/{id}/status', fn(\Illuminate\Http\Request $r, $id) => response()->json(app($s)->pollVideoJob((int) $id)));
+        Route::get('/video/jobs/{id}/status', function (\Illuminate\Http\Request $r, $id) use ($s) {
+            if ((int) \Illuminate\Support\Facades\DB::table('assets')->where('id', (int) $id)->value('workspace_id') !== (int) $r->attributes->get('workspace_id')) return response()->json(['status' => 'not_found'], 404);   // CREDIT-CERT-1 (G-D15)
+            return response()->json(app($s)->pollVideoJob((int) $id));
+        });
 
         // ── Website scan (creative-engine.js advanced feature) ──
         Route::post('/scan-url', function (\Illuminate\Http\Request $r) {

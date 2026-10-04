@@ -73,7 +73,7 @@ class ManualExecutionController
             'payload' => $resolution['params'],
             'source' => 'manual',
             'priority' => $data['priority'] ?? 'normal',
-            'credit_cost' => $capability['credit_cost'],
+            'credit_cost' => app(\App\Core\EngineKernel\CapabilityMapService::class)->creditCostFor($action, (array) $resolution['params']),   // CREDIT-CERT-1: 10 s video = 52 here too
         ]);
 
         // 5. Return task status

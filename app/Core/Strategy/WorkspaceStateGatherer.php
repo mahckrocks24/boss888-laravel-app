@@ -133,7 +133,7 @@ class WorkspaceStateGatherer
     private function readTierState(int $wsId): array
     {
         $active = StrategyTierService::getActiveStrategy($wsId);
-        $balance = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $balance = (int) ((app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0);
         $planLimit = (int) (DB::table('subscriptions')
             ->join('plans', 'subscriptions.plan_id', '=', 'plans.id')
             ->where('subscriptions.workspace_id', $wsId)

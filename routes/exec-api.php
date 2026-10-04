@@ -98,6 +98,9 @@ Route::prefix('exec-api')
                 'content'         => 'required|string|max:5000',
                 'conversation_id' => 'nullable',
             ]);
+            // CREDIT-CERT-1 (C-D7): metered and plan-checked like every Sarah message (was neither)
+            $__m = app(\App\Core\Billing\CreditService::class)->meterChat((int) $r->attributes->get('workspace_id'), 'agent_message');
+            if (empty($__m['sufficient'])) return response()->json(['success' => false, 'reason' => $__m['reason'] ?? 'insufficient_credits', 'error' => (($__m['reason'] ?? '') === 'plan_required') ? 'Your plan does not include Sarah and the AI team.' : 'Out of credits. One credit covers 5 messages.'], 402);
             $service = app(\App\Core\Agent\AgentDispatchService::class);
             return response()->json($service->dispatch(
                 $r->attributes->get('workspace_id'),

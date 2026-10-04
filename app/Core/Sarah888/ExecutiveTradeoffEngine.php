@@ -42,7 +42,7 @@ class ExecutiveTradeoffEngine
         $failedWk  = (int) (clone $t())->where('status', 'failed')->where('created_at', '>', $wk)->count();
         $doneWk    = (int) (clone $t())->where('status', 'completed')->where('created_at', '>', $wk)->count();
         $open      = (int) (clone $t())->whereIn('status', ['pending', 'awaiting_approval'])->count();
-        $balance   = (int) (DB::table('credits')->where('workspace_id', $wsId)->value('balance') ?? 0);
+        $balance   = (int) ((app(\App\Core\Billing\CreditService::class)->getBalance((int) $wsId)['available'] ?? 0) ?? 0);
 
         $price = function (string $action): int {
             try { return max(1, (int) app(\App\Core\EngineKernel\CapabilityMapService::class)

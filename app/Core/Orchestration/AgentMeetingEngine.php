@@ -177,8 +177,14 @@ class AgentMeetingEngine
             'created_at' => now(), 'updated_at' => now(),
         ]);
 
-        // Start the meeting — Round 1: Sarah opens
-        $this->runOpening($meeting, $workspace, $goal, $agentSlugs);
+        // Start the meeting — Round 1: Sarah opens. CREDIT-CERT-1 (M6): an opening that throws releases the hold at once
+        try {
+            $this->runOpening($meeting, $workspace, $goal, $agentSlugs);
+        } catch (\Throwable $e) {
+            if ($reservationRef) { try { $this->creditService->release($wsId, $reservationRef); } catch (\Throwable $ignored) {} }
+            try { $meeting->update(['status' => 'closed', 'total_credits_used' => 0]); } catch (\Throwable $ignored) {}
+            throw $e;
+        }
 
         return [
             'meeting_id' => $meeting->id,
@@ -317,6 +323,11 @@ class AgentMeetingEngine
         $meeting = Meeting::findOrFail($meetingId);
         if ($meeting->status !== 'active') {
             return ['error' => 'Meeting is not active'];
+        }
+        // CREDIT-CERT-1 (C-D6): every message into the meeting is metered like any chat (1 credit per 5); was free after the start
+        $__m = app(\App\Core\Billing\CreditService::class)->meterChat((int) $meeting->workspace_id, 'agent_message');
+        if (empty($__m['sufficient'])) {
+            return ['error' => (($__m['reason'] ?? '') === 'plan_required') ? 'Your plan does not include the AI team.' : 'Out of credits. One credit covers 5 messages; you get more at your monthly renewal or by upgrading your plan.', 'reason' => $__m['reason'] ?? 'insufficient_credits'];
         }
 
         $meta = json_decode($meeting->metadata_json, true);
@@ -674,9 +685,11 @@ class AgentMeetingEngine
         $creditCost     = (int) ($meta['credit_cost'] ?? 0);
 
         // Phase 3 fix — commit the reserved credits on completion.
+        $__committed = 0;
         if ($reservationRef && $creditCost > 0) {
             try {
-                $this->creditService->commit($meeting->workspace_id, $reservationRef, $creditCost);
+                $__c = $this->creditService->commitReservedCredits($reservationRef);   // CREDIT-CERT-1: null = the hold was already settled
+                $__committed = $__c ? (int) $__c->amount : 0;
             } catch (\Throwable $e) {
                 // Reservation may already be committed/released (race, duplicate call).
                 // Log but don't fail the meeting completion.
@@ -691,7 +704,7 @@ class AgentMeetingEngine
         $meeting->update([
             'status'             => 'closed',
             // ss: what was actually committed from the reservation — the ledger figure, not an estimate.
-            'total_credits_used' => ($reservationRef && $creditCost > 0) ? $creditCost : 0,
+            'total_credits_used' => $__committed,   // CREDIT-CERT-1: the ledger figure (was the price even when nothing was committed)
         ]);
 
         $this->proposePlan($meeting);   // MANDATE-1

@@ -140,7 +140,7 @@ final class BuilderCapabilities
             . "- Copy edits on an existing page: " . $p['text_edit'] . " credit.\n"
             . "- Design changes (colours, palette, gradients, fonts, overall style): " . $p['style'] . " credit. A colour or gradient can be aimed at one part: the header, the footer, the hero, the buttons, one named section, one named element ('make the listings section a gradient of purple and pink', 'make the Ask about a property button white').\n"
             . "- Elements on a page (" . $p['element_move'] . " credit each): move a text, button or photo up/down/top/bottom within its section, before/after or swapped with another element of the same section; align it left/centre/right; make it bigger/smaller (photos by width, text and buttons by size); opacity, shadow, glow on one element; a dark or light overlay on a section background; LINK a button, a text or the logo to a page, a section, a web address, a phone number or an email (or remove the link); how a PHOTO sits in its frame — fill or show the whole picture, which part stays in view, its width in percent, or a crop.\n"
-            . "- In the editor the customer can do every element change above by hand, free: click a text, button or photo for its toolbox (move, align, size, effects, link; photos: fit / focus / width / crop); double-click text to edit it; long-press a link or menu item to follow or edit it; Add page and Add section pickers; Colours and Fonts panels. Only Arthur's work costs credits.\n"
+            . "- In the editor the customer can do every element change above by hand, free: click a text, button or photo for its toolbox (move, align, size, effects, link; photos: fit / focus / width / crop); double-click text to edit it; long-press a link or menu item to follow or edit it; Colours and Fonts panels. The Add page picker (" . $p['page'] . " credits) and Add section picker (" . $p['section'] . " credits) are Arthur's work and priced. Only Arthur's work costs credits.\n"
             . "- Sections of the home page: move before/after another section, to the top or the bottom; hide or show a section (" . $p['section_move'] . " credit).\n"
             . "- Catalogue items — listings, services, menu items, plans, rooms, vehicles, programmes, events, sessions, projects (" . $p['catalogue'] . " credit each): add, change the price, mark the status (for sale / sold / under offer …), rename, remove, restore; they appear on the site's own pages.\n"
             . "- Tracking ids (free): Google Analytics, Tag Manager, Meta and TikTok pixels on every page.\n"
@@ -182,8 +182,8 @@ final class BuilderCapabilities
             $p = self::pricing();
             return "I edit this website for you. I can rewrite any text on the page ("
                  . (int) ($p['text_edit'] ?? 1) . " credit), change the colours or styling ("
-                 . (int) ($p['style'] ?? 1) . " credit), add or remove a section ("
-                 . (int) ($p['section'] ?? 2) . " credits) and add a whole page ("
+                 . (int) ($p['style'] ?? 1) . " credit), add a section ("
+                 . (int) ($p['section'] ?? 2) . " credits) or remove one (1 credit), and add a whole page ("
                  . (int) ($p['page'] ?? 5) . " credits). I can also move, align, resize, link or restyle one element, and set how a photo fits its frame. "
                  . "Or click any element in the editor and use its toolbox yourself — that is free. Say what you want in plain words — "
                  . "for example \"change the headline to Welcome to Raymundo Realty\" or \"make the buttons green\".";

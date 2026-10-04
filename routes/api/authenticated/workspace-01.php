@@ -109,7 +109,8 @@ use Illuminate\Support\Facades\Route;
         $__onTrial = ! empty($__trial['active']);
         return response()->json([
             'workspace' => $ws, 'plan' => $planRules,
-            'credit_balance' => $credit?->balance ?? 0,
+            'credit_balance' => max(0, (int) ($credit?->balance ?? 0) - (int) ($credit?->reserved_balance ?? 0)),   // CREDIT-CERT-1 (M10): spendable now
+            'credit_held' => (int) ($credit?->reserved_balance ?? 0),
             'monthly_credit_limit' => $__onTrial ? (int) ($__trial['trial_credits'] ?? $planRules['credit_limit']) : $planRules['credit_limit'],
             'is_trial' => $__onTrial,
             'trial_expires_at' => $__onTrial ? ($__trial['expires_at'] ?? null) : null,
@@ -133,7 +134,8 @@ use Illuminate\Support\Facades\Route;
         $planRules = app(\App\Core\PlanGating\PlanGatingService::class)->getPlanRules($wsId);
         $used = \App\Models\CreditTransaction::where('workspace_id', $wsId)->where('type', 'commit')->sum('amount');
         return response()->json([
-            'credit_balance' => $credit?->balance ?? 0,
+            'credit_balance' => max(0, (int) ($credit?->balance ?? 0) - (int) ($credit?->reserved_balance ?? 0)),   // CREDIT-CERT-1 (M10)
+            'credit_held' => (int) ($credit?->reserved_balance ?? 0),
             'monthly_limit' => $planRules['credit_limit'],
             'plan_name' => $planRules['plan_name'],
             'lifetime_used' => abs($used),
@@ -143,7 +145,7 @@ use Illuminate\Support\Facades\Route;
     Route::get('/workspace/credits/transactions', function (\Illuminate\Http\Request $r) {
         $wsId = $r->attributes->get('workspace_id');
         $txns = \App\Models\CreditTransaction::where('workspace_id', $wsId)
-            ->orderByDesc('created_at')->limit($r->input('limit', 20))->get();
+            ->orderByDesc('created_at')->limit(max(1, min(100, (int) $r->input('limit', 20))))->get();   // CREDIT-CERT-1: bounded
         return response()->json(['transactions' => $txns]);
     });
 

@@ -49,7 +49,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'AI Lite', 'slug' => 'ai-lite',
                 'price' => 49.00, 'billing_period' => 'monthly',
-                'credit_limit' => 50,
+                'credit_limit' => 300,   // CREDIT-CERT-1: = the live plans table (PRICE-1)
                 'ai_access' => 'research', 'includes_dmm' => false,
                 'agent_count' => 0, 'agent_level' => null, 'agent_addon_price' => null,
                 'max_websites' => 1, 'max_team_members' => 3,
@@ -67,7 +67,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Growth', 'slug' => 'growth',
                 'price' => 99.00, 'billing_period' => 'monthly',
-                'credit_limit' => 300,
+                'credit_limit' => 900,
                 'ai_access' => 'full', 'includes_dmm' => true,
                 'agent_count' => 2, 'agent_level' => 'specialist', 'agent_addon_price' => 20.00,
                 'max_websites' => 3, 'max_team_members' => 5,
@@ -85,7 +85,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Pro', 'slug' => 'pro',
                 'price' => 199.00, 'billing_period' => 'monthly',
-                'credit_limit' => 900,
+                'credit_limit' => 2500,
                 'ai_access' => 'full', 'includes_dmm' => true,
                 'agent_count' => 5, 'agent_level' => 'junior', 'agent_addon_price' => 20.00,
                 'max_websites' => 10, 'max_team_members' => 10,
@@ -103,7 +103,7 @@ class PlanSeeder extends Seeder
             [
                 'name' => 'Agency', 'slug' => 'agency',
                 'price' => 399.00, 'billing_period' => 'monthly',
-                'credit_limit' => 2500,
+                'credit_limit' => 10000,
                 'ai_access' => 'full', 'includes_dmm' => true,
                 'agent_count' => 10, 'agent_level' => 'senior', 'agent_addon_price' => 10.00,
                 'max_websites' => 50, 'max_team_members' => 999,

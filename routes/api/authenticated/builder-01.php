@@ -663,7 +663,7 @@ use Illuminate\Support\Facades\Route;
                 $result['themes'] = $arthur->themesFor((array) $result['build_data'], 4);
                 $result['themes_all'] = array_map(fn($t) => array_diff_key($t, ['moods' => 1, 'industries' => 1]), \App\Engines\Builder\Support\ColorTheme::all());
             }
-            if (! empty($__meter['debited']) && is_array($result) && ! empty($result['reply'])) { $result['chat_meter'] = 1; $result['reply'] = rtrim((string) $result['reply']) . ' (1 credit — every 10th chat message)'; }
+            if (! empty($__meter['debited']) && is_array($result) && ! empty($result['reply'])) { $result['chat_meter'] = 1; $result['reply'] = rtrim((string) $result['reply']) . ' (1 credit — every 5th chat message)'; }
             return response()->json($result);
         });
 

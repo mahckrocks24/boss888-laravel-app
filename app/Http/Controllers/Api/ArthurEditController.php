@@ -96,16 +96,15 @@ class ArthurEditController
         // runtime call (cost-gating doc), commit only on a real applied edit,
         // release on no-op/failure. (The agent path is metered separately by
         // EngineExecutionService via the ai_builder_action capability = 1cr.)
+        // CREDIT-CERT-1 (B-D3): no hold here any more - most requests are priced by Arthur himself, and a 1-credit hold made
+        // a 2-credit section unaffordable on a balance of 2. The cheapest change costs 1: check that, charge after.
         $credits = app(\App\Core\Billing\CreditService::class);
         $reservationRef = null;
-        try {
-            $rsv = $credits->reserveCredits($wsId, 1, 'arthur_edit', $pageId);
-            $reservationRef = $rsv->reservation_reference;
-        } catch (\Throwable $e) {
+        if (! $credits->hasBalance($wsId, 1)) {
             return response()->json([
                 'error'            => 'insufficient_credits',
                 'required_credits' => 1,
-                'message'          => 'Not enough credits to edit (1 credit per change).',
+                'message'          => 'Not enough credits for Arthur to make changes. Your own edits in the editor are free; more credits come with a bigger plan or your monthly renewal.',
             ], 402);
         }
 
@@ -120,14 +119,12 @@ class ArthurEditController
                                'user_id'   => (int) ($request->attributes->get('user_id') ?? optional($request->user())->id ?? 0) ?: null],
             );
             if (!empty($result['delegated'])) {
-                // STRESS 2026-09-06: Arthur already priced pages/sections/edits himself — never bill the reservation on top
-                $credits->releaseReservedCredits($reservationRef);
+                // STRESS 2026-09-06: Arthur already priced pages/sections/edits himself — never bill on top
                 $result['credits_used'] = (int) ($result['credits'] ?? 0);
             } elseif (($result['success'] ?? false) && (int) ($result['actions_applied'] ?? 0) > 0) {
-                $credits->commitReservedCredits($reservationRef);
-                $result['credits_used'] = 1;
+                try { $credits->debit($wsId, 1, 'arthur_edit', $pageId); $result['credits_used'] = 1; }
+                catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CREDIT-CERT-1] arthur edit charge failed after apply', ['ws' => $wsId, 'page' => $pageId, 'e' => $e->getMessage()]); $result['credits_used'] = 0; }
             } else {
-                $credits->releaseReservedCredits($reservationRef);
                 $result['credits_used'] = 0;
             }
             // RISK-0100 — return the post-edit optimistic-lock token so the editor can

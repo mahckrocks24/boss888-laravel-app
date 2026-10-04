@@ -129,13 +129,14 @@ final class RuntimeNativeTurn
         // cannot pay does not first consume Runtime inference. And metered exactly once:
         // legacy never executes for a turn this adapter answers.
         $meter = app(\App\Core\Billing\CreditService::class)->meterChat($wsId, 'agent_message');
+        app()->instance('sarah.chat_meter', $meter);   // CREDIT-CERT-1 (C-D1): the legacy fallback reuses this count, never meters again
         if (!($meter['sufficient'] ?? true)) {
             // The owner's message is already saved by the route above. Same words legacy
             // uses, because a billing state is not the moment to invent new copy.
             $planGate = ($meter['reason'] ?? '') === 'plan_required';   // SARAH-GATE-1
             $text = $planGate ? \App\Core\Billing\SarahPaused::text($wsId)
                   : "I can't reply just yet — this workspace is out of credits. "
-                  . "Your message is saved, so top up and I'll pick straight up from here.";
+                  . "Your message is saved: when credits come back (a bigger plan, or your monthly renewal) I'll pick straight up from here.";
             $this->persist($wsId, $agentSlug, $agentName, $text,
                 array_merge($corr, ['phase' => 'final', 'error' => ! $planGate,
                                     'reason' => $planGate ? 'plan_required' : 'insufficient_credits', 'runtime_native' => true]));
@@ -143,7 +144,7 @@ final class RuntimeNativeTurn
                 'success' => false,
                 'error'   => "This workspace is out of credits, so {$agentName} can't reply right now. "
                            . "Your message has been saved — add credits and she'll continue from where you left off.",
-                'reason'        => 'insufficient_credits',
+                'reason'        => $planGate ? 'plan_required' : 'insufficient_credits',   // CREDIT-CERT-1 (C-D3): say which
                 'message_saved' => true,
                 'chat_counter'  => $meter['counter'] ?? 0,
                 'runtime_native' => true,

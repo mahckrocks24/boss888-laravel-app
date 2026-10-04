@@ -42,7 +42,7 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
 <section class="section-tight">
   <div class="container narrow prose">
     <h2>What 50 credits buy</h2>
-    <p>Credits are the meter for the team's work. A first website draft is 10 credits, a new page 5, a new section 2 and a change to text, style or media 1; edits you make yourself in the editor are free. Images are 1, 2 or 4 credits by quality, and a short video is 28 credits for 6 seconds. Talking with Sarah costs 1 credit for every five messages. Fifty credits is enough to build your site, meet the team and see real work come back for your approval.</p>
+    <p>Credits are the meter for the team's work. A first website draft is 10 credits, a new page 5, a new section 2 and a change to text, style or media 1; edits you make yourself in the editor are free. An image is 4 credits (2 for a quick draft, 21 for high quality), and a short video is 28 credits for 6 seconds. Talking with Sarah costs 1 credit for every five messages. Fifty credits is enough to build your site, meet the team and see real work come back for your approval.</p>
     <h2>How the trial ends</h2>
     <p>The trial ends when the 50 credits are spent or three days pass, whichever comes first. Your account then continues on the Free plan until you choose another one. You can choose a plan at any time, before or after the trial ends.</p>
   </div>
