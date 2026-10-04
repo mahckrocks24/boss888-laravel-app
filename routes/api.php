@@ -2414,7 +2414,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand'])->group(fun
         return response()->json($stripe->changePlan(
             $r->attributes->get('workspace_id'), (int) $r->input('plan_id'), $r->user()->id
         ));
-    });
+    })->middleware('team.role:admin');   // BILL-2: only an owner or admin changes the plan
 
     Route::get('/billing/portal', function (\Illuminate\Http\Request $r) {
         $stripe = app(\App\Core\Billing\StripeService::class);

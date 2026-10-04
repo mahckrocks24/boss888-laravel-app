@@ -573,40 +573,78 @@ class StripeService
      */
     public function changePlan(int $workspaceId, int $newPlanId, int $userId): array
     {
+        // BILL-2: one plan switch for every case. An upgrade starts now and charges only the difference for the rest of the period
+        // (Stripe proration, invoiced at once; if the card does not pay, Stripe keeps the old plan and we return the invoice to pay).
+        // A downgrade starts at the next renewal: the price changes in Stripe without proration and our plan follows on the renewal
+        // invoice (handleInvoicePaid), so nobody loses what they already paid for. Nothing is ever cancelled to change plan.
         $newPlan = Plan::findOrFail($newPlanId);
         $currentSub = Subscription::where('workspace_id', $workspaceId)
             ->whereIn('status', Subscription::ENTITLED_STATUSES) // MONEY-1: a Stripe trial is a live sub
             ->orderByDesc('id')->first();
+        $curPlan = $currentSub ? Plan::find($currentSub->plan_id) : null;
+        $curPrice = (float) ($curPlan->price ?? 0);
+        $newPrice = (float) $newPlan->price;
 
         if (! $this->enabled) {
             // Dev mode (no Stripe key) — direct swap
             return $this->devActivate($workspaceId, $newPlanId, $userId);
         }
+        if ($newPrice <= 0) return ['success' => false, 'error' => 'Use Downgrade to Free for the free plan.'];
+
         if (! ($currentSub?->stripe_subscription_id)) {
-            // BILL-1: Stripe is live and this workspace has no Stripe subscription (Free, a trial, a comped plan). A paid plan is
-            // reached through checkout, never handed over: devActivate here gave any Free account any plan, and its credits, for nothing.
-            if ((float) $newPlan->price <= 0) return ['success' => false, 'error' => 'Use Downgrade to Free for the free plan.'];
+            // No Stripe subscription (Free, a trial, a plan we manage). A plan we manage may move DOWN directly - nothing is charged and
+            // nothing is given away. Every move up is paid through checkout first (BILL-1: never handed over).
+            if ($currentSub && $currentSub->status === 'active' && $curPrice > 0 && $newPrice < $curPrice) {
+                $r = $this->devActivate($workspaceId, $newPlanId, $userId);
+                return $r + ['action' => 'downgraded', 'plan' => $newPlan->slug];
+            }
             return $this->createCheckoutSession($workspaceId, $newPlanId, $userId);
         }
+        if ($curPlan && (int) $curPlan->id === (int) $newPlan->id && empty($newPlan->stripe_price_id)) return ['success' => false, 'error' => 'You are already on this plan.'];
+        if (empty($newPlan->stripe_price_id)) return ['success' => false, 'error' => 'This plan is not available yet.'];
 
         try {
             $stripe = new \Stripe\StripeClient($this->secretKey);
-            $stripeSub = $stripe->subscriptions->retrieve($currentSub->stripe_subscription_id);
+            $ss = $stripe->subscriptions->retrieve($currentSub->stripe_subscription_id);
+            $addonPriceId = config('billing.chatbot_addon_price_id', env('CHATBOT_ADDON_PRICE_ID', ''));
+            $item = null;
+            foreach (($ss->items->data ?? []) as $it) { if (($it->price->id ?? '') !== $addonPriceId) { $item = $it; break; } }
+            if (! $item) return ['success' => false, 'error' => 'Your subscription could not be read. Please write to us.'];
+            $periodEnd = (int) ($item->current_period_end ?? $ss->current_period_end ?? 0);
 
-            // Update the subscription item with the new plan price
-            // In production you'd use Stripe Price IDs stored in the plans table
-            // For now: cancel current and create new checkout session
-            $stripe->subscriptions->cancel($currentSub->stripe_subscription_id, ['prorate' => true]);
+            if ($curPlan && (int) $curPlan->id === (int) $newPlan->id) {
+                // the plan you already have: a downgrade waiting for renewal is cancelled (the price goes back, nothing is charged)
+                if (($item->price->id ?? '') === $newPlan->stripe_price_id) return ['success' => false, 'error' => 'You are already on this plan.'];
+                $stripe->subscriptions->update($ss->id, ['items' => [['id' => $item->id, 'price' => $newPlan->stripe_price_id]], 'proration_behavior' => 'none']);
+                return ['success' => true, 'action' => 'downgrade_cancelled', 'plan' => $newPlan->slug];
+            }
 
-            // Create new checkout for new plan
-            return $this->createCheckoutSession($workspaceId, $newPlanId, $userId);
+            if ($newPrice > $curPrice) {
+                $upd = $stripe->subscriptions->update($ss->id, [
+                    'items' => [['id' => $item->id, 'price' => $newPlan->stripe_price_id]],
+                    'proration_behavior' => 'always_invoice',
+                    'payment_behavior' => 'pending_if_incomplete',
+                    'expand' => ['latest_invoice'],
+                ]);
+                if (! empty($upd->pending_update)) {
+                    return ['success' => false, 'needs_payment' => true, 'invoice_url' => $upd->latest_invoice->hosted_invoice_url ?? null,
+                        'error' => 'The upgrade payment needs your confirmation. Your plan stays as it is until it is paid.'];
+                }
+                $currentSub->update(['plan_id' => $newPlan->id]);
+                Credit::updateOrCreate(['workspace_id' => $workspaceId], ['balance' => $newPlan->credit_limit]);   // reserved credits (jobs running) are left alone
+                $this->ledgerAllocation($workspaceId, $newPlan, 'plan_upgraded');
+                Log::info('[BILL-2] plan upgraded', ['ws' => $workspaceId, 'from' => $curPlan->slug ?? null, 'to' => $newPlan->slug]);
+                return ['success' => true, 'action' => 'upgraded', 'plan' => $newPlan->slug];
+            }
 
+            $stripe->subscriptions->update($ss->id, ['items' => [['id' => $item->id, 'price' => $newPlan->stripe_price_id]], 'proration_behavior' => 'none']);
+            Log::info('[BILL-2] downgrade scheduled', ['ws' => $workspaceId, 'from' => $curPlan->slug ?? null, 'to' => $newPlan->slug, 'at' => $periodEnd]);
+            return ['success' => true, 'action' => 'downgrade_scheduled', 'plan' => $newPlan->slug, 'effective_at' => $periodEnd ? date('c', $periodEnd) : null];
         } catch (\Throwable $e) {
             Log::error('StripeService::changePlan failed', ['error' => $e->getMessage()]);
-            return ['success' => false, 'error' => $e->getMessage()];
+            return ['success' => false, 'error' => 'The plan change did not go through. Nothing was charged. Please try again or write to us.'];
         }
     }
-
     /**
      * Get or create Stripe Customer Portal URL for self-service billing.
      * Allows customers to update payment methods, view invoices, cancel.
@@ -1168,6 +1206,20 @@ class StripeService
             }
         }
         if (! $sub) return ['handled' => false, 'reason' => 'subscription_not_found'];
+
+        // BILL-2: our plan follows the price the subscription is billed at - a downgrade scheduled for renewal lands here
+        if ($invoiceSubId && $this->enabled) {
+            try {
+                $live = (new \Stripe\StripeClient($this->secretKey))->subscriptions->retrieve($invoiceSubId);
+                $addonPriceId = config('billing.chatbot_addon_price_id', env('CHATBOT_ADDON_PRICE_ID', ''));
+                foreach (($live->items->data ?? []) as $it) {
+                    $pid = $it->price->id ?? ''; if ($pid === '' || $pid === $addonPriceId) continue;
+                    $billed = Plan::where('stripe_price_id', $pid)->first();
+                    if ($billed && (int) $billed->id !== (int) $sub->plan_id) { Log::info('[BILL-2] plan follows the billed price', ['ws' => $sub->workspace_id, 'from' => $sub->plan_id, 'to' => $billed->id]); $sub->update(['plan_id' => $billed->id]); }
+                    break;
+                }
+            } catch (\Throwable $e) { Log::warning('[BILL-2] could not read the billed price', ['error' => $e->getMessage()]); }
+        }
 
         $plan = Plan::find($sub->plan_id);
         if ($plan) {

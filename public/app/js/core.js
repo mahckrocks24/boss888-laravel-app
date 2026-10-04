@@ -8095,7 +8095,7 @@ function _billRender(status, plans) {
     var currentSlug = status.plan_slug || 'free';
     var paid = (plans || []).filter(function(p) { return p.slug !== currentSlug; });
     if (!paid.length) {
-      plansEl.innerHTML = '<div class="cmd-empty">You are on the highest plan.</div>';
+      plansEl.innerHTML = _billEnterpriseCard();
     } else {
       plansEl.innerHTML = paid.map(function(p) {
         var features = _billPlanFeatures(p);
@@ -8104,18 +8104,14 @@ function _billRender(status, plans) {
         // BILL-1 (Owner 10-04: Pro was offered AI Lite and Growth as "upgrades"): a dearer plan is an upgrade, a cheaper one a switch.
         // A customer who already pays changes plan in Manage billing (a checkout would start a second subscription); a plan we
         // manage (comped, no billing account) says so instead of offering a checkout.
+        // BILL-2 (Owner 10-04): every paid plan can be chosen - up is prorated and starts now, down starts at renewal; the server decides
+        // checkout (no subscription yet), an in-place Stripe switch (a paying customer) or a direct move down (a plan we manage)
         var curPrice = parseFloat(status.plan_price || 0) || 0, pPrice = parseFloat(p.price || 0) || 0, up = pPrice > curPrice;
-        var hasBilling = !!status.stripe_customer_id, managed = !hasBilling && curPrice > 0;
-        var label = (up ? 'Upgrade to ' : 'Switch to ') + _cmdcEsc(p.name);
         var btn = isFree
           ? '<button class="aq-btn aq-btn-reject" onclick="_billDowngradeToFree()">Downgrade to Free</button>'
           : (!canStripe
             ? '<button class="aq-btn aq-btn-approve" disabled style="opacity:.5;cursor:not-allowed">Not yet configured</button>'
-            : (hasBilling
-              ? '<button class="aq-btn ' + (up ? 'aq-btn-approve' : 'aq-btn-reject') + '" onclick="_billOpenPortal()">' + label + (up ? ' →' : '') + '</button>'
-              : (managed
-                ? '<span style="font-size:12px;color:var(--t3)">Your plan is managed by LevelUpGrowth. Write to us to change it.</span>'
-                : '<button class="aq-btn aq-btn-approve" onclick="_billCheckout(' + p.id + ',\'' + _cmdcEsc(p.slug) + '\')">' + label + ' →</button>')));
+            : '<button class="aq-btn ' + (up ? 'aq-btn-approve' : 'aq-btn-reject') + '" onclick="_billChange(' + p.id + ',' + (up ? 1 : 0) + ',\'' + _cmdcEsc(p.name).replace(/'/g, '&#39;') + '\',' + pPrice + ',' + curPrice + ')">' + (up ? 'Upgrade to ' : 'Downgrade to ') + _cmdcEsc(p.name) + (up ? ' →' : '') + '</button>');
         return '<div class="cmd-panel" style="padding:16px 18px">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
             '<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:var(--t1)">' + _cmdcEsc(p.name) + '</div>' +
@@ -8124,7 +8120,8 @@ function _billRender(status, plans) {
           '<ul style="list-style:none;padding:0;margin:10px 0;font-size:12.5px;color:var(--t2)">' + features + '</ul>' +
           '<div style="margin-top:10px">' + btn + '</div>' +
         '</div>';
-      }).join('');
+      }).join('') + _billEnterpriseCard() +
+        '<div style="grid-column:1/-1;font-size:12px;color:var(--t3);margin-top:4px">Upgrades start straight away: you pay only the difference for the rest of this billing month, and your new monthly credits start now. Downgrades start at your next renewal, so you keep what you have paid for.</div>';
     }
   }
 }
@@ -8182,6 +8179,52 @@ async function _billOpenPortal() {
     showToast('Portal failed: ' + (d.error || 'Unknown error'), 'error');
   } catch (e) {
     showToast('Portal error: ' + (e.message || 'Unknown'), 'error');
+  }
+}
+
+// BILL-2: the Enterprise card - an engagement, not a plan: the button books a free consultation call
+function _billEnterpriseCard() {
+  var li = function (t) { return '<li style="margin:4px 0">✓ ' + t + '</li>'; };
+  return '<div class="cmd-panel" style="padding:16px 18px;background:linear-gradient(160deg,#120E2A,#0A0918 60%,#0B1222);border-color:rgba(205,184,255,.28);color:#F5F6FC">' +
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
+      '<div style="font-family:var(--fh);font-size:16px;font-weight:700;color:#fff">Enterprise</div>' +
+      '<div style="font-size:13px;font-weight:700;color:#D9C8FF">By engagement</div>' +
+    '</div>' +
+    '<ul style="list-style:none;padding:0;margin:10px 0;font-size:12.5px;color:#C4C8DA">' +
+      li('Built around your strategy, department by department') + li('End-to-end AI integration and automation') +
+      li('Custom CRM, ERP and financial intelligence') + li('A dedicated engagement team') +
+    '</ul>' +
+    '<div style="margin-top:10px"><a class="aq-btn aq-btn-approve" href="https://levelupgrowth.io/contact/?topic=enterprise" target="_blank" rel="noopener" style="text-decoration:none;display:inline-block">Book a free consultation call →</a></div>' +
+  '</div>';
+}
+
+// BILL-2: one plan change for every case; the confirmation says what is charged and when
+async function _billChange(planId, up, name, newPrice, curPrice) {
+  var diff = Math.max(0, newPrice - curPrice);
+  var ok = up
+    ? await _billConfirm('Upgrade to ' + name + '?',
+        'Your new plan and its monthly credits start now. ' + (curPrice > 0 ? 'You pay only the difference for the rest of this billing month (at most $' + diff + '), then $' + newPrice + '/month from your next renewal.' : 'You go to a secure checkout to pay $' + newPrice + '/month.'),
+        'Upgrade now', 'Not now')
+    : await _billConfirm('Downgrade to ' + name + '?',
+        'You keep your current plan until your next renewal, then move to ' + name + ' at $' + newPrice + '/month. Nothing is charged today.',
+        'Downgrade at renewal', 'Keep my plan');
+  if (!ok) return;
+  try {
+    showToast(up ? 'Upgrading…' : 'Scheduling your downgrade…', 'info');
+    var r = await _luFetch('POST', '/billing/upgrade', { plan_id: planId });
+    var d = await r.json();
+    if (d.checkout_url) { window.location.href = d.checkout_url; return; }
+    if (d.needs_payment && d.invoice_url) { showToast(d.error, 'info'); window.location.href = d.invoice_url; return; }
+    if (d.success) {
+      var msg = d.action === 'upgraded' ? 'You are now on ' + name + '. Your new credits are ready.'
+        : d.action === 'downgrade_scheduled' ? 'Done. You move to ' + name + (d.effective_at ? ' on ' + new Date(d.effective_at).toLocaleDateString() : ' at your next renewal') + '.'
+        : d.action === 'downgrade_cancelled' ? 'Your downgrade is cancelled. You stay on ' + name + '.'
+        : 'You are now on ' + name + '.';
+      showToast(msg, 'success'); _billFetchAndRender(); return;
+    }
+    showToast(d.error || (r.status === 403 ? 'Only the account owner or an admin can change the plan.' : 'The plan change did not go through.'), 'error');
+  } catch (e) {
+    showToast('The plan change did not go through: ' + (e.message || 'please try again'), 'error');
   }
 }
 
