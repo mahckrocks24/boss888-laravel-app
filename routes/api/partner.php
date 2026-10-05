@@ -54,6 +54,13 @@ Route::prefix('partner')->group(function () use ($__partnerApply) {
         Route::get('/codes', fn (Request $r) => response()->json(['codes' => PartnerPortal::codes($r->attributes->get('affiliate'))]));
         Route::post('/codes', fn (Request $r) => response()->json(PartnerPortal::saveCode($r->attributes->get('affiliate'), $r->all())))->middleware('throttle:20,1,pcodes');
         Route::put('/codes/{id}', fn (Request $r, int $id) => response()->json(PartnerPortal::saveCode($r->attributes->get('affiliate'), $r->all(), $id)))->whereNumber('id')->middleware('throttle:30,1,plinks');
+        // AFF-DUAL-1: open a business account under the same login (affiliates without one)
+        Route::post('/workspace', function (Request $r) {
+            $in = $r->validate(['business_name' => 'nullable|string|max:150', 'industry' => 'nullable|string|max:120']);
+            if (DB::table('workspace_users')->where('user_id', $r->user()->id)->exists()) return response()->json(['ok' => false, 'error' => 'You already have a business account. Open it from the app.'], 409);
+            $res = app(\App\Core\Auth\AuthService::class)->openBusinessFor($r->user(), array_filter(['workspace_name' => $in['business_name'] ?? null, 'industry' => $in['industry'] ?? null]), $r->ip(), (string) $r->userAgent());
+            return response()->json(['ok' => true] + $res, 201);
+        })->middleware('throttle:3,10,pbiz');
         Route::get('/money', fn (Request $r) => response()->json(PartnerPortal::money($r->attributes->get('affiliate'))));
         // RFC-0026 section 7: how the affiliate is paid
         Route::get('/payout', function (Request $r) {

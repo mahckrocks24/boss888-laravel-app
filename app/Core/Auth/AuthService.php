@@ -30,81 +30,7 @@ class AuthService
             'password' => Hash::make($data['password']),
         ]);
 
-        $workspace = Workspace::create([
-            'name' => $data['workspace_name'] ?? $data['name'] . "'s Workspace",
-            'slug' => Str::slug($data['name'] . '-' . Str::random(4)),
-            'created_by' => $user->id,
-        ]);
-
-        $workspace->users()->attach($user->id, ['role' => 'owner']);
-
-        // PATCH v1.0.1: balance was 100 — free users could spend AI credits (10/serp, 15/audit) without paying.
-        // Correct init is 0. Trial credits (50) are added separately by TrialService::activateTrial()
-        // on first website creation. Paid plans receive credits via Stripe webhook.
-        Credit::create(['workspace_id' => $workspace->id, 'balance' => 0, 'reserved_balance' => 0]);
-
-        $freePlan = Plan::where('slug', 'free')->first();
-        if ($freePlan) {
-            Subscription::create([
-                'workspace_id' => $workspace->id,
-                'plan_id' => $freePlan->id,
-                'status' => 'active',
-                'starts_at' => now(),
-            ]);
-        }
-
-        // MISSION-018 WS-2 (2026-08-24): the Owner's policy is that NEW
-        // ACCOUNTS receive the 3-day / 50-credit trial (MISSION-018 §11).
-        // TrialService shipped complete in May — activation guards, trialing
-        // Growth subscription, ledgered credits, a scheduled expiry sweep —
-        // and was never called here; the only trigger was first website
-        // creation (the historical accident REPORT-0012 §15 measured:
-        // is_trial=0 on all 47 workspaces ever). This is the one-line switch:
-        // to move the trigger, remove this call — the BuilderService call
-        // remains and the already_trialed guard prevents doubles.
-        try {
-            app(\App\Core\Billing\TrialService::class)->activateTrial($workspace->id);
-        } catch (\Throwable $e) {
-            Log::error('trial activation at registration failed', [
-                'workspace_id' => $workspace->id, 'error' => $e->getMessage(),
-            ]);
-        }
-
-        // Sarah is the only agent attached at signup. Additional specialists
-        // unlock as the user progresses onboarding / upgrades plan.
-        $sarah = Agent::where('slug', 'sarah')->where('status', 'active')->first();
-        if ($sarah) {
-            $workspace->agents()->attach($sarah->id, ['enabled' => true]);
-        }
-
-        // EV-1043 (Owner, 2026-09-15): the sign-up page already asked for the business name and industry — keep them
-        // on the workspace, and let Sarah introduce herself as the FIRST MESSAGE OF HER OWN THREAD. That thread is
-        // the one surface every Sarah door reads (Basic Sarah view, Advanced Messages floater), so the introduction
-        // happens once, for new accounts only, inside her real interface — never on a separate onboarding screen.
-        try {
-            $facts = [];
-            if (!empty($data['workspace_name'])) $facts['business_name'] = (string) $data['workspace_name'];
-            if (!empty($data['industry']))       $facts['industry']      = mb_substr(trim((string) $data['industry']), 0, 120);
-            if ($facts) $workspace->update($facts);
-            $first = trim((string) (explode(' ', trim((string) $data['name']))[0] ?? ''));
-            $biz   = !empty($data['workspace_name']) ? (string) $data['workspace_name'] : 'your business';
-            $intro = "Hi" . ($first !== '' ? ' ' . $first : '') . ", I'm Sarah, your Digital Marketing Manager. I plan your growth, brief the specialists and bring you the work to approve — nothing goes live without you. Arthur builds and edits your website.\n\nTo start, tell me a bit about " . $biz . ": what you do, who you do it for, and what you would like to achieve first.";
-            // ARTHUR-FIRST-1 (Owner 2026-09-30, "make it happen"; OWNER RULE 2026-09-10: Sarah introduces herself only once
-            // the website is published): nothing is written to her thread at registration any more. Her introduction is the
-            // discovery welcome, posted when the site goes live (SarahDiscoveryJob::onPublished).
-            if (false) DB::table('agent_messages')->insert([
-                'workspace_id'  => $workspace->id,
-                'agent_slug'    => 'sarah',
-                'sender'        => 'Sarah',
-                'content'       => $intro,
-                'role'          => 'agent',
-                'metadata_json' => json_encode(['notification_type' => 'sarah_intro']),
-                'created_at'    => now(),
-                'updated_at'    => now(),
-            ]);
-        } catch (\Throwable $e) {
-            Log::warning('sarah intro at registration failed', ['workspace_id' => $workspace->id, 'error' => $e->getMessage()]);
-        }
+        $workspace = $this->createWorkspaceFor($user, $data);   // AFF-DUAL-1: the same workspace the affiliate portal opens
 
         $tokens = $this->refreshTokenService->issueTokenPair($user, $workspace);
 
@@ -268,6 +194,7 @@ class AuthService
                 'email' => $user->email,
                 'name' => $user->name,
                 'is_platform_admin' => (bool) $user->is_platform_admin,
+                'is_affiliate' => DB::table('affiliates')->where('user_id', $user->id)->where('status', 'approved')->exists(),   // AFF-DUAL-1
                 // RFC-0011 U8 (enterprise Profile tab): real read-only identity facts (role is derived client-side from workspaces + current_workspace_id).
                 'email_verified' => $user->email_verified_at !== null,
                 'created_at' => optional($user->created_at)->toIso8601String(),
@@ -285,6 +212,100 @@ class AuthService
         ];
     }
 
+    /**
+     * AFF-DUAL-1: the workspace a new account gets - owner membership, empty wallet, Free plan, the trial, Sarah, the
+     * business facts. Used by sign-up and by an affiliate opening a business account under the same login.
+     */
+    public function createWorkspaceFor(User $user, array $data): Workspace
+    {
+        $workspace = Workspace::create([
+            'name' => $data['workspace_name'] ?? $data['name'] . "'s Workspace",
+            'slug' => Str::slug($data['name'] . '-' . Str::random(4)),
+            'created_by' => $user->id,
+        ]);
+
+        $workspace->users()->attach($user->id, ['role' => 'owner']);
+
+        // PATCH v1.0.1: balance was 100 — free users could spend AI credits (10/serp, 15/audit) without paying.
+        // Correct init is 0. Trial credits (50) are added separately by TrialService::activateTrial()
+        // on first website creation. Paid plans receive credits via Stripe webhook.
+        Credit::create(['workspace_id' => $workspace->id, 'balance' => 0, 'reserved_balance' => 0]);
+
+        $freePlan = Plan::where('slug', 'free')->first();
+        if ($freePlan) {
+            Subscription::create([
+                'workspace_id' => $workspace->id,
+                'plan_id' => $freePlan->id,
+                'status' => 'active',
+                'starts_at' => now(),
+            ]);
+        }
+
+        // MISSION-018 WS-2 (2026-08-24): the Owner's policy is that NEW
+        // ACCOUNTS receive the 3-day / 50-credit trial (MISSION-018 §11).
+        // TrialService shipped complete in May — activation guards, trialing
+        // Growth subscription, ledgered credits, a scheduled expiry sweep —
+        // and was never called here; the only trigger was first website
+        // creation (the historical accident REPORT-0012 §15 measured:
+        // is_trial=0 on all 47 workspaces ever). This is the one-line switch:
+        // to move the trigger, remove this call — the BuilderService call
+        // remains and the already_trialed guard prevents doubles.
+        try {
+            app(\App\Core\Billing\TrialService::class)->activateTrial($workspace->id);
+        } catch (\Throwable $e) {
+            Log::error('trial activation at registration failed', [
+                'workspace_id' => $workspace->id, 'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Sarah is the only agent attached at signup. Additional specialists
+        // unlock as the user progresses onboarding / upgrades plan.
+        $sarah = Agent::where('slug', 'sarah')->where('status', 'active')->first();
+        if ($sarah) {
+            $workspace->agents()->attach($sarah->id, ['enabled' => true]);
+        }
+
+        // EV-1043 (Owner, 2026-09-15): the sign-up page already asked for the business name and industry — keep them
+        // on the workspace, and let Sarah introduce herself as the FIRST MESSAGE OF HER OWN THREAD. That thread is
+        // the one surface every Sarah door reads (Basic Sarah view, Advanced Messages floater), so the introduction
+        // happens once, for new accounts only, inside her real interface — never on a separate onboarding screen.
+        try {
+            $facts = [];
+            if (!empty($data['workspace_name'])) $facts['business_name'] = (string) $data['workspace_name'];
+            if (!empty($data['industry']))       $facts['industry']      = mb_substr(trim((string) $data['industry']), 0, 120);
+            if ($facts) $workspace->update($facts);
+            $first = trim((string) (explode(' ', trim((string) $data['name']))[0] ?? ''));
+            $biz   = !empty($data['workspace_name']) ? (string) $data['workspace_name'] : 'your business';
+            $intro = "Hi" . ($first !== '' ? ' ' . $first : '') . ", I'm Sarah, your Digital Marketing Manager. I plan your growth, brief the specialists and bring you the work to approve — nothing goes live without you. Arthur builds and edits your website.\n\nTo start, tell me a bit about " . $biz . ": what you do, who you do it for, and what you would like to achieve first.";
+            // ARTHUR-FIRST-1 (Owner 2026-09-30, "make it happen"; OWNER RULE 2026-09-10: Sarah introduces herself only once
+            // the website is published): nothing is written to her thread at registration any more. Her introduction is the
+            // discovery welcome, posted when the site goes live (SarahDiscoveryJob::onPublished).
+            if (false) DB::table('agent_messages')->insert([
+                'workspace_id'  => $workspace->id,
+                'agent_slug'    => 'sarah',
+                'sender'        => 'Sarah',
+                'content'       => $intro,
+                'role'          => 'agent',
+                'metadata_json' => json_encode(['notification_type' => 'sarah_intro']),
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('sarah intro at registration failed', ['workspace_id' => $workspace->id, 'error' => $e->getMessage()]);
+        }
+
+        return $workspace;
+    }
+
+    /** AFF-DUAL-1: an existing login without a workspace (an affiliate) opens a business account. */
+    public function openBusinessFor(User $user, array $data, ?string $ip = null, ?string $ua = null): array
+    {
+        $workspace = $this->createWorkspaceFor($user, ['name' => $user->name] + $data);
+        $tokens = $this->refreshTokenService->issueTokenPair($user, $workspace, $ip, $ua);
+        $this->auditLogService->log($workspace->id, $user->id, 'user.business_opened');
+        return $this->buildAuthResponse($user, $workspace, $tokens);
+    }
+
     private function buildAuthResponse(User $user, ?Workspace $workspace, array $tokens): array
     {
         $workspaces = $user->workspaces()->with('subscription.plan')->get();
@@ -297,6 +318,7 @@ class AuthService
                 'email' => $user->email,
                 'name' => $user->name,
                 'is_platform_admin' => (bool) $user->is_platform_admin,
+                'is_affiliate' => DB::table('affiliates')->where('user_id', $user->id)->where('status', 'approved')->exists(),   // AFF-DUAL-1
                 // RFC-0011 U8 (enterprise Profile tab): real read-only identity facts (role is derived client-side from workspaces + current_workspace_id).
                 'email_verified' => $user->email_verified_at !== null,
                 'created_at' => optional($user->created_at)->toIso8601String(),

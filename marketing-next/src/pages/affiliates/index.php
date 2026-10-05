@@ -8,7 +8,7 @@
  * claimed that the platform does not do. No supplier names except the two payout options the affiliate chooses between.
  */
 $page['title'] = 'Affiliate Program';
-$page['description'] = 'Recommend LevelUpGrowth with your own voucher code and earn up to 20% of every monthly payment for six months. You decide how much becomes your audience\'s discount.';
+$page['description'] = 'Recommend LevelUpGrowth with your own voucher code and earn up to 20% of their first 6 monthly payments. You decide how much becomes your audience\'s discount.';
 $by = []; foreach ($data['plans'] as $p) { $by[$p['slug']] = $p; }
 $calcPlans = array_values(array_filter(array_map(fn ($s) => isset($by[$s]) ? ['name' => $by[$s]['name'], 'price' => (float) $by[$s]['price_monthly']] : null, ['starter', 'ai-lite', 'growth', 'pro', 'agency'])));
 $pro = (float) ($by['pro']['price_monthly'] ?? 199);
@@ -91,6 +91,21 @@ $page['head'] = <<<'CSS'
 .af-feats h3{font-size:18px;margin:4px 0 0;letter-spacing:-.01em}.af-feats p{margin:0;font-size:15px;line-height:1.55;opacity:.8}
 .af-final{border-radius:28px;padding:clamp(28px,5vw,56px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
 .af-faq{max-width:820px;margin:0 auto}
+.af-stack{margin-top:16px;padding:clamp(18px,3vw,28px)}
+.af-chart{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end;height:260px}
+.af-col{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-end;height:100%;gap:6px;min-width:0}
+.af-col__v{font:700 11px/1 var(--font,inherit);text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums;opacity:.85}
+.af-col__bar{display:flex;flex-direction:column-reverse;gap:2px;border-radius:8px 8px 4px 4px;overflow:hidden;transition:height .35s var(--ease-out,ease)}
+.af-col__bar i{display:block;flex:1;min-height:3px}
+.af-col__m{font-size:11px;text-align:center;opacity:.6}
+@media (max-width:640px){.af-chart{height:200px;gap:4px}.af-col__v{font-size:9px}}
+@media (prefers-reduced-motion:reduce){.af-col__bar{transition:none}}
+.af-hl{background:linear-gradient(transparent 58%,color-mix(in srgb,var(--accent-text,#7c3aed) 22%,transparent) 0);padding:0 2px;font-weight:700}
+.af-six{border-radius:18px;padding:14px;border:1px solid var(--hairline,rgba(0,0,0,.08));background:color-mix(in srgb,var(--accent-text,#7c3aed) 6%,transparent);display:flex;flex-direction:column;gap:12px;max-width:560px}
+.af-six__lbl{display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.4}.af-six__n{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font:800 20px/1 var(--font,inherit);color:#fff;background:var(--brand-grad,linear-gradient(135deg,#8C25D2,#4C86DE))}
+.af-six__row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.af-six__pay{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;background:var(--glass,rgba(255,255,255,.7));border:1px solid var(--hairline,rgba(0,0,0,.06))}
+.af-six__pay small{font-size:10.5px;opacity:.65;white-space:nowrap}.af-six__pay b{font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:640px){.af-six__row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 @media (max-width:900px){.af-hero{grid-template-columns:1fr}.af-calc{grid-template-columns:1fr}.af-calc__out{border-left:0;border-top:1px solid var(--hairline,rgba(0,0,0,.08))}.af-share,.af-feats{grid-template-columns:1fr}}
 @media (max-width:640px){.af-journey{grid-template-columns:1fr}.af-step{min-height:0}.af-rail{display:none}.af-out-row{flex-wrap:wrap}.af-out-row b{font-size:17px}}
@@ -123,7 +138,17 @@ $page['scripts'] = <<<JS
     host.querySelector('[data-them]').textContent = 'Customer saves ' + st.d + '%'; host.querySelector('[data-you]').textContent = 'You earn ' + you + '%';
     out('per').textContent = money(per); out('pays').textContent = money(pays) + '/mo';
     out('six').textContent = money(per * 6); out('month6').textContent = money(st.n * per * 6);
-    out('year').textContent = money(st.n * per * 57);   // n new businesses a month, each earning for 6 payments: 1+2+3+4+5+6x7 = 57 payments in 12 months
+    out('year').textContent = money(st.n * per * 57);
+    // month on month: in month m, min(m, 6) groups of new businesses are paying (each group pays for 6 payments)
+    var chart = document.querySelector('[data-chart]'), note = document.querySelector('[data-stack-note]'), shades = ['#8C25D2', '#7A3FD8', '#6758DC', '#5571DE', '#438ADF', '#25C6D2'];
+    if (chart) {
+      var mx = st.n * per * 6, h = '';
+      for (var m = 1; m <= 12; m++) { var g = Math.min(m, 6), v = st.n * per * g, segs = '';
+        for (var k = 0; k < g; k++) segs += '<i style="background:' + shades[(m - g + k) % 6] + '"></i>';
+        h += '<div class="af-col"><span class="af-col__v">' + (v >= 1000 ? '$' + (v / 1000).toFixed(1) + 'k' : '$' + Math.round(v)) + '</span><div class="af-col__bar" style="height:' + (mx ? v / mx * 82 : 0) + '%">' + segs + '</div><span class="af-col__m">M' + m + '</span></div>'; }
+      chart.innerHTML = h;
+      if (note) note.textContent = st.n + ' new businesses a month: ' + money(st.n * per) + ' in month 1, ' + money(st.n * per * 6) + ' a month from month 6';
+    }   // n new businesses a month, each earning for 6 payments: 1+2+3+4+5+6x7 = 57 payments in 12 months
   }
   draw();
 })();
@@ -136,12 +161,13 @@ JS;
     <div style="display:flex;flex-direction:column;gap:18px">
       <span class="lg-badge lg-badge--brand" style="align-self:flex-start;height:30px;padding:0 12px;border-radius:999px"><span class="lg-dot"></span>LevelUpGrowth Affiliate Program</span>
       <h1 class="af-h1">Recommend us. <span class="t-grad">Earn while their business grows.</span></h1>
-      <p class="af-lead">Give your audience your own voucher code. Every business that signs up with it earns you up to 20% of its monthly plan for six months, and you decide how much of that becomes their discount.</p>
+      <p class="af-lead">Give your audience your own voucher code. Every business that signs up with it pays you up to 20% of its plan on <strong class="af-hl">each of its first 6 monthly payments</strong>, and you decide how much of that becomes their discount.</p>
       <div class="af-cta">
         <a class="lg-btn lg-btn--primary lg-btn--lg" href="/affiliates/portal?apply=1">Apply to join <svg class="ic ic--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
         <a class="lg-btn lg-btn--glass lg-btn--lg" href="#journey">See the journey</a>
       </div>
       <div class="af-trust"><span><?= $check ?>Free to join</span><span><?= $check ?>A person reviews every application</span><span><?= $check ?>Paid monthly</span><span><?= $check ?>No tracking links or cookies</span></div>
+      <div class="af-six" aria-label="You earn on each of their first six monthly payments"><div class="af-six__lbl"><span class="af-six__n">6&times;</span><span><b>Paid on each of their first 6 monthly payments</b><br><span class="c-3">One business on Pro, no-discount code: <?= $m2($pro * .20) ?> a payment, <?= $m2($pro * .20 * 6) ?> in all</span></span></div><div class="af-six__row"><?php for ($i = 1; $i <= 6; $i++): ?><span class="af-six__pay"><small>Payment <?= $i ?></small><b><?= $m2($pro * .20) ?></b></span><?php endfor; ?></div></div>
     </div>
     <div class="lg-glass lg-glass--thick af-card" style="padding:26px" aria-label="An example affiliate code">
       <div class="lg-row lg-between" style="margin-bottom:14px"><span class="t-eyebrow">Your code</span><span class="lg-badge lg-badge--success">Active</span></div>
@@ -151,7 +177,7 @@ JS;
       <div class="af-feed" aria-hidden="true">
         <div class="af-evt lg-glass lg-glass--thin"><i>+</i><span>Corner Bakery joined with <b>MIRA5</b></span></div>
         <div class="af-evt lg-glass lg-glass--thin"><i>$</i><span>First payment on Pro: <b><?= $m2($pro * .95) ?></b></span></div>
-        <div class="af-evt lg-glass lg-glass--thin"><i><svg class="ic ic--sm" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></i><span>You earned <b><?= $m2($pro * .15) ?></b> &middot; 5 more payments to come</span></div>
+        <div class="af-evt lg-glass lg-glass--thin"><i><svg class="ic ic--sm" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></svg></i><span>Payment 1 of 6: you earned <b><?= $m2($pro * .15) ?></b></span></div>
       </div>
     </div>
   </div>
@@ -175,7 +201,7 @@ JS;
         <div class="af-mini"><span class="c-3">Video description</span><span>Build your site with LevelUpGrowth. Use code <code>MIRA10</code> for 10% off.</span></div></div>
       <div class="lg-glass af-step"><span class="af-step__n">05 · THEM</span><h3>They sign up with it</h3><p>Their discount is saved on the spot. Arthur builds their website, Sarah and the AI team start on their marketing.</p>
         <div class="af-mini"><span class="c-3">Have a code?</span><div class="row"><code>MIRA10</code><span class="ok"><?= $check ?> 10% off</span></div></div></div>
-      <div class="lg-glass af-step"><span class="af-step__n">06 · YOU</span><h3>Earn on every payment</h3><p>Your share lands on each of their first six monthly payments, once on a yearly plan, and on new domains.</p>
+      <div class="lg-glass af-step"><span class="af-step__n">06 · YOU</span><h3>Earn on their first 6 payments</h3><p>Your share lands on <b>each of their first 6 monthly payments</b>, once on a yearly plan, and on the first year of every new domain.</p>
         <div class="af-mini"><div class="row"><span class="c-3">Pro, 10% code</span><b><?= $m2($pro * .10) ?> each</b></div><div class="af-ticks"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
       <div class="lg-glass af-step"><span class="af-step__n">07 · US</span><h3>Get paid on the 15th</h3><p>After a 30-day hold, everything ready is paid every month by PayPal or Wise, from $50.</p>
         <div class="af-mini"><div class="row"><span class="c-3">Payout</span><b><?= $m2($pro * .10 * 6) ?></b></div><span class="ok"><?= $check ?> Sent on the 15th</span></div></div>
@@ -188,9 +214,9 @@ JS;
 <section class="af-sec">
   <div class="container">
     <div class="af-head af-head--c">
-      <span class="t-eyebrow">Your numbers</span>
-      <h2 class="af-h2">See what your audience is worth.</h2>
-      <p class="af-lead">Pick the plan your audience is likely to choose, how many businesses sign up with your code each month, and how much you want to give them.</p>
+      <span class="t-eyebrow">Month on month</span>
+      <h2 class="af-h2">Your income stacks up, month after month.</h2>
+      <p class="af-lead">Every business pays you on its first 6 monthly payments, so each month's sign-ups add a new layer on top of the last. Bring five in month one and five more in month two, and in month two both groups pay you. By month six, six groups are paying you at once, and as long as you keep sharing your code, it stays there.</p>
     </div>
     <div class="lg-glass lg-glass--thick af-calc" id="af-calc">
       <div class="af-calc__in">
@@ -205,11 +231,15 @@ JS;
       <div class="af-calc__out">
         <div><span class="t-eyebrow">In the first year</span><div class="af-big" data-out="year">$0.00</div><span class="t-footnote c-3">from the businesses you bring each month</span></div>
         <div class="af-out-row"><span>Each business earns you</span><b><span data-out="per">$0.00</span> a month</b></div>
-        <div class="af-out-row"><span>Over its first six payments</span><b data-out="six">$0.00</b></div>
-        <div class="af-out-row"><span>Every month from month six</span><b data-out="month6">$0.00</b></div>
+        <div class="af-out-row"><span>Over its <b>first 6 monthly payments</b></span><b data-out="six">$0.00</b></div>
+        <div class="af-out-row"><span>Every month once you are six months in</span><b data-out="month6">$0.00</b></div>
         <div class="af-out-row"><span>They pay</span><b data-out="pays">$0.00</b></div>
         <p class="t-caption c-3" style="margin:0">An example, not a promise: it assumes every business stays on that monthly plan for six payments. Earnings follow the share rules below.</p>
       </div>
+    </div>
+    <div class="lg-glass af-card af-stack" id="af-stack" aria-label="Your monthly earnings over the first year">
+      <div class="lg-row lg-between" style="flex-wrap:wrap;gap:8px;margin-bottom:14px"><div><span class="t-eyebrow">Your first 12 months</span><h3 style="margin:4px 0 0;font-size:20px;letter-spacing:-.01em">Each colour is one month's new businesses, paying you for 6 payments</h3></div><span class="t-footnote c-3" data-stack-note></span></div>
+      <div class="af-chart" data-chart></div>
     </div>
   </div>
 </section>
@@ -240,9 +270,9 @@ JS;
       <p class="af-lead">Discount plus your commission always adds up to the share. The standard code gives your audience 5% off and keeps the rest for you.</p>
     </div>
     <div class="af-share">
-      <div class="lg-glass af-card"><span class="t-eyebrow">Monthly plans</span><span class="af-pct">20%</span><span class="t-subhead t-strong">of their first 6 monthly payments</span><span class="t-footnote c-3">Standard code: 5% off for them, 15% for you</span></div>
+      <div class="lg-glass af-card"><span class="t-eyebrow">Monthly plans</span><span class="af-pct">20%</span><span class="t-subhead t-strong">of <span class="af-hl">each of their first 6 monthly payments</span></span><span class="t-footnote c-3">Standard code: 5% off for them, 15% for you</span></div>
       <div class="lg-glass af-card"><span class="t-eyebrow">Yearly plans</span><span class="af-pct">15%</span><span class="t-subhead t-strong">of the yearly payment, once</span><span class="t-footnote c-3">Standard code: 5% off for them, 10% for you</span></div>
-      <div class="lg-glass af-card"><span class="t-eyebrow">New domains</span><span class="af-pct">10%</span><span class="t-subhead t-strong">of registrations in their first 6 months</span><span class="t-footnote c-3">Standard code: 5% off for them, 5% for you</span></div>
+      <div class="lg-glass af-card"><span class="t-eyebrow">New domains</span><span class="af-pct">10%</span><span class="t-subhead t-strong">of each new domain's first year, once</span><span class="t-footnote c-3">Standard code: 5% off for them, 5% for you</span></div>
     </div>
     <p class="t-footnote c-3" style="margin-top:16px">Commission is worked out on the price before the discount and before tax, held for 30 days in case of a refund, then paid on the 15th. Credit top-ups, domain renewals and your own businesses do not earn. <a href="/next/legal/affiliates/">Read the affiliate terms</a>.</p>
   </div>

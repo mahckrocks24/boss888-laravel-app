@@ -61,7 +61,7 @@ class PartnerEmails
             $b = PartnerProgram::budgets($a);
             return self::send($a->email, "You're in: the LevelUpGrowth Affiliate Program", ['preheader' => 'Create your first code and start sharing.', 'eyebrow' => 'Affiliate Program', 'tone' => 'success',
                 'heading' => 'Welcome to the Affiliate Program, ' . self::first($a), 'lead' => 'Your next step: create your own code in the affiliate portal.',
-                'list' => ['Every business that signs up with your code is yours.', 'Each code shares up to ' . ($b['monthly'] / 100) . '% of their monthly plan for 6 payments, ' . ($b['yearly'] / 100) . '% of a yearly plan, ' . ($b['domain'] / 100) . '% of new domains.',
+                'list' => ['Every business that signs up with your code is yours.', 'Each code shares up to ' . ($b['monthly'] / 100) . '% of their monthly plan for 6 payments, ' . ($b['yearly'] / 100) . '% of a yearly plan, ' . ($b['domain'] / 100) . '% of each new domain\'s first year.',
                     'Drag the split when you create the code: more for you, or a bigger discount for them.', 'Make a different code for each video or post to see which one works.'],
                 'button' => ['Create your first code', self::PORTAL . '#codes'], 'after' => ['Please say clearly that it is an affiliate code wherever you share it. The affiliate terms are at levelupgrowth.io/legal/affiliates/.'],
                 'signoff' => 'team', 'reason' => self::why()], 'A2');

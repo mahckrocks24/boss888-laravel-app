@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Log;
  *
  * - invoice.paid: a referred plan payment. Monthly plans earn on their first 6 billing cycles (prorated upgrade invoices
  *   inside that window earn too, without counting as a cycle); a yearly plan earns once.
- * - checkout.session.completed for a domain order: new registrations within the referral's first 6 months.
+ * - checkout.session.completed for a domain order: new registrations in the referral's first year, on their first-year price.
  * - charge.refunded / charge.dispute.created: a reversal row with a negative amount (netted from the next payout).
  * Every row is keyed by the Stripe event id, so a replayed webhook never pays twice. Rows are held 30 days, then payable.
  * Commission is a share of the price BEFORE the customer's discount and before tax (D1).
@@ -76,7 +76,7 @@ class Commissions
         $base = 0; $cap = 0;
         foreach (DB::table('domain_order_items')->where('domain_order_id', $orderId)->get() as $it) {
             if (($it->action ?? 'register') !== 'register' || (int) $it->retail_minor <= (int) $it->registrar_cost_minor) continue;   // promos below cost earn nothing
-            $base += (int) $it->retail_minor; $cap += (int) $it->markup_minor;
+            $base += (int) round($it->retail_minor / max(1, (int) $it->years)); $cap += (int) $it->markup_minor;   // AFF-DOMAIN-1: the first year only
         }
         if ($base <= 0) return null;
         $rate = (int) $ref->commission_domain_bps;

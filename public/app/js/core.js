@@ -6995,6 +6995,9 @@ async function _checkTrialStatus() {
       document.querySelectorAll('[data-admin-only]').forEach(function(el) {
         el.style.display = isAdmin ? '' : 'none';
       });
+      // AFF-DUAL-1: an affiliate who is also a customer reaches the affiliate portal from the menu (same login)
+      var isAff = false; try { isAff = !!JSON.parse(localStorage.getItem('lu_user') || '{}').is_affiliate; } catch (_a) {}
+      document.querySelectorAll('[data-affiliate-only]').forEach(function(el) { el.style.display = isAff ? '' : 'none'; });
       window._luIsAdmin = isAdmin;
     } catch(_adminErr) {}
 

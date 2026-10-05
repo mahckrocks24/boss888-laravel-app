@@ -98,7 +98,7 @@ class Attribution
         return ['referral_id' => (int) $ref->id, 'coupon' => $coupon, 'bps' => $coupon ? $bps : 0];
     }
 
-    /** The domain discount (bps) for a referred business, within its first 6 months. */
+    /** The domain discount (bps) for a referred business, within its first year (domains are yearly). */
     public static function domainDiscount(int $wsId): ?object
     {
         if (! PartnerProgram::enabled()) return null;

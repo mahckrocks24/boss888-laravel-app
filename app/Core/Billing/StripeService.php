@@ -183,7 +183,8 @@ class StripeService
             if ($__ref && (int) $__ref->discount_domain_bps > 0) {
                 foreach ($order->items as $it) {
                     if (($it->action ?? 'register') !== 'register' || (int) $it->retail_minor <= (int) $it->registrar_cost_minor) continue;
-                    $__cut[$it->id] = min((int) round($it->retail_minor * (int) $__ref->discount_domain_bps / 10000), (int) $it->markup_minor);
+                    // AFF-DOMAIN-1: the discount is on the domain's first year (a 3-year registration: year one)
+                    $__cut[$it->id] = min((int) round($it->retail_minor / max(1, (int) $it->years) * (int) $__ref->discount_domain_bps / 10000), (int) $it->markup_minor);
                     $__saved += $__cut[$it->id];
                 }
             }

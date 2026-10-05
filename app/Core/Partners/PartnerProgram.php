@@ -18,7 +18,7 @@ class PartnerProgram
     public const BUDGET = ['monthly' => 2000, 'yearly' => 1500, 'domain' => 1000];   // basis points
     public const MONTHLY_CYCLES = 6;
     public const HOLD_DAYS = 30;
-    public const DOMAIN_WINDOW_MONTHS = 6;     // a referred business's new domain registrations earn for its first 6 months
+    public const DOMAIN_WINDOW_MONTHS = 12;    // AFF-DOMAIN-1: domains are yearly - new registrations in a referred business's first year earn, on their first year
     public const MAX_CODES = 10;
     public const MIN_PAYOUT_MINOR = 5000;      // $50
     public const RESERVED = ['LEVELUP', 'LEVELUPGROWTH', 'LUG', 'SARAH', 'ARIA', 'ADMIN', 'SUPPORT', 'FREE', 'TEST', 'STAFF', 'OFFICIAL', 'STRIPE', 'REFUND', 'BILLING', 'PARTNER', 'PARTNERS', 'AFFILIATE'];

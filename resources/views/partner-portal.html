@@ -167,9 +167,36 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   var TABS = [['overview', 'Overview'], ['referrals', 'Referrals'], ['codes', 'Codes'], ['money', 'Earnings']];
   function render() {
     var p = S.me.partner;
-    A.innerHTML = '<h1>Hi ' + esc(S.me.user.name.split(' ')[0]) + '</h1><p class="sub">Share your codes. A business counts as yours when it signs up with one of them.</p>' +
+    // AFF-DUAL-1: one login for both - a way into the business account, or a way to open one
+    var biz = S.me.has_workspace
+      ? '<a class="btn ghost sm" href="/app/" style="flex:none">Open my business workspace &rarr;</a>'
+      : '';
+    A.innerHTML = '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><h1>Hi ' + esc(S.me.user.name.split(' ')[0]) + '</h1><p class="sub">Share your codes. A business counts as yours when it signs up with one of them, and you earn on its <b>first 6 monthly payments</b>.</p></div>' + biz + '</div>' +
+      (S.me.has_workspace ? '' : '<div class="card" style="margin:0 0 18px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div style="min-width:0"><h2 style="margin:0 0 4px">Run your own business on LevelUpGrowth too</h2><p class="sub" style="margin:0">Open a business account with this same login: Arthur builds your website, Sarah and the AI team handle your marketing. Your affiliate account stays as it is.</p></div><button class="btn" type="button" id="open-biz">Open a business account</button></div>') +
       '<nav class="tabs" role="tablist">' + TABS.map(function (t) { return '<button class="tab" role="tab" data-t="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</nav><section id="pane"></section>';
     Array.prototype.forEach.call(A.querySelectorAll('.tab'), function (b) { b.addEventListener('click', function () { S.tab = b.getAttribute('data-t'); try { history.replaceState(null, '', '#' + S.tab); } catch (e) {} render(); }); });
+    if ($('open-biz')) $('open-biz').addEventListener('click', function () {
+      var card = this.parentNode;
+      card.innerHTML = '<div style="flex:1 1 320px;min-width:0"><h2 style="margin:0 0 4px">Open a business account</h2><p class="sub" style="margin:0 0 12px">Same login, same password. You start on the Free plan with the trial, like every new business.</p>' +
+        '<div class="row"><input class="inp" id="biz-name" maxlength="150" placeholder="Business name (optional)" autocomplete="organization"><button class="btn" type="button" id="biz-go">Create my business account</button></div><p class="err" id="biz-err" hidden></p></div>';
+      $('biz-name').focus();
+      $('biz-go').addEventListener('click', function () {
+        var b = this; b.disabled = true; b.textContent = 'Creating…';
+        api('POST', '/partner/workspace', { business_name: $('biz-name').value.trim() || null }).then(function (x) {
+          if (x.ok && x.j && x.j.access_token) {
+            try {
+              localStorage.setItem('lu_token', x.j.access_token); if (x.j.refresh_token) localStorage.setItem('lu_refresh_token', x.j.refresh_token);
+              if (x.j.current_workspace_id) localStorage.setItem('lu_workspace_id', String(x.j.current_workspace_id));
+              if (x.j.user && x.j.user.id) localStorage.setItem('lu_user_id', String(x.j.user.id));
+              localStorage.removeItem('lu_user'); localStorage.setItem('lu_boot_action', 'arthur');   // like a sign-up: Arthur first
+            } catch (e) {}
+            b.textContent = 'Opening your workspace…'; location.href = '/app/'; return;
+          }
+          b.disabled = false; b.textContent = 'Create my business account';
+          var e = $('biz-err'); e.hidden = false; e.textContent = (x.j && (x.j.error || x.j.message)) || 'That did not go through. Please try again.';
+        });
+      });
+    });
     ({ overview: overview, referrals: referrals, codes: codes, money: earnings })[S.tab]();
   }
   function pane(h) { $('pane').innerHTML = h; }
