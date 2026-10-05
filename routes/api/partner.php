@@ -31,7 +31,9 @@ Route::middleware('throttle:6,10,papply')->post('/partners/apply', function (Req
     $in = $r->validate([
         'name' => 'required|string|min:2|max:120', 'email' => 'required|email|max:190',
         'password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[0-9]/'],
-    ], ['password.regex' => 'Password must contain at least one uppercase letter and one number.']);
+        // AFF-CERT-1: everything the application needs is checked BEFORE the account is made (a missing tick used to leave an orphan account)
+        'channel_url' => 'required|string|max:255', 'audience' => 'nullable|string|max:500', 'display_name' => 'nullable|string|max:120', 'accept_terms' => 'accepted',
+    ], ['password.regex' => 'Password must contain at least one uppercase letter and one number.', 'accept_terms.accepted' => 'Please accept the affiliate terms.', 'channel_url.required' => 'Tell us where you publish (a channel, page or site).']);
     $email = strtolower(trim($in['email']));
     if (\App\Models\User::where('email', $email)->exists()) {
         return response()->json(['ok' => false, 'code' => 'has_account', 'error' => 'That email already has a LevelUpGrowth account. Sign in on this page and apply from there.'], 409);
