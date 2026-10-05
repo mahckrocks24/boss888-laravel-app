@@ -275,6 +275,22 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
   $socSquare = ['consulting-04', 'beauty-salon-02', 'childcare-06', 'construction-04', 'dental-01', 'event-venue-04'];
   $socPosts = array_map(fn ($r) => ['net' => $r[0], 'biz' => $r[1], 'handle' => $r[2], 'sub' => $r[3], 'img' => $r[4], 'av' => $r[5], 'alt' => $r[1] . ' post: ' . $r[6],
     'cap' => $r[7], 'tags' => $r[8], 'meta' => $r[9], 'meta2' => $r[10], 'w' => 640, 'h' => in_array($r[4], $socSquare, true) ? 640 : 800], $socRows);
+  // Owner: "we also share website articles remember?": articles Priya writes for the business's website, shared as link posts
+  // [network, business, sub line, avatar colour, image, domain, title, text, reactions, comments, read time (LinkedIn)]
+  $artRows = [
+    ['fb', 'Saltmarsh Travel', 'Sunday at 10:00', '#14532d', 'harbour-towns', 'saltmarsh.travel', 'Five harbour towns worth the slow road', 'New on the blog: five harbour towns to see at sunrise, where to stay and the best time to go.', '241', '19 comments', ''],
+    ['in', 'Crown Court Realty', '1,240 followers · 4d', '#1e3a8a', 'harbour-district-buyers', 'crowncourt.co', 'Harbour District in 2026: what buyers should know before a viewing', 'Thinking of buying in Harbour District this year? Our guide covers prices, streets and what to ask at a viewing.', '58', '7 comments', '6 min read'],
+    ['fb', 'Kettle Row Coffee', 'Thursday at 8:00', '#0f766e', 'sourdough-36-hours', 'kettlerow.coffee', 'Why our sourdough takes 36 hours', 'Ever wondered why our loaves sell out by ten? The long, slow story is on our blog.', '176', '22 comments', ''],
+    ['in', 'Harbourline Consulting', '3,410 followers · 2d', '#1d4ed8', 'outgrown-systems', 'harbourline.co', 'Five signs your business has outgrown its systems', 'If your team spends more time chasing updates than doing the work, this one is for you.', '93', '11 comments', '5 min read'],
+    ['fb', 'Pearl Dental', 'Monday at 9:00', '#2563eb', 'dentist-how-often', 'pearldental.co', 'How often should you really see the dentist?', 'Twice a year is the rule of thumb, but not for everyone. Our dentists explain.', '128', '15 comments', ''],
+    ['fb', 'Ironhouse Fitness', 'Saturday at 7:30', '#3f6212', 'strength-after-40', 'ironhouse.fit', 'Strength training after 40: where to start', 'Never lifted before? Our head coach\'s beginner plan is on the blog.', '207', '26 comments', ''],
+  ];
+  $socAll = [];
+  foreach ($socPosts as $i => $p) {
+    $socAll[] = $p;
+    if ($i % 5 === 2 && ($r = array_shift($artRows))) $socAll[] = ['type' => 'article', 'net' => $r[0], 'biz' => $r[1], 'handle' => '', 'sub' => $r[2], 'av' => $r[3], 'img' => $r[4], 'domain' => $r[5],
+      'title' => $r[6], 'cap' => $r[7], 'meta' => $r[8], 'meta2' => $r[9], 'read' => $r[10], 'alt' => $r[1] . ' article: ' . $r[6]];
+  }
   $netName = ['ig' => 'Instagram', 'fb' => 'Facebook', 'in' => 'LinkedIn'];
   ?>
   <section class="mk-sec" id="social" style="padding-top:40px">
@@ -289,7 +305,7 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
       #social .soc-gal{display:flex;gap:20px;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;margin:0 -8px;padding:6px 8px 22px}#social .soc-gal::-webkit-scrollbar{display:none}
       #social .soc-gal>.soc-card{flex:0 0 296px;scroll-snap-align:start}
       #social .soc-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
-      #social .soc-count{font:600 14px/1.3 var(--font);color:var(--ink-2)}
+      #social .soc-count{display:flex;gap:10px;align-items:flex-start;max-width:760px;font:400 15px/1.5 var(--font);color:var(--ink-2)}#social .soc-count b{color:var(--ink);font-weight:600}#social .soc-count svg{flex:none;width:22px;height:22px;margin-top:1px;color:var(--accent-text,#7c3aed)}
       #social .soc-arrows{display:flex;gap:8px}
       #social .soc-arrow{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--ink);border:1px solid var(--hairline)}
       #social .soc-arrow svg{width:20px;height:20px}#social .soc-arrow[disabled]{opacity:.35;cursor:default}
@@ -302,6 +318,10 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
       #social .soc-img{display:block;width:100%;height:auto;background:#eef0f4}
       #social .soc-cap{padding:0 12px 10px;font-size:14px}#social .soc-cap b{font-weight:600}#social .soc-tags{color:#00376b}#social .soc-more{color:#65676b}
       #social .soc-card[data-net="fb"] .soc-cap,#social .soc-card[data-net="in"] .soc-cap{padding-top:0}
+      #social .soc-link{background:#f0f2f5;border-top:1px solid #e4e6eb;border-bottom:1px solid #e4e6eb}#social .soc-card[data-net="in"] .soc-link{background:#eef3f8}
+      #social .soc-img--link{aspect-ratio:1.91/1;object-fit:cover}
+      #social .soc-link__meta{display:flex;flex-direction:column;gap:3px;padding:9px 12px 10px}#social .soc-link__meta b{font-size:14.5px;line-height:1.3;color:#14161c}
+      #social .soc-link__dom{font-size:11.5px;letter-spacing:.02em;color:#65676b}#social .soc-link__dom--in{letter-spacing:0}
       #social .soc-icons{display:flex;gap:14px;padding:10px 12px 6px;color:#14161c}#social .soc-icons svg{width:23px;height:23px}
       #social .soc-likes{padding:0 12px 4px;font-weight:600;font-size:13px}
       #social .soc-stats{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:13px;color:#65676b}
@@ -326,18 +346,22 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
           <div class="lg-stack" style="gap:2px;min-width:0"><span class="t-subhead t-strong">Sarah</span><span class="t-body c-2" style="font-size:14px;line-height:20px">Boss, this week's posts are ready to review. Approve them and they go out on schedule, on every network you use.</span></div>
         </div>
       </div>
-      <div class="soc-bar" data-rv><span class="soc-count"><?= count($socPosts) ?> businesses, <?= count($socPosts) ?> industries, one design library</span>
+      <div class="soc-bar" data-rv><span class="soc-count"><svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/><circle cx="12" cy="12" r="3"/></svg><span><b>Curated by intelligence, not guesswork.</b> Sarah and your specialists read what is trending in your industry, the signals from your audience and how every past post performed, then choose the topic, the look and the moment to post.</span></span>
         <div class="soc-arrows"><button type="button" class="soc-arrow lg-glass lg-glass--thin" data-dir="-1" aria-label="Previous posts" disabled><svg viewBox="0 0 24 24" class="ic"><path d="m15 6-6 6 6 6"/></svg></button><button type="button" class="soc-arrow lg-glass lg-glass--thin" data-dir="1" aria-label="Next posts"><svg viewBox="0 0 24 24" class="ic"><path d="m9 6 6 6-6 6"/></svg></button></div></div>
       <div class="soc-gal" data-rv role="list" aria-label="Example posts on Instagram, Facebook and LinkedIn" tabindex="0">
-        <?php foreach ($socPosts as $i => $p): $n = $p['net']; ?>
+        <?php foreach ($socAll as $i => $p): $n = $p['net']; $art = ($p['type'] ?? '') === 'article'; ?>
         <article class="soc-card" data-net="<?= $n ?>" role="listitem" aria-label="<?= e($netName[$n] . ' post by ' . $p['biz']) ?>">
           <div class="soc-hd">
             <span class="soc-av" style="background:<?= e($p['av']) ?>"><?= e(substr($p['biz'], 0, 1)) ?></span>
             <div class="soc-who"><b><?= e($n === 'ig' ? $p['handle'] : $p['biz']) ?></b><span><?= e($p['sub']) ?><?= $n === 'fb' ? ' · Public' : '' ?></span></div>
             <span class="soc-badge" title="<?= e($netName[$n]) ?>"><?= $n === 'ig' ? $icIg('soc-ig-' . $i) : ($n === 'fb' ? $icFb : $icIn) ?></span>
           </div>
-          <?php if ($n !== 'ig'): ?><div class="soc-cap"><?= e($p['cap']) ?><?= $n === 'in' ? ' <span class="soc-more">…more</span>' : '' ?></div><?php endif; ?>
+          <?php if ($n !== 'ig'): ?><div class="soc-cap"><?= e($p['cap']) ?><?= $n === 'in' && !$art ? ' <span class="soc-more">…more</span>' : '' ?></div><?php endif; ?>
+          <?php if ($art): ?>
+          <div class="soc-link"><img class="soc-img soc-img--link" src="<?= e($mk('social/articles/' . $p['img'] . '.webp')) ?>" alt="<?= e($p['alt']) ?>" width="640" height="335" loading="lazy" decoding="async"><div class="soc-link__meta"><?php if ($n === 'fb'): ?><span class="soc-link__dom"><?= e(strtoupper($p['domain'])) ?></span><b><?= e($p['title']) ?></b><?php else: ?><b><?= e($p['title']) ?></b><span class="soc-link__dom soc-link__dom--in"><?= e($p['domain']) ?> · <?= e($p['read']) ?></span><?php endif; ?></div></div>
+          <?php else: ?>
           <img class="soc-img" src="<?= e($mk('social/' . $p['img'] . '.webp')) ?>" alt="<?= e($p['alt']) ?>" width="<?= (int) $p['w'] ?>" height="<?= (int) $p['h'] ?>" loading="lazy" decoding="async">
+          <?php endif; ?>
           <?php if ($n === 'ig'): ?>
             <div class="soc-icons" aria-hidden="true"><svg viewBox="0 0 24 24" class="ic"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><svg viewBox="0 0 24 24" class="ic"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><svg viewBox="0 0 24 24" class="ic"><path d="M21 4 3 11l7 2 2 7 9-16z"/></svg></div>
             <div class="soc-likes"><?= e($p['meta']) ?></div>
@@ -358,6 +382,132 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
         function sync() { b[0].disabled = g.scrollLeft < 8; b[1].disabled = g.scrollLeft + g.clientWidth > g.scrollWidth - 8; }
         Array.prototype.forEach.call(b, function (x) { x.addEventListener('click', function () { g.scrollBy({ left: step() * (+x.getAttribute('data-dir')), behavior: 'smooth' }); }); });
         g.addEventListener('scroll', function () { window.requestAnimationFrame(sync); }, { passive: true }); sync();
+      })();
+    </script>
+  </section>
+
+  <?php /* 05c — COMMENTS ANSWERED (Owner 2026-10-05: "Add below it a simulation of the Sarah chat responding to comments").
+     A self-playing thread: comments arrive, Sarah writes the reply in the brand's voice, the business approves and it posts;
+     a buying comment becomes a lead. Plays when on screen, loops; reduced motion shows the finished thread. */ ?>
+  <section class="mk-sec" id="replies" style="padding-top:40px">
+    <style>
+      #replies .rp-wrap{display:flex;gap:48px;align-items:center}
+      #replies .rp-copy{width:380px;flex:none;display:flex;flex-direction:column;gap:16px}
+      #replies .rp-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+      #replies .rp-list li{display:flex;gap:10px;align-items:flex-start;font-size:15px;line-height:22px;color:var(--ink-2)}
+      #replies .rp-list svg{flex:none;width:18px;height:18px;margin-top:2px;color:var(--success)}
+      #replies .rp-stage{flex:1;min-width:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:18px;align-items:start}
+      #replies .rp-post{border-radius:18px;overflow:hidden;background:#fff;color:#14161c;box-shadow:0 0 0 .5px rgba(0,0,0,.08),0 14px 36px rgba(20,16,60,.18);font:400 14px/1.42 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+      #replies .rp-hd{display:flex;align-items:center;gap:10px;padding:11px 12px}
+      #replies .rp-av{width:32px;height:32px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font:700 13px/1 var(--font)}
+      #replies .rp-hd .rp-av{box-shadow:0 0 0 2px #fff,0 0 0 4px #d62976}
+      #replies .rp-hd b{font-size:14px}#replies .rp-hd span{font-size:12px;color:#65676b;display:block}
+      #replies .rp-media{display:flex;gap:10px;padding:0 12px 10px;align-items:center}
+      #replies .rp-media img{width:72px;height:90px;object-fit:cover;border-radius:8px;flex:none}
+      #replies .rp-media p{margin:0;font-size:13.5px;color:#14161c}#replies .rp-c__body{color:#14161c}
+      #replies .rp-thread{border-top:1px solid #efefef;padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px;min-height:356px}
+      #replies .rp-c{display:flex;gap:9px;align-items:flex-start}
+      #replies .rp-c .rp-av{width:28px;height:28px;font-size:12px}
+      #replies .rp-c__body{min-width:0;font-size:13.5px}
+      #replies .rp-c__body b{font-weight:600;margin-right:4px}
+      #replies .rp-c__meta{display:flex;gap:10px;font-size:11.5px;color:#8e8e8e;margin-top:2px}
+      #replies .rp-reply{margin-left:37px}
+      #replies .rp-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:#7c3aed;background:#f3eeff;border-radius:999px;padding:2px 7px}
+      #replies .rp-typing{margin-left:37px;display:flex;align-items:center;gap:8px;font-size:12px;color:#7c3aed}
+      #replies .rp-dots{display:inline-flex;gap:3px}#replies .rp-dots i{width:5px;height:5px;border-radius:50%;background:#a78bfa;animation:rp-b 1s infinite}
+      #replies .rp-dots i:nth-child(2){animation-delay:.15s}#replies .rp-dots i:nth-child(3){animation-delay:.3s}
+      @keyframes rp-b{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+      #replies .rp-side{display:flex;flex-direction:column;gap:12px}
+      #replies .rp-card{border-radius:18px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+      #replies .rp-row{display:flex;align-items:center;gap:10px}
+      #replies .rp-row .lg-grow{min-width:0}
+      #replies .rp-stat{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2)}#replies .rp-stat b{color:var(--ink);font-variant-numeric:tabular-nums}
+      #replies .rp-draft{font-size:13px;line-height:19px;color:var(--ink);padding:10px 12px;border-radius:12px;background:var(--fill-hover)}
+      #replies [data-rp]{transition:opacity .35s ease,transform .35s ease}
+      #replies [data-rp].rp-off{opacity:0;transform:translateY(8px)}
+      @media (max-width:900px){#replies .rp-wrap{flex-direction:column;align-items:stretch;gap:24px}#replies .rp-copy{width:auto}#replies .rp-stage{grid-template-columns:1fr}}
+      @media (prefers-reduced-motion:reduce){#replies [data-rp]{transition:none}#replies .rp-dots i{animation:none}}
+    </style>
+    <div class="mk-wrap rp-wrap">
+      <div class="rp-copy">
+        <span class="t-eyebrow" data-rv>Comments, answered</span>
+        <h2 class="mk-h2" data-rv>Every comment gets a reply. The hot ones become leads.</h2>
+        <p class="mk-lead" data-rv style="font-size:17px;line-height:27px">Sarah reads the comments on your Facebook, Instagram and LinkedIn posts, writes each reply in your voice and posts it when you approve. When someone asks about dates or prices, Elena adds them to your clients as a lead.</p>
+        <ul class="rp-list" data-rv>
+          <li><svg viewBox="0 0 24 24" class="ic"><path d="m5 12 5 5 9-10"/></svg>Replies in minutes, not days, in the way you talk to customers.</li>
+          <li><svg viewBox="0 0 24 24" class="ic"><path d="m5 12 5 5 9-10"/></svg>Questions about price or availability are followed up by message.</li>
+          <li><svg viewBox="0 0 24 24" class="ic"><path d="m5 12 5 5 9-10"/></svg>You approve every reply, or change it in one tap.</li>
+        </ul>
+      </div>
+      <div class="rp-stage" data-rv aria-label="Example: Sarah replying to comments on an Instagram post">
+        <article class="rp-post">
+          <div class="rp-hd"><span class="rp-av" style="background:#14532d">S</span><div><b>saltmarshtravel</b><span>Lake District</span></div></div>
+          <div class="rp-media"><img src="<?= e($mk('social/travel-agency-08.webp')) ?>" alt="" width="72" height="90" loading="lazy" decoding="async"><p><b>saltmarshtravel</b> Lakes, mountains and slow mornings. Handpicked stays and guided tours, up to 35% off this season.</p></div>
+          <div class="rp-thread" id="rp-thread">
+            <div class="rp-c" data-rp="c1"><span class="rp-av" style="background:#db2777">M</span><div class="rp-c__body"><b>maya.wanders</b>Is this available in April? Asking for my honeymoon 😍<div class="rp-c__meta"><span>2m</span><span>Reply</span></div></div></div>
+            <div class="rp-typing" data-rp="t1"><span class="rp-dots"><i></i><i></i><i></i></span>Sarah is writing a reply…</div>
+            <div class="rp-c rp-reply" data-rp="r1"><span class="rp-av" style="background:#14532d">S</span><div class="rp-c__body"><b>saltmarshtravel</b>Congratulations, Maya! April is lovely for the lakes. We have just sent you dates and prices by message 💌<div class="rp-c__meta"><span>Just now</span><span class="rp-tag">✓ Approved</span></div></div></div>
+            <div class="rp-c" data-rp="c2"><span class="rp-av" style="background:#0891b2">T</span><div class="rp-c__body"><b>tom.k_travels</b>How much for two people, 5 nights?<div class="rp-c__meta"><span>1m</span><span>Reply</span></div></div></div>
+            <div class="rp-typing" data-rp="t2"><span class="rp-dots"><i></i><i></i><i></i></span>Sarah is writing a reply…</div>
+            <div class="rp-c rp-reply" data-rp="r2"><span class="rp-av" style="background:#14532d">S</span><div class="rp-c__body"><b>saltmarshtravel</b>Hi Tom! Five nights for two starts from $1,240 per person, with breakfast and transfers. Check your messages for the full breakdown 🙌<div class="rp-c__meta"><span>Just now</span><span class="rp-tag">✓ Approved</span></div></div></div>
+            <div class="rp-c" data-rp="c3"><span class="rp-av" style="background:#65a30d">L</span><div class="rp-c__body"><b>lena.outdoors</b>That lake 😍😍<div class="rp-c__meta"><span>Now</span><span>Reply</span></div></div></div>
+            <div class="rp-c rp-reply" data-rp="r3"><span class="rp-av" style="background:#14532d">S</span><div class="rp-c__body"><b>saltmarshtravel</b>Right? It looks even better at sunrise, Lena 🌄<div class="rp-c__meta"><span>Just now</span><span class="rp-tag">✓ Approved</span></div></div></div>
+          </div>
+        </article>
+        <div class="rp-side">
+          <div class="rp-card lg-glass lg-glass--thick">
+            <div class="rp-row"><img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="" width="34" height="34" style="width:34px;height:34px;flex:none"><div class="lg-stack lg-grow" style="gap:1px"><span class="t-subhead t-strong">Sarah</span><span class="t-caption c-3" id="rp-status">Watching your comments</span></div></div>
+            <div class="rp-draft" data-rp="d1" id="rp-draft">Boss, Maya asked about April for her honeymoon. I've written a reply and will send her the dates by message. Approve?</div>
+            <div class="rp-row" data-rp="a1" style="justify-content:flex-end;gap:8px"><span class="lg-btn lg-btn--glass lg-btn--sm" style="height:32px">Change</span><span class="lg-btn lg-btn--primary lg-btn--sm" style="height:32px" id="rp-approve">Approve</span></div>
+          </div>
+          <div class="rp-card lg-glass lg-glass--thick" data-rp="lead">
+            <div class="rp-row"><img class="lg-avatar" src="<?= e($agentImg('elena')) ?>" alt="" width="34" height="34" style="width:34px;height:34px;flex:none"><div class="lg-stack lg-grow" style="gap:1px"><span class="t-subhead t-strong">New lead in Clients</span><span class="t-caption c-3">Elena · from an Instagram comment</span></div><span class="lg-badge lg-badge--success">Hot</span></div>
+            <div class="rp-stat"><span>Maya · honeymoon, April</span><b>2 guests</b></div>
+          </div>
+          <div class="rp-card lg-glass lg-glass--thin">
+            <div class="rp-stat"><span>Comments answered today</span><b id="rp-count">0</b></div>
+            <div class="rp-stat"><span>Average reply time</span><b>4 min</b></div>
+            <div class="rp-stat"><span>Leads from comments this week</span><b id="rp-leads">2</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var s = document.getElementById('replies'); if (!s) return;
+        var q = function (k) { return s.querySelector('[data-rp="' + k + '"]'); };
+        var all = Array.prototype.slice.call(s.querySelectorAll('[data-rp]'));
+        var status = document.getElementById('rp-status'), draft = document.getElementById('rp-draft'), count = document.getElementById('rp-count'), leads = document.getElementById('rp-leads'), appr = document.getElementById('rp-approve');
+        var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        var gen = 0, visible = false, running = false;
+        function on(k, v) { var el = q(k); if (!el) return; el.hidden = false; if (v) { el.classList.add('rp-off'); void el.offsetWidth; el.classList.remove('rp-off'); } else el.classList.add('rp-off'); }
+        function gone(k) { var el = q(k); if (el) { el.hidden = true; el.classList.add('rp-off'); } }
+        function finished() { all.forEach(function (el) { el.hidden = false; el.classList.remove('rp-off'); }); ['t1', 't2', 'a1'].forEach(gone); status.textContent = '3 replies sent'; count.textContent = '14'; leads.textContent = '3'; draft.textContent = 'All caught up, Boss. Two people asked about trips today, both are in your clients.'; }
+        function reset() { all.forEach(function (el) { el.hidden = true; el.classList.add('rp-off'); }); status.textContent = 'Watching your comments'; count.textContent = '11'; leads.textContent = '2'; appr.style.boxShadow = ''; }
+        function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+        async function run() {
+          var my = ++gen, live = function () { return my === gen && visible; };
+          running = true; reset(); await wait(500);
+          on('c1', 1); await wait(1100); if (!live()) return (running = false);
+          status.textContent = 'Writing a reply to Maya'; on('t1', 1); await wait(1400); if (!live()) return (running = false);
+          draft.textContent = 'Boss, Maya asked about April for her honeymoon. I’ve written a reply and will send her the dates by message. Approve?';
+          on('d1', 1); on('a1', 1); await wait(1500); if (!live()) return (running = false);
+          appr.style.boxShadow = '0 0 0 4px rgba(124,58,237,.35)'; await wait(500); appr.style.boxShadow = '';
+          gone('t1'); on('r1', 1); count.textContent = '12'; status.textContent = 'Reply sent'; await wait(700);
+          on('lead', 1); leads.textContent = '3'; await wait(1600); if (!live()) return (running = false);
+          on('c2', 1); await wait(1000); status.textContent = 'Writing a reply to Tom'; on('t2', 1);
+          draft.textContent = 'Tom asked for a price for two. Reply ready, with the full breakdown by message. Approve?'; await wait(1400); if (!live()) return (running = false);
+          appr.style.boxShadow = '0 0 0 4px rgba(124,58,237,.35)'; await wait(500); appr.style.boxShadow = '';
+          gone('t2'); on('r2', 1); count.textContent = '13'; status.textContent = 'Reply sent'; await wait(1500); if (!live()) return (running = false);
+          on('c3', 1); await wait(900); draft.textContent = 'Lena loved the lake. A short thank-you reply is ready. Approve?'; status.textContent = 'Writing a reply to Lena'; await wait(1100);
+          appr.style.boxShadow = '0 0 0 4px rgba(124,58,237,.35)'; await wait(500); appr.style.boxShadow = '';
+          on('r3', 1); gone('a1'); count.textContent = '14'; status.textContent = '3 replies sent'; draft.textContent = 'All caught up, Boss. Two people asked about trips today, both are in your clients.';
+          await wait(5000); if (!live()) return (running = false);
+          running = false; if (visible) run();
+        }
+        if (reduce || !('IntersectionObserver' in window)) { finished(); return; }
+        reset();
+        new IntersectionObserver(function (es) { es.forEach(function (e) { visible = e.isIntersecting; if (visible && !running) run(); else if (!visible) { gen++; running = false; finished(); } }); }, { threshold: .35 }).observe(s.querySelector('.rp-stage'));
       })();
     </script>
   </section>
