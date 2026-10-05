@@ -674,7 +674,6 @@ return Application::configure(basePath: dirname(__DIR__))
         // the read side and this exemption can never drift apart.
         $middleware->encryptCookies(except: [
             \App\Http\Middleware\AdminSessionIdentity::COOKIE,
-            \App\Core\Partners\PartnerProgram::COOKIE,   // RFC-0026: signed by Attribution itself
         ]);
 
         $middleware->alias([

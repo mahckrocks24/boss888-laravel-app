@@ -1,4 +1,4 @@
-{{-- Partners: flags - /admin/partners/flags (RFC-0026 section 10): self-referral, click bursts, disputes. --}}
+{{-- Affiliates: flags - /admin/partners/flags (RFC-0026 section 10): self-referral, click bursts, disputes. --}}
 @include('admin.pages.partners._helpers')
 <script>
   pAdmin.fFilter = pAdmin.fFilter || 'open';
@@ -18,7 +18,7 @@
       '<div style="display:flex;gap:6px;margin-bottom:12px">' + [['open', 'Open'], ['resolved', 'Resolved'], ['dismissed', 'Dismissed'], ['all', 'All']].map(function (t) { return '<button class="btn btn-sm' + (pAdmin.fFilter === t[0] ? '' : ' btn-ghost') + '" onclick="pAdmin.fFilter=\'' + t[0] + '\';window.page()">' + t[1] + '</button>'; }).join('') + '</div>' +
       '<div class="card">' + (list.length ? adminTable({ id: 'pflags', data: list, columns: [
         { key: 'created_at', label: 'When', sortable: true, render: function (v) { return tsTime(v); } },
-        { key: 'partner', label: 'Partner', render: function (v, r) { return '<a href="/admin/partners?id=' + r.affiliate_id + '">' + e(v || ('#' + r.affiliate_id)) + '</a>'; } },
+        { key: 'partner', label: 'Affiliate', render: function (v, r) { return '<a href="/admin/partners?id=' + r.affiliate_id + '">' + e(v || ('#' + r.affiliate_id)) + '</a>'; } },
         { key: 'kind', label: 'What', render: function (v) { return '<b>' + e(words[v] || v) + '</b>'; } },
         { key: 'workspace_id', label: 'Business', render: function (v) { return v ? 'ws ' + v : '—'; } },
         { key: 'evidence_json', label: 'Evidence', render: function (v) { return '<code style="font-size:11px">' + e(v) + '</code>'; } },

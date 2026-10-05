@@ -1,5 +1,5 @@
-{{-- Partners: commissions - /admin/partners/commissions (RFC-0026 sections 6 and 9). The whole ledger: hold, release or
-     void with a reason (audited). Paid rows are never edited: an adjustment on the partner nets them. --}}
+{{-- Affiliates: commissions - /admin/partners/commissions (RFC-0026 sections 6 and 9). The whole ledger: hold, release or
+     void with a reason (audited). Paid rows are never edited: an adjustment on the affiliate nets them. --}}
 @include('admin.pages.partners._helpers')
 <script>
   pAdmin.cFilter = pAdmin.cFilter || '';
@@ -21,7 +21,7 @@
       '<div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">' + tabs.map(function (t) { return '<button class="btn btn-sm' + (pAdmin.cFilter === t[0] ? '' : ' btn-ghost') + '" onclick="pAdmin.cFilter=\'' + t[0] + '\';window.page()">' + t[1] + '</button>'; }).join('') + '</div>' +
       '<div class="card">' + adminTable({ id: 'pcomm', data: list, searchable: true, columns: [
         { key: 'created_at', label: 'Date', sortable: true, render: function (v) { return ts(v); } },
-        { key: 'partner', label: 'Partner', sortable: true, render: function (v, r) { return '<a href="/admin/partners?id=' + r.affiliate_id + '">' + e(v || ('#' + r.affiliate_id)) + '</a>'; } },
+        { key: 'partner', label: 'Affiliate', sortable: true, render: function (v, r) { return '<a href="/admin/partners?id=' + r.affiliate_id + '">' + e(v || ('#' + r.affiliate_id)) + '</a>'; } },
         { key: 'workspace_name', label: 'Business', render: function (v, r) { return e(v || (r.workspace_id ? 'ws ' + r.workspace_id : '—')); } },
         { key: 'kind', label: 'For', render: function (v, r) { return e(r.source_type + ' · ' + v) + (r.note ? '<div style="font-size:11px;color:var(--muted)">' + e(r.note) + '</div>' : ''); } },
         { key: 'base_minor', label: 'Base', sortable: true, render: function (v) { return +v ? pAdmin.usd(v) : '—'; } },

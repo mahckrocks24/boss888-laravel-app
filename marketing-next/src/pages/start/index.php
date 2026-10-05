@@ -228,7 +228,7 @@ HTML;
       <div class="form-row" id="wl-code-row">
         <button type="button" id="wl-code-open" aria-expanded="false" aria-controls="wl-code-box" style="background:none;border:0;padding:0;font:inherit;font-size:14px;color:inherit;opacity:.85;text-decoration:underline;text-underline-offset:3px;cursor:pointer">Have a code?</button>
         <div id="wl-code-box" hidden>
-          <label for="wl-code">Partner or promotion code</label>
+          <label for="wl-code">Affiliate or promotion code</label>
           <div class="pw-wrap">
             <input id="wl-code" name="promo_code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="24" style="text-transform:uppercase">
             <button type="button" class="pw-toggle" id="wl-code-check">Apply</button>

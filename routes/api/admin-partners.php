@@ -1,5 +1,5 @@
 <?php
-// RFC-0026 section 9 - /admin -> Partners: approve, monitor, adjust, reverse. Platform admins only; every change audited.
+// RFC-0026 section 9 - /admin -> Affiliates: approve, monitor, adjust, reverse. Platform admins only; every change audited.
 // Changes also carry mfa.stepup, which stands down until governance has two MFA admins and then guards them.
 
 use App\Core\Partners\PartnerProgram;
@@ -9,8 +9,8 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->prefix('admin/partners')->group(function () {
     $audit = function (Request $r, string $action, string $type, $id, array $meta = []) {
-        try { app(\App\Core\Audit\AuditLogService::class)->log(null, (int) $r->user()->id, 'partners.' . $action, $type, (int) $id, $meta); } catch (\Throwable $e) {
-            DB::table('audit_logs')->insert(['workspace_id' => null, 'user_id' => (int) $r->user()->id, 'action' => 'partners.' . $action, 'entity_type' => $type, 'entity_id' => (int) $id, 'metadata_json' => json_encode($meta), 'created_at' => now(), 'updated_at' => now()]);
+        try { app(\App\Core\Audit\AuditLogService::class)->log(null, (int) $r->user()->id, 'affiliates.' . $action, $type, (int) $id, $meta); } catch (\Throwable $e) {
+            DB::table('audit_logs')->insert(['workspace_id' => null, 'user_id' => (int) $r->user()->id, 'action' => 'affiliates.' . $action, 'entity_type' => $type, 'entity_id' => (int) $id, 'metadata_json' => json_encode($meta), 'created_at' => now(), 'updated_at' => now()]);
         }
     };
     $sumBy = fn (int $affId, string $status) => (int) DB::table('commissions')->where('affiliate_id', $affId)->where('status', $status)->sum('amount_minor');
@@ -75,7 +75,7 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
         $upd = ['status' => $to, 'decision_note' => $in['note'] ?? null, 'updated_at' => now()];
         if ($in['action'] === 'approve' && ! $a->approved_at) { $upd['approved_at'] = now(); $upd['approved_by'] = (int) $r->user()->id; }
         DB::table('affiliates')->where('id', $id)->update($upd);
-        // a suspended or closed partner's codes stop working at once; their earned money stays in the ledger for review
+        // a suspended or closed affiliate's codes stop working at once; their earned money stays in the ledger for review
         if (in_array($to, ['suspended', 'closed'], true)) DB::table('vouchers')->where('affiliate_id', $id)->where('status', 'active')->update(['status' => 'paused', 'updated_at' => now()]);
         $audit($r, $in['action'], 'Affiliate', $id, ['from' => $a->status, 'to' => $to, 'note' => $in['note'] ?? null]);
         \App\Core\Partners\PartnerEmails::safe(fn () => \App\Core\Partners\PartnerEmails::decided($id, $to, $in['note'] ?? null));   // A2 / A2r
@@ -112,7 +112,7 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
     Route::get('/codes', function (Request $r) {
         $q = DB::table('vouchers as v')->leftJoin('affiliates as a', 'a.id', '=', 'v.affiliate_id')->orderByDesc('v.id');
         if ($r->query('type') === 'house') $q->whereNull('v.affiliate_id'); elseif ($r->query('type') === 'partner') $q->whereNotNull('v.affiliate_id');
-        return response()->json(['codes' => $q->limit(2000)->get(['v.*', 'a.display_name as partner', 'a.handle'])->map(function ($v) {
+        return response()->json(['codes' => $q->limit(2000)->get(['v.*', 'a.display_name as affiliate', 'a.handle'])->map(function ($v) {
             $v->describe = PartnerProgram::describe($v);
             $v->saved_minor = (int) DB::table('voucher_redemptions')->where('voucher_id', $v->id)->sum('amount_saved_minor');
             return $v;
@@ -120,7 +120,7 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
     });
 
     Route::post('/codes', function (Request $r) use ($audit) {
-        // a house promotion: discount only, no partner
+        // a house promotion: discount only, no affiliate
         $in = $r->validate(['code' => 'required|string|max:24', 'label' => 'nullable|string|max:120', 'monthly' => 'required|integer|min:0|max:5000', 'yearly' => 'required|integer|min:0|max:5000', 'domain' => 'required|integer|min:0|max:5000',
             'months' => 'required|integer|min:1|max:24', 'max' => 'nullable|integer|min:1', 'starts_at' => 'nullable|date', 'ends_at' => 'nullable|date', 'new_customers_only' => 'boolean']);
         $code = PartnerProgram::normalizeCode($in['code']);
@@ -149,14 +149,14 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
         $q = DB::table('commissions as c')->leftJoin('affiliates as a', 'a.id', '=', 'c.affiliate_id')->leftJoin('workspaces as w', 'w.id', '=', 'c.workspace_id')->orderByDesc('c.id');
         if ($s = $r->query('status')) $q->where('c.status', $s);
         if ($af = (int) $r->query('affiliate')) $q->where('c.affiliate_id', $af);
-        return response()->json(['commissions' => $q->limit(2000)->get(['c.*', 'a.display_name as partner', 'a.handle', 'w.name as workspace_name'])]);
+        return response()->json(['commissions' => $q->limit(2000)->get(['c.*', 'a.display_name as affiliate', 'a.handle', 'w.name as workspace_name'])]);
     });
 
     Route::post('/commissions/{id}', function (Request $r, int $id) use ($audit) {
         $in = $r->validate(['action' => 'required|in:hold,release,void', 'note' => 'required|string|min:3|max:255']);
         $c = DB::table('commissions')->where('id', $id)->first();
         if (! $c) return response()->json(['error' => 'Not found'], 404);
-        if ($c->status === 'paid') return response()->json(['error' => 'Already paid. Add an adjustment on the partner instead.'], 422);
+        if ($c->status === 'paid') return response()->json(['error' => 'Already paid. Add an adjustment on the affiliate instead.'], 422);
         $upd = ['hold' => ['status' => 'pending', 'payable_at' => now()->addYears(10)], 'release' => ['status' => 'payable', 'payable_at' => now()], 'void' => ['status' => 'void']][$in['action']];
         DB::table('commissions')->where('id', $id)->update($upd + ['note' => mb_substr(trim(($c->note ? $c->note . ' · ' : '') . $in['action'] . ': ' . $in['note']), 0, 255), 'updated_at' => now()]);
         $audit($r, 'commission_' . $in['action'], 'Commission', $id, ['note' => $in['note'], 'from' => $c->status, 'amount' => $c->amount_minor]);
@@ -166,7 +166,7 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
     // RFC-0026 section 7: the monthly payout run
     Route::get('/payouts', fn () => response()->json(['preview' => \App\Core\Partners\PartnerPayouts::preview(), 'bank_available' => \App\Core\Partners\PartnerPayouts::connectEnabled(),
         'min_minor' => PartnerProgram::MIN_PAYOUT_MINOR, 'period' => now()->format('Y-m'),
-        'history' => DB::table('payouts as p')->leftJoin('affiliates as a', 'a.id', '=', 'p.affiliate_id')->orderByDesc('p.id')->limit(500)->get(['p.*', 'a.display_name as partner', 'a.payout_email'])]));
+        'history' => DB::table('payouts as p')->leftJoin('affiliates as a', 'a.id', '=', 'p.affiliate_id')->orderByDesc('p.id')->limit(500)->get(['p.*', 'a.display_name as affiliate', 'a.payout_email'])]));
     Route::post('/payouts/run', function (Request $r) use ($audit) {
         $in = $r->validate(['period' => ['required', 'regex:/^\d{4}-\d{2}$/']]);
         $res = \App\Core\Partners\PartnerPayouts::run($in['period'], (int) $r->user()->id);
@@ -186,7 +186,7 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
     })->whereNumber('id');
 
     Route::get('/flags', fn (Request $r) => response()->json(['flags' => DB::table('affiliate_flags as f')->leftJoin('affiliates as a', 'a.id', '=', 'f.affiliate_id')
-        ->when($r->query('status', 'open') !== 'all', fn ($q) => $q->where('f.status', $r->query('status', 'open')))->orderByDesc('f.id')->limit(1000)->get(['f.*', 'a.display_name as partner', 'a.handle'])]));
+        ->when($r->query('status', 'open') !== 'all', fn ($q) => $q->where('f.status', $r->query('status', 'open')))->orderByDesc('f.id')->limit(1000)->get(['f.*', 'a.display_name as affiliate', 'a.handle'])]));
 
     Route::post('/flags/{id}', function (Request $r, int $id) use ($audit) {
         $in = $r->validate(['status' => 'required|in:resolved,dismissed', 'resolution' => 'required|string|min:3|max:255']);

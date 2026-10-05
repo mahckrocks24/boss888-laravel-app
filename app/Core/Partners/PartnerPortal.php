@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * RFC-0026 section 8 - what an affiliate sees about their own work, and nothing else: their clicks, the businesses they
+ * RFC-0026 section 8 - what an affiliate sees about their own work, and nothing else: the codes they share, the businesses they
  * referred (masked email, plan, status, what they earned), their links and codes, their money. Never a customer's
  * content, contacts or website.
  */
@@ -35,7 +35,7 @@ class PartnerPortal
             'has_workspace' => DB::table('workspace_users')->where('user_id', $user->id)->exists()];
         if ($a) {
             $out['partner'] = ['handle' => $a->handle, 'display_name' => $a->display_name, 'status' => $a->status, 'channel_url' => $a->channel_url,
-                'link' => 'https://levelupgrowth.io/r/' . $a->handle, 'budgets' => PartnerProgram::budgets($a),
+                'budgets' => PartnerProgram::budgets($a),
                 'payout_method' => $a->payout_method, 'payouts_enabled' => (bool) $a->payouts_enabled, 'decision_note' => $a->status === 'rejected' ? $a->decision_note : null,
                 'since' => $a->approved_at];
         }
@@ -46,7 +46,6 @@ class PartnerPortal
     {
         $from = $days > 0 ? now()->subDays($days) : null;
         $w = fn ($q, $col) => $from ? $q->where($col, '>=', $from) : $q;
-        $clicks = $w(DB::table('affiliate_clicks')->where('affiliate_id', $a->id), 'created_at')->count();
         $signups = $w(DB::table('referrals')->where('affiliate_id', $a->id)->where('status', '!=', 'void'), 'signed_up_at')->count();
         // paying = still on a paid plan now (a business that cancelled no longer counts)
         $paying = DB::table('referrals as r')->where('r.affiliate_id', $a->id)->where('r.status', 'paying')->whereExists(fn ($q) => $q->from('subscriptions as s')->join('plans as p', 'p.id', '=', 's.plan_id')
@@ -54,27 +53,27 @@ class PartnerPortal
         $earned = (int) $w(DB::table('commissions')->where('affiliate_id', $a->id), 'created_at')->sum('amount_minor');
         $money = [];
         foreach (['pending', 'payable', 'paid'] as $s) $money[$s] = (int) DB::table('commissions')->where('affiliate_id', $a->id)->where('status', $s)->sum('amount_minor');
-        $bySub = [];
-        foreach ($w(DB::table('affiliate_clicks')->where('affiliate_id', $a->id), 'created_at')->selectRaw("COALESCE(sub_id, '') s, COUNT(*) n")->groupBy('s')->get() as $r) $bySub[$r->s] = ['sub' => $r->s, 'clicks' => (int) $r->n, 'signups' => 0, 'paying' => 0, 'earned' => 0];
-        foreach ($w(DB::table('referrals')->where('affiliate_id', $a->id)->where('status', '!=', 'void'), 'signed_up_at')->get(['id', 'sub_id', 'status']) as $r) {
-            $k = (string) $r->sub_id; $bySub[$k] ??= ['sub' => $k, 'clicks' => 0, 'signups' => 0, 'paying' => 0, 'earned' => 0];
-            $bySub[$k]['signups']++; if ($r->status === 'paying') $bySub[$k]['paying']++;
-            $bySub[$k]['earned'] += (int) DB::table('commissions')->where('referral_id', $r->id)->sum('amount_minor');
+        // codes only (Owner 2026-10-05): results per code - the way an affiliate sees which video or post works is a code per video
+        $byCode = [];
+        foreach ($w(DB::table('referrals as r')->leftJoin('vouchers as v', 'v.id', '=', 'r.voucher_id')->where('r.affiliate_id', $a->id)->where('r.status', '!=', 'void'), 'r.signed_up_at')->get(['r.id', 'r.status', 'v.code']) as $r) {
+            $k = (string) ($r->code ?? '—'); $byCode[$k] ??= ['code' => $k, 'signups' => 0, 'paying' => 0, 'earned' => 0];
+            $byCode[$k]['signups']++; if ($r->status === 'paying') $byCode[$k]['paying']++;
+            $byCode[$k]['earned'] += (int) DB::table('commissions')->where('referral_id', $r->id)->sum('amount_minor');
         }
-        usort($bySub, fn ($x, $y) => [$y['earned'], $y['clicks']] <=> [$x['earned'], $x['clicks']]);
-        return ['days' => $days, 'clicks' => $clicks, 'signups' => $signups, 'paying' => $paying, 'conversion' => $clicks ? round($signups / $clicks * 100, 1) : 0,
-            'earned_minor' => $earned, 'money' => $money, 'by_sub' => array_values($bySub)];
+        usort($byCode, fn ($x, $y) => [$y['earned'], $y['signups']] <=> [$x['earned'], $x['signups']]);
+        return ['days' => $days, 'signups' => $signups, 'paying' => $paying, 'earned_minor' => $earned, 'money' => $money, 'by_code' => array_values($byCode),
+            'codes' => DB::table('vouchers')->where('affiliate_id', $a->id)->where('status', 'active')->count()];
     }
 
     public static function referrals(object $a): array
     {
         $rows = DB::table('referrals as r')->leftJoin('users as u', 'u.id', '=', 'r.user_id')->leftJoin('vouchers as v', 'v.id', '=', 'r.voucher_id')
             ->where('r.affiliate_id', $a->id)->orderByDesc('r.id')->limit(500)
-            ->get(['r.id', 'r.workspace_id', 'r.source', 'r.sub_id', 'r.status', 'r.signed_up_at', 'r.cycles_paid', 'r.months', 'u.email', 'v.code']);
+            ->get(['r.id', 'r.workspace_id', 'r.source', 'r.status', 'r.signed_up_at', 'r.cycles_paid', 'r.months', 'u.email', 'v.code']);
         return $rows->map(function ($r) {
             $plan = DB::table('subscriptions as s')->join('plans as p', 'p.id', '=', 's.plan_id')->where('s.workspace_id', $r->workspace_id)
                 ->whereIn('s.status', ['active', 'trialing', 'past_due'])->where('p.price', '>', 0)->orderByDesc('s.id')->first(['p.name', 's.status']);
-            return ['id' => $r->id, 'who' => self::maskEmail($r->email), 'joined' => $r->signed_up_at, 'via' => $r->source === 'voucher' ? ('code ' . $r->code) : 'link', 'video' => $r->sub_id,
+            return ['id' => $r->id, 'who' => self::maskEmail($r->email), 'joined' => $r->signed_up_at, 'via' => $r->code ? 'code ' . $r->code : 'earlier link',
                 'plan' => $plan->name ?? 'Free', 'trial' => ($plan->status ?? '') === 'trialing',
                 // a business that stopped paying shows as Cancelled, not Paying
                 'status' => ($r->status === 'paying' && ! $plan) ? 'Cancelled' : (['signed_up' => 'Signed up', 'paying' => 'Paying', 'ended' => 'Earning ended', 'void' => 'Not counted'][$r->status] ?? $r->status),
@@ -83,31 +82,12 @@ class PartnerPortal
         })->all();
     }
 
-    public static function links(object $a): array
-    {
-        $rows = DB::table('affiliate_links')->where('affiliate_id', $a->id)->orderBy('sub_id')->get();
-        return ['main' => 'https://levelupgrowth.io/r/' . $a->handle, 'links' => $rows->map(fn ($l) => ['id' => $l->id, 'sub' => $l->sub_id, 'label' => $l->label,
-            'url' => 'https://levelupgrowth.io/r/' . $a->handle . '/' . $l->sub_id,
-            'clicks' => DB::table('affiliate_clicks')->where('affiliate_id', $a->id)->where('sub_id', $l->sub_id)->count()])->all()];
-    }
-
-    public static function addLink(object $a, string $sub, ?string $label): array
-    {
-        $s = substr(trim(preg_replace('/[^a-z0-9_-]+/', '-', strtolower($sub)), '-'), 0, 40);
-        if ($s === '') return ['ok' => false, 'error' => 'Give the link a short name, like the video title.'];
-        if (DB::table('affiliate_links')->where('affiliate_id', $a->id)->count() >= 200) return ['ok' => false, 'error' => 'You have 200 links. Remove one first.'];
-        if (DB::table('affiliate_links')->where('affiliate_id', $a->id)->where('sub_id', $s)->exists()) return ['ok' => false, 'error' => 'You already have a link called ' . $s . '.'];
-        DB::table('affiliate_links')->insert(['affiliate_id' => $a->id, 'sub_id' => $s, 'label' => $label ? mb_substr($label, 0, 120) : null, 'created_at' => now(), 'updated_at' => now()]);
-        return ['ok' => true, 'url' => 'https://levelupgrowth.io/r/' . $a->handle . '/' . $s];
-    }
-
     public static function codes(object $a): array
     {
         return DB::table('vouchers')->where('affiliate_id', $a->id)->where('status', '!=', 'archived')->orderByDesc('id')->get()->map(fn ($v) => [
             'id' => $v->id, 'code' => $v->code, 'status' => $v->status, 'redemptions' => (int) $v->redemptions, 'max' => $v->max_redemptions, 'ends_at' => $v->ends_at,
             'discount' => ['monthly' => (int) $v->discount_monthly_bps, 'yearly' => (int) $v->discount_yearly_bps, 'domain' => (int) $v->discount_domain_bps],
             'commission' => PartnerProgram::terms($a, $v), 'describe' => PartnerProgram::describe($v),
-            'share' => 'https://levelupgrowth.io/r/' . $a->handle . '?code=' . $v->code,
         ])->all();
     }
 

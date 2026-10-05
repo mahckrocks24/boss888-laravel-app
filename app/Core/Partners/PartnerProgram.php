@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * RFC-0026 - the partner program's rules in one place (Owner 2026-10-05).
+ * RFC-0026 - the Affiliate Program's rules in one place (Owner 2026-10-05).
  *
  * Every referred payment carries a budget the affiliate splits between the customer's discount and their own commission:
  *   monthly plans 20% (the first 6 monthly payments), yearly plans 15% (once), domain registrations 10%.
@@ -18,8 +18,6 @@ class PartnerProgram
     public const BUDGET = ['monthly' => 2000, 'yearly' => 1500, 'domain' => 1000];   // basis points
     public const MONTHLY_CYCLES = 6;
     public const HOLD_DAYS = 30;
-    public const COOKIE = 'lug_ref';
-    public const COOKIE_DAYS = 60;
     public const DOMAIN_WINDOW_MONTHS = 6;     // a referred business's new domain registrations earn for its first 6 months
     public const MAX_CODES = 10;
     public const MIN_PAYOUT_MINOR = 5000;      // $50
@@ -117,7 +115,7 @@ class PartnerProgram
         if ($voucher->applies_plans && $m) $p[] = ($m / 100) . '% off your first ' . (int) $voucher->months . ' monthly payments';
         if ($voucher->applies_plans && $y && self::yearlyLive()) $p[] = ($y / 100) . '% off a yearly plan';
         if ($voucher->applies_domains && $d) $p[] = ($d / 100) . '% off new domains';
-        return $p ? ucfirst(implode(', ', $p)) . '.' : 'This code links you to your partner. It gives no discount.';
+        return $p ? ucfirst(implode(', ', $p)) . '.' : 'This code links you to your affiliate. It gives no discount.';
     }
 
     /**
@@ -136,7 +134,7 @@ class PartnerProgram
         if ($row) return $row;
         try {
             $sc = new \Stripe\StripeClient($key);
-            $params = ['percent_off' => $bps / 100, 'name' => 'Partner discount ' . ($bps / 100) . '%', 'metadata' => ['kind' => 'partner', 'bps' => (string) $bps, 'duration' => $dur]];
+            $params = ['percent_off' => $bps / 100, 'name' => 'Affiliate discount ' . ($bps / 100) . '%', 'metadata' => ['kind' => 'partner', 'bps' => (string) $bps, 'duration' => $dur]];
             $params += $duration === 'once' ? ['duration' => 'once'] : ['duration' => 'repeating', 'duration_in_months' => $months];
             $c = $sc->coupons->create($params);
             DB::table('partner_stripe_coupons')->insertOrIgnore(['percent_bps' => $bps, 'duration' => $dur, 'mode' => $mode, 'coupon_id' => $c->id, 'created_at' => now(), 'updated_at' => now()]);
@@ -152,7 +150,7 @@ class PartnerProgram
         try {
             DB::table('affiliate_flags')->insert(['affiliate_id' => $affiliateId, 'workspace_id' => $workspaceId, 'kind' => $kind,
                 'evidence_json' => json_encode($evidence), 'status' => 'open', 'created_at' => now(), 'updated_at' => now()]);
-            PartnerEmails::tellAdmin('Partner flag: ' . str_replace('_', ' ', $kind), 'Partner #' . $affiliateId . ($workspaceId ? ', workspace ' . $workspaceId : '') . '. Review it in Admin, Partners, Flags.');   // M2
+            PartnerEmails::tellAdmin('Affiliate flag: ' . str_replace('_', ' ', $kind), 'Affiliate #' . $affiliateId . ($workspaceId ? ', workspace ' . $workspaceId : '') . '. Review it in Admin, Affiliates, Flags.');   // M2
         } catch (\Throwable $e) { Log::warning('[AFF] flag failed', ['error' => $e->getMessage()]); }
     }
 

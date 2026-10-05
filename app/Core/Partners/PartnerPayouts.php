@@ -6,15 +6,15 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
- * RFC-0026 section 7 - paying partners.
+ * RFC-0026 section 7 - paying affiliates.
  *
  * Two routes, one ledger:
  *   - Stripe Connect Express (bank payouts handled by Stripe): behind storage/app/aff-connect.on. On 2026-10-05 Connect
  *     is NOT enabled on the platform's Stripe account (test mode refuses to create connected accounts) and the platform
  *     account is registered in the UAE, so the countries it can pay out to are confirmed when the Owner enables it.
  *   - Recorded payouts (PayPal or Wise, sent by hand from /admin): working now. The run creates a payout row per
- *     partner; admin sends the money and records its reference, which marks the commissions paid and tells the partner.
- * A partner is paid when their ready ("payable") balance, net of reversals, is at least $50. Smaller balances roll over.
+ *     affiliate; admin sends the money and records its reference, which marks the commissions paid and tells the affiliate.
+ * An affiliate is paid when their ready ("payable") balance, net of reversals, is at least $50. Smaller balances roll over.
  */
 class PartnerPayouts
 {
@@ -57,13 +57,13 @@ class PartnerPayouts
             if (! $acct) {
                 $platform = (string) $sc->accounts->retrieve()->country;
                 $p = ['type' => 'express', 'country' => $country, 'email' => $email, 'capabilities' => ['transfers' => ['requested' => true]],
-                    'business_profile' => ['product_description' => 'LevelUpGrowth partner commissions'], 'metadata' => ['affiliate_id' => (string) $a->id]];
+                    'business_profile' => ['product_description' => 'LevelUpGrowth affiliate commissions'], 'metadata' => ['affiliate_id' => (string) $a->id]];
                 if ($country !== $platform) $p['tos_acceptance'] = ['service_agreement' => 'recipient'];   // cross-border payouts
                 $acct = $sc->accounts->create($p)->id;
                 DB::table('affiliates')->where('id', $a->id)->update(['payout_account_id' => $acct, 'payout_method' => 'stripe', 'payouts_enabled' => 0, 'updated_at' => now()]);
             }
             $link = $sc->accountLinks->create(['account' => $acct, 'type' => 'account_onboarding',
-                'refresh_url' => 'https://levelupgrowth.io/partners/portal?payout=retry#money', 'return_url' => 'https://levelupgrowth.io/partners/portal?payout=back#money']);
+                'refresh_url' => 'https://levelupgrowth.io/affiliates/portal?payout=retry#money', 'return_url' => 'https://levelupgrowth.io/affiliates/portal?payout=back#money']);
             return ['ok' => true, 'url' => $link->url];
         } catch (\Throwable $e) {
             Log::warning('[AFF] stripe onboarding failed', ['affiliate' => $a->id, 'error' => $e->getMessage()]);
@@ -99,7 +99,7 @@ class PartnerPayouts
             ->selectRaw('a.id, a.display_name, a.status, a.payout_method, a.payout_email, a.payouts_enabled, a.payout_account_id, u.email, SUM(c.amount_minor) amount, COUNT(*) n')->get();
         return $rows->map(function ($r) {
             $why = null;
-            if ($r->status !== 'approved') $why = 'Partner is ' . $r->status;
+            if ($r->status !== 'approved') $why = 'Affiliate is ' . $r->status;
             elseif ((int) $r->amount < PartnerProgram::MIN_PAYOUT_MINOR) $why = 'Under ' . PartnerProgram::money(PartnerProgram::MIN_PAYOUT_MINOR) . ', rolls over';
             elseif (! $r->payout_method) $why = 'No payout method set';
             elseif ($r->payout_method === 'stripe' && (! self::connectEnabled() || ! $r->payouts_enabled)) $why = 'Bank account not ready';
@@ -109,8 +109,8 @@ class PartnerPayouts
     }
 
     /**
-     * Create this period's payouts for every eligible partner. A Stripe partner is paid at once by transfer; a PayPal or
-     * Wise partner gets a payout waiting for admin to send and record. Idempotent per partner per period.
+     * Create this period's payouts for every eligible affiliate. A Stripe affiliate is paid at once by transfer; a PayPal or
+     * Wise affiliate gets a payout waiting for admin to send and record. Idempotent per affiliate per period.
      */
     public static function run(string $period, int $adminId): array
     {
@@ -128,7 +128,7 @@ class PartnerPayouts
             if ($p['method'] === 'stripe') {
                 $a = DB::table('affiliates')->where('id', $p['affiliate_id'])->first();
                 try {
-                    $t = self::stripe()->transfers->create(['amount' => $amount, 'currency' => 'usd', 'destination' => $a->payout_account_id, 'description' => 'LevelUpGrowth partner commissions ' . $period,
+                    $t = self::stripe()->transfers->create(['amount' => $amount, 'currency' => 'usd', 'destination' => $a->payout_account_id, 'description' => 'LevelUpGrowth affiliate commissions ' . $period,
                         'metadata' => ['affiliate_id' => (string) $a->id, 'payout_id' => (string) $pid, 'period' => $period]], ['idempotency_key' => $key]);
                     self::markPaid($pid, (string) $t->id, 'stripe');
                     $out['sent']++; $out['total_minor'] += $amount;

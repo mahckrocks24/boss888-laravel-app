@@ -97,12 +97,12 @@ return [
         'icon'   => '&#128176;',
     ],
 
-    // ── Partners (RFC-0026, Owner 2026-10-05: "Add in the /admin a section for this to monitor all affiliates") ──
-    'partners' => ['slug' => 'partners', 'group' => 'Partners', 'label' => 'Partners', 'title' => 'Partners', 'icon' => '&#129309;'],
-    'partnerCodes' => ['slug' => 'partners/codes', 'group' => 'Partners', 'label' => 'Codes & promotions', 'title' => 'Codes & promotions', 'icon' => '&#127915;'],
-    'partnerCommissions' => ['slug' => 'partners/commissions', 'group' => 'Partners', 'label' => 'Commissions', 'title' => 'Partner commissions', 'icon' => '&#128181;'],
-    'partnerPayouts' => ['slug' => 'partners/payouts', 'group' => 'Partners', 'label' => 'Payouts', 'title' => 'Partner payouts', 'icon' => '&#128184;'],
-    'partnerFlags' => ['slug' => 'partners/flags', 'group' => 'Partners', 'label' => 'Flags', 'title' => 'Partner flags', 'icon' => '&#128681;'],
+    // ── Affiliates (RFC-0026, Owner 2026-10-05: "Add in the /admin a section for this to monitor all affiliates") ──
+    'partners' => ['slug' => 'partners', 'group' => 'Affiliates', 'label' => 'Affiliates', 'title' => 'Affiliates', 'icon' => '&#129309;'],
+    'partnerCodes' => ['slug' => 'partners/codes', 'group' => 'Affiliates', 'label' => 'Codes & promotions', 'title' => 'Codes & promotions', 'icon' => '&#127915;'],
+    'partnerCommissions' => ['slug' => 'partners/commissions', 'group' => 'Affiliates', 'label' => 'Commissions', 'title' => 'Affiliate commissions', 'icon' => '&#128181;'],
+    'partnerPayouts' => ['slug' => 'partners/payouts', 'group' => 'Affiliates', 'label' => 'Payouts', 'title' => 'Affiliate payouts', 'icon' => '&#128184;'],
+    'partnerFlags' => ['slug' => 'partners/flags', 'group' => 'Affiliates', 'label' => 'Flags', 'title' => 'Affiliate flags', 'icon' => '&#128681;'],
 
     // ── Agents & Tasks ──────────────────────────────────────────
     'agents' => [

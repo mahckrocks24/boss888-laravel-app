@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
-<title>Partner portal · LevelUpGrowth</title>
+<title>Affiliate portal · LevelUpGrowth</title>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <style>
 :root{--bg:#f5f6fa;--s1:#ffffff;--s2:#f0f1f6;--bd:#e3e5ee;--bd2:#cfd3e0;--t1:#12141c;--t2:#4a5063;--t3:#7a8094;--ac:#6d4aff;--ac2:#8b6cff;--ac-ink:#fff;--cu:#0fa47a;--cu-soft:rgba(15,164,122,.14);--ac-soft:rgba(109,74,255,.12);--am:#b7791f;--rd:#d0384a;--sh:0 1px 2px rgba(18,20,28,.06),0 8px 24px rgba(18,20,28,.06);--r:10px;--rg:16px;--f:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif}
@@ -57,7 +57,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
 </head>
 <body>
 <header class="top"><div class="top-in">
-  <a class="brand" href="/"><img src="/img/favicon-32.png" alt="">LevelUpGrowth <small>Partners</small></a>
+  <a class="brand" href="/"><img src="/img/favicon-32.png" alt="">LevelUpGrowth <small>Affiliates</small></a>
   <span class="sp"></span><span class="who" id="who"></span>
   <button class="btn quiet sm hide" id="signout" type="button">Sign out</button>
 </div></header>
@@ -99,13 +99,13 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
     if (!tok()) { try { if (new URLSearchParams(location.search).get('apply')) return apply(false); } catch (e) {} return signin(); }
     api('GET', '/partner/me').then(function (r) {
       if (r.status === 401) { clearTok(); return signin(); }
-      if (!r.ok) { A.innerHTML = '<div class="card empty">We could not load your partner account. Please try again.</div>'; return; }
+      if (!r.ok) { A.innerHTML = '<div class="card empty">We could not load your affiliate account. Please try again.</div>'; return; }
       S.me = r.j; $('who').textContent = r.j.user.name; $('signout').classList.remove('hide');
       var p = r.j.partner;
       if (!p) return apply(true);
       if (p.status === 'pending') return note('Application received', 'Thanks, ' + esc(r.j.user.name) + '. We review every application by hand, usually within 2 working days, and email you at ' + esc(r.j.user.email) + '.', '<div class="link" style="margin-top:14px"><code>' + esc(p.channel_url || '') + '</code></div>');
       if (p.status === 'rejected') return note('About your application', esc(p.decision_note || 'We could not approve your application this time.'), '<p class="sub" style="margin-top:12px">You can write to us if your channel has changed.</p>');
-      if (p.status !== 'approved') return note('Your partner account is ' + esc(p.status), 'Write to us if you think this is a mistake.', '');
+      if (p.status !== 'approved') return note('Your affiliate account is ' + esc(p.status), 'Write to us if you think this is a mistake.', '');
       render();
     });
   }
@@ -113,11 +113,11 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   function note(t, body, extra) { A.innerHTML = '<div class="auth card"><h1>' + t + '</h1><p class="sub">' + body + '</p>' + extra + '</div>'; }
 
   function signin(msg) {
-    A.innerHTML = '<div class="auth"><div class="card"><h1>Partner portal</h1><p class="sub">Sign in with your LevelUpGrowth login to see your referrals, links, codes and earnings.</p>' +
+    A.innerHTML = '<div class="auth"><div class="card"><h1>Affiliate portal</h1><p class="sub">Sign in with your LevelUpGrowth login to see your referrals, links, codes and earnings.</p>' +
       '<form id="f-in"><div class="fld"><label for="in-e">Email</label><input class="inp" id="in-e" type="email" autocomplete="email" required></div>' +
       '<div class="fld"><label for="in-p">Password</label><input class="inp" id="in-p" type="password" autocomplete="current-password" required></div>' +
       '<p class="err" id="in-err" ' + (msg ? '' : 'hidden') + '>' + esc(msg || '') + '</p><button class="btn" style="width:100%" type="submit">Sign in</button></form>' +
-      '<p class="sub" style="margin:16px 0 0;text-align:center">New here? <a href="#" id="go-apply">Apply to become a partner</a></p></div></div>';
+      '<p class="sub" style="margin:16px 0 0;text-align:center">New here? <a href="#" id="go-apply">Apply to become an affiliate</a></p></div></div>';
     $('go-apply').addEventListener('click', function (e) { e.preventDefault(); apply(false); });
     $('f-in').addEventListener('submit', function (e) {
       e.preventDefault(); var b = e.target.querySelector('button'); b.disabled = true; b.textContent = 'Signing in…';
@@ -131,7 +131,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
 
   function apply(signedIn) {
     var who = signedIn && S.me ? S.me.user : null;
-    A.innerHTML = '<div class="auth" style="max-width:560px"><div class="card"><h1>Become a LevelUpGrowth partner</h1>' +
+    A.innerHTML = '<div class="auth" style="max-width:560px"><div class="card"><h1>Become a LevelUpGrowth affiliate</h1>' +
       '<p class="sub">Share your link or your own code. On every business you bring, you choose how to split the reward: up to 20% of their monthly plan for 6 months, 15% of a yearly plan, 10% of new domains, shared between their discount and your commission.</p>' +
       '<form id="f-ap">' + (who ? '<p class="sub">Applying as <b>' + esc(who.name) + '</b> (' + esc(who.email) + ').</p>' :
         '<div class="fld"><label for="ap-n">Your name</label><input class="inp" id="ap-n" autocomplete="name" required></div>' +
@@ -140,7 +140,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
       '<div class="fld"><label for="ap-d">Name to show on your codes <span style="color:var(--t3);font-weight:400">optional</span></label><input class="inp" id="ap-d" maxlength="120" placeholder="Your channel or brand name"></div>' +
       '<div class="fld"><label for="ap-c">Where you publish</label><input class="inp" id="ap-c" required placeholder="youtube.com/@yourchannel, a blog, a page"></div>' +
       '<div class="fld"><label for="ap-a">Your audience <span style="color:var(--t3);font-weight:400">optional</span></label><textarea class="inp" id="ap-a" maxlength="500" placeholder="Who watches or reads you, and roughly how many"></textarea></div>' +
-      '<div class="chk" id="ap-t" role="checkbox" aria-checked="false" tabindex="0"><span class="box"></span><span>I accept the <a href="/legal/partners/" target="_blank" rel="noopener">partner terms</a>, including saying clearly when a link or code is a partner link.</span></div>' +
+      '<div class="chk" id="ap-t" role="checkbox" aria-checked="false" tabindex="0"><span class="box"></span><span>I accept the <a href="/legal/affiliates/" target="_blank" rel="noopener">affiliate terms</a>, including saying clearly when a link or code is an affiliate link.</span></div>' +
       '<p class="err" id="ap-err" hidden></p><button class="btn" style="width:100%;margin-top:14px" type="submit">Send application</button></form>' +
       (who ? '' : '<p class="sub" style="margin:16px 0 0;text-align:center">Already have an account? <a href="#" id="go-in">Sign in</a> and apply from there.</p>') + '</div></div>';
     var t = $('ap-t'); var tog = function () { t.setAttribute('aria-checked', t.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); };
@@ -149,7 +149,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
     $('f-ap').addEventListener('submit', function (e) {
       e.preventDefault(); var er = $('ap-err'); er.hidden = true; var b = e.target.querySelector('button[type=submit]');
       var body = { channel_url: $('ap-c').value.trim(), audience: $('ap-a').value.trim(), display_name: $('ap-d').value.trim(), accept_terms: t.getAttribute('aria-checked') === 'true' };
-      if (!body.accept_terms) { er.textContent = 'Please accept the partner terms.'; er.hidden = false; return; }
+      if (!body.accept_terms) { er.textContent = 'Please accept the affiliate terms.'; er.hidden = false; return; }
       if (!who) { body.name = $('ap-n').value.trim(); body.email = $('ap-e').value.trim(); body.password = $('ap-p').value; }
       b.disabled = true; b.textContent = 'Sending…';
       api('POST', who ? '/partner/apply' : '/partners/apply', body).then(function (r) {
@@ -163,13 +163,14 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   }
 
   // ---------------------------------------------------------------- the portal
-  var TABS = [['overview', 'Overview'], ['referrals', 'Referrals'], ['links', 'Links'], ['codes', 'Codes'], ['money', 'Earnings']];
+  // codes only (Owner 2026-10-05: "remove the custom URL and just do vouchers"): no links tab, no clicks
+  var TABS = [['overview', 'Overview'], ['referrals', 'Referrals'], ['codes', 'Codes'], ['money', 'Earnings']];
   function render() {
     var p = S.me.partner;
-    A.innerHTML = '<h1>Hi ' + esc(S.me.user.name.split(' ')[0]) + '</h1><p class="sub">Your partner link is <b>levelupgrowth.io/r/' + esc(p.handle) + '</b>.</p>' +
+    A.innerHTML = '<h1>Hi ' + esc(S.me.user.name.split(' ')[0]) + '</h1><p class="sub">Share your codes. A business counts as yours when it signs up with one of them.</p>' +
       '<nav class="tabs" role="tablist">' + TABS.map(function (t) { return '<button class="tab" role="tab" data-t="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</nav><section id="pane"></section>';
     Array.prototype.forEach.call(A.querySelectorAll('.tab'), function (b) { b.addEventListener('click', function () { S.tab = b.getAttribute('data-t'); try { history.replaceState(null, '', '#' + S.tab); } catch (e) {} render(); }); });
-    ({ overview: overview, referrals: referrals, links: links, codes: codes, money: earnings })[S.tab]();
+    ({ overview: overview, referrals: referrals, codes: codes, money: earnings })[S.tab]();
   }
   function pane(h) { $('pane').innerHTML = h; }
 
@@ -179,17 +180,17 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
       var o = r.j || {}, m = o.money || {}, p = S.me.partner;
       var seg = '<div class="seg" role="group" aria-label="Period">' + [[30, '30 days'], [90, '90 days'], [0, 'All time']].map(function (d) { return '<button data-d="' + d[0] + '" aria-pressed="' + (S.days === d[0]) + '">' + d[1] + '</button>'; }).join('') + '</div>';
       pane('<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>How you are doing</h2>' + seg + '</div>' +
-        '<div class="grid g4">' + [['Clicks', o.clicks, 'visits from your links'], ['Sign-ups', o.signups, o.clicks && o.signups <= o.clicks ? (o.conversion || 0) + '% of clicks' : 'from your links and codes'], ['Paying', o.paying, 'businesses paying now'], ['Earned', usd(o.earned_minor), 'in this period']]
+        '<div class="grid g4">' + [['Sign-ups', o.signups, 'with your codes'], ['Paying', o.paying, 'businesses paying now'], ['Active codes', o.codes, 'ready to share'], ['Earned', usd(o.earned_minor), 'in this period']]
           .map(function (s) { return '<div class="card stat"><div class="k">' + s[0] + '</div><div class="v">' + esc(s[1] == null ? 0 : s[1]) + '</div><div class="h">' + s[2] + '</div></div>'; }).join('') + '</div>' +
         '<div class="grid g3" style="margin-top:12px">' + [['Waiting', m.pending, 'held ' + S.me.hold_days + ' days after each payment, in case of refunds'], ['Ready to pay', m.payable, 'paid on the 15th from ' + usd(S.me.min_payout)], ['Paid to you', m.paid, 'all time']]
           .map(function (s) { return '<div class="card stat"><div class="k">' + s[0] + '</div><div class="v">' + usd(s[1]) + '</div><div class="h">' + s[2] + '</div></div>'; }).join('') + '</div>' +
-        '<div class="card" style="margin-top:14px"><h2>Your link</h2><p class="sub">Share it anywhere. The people who sign up within 60 days are yours, and you earn the full ' + (p.budgets.monthly / 100) + '% on their monthly plan for ' + S.me.months + ' payments.</p>' +
-          '<div class="link"><code>' + esc(p.link) + '</code><button class="btn sm" data-copy="' + esc(p.link) + '">Copy</button></div></div>' +
-        '<div class="card"><h2>By video or post</h2><p class="sub">Add a link per video in Links to see which one sells.</p>' +
-          (o.by_sub && o.by_sub.length ? '<table class="tbl cards"><thead><tr><th>Link</th><th class="num">Clicks</th><th class="num">Sign-ups</th><th class="num">Paying</th><th class="num">Earned</th></tr></thead><tbody>' +
-            o.by_sub.map(function (s) { return '<tr><td data-l="Link">' + (s.sub ? esc(s.sub) : '<span style="color:var(--t3)">main link and codes</span>') + '</td><td class="num" data-l="Clicks">' + s.clicks + '</td><td class="num" data-l="Sign-ups">' + s.signups + '</td><td class="num" data-l="Paying">' + s.paying + '</td><td class="num" data-l="Earned">' + usd(s.earned) + '</td></tr>'; }).join('') + '</tbody></table>'
-            : '<p class="empty">No clicks yet in this period.</p>') + '</div>');
+        (o.codes ? '' : '<div class="card" style="margin-top:14px"><h2>Create your first code</h2><p class="sub">A code with no discount keeps the full ' + (p.budgets.monthly / 100) + '% of their monthly plan for ' + S.me.months + ' payments for you. Or give your audience part of it.</p><button class="btn" type="button" id="go-codes">Create a code</button></div>') +
+        '<div class="card" style="margin-top:14px"><h2>By code</h2><p class="sub">Make a different code for each video or post to see which one works.</p>' +
+          (o.by_code && o.by_code.length ? '<table class="tbl cards"><thead><tr><th>Code</th><th class="num">Sign-ups</th><th class="num">Paying</th><th class="num">Earned</th></tr></thead><tbody>' +
+            o.by_code.map(function (s) { return '<tr><td data-l="Code"><b style="font-family:ui-monospace,monospace">' + esc(s.code) + '</b></td><td class="num" data-l="Sign-ups">' + s.signups + '</td><td class="num" data-l="Paying">' + s.paying + '</td><td class="num" data-l="Earned">' + usd(s.earned) + '</td></tr>'; }).join('') + '</tbody></table>'
+            : '<p class="empty">No sign-ups with your codes in this period yet.</p>') + '</div>');
       Array.prototype.forEach.call($('pane').querySelectorAll('.seg button'), function (b) { b.addEventListener('click', function () { S.days = +b.getAttribute('data-d'); overview(); }); });
+      if ($('go-codes')) $('go-codes').addEventListener('click', function () { S.tab = 'codes'; render(); });
       bindCopy();
     });
   }
@@ -200,27 +201,11 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
     api('GET', '/partner/referrals').then(function (r) {
       var rows = (r.j && r.j.referrals) || [];
       pane('<div class="card"><h2>Businesses you brought</h2><p class="sub">You see who joined and what you earned, never their work or their customers.</p>' +
-        (rows.length ? '<table class="tbl cards"><thead><tr><th>Who</th><th>Joined</th><th>Via</th><th>Plan</th><th>Status</th><th class="num">Payments</th><th class="num">Earned</th></tr></thead><tbody>' +
+        (rows.length ? '<table class="tbl cards"><thead><tr><th>Who</th><th>Joined</th><th>Code</th><th>Plan</th><th>Status</th><th class="num">Payments</th><th class="num">Earned</th></tr></thead><tbody>' +
           rows.map(function (x) {
             var pc = x.status === 'Paying' ? 'g' : (x.status === 'Signed up' ? 'p' : '');
-            return '<tr><td data-l="Who">' + esc(x.who) + '</td><td data-l="Joined">' + day(x.joined) + '</td><td data-l="Via">' + esc(x.via) + (x.video ? ' · ' + esc(x.video) : '') + '</td><td data-l="Plan"><span>' + esc(x.plan) + (x.trial ? ' <span class="pill a">trial</span>' : '') + '</span></td><td data-l="Status"><span class="pill ' + pc + '">' + esc(x.status) + '</span></td><td class="num" data-l="Payments">' + esc(x.payments) + '</td><td class="num" data-l="Earned">' + usd(x.earned_minor) + '</td></tr>';
-          }).join('') + '</tbody></table>' : '<p class="empty">Nobody yet. Share your link or a code to get started.</p>') + '</div>');
-    });
-  }
-
-  function links() {
-    pane('<p class="empty">Loading…</p>');
-    api('GET', '/partner/links').then(function (r) {
-      var d = r.j || {}, ls = d.links || [];
-      pane('<div class="card"><h2>Your main link</h2><div class="link" style="margin-top:10px"><code>' + esc(d.main) + '</code><button class="btn sm" data-copy="' + esc(d.main) + '">Copy</button></div></div>' +
-        '<div class="card"><h2>A link per video or post</h2><p class="sub">Same reward, but you see clicks and sales for each one.</p>' +
-        '<form id="f-l" class="row" style="margin-bottom:14px"><input class="inp" id="l-s" maxlength="40" placeholder="Short name, e.g. review-oct" required><input class="inp" id="l-l" maxlength="120" placeholder="Label (optional)"><button class="btn" type="submit">Add link</button></form><p class="err" id="l-err" hidden></p>' +
-        (ls.length ? '<table class="tbl cards"><thead><tr><th>Name</th><th>Link</th><th class="num">Clicks</th><th></th></tr></thead><tbody>' + ls.map(function (l) {
-          return '<tr><td data-l="Name"><b>' + esc(l.sub) + '</b>' + (l.label ? '<div style="color:var(--t3);font-size:12px">' + esc(l.label) + '</div>' : '') + '</td><td data-l="Link" style="max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><code style="font-size:13px">' + esc(l.url) + '</code></td><td class="num" data-l="Clicks">' + l.clicks + '</td><td class="num" data-l=""><button class="btn ghost sm" data-copy="' + esc(l.url) + '">Copy</button> <button class="btn quiet sm" data-del="' + l.id + '" aria-label="Remove ' + esc(l.sub) + '">Remove</button></td></tr>';
-        }).join('') + '</tbody></table>' : '<p class="empty">No video links yet.</p>') + '</div>');
-      bindCopy();
-      $('f-l').addEventListener('submit', function (e) { e.preventDefault(); api('POST', '/partner/links', { sub: $('l-s').value, label: $('l-l').value }).then(function (x) { if (x.j && x.j.ok) { toast('Link added'); links(); } else { $('l-err').hidden = false; $('l-err').textContent = (x.j && (x.j.error || x.j.message)) || 'That did not work.'; } }); });
-      Array.prototype.forEach.call($('pane').querySelectorAll('[data-del]'), function (b) { b.addEventListener('click', function () { api('DELETE', '/partner/links/' + b.getAttribute('data-del')).then(function () { toast('Removed'); links(); }); }); });
+            return '<tr><td data-l="Who">' + esc(x.who) + '</td><td data-l="Joined">' + day(x.joined) + '</td><td data-l="Code">' + esc(String(x.via || '').replace(/^code /, '')) + '</td><td data-l="Plan"><span>' + esc(x.plan) + (x.trial ? ' <span class="pill a">trial</span>' : '') + '</span></td><td data-l="Status"><span class="pill ' + pc + '">' + esc(x.status) + '</span></td><td class="num" data-l="Payments">' + esc(x.payments) + '</td><td class="num" data-l="Earned">' + usd(x.earned_minor) + '</td></tr>';
+          }).join('') + '</tbody></table>' : '<p class="empty">Nobody yet. Share one of your codes to get started.</p>') + '</div>');
     });
   }
 
@@ -234,7 +219,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
         (cs.length ? '<table class="tbl cards"><thead><tr><th>Code</th><th>Customer gets</th><th class="num">Used</th><th>Status</th><th></th></tr></thead><tbody>' + cs.map(function (c) {
           return '<tr><td data-l="Code"><b style="font-family:ui-monospace,monospace">' + esc(c.code) + '</b></td><td data-l="Customer gets" style="color:var(--t2)">' + esc(c.describe) + '<div style="font-size:12px;color:var(--ac)">You earn ' + (c.commission.commission_monthly_bps / 100) + '% monthly' + (S.me.yearly_live ? ', ' + (c.commission.commission_yearly_bps / 100) + '% yearly' : '') + ', ' + (c.commission.commission_domain_bps / 100) + '% domains</div></td>' +
             '<td class="num" data-l="Used">' + c.redemptions + (c.max ? ' / ' + c.max : '') + '</td><td data-l="Status"><span class="pill ' + (c.status === 'active' ? 'g' : '') + '">' + (c.status === 'active' ? 'Active' : 'Paused') + '</span></td>' +
-            '<td class="num" data-l=""><button class="btn ghost sm" data-copy="' + esc(c.share) + '">Copy link</button> <button class="btn quiet sm" data-st="' + c.id + '" data-to="' + (c.status === 'active' ? 'paused' : 'active') + '">' + (c.status === 'active' ? 'Pause' : 'Resume') + '</button></td></tr>';
+            '<td class="num" data-l=""><button class="btn ghost sm" data-copy="' + esc(c.code) + '">Copy code</button> <button class="btn quiet sm" data-st="' + c.id + '" data-to="' + (c.status === 'active' ? 'paused' : 'active') + '">' + (c.status === 'active' ? 'Pause' : 'Resume') + '</button></td></tr>';
         }).join('') + '</tbody></table>' : '<p class="empty">No codes yet. Create your first one above.</p>') + '</div>');
       bindCopy(); builder();
       Array.prototype.forEach.call($('pane').querySelectorAll('[data-st]'), function (b) { b.addEventListener('click', function () { api('PUT', '/partner/codes/' + b.getAttribute('data-st'), { status: b.getAttribute('data-to') }).then(function (x) { toast(x.j && x.j.ok ? 'Saved' : ((x.j && x.j.error) || 'Not saved')); codes(); }); }); });
@@ -293,7 +278,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
     });
   }
 
-  // RFC-0026 section 7: how the partner is paid - PayPal or Wise now, a bank account once bank payouts open
+  // RFC-0026 section 7: how the affiliate is paid - PayPal or Wise now, a bank account once bank payouts open
   function payoutBox() {
     var box = $('payout-box'); if (!box) return;
     api('GET', '/partner/payout').then(function (r) {

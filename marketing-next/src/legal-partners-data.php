@@ -1,12 +1,12 @@
 <?php
-// RFC-0026 P7: the partner terms (Owner 2026-10-05). Written to the programme's rules as the platform enforces them
+// RFC-0026 P7: the affiliate terms (Owner 2026-10-05). Written to the programme's rules as the platform enforces them
 // (app/Core/Partners). The legal entity and governing law are Owner-held facts and render as "to be confirmed".
 $__owner = '<mark class="owner" data-key="LEGAL_ENTITY">to be confirmed before launch</mark>';
-$pages[] = ['slug' => 'partners', 'title' => 'Partner Program Terms', 'source' => 'legal-data.php (RFC-0026)', 'body' => <<<HTML
-<p>These terms apply when you join the LevelUpGrowth partner program and share links or codes for LevelUpGrowth. They sit alongside our <a href="/next/legal/terms/">Terms of Service</a> and <a href="/next/legal/privacy/">Privacy Policy</a>. The program is run by {$__owner}.</p>
+$pages[] = ['slug' => 'affiliates', 'title' => 'Affiliate Program Terms', 'source' => 'legal-data.php (RFC-0026)', 'body' => <<<HTML
+<p>These terms apply when you join the LevelUpGrowth Affiliate Program and share your affiliate codes for LevelUpGrowth. They sit alongside our <a href="/next/legal/terms/">Terms of Service</a> and <a href="/next/legal/privacy/">Privacy Policy</a>. The program is run by {$__owner}.</p>
 
 <h2>1. Joining</h2>
-<p>Anyone aged 18 or over may apply. We read every application and may approve or decline it without giving a reason. You join as an independent partner, not as an employee, agent or representative of LevelUpGrowth, and you may not make promises or accept terms on our behalf.</p>
+<p>Anyone aged 18 or over may apply. We read every application and may approve or decline it without giving a reason. You join as an independent affiliate, not as an employee, agent or representative of LevelUpGrowth, and you may not make promises or accept terms on our behalf.</p>
 
 <h2>2. What you earn</h2>
 <p>Each payment made by a business you referred carries a share you split between that business's discount and your commission:</p>
@@ -15,26 +15,26 @@ $pages[] = ['slug' => 'partners', 'title' => 'Partner Program Terms', 'source' =
 <li><strong>Yearly plans:</strong> 15% of the yearly price, on the first yearly payment.</li>
 <li><strong>New domain registrations:</strong> 10% of the registration price, for registrations in the business's first 6 months.</li>
 </ul>
-<p>Your link alone gives you the full share. A code you create can give the business part of the share as a discount, and your commission is what remains. Shares are worked out on the price before any discount and before tax. We may raise a partner's share by written agreement.</p>
+<p>A code with no discount gives you the full share. A code can instead give the business part of the share as a discount, and your commission is what remains. Shares are worked out on the price before any discount and before tax. We may raise an affiliate's share by written agreement.</p>
 <p>The following do not earn: free trials until their first payment, credit top-ups, domain renewals, promotional domain prices below our cost, payments that are refunded or disputed, and any account, business or workspace that you own, manage, belong to or control.</p>
 
 <h2>3. Who counts as your referral</h2>
-<p>A business is yours when it creates its LevelUpGrowth account within 60 days of clicking your link, or when it signs up with one of your codes. A code typed in by the business takes priority over any link. Between links, the most recent partner link clicked counts. Once a business makes its first payment, the referral is fixed. Codes are for new customers: a business that has already paid us cannot be added later.</p>
+<p>A business is yours when it signs up with one of your codes, or enters one of your codes in its account before its first payment. The program uses codes only: there are no tracking links and no tracking cookies. If a business enters more than one code before its first payment, the last code entered counts. Once a business makes its first payment, the referral is fixed. Codes are for new customers: a business that has already paid us cannot be added later.</p>
 
 <h2>4. Holding, payment and tax</h2>
-<p>Each commission is held for 30 days after the payment it comes from, then becomes ready to pay. We pay ready commissions monthly, on or around the 15th, once your ready balance is at least US$50; smaller balances roll over. We pay in US dollars to the payout account you set up in your partner portal. You must keep your payout details accurate and complete any identity and tax checks we or our payment provider require; payouts may wait until they are complete. You are responsible for your own taxes.</p>
+<p>Each commission is held for 30 days after the payment it comes from, then becomes ready to pay. We pay ready commissions monthly, on or around the 15th, once your ready balance is at least US$50; smaller balances roll over. We pay in US dollars to the payout account you set up in your affiliate portal. You must keep your payout details accurate and complete any identity and tax checks we or our payment provider require; payouts may wait until they are complete. You are responsible for your own taxes.</p>
 
 <h2>5. Refunds, disputes and corrections</h2>
 <p>If a payment that earned you a commission is refunded or disputed, we reverse the matching commission in proportion. If it was already paid, the amount is deducted from your future payouts. We may also correct commissions created by error, and hold or withdraw commissions while we review suspected abuse.</p>
 
 <h2>6. How you promote LevelUpGrowth</h2>
 <ul>
-<li>Say clearly, wherever you share a link or code, that it is a partner link and that you may earn from it, as the advertising rules where you and your audience live require.</li>
+<li>Say clearly, wherever you share a code, that it is an affiliate code and that you may earn from it, as the advertising rules where you and your audience live require.</li>
 <li>Describe LevelUpGrowth truthfully and only promise what our public pages say. Do not offer discounts, guarantees, features or support that we do not provide.</li>
 <li>Do not send unsolicited messages, post in places that forbid promotion, or use fake reviews, fake accounts or misleading pages.</li>
 <li>Do not bid on LevelUpGrowth or its product names in paid search, or register domains, accounts or handles that could be mistaken for ours.</li>
-<li>Do not use cookie stuffing, hidden frames, automated clicks, incentives to click without interest, or any other way to create referrals that did not genuinely come from you.</li>
-<li>Use our name and logo only as provided in your partner portal, and do not suggest that we endorse you beyond this program.</li>
+<li>Do not publish your codes on coupon or voucher sites, use automated sign-ups, offer incentives to sign up without interest, or use any other way to create referrals that did not genuinely come from you.</li>
+<li>Use our name and logo only as provided in your affiliate portal, and do not suggest that we endorse you beyond this program.</li>
 </ul>
 
 <h2>7. Your codes</h2>
@@ -50,5 +50,5 @@ $pages[] = ['slug' => 'partners', 'title' => 'Partner Program Terms', 'source' =
 <p>The program is provided as is. To the extent the law allows, our total liability to you under these terms is limited to the commissions owed to you in the 12 months before the claim. These terms are governed by the laws of {$__owner}.</p>
 
 <h2>11. Contact</h2>
-<p>Questions about the program or a payout: <a href="/next/contact/?topic=partners">contact us</a> and choose Partners.</p>
+<p>Questions about the program or a payout: <a href="/next/contact/?topic=affiliates">contact us</a> and choose Affiliates.</p>
 HTML];
