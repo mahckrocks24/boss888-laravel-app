@@ -137,7 +137,9 @@ $page['scripts'] = <<<JS
     bar.setAttribute('aria-valuenow', st.d); bar.setAttribute('aria-valuetext', 'Customer saves ' + st.d + '%, you earn ' + you + '%');
     host.querySelector('[data-them]').textContent = 'Customer saves ' + st.d + '%'; host.querySelector('[data-you]').textContent = 'You earn ' + you + '%';
     out('per').textContent = money(per); out('pays').textContent = money(pays) + '/mo';
+    out('paysx').textContent = st.d ? st.d + '% off ' + p.name + ' at ' + money(p.price) + ' for its first 6 monthly payments, then ' + money(p.price) : p.name + ' at the full price, no discount';
     out('six').textContent = money(per * 6); out('month6').textContent = money(st.n * per * 6);
+    out('month6x').textContent = (st.n * 6) + ' businesses paying at once (6 months × ' + st.n + ' new a month) × ' + money(per) + '. Each pays for 6 months, so it holds there while ' + st.n + ' join every month.';
     out('year').textContent = money(st.n * per * 57);
     // month on month: in month m, min(m, 6) groups of new businesses are paying (each group pays for 6 payments)
     var chart = document.querySelector('[data-chart]'), note = document.querySelector('[data-stack-note]'), shades = ['#8C25D2', '#7A3FD8', '#6758DC', '#5571DE', '#438ADF', '#25C6D2'];
@@ -232,8 +234,8 @@ JS;
         <div><span class="t-eyebrow">In the first year</span><div class="af-big" data-out="year">$0.00</div><span class="t-footnote c-3">from the businesses you bring each month</span></div>
         <div class="af-out-row"><span>Each business earns you</span><b><span data-out="per">$0.00</span> a month</b></div>
         <div class="af-out-row"><span>Over its <b>first 6 monthly payments</b></span><b data-out="six">$0.00</b></div>
-        <div class="af-out-row"><span>Every month once you are six months in</span><b data-out="month6">$0.00</b></div>
-        <div class="af-out-row"><span>They pay</span><b data-out="pays">$0.00</b></div>
+        <div class="af-out-row"><span>Your monthly income from month 6<br><span class="t-caption c-3" data-out="month6x"></span></span><b data-out="month6">$0.00</b></div>
+        <div class="af-out-row"><span>Each business pays<br><span class="t-caption c-3" data-out="paysx"></span></span><b data-out="pays">$0.00</b></div>
         <p class="t-caption c-3" style="margin:0">An example, not a promise: it assumes every business stays on that monthly plan for six payments. Earnings follow the share rules below.</p>
       </div>
     </div>
