@@ -352,6 +352,70 @@ class CreativeConnector extends BaseConnector
         return $p;
     }
 
+    /**
+     * H3-SWITCH-1 (DEC-0088): the H3 request. Words go in a content array; a first frame (a URL or a data URI, both accepted)
+     * goes in as an image with the first_frame role, and the clip takes its shape; without a frame the shape is the ratio.
+     * 768P is the default (MINIMAX_H3_RES); 2K is the premium option, asked for with options.resolution = '2K'.
+     */
+    public static function h3VideoPayload(string $model, string $prompt, array $options): array
+    {
+        $dur = (int) ($options['duration'] ?? 6);
+        $dur = $dur >= 4 && $dur <= 15 ? $dur : 6;
+        $content = [['type' => 'text', 'text' => $prompt]];
+        if (! empty($options['first_frame_image'])) $content[] = ['type' => 'image_url', 'image_url' => ['url' => (string) $options['first_frame_image']], 'role' => 'first_frame'];
+        $res = strtoupper((string) ($options['resolution'] ?? '')) === '2K' ? '2K' : (string) env('MINIMAX_H3_RES', '768P');
+        $p = ['model' => $model, 'content' => $content, 'duration' => $dur, 'resolution' => $res];
+        if (empty($options['first_frame_image'])) {
+            $ar = (string) ($options['aspect_ratio'] ?? '16:9');
+            $p['ratio'] = in_array($ar, ['16:9', '9:16', '1:1'], true) ? $ar : '16:9';
+        }
+        return $p;
+    }
+
+    private function h3GenerateVideo(string $model, string $prompt, array $options, string $apiKey, string $base): array
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(60)
+                ->withHeaders(['Authorization' => "Bearer {$apiKey}", 'Content-Type' => 'application/json'])
+                ->post("{$base}/v2/video_generation", self::h3VideoPayload($model, $prompt, $options));
+            $data = $response->json() ?: [];
+            $taskId = $data['task_id'] ?? ($data['task']['id'] ?? null);
+            $code = (int) ($data['base_resp']['status_code'] ?? ($data['error']['code'] ?? 0));
+            if (! $taskId && $code === 1008) {
+                \Illuminate\Support\Facades\Cache::put('video:provider_paused', ['code' => 1008, 'at' => now()->toIso8601String()], now()->addMinutes(30));
+                \Illuminate\Support\Facades\Log::error('[VIDEO-BAL-1] video provider has no balance - video paused for 30 minutes (top up the provider account)');
+            }
+            if (! $taskId) {
+                \Illuminate\Support\Facades\Log::warning('[MiniMax H3] video refused', ['http' => $response->status(), 'code' => $code ?: null, 'body' => mb_substr($response->body(), 0, 300), 'duration' => $options['duration'] ?? null, 'prompt_len' => mb_strlen($prompt)]);
+                return ['success' => false, 'error' => 'Provider refused: ' . ($code ?: $response->status()) . ' ' . ($data['base_resp']['status_msg'] ?? ($data['error']['message'] ?? ''))];
+            }
+            \Illuminate\Support\Facades\Cache::forget('video:provider_paused');
+            return ['success' => true, 'job_id' => 'h3:' . $taskId, 'provider' => 'minimax', 'model' => $model];
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('[MiniMax H3] Video generation exception', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    private function h3PollVideo(string $taskId, string $apiKey, string $base): array
+    {
+        try {
+            $response = \Illuminate\Support\Facades\Http::timeout(15)->withHeaders(['Authorization' => "Bearer {$apiKey}"])
+                ->get("{$base}/v2/query/video_generation/{$taskId}");
+            if ($response->failed()) return ['status' => 'failed', 'error' => 'Poll failed: HTTP ' . $response->status()];
+            $data = $response->json() ?: [];
+            $status = (string) ($data['task']['status'] ?? ($data['status'] ?? ''));
+            if ($status === 'succeeded') {
+                $url = $data['task']['content']['url'] ?? null;
+                return $url ? ['status' => 'completed', 'url' => $url] : ['status' => 'failed', 'error' => 'H3 finished without a file'];
+            }
+            if (in_array($status, ['failed', 'cancelled', 'expired'], true)) return ['status' => 'failed', 'error' => 'MiniMax H3 generation ' . $status];
+            return ['status' => 'in_progress', 'minimax_status' => $status ?: 'pending'];
+        } catch (\Throwable $e) {
+            return ['status' => 'failed', 'error' => $e->getMessage()];
+        }
+    }
+
     /** VIDEO-BAL-1: true while the provider account has reported no balance (cleared by the first successful call). */
     public static function videoPaused(): bool
     {
@@ -382,6 +446,8 @@ class CreativeConnector extends BaseConnector
         // verified live). Query (`/v1/query/video_generation`) + files/retrieve
         // are already correct. Model T2V-01 verified valid on International.
         $url   = "{$base}/v1/video_generation";
+        // H3-SWITCH-1 (DEC-0088): MiniMax H3 runs on the v2 API
+        if (str_starts_with($model, 'MiniMax-H3')) return $this->h3GenerateVideo($model, $prompt, $options, (string) $apiKey, $base);
 
         try {
             $response = \Illuminate\Support\Facades\Http::timeout(30)
@@ -433,6 +499,7 @@ class CreativeConnector extends BaseConnector
             return ['status' => 'failed', 'error' => 'MiniMax API key not configured'];
         }
         $base = $this->minimaxBaseUrl();
+        if (str_starts_with($taskId, 'h3:')) return $this->h3PollVideo(substr($taskId, 3), (string) $apiKey, $base);   // H3-SWITCH-1
 
         try {
             $response = \Illuminate\Support\Facades\Http::timeout(15)

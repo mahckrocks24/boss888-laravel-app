@@ -389,6 +389,8 @@ EOT;
     /** VIDEO-RPM-1: one paced provider call; a rate-limit refusal is retried later, anything else fails as before. */
     private function sendToProvider(int $jobId, object $job, array $meta, array $opts, callable $fail): array
     {
+        // H3-SWITCH-1: the shape and the resolution travel with every call (H3 uses the ratio when there is no first frame; 2K = premium)
+        $opts += array_filter(['aspect_ratio' => $meta['aspect_ratio'] ?? null, 'resolution' => $meta['resolution'] ?? null]);
         $wait = self::providerWait();
         if ($wait > 0) return $this->retryLater($jobId, $meta, $wait, 'paced');
         self::providerTick();
