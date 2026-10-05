@@ -48,7 +48,7 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
 <section class="hero-mr mk-phone-hero" id="top">
   <div class="container">
     <div class="hero-top">
-    <span class="pill">An AI Growth Team working for You 24/7</span>
+    <span class="pill">Your AI Growth Team. Working 24/7</span>
     <h1>Get&nbsp;found. Get&nbsp;booked.<br> <span class="grad">Level&nbsp;Up Your Business Today.</span></h1>
     <p class="hero-sub">It's time every business gets an agency-level marketing without spending thousands of dollars. Describe your business below and Arthur will build and launch your website today. Sarah will lead your SEO, Social Media, Emails and more.</p>
     <div class="hero-cta"><a class="btn-glow" href="<?= $signup ?>" data-lu-signup><span class="lbl-out">Level Up Now <?= icon('arrow-right', 16) ?></span><span class="lbl-in">Dashboard <?= icon('arrow-right', 16) ?></span></a></div>
