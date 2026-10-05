@@ -23,6 +23,8 @@ $faq = [
   ['Which networks?', 'Facebook, Instagram and LinkedIn. You connect each one to your workspace and can disconnect it at any time.'],
   ['Does anything post without me?', 'No. Every post waits for your approval. You can approve them one by one, or approve a month\'s plan once: the posts in it then go out as planned, and Sarah comes back to you only if the plan changes materially or would cost more than you approved.'],
   ['Where do the ideas come from?', 'From what is trending in your industry, what your competitors and customers are saying, what your audience responds to, and how every one of your past posts performed. Sarah tells you why she picked each topic.'],
+  ['Are my blog articles shared too?', 'Yes. When an article goes live on your website, a post that shares it is written for each connected network, with the article\'s link, and scheduled on the content calendar. It goes out once you approve it, or as part of a campaign you approved.'],
+  ['What is the content calendar?', 'Every campaign Sarah plans with you lays out its dated steps: the articles for your website, the posts for each network and the images. You see the whole month in one calendar and can move or change any step.'],
   ['Who designs the posts?', 'Your posts are laid out in the looks you pick from the design library, in your brand colours, with images made in each network\'s sizes.'],
   ['Does it reply to comments?', 'Yes. Sarah drafts a reply to each comment in your voice and posts it when you approve. Comments that ask about prices, dates or availability are followed up by message and added to your clients as leads.'],
   ['What does it cost?', 'Social is included in the plans listed below. Each post uses credits from your monthly allowance, and Sarah shows the cost before anything is made.'],
@@ -194,7 +196,7 @@ $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M
       <div class="sp-flow">
         <?php foreach ([
           ['Listen', 'Trends in your industry, competitors, mentions, comments and what your past posts achieved.', 'sarah', 'Sarah'],
-          ['Plan', 'A calendar a month at a time, balanced across your networks and tied to what your website and offers are doing.', 'marcus', 'Marcus'],
+          ['Plan', 'Campaigns laid out on a content calendar: posts and website articles, balanced across your networks.', 'marcus', 'Marcus'],
           ['Create', 'Copy in your voice for each network, laid out in your chosen looks from the design library, in your colours.', 'priya', 'Your writers'],
           ['Approve', 'You approve each post, or the whole plan once. The cost is shown before anything is made.', 'sarah', 'Sarah asks, you decide'],
           ['Publish and learn', 'Posted when your audience is online. Results feed straight back into the next plan.', 'james', 'The team'],
@@ -229,6 +231,73 @@ $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M
         <div class="lg-stack gap-2"><span class="t-eyebrow">The signal</span><span class="t-body" style="font-size:15px;color:var(--ink)">Sunrise posts got <b>3.1× the saves</b> of other posts, and 12 comments asked about April dates.</span></div>
         <span class="sp-decide__arrow" aria-hidden="true"><?= $arrow ?></span>
         <div class="lg-stack gap-2"><span class="t-eyebrow">The decision, proposed to you</span><span class="t-body" style="font-size:15px;color:var(--ink)">Two more sunrise posts and an April offer this week, with a Reel on Thursday at 18:00. <b>Waiting for your approval.</b></span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mk-sec" id="calendar" style="padding-top:40px">
+    <style>
+      /* SOCIAL-CAL-1 (Owner: "You did not mention anything about the blog posts are automatically shared on schedule. There is a content calendar based on the Campaigns") */
+      .sp .sc-wrap{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;align-items:stretch}.sp .sc-cal,.sp .sc-share{min-width:0}.sp .sc-grid{flex:1}.sp .sc-share .sc-link img{aspect-ratio:2.6/1}
+      .sp .sc-cal{border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px}
+      .sp .sc-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+      .sp .sc-camps{display:flex;gap:6px;flex-wrap:wrap}
+      .sp .sc-camp{display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--font);padding:6px 10px;border-radius:999px;background:var(--fill-hover);color:var(--ink)}
+      .sp .sc-camp i{width:8px;height:8px;border-radius:50%;display:inline-block}
+      .sp .sc-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+      .sp .sc-day{border-radius:12px;min-height:118px;padding:7px;display:flex;flex-direction:column;gap:5px;background:var(--fill-hover)}
+      .sp .sc-day b{font:700 11px/1 var(--font);color:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+      .sp .sc-it{border-radius:8px;padding:5px 6px;font:600 11px/1.25 var(--font);color:#fff;display:flex;flex-direction:column;gap:2px}
+      .sp .sc-it small{font-weight:500;opacity:.85;font-size:10px}
+      .sp .sc-it--a{background:#7c3aed}.sp .sc-it--p{background:#2563eb}.sp .sc-it--s{background:#0d9488}
+      .sp .sc-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}.sp .sc-legend span{display:inline-flex;gap:6px;align-items:center}.sp .sc-legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+      .sp .sc-share{border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:12px}
+      .sp .sc-flow{display:flex;flex-direction:column;gap:10px}
+      .sp .sc-step{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px}
+      .sp .sc-step__n{width:26px;height:26px;border-radius:8px;flex:none;display:grid;place-items:center;font:800 12px/1 var(--font);color:#fff;background:var(--brand-grad,linear-gradient(135deg,#7c3aed,#2563eb))}
+      .sp .sc-step b{display:block;font-size:14px;color:var(--ink)}.sp .sc-step span{font-size:13px;line-height:19px;color:var(--ink-2)}
+      .sp .sc-link{border-radius:14px;overflow:hidden;background:#fff;color:#14161c;box-shadow:0 0 0 .5px rgba(0,0,0,.08),0 10px 26px rgba(20,16,60,.16);font:400 13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+      .sp .sc-link img{display:block;width:100%;aspect-ratio:1.91/1;object-fit:cover}
+      .sp .sc-link__m{padding:8px 11px 10px;background:#f0f2f5}.sp .sc-link__m small{font-size:11px;color:#65676b;letter-spacing:.02em}.sp .sc-link__m b{display:block;font-size:13.5px}
+      @media (max-width:900px){.sp .sc-wrap{grid-template-columns:minmax(0,1fr)}.sp .sc-day{min-height:150px}}
+      @media (max-width:600px){.sp .sc-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -18px;padding:0 18px}.sp .sc-grid::-webkit-scrollbar{display:none}.sp .sc-day{flex:0 0 42%;scroll-snap-align:start;min-height:0}.sp .sc-camps{display:none}.sp .sc-link img{aspect-ratio:2.4/1}}
+    </style>
+    <div class="mk-wrap">
+      <div class="sp-head"><span class="t-eyebrow">Campaigns and the content calendar</span><h2 class="mk-h2">Your campaigns become a content calendar. Your articles share themselves.</h2><p class="mk-lead">Sarah plans campaigns around your goals and the season. Each one lays out its dated steps on the calendar: the articles for your website, the posts for each network and the images for both. When an article goes live, the posts that share it are already written and scheduled.</p></div>
+      <div class="sc-wrap">
+        <div class="sc-cal lg-glass lg-glass--thick" aria-label="Example: a week of the content calendar">
+          <div class="sc-top"><span class="t-subhead t-strong">Content calendar · 6 to 19 April</span><div class="sc-camps"><span class="sc-camp"><i style="background:#7c3aed"></i>Spring honeymoons</span><span class="sc-camp"><i style="background:#0d9488"></i>Lake District weekends</span></div></div>
+          <div class="sc-grid">
+            <?php foreach ([
+              ['Mon', [['a', 'Article: 5 honeymoon ideas', 'Website · 9:00'], ['s', 'Share: the article', 'Facebook · 10:00']]],
+              ['Tue', [['p', 'Lake sunrise', 'Instagram · 18:00']]],
+              ['Wed', [['s', 'Share: the article', 'LinkedIn · 8:30'], ['p', 'April offer', 'Facebook · 12:30']]],
+              ['Thu', [['p', 'Reel: slow mornings', 'Instagram · 18:00']]],
+              ['Fri', [['a', 'Article: weekend guide', 'Website · 9:00'], ['s', 'Share: the guide', 'Facebook · 11:00']]],
+              ['Sat', [['p', 'Customer story', 'Instagram · 10:00']]],
+              ['Sun', [['s', 'Share: the guide', 'Instagram · 10:00']]],
+              ['Mon', [['p', 'Honeymoon checklist', 'Instagram · 9:00']]],
+              ['Tue', [['a', 'Article: April in Kyoto', 'Website · 9:00'], ['s', 'Share: the article', 'LinkedIn · 8:30']]],
+              ['Wed', [['s', 'Share: the article', 'Facebook · 12:30']]],
+              ['Thu', [['p', 'Lakeside cabins', 'Facebook · 18:00'], ['p', 'Reel: kayak at dawn', 'Instagram · 18:00']]],
+              ['Fri', [['p', 'Weekend offer', 'Instagram · 9:00']]],
+              ['Sat', [['a', 'Article: packing light', 'Website · 9:00']]],
+              ['Sun', [['s', 'Share: the article', 'Facebook · 10:00']]],
+            ] as [$d, $its]): ?>
+            <div class="sc-day"><b><?= $d ?></b><?php foreach ($its as [$k, $t, $w]): ?><div class="sc-it sc-it--<?= $k ?>"><?= e($t) ?><small><?= e($w) ?></small></div><?php endforeach; ?></div>
+            <?php endforeach; ?>
+          </div>
+          <div class="sc-legend"><span><i style="background:#7c3aed"></i>Website article</span><span><i style="background:#2563eb"></i>Social post</span><span><i style="background:#0d9488"></i>Article shared to social</span></div>
+        </div>
+        <div class="sc-share lg-glass lg-glass--thick">
+          <span class="t-eyebrow">Every article, shared on schedule</span>
+          <div class="sc-flow">
+            <div class="sc-step lg-glass lg-glass--thin"><span class="sc-step__n">1</span><div><b>The article goes live</b><span>Priya's article is published on your website, on the date the campaign set.</span></div></div>
+            <div class="sc-step lg-glass lg-glass--thin"><span class="sc-step__n">2</span><div><b>A post for each network</b><span>A caption written from the article for every connected network, always carrying its link.</span></div></div>
+            <div class="sc-step lg-glass lg-glass--thin"><span class="sc-step__n">3</span><div><b>Approved, then shared on schedule</b><span>You approve the shares, or the campaign once, and each goes out at its time.</span></div></div>
+          </div>
+          <div class="sc-link" aria-hidden="true"><img src="<?= e($mk('social/articles/harbour-towns.webp')) ?>" alt="" width="640" height="335" loading="lazy"><div class="sc-link__m"><small>SALTMARSH.TRAVEL</small><b>Five harbour towns worth the slow road</b></div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -280,6 +349,7 @@ $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M
             <li><?= $check ?>Planning the month and proposing changes when the signals move.</li>
             <li><?= $check ?>Writing, designing and sizing each post for its network.</li>
             <li><?= $check ?>Posting approved posts at the scheduled time.</li>
+            <li><?= $check ?>Sharing every new website article to each network, on schedule, with its link.</li>
             <li><?= $check ?>Drafting replies to every comment, and adding buyers to your clients as leads.</li>
             <li><?= $check ?>A Monday report: reach, responses, leads and what Sarah will change.</li>
           </ul>
