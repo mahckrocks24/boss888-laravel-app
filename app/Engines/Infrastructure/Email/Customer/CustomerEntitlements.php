@@ -51,6 +51,14 @@ final class CustomerEntitlements
     {
         $defaults = (array) config('business_email.customer_entitlements', []);
 
+        // MANAGED-8 (Owner 2026-10-05: "all dedicated hosting like this has unlimited emails"): a managed client has
+        // no limit on mailboxes, aliases or forwarding. Storage stays the service's pool.
+        if (\App\Core\Managed\ManagedWorkspaces::isManaged($workspaceId)) {
+            foreach (['mailboxes', 'aliases', 'forwarders'] as $k) {
+                $defaults[$k] = 'unlimited';
+            }
+        }
+
         return [
             self::ACCESS           => (bool) ($defaults['access'] ?? true),
             self::DOMAIN_LIMIT     => self::limitValue($defaults['domains'] ?? 1),

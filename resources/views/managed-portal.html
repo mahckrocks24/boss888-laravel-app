@@ -550,7 +550,7 @@ html:not([data-theme="light"]) .bub{background:rgba(255,255,255,.06)}
       '<div class="card hero"><div><span class="pill info">' + I.mail.replace('<svg', '<svg style="width:13px;height:13px"') + 'On your current provider</span>' +
         '<h2>Your team’s email keeps working exactly as it does today</h2>' +
         '<p>Your mailboxes are still with your current email provider. When we move them to LevelUpGrowth, you will manage everyone’s mailbox here, and we will agree the date with you first. Nothing changes until then.</p></div>' +
-        '<dl class="kv"><dt>Domain</dt><dd>' + esc(host) + '</dd><dt>Mail delivery</dt><dd style="color:var(--ac)">Receiving (current provider)</dd><dt>Mailboxes on LevelUpGrowth</dt><dd>0</dd><dt>Included in your package</dt><dd>Up to 10</dd></dl></div>' +
+        '<dl class="kv"><dt>Domain</dt><dd>' + esc(host) + '</dd><dt>Mail delivery</dt><dd style="color:var(--ac)">Receiving (current provider)</dd><dt>Mailboxes on LevelUpGrowth</dt><dd>0</dd><dt>Included in your package</dt><dd>Unlimited mailboxes</dd></dl></div>' +
       '<div class="card"><div class="card-h"><div><h2>How the move works</h2><p>Planned with you, done by us. No mail is lost and nobody is cut off.</p></div><span class="pill">Not scheduled</span></div>' +
         '<div class="card-b"><div class="steps">' +
           '<div class="step cur"><div class="n">1</div><b>Agree the list</b><span>We confirm with you who needs a mailbox and which addresses stay.</span></div>' +
@@ -589,7 +589,7 @@ html:not([data-theme="light"]) .bub{background:rgba(255,255,255,.06)}
     }).join('');
     $('content').innerHTML = head('Email', 'Mailboxes on ' + E.domain + ' for everyone on your team.', canAdd ? '<button class="btn pri" id="add">' + I.plus + 'Add a person</button>' : '') + '<div class="stack">' +
       '<div class="grid g3">' +
-        tile(I.user, 'Mailboxes', used + (limit ? ' / ' + limit : ''), limit ? Math.max(0, limit - used) + ' available in your package' : '') +
+        tile(I.user, 'Mailboxes', used + (limit ? ' / ' + limit : ''), limit ? Math.max(0, limit - used) + ' available in your package' : 'Unlimited in your package') +
         tile(I.db, 'Storage used', (s.storage_used_mb || 0) + ' MB', 'Across all mailboxes') +
         tile(I.mail, 'Domain', E.domain, 'Mail delivered by LevelUpGrowth') +
       '</div>' +

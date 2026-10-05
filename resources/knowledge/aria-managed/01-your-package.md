@@ -13,4 +13,4 @@ Your package is paid in full for its whole term. The start and end dates and the
 Yes. Your package includes a free IT support period; the end date and days left are on the **Billing** page. During it, LevelUpGrowth helps with your website, email and the systems behind them. After it ends, IT support can be added at any time.
 
 ## Can we upgrade or add services?
-Yes. Ongoing IT support, extra mailboxes beyond your package and new website features can be added. Call or write to LevelUpGrowth support and we will quote it for you.
+Yes. Ongoing IT support and new website features can be added; mailboxes are already unlimited in your package. Call or write to LevelUpGrowth support and we will quote it for you.

@@ -19,7 +19,7 @@ Nobody else sees a mailbox password, including LevelUpGrowth: each person choose
 On the **Email** page, choose **Pause** to stop a mailbox for a while without losing any mail, and **Resume** to turn it back on. **Remove** deletes a mailbox and its mail for good, so we confirm every removal with you before it happens.
 
 ## How many mailboxes and how much storage do we have?
-Your package includes up to 10 mailboxes. The **Email** page shows how many you use and the storage used by each. If you need more, contact support.
+Your package includes unlimited mailboxes, aliases and forwarding addresses. The **Email** page shows how many you use and the storage used by each mailbox.
 
 ## How do I set up email on my phone or computer?
 The setup email each person receives explains how to sign in. If a phone or mail app does not connect, contact LevelUpGrowth support and we will walk you through it.
