@@ -424,7 +424,8 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
       #replies .rp-stat{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-2)}#replies .rp-stat b{color:var(--ink);font-variant-numeric:tabular-nums}
       #replies .rp-draft{font-size:13px;line-height:19px;color:var(--ink);padding:10px 12px;border-radius:12px;background:var(--fill-hover)}
       #replies [data-rp]{transition:opacity .35s ease,transform .35s ease}
-      #replies [data-rp].rp-off{opacity:0;transform:translateY(8px)}
+      #replies [data-rp].rp-off{opacity:0;visibility:hidden;transform:translateY(6px)}
+      #replies .rp-draft{min-height:78px}
       @media (max-width:900px){#replies .rp-wrap{flex-direction:column;align-items:stretch;gap:24px}#replies .rp-copy{width:auto}#replies .rp-stage{grid-template-columns:1fr}}
       @media (prefers-reduced-motion:reduce){#replies [data-rp]{transition:none}#replies .rp-dots i{animation:none}}
     </style>
@@ -445,10 +446,8 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
           <div class="rp-media"><img src="<?= e($mk('social/travel-agency-08.webp')) ?>" alt="" width="72" height="90" loading="lazy" decoding="async"><p><b>saltmarshtravel</b> Lakes, mountains and slow mornings. Handpicked stays and guided tours, up to 35% off this season.</p></div>
           <div class="rp-thread" id="rp-thread">
             <div class="rp-c" data-rp="c1"><span class="rp-av" style="background:#db2777">M</span><div class="rp-c__body"><b>maya.wanders</b>Is this available in April? Asking for my honeymoon 😍<div class="rp-c__meta"><span>2m</span><span>Reply</span></div></div></div>
-            <div class="rp-typing" data-rp="t1"><span class="rp-dots"><i></i><i></i><i></i></span>Sarah is writing a reply…</div>
             <div class="rp-c rp-reply" data-rp="r1"><span class="rp-av" style="background:#14532d">S</span><div class="rp-c__body"><b>saltmarshtravel</b>Congratulations, Maya! April is lovely for the lakes. We have just sent you dates and prices by message 💌<div class="rp-c__meta"><span>Just now</span><span class="rp-tag">✓ Approved</span></div></div></div>
             <div class="rp-c" data-rp="c2"><span class="rp-av" style="background:#0891b2">T</span><div class="rp-c__body"><b>tom.k_travels</b>How much for two people, 5 nights?<div class="rp-c__meta"><span>1m</span><span>Reply</span></div></div></div>
-            <div class="rp-typing" data-rp="t2"><span class="rp-dots"><i></i><i></i><i></i></span>Sarah is writing a reply…</div>
             <div class="rp-c rp-reply" data-rp="r2"><span class="rp-av" style="background:#14532d">S</span><div class="rp-c__body"><b>saltmarshtravel</b>Hi Tom! Five nights for two starts from $1,240 per person, with breakfast and transfers. Check your messages for the full breakdown 🙌<div class="rp-c__meta"><span>Just now</span><span class="rp-tag">✓ Approved</span></div></div></div>
             <div class="rp-c" data-rp="c3"><span class="rp-av" style="background:#65a30d">L</span><div class="rp-c__body"><b>lena.outdoors</b>That lake 😍😍<div class="rp-c__meta"><span>Now</span><span>Reply</span></div></div></div>
             <div class="rp-c rp-reply" data-rp="r3"><span class="rp-av" style="background:#14532d">S</span><div class="rp-c__body"><b>saltmarshtravel</b>Right? It looks even better at sunrise, Lena 🌄<div class="rp-c__meta"><span>Just now</span><span class="rp-tag">✓ Approved</span></div></div></div>
@@ -480,25 +479,25 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
         var status = document.getElementById('rp-status'), draft = document.getElementById('rp-draft'), count = document.getElementById('rp-count'), leads = document.getElementById('rp-leads'), appr = document.getElementById('rp-approve');
         var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
         var gen = 0, visible = false, running = false;
-        function on(k, v) { var el = q(k); if (!el) return; el.hidden = false; if (v) { el.classList.add('rp-off'); void el.offsetWidth; el.classList.remove('rp-off'); } else el.classList.add('rp-off'); }
-        function gone(k) { var el = q(k); if (el) { el.hidden = true; el.classList.add('rp-off'); } }
-        function finished() { all.forEach(function (el) { el.hidden = false; el.classList.remove('rp-off'); }); ['t1', 't2', 'a1'].forEach(gone); status.textContent = '3 replies sent'; count.textContent = '14'; leads.textContent = '3'; draft.textContent = 'All caught up, Boss. Two people asked about trips today, both are in your clients.'; }
-        function reset() { all.forEach(function (el) { el.hidden = true; el.classList.add('rp-off'); }); status.textContent = 'Watching your comments'; count.textContent = '11'; leads.textContent = '2'; appr.style.boxShadow = ''; }
+        function on(k) { var el = q(k); if (el) el.classList.remove('rp-off'); }
+        function gone(k) { var el = q(k); if (el) el.classList.add('rp-off'); }
+        function finished() { all.forEach(function (el) { el.classList.remove('rp-off'); }); gone('a1'); status.textContent = '3 replies sent'; count.textContent = '14'; leads.textContent = '3'; draft.textContent = 'All caught up, Boss. Two people asked about trips today, both are in your clients.'; }
+        function reset() { all.forEach(function (el) { el.classList.add('rp-off'); }); status.textContent = 'Watching your comments'; count.textContent = '11'; leads.textContent = '2'; appr.style.boxShadow = ''; }
         function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
         async function run() {
           var my = ++gen, live = function () { return my === gen && visible; };
           running = true; reset(); await wait(500);
           on('c1', 1); await wait(1100); if (!live()) return (running = false);
-          status.textContent = 'Writing a reply to Maya'; on('t1', 1); await wait(1400); if (!live()) return (running = false);
+          status.textContent = 'Writing a reply to Maya'; await wait(1400); if (!live()) return (running = false);
           draft.textContent = 'Boss, Maya asked about April for her honeymoon. I’ve written a reply and will send her the dates by message. Approve?';
           on('d1', 1); on('a1', 1); await wait(1500); if (!live()) return (running = false);
           appr.style.boxShadow = '0 0 0 4px rgba(124,58,237,.35)'; await wait(500); appr.style.boxShadow = '';
-          gone('t1'); on('r1', 1); count.textContent = '12'; status.textContent = 'Reply sent'; await wait(700);
+          on('r1', 1); count.textContent = '12'; status.textContent = 'Reply sent'; await wait(700);
           on('lead', 1); leads.textContent = '3'; await wait(1600); if (!live()) return (running = false);
-          on('c2', 1); await wait(1000); status.textContent = 'Writing a reply to Tom'; on('t2', 1);
+          on('c2', 1); await wait(1000); status.textContent = 'Writing a reply to Tom'; 
           draft.textContent = 'Tom asked for a price for two. Reply ready, with the full breakdown by message. Approve?'; await wait(1400); if (!live()) return (running = false);
           appr.style.boxShadow = '0 0 0 4px rgba(124,58,237,.35)'; await wait(500); appr.style.boxShadow = '';
-          gone('t2'); on('r2', 1); count.textContent = '13'; status.textContent = 'Reply sent'; await wait(1500); if (!live()) return (running = false);
+          on('r2', 1); count.textContent = '13'; status.textContent = 'Reply sent'; await wait(1500); if (!live()) return (running = false);
           on('c3', 1); await wait(900); draft.textContent = 'Lena loved the lake. A short thank-you reply is ready. Approve?'; status.textContent = 'Writing a reply to Lena'; await wait(1100);
           appr.style.boxShadow = '0 0 0 4px rgba(124,58,237,.35)'; await wait(500); appr.style.boxShadow = '';
           on('r3', 1); gone('a1'); count.textContent = '14'; status.textContent = '3 replies sent'; draft.textContent = 'All caught up, Boss. Two people asked about trips today, both are in your clients.';
