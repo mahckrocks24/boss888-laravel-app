@@ -46,7 +46,7 @@ $page['head'] = <<<'CSS'
 .af-h1{font-size:clamp(38px,5.4vw,64px);line-height:1.04;letter-spacing:-.035em;font-weight:800;margin:0}
 .af-h2{font-size:clamp(28px,3.6vw,44px);line-height:1.1;letter-spacing:-.028em;font-weight:800;margin:0}
 .af-lead{font-size:clamp(17px,1.5vw,20px);line-height:1.55;color:var(--ink-2,inherit);opacity:.82;margin:0}
-.af-hero{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(32px,5vw,72px);align-items:center;padding-top:clamp(120px,14vw,168px)}
+.af-hero{display:grid;grid-template-columns:1.05fr .95fr;gap:clamp(32px,5vw,72px);align-items:center;padding-top:clamp(64px,5.5vw,72px)}
 .af-cta{display:flex;gap:12px;flex-wrap:wrap;margin-top:8px}
 .af-trust{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:6px}
 .af-trust span{display:inline-flex;align-items:center;gap:6px;font-size:13px;opacity:.75}
@@ -119,7 +119,7 @@ $page['head'] = <<<'CSS'
 .af-six__pay small{font-size:10.5px;opacity:.65;white-space:nowrap}.af-six__pay b{font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
 @media (max-width:640px){.af-six__row{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
-@media (max-width:900px){.af-hero{grid-template-columns:1fr}.af-calc{grid-template-columns:1fr}.af-calc__out{border-left:0;border-top:1px solid var(--hairline,rgba(0,0,0,.08))}.af-share,.af-feats{grid-template-columns:1fr}}
+@media (max-width:900px){.af-hero{grid-template-columns:1fr;row-gap:18px}.af-hero__copy{display:contents!important}.af-hero__copy>.lg-badge{justify-self:start}.af-hero>.af-card{order:1;margin-top:8px}.af-hero .af-six{order:2;max-width:none}.af-calc{grid-template-columns:1fr}.af-calc__out{border-left:0;border-top:1px solid var(--hairline,rgba(0,0,0,.08))}.af-share,.af-feats{grid-template-columns:1fr}}
 @media (max-width:640px){.af-journey{grid-template-columns:1fr}.af-step{min-height:0}.af-rail{display:none}.af-out-row{flex-wrap:wrap}.af-out-row b{font-size:17px}}
 @media (prefers-reduced-motion:reduce){.af-evt{animation:none;opacity:1;transform:none}}
 </style>
@@ -177,7 +177,7 @@ JS;
 <div class="af">
 <section class="af-sec" style="padding-top:0">
   <div class="container af-hero">
-    <div style="display:flex;flex-direction:column;gap:18px">
+    <div class="af-hero__copy" style="display:flex;flex-direction:column;gap:18px">
       <span class="lg-badge lg-badge--brand" style="align-self:flex-start;height:30px;padding:0 12px;border-radius:999px"><span class="lg-dot"></span>LevelUpGrowth Affiliate Program</span>
       <h1 class="af-h1">Recommend us. <span class="t-grad">Earn while their business grows.</span></h1>
       <p class="af-lead">Give your audience your own voucher code. Every business that signs up with it pays you up to 20% of its plan on <strong class="af-hl">each of its first 6 monthly payments</strong>, and you decide how much of that becomes their discount.</p>
