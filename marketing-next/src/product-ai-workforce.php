@@ -106,7 +106,7 @@ $av = fn (string $slug, int $s = 32, string $cls = '') => '<img class="lg-avatar
   .aw .aw-caps{display:flex;flex-direction:column;gap:10px}
   .aw .aw-cap{display:flex;gap:14px;padding:14px 16px;border-radius:18px}
   .aw .aw-cap__i{width:38px;height:38px;border-radius:12px;flex:none;display:grid;place-items:center;color:#fff;background:var(--brand-grad,linear-gradient(135deg,#7c3aed,#2563eb))}.aw .aw-cap__i svg{width:19px;height:19px}
-  .aw .aw-cap b{display:block;font-size:15.5px;color:var(--ink)}.aw .aw-cap span{display:block;font-size:14px;line-height:21px;color:var(--ink-2)}
+  .aw .aw-cap b{display:block;font-size:15.5px;color:var(--ink)}.aw .aw-cap div > span{display:block;font-size:14px;line-height:21px;color:var(--ink-2)}
   .aw .aw-know{border-radius:24px;padding:20px;display:flex;flex-direction:column;gap:14px}
   .aw .aw-know__h{display:flex;gap:12px;align-items:center}
   .aw .aw-know__h b{display:block;font-size:16px;color:var(--ink)}.aw .aw-know__h span{font-size:12.5px;color:var(--ink-3)}
