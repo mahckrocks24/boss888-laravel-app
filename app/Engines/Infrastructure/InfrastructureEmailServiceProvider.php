@@ -23,6 +23,16 @@ use Illuminate\Support\ServiceProvider;
  */
 class InfrastructureEmailServiceProvider extends ServiceProvider
 {
+    /** MANAGED-2: the engine resolves its email connector by class name; the registry is the only builder. */
+    public function register(): void
+    {
+        $class = config('infrastructure.connectors.email');
+
+        if (is_string($class) && $class !== '' && class_exists($class)) {
+            $this->app->bind($class, fn () => \App\Engines\Infrastructure\Email\Provider\EmailProviderRegistry::connector());
+        }
+    }
+
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {

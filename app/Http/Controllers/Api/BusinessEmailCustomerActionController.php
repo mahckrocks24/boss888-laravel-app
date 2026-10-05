@@ -94,10 +94,16 @@ class BusinessEmailCustomerActionController
     /** POST /api/infrastructure/business-email/domains/{id}/actions/{action} */
     public function act(Request $request, int $domainId, string $action): JsonResponse
     {
-        if (! Gate::isEnabled()) {
+        if (! Gate::isEnabledFor((int) $request->attributes->get('workspace_id', 0))) {   // MANAGED-2: per workspace
             return response()->json([
                 'success' => false, 'available' => false, 'reason' => Gate::unavailableReason(),
             ], 404);
+        }
+
+        // MANAGED-2: a new setup link for a mailbox still waiting for its owner. No engine operation: it re-issues
+        // our own token and email, and touches nothing at the provider.
+        if ($action === 'resend-setup') {
+            return $this->resendSetup($request, $domainId);
         }
 
         $map = self::actionMap();
@@ -167,6 +173,12 @@ class BusinessEmailCustomerActionController
 
         if ($subject === false) {
             return response()->json(['success' => false, 'reason' => 'Not found.'], 404);
+        }
+
+        // MANAGED-2: a managed client's new mailbox starts with its owner (see inviteOwner).
+        if ($capability === Registry::MAILBOX_CREATE && $subject instanceof EmailMailbox
+            && \App\Core\Managed\ManagedWorkspaces::isManaged($workspaceId)) {
+            return $this->inviteOwner($request, $subject);
         }
 
         // ── separation of duties: a request, not an execution ───────────────
@@ -241,6 +253,18 @@ class BusinessEmailCustomerActionController
 
                 if ($exists) {
                     return $this->refuse('A mailbox with that address already exists.', 409);
+                }
+
+                // MANAGED-2: the setup link goes to an address the person can open today, never the new one.
+                if (\App\Core\Managed\ManagedWorkspaces::isManaged((int) $domain->workspace_id)) {
+                    $to = strtolower(trim((string) $request->input('setup_recipient', '')));
+
+                    if (! EmailAddress::isValid($to)) {
+                        return $this->refuse('Enter the email address the setup link should go to.', 422);
+                    }
+                    if (str_ends_with($to, '@' . strtolower((string) $domain->domain))) {
+                        return $this->refuse('Send the link to an address they can already open, not the new one.', 422);
+                    }
                 }
             }
 
@@ -319,6 +343,59 @@ class BusinessEmailCustomerActionController
         }
 
         return $map;
+    }
+
+    // ── MANAGED-2: owner invitations ─────────────────────────────────────────
+
+    /** Reserve → token → our branded email. The mailbox stays `requested` until its owner sets a password. */
+    private function inviteOwner(Request $request, EmailMailbox $mailbox): JsonResponse
+    {
+        $to = strtolower(trim((string) $request->input('setup_recipient')));
+
+        return $this->sendSetupLink($request, $mailbox, $to,
+            "We sent a setup link to {$to}. The mailbox is ready as soon as they choose a password.");
+    }
+
+    private function resendSetup(Request $request, int $domainId): JsonResponse
+    {
+        $workspaceId = (int) $request->attributes->get('workspace_id', 0);
+        $id = (int) $request->input('id', 0);
+
+        $mailbox = WorkspaceContext::run($workspaceId, fn () => EmailMailbox::query()->find($id));
+
+        if ($mailbox === null || (int) $mailbox->email_domain_id !== $domainId) {
+            return response()->json(['success' => false, 'reason' => 'Not found.'], 404);
+        }
+        if ($mailbox->lifecycle_state !== EmailMailboxState::REQUESTED) {
+            return $this->refuse('This mailbox is already set up.', 409);
+        }
+
+        $to = \App\Engines\Infrastructure\Email\Onboarding\MailboxSetupToken::withoutGlobalScopes()
+            ->where('email_mailbox_id', $mailbox->id)->orderByDesc('id')->value('recipient_email');
+
+        if (! $to) {
+            return $this->refuse('We do not have an address to send the setup link to. Remove the mailbox and add the person again.', 409);
+        }
+
+        return $this->sendSetupLink($request, $mailbox, (string) $to, "We sent a new setup link to {$to}. The earlier link no longer works.");
+    }
+
+    private function sendSetupLink(Request $request, EmailMailbox $mailbox, string $to, string $sentMessage): JsonResponse
+    {
+        $issued = app(\App\Engines\Infrastructure\Email\Onboarding\MailboxSetupService::class)
+            ->issue($mailbox, $to, \App\Engines\Infrastructure\Email\Onboarding\MailboxSetupToken::PURPOSE_SETUP, $request->user()?->id);
+
+        $sent = app(\App\Engines\Infrastructure\Email\Onboarding\MailboxOnboardingMailer::class)
+            ->send($mailbox, $issued['record'], $issued['token']);
+
+        return response()->json([
+            'success'  => $sent,
+            'verified' => false,
+            'state'    => $sent ? 'pending' : 'refused',
+            'message'  => $sent ? $sentMessage
+                : 'The mailbox is reserved, but the setup email could not be sent just now. Use Resend setup link in a few minutes.',
+            'status'   => $this->subjectStatus($mailbox),
+        ], $sent ? 202 : 502)->header('Cache-Control', 'no-store, private');
     }
 
     // ── separation of duties ─────────────────────────────────────────────────

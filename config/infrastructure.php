@@ -43,6 +43,10 @@ return [
         // in the wrong shape rather than loudly. Opt in with the env var.
         "registrar" => env("INFRA_REGISTRAR_CONNECTOR"),
 
+        // MANAGED-2 (RFC-0029): Business Email's engine connector, opt-in by env. When set, the class is built by
+        // EmailProviderRegistry (see InfrastructureEmailServiceProvider::register); unset keeps it unconfigured.
+        'email' => env('INFRA_EMAIL_CONNECTOR'),
+
         'hosting'         => env('INFRA_HOSTING_CONNECTOR', NullHostingConnector::class),
         'custom_hostname' => env('INFRA_CUSTOM_HOSTNAME_CONNECTOR', NullCustomHostnameConnector::class),
         // registrar / email / backup / monitoring are intentionally absent until

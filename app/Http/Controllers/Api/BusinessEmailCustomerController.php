@@ -66,7 +66,7 @@ class BusinessEmailCustomerController
      */
     private function unavailable(Request $request): ?JsonResponse
     {
-        if (! Gate::isEnabled()) {
+        if (! Gate::isEnabledFor($this->workspaceId($request))) {   // MANAGED-2: per workspace
             return response()->json([
                 'success'   => false,
                 'available' => false,

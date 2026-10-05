@@ -46,6 +46,15 @@ final class BusinessEmailCustomerGate
             && (bool) config('business_email.admin_enabled', false);
     }
 
+    /**
+     * MANAGED-2 (RFC-0029, DEC-0086): open for one workspace. A managed client (we host and run their website and
+     * email) has the portal whatever the install-wide switch says; every other workspace follows isEnabled().
+     */
+    public static function isEnabledFor(int $workspaceId): bool
+    {
+        return self::isEnabled() || \App\Core\Managed\ManagedWorkspaces::isManaged($workspaceId);
+    }
+
     /** Reason the portal is unavailable, or null when it is available. */
     public static function unavailableReason(): ?string
     {
