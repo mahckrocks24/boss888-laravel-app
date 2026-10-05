@@ -11,4 +11,5 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('managed')->group(function () {
     Route::get('portal', [ManagedPortalController::class, 'portal']);
     Route::get('receipt', [ManagedPortalController::class, 'receipt']);
+    Route::get('server', [ManagedPortalController::class, 'server']);
 });

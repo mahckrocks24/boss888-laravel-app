@@ -5,4 +5,9 @@
 return [
     'support_email' => env('MANAGED_SUPPORT_EMAIL', 'support@levelupgrowth.io'),
     'support_phone' => env('MANAGED_SUPPORT_PHONE', '+63 966 334 3422'),
+
+    // MANAGED-6: how each managed client's server is described on its Server page (workspace id => facts we set).
+    'servers' => [
+        990006 => ['label' => 'Dedicated server', 'region' => 'Singapore'],
+    ],
 ];

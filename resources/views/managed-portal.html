@@ -187,6 +187,20 @@ html[data-theme="light"] .bar i{background:#0B0B0C}
 .dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--bd);background:var(--s2)}
 .msg{font-size:13px;margin-top:12px}.msg.ok{color:var(--ac)}.msg.bad{color:var(--rd)}
 .scrim{display:none}
+.ubars{display:grid;grid-template-columns:repeat(30,minmax(0,1fr));gap:4px;align-items:end;height:64px}
+.ubars i{display:block;border-radius:5px;background:var(--ac);min-height:6px;opacity:.9}
+.ubars i.w{background:var(--am)}.ubars i.b{background:var(--rd)}.ubars i.n{background:var(--s3);opacity:1}
+.meter{display:grid;grid-template-columns:120px 1fr auto;gap:14px;align-items:center;padding:14px 22px;border-top:1px solid var(--bd)}
+.meter:first-child{border-top:0}
+.meter b{font-weight:600}.meter span{font-size:12.5px;color:var(--t3);white-space:nowrap}
+.ok-row{display:flex;align-items:center;gap:12px;padding:14px 22px;border-top:1px solid var(--bd)}
+.ok-row:first-child{border-top:0}
+.ok-row .ic{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none;background:var(--as);color:var(--ac)}
+.ok-row .ic.off{background:var(--s2);color:var(--t3)}
+.ok-row .ic svg{width:16px;height:16px}
+.ok-row b{display:block;font-weight:600}.ok-row span{display:block;font-size:12.5px;color:var(--t3)}
+.ok-row .r{margin-left:auto}
+@media (max-width:860px){.meter{grid-template-columns:1fr auto}.meter .bar{grid-column:1/-1;order:3}.ubars{gap:2px;height:52px}}
 .ni img{width:20px;height:20px;border-radius:50%;object-fit:cover;flex:none}
 .chat{display:flex;flex-direction:column;min-height:calc(100vh - 230px)}
 .chat-h{display:flex;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid var(--bd)}
@@ -371,6 +385,7 @@ html:not([data-theme="light"]) .bub{background:rgba(255,255,255,.06)}
     <div class="nav-l">Workspace</div>
     <nav class="nav" aria-label="Pages">
       <button type="button" class="ni" data-page="email"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M3 6l7 5 7-5"/></svg>Email</button>
+      <button type="button" class="ni" data-page="server"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3.5" width="14" height="5" rx="1.5"/><rect x="3" y="11.5" width="14" height="5" rx="1.5"/><path d="M6 6h.01M6 14h.01"/></svg>Server</button>
       <button type="button" class="ni" data-page="billing"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 8.5h15M6 12.5h3"/></svg>Billing</button>
       <button type="button" class="ni" data-page="account"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7.5" r="3"/><path d="M4 16.5c1.2-2.6 3.4-4 6-4s4.8 1.4 6 4"/></svg>Account</button>
     </nav>
@@ -494,13 +509,13 @@ html:not([data-theme="light"]) .bub{background:rgba(255,255,255,.06)}
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeMenus(); drawer(false); } });
 
   /* ── navigation ── */
-  var TITLES = { email: 'Email', billing: 'Billing', account: 'Account', aria: 'Aria' };
+  var TITLES = { email: 'Email', server: 'Server', billing: 'Billing', account: 'Account', aria: 'Aria' };
   function go(page) {
     P.page = page; if (location.hash !== '#' + page) history.replaceState(null, '', '#' + page);
     document.querySelectorAll('.ni').forEach(function (b) { var on = b.getAttribute('data-page') === page; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     $('crumb').innerHTML = '<span class="co">' + esc(P.data.workspace.name) + '</span><span class="sep" aria-hidden="true">/</span><b>' + TITLES[page] + '</b>';
     drawer(false); closeMenus();
-    ({ email: pageEmail, billing: pageBilling, account: pageAccount, aria: pageAria })[page]();
+    ({ email: pageEmail, server: pageServer, billing: pageBilling, account: pageAccount, aria: pageAria })[page]();
     window.scrollTo(0, 0);
   }
   function staffNote() {
@@ -639,6 +654,64 @@ html:not([data-theme="light"]) .bub{background:rgba(255,255,255,.06)}
     var n = bg.querySelector('#ap-n'), l = bg.querySelector('#ap-l');
     n.addEventListener('input', function () { if (!l.dataset.t) l.value = (n.value.trim().split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z0-9._-]/g, ''); });
     l.addEventListener('input', function () { l.dataset.t = '1'; });
+  }
+
+  /* ═══ Server (MANAGED-6) — the client's dedicated server, run by us. Read-only: no controls on purpose. ═══ */
+  function fmtWhen(iso) { if (!iso) return '—'; var d = new Date(iso); return d.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }); }
+  function daysSince(iso) { return iso ? Math.max(0, Math.floor((Date.now() - new Date(iso)) / 864e5)) : null; }
+  function nextBackup() { var n = new Date(), t = new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate(), 18, 0)); if (t <= n) t = new Date(t.getTime() + 864e5); return t.toLocaleString('en-GB', { weekday: 'short', hour: 'numeric', minute: '2-digit' }); }
+  function okRow(on, ic, t, d, r) { return '<div class="ok-row"><div class="ic' + (on ? '' : ' off') + '">' + ic + '</div><div style="min-width:0"><b>' + esc(t) + '</b><span>' + esc(d) + '</span></div>' + (r ? '<div class="r">' + r + '</div>' : '') + '</div>'; }
+  function pageServer() {
+    $('content').innerHTML = head('Server', 'Your dedicated server, run and looked after by LevelUpGrowth.') + '<div class="stack">' + skel(190) + skel(150) + '<div class="grid g2">' + skel(260) + skel(260) + '</div></div>';
+    req('GET', q('managed/server')).then(function (r) {
+      if (!r.ok) { $('content').innerHTML = head('Server', '') + errorCard('We could not load your server details just now. Please try again in a moment.'); return; }
+      var d = r.json, sv = d.server || {}, bk = d.backup || {}, st = (d.status || {}), w = st.website || {}, c = st.certificate || {}, c2 = contact();
+      var up = d.uptime || [], inc = d.incidents || [], since = daysSince(sv.online_since);
+      var uptimeAvg = w.uptime_30d != null ? w.uptime_30d + '%' : '—';
+      var bars = [];
+      for (var i = 29; i >= 0; i--) {
+        var day = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10), hit = null;
+        for (var k = 0; k < up.length; k++) if (up[k].date === day) hit = up[k];
+        var u = hit ? hit.uptime : null, cls = u == null ? 'n' : (u >= 99.9 ? '' : (u >= 98 ? 'w' : 'b')), h = u == null ? 12 : Math.max(18, Math.round(64 * (u >= 99 ? 1 : u / 100)));
+        bars.push('<i class="' + cls + '" style="height:' + h + 'px" title="' + esc(fmtDate(day) + (u == null ? ': no data' : ': ' + u + '% online')) + '"></i>');
+      }
+      var memPct = sv.memory_used_pct, diskPct = sv.disk_total_gb ? Math.round(100 * sv.disk_used_gb / sv.disk_total_gb) : null;
+      var I2 = { cpu: I.server, mem: I.db, disk: I.db };
+      $('content').innerHTML = head('Server', 'Your dedicated server, run and looked after by LevelUpGrowth.') + '<div class="stack">' +
+        '<div class="card hero"><div><span class="pill ' + ((w.state || 'unknown') === 'ok' ? 'ok' : 'warn') + '">' + I.check.replace('<svg', '<svg style="width:12px;height:12px"') + esc(w.state === 'ok' ? 'Online' : (w.label || 'Checking')) + '</span>' +
+          '<h2>' + esc(d.label || 'Dedicated server') + '</h2><p>Hosting ' + esc(d.host || 'your website') + (d.region ? ' from our ' + esc(d.region) + ' region' : '') + '. Monitored every 5 minutes, backed up every night, updated automatically.</p></div>' +
+          '<dl class="kv"><dt>Uptime, last 30 days</dt><dd style="font:700 22px var(--fh)">' + esc(uptimeAvg) + '</dd><dt>Online since</dt><dd>' + (sv.online_since ? fmtDate(sv.online_since) + (since != null ? ' · ' + since + ' days' : '') : '—') + '</dd><dt>Incidents, last 90 days</dt><dd>' + inc.length + '</dd><dt>Last backup</dt><dd>' + fmtWhen(bk.backup_at) + '</dd><dt>System</dt><dd>' + esc(sv.os || '—') + '</dd></dl></div>' +
+        '<div class="card"><div class="card-h"><div><h2>Uptime</h2><p>Each bar is one day. We check your website every 5 minutes, day and night.</p></div><span class="pill ok">' + esc(uptimeAvg) + '</span></div>' +
+          '<div class="card-b"><div class="ubars" aria-label="Daily uptime for the last 30 days">' + bars.join('') + '</div>' +
+          '<div style="display:flex;justify-content:space-between;font-size:12px;color:var(--t3);margin-top:10px"><span>30 days ago</span><span style="display:flex;gap:14px;flex-wrap:wrap"><span><i class="dot ok" style="display:inline-block;box-shadow:none;margin-right:5px"></i>Online</span><span><i class="dot warn" style="display:inline-block;box-shadow:none;margin-right:5px"></i>Brief interruption</span></span><span>Today</span></div></div></div>' +
+        '<div class="grid g2">' +
+          '<div class="card"><div class="card-h"><div><h2>Backups</h2><p>Encrypted every night and copied to a separate region.</p></div><span class="pill ' + (bk.verified ? 'ok' : '') + '">' + (bk.verified ? 'Verified' : 'Pending') + '</span></div>' +
+            okRow(!!bk.backup_at, I.db, 'Last backup', bk.backup_at ? fmtWhen(bk.backup_at) + ' · ' + (bk.files || 0).toLocaleString() + ' files and your database' : 'Not yet taken') +
+            okRow(!!bk.verified, I.shield, 'Off-site copy checked', 'Read back in full from the second region and confirmed complete') +
+            okRow(true, I.doc, 'Kept for', 'Two weeks of nightly backups and eight weekly ones') +
+            okRow(!!bk.last_drill_ok, I.check, 'Last restore test', bk.last_drill_at ? 'Passed on ' + fmtDate(bk.last_drill_at) + ' · every table came back intact' : 'Runs on the 1st of each month') +
+            okRow(true, I.link, 'Next backup', nextBackup() + ' (every night)') +
+          '</div>' +
+          '<div class="card"><div class="card-h"><div><h2>Security</h2><p>Kept up to date and protected for you.</p></div></div>' +
+            okRow(c.state === 'ok', I.lock, 'Secure connection', c.label || 'Certificate status unavailable', '') +
+            okRow(sv.auto_updates, I.shield, 'Security updates', sv.auto_updates ? 'Installed automatically' + (sv.updates_last_run ? ' · last checked ' + fmtDate(sv.updates_last_run) : '') : 'Managed by our team') +
+            okRow(sv.firewall, I.server, 'Firewall', sv.firewall ? 'Active · only web traffic is let in' : 'Managed by our team') +
+            okRow(sv.intrusion_protection, I.user, 'Sign-in protection', sv.intrusion_protection ? 'Active · repeated failed sign-ins are blocked' : 'Managed by our team') +
+            okRow(true, I.lock, 'Encrypted backups', 'Only LevelUpGrowth holds the key') +
+          '</div>' +
+        '</div>' +
+        '<div class="card"><div class="card-h"><div><h2>Capacity</h2><p>How much of your server is in use' + (sv.as_of ? ' · updated ' + ago(sv.as_of) : '') + '.</p></div></div>' +
+          '<div class="meter"><b>Processor</b><div></div><span>' + (sv.cpus ? sv.cpus + ' virtual processor' + (sv.cpus > 1 ? 's' : '') : '—') + '</span></div>' +
+          '<div class="meter"><b>Memory</b><div class="bar"><i style="width:' + (memPct || 0) + '%"></i></div><span>' + (memPct != null ? memPct + '% of ' + sv.memory_gb + ' GB in use' : '—') + '</span></div>' +
+          '<div class="meter"><b>Storage</b><div class="bar"><i style="width:' + (diskPct || 0) + '%"></i></div><span>' + (sv.disk_used_gb != null ? sv.disk_used_gb + ' of ' + sv.disk_total_gb + ' GB used' : '—') + '</span></div>' +
+        '</div>' +
+        '<div class="card"><div class="card-h"><div><h2>Incidents</h2><p>Times your website did not answer our checks, in the last 90 days.</p></div><span class="pill ' + (inc.length ? '' : 'ok') + '">' + (inc.length ? inc.length + ' resolved' : 'None') + '</span></div>' +
+          (inc.length ? inc.map(function (x) { return okRow(!!x.resolved, x.resolved ? I.check : I.shield, fmtWhen(x.started), (x.resolved ? 'Resolved after ' + (x.minutes || 1) + ' minute' + ((x.minutes || 1) === 1 ? '' : 's') : 'We are on it') + ' · ' + x.summary); }).join('')
+            : '<div class="card-b" style="color:var(--t2)">No incidents in the last 90 days.</div>') +
+        '</div>' +
+        '<div class="card"><div class="row"><div><b>Need a page, file or record back?</b><span>We can restore it from your nightly backups. Tell us what you need and from when.</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="tel:' + esc(c2.phone.replace(/\s/g, '')) + '">' + I.phone + 'Call</a>' + (c2.email ? '<a class="btn pri" href="mailto:' + esc(c2.email) + '?subject=' + encodeURIComponent('Restore request') + '">' + I.mail + 'Request a restore</a>' : '') + '</div></div></div>' +
+      '</div>';
+    });
   }
 
   /* ═══ Billing ═══ */

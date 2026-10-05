@@ -61,6 +61,17 @@ class ManagedPortalController
         return Storage::disk('local')->download($contract->receipt_path, $name, ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, no-store']);
     }
 
+    /** MANAGED-6: GET managed/server — the Server page. */
+    public function server(Request $request)
+    {
+        $wsId = $this->workspaceId($request);
+        if (! $wsId) {
+            return response()->json(['success' => false, 'error' => 'This account does not have a managed package.', 'code' => 'not_managed'], 404);
+        }
+
+        return response()->json(['success' => true] + ManagedStatus::server($wsId));
+    }
+
     private function workspaceId(Request $request): ?int
     {
         $wsId = (int) $request->attributes->get('workspace_id');

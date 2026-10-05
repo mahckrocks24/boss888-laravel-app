@@ -128,4 +128,82 @@ final class ManagedStatus
 
         return implode('.', array_slice($parts, $twoLevel ? -3 : -2));
     }
+    /**
+     * MANAGED-6 — the Server page: the client's dedicated server as they should see it. Everything on the server is
+     * presented as theirs (DEC-0086: other systems on it are never named). Facts come from files our root jobs write:
+     * storage/app/managed/server-{ws}.json (hourly, managed-server-stats.sh) and backup-{ws}.json (nightly off-site run).
+     */
+    public static function server(int $workspaceId): array
+    {
+        $dir = storage_path('app/managed');
+        $read = function (string $f) use ($dir) {
+            $p = $dir . '/' . $f;
+
+            return is_file($p) ? (json_decode((string) @file_get_contents($p), true) ?: null) : null;
+        };
+        $srv = $read("server-{$workspaceId}.json");
+        $bak = $read("backup-{$workspaceId}.json");
+        $meta = (array) (config("managed.servers.{$workspaceId}") ?? []);
+
+        $check = DB::table('infra_monitor_checks')->where('workspace_id', $workspaceId)->where('enabled', 1)->orderBy('id')->first(['id', 'target_url']);
+        $host = $check ? (string) parse_url($check->target_url, PHP_URL_HOST) : null;
+
+        $days = [];
+        if ($check) {
+            $rows = DB::table('infra_monitor_results')->where('monitor_check_id', $check->id)
+                ->where('checked_at', '>=', now()->subDays(29)->startOfDay())
+                ->selectRaw("DATE(checked_at) d, COUNT(*) n, SUM(CASE WHEN status IN ('up','degraded') THEN 1 ELSE 0 END) up")
+                ->groupBy('d')->orderBy('d')->get();
+            foreach ($rows as $r) {
+                $days[] = ['date' => (string) $r->d, 'uptime' => $r->n ? round(100 * $r->up / $r->n, 2) : null];
+            }
+        }
+
+        // Only incidents measured on the client's own address count: earlier checks went through an old redirect
+        // on another server, and its hiccups were never the client's outages.
+        $incidents = [];
+        if ($host) {
+            foreach (DB::table('infra_incidents')->where('workspace_id', $workspaceId)->where('detected_at', '>=', now()->subDays(90))
+                ->orderByDesc('detected_at')->limit(50)->get(['detected_at', 'resolved_at', 'time_to_resolve_seconds', 'cause', 'lifecycle_state']) as $i) {
+                if ($i->cause && stripos((string) $i->cause, $host) === false) {
+                    continue;
+                }
+                $incidents[] = [
+                    'started'  => \Illuminate\Support\Carbon::parse($i->detected_at)->toIso8601String(),
+                    'resolved' => $i->resolved_at ? \Illuminate\Support\Carbon::parse($i->resolved_at)->toIso8601String() : null,
+                    'minutes'  => $i->time_to_resolve_seconds ? max(1, (int) round($i->time_to_resolve_seconds / 60)) : null,
+                    'summary'  => 'Website did not answer our checks',
+                ];
+            }
+        }
+
+        $server = null;
+        if ($srv) {
+            $server = [
+                'as_of'                => $srv['at'] ?? null,
+                'os'                   => $srv['os'] ?? null,
+                'cpus'                 => $srv['cpus'] ?? null,
+                'memory_gb'            => isset($srv['mem_total_mb']) ? round($srv['mem_total_mb'] / 1024, 1) : null,
+                'memory_used_pct'      => isset($srv['mem_total_mb'], $srv['mem_avail_mb']) && $srv['mem_total_mb'] ? (int) round(100 * (1 - $srv['mem_avail_mb'] / $srv['mem_total_mb'])) : null,
+                'disk_total_gb'        => $srv['disk_total_gb'] ?? null,
+                'disk_used_gb'         => $srv['disk_used_gb'] ?? null,
+                'online_since'         => $srv['up_since'] ?? null,
+                'auto_updates'         => (bool) ($srv['auto_updates'] ?? false),
+                'updates_last_run'     => $srv['updates_last_run'] ?? null,
+                'firewall'             => (bool) ($srv['firewall'] ?? false),
+                'intrusion_protection' => (bool) ($srv['intrusion_protection'] ?? false),
+            ];
+        }
+
+        return [
+            'host'      => $host,
+            'label'     => $meta['label'] ?? 'Dedicated server',
+            'region'    => $meta['region'] ?? null,
+            'server'    => $server,
+            'backup'    => $bak,
+            'uptime'    => $days,
+            'incidents' => $incidents,
+            'status'    => self::forWorkspace($workspaceId),
+        ];
+    }
 }
