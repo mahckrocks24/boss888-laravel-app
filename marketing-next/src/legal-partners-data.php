@@ -49,6 +49,16 @@ $pages[] = ['slug' => 'affiliates', 'title' => 'Affiliate Program Terms', 'sourc
 <h2>10. Liability and law</h2>
 <p>The program is provided as is. To the extent the law allows, our total liability to you under these terms is limited to the commissions owed to you in the 12 months before the claim. These terms are governed by the laws of {$__owner}.</p>
 
-<h2>11. Contact</h2>
+<h2>11. Team Leader</h2>
+<p>An approved affiliate may subscribe to Team Leader for US$99 a month. While the subscription is paid:</p>
+<ul>
+<li>the share on your own referrals is 25% on monthly plans (first 6 monthly payments), 20% on yearly plans (first yearly payment) and 15% on new domain registrations, split between the business's discount and your commission as in section 2;</li>
+<li>affiliates who apply with your team code, and whom we approve, join your team. On each payment by a business that one of your team members referred, you earn 5% of the price, on the same terms, window and holding period as that team member's commission; the team member's own share is not reduced. You earn on your direct team members only, not on anyone they recruit, and not on the sales of a team member who is also a Team Leader;</li>
+<li>you can see your team members' results the way they see their own, recommend applicants, set recommended splits, and send up to 4 announcements a month that we deliver on your behalf. You may not change a team member's codes, payout details or earnings, and you must not pay them or charge them anything yourself.</li>
+</ul>
+<p>Every application is decided by LevelUpGrowth, by a person or by our automated review, and can be reviewed again on request. You earn only from payments by businesses; nothing is paid for recruiting anyone, and no one earns from Team Leader fees.</p>
+<p>The fee is charged monthly in advance. The first month is paid by card. For each later month we first use commission you have earned and not yet been paid, including commission still being held, and charge your card for any remainder. Commission used this way is shown in your portal and is deducted from your next payout. If a fee payment fails, you have 30 days to pay it or to earn enough commission to cover it. If it is still unpaid after 30 days, or at the end of the paid month after you cancel, Team Leader ends: your share returns to the standard rates, your team dissolves (its members stay affiliates with their codes and earnings), and the 5% stops on later payments. Commission already earned is not affected. Fees already paid are not refunded.</p>
+
+<h2>12. Contact</h2>
 <p>Questions about the program or a payout: <a href="/next/contact/?topic=affiliates">contact us</a> and choose Affiliates.</p>
 HTML];

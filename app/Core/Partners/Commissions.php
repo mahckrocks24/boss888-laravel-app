@@ -87,6 +87,7 @@ class Commissions
             'affiliate_id' => $ref->affiliate_id, 'referral_id' => $ref->id, 'workspace_id' => $order->workspace_id, 'source_type' => 'domain_order', 'source_id' => (string) $orderId,
             'stripe_event_id' => (string) $event->id, 'payment_intent_id' => is_string($session->payment_intent ?? null) ? $session->payment_intent : null,
             'kind' => 'domain', 'base_minor' => $base, 'rate_bps' => $rate, 'amount_minor' => $amount, 'currency' => strtoupper((string) ($order->currency ?: 'USD')),
+            '_cap_left' => max(0, $cap - $saved) - $amount,   // the Team Leader's 5% on a domain also stays within our markup
         ]);
     }
 
@@ -123,7 +124,8 @@ class Commissions
                 'note' => $isDispute ? 'dispute' : 'refund',
             ]);
             $n++;
-            if ($isDispute) PartnerProgram::flag((int) $c->affiliate_id, 'dispute', ['commission_id' => $c->id, 'charge' => $o->charge ?? $o->id ?? null], (int) $c->workspace_id);
+            if ($c->override_of) TeamLeader::event((int) $c->affiliate_id, (int) DB::table('commissions')->where('id', $c->override_of)->value('affiliate_id'), 'team_reversal', ['amount' => $delta]);
+            if ($isDispute && ! $c->override_of) PartnerProgram::flag((int) $c->affiliate_id, 'dispute', ['commission_id' => $c->id, 'charge' => $o->charge ?? $o->id ?? null], (int) $c->workspace_id);
         }
         return $n;
     }
@@ -151,10 +153,41 @@ class Commissions
         return DB::table('commissions')->where('status', 'pending')->where('payable_at', '<=', now())->update(['status' => 'payable', 'updated_at' => now()]);
     }
 
+    /**
+     * RFC-0028 / DEC-0085: the Team Leader's 5% of a recruit's referred payment, on the same base and in the same window, keyed to
+     * the same payment (refunds, disputes and the 30-day hold apply to it like any commission). One level: only the affiliate's own
+     * leader. Never on a business the leader belongs to.
+     */
+    private function teamShare(int $commissionId, array $row, ?int $capLeft): void
+    {
+        $leader = TeamLeader::leaderOf((int) $row['affiliate_id']);
+        if (! $leader) return;
+        // Owner: "if there is a team leader involved in the sale... 25% is always the total commission" - a recruit who is a Team
+        // Leader already has the whole 25%, so nobody above them takes 5% on their sales
+        if (TeamLeader::isActive(DB::table('affiliates')->where('id', $row['affiliate_id'])->first())) return;
+        if (DB::table('workspace_users')->where('workspace_id', $row['workspace_id'])->where('user_id', $leader->user_id)->exists()) {
+            PartnerProgram::flag((int) $leader->id, 'self_referral', ['reason' => 'the Team Leader belongs to the referred business', 'commission_id' => $commissionId], (int) $row['workspace_id']);
+            return;
+        }
+        $amount = (int) round((int) $row['base_minor'] * TeamLeader::OVERRIDE_BPS / 10000);
+        if ($capLeft !== null) $amount = min($amount, max(0, $capLeft));
+        if ($amount <= 0) return;
+        $recruit = (string) DB::table('affiliates')->where('id', $row['affiliate_id'])->value('display_name');
+        $id = $this->write(['affiliate_id' => $leader->id, 'referral_id' => $row['referral_id'], 'workspace_id' => $row['workspace_id'], 'source_type' => $row['source_type'], 'source_id' => $row['source_id'],
+            'stripe_event_id' => $row['stripe_event_id'] . ':team', 'payment_intent_id' => $row['payment_intent_id'] ?? null, 'kind' => $row['kind'], 'base_minor' => $row['base_minor'],
+            'rate_bps' => TeamLeader::OVERRIDE_BPS, 'amount_minor' => $amount, 'currency' => $row['currency'], 'cycle_no' => $row['cycle_no'] ?? null, 'override_of' => $commissionId,
+            'note' => mb_substr('Team: ' . $recruit, 0, 255)]);
+        if (! $id) return;
+        TeamLeader::event((int) $leader->id, (int) $row['affiliate_id'], 'team_payment', ['amount' => $amount, 'kind' => $row['kind']]);
+        if (DB::table('commissions')->where('affiliate_id', $row['affiliate_id'])->whereNull('override_of')->where('amount_minor', '>', 0)->whereIn('source_type', ['invoice', 'domain_order'])->count() === 1) TeamLeader::event((int) $leader->id, (int) $row['affiliate_id'], 'recruit_first_sale', []);
+        PartnerEmails::safe(fn () => PartnerEmails::firstTeamEarning((int) $leader->id, $id));   // L4
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private function write(array $row): ?int
     {
+        $capLeft = array_key_exists('_cap_left', $row) ? (int) $row['_cap_left'] : null; unset($row['_cap_left']);
         $row += ['status' => 'pending', 'payable_at' => now()->addDays(PartnerProgram::HOLD_DAYS), 'created_at' => now(), 'updated_at' => now()];
         try {
             $id = (int) DB::table('commissions')->insertGetId($row);
@@ -162,6 +195,8 @@ class Commissions
             // AFF-CERT-1: Stripe does not promise event order - a dispute or refund can arrive BEFORE the payment's
             // invoice.paid. A new commission therefore checks its payment's state now and reverses what is already gone.
             if ((int) $row['amount_minor'] > 0 && ! empty($row['payment_intent_id'])) $this->reconcile($id);
+            // RFC-0028: with a Team Leader above the affiliate, the leader gets 5% of the same payment (total 25 / 20 / 15)
+            if ((int) $row['amount_minor'] > 0 && empty($row['override_of']) && in_array($row['source_type'], ['invoice', 'domain_order'], true)) $this->teamShare($id, $row, $capLeft);
             Log::info('[AFF] commission', ['id' => $id, 'affiliate' => $row['affiliate_id'], 'amount' => $row['amount_minor'], 'kind' => $row['kind']]);
             return $id;
         } catch (\Illuminate\Database\QueryException $e) {

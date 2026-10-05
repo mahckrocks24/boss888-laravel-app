@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * RFC-0026 section 8: the partner portal signs in with the normal LevelUpGrowth login, but an affiliate has no workspace,
  * so auth.jwt (which needs one) cannot guard it. This checks the same access token and loads the person's affiliate row.
- * `partner.auth` = signed in; `partner.auth:approved` = an approved affiliate.
+ * `partner.auth` = signed in; `partner.auth:approved` = an approved affiliate; `partner.auth:leader` = an active Team Leader (RFC-0028).
  */
 class PartnerAuth
 {
@@ -26,8 +26,9 @@ class PartnerAuth
         if (! $user) return response()->json(['error' => 'Please sign in.', 'code' => 'unauthenticated'], 401);
         $aff = DB::table('affiliates')->where('user_id', $user->id)->first();
         if ($need === 'approved' && (! $aff || $aff->status !== 'approved')) {
-            return response()->json(['error' => $aff ? 'Your partner account is ' . $aff->status . '.' : 'You are not a partner yet.', 'code' => 'not_partner'], 403);
+            return response()->json(['error' => $aff ? 'Your affiliate account is ' . $aff->status . '.' : 'You are not an affiliate yet.', 'code' => 'not_partner'], 403);
         }
+        if ($need === 'leader' && ! \App\Core\Partners\TeamLeader::isActive($aff)) return response()->json(['ok' => false, 'error' => 'For Team Leaders only.', 'code' => 'not_leader'], 403);   // RFC-0028
         $request->setUserResolver(fn () => $user);
         $request->attributes->set('affiliate', $aff);
         $request->attributes->set('auth_via', 'jwt');

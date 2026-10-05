@@ -37,7 +37,12 @@ class PartnerPortal
             $out['partner'] = ['handle' => $a->handle, 'display_name' => $a->display_name, 'status' => $a->status, 'channel_url' => $a->channel_url,
                 'budgets' => PartnerProgram::budgets($a),
                 'payout_method' => $a->payout_method, 'payouts_enabled' => (bool) $a->payouts_enabled, 'decision_note' => $a->status === 'rejected' ? $a->decision_note : null,
-                'since' => $a->approved_at];
+                'since' => $a->approved_at, 'tier' => TeamLeader::isActive($a) ? 'leader' : 'affiliate',
+                'leader' => $a->tier === 'leader' ? ['team_code' => $a->team_code, 'status' => $a->leader_status, 'until' => $a->leader_until, 'cancel_at_end' => (bool) $a->leader_cancel_at_end,
+                    'grace_until' => TeamLeader::inGrace($a) ? $a->leader_grace_until : null, 'since' => $a->leader_since,
+                    'team_size' => DB::table('affiliates')->where('leader_id', $a->id)->where('status', 'approved')->count()] : null,
+                'team' => TeamPortal::forRecruit($a)];
+            $out['leader_offer'] = TeamLeader::offer();
         }
         return $out;
     }
@@ -50,7 +55,7 @@ class PartnerPortal
         // paying = still on a paid plan now (a business that cancelled no longer counts)
         $paying = DB::table('referrals as r')->where('r.affiliate_id', $a->id)->where('r.status', 'paying')->whereExists(fn ($q) => $q->from('subscriptions as s')->join('plans as p', 'p.id', '=', 's.plan_id')
             ->whereColumn('s.workspace_id', 'r.workspace_id')->whereIn('s.status', ['active', 'trialing', 'past_due'])->where('p.price', '>', 0))->count();
-        $earned = (int) $w(DB::table('commissions')->where('affiliate_id', $a->id), 'created_at')->sum('amount_minor');
+        $earned = (int) $w(DB::table('commissions')->where('affiliate_id', $a->id)->where('source_type', '!=', 'leader_fee'), 'created_at')->sum('amount_minor');
         $money = [];
         foreach (['pending', 'payable', 'paid'] as $s) $money[$s] = (int) DB::table('commissions')->where('affiliate_id', $a->id)->where('status', $s)->sum('amount_minor');
         // codes only (Owner 2026-10-05): results per code - the way an affiliate sees which video or post works is a code per video
@@ -58,7 +63,7 @@ class PartnerPortal
         foreach ($w(DB::table('referrals as r')->leftJoin('vouchers as v', 'v.id', '=', 'r.voucher_id')->where('r.affiliate_id', $a->id)->where('r.status', '!=', 'void'), 'r.signed_up_at')->get(['r.id', 'r.status', 'v.code']) as $r) {
             $k = (string) ($r->code ?? '—'); $byCode[$k] ??= ['code' => $k, 'signups' => 0, 'paying' => 0, 'earned' => 0];
             $byCode[$k]['signups']++; if ($r->status === 'paying') $byCode[$k]['paying']++;
-            $byCode[$k]['earned'] += (int) DB::table('commissions')->where('referral_id', $r->id)->sum('amount_minor');
+            $byCode[$k]['earned'] += (int) DB::table('commissions')->where('referral_id', $r->id)->where('affiliate_id', $a->id)->sum('amount_minor');   // RFC-0028: never the leader's 5% on the same referral
         }
         usort($byCode, fn ($x, $y) => [$y['earned'], $y['signups']] <=> [$x['earned'], $x['signups']]);
         return ['days' => $days, 'signups' => $signups, 'paying' => $paying, 'earned_minor' => $earned, 'money' => $money, 'by_code' => array_values($byCode),
@@ -70,7 +75,7 @@ class PartnerPortal
         $rows = DB::table('referrals as r')->leftJoin('users as u', 'u.id', '=', 'r.user_id')->leftJoin('vouchers as v', 'v.id', '=', 'r.voucher_id')
             ->where('r.affiliate_id', $a->id)->orderByDesc('r.id')->limit(500)
             ->get(['r.id', 'r.workspace_id', 'r.source', 'r.status', 'r.signed_up_at', 'r.cycles_paid', 'r.months', 'u.email', 'v.code']);
-        return $rows->map(function ($r) {
+        return $rows->map(function ($r) use ($a) {
             $plan = DB::table('subscriptions as s')->join('plans as p', 'p.id', '=', 's.plan_id')->where('s.workspace_id', $r->workspace_id)
                 ->whereIn('s.status', ['active', 'trialing', 'past_due'])->where('p.price', '>', 0)->orderByDesc('s.id')->first(['p.name', 's.status']);
             return ['id' => $r->id, 'who' => self::maskEmail($r->email), 'joined' => $r->signed_up_at, 'via' => $r->code ? 'code ' . $r->code : 'earlier link',
@@ -78,7 +83,7 @@ class PartnerPortal
                 // a business that stopped paying shows as Cancelled, not Paying
                 'status' => ($r->status === 'paying' && ! $plan) ? 'Cancelled' : (['signed_up' => 'Signed up', 'paying' => 'Paying', 'ended' => 'Earning ended', 'void' => 'Not counted'][$r->status] ?? $r->status),
                 'payments' => (int) $r->cycles_paid . ' of ' . (int) $r->months,
-                'earned_minor' => (int) DB::table('commissions')->where('referral_id', $r->id)->sum('amount_minor')];
+                'earned_minor' => (int) DB::table('commissions')->where('referral_id', $r->id)->where('affiliate_id', $a->id)->sum('amount_minor')];
         })->all();
     }
 

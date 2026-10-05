@@ -59,11 +59,12 @@ class PartnerEmails
         if ($status === 'approved') {
             if (! self::once('A2', (string) $affId, $affId)) return false;
             $b = PartnerProgram::budgets($a);
+            $team = $a->leader_id ? DB::table('affiliates')->where('id', $a->leader_id)->value('display_name') : null;   // RFC-0028
             return self::send($a->email, "You're in: the LevelUpGrowth Affiliate Program", ['preheader' => 'Create your first code and start sharing.', 'eyebrow' => 'Affiliate Program', 'tone' => 'success',
                 'heading' => 'Welcome to the Affiliate Program, ' . self::first($a), 'lead' => 'Your next step: create your own code in the affiliate portal.',
                 'list' => ['Every business that signs up with your code is yours.', 'Each code shares up to ' . ($b['monthly'] / 100) . '% of their monthly plan for 6 payments, ' . ($b['yearly'] / 100) . '% of a yearly plan, ' . ($b['domain'] / 100) . '% of each new domain registration, once.',
                     'Drag the split when you create the code: more for you, or a bigger discount for them.', 'Make a different code for each video or post to see which one works.'],
-                'button' => ['Create your first code', self::PORTAL . '#codes'], 'after' => ['Please say clearly that it is an affiliate code wherever you share it. The affiliate terms are at levelupgrowth.io/legal/affiliates/.'],
+                'button' => ['Create your first code', self::PORTAL . '#codes'], 'after' => array_values(array_filter([$team ? 'You are on ' . $team . "'s team. Your Team Leader sees your results and can send you tips and recommended splits." : null, 'Please say clearly that it is an affiliate code wherever you share it. The affiliate terms are at levelupgrowth.io/legal/affiliates/.'])),
                 'signoff' => 'team', 'reason' => self::why()], 'A2');
         }
         if ($status === 'rejected') {
@@ -205,6 +206,133 @@ class PartnerEmails
             }
         }
         return $n;
+    }
+
+    // ------------------------------------------------------------------ RFC-0028 Team Leader mail
+
+    private static function whyLeader(): string { return 'You received this email because you are a LevelUpGrowth Team Leader.'; }
+    private static function day(?string $ts): string { return $ts ? date('j M Y', strtotime($ts)) : ''; }
+
+    // L1: welcome
+    public static function leaderWelcome(int $affId, string $subId): bool
+    {
+        $a = self::partner($affId); if (! $a || ! self::once('L1', $subId, $affId)) return false;
+        return self::send($a->email, "You're a Team Leader", ['preheader' => 'Your team code is ' . $a->team_code . '.', 'eyebrow' => 'Team Leader', 'tone' => 'success',
+            'heading' => 'Welcome to Team Leader, ' . self::first($a), 'lead' => 'Your own customers now carry 25% of their monthly plan for 6 payments, 20% of a yearly plan and 15% of new domains, to split with the bar.',
+            'list' => ['Recruit affiliates with your team code: ' . $a->team_code . '.', 'You get 5% of every payment their customers make, on top of what they earn.', 'You see your whole team, their codes and their referrals in the Team area of your portal.',
+                'Your $99 a month is taken from your commissions when you have any, otherwise from your card.'],
+            'button' => ['Open your Team area', self::PORTAL . '#team'], 'after' => ['Every recruit is approved by LevelUpGrowth before they join your team. You earn only from customers paying, never for recruiting someone.'],
+            'signoff' => 'team', 'reason' => self::whyLeader()], 'L1');
+    }
+
+    // L2: a voluntary cancel (D21)
+    public static function leaderCancelling(int $affId): bool
+    {
+        $a = self::partner($affId); if (! $a || ! self::once('L2', (string) ($a->leader_until ?: now()->toDateString()), $affId)) return false;
+        return self::send($a->email, 'Your Team Leader plan ends on ' . self::day($a->leader_until), ['eyebrow' => 'Team Leader', 'heading' => 'Team Leader ends on ' . self::day($a->leader_until),
+            'lead' => 'You cancelled. Until then everything stays as it is.', 'list' => ['After that you are a regular affiliate again: 20% / 15% / 10% to split.', 'Your team dissolves: your recruits become regular affiliates and the 5% stops.', 'Money you already earned stays yours.'],
+            'paragraphs' => ['Changed your mind? Keep Team Leader in the Team area before that date.'], 'button' => ['Keep Team Leader', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'L2');
+    }
+
+    // L3: a recruit was approved
+    public static function recruitJoined(int $leaderId, int $recruitId): bool
+    {
+        $l = self::partner($leaderId); $r = DB::table('affiliates')->where('id', $recruitId)->first(['display_name']);
+        if (! $l || ! $r || ! self::once('L3', (string) $recruitId, $leaderId)) return false;
+        return self::send($l->email, $r->display_name . ' joined your team', ['eyebrow' => 'Team Leader', 'tone' => 'success', 'heading' => $r->display_name . ' is on your team',
+            'lead' => 'We approved their application. From now on you get 5% of every payment their customers make.', 'paragraphs' => ['Send them your recommended splits and a welcome announcement from the Team area.'],
+            'button' => ['Open your Team area', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'L3');
+    }
+
+    // L4: the first 5% from the team
+    public static function firstTeamEarning(int $leaderId, int $commissionId): bool
+    {
+        $c = DB::table('commissions')->where('id', $commissionId)->first(); $l = self::partner($leaderId);
+        if (! $c || ! $l || DB::table('commissions')->where('affiliate_id', $leaderId)->whereNotNull('override_of')->count() !== 1 || ! self::once('L4', (string) $leaderId, $leaderId)) return false;
+        return self::send($l->email, 'Your team just earned you ' . self::usd((int) $c->amount_minor), ['eyebrow' => 'Team Leader', 'tone' => 'success', 'heading' => 'Your first team earnings',
+            'lead' => 'A business one of your recruits referred just paid. Your 5% is ' . self::usd((int) $c->amount_minor) . ', held ' . PartnerProgram::HOLD_DAYS . ' days in case of a refund.',
+            'button' => ['See your team earnings', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'L4');
+    }
+
+    // F1: the fee was taken from commissions
+    public static function feeFromCommissions(int $affId, int $amount, string $period): bool
+    {
+        $a = self::partner($affId); if (! $a || ! self::once('F1', $period, $affId)) return false;
+        $card = TeamLeader::FEE_MINOR - $amount;
+        return self::send($a->email, 'Your Team Leader fee comes from your commissions', ['eyebrow' => 'Team Leader', 'heading' => self::usd($amount) . ' from your commissions',
+            'lead' => 'Your next month of Team Leader (' . self::usd(TeamLeader::FEE_MINOR) . ') is paid ' . ($card > 0 ? self::usd($amount) . ' from your commissions and ' . self::usd($card) . ' from your card.' : 'in full from your commissions. Your card is not charged.'),
+            'paragraphs' => ['It shows as a line in your earnings and is netted from your next payout.'], 'button' => ['See your earnings', self::PORTAL . '#money'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'F1');
+    }
+
+    // G1: the payment failed - 30 days
+    public static function graceStarted(int $affId): bool
+    {
+        $a = self::partner($affId); if (! $a || ! $a->leader_grace_until || ! self::once('G1', (string) $a->leader_grace_until, $affId)) return false;
+        return self::send($a->email, 'Your Team Leader payment did not go through', ['eyebrow' => 'Team Leader', 'heading' => 'Please pay by ' . self::day($a->leader_grace_until),
+            'lead' => 'We could not take your ' . self::usd(TeamLeader::FEE_MINOR) . ' Team Leader fee. You have until ' . self::day($a->leader_grace_until) . ' to pay it, or to earn it: commissions you earn before then pay it automatically.',
+            'paragraphs' => ['If it is still unpaid on that date, you become a regular affiliate and your team dissolves. Money you already earned stays yours.'],
+            'button' => ['Pay now', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'G1');
+    }
+
+    // G2 / G3: 7 days and 1 day left
+    public static function graceReminder(int $affId, int $daysLeft): bool
+    {
+        $a = self::partner($affId); $k = $daysLeft <= 1 ? 'G3' : 'G2';
+        if (! $a || ! $a->leader_grace_until || ! self::once($k, (string) $a->leader_grace_until, $affId)) return false;
+        return self::send($a->email, $daysLeft <= 1 ? 'Last day to keep your team' : '7 days left to keep your team', ['eyebrow' => 'Team Leader', 'heading' => ($daysLeft <= 1 ? '1 day' : '7 days') . ' left',
+            'lead' => 'Your Team Leader fee is still unpaid. On ' . self::day($a->leader_grace_until) . ' you become a regular affiliate and your team dissolves.',
+            'button' => ['Pay now', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], $k);
+    }
+
+    // G4: back to a regular affiliate, team dissolved
+    public static function teamDissolved(int $affId, string $why): bool
+    {
+        $a = self::partner($affId); if (! $a || ! self::once('G4', now()->toDateString(), $affId)) return false;
+        $lead = ['unpaid' => 'Your Team Leader fee was not paid within 30 days.', 'cancelled' => 'Your Team Leader plan has ended, as you chose.'][$why] ?? 'Your Team Leader plan has ended.';
+        return self::send($a->email, 'You are a regular affiliate again', ['eyebrow' => 'Affiliate Program', 'heading' => 'Your team has dissolved', 'lead' => $lead,
+            'list' => ['Your codes keep working, with 20% / 15% / 10% to split.', 'Your recruits are regular affiliates now, and the 5% has stopped.', 'Money you already earned stays yours.'],
+            'paragraphs' => ['You can become a Team Leader again at any time. A new team starts empty.'], 'button' => ['Open your portal', self::PORTAL], 'signoff' => 'team', 'reason' => self::why()], 'G4');
+    }
+
+    // G5: to each recruit of a dissolved team
+    public static function teamEndedForRecruit(int $recruitId, string $leaderName): bool
+    {
+        $a = self::partner($recruitId); if (! $a || $a->status !== 'approved' || ! self::once('G5', now()->toDateString(), $recruitId)) return false;
+        return self::send($a->email, 'Your team has ended', ['eyebrow' => 'Affiliate Program', 'heading' => 'Nothing changes for your earnings', 'lead' => $leaderName . "'s team in the Affiliate Program has ended.",
+            'paragraphs' => ['You stay a LevelUpGrowth affiliate with the same codes, the same 20% / 15% / 10% and everything you earned.'], 'button' => ['Open your portal', self::PORTAL], 'signoff' => 'team', 'reason' => self::why()], 'G5');
+    }
+
+    // R1: a leader removed a recruit
+    public static function removedFromTeam(int $recruitId, string $leaderName): bool
+    {
+        $a = self::partner($recruitId); if (! $a || ! self::once('R1', now()->format('Y-m-d H'), $recruitId)) return false;
+        return self::send($a->email, 'You are no longer on ' . $leaderName . "'s team", ['eyebrow' => 'Affiliate Program', 'heading' => 'Your team has changed', 'lead' => $leaderName . ' removed you from their team.',
+            'paragraphs' => ['You stay a LevelUpGrowth affiliate with the same codes, the same 20% / 15% / 10% and everything you earned.'], 'button' => ['Open your portal', self::PORTAL], 'signoff' => 'team', 'reason' => self::why()], 'R1');
+    }
+
+    // I1: an invitation to join a team (the code, never a tracking link)
+    public static function teamInvite(int $inviteId): bool
+    {
+        $i = DB::table('affiliate_team_invites')->where('id', $inviteId)->first(); if (! $i) return false;
+        $l = DB::table('affiliates')->where('id', $i->leader_id)->first(['display_name', 'team_code']); if (! $l || ! $l->team_code || ! self::once('I1', $inviteId . ':' . $i->sent_count, (int) $i->leader_id)) return false;
+        return self::send($i->email, $l->display_name . ' invites you to their affiliate team', ['preheader' => 'Team code ' . $l->team_code, 'eyebrow' => 'LevelUpGrowth Affiliate Program',
+            'heading' => 'Join ' . $l->display_name . "'s team", 'lead' => 'LevelUpGrowth gives small businesses an AI team for their website and marketing. Affiliates share their own code and earn on every business that joins with it.',
+            'list' => ['Up to 20% of their monthly plan for their first 6 payments, 15% of a yearly plan, 10% of new domains: you split it between their discount and your commission.', 'Apply with the team code ' . $l->team_code . ' to join ' . $l->display_name . "'s team.", 'We review every application, usually within 2 working days.'],
+            'button' => ['Apply with code ' . $l->team_code, self::PORTAL . '?apply=1&team=' . rawurlencode($l->team_code)], 'signoff' => 'team',
+            'reason' => 'You received this email because ' . $l->display_name . ' invited you. We use your address only for this invitation.'], 'I1');
+    }
+
+    // T1: a Team Leader's announcement (D13)
+    public static function teamMessage(int $messageId, int $recruitId): bool
+    {
+        $m = DB::table('affiliate_team_messages')->where('id', $messageId)->first(); $a = self::partner($recruitId);
+        if (! $m || ! $a || ! self::once('T1', $messageId . ':' . $recruitId, $recruitId)) return false;
+        if (app(LifecycleEmails::class)->optedOut((int) $a->uid)) return false;
+        $l = DB::table('affiliates')->where('id', $m->leader_id)->value('display_name');
+        $paras = array_values(array_filter(array_map('trim', preg_split('/\n\s*\n/', (string) $m->body))));
+        return self::send($a->email, $l . ': ' . $m->subject, ['eyebrow' => 'From your Team Leader', 'heading' => $m->subject, 'paragraphs' => array_slice($paras, 0, 12),
+            'after' => ['Sent by LevelUpGrowth on behalf of ' . $l . ', your Team Leader. It is also in your portal.'], 'button' => ['Open your portal', self::PORTAL], 'signoff' => 'team',
+            'unsubscribe' => app(LifecycleEmails::class)->unsubscribeUrl((int) $a->uid), 'reason' => 'You received this email because you are on ' . $l . "'s team in the LevelUpGrowth Affiliate Program."], 'T1');
     }
 
     /** M1 / M2: the platform admin is told in the app. */

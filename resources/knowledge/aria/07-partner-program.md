@@ -31,3 +31,15 @@ Links: /affiliates/
 ## Where do affiliates sign in?
 At levelupgrowth.io/affiliates/portal, with their LevelUpGrowth login. The portal shows sign-ups, paying businesses, earnings by code, codes and payouts. It never shows a referred business's work, customers or website.
 Links: /affiliates/portal
+
+## What is a Team Leader in the Affiliate Program?
+An upgrade for affiliates, $99 a month. A Team Leader's own customers carry 25% of their first 6 monthly payments (20% of a yearly plan, 15% of new domains) to split between the customer's discount and the commission. A Team Leader also earns 5% of every payment made by businesses their team members referred, on top of what those affiliates earn; team members keep their own 20% / 15% / 10%. Leaders earn only when customers pay, never for recruiting. Upgrade from the Overview of the affiliate portal.
+Links: /affiliates/#team-leader
+
+## How does someone join a Team Leader's team?
+They apply to the Affiliate Program and type the Team Leader's team code, or follow an email invitation from the leader that fills the code in. LevelUpGrowth reviews and approves every application; the leader can recommend applicants. A Team Leader sees their team's results, codes and referrals (emails partly hidden), sets recommended splits and sends announcements.
+Links: /affiliates/portal
+
+## How is the Team Leader fee paid, and what if it is not?
+Each month the $99 is taken first from commission the leader has earned and not yet been paid, including commission still being held; the card pays any remainder. The first month is paid by card. If a payment fails, the leader has 30 days to pay or earn it. After that, or at the end of the paid month after cancelling, they become a regular affiliate again and the team dissolves; team members stay affiliates with their codes and earnings, and money already earned stays.
+Links: /legal/affiliates/

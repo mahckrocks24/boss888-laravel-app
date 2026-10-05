@@ -527,6 +527,9 @@ class StripeService
             ];
         }
 
+        // RFC-0028: a Team Leader subscription is the affiliate's own, never a workspace plan
+        if (\App\Core\Partners\PartnerProgram::enabled() && \App\Core\Partners\TeamLeader::owns($event)) return \App\Core\Partners\TeamLeader::onEvent($event);
+
         switch ($event->type) {
             case 'checkout.session.completed':
                 $session = $event->data->object;

@@ -154,6 +154,46 @@ class PartnerProgram
         } catch (\Throwable $e) { Log::warning('[AFF] flag failed', ['error' => $e->getMessage()]); }
     }
 
+    /** RFC-0028 D11 / D19: who approves applications - 'bella' or 'manual' (an admin switch). */
+    public static function approvalMode(): string
+    {
+        return BellaReviewer::enabled() ? 'bella' : 'manual';
+    }
+
+    /**
+     * One door for every application decision, by an admin or by Bella ($by). Approval stays with LevelUpGrowth (D11): a Team
+     * Leader only recommends. A suspended or closed Team Leader's team dissolves and their subscription stops.
+     */
+    public static function decide(int $id, string $action, ?string $note, ?int $actorId, string $by = 'admin'): array
+    {
+        $a = DB::table('affiliates')->where('id', $id)->first();
+        if (! $a) return ['ok' => false, 'error' => 'Not found', 'code' => 404];
+        $map = ['approve' => 'approved', 'reject' => 'rejected', 'suspend' => 'suspended', 'reinstate' => 'approved', 'close' => 'closed'];
+        if (! isset($map[$action])) return ['ok' => false, 'error' => 'Unknown action', 'code' => 422];
+        if ($by === 'bella' && $a->status !== 'pending') return ['ok' => false, 'error' => 'Already decided', 'code' => 409];
+        $to = $map[$action];
+        $upd = ['status' => $to, 'decision_note' => $note, 'decided_by' => $by, 'updated_at' => now()];
+        if ($action === 'approve' && ! $a->approved_at) { $upd['approved_at'] = now(); $upd['approved_by'] = $actorId; }
+        $leader = $a->leader_id ? DB::table('affiliates')->where('id', $a->leader_id)->first() : null;
+        if ($action === 'approve' && $a->leader_id && ! TeamLeader::isActive($leader)) { $upd['leader_id'] = null; $leader = null; }   // that team has ended: they join as a regular affiliate
+        DB::table('affiliates')->where('id', $id)->update($upd);
+        // a suspended or closed affiliate's codes stop working at once; their earned money stays in the ledger for review
+        if (in_array($to, ['suspended', 'closed'], true)) {
+            DB::table('vouchers')->where('affiliate_id', $id)->where('status', 'active')->update(['status' => 'paused', 'updated_at' => now()]);
+            if ($a->tier === 'leader') TeamLeader::dissolve(DB::table('affiliates')->where('id', $id)->first(), $to);
+        }
+        try {
+            DB::table('audit_logs')->insert(['workspace_id' => null, 'user_id' => $actorId, 'action' => 'affiliates.' . $action, 'entity_type' => 'Affiliate', 'entity_id' => $id,
+                'metadata_json' => json_encode(['from' => $a->status, 'to' => $to, 'note' => $note, 'by' => $by]), 'created_at' => now()]);
+        } catch (\Throwable $e) { Log::warning('[AFF] decision audit failed', ['error' => $e->getMessage()]); }
+        if ($leader && in_array($action, ['approve', 'reject'], true)) {
+            TeamLeader::event((int) $leader->id, $id, $action === 'approve' ? 'recruit_approved' : 'recruit_rejected', ['name' => $a->display_name]);
+            if ($action === 'approve') PartnerEmails::safe(fn () => PartnerEmails::recruitJoined((int) $leader->id, $id));   // L3
+        }
+        PartnerEmails::safe(fn () => PartnerEmails::decided($id, $to, $note));   // A2 / A2r
+        return ['ok' => true, 'status' => $to, 'from' => $a->status];
+    }
+
     public static function money(int $minor): string
     {
         return '$' . number_format($minor / 100, 2);

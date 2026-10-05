@@ -12,12 +12,20 @@ use Illuminate\Support\Facades\Route;
 $__partnerApply = function (Request $r, \App\Models\User $user) {
     $in = $r->validate([
         'channel_url' => 'required|string|max:255', 'audience' => 'nullable|string|max:500',
-        'display_name' => 'nullable|string|max:120', 'accept_terms' => 'accepted',
+        'display_name' => 'nullable|string|max:120', 'accept_terms' => 'accepted', 'team_code' => 'nullable|string|max:24',
     ], ['accept_terms.accepted' => 'Please accept the affiliate terms.', 'channel_url.required' => 'Tell us where you publish (a channel, page or site).']);
     if (DB::table('affiliates')->where('user_id', $user->id)->exists()) return response()->json(['ok' => false, 'error' => 'You have already applied.'], 409);
+    // RFC-0028: joining a Team Leader's team with their team code (codes only, DEC-0084)
+    $leader = trim((string) ($in['team_code'] ?? '')) !== '' ? \App\Core\Partners\TeamLeader::byTeamCode($in['team_code']) : null;
+    if (trim((string) ($in['team_code'] ?? '')) !== '' && ! $leader) return response()->json(['ok' => false, 'error' => 'That team code is not valid. Check it, or leave it empty.', 'errors' => ['team_code' => ['That team code is not valid. Check it, or leave it empty.']]], 422);
+    if ($leader && (int) $leader->user_id === (int) $user->id) return response()->json(['ok' => false, 'error' => 'That is your own team code.'], 422);
     $name = trim((string) ($in['display_name'] ?? '')) ?: $user->name;
     $affId = DB::table('affiliates')->insertGetId(['user_id' => $user->id, 'handle' => PartnerPortal::handleFrom($name), 'display_name' => mb_substr($name, 0, 120), 'status' => 'pending',
-        'channel_url' => $in['channel_url'], 'audience' => $in['audience'] ?? null, 'terms_version' => '2026-10', 'terms_accepted_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        'channel_url' => $in['channel_url'], 'audience' => $in['audience'] ?? null, 'terms_version' => '2026-10', 'terms_accepted_at' => now(), 'leader_id' => $leader->id ?? null, 'created_at' => now(), 'updated_at' => now()]);
+    if ($leader) {
+        \App\Core\Partners\TeamLeader::event((int) $leader->id, (int) $affId, 'recruit_applied', ['name' => $name]);
+        DB::table('affiliate_team_invites')->where('leader_id', $leader->id)->where('email', strtolower($user->email))->update(['status' => 'joined', 'updated_at' => now()]);
+    }
     try {
         app(\App\Core\Notifications\NotificationService::class)->dispatch(type: \App\Core\Notifications\NotificationTypes::SYSTEM_USER_SIGNUP, userId: 1,
             title: 'New affiliate application', body: $name . ' (' . $user->email . ') applied to the Affiliate Program: ' . $in['channel_url'], severity: 'info');
@@ -32,9 +40,10 @@ Route::middleware('throttle:6,10,papply')->post('/partners/apply', function (Req
         'name' => 'required|string|min:2|max:120', 'email' => 'required|email|max:190',
         'password' => ['required', 'string', 'min:8', 'regex:/[A-Z]/', 'regex:/[0-9]/'],
         // AFF-CERT-1: everything the application needs is checked BEFORE the account is made (a missing tick used to leave an orphan account)
-        'channel_url' => 'required|string|max:255', 'audience' => 'nullable|string|max:500', 'display_name' => 'nullable|string|max:120', 'accept_terms' => 'accepted',
+        'channel_url' => 'required|string|max:255', 'audience' => 'nullable|string|max:500', 'display_name' => 'nullable|string|max:120', 'accept_terms' => 'accepted', 'team_code' => 'nullable|string|max:24',
     ], ['password.regex' => 'Password must contain at least one uppercase letter and one number.', 'accept_terms.accepted' => 'Please accept the affiliate terms.', 'channel_url.required' => 'Tell us where you publish (a channel, page or site).']);
     $email = strtolower(trim($in['email']));
+    if (trim((string) ($in['team_code'] ?? '')) !== '' && ! \App\Core\Partners\TeamLeader::byTeamCode($in['team_code'])) return response()->json(['ok' => false, 'error' => 'That team code is not valid. Check it, or leave it empty.', 'errors' => ['team_code' => ['That team code is not valid. Check it, or leave it empty.']]], 422);
     if (\App\Models\User::where('email', $email)->exists()) {
         return response()->json(['ok' => false, 'code' => 'has_account', 'error' => 'That email already has a LevelUpGrowth account. Sign in on this page and apply from there.'], 409);
     }
@@ -64,6 +73,47 @@ Route::prefix('partner')->group(function () use ($__partnerApply) {
             return response()->json(['ok' => true] + $res, 201);
         })->middleware('throttle:3,10,pbiz');
         Route::get('/money', fn (Request $r) => response()->json(PartnerPortal::money($r->attributes->get('affiliate'))));
+
+        // RFC-0028: becoming a Team Leader ($99 a month, first month by card) and keeping it
+        Route::post('/leader/checkout', fn (Request $r) => response()->json(\App\Core\Partners\TeamLeader::checkout($r->attributes->get('affiliate'), (string) $r->user()->email)))->middleware('throttle:10,10,pleader');
+        Route::post('/leader/cancel', function (Request $r) {
+            $r->validate(['cancel' => 'required|boolean']);
+            return response()->json(\App\Core\Partners\TeamLeader::setCancel($r->attributes->get('affiliate'), (bool) $r->input('cancel')));
+        })->middleware('throttle:10,10,pleader');
+        Route::post('/leader/pay', fn (Request $r) => response()->json(\App\Core\Partners\TeamLeader::payNow($r->attributes->get('affiliate'), (string) $r->user()->email)))->middleware('throttle:10,10,pleader');
+
+        // RFC-0028: the Team area - only for an active Team Leader
+        Route::prefix('team')->middleware('partner.auth:leader')->group(function () {
+            $L = fn (Request $r) => $r->attributes->get('affiliate');
+            Route::get('/overview', fn (Request $r) => response()->json(\App\Core\Partners\TeamPortal::overview($L($r), max(0, min(3650, (int) $r->query('days', 30))))));
+            Route::get('/referrals', fn (Request $r) => response()->json(['referrals' => \App\Core\Partners\TeamPortal::referrals($L($r))]));
+            Route::get('/earnings', fn (Request $r) => response()->json(\App\Core\Partners\TeamPortal::earnings($L($r))));
+            Route::get('/members/{id}', function (Request $r, int $id) use ($L) { $m = \App\Core\Partners\TeamPortal::member($L($r), $id); return $m ? response()->json($m) : response()->json(['ok' => false, 'error' => 'Not on your team.'], 404); })->whereNumber('id');
+            Route::post('/members/{id}/recommend', function (Request $r, int $id) use ($L) {
+                $r->validate(['verdict' => 'required|in:recommend,decline', 'note' => 'nullable|string|max:300']);
+                return response()->json(\App\Core\Partners\TeamPortal::recommend($L($r), $id, (string) $r->input('verdict'), $r->input('note')));
+            })->whereNumber('id')->middleware('throttle:30,1,pteam');
+            Route::put('/members/{id}/note', function (Request $r, int $id) use ($L) {
+                $r->validate(['note' => 'nullable|string|max:3000', 'goal' => 'nullable|integer|min:0|max:9999']);
+                return response()->json(\App\Core\Partners\TeamPortal::saveNote($L($r), $id, $r->input('note'), $r->input('goal')));
+            })->whereNumber('id')->middleware('throttle:30,1,pteam');
+            Route::delete('/members/{id}', fn (Request $r, int $id) => response()->json(\App\Core\Partners\TeamPortal::remove($L($r), $id)))->whereNumber('id')->middleware('throttle:10,1,pteam');
+            Route::get('/invites', fn (Request $r) => response()->json(['invites' => \App\Core\Partners\TeamPortal::invites($L($r))]));
+            Route::post('/invites', function (Request $r) use ($L) { $r->validate(['email' => 'required|string|max:190']); return response()->json(\App\Core\Partners\TeamPortal::invite($L($r), (string) $r->input('email'))); })->middleware('throttle:30,10,pinvite');
+            Route::post('/invites/{id}/resend', function (Request $r, int $id) use ($L) {
+                $e = \Illuminate\Support\Facades\DB::table('affiliate_team_invites')->where('id', $id)->where('leader_id', $L($r)->id)->value('email');
+                return response()->json($e ? \App\Core\Partners\TeamPortal::invite($L($r), $e, true) : ['ok' => false, 'error' => 'Not found.']);
+            })->whereNumber('id')->middleware('throttle:30,10,pinvite');
+            Route::delete('/invites/{id}', fn (Request $r, int $id) => response()->json(\App\Core\Partners\TeamPortal::withdrawInvite($L($r), $id)))->whereNumber('id');
+            Route::get('/presets', fn (Request $r) => response()->json(['presets' => \App\Core\Partners\TeamPortal::presets($L($r))]));
+            Route::post('/presets', fn (Request $r) => response()->json(\App\Core\Partners\TeamPortal::savePreset($L($r), $r->all())))->middleware('throttle:20,1,pteam');
+            Route::delete('/presets/{id}', fn (Request $r, int $id) => response()->json(\App\Core\Partners\TeamPortal::deletePreset($L($r), $id)))->whereNumber('id');
+            Route::get('/messages', fn (Request $r) => response()->json(\App\Core\Partners\TeamPortal::messages($L($r))));
+            Route::post('/messages', function (Request $r) use ($L) {
+                $r->validate(['subject' => 'required|string|max:120', 'body' => 'required|string|max:2000']);
+                return response()->json(\App\Core\Partners\TeamPortal::sendMessage($L($r), (string) $r->input('subject'), (string) $r->input('body')));
+            })->middleware('throttle:6,10,pmsg');
+        });
         // RFC-0026 section 7: how the affiliate is paid
         Route::get('/payout', function (Request $r) {
             $a = $r->attributes->get('affiliate'); $st = $a->payout_method === 'stripe' ? \App\Core\Partners\PartnerPayouts::stripeRefresh($a) : null;

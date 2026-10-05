@@ -23,6 +23,9 @@ $faq = [
     ['Do free trials earn?', 'Earnings start with a business\'s first payment. A trial that becomes a paid plan earns from that payment on.'],
     ['What does not earn?', 'Credit top-ups, domain renewals and our $1 first-year domain offer. Your own account and any business you own or belong to do not count.'],
     ['What do I see about the businesses I refer?', 'When they joined, which code they used, their plan, how many payments have earned you money and what you earned, with their email partly hidden. Never their work, their customers or their website.'],
+    ['What is a Team Leader?', 'An affiliate who pays $99 a month to lead a team. Your own customers carry 25% of their first 6 monthly payments (20% of a yearly plan, 15% of new domains) to split your way, and you earn 5% of every payment your team\'s customers make, on top of what your affiliates earn. The $99 comes from your commissions when you have any, otherwise from your card.'],
+    ['How do people join my team?', 'You get a team code. New affiliates type it when they apply, or you invite them by email from your portal. We approve every application; you can recommend the people you invite.'],
+    ['What happens if I stop paying?', 'If you cancel, Team Leader runs to the end of the month you paid for. If a payment fails, you have 30 days to pay it or earn it. After that you are a regular affiliate again and your team dissolves: your affiliates keep their codes and earnings, and the 5% stops. Money you already earned stays yours.'],
     ['Do I need a LevelUpGrowth plan?', 'No. Affiliates have their own portal. If you also run your business on LevelUpGrowth, the same login opens both.'],
 ];
 $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => array_map(fn ($q) => ['@type' => 'Question', 'name' => $q[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $q[1]]], $faq)];
@@ -183,7 +186,7 @@ JS;
         <a class="lg-btn lg-btn--glass lg-btn--lg" href="#journey">See the journey</a>
       </div>
       <div class="af-trust"><span><?= $check ?>Free to join</span><span><?= $check ?>A person reviews every application</span><span><?= $check ?>Paid monthly</span><span><?= $check ?>No tracking links or cookies</span></div>
-      <div class="af-six" aria-label="You get paid 6 times for every business"><div class="af-six__lbl"><span class="af-six__n">6&times;</span><span><b>You get paid 6 times for every business.</b><br><span class="c-2">Example: a business on Pro (<?= $m2($pro) ?> a month) signs up with your code. You get <?= $m2($pro * .20) ?> a month for 6 months, <?= $m2($pro * .20 * 6) ?> in total.</span></span></div><div class="af-six__row"><?php for ($i = 1; $i <= 6; $i++): ?><span class="af-six__pay"><small>Payment <?= $i ?></small><b><?= $m2($pro * .20) ?></b></span><?php endfor; ?></div></div>
+      <div class="af-six" aria-label="You get paid 6 times for every business"><div class="af-six__lbl"><span class="af-six__n">6&times;</span><span><b>You get paid 6 times for every business.</b><br><span class="c-2">Example: a business on Pro (<?= $m2($pro) ?> a month) signs up with your code MIRA5 and gets 5% off. You get <?= $m2($pro * .15) ?> a month for 6 months, <?= $m2($pro * .15 * 6) ?> in total.</span></span></div><div class="af-six__row"><?php for ($i = 1; $i <= 6; $i++): ?><span class="af-six__pay"><small>Payment <?= $i ?></small><b><?= $m2($pro * .15) ?></b></span><?php endfor; ?></div></div>
     </div>
     <div class="lg-glass lg-glass--thick af-card" style="padding:26px" aria-label="An example affiliate code">
       <div class="lg-row lg-between" style="margin-bottom:14px"><span class="t-eyebrow">Your code</span><span class="lg-badge lg-badge--success">Active</span></div>
@@ -291,6 +294,22 @@ JS;
   </div>
 </section>
 
+<section class="af-sec" id="team-leader">
+  <div class="container">
+    <div class="af-head">
+      <span class="t-eyebrow">Team Leader</span>
+      <h2 class="af-h2">Build a team. Earn on every sale it makes.</h2>
+      <p class="af-lead">For $99 a month, an affiliate can become a Team Leader: a bigger share on your own customers, and <b>5% of every payment your team brings in</b>.</p>
+    </div>
+    <div class="af-share">
+      <div class="lg-glass af-card"><span class="t-eyebrow">Your own customers</span><span class="af-pct">25%</span><span class="t-subhead t-strong">of each of their first 6 monthly payments</span><span class="t-footnote c-3">20% of a yearly plan, 15% of new domains. Split it your way, like any code.</span></div>
+      <div class="lg-glass af-card"><span class="t-eyebrow">Your team's customers</span><span class="af-pct">+5%</span><span class="t-subhead t-strong">of every payment, on top of what your affiliates earn</span><span class="t-footnote c-3">Your affiliates keep their full 20% / 15% / 10%. Your 5% follows the same 6 payments.</span></div>
+      <div class="lg-glass af-card"><span class="t-eyebrow">Your Team area</span><span class="af-pct" style="font-size:30px">Lead</span><span class="t-subhead t-strong">see and guide your whole team</span><span class="t-footnote c-3">A leaderboard, every referral across the team, recommended splits, announcements and email invitations.</span></div>
+    </div>
+    <div class="lg-glass af-card" style="margin-top:14px;padding:20px"><span class="t-subhead t-strong">Example on Pro (<?= $m2($pro) ?> a month): one of your affiliates shares their 5% code and a business joins.</span><span class="t-body c-2" style="display:block;margin-top:6px">Your affiliate earns <b><?= $m2($pro * .15) ?> a month</b>. You earn <b><?= $m2($pro * .05) ?> a month</b>, for 6 months. Team Leader pays for itself with about 10 Pro businesses in their first 6 months, yours and your team's together.</span></div>
+    <p class="t-footnote c-3" style="margin-top:16px">$99 a month, taken from your commissions when you have any, otherwise from your card; the first month is by card. Cancel any time: at the end of the paid month you are a regular affiliate again and your team dissolves. If a payment fails you have 30 days to pay or earn it. We approve every person who joins a team. You earn only when customers pay, never for recruiting someone, and nobody earns from the $99. Start as an affiliate, then upgrade in your portal.</p>
+  </div>
+</section>
 <section class="af-sec">
   <div class="container af-faq">
     <div class="af-head af-head--c"><span class="t-eyebrow">Questions</span><h2 class="af-h2">Everything affiliates ask us.</h2></div>

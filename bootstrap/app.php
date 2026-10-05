@@ -70,6 +70,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // RFC-0026: commissions held 30 days become payable
         $schedule->call(fn () => \App\Core\Partners\PartnerEmails::tick())->name('partners:mail')->when(fn () => is_file(storage_path('app/aff1.on')))->dailyAt('09:20')->withoutOverlapping();   // RFC-0026 11a
         $schedule->call(fn () => \App\Core\Partners\Commissions::release())->name('partners:release')->when(fn () => is_file(storage_path('app/aff1.on')))->dailyAt('02:40')->withoutOverlapping();
+        $schedule->call(fn () => \App\Core\Partners\TeamLeader::daily())->name('partners:leaders')->when(fn () => is_file(storage_path('app/aff1.on')))->dailyAt('03:10')->withoutOverlapping();   // RFC-0028: fees from commissions, the 30-day grace
+        $schedule->call(fn () => \App\Core\Partners\BellaReviewer::tick())->name('partners:bella')->when(fn () => is_file(storage_path('app/aff1.on')))->everyTenMinutes()->withoutOverlapping();   // RFC-0028 D11/D19
         $schedule->command('resume:purge')->name('resume:purge')->dailyAt('03:20')->withoutOverlapping();
 
         $schedule->command('publisher:publish-scheduled')

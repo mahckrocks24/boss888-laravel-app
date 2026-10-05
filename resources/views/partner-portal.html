@@ -53,6 +53,20 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
 .sb-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-top:6px}.sb-money{font-size:13px;color:var(--t2);margin-top:8px;min-height:20px}.sb-warn{color:var(--am);font-weight:600}
 @media (prefers-reduced-motion:reduce){.sb-h,.toast{transition:none}}
 .hide{display:none!important}
+/* RFC-0028 Team Leader */
+.subnav{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 16px}.subnav button{border:1px solid var(--bd);background:var(--s1);color:var(--t2);font-weight:600;font-size:13px;padding:7px 13px;border-radius:999px;cursor:pointer}.subnav button[aria-pressed="true"]{background:var(--ac);border-color:var(--ac);color:var(--ac-ink)}
+.lead-hd{display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.tcode{display:inline-flex;align-items:center;gap:10px;padding:8px 8px 8px 14px;border:1.5px dashed var(--ac);border-radius:12px;background:var(--ac-soft)}.tcode b{font:700 18px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.04em}
+.banner{display:flex;gap:14px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-radius:var(--rg);padding:14px 16px;margin:0 0 16px;border:1px solid var(--bd)}
+.banner.warn{background:rgba(183,121,31,.1);border-color:rgba(183,121,31,.35)}.banner.info{background:var(--ac-soft);border-color:color-mix(in srgb,var(--ac) 30%,transparent)}
+.cmp{width:100%;border-collapse:collapse;font-size:14px;margin:12px 0}.cmp th,.cmp td{padding:9px 10px;border-top:1px solid var(--bd);text-align:left}.cmp th{font-size:12px;color:var(--t3);font-weight:600;border-top:0}.cmp td.n{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}.cmp .up{color:var(--ac)}
+.chart{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;align-items:end;height:170px;margin:10px 0 4px}.chart .col{display:flex;flex-direction:column-reverse;height:100%;justify-content:flex-start;gap:1px}.chart .own{background:var(--ac);border-radius:4px 4px 0 0}.chart .tm{background:var(--cu);border-radius:4px 4px 0 0}
+.chart-x{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:6px;font-size:11px;color:var(--t3);text-align:center}.legend{display:flex;gap:14px;font-size:12px;color:var(--t2);margin-top:8px}.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.feed{display:flex;flex-direction:column}.feed div{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-top:1px solid var(--bd);font-size:14px}.feed div:first-child{border-top:0}.feed time{color:var(--t3);font-size:12px;white-space:nowrap}
+.goal{height:6px;border-radius:999px;background:var(--s2);overflow:hidden;margin-top:5px;min-width:70px}.goal i{display:block;height:100%;background:var(--cu)}
+.msg{border-top:1px solid var(--bd);padding:12px 0}.msg:first-child{border-top:0}.msg h3{margin:0 0 4px;font-size:15px}.msg p{margin:0;white-space:pre-wrap;color:var(--t2);font-size:14px}
+.ovl{position:fixed;inset:0;background:rgba(10,12,20,.5);display:grid;place-items:center;padding:16px;z-index:60}.mdl{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);box-shadow:var(--sh);width:100%;max-width:460px;padding:20px}.mdl h2{margin:0 0 8px}.mdl .row{justify-content:flex-end;margin-top:16px}.btn.danger{background:var(--rd)}.btn.danger:hover{filter:brightness(1.08);background:var(--rd)}
+.num-inp{max-width:110px}
 </style>
 </head>
 <body>
@@ -78,6 +92,22 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function day(s) { if (!s) return '—'; var d = new Date(String(s).replace(' ', 'T') + (String(s).length <= 19 ? 'Z' : '')); return isNaN(d) ? s : d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }); }
   function toast(m) { var t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { t.classList.remove('on'); }, 2200); }
+  function teamParam() { try { return (new URLSearchParams(location.search).get('team') || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 24); } catch (e) { return ''; } }
+  // a dialog drawn by the page (never the browser's own): resolves true / false, or the text typed when a field is asked for
+  function modal(o) {
+    return new Promise(function (res) {
+      var ov = document.createElement('div'); ov.className = 'ovl';
+      ov.innerHTML = '<div class="mdl" role="dialog" aria-modal="true" aria-labelledby="mdl-t"><h2 id="mdl-t">' + esc(o.title) + '</h2>' + (o.body ? '<p class="sub" style="margin:0">' + o.body + '</p>' : '') +
+        (o.field ? '<div class="fld" style="margin:14px 0 0"><label for="mdl-f">' + esc(o.field) + '</label><textarea class="inp" id="mdl-f" maxlength="300"></textarea></div>' : '') +
+        '<div class="row"><button class="btn ghost" type="button" data-x="0">' + esc(o.cancel || 'Cancel') + '</button><button class="btn' + (o.danger ? ' danger' : '') + '" type="button" data-x="1">' + esc(o.ok || 'OK') + '</button></div></div>';
+      document.body.appendChild(ov);
+      var done = function (v) { document.removeEventListener('keydown', key); ov.remove(); res(v); };
+      var key = function (e) { if (e.key === 'Escape') done(false); };
+      document.addEventListener('keydown', key);
+      ov.addEventListener('click', function (e) { if (e.target === ov) return done(false); var x = e.target.getAttribute && e.target.getAttribute('data-x'); if (x === '0') done(false); if (x === '1') done(o.field ? ($('mdl-f').value.trim() || '') : true); });
+      (o.field ? $('mdl-f') : ov.querySelector('[data-x="1"]')).focus();
+    });
+  }
   function copy(text) { (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { toast('Copied'); }, function () { window.prompt('Copy this:', text); }); }
   var refreshing = null;
   function api(method, path, body, retry) {
@@ -96,7 +126,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
 
   // ---------------------------------------------------------------- boot
   function boot() {
-    if (!tok()) { try { if (new URLSearchParams(location.search).get('apply')) return apply(false); } catch (e) {} return signin(); }
+    if (!tok()) { try { var q = new URLSearchParams(location.search); if (q.get('apply') || q.get('team')) return apply(false); } catch (e) {} return signin(); }
     api('GET', '/partner/me').then(function (r) {
       if (r.status === 401) { clearTok(); return signin(); }
       if (!r.ok) { A.innerHTML = '<div class="card empty">We could not load your affiliate account. Please try again.</div>'; return; }
@@ -106,7 +136,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
       if (p.status === 'pending') return note('Application received', 'Thanks, ' + esc(r.j.user.name) + '. We review every application by hand, usually within 2 working days, and email you at ' + esc(r.j.user.email) + '.', '<div class="link" style="margin-top:14px"><code>' + esc(p.channel_url || '') + '</code></div>');
       if (p.status === 'rejected') return note('About your application', esc(p.decision_note || 'We could not approve your application this time.'), '<p class="sub" style="margin-top:12px">You can write to us if your channel has changed.</p>');
       if (p.status !== 'approved') return note('Your affiliate account is ' + esc(p.status), 'Write to us if you think this is a mistake.', '');
-      render();
+      render(); afterCheckout();
     });
   }
   $('signout').addEventListener('click', function () { clearTok(); location.reload(); });
@@ -140,6 +170,8 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
       '<div class="fld"><label for="ap-d">Name to show on your codes <span style="color:var(--t3);font-weight:400">optional</span></label><input class="inp" id="ap-d" maxlength="120" placeholder="Your channel or brand name"></div>' +
       '<div class="fld"><label for="ap-c">Where you publish</label><input class="inp" id="ap-c" required placeholder="youtube.com/@yourchannel, a blog, a page"></div>' +
       '<div class="fld"><label for="ap-a">Your audience <span style="color:var(--t3);font-weight:400">optional</span></label><textarea class="inp" id="ap-a" maxlength="500" placeholder="Who watches or reads you, and roughly how many"></textarea></div>' +
+      // RFC-0028: joining a Team Leader's team (codes only: the code is typed, or filled in from an invitation)
+      '<div class="fld"><label for="ap-team">Team code <span style="color:var(--t3);font-weight:400">optional, if a Team Leader invited you</span></label><input class="inp" id="ap-team" maxlength="24" placeholder="e.g. CHEFREDTEAM" style="text-transform:uppercase;font-family:ui-monospace,monospace" autocomplete="off" value="' + esc(teamParam()) + '"></div>' +
       '<div class="chk" id="ap-t" role="checkbox" aria-checked="false" tabindex="0"><span class="box"></span><span>I accept the <a href="/legal/affiliates/" target="_blank" rel="noopener">affiliate terms</a>, including saying clearly that my code is an affiliate code.</span></div>' +
       '<p class="err" id="ap-err" hidden></p><button class="btn" style="width:100%;margin-top:14px" type="submit">Send application</button></form>' +
       (who ? '' : '<p class="sub" style="margin:16px 0 0;text-align:center">Already have an account? <a href="#" id="go-in">Sign in</a> and apply from there.</p>') + '</div></div>';
@@ -148,7 +180,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
     if ($('go-in')) $('go-in').addEventListener('click', function (e) { e.preventDefault(); signin(); });
     $('f-ap').addEventListener('submit', function (e) {
       e.preventDefault(); var er = $('ap-err'); er.hidden = true; var b = e.target.querySelector('button[type=submit]');
-      var body = { channel_url: $('ap-c').value.trim(), audience: $('ap-a').value.trim(), display_name: $('ap-d').value.trim(), accept_terms: t.getAttribute('aria-checked') === 'true' };
+      var body = { channel_url: $('ap-c').value.trim(), audience: $('ap-a').value.trim(), display_name: $('ap-d').value.trim(), accept_terms: t.getAttribute('aria-checked') === 'true', team_code: $('ap-team').value.trim() || null };
       if (!body.accept_terms) { er.textContent = 'Please accept the affiliate terms.'; er.hidden = false; return; }
       if (!who) { body.name = $('ap-n').value.trim(); body.email = $('ap-e').value.trim(); body.password = $('ap-p').value; }
       b.disabled = true; b.textContent = 'Sending…';
@@ -165,6 +197,8 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   // ---------------------------------------------------------------- the portal
   // codes only (Owner 2026-10-05: "remove the custom URL and just do vouchers"): no links tab, no clicks
   var TABS = [['overview', 'Overview'], ['referrals', 'Referrals'], ['codes', 'Codes'], ['money', 'Earnings']];
+  // RFC-0028: a Team Leader gets a Team tab next to their own
+  function tabs() { var t = TABS.slice(); if (S.me && S.me.partner && S.me.partner.tier === 'leader') t.splice(1, 0, ['team', 'Team']); return t; }
   function render() {
     var p = S.me.partner;
     // AFF-DUAL-1: one login for both - a way into the business account, or a way to open one
@@ -173,7 +207,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
       : '';
     A.innerHTML = '<div class="row" style="justify-content:space-between;align-items:flex-start"><div><h1>Hi ' + esc(S.me.user.name.split(' ')[0]) + '</h1><p class="sub">Share your codes. A business counts as yours when it signs up with one of them, and you earn on its <b>first 6 monthly payments</b>.</p></div>' + biz + '</div>' +
       (S.me.has_workspace ? '' : '<div class="card" style="margin:0 0 18px;display:flex;gap:16px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div style="min-width:0"><h2 style="margin:0 0 4px">Run your own business on LevelUpGrowth too</h2><p class="sub" style="margin:0">Open a business account with this same login: Arthur builds your website, Sarah and the AI team handle your marketing. Your affiliate account stays as it is.</p></div><button class="btn" type="button" id="open-biz">Open a business account</button></div>') +
-      '<nav class="tabs" role="tablist">' + TABS.map(function (t) { return '<button class="tab" role="tab" data-t="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</nav><section id="pane"></section>';
+      leaderBanner() + '<nav class="tabs" role="tablist">' + tabs().map(function (t) { return '<button class="tab" role="tab" data-t="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>'; }).join('') + '</nav><section id="pane"></section>';
     Array.prototype.forEach.call(A.querySelectorAll('.tab'), function (b) { b.addEventListener('click', function () { S.tab = b.getAttribute('data-t'); try { history.replaceState(null, '', '#' + S.tab); } catch (e) {} render(); }); });
     if ($('open-biz')) $('open-biz').addEventListener('click', function () {
       var card = this.parentNode;
@@ -197,13 +231,16 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
         });
       });
     });
-    ({ overview: overview, referrals: referrals, codes: codes, money: earnings })[S.tab]();
+    if (S.tab === 'team' && !(S.me.partner.tier === 'leader')) S.tab = 'overview';
+    bindLeaderBanner();
+    ({ overview: overview, referrals: referrals, codes: codes, money: earnings, team: team })[S.tab]();
   }
   function pane(h) { $('pane').innerHTML = h; }
 
   function overview() {
     pane('<p class="empty">Loading…</p>');
     api('GET', '/partner/overview?days=' + S.days).then(function (r) {
+      if (S.tab !== 'overview') return;   // TL-UI-1
       var o = r.j || {}, m = o.money || {}, p = S.me.partner;
       var seg = '<div class="seg" role="group" aria-label="Period">' + [[30, '30 days'], [90, '90 days'], [0, 'All time']].map(function (d) { return '<button data-d="' + d[0] + '" aria-pressed="' + (S.days === d[0]) + '">' + d[1] + '</button>'; }).join('') + '</div>';
       pane('<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>How you are doing</h2>' + seg + '</div>' +
@@ -211,13 +248,14 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
           .map(function (s) { return '<div class="card stat"><div class="k">' + s[0] + '</div><div class="v">' + esc(s[1] == null ? 0 : s[1]) + '</div><div class="h">' + s[2] + '</div></div>'; }).join('') + '</div>' +
         '<div class="grid g3" style="margin-top:12px">' + [['Waiting', m.pending, 'held ' + S.me.hold_days + ' days after each payment, in case of refunds'], ['Ready to pay', m.payable, 'paid on the 15th from ' + usd(S.me.min_payout)], ['Paid to you', m.paid, 'all time']]
           .map(function (s) { return '<div class="card stat"><div class="k">' + s[0] + '</div><div class="v">' + usd(s[1]) + '</div><div class="h">' + s[2] + '</div></div>'; }).join('') + '</div>' +
-        (o.codes ? '' : '<div class="card" style="margin-top:14px"><h2>Create your first code</h2><p class="sub">A code with no discount keeps the full ' + (p.budgets.monthly / 100) + '% of their monthly plan for ' + S.me.months + ' payments for you. Or give your audience part of it.</p><button class="btn" type="button" id="go-codes">Create a code</button></div>') +
+        teamCards() + (o.codes ? '' : '<div class="card" style="margin-top:14px"><h2>Create your first code</h2><p class="sub">A code with no discount keeps the full ' + (p.budgets.monthly / 100) + '% of their monthly plan for ' + S.me.months + ' payments for you. Or give your audience part of it.</p><button class="btn" type="button" id="go-codes">Create a code</button></div>') +
         '<div class="card" style="margin-top:14px"><h2>By code</h2><p class="sub">Make a different code for each video or post to see which one works.</p>' +
           (o.by_code && o.by_code.length ? '<table class="tbl cards"><thead><tr><th>Code</th><th class="num">Sign-ups</th><th class="num">Paying</th><th class="num">Earned</th></tr></thead><tbody>' +
             o.by_code.map(function (s) { return '<tr><td data-l="Code"><b style="font-family:ui-monospace,monospace">' + esc(s.code) + '</b></td><td class="num" data-l="Sign-ups">' + s.signups + '</td><td class="num" data-l="Paying">' + s.paying + '</td><td class="num" data-l="Earned">' + usd(s.earned) + '</td></tr>'; }).join('') + '</tbody></table>'
             : '<p class="empty">No sign-ups with your codes in this period yet.</p>') + '</div>');
       Array.prototype.forEach.call($('pane').querySelectorAll('.seg button'), function (b) { b.addEventListener('click', function () { S.days = +b.getAttribute('data-d'); overview(); }); });
       if ($('go-codes')) $('go-codes').addEventListener('click', function () { S.tab = 'codes'; render(); });
+      bindTeamCards();
       bindCopy();
     });
   }
@@ -226,6 +264,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   function referrals() {
     pane('<p class="empty">Loading…</p>');
     api('GET', '/partner/referrals').then(function (r) {
+      if (S.tab !== 'referrals') return;
       var rows = (r.j && r.j.referrals) || [];
       pane('<div class="card"><h2>Businesses you brought</h2><p class="sub">You see who joined and what you earned, never their work or their customers.</p>' +
         (rows.length ? '<table class="tbl cards"><thead><tr><th>Who</th><th>Joined</th><th>Code</th><th>Plan</th><th>Status</th><th class="num">Payments</th><th class="num">Earned</th></tr></thead><tbody>' +
@@ -241,6 +280,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   function codes() {
     pane('<p class="empty">Loading…</p>');
     api('GET', '/partner/codes').then(function (r) {
+      if (S.tab !== 'codes') return;
       var cs = (r.j && r.j.codes) || [];
       pane('<div class="card" id="builder"></div><div class="card"><h2>Your codes</h2><p class="sub">Changing a code only affects new customers. Everyone keeps the terms they joined on.</p>' +
         (cs.length ? '<table class="tbl cards"><thead><tr><th>Code</th><th>Customer gets</th><th class="num">Used</th><th>Status</th><th></th></tr></thead><tbody>' + cs.map(function (c) {
@@ -262,6 +302,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
       '<div class="fld" style="flex:0 1 auto;margin:0"><label>Show money for</label><div class="seg" id="c-plan">' + PLANS.map(function (x) { return '<button type="button" data-p="' + x[1] + '" aria-pressed="' + (S.plan === x[1]) + '">' + x[0] + '</button>'; }).join('') + '</div></div></div>' +
       '<div class="row" style="margin-bottom:16px;gap:6px"><span style="font-size:13px;color:var(--t3);margin-right:4px">Presets</span>' +
         [['max', 'Max earnings'], ['std', 'Standard 5% off'], ['even', 'Even split'], ['disc', 'Max discount']].map(function (x) { return '<button type="button" class="btn ghost sm" data-pre="' + x[0] + '">' + x[1] + '</button>'; }).join('') + '</div>' +
+      (p.team && p.team.presets && p.team.presets.length ? '<div class="row" style="margin:-6px 0 16px;gap:6px"><span style="font-size:13px;color:var(--t3);margin-right:4px">Recommended by ' + esc(p.team.leader) + '</span>' + p.team.presets.map(function (x, i) { return '<button type="button" class="btn ghost sm" data-tpre="' + i + '">' + esc(x.label) + '</button>'; }).join('') + '</div>' : '') +
       kinds.map(function (k) { return '<div class="sb" id="sb-' + k[0] + '"></div>'; }).join('') +
       '<div class="row"><div class="fld" style="flex:1 1 180px;margin:0"><label for="c-end">Ends <span style="color:var(--t3);font-weight:400">optional</span></label><input class="inp" id="c-end" type="text" placeholder="YYYY-MM-DD" inputmode="numeric" maxlength="10"></div>' +
       '<div class="fld" style="flex:1 1 180px;margin:0"><label for="c-max">Use limit <span style="color:var(--t3);font-weight:400">optional</span></label><input class="inp" id="c-max" inputmode="numeric" placeholder="No limit" maxlength="6"></div></div>' +
@@ -291,6 +332,9 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
     function all() { kinds.forEach(bar); }
     all();
     Array.prototype.forEach.call(host.querySelectorAll('#c-plan button'), function (b) { b.addEventListener('click', function () { S.plan = +b.getAttribute('data-p'); Array.prototype.forEach.call(host.querySelectorAll('#c-plan button'), function (x) { x.setAttribute('aria-pressed', x === b); }); all(); }); });
+    Array.prototype.forEach.call(host.querySelectorAll('[data-tpre]'), function (b) { b.addEventListener('click', function () {
+      var x = p.team.presets[+b.getAttribute('data-tpre')]; kinds.forEach(function (k) { st[k[0]] = Math.min(B[k[0]], x[k[0] + '_bps'] || 0); }); all();
+    }); });
     Array.prototype.forEach.call(host.querySelectorAll('[data-pre]'), function (b) { b.addEventListener('click', function () {
       var w = b.getAttribute('data-pre');
       kinds.forEach(function (k) { var m = B[k[0]]; st[k[0]] = w === 'max' ? 0 : w === 'disc' ? m : w === 'std' ? Math.min(500, m) : Math.floor(m / 200) * 100; }); all();
@@ -338,6 +382,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   function earnings() {
     pane('<p class="empty">Loading…</p>');
     api('GET', '/partner/money').then(function (r) {
+      if (S.tab !== 'money') return;
       var m = r.j || {}, b = m.balances || {};
       var payNote = '<div id="payout-box"><p class="sub" style="margin:0">Loading…</p></div>';
       pane('<div class="grid g3">' + [['Waiting', b.pending, m.next_release ? 'next release ' + day(m.next_release) : 'held 30 days after each payment'], ['Ready to pay', b.payable, 'paid on the 15th from ' + usd(m.min_payout)], ['Paid to you', b.paid, 'all time']]
@@ -349,13 +394,249 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
         '<div class="card"><h2>Every commission</h2>' + ((m.commissions || []).length ? '<table class="tbl cards"><thead><tr><th>Date</th><th>For</th><th class="num">Price</th><th class="num">Rate</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' +
           m.commissions.map(function (c) {
             var lab = { pending: 'Waiting', payable: 'Ready', paid: 'Paid', void: 'Void' }[c.status] || c.status;
-            return '<tr><td data-l="Date">' + day(c.created_at) + '</td><td data-l="For">' + (c.source_type === 'adjustment' && !c.rate_bps ? (c.amount_minor < 0 ? 'Reversal' : 'Adjustment') : ({ monthly: 'Monthly plan', yearly: 'Yearly plan', domain: 'Domain' }[c.kind] || c.kind)) + (c.note ? ' <span style="color:var(--t3)">· ' + esc(c.note) + '</span>' : '') + '</td><td class="num" data-l="Price">' + (c.base_minor ? usd(c.base_minor) : '—') + '</td><td class="num" data-l="Rate">' + (c.rate_bps ? (c.rate_bps / 100) + '%' : '—') + '</td><td class="num" data-l="Amount" style="' + (c.amount_minor < 0 ? 'color:var(--rd)' : '') + '">' + usd(c.amount_minor) + '</td><td data-l="Status"><span class="pill ' + (c.status === 'paid' ? 'g' : c.status === 'payable' ? 'p' : '') + '">' + lab + '</span></td></tr>';
+            return '<tr><td data-l="Date">' + day(c.created_at) + '</td><td data-l="For">' + (c.source_type === 'leader_fee' ? 'Team Leader fee' : c.source_type === 'adjustment' && !c.rate_bps ? (c.amount_minor < 0 ? 'Reversal' : 'Adjustment') : ({ monthly: 'Monthly plan', yearly: 'Yearly plan', domain: 'Domain' }[c.kind] || c.kind)) + (c.note ? ' <span style="color:var(--t3)">· ' + esc(c.note) + '</span>' : '') + '</td><td class="num" data-l="Price">' + (c.base_minor ? usd(c.base_minor) : '—') + '</td><td class="num" data-l="Rate">' + (c.rate_bps ? (c.rate_bps / 100) + '%' : '—') + '</td><td class="num" data-l="Amount" style="' + (c.amount_minor < 0 ? 'color:var(--rd)' : '') + '">' + usd(c.amount_minor) + '</td><td data-l="Status"><span class="pill ' + (c.status === 'paid' ? 'g' : c.status === 'payable' ? 'p' : '') + '">' + lab + '</span></td></tr>';
           }).join('') + '</tbody></table>' : '<p class="empty">No commissions yet.</p>') + '</div>');
       payoutBox();
     });
   }
 
-  try { var h = (location.hash || '').slice(1); if (TABS.some(function (t) { return t[0] === h; })) S.tab = h; } catch (e) {}
+  // ---------------------------------------------------------------- RFC-0028 Team Leader
+  // Owner 2026-10-05: "a team leader will have a different interface with additional options to manage and monitor its affiliates
+  // and their referrals". Approval of recruits stays with LevelUpGrowth; a leader recommends.
+  function pct(b) { return (b / 100) + '%'; }
+  function L() { return S.me.partner.leader || {}; }
+
+  function leaderBanner() {
+    var p = S.me.partner, l = p.leader;
+    if (!l || p.tier !== 'leader') return '';
+    if (l.grace_until) return '<div class="banner warn" role="alert"><div><b>Your Team Leader payment did not go through.</b><div class="sub" style="margin:2px 0 0">Pay by ' + day(l.grace_until) + ', or earn it: commissions you earn before then pay it automatically. If it is still unpaid then, you become a regular affiliate and your team dissolves.</div></div><button class="btn" type="button" id="tl-pay">Pay now</button></div>';
+    if (l.cancel_at_end) return '<div class="banner info"><div><b>Team Leader ends on ' + day(l.until) + '.</b><div class="sub" style="margin:2px 0 0">After that you are a regular affiliate and your team dissolves.</div></div><button class="btn ghost" type="button" id="tl-keep">Keep Team Leader</button></div>';
+    return '';
+  }
+  function bindLeaderBanner() {
+    if ($('tl-pay')) $('tl-pay').addEventListener('click', function () { var b = this; b.disabled = true; api('POST', '/partner/leader/pay').then(function (x) { if (x.j && x.j.ok && x.j.url) location.href = x.j.url; else { b.disabled = false; toast((x.j && x.j.error) || 'Not available right now.'); } }); });
+    if ($('tl-keep')) $('tl-keep').addEventListener('click', function () { setCancel(false); });
+  }
+  function setCancel(cancel) {
+    (cancel ? modal({ title: 'Cancel Team Leader?', body: 'It ends on ' + day(L().until) + ', the end of the month you paid for. Then you are a regular affiliate (' + pct(S.me.budgets.monthly) + ' / ' + pct(S.me.budgets.yearly) + ' / ' + pct(S.me.budgets.domain) + '), <b>your team dissolves</b> and the 5% stops. Money you already earned stays yours.', ok: 'Cancel Team Leader', cancel: 'Keep it', danger: true }) : Promise.resolve(true)).then(function (go) {
+      if (!go) return;
+      api('POST', '/partner/leader/cancel', { cancel: cancel }).then(function (x) { toast(x.j && x.j.ok ? (cancel ? 'Team Leader will end on ' + day(L().until) : 'Team Leader continues') : ((x.j && x.j.error) || 'Not saved')); reloadMe(); });
+    });
+  }
+  function reloadMe(then) { api('GET', '/partner/me').then(function (r) { if (r.ok) S.me = r.j; render(); if (then) then(); }); }
+
+  // the overview's extra cards: the upgrade offer for an affiliate, "your Team Leader" for a recruit
+  function teamCards() {
+    var p = S.me.partner, o = S.me.leader_offer || {}, h = '';
+    if (p.team) {
+      h += '<div class="card" style="margin-top:14px"><div class="row" style="justify-content:space-between"><h2 style="margin:0">Your Team Leader: ' + esc(p.team.leader) + '</h2>' + (p.team.presets && p.team.presets.length ? '<span class="pill p">' + p.team.presets.length + ' recommended split' + (p.team.presets.length === 1 ? '' : 's') + ' in Codes</span>' : '') + '</div>' +
+        (p.team.messages && p.team.messages.length ? '<div style="margin-top:10px">' + p.team.messages.map(function (m) { return '<div class="msg"><h3>' + esc(m.subject) + ' <span style="font-weight:400;color:var(--t3);font-size:12px">· ' + day(m.created_at) + '</span></h3><p>' + esc(m.body) + '</p></div>'; }).join('') + '</div>' : '<p class="sub" style="margin:8px 0 0">Announcements from your Team Leader show here and come by email.</p>') + '</div>';
+    }
+    if (p.tier !== 'leader' && o.fee_minor) {
+      var B = S.me.budgets, T = o.budgets, rows = [['Monthly plans, first ' + S.me.months + ' payments', B.monthly, T.monthly]];
+      if (S.me.yearly_live) rows.push(['Yearly plan, once', B.yearly, T.yearly]);
+      rows.push(['New domains, once', B.domain, T.domain]);
+      var pro = 199, extra = pro * (T.monthly - B.monthly) / 10000, team = pro * o.override_bps / 10000;
+      h += '<div class="card" style="margin-top:14px" id="tl-offer"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><span class="pill p">Upgrade</span><h2 style="margin:8px 0 4px">Become a Team Leader</h2><p class="sub" style="margin:0">Build a team of affiliates. Earn more on your own customers, and 5% of every payment your team brings in.</p></div><div style="text-align:right"><div style="font-size:26px;font-weight:700">' + usd(o.fee_minor) + '</div><div class="sub" style="margin:0;font-size:12px">a month</div></div></div>' +
+        '<table class="cmp"><thead><tr><th>Your share to split</th><th style="text-align:right">Affiliate</th><th style="text-align:right">Team Leader</th></tr></thead><tbody>' +
+          rows.map(function (r) { return '<tr><td>' + r[0] + '</td><td class="n">' + pct(r[1]) + '</td><td class="n up">' + pct(r[2]) + '</td></tr>'; }).join('') +
+          '<tr><td>Every payment your team\'s customers make</td><td class="n">—</td><td class="n up">+' + pct(o.override_bps) + '</td></tr></tbody></table>' +
+        '<ul class="sub" style="margin:0 0 14px;padding-left:18px;line-height:1.7"><li>Recruit affiliates with your own team code. They keep their full ' + pct(B.monthly) + ' / ' + pct(B.domain) + '; your 5% comes on top.</li>' +
+          '<li>Example on Pro (' + money(pro) + ' a month): ' + money(extra) + ' more a month from each of your own businesses, and ' + money(team) + ' a month from each business your team brings in, for ' + S.me.months + ' months.</li>' +
+          '<li>The ' + usd(o.fee_minor) + ' is paid from your commissions when you have any, otherwise by card. The first month is by card.</li>' +
+          '<li>It pays for itself with about ' + Math.ceil(o.fee_minor / 100 / team) + ' Pro businesses in their first ' + S.me.months + ' months, yours and your team\'s together.</li></ul>' +
+        '<div class="row" style="justify-content:space-between"><span class="sub" style="margin:0;font-size:12px;max-width:520px">Cancel any time. If a payment fails you have ' + (o.grace_days || 30) + ' days to pay or earn it, then your team dissolves. We approve every recruit. You earn only from customers paying, never for recruiting.</span><button class="btn" type="button" id="tl-up">Upgrade for ' + usd(o.fee_minor) + ' a month</button></div></div>';
+    }
+    return h;
+  }
+  function bindTeamCards() {
+    if ($('tl-up')) $('tl-up').addEventListener('click', function () {
+      var b = this; b.disabled = true; b.textContent = 'Opening payment…';
+      api('POST', '/partner/leader/checkout').then(function (x) { if (x.j && x.j.ok && x.j.url) { location.href = x.j.url; return; } b.disabled = false; b.textContent = 'Upgrade'; toast((x.j && x.j.error) || 'Not available right now.'); });
+    });
+  }
+  // back from the payment page: Stripe tells us a moment later, so wait for it
+  function afterCheckout() {
+    var q; try { q = new URLSearchParams(location.search).get('leader'); } catch (e) {}
+    if (q !== 'done') return;
+    try { history.replaceState(null, '', location.pathname + '#team'); } catch (e) {}
+    var n = 0; toast('Payment received. Setting up your team…');
+    (function poll() { api('GET', '/partner/me').then(function (r) { if (r.ok && r.j.partner && r.j.partner.tier === 'leader') { S.me = r.j; S.tab = 'team'; render(); toast('Welcome, Team Leader'); return; } if (++n < 15) setTimeout(poll, 2000); }); })();
+  }
+
+  // ---------------------------------------------------------------- the Team tab
+  var TV = [['overview', 'Overview'], ['members', 'Members'], ['referrals', 'Team referrals'], ['earnings', 'Team earnings'], ['invite', 'Invite'], ['messages', 'Announcements'], ['splits', 'Recommended splits']];
+  S.tv = 'overview'; S.tdays = 30; S.tm = null;
+  function team() {
+    var l = L();
+    pane('<div class="lead-hd"><div><h2 style="margin:0 0 4px">Your team</h2><p class="sub" style="margin:0">' + (l.cancel_at_end ? 'Team Leader ends ' + day(l.until) : 'Team Leader since ' + day(l.since) + (l.until ? ' · renews ' + day(l.until) : '')) + '</p></div>' +
+      '<div class="row"><span class="tcode"><span style="font-size:12px;color:var(--t2)">Team code</span><b>' + esc(l.team_code || '') + '</b><button class="btn ghost sm" data-copy="' + esc(l.team_code || '') + '">Copy</button></span>' +
+      (l.cancel_at_end ? '' : '<button class="btn quiet sm" type="button" id="tl-cancel">Cancel Team Leader</button>') + '</div></div>' +
+      '<div class="subnav" role="group" aria-label="Team">' + TV.map(function (t) { return '<button type="button" data-tv="' + t[0] + '" aria-pressed="' + (S.tv === t[0] && !S.tm) + '">' + t[1] + '</button>'; }).join('') + '</div><div id="tpane"><p class="empty">Loading…</p></div>');
+    bindCopy();
+    if ($('tl-cancel')) $('tl-cancel').addEventListener('click', function () { setCancel(true); });
+    Array.prototype.forEach.call($('pane').querySelectorAll('[data-tv]'), function (b) { b.addEventListener('click', function () { S.tv = b.getAttribute('data-tv'); S.tm = null; team(); }); });
+    if (S.tm) return tMember(S.tm);
+    ({ overview: tOverview, members: tMembers, referrals: tReferrals, earnings: tEarnings, invite: tInvite, messages: tMessages, splits: tSplits })[S.tv]();
+  }
+  function here(v) { return S.tab === 'team' && S.tv === v && !S.tm && !!$('tpane'); }
+  function tp(h) { var t = $('tpane'); if (t) t.innerHTML = h; }
+  function stat(k, v, h) { return '<div class="card stat"><div class="k">' + k + '</div><div class="v">' + v + '</div><div class="h">' + h + '</div></div>'; }
+  function openMember(id) { S.tm = id; team(); }
+  function bindOpen() { Array.prototype.forEach.call($('tpane').querySelectorAll('[data-open]'), function (a) { a.addEventListener('click', function (e) { e.preventDefault(); openMember(+a.getAttribute('data-open')); }); }); }
+
+  function tOverview() {
+    api('GET', '/partner/team/overview?days=' + S.tdays).then(function (r) {
+      if (!here('overview')) return;
+      var o = r.j || {}, m = o.money || {}, ch = o.chart || [];
+      var max = Math.max.apply(null, ch.map(function (c) { return Math.max(0, c.own) + Math.max(0, c.team); }).concat([1]));
+      var seg = '<div class="seg" role="group" aria-label="Period">' + [[30, '30 days'], [90, '90 days'], [0, 'All time']].map(function (d) { return '<button data-td="' + d[0] + '" aria-pressed="' + (S.tdays === d[0]) + '">' + d[1] + '</button>'; }).join('') + '</div>';
+      var apps = o.applicants || [];
+      tp('<div class="row" style="justify-content:space-between;margin-bottom:12px"><h2>How your team is doing</h2>' + seg + '</div>' +
+        '<div class="grid g3">' + stat('Team members', (o.members || {}).active || 0, ((o.members || {}).waiting || 0) + ' waiting for approval') + stat('Team sign-ups', o.signups || 0, (o.paying || 0) + ' businesses paying now') + stat('Your 5%', usd(o.earned_minor), 'in this period · ' + usd(o.earned_total_minor) + ' all time') + '</div>' +
+        '<div class="grid g3" style="margin-top:12px">' + stat('Team sales', usd(o.sales_minor), 'what their businesses paid, before discounts') + stat('Waiting', usd(m.pending), 'your 5%, held ' + S.me.hold_days + ' days') + stat('Ready / paid', usd(m.payable) + ' <span style="font-size:15px;color:var(--t3)">/ ' + usd(m.paid) + '</span>', 'your 5%, paid with your commissions') + '</div>' +
+        (apps.length ? '<div class="card" style="margin-top:14px"><h2>Waiting for approval (' + apps.length + ')</h2><p class="sub">They applied with your team code. LevelUpGrowth approves every application; tell us what you think.</p>' +
+          apps.map(function (a) { return '<div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 0;border-top:1px solid var(--bd)"><div style="min-width:0"><b>' + esc(a.name) + '</b> <span style="color:var(--t3);font-size:12px">applied ' + day(a.applied) + '</span><div style="font-size:13px;color:var(--t2);overflow-wrap:anywhere">' + esc(a.channel_url || '') + '</div>' + (a.recommendation ? '<span class="pill ' + (a.recommendation === 'recommend' ? 'g' : 'a') + '" style="margin-top:6px">You ' + (a.recommendation === 'recommend' ? 'recommended' : 'advised against') + '</span>' : '') + '</div>' +
+            '<div class="row"><button class="btn sm" data-rec="' + a.id + '" data-v="recommend">Recommend</button><button class="btn ghost sm" data-rec="' + a.id + '" data-v="decline">Advise against</button></div></div>'; }).join('') + '</div>' : '') +
+        '<div class="card" style="margin-top:14px"><h2>How your income builds up</h2><p class="sub">Each month: what your own customers paid you, and your 5% from your team.</p><div class="chart" aria-hidden="true">' +
+          ch.map(function (c) { var own = Math.max(0, c.own), tm = Math.max(0, c.team); return '<div class="col" title="' + esc(c.month) + ': ' + usd(own) + ' own, ' + usd(tm) + ' team"><div class="own" style="height:' + (own / max * 100) + '%"></div><div class="tm" style="height:' + (tm / max * 100) + '%"></div></div>'; }).join('') +
+          '</div><div class="chart-x">' + ch.map(function (c) { return '<span>' + esc(c.month) + '</span>'; }).join('') + '</div><div class="legend"><span><i style="background:var(--ac)"></i>Your customers</span><span><i style="background:var(--cu)"></i>Your team (5%)</span></div></div>' +
+        '<div class="grid g2" style="margin-top:14px"><div class="card"><h2>Leaderboard</h2>' + board(o.leaderboard || [], 5) + ((o.leaderboard || []).length > 5 ? '<button class="btn ghost sm" type="button" id="all-m" style="margin-top:10px">See all members</button>' : '') + '</div>' +
+          '<div class="card"><h2>Team activity</h2>' + ((o.activity || []).length ? '<div class="feed">' + o.activity.slice(0, 12).map(function (e) { return '<div><span>' + esc(e.text) + '</span><time>' + day(e.at) + '</time></div>'; }).join('') + '</div>' : '<p class="empty">Nothing yet. Invite your first affiliate.</p>') + '</div></div>');
+      Array.prototype.forEach.call($('tpane').querySelectorAll('[data-td]'), function (b) { b.addEventListener('click', function () { S.tdays = +b.getAttribute('data-td'); tOverview(); }); });
+      Array.prototype.forEach.call($('tpane').querySelectorAll('[data-rec]'), function (b) { b.addEventListener('click', function () {
+        var v = b.getAttribute('data-v');
+        modal({ title: v === 'recommend' ? 'Recommend this applicant?' : 'Advise against this applicant?', body: 'LevelUpGrowth makes the decision. A short note helps.', field: 'Note (optional)', ok: v === 'recommend' ? 'Recommend' : 'Advise against' }).then(function (note) {
+          if (note === false) return;
+          api('POST', '/partner/team/members/' + b.getAttribute('data-rec') + '/recommend', { verdict: v, note: note || null }).then(function (x) { toast(x.j && x.j.ok ? 'Sent to LevelUpGrowth' : ((x.j && x.j.error) || 'Not saved')); tOverview(); });
+        });
+      }); });
+      if ($('all-m')) $('all-m').addEventListener('click', function () { S.tv = 'members'; team(); });
+      bindOpen();
+    });
+  }
+  function board(list, limit) {
+    if (!list.length) return '<p class="empty">No active members yet. Share your team code from Invite.</p>';
+    return '<table class="tbl cards"><thead><tr><th>#</th><th>Affiliate</th><th class="num">Sign-ups</th><th class="num">Paying</th><th class="num">Sales</th><th class="num">Your 5%</th></tr></thead><tbody>' +
+      list.slice(0, limit || 1000).map(function (m, i) { return '<tr><td data-l="#">' + (i + 1) + '</td><td data-l="Affiliate"><a href="#" data-open="' + m.id + '" style="font-weight:600">' + esc(m.name) + '</a>' + (m.quiet ? ' <span class="pill a">quiet 30 days</span>' : '') +
+        (m.goal ? '<div class="goal" title="' + m.this_month + ' of ' + m.goal + ' sign-ups this month"><i style="width:' + Math.min(100, m.this_month / m.goal * 100) + '%"></i></div>' : '') + '</td><td class="num" data-l="Sign-ups">' + m.signups + '</td><td class="num" data-l="Paying">' + m.paying + '</td><td class="num" data-l="Sales">' + usd(m.sales_minor) + '</td><td class="num" data-l="Your 5%">' + usd(m.earned_minor) + '</td></tr>'; }).join('') + '</tbody></table>';
+  }
+  function tMembers() {
+    api('GET', '/partner/team/overview?days=0').then(function (r) {
+      if (!here('members')) return;
+      var o = r.j || {};
+      tp('<div class="card"><h2>Members</h2><p class="sub">Everyone on your team, ranked by sales. Open one to see their codes and referrals, set a monthly goal or keep a private note.</p>' + board(o.leaderboard || []) + '</div>');
+      bindOpen();
+    });
+  }
+  function refTable(rows, withRecruit) {
+    return rows.length ? '<table class="tbl cards"><thead><tr>' + (withRecruit ? '<th>Affiliate</th>' : '') + '<th>Who</th><th>Joined</th><th>Code</th><th>Plan</th><th>Status</th><th class="num">Payments</th><th class="num">They earned</th><th class="num">Your 5%</th></tr></thead><tbody>' +
+      rows.map(function (x) { var pc = x.status === 'Paying' ? 'g' : (x.status === 'Signed up' ? 'p' : ''); return '<tr>' + (withRecruit ? '<td data-l="Affiliate"><a href="#" data-open="' + x.recruit_id + '">' + esc(x.recruit) + '</a></td>' : '') + '<td data-l="Who">' + esc(x.who) + '</td><td data-l="Joined">' + day(x.joined) + '</td><td data-l="Code">' + esc(String(x.via || '').replace(/^code /, '')) + '</td><td data-l="Plan">' + esc(x.plan) + (x.trial ? ' <span class="pill a">trial</span>' : '') + '</td><td data-l="Status"><span class="pill ' + pc + '">' + esc(x.status) + '</span></td><td class="num" data-l="Payments">' + esc(x.payments) + '</td><td class="num" data-l="They earned">' + usd(x.earned_minor) + '</td><td class="num" data-l="Your 5%">' + usd(x.leader_minor) + '</td></tr>'; }).join('') + '</tbody></table>'
+      : '<p class="empty">No businesses yet.</p>';
+  }
+  function tMember(id) {
+    tp('<p class="empty">Loading…</p>');
+    api('GET', '/partner/team/members/' + id).then(function (r) {
+      if (S.tab !== 'team' || S.tm !== id || !$('tpane')) return;
+      if (!r.ok) { tp('<div class="card empty">' + esc((r.j && r.j.error) || 'Not found.') + '</div>'); return; }
+      var d = r.j, m = d.member;
+      tp('<div style="margin-bottom:12px"><button class="btn ghost sm" type="button" id="m-back">&larr; Members</button></div>' +
+        '<div class="card"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><h2 style="margin:0">' + esc(m.name) + (m.quiet ? ' <span class="pill a">quiet 30 days</span>' : '') + '</h2><p class="sub" style="margin:4px 0 0">On your team since ' + day(m.joined) + (m.channel_url ? ' · ' + esc(m.channel_url) : '') + '</p></div><button class="btn quiet sm" type="button" id="m-remove">Remove from team</button></div>' +
+        '<div class="grid g4" style="margin-top:14px">' + stat('Sign-ups', m.signups, m.this_month + ' this month') + stat('Paying', m.paying, 'businesses now') + stat('Sales', usd(m.sales_minor), 'before discounts') + stat('Your 5%', usd(m.earned_minor), 'from this affiliate') + '</div></div>' +
+        '<div class="card"><h2>Goal and private note</h2><p class="sub">Only you see these.</p><div class="row" style="align-items:flex-end"><div class="fld" style="margin:0"><label for="m-goal">Sign-ups a month</label><input class="inp num-inp" id="m-goal" inputmode="numeric" maxlength="4" value="' + esc(d.goal == null ? '' : d.goal) + '" placeholder="None"></div><div class="fld" style="flex:1 1 260px;margin:0"><label for="m-note">Note</label><textarea class="inp" id="m-note" maxlength="3000" style="min-height:42px">' + esc(d.note || '') + '</textarea></div><button class="btn" type="button" id="m-save">Save</button></div></div>' +
+        '<div class="card"><h2>Their codes</h2>' + (d.codes.length ? '<table class="tbl cards"><thead><tr><th>Code</th><th>Customer gets</th><th class="num">Used</th><th>Status</th></tr></thead><tbody>' + d.codes.map(function (c) { return '<tr><td data-l="Code"><b style="font-family:ui-monospace,monospace">' + esc(c.code) + '</b></td><td data-l="Customer gets" style="color:var(--t2)">' + esc(c.describe) + '</td><td class="num" data-l="Used">' + c.used + '</td><td data-l="Status"><span class="pill ' + (c.status === 'active' ? 'g' : '') + '">' + (c.status === 'active' ? 'Active' : 'Paused') + '</span></td></tr>'; }).join('') + '</tbody></table>' : '<p class="empty">No codes yet. Send them your recommended splits.</p>') + '</div>' +
+        '<div class="card"><h2>Their referrals</h2><p class="sub">What they see of their own work, and your 5% from each business.</p>' + refTable(d.referrals, false) + '</div>');
+      $('m-back').addEventListener('click', function () { S.tm = null; S.tv = 'members'; team(); });
+      $('m-save').addEventListener('click', function () { var g = $('m-goal').value.trim(); api('PUT', '/partner/team/members/' + id + '/note', { note: $('m-note').value, goal: g === '' ? null : +g }).then(function (x) { toast(x.j && x.j.ok ? 'Saved' : ((x.j && (x.j.error || x.j.message)) || 'Not saved')); }); });
+      $('m-remove').addEventListener('click', function () {
+        modal({ title: 'Remove ' + m.name + ' from your team?', body: 'They stay a LevelUpGrowth affiliate with their codes and earnings, and we tell them. Your 5% from their businesses stops on future payments.', ok: 'Remove from team', danger: true }).then(function (go) {
+          if (!go) return; api('DELETE', '/partner/team/members/' + id).then(function (x) { toast(x.j && x.j.ok ? 'Removed' : ((x.j && x.j.error) || 'Not removed')); S.tm = null; S.tv = 'members'; team(); });
+        });
+      });
+    });
+  }
+  function tReferrals() {
+    api('GET', '/partner/team/referrals').then(function (r) {
+      if (!here('referrals')) return;
+      var all = (r.j && r.j.referrals) || [], f = { q: '', st: 'all' };
+      tp('<div class="card"><h2>Team referrals</h2><p class="sub">Every business your team brought in. You see what your affiliates see: never a business\'s name, work or customers.</p>' +
+        '<div class="row" style="margin-bottom:12px"><input class="inp" id="tr-q" placeholder="Search affiliate, email or code" style="max-width:320px"><div class="seg" role="group" aria-label="Status">' + [['all', 'All'], ['Paying', 'Paying'], ['Signed up', 'Signed up'], ['Earning ended', 'Ended'], ['Cancelled', 'Cancelled']].map(function (s) { return '<button type="button" data-st="' + s[0] + '" aria-pressed="' + (s[0] === 'all') + '">' + s[1] + '</button>'; }).join('') + '</div></div><div id="tr-list"></div></div>');
+      function draw() {
+        var q = f.q.toLowerCase(), rows = all.filter(function (x) { return (f.st === 'all' || x.status === f.st) && (!q || (x.recruit + ' ' + x.who + ' ' + x.via + ' ' + x.plan).toLowerCase().indexOf(q) >= 0); });
+        $('tr-list').innerHTML = '<p class="sub" style="margin:0 0 8px">' + rows.length + ' of ' + all.length + '</p>' + refTable(rows, true); bindOpen();
+      }
+      $('tr-q').addEventListener('input', function () { f.q = this.value; draw(); });
+      Array.prototype.forEach.call($('tpane').querySelectorAll('[data-st]'), function (b) { b.addEventListener('click', function () { f.st = b.getAttribute('data-st'); Array.prototype.forEach.call($('tpane').querySelectorAll('[data-st]'), function (x) { x.setAttribute('aria-pressed', x === b); }); draw(); }); });
+      draw();
+    });
+  }
+  function tEarnings() {
+    api('GET', '/partner/team/earnings').then(function (r) {
+      if (!here('earnings')) return;
+      var d = r.j || {}, b = d.balances || {};
+      tp('<div class="grid g3">' + stat('Waiting', usd(b.pending), 'held ' + S.me.hold_days + ' days after each payment') + stat('Ready to pay', usd(b.payable), 'paid with your commissions on the 15th') + stat('Paid to you', usd(b.paid), 'all time') + '</div>' +
+        '<div class="card" style="margin-top:14px"><h2>Your 5% from the team</h2>' + ((d.rows || []).length ? '<table class="tbl cards"><thead><tr><th>Date</th><th>For</th><th class="num">Price</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + d.rows.map(function (c) {
+          return '<tr><td data-l="Date">' + day(c.created_at) + '</td><td data-l="For">' + (c.reverses_id ? 'Reversal' : ({ monthly: 'Monthly plan', yearly: 'Yearly plan', domain: 'Domain' }[c.kind] || c.kind)) + (c.note ? ' <span style="color:var(--t3)">· ' + esc(c.note) + '</span>' : '') + '</td><td class="num" data-l="Price">' + (c.base_minor ? usd(c.base_minor) : '—') + '</td><td class="num" data-l="Amount" style="' + (c.amount_minor < 0 ? 'color:var(--rd)' : '') + '">' + usd(c.amount_minor) + '</td><td data-l="Status"><span class="pill ' + (c.status === 'paid' ? 'g' : c.status === 'payable' ? 'p' : '') + '">' + ({ pending: 'Waiting', payable: 'Ready', paid: 'Paid', void: 'Void' }[c.status] || c.status) + '</span></td></tr>'; }).join('') + '</tbody></table>' : '<p class="empty">No team earnings yet.</p>') + '</div>' +
+        '<div class="card"><h2>Your Team Leader fee</h2><p class="sub">' + usd((S.me.leader_offer || {}).fee_minor) + ' a month, paid from your commissions when you have any, otherwise by card.</p>' + ((d.fees || []).length ? '<table class="tbl cards"><thead><tr><th>Date</th><th class="num">From commissions</th><th class="num">By card</th></tr></thead><tbody>' + d.fees.map(function (f) { return '<tr><td data-l="Date">' + day(f.created_at) + '</td><td class="num" data-l="From commissions">' + usd(f.from_commission_minor) + '</td><td class="num" data-l="By card">' + usd(f.card_minor) + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="empty">Your first month was paid by card.</p>') + '</div>');
+    });
+  }
+  function tInvite() {
+    var code = L().team_code || '', text = 'Join my team in the LevelUpGrowth Affiliate Program: apply at levelupgrowth.io/affiliates/ and enter my team code ' + code + '.';
+    tp('<div class="grid g2"><div class="card"><h2>Share your team code</h2><p class="sub">New affiliates type it when they apply. We review every application; you can recommend them.</p><div class="link"><code>' + esc(code) + '</code><button class="btn ghost sm" data-copy="' + esc(code) + '">Copy code</button></div>' +
+      '<p class="sub" style="margin:14px 0 6px">A message you can paste</p><div class="link"><code style="white-space:normal">' + esc(text) + '</code><button class="btn ghost sm" data-copy="' + esc(text) + '">Copy</button></div></div>' +
+      '<div class="card"><h2>Invite by email</h2><p class="sub">We send a LevelUpGrowth email with your team code. Up to 3 sends per person.</p><div class="row"><input class="inp" id="iv-e" type="email" placeholder="name@example.com" autocomplete="off"><button class="btn" type="button" id="iv-go">Send invitation</button></div><p class="err" id="iv-err" hidden></p></div></div>' +
+      '<div class="card" style="margin-top:14px"><h2>Invitations</h2><div id="iv-list"><p class="empty">Loading…</p></div></div>');
+    bindCopy();
+    function list() {
+      api('GET', '/partner/team/invites').then(function (r) {
+        if (!$('iv-list')) return;
+        var rows = (r.j && r.j.invites) || [];
+        $('iv-list').innerHTML = rows.length ? '<table class="tbl cards"><thead><tr><th>Email</th><th>Status</th><th class="num">Sent</th><th></th></tr></thead><tbody>' + rows.map(function (i) { return '<tr><td data-l="Email">' + esc(i.email) + '</td><td data-l="Status"><span class="pill ' + (i.status === 'joined' ? 'g' : i.status === 'sent' ? 'p' : '') + '">' + ({ sent: 'Invited', joined: 'Applied', withdrawn: 'Withdrawn' }[i.status] || i.status) + '</span></td><td class="num" data-l="Sent">' + i.sent_count + ' · ' + day(i.last_sent_at) + '</td><td class="num" data-l="">' + (i.status === 'sent' ? '<button class="btn ghost sm" data-rs="' + i.id + '">Resend</button> <button class="btn quiet sm" data-wd="' + i.id + '">Withdraw</button>' : '') + '</td></tr>'; }).join('') + '</tbody></table>' : '<p class="empty">No invitations yet.</p>';
+        Array.prototype.forEach.call($('iv-list').querySelectorAll('[data-rs]'), function (b) { b.addEventListener('click', function () { api('POST', '/partner/team/invites/' + b.getAttribute('data-rs') + '/resend').then(function (x) { toast(x.j && x.j.ok ? 'Sent again' : ((x.j && x.j.error) || 'Not sent')); list(); }); }); });
+        Array.prototype.forEach.call($('iv-list').querySelectorAll('[data-wd]'), function (b) { b.addEventListener('click', function () { api('DELETE', '/partner/team/invites/' + b.getAttribute('data-wd')).then(function () { list(); }); }); });
+      });
+    }
+    $('iv-go').addEventListener('click', function () {
+      var b = this, e = $('iv-err'); e.hidden = true; b.disabled = true;
+      api('POST', '/partner/team/invites', { email: $('iv-e').value.trim() }).then(function (x) { b.disabled = false; if (x.j && x.j.ok) { toast('Invitation sent'); $('iv-e').value = ''; list(); } else { e.hidden = false; e.textContent = (x.j && (x.j.error || x.j.message)) || 'Not sent.'; } });
+    });
+    list();
+  }
+  function tMessages() {
+    api('GET', '/partner/team/messages').then(function (r) {
+      if (!here('messages')) return;
+      var d = r.j || {}, left = (d.max || 4) - (d.sent_this_month || 0);
+      tp('<div class="card"><h2>Send an announcement</h2><p class="sub">It goes to every active member by email, from LevelUpGrowth on your behalf, and shows in their portal. ' + left + ' of ' + (d.max || 4) + ' left this month.</p>' +
+        '<div class="fld"><label for="ms-s">Subject</label><input class="inp" id="ms-s" maxlength="120"></div><div class="fld"><label for="ms-b">Message</label><textarea class="inp" id="ms-b" maxlength="2000" style="min-height:140px" placeholder="Tips, this month\'s focus, a recommended split…"></textarea></div>' +
+        '<p class="err" id="ms-err" hidden></p><div class="row" style="justify-content:flex-end"><button class="btn" type="button" id="ms-go"' + (left <= 0 ? ' disabled' : '') + '>Send to my team</button></div></div>' +
+        '<div class="card"><h2>Sent</h2>' + ((d.messages || []).length ? d.messages.map(function (m) { return '<div class="msg"><h3>' + esc(m.subject) + ' <span style="font-weight:400;color:var(--t3);font-size:12px">· ' + day(m.created_at) + ' · ' + m.recipients + ' members</span></h3><p>' + esc(m.body) + '</p></div>'; }).join('') : '<p class="empty">Nothing sent yet.</p>') + '</div>');
+      $('ms-go').addEventListener('click', function () {
+        var b = this, e = $('ms-err'); e.hidden = true;
+        modal({ title: 'Send to your whole team?', body: 'Every active member gets it by email.', ok: 'Send' }).then(function (go) {
+          if (!go) return; b.disabled = true;
+          api('POST', '/partner/team/messages', { subject: $('ms-s').value, body: $('ms-b').value }).then(function (x) { b.disabled = false; if (x.j && x.j.ok) { toast('Sent to ' + x.j.recipients + ' members'); tMessages(); } else { e.hidden = false; e.textContent = (x.j && (x.j.error || x.j.message)) || 'Not sent.'; } });
+        });
+      });
+    });
+  }
+  function tSplits() {
+    api('GET', '/partner/team/presets').then(function (r) {
+      if (!here('splits')) return;
+      var ps = (r.j && r.j.presets) || [], B = S.me.budgets, ks = [['monthly', 'Monthly plans', B.monthly], ['domain', 'Domains', B.domain]];
+      if (S.me.yearly_live) ks.splice(1, 0, ['yearly', 'Yearly plans', B.yearly]);
+      tp('<div class="card"><h2>Recommended splits</h2><p class="sub">Your affiliates see these as one-tap options when they create a code. They stay free to choose. Each one says how much discount their customer gets; the affiliate keeps the rest of their ' + pct(B.monthly) + ' / ' + pct(B.domain) + ', and your 5% does not change.</p>' +
+        (ps.length ? '<table class="tbl cards"><thead><tr><th>Name</th>' + ks.map(function (k) { return '<th class="num">' + k[1] + ' off</th>'; }).join('') + '<th></th></tr></thead><tbody>' + ps.map(function (p) { return '<tr><td data-l="Name"><b>' + esc(p.label) + '</b></td>' + ks.map(function (k) { return '<td class="num" data-l="' + k[1] + ' off">' + pct(p[k[0] + '_bps']) + ' <span style="color:var(--t3);font-size:12px">(they keep ' + pct(k[2] - p[k[0] + '_bps']) + ')</span></td>'; }).join('') + '<td class="num" data-l=""><button class="btn quiet sm" data-del="' + p.id + '">Delete</button></td></tr>'; }).join('') + '</tbody></table>' : '<p class="empty">None yet.</p>') + '</div>' +
+        (ps.length < 5 ? '<div class="card"><h2>Add one</h2><div class="row" style="align-items:flex-end"><div class="fld" style="flex:1 1 200px;margin:0"><label for="sp-l">Name</label><input class="inp" id="sp-l" maxlength="60" placeholder="e.g. Launch week"></div>' +
+          ks.map(function (k) { return '<div class="fld" style="margin:0"><label for="sp-' + k[0] + '">' + k[1] + ' off, %</label><input class="inp num-inp" id="sp-' + k[0] + '" inputmode="numeric" maxlength="2" value="5"></div>'; }).join('') + '<button class="btn" type="button" id="sp-go">Add</button></div><p class="err" id="sp-err" hidden></p></div>' : ''));
+      Array.prototype.forEach.call($('tpane').querySelectorAll('[data-del]'), function (b) { b.addEventListener('click', function () { api('DELETE', '/partner/team/presets/' + b.getAttribute('data-del')).then(function () { tSplits(); }); }); });
+      if ($('sp-go')) $('sp-go').addEventListener('click', function () {
+        var body = { label: $('sp-l').value.trim(), monthly: 0, yearly: 0, domain: 0 }; ks.forEach(function (k) { body[k[0]] = Math.round(parseFloat($('sp-' + k[0]).value || '0') * 100); });
+        api('POST', '/partner/team/presets', body).then(function (x) { if (x.j && x.j.ok) { toast('Added'); tSplits(); } else { var e = $('sp-err'); e.hidden = false; e.textContent = (x.j && (x.j.error || x.j.message)) || 'Not saved.'; } });
+      });
+    });
+  }
+
+  try { var h = (location.hash || '').slice(1); if (TABS.some(function (t) { return t[0] === h; }) || h === 'team') S.tab = h; } catch (e) {}
   boot();
 })();
 </script>
