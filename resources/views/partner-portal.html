@@ -96,7 +96,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
 
   // ---------------------------------------------------------------- boot
   function boot() {
-    if (!tok()) return signin();
+    if (!tok()) { try { if (new URLSearchParams(location.search).get('apply')) return apply(false); } catch (e) {} return signin(); }
     api('GET', '/partner/me').then(function (r) {
       if (r.status === 401) { clearTok(); return signin(); }
       if (!r.ok) { A.innerHTML = '<div class="card empty">We could not load your partner account. Please try again.</div>'; return; }

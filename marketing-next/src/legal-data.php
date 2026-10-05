@@ -37,4 +37,6 @@ foreach ($map as $slug => $file) {
     }
     $pages[] = ['slug' => $slug, 'title' => $titles[$slug], 'body' => trim($body), 'source' => $file];
 }
+require __DIR__ . '/legal-partners-data.php';   // RFC-0026: the partner program terms
+if (str_contains(end($pages)['body'], 'class="owner"')) $ownerKeys['LEGAL_ENTITY'] = true;
 return ['pages' => $pages, 'owner_keys' => array_keys($ownerKeys)];

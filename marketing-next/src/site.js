@@ -1166,7 +1166,7 @@
           }
           store(r.j);
           btn.innerHTML = 'Signed in — opening your workspace…';
-          location.replace(nextUrl());
+          location.replace(r.j.current_workspace_id ? nextUrl() : '/partners/portal');   // RFC-0026: a partner without a workspace
         }).catch(function () { btn.disabled = false; err.textContent = 'Could not reach the server. Please try again.'; err.hidden = false; });
       });
     }
