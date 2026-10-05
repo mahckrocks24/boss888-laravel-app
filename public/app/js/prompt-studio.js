@@ -424,7 +424,7 @@
     }).catch(function (err) {
       S.busy = false;
       var pl = err.payload && (err.payload.data || err.payload);
-      S.error = friendlyErr(pl) || ('Generation failed (' + (err.status || 'network') + ').');
+      S.error = (err.status >= 500 || !err.status) ? 'Something went wrong on our side and the image was not made. Please try again in a moment.' : (friendlyErr(pl) || ('Generation failed (' + err.status + ').'));   // STUDIO-CERT-4
       render();
     });
   }
