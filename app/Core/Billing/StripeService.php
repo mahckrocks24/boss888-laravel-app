@@ -699,6 +699,31 @@ class StripeService
         }
     }
     /**
+     * RENEW-1 (Owner 2026-10-05): the plan's auto-renew switch. Off = Stripe cancel_at_period_end (nothing is charged or
+     * refunded; the plan runs to the end of the period paid for, then Stripe ends it and the workspace moves to Free through
+     * customer.subscription.deleted). On again before then = cleared.
+     */
+    public function setAutoRenew(int $workspaceId, bool $on, int $userId): array
+    {
+        $sub = Subscription::where('workspace_id', $workspaceId)->whereIn('status', ['active', 'past_due'])->with('plan')->orderByDesc('id')->first();
+        if (! $sub || ! $sub->stripe_subscription_id || ! $this->enabled) return ['success' => false, 'error' => 'Auto-renew applies to a paid plan billed by card.'];
+        try {
+            $ss = (new \Stripe\StripeClient($this->secretKey))->subscriptions->update($sub->stripe_subscription_id, ['cancel_at_period_end' => ! $on]);
+            $end = (int) ($ss->current_period_end ?? ($ss->items->data[0]->current_period_end ?? 0));
+            $this->auditLog->log($workspaceId, $userId, $on ? 'billing.auto_renew_on' : 'billing.auto_renew_off', 'Subscription', $sub->id, ['period_end' => $end ? date('c', $end) : null]);
+            $plan = $sub->plan->name ?? 'your plan';
+            $this->tellOwner($workspaceId, \App\Core\Notifications\NotificationTypes::BILLING_PLAN_CHANGED,
+                $on ? 'Auto-renew is on' : 'Auto-renew is off',
+                $on ? 'Your ' . $plan . ' plan renews as usual' . ($end ? ' on ' . date('j F Y', $end) : '') . '.'
+                    : 'Your ' . $plan . ' plan stays active until ' . ($end ? date('j F Y', $end) : 'the end of this period') . ', then your workspace moves to Free. Nothing was charged or refunded. Turn auto-renew back on in Billing any time before then.');
+            return ['success' => true, 'auto_renew' => $on, 'period_end' => $end ? date('c', $end) : null];
+        } catch (\Throwable $e) {
+            Log::error('StripeService::setAutoRenew failed', ['workspace_id' => $workspaceId, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => 'That did not go through. Nothing changed. Please try again.'];
+        }
+    }
+
+    /**
      * SEATS-4 (Owner 2026-10-05: "add 20$ per extra user" - "I mean human team member"). Extra human team members on the plans
      * that have a team (Pro 3 users, Agency 10), $20 a month each: one subscription item whose quantity is the number of extra
      * users. Adding is invoiced at once for the rest of the month and only counts once paid; removing stops from the next renewal.

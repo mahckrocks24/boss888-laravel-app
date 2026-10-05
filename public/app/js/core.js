@@ -8259,6 +8259,7 @@ function _billRender(status, plans) {
             : '<span style="font-size:11px;color:var(--t3)">Your billing account opens when you choose a paid plan</span>') +   // C1: no vendor names (DEC-0047)
         '</div>' +
       '</div>' +
+      _billAutoRenewRow(status) +   // RENEW-1
       (creditLimit > 0 ? (
         '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd)">' +
           '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">' +
@@ -8406,6 +8407,35 @@ async function _billChange(planId, up, name, newPrice, curPrice) {
   } catch (e) {
     showToast('The plan change did not go through: ' + (e.message || 'please try again'), 'error');
   }
+}
+
+/* RENEW-1 (Owner 2026-10-05: "auto renewal option on billing, on by default but have confirmation modal"). */
+function _billAutoRenewRow(status) {
+  var paid = status.has_subscription && !status.is_platform_trial && parseFloat(status.plan_price || 0) > 0 && status.stripe_customer_id && status.status !== 'trialing';
+  if (!paid) return '';
+  var on = !status.cancel_at_period_end, end = status.current_period_end ? new Date(status.current_period_end).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  window._billAR = { on: on, end: end, plan: status.plan || 'your plan' };
+  return '<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bd);display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">' +
+    '<div style="min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">Auto-renew</div>' +
+    '<div style="font-size:12px;color:var(--t3);margin-top:2px">' + (on ? 'Your plan renews' + (end ? ' on ' + end : '') + '.' : 'Off: your plan ends' + (end ? ' on ' + end : ' at the end of this period') + ', then you move to Free.') + '</div></div>' +
+    '<button type="button" role="switch" aria-checked="' + on + '" aria-label="Auto-renew" onclick="_billToggleAutoRenew()" style="flex:none;width:46px;height:26px;border-radius:13px;border:1px solid ' + (on ? 'var(--ac)' : 'var(--bd2)') + ';background:' + (on ? 'var(--ac)' : 'var(--s2)') + ';position:relative;cursor:pointer;padding:0;transition:background .15s">' +
+      '<span style="position:absolute;top:2px;left:' + (on ? '22px' : '2px') + ';width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.3);transition:left .15s"></span></button></div>';
+}
+async function _billToggleAutoRenew() {
+  var s = window._billAR || {}; var turnOn = !s.on;
+  if (!turnOn) {
+    var ok = await luConfirm('Turn off auto-renew?',
+      'Your ' + s.plan + ' plan stays active until ' + (s.end || 'the end of this period') + '. After that your workspace moves to Free: credits stop, Sarah and the AI team pause, and websites follow the Free rules. Nothing is charged or refunded. You can turn it back on any time before then.',
+      { okLabel: 'Turn off', cancelLabel: 'Keep auto-renew', danger: true });
+    if (!ok) return;
+  }
+  try {
+    var r = await _luFetch('POST', '/billing/auto-renew', { on: turnOn });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.success) showToast(turnOn ? 'Auto-renew is on.' : 'Auto-renew is off. Your plan runs to ' + (s.end || 'the end of this period') + '.', 'success');
+    else showToast(d.error || (r.status === 403 ? 'Only the account owner or an admin can change this.' : 'That did not go through.'), 'error');
+  } catch (e) { showToast('That did not go through. Please try again.', 'error'); }
+  _billFetchAndRender();
 }
 
 async function _billDowngradeToFree() {

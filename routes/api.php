@@ -2456,6 +2456,12 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand', 'team.activ
         return response()->json(\App\Core\Partners\Attribution::applyCode((int) $r->attributes->get('workspace_id'), (int) $r->user()->id, (string) $r->input('code')));
     })->middleware(['team.role:admin', 'throttle:10,1,ppromo']);
 
+    // RENEW-1: the plan's auto-renew switch - owner or admin, as for the plan
+    Route::post('/billing/auto-renew', function (\Illuminate\Http\Request $r) {
+        $r->validate(['on' => 'required|boolean']);
+        return response()->json(app(\App\Core\Billing\StripeService::class)->setAutoRenew((int) $r->attributes->get('workspace_id'), (bool) $r->boolean('on'), (int) $r->user()->id));
+    })->middleware(['team.role:admin', 'throttle:10,1,arenew']);
+
     // SEATS-4: extra human team members, $20 a month each - owner or admin, as for the plan
     Route::post('/billing/seats', function (\Illuminate\Http\Request $r) {
         $r->validate(['quantity' => 'required|integer|min:0|max:100']);
