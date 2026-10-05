@@ -228,96 +228,94 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
     </div>
   </section>
 
-  <?php /* 05b — SOCIAL (Owner 2026-10-05: "we do not have anything about social media, an image preview perhaps of what's going to be posted as shown by sarah, also add logos of Facebook, IG, and LinkedIn").
-     Logos: Font Awesome Free 6.5.2 brand icons (CC BY 4.0, fontawesome.com/license/free). */
+  <?php /* 05b — SOCIAL (Owner 2026-10-05: "we do not have anything about social media... add logos of Facebook, IG, and LinkedIn";
+     "the sample social media image must show the designs we have in the inspiration"; "make it an image gallery of those images, as if those
+     are posted on fb, IG, and Linkedin, with their respective previews"). The images are OUR design-library renders, each re-rendered under its own business name,
+     never the reference images. Logos: Font Awesome Free 6.5.2 brand icons (CC BY 4.0, fontawesome.com/license/free). */
   $icFb = '<svg viewBox="0 0 512 512" aria-hidden="true"><path fill="#0866FF" d="M512 256C512 114.6 397.4 0 256 0S0 114.6 0 256C0 376 82.7 476.8 194.2 504.5V334.2H141.4V256h52.8V222.3c0-87.1 39.4-127.5 125-127.5c16.2 0 44.2 3.2 55.7 6.4V172c-6-.6-16.5-1-29.6-1c-42 0-58.2 15.9-58.2 57.2V256h83.6l-14.4 78.2H287V510.1C413.8 494.8 512 386.9 512 256h0z"/></svg>';
-  $icIg = '<svg viewBox="0 0 448 512" aria-hidden="true"><defs><linearGradient id="soc-ig" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".3" stop-color="#FA7E1E"/><stop offset=".55" stop-color="#D62976"/><stop offset=".8" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><path fill="url(#soc-ig)" d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>';
+  $icIg = fn (string $id) => '<svg viewBox="0 0 448 512" aria-hidden="true"><defs><linearGradient id="' . $id . '" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".3" stop-color="#FA7E1E"/><stop offset=".55" stop-color="#D62976"/><stop offset=".8" stop-color="#962FBF"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><path fill="url(#' . $id . ')" d="M224.1 141c-63.6 0-114.9 51.3-114.9 114.9s51.3 114.9 114.9 114.9S339 319.5 339 255.9 287.7 141 224.1 141zm0 189.6c-41.1 0-74.7-33.5-74.7-74.7s33.5-74.7 74.7-74.7 74.7 33.5 74.7 74.7-33.6 74.7-74.7 74.7zm146.4-194.3c0 14.9-12 26.8-26.8 26.8-14.9 0-26.8-12-26.8-26.8s12-26.8 26.8-26.8 26.8 12 26.8 26.8zm76.1 27.2c-1.7-35.9-9.9-67.7-36.2-93.9-26.2-26.2-58-34.4-93.9-36.2-37-2.1-147.9-2.1-184.9 0-35.8 1.7-67.6 9.9-93.9 36.1s-34.4 58-36.2 93.9c-2.1 37-2.1 147.9 0 184.9 1.7 35.9 9.9 67.7 36.2 93.9s58 34.4 93.9 36.2c37 2.1 147.9 2.1 184.9 0 35.9-1.7 67.7-9.9 93.9-36.2 26.2-26.2 34.4-58 36.2-93.9 2.1-37 2.1-147.8 0-184.8zM398.8 388c-7.8 19.6-22.9 34.7-42.6 42.6-29.5 11.7-99.5 9-132.1 9s-102.7 2.6-132.1-9c-19.6-7.8-34.7-22.9-42.6-42.6-11.7-29.5-9-99.5-9-132.1s-2.6-102.7 9-132.1c7.8-19.6 22.9-34.7 42.6-42.6 29.5-11.7 99.5-9 132.1-9s102.7-2.6 132.1 9c19.6 7.8 34.7 22.9 42.6 42.6 11.7 29.5 9 99.5 9 132.1s2.7 102.7-9 132.1z"/></svg>';
   $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M416 32H31.9C14.3 32 0 46.5 0 64.3v383.4C0 465.5 14.3 480 31.9 480H416c17.6 0 32-14.5 32-32.3V64.3c0-17.8-14.4-32.3-32-32.3zM135.4 416H69V202.2h66.5V416zm-33.2-243c-21.3 0-38.5-17.3-38.5-38.5S80.9 96 102.2 96c21.2 0 38.5 17.3 38.5 38.5 0 21.3-17.2 38.5-38.5 38.5zm282.1 243h-66.4V312c0-24.8-.5-56.7-34.5-56.7-34.6 0-39.9 27-39.9 54.9V416h-66.4V202.2h63.7v29.2h.9c8.9-16.8 30.6-34.5 62.9-34.5 67.2 0 79.7 44.3 79.7 101.9V416z"/></svg>';
-  $socCap = 'Seven nights. One over-water villa. Zero alarm clocks. Our Maldives escapes now include breakfast and a sunset spa for two. Ask us for April dates.';
+  // one business per industry (Owner: "why do they have the same names? ... add one per industry"); each design was re-rendered with its own name
+  $socPosts = [
+    ['net' => 'ig', 'biz' => 'Kettle Row Coffee', 'handle' => 'kettlerowcoffee', 'sub' => 'Harbour City', 'img' => 'cafe-05', 'w' => 720, 'h' => 900, 'av' => '#0f766e', 'alt' => 'Kettle Row Coffee post: Monday coffee, a teal cup with croissants',
+      'cap' => 'Monday, sorted. Flat whites and warm croissants from 7am.', 'tags' => '#MondayCoffee #KettleRow', 'meta' => '214 likes'],
+    ['net' => 'fb', 'biz' => 'Saltmarsh Travel', 'sub' => 'Friday at 9:00', 'img' => 'travel-agency-08', 'w' => 720, 'h' => 900, 'av' => '#14532d', 'alt' => 'Saltmarsh Travel post: explore your destination, up to 35% off',
+      'cap' => 'Lakes, mountains and slow mornings. Handpicked stays and guided tours, up to 35% off this season.', 'meta' => '312', 'meta2' => '27 comments'],
+    ['net' => 'in', 'biz' => 'Crown Court Realty', 'sub' => '1,240 followers · 2d', 'img' => 'real-estate-agency-09', 'w' => 720, 'h' => 900, 'av' => '#1e3a8a', 'alt' => 'Crown Court Realty post: well connected, well positioned, a night map of Harbour District',
+      'cap' => 'Harbour District is one of the best-connected places to live and invest: the ring road, the business corridor and the riverside, minutes away.', 'meta' => '86', 'meta2' => '9 comments'],
+    ['net' => 'ig', 'biz' => 'Ironhouse Fitness', 'handle' => 'ironhousefitness', 'sub' => 'Central Street', 'img' => 'gym-fitness-03', 'w' => 720, 'h' => 900, 'av' => '#3f6212', 'alt' => 'Ironhouse Fitness post: start training today, a kettlebell lifted',
+      'cap' => 'Three coaches, small groups, real progress. Your first session is on us.', 'tags' => '#StartToday #Ironhouse', 'meta' => '389 likes'],
+    ['net' => 'fb', 'biz' => 'Saffron Row', 'sub' => 'Yesterday at 18:30', 'img' => 'restaurant-03', 'w' => 720, 'h' => 900, 'av' => '#b45309', 'alt' => 'Saffron Row post: status check, working, busy or hungry, over a plate of idli',
+      'cap' => 'Working, busy or hungry? Fresh idli and sambar from noon. Walk in, or order ahead.', 'meta' => '158', 'meta2' => '14 comments'],
+    ['net' => 'in', 'biz' => 'Harbourline Consulting', 'sub' => '3,410 followers · 1w', 'img' => 'consulting-04', 'w' => 720, 'h' => 720, 'av' => '#1d4ed8', 'alt' => 'Harbourline Consulting post: business consultant, solutions for your company\'s growth',
+      'cap' => 'Growth stalls when everything is a priority. We help leadership teams choose what matters and build the systems to deliver it. Book a free strategy call.', 'meta' => '64', 'meta2' => '6 comments'],
+  ];
+  $netName = ['ig' => 'Instagram', 'fb' => 'Facebook', 'in' => 'LinkedIn'];
   ?>
   <section class="mk-sec" id="social" style="padding-top:40px">
     <style>
       #social .soc-nets{display:flex;gap:8px;flex-wrap:wrap}
       #social .soc-net{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px 0 10px;border-radius:999px;font:600 14px/1 var(--font);color:var(--ink)}
-      #social .soc-net svg,#social .soc-tab svg{width:20px;height:20px;flex:none}
-      #social .soc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
-      #social .soc-list li{display:flex;gap:10px;align-items:flex-start;font-size:15px;line-height:22px;color:var(--ink-2)}
-      #social .soc-list svg{flex:none;width:18px;height:18px;margin-top:2px;color:var(--success)}
-      #social .soc-stage{display:flex;flex-direction:column;gap:12px;max-width:390px;width:100%;margin:0 auto}
-      #social .soc-tabs{display:flex;gap:6px;align-self:center}
-      #social .soc-tab{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 13px 0 10px;border-radius:999px;border:1px solid var(--hairline);background:var(--fill-hover);font:600 13px/1 var(--font);color:var(--ink-2);cursor:pointer}
-      #social .soc-tab[aria-pressed="true"]{background:var(--raised);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1),0 0 0 .5px var(--edge)}
-      #social .soc-post{border-radius:18px;overflow:hidden;background:#fff;color:#14161c;box-shadow:0 0 0 .5px rgba(0,0,0,.08),0 14px 36px rgba(20,16,60,.18);font:400 14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-      #social .soc-hd{display:flex;align-items:center;gap:10px;padding:12px 14px}
-      #social .soc-av{width:36px;height:36px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font:700 15px/1 var(--font);background:linear-gradient(135deg,#0e7490,#14b8a6)}
-      #social .soc-who{display:flex;flex-direction:column;min-width:0;flex:1}#social .soc-who b{font-size:14px}#social .soc-who span{font-size:12px;color:#65676b}
-      #social .soc-img{display:block;width:100%;aspect-ratio:1/1;object-fit:cover}
-      #social .soc-cap{padding:10px 14px;font-size:14px}#social .soc-cap b{font-weight:600}
-      #social .soc-tags{color:#1d4ed8}
-      #social .soc-act{display:flex;justify-content:space-around;padding:8px 6px;border-top:1px solid #e4e6eb;color:#65676b;font-size:13px;font-weight:600}
-      #social .soc-ig-act{display:flex;gap:14px;padding:10px 14px 2px}#social .soc-ig-act svg{width:24px;height:24px}
-      #social [data-net-only]{display:none}
-      #social .soc-post[data-net="fb"] [data-net-only~="fb"],#social .soc-post[data-net="ig"] [data-net-only~="ig"],#social .soc-post[data-net="in"] [data-net-only~="in"]{display:block}
-      #social .soc-post[data-net="fb"] .soc-act[data-net-only~="fb"],#social .soc-post[data-net="in"] .soc-act[data-net-only~="in"],#social .soc-post[data-net="ig"] .soc-ig-act[data-net-only~="ig"]{display:flex}
-      #social .soc-sarah{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:18px}
-      #social .soc-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:16px;flex-wrap:wrap}
-      @media (max-width:520px){#social .soc-tab span{display:none}#social .soc-tab{padding:0 12px}}
+      #social svg{flex:none}#social .soc-ico{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#fff;box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 1px 3px rgba(0,0,0,.18)}#social .soc-net svg{width:18px;height:18px}#social .soc-net{padding-left:6px}
+      #social .soc-top{display:flex;gap:48px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin-bottom:24px}
+      #social .soc-top__copy{max-width:600px;display:flex;flex-direction:column;gap:16px}
+      #social .soc-sarah{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:18px;max-width:420px}
+      #social .soc-gal{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;align-items:start}
+      #social .soc-card{border-radius:16px;overflow:hidden;background:#fff;color:#14161c;box-shadow:0 0 0 .5px rgba(0,0,0,.08),0 12px 32px rgba(20,16,60,.16);font:400 14px/1.42 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+      #social .soc-hd{display:flex;align-items:center;gap:10px;padding:11px 12px}
+      #social .soc-av{width:34px;height:34px;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font:700 14px/1 var(--font)}
+      #social .soc-card[data-net="ig"] .soc-av{box-shadow:0 0 0 2px #fff,0 0 0 4px #d62976}
+      #social .soc-who{display:flex;flex-direction:column;min-width:0;flex:1}#social .soc-who b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#social .soc-who span{font-size:12px;color:#65676b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      #social .soc-badge svg{width:20px;height:20px;display:block}
+      #social .soc-img{display:block;width:100%;height:auto;background:#eef0f4}
+      #social .soc-cap{padding:0 12px 10px;font-size:14px}#social .soc-cap b{font-weight:600}#social .soc-tags{color:#00376b}#social .soc-more{color:#65676b}
+      #social .soc-card[data-net="fb"] .soc-cap,#social .soc-card[data-net="in"] .soc-cap{padding-top:0}
+      #social .soc-icons{display:flex;gap:14px;padding:10px 12px 6px;color:#14161c}#social .soc-icons svg{width:23px;height:23px}
+      #social .soc-likes{padding:0 12px 4px;font-weight:600;font-size:13px}
+      #social .soc-stats{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;font-size:13px;color:#65676b}
+      #social .soc-react{display:inline-flex;align-items:center;gap:6px}#social .soc-react i{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;font-style:normal;font-size:10px;color:#fff;margin-right:-4px;box-shadow:0 0 0 2px #fff}
+      #social .soc-act{display:flex;justify-content:space-around;padding:7px 4px 8px;border-top:1px solid #e4e6eb;color:#65676b;font-size:13px;font-weight:600}
+      @media (max-width:900px){#social .soc-gal{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;margin:0 -16px;padding:4px 16px 14px;scrollbar-width:none}#social .soc-gal::-webkit-scrollbar{display:none}#social .soc-card{flex:0 0 80%;scroll-snap-align:center}#social .soc-top{gap:20px}}
     </style>
-    <div class="mk-wrap mk-two">
-      <div class="lg-stack gap-4 mk-two__copy">
-        <span class="t-eyebrow" data-rv>Social, handled</span>
-        <h2 class="mk-h2" data-rv>Your posts, written and scheduled. You just approve.</h2>
-        <p class="mk-lead" data-rv style="font-size:17px;line-height:27px">Marcus, your social media manager, plans the week, writes each post in your voice and pairs it with an image. Sarah shows you exactly how it will look on every network before anything goes out.</p>
-        <div class="soc-nets" data-rv aria-label="Posts to Facebook, Instagram and LinkedIn">
-          <span class="soc-net lg-glass lg-glass--thin"><?= $icFb ?>Facebook</span>
-          <span class="soc-net lg-glass lg-glass--thin"><?= $icIg ?>Instagram</span>
-          <span class="soc-net lg-glass lg-glass--thin"><?= $icIn ?>LinkedIn</span>
+    <div class="mk-wrap">
+      <div class="soc-top">
+        <div class="soc-top__copy">
+          <span class="t-eyebrow" data-rv>Social, handled</span>
+          <h2 class="mk-h2" data-rv>Posts that look designed, because they are.</h2>
+          <p class="mk-lead" data-rv style="font-size:17px;line-height:27px">Marcus, your social media manager, writes each post in your voice and lays it out in the looks you pick from the design library, in your colours. Sarah shows you every post the way it will appear, and nothing goes out until you approve it.</p>
+          <div class="soc-nets" data-rv aria-label="Posts to Facebook, Instagram and LinkedIn">
+            <span class="soc-net lg-glass lg-glass--thin"><span class="soc-ico"><?= $icFb ?></span>Facebook</span>
+            <span class="soc-net lg-glass lg-glass--thin"><span class="soc-ico"><?= $icIg('soc-ig-a') ?></span>Instagram</span>
+            <span class="soc-net lg-glass lg-glass--thin"><span class="soc-ico"><?= $icIn ?></span>LinkedIn</span>
+          </div>
         </div>
-        <ul class="soc-list" data-rv>
-          <li><svg viewBox="0 0 24 24" class="ic"><path d="m5 12 5 5 9-10"/></svg>One idea, shaped for each network: a square for Instagram, a fuller caption for Facebook, a professional angle for LinkedIn.</li>
-          <li><svg viewBox="0 0 24 24" class="ic"><path d="m5 12 5 5 9-10"/></svg>Scheduled for when your audience is online.</li>
-          <li><svg viewBox="0 0 24 24" class="ic"><path d="m5 12 5 5 9-10"/></svg>Nothing is posted until you approve it.</li>
-        </ul>
+        <div class="soc-sarah lg-glass lg-glass--thick" data-rv>
+          <img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="" width="34" height="34" style="width:34px;height:34px;flex:none">
+          <div class="lg-stack" style="gap:2px;min-width:0"><span class="t-subhead t-strong">Sarah</span><span class="t-body c-2" style="font-size:14px;line-height:20px">Boss, this week's posts are ready: two each for Instagram, Facebook and LinkedIn. Approve them and they go out on schedule.</span></div>
+        </div>
       </div>
-      <div class="lg-grow" data-rv style="min-width:0">
-        <div class="soc-stage">
-          <div class="soc-sarah lg-glass lg-glass--thick">
-            <img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="" width="34" height="34" style="width:34px;height:34px;flex:none">
-            <div class="lg-stack" style="gap:2px;min-width:0"><span class="t-subhead t-strong">Sarah</span><span class="t-body c-2" style="font-size:14px;line-height:20px">Boss, Marcus drafted Friday's post for Saltmarsh Travel. Here is how it looks. It goes out Friday at 9:00 once you approve.</span></div>
+      <div class="soc-gal" data-rv role="list" aria-label="Example posts on Instagram, Facebook and LinkedIn">
+        <?php foreach ($socPosts as $i => $p): $n = $p['net']; ?>
+        <article class="soc-card" data-net="<?= $n ?>" role="listitem" aria-label="<?= e($netName[$n] . ' post by ' . $p['biz']) ?>">
+          <div class="soc-hd">
+            <span class="soc-av" style="background:<?= e($p['av']) ?>"><?= e(substr($p['biz'], 0, 1)) ?></span>
+            <div class="soc-who"><b><?= e($n === 'ig' ? $p['handle'] : $p['biz']) ?></b><span><?= e($p['sub']) ?><?= $n === 'fb' ? ' · Public' : '' ?></span></div>
+            <span class="soc-badge" title="<?= e($netName[$n]) ?>"><?= $n === 'ig' ? $icIg('soc-ig-' . $i) : ($n === 'fb' ? $icFb : $icIn) ?></span>
           </div>
-          <div class="soc-tabs" role="group" aria-label="Preview on">
-            <button type="button" class="soc-tab" data-net="ig" aria-pressed="true"><?= $icIg ?><span>Instagram</span></button>
-            <button type="button" class="soc-tab" data-net="fb" aria-pressed="false"><?= $icFb ?><span>Facebook</span></button>
-            <button type="button" class="soc-tab" data-net="in" aria-pressed="false"><?= $icIn ?><span>LinkedIn</span></button>
-          </div>
-          <article class="soc-post" data-net="ig" aria-label="Post preview">
-            <div class="soc-hd"><span class="soc-av">S</span><div class="soc-who"><b>Saltmarsh Travel</b><span data-net-only="ig">saltmarshtravel · Maldives</span><span data-net-only="fb">Friday at 9:00 · Public</span><span data-net-only="in">Travel agency · Friday at 9:00</span></div></div>
-            <div class="soc-cap" data-net-only="fb in"><?= e($socCap) ?> <span class="soc-tags">#Maldives #Honeymoon</span></div>
-            <img class="soc-img" src="<?= e($mk('social-post.webp')) ?>" alt="An infinity pool and sun loungers at a Maldives resort at sunset" width="720" height="720" loading="lazy" decoding="async">
-            <div class="soc-ig-act" data-net-only="ig" aria-hidden="true"><svg viewBox="0 0 24 24" class="ic"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><svg viewBox="0 0 24 24" class="ic"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><svg viewBox="0 0 24 24" class="ic"><path d="M21 4 3 11l7 2 2 7 9-16z"/></svg></div>
-            <div class="soc-cap" data-net-only="ig"><b>saltmarshtravel</b> <?= e($socCap) ?> <span class="soc-tags">#Maldives #Honeymoon #TravelMore</span></div>
-            <div class="soc-act" data-net-only="fb" aria-hidden="true"><span>Like</span><span>Comment</span><span>Share</span></div>
-            <div class="soc-act" data-net-only="in" aria-hidden="true"><span>Like</span><span>Comment</span><span>Repost</span><span>Send</span></div>
-          </article>
-          <div class="soc-bar lg-glass lg-glass--thick">
-            <div class="lg-row gap-2" style="min-width:0"><img class="lg-avatar lg-avatar--sm" src="<?= e($agentImg('marcus')) ?>" alt="" width="28" height="28"><span class="t-caption c-2">Marcus · Friday 9:00 · 3 networks</span></div>
-            <div class="lg-row gap-2"><span class="lg-btn lg-btn--glass lg-btn--sm" style="height:32px">Change something</span><span class="lg-btn lg-btn--primary lg-btn--sm" style="height:32px">Approve</span></div>
-          </div>
-        </div>
+          <?php if ($n !== 'ig'): ?><div class="soc-cap"><?= e($p['cap']) ?><?= $n === 'in' ? ' <span class="soc-more">…more</span>' : '' ?></div><?php endif; ?>
+          <img class="soc-img" src="<?= e($mk('social/' . $p['img'] . '.webp')) ?>" alt="<?= e($p['alt']) ?>" width="<?= (int) $p['w'] ?>" height="<?= (int) $p['h'] ?>" loading="lazy" decoding="async">
+          <?php if ($n === 'ig'): ?>
+            <div class="soc-icons" aria-hidden="true"><svg viewBox="0 0 24 24" class="ic"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><svg viewBox="0 0 24 24" class="ic"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><svg viewBox="0 0 24 24" class="ic"><path d="M21 4 3 11l7 2 2 7 9-16z"/></svg></div>
+            <div class="soc-likes"><?= e($p['meta']) ?></div>
+            <div class="soc-cap"><b><?= e($p['handle']) ?></b> <?= e($p['cap']) ?> <span class="soc-tags"><?= e($p['tags']) ?></span></div>
+          <?php else: ?>
+            <div class="soc-stats"><span class="soc-react"><?= $n === 'fb' ? '<i style="background:#1877f2">&#128077;</i><i style="background:#f33e58">&#10084;</i>' : '<i style="background:#0a66c2">&#128077;</i><i style="background:#df704d">&#128079;</i>' ?> <span style="margin-left:6px"><?= e($p['meta']) ?></span></span><span><?= e($p['meta2']) ?></span></div>
+            <div class="soc-act" aria-hidden="true"><?php foreach ($n === 'fb' ? ['Like', 'Comment', 'Share'] : ['Like', 'Comment', 'Repost', 'Send'] as $a): ?><span><?= $a ?></span><?php endforeach; ?></div>
+          <?php endif; ?>
+        </article>
+        <?php endforeach; ?>
       </div>
     </div>
-    <script>
-      (function () {
-        var s = document.getElementById('social'); if (!s) return;
-        var post = s.querySelector('.soc-post');
-        Array.prototype.forEach.call(s.querySelectorAll('.soc-tab'), function (b) {
-          b.addEventListener('click', function () {
-            post.setAttribute('data-net', b.getAttribute('data-net'));
-            Array.prototype.forEach.call(s.querySelectorAll('.soc-tab'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-          });
-        });
-      })();
-    </script>
   </section>
 
   <?php /* 06 — REVIEW QUEUE + TEAM */ ?>
