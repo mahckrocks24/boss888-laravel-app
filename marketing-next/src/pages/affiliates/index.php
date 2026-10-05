@@ -201,7 +201,7 @@ JS;
         <div class="af-mini"><span class="c-3">Video description</span><span>Build your site with LevelUpGrowth. Use code <code>MIRA10</code> for 10% off.</span></div></div>
       <div class="lg-glass af-step"><span class="af-step__n">05 · THEM</span><h3>They sign up with it</h3><p>Their discount is saved on the spot. Arthur builds their website, Sarah and the AI team start on their marketing.</p>
         <div class="af-mini"><span class="c-3">Have a code?</span><div class="row"><code>MIRA10</code><span class="ok"><?= $check ?> 10% off</span></div></div></div>
-      <div class="lg-glass af-step"><span class="af-step__n">06 · YOU</span><h3>Earn on their first 6 payments</h3><p>Your share lands on <b>each of their first 6 monthly payments</b>, once on a yearly plan, and on the first year of every new domain.</p>
+      <div class="lg-glass af-step"><span class="af-step__n">06 · YOU</span><h3>Earn on their first 6 payments</h3><p>Your share lands on <b>each of their first 6 monthly payments</b>, once on a yearly plan, and once on every new domain they register.</p>
         <div class="af-mini"><div class="row"><span class="c-3">Pro, 10% code</span><b><?= $m2($pro * .10) ?> each</b></div><div class="af-ticks"><i></i><i></i><i></i><i></i><i></i><i></i></div></div></div>
       <div class="lg-glass af-step"><span class="af-step__n">07 · US</span><h3>Get paid on the 15th</h3><p>After a 30-day hold, everything ready is paid every month by PayPal or Wise, from $50.</p>
         <div class="af-mini"><div class="row"><span class="c-3">Payout</span><b><?= $m2($pro * .10 * 6) ?></b></div><span class="ok"><?= $check ?> Sent on the 15th</span></div></div>
@@ -272,7 +272,7 @@ JS;
     <div class="af-share">
       <div class="lg-glass af-card"><span class="t-eyebrow">Monthly plans</span><span class="af-pct">20%</span><span class="t-subhead t-strong">of <span class="af-hl">each of their first 6 monthly payments</span></span><span class="t-footnote c-3">Standard code: 5% off for them, 15% for you</span></div>
       <div class="lg-glass af-card"><span class="t-eyebrow">Yearly plans</span><span class="af-pct">15%</span><span class="t-subhead t-strong">of the yearly payment, once</span><span class="t-footnote c-3">Standard code: 5% off for them, 10% for you</span></div>
-      <div class="lg-glass af-card"><span class="t-eyebrow">New domains</span><span class="af-pct">10%</span><span class="t-subhead t-strong">of each new domain's first year, once</span><span class="t-footnote c-3">Standard code: 5% off for them, 5% for you</span></div>
+      <div class="lg-glass af-card"><span class="t-eyebrow">New domains</span><span class="af-pct">10%</span><span class="t-subhead t-strong">of each new domain registration, once</span><span class="t-footnote c-3">1, 2 or 3 years paid up front: one fee on the whole amount. Renewals do not earn.</span><span class="t-footnote c-3">Standard code: 5% off for them, 5% for you</span></div>
     </div>
     <p class="t-footnote c-3" style="margin-top:16px">Commission is worked out on the price before the discount and before tax, held for 30 days in case of a refund, then paid on the 15th. Credit top-ups, domain renewals and your own businesses do not earn. <a href="/next/legal/affiliates/">Read the affiliate terms</a>.</p>
   </div>

@@ -5,7 +5,7 @@ Yes, the LevelUpGrowth Affiliate Program. Creators, vloggers, bloggers, newslett
 Links: /affiliates/
 
 ## How much do affiliates earn?
-Each business that signs up with an affiliate's code carries a share of what it pays: 20% of each of its first 6 monthly payments, 15% of a yearly plan (once), and 10% of the first year of every new domain it registers (domains are yearly, so this is paid once per domain). A code with no discount keeps the whole share for the affiliate. For example, one business on Pro at $199 a month earns the affiliate $39.80 a month for 6 payments.
+Each business that signs up with an affiliate's code carries a share of what it pays: 20% of each of its first 6 monthly payments, 15% of a yearly plan (once), and 10% of every new domain registration, paid once whatever the term (a 3-year registration earns one fee on the whole amount; renewals do not earn). A code with no discount keeps the whole share for the affiliate. For example, one business on Pro at $199 a month earns the affiliate $39.80 a month for 6 payments.
 Links: /affiliates/
 
 ## Can an affiliate give my audience a discount?

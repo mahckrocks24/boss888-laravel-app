@@ -13,7 +13,7 @@ $pages[] = ['slug' => 'affiliates', 'title' => 'Affiliate Program Terms', 'sourc
 <ul>
 <li><strong>Monthly plans:</strong> 20% of the plan price, on the business's first 6 monthly payments.</li>
 <li><strong>Yearly plans:</strong> 15% of the yearly price, on the first yearly payment.</li>
-<li><strong>New domain registrations:</strong> 10% of the first-year registration price of each new domain the business registers during its first year with LevelUpGrowth, once. Later years and renewals do not earn.</li>
+<li><strong>New domain registrations:</strong> 10% of the registration price the business pays for each new domain it registers during its first year with LevelUpGrowth, once per registration, whatever the term (a registration of 1, 2 or 3 years paid up front earns one fee on the whole amount). Renewals do not earn.</li>
 </ul>
 <p>A code with no discount gives you the full share. A code can instead give the business part of the share as a discount, and your commission is what remains. Shares are worked out on the price before any discount and before tax. We may raise an affiliate's share by written agreement.</p>
 <p>The following do not earn: free trials until their first payment, credit top-ups, domain renewals, promotional domain prices below our cost, payments that are refunded or disputed, and any account, business or workspace that you own, manage, belong to or control.</p>
