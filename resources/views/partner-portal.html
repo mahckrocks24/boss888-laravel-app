@@ -113,7 +113,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   function note(t, body, extra) { A.innerHTML = '<div class="auth card"><h1>' + t + '</h1><p class="sub">' + body + '</p>' + extra + '</div>'; }
 
   function signin(msg) {
-    A.innerHTML = '<div class="auth"><div class="card"><h1>Affiliate portal</h1><p class="sub">Sign in with your LevelUpGrowth login to see your referrals, links, codes and earnings.</p>' +
+    A.innerHTML = '<div class="auth"><div class="card"><h1>Affiliate portal</h1><p class="sub">Sign in with your LevelUpGrowth login to see your codes, referrals and earnings.</p>' +
       '<form id="f-in"><div class="fld"><label for="in-e">Email</label><input class="inp" id="in-e" type="email" autocomplete="email" required></div>' +
       '<div class="fld"><label for="in-p">Password</label><input class="inp" id="in-p" type="password" autocomplete="current-password" required></div>' +
       '<p class="err" id="in-err" ' + (msg ? '' : 'hidden') + '>' + esc(msg || '') + '</p><button class="btn" style="width:100%" type="submit">Sign in</button></form>' +
@@ -132,7 +132,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
   function apply(signedIn) {
     var who = signedIn && S.me ? S.me.user : null;
     A.innerHTML = '<div class="auth" style="max-width:560px"><div class="card"><h1>Become a LevelUpGrowth affiliate</h1>' +
-      '<p class="sub">Share your link or your own code. On every business you bring, you choose how to split the reward: up to 20% of their monthly plan for 6 months, 15% of a yearly plan, 10% of new domains, shared between their discount and your commission.</p>' +
+      '<p class="sub">Share your own code. On every business that signs up with it, you choose how to split the reward: up to 20% of their monthly plan for 6 months, 15% of a yearly plan, 10% of new domains, shared between their discount and your commission.</p>' +
       '<form id="f-ap">' + (who ? '<p class="sub">Applying as <b>' + esc(who.name) + '</b> (' + esc(who.email) + ').</p>' :
         '<div class="fld"><label for="ap-n">Your name</label><input class="inp" id="ap-n" autocomplete="name" required></div>' +
         '<div class="fld"><label for="ap-e">Email</label><input class="inp" id="ap-e" type="email" autocomplete="email" required></div>' +
@@ -140,7 +140,7 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
       '<div class="fld"><label for="ap-d">Name to show on your codes <span style="color:var(--t3);font-weight:400">optional</span></label><input class="inp" id="ap-d" maxlength="120" placeholder="Your channel or brand name"></div>' +
       '<div class="fld"><label for="ap-c">Where you publish</label><input class="inp" id="ap-c" required placeholder="youtube.com/@yourchannel, a blog, a page"></div>' +
       '<div class="fld"><label for="ap-a">Your audience <span style="color:var(--t3);font-weight:400">optional</span></label><textarea class="inp" id="ap-a" maxlength="500" placeholder="Who watches or reads you, and roughly how many"></textarea></div>' +
-      '<div class="chk" id="ap-t" role="checkbox" aria-checked="false" tabindex="0"><span class="box"></span><span>I accept the <a href="/legal/affiliates/" target="_blank" rel="noopener">affiliate terms</a>, including saying clearly when a link or code is an affiliate link.</span></div>' +
+      '<div class="chk" id="ap-t" role="checkbox" aria-checked="false" tabindex="0"><span class="box"></span><span>I accept the <a href="/legal/affiliates/" target="_blank" rel="noopener">affiliate terms</a>, including saying clearly that my code is an affiliate code.</span></div>' +
       '<p class="err" id="ap-err" hidden></p><button class="btn" style="width:100%;margin-top:14px" type="submit">Send application</button></form>' +
       (who ? '' : '<p class="sub" style="margin:16px 0 0;text-align:center">Already have an account? <a href="#" id="go-in">Sign in</a> and apply from there.</p>') + '</div></div>';
     var t = $('ap-t'); var tog = function () { t.setAttribute('aria-checked', t.getAttribute('aria-checked') === 'true' ? 'false' : 'true'); };
