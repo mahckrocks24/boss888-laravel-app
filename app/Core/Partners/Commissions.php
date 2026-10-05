@@ -128,6 +128,23 @@ class Commissions
         return $n;
     }
 
+    /** A commission's payment, read back from Stripe: already disputed = reversed in full; already refunded = in proportion. */
+    public function reconcile(int $commissionId): void
+    {
+        try {
+            $c = DB::table('commissions')->where('id', $commissionId)->first();
+            if (! $c || ! $c->payment_intent_id || str_starts_with((string) $c->payment_intent_id, 'pi_cert_')) return;
+            $key = (string) config('billing.stripe.secret_key', env('STRIPE_SECRET_KEY', '')); if ($key === '') return;
+            $pi = (new \Stripe\StripeClient($key))->paymentIntents->retrieve($c->payment_intent_id, ['expand' => ['latest_charge']]);
+            $ch = $pi->latest_charge ?? null; if (! is_object($ch)) return;
+            if (! empty($ch->disputed)) {
+                $this->onRefundOrDispute((object) ['id' => 'reconcile-dispute', 'type' => 'charge.dispute.created', 'data' => (object) ['object' => (object) ['id' => $ch->id, 'charge' => $ch->id, 'payment_intent' => $c->payment_intent_id]]]);
+            } elseif ((int) ($ch->amount_refunded ?? 0) > 0) {
+                $this->onRefundOrDispute((object) ['id' => 'reconcile-refund-' . (int) $ch->amount_refunded, 'type' => 'charge.refunded', 'data' => (object) ['object' => (object) ['id' => $ch->id, 'payment_intent' => $c->payment_intent_id, 'amount' => (int) $ch->amount, 'amount_refunded' => (int) $ch->amount_refunded]]]);
+            }
+        } catch (\Throwable $e) { Log::info('[AFF] reconcile skipped', ['commission' => $commissionId, 'error' => $e->getMessage()]); }
+    }
+
     /** Daily: held commissions become payable after 30 days. */
     public static function release(): int
     {
@@ -142,6 +159,9 @@ class Commissions
         try {
             $id = (int) DB::table('commissions')->insertGetId($row);
             PartnerEmails::safe(fn () => PartnerEmails::commission($id));   // A6 first commission, A8 a reversal
+            // AFF-CERT-1: Stripe does not promise event order - a dispute or refund can arrive BEFORE the payment's
+            // invoice.paid. A new commission therefore checks its payment's state now and reverses what is already gone.
+            if ((int) $row['amount_minor'] > 0 && ! empty($row['payment_intent_id'])) $this->reconcile($id);
             Log::info('[AFF] commission', ['id' => $id, 'affiliate' => $row['affiliate_id'], 'amount' => $row['amount_minor'], 'kind' => $row['kind']]);
             return $id;
         } catch (\Illuminate\Database\QueryException $e) {
