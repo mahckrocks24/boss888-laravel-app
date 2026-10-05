@@ -74,6 +74,7 @@
       #social .soc-strip{position:relative}
       #social .soc-gal{display:flex;gap:20px;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;margin:0 -8px;padding:6px 8px 22px}#social .soc-gal::-webkit-scrollbar{display:none}
       #social .soc-gal>.soc-card{flex:0 0 296px;scroll-snap-align:start}
+      <?php /* GAL-75: home page, desktop: whole cards at 75% (text too), so they keep their shape */ if (empty($socPage)): ?>@media (min-width:901px){#social .soc-gal>.soc-card{zoom:.75}}<?php endif; ?>
       #social .soc-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
       #social .soc-count{display:flex;gap:10px;align-items:flex-start;max-width:760px;font:400 15px/1.5 var(--font);color:var(--ink-2)}#social .soc-count b{color:var(--ink);font-weight:600}#social .soc-count svg{flex:none;width:22px;height:22px;margin-top:1px;color:var(--accent-text,#7c3aed)}
       #social .soc-arrows{display:flex;gap:8px}
