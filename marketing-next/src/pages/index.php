@@ -66,7 +66,7 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
   <section class="mk-sec" id="hero-glass" style="padding-top:150px;padding-bottom:56px">
     <div class="mk-wrap mk-hero">
       <div class="lg-stack gap-5 mk-hero__copy">
-        <span class="lg-badge lg-badge--brand mk-pill" data-hero="1" style="align-self:flex-start;height:30px;padding:0 12px;border-radius:999px"><span class="lg-dot"></span>An AI Growth Team working for You 24/7</span>
+        <span class="lg-badge lg-badge--brand mk-pill" data-hero="1" style="align-self:flex-start;height:30px;padding:0 12px;border-radius:999px"><span class="lg-dot"></span>Your AI Growth Team. Working 24/7</span>
         <h1 class="mk-h1" id="hero-h1">Get&nbsp;found.<br>Get&nbsp;booked. <span class="t-grad">Level&nbsp;Up<br>Your Business Today.</span></h1>
         <p class="mk-lead" data-hero="3">It's time every business gets an agency-level marketing without spending thousands of dollars. Describe your business below and Arthur will build and launch your website today. Sarah will lead your SEO, Social Media, Emails and more.</p>
         <div class="lg-row gap-3" data-hero="4" style="flex-wrap:wrap">
