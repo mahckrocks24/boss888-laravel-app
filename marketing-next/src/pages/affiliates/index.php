@@ -91,6 +91,8 @@ $page['head'] = <<<'CSS'
 .af-feats h3{font-size:18px;margin:4px 0 0;letter-spacing:-.01em}.af-feats p{margin:0;font-size:15px;line-height:1.55;opacity:.8}
 .af-final{border-radius:28px;padding:clamp(28px,5vw,56px);text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
 .af-faq{max-width:820px;margin:0 auto}
+.af-story{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}.af-story li{display:flex;gap:12px;align-items:flex-start;font-size:15.5px;line-height:1.5}
+.af-story__n{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font:700 12px/1 var(--font,inherit);color:#fff;background:var(--brand-grad,linear-gradient(135deg,#8C25D2,#4C86DE));margin-top:1px}
 .af-stack{margin-top:16px;padding:clamp(18px,3vw,28px)}
 .af-chart{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:8px;align-items:end;height:260px}
 .af-col{display:flex;flex-direction:column;align-items:stretch;justify-content:flex-end;height:100%;gap:6px;min-width:0}
@@ -118,6 +120,7 @@ $page['scripts'] = <<<JS
 (function(){
   var P = $plansJson, st = { plan: Math.min(3, P.length - 1), n: 5, d: 5 };
   var host = document.getElementById('af-calc'); if (!host) return;
+  var money0 = function (v) { return '$' + Math.round(v).toLocaleString('en-US'); };
   var money = function (v) { return '\$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var seg = host.querySelector('[data-plans]'), out = function (k) { return host.querySelector('[data-out="' + k + '"]'); };
   seg.innerHTML = P.map(function (p, i) { return '<button type="button" data-i="' + i + '" aria-pressed="' + (i === st.plan) + '">' + p.name + ' \$' + p.price + '</button>'; }).join('');
@@ -136,11 +139,15 @@ $page['scripts'] = <<<JS
     bar.querySelector('.af-bar__them').style.width = pct + '%'; bar.querySelector('.af-bar__you').style.width = (100 - pct) + '%'; bar.querySelector('.af-bar__h').style.left = pct + '%';
     bar.setAttribute('aria-valuenow', st.d); bar.setAttribute('aria-valuetext', 'Customer saves ' + st.d + '%, you earn ' + you + '%');
     host.querySelector('[data-them]').textContent = 'Customer saves ' + st.d + '%'; host.querySelector('[data-you]').textContent = 'You earn ' + you + '%';
-    out('per').textContent = money(per); out('pays').textContent = money(pays) + '/mo';
-    out('paysx').textContent = st.d ? st.d + '% off ' + p.name + ' at ' + money(p.price) + ' for its first 6 monthly payments, then ' + money(p.price) : p.name + ' at the full price, no discount';
-    out('six').textContent = money(per * 6); out('month6').textContent = money(st.n * per * 6);
-    out('month6x').textContent = (st.n * 6) + ' businesses paying at once (6 months × ' + st.n + ' new a month) × ' + money(per) + '. Each pays for 6 months, so it holds there while ' + st.n + ' join every month.';
-    out('year').textContent = money(st.n * per * 57);
+    out('month6').textContent = money0(st.n * per * 6);
+    var story = host.querySelector('[data-story]'), b = function (t) { return '<b>' + t + '</b>'; };
+    story.innerHTML = [
+      'Every business that uses your code pays you ' + b(money(per) + ' a month') + ' for its first 6 months. That is ' + b(money(per * 6)) + ' from one business.',
+      'You bring in ' + b(st.n + ' new businesses') + ' every month, and they add up: ' + st.n + ' pay you in month 1, ' + (st.n * 2) + ' in month 2, ' + (st.n * 3) + ' in month 3.',
+      'By month 6, ' + b((st.n * 6) + ' businesses') + ' are paying you at the same time. That is ' + b(money(st.n * per * 6) + ' a month') + ', and it stays there as long as ' + st.n + ' new ones join each month.',
+      'Over your first 12 months that comes to ' + b(money0(st.n * per * 57)) + '.',
+      st.d ? 'Your customers pay ' + b(money(pays) + ' a month') + ' instead of ' + money(p.price) + ' for their first 6 months, thanks to your ' + st.d + '% code.' : 'Your customers pay the normal price of ' + b(money(p.price) + ' a month') + ', and you keep the whole share.'
+    ].map(function (t, i) { return '<li><span class="af-story__n">' + (i + 1) + '</span><span>' + t + '</span></li>'; }).join('');
     // month on month: in month m, min(m, 6) groups of new businesses are paying (each group pays for 6 payments)
     var chart = document.querySelector('[data-chart]'), note = document.querySelector('[data-stack-note]'), shades = ['#8C25D2', '#7A3FD8', '#6758DC', '#5571DE', '#438ADF', '#25C6D2'];
     if (chart) {
@@ -231,16 +238,13 @@ JS;
         </div>
       </div>
       <div class="af-calc__out">
-        <div><span class="t-eyebrow">In the first year</span><div class="af-big" data-out="year">$0.00</div><span class="t-footnote c-3">from the businesses you bring each month</span></div>
-        <div class="af-out-row"><span>Each business earns you</span><b><span data-out="per">$0.00</span> a month</b></div>
-        <div class="af-out-row"><span>Over its <b>first 6 monthly payments</b></span><b data-out="six">$0.00</b></div>
-        <div class="af-out-row"><span>Your monthly income from month 6<br><span class="t-caption c-3" data-out="month6x"></span></span><b data-out="month6">$0.00</b></div>
-        <div class="af-out-row"><span>Each business pays<br><span class="t-caption c-3" data-out="paysx"></span></span><b data-out="pays">$0.00</b></div>
-        <p class="t-caption c-3" style="margin:0">An example, not a promise: it assumes every business stays on that monthly plan for six payments. Earnings follow the share rules below.</p>
+        <div><span class="t-eyebrow">With your numbers</span><div class="af-big"><span data-out="month6">$0</span><span style="font-size:.42em;font-weight:700;letter-spacing:0"> a month</span></div><span class="t-subhead c-2">is what you could earn once you have been sharing for 6 months.</span></div>
+        <ol class="af-story" data-story></ol>
+        <p class="t-caption c-3" style="margin:0">An example, not a promise: it assumes every business stays on that plan for its first 6 months.</p>
       </div>
     </div>
     <div class="lg-glass af-card af-stack" id="af-stack" aria-label="Your monthly earnings over the first year">
-      <div class="lg-row lg-between" style="flex-wrap:wrap;gap:8px;margin-bottom:14px"><div><span class="t-eyebrow">Your first 12 months</span><h3 style="margin:4px 0 0;font-size:20px;letter-spacing:-.01em">Each colour is one month's new businesses, paying you for 6 payments</h3></div><span class="t-footnote c-3" data-stack-note></span></div>
+      <div class="lg-row lg-between" style="flex-wrap:wrap;gap:8px;margin-bottom:14px"><div><span class="t-eyebrow">Your first 12 months</span><h3 style="margin:4px 0 0;font-size:20px;letter-spacing:-.01em">How your income builds up</h3><p class="t-footnote c-2" style="margin:4px 0 0">Each colour is the businesses that joined in one month. Each group pays you for 6 months, so the bars grow until month 6, then stay level.</p></div><span class="t-footnote c-3" data-stack-note></span></div>
       <div class="af-chart" data-chart></div>
     </div>
   </div>
