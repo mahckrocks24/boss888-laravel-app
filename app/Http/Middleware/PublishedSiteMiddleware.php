@@ -1375,7 +1375,46 @@ class PublishedSiteMiddleware
         $html = preg_replace('#(<link\\s+rel=["\']canonical["\']\\s+href=)["\'][^"\']*["\']#i', '$1"' . e($pageUrl) . '"', $html, 1);
         $html = preg_replace('#(<meta\\s+property=["\']og:url["\']\\s+content=)["\'][^"\']*["\']#i', '$1"' . e($pageUrl) . '"', $html, 1);
         $html = preg_replace_callback('#(<meta\\s+(?:property|name)=["\'](?:og:image|twitter:image)["\']\\s+content=)["\'](/[^"\']*)["\']#i', function ($m) use ($base) { return $m[1] . '"' . $base . $m[2] . '"'; }, $html);
-        return $html;
+        return $this->shareImage($html, $base);
+    }
+
+    /**
+     * OG-SHARE-2: messengers want a small preview image (WhatsApp drops anything over ~300 KB) with its size stated. When the
+     * page's og:image is one of our own stored files, point it at a 1200x630 JPEG copy (cached under storage/og/) and add
+     * width, height and type. Never fails the page: on any problem the original tag stays.
+     */
+    private function shareImage(string $html, string $base): string
+    {
+        try {
+            if (! preg_match('#<meta\s+property=["\']og:image["\']\s+content=["\']([^"\']+)["\'][^>]*>#i', $html, $m)) return $html;
+            $url = html_entity_decode($m[1]); $path = parse_url($url, PHP_URL_PATH) ?: '';
+            if (! str_starts_with($path, '/storage/') || str_starts_with($path, '/storage/og/')) return $html;
+            $file = public_path(rawurldecode($path));
+            if (! is_file($file) || ! function_exists('imagecreatefromstring')) return $html;
+            $key = substr(md5($path . '|' . filemtime($file)), 0, 20);
+            $rel = 'og/' . $key . '.jpg'; $out = storage_path('app/public/' . $rel);
+            if (! is_file($out)) {
+                if (filesize($file) > 25 * 1024 * 1024) return $html;
+                $src = @imagecreatefromstring((string) file_get_contents($file)); if (! $src) return $html;
+                $w = imagesx($src); $h = imagesy($src); $tw = 1200; $th = 630;
+                $scale = max($tw / $w, $th / $h); $cw = (int) round($tw / $scale); $ch = (int) round($th / $scale);
+                $dst = imagecreatetruecolor($tw, $th); imagefill($dst, 0, 0, imagecolorallocate($dst, 255, 255, 255));
+                imagecopyresampled($dst, $src, 0, 0, (int) (($w - $cw) / 2), (int) (($h - $ch) / 2), $tw, $th, $cw, $ch);
+                @mkdir(dirname($out), 0775, true); imagejpeg($dst, $out . '.tmp', 82); @rename($out . '.tmp', $out);
+                imagedestroy($src); imagedestroy($dst);
+                if (! is_file($out)) return $html;
+            }
+            $new = $base . '/storage/' . $rel;
+            $html = str_replace($m[0], '<meta property="og:image" content="' . e($new) . '">', $html);
+            $html = preg_replace('#(<meta\s+(?:property|name)=["\']twitter:image["\']\s+content=)["\'][^"\']*["\']#i', '$1"' . e($new) . '"', $html, 1);
+            $html = preg_replace('#<meta\s+property=["\']og:image:(?:width|height|type|secure_url)["\'][^>]*>\s*#i', '', $html);
+            $tags = '<meta property="og:image" content="' . e($new) . '">' . "\n" . '<meta property="og:image:secure_url" content="' . e($new) . '">' . "\n"
+                . '<meta property="og:image:type" content="image/jpeg">' . "\n" . '<meta property="og:image:width" content="1200">' . "\n" . '<meta property="og:image:height" content="630">';
+            return str_replace('<meta property="og:image" content="' . e($new) . '">', $tags, $html);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::info('[OG-SHARE-2] share image skipped', ['error' => $e->getMessage()]);
+            return $html;
+        }
     }
 
     /**

@@ -29,6 +29,13 @@ $jsonld = array_merge([[
 <meta property="og:description" content="<?= e($page['description']) ?>">
 <meta property="og:url" content="<?= e($canonical) ?>">
 <meta property="og:image" content="<?= e($og) ?>">
+<?php /* OG-SHARE-1: Messenger and WhatsApp show the picture on the first share only when its size and type are stated */ $ogType = preg_match('/\.jpe?g(\?|$)/i', $og) ? 'image/jpeg' : (preg_match('/\.webp(\?|$)/i', $og) ? 'image/webp' : 'image/png'); ?>
+<meta property="og:image:secure_url" content="<?= e($og) ?>">
+<meta property="og:image:type" content="<?= $ogType ?>">
+<meta property="og:image:width" content="<?= (int) ($page['og_image_w'] ?? 1200) ?>">
+<meta property="og:image:height" content="<?= (int) ($page['og_image_h'] ?? 630) ?>">
+<meta property="og:image:alt" content="<?= e($page['og_image_alt'] ?? $title) ?>">
+<meta name="twitter:image" content="<?= e($og) ?>">
 <meta name="twitter:card" content="summary_large_image">
 <?php if (!empty($page['noindex']) || !empty($data['preview'])): ?><meta name="robots" content="noindex,nofollow"><?php endif; ?>
 <link rel="icon" href="/img/favicon-32.png" sizes="32x32">

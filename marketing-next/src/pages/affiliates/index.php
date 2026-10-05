@@ -8,7 +8,8 @@
  * claimed that the platform does not do. No supplier names except the two payout options the affiliate chooses between.
  */
 $page['title'] = 'Affiliate Program';
-$page['og_image'] = rtrim($data['site']['url'] ?? 'https://levelupgrowth.io', '/') . '/next/assets/og/affiliates-featured.png';   // AFF-PAGE-9 (Owner: "add a nice featured image")
+$page['og_image'] = rtrim($data['site']['url'] ?? 'https://levelupgrowth.io', '/') . '/next/assets/og/affiliates-featured.jpg';   // OG-SHARE-1: JPEG under WhatsApp's limit
+$page['og_image_alt'] = 'LevelUpGrowth Affiliate Program: share your code, get paid 6 times for every business';   // AFF-PAGE-9 (Owner: "add a nice featured image")
 $page['description'] = 'Recommend LevelUpGrowth with your own voucher code and earn up to 20% of their first 6 monthly payments. You decide how much becomes your audience\'s discount.';
 $by = []; foreach ($data['plans'] as $p) { $by[$p['slug']] = $p; }
 $calcPlans = array_values(array_filter(array_map(fn ($s) => isset($by[$s]) ? ['name' => $by[$s]['name'], 'price' => (float) $by[$s]['price_monthly']] : null, ['starter', 'ai-lite', 'growth', 'pro', 'agency'])));
@@ -31,12 +32,6 @@ $faq = [
 $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => array_map(fn ($q) => ['@type' => 'Question', 'name' => $q[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $q[1]]], $faq)];
 $check = '<svg class="ic ic--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
 $page['head'] = <<<'CSS'
-<meta property="og:image:secure_url" content="https://levelupgrowth.io/assets/og/affiliates-featured.png">
-<meta property="og:image:type" content="image/png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="LevelUpGrowth Affiliate Program: share your code, get paid 6 times for every business">
-<meta name="twitter:image" content="https://levelupgrowth.io/assets/og/affiliates-featured.png">
 <style id="af-css">
 .af{--af-gap:clamp(56px,8vw,104px)}
 .af-sec{padding:var(--af-gap) 0}
