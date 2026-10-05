@@ -86,7 +86,9 @@ final class BrandMotionRenderer
 
         $kit = [];
         try { $kit = (array) app(\App\Core\Brand\WorkspaceBrandKitResolver::class)->resolve($ws, $biz); } catch (\Throwable) {}
-        $logoUrl = trim((string) ($kit['logo_url'] ?? ''));
+        // VIDEO-RENDER-1: a site path ("/storage/...") never loads in the layer page, which renders from a local file
+        $logoUrl = trim((string) (str_starts_with($__l = (string) ($kit['logo_url'] ?? ''), '/') && ! str_starts_with($__l, '//') ? rtrim((string) config('app.url'), '/') . $__l : $__l));
+        if ($logoUrl !== '' && self::logoIsBlank($logoUrl)) $logoUrl = '';   // VIDEO-RENDER-4: an empty logo file is no logo
         // a logo and an end card speak for ONE business: only when the clip belongs to a known business of this workspace
         // (photo probe: an unattributed clip showed the workspace's own name and another business's website)
         $bizKnown = $biz && DB::table('businesses')->where('id', $biz)->where('workspace_id', $ws)->whereNull('deleted_at')->exists();
@@ -131,6 +133,8 @@ final class BrandMotionRenderer
         if ($col === 2) $css .= "$sel{right:{$px($sR + 0.02, $w)}px!important;left:auto!important}\n";
         $css .= "$sel{max-width:" . $px(1 - $sL - $sR - 0.02, $w) . "px!important}\n";
         if ($layout === 'A1') $css .= ".lock{bottom:{$px($sB + 0.02, $h)}px!important}\n";
+        // VIDEO-RENDER-2: a vertical or square clip is watched on a phone - small copy is lifted to a readable size
+        if ($w <= $h * 1.05) $css .= '.copy,.sub{font-size:' . $px(0.036, $w) . 'px!important}' . "\n" . '.wm{font-size:' . $px(0.03, $w) . 'px!important}.wd{font-size:' . $px(0.017, $w) . 'px!important}' . "\n";
 
         // corner logo (zone layout; A1 already carries its lockup): the top corner opposite the text, inside the safe zone
         $logoHtml = '';
@@ -183,8 +187,12 @@ final class BrandMotionRenderer
             $ink = preg_match('/^#[0-9a-f]{6}$/i', (string) ($kit['primary_color'] ?? '')) ? (string) $kit['primary_color'] : '#0B0A09';
             $fh = $useHead !== '' ? $useHead : 'DejaVu Serif';
             $fb = $useBody !== '' ? $useBody : 'DejaVu Sans';
+            // VIDEO-RENDER-3: a dark logo on a dark card gets a light plate (it vanished on the brand colour)
+            $__inkLum = (function (string $hx) { $hx = ltrim($hx, '#'); return strlen($hx) === 6 ? (0.2126 * hexdec(substr($hx, 0, 2)) + 0.7152 * hexdec(substr($hx, 2, 2)) + 0.0722 * hexdec(substr($hx, 4, 2))) / 255 : 0.0; })($ink);
+            $__plate = $logoUrl !== '' && $__inkLum < 0.5 && ! self::logoIsLight($logoUrl);
             $mark = $logoUrl !== ''
-                ? '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="" style="height:' . ($vertical ? $px(0.16, $w) : $px(0.16, $h)) . 'px;width:auto;display:block;margin:0 auto 4%">'
+                ? ($__plate ? '<div style="display:inline-block;background:rgba(250,248,244,.94);border-radius:' . $px(0.02, $vertical ? $w : $h) . 'px;padding:' . $px(0.022, $vertical ? $w : $h) . 'px ' . $px(0.04, $vertical ? $w : $h) . 'px;margin:0 auto 4%">' : '')
+                  . '<img src="' . htmlspecialchars($logoUrl, ENT_QUOTES, 'UTF-8') . '" alt="" style="height:' . ($vertical ? $px(0.16, $w) : $px(0.16, $h)) . 'px;width:auto;display:block;margin:' . ($__plate ? '0 auto' : '0 auto 4%') . '">' . ($__plate ? '</div>' : '')
                 : '<div style="font-family:\'' . $fh . '\',\'DejaVu Serif\',serif;font-weight:600;font-size:' . ($vertical ? $px(0.075, $w) : $px(0.085, $h)) . 'px;color:#fff;letter-spacing:.01em;line-height:1.1">' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '</div>';
             $endHtml = '<div class="ec" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;background:' . $ink . 'eb;padding:0 10%">'
                 . '<div>' . $mark
@@ -290,6 +298,22 @@ final class BrandMotionRenderer
             $sum += abs($c - $lum(imagecolorat($im, $xx + 1, $yy))) + abs($c - $lum(imagecolorat($im, $xx, $yy + 1))); $n++;
         }
         return $n ? $sum / $n : 0.0;
+    }
+
+    /** VIDEO-RENDER-4: a logo that has no visible pixel (fully transparent, or an unreadable image read from our own storage). */
+    public static function logoIsBlank(string $url): bool
+    {
+        try {
+            $own = rtrim((string) config('app.url'), '/') . '/storage/';
+            if (! str_starts_with($url, $own)) return false;   // a remote logo is trusted; only our own files are measured
+            $p = substr($url, strlen($own));
+            if (! \Illuminate\Support\Facades\Storage::disk('public')->exists($p)) return true;
+            $im = @imagecreatefromstring((string) \Illuminate\Support\Facades\Storage::disk('public')->get($p));
+            if (! $im) return true;
+            $w = imagesx($im); $h = imagesy($im); $step = max(1, (int) floor(min($w, $h) / 60));
+            for ($y = 0; $y < $h; $y += $step) for ($x = 0; $x < $w; $x += $step) { if (((imagecolorat($im, $x, $y) >> 24) & 0x7F) < 120) return false; }
+            return true;
+        } catch (\Throwable) { return false; }
     }
 
     /** Is the logo mostly light (a white wordmark) - measured on its opaque pixels. */

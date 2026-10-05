@@ -475,7 +475,7 @@ HTML;
         $ebHtml = $eb !== '' ? '<div class="eb">' . htmlspecialchars($eb, ENT_QUOTES, 'UTF-8') . '</div>' : '';
 
         // logo lockup: the logo file when there is one, else a wordmark with the descriptor under it
-        $logo = (string) ($kit['logo_url'] ?? '');
+        $logo = (string) (str_starts_with($__l = (string) ($kit['logo_url'] ?? ''), '/') && ! str_starts_with($__l, '//') ? rtrim((string) config('app.url'), '/') . $__l : $__l);   // VIDEO-RENDER-1: a site path never loads in a page rendered from a local file
         $desc = trim((string) ($kit['tagline'] ?? '')) ?: trim((string) ($kit['industry'] ?? ''));
         $lockup = $logo !== ''
             ? '<img class="logo" src="' . htmlspecialchars($logo, ENT_QUOTES, 'UTF-8') . '" alt="">'
