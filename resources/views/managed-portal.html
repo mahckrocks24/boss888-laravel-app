@@ -482,7 +482,7 @@ html:not([data-theme="light"]) .bub{background:rgba(255,255,255,.06)}
     var s = P.data.status || {}, w = s.website || {}, e = s.email || {}, c = s.certificate || {}, d = certDays();
     return [
       { ic: I.globe, st: w.state, t: w.label || 'Website', d: (w.uptime_30d != null ? w.uptime_30d + '% uptime, last 30 days' : 'Uptime not measured yet'), m: s.checked_at ? 'Checked ' + ago(s.checked_at) + ' · every 5 minutes' : '' },
-      { ic: I.mail, st: e.state, t: e.label || 'Email', d: 'Receiving mail for ' + (s.host || 'your domain'), m: 'Checked every 10 minutes' },
+      { ic: I.mail, st: e.state, t: e.label || 'Email', d: e.detail || ('Receiving mail for ' + (s.host || 'your domain')), m: 'Checked every 10 minutes' + (e.on_levelupgrowth === false ? ' · not yet hosted by LevelUpGrowth' : '') },
       { ic: I.lock, st: c.state, t: 'Secure connection', d: c.label || 'Certificate status unavailable', m: d != null ? d + ' days left · renewed automatically' : '' }
     ];
   }
@@ -550,7 +550,7 @@ html:not([data-theme="light"]) .bub{background:rgba(255,255,255,.06)}
       '<div class="card hero"><div><span class="pill info">' + I.mail.replace('<svg', '<svg style="width:13px;height:13px"') + 'On your current provider</span>' +
         '<h2>Your team’s email keeps working exactly as it does today</h2>' +
         '<p>Your mailboxes are still with your current email provider. When we move them to LevelUpGrowth, you will manage everyone’s mailbox here, and we will agree the date with you first. Nothing changes until then.</p></div>' +
-        '<dl class="kv"><dt>Domain</dt><dd>' + esc(host) + '</dd><dt>Mail delivery</dt><dd style="color:var(--ac)">Working</dd><dt>Mailboxes on LevelUpGrowth</dt><dd>0</dd><dt>Included in your package</dt><dd>Up to 10</dd></dl></div>' +
+        '<dl class="kv"><dt>Domain</dt><dd>' + esc(host) + '</dd><dt>Mail delivery</dt><dd style="color:var(--ac)">Receiving (current provider)</dd><dt>Mailboxes on LevelUpGrowth</dt><dd>0</dd><dt>Included in your package</dt><dd>Up to 10</dd></dl></div>' +
       '<div class="card"><div class="card-h"><div><h2>How the move works</h2><p>Planned with you, done by us. No mail is lost and nobody is cut off.</p></div><span class="pill">Not scheduled</span></div>' +
         '<div class="card-b"><div class="steps">' +
           '<div class="step cur"><div class="n">1</div><b>Agree the list</b><span>We confirm with you who needs a mailbox and which addresses stay.</span></div>' +

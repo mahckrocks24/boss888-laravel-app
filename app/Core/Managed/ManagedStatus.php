@@ -32,7 +32,7 @@ final class ManagedStatus
         return [
             'host'        => $host,
             'website'     => self::website($check),
-            'email'       => $host ? self::email(self::apex($host)) : ['state' => 'unknown', 'label' => 'Email status unavailable'],
+            'email'       => $host ? self::email(self::apex($host), $workspaceId) : ['state' => 'unknown', 'label' => 'Email status unavailable'],
             'certificate' => $host ? self::certificate($host) : ['state' => 'unknown', 'label' => 'Certificate status unavailable'],
             'checked_at'  => $check?->last_checked_at ? \Illuminate\Support\Carbon::parse($check->last_checked_at)->toIso8601String() : null,
         ];
@@ -64,7 +64,37 @@ final class ManagedStatus
         ];
     }
 
-    private static function email(string $domain): array
+    private static function email(string $domain, int $workspaceId = 0): array
+    {
+        // Is this domain's mail on our service yet? Until it is, the check reports the client's CURRENT provider and
+        // must say so (Owner 2026-10-05: "how come it says working when we have not migrated it yet").
+        $ours = false;
+        try {
+            $ours = \Illuminate\Support\Facades\DB::table('email_domains')->where('workspace_id', $workspaceId)->where('domain', $domain)->exists();
+        } catch (\Throwable $e) {}
+        $r = self::mailCheck($domain);
+        $r['on_levelupgrowth'] = $ours;
+        if (! $ours) {
+            $r['label'] = match ($r['state']) {
+                'ok'    => 'Email on your current provider',
+                'warn'  => 'Your current email provider is slow to answer',
+                'bad'   => 'Your current email provider is not receiving mail',
+                default => 'Email status unavailable',
+            };
+            $r['detail'] = match ($r['state']) {
+                'ok'    => 'Receiving mail normally for ' . $domain,
+                'warn'  => 'We are checking it and will tell you if action is needed',
+                'bad'   => 'We are checking it and will contact you',
+                default => '',
+            };
+        } else {
+            $r['detail'] = $r['state'] === 'ok' ? 'Receiving mail for ' . $domain . ' on LevelUpGrowth' : 'We are checking it';
+        }
+
+        return $r;
+    }
+
+    private static function mailCheck(string $domain): array
     {
         return Cache::remember('managed:mx:' . $domain, 600, function () use ($domain) {
             $mx = @dns_get_record($domain, DNS_MX) ?: [];
