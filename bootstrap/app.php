@@ -68,6 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // PUBLISHER888 Unit 1 (2026-09-04) — desk-scheduled stories go live on time.
         // RESUME888 — retention sweep for the resume builder.
         // RFC-0026: commissions held 30 days become payable
+        $schedule->call(fn () => \App\Core\Partners\PartnerEmails::tick())->name('partners:mail')->when(fn () => is_file(storage_path('app/aff1.on')))->dailyAt('09:20')->withoutOverlapping();   // RFC-0026 11a
         $schedule->call(fn () => \App\Core\Partners\Commissions::release())->name('partners:release')->when(fn () => is_file(storage_path('app/aff1.on')))->dailyAt('02:40')->withoutOverlapping();
         $schedule->command('resume:purge')->name('resume:purge')->dailyAt('03:20')->withoutOverlapping();
 

@@ -78,6 +78,7 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
         // a suspended or closed partner's codes stop working at once; their earned money stays in the ledger for review
         if (in_array($to, ['suspended', 'closed'], true)) DB::table('vouchers')->where('affiliate_id', $id)->where('status', 'active')->update(['status' => 'paused', 'updated_at' => now()]);
         $audit($r, $in['action'], 'Affiliate', $id, ['from' => $a->status, 'to' => $to, 'note' => $in['note'] ?? null]);
+        \App\Core\Partners\PartnerEmails::safe(fn () => \App\Core\Partners\PartnerEmails::decided($id, $to, $in['note'] ?? null));   // A2 / A2r
         return response()->json(['success' => true, 'status' => $to]);
     })->whereNumber('id')->middleware('mfa.stepup');
 
@@ -161,6 +162,28 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
         $audit($r, 'commission_' . $in['action'], 'Commission', $id, ['note' => $in['note'], 'from' => $c->status, 'amount' => $c->amount_minor]);
         return response()->json(['success' => true]);
     })->whereNumber('id')->middleware('mfa.stepup');
+
+    // RFC-0026 section 7: the monthly payout run
+    Route::get('/payouts', fn () => response()->json(['preview' => \App\Core\Partners\PartnerPayouts::preview(), 'bank_available' => \App\Core\Partners\PartnerPayouts::connectEnabled(),
+        'min_minor' => PartnerProgram::MIN_PAYOUT_MINOR, 'period' => now()->format('Y-m'),
+        'history' => DB::table('payouts as p')->leftJoin('affiliates as a', 'a.id', '=', 'p.affiliate_id')->orderByDesc('p.id')->limit(500)->get(['p.*', 'a.display_name as partner', 'a.payout_email'])]));
+    Route::post('/payouts/run', function (Request $r) use ($audit) {
+        $in = $r->validate(['period' => ['required', 'regex:/^\d{4}-\d{2}$/']]);
+        $res = \App\Core\Partners\PartnerPayouts::run($in['period'], (int) $r->user()->id);
+        $audit($r, 'payout_run', 'Payout', 0, $in + $res);
+        return response()->json(['success' => true] + $res);
+    })->middleware('mfa.stepup');
+    Route::post('/payouts/{id}/record', function (Request $r, int $id) use ($audit) {
+        $in = $r->validate(['reference' => 'required|string|min:3|max:120']);
+        $res = \App\Core\Partners\PartnerPayouts::record($id, $in['reference'], (int) $r->user()->id);
+        if ($res['ok']) $audit($r, 'payout_recorded', 'Payout', $id, $in);
+        return response()->json($res + ['success' => $res['ok']], $res['ok'] ? 200 : 422);
+    })->whereNumber('id')->middleware('mfa.stepup');
+    Route::post('/payouts/{id}/cancel', function (Request $r, int $id) use ($audit) {
+        $res = \App\Core\Partners\PartnerPayouts::cancel($id);
+        if ($res['ok']) $audit($r, 'payout_cancelled', 'Payout', $id);
+        return response()->json($res + ['success' => $res['ok']], $res['ok'] ? 200 : 422);
+    })->whereNumber('id');
 
     Route::get('/flags', fn (Request $r) => response()->json(['flags' => DB::table('affiliate_flags as f')->leftJoin('affiliates as a', 'a.id', '=', 'f.affiliate_id')
         ->when($r->query('status', 'open') !== 'all', fn ($q) => $q->where('f.status', $r->query('status', 'open')))->orderByDesc('f.id')->limit(1000)->get(['f.*', 'a.display_name as partner', 'a.handle'])]));

@@ -130,9 +130,14 @@ class Attribution
         if ($exists) {
             if (! $replace || $exists->locked_at) return false;
             DB::table('referrals')->where('id', $exists->id)->update($row);
+            $refId = (int) $exists->id;
         } else {
-            DB::table('referrals')->insert($row + ['workspace_id' => $wsId, 'created_at' => now()]);
+            $refId = (int) DB::table('referrals')->insertGetId($row + ['workspace_id' => $wsId, 'created_at' => now()]);
         }
+        PartnerEmails::safe(function () use ($a, $v, $refId) {   // A5 to the partner, C1 to the customer
+            if ($a) PartnerEmails::firstSignup((int) $a->id, $refId);
+            if ($v) PartnerEmails::customerCode($refId);
+        });
         Log::info('[AFF] referral', ['ws' => $wsId, 'affiliate' => $a->id ?? null, 'voucher' => $v->code ?? null, 'source' => $source]);
         return true;
     }

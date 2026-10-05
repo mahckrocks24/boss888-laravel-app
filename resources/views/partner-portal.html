@@ -293,19 +293,53 @@ textarea.inp{min-height:84px;padding:10px 13px;resize:vertical}
     });
   }
 
+  // RFC-0026 section 7: how the partner is paid - PayPal or Wise now, a bank account once bank payouts open
+  function payoutBox() {
+    var box = $('payout-box'); if (!box) return;
+    api('GET', '/partner/payout').then(function (r) {
+      var d = r.j || {}, ms = d.methods || {}, cur = d.method || (d.bank_available ? 'stripe' : 'paypal'), sel = cur;
+      function draw() {
+        var keys = Object.keys(ms);
+        var h = (d.method ? '<p style="margin:0 0 12px">' + (d.ready ? '<span class="pill g">Ready to be paid</span> ' : '<span class="pill a">Not ready yet</span> ') +
+            '<span style="color:var(--t2);font-size:14px">' + esc(ms[d.method] || d.method) + (d.email && d.method !== 'stripe' ? ' · ' + esc(d.email) : '') + '</span></p>' : '<p class="sub" style="margin:0 0 12px">Choose where your money goes. Payouts go out on the 15th once your ready balance is at least ' + usd(S.me.min_payout) + '.</p>') +
+          '<div class="seg" role="group" aria-label="Payout method" style="margin-bottom:12px">' + keys.map(function (k) { return '<button type="button" data-pm="' + k + '" aria-pressed="' + (sel === k) + '">' + esc(ms[k]) + '</button>'; }).join('') + '</div>';
+        if (sel === 'stripe') {
+          h += d.method === 'stripe' && d.ready ? '<div class="row"><button class="btn ghost" id="pm-dash" type="button">View my payouts</button></div>'
+            : '<div class="row"><input class="inp" id="pm-cc" maxlength="2" placeholder="Country code, e.g. US" style="max-width:220px;text-transform:uppercase"><button class="btn" id="pm-bank" type="button">' + (d.method === 'stripe' ? 'Finish bank set-up' : 'Connect my bank') + '</button></div>' +
+              (d.due && d.due.length ? '<p class="sub" style="margin:8px 0 0">Still needed: ' + d.due.length + ' detail' + (d.due.length === 1 ? '' : 's') + '.</p>' : '');
+        } else {
+          h += '<div class="row"><input class="inp" id="pm-email" type="email" autocomplete="email" placeholder="Email of your ' + esc(ms[sel] || '') + ' account" value="' + esc(d.method === sel ? (d.email || '') : '') + '"><button class="btn" id="pm-save" type="button">Save</button></div>';
+        }
+        if (!d.bank_available) h += '<p class="sub" style="margin:10px 0 0;font-size:13px">Direct bank payouts open soon. Until then we pay by PayPal or Wise.</p>';
+        h += '<p class="err" id="pm-err" hidden></p>';
+        box.innerHTML = h;
+        Array.prototype.forEach.call(box.querySelectorAll('[data-pm]'), function (b) { b.addEventListener('click', function () { sel = b.getAttribute('data-pm'); draw(); }); });
+        var err = function (m) { var e = $('pm-err'); e.hidden = false; e.textContent = m; };
+        if ($('pm-save')) $('pm-save').addEventListener('click', function () { api('POST', '/partner/payout/manual', { method: sel, email: $('pm-email').value }).then(function (x) { if (x.j && x.j.ok) { toast('Saved'); payoutBox(); } else err((x.j && (x.j.error || x.j.message)) || 'Not saved.'); }); });
+        if ($('pm-bank')) $('pm-bank').addEventListener('click', function () { api('POST', '/partner/payout/stripe', { country: ($('pm-cc').value || '').trim() }).then(function (x) { if (x.j && x.j.ok && x.j.url) location.href = x.j.url; else err((x.j && (x.j.error || x.j.message)) || 'Not available.'); }); });
+        if ($('pm-dash')) $('pm-dash').addEventListener('click', function () { api('POST', '/partner/payout/stripe/dashboard').then(function (x) { if (x.j && x.j.ok) window.open(x.j.url, '_blank', 'noopener'); else err('Not available right now.'); }); });
+      }
+      draw();
+    });
+  }
+
   function earnings() {
     pane('<p class="empty">Loading…</p>');
     api('GET', '/partner/money').then(function (r) {
       var m = r.j || {}, b = m.balances || {};
-      var payNote = m.payouts_enabled ? '<span class="pill g">Payouts on</span>' : '<span class="pill a">Payouts open soon</span><p class="sub" style="margin:8px 0 0">You will connect your bank here when payouts go live. Everything you earn until then is kept for you.</p>';
+      var payNote = '<div id="payout-box"><p class="sub" style="margin:0">Loading…</p></div>';
       pane('<div class="grid g3">' + [['Waiting', b.pending, m.next_release ? 'next release ' + day(m.next_release) : 'held 30 days after each payment'], ['Ready to pay', b.payable, 'paid on the 15th from ' + usd(m.min_payout)], ['Paid to you', b.paid, 'all time']]
         .map(function (s) { return '<div class="card stat"><div class="k">' + s[0] + '</div><div class="v">' + usd(s[1]) + '</div><div class="h">' + s[2] + '</div></div>'; }).join('') + '</div>' +
         '<div class="card" style="margin-top:14px"><h2>How you get paid</h2>' + payNote + '</div>' +
+        ((m.payouts || []).length ? '<div class="card"><h2>Payouts</h2><table class="tbl cards"><thead><tr><th>Month</th><th>Paid to</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' + m.payouts.map(function (p) {
+          return '<tr><td data-l="Month">' + esc(p.period) + '</td><td data-l="Paid to">' + esc({ stripe: 'Bank account', paypal: 'PayPal', wise: 'Wise' }[p.method] || p.method) + '</td><td class="num" data-l="Amount">' + usd(p.amount_minor) + '</td><td data-l="Status"><span class="pill ' + (p.status === 'paid' ? 'g' : '') + '">' + esc({ draft: 'Being sent', paid: 'Paid', failed: 'Failed', cancelled: 'Cancelled' }[p.status] || p.status) + '</span></td></tr>';
+        }).join('') + '</tbody></table></div>' : '') +
         '<div class="card"><h2>Every commission</h2>' + ((m.commissions || []).length ? '<table class="tbl cards"><thead><tr><th>Date</th><th>For</th><th class="num">Price</th><th class="num">Rate</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' +
           m.commissions.map(function (c) {
             var lab = { pending: 'Waiting', payable: 'Ready', paid: 'Paid', void: 'Void' }[c.status] || c.status;
-            return '<tr><td data-l="Date">' + day(c.created_at) + '</td><td data-l="For">' + ({ monthly: 'Monthly plan', yearly: 'Yearly plan', domain: 'Domain' }[c.kind] || c.kind) + (c.note ? ' <span style="color:var(--t3)">· ' + esc(c.note) + '</span>' : '') + '</td><td class="num" data-l="Price">' + (c.base_minor ? usd(c.base_minor) : '—') + '</td><td class="num" data-l="Rate">' + (c.rate_bps ? (c.rate_bps / 100) + '%' : '—') + '</td><td class="num" data-l="Amount" style="' + (c.amount_minor < 0 ? 'color:var(--rd)' : '') + '">' + usd(c.amount_minor) + '</td><td data-l="Status"><span class="pill ' + (c.status === 'paid' ? 'g' : c.status === 'payable' ? 'p' : '') + '">' + lab + '</span></td></tr>';
+            return '<tr><td data-l="Date">' + day(c.created_at) + '</td><td data-l="For">' + (c.source_type === 'adjustment' && !c.rate_bps ? (c.amount_minor < 0 ? 'Reversal' : 'Adjustment') : ({ monthly: 'Monthly plan', yearly: 'Yearly plan', domain: 'Domain' }[c.kind] || c.kind)) + (c.note ? ' <span style="color:var(--t3)">· ' + esc(c.note) + '</span>' : '') + '</td><td class="num" data-l="Price">' + (c.base_minor ? usd(c.base_minor) : '—') + '</td><td class="num" data-l="Rate">' + (c.rate_bps ? (c.rate_bps / 100) + '%' : '—') + '</td><td class="num" data-l="Amount" style="' + (c.amount_minor < 0 ? 'color:var(--rd)' : '') + '">' + usd(c.amount_minor) + '</td><td data-l="Status"><span class="pill ' + (c.status === 'paid' ? 'g' : c.status === 'payable' ? 'p' : '') + '">' + lab + '</span></td></tr>';
           }).join('') + '</tbody></table>' : '<p class="empty">No commissions yet.</p>') + '</div>');
+      payoutBox();
     });
   }
 

@@ -141,6 +141,7 @@ class Commissions
         $row += ['status' => 'pending', 'payable_at' => now()->addDays(PartnerProgram::HOLD_DAYS), 'created_at' => now(), 'updated_at' => now()];
         try {
             $id = (int) DB::table('commissions')->insertGetId($row);
+            PartnerEmails::safe(fn () => PartnerEmails::commission($id));   // A6 first commission, A8 a reversal
             Log::info('[AFF] commission', ['id' => $id, 'affiliate' => $row['affiliate_id'], 'amount' => $row['amount_minor'], 'kind' => $row['kind']]);
             return $id;
         } catch (\Illuminate\Database\QueryException $e) {

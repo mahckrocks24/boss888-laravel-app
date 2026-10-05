@@ -101,6 +101,7 @@ return [
     'partners' => ['slug' => 'partners', 'group' => 'Partners', 'label' => 'Partners', 'title' => 'Partners', 'icon' => '&#129309;'],
     'partnerCodes' => ['slug' => 'partners/codes', 'group' => 'Partners', 'label' => 'Codes & promotions', 'title' => 'Codes & promotions', 'icon' => '&#127915;'],
     'partnerCommissions' => ['slug' => 'partners/commissions', 'group' => 'Partners', 'label' => 'Commissions', 'title' => 'Partner commissions', 'icon' => '&#128181;'],
+    'partnerPayouts' => ['slug' => 'partners/payouts', 'group' => 'Partners', 'label' => 'Payouts', 'title' => 'Partner payouts', 'icon' => '&#128184;'],
     'partnerFlags' => ['slug' => 'partners/flags', 'group' => 'Partners', 'label' => 'Flags', 'title' => 'Partner flags', 'icon' => '&#128681;'],
 
     // ── Agents & Tasks ──────────────────────────────────────────

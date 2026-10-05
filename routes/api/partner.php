@@ -16,12 +16,13 @@ $__partnerApply = function (Request $r, \App\Models\User $user) {
     ], ['accept_terms.accepted' => 'Please accept the partner terms.', 'channel_url.required' => 'Tell us where you publish (a channel, page or site).']);
     if (DB::table('affiliates')->where('user_id', $user->id)->exists()) return response()->json(['ok' => false, 'error' => 'You have already applied.'], 409);
     $name = trim((string) ($in['display_name'] ?? '')) ?: $user->name;
-    DB::table('affiliates')->insert(['user_id' => $user->id, 'handle' => PartnerPortal::handleFrom($name), 'display_name' => mb_substr($name, 0, 120), 'status' => 'pending',
+    $affId = DB::table('affiliates')->insertGetId(['user_id' => $user->id, 'handle' => PartnerPortal::handleFrom($name), 'display_name' => mb_substr($name, 0, 120), 'status' => 'pending',
         'channel_url' => $in['channel_url'], 'audience' => $in['audience'] ?? null, 'terms_version' => '2026-10', 'terms_accepted_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
     try {
         app(\App\Core\Notifications\NotificationService::class)->dispatch(type: \App\Core\Notifications\NotificationTypes::SYSTEM_USER_SIGNUP, userId: 1,
             title: 'New partner application', body: $name . ' (' . $user->email . ') applied to the partner program: ' . $in['channel_url'], severity: 'info');
     } catch (\Throwable $e) {}
+    \App\Core\Partners\PartnerEmails::safe(fn () => \App\Core\Partners\PartnerEmails::applicationReceived((int) $affId));   // A1
     return null;
 };
 
@@ -63,5 +64,23 @@ Route::prefix('partner')->group(function () use ($__partnerApply) {
         Route::post('/codes', fn (Request $r) => response()->json(PartnerPortal::saveCode($r->attributes->get('affiliate'), $r->all())))->middleware('throttle:20,1,pcodes');
         Route::put('/codes/{id}', fn (Request $r, int $id) => response()->json(PartnerPortal::saveCode($r->attributes->get('affiliate'), $r->all(), $id)))->whereNumber('id')->middleware('throttle:30,1,plinks');
         Route::get('/money', fn (Request $r) => response()->json(PartnerPortal::money($r->attributes->get('affiliate'))));
+        // RFC-0026 section 7: how the partner is paid
+        Route::get('/payout', function (Request $r) {
+            $a = $r->attributes->get('affiliate'); $st = $a->payout_method === 'stripe' ? \App\Core\Partners\PartnerPayouts::stripeRefresh($a) : null;
+            return response()->json(['methods' => \App\Core\Partners\PartnerPayouts::methods(), 'method' => $a->payout_method, 'email' => $a->payout_email,
+                'ready' => $st ? $st['ready'] : (bool) $a->payouts_enabled, 'due' => $st['due'] ?? [], 'bank_available' => \App\Core\Partners\PartnerPayouts::connectEnabled()]);
+        });
+        Route::post('/payout/manual', function (Request $r) {
+            $r->validate(['method' => 'required|string', 'email' => 'required|string|max:190']);
+            return response()->json(\App\Core\Partners\PartnerPayouts::setManual($r->attributes->get('affiliate'), (string) $r->input('method'), (string) $r->input('email')));
+        })->middleware('throttle:10,1,ppayout');
+        Route::post('/payout/stripe', function (Request $r) {
+            $r->validate(['country' => 'required|string|size:2']);
+            return response()->json(\App\Core\Partners\PartnerPayouts::stripeStart($r->attributes->get('affiliate'), (string) $r->user()->email, (string) $r->input('country')));
+        })->middleware('throttle:10,1,ppayout');
+        Route::post('/payout/stripe/dashboard', function (Request $r) {
+            $u = \App\Core\Partners\PartnerPayouts::stripeDashboard($r->attributes->get('affiliate'));
+            return response()->json($u ? ['ok' => true, 'url' => $u] : ['ok' => false, 'error' => 'Not available.']);
+        })->middleware('throttle:10,1,ppayout');
     });
 });

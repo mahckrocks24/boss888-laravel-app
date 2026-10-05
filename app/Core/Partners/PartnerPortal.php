@@ -141,7 +141,7 @@ class PartnerPortal
     {
         $bal = []; foreach (['pending', 'payable', 'paid'] as $s) $bal[$s] = (int) DB::table('commissions')->where('affiliate_id', $a->id)->where('status', $s)->sum('amount_minor');
         $next = DB::table('commissions')->where('affiliate_id', $a->id)->where('status', 'pending')->min('payable_at');
-        $rows = DB::table('commissions')->where('affiliate_id', $a->id)->orderByDesc('id')->limit(200)->get(['id', 'kind', 'base_minor', 'rate_bps', 'amount_minor', 'status', 'payable_at', 'created_at', 'note', 'referral_id']);
+        $rows = DB::table('commissions')->where('affiliate_id', $a->id)->orderByDesc('id')->limit(200)->get(['id', 'kind', 'source_type', 'base_minor', 'rate_bps', 'amount_minor', 'status', 'payable_at', 'created_at', 'note', 'referral_id']);
         $payouts = DB::table('payouts')->where('affiliate_id', $a->id)->orderByDesc('id')->limit(36)->get(['id', 'period', 'method', 'amount_minor', 'status', 'sent_at', 'reference']);
         return ['balances' => $bal, 'next_release' => $next, 'min_payout' => PartnerProgram::MIN_PAYOUT_MINOR, 'payout_method' => $a->payout_method, 'payouts_enabled' => (bool) $a->payouts_enabled,
             'commissions' => $rows, 'payouts' => $payouts];

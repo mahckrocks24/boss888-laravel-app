@@ -152,6 +152,7 @@ class PartnerProgram
         try {
             DB::table('affiliate_flags')->insert(['affiliate_id' => $affiliateId, 'workspace_id' => $workspaceId, 'kind' => $kind,
                 'evidence_json' => json_encode($evidence), 'status' => 'open', 'created_at' => now(), 'updated_at' => now()]);
+            PartnerEmails::tellAdmin('Partner flag: ' . str_replace('_', ' ', $kind), 'Partner #' . $affiliateId . ($workspaceId ? ', workspace ' . $workspaceId : '') . '. Review it in Admin, Partners, Flags.');   // M2
         } catch (\Throwable $e) { Log::warning('[AFF] flag failed', ['error' => $e->getMessage()]); }
     }
 

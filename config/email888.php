@@ -101,6 +101,7 @@ return [
         'billing'            => ['sender' => 'support',  'stream' => 'transactional', 'reply_to' => 'support'],
         'notification'       => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],
         'lifecycle'          => ['sender' => 'sarah',    'stream' => 'transactional', 'reply_to' => 'support'],   // LIFECYCLE-1: welcome, trial, nudges
+        'partners'           => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],   // RFC-0026: partner program mail
         'booking'            => ['sender' => 'platform', 'stream' => 'transactional', 'reply_to' => 'support'],
         // reply_to is deliberately NULL: an intake notification must reply to the
         // person who submitted the form, and the call site sets that. A registry
