@@ -4,428 +4,591 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0B0F19">
+<meta name="theme-color" content="#0F1117">
 <title>LevelUpGrowth</title>
 <!--
-  MANAGED-1 (RFC-0029, DEC-0086, Owner 2026-10-05) — the managed portal.
-  A client whose website we host and run (PTAA first) signs in here: Email, Billing, Account and a read-only status line.
-  Owner: "enterprise level, the ones they need only, we don't want another cpanel type of interface" and "menu item must
-  feel like they are at LUG" — so this page uses the app's own tokens, fonts, sidebar, page frame, cards and buttons
-  (copied from public/app/index.html and infrastructure.js), and nothing technical: no DNS, no server, no file manager.
+  MANAGED-1/MANAGED-3 (RFC-0029, DEC-0086) — the managed portal, enterprise build (Owner 2026-10-05: "score 5/10 make
+  it enterprise grade"). Email, Billing, Account and service status for a client whose website we host and run.
+  The app's own tokens, fonts and component vocabulary (public/app/index.html); nothing technical, no file manager.
   The server enforces the boundary (App\Core\Managed\ManagedWorkspaces); this page only decides what is drawn.
 -->
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600;700&display=swap">
-<script>/* theme before first paint — same key as the app (lu_theme) */(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+<script>(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <style>
 :root{
-  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;--sp-10:40px;--touch-min:44px;
-  --dur-fast:150ms;--ease-out:cubic-bezier(0.16,1,0.3,1);
   --bg:#0F1117;--s1:#171A21;--s2:#1E2230;--s3:#252A3A;--bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
-  --p:#6C5CE7;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.1);
-  --ac:#00E5A8;--ag:rgba(0,229,168,.18);--as:rgba(0,229,168,.08);
-  --bl:#6FA8FF;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA;
-  --t1:#E8EDF5;--t2:#8B97B0;--t3:#8B94A8;
+  --p:#6C5CE7;--p2:#9B8DF8;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.12);
+  --ac:#00E5A8;--as:rgba(0,229,168,.10);--bl:#6FA8FF;--bs:rgba(111,168,255,.12);--am:#F59E0B;--ams:rgba(245,158,11,.13);--rd:#F87171;--rds:rgba(248,113,113,.13);
+  --t1:#E8EDF5;--t2:#9AA5BC;--t3:#8B94A8;
   --fh:'Bricolage Grotesque','Inter',sans-serif;--fb:'Inter',system-ui,sans-serif;
-  --r:10px;--rg:14px;--tr:150ms cubic-bezier(.4,0,.2,1);
-  --safe-bottom:env(safe-area-inset-bottom,0px);
+  --r:10px;--rg:16px;--sh:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px rgba(0,0,0,.18);
+  --ease:cubic-bezier(.16,1,.3,1);--safe-b:env(safe-area-inset-bottom,0px)
 }
 html[data-theme="light"]{color-scheme:light;
-  --bg:#F9F8F7;--s1:#FFFFFF;--s2:#F5F3F2;--s3:#EEEEEE;--bd:rgba(15,13,10,.08);--bd2:#DDDDDD;
-  --p:#050505;--pg:rgba(5,5,5,.14);--ps:rgba(5,5,5,.06);
-  --ac:#12664A;--ag:rgba(50,174,136,.18);--as:rgba(50,174,136,.10);
-  --bl:#3860BE;--am:#8A5406;--rd:#C62828;--pu:#5B48C8;--t1:#050505;--t2:#555555;--t3:#6B6B6B}
+  --bg:#F7F6F4;--s1:#FFFFFF;--s2:#F5F3F2;--s3:#ECEAE7;--bd:rgba(15,13,10,.08);--bd2:#DCDAD6;
+  --p:#050505;--p2:#3a3a3a;--pg:rgba(5,5,5,.14);--ps:rgba(5,5,5,.06);
+  --ac:#12664A;--as:rgba(50,174,136,.11);--bl:#3860BE;--bs:rgba(56,96,190,.09);--am:#8A5406;--ams:rgba(161,98,7,.10);--rd:#C62828;--rds:rgba(198,40,40,.08);
+  --t1:#0B0B0C;--t2:#4F4F55;--t3:#6B6B70;--sh:0 1px 2px rgba(15,13,10,.04),0 6px 20px rgba(15,13,10,.05)}
 *{box-sizing:border-box}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--t1);font:400 14px/1.5 var(--fb);-webkit-font-smoothing:antialiased}
-button{font:inherit}
+html,body{margin:0;background:var(--bg);color:var(--t1);font:400 14px/1.55 var(--fb);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font:inherit;color:inherit}
+a{color:inherit}
+svg{display:block}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+/* ── shell ── */
 .app{display:flex;min-height:100vh;min-height:100dvh}
-.sidebar{width:220px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;height:100dvh}
-.sb-brand{padding:20px 16px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
-.sb-brand-text strong{font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1);display:block;line-height:1.2}
-.sb-brand-text span{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
-.sb-client{padding:12px 16px;border-bottom:1px solid var(--bd)}
-.sb-client .k{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
-.sb-client .v{font:600 13px var(--fb);color:var(--t1);margin-top:2px;line-height:1.3}
-.sb-nav{padding:8px 0;flex:1;display:flex;flex-direction:column}
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:6px;margin:1px 8px;cursor:pointer;transition:all .15s;color:var(--t2);font-size:14px;min-height:44px;background:none;border:0;width:calc(100% - 16px);text-align:left}
-.nav-item:hover{background:var(--s2);color:var(--t1)}
-.nav-item.active{background:rgba(108,92,231,.15);color:var(--p)}
-html[data-theme="light"] .nav-item.active{background:rgba(5,5,5,.07);color:#050505}
-.nav-item:focus-visible{outline:2px solid var(--p);outline-offset:-2px}
-.nav-item .ni{width:18px;height:18px;display:inline-flex;flex-shrink:0}.nav-item .ni svg{width:18px;height:18px}
-.sb-bottom{padding:12px 8px calc(12px + var(--safe-bottom));border-top:1px solid var(--bd)}
-#sb-theme{margin:0 2px 8px;padding:3px;background:var(--s3);border-radius:6px;display:flex;gap:2px}
-#sb-theme button{flex:1;padding:5px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2)}
-#sb-theme button.active{background:var(--p);color:#fff}
-.sb-out{width:100%;padding:8px;background:transparent;border:1px solid var(--bd);border-radius:var(--r);color:var(--t2);font-size:12px;cursor:pointer}
-.sb-out:hover{color:var(--t1);border-color:var(--bd2)}
+.side{width:248px;flex:none;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;height:100dvh}
+.brand{display:flex;align-items:center;gap:11px;padding:20px 18px 18px}
+.brand img{width:32px;height:32px}
+.brand b{display:block;font:700 14px var(--fh);letter-spacing:-.01em}
+.brand span{display:block;font-size:10.5px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
+.org{margin:4px 12px 10px;padding:12px;border:1px solid var(--bd);border-radius:12px;background:var(--s2);display:flex;gap:10px;align-items:center}
+.org .av{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff;display:grid;place-items:center;font:700 13px var(--fh);flex:none}
+html[data-theme="light"] .org .av{background:#0B0B0C}
+.org b{display:block;font:600 12.5px/1.3 var(--fb)}
+.org span{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:var(--t3);margin-top:2px}
+.nav-l{font:600 10.5px var(--fb);letter-spacing:.09em;text-transform:uppercase;color:var(--t3);padding:14px 22px 6px}
+.nav{display:flex;flex-direction:column;gap:2px;padding:0 10px}
+.ni{display:flex;align-items:center;gap:11px;min-height:42px;padding:0 12px;border-radius:9px;border:0;background:none;color:var(--t2);font:500 14px var(--fb);cursor:pointer;text-align:left;width:100%;transition:background .15s,color .15s}
+.ni svg{width:19px;height:19px;flex:none}
+.ni:hover{background:var(--s2);color:var(--t1)}
+.ni.on{background:var(--ps);color:var(--t1);font-weight:600;box-shadow:inset 3px 0 0 var(--p)}
+html[data-theme="light"] .ni.on{background:rgba(5,5,5,.06)}
+.side-foot{margin-top:auto;padding:12px 12px calc(14px + var(--safe-b));border-top:1px solid var(--bd);display:grid;gap:10px}
+.help{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:12px;background:var(--s2);border:1px solid var(--bd);font-size:12px;color:var(--t2)}
+.help svg{width:18px;height:18px;color:var(--t1);flex:none;margin-top:1px}
+.help b{display:block;color:var(--t1);font-size:12.5px;margin-bottom:2px}
+.help a{color:var(--t1);text-decoration:none;font-weight:600}
+.seg{display:flex;gap:2px;padding:3px;background:var(--s3);border-radius:8px}
+.seg button{flex:1;border:0;background:none;padding:6px 8px;border-radius:6px;font:600 11.5px var(--fb);color:var(--t2);cursor:pointer}
+.seg button[aria-checked="true"]{background:var(--s1);color:var(--t1);box-shadow:0 1px 2px rgba(0,0,0,.18)}
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
-.statusbar{display:flex;align-items:center;gap:var(--sp-5);flex-wrap:wrap;padding:12px var(--sp-8);border-bottom:1px solid var(--bd);background:var(--s1);min-height:52px}
-.statusbar .host{font:600 13px var(--fb);color:var(--t1);margin-right:var(--sp-2)}
-.pill{display:inline-flex;align-items:center;gap:7px;font:600 12.5px var(--fb);white-space:nowrap}
-.pill i{width:8px;height:8px;border-radius:50%;flex:0 0 auto;display:inline-block}
-.content{padding:var(--sp-8);max-width:1100px;width:100%}
-.staff{background:var(--ps);border:1px solid var(--bd2);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--t2);margin-bottom:var(--sp-5)}
-.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:var(--sp-5)}
-.card+.card{margin-top:var(--sp-4)}
-.card h3{font:600 15px var(--fh);margin:0 0 var(--sp-3);color:var(--t1)}
-.muted{color:var(--t2)}.quiet{color:var(--t3);font-size:12.5px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 var(--sp-4);border-radius:var(--r);cursor:pointer;font:600 13px var(--fb);white-space:nowrap;border:1px solid var(--bd2);background:transparent;color:var(--t1);text-decoration:none}
-.btn:hover{background:var(--s2)}.btn:focus-visible{outline:2px solid var(--p);outline-offset:2px}
-.btn.primary{background:var(--p);border-color:var(--p);color:#fff}.btn.primary:hover{opacity:.9}
-.btn.danger{color:var(--rd);border-color:rgba(248,113,113,.45)}
-.btn[disabled]{opacity:.5;cursor:not-allowed}
-.btn.sm{min-height:34px;padding:0 12px;font-size:12.5px}
-.inp{width:100%;min-height:44px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--t1);padding:10px 13px;font:400 14px var(--fb)}
-.inp:focus-visible{outline:2px solid var(--p);outline-offset:1px;border-color:var(--p)}
-.lbl{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin-bottom:6px}
-.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--sp-4)}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--sp-3);margin-bottom:var(--sp-5)}
-.metric{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:var(--sp-4) var(--sp-5)}
-.metric .k{font:600 11px var(--fb);color:var(--t3);letter-spacing:.04em;text-transform:uppercase}
-.metric .v{font:600 22px var(--fh);color:var(--t1);margin-top:5px;font-variant-numeric:tabular-nums}
-.metric .s{font-size:12px;color:var(--t3);margin-top:2px}
-.row{display:flex;align-items:center;gap:var(--sp-4);padding:14px 0;border-bottom:1px solid var(--bd)}
-.row:last-child{border-bottom:0}
-.row .who{flex:1;min-width:0}.row .who b{display:block;font:600 14px var(--fb);color:var(--t1);overflow-wrap:anywhere}.row .who span{font-size:12.5px;color:var(--t2)}
-.chip{display:inline-flex;align-items:center;gap:6px;font:600 11.5px var(--fb);border-radius:999px;padding:3px 10px;white-space:nowrap;background:var(--s3);color:var(--t2)}
-.chip.ok{color:var(--ac);background:var(--as)}.chip.warn{color:var(--am);background:rgba(245,158,11,.14)}.chip.bad{color:var(--rd);background:rgba(248,113,113,.14)}
-.bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden}.bar>div{height:100%;background:var(--ac);border-radius:3px}
-ul.incl{margin:0;padding:0;list-style:none;display:grid;gap:8px}
-ul.incl li{display:flex;gap:10px;align-items:flex-start;color:var(--t1)}
-ul.incl li svg{flex:0 0 18px;width:18px;height:18px;color:var(--ac);margin-top:1px}
-.page-h{margin-bottom:var(--sp-5)}
-.page-h h1{font:600 24px var(--fh);color:var(--t1);margin:0;letter-spacing:-.01em}
-.page-h p{font-size:14px;color:var(--t2);margin:6px 0 0;max-width:70ch}
-.msg{margin-top:var(--sp-3);font-size:13px}
-.msg.ok{color:var(--ac)}.msg.bad{color:var(--rd)}
-.dlg-back{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
-.dlg{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:var(--sp-6);width:min(480px,100%);box-shadow:0 20px 60px rgba(0,0,0,.35)}
-.dlg h2{font:600 18px var(--fh);margin:0 0 6px}
-.loading{padding:var(--sp-8);text-align:center;color:var(--t3);font-size:13px}
-.mob-top{display:none}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:64px;padding:0 32px;background:color-mix(in srgb,var(--bg) 82%,transparent);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--bd)}
+.crumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--t3);min-width:0}
+.crumb b{color:var(--t1);font-weight:600}
+.top-r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.health{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--bd2);background:var(--s1);font:600 12.5px var(--fb);cursor:pointer;color:var(--t1)}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.ok{background:var(--ac);box-shadow:0 0 0 3px var(--as)}.dot.warn{background:var(--am);box-shadow:0 0 0 3px var(--ams)}.dot.bad{background:var(--rd);box-shadow:0 0 0 3px var(--rds)}.dot.unknown{background:var(--t3)}
+.me{width:34px;height:34px;border-radius:50%;border:1px solid var(--bd2);background:var(--s2);font:700 12px var(--fh);cursor:pointer;display:grid;place-items:center}
+.burger{display:none;width:38px;height:38px;border-radius:9px;border:1px solid var(--bd2);background:var(--s1);cursor:pointer;place-items:center}
+.burger svg{width:18px;height:18px}
+.menu{position:absolute;right:0;top:44px;min-width:240px;background:var(--s1);border:1px solid var(--bd2);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:6px;z-index:40}
+.menu .h{padding:10px 12px;border-bottom:1px solid var(--bd);margin-bottom:4px}
+.menu .h b{display:block;font-size:13px}.menu .h span{font-size:12px;color:var(--t3)}
+.menu button{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;padding:9px 12px;border-radius:8px;cursor:pointer;font-size:13px;text-align:left}
+.menu button:hover{background:var(--s2)}
+.menu svg{width:16px;height:16px;color:var(--t2)}
+.pop{position:absolute;right:0;top:44px;width:340px;background:var(--s1);border:1px solid var(--bd2);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.35);padding:16px;z-index:40}
+.wrap{padding:32px 32px 24px;max-width:1180px;width:100%}
+.ph{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.ph h1{font:700 28px/1.15 var(--fh);letter-spacing:-.02em;margin:0}
+.ph p{margin:6px 0 0;color:var(--t2);font-size:14.5px;max-width:64ch}
+.foot{margin-top:auto;padding:18px 32px calc(18px + var(--safe-b));border-top:1px solid var(--bd);display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between;color:var(--t3);font-size:12px}
+.staff{display:flex;gap:10px;align-items:center;background:var(--bs);border:1px solid var(--bd2);border-radius:12px;padding:10px 14px;font-size:13px;color:var(--t2);margin-bottom:20px}
+.staff a{color:var(--t1);font-weight:600}
+/* ── components ── */
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);box-shadow:var(--sh)}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 22px;border-bottom:1px solid var(--bd)}
+.card-h h2{font:650 15.5px var(--fh);letter-spacing:-.005em;margin:0}
+.card-h p{margin:2px 0 0;font-size:12.5px;color:var(--t3)}
+.card-b{padding:20px 22px}
+.stack>*+*{margin-top:20px}
+.grid{display:grid;gap:16px}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g-bill{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
+.tile{padding:18px 20px}
+.tile .k{display:flex;align-items:center;gap:8px;font:600 11px var(--fb);letter-spacing:.07em;text-transform:uppercase;color:var(--t3)}
+.tile .k .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--s2);color:var(--t1)}
+.tile .k .ic svg{width:16px;height:16px}
+.tile .v{font:700 24px/1.2 var(--fh);letter-spacing:-.015em;margin-top:14px;font-variant-numeric:tabular-nums}
+.tile .s{font-size:12.5px;color:var(--t2);margin-top:4px}
+.svc{display:flex;gap:14px;align-items:flex-start;padding:18px 20px}
+.svc .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;flex:none}
+.svc .ic svg{width:20px;height:20px}
+.svc .ic.ok{background:var(--as);color:var(--ac)}.svc .ic.warn{background:var(--ams);color:var(--am)}.svc .ic.bad{background:var(--rds);color:var(--rd)}.svc .ic.unknown{background:var(--s2);color:var(--t3)}
+.svc b{display:block;font:600 14px var(--fb)}
+.svc span{display:block;font-size:12.5px;color:var(--t2);margin-top:2px}
+.svc em{display:block;font-style:normal;font-size:11.5px;color:var(--t3);margin-top:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font:600 11.5px var(--fb);white-space:nowrap;background:var(--s3);color:var(--t2)}
+.pill.ok{background:var(--as);color:var(--ac)}.pill.warn{background:var(--ams);color:var(--am)}.pill.bad{background:var(--rds);color:var(--rd)}.pill.info{background:var(--bs);color:var(--bl)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 16px;border-radius:var(--r);border:1px solid var(--bd2);background:var(--s1);color:var(--t1);font:600 13px var(--fb);cursor:pointer;text-decoration:none;white-space:nowrap;transition:background .15s,border-color .15s,opacity .15s}
+.btn:hover{background:var(--s2)}
+.btn svg{width:16px;height:16px}
+.btn.pri{background:var(--p);border-color:var(--p);color:#fff}.btn.pri:hover{opacity:.92}
+.btn.ghost{border-color:transparent;background:none;color:var(--t2)}.btn.ghost:hover{background:var(--s2);color:var(--t1)}
+.btn.danger{color:var(--rd)}
+.btn.sm{min-height:32px;padding:0 11px;font-size:12.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.inp{width:100%;min-height:44px;padding:0 13px;border-radius:var(--r);border:1px solid var(--bd2);background:var(--s2);color:var(--t1);font:400 14px var(--fb)}
+.inp:focus{outline:2px solid var(--pg);border-color:var(--p)}
+.lbl{display:block;font:600 12px var(--fb);color:var(--t2);margin-bottom:6px}
+.hint{font-size:12px;color:var(--t3);margin-top:6px}
+.field+.field{margin-top:14px}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{font:600 11px var(--fb);letter-spacing:.07em;text-transform:uppercase;color:var(--t3);text-align:left;padding:12px 22px;border-bottom:1px solid var(--bd);background:var(--s2)}
+.tbl td{padding:14px 22px;border-bottom:1px solid var(--bd);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums}
+.person{display:flex;align-items:center;gap:12px;min-width:0}
+.ini{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font:700 12px var(--fh);flex:none;color:#fff}
+.person b{display:block;font-weight:600;overflow-wrap:anywhere}.person span{display:block;font-size:12.5px;color:var(--t3)}
+.bar{height:6px;border-radius:99px;background:var(--s3);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,var(--p),var(--p2))}
+html[data-theme="light"] .bar i{background:#0B0B0C}
+.bar.ok i{background:var(--ac)}
+.check{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-top:1px solid var(--bd)}
+.check:first-child{border-top:0;padding-top:0}
+.check .ic{width:32px;height:32px;border-radius:9px;background:var(--as);color:var(--ac);display:grid;place-items:center;flex:none}
+.check .ic svg{width:16px;height:16px}
+.check b{display:block;font-weight:600}.check span{display:block;font-size:12.5px;color:var(--t2);margin-top:1px}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;counter-reset:s}
+.step{position:relative;padding:4px 18px 0 0}
+.step .n{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:700 12.5px var(--fh);background:var(--s2);border:1px solid var(--bd2);color:var(--t2);position:relative;z-index:1}
+.step.cur .n{background:var(--p);border-color:var(--p);color:#fff}
+.step:not(:last-child)::after{content:"";position:absolute;left:30px;right:0;top:19px;height:1px;background:var(--bd2)}
+.step b{display:block;margin-top:12px;font-weight:600}.step span{display:block;font-size:12.5px;color:var(--t2);margin-top:3px;padding-right:8px}
+.feat{display:flex;gap:12px;align-items:flex-start;padding:16px;border:1px solid var(--bd);border-radius:12px;background:var(--s2)}
+.feat .ic{width:34px;height:34px;border-radius:9px;background:var(--s1);border:1px solid var(--bd);display:grid;place-items:center;flex:none}
+.feat .ic svg{width:17px;height:17px}
+.feat b{display:block;font-weight:600;font-size:13.5px}.feat span{display:block;font-size:12.5px;color:var(--t2);margin-top:2px}
+.hero{padding:26px;display:grid;grid-template-columns:1.3fr 1fr;gap:28px;align-items:center}
+.hero h2{font:700 21px/1.25 var(--fh);letter-spacing:-.015em;margin:10px 0 6px}
+.hero p{margin:0;color:var(--t2)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:10px 18px;font-size:13.5px}
+.kv dt{color:var(--t3)}.kv dd{margin:0;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.ring{--v:0;width:132px;height:132px;border-radius:50%;background:conic-gradient(var(--ac) calc(var(--v)*1%),var(--s3) 0);display:grid;place-items:center;margin:auto}
+.ring>div{width:104px;height:104px;border-radius:50%;background:var(--s1);display:grid;place-items:center;text-align:center}
+.ring b{display:block;font:700 26px/1 var(--fh)}.ring span{display:block;font-size:11px;color:var(--t3);margin-top:4px;letter-spacing:.06em;text-transform:uppercase}
+.doc{display:flex;align-items:center;gap:14px;padding:14px 22px;border-top:1px solid var(--bd)}
+.doc:first-child{border-top:0}
+.doc .ic{width:38px;height:38px;border-radius:10px;background:var(--s2);border:1px solid var(--bd);display:grid;place-items:center;flex:none}
+.doc .ic svg{width:18px;height:18px}
+.doc b{display:block;font-weight:600}.doc span{display:block;font-size:12.5px;color:var(--t3)}
+.doc .r{margin-left:auto}
+.prof{display:flex;align-items:center;gap:18px;padding:24px}
+.prof .ini{width:64px;height:64px;font-size:22px;border-radius:18px}
+.prof h2{margin:0;font:700 20px var(--fh)}.prof p{margin:2px 0 0;color:var(--t2)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 22px;border-top:1px solid var(--bd)}
+.row:first-child{border-top:0}
+.row b{display:block;font-weight:600}.row span{display:block;font-size:12.5px;color:var(--t3);margin-top:1px}
+.skel{border-radius:10px;background:linear-gradient(90deg,var(--s2),var(--s3),var(--s2));background-size:200% 100%;animation:sk 1.2s infinite}
+@keyframes sk{0%{background-position:200% 0}100%{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}*{transition:none!important}}
+.toast{position:fixed;left:50%;bottom:calc(24px + var(--safe-b));transform:translateX(-50%) translateY(20px);opacity:0;background:var(--t1);color:var(--bg);padding:12px 16px;border-radius:12px;font:600 13px var(--fb);box-shadow:0 12px 40px rgba(0,0,0,.35);transition:opacity .25s var(--ease),transform .25s var(--ease);z-index:90;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.dlg-b{position:fixed;inset:0;background:rgba(5,6,10,.55);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;z-index:80}
+.dlg{width:min(500px,100%);background:var(--s1);border:1px solid var(--bd2);border-radius:18px;box-shadow:0 30px 80px rgba(0,0,0,.45);overflow:hidden}
+.dlg .card-b{padding:22px 24px}
+.dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--bd);background:var(--s2)}
+.msg{font-size:13px;margin-top:12px}.msg.ok{color:var(--ac)}.msg.bad{color:var(--rd)}
+.scrim{display:none}
+@media (max-width:1080px){.g3{grid-template-columns:1fr 1fr}.hero{grid-template-columns:1fr}}
 @media (max-width:860px){
-  .app{flex-direction:column}
-  .sidebar{position:static;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--bd)}
-  .sb-brand{padding:14px 16px}.sb-client{display:none}
-  .sb-nav{flex-direction:row;overflow-x:auto;padding:6px 8px}
-  .nav-item{width:auto;margin:0 2px;flex:0 0 auto}
-  .sb-bottom{display:none}
-  .mob-top{display:flex;gap:8px;padding:var(--sp-5) 0 0}
-  .statusbar,.content{padding-left:16px;padding-right:16px}
-  .content{padding-top:var(--sp-5)}
+  .side{position:fixed;left:0;top:0;bottom:0;z-index:70;transform:translateX(-102%);transition:transform .25s var(--ease);visibility:hidden}
+  .side.open{transform:none;visibility:visible;box-shadow:0 0 60px rgba(0,0,0,.4)}
+  .crumb .co,.crumb .sep{display:none}.crumb b{font:700 16px var(--fh)}
+  .scrim.open{display:block;position:fixed;inset:0;background:rgba(5,6,10,.5);z-index:60}
+  .burger{display:grid}
+  .top{padding:0 16px}
+  .wrap{padding:22px 16px}
+  .foot{padding:16px}
+  .g3,.g2,.g-bill{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr;gap:16px}.step:not(:last-child)::after{display:none}
+  .health .t{display:none}
+  .pop{position:fixed;left:16px;right:16px;top:70px;width:auto}
+  .tbl.cards thead{display:none}
+  .tbl.cards tr{display:grid;grid-template-columns:1fr auto;gap:8px 12px;padding:14px 16px;border-bottom:1px solid var(--bd)}
+  .tbl.cards td{padding:0;border:0}
+  .tbl.cards td.full{grid-column:1/-1}
+  .tbl.cards td.num{text-align:left}
+  .card-h,.card-b,.doc,.row{padding-left:16px;padding-right:16px}
+  .hero{padding:20px}
+  .ph h1{font-size:24px}
 }
 </style>
 </head>
 <body>
 <div class="app" id="app" hidden>
-  <aside class="sidebar" aria-label="Main">
-    <div class="sb-brand">
-      <img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">
-      <div class="sb-brand-text"><strong>LevelUpGrowth</strong><span>Managed Hosting</span></div>
-    </div>
-    <div class="sb-client"><div class="k">Account</div><div class="v" id="client-name">—</div></div>
-    <nav class="sb-nav">
-      <button type="button" class="nav-item" data-page="email"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5.5 7-5.5"/></svg></span>Email</button>
-      <button type="button" class="nav-item" data-page="billing"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M6 12.5h3"/></svg></span>Billing</button>
-      <button type="button" class="nav-item" data-page="account"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Account</button>
+  <div class="scrim" id="scrim"></div>
+  <aside class="side" id="side" aria-label="Main">
+    <div class="brand"><img src="/img/logo-icon-40.png" alt=""><div><b>LevelUpGrowth</b><span>Managed Hosting</span></div></div>
+    <div class="org"><div class="av" id="org-av">—</div><div style="min-width:0"><b id="org-name">—</b><span><i class="dot ok" style="width:6px;height:6px;box-shadow:none"></i>Managed account</span></div></div>
+    <div class="nav-l">Workspace</div>
+    <nav class="nav" aria-label="Pages">
+      <button type="button" class="ni" data-page="email"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M3 6l7 5 7-5"/></svg>Email</button>
+      <button type="button" class="ni" data-page="billing"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 8.5h15M6 12.5h3"/></svg>Billing</button>
+      <button type="button" class="ni" data-page="account"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7.5" r="3"/><path d="M4 16.5c1.2-2.6 3.4-4 6-4s4.8 1.4 6 4"/></svg>Account</button>
     </nav>
-    <div class="sb-bottom">
-      <div id="sb-theme" role="radiogroup" aria-label="Appearance">
-        <button type="button" data-theme-opt="dark" role="radio">Dark</button>
-        <button type="button" data-theme-opt="light" role="radio">Light</button>
-        <button type="button" data-theme-opt="system" role="radio">Auto</button>
-      </div>
-      <button type="button" class="sb-out" id="sign-out">Sign out</button>
+    <div class="side-foot">
+      <div class="help"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2M10 14h.01"/></svg><div><b>Need a hand?</b><span id="help-line">We look after your website and email.</span></div></div>
+      <div class="seg" role="radiogroup" aria-label="Appearance" id="theme-seg"><button type="button" role="radio" data-t="dark">Dark</button><button type="button" role="radio" data-t="light">Light</button><button type="button" role="radio" data-t="system">Auto</button></div>
     </div>
   </aside>
   <div class="main">
-    <div class="statusbar" id="statusbar" role="status" aria-live="polite"><span class="quiet">Checking your services…</span></div>
-    <main class="content" id="content"><div class="loading">Loading…</div></main>
+    <header class="top">
+      <button class="burger" id="burger" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M3.5 6h13M3.5 10h13M3.5 14h13"/></svg></button>
+      <div class="crumb" id="crumb"></div>
+      <div class="top-r">
+        <div style="position:relative"><button class="health" id="health" aria-haspopup="dialog" aria-expanded="false"><i class="dot unknown" id="health-dot"></i><span class="t" id="health-t">Checking services</span></button><div id="health-pop" hidden></div></div>
+        <div style="position:relative"><button class="me" id="me" aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">—</button><div id="me-menu" hidden></div></div>
+      </div>
+    </header>
+    <main class="wrap" id="content"></main>
+    <footer class="foot"><span>© <span id="yr"></span> LevelUpGrowth · Managed Hosting</span><span id="foot-help"></span></footer>
   </div>
 </div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="/app/js/auth-refresh.js"></script>
 <script>
 (function () {
   'use strict';
-  var API = '/api/';
-  var P = { data: null, page: 'email', staffWs: null };
-  var $ = function (id) { return document.getElementById(id); };
+  var API = '/api/', P = { data: null, page: 'email', staffWs: null }, $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
-  var CHECK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>';
+  var I = {
+    globe: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M2.5 10h15M10 2.5c2.2 2.3 2.2 12.7 0 15M10 2.5c-2.2 2.3-2.2 12.7 0 15"/></svg>',
+    mail: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M3 6l7 5 7-5"/></svg>',
+    lock: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="9" width="12" height="8.5" rx="2"/><path d="M6.5 9V6.5a3.5 3.5 0 017 0V9"/></svg>',
+    server: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3.5" width="14" height="5" rx="1.5"/><rect x="3" y="11.5" width="14" height="5" rx="1.5"/><path d="M6 6h.01M6 14h.01"/></svg>',
+    db: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="10" cy="5" rx="6" ry="2.5"/><path d="M4 5v10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V5M4 10c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5"/></svg>',
+    shield: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5l6 2.5v4.5c0 4-2.6 6.8-6 8-3.4-1.2-6-4-6-8V5z"/><path d="M7.5 10l2 2 3.5-3.5"/></svg>',
+    life: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><circle cx="10" cy="10" r="3"/><path d="M4.7 4.7l3.2 3.2M12.1 12.1l3.2 3.2M15.3 4.7l-3.2 3.2M7.9 12.1l-3.2 3.2"/></svg>',
+    doc: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2.5h6.5L15 6v11.5H5z"/><path d="M11 2.5V6.5h4M7.5 10.5h5M7.5 13.5h5"/></svg>',
+    down: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5v9M6 8.5l4 4 4-4M4 16.5h12"/></svg>',
+    plus: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 4v12M4 10h12"/></svg>',
+    user: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7.5" r="3"/><path d="M4 16.5c1.2-2.6 3.4-4 6-4s4.8 1.4 6 4"/></svg>',
+    pause: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5" y="4" width="3" height="12" rx="1"/><rect x="12" y="4" width="3" height="12" rx="1"/></svg>',
+    link: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a3 3 0 004.2 0l2.6-2.6a3 3 0 00-4.2-4.2L10 5.8"/><path d="M11.5 8.5a3 3 0 00-4.2 0l-2.6 2.6a3 3 0 004.2 4.2l1.1-1.1"/></svg>',
+    out: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5H4.5v13H8M12.5 6.5L16 10l-3.5 3.5M16 10H8"/></svg>',
+    phone: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h3l1.5 4-2 1.2a9 9 0 004.3 4.3l1.2-2 4 1.5v3a1.5 1.5 0 01-1.6 1.5A14 14 0 013.5 4.6 1.5 1.5 0 015 3z"/></svg>',
+    check: '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg>'
+  };
 
-  function req(method, path, body) {
-    var h = { 'Accept': 'application/json' };
-    var t = localStorage.getItem('lu_token'); if (t) h['Authorization'] = 'Bearer ' + t;
-    if (body) h['Content-Type'] = 'application/json';
-    return fetch(API + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined, cache: 'no-store', credentials: 'same-origin' })
+  function req(m, p, b) {
+    var h = { Accept: 'application/json' }, t = localStorage.getItem('lu_token'); if (t) h.Authorization = 'Bearer ' + t; if (b) h['Content-Type'] = 'application/json';
+    return fetch(API + p, { method: m, headers: h, body: b ? JSON.stringify(b) : undefined, cache: 'no-store', credentials: 'same-origin' })
       .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, ok: r.ok, json: j }; }); });
   }
+  var q = function (p) { return p + (P.staffWs ? (p.indexOf('?') < 0 ? '?' : '&') + 'workspace_id=' + encodeURIComponent(P.staffWs) : ''); };
+  function fmtDate(d, long) { if (!d) return '—'; var x = new Date(String(d).slice(0, 10) + 'T00:00:00'); return x.toLocaleDateString('en-GB', { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric' }); }
+  function money(c, n) { try { return new Intl.NumberFormat('en-PH', { style: 'currency', currency: c, minimumFractionDigits: 2 }).format(n); } catch (e) { return c + ' ' + n; } }
+  function ago(iso) { if (!iso) return ''; var s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000); if (s < 90) return 'just now'; var m = Math.round(s / 60); if (m < 60) return m + ' min ago'; var h = Math.round(m / 60); return h < 24 ? h + ' h ago' : Math.round(h / 24) + ' d ago'; }
+  function initials(s) { var w = String(s || '').replace(/[^A-Za-z\s]/g, ' ').trim().split(/\s+/).filter(Boolean); return ((w[0] || '?')[0] + (w.length > 1 ? w[w.length - 1][0] : '')).toUpperCase(); }
+  function hue(s) { var h = 0; for (var i = 0; i < String(s).length; i++) h = (h * 31 + String(s).charCodeAt(i)) % 360; return 'hsl(' + h + ' 55% 42%)'; }
+  function toast(t) { var e = $('toast'); e.textContent = t; e.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(function () { e.classList.remove('show'); }, 3200); }
+  function skel(h) { return '<div class="skel" style="height:' + (h || 120) + 'px"></div>'; }
+  function contact() { var s = (P.data && P.data.support) || {}; return { phone: s.phone || '', email: s.email || '' }; }
 
-  function fmtDate(d) { if (!d) return '—'; var x = new Date(String(d).slice(0, 10) + 'T00:00:00'); return x.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
-  function money(cur, n) { try { return new Intl.NumberFormat('en-PH', { style: 'currency', currency: cur }).format(n); } catch (e) { return cur + ' ' + Number(n).toFixed(2); } }
-  function tone(state) { return state === 'ok' ? 'var(--ac)' : state === 'warn' ? 'var(--am)' : state === 'bad' ? 'var(--rd)' : 'var(--t3)'; }
-  function pill(s) { return s ? '<span class="pill"><i style="background:' + tone(s.state) + '"></i>' + esc(s.label) + '</span>' : ''; }
-
-  /* ── sign-in: the app's own session. No session → the app's sign-in, which brings managed accounts back here. ── */
+  /* ── boot ── */
   function toLogin() { location.replace('/app/'); }
-
   function boot() {
-    if (!localStorage.getItem('lu_token') && !localStorage.getItem('lu_refresh_token')) { return toLogin(); }
-    var q = new URLSearchParams(location.search); P.staffWs = q.get('workspace_id');
-    req('GET', 'managed/portal' + (P.staffWs ? '?workspace_id=' + encodeURIComponent(P.staffWs) : '')).then(function (r) {
-      if (r.status === 401) { return toLogin(); }
-      if (r.status === 404) { location.replace('/app/'); return; }   // not a managed account: the regular app
-      if (!r.ok) { $('app').hidden = false; $('content').innerHTML = errorCard('We could not load your account just now. Please refresh in a moment.'); return; }
+    if (!localStorage.getItem('lu_token') && !localStorage.getItem('lu_refresh_token')) return toLogin();
+    P.staffWs = new URLSearchParams(location.search).get('workspace_id');
+    $('content').innerHTML = '<div class="stack">' + skel(54) + '<div class="grid g3">' + skel(130) + skel(130) + skel(130) + '</div>' + skel(260) + '</div>';
+    $('app').hidden = false;
+    req('GET', q('managed/portal')).then(function (r) {
+      if (r.status === 401) return toLogin();
+      if (r.status === 404) { location.replace('/app/'); return; }
+      if (!r.ok) { $('content').innerHTML = errorCard('We could not load your account just now. Please refresh in a moment.'); return; }
       P.data = r.json;
-      // Staff: remember it, so the app does not hand them back here (core.js _luManagedHandover reads lu_user).
-      if (r.json.user && r.json.user.is_platform_admin) {
-        try { var lu = JSON.parse(localStorage.getItem('lu_user') || '{}'); lu.is_platform_admin = true; localStorage.setItem('lu_user', JSON.stringify(lu)); } catch (e) {}
-      }
-      $('client-name').textContent = r.json.workspace.name;
-      document.title = r.json.workspace.name + ' · LevelUpGrowth';
-      paintStatus();
-      $('app').hidden = false;
-      var start = (location.hash || '').replace('#', '');
-      go(['email', 'billing', 'account'].indexOf(start) >= 0 ? start : 'email');
-    }).catch(function () { $('app').hidden = false; $('content').innerHTML = errorCard('We could not reach LevelUpGrowth. Check your connection and refresh.'); });
+      if (r.json.user && r.json.user.is_platform_admin) { try { var lu = JSON.parse(localStorage.getItem('lu_user') || '{}'); lu.is_platform_admin = true; localStorage.setItem('lu_user', JSON.stringify(lu)); } catch (e) {} }
+      var w = r.json.workspace.name; $('org-name').textContent = w; $('org-av').textContent = initials(w); document.title = w + ' · LevelUpGrowth';
+      $('me').textContent = initials(r.json.user.name || r.json.user.email);
+      var c = contact(); $('help-line').innerHTML = 'Call <a href="tel:' + esc(c.phone.replace(/\s/g, '')) + '">' + esc(c.phone) + '</a>' + (c.email ? '<br>or write to <a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '');
+      $('foot-help').innerHTML = 'Support ' + esc(c.phone) + (c.email ? ' · <a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '');
+      paintHealth();
+      var h = (location.hash || '').replace('#', ''); go(['email', 'billing', 'account'].indexOf(h) >= 0 ? h : 'email');
+    }).catch(function () { $('content').innerHTML = errorCard('We could not reach LevelUpGrowth. Check your connection and refresh.'); });
   }
 
-  function paintStatus() {
-    var s = P.data.status || {};
-    $('statusbar').innerHTML = (s.host ? '<span class="host">' + esc(s.host) + '</span>' : '') + pill(s.website) + pill(s.email) + pill(s.certificate);
+  /* ── service health ── */
+  function overall() { var s = P.data.status || {}, st = [s.website, s.email, s.certificate].map(function (x) { return (x && x.state) || 'unknown'; }); return st.indexOf('bad') >= 0 ? 'bad' : st.indexOf('warn') >= 0 ? 'warn' : st.indexOf('unknown') >= 0 ? 'unknown' : 'ok'; }
+  function certDays() { var c = (P.data.status || {}).certificate || {}; if (!c.valid_until) return null; return Math.round((new Date(c.valid_until + 'T00:00:00') - new Date()) / 864e5); }
+  function svcRows() {
+    var s = P.data.status || {}, w = s.website || {}, e = s.email || {}, c = s.certificate || {}, d = certDays();
+    return [
+      { ic: I.globe, st: w.state, t: w.label || 'Website', d: (w.uptime_30d != null ? w.uptime_30d + '% uptime, last 30 days' : 'Uptime not measured yet'), m: s.checked_at ? 'Checked ' + ago(s.checked_at) + ' · every 5 minutes' : '' },
+      { ic: I.mail, st: e.state, t: e.label || 'Email', d: 'Receiving mail for ' + (s.host || 'your domain'), m: 'Checked every 10 minutes' },
+      { ic: I.lock, st: c.state, t: 'Secure connection', d: c.label || 'Certificate status unavailable', m: d != null ? d + ' days left · renewed automatically' : '' }
+    ];
   }
+  function paintHealth() {
+    var o = overall(), lbl = { ok: 'All services operational', warn: 'Attention needed', bad: 'Service disruption', unknown: 'Checking services' }[o];
+    $('health-dot').className = 'dot ' + o; $('health-t').textContent = lbl;
+  }
+  function healthPop() {
+    var p = $('health-pop'), open = p.hidden; closeMenus(); if (!open) return;
+    p.className = 'pop'; p.hidden = false; $('health').setAttribute('aria-expanded', 'true');
+    p.innerHTML = '<div style="font:650 14px var(--fh);margin-bottom:4px">Service status</div><div style="font-size:12px;color:var(--t3);margin-bottom:10px">' + esc((P.data.status || {}).host || '') + '</div>' +
+      svcRows().map(function (r) { return '<div class="svc" style="padding:12px 0;border-top:1px solid var(--bd)"><div class="ic ' + (r.st || 'unknown') + '">' + r.ic + '</div><div><b>' + esc(r.t) + '</b><span>' + esc(r.d) + '</span>' + (r.m ? '<em>' + esc(r.m) + '</em>' : '') + '</div></div>'; }).join('');
+  }
+  function meMenu() {
+    var m = $('me-menu'), open = m.hidden; closeMenus(); if (!open) return;
+    var u = P.data.user || {}; m.className = 'menu'; m.hidden = false; $('me').setAttribute('aria-expanded', 'true');
+    m.innerHTML = '<div class="h"><b>' + esc(u.name || '') + '</b><span>' + esc(u.email || '') + '</span></div>' +
+      '<button data-go="account">' + I.user + 'Account settings</button><button data-out>' + I.out + 'Sign out</button>';
+    m.querySelector('[data-go]').onclick = function () { closeMenus(); go('account'); };
+    m.querySelector('[data-out]').onclick = signOut;
+  }
+  function closeMenus() { ['health-pop', 'me-menu'].forEach(function (id) { $(id).hidden = true; }); $('health').setAttribute('aria-expanded', 'false'); $('me').setAttribute('aria-expanded', 'false'); }
+  document.addEventListener('click', function (e) { if (!e.target.closest('#health,#health-pop,#me,#me-menu')) closeMenus(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeMenus(); drawer(false); } });
 
+  /* ── navigation ── */
+  var TITLES = { email: 'Email', billing: 'Billing', account: 'Account' };
   function go(page) {
-    P.page = page;
-    if (location.hash !== '#' + page) history.replaceState(null, '', '#' + page);
-    document.querySelectorAll('.nav-item').forEach(function (b) { var on = b.getAttribute('data-page') === page; b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
-    var isStaff = P.data && P.data.user && P.data.user.is_platform_admin;
-    var staff = P.staffWs ? '<div class="staff">Staff view — you are seeing this account exactly as its people see it. Email actions run against your own signed-in account, not this one.</div>'
-      : (isStaff ? '<div class="staff">You are signed in as LevelUpGrowth staff. This is the portal the client sees. <a href="/app/" style="color:inherit;font-weight:600">Open the full app</a></div>' : '');
-    $('content').innerHTML = staff + '<div class="loading">Loading…</div>';
-    ({ email: pageEmail, billing: pageBilling, account: pageAccount })[page](staff);
+    P.page = page; if (location.hash !== '#' + page) history.replaceState(null, '', '#' + page);
+    document.querySelectorAll('.ni').forEach(function (b) { var on = b.getAttribute('data-page') === page; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    $('crumb').innerHTML = '<span class="co">' + esc(P.data.workspace.name) + '</span><span class="sep" aria-hidden="true">/</span><b>' + TITLES[page] + '</b>';
+    drawer(false); closeMenus();
+    ({ email: pageEmail, billing: pageBilling, account: pageAccount })[page]();
     window.scrollTo(0, 0);
   }
-
-  function head(title, desc) { return '<div class="page-h"><h1>' + esc(title) + '</h1>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + '</div>'; }
-  function errorCard(m) { return '<div class="card" style="border-left:3px solid var(--rd)"><h3>Something went wrong</h3><div class="muted">' + esc(m) + '</div></div>'; }
-  function contactLine() { var s = P.data && P.data.support || {}; return 'Questions? Call ' + esc(s.phone || '') + (s.email ? ' or write to <a href="mailto:' + esc(s.email) + '" style="color:inherit">' + esc(s.email) + '</a>' : '') + '.'; }
+  function staffNote() {
+    var u = P.data.user || {};
+    if (P.staffWs) return '<div class="staff">' + I.shield.replace('<svg', '<svg style="width:18px;height:18px;flex:none"') + '<span>Staff view: this is the portal exactly as the client sees it. Email actions run against your own account.</span></div>';
+    if (u.is_platform_admin) return '<div class="staff">' + I.shield.replace('<svg', '<svg style="width:18px;height:18px;flex:none"') + '<span>You are signed in as LevelUpGrowth staff. This is the portal the client sees. <a href="/app/">Open the full app</a></span></div>';
+    return '';
+  }
+  function head(t, d, act) { return staffNote() + '<div class="ph"><div><h1>' + esc(t) + '</h1>' + (d ? '<p>' + esc(d) + '</p>' : '') + '</div>' + (act || '') + '</div>'; }
+  function errorCard(m) { return '<div class="card"><div class="card-b" style="display:flex;gap:14px;align-items:flex-start"><div class="svc" style="padding:0"><div class="ic bad">' + I.shield + '</div></div><div><b>Something went wrong</b><div style="color:var(--t2);margin-top:2px">' + esc(m) + '</div></div></div></div>'; }
+  function drawer(open) { $('side').classList.toggle('open', open); $('scrim').classList.toggle('open', open); $('burger').setAttribute('aria-expanded', open ? 'true' : 'false'); }
 
   /* ═══ Email ═══ */
   var E = { domainId: null, domain: null };
-  function emailApi(p) { return req('GET', 'infrastructure/business-email' + p); }
-
-  function pageEmail(staff) {
-    emailApi('/overview').then(function (r) {
-      var j = r.json || {};
-      var domains = (r.ok && j.domains) || [];
-      if (!r.ok || !domains.length) {
-        $('content').innerHTML = staff + head('Email', 'Mailboxes on your own domain for everyone on your team.') +
-          '<div class="card"><h3>Your email stays where it is for now</h3>' +
-          '<div class="muted">Your team’s mailboxes are still with your current email provider, and they keep working exactly as they do today. ' +
-          'When we move them over, you will add people, pause or remove mailboxes, and send setup links right here. We will tell you before anything changes.</div>' +
-          '<div class="quiet" style="margin-top:14px">' + contactLine() + '</div></div>';
-        return;
-      }
-      E.domainId = domains[0].id; E.domain = domains[0].domain;
-      var s = j.summary || {}, a = (j.allowances || {}).mailboxes || {};
-      emailApi('/mailboxes?domain_id=' + E.domainId).then(function (m) {
-        var list = (m.ok && m.json.mailboxes) || [], actions = (m.ok && m.json.actions) || {};
-        var used = a.used != null ? a.used : list.length, limit = a.limit;
-        var html = staff + head('Email', 'Mailboxes on ' + E.domain + ' for everyone on your team.') +
-          '<div class="metrics">' +
-            metric('Mailboxes', used + (limit ? ' of ' + limit : ''), limit ? (Math.max(0, limit - used) + ' left in your package') : '') +
-            metric('Storage used', (s.storage_used_mb || 0) + ' MB', 'across all mailboxes') +
-          '</div>';
-        var rows = list.map(function (mb) {
-          var st = (mb.status && mb.status.state) || '';
-          var cls = st === 'active' ? 'ok' : (st === 'suspended' ? 'warn' : (st.indexOf('fail') >= 0 ? 'bad' : ''));
-          var label = (mb.status && mb.status.label) || st;
-          var buttons = '';
-          if (st === 'requested' && actions.mailbox_create) buttons += '<button class="btn sm" data-act="resend-setup" data-id="' + mb.id + '">Resend setup link</button>';
-          if (st === 'active' && actions.mailbox_suspend) buttons += '<button class="btn sm" data-act="suspend-mailbox" data-id="' + mb.id + '">Pause</button>';
-          if (st === 'suspended' && actions.mailbox_restore) buttons += '<button class="btn sm" data-act="restore-mailbox" data-id="' + mb.id + '">Resume</button>';
-          if (actions.mailbox_delete && st !== 'deleted' && st !== 'deleting') buttons += '<button class="btn sm danger" data-act="delete-mailbox" data-id="' + mb.id + '" data-addr="' + esc(mb.address) + '">Remove</button>';
-          return '<div class="row"><div class="who"><b>' + esc(mb.address) + '</b><span>' + esc(mb.display_name || '') +
-            (mb.storage_used_mb != null ? ' · ' + esc(mb.storage_used_mb) + ' MB of ' + esc(mb.quota_mb) + ' MB' : '') + '</span></div>' +
-            '<span class="chip ' + cls + '">' + esc(label) + '</span>' +
-            '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' + buttons + '</div></div>';
-        }).join('') || '<div class="quiet" style="padding:10px 0">No mailboxes yet. Add the first person below.</div>';
-        html += '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px"><h3 style="margin:0">People with a mailbox</h3>' +
-          (actions.mailbox_create && !(limit && used >= limit) ? '<button class="btn primary" id="add-person">Add a person</button>' : '') + '</div>' + rows +
-          '<div class="msg" id="email-msg"></div></div>';
-        html += '<div class="card"><h3>How a new mailbox starts</h3><div class="muted">When you add someone, we send a setup link to the email address you give us. ' +
-          'They open it and choose their own password; their mailbox is created at that moment. Nobody else ever sees or holds that password, including us.</div>' +
-          '<div class="quiet" style="margin-top:12px">' + contactLine() + '</div></div>';
-        $('content').innerHTML = html;
-        var add = $('add-person'); if (add) add.addEventListener('click', addPersonDialog);
-        document.querySelectorAll('[data-act]').forEach(function (b) { b.addEventListener('click', function () { mailboxAction(b); }); });
-      });
+  function pageEmail() {
+    $('content').innerHTML = head('Email', 'Mailboxes on your own domain for everyone on your team.') + '<div class="stack">' + skel(140) + skel(240) + '</div>';
+    req('GET', 'infrastructure/business-email/overview').then(function (r) {
+      var j = r.json || {}, ds = (r.ok && j.domains) || [];
+      if (!ds.length) return emailNotMoved();
+      E.domainId = ds[0].id; E.domain = ds[0].domain;
+      req('GET', 'infrastructure/business-email/mailboxes?domain_id=' + E.domainId).then(function (m) { emailLive(j, (m.ok && m.json) || {}); });
     });
   }
 
-  function metric(k, v, s) { return '<div class="metric"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (s ? '<div class="s">' + esc(s) + '</div>' : '') + '</div>'; }
+  function svcTiles() {
+    return '<div class="grid g3">' + svcRows().map(function (r) { return '<div class="card svc"><div class="ic ' + (r.st || 'unknown') + '">' + r.ic + '</div><div style="min-width:0"><b>' + esc(r.t) + '</b><span>' + esc(r.d) + '</span>' + (r.m ? '<em>' + esc(r.m) + '</em>' : '') + '</div></div>'; }).join('') + '</div>';
+  }
 
-  function mailboxAction(b) {
-    var act = b.getAttribute('data-act'), id = parseInt(b.getAttribute('data-id'), 10);
+  function emailNotMoved() {
+    var host = (P.data.status || {}).host || 'your domain', c = contact();
+    $('content').innerHTML = head('Email', 'Mailboxes on ' + host + ' for everyone on your team.') + '<div class="stack">' + svcTiles() +
+      '<div class="card hero"><div><span class="pill info">' + I.mail.replace('<svg', '<svg style="width:13px;height:13px"') + 'On your current provider</span>' +
+        '<h2>Your team’s email keeps working exactly as it does today</h2>' +
+        '<p>Your mailboxes are still with your current email provider. When we move them to LevelUpGrowth, you will manage everyone’s mailbox here, and we will agree the date with you first. Nothing changes until then.</p></div>' +
+        '<dl class="kv"><dt>Domain</dt><dd>' + esc(host) + '</dd><dt>Mail delivery</dt><dd style="color:var(--ac)">Working</dd><dt>Mailboxes on LevelUpGrowth</dt><dd>0</dd><dt>Included in your package</dt><dd>Up to 10</dd></dl></div>' +
+      '<div class="card"><div class="card-h"><div><h2>How the move works</h2><p>Planned with you, done by us. No mail is lost and nobody is cut off.</p></div><span class="pill">Not scheduled</span></div>' +
+        '<div class="card-b"><div class="steps">' +
+          '<div class="step cur"><div class="n">1</div><b>Agree the list</b><span>We confirm with you who needs a mailbox and which addresses stay.</span></div>' +
+          '<div class="step"><div class="n">2</div><b>Everyone sets a password</b><span>Each person gets a setup link and chooses their own password. Their old mail is copied across.</span></div>' +
+          '<div class="step"><div class="n">3</div><b>Switch over</b><span>Over one weekend we switch delivery. Your old provider stays readable for 30 days.</span></div>' +
+        '</div></div></div>' +
+      '<div class="card"><div class="card-h"><div><h2>What you will do here</h2><p>Everything your team needs, nothing technical.</p></div></div><div class="card-b"><div class="grid g2">' +
+        feat(I.plus, 'Add people', 'Give someone a mailbox. They receive a link and choose their own password.') +
+        feat(I.pause, 'Pause access', 'Stop a mailbox for a while without losing any mail, then resume it.') +
+        feat(I.link, 'Resend setup links', 'Send a fresh link if someone has not finished setting up.') +
+        feat(I.shield, 'Remove safely', 'Remove a mailbox when someone leaves. We confirm every removal first.') +
+      '</div></div></div>' +
+      '<div class="card"><div class="row"><div><b>Ready to plan the move?</b><span>Call or write to us and we will schedule it with you.</span></div><div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn" href="tel:' + esc(c.phone.replace(/\s/g, '')) + '">' + I.phone + esc(c.phone) + '</a>' + (c.email ? '<a class="btn pri" href="mailto:' + esc(c.email) + '?subject=' + encodeURIComponent('Moving our email to LevelUpGrowth') + '">' + I.mail + 'Write to us</a>' : '') + '</div></div></div>' +
+    '</div>';
+  }
+  function feat(ic, t, d) { return '<div class="feat"><div class="ic">' + ic + '</div><div><b>' + esc(t) + '</b><span>' + esc(d) + '</span></div></div>'; }
+
+  function emailLive(ov, mb) {
+    var list = mb.mailboxes || [], act = mb.actions || {}, al = mb.allowance || {}, s = ov.summary || {};
+    var used = al.used != null ? al.used : list.length, limit = al.limit;
+    var canAdd = act.mailbox_create && !(limit && used >= limit);
+    var rows = list.map(function (m) {
+      var st = (m.status && m.status.state) || '', cls = st === 'active' ? 'ok' : st === 'suspended' ? 'warn' : /fail/.test(st) ? 'bad' : st === 'requested' ? 'info' : '';
+      var lbl = st === 'requested' ? 'Waiting for setup' : ((m.status && m.status.label) || st);
+      var pct = m.quota_mb ? Math.min(100, Math.round(100 * (m.storage_used_mb || 0) / m.quota_mb)) : 0;
+      var b = '';
+      if (st === 'requested') b += '<button class="btn sm" data-act="resend-setup" data-id="' + m.id + '">' + I.link + 'Resend link</button>';
+      if (st === 'active' && act.mailbox_suspend) b += '<button class="btn sm" data-act="suspend-mailbox" data-id="' + m.id + '">Pause</button>';
+      if (st === 'suspended' && act.mailbox_restore) b += '<button class="btn sm" data-act="restore-mailbox" data-id="' + m.id + '">Resume</button>';
+      if (act.mailbox_delete && st !== 'deleted' && st !== 'deleting') b += '<button class="btn sm ghost danger" data-act="delete-mailbox" data-id="' + m.id + '" data-addr="' + esc(m.address) + '">Remove</button>';
+      var nm = m.display_name || m.address;
+      return '<tr><td class="full"><div class="person"><div class="ini" style="background:' + hue(m.address) + '">' + esc(initials(nm)) + '</div><div style="min-width:0"><b>' + esc(nm) + '</b><span>' + esc(m.address) + '</span></div></div></td>' +
+        '<td><span class="pill ' + cls + '">' + esc(lbl) + '</span></td>' +
+        '<td class="num" style="min-width:150px">' + (m.storage_used_mb != null ? '<div style="font-size:12.5px;color:var(--t2);margin-bottom:6px">' + esc(m.storage_used_mb) + ' MB of ' + esc(m.quota_mb) + ' MB</div><div class="bar"><i style="width:' + pct + '%"></i></div>' : '<span style="color:var(--t3)">—</span>') + '</td>' +
+        '<td class="num full"><div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap">' + b + '</div></td></tr>';
+    }).join('');
+    $('content').innerHTML = head('Email', 'Mailboxes on ' + E.domain + ' for everyone on your team.', canAdd ? '<button class="btn pri" id="add">' + I.plus + 'Add a person</button>' : '') + '<div class="stack">' +
+      '<div class="grid g3">' +
+        tile(I.user, 'Mailboxes', used + (limit ? ' / ' + limit : ''), limit ? Math.max(0, limit - used) + ' available in your package' : '') +
+        tile(I.db, 'Storage used', (s.storage_used_mb || 0) + ' MB', 'Across all mailboxes') +
+        tile(I.mail, 'Domain', E.domain, 'Mail delivered by LevelUpGrowth') +
+      '</div>' +
+      '<div class="card"><div class="card-h"><div><h2>People</h2><p>' + (list.length ? list.length + ' mailbox' + (list.length === 1 ? '' : 'es') : 'No mailboxes yet') + '</p></div></div>' +
+        (list.length ? '<table class="tbl cards"><thead><tr><th>Person</th><th>Status</th><th class="num">Storage</th><th class="num"><span class="sr">Actions</span></th></tr></thead><tbody>' + rows + '</tbody></table>'
+          : '<div class="card-b" style="text-align:center;padding:40px 22px"><div style="width:48px;height:48px;margin:0 auto 12px;border-radius:14px;background:var(--s2);display:grid;place-items:center">' + I.user + '</div><b>Add the first person</b><div style="color:var(--t2);margin-top:4px">They will get a link to choose their own password.</div>' + (canAdd ? '<div style="margin-top:16px"><button class="btn pri" id="add2">' + I.plus + 'Add a person</button></div>' : '') + '</div>') +
+      '</div>' +
+      '<div class="card"><div class="row"><div><b>Passwords stay private</b><span>Each person chooses their own password from a one-time link. Nobody else sees it, including us.</span></div>' + I.shield.replace('<svg', '<svg style="width:22px;height:22px;flex:none;color:var(--ac)"') + '</div></div>' +
+    '</div>';
+    ['add', 'add2'].forEach(function (id) { var x = $(id); if (x) x.onclick = addPerson; });
+    document.querySelectorAll('[data-act]').forEach(function (b) { b.onclick = function () { mbAction(b); }; });
+  }
+  function tile(ic, k, v, s) { return '<div class="card tile"><div class="k"><span class="ic">' + ic + '</span>' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (s ? '<div class="s">' + esc(s) + '</div>' : '') + '</div>'; }
+
+  function mbAction(b) {
+    var a = b.getAttribute('data-act'), id = +b.getAttribute('data-id');
     var run = function () {
-      b.disabled = true; $('email-msg').className = 'msg'; $('email-msg').textContent = 'Working…';
-      req('POST', 'infrastructure/business-email/domains/' + E.domainId + '/actions/' + act, { id: id }).then(function (r) {
-        var j = r.json || {}; var ok = r.ok && (j.state === 'done' || j.state === 'pending' || j.state === 'awaiting_review');
-        $('email-msg').className = 'msg ' + (ok ? 'ok' : 'bad'); $('email-msg').textContent = j.message || (ok ? 'Done.' : 'That did not work. Please try again.');
-        if (ok) setTimeout(function () { go('email'); }, 1200); else b.disabled = false;
+      b.disabled = true;
+      req('POST', 'infrastructure/business-email/domains/' + E.domainId + '/actions/' + a, { id: id }).then(function (r) {
+        var j = r.json || {}; toast(j.message || (r.ok ? 'Done.' : 'That did not work. Please try again.'));
+        if (r.ok) setTimeout(function () { go('email'); }, 900); else b.disabled = false;
       });
     };
-    if (act === 'delete-mailbox') {
-      confirmDialog('Remove ' + b.getAttribute('data-addr') + '?', 'The mailbox and the mail in it are removed for good. We confirm every removal before it happens.', 'Remove mailbox', run);
-    } else { run(); }
+    if (a === 'delete-mailbox') confirmDlg('Remove ' + b.getAttribute('data-addr') + '?', 'The mailbox and its mail are removed for good. We confirm every removal with you before it happens.', 'Request removal', run); else run();
   }
 
-  function dialog(inner) {
-    var back = document.createElement('div'); back.className = 'dlg-back';
-    back.innerHTML = '<div class="dlg" role="dialog" aria-modal="true">' + inner + '</div>';
-    document.body.appendChild(back);
-    var close = function () { back.remove(); document.removeEventListener('keydown', onKey); };
-    var onKey = function (e) { if (e.key === 'Escape') close(); };
-    document.addEventListener('keydown', onKey);
-    back.addEventListener('click', function (e) { if (e.target === back) close(); });
-    var f = back.querySelector('input,button'); if (f) f.focus();
-    return { el: back, close: close };
+  function dialog(title, body, okLabel, onOk) {
+    var bg = document.createElement('div'); bg.className = 'dlg-b';
+    bg.innerHTML = '<div class="dlg" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="card-h"><h2>' + esc(title) + '</h2><button class="btn ghost sm" data-x aria-label="Close">✕</button></div><div class="card-b">' + body + '<div class="msg" data-msg></div></div><div class="dlg-f"><button class="btn" data-x>Cancel</button><button class="btn pri" data-ok>' + esc(okLabel) + '</button></div></div>';
+    document.body.appendChild(bg);
+    var close = function () { bg.remove(); document.removeEventListener('keydown', k); }, k = function (e) { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', k);
+    bg.addEventListener('click', function (e) { if (e.target === bg) close(); });
+    bg.querySelectorAll('[data-x]').forEach(function (x) { x.onclick = close; });
+    var ok = bg.querySelector('[data-ok]'), msg = bg.querySelector('[data-msg]');
+    ok.onclick = function () { onOk({ el: bg, ok: ok, msg: msg, close: close }); };
+    var f = bg.querySelector('input'); (f || ok).focus();
+    return bg;
   }
+  function confirmDlg(t, text, okL, run) { dialog(t, '<div style="color:var(--t2)">' + esc(text) + '</div>', okL, function (d) { d.close(); run(); }); }
 
-  function confirmDialog(title, text, okLabel, onOk) {
-    var d = dialog('<h2>' + esc(title) + '</h2><div class="muted" style="margin-bottom:18px">' + esc(text) + '</div>' +
-      '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>' + esc(okLabel) + '</button></div>');
-    d.el.querySelector('[data-x]').onclick = d.close;
-    d.el.querySelector('[data-ok]').onclick = function () { d.close(); onOk(); };
-  }
-
-  function addPersonDialog() {
-    var d = dialog('<h2>Add a person</h2><div class="muted" style="margin-bottom:16px">We send them a link to choose their own password. Their mailbox is ready as soon as they do.</div>' +
-      '<label class="lbl" for="ap-name">Their name</label><input class="inp" id="ap-name" autocomplete="off" placeholder="Maria Santos">' +
-      '<label class="lbl" for="ap-local" style="margin-top:14px">Their new address</label>' +
-      '<div style="display:flex;align-items:center;gap:8px"><input class="inp" id="ap-local" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="maria" style="flex:1"><span class="muted" style="white-space:nowrap">@' + esc(E.domain) + '</span></div>' +
-      '<label class="lbl" for="ap-to" style="margin-top:14px">Send the setup link to</label><input class="inp" id="ap-to" type="email" autocomplete="off" placeholder="their current email">' +
-      '<div class="quiet" style="margin-top:6px">An address they can open today, such as a personal email.</div>' +
-      '<div class="msg" id="ap-msg"></div>' +
-      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>Send setup link</button></div>');
-    d.el.querySelector('[data-x]').onclick = d.close;
-    var name = d.el.querySelector('#ap-name'), local = d.el.querySelector('#ap-local'), to = d.el.querySelector('#ap-to'), msg = d.el.querySelector('#ap-msg'), ok = d.el.querySelector('[data-ok]');
-    name.addEventListener('input', function () { if (!local.dataset.touched) { local.value = (name.value.trim().split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z0-9._-]/g, ''); } });
-    local.addEventListener('input', function () { local.dataset.touched = '1'; });
-    ok.onclick = function () {
-      var lp = local.value.trim().toLowerCase(), em = to.value.trim();
-      if (!name.value.trim() || !/^[a-z0-9][a-z0-9._-]{0,62}$/.test(lp)) { msg.className = 'msg bad'; msg.textContent = 'Add their name and a new address using letters, numbers, dots or dashes.'; return; }
-      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { msg.className = 'msg bad'; msg.textContent = 'Enter the email address the setup link should go to.'; return; }
-      if (em.toLowerCase().split('@')[1] === String(E.domain).toLowerCase()) { msg.className = 'msg bad'; msg.textContent = 'Send the link to an address they can already open — not the new one.'; return; }
-      ok.disabled = true; msg.className = 'msg'; msg.textContent = 'Sending…';
-      req('POST', 'infrastructure/business-email/domains/' + E.domainId + '/actions/create-mailbox', { local_part: lp, display_name: name.value.trim(), setup_recipient: em }).then(function (r) {
-        var j = r.json || {};
-        if (r.ok && (j.state === 'done' || j.state === 'pending')) { msg.className = 'msg ok'; msg.textContent = j.message || 'Setup link sent.'; setTimeout(function () { d.close(); go('email'); }, 1400); }
-        else { ok.disabled = false; msg.className = 'msg bad'; msg.textContent = j.message || 'That did not work. Please try again.'; }
+  function addPerson() {
+    var bg = dialog('Add a person',
+      '<div style="color:var(--t2);margin-bottom:18px">We send them a link to choose their own password. Their mailbox is ready as soon as they do.</div>' +
+      '<div class="field"><label class="lbl" for="ap-n">Full name</label><input class="inp" id="ap-n" autocomplete="off" placeholder="Maria Santos"></div>' +
+      '<div class="field"><label class="lbl" for="ap-l">New email address</label><div style="display:flex;align-items:center;border:1px solid var(--bd2);border-radius:var(--r);background:var(--s2);overflow:hidden"><input class="inp" id="ap-l" style="border:0;border-radius:0" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="maria"><span style="padding:0 13px;color:var(--t3);white-space:nowrap;border-left:1px solid var(--bd2);align-self:stretch;display:flex;align-items:center">@' + esc(E.domain) + '</span></div></div>' +
+      '<div class="field"><label class="lbl" for="ap-t">Send the setup link to</label><input class="inp" id="ap-t" type="email" autocomplete="off" placeholder="name@gmail.com"><div class="hint">An address they can open today, such as their personal email.</div></div>',
+      'Send setup link', function (d) {
+        var n = d.el.querySelector('#ap-n').value.trim(), l = d.el.querySelector('#ap-l').value.trim().toLowerCase(), t = d.el.querySelector('#ap-t').value.trim();
+        var bad = function (m) { d.msg.className = 'msg bad'; d.msg.textContent = m; };
+        if (!n) return bad('Add their full name.');
+        if (!/^[a-z0-9][a-z0-9._-]{0,62}$/.test(l)) return bad('Use letters, numbers, dots or dashes for the new address.');
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(t)) return bad('Enter the email address the setup link should go to.');
+        if (t.toLowerCase().split('@')[1] === String(E.domain).toLowerCase()) return bad('Send the link to an address they can already open, not the new one.');
+        d.ok.disabled = true; d.msg.className = 'msg'; d.msg.textContent = 'Sending…';
+        req('POST', 'infrastructure/business-email/domains/' + E.domainId + '/actions/create-mailbox', { local_part: l, display_name: n, setup_recipient: t }).then(function (r) {
+          var j = r.json || {};
+          if (r.ok && (j.state === 'pending' || j.state === 'done')) { d.close(); toast(j.message || 'Setup link sent.'); go('email'); }
+          else { d.ok.disabled = false; bad(j.message || 'That did not work. Please try again.'); }
+        });
       });
-    };
+    var n = bg.querySelector('#ap-n'), l = bg.querySelector('#ap-l');
+    n.addEventListener('input', function () { if (!l.dataset.t) l.value = (n.value.trim().split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z0-9._-]/g, ''); });
+    l.addEventListener('input', function () { l.dataset.t = '1'; });
   }
 
   /* ═══ Billing ═══ */
-  function pageBilling(staff) {
-    var p = P.data.package;
-    if (!p) { $('content').innerHTML = staff + head('Billing', '') + '<div class="card"><div class="muted">Your package details are being added. ' + contactLine() + '</div></div>'; return; }
-    var start = new Date(p.term_start + 'T00:00:00'), end = new Date(p.term_end + 'T00:00:00'), now = new Date();
-    var pct = Math.max(0, Math.min(100, Math.round(100 * (now - start) / (end - start))));
-    var html = staff + head('Billing', 'Your package with LevelUpGrowth.') +
-      '<div class="metrics">' +
-        metric('Package', p.name, p.active ? 'Active' : 'Ended') +
-        metric('Paid', money(p.currency, p.amount), p.paid_at ? 'Paid in full on ' + fmtDate(p.paid_at) : 'Paid in full') +
-        metric('Valid until', fmtDate(p.term_end), p.active ? p.days_left + ' days left' : 'Renewal due') +
+  function pageBilling() {
+    var p = P.data.package, c = contact();
+    if (!p) { $('content').innerHTML = head('Billing', '') + '<div class="card"><div class="card-b">Your package details are being added. Call ' + esc(c.phone) + ' if you need them now.</div></div>'; return; }
+    var s = new Date(p.term_start + 'T00:00:00'), e = new Date(p.term_end + 'T00:00:00'), pct = Math.max(0, Math.min(100, Math.round(100 * (Date.now() - s) / (e - s))));
+    var sup = p.support, supPct = sup ? Math.max(0, Math.min(100, Math.round(100 * sup.days_left / 90))) : 0;
+    var incl = (p.inclusions || []).filter(function (x) { return !/IT support/i.test(x); });
+    var icons = [I.server, I.db, I.mail, I.shield];
+    var desc = { 'Dedicated website hosting': 'Your own server, kept online, fast and up to date.', 'Database management': 'Your member and site data, maintained and tuned.', 'Business email hosting': 'Professional email on your own domain.', 'Backups and security management': 'Encrypted nightly backups, certificates and protection.' };
+    $('content').innerHTML = head('Billing', 'Your package with LevelUpGrowth.') + '<div class="stack">' +
+      '<div class="card hero"><div><span class="pill ' + (p.active ? 'ok' : 'warn') + '">' + (p.active ? I.check.replace('<svg', '<svg style="width:12px;height:12px"') + 'Active' : 'Renewal due') + '</span>' +
+        '<h2>' + esc(p.name) + '</h2><p>Three-year term, paid in full. Nothing more is due until ' + fmtDate(p.term_end, true) + '.</p>' +
+        '<div style="margin-top:22px"><div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--t3);margin-bottom:8px"><span>' + fmtDate(p.term_start) + '</span><span>' + p.days_left.toLocaleString() + ' days left</span><span>' + fmtDate(p.term_end) + '</span></div><div class="bar"><i style="width:' + Math.max(pct, 2) + '%"></i></div></div></div>' +
+        '<dl class="kv"><dt>Amount paid</dt><dd style="font:700 22px var(--fh)">' + money(p.currency, p.amount) + '</dd><dt>Paid on</dt><dd>' + fmtDate(p.paid_at) + '</dd><dt>Term</dt><dd>3 years</dd><dt>Valid until</dt><dd>' + fmtDate(p.term_end) + '</dd><dt>Renewal date</dt><dd>' + fmtDate(p.term_end) + '</dd></dl></div>' +
+      '<div class="grid g-bill">' +
+        '<div class="card"><div class="card-h"><div><h2>What your package includes</h2><p>Run and looked after by LevelUpGrowth.</p></div></div><div class="card-b">' +
+          incl.map(function (x, i) { return '<div class="check"><div class="ic">' + (icons[i] || I.check) + '</div><div><b>' + esc(x) + '</b><span>' + esc(desc[x] || '') + '</span></div></div>'; }).join('') + '</div></div>' +
+        (sup ? '<div class="card"><div class="card-h"><div><h2>IT support</h2><p>' + esc(sup.label || '') + '</p></div><span class="pill ' + (sup.active ? 'ok' : '') + '">' + (sup.active ? 'Active' : 'Ended') + '</span></div><div class="card-b" style="text-align:center">' +
+          '<div class="ring" style="--v:' + supPct + '"><div><div><b>' + sup.days_left + '</b><span>days left</span></div></div></div>' +
+          '<div style="margin-top:16px;color:var(--t2);font-size:13px">' + (sup.active ? 'Included until ' + fmtDate(sup.until, true) + '.' : 'Ended ' + fmtDate(sup.until, true) + '. Ongoing support can be added at any time.') + '</div>' +
+          '<div style="display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap"><a class="btn sm" href="tel:' + esc(c.phone.replace(/\s/g, '')) + '">' + I.phone + 'Call support</a>' + (c.email ? '<a class="btn sm" href="mailto:' + esc(c.email) + '">' + I.mail + 'Email</a>' : '') + '</div></div></div>' : '') +
       '</div>' +
-      '<div class="card"><h3>Term</h3><div style="display:flex;justify-content:space-between;font-size:13px;color:var(--t2);margin-bottom:8px"><span>' + fmtDate(p.term_start) + '</span><span>' + fmtDate(p.term_end) + '</span></div>' +
-        '<div class="bar" aria-label="' + pct + '% of the term used"><div style="width:' + pct + '%"></div></div>' +
-        '<div class="quiet" style="margin-top:8px">Paid up front for the whole term. Nothing more is due until the term ends.</div></div>' +
-      '<div class="card"><h3>What your package includes</h3><ul class="incl">' + (p.inclusions || []).map(function (x) { return '<li>' + CHECK + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul></div>';
-    if (p.support) {
-      html += '<div class="card"><h3>' + esc(p.support.label || 'IT support') + '</h3>' +
-        (p.support.active
-          ? '<div><span class="chip ok">Active</span> <span class="muted" style="margin-left:8px">Included until ' + fmtDate(p.support.until) + ' · ' + p.support.days_left + ' days left</span></div>'
-          : '<div><span class="chip">Ended ' + fmtDate(p.support.until) + '</span></div><div class="quiet" style="margin-top:8px">Ongoing IT support can be added at any time. ' + contactLine() + '</div>') +
-        '</div>';
-    }
-    html += '<div class="card"><h3>Documents</h3><div class="muted">' +
-      (p.invoice_ref ? 'Invoice ' + esc(p.invoice_ref) : '') + (p.invoice_ref && p.receipt_ref ? ' · ' : '') + (p.receipt_ref ? 'Receipt ' + esc(p.receipt_ref) : '') + '</div>' +
-      (p.has_receipt ? '<div style="margin-top:12px"><button class="btn" id="dl-receipt">Download receipt (PDF)</button></div>' : '<div class="quiet" style="margin-top:8px">' + contactLine() + '</div>') + '</div>';
-    $('content').innerHTML = html;
-    var dl = $('dl-receipt'); if (dl) dl.addEventListener('click', downloadReceipt);
+      '<div class="card"><div class="card-h"><div><h2>Payments</h2><p>Every payment on this account.</p></div></div>' +
+        '<table class="tbl cards"><thead><tr><th>Date</th><th>Description</th><th>Reference</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>' +
+        '<tr><td>' + fmtDate(p.paid_at) + '</td><td class="full"><b>' + esc(p.name) + '</b><div style="font-size:12.5px;color:var(--t3)">' + fmtDate(p.term_start) + ' – ' + fmtDate(p.term_end) + '</div></td><td>' + (p.invoice_ref ? 'Invoice ' + esc(p.invoice_ref) : '—') + '</td><td class="num"><b>' + money(p.currency, p.amount) + '</b></td><td><span class="pill ok">Paid</span></td></tr>' +
+        '</tbody></table></div>' +
+      '<div class="card"><div class="card-h"><div><h2>Documents</h2><p>Copies for your records.</p></div></div>' +
+        (p.invoice_ref ? '<div class="doc"><div class="ic">' + I.doc + '</div><div><b>Invoice ' + esc(p.invoice_ref) + '</b><span>' + esc(p.name) + ' · ' + fmtDate(p.paid_at) + '</span></div><div class="r"><span class="pill">On request</span></div></div>' : '') +
+        (p.receipt_ref ? '<div class="doc"><div class="ic">' + I.doc + '</div><div><b>Official receipt ' + esc(p.receipt_ref) + '</b><span>Paid in full · ' + money(p.currency, p.amount) + '</span></div><div class="r">' + (p.has_receipt ? '<button class="btn sm" id="dl">' + I.down + 'Download PDF</button>' : '<span class="pill">On request</span>') + '</div></div>' : '') +
+      '</div>' +
+    '</div>';
+    var dl = $('dl'); if (dl) dl.onclick = function () {
+      fetch(API + q('managed/receipt'), { headers: { Authorization: 'Bearer ' + (localStorage.getItem('lu_token') || '') } })
+        .then(function (r) { if (!r.ok) throw 0; return r.blob(); })
+        .then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'Receipt-' + (p.receipt_ref || '') + '.pdf'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000); })
+        .catch(function () { toast('The receipt could not be downloaded just now.'); });
+    };
   }
-
-  function downloadReceipt() {
-    var h = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '') };
-    fetch(API + 'managed/receipt' + (P.staffWs ? '?workspace_id=' + encodeURIComponent(P.staffWs) : ''), { headers: h }).then(function (r) {
-      if (!r.ok) throw new Error(); return r.blob();
-    }).then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'Receipt.pdf'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000); })
-      .catch(function () { alertBox('The receipt could not be downloaded just now.'); });
-  }
-  function alertBox(t) { var d = dialog('<div class="muted" style="margin-bottom:16px">' + esc(t) + '</div><div style="text-align:right"><button class="btn" data-x>Close</button></div>'); d.el.querySelector('[data-x]').onclick = d.close; }
 
   /* ═══ Account ═══ */
-  function pageAccount(staff) {
-    var u = P.data.user || {};
-    $('content').innerHTML = staff + head('Account', 'Your sign-in for this portal.') +
-      '<div class="card"><h3>Signed in as</h3><div style="font:600 15px var(--fb)">' + esc(u.name || '') + '</div><div class="muted">' + esc(u.email || '') + '</div></div>' +
-      '<div class="card"><h3>Change your password</h3><div class="grid2">' +
-        '<div><label class="lbl" for="pw-cur">Current password</label><input class="inp" id="pw-cur" type="password" autocomplete="current-password"></div>' +
-        '<div><label class="lbl" for="pw-new">New password</label><input class="inp" id="pw-new" type="password" autocomplete="new-password"></div>' +
-        '<div><label class="lbl" for="pw-new2">New password again</label><input class="inp" id="pw-new2" type="password" autocomplete="new-password"></div>' +
-      '</div><div style="margin-top:14px"><button class="btn primary" id="pw-save">Change password</button></div><div class="msg" id="pw-msg"></div></div>' +
-      '<div class="card"><h3>Appearance</h3><div class="muted" style="margin-bottom:10px">Dark, light, or follow your device.</div><div id="acc-theme" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>' +
-      '<div class="card"><h3>Help</h3><div class="muted">' + contactLine() + '</div>' +
-        '<div class="mob-top"><button class="btn" id="sign-out-2">Sign out</button></div></div>';
-    $('pw-save').onclick = function () {
-      var c = $('pw-cur').value, n = $('pw-new').value, n2 = $('pw-new2').value, m = $('pw-msg');
-      if (n.length < 10 || !/[A-Za-z]/.test(n) || !/\d/.test(n)) { m.className = 'msg bad'; m.textContent = 'Use at least 10 characters with letters and numbers.'; return; }
-      if (n !== n2) { m.className = 'msg bad'; m.textContent = 'The two new passwords do not match.'; return; }
-      $('pw-save').disabled = true;
-      req('PUT', 'auth/password', { current_password: c, password: n, password_confirmation: n2 }).then(function (r) {
-        $('pw-save').disabled = false;
-        m.className = 'msg ' + (r.ok ? 'ok' : 'bad'); m.textContent = r.ok ? 'Your password is changed.' : ((r.json && r.json.message) || 'That did not work.');
-        if (r.ok) { $('pw-cur').value = $('pw-new').value = $('pw-new2').value = ''; }
+  function pageAccount() {
+    var u = P.data.user || {}, c = contact(), th = localStorage.getItem('lu_theme') || 'dark';
+    var role = { owner: 'Owner', admin: 'Administrator', member: 'Member', viewer: 'Viewer' }[u.role] || 'Member';
+    $('content').innerHTML = head('Account', 'Your sign-in and preferences.') + '<div class="stack">' +
+      '<div class="card prof"><div class="ini" style="background:' + hue(u.email || '') + '">' + esc(initials(u.name || u.email)) + '</div><div style="min-width:0"><h2>' + esc(u.name || '') + '</h2><p>' + esc(u.email || '') + '</p>' +
+        '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><span class="pill info">' + esc(role) + '</span><span class="pill">' + esc(P.data.workspace.name) + '</span></div></div></div>' +
+      '<div class="card"><div class="card-h"><div><h2>Security</h2><p>Keep your sign-in safe.</p></div></div>' +
+        '<div class="row"><div><b>Password</b><span>Use at least 10 characters with letters and numbers.</span></div><button class="btn" id="pw">Change password</button></div>' +
+        '<div class="row"><div><b>Sign out</b><span>Ends your session on this device.</span></div><button class="btn" id="so">' + I.out + 'Sign out</button></div>' +
+      '</div>' +
+      '<div class="card"><div class="card-h"><div><h2>Appearance</h2><p>Choose how the portal looks on this device.</p></div></div>' +
+        '<div class="row"><div><b>Theme</b><span>Dark, light, or follow your device.</span></div><div class="seg" style="min-width:220px" id="acc-th">' +
+          ['dark', 'light', 'system'].map(function (t) { return '<button type="button" role="radio" aria-checked="' + (t === th) + '" data-t="' + t + '">' + { dark: 'Dark', light: 'Light', system: 'Auto' }[t] + '</button>'; }).join('') + '</div></div>' +
+      '</div>' +
+      '<div class="card"><div class="card-h"><div><h2>Support</h2><p>Your hosting and email are looked after by LevelUpGrowth.</p></div></div>' +
+        '<div class="row"><div><b>Phone</b><span>' + esc(c.phone) + '</span></div><a class="btn" href="tel:' + esc(c.phone.replace(/\s/g, '')) + '">' + I.phone + 'Call</a></div>' +
+        (c.email ? '<div class="row"><div><b>Email</b><span>' + esc(c.email) + '</span></div><a class="btn" href="mailto:' + esc(c.email) + '">' + I.mail + 'Write</a></div>' : '') +
+      '</div>' +
+    '</div>';
+    $('pw').onclick = changePw; $('so').onclick = signOut;
+    $('acc-th').querySelectorAll('button').forEach(function (b) { b.onclick = function () { setTheme(b.getAttribute('data-t')); pageAccount(); }; });
+  }
+  function changePw() {
+    dialog('Change password',
+      '<div class="field"><label class="lbl" for="pw-c">Current password</label><input class="inp" id="pw-c" type="password" autocomplete="current-password"></div>' +
+      '<div class="field"><label class="lbl" for="pw-n">New password</label><input class="inp" id="pw-n" type="password" autocomplete="new-password"><div class="hint">At least 10 characters, with letters and numbers.</div></div>' +
+      '<div class="field"><label class="lbl" for="pw-r">Repeat new password</label><input class="inp" id="pw-r" type="password" autocomplete="new-password"></div>',
+      'Change password', function (d) {
+        var cu = d.el.querySelector('#pw-c').value, n = d.el.querySelector('#pw-n').value, n2 = d.el.querySelector('#pw-r').value, bad = function (m) { d.msg.className = 'msg bad'; d.msg.textContent = m; };
+        if (n.length < 10 || !/[A-Za-z]/.test(n) || !/\d/.test(n)) return bad('Use at least 10 characters with letters and numbers.');
+        if (n !== n2) return bad('The two new passwords do not match.');
+        d.ok.disabled = true;
+        req('PUT', 'auth/password', { current_password: cu, password: n, password_confirmation: n2 }).then(function (r) {
+          if (r.ok) { d.close(); toast('Your password is changed.'); } else { d.ok.disabled = false; bad((r.json && r.json.message) || 'That did not work.'); }
+        });
       });
-    };
-    var t = $('acc-theme');
-    [['dark', 'Dark'], ['light', 'Light'], ['system', 'Auto']].forEach(function (o) {
-      var b = document.createElement('button'); b.className = 'btn sm'; b.textContent = o[1]; b.onclick = function () { setTheme(o[0]); pageAccount(staff); };
-      if ((localStorage.getItem('lu_theme') || 'dark') === o[0]) { b.classList.add('primary'); }
-      t.appendChild(b);
-    });
-    var so = $('sign-out-2'); if (so) so.onclick = signOut;
   }
 
-  /* ═══ theme + sign out (same storage keys and endpoints as the app) ═══ */
+  /* ── theme, sign out ── */
   function applyTheme(t) {
     var l = t === 'light' || (t === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
     if (l) document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
-    document.querySelector('meta[name="theme-color"]').setAttribute('content', l ? '#F9F8F7' : '#0B0F19');
-    document.querySelectorAll('#sb-theme button').forEach(function (b) { var on = b.getAttribute('data-theme-opt') === t; b.classList.toggle('active', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', l ? '#F7F6F4' : '#0F1117');
+    document.querySelectorAll('#theme-seg button').forEach(function (b) { b.setAttribute('aria-checked', b.getAttribute('data-t') === t ? 'true' : 'false'); });
   }
   function setTheme(t) { try { localStorage.setItem('lu_theme', t); } catch (e) {} applyTheme(t); req('PUT', 'user/preferences', { theme: t }); }
   function signOut() {
-    var rt = localStorage.getItem('lu_refresh_token');
-    var done = function () { ['lu_token', 'lu_refresh_token', 'lu_user', 'lu_user_id'].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} }); location.replace('/app/'); };
+    var rt = localStorage.getItem('lu_refresh_token'), done = function () { ['lu_token', 'lu_refresh_token', 'lu_user', 'lu_user_id'].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} }); location.replace('/app/'); };
     (rt ? req('POST', 'auth/logout', { refresh_token: rt }) : Promise.resolve()).then(done, done);
   }
 
-  document.querySelectorAll('.nav-item').forEach(function (b) { b.addEventListener('click', function () { go(b.getAttribute('data-page')); }); });
-  document.querySelectorAll('#sb-theme button').forEach(function (b) { b.addEventListener('click', function () { setTheme(b.getAttribute('data-theme-opt')); }); });
-  $('sign-out').addEventListener('click', signOut);
-  window.addEventListener('hashchange', function () { var h = location.hash.replace('#', ''); if (h && h !== P.page && ['email', 'billing', 'account'].indexOf(h) >= 0) go(h); });
+  document.querySelectorAll('.ni').forEach(function (b) { b.onclick = function () { go(b.getAttribute('data-page')); }; });
+  document.querySelectorAll('#theme-seg button').forEach(function (b) { b.onclick = function () { setTheme(b.getAttribute('data-t')); if (P.page === 'account') pageAccount(); }; });
+  $('health').onclick = function (e) { e.stopPropagation(); healthPop(); };
+  $('me').onclick = function (e) { e.stopPropagation(); meMenu(); };
+  $('burger').onclick = function () { drawer(!$('side').classList.contains('open')); };
+  $('scrim').onclick = function () { drawer(false); };
+  window.addEventListener('hashchange', function () { var h = location.hash.replace('#', ''); if (P.data && h !== P.page && TITLES[h]) go(h); });
+  $('yr').textContent = new Date().getFullYear();
   applyTheme(localStorage.getItem('lu_theme') || 'dark');
   boot();
-  // the status line refreshes itself every 5 minutes, like the checks behind it
-  setInterval(function () { req('GET', 'managed/portal' + (P.staffWs ? '?workspace_id=' + encodeURIComponent(P.staffWs) : '')).then(function (r) { if (r.ok) { P.data = r.json; paintStatus(); } }); }, 300000);
+  setInterval(function () { req('GET', q('managed/portal')).then(function (r) { if (r.ok) { P.data = r.json; paintHealth(); } }); }, 300000);
 })();
 </script>
 </body>

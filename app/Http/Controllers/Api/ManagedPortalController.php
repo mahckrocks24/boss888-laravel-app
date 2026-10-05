@@ -33,7 +33,13 @@ class ManagedPortalController
         return response()->json([
             'success'   => true,
             'workspace' => ['id' => (int) $ws->id, 'name' => $ws->business_name ?: $ws->name],
-            'user'      => ['name' => $user?->name, 'email' => $user?->email, 'is_platform_admin' => (bool) ($user?->is_platform_admin)],
+            'user'      => [
+                'name'              => $user?->name,
+                'email'             => $user?->email,
+                'is_platform_admin' => (bool) ($user?->is_platform_admin),
+                'role'              => $user ? DB::table('workspace_users')->where('workspace_id', $wsId)->where('user_id', $user->id)->value('role') : null,
+                'member_since'      => $user?->created_at?->toDateString(),
+            ],
             'status'    => ManagedStatus::forWorkspace($wsId),
             'package'   => $contract ? $this->package($contract) : null,
             'support'   => [

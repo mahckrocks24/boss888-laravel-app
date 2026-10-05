@@ -51,11 +51,16 @@ final class ManagedStatus
         $uptime = ($row && $row->total > 0) ? round(100 * $row->up / $row->total, 2) : null;
 
         $up = in_array($check->last_status, ['up', 'degraded'], true);
+        $latest = DB::table('infra_monitor_results')->where('monitor_check_id', $check->id)->orderByDesc('id')->first(['response_ms', 'checked_at']);
+        $incidents = DB::table('infra_incidents')->where('workspace_id', DB::table('infra_monitor_checks')->where('id', $check->id)->value('workspace_id'))
+            ->where('created_at', '>=', $since)->count();
 
         return [
-            'state'      => $up ? 'ok' : ($check->last_status === 'down' ? 'bad' : 'unknown'),
-            'label'      => $up ? 'Website online' : ($check->last_status === 'down' ? 'Website unreachable — we are on it' : 'Website status unavailable'),
-            'uptime_30d' => $uptime,
+            'state'        => $up ? 'ok' : ($check->last_status === 'down' ? 'bad' : 'unknown'),
+            'label'        => $up ? 'Website online' : ($check->last_status === 'down' ? 'Website unreachable — we are on it' : 'Website status unavailable'),
+            'uptime_30d'   => $uptime,
+            'response_ms'  => $latest?->response_ms !== null ? (int) $latest->response_ms : null,
+            'incidents_30d'=> $incidents,
         ];
     }
 
