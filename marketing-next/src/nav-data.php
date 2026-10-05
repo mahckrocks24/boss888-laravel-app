@@ -38,6 +38,7 @@ return function (array $data): array {
                 ['bot', 'Chatbot', '', '/next/product/chatbot/'],
                 ['building', 'CRM', '', '/next/product/crm/'],
                 ['calendar', 'Calendar', '', '/next/product/calendar/'],
+                ['phone', 'Companion app', '', '/next/product/companion-app/'],
             ]],
         ],
         // The journey strip duplicated the groups above, so it is gone. One model, not two.

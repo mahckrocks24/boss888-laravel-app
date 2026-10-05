@@ -83,6 +83,13 @@ return [
             'capabilities' => [['Knows the platform', 'What each feature does, where it is in the app, what every plan includes, from the same documentation and plans table the platform enforces.'], ['Knows your plan', 'Your plan name and credit balance, so “what does my plan include” gets a real answer.'], ['Hands off to Sarah and Arthur', 'When you want work done, one tap sends the request to Sarah, or to Arthur for your website.']],
             'limit' => 'Aria explains; she never executes work, spends credits on tasks or changes settings.',
             'faq' => [['Is Aria the same as Sarah?', 'No. Sarah runs the workforce and does the work; Aria answers questions about the platform and points you to Sarah or Arthur when you want something done.'], ['Does Aria cost credits?', 'Conversation is metered like every chat on the platform: one credit for every five messages. When a workspace has no credits, Aria still shows the documentation answer.'], ['Can Aria see my customers\' data?', 'No. Aria reads only your plan name and credit balance; everything else comes from the platform documentation.']]],
+        // COMPANION-PAGE-1 (Owner 2026-10-05): the phone app - Sarah, Review and Account; the page is product-companion-app.php
+        ['slug' => 'companion-app', 'icon' => 'phone', 'name' => 'Companion app', 'engine' => 'Companion app for your phone', 'flag' => 'companion_app',
+            'promise' => 'Your growth team in your pocket: talk to Sarah, approve work, hear when something needs you.',
+            'lede' => 'The same Sarah conversation as on the web, every piece of work waiting for your approval, and your plan and credits, in three tabs on your phone.',
+            'capabilities' => [['Sarah', 'The same thread as the web, with previews and approval in the chat.'], ['Review', 'Approve in one tap, or decline with a reason.'], ['Account', 'Plan, credits, notifications and App lock.']],
+            'limit' => 'The app is for staying in charge on the move; building and editing stay in the web app.',
+            'faq' => [['Which plans include it?', 'Growth, Pro and Agency.']]],
     ],
     'infrastructure' => [
         ['slug' => 'domains', 'icon' => 'globe', 'name' => 'Domains', 'engine' => 'Domain commerce', 'flag' => 'custom_domain', 'hero_actions' => false,   // DOMAINS-HERO-1: purchase path not live; no CTA, no plan line

@@ -132,7 +132,7 @@ $jsonld = array_merge([[
     </div>
     <div>
       <h3 class="footer-h">Products</h3>
-      <a href="/next/product/website-builder/">Website builder</a><a href="/next/product/ai-workforce/">AI workforce</a><a href="/next/product/seo/">SEO</a><a href="/next/product/content/">Content</a><a href="/next/product/social/">Social</a><a href="/next/product/crm/">CRM</a><a href="/next/product/calendar/">Calendar</a><a href="/next/product/chatbot/">Chatbot</a><a href="/next/product/creative/">Creative</a><a href="/next/product/video/">Video</a><a href="/next/product/automation/">Automation</a>
+      <a href="/next/product/website-builder/">Website builder</a><a href="/next/product/ai-workforce/">AI workforce</a><a href="/next/product/seo/">SEO</a><a href="/next/product/content/">Content</a><a href="/next/product/social/">Social</a><a href="/next/product/crm/">CRM</a><a href="/next/product/calendar/">Calendar</a><a href="/next/product/chatbot/">Chatbot</a><a href="/next/product/creative/">Creative</a><a href="/next/product/video/">Video</a><a href="/next/product/automation/">Automation</a><a href="/next/product/companion-app/">Companion app</a>
     </div>
     <div>
       <h3 class="footer-h">Company</h3>
