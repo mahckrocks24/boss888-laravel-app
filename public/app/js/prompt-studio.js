@@ -127,7 +127,10 @@
       '.ps-vchip{background:var(--s1,#fff);border:1px solid var(--bd,rgba(0,0,0,.1));color:var(--t2,#555);font:600 12px/1 var(--fb,inherit);padding:7px 11px;border-radius:10px;cursor:pointer;min-width:38px}',
       '.ps-vchip[aria-pressed="true"]{border-color:var(--p,#6C5CE7);color:var(--t1,#111)}',
       /* phone: canvas first, one column */
-      '@media(max-width:899px){.ps-head{padding:14px 16px 12px}.ps-head h2{font-size:19px}.ps-body{grid-template-columns:1fr;padding:14px 12px 96px;gap:14px}.ps-body.has-result .ps-canvas{order:-1}.ps-body:not(.has-result) .ps-result{aspect-ratio:auto;min-height:0}.ps-body:not(.has-result) .ps-empty{flex-direction:row;text-align:left;padding:16px;max-width:none;gap:14px}.ps-body:not(.has-result) .ps-empty-ic{flex:0 0 44px;width:44px;height:44px}.ps-body:not(.has-result) .ps-empty b{font-size:14px}.ps-panel{position:static;padding:16px}.ps-costpill{display:none}}'
+      '@media(max-width:899px){.ps-head{padding:14px 16px 12px}.ps-head h2{font-size:19px}.ps-body{grid-template-columns:1fr;padding:14px 12px 96px;gap:14px}.ps-body.has-result .ps-canvas{order:-1}.ps-body:not(.has-result) .ps-result{aspect-ratio:auto;min-height:0}.ps-body:not(.has-result) .ps-empty{flex-direction:row;text-align:left;padding:16px;max-width:none;gap:14px}.ps-body:not(.has-result) .ps-empty-ic{flex:0 0 44px;width:44px;height:44px}.ps-body:not(.has-result) .ps-empty b{font-size:14px}.ps-panel{position:static;padding:16px}.ps-costpill{display:none}}',
+      /* STUDIO-CERT-2: one input box in the glass design (the glass textarea rule drew a second box inside it); the ghost button keeps its outline */
+      'html.lg-ui .main .ps-box .ps-input,html.lg-ui .main .ps-box .ps-input:focus{background:transparent;border:0;box-shadow:none;border-radius:0;padding:0;min-height:96px}',
+      'html.lg-ui .ps-btn-ghost{border:1px solid var(--lg-hairline,rgba(120,120,160,.3))}',
     ].join('');
     var s = document.createElement('style'); s.id = 'ps-css'; s.textContent = css;
     document.head.appendChild(s);
@@ -402,14 +405,15 @@
     S.genPrompt = p; // remembered so "Make another" can produce a fresh variation
     S.busy = true; S.busyKind = 'generate'; S.error = null; S.imageUrl = null; render();
     var tok = planTokenFor(p);
-    var body = { prompt: p, aspect_ratio: currentAspect().ar };
+    // STUDIO-CERT-2: the Studio makes what the owner described in the size they picked - never the chat design-look painter
+    var body = { prompt: p, aspect_ratio: currentAspect().ar, no_recipe: true };
     if (tok) body.plan_token = tok; // RFC-0009 P1: generate exactly what was previewed
     jfetch('/creative/generate/image', {
       method: 'POST',
       body: JSON.stringify(body)
     }).then(function (r) {
       // Gate rejection (NO_CREDITS / PLAN_GATED) — surface the real message.
-      if (r && r.success === false) { S.busy = false; S.error = friendlyErr(r) || 'Generation was blocked.'; render(); return; }
+      if (r && r.success === false) { S.busy = false; if (r.code === 'PREVIEW_REQUIRED') { S.planToken = null; S.enh = null; } S.error = friendlyErr(r) || 'Generation was blocked.'; render(); return; }
       var d = unwrap(r);
       if (d && d.code === 'PREVIEW_REQUIRED') { S.busy = false; S.planToken = null; S.enh = null; S.error = d.error || 'Please preview again before generating.'; render(); return; }
       if (d && d.success === false) { S.busy = false; S.error = friendlyErr(d) || 'Generation failed.'; render(); return; }

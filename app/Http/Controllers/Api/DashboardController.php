@@ -196,7 +196,7 @@ class DashboardController
                 $engine = $row->t_engine ?: ($row->ap_engine ?: 'system');
                 $action = $row->t_action ?: ($row->ap_action ?: 'review');
                 $rawMeta = $row->t_payload_json ?: $row->ap_data_json;
-                $meta = $rawMeta ? json_decode($rawMeta, true) : null;
+                $meta = $rawMeta ? json_decode($rawMeta, true) : null; if (! is_array($meta)) $meta = null; /* DASH-META-1: a double-encoded string took the whole overview to 500 */
 
                 // Batch context: if this approval has a batch_id, count and
                 // sample the sibling tasks so the Command Center card can

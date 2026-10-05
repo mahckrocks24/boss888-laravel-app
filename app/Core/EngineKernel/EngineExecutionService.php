@@ -755,6 +755,12 @@ class EngineExecutionService
             }
         }
 
+        // STUDIO-CERT-1 (2026-10-05): a refused stale preview is the customer's to fix (tap Enhance again). Its own message is
+        // customer-safe, so it passes through instead of the generic failure, and the code keeps its name.
+        if (($result['code'] ?? null) === 'PREVIEW_REQUIRED') {
+            return ['success' => false, 'error' => (string) ($result['error'] ?? 'Please tap Enhance to preview again before generating. No credits were charged.'), 'code' => 'PREVIEW_REQUIRED', 'engine' => $engine, 'action' => $action];
+        }
+
         return [
             'success' => false,
             'error'   => 'Creative generation did not complete. No credits were charged.',

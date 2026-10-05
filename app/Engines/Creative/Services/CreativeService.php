@@ -178,7 +178,9 @@ class CreativeService
         $compiled['size'] = $size;
         $bp['aspect_ratio'] = $aspect ?: ($bp['aspect_ratio'] ?? '');
         $planToken = (string) \Illuminate\Support\Str::uuid();
-        $binding   = $this->previewBinding($wsId, $prompt, $params, $plan['context'] ?? []);
+        // STUDIO-CERT-1 (2026-10-05): bind the SAME brand context generateImage() re-checks. The plan's own context brand is
+        // enriched (design direction, saved inspiration), so its hash never matched and every Enhance -> Generate was refused.
+        $binding   = $this->previewBinding($wsId, $prompt, $params, ['brand' => \App\Core\Brand\BrandContextForCreative::fromWorkspace($wsId, [], (int) ($params['business_id'] ?? 0) ?: null), 'subject_reference' => $plan['context']['subject_reference'] ?? null]);
         \Illuminate\Support\Facades\Cache::put(self::previewKey($wsId, $planToken), [
             'workspace_id' => $wsId,
             'binding'      => $binding,
