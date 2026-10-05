@@ -28,6 +28,12 @@ $faq = [
 $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => array_map(fn ($q) => ['@type' => 'Question', 'name' => $q[0], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => $q[1]]], $faq)];
 $check = '<svg class="ic ic--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
 $page['head'] = <<<'CSS'
+<meta property="og:image:secure_url" content="https://levelupgrowth.io/assets/og/affiliates-featured.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="LevelUpGrowth Affiliate Program: share your code, get paid 6 times for every business">
+<meta name="twitter:image" content="https://levelupgrowth.io/assets/og/affiliates-featured.png">
 <style id="af-css">
 .af{--af-gap:clamp(56px,8vw,104px)}
 .af-sec{padding:var(--af-gap) 0}
