@@ -97,6 +97,15 @@ $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M
       .sp .sp-proof div{border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
       .sp .sp-proof b{font:800 22px/1.1 var(--font);letter-spacing:-.02em;color:var(--ink)}.sp .sp-proof span{font-size:12.5px;line-height:17px;color:var(--ink-2)}
       .sp .sv{position:relative;width:100%;max-width:600px;margin-left:auto;aspect-ratio:1/1.04;container-type:inline-size}
+      .sp .sv-logo{position:absolute;z-index:5;width:11cqw;height:11cqw;border-radius:3.2cqw;display:grid;place-items:center;background:#fff;box-shadow:0 1.6cqw 4cqw rgba(15,10,50,.28),0 0 0 .2cqw rgba(0,0,0,.05)}
+      .sp .sv-logo svg{width:6.2cqw;height:6.2cqw}
+      .sp .sv-logo--sm{width:7.4cqw;height:7.4cqw;border-radius:2.2cqw;z-index:2;opacity:.92}.sp .sv-logo--sm svg{width:4.2cqw;height:4.2cqw}
+      .sp .sv-logo--ig{right:12cqw;top:-2cqw;transform:rotate(10deg)}
+      .sp .sv-logo--fb{left:-3cqw;top:42cqw;transform:rotate(-12deg)}
+      .sp .sv-logo--in{right:-3cqw;top:84cqw;transform:rotate(8deg)}
+      .sp .sv-logo--ig2{left:46cqw;top:96cqw;transform:rotate(-8deg)}
+      .sp .sv-logo--fb2{right:2cqw;top:11cqw;transform:rotate(-6deg)}
+      .sp .sv-logo--in2{left:21cqw;top:8cqw;transform:rotate(12deg)}
       .sp .sv-glow{position:absolute;inset:8% 6% 4%;border-radius:50%;background:radial-gradient(closest-side,rgba(124,58,237,.35),rgba(37,99,235,.18) 55%,transparent);filter:blur(10px);z-index:0}
       .sp .sv-post{position:absolute;background:#fff;color:#14161c;border-radius:3cqw;overflow:hidden;box-shadow:0 2cqw 6cqw rgba(15,10,50,.28),0 0 0 .15cqw rgba(0,0,0,.06);font:400 2cqw/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
       .sp .sv-post img{display:block;width:100%;height:auto}
@@ -130,15 +139,15 @@ $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M
       .sp .sv-lead{left:4cqw;top:89cqw;width:37cqw;align-items:center}
       .sp .sv-dot{width:4cqw;height:4cqw;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--success-soft,rgba(16,185,129,.15));color:var(--success)}
       .sp .sv-dot svg{width:2.4cqw;height:2.4cqw}
-      @media (max-width:600px){.sp .sv{aspect-ratio:1/1.34}.sp .sv-fb,.sp .sv-in,.sp .sv-trend{display:none}.sp .sv-phone{left:24cqw;width:52cqw;height:112cqw;top:4cqw}.sp .sv-card{font-size:12px;padding:9px 11px;gap:8px;border-radius:14px}.sp .sv-card b{font-size:12.5px}.sp .sv-card small{font-size:10.5px}.sp .sv-card img.sv-face{width:26px;height:26px}.sp .sv-btn{font-size:11px;height:24px;padding:0 10px;border-radius:12px;margin-top:6px}.sp .sv-dot{width:22px;height:22px}.sp .sv-sarah{width:56cqw;top:0}.sp .sv-appr{width:52cqw;top:66cqw}.sp .sv-lead{width:64cqw;top:auto;bottom:0;left:18cqw}}
+      @media (max-width:600px){.sp .sv{aspect-ratio:1/1.34}.sp .sv-fb,.sp .sv-in,.sp .sv-trend{display:none}.sp .sv-phone{left:24cqw;width:52cqw;height:112cqw;top:4cqw}.sp .sv-card{font-size:12px;padding:9px 11px;gap:8px;border-radius:14px}.sp .sv-card b{font-size:12.5px}.sp .sv-card small{font-size:10.5px}.sp .sv-card img.sv-face{width:26px;height:26px}.sp .sv-btn{font-size:11px;height:24px;padding:0 10px;border-radius:12px;margin-top:6px}.sp .sv-dot{width:22px;height:22px}.sp .sv-sarah{width:56cqw;top:0}.sp .sv-appr{width:52cqw;top:66cqw}.sp .sv-lead{width:64cqw;top:auto;bottom:0;left:18cqw}.sp .sv-logo{width:13cqw;height:13cqw;border-radius:4cqw}.sp .sv-logo svg{width:7.4cqw;height:7.4cqw}.sp .sv-logo--ig{right:4cqw;top:1cqw}.sp .sv-logo--fb{left:0;top:52cqw}.sp .sv-logo--in{right:0;top:96cqw}.sp .sv-logo--sm{display:none}}
       @media (max-width:900px){.sp .sp-hero{grid-template-columns:1fr}.sp .sv{margin:8px auto 0}.sp .sp-proof{grid-template-columns:repeat(3,minmax(0,1fr))}.sp .sp-proof b{font-size:18px}}
     </style>
     <div class="mk-wrap sp-hero">
       <div class="lg-stack gap-4">
         <nav class="sp-crumbs" aria-label="Breadcrumb"><a href="/next/product/">Products</a><span>/</span><span>Social</span></nav>
-        <span class="sp-kick lg-glass lg-glass--thin"><span class="sp-kick__logos"><span class="sp-ico"><?= $icFb ?></span><span class="sp-ico"><?= $icIgS ?></span><span class="sp-ico"><?= $icIn ?></span></span>Social engine for Facebook, Instagram and LinkedIn</span>
-        <h1 class="sp-h1">A social media team that plans, posts and replies <span class="t-grad">around the clock.</span> You just approve.</h1>
-        <p class="mk-lead">Sarah reads what is trending in your industry and what your followers respond to. Your social team turns it into a month of on-brand posts, scheduled for when your customers are online. Every comment gets a reply, every buyer becomes a lead, and nothing goes out without your yes.</p>
+        <span class="lg-badge lg-badge--brand" style="align-self:flex-start;height:30px;padding:0 12px;border-radius:999px"><span class="lg-dot"></span>Your AI social media team</span>
+        <h1 class="sp-h1">Social media on autopilot. <span class="t-grad">You approve.</span></h1>
+        <p class="mk-lead">Sarah and your social team plan the month from what is trending, design every post in your brand, publish when your customers are online and answer every comment. Nothing goes out without your yes.</p>
         <div class="sp-cta"><a class="lg-btn lg-btn--primary lg-btn--lg" href="<?= $signup ?>" data-lu-signup><?= e(cta_label($data)) ?> <?= $arrow ?></a><a class="lg-btn lg-btn--glass lg-btn--lg" href="#engine">See how it works</a></div>
         <div class="sp-proof">
           <div class="lg-glass lg-glass--thin"><b>30 days</b><span>planned at a time, across every network</span></div>
@@ -148,6 +157,8 @@ $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M
       </div>
       <div class="sv" aria-label="Example: a post live on Instagram with its comments answered, the same post on Facebook and LinkedIn, and Sarah's team at work">
         <div class="sv-glow" aria-hidden="true"></div>
+        <span class="sv-logo sv-logo--fb" aria-hidden="true"><?= $icFb ?></span><span class="sv-logo sv-logo--ig" aria-hidden="true"><?= $icIgS ?></span><span class="sv-logo sv-logo--in" aria-hidden="true"><?= $icIn ?></span>
+        <span class="sv-logo sv-logo--ig2 sv-logo--sm" aria-hidden="true"><?= $icIgS ?></span><span class="sv-logo sv-logo--fb2 sv-logo--sm" aria-hidden="true"><?= $icFb ?></span><span class="sv-logo sv-logo--in2 sv-logo--sm" aria-hidden="true"><?= $icIn ?></span>
         <article class="sv-post sv-fb" aria-hidden="true">
           <div class="sv-hd"><span class="sv-av" style="background:#3f6212">I</span><div><b>Ironhouse Fitness</b><small>Monday at 7:00 · Public</small></div><span class="sv-net"><?= $icFb ?></span></div>
           <div class="sv-cap">Three coaches, small groups, real progress.</div>
