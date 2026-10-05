@@ -64,6 +64,11 @@ class JwtAuthMiddleware
 
             app(ApiCredentialResolver::class)->touch($resolved['api_key_id']);
 
+            // MANAGED-1 (RFC-0029): machine credentials never reach a managed workspace.
+            if ($refused = \App\Core\Managed\ManagedWorkspaces::guard($request, $user, (int) $resolved['workspace_id'], true)) {
+                return $refused;
+            }
+
             return $next($request);
         }
 
@@ -130,6 +135,12 @@ class JwtAuthMiddleware
         // registrations bind to it so signing out on one phone can revoke push
         // for that phone alone. Null for tokens minted before the claim existed.
         $request->attributes->set('session_id', isset($payload->sid) ? (int) $payload->sid : null);
+
+        // MANAGED-1 (RFC-0029, DEC-0086): a managed workspace reaches only its portal's routes. A no-op (one indexed
+        // read, memoised) for every standard workspace.
+        if ($refused = \App\Core\Managed\ManagedWorkspaces::guard($request, $user, (int) $wsId)) {
+            return $refused;
+        }
 
         return $next($request);
     }

@@ -88,6 +88,12 @@ class RefreshTokenService
             $payload['sid'] = $sessionId;
         }
 
+        // MANAGED-1 (RFC-0029): additive and optional, present only for a managed workspace. The browser reads it to
+        // open the managed portal; the server never trusts it (ManagedWorkspaces::guard reads the workspace row).
+        if ($workspace && \App\Core\Managed\ManagedWorkspaces::isManaged((int) $workspace->id)) {
+            $payload['wt'] = 'managed';
+        }
+
         return JWT::encode($payload, $this->jwtSecret, 'HS256');
     }
 

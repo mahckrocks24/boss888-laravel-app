@@ -9075,6 +9075,11 @@ Route::middleware(['auth.jwt'])->group(function () {
 | the first workspace member (Phase 0 audit §7). That is a shared-auth defect
 | tracked separately; it is NOT fixed here.
 */
+// MANAGED-1 (RFC-0029, DEC-0086) — the managed portal's reads (managed/portal, managed/receipt).
+Route::middleware(['auth.jwt', \App\Http\Middleware\DenyApiKeyAuth::class])->group(function () {
+    require __DIR__ . '/api/authenticated/managed-portal.php';
+});
+
 Route::middleware(['auth.jwt', \App\Http\Middleware\DenyApiKeyAuth::class])->prefix('infrastructure')->group(function () {
 
     // INFRA888 E4 — customer Business Email portal. Extracted for the same

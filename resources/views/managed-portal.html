@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B0F19">
+<title>LevelUpGrowth</title>
+<!--
+  MANAGED-1 (RFC-0029, DEC-0086, Owner 2026-10-05) — the managed portal.
+  A client whose website we host and run (PTAA first) signs in here: Email, Billing, Account and a read-only status line.
+  Owner: "enterprise level, the ones they need only, we don't want another cpanel type of interface" and "menu item must
+  feel like they are at LUG" — so this page uses the app's own tokens, fonts, sidebar, page frame, cards and buttons
+  (copied from public/app/index.html and infrastructure.js), and nothing technical: no DNS, no server, no file manager.
+  The server enforces the boundary (App\Core\Managed\ManagedWorkspaces); this page only decides what is drawn.
+-->
+<link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600;700&display=swap">
+<script>/* theme before first paint — same key as the app (lu_theme) */(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
+<style>
+:root{
+  --sp-1:4px;--sp-2:8px;--sp-3:12px;--sp-4:16px;--sp-5:20px;--sp-6:24px;--sp-8:32px;--sp-10:40px;--touch-min:44px;
+  --dur-fast:150ms;--ease-out:cubic-bezier(0.16,1,0.3,1);
+  --bg:#0F1117;--s1:#171A21;--s2:#1E2230;--s3:#252A3A;--bd:rgba(255,255,255,.07);--bd2:rgba(255,255,255,.13);
+  --p:#6C5CE7;--pg:rgba(108,92,231,.22);--ps:rgba(108,92,231,.1);
+  --ac:#00E5A8;--ag:rgba(0,229,168,.18);--as:rgba(0,229,168,.08);
+  --bl:#6FA8FF;--am:#F59E0B;--rd:#F87171;--pu:#A78BFA;
+  --t1:#E8EDF5;--t2:#8B97B0;--t3:#8B94A8;
+  --fh:'Bricolage Grotesque','Inter',sans-serif;--fb:'Inter',system-ui,sans-serif;
+  --r:10px;--rg:14px;--tr:150ms cubic-bezier(.4,0,.2,1);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html[data-theme="light"]{color-scheme:light;
+  --bg:#F9F8F7;--s1:#FFFFFF;--s2:#F5F3F2;--s3:#EEEEEE;--bd:rgba(15,13,10,.08);--bd2:#DDDDDD;
+  --p:#050505;--pg:rgba(5,5,5,.14);--ps:rgba(5,5,5,.06);
+  --ac:#12664A;--ag:rgba(50,174,136,.18);--as:rgba(50,174,136,.10);
+  --bl:#3860BE;--am:#8A5406;--rd:#C62828;--pu:#5B48C8;--t1:#050505;--t2:#555555;--t3:#6B6B6B}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--t1);font:400 14px/1.5 var(--fb);-webkit-font-smoothing:antialiased}
+button{font:inherit}
+.app{display:flex;min-height:100vh;min-height:100dvh}
+.sidebar{width:220px;background:var(--s1);border-right:1px solid var(--bd);display:flex;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;height:100dvh}
+.sb-brand{padding:20px 16px 16px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.sb-brand-text strong{font-family:var(--fh);font-size:13px;font-weight:700;color:var(--t1);display:block;line-height:1.2}
+.sb-brand-text span{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.sb-client{padding:12px 16px;border-bottom:1px solid var(--bd)}
+.sb-client .k{font-size:10px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em}
+.sb-client .v{font:600 13px var(--fb);color:var(--t1);margin-top:2px;line-height:1.3}
+.sb-nav{padding:8px 0;flex:1;display:flex;flex-direction:column}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 16px;border-radius:6px;margin:1px 8px;cursor:pointer;transition:all .15s;color:var(--t2);font-size:14px;min-height:44px;background:none;border:0;width:calc(100% - 16px);text-align:left}
+.nav-item:hover{background:var(--s2);color:var(--t1)}
+.nav-item.active{background:rgba(108,92,231,.15);color:var(--p)}
+html[data-theme="light"] .nav-item.active{background:rgba(5,5,5,.07);color:#050505}
+.nav-item:focus-visible{outline:2px solid var(--p);outline-offset:-2px}
+.nav-item .ni{width:18px;height:18px;display:inline-flex;flex-shrink:0}.nav-item .ni svg{width:18px;height:18px}
+.sb-bottom{padding:12px 8px calc(12px + var(--safe-bottom));border-top:1px solid var(--bd)}
+#sb-theme{margin:0 2px 8px;padding:3px;background:var(--s3);border-radius:6px;display:flex;gap:2px}
+#sb-theme button{flex:1;padding:5px 8px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:transparent;color:var(--t2)}
+#sb-theme button.active{background:var(--p);color:#fff}
+.sb-out{width:100%;padding:8px;background:transparent;border:1px solid var(--bd);border-radius:var(--r);color:var(--t2);font-size:12px;cursor:pointer}
+.sb-out:hover{color:var(--t1);border-color:var(--bd2)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.statusbar{display:flex;align-items:center;gap:var(--sp-5);flex-wrap:wrap;padding:12px var(--sp-8);border-bottom:1px solid var(--bd);background:var(--s1);min-height:52px}
+.statusbar .host{font:600 13px var(--fb);color:var(--t1);margin-right:var(--sp-2)}
+.pill{display:inline-flex;align-items:center;gap:7px;font:600 12.5px var(--fb);white-space:nowrap}
+.pill i{width:8px;height:8px;border-radius:50%;flex:0 0 auto;display:inline-block}
+.content{padding:var(--sp-8);max-width:1100px;width:100%}
+.staff{background:var(--ps);border:1px solid var(--bd2);border-radius:var(--r);padding:10px 14px;font-size:13px;color:var(--t2);margin-bottom:var(--sp-5)}
+.card{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:var(--sp-5)}
+.card+.card{margin-top:var(--sp-4)}
+.card h3{font:600 15px var(--fh);margin:0 0 var(--sp-3);color:var(--t1)}
+.muted{color:var(--t2)}.quiet{color:var(--t3);font-size:12.5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:40px;padding:0 var(--sp-4);border-radius:var(--r);cursor:pointer;font:600 13px var(--fb);white-space:nowrap;border:1px solid var(--bd2);background:transparent;color:var(--t1);text-decoration:none}
+.btn:hover{background:var(--s2)}.btn:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+.btn.primary{background:var(--p);border-color:var(--p);color:#fff}.btn.primary:hover{opacity:.9}
+.btn.danger{color:var(--rd);border-color:rgba(248,113,113,.45)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.sm{min-height:34px;padding:0 12px;font-size:12.5px}
+.inp{width:100%;min-height:44px;background:var(--s2);border:1px solid var(--bd2);border-radius:var(--r);color:var(--t1);padding:10px 13px;font:400 14px var(--fb)}
+.inp:focus-visible{outline:2px solid var(--p);outline-offset:1px;border-color:var(--p)}
+.lbl{display:block;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--t2);margin-bottom:6px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--sp-4)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--sp-3);margin-bottom:var(--sp-5)}
+.metric{background:var(--s1);border:1px solid var(--bd);border-radius:var(--rg);padding:var(--sp-4) var(--sp-5)}
+.metric .k{font:600 11px var(--fb);color:var(--t3);letter-spacing:.04em;text-transform:uppercase}
+.metric .v{font:600 22px var(--fh);color:var(--t1);margin-top:5px;font-variant-numeric:tabular-nums}
+.metric .s{font-size:12px;color:var(--t3);margin-top:2px}
+.row{display:flex;align-items:center;gap:var(--sp-4);padding:14px 0;border-bottom:1px solid var(--bd)}
+.row:last-child{border-bottom:0}
+.row .who{flex:1;min-width:0}.row .who b{display:block;font:600 14px var(--fb);color:var(--t1);overflow-wrap:anywhere}.row .who span{font-size:12.5px;color:var(--t2)}
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 11.5px var(--fb);border-radius:999px;padding:3px 10px;white-space:nowrap;background:var(--s3);color:var(--t2)}
+.chip.ok{color:var(--ac);background:var(--as)}.chip.warn{color:var(--am);background:rgba(245,158,11,.14)}.chip.bad{color:var(--rd);background:rgba(248,113,113,.14)}
+.bar{height:6px;background:var(--s3);border-radius:3px;overflow:hidden}.bar>div{height:100%;background:var(--ac);border-radius:3px}
+ul.incl{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+ul.incl li{display:flex;gap:10px;align-items:flex-start;color:var(--t1)}
+ul.incl li svg{flex:0 0 18px;width:18px;height:18px;color:var(--ac);margin-top:1px}
+.page-h{margin-bottom:var(--sp-5)}
+.page-h h1{font:600 24px var(--fh);color:var(--t1);margin:0;letter-spacing:-.01em}
+.page-h p{font-size:14px;color:var(--t2);margin:6px 0 0;max-width:70ch}
+.msg{margin-top:var(--sp-3);font-size:13px}
+.msg.ok{color:var(--ac)}.msg.bad{color:var(--rd)}
+.dlg-back{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.dlg{background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg);padding:var(--sp-6);width:min(480px,100%);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.dlg h2{font:600 18px var(--fh);margin:0 0 6px}
+.loading{padding:var(--sp-8);text-align:center;color:var(--t3);font-size:13px}
+.mob-top{display:none}
+@media (max-width:860px){
+  .app{flex-direction:column}
+  .sidebar{position:static;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--bd)}
+  .sb-brand{padding:14px 16px}.sb-client{display:none}
+  .sb-nav{flex-direction:row;overflow-x:auto;padding:6px 8px}
+  .nav-item{width:auto;margin:0 2px;flex:0 0 auto}
+  .sb-bottom{display:none}
+  .mob-top{display:flex;gap:8px;padding:var(--sp-5) 0 0}
+  .statusbar,.content{padding-left:16px;padding-right:16px}
+  .content{padding-top:var(--sp-5)}
+}
+</style>
+</head>
+<body>
+<div class="app" id="app" hidden>
+  <aside class="sidebar" aria-label="Main">
+    <div class="sb-brand">
+      <img src="/img/logo-icon-40.png" alt="" style="width:32px;height:32px;object-fit:contain;flex-shrink:0">
+      <div class="sb-brand-text"><strong>LevelUpGrowth</strong><span>Managed Hosting</span></div>
+    </div>
+    <div class="sb-client"><div class="k">Account</div><div class="v" id="client-name">—</div></div>
+    <nav class="sb-nav">
+      <button type="button" class="nav-item" data-page="email"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5.5 7-5.5"/></svg></span>Email</button>
+      <button type="button" class="nav-item" data-page="billing"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M2.5 8.5h15M6 12.5h3"/></svg></span>Billing</button>
+      <button type="button" class="nav-item" data-page="account"><span class="ni"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7"/><circle cx="10" cy="8" r="2.5"/><path d="M5.5 15.5c1-2 2.6-3 4.5-3s3.5 1 4.5 3"/></svg></span>Account</button>
+    </nav>
+    <div class="sb-bottom">
+      <div id="sb-theme" role="radiogroup" aria-label="Appearance">
+        <button type="button" data-theme-opt="dark" role="radio">Dark</button>
+        <button type="button" data-theme-opt="light" role="radio">Light</button>
+        <button type="button" data-theme-opt="system" role="radio">Auto</button>
+      </div>
+      <button type="button" class="sb-out" id="sign-out">Sign out</button>
+    </div>
+  </aside>
+  <div class="main">
+    <div class="statusbar" id="statusbar" role="status" aria-live="polite"><span class="quiet">Checking your services…</span></div>
+    <main class="content" id="content"><div class="loading">Loading…</div></main>
+  </div>
+</div>
+
+<script src="/app/js/auth-refresh.js"></script>
+<script>
+(function () {
+  'use strict';
+  var API = '/api/';
+  var P = { data: null, page: 'email', staffWs: null };
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var CHECK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5l4 4 8-9"/></svg>';
+
+  function req(method, path, body) {
+    var h = { 'Accept': 'application/json' };
+    var t = localStorage.getItem('lu_token'); if (t) h['Authorization'] = 'Bearer ' + t;
+    if (body) h['Content-Type'] = 'application/json';
+    return fetch(API + path, { method: method, headers: h, body: body ? JSON.stringify(body) : undefined, cache: 'no-store', credentials: 'same-origin' })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { return { status: r.status, ok: r.ok, json: j }; }); });
+  }
+
+  function fmtDate(d) { if (!d) return '—'; var x = new Date(String(d).slice(0, 10) + 'T00:00:00'); return x.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function money(cur, n) { try { return new Intl.NumberFormat('en-PH', { style: 'currency', currency: cur }).format(n); } catch (e) { return cur + ' ' + Number(n).toFixed(2); } }
+  function tone(state) { return state === 'ok' ? 'var(--ac)' : state === 'warn' ? 'var(--am)' : state === 'bad' ? 'var(--rd)' : 'var(--t3)'; }
+  function pill(s) { return s ? '<span class="pill"><i style="background:' + tone(s.state) + '"></i>' + esc(s.label) + '</span>' : ''; }
+
+  /* ── sign-in: the app's own session. No session → the app's sign-in, which brings managed accounts back here. ── */
+  function toLogin() { location.replace('/app/'); }
+
+  function boot() {
+    if (!localStorage.getItem('lu_token') && !localStorage.getItem('lu_refresh_token')) { return toLogin(); }
+    var q = new URLSearchParams(location.search); P.staffWs = q.get('workspace_id');
+    req('GET', 'managed/portal' + (P.staffWs ? '?workspace_id=' + encodeURIComponent(P.staffWs) : '')).then(function (r) {
+      if (r.status === 401) { return toLogin(); }
+      if (r.status === 404) { location.replace('/app/'); return; }   // not a managed account: the regular app
+      if (!r.ok) { $('app').hidden = false; $('content').innerHTML = errorCard('We could not load your account just now. Please refresh in a moment.'); return; }
+      P.data = r.json;
+      // Staff: remember it, so the app does not hand them back here (core.js _luManagedHandover reads lu_user).
+      if (r.json.user && r.json.user.is_platform_admin) {
+        try { var lu = JSON.parse(localStorage.getItem('lu_user') || '{}'); lu.is_platform_admin = true; localStorage.setItem('lu_user', JSON.stringify(lu)); } catch (e) {}
+      }
+      $('client-name').textContent = r.json.workspace.name;
+      document.title = r.json.workspace.name + ' · LevelUpGrowth';
+      paintStatus();
+      $('app').hidden = false;
+      var start = (location.hash || '').replace('#', '');
+      go(['email', 'billing', 'account'].indexOf(start) >= 0 ? start : 'email');
+    }).catch(function () { $('app').hidden = false; $('content').innerHTML = errorCard('We could not reach LevelUpGrowth. Check your connection and refresh.'); });
+  }
+
+  function paintStatus() {
+    var s = P.data.status || {};
+    $('statusbar').innerHTML = (s.host ? '<span class="host">' + esc(s.host) + '</span>' : '') + pill(s.website) + pill(s.email) + pill(s.certificate);
+  }
+
+  function go(page) {
+    P.page = page;
+    if (location.hash !== '#' + page) history.replaceState(null, '', '#' + page);
+    document.querySelectorAll('.nav-item').forEach(function (b) { var on = b.getAttribute('data-page') === page; b.classList.toggle('active', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    var isStaff = P.data && P.data.user && P.data.user.is_platform_admin;
+    var staff = P.staffWs ? '<div class="staff">Staff view — you are seeing this account exactly as its people see it. Email actions run against your own signed-in account, not this one.</div>'
+      : (isStaff ? '<div class="staff">You are signed in as LevelUpGrowth staff. This is the portal the client sees. <a href="/app/" style="color:inherit;font-weight:600">Open the full app</a></div>' : '');
+    $('content').innerHTML = staff + '<div class="loading">Loading…</div>';
+    ({ email: pageEmail, billing: pageBilling, account: pageAccount })[page](staff);
+    window.scrollTo(0, 0);
+  }
+
+  function head(title, desc) { return '<div class="page-h"><h1>' + esc(title) + '</h1>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + '</div>'; }
+  function errorCard(m) { return '<div class="card" style="border-left:3px solid var(--rd)"><h3>Something went wrong</h3><div class="muted">' + esc(m) + '</div></div>'; }
+  function contactLine() { var s = P.data && P.data.support || {}; return 'Questions? Call ' + esc(s.phone || '') + (s.email ? ' or write to <a href="mailto:' + esc(s.email) + '" style="color:inherit">' + esc(s.email) + '</a>' : '') + '.'; }
+
+  /* ═══ Email ═══ */
+  var E = { domainId: null, domain: null };
+  function emailApi(p) { return req('GET', 'infrastructure/business-email' + p); }
+
+  function pageEmail(staff) {
+    emailApi('/overview').then(function (r) {
+      var j = r.json || {};
+      var domains = (r.ok && j.domains) || [];
+      if (!r.ok || !domains.length) {
+        $('content').innerHTML = staff + head('Email', 'Mailboxes on your own domain for everyone on your team.') +
+          '<div class="card"><h3>Your email stays where it is for now</h3>' +
+          '<div class="muted">Your team’s mailboxes are still with your current email provider, and they keep working exactly as they do today. ' +
+          'When we move them over, you will add people, pause or remove mailboxes, and send setup links right here. We will tell you before anything changes.</div>' +
+          '<div class="quiet" style="margin-top:14px">' + contactLine() + '</div></div>';
+        return;
+      }
+      E.domainId = domains[0].id; E.domain = domains[0].domain;
+      var s = j.summary || {}, a = (j.allowances || {}).mailboxes || {};
+      emailApi('/mailboxes?domain_id=' + E.domainId).then(function (m) {
+        var list = (m.ok && m.json.mailboxes) || [], actions = (m.ok && m.json.actions) || {};
+        var used = a.used != null ? a.used : list.length, limit = a.limit;
+        var html = staff + head('Email', 'Mailboxes on ' + E.domain + ' for everyone on your team.') +
+          '<div class="metrics">' +
+            metric('Mailboxes', used + (limit ? ' of ' + limit : ''), limit ? (Math.max(0, limit - used) + ' left in your package') : '') +
+            metric('Storage used', (s.storage_used_mb || 0) + ' MB', 'across all mailboxes') +
+          '</div>';
+        var rows = list.map(function (mb) {
+          var st = (mb.status && mb.status.state) || '';
+          var cls = st === 'active' ? 'ok' : (st === 'suspended' ? 'warn' : (st.indexOf('fail') >= 0 ? 'bad' : ''));
+          var label = (mb.status && mb.status.label) || st;
+          var buttons = '';
+          if (st === 'requested' && actions.mailbox_create) buttons += '<button class="btn sm" data-act="resend-setup" data-id="' + mb.id + '">Resend setup link</button>';
+          if (st === 'active' && actions.mailbox_suspend) buttons += '<button class="btn sm" data-act="suspend-mailbox" data-id="' + mb.id + '">Pause</button>';
+          if (st === 'suspended' && actions.mailbox_restore) buttons += '<button class="btn sm" data-act="restore-mailbox" data-id="' + mb.id + '">Resume</button>';
+          if (actions.mailbox_delete && st !== 'deleted' && st !== 'deleting') buttons += '<button class="btn sm danger" data-act="delete-mailbox" data-id="' + mb.id + '" data-addr="' + esc(mb.address) + '">Remove</button>';
+          return '<div class="row"><div class="who"><b>' + esc(mb.address) + '</b><span>' + esc(mb.display_name || '') +
+            (mb.storage_used_mb != null ? ' · ' + esc(mb.storage_used_mb) + ' MB of ' + esc(mb.quota_mb) + ' MB' : '') + '</span></div>' +
+            '<span class="chip ' + cls + '">' + esc(label) + '</span>' +
+            '<div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">' + buttons + '</div></div>';
+        }).join('') || '<div class="quiet" style="padding:10px 0">No mailboxes yet. Add the first person below.</div>';
+        html += '<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px"><h3 style="margin:0">People with a mailbox</h3>' +
+          (actions.mailbox_create && !(limit && used >= limit) ? '<button class="btn primary" id="add-person">Add a person</button>' : '') + '</div>' + rows +
+          '<div class="msg" id="email-msg"></div></div>';
+        html += '<div class="card"><h3>How a new mailbox starts</h3><div class="muted">When you add someone, we send a setup link to the email address you give us. ' +
+          'They open it and choose their own password; their mailbox is created at that moment. Nobody else ever sees or holds that password, including us.</div>' +
+          '<div class="quiet" style="margin-top:12px">' + contactLine() + '</div></div>';
+        $('content').innerHTML = html;
+        var add = $('add-person'); if (add) add.addEventListener('click', addPersonDialog);
+        document.querySelectorAll('[data-act]').forEach(function (b) { b.addEventListener('click', function () { mailboxAction(b); }); });
+      });
+    });
+  }
+
+  function metric(k, v, s) { return '<div class="metric"><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div>' + (s ? '<div class="s">' + esc(s) + '</div>' : '') + '</div>'; }
+
+  function mailboxAction(b) {
+    var act = b.getAttribute('data-act'), id = parseInt(b.getAttribute('data-id'), 10);
+    var run = function () {
+      b.disabled = true; $('email-msg').className = 'msg'; $('email-msg').textContent = 'Working…';
+      req('POST', 'infrastructure/business-email/domains/' + E.domainId + '/actions/' + act, { id: id }).then(function (r) {
+        var j = r.json || {}; var ok = r.ok && (j.state === 'done' || j.state === 'pending' || j.state === 'awaiting_review');
+        $('email-msg').className = 'msg ' + (ok ? 'ok' : 'bad'); $('email-msg').textContent = j.message || (ok ? 'Done.' : 'That did not work. Please try again.');
+        if (ok) setTimeout(function () { go('email'); }, 1200); else b.disabled = false;
+      });
+    };
+    if (act === 'delete-mailbox') {
+      confirmDialog('Remove ' + b.getAttribute('data-addr') + '?', 'The mailbox and the mail in it are removed for good. We confirm every removal before it happens.', 'Remove mailbox', run);
+    } else { run(); }
+  }
+
+  function dialog(inner) {
+    var back = document.createElement('div'); back.className = 'dlg-back';
+    back.innerHTML = '<div class="dlg" role="dialog" aria-modal="true">' + inner + '</div>';
+    document.body.appendChild(back);
+    var close = function () { back.remove(); document.removeEventListener('keydown', onKey); };
+    var onKey = function (e) { if (e.key === 'Escape') close(); };
+    document.addEventListener('keydown', onKey);
+    back.addEventListener('click', function (e) { if (e.target === back) close(); });
+    var f = back.querySelector('input,button'); if (f) f.focus();
+    return { el: back, close: close };
+  }
+
+  function confirmDialog(title, text, okLabel, onOk) {
+    var d = dialog('<h2>' + esc(title) + '</h2><div class="muted" style="margin-bottom:18px">' + esc(text) + '</div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>' + esc(okLabel) + '</button></div>');
+    d.el.querySelector('[data-x]').onclick = d.close;
+    d.el.querySelector('[data-ok]').onclick = function () { d.close(); onOk(); };
+  }
+
+  function addPersonDialog() {
+    var d = dialog('<h2>Add a person</h2><div class="muted" style="margin-bottom:16px">We send them a link to choose their own password. Their mailbox is ready as soon as they do.</div>' +
+      '<label class="lbl" for="ap-name">Their name</label><input class="inp" id="ap-name" autocomplete="off" placeholder="Maria Santos">' +
+      '<label class="lbl" for="ap-local" style="margin-top:14px">Their new address</label>' +
+      '<div style="display:flex;align-items:center;gap:8px"><input class="inp" id="ap-local" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="maria" style="flex:1"><span class="muted" style="white-space:nowrap">@' + esc(E.domain) + '</span></div>' +
+      '<label class="lbl" for="ap-to" style="margin-top:14px">Send the setup link to</label><input class="inp" id="ap-to" type="email" autocomplete="off" placeholder="their current email">' +
+      '<div class="quiet" style="margin-top:6px">An address they can open today, such as a personal email.</div>' +
+      '<div class="msg" id="ap-msg"></div>' +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px"><button class="btn" data-x>Cancel</button><button class="btn primary" data-ok>Send setup link</button></div>');
+    d.el.querySelector('[data-x]').onclick = d.close;
+    var name = d.el.querySelector('#ap-name'), local = d.el.querySelector('#ap-local'), to = d.el.querySelector('#ap-to'), msg = d.el.querySelector('#ap-msg'), ok = d.el.querySelector('[data-ok]');
+    name.addEventListener('input', function () { if (!local.dataset.touched) { local.value = (name.value.trim().split(/\s+/)[0] || '').toLowerCase().replace(/[^a-z0-9._-]/g, ''); } });
+    local.addEventListener('input', function () { local.dataset.touched = '1'; });
+    ok.onclick = function () {
+      var lp = local.value.trim().toLowerCase(), em = to.value.trim();
+      if (!name.value.trim() || !/^[a-z0-9][a-z0-9._-]{0,62}$/.test(lp)) { msg.className = 'msg bad'; msg.textContent = 'Add their name and a new address using letters, numbers, dots or dashes.'; return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { msg.className = 'msg bad'; msg.textContent = 'Enter the email address the setup link should go to.'; return; }
+      if (em.toLowerCase().split('@')[1] === String(E.domain).toLowerCase()) { msg.className = 'msg bad'; msg.textContent = 'Send the link to an address they can already open — not the new one.'; return; }
+      ok.disabled = true; msg.className = 'msg'; msg.textContent = 'Sending…';
+      req('POST', 'infrastructure/business-email/domains/' + E.domainId + '/actions/create-mailbox', { local_part: lp, display_name: name.value.trim(), setup_recipient: em }).then(function (r) {
+        var j = r.json || {};
+        if (r.ok && (j.state === 'done' || j.state === 'pending')) { msg.className = 'msg ok'; msg.textContent = j.message || 'Setup link sent.'; setTimeout(function () { d.close(); go('email'); }, 1400); }
+        else { ok.disabled = false; msg.className = 'msg bad'; msg.textContent = j.message || 'That did not work. Please try again.'; }
+      });
+    };
+  }
+
+  /* ═══ Billing ═══ */
+  function pageBilling(staff) {
+    var p = P.data.package;
+    if (!p) { $('content').innerHTML = staff + head('Billing', '') + '<div class="card"><div class="muted">Your package details are being added. ' + contactLine() + '</div></div>'; return; }
+    var start = new Date(p.term_start + 'T00:00:00'), end = new Date(p.term_end + 'T00:00:00'), now = new Date();
+    var pct = Math.max(0, Math.min(100, Math.round(100 * (now - start) / (end - start))));
+    var html = staff + head('Billing', 'Your package with LevelUpGrowth.') +
+      '<div class="metrics">' +
+        metric('Package', p.name, p.active ? 'Active' : 'Ended') +
+        metric('Paid', money(p.currency, p.amount), p.paid_at ? 'Paid in full on ' + fmtDate(p.paid_at) : 'Paid in full') +
+        metric('Valid until', fmtDate(p.term_end), p.active ? p.days_left + ' days left' : 'Renewal due') +
+      '</div>' +
+      '<div class="card"><h3>Term</h3><div style="display:flex;justify-content:space-between;font-size:13px;color:var(--t2);margin-bottom:8px"><span>' + fmtDate(p.term_start) + '</span><span>' + fmtDate(p.term_end) + '</span></div>' +
+        '<div class="bar" aria-label="' + pct + '% of the term used"><div style="width:' + pct + '%"></div></div>' +
+        '<div class="quiet" style="margin-top:8px">Paid up front for the whole term. Nothing more is due until the term ends.</div></div>' +
+      '<div class="card"><h3>What your package includes</h3><ul class="incl">' + (p.inclusions || []).map(function (x) { return '<li>' + CHECK + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul></div>';
+    if (p.support) {
+      html += '<div class="card"><h3>' + esc(p.support.label || 'IT support') + '</h3>' +
+        (p.support.active
+          ? '<div><span class="chip ok">Active</span> <span class="muted" style="margin-left:8px">Included until ' + fmtDate(p.support.until) + ' · ' + p.support.days_left + ' days left</span></div>'
+          : '<div><span class="chip">Ended ' + fmtDate(p.support.until) + '</span></div><div class="quiet" style="margin-top:8px">Ongoing IT support can be added at any time. ' + contactLine() + '</div>') +
+        '</div>';
+    }
+    html += '<div class="card"><h3>Documents</h3><div class="muted">' +
+      (p.invoice_ref ? 'Invoice ' + esc(p.invoice_ref) : '') + (p.invoice_ref && p.receipt_ref ? ' · ' : '') + (p.receipt_ref ? 'Receipt ' + esc(p.receipt_ref) : '') + '</div>' +
+      (p.has_receipt ? '<div style="margin-top:12px"><button class="btn" id="dl-receipt">Download receipt (PDF)</button></div>' : '<div class="quiet" style="margin-top:8px">' + contactLine() + '</div>') + '</div>';
+    $('content').innerHTML = html;
+    var dl = $('dl-receipt'); if (dl) dl.addEventListener('click', downloadReceipt);
+  }
+
+  function downloadReceipt() {
+    var h = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || '') };
+    fetch(API + 'managed/receipt' + (P.staffWs ? '?workspace_id=' + encodeURIComponent(P.staffWs) : ''), { headers: h }).then(function (r) {
+      if (!r.ok) throw new Error(); return r.blob();
+    }).then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'Receipt.pdf'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000); })
+      .catch(function () { alertBox('The receipt could not be downloaded just now.'); });
+  }
+  function alertBox(t) { var d = dialog('<div class="muted" style="margin-bottom:16px">' + esc(t) + '</div><div style="text-align:right"><button class="btn" data-x>Close</button></div>'); d.el.querySelector('[data-x]').onclick = d.close; }
+
+  /* ═══ Account ═══ */
+  function pageAccount(staff) {
+    var u = P.data.user || {};
+    $('content').innerHTML = staff + head('Account', 'Your sign-in for this portal.') +
+      '<div class="card"><h3>Signed in as</h3><div style="font:600 15px var(--fb)">' + esc(u.name || '') + '</div><div class="muted">' + esc(u.email || '') + '</div></div>' +
+      '<div class="card"><h3>Change your password</h3><div class="grid2">' +
+        '<div><label class="lbl" for="pw-cur">Current password</label><input class="inp" id="pw-cur" type="password" autocomplete="current-password"></div>' +
+        '<div><label class="lbl" for="pw-new">New password</label><input class="inp" id="pw-new" type="password" autocomplete="new-password"></div>' +
+        '<div><label class="lbl" for="pw-new2">New password again</label><input class="inp" id="pw-new2" type="password" autocomplete="new-password"></div>' +
+      '</div><div style="margin-top:14px"><button class="btn primary" id="pw-save">Change password</button></div><div class="msg" id="pw-msg"></div></div>' +
+      '<div class="card"><h3>Appearance</h3><div class="muted" style="margin-bottom:10px">Dark, light, or follow your device.</div><div id="acc-theme" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>' +
+      '<div class="card"><h3>Help</h3><div class="muted">' + contactLine() + '</div>' +
+        '<div class="mob-top"><button class="btn" id="sign-out-2">Sign out</button></div></div>';
+    $('pw-save').onclick = function () {
+      var c = $('pw-cur').value, n = $('pw-new').value, n2 = $('pw-new2').value, m = $('pw-msg');
+      if (n.length < 10 || !/[A-Za-z]/.test(n) || !/\d/.test(n)) { m.className = 'msg bad'; m.textContent = 'Use at least 10 characters with letters and numbers.'; return; }
+      if (n !== n2) { m.className = 'msg bad'; m.textContent = 'The two new passwords do not match.'; return; }
+      $('pw-save').disabled = true;
+      req('PUT', 'auth/password', { current_password: c, password: n, password_confirmation: n2 }).then(function (r) {
+        $('pw-save').disabled = false;
+        m.className = 'msg ' + (r.ok ? 'ok' : 'bad'); m.textContent = r.ok ? 'Your password is changed.' : ((r.json && r.json.message) || 'That did not work.');
+        if (r.ok) { $('pw-cur').value = $('pw-new').value = $('pw-new2').value = ''; }
+      });
+    };
+    var t = $('acc-theme');
+    [['dark', 'Dark'], ['light', 'Light'], ['system', 'Auto']].forEach(function (o) {
+      var b = document.createElement('button'); b.className = 'btn sm'; b.textContent = o[1]; b.onclick = function () { setTheme(o[0]); pageAccount(staff); };
+      if ((localStorage.getItem('lu_theme') || 'dark') === o[0]) { b.classList.add('primary'); }
+      t.appendChild(b);
+    });
+    var so = $('sign-out-2'); if (so) so.onclick = signOut;
+  }
+
+  /* ═══ theme + sign out (same storage keys and endpoints as the app) ═══ */
+  function applyTheme(t) {
+    var l = t === 'light' || (t === 'system' && window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches);
+    if (l) document.documentElement.setAttribute('data-theme', 'light'); else document.documentElement.removeAttribute('data-theme');
+    document.querySelector('meta[name="theme-color"]').setAttribute('content', l ? '#F9F8F7' : '#0B0F19');
+    document.querySelectorAll('#sb-theme button').forEach(function (b) { var on = b.getAttribute('data-theme-opt') === t; b.classList.toggle('active', on); b.setAttribute('aria-checked', on ? 'true' : 'false'); });
+  }
+  function setTheme(t) { try { localStorage.setItem('lu_theme', t); } catch (e) {} applyTheme(t); req('PUT', 'user/preferences', { theme: t }); }
+  function signOut() {
+    var rt = localStorage.getItem('lu_refresh_token');
+    var done = function () { ['lu_token', 'lu_refresh_token', 'lu_user', 'lu_user_id'].forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} }); location.replace('/app/'); };
+    (rt ? req('POST', 'auth/logout', { refresh_token: rt }) : Promise.resolve()).then(done, done);
+  }
+
+  document.querySelectorAll('.nav-item').forEach(function (b) { b.addEventListener('click', function () { go(b.getAttribute('data-page')); }); });
+  document.querySelectorAll('#sb-theme button').forEach(function (b) { b.addEventListener('click', function () { setTheme(b.getAttribute('data-theme-opt')); }); });
+  $('sign-out').addEventListener('click', signOut);
+  window.addEventListener('hashchange', function () { var h = location.hash.replace('#', ''); if (h && h !== P.page && ['email', 'billing', 'account'].indexOf(h) >= 0) go(h); });
+  applyTheme(localStorage.getItem('lu_theme') || 'dark');
+  boot();
+  // the status line refreshes itself every 5 minutes, like the checks behind it
+  setInterval(function () { req('GET', 'managed/portal' + (P.staffWs ? '?workspace_id=' + encodeURIComponent(P.staffWs) : '')).then(function (r) { if (r.ok) { P.data = r.json; paintStatus(); } }); }, 300000);
+})();
+</script>
+</body>
+</html>

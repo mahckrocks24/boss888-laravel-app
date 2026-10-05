@@ -1089,6 +1089,8 @@ Route::get('/plugin-connect', function (\Illuminate\Http\Request $r) {
 // Included first, every legacy page below silently re-claimed / and /pricing. Deleting these
 // five lines is the complete rollback: the legacy routes above are untouched.
 // RFC-0026: the partner portal (its own sign-in; affiliates have no workspace)
+// MANAGED-1 (RFC-0029, DEC-0086): the managed portal - Email, Billing, Account for clients whose website we run.
+Route::get('/portal', fn () => response()->file(resource_path('views/managed-portal.html'), ['Content-Type' => 'text/html; charset=utf-8', 'Cache-Control' => 'no-cache, must-revalidate', 'X-Robots-Tag' => 'noindex']));
 Route::get('/affiliates/portal', fn () => response()->file(resource_path('views/partner-portal.html'), ['Content-Type' => 'text/html; charset=utf-8', 'Cache-Control' => 'no-cache, must-revalidate', 'X-Robots-Tag' => 'noindex']));
 // AFF-NAME-1 (Owner 2026-10-05: "It should say Affiliate Program"): the first addresses keep working
 foreach (['/partners/portal' => '/affiliates/portal', '/partners' => '/affiliates/', '/next/partners' => '/next/affiliates/', '/legal/partners' => '/legal/affiliates/', '/next/legal/partners' => '/next/legal/affiliates/'] as $__from => $__to) {

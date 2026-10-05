@@ -6345,7 +6345,21 @@ function _luEsc(s) {
 }
 
 // ── TASK 1.3: Bootstrap ───────────────────────────────────────────────────────
+/* MANAGED-1 (RFC-0029, DEC-0086): a managed account (token claim wt) belongs in /portal, not the app. Platform staff stay. */
+function _luManagedHandover() {
+  try {
+    var t = localStorage.getItem('lu_token'); if (!t || t.split('.').length !== 3) return false;
+    var c = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (c.wt !== 'managed') return false;
+    var u = {}; try { u = JSON.parse(localStorage.getItem('lu_user') || '{}'); } catch (_e) {}
+    if (u && u.is_platform_admin) return false;
+    window.location.replace('/portal');
+    return true;
+  } catch (e) { return false; }
+}
+
 async function _appBootstrap() {
+  if (_luManagedHandover()) return;
   // Skip entirely when running inside WordPress (WP Admin or WP-rendered page).
   // LU_CFG.nonce is injected by the PHP plugin only in WP context — never present
   // on the standalone SPA (app.levelupgrowth.ai) which has no PHP rendering.
@@ -6511,6 +6525,7 @@ async function _appBootstrap() {
 }
 
 function _appEnterDashboard() {
+  if (_luManagedHandover()) return;
   // Show the SPA main app, hide auth overlay
   var authRoot = document.getElementById('lu-auth-root');
   if (authRoot) authRoot.style.display = 'none';
