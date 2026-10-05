@@ -100,7 +100,7 @@ $page['head'] = <<<'CSS'
 .af-col__m{font-size:11px;text-align:center;opacity:.6}
 @media (max-width:640px){.af-chart{height:200px;gap:4px}.af-col__v{font-size:9px}}
 @media (prefers-reduced-motion:reduce){.af-col__bar{transition:none}}
-.af-hl{background:linear-gradient(transparent 58%,color-mix(in srgb,var(--accent-text,#7c3aed) 22%,transparent) 0);padding:0 2px;font-weight:700}
+.af-hl{font-weight:700;color:inherit}
 .af-six{border-radius:18px;padding:14px;border:1px solid var(--hairline,rgba(0,0,0,.08));background:color-mix(in srgb,var(--accent-text,#7c3aed) 6%,transparent);display:flex;flex-direction:column;gap:12px;max-width:560px}
 .af-six__lbl{display:flex;gap:12px;align-items:center;font-size:14px;line-height:1.4}.af-six__n{flex:none;width:48px;height:48px;border-radius:14px;display:grid;place-items:center;font:800 20px/1 var(--font,inherit);color:#fff;background:var(--brand-grad,linear-gradient(135deg,#8C25D2,#4C86DE))}
 .af-six__row{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.af-six__pay{display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 4px;border-radius:10px;background:var(--glass,rgba(255,255,255,.7));border:1px solid var(--hairline,rgba(0,0,0,.06))}
