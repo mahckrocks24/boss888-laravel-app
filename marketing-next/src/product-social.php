@@ -87,27 +87,92 @@ $icIn = '<svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#0A66C2" d="M
 <div class="lg mk sp">
 
   <section class="mk-sec" style="padding-top:0;padding-bottom:40px">
+    <style>
+      /* SOCIAL-HERO-2 (Owner: "hero image on social media page is 2/10", "Hero text 4/10"): a composed scene - the post live on a
+         phone with its comments answered, the same idea on Facebook and LinkedIn behind it, and what the team is doing around it */
+      .sp .sp-hero{grid-template-columns:minmax(0,1fr) minmax(0,1.02fr)}
+      .sp .sp-kick{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;padding:5px 12px 5px 6px;border-radius:999px;font:600 13px/1 var(--font);color:var(--ink)}
+      .sp .sp-kick__logos{display:inline-flex}.sp .sp-kick__logos .sp-ico{width:24px;height:24px;border-radius:7px;margin-right:-5px;box-shadow:0 0 0 2px var(--raised,#fff)}.sp .sp-kick__logos .sp-ico svg{width:15px;height:15px}
+      .sp .sp-proof{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:560px}
+      .sp .sp-proof div{border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+      .sp .sp-proof b{font:800 22px/1.1 var(--font);letter-spacing:-.02em;color:var(--ink)}.sp .sp-proof span{font-size:12.5px;line-height:17px;color:var(--ink-2)}
+      .sp .sv{position:relative;width:100%;max-width:600px;margin-left:auto;aspect-ratio:1/1.04;container-type:inline-size}
+      .sp .sv-glow{position:absolute;inset:8% 6% 4%;border-radius:50%;background:radial-gradient(closest-side,rgba(124,58,237,.35),rgba(37,99,235,.18) 55%,transparent);filter:blur(10px);z-index:0}
+      .sp .sv-post{position:absolute;background:#fff;color:#14161c;border-radius:3cqw;overflow:hidden;box-shadow:0 2cqw 6cqw rgba(15,10,50,.28),0 0 0 .15cqw rgba(0,0,0,.06);font:400 2cqw/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+      .sp .sv-post img{display:block;width:100%;height:auto}
+      .sp .sv-hd{display:flex;align-items:center;gap:1.4cqw;padding:1.6cqw 1.8cqw}
+      .sp .sv-av{width:4.6cqw;height:4.6cqw;border-radius:50%;flex:none;display:grid;place-items:center;color:#fff;font:700 2cqw/1 var(--font)}
+      .sp .sv-hd b{font-size:2.1cqw;display:block}.sp .sv-hd small{font-size:1.7cqw;color:#65676b;display:block}
+      .sp .sv-hd .sv-net{margin-left:auto;width:3.2cqw;height:3.2cqw}.sp .sv-net svg{width:100%;height:100%;display:block}
+      .sp .sv-cap{padding:0 1.8cqw 1.4cqw;font-size:1.9cqw}
+      .sp .sv-act{display:flex;justify-content:space-around;padding:1.2cqw;border-top:.15cqw solid #e4e6eb;font-size:1.8cqw;font-weight:600;color:#65676b}
+      .sp .sv-fb{left:0;top:15cqw;width:33cqw;transform:rotate(-6deg);z-index:1}
+      .sp .sv-in{right:0;top:21cqw;width:33cqw;transform:rotate(5deg);z-index:1}
+      .sp .sv-phone{position:absolute;left:28.5cqw;top:3cqw;width:43cqw;height:91cqw;border-radius:7cqw;background:#0b0d12;padding:1.5cqw;box-shadow:0 3cqw 8cqw rgba(10,8,40,.45),inset 0 0 0 .3cqw #2a2d36;z-index:3}
+      .sp .sv-screen{width:100%;height:100%;border-radius:5.6cqw;overflow:hidden;background:#fff;color:#14161c;display:flex;flex-direction:column;font:400 2cqw/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+      .sp .sv-bar{display:flex;justify-content:space-between;align-items:center;padding:2.2cqw 3.4cqw .8cqw;font-size:1.7cqw;font-weight:600}
+      .sp .sv-notch{width:12cqw;height:2.6cqw;border-radius:2cqw;background:#0b0d12;margin:0 auto}
+      .sp .sv-igtop{display:flex;align-items:center;gap:1.4cqw;padding:1.4cqw 2.4cqw}
+      .sp .sv-igtop .sv-av{box-shadow:0 0 0 .35cqw #fff,0 0 0 .7cqw #d62976}
+      .sp .sv-icons{display:flex;gap:2.2cqw;padding:1.4cqw 2.4cqw .6cqw}.sp .sv-icons svg{width:3.4cqw;height:3.4cqw;fill:none;stroke:#14161c;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+      .sp .sv-likes{padding:0 2.4cqw;font-weight:700;font-size:1.9cqw}
+      .sp .sv-cm{display:flex;gap:1.2cqw;padding:.9cqw 2.4cqw;font-size:1.85cqw}.sp .sv-cm .sv-av{width:3.6cqw;height:3.6cqw;font-size:1.5cqw}
+      .sp .sv-cm b{font-weight:700;margin-right:.6cqw}.sp .sv-cm--r{padding-left:7.2cqw}
+      .sp .sv-tag{display:inline-block;margin-left:.8cqw;font-size:1.5cqw;font-weight:700;color:#7c3aed;background:#f3eeff;border-radius:2cqw;padding:.2cqw 1cqw}
+      .sp .sv-card{position:absolute;z-index:4;border-radius:3.2cqw;padding:2.2cqw 2.4cqw;display:flex;gap:1.8cqw;align-items:flex-start;font-size:2.1cqw;line-height:1.38;color:var(--ink)}
+      .sp .sv-card img.sv-face{width:5.6cqw;height:5.6cqw;border-radius:50%;flex:none}
+      .sp .sv-card b{display:block;font-size:2.15cqw}.sp .sv-card small{display:block;color:var(--ink-3);font-size:1.75cqw;margin-top:.2cqw}
+      .sp .sv-btn{display:inline-flex;align-items:center;height:4.4cqw;padding:0 2cqw;border-radius:2.2cqw;font:700 1.9cqw/1 var(--font);color:#fff;background:var(--brand-grad,linear-gradient(135deg,#7c3aed,#2563eb));margin-top:1.2cqw}
+      .sp .sv-sarah{left:0;top:0;width:41cqw}
+      .sp .sv-trend{left:1cqw;top:64cqw;width:34cqw;flex-direction:column;gap:1.2cqw}
+      .sp .sv-trend span{display:flex;justify-content:space-between;gap:2cqw;align-self:stretch;font-size:1.95cqw}.sp .sv-trend i{font-style:normal;font-weight:800;color:var(--success)}
+      .sp .sv-appr{right:0;top:63cqw;width:37cqw}
+      .sp .sv-lead{left:4cqw;top:89cqw;width:37cqw;align-items:center}
+      .sp .sv-dot{width:4cqw;height:4cqw;border-radius:50%;flex:none;display:grid;place-items:center;background:var(--success-soft,rgba(16,185,129,.15));color:var(--success)}
+      .sp .sv-dot svg{width:2.4cqw;height:2.4cqw}
+      @media (max-width:600px){.sp .sv{aspect-ratio:1/1.34}.sp .sv-fb,.sp .sv-in,.sp .sv-trend{display:none}.sp .sv-phone{left:24cqw;width:52cqw;height:112cqw;top:4cqw}.sp .sv-card{font-size:12px;padding:9px 11px;gap:8px;border-radius:14px}.sp .sv-card b{font-size:12.5px}.sp .sv-card small{font-size:10.5px}.sp .sv-card img.sv-face{width:26px;height:26px}.sp .sv-btn{font-size:11px;height:24px;padding:0 10px;border-radius:12px;margin-top:6px}.sp .sv-dot{width:22px;height:22px}.sp .sv-sarah{width:56cqw;top:0}.sp .sv-appr{width:52cqw;top:66cqw}.sp .sv-lead{width:64cqw;top:auto;bottom:0;left:18cqw}}
+      @media (max-width:900px){.sp .sp-hero{grid-template-columns:1fr}.sp .sv{margin:8px auto 0}.sp .sp-proof{grid-template-columns:repeat(3,minmax(0,1fr))}.sp .sp-proof b{font-size:18px}}
+    </style>
     <div class="mk-wrap sp-hero">
       <div class="lg-stack gap-4">
         <nav class="sp-crumbs" aria-label="Breadcrumb"><a href="/next/product/">Products</a><span>/</span><span>Social</span></nav>
-        <span class="lg-badge lg-badge--brand" style="align-self:flex-start;height:30px;padding:0 12px;border-radius:999px"><span class="lg-dot"></span>Social engine</span>
-        <h1 class="sp-h1">Social media that runs itself. <span class="t-grad">Every post still waits for you.</span></h1>
-        <p class="mk-lead">Sarah and your social team read what your market is talking about, plan the month, design every post in your brand, schedule it for when your audience is online and answer the comments. You approve. They do the rest.</p>
-        <div class="sp-nets" aria-label="Posts to Facebook, Instagram and LinkedIn">
-          <span class="sp-net lg-glass lg-glass--thin"><span class="sp-ico"><?= $icFb ?></span>Facebook</span>
-          <span class="sp-net lg-glass lg-glass--thin"><span class="sp-ico"><?= $icIgS ?></span>Instagram</span>
-          <span class="sp-net lg-glass lg-glass--thin"><span class="sp-ico"><?= $icIn ?></span>LinkedIn</span>
-        </div>
+        <span class="sp-kick lg-glass lg-glass--thin"><span class="sp-kick__logos"><span class="sp-ico"><?= $icFb ?></span><span class="sp-ico"><?= $icIgS ?></span><span class="sp-ico"><?= $icIn ?></span></span>Social engine for Facebook, Instagram and LinkedIn</span>
+        <h1 class="sp-h1">A social media team that plans, posts and replies <span class="t-grad">around the clock.</span> You just approve.</h1>
+        <p class="mk-lead">Sarah reads what is trending in your industry and what your followers respond to. Your social team turns it into a month of on-brand posts, scheduled for when your customers are online. Every comment gets a reply, every buyer becomes a lead, and nothing goes out without your yes.</p>
         <div class="sp-cta"><a class="lg-btn lg-btn--primary lg-btn--lg" href="<?= $signup ?>" data-lu-signup><?= e(cta_label($data)) ?> <?= $arrow ?></a><a class="lg-btn lg-btn--glass lg-btn--lg" href="#engine">See how it works</a></div>
-        <div class="sp-trust"><span><?= $check ?>Nothing posts without approval</span><span><?= $check ?>Every cost shown first</span><span><?= $check ?>Your brand, your voice</span></div>
-      </div>
-      <div class="sp-stack" aria-label="Example: this week's social plan waiting for approval">
-        <div class="sp-mini lg-glass lg-glass--thick"><img class="lg-avatar" src="<?= e($agentImg('sarah')) ?>" alt="" width="36" height="36" style="width:36px;height:36px;flex:none"><div class="lg-stack" style="gap:2px;min-width:0"><span class="t-subhead t-strong">Sarah</span><span class="t-body c-2" style="font-size:14px;line-height:20px">Boss, sunrise posts got three times the saves last week, so I've planned two more and a Reel for Thursday. Here is the week.</span></div></div>
-        <div class="sp-mini lg-glass lg-glass--thick">
-          <img class="sp-thumb" src="<?= e($mk('social/travel-agency-08.webp')) ?>" alt="" width="64" height="80" loading="lazy">
-          <div class="lg-stack lg-grow" style="gap:4px;min-width:0"><span class="t-subhead t-strong">This week · 5 posts</span><span class="t-caption c-3">Marcus · Instagram, Facebook, LinkedIn</span><span class="t-caption c-3">Mon 9:00 · Wed 12:30 · Thu 18:00 · Fri 9:00 · Sun 10:00</span></div>
+        <div class="sp-proof">
+          <div class="lg-glass lg-glass--thin"><b>30 days</b><span>planned at a time, across every network</span></div>
+          <div class="lg-glass lg-glass--thin"><b>Minutes</b><span>to reply to a comment, in your voice</span></div>
+          <div class="lg-glass lg-glass--thin"><b>100%</b><span>approved by you before it goes out</span></div>
         </div>
-        <div class="sp-mini lg-glass lg-glass--thick" style="justify-content:space-between;flex-wrap:wrap"><div class="lg-stack" style="gap:2px"><span class="t-subhead t-strong">Approve the week</span><span class="t-caption c-3">20 credits · goes out as scheduled</span></div><div class="lg-row gap-2"><span class="lg-btn lg-btn--glass lg-btn--sm" style="height:32px">Review each</span><span class="lg-btn lg-btn--primary lg-btn--sm" style="height:32px">Approve</span></div></div>
+      </div>
+      <div class="sv" aria-label="Example: a post live on Instagram with its comments answered, the same post on Facebook and LinkedIn, and Sarah's team at work">
+        <div class="sv-glow" aria-hidden="true"></div>
+        <article class="sv-post sv-fb" aria-hidden="true">
+          <div class="sv-hd"><span class="sv-av" style="background:#3f6212">I</span><div><b>Ironhouse Fitness</b><small>Monday at 7:00 · Public</small></div><span class="sv-net"><?= $icFb ?></span></div>
+          <div class="sv-cap">Three coaches, small groups, real progress.</div>
+          <img src="<?= e($mk('social/gym-fitness-03.webp')) ?>" alt="" width="640" height="800" loading="eager">
+          <div class="sv-act"><span>Like</span><span>Comment</span><span>Share</span></div>
+        </article>
+        <article class="sv-post sv-in" aria-hidden="true">
+          <div class="sv-hd"><span class="sv-av" style="background:#1e3a8a">C</span><div><b>Crown Court Realty</b><small>1,240 followers · 2d</small></div><span class="sv-net"><?= $icIn ?></span></div>
+          <img src="<?= e($mk('social/real-estate-agency-09.webp')) ?>" alt="" width="640" height="800" loading="eager">
+          <div class="sv-act"><span>Like</span><span>Comment</span><span>Repost</span></div>
+        </article>
+        <div class="sv-phone" aria-hidden="true"><div class="sv-screen">
+          <div class="sv-bar"><span>9:41</span><span class="sv-notch"></span><span>5G</span></div>
+          <div class="sv-igtop"><span class="sv-av" style="background:#14532d">S</span><div style="flex:1;min-width:0"><b style="font-size:2.1cqw;display:block">saltmarshtravel</b><small style="font-size:1.6cqw;color:#65676b">Lake District</small></div><span class="sv-net" style="width:3.2cqw;height:3.2cqw"><?= $icIgS ?></span></div>
+          <img src="<?= e($mk('social/travel-agency-08.webp')) ?>" alt="" width="640" height="800" style="display:block;width:100%;height:auto" loading="eager">
+          <div class="sv-icons"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" fill="#ed4956" stroke="#ed4956"/></svg><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><svg viewBox="0 0 24 24"><path d="M21 4 3 11l7 2 2 7 9-16z"/></svg></div>
+          <div class="sv-likes">1,204 likes</div>
+          <div class="sv-cm"><span class="sv-av" style="background:#db2777">M</span><div><b>maya.wanders</b>Is this available in April? 😍</div></div>
+          <div class="sv-cm sv-cm--r"><span class="sv-av" style="background:#14532d">S</span><div><b>saltmarshtravel</b>It is, Maya! Dates and prices are in your messages 💌<span class="sv-tag">Sarah</span></div></div>
+          <div class="sv-cm"><span class="sv-av" style="background:#0891b2">T</span><div><b>tom.k_travels</b>How much for two, 5 nights?</div></div>
+        </div></div>
+        <div class="sv-card sv-sarah lg-glass lg-glass--thick"><img class="sv-face" src="<?= e($agentImg('sarah')) ?>" alt=""><div><b>Sarah</b>Sunrise posts got 3× the saves this week, so I've planned two more.<small>Planning · just now</small></div></div>
+        <div class="sv-card sv-trend lg-glass lg-glass--thick"><b>Trending in travel</b><span>Slow travel <i>▲ 42%</i></span><span>Lake stays <i>▲ 18%</i></span><span>Honeymoons <i>▲ 11%</i></span></div>
+        <div class="sv-card sv-appr lg-glass lg-glass--thick"><img class="sv-face" src="<?= e($agentImg('marcus')) ?>" alt=""><div><b>This week · 5 posts</b><small>Marcus · 3 networks · 20 credits</small><span class="sv-btn">Approve the week</span></div></div>
+        <div class="sv-card sv-lead lg-glass lg-glass--thick"><span class="sv-dot"><svg viewBox="0 0 24 24" class="ic"><path d="m5 12 5 5 9-10"/></svg></span><div><b>New lead in Clients</b><small>Maya · honeymoon, April · from a comment</small></div></div>
       </div>
     </div>
   </section>
