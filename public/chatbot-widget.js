@@ -304,12 +304,20 @@
     backdrop.addEventListener('click', function () { close(); });
   }
   // Phones: keep the whole panel inside the visual viewport (keyboard open or not), shrinking it when needed.
+  var fitTallest = window.innerHeight, fitTicks = [];
+  function fitReset() { panel.style.top = ''; panel.style.height = ''; panel.style.maxHeight = ''; panel.style.bottom = ''; }
   function fitPanel() {
     if (!isOpen) return;
     var narrow = window.innerWidth <= 520;
-    if (!narrow) { panel.style.top = ''; panel.style.height = ''; panel.style.maxHeight = ''; panel.style.bottom = ''; return; }
+    if (!narrow) { fitReset(); return; }
     var vv = window.visualViewport;
     var vh = vv ? vv.height : window.innerHeight, vt = vv ? vv.offsetTop : 0;
+    if (window.innerHeight > fitTallest) fitTallest = window.innerHeight;
+    // CB-KBFIT-1: only while one of the panel's own fields is focused AND a keyboard has taken room (iOS: the visual
+    // viewport shrinks; Android: the layout itself shrinks below its tallest height). Otherwise: back to the bottom.
+    var ae = document.activeElement, mine = ae && panel.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName);
+    var kb = Math.max(window.innerHeight - vh, fitTallest - window.innerHeight);
+    if (!mine || kb < 120) { fitReset(); return; }
     var pad = 12, h = Math.max(260, Math.min(520, vh - pad * 2));
     panel.style.bottom = 'auto';
     panel.style.top = Math.round(vt + pad) + 'px';
@@ -317,8 +325,18 @@
     panel.style.maxHeight = h + 'px';
   }
   try {
-    if (window.visualViewport) { window.visualViewport.addEventListener('resize', fitPanel); window.visualViewport.addEventListener('scroll', fitPanel); }
-    window.addEventListener('resize', fitPanel);
+    var fitSoon = function () { fitTicks.forEach(clearTimeout); fitTicks = [0, 120, 350, 800].map(function (ms) { return setTimeout(fitPanel, ms); }); };
+    if (window.visualViewport) { window.visualViewport.addEventListener('resize', fitSoon); window.visualViewport.addEventListener('scroll', fitSoon); }
+    window.addEventListener('resize', fitSoon);
+    panel.addEventListener('focusin', fitSoon); panel.addEventListener('focusout', fitSoon);
+    (function(p){ var vh = function(){ return window.visualViewport ? window.visualViewport.height : window.innerHeight; }, tall = vh(), was = false, t = null;
+      var check = function(){ var h = vh(); if (h > tall) tall = h; var ae = document.activeElement, mine = ae && p.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName);
+        if (h < tall - 120) { was = true; return; }
+        if (was && h >= tall - 80) { was = false; if (mine) { try { ae.blur(); } catch(e){} } } };
+      var soon = function(){ clearTimeout(t); t = setTimeout(check, 90); setTimeout(check, 400); };
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', soon);
+      window.addEventListener('resize', soon); })(panel);   // CB-KBFIT-2
+    window.addEventListener('orientationchange', function () { fitTallest = 0; fitSoon(); });
   } catch (e) {}
   function open() {
     if (isOpen) return;

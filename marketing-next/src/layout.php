@@ -154,7 +154,7 @@ $jsonld = array_merge([[
 <script src="/next/assets/mk/live.js?v=<?= substr(md5_file(__DIR__ . '/assets/mk/live.js'), 0, 8) ?>" defer></script>
 <?php endif; ?>
 <?php /* Chatbot888, run by the house workspace (Owner, 2026-09-12). Token is a public, domain-restricted widget key. */ ?>
-<script src="/chatbot-widget.js?v=20260925-ai" data-token="cwt_019cba3b517c458b30eae508ba28fdf055d9b2c5317157d0" data-color="#6D4AFF" data-theme="dark" data-position="bottom-right" data-icon="/img/logo-icon-48.png" data-bubble="#0B0B14" data-gradient="linear-gradient(135deg,#6D4AFF,#2FE0C8)" data-panel="#10141F" data-backdrop="3" defer></script>
+<script src="/chatbot-widget.js?v=20261005-kbfit" data-token="cwt_019cba3b517c458b30eae508ba28fdf055d9b2c5317157d0" data-color="#6D4AFF" data-theme="dark" data-position="bottom-right" data-icon="/img/logo-icon-48.png" data-bubble="#0B0B14" data-gradient="linear-gradient(135deg,#6D4AFF,#2FE0C8)" data-panel="#10141F" data-backdrop="3" defer></script>
 <?php if (! empty($page['scripts'])) { echo $page['scripts'], "\n"; } ?>
 </body>
 </html>

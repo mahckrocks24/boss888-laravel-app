@@ -691,6 +691,14 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     addBubble('bot', GREETING);
     startSession();
     setTimeout(function(){ input.focus(); }, 50);
+    // CB-KBFIT-2: the keyboard closed while the message box kept its focus (Android) - let go, so the panel returns to the bottom
+    (function(p){ var vh = function(){ return window.visualViewport ? window.visualViewport.height : window.innerHeight; }, tall = vh(), was = false, t = null;
+      var check = function(){ var h = vh(); if (h > tall) tall = h; var ae = document.activeElement, mine = ae && p.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName);
+        if (h < tall - 120) { was = true; return; }
+        if (was && h >= tall - 80) { was = false; if (mine) { try { ae.blur(); } catch(e){} } } };
+      var soon = function(){ clearTimeout(t); t = setTimeout(check, 90); setTimeout(check, 400); };
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', soon);
+      window.addEventListener('resize', soon); })(panel);
   }
 
   // CHATBOT-CONTACT-1: the site's plan has no chatbot, so the button opens a short contact form. The message goes to
@@ -742,6 +750,13 @@ Route::get('/chatbot.js', function (\Illuminate\Http\Request $r) {
     var later = function(){ clearTimeout(fitT); fitT = setTimeout(fitKb, 60); };
     panel.addEventListener('focusin', fitKb);
     panel.addEventListener('focusout', later);
+    (function(p){ var vh = function(){ return window.visualViewport ? window.visualViewport.height : window.innerHeight; }, tall = vh(), was = false, t = null;
+      var check = function(){ var h = vh(); if (h > tall) tall = h; var ae = document.activeElement, mine = ae && p.contains(ae) && /^(INPUT|TEXTAREA)$/.test(ae.tagName);
+        if (h < tall - 120) { was = true; return; }
+        if (was && h >= tall - 80) { was = false; if (mine) { try { ae.blur(); } catch(e){} } } };
+      var soon = function(){ clearTimeout(t); t = setTimeout(check, 90); setTimeout(check, 400); };
+      if (window.visualViewport) window.visualViewport.addEventListener('resize', soon);
+      window.addEventListener('resize', soon); })(panel);   // CB-KBFIT-2
     if (window.visualViewport) window.visualViewport.addEventListener('resize', later);
     window.addEventListener('resize', later);
     function fail(t){ err.textContent = t; err.style.display = 'block'; }

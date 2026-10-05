@@ -648,7 +648,7 @@ class TemplateService
         $apiBase = rtrim((string) config('app.url'), '/');
         return "<!-- CHATBOT888 Widget -->\n"
             . "<script>window.LU_CHATBOT_TOKEN = \"{$tokenSafe}\"; window.LU_CHATBOT_API = \"{$apiBase}\";</script>\n"
-            . "<script src=\"{$apiBase}/chatbot-widget.js?v=20260929-tok\" data-token=\"{$tokenSafe}\" data-api=\"{$apiBase}/api/public/chatbot\" defer></script>\n";   // CBTOK-1
+            . "<script src=\"{$apiBase}/chatbot-widget.js?v=20261005-kbfit\" data-token=\"{$tokenSafe}\" data-api=\"{$apiBase}/api/public/chatbot\" defer></script>\n";   // CBTOK-1
     }
 
     /**
