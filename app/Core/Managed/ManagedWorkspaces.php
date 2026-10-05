@@ -27,6 +27,7 @@ final class ManagedWorkspaces
     private const ALLOWED = [
         'managed/',                         // the portal's own endpoints
         'infrastructure/business-email/',   // the Email page
+        'aria/',                            // Aria, limited to the package by AriaService (MANAGED-4)
         'auth/me', 'auth/logout', 'auth/password', 'auth/profile', 'auth/switch-workspace',
         'user/preferences',                 // theme (light/dark) follows the person between the app and the portal
         'workspace/status',                 // read once by the app shell before it hands over to the portal

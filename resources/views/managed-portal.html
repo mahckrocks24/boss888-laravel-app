@@ -187,6 +187,32 @@ html[data-theme="light"] .bar i{background:#0B0B0C}
 .dlg-f{display:flex;justify-content:flex-end;gap:8px;padding:16px 24px;border-top:1px solid var(--bd);background:var(--s2)}
 .msg{font-size:13px;margin-top:12px}.msg.ok{color:var(--ac)}.msg.bad{color:var(--rd)}
 .scrim{display:none}
+.ni img{width:20px;height:20px;border-radius:50%;object-fit:cover;flex:none}
+.chat{display:flex;flex-direction:column;min-height:calc(100vh - 230px)}
+.chat-h{display:flex;align-items:center;gap:14px;padding:18px 22px;border-bottom:1px solid var(--bd)}
+.chat-h img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+.chat-h b{display:block;font:650 16px var(--fh)}.chat-h span{display:block;font-size:12.5px;color:var(--t3)}
+.thread{flex:1;padding:22px;display:flex;flex-direction:column;gap:16px;overflow-y:auto}
+.msgx{display:flex;gap:10px;max-width:760px}
+.msgx img{width:30px;height:30px;border-radius:50%;object-fit:cover;flex:none;margin-top:2px}
+.bub{padding:12px 15px;border-radius:14px;background:var(--s2);border:1px solid var(--bd);line-height:1.6}
+.bub p{margin:0}.bub p+p,.bub ul+p,.bub p+ul{margin-top:8px}.bub ul{margin:0;padding-left:18px}.bub li+li{margin-top:3px}
+.msgx.me{align-self:flex-end;flex-direction:row-reverse;width:fit-content;max-width:min(560px,85%)}
+.msgx.me>div{flex:0 1 auto}
+.msgx:not(.me){width:100%}
+.msgx.me .bub{background:var(--p);border-color:var(--p);color:#fff}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--bd2);background:var(--s1);color:var(--t1);border-radius:999px;padding:7px 13px;font:500 12.5px var(--fb);cursor:pointer;text-align:left}
+.chip:hover{background:var(--s2)}
+.srcs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.srcs span{font-size:11.5px;color:var(--t3);border:1px solid var(--bd);border-radius:6px;padding:2px 8px}
+.typing{display:inline-flex;gap:4px;padding:14px 16px}.typing i{width:6px;height:6px;border-radius:50%;background:var(--t3);animation:tp 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes tp{0%,80%,100%{opacity:.3}40%{opacity:1}}
+.compose{border-top:1px solid var(--bd);padding:14px 22px calc(14px + var(--safe-b))}
+.compose form{display:flex;gap:10px;align-items:flex-end}
+.compose textarea{flex:1;resize:none;min-height:46px;max-height:160px;padding:12px 14px;border-radius:12px;border:1px solid var(--bd2);background:var(--s2);color:var(--t1);font:400 14px/1.5 var(--fb)}
+.compose textarea:focus{outline:2px solid var(--pg);border-color:var(--p)}
+.fine{font-size:11.5px;color:var(--t3);margin-top:8px;text-align:center}
 @media (max-width:1080px){.g3{grid-template-columns:1fr 1fr}.hero{grid-template-columns:1fr}}
 @media (max-width:860px){
   .side{position:fixed;left:0;top:0;bottom:0;z-index:70;transform:translateX(-102%);transition:transform .25s var(--ease);visibility:hidden}
@@ -223,6 +249,10 @@ html[data-theme="light"] .bar i{background:#0B0B0C}
       <button type="button" class="ni" data-page="email"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M3 6l7 5 7-5"/></svg>Email</button>
       <button type="button" class="ni" data-page="billing"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="15" height="11" rx="2"/><path d="M2.5 8.5h15M6 12.5h3"/></svg>Billing</button>
       <button type="button" class="ni" data-page="account"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="7.5" r="3"/><path d="M4 16.5c1.2-2.6 3.4-4 6-4s4.8 1.4 6 4"/></svg>Account</button>
+    </nav>
+    <div class="nav-l">Help</div>
+    <nav class="nav" aria-label="Help">
+      <button type="button" class="ni" data-page="aria"><img src="/img/agents/aria.webp" alt="">Aria</button>
     </nav>
     <div class="side-foot">
       <div class="help"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="10" r="7.5"/><path d="M7.8 8a2.2 2.2 0 014.4 0c0 1.5-2.2 1.7-2.2 3.2M10 14h.01"/></svg><div><b>Need a hand?</b><span id="help-line">We look after your website and email.</span></div></div>
@@ -302,7 +332,7 @@ html[data-theme="light"] .bar i{background:#0B0B0C}
       var c = contact(); $('help-line').innerHTML = 'Call <a href="tel:' + esc(c.phone.replace(/\s/g, '')) + '">' + esc(c.phone) + '</a>' + (c.email ? '<br>or write to <a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '');
       $('foot-help').innerHTML = 'Support ' + esc(c.phone) + (c.email ? ' · <a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>' : '');
       paintHealth();
-      var h = (location.hash || '').replace('#', ''); go(['email', 'billing', 'account'].indexOf(h) >= 0 ? h : 'email');
+      var h = (location.hash || '').replace('#', ''); go(TITLES[h] ? h : 'email');
     }).catch(function () { $('content').innerHTML = errorCard('We could not reach LevelUpGrowth. Check your connection and refresh.'); });
   }
 
@@ -340,13 +370,13 @@ html[data-theme="light"] .bar i{background:#0B0B0C}
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeMenus(); drawer(false); } });
 
   /* ── navigation ── */
-  var TITLES = { email: 'Email', billing: 'Billing', account: 'Account' };
+  var TITLES = { email: 'Email', billing: 'Billing', account: 'Account', aria: 'Aria' };
   function go(page) {
     P.page = page; if (location.hash !== '#' + page) history.replaceState(null, '', '#' + page);
     document.querySelectorAll('.ni').forEach(function (b) { var on = b.getAttribute('data-page') === page; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     $('crumb').innerHTML = '<span class="co">' + esc(P.data.workspace.name) + '</span><span class="sep" aria-hidden="true">/</span><b>' + TITLES[page] + '</b>';
     drawer(false); closeMenus();
-    ({ email: pageEmail, billing: pageBilling, account: pageAccount })[page]();
+    ({ email: pageEmail, billing: pageBilling, account: pageAccount, aria: pageAria })[page]();
     window.scrollTo(0, 0);
   }
   function staffNote() {
@@ -524,6 +554,59 @@ html[data-theme="light"] .bar i{background:#0B0B0C}
         .then(function (b) { var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'Receipt-' + (p.receipt_ref || '') + '.pdf'; a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000); })
         .catch(function () { toast('The receipt could not be downloaded just now.'); });
     };
+  }
+
+  /* ═══ Aria — help for the package only (MANAGED-4). The server limits her to the package; this page only talks. ═══ */
+  var A = { hist: [], busy: false, sugg: null };
+  function md(t) {
+    var out = [], list = null;
+    String(t || '').split(/\n/).forEach(function (line) {
+      var l = esc(line).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+      if (/^\s*[-•]\s+/.test(line)) { if (!list) { list = []; } list.push('<li>' + l.replace(/^\s*[-•]\s+/, '') + '</li>'); return; }
+      if (list) { out.push('<ul>' + list.join('') + '</ul>'); list = null; }
+      if (line.trim()) out.push('<p>' + l + '</p>');
+    });
+    if (list) out.push('<ul>' + list.join('') + '</ul>');
+    return out.join('');
+  }
+  function ariaMsg(role, html, extra) {
+    var me = role === 'me';
+    return '<div class="msgx' + (me ? ' me' : '') + '">' + (me ? '' : '<img src="/img/agents/aria.webp" alt="">') + '<div style="min-width:0"><div class="bub">' + html + '</div>' + (extra || '') + '</div></div>';
+  }
+  function pageAria() {
+    $('content').innerHTML = staffNote() + '<div class="card chat"><div class="chat-h"><img src="/img/agents/aria.webp" alt=""><div><b>Aria</b><span>Answers about your Managed Hosting package: hosting, email, backups, billing and this portal.</span></div></div>' +
+      '<div class="thread" id="thread" aria-live="polite"></div>' +
+      '<div class="compose"><form id="ask"><label class="sr" for="q">Ask Aria</label><textarea id="q" rows="1" placeholder="Ask about your website, email or package…" maxlength="1000"></textarea><button class="btn pri" id="send" aria-label="Send" style="min-height:46px">Send</button></form><div class="fine">Aria is AI and can make mistakes.</div></div></div>';
+    var th = $('thread');
+    var greet = function (g) {
+      th.innerHTML = ariaMsg('aria', md(g.greeting || 'Hi, I am Aria.'), '<div class="chips" style="margin-top:12px">' + (g.starters || []).slice(0, 6).map(function (s) { return '<button class="chip" data-q="' + esc(s) + '">' + esc(s) + '</button>'; }).join('') + '</div>');
+      A.hist.forEach(function (h) { th.insertAdjacentHTML('beforeend', ariaMsg(h.role === 'user' ? 'me' : 'aria', h.role === 'user' ? esc(h.content) : md(h.content))); });
+      bindChips(); th.scrollTop = th.scrollHeight;
+    };
+    if (A.sugg) greet(A.sugg); else { th.innerHTML = '<div class="skel" style="height:90px;max-width:520px"></div>'; req('GET', 'aria/suggestions').then(function (r) { A.sugg = r.ok ? r.json : {}; greet(A.sugg); }); }
+    var q = $('q');
+    q.addEventListener('input', function () { q.style.height = 'auto'; q.style.height = Math.min(160, q.scrollHeight) + 'px'; });
+    q.addEventListener('keydown', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); ask(q.value); } });
+    $('ask').onsubmit = function (e) { e.preventDefault(); ask(q.value); };
+    q.focus();
+  }
+  function bindChips() { document.querySelectorAll('#thread [data-q]').forEach(function (b) { b.onclick = function () { ask(b.getAttribute('data-q')); }; }); }
+  function ask(text) {
+    text = String(text || '').trim(); if (!text || A.busy) return;
+    var th = $('thread'), q = $('q'); A.busy = true; q.value = ''; q.style.height = 'auto'; $('send').disabled = true;
+    th.insertAdjacentHTML('beforeend', ariaMsg('me', esc(text)));
+    th.insertAdjacentHTML('beforeend', '<div class="msgx" id="typing"><img src="/img/agents/aria.webp" alt=""><div class="bub typing" aria-label="Aria is answering"><i></i><i></i><i></i></div></div>');
+    th.scrollTop = th.scrollHeight;
+    req('POST', 'aria/ask', { message: text, history: A.hist.slice(-6) }).then(function (r) {
+      var t = $('typing'); if (t) t.remove();
+      var j = r.json || {}, ans = r.ok ? (j.answer || '') : 'I could not answer just now. Please try again in a moment.';
+      var srcs = (j.sources || []).map(function (s) { return '<span>' + esc(s.title) + '</span>'; }).join('');
+      var fol = (j.followups || []).map(function (f) { return '<button class="chip" data-q="' + esc(f) + '">' + esc(f) + '</button>'; }).join('');
+      th.insertAdjacentHTML('beforeend', ariaMsg('aria', md(ans), (srcs ? '<div class="srcs">' + srcs + '</div>' : '') + (fol ? '<div class="chips" style="margin-top:10px">' + fol + '</div>' : '')));
+      A.hist.push({ role: 'user', content: text }, { role: 'assistant', content: ans });
+      bindChips(); th.scrollTop = th.scrollHeight;
+    }).catch(function () { var t = $('typing'); if (t) t.remove(); toast('Aria could not be reached. Please try again.'); })
+      .then(function () { A.busy = false; var b = $('send'); if (b) b.disabled = false; });
   }
 
   /* ═══ Account ═══ */

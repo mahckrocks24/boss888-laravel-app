@@ -24,6 +24,17 @@ use Illuminate\Support\Facades\Log;
 class PlatformFaqCorpus
 {
     private const CACHE_KEY = 'aria:corpus:v1';
+
+    /** MANAGED-4 (RFC-0029): 'platform' = the whole product (default); 'managed' = a managed client's package only. */
+    private string $scope = 'platform';
+
+    public function forScope(string $scope): static
+    {
+        $c = clone $this;
+        $c->scope = $scope === 'managed' ? 'managed' : 'platform';
+
+        return $c;
+    }
     private const CACHE_TTL = 600;
 
     private const STOP = ['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'is', 'are', 'it', 'i', 'my', 'me', 'do', 'does', 'can', 'how', 'what', 'where', 'which', 'with', 'for', 'this', 'that', 'be', 'you', 'your', 'we', 'our', 'have', 'has', 'was', 'will', 'there', 'from', 'at', 'as', 'by', 'not', 'if', 'so', 'any', 'get', 'use', 'when', 'why', 'who', 'about', 'into', 'up', 'out', 'am', 'want', 'need', 'please', 'tell', 'know'];
@@ -32,14 +43,14 @@ class PlatformFaqCorpus
     public function entries(): array
     {
         try {
-            $cached = Cache::get(self::CACHE_KEY);
+            $cached = Cache::get(self::CACHE_KEY . ':' . $this->scope);
             if (is_array($cached) && ($cached['sig'] ?? '') === $this->signature()) {
                 return $cached['entries'];
             }
         } catch (\Throwable $e) { /* cache is a convenience */ }
 
         $entries = array_merge($this->fileEntries(), $this->liveEntries());
-        try { Cache::put(self::CACHE_KEY, ['sig' => $this->signature(), 'entries' => $entries], self::CACHE_TTL); } catch (\Throwable $e) {}
+        try { Cache::put(self::CACHE_KEY . ':' . $this->scope, ['sig' => $this->signature(), 'entries' => $entries], self::CACHE_TTL); } catch (\Throwable $e) {}
         return $entries;
     }
 
@@ -55,7 +66,7 @@ class PlatformFaqCorpus
     /** @return string[] */
     private function files(): array
     {
-        $dir = resource_path('knowledge/aria');
+        $dir = resource_path($this->scope === 'managed' ? 'knowledge/aria-managed' : 'knowledge/aria');
         $files = is_dir($dir) ? glob($dir . '/*.md') : [];
         sort($files);
         return $files ?: [];
@@ -93,6 +104,9 @@ class PlatformFaqCorpus
 
     private function liveEntries(): array
     {
+        if ($this->scope === 'managed') {
+            return [];   // the package's live facts reach Aria as ACCOUNT FACTS, never the plan table
+        }
         $out = [];
         try {
             $plans = DB::table('plans')->where('is_public', 1)->orderBy('price')->get();
