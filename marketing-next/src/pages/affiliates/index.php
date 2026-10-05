@@ -8,6 +8,7 @@
  * claimed that the platform does not do. No supplier names except the two payout options the affiliate chooses between.
  */
 $page['title'] = 'Affiliate Program';
+$page['og_image'] = rtrim($data['site']['url'] ?? 'https://levelupgrowth.io', '/') . '/next/assets/og/affiliates-featured.png';   // AFF-PAGE-9 (Owner: "add a nice featured image")
 $page['description'] = 'Recommend LevelUpGrowth with your own voucher code and earn up to 20% of their first 6 monthly payments. You decide how much becomes your audience\'s discount.';
 $by = []; foreach ($data['plans'] as $p) { $by[$p['slug']] = $p; }
 $calcPlans = array_values(array_filter(array_map(fn ($s) => isset($by[$s]) ? ['name' => $by[$s]['name'], 'price' => (float) $by[$s]['price_monthly']] : null, ['starter', 'ai-lite', 'growth', 'pro', 'agency'])));
