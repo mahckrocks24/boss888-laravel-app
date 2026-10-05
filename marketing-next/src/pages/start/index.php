@@ -122,8 +122,8 @@ $page['scripts'] = <<<'HTML'
     var company = (form.querySelector('[name=company]').value || '').trim();
     var industry = (form.querySelector('[name=industry]') || {}).value || '';
     var code = (form.querySelector('[name=promo_code]') || {}).value || '';
-    if (code && form.querySelector('[name=promo_code]').getAttribute('data-bad') === '1') { mark('promo_code'); show('That code is not valid. Check it, or clear it to sign up without one.'); btn.disabled = false; btn.innerHTML = label; return; }
     var mark = function(k){ var i = form.querySelector('[name=' + k + ']'); if (i) i.setAttribute('aria-invalid', 'true'); };
+    if (code && form.querySelector('[name=promo_code]').getAttribute('data-bad') === '1') { mark('promo_code'); show('That code is not valid. Check it, or clear it to sign up without one.'); btn.disabled = false; btn.innerHTML = label; return; }
     if (name.length < 2) { mark('name'); show('Please tell us your name.'); btn.disabled = false; btn.innerHTML = label; return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { mark('email'); show('Please enter a valid email address.'); btn.disabled = false; btn.innerHTML = label; return; }
     if (pass.length < 8 || !/[A-Z]/.test(pass) || !/[0-9]/.test(pass)) { mark('password'); show('Your password needs at least 8 characters, one capital letter and one number.'); btn.disabled = false; btn.innerHTML = label; return; }
