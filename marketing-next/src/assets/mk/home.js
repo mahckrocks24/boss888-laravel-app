@@ -121,7 +121,10 @@
       if (ph) { if (staged) { await slide(2, 0); } else { says.forEach(function (c) { show(c, false); }); show(agents, false); await M.animate(site, { opacity: [1, 0] }, { duration: .4 }); } if (!live()) return; }   /* STAGE-1: the agents slide out, Arthur's chat comes back */
       running = false; if (visible) run();
     }
-    if (staged) { var finish0 = finish; finish = function () { finish0(); stageSet(2); }; }   /* STAGE-1: at rest the staged phone shows the team's thread */
+    if (staged) { var finish0 = finish; finish = function () { finish0(); stageSet(2); }; }
+    // HERO-STACK-1 (Owner: "the hero animation... gets stacked together on initial load before animation starts"): the panel stays hidden until the sequence has set its first frame
+    var reset0 = reset, finish00 = finish, ready = function () { document.documentElement.classList.remove("hx-wait"); };
+    reset = function () { reset0(); ready(); }; finish = function () { finish00(); ready(); };   /* STAGE-1: at rest the staged phone shows the team's thread */
     M.inView('#hx', function () { visible = true; if (!running) run(); return function () { visible = false; }; }, iv({ amount: .35 }));
     // before the block is reached: desktop shows the finished state at rest, phones wait empty so the thread only ever arrives one message at a time
     setTimeout(function () { if (!visible && !running) { if (phone()) reset(); else finish(); } }, 100);

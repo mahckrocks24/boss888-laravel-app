@@ -221,3 +221,6 @@ html[data-theme="dark"] .hx-say__av .lg-avatar { border-color: #15172A; }
   .mk-hero__visual.mk-staged > .hx-agents[hidden] { display: grid !important; }   /* a panel waiting to the side still holds its size */
   .mk-hero__visual.mk-staged > .mk-site[hidden] { display: block !important; }
 }
+/* HERO-STACK-1: no finished-state flash before the hero sequence starts (head script adds hx-wait, home.js removes it; 4 s safety) */
+html.hx-wait #hero-visual { opacity: 0; }
+#hero-visual { transition: opacity .35s ease; }
