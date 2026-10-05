@@ -40,7 +40,7 @@ $pd = require __DIR__ . '/product-data.php';
 $products = $pd['launched'];
 if (! empty($data['infrastructure_live'])) { $products = array_merge($products, $pd['infrastructure']); }
 foreach ($products as $p) {
-    $routes[] = ['route' => '/product/' . $p['slug'] . '/', 'template' => 'product-page.php', 'vars' => ['p' => $p]];
+    $routes[] = ['route' => '/product/' . $p['slug'] . '/', 'template' => is_file(__DIR__ . '/product-' . $p['slug'] . '.php') ? 'product-' . $p['slug'] . '.php' : 'product-page.php', 'vars' => ['p' => $p]];   // SOCIAL-PAGE-2: a product may carry its own page
 }
 $cmp = require __DIR__ . '/compare-data.php';
 foreach ($cmp['competitors'] as $c) {
