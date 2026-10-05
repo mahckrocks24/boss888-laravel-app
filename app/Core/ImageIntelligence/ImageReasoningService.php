@@ -45,7 +45,8 @@ class ImageReasoningService
         // just the ConnectionException chatJson handles internally) degrades to
         // the documented deterministic fallback rather than propagating.
         try {
-            $res = $this->runtime->chatJson($system, $user, [], 1400);
+            // STUDIO-CERT-3 (2026-10-05): 1400 tokens cut the blueprint JSON mid-string (schema_invalid -> fallback on most requests)
+            $res = $this->runtime->chatJson($system, $user, [], 3000);
             $parsed = $res['parsed'] ?? ($res['data'] ?? null);
 
             if (empty($res['success']) || !is_array($parsed)) {
@@ -103,7 +104,8 @@ class ImageReasoningService
             . "- 'none': no text at all. Use for SEO/blog featured images, visual-only requests, or when platform strategy calls for no embedded copy.\n"
             . "gpt-image-1 CANNOT reliably render long or multi-line text — never choose baked_in for more than a few words.\n"
             . "- baked_in carries EXACTLY ONE line: the headline, at most 7 words. Never put a sub-line, tagline, small print, contact details, locations or URLs into the image — that copy belongs in the post caption; leave supporting_copy empty for baked_in.\n"
-            . "For the provider_prompt: if mode is 'separate_overlay' or 'none', you MUST instruct the model to include NO text/letters/words and to reserve clean negative space; if 'baked_in', embed the exact short headline in quotes.\n\n"
+            // STUDIO-CERT-3 (2026-10-05): 'none' no longer reserves empty space - nothing is added later, so it left half-empty pictures
+            . "For the provider_prompt: if mode is 'separate_overlay', you MUST instruct the model to include NO text/letters/words and to reserve clean negative space where the copy will go; if 'none', you MUST instruct the model to include NO text/letters/words and to compose the subject so it fills the frame - never leave empty space for text, because none is added; if 'baked_in', embed the exact short headline in quotes.\n\n"
             // RFC-0009 P4/P5 (2026-09-16): grounding and fidelity rules. The customer's intent is never
             // rewritten; what cannot be verified is flagged (UNVERIFIED:) for the caller to resolve.
             . "GROUNDING RULES:\n"
@@ -253,7 +255,8 @@ class ImageReasoningService
         $brandVisual = '';
         if ($colors) $brandVisual .= ' Incorporate the brand colour palette (' . implode(', ', array_slice($colors, 0, 4)) . ') naturally through props, surfaces, lighting and accents — never as text.';
         if ($vstyle) $brandVisual .= ' Overall visual style: ' . $vstyle . '.';
-        if (! empty($brand['design_direction'])) $brandVisual .= ' Art direction: ' . preg_replace('/\s*Never use:.*$/s', '', (string) $brand['design_direction']);   // BRAND-B1
+        // STUDIO-CERT-3: a text-free image keeps the direction's look (colour, light, composition) but not its type / call-to-action clauses
+        if (! empty($brand['design_direction'])) { $__dd = preg_replace('/\s*Never use:.*$/s', '', (string) $brand['design_direction']); $__keep = array_filter(array_map('trim', preg_split('/[;.]\s*/', $__dd)), fn ($x) => $x !== '' && ! preg_match('/\b(type|typography|headline|call to action|cta|badge|text|font|lettering|wordmark|word)\b/i', $x)); if ($__keep) $brandVisual .= ' Art direction: ' . implode('; ', $__keep) . '.'; }   // BRAND-B1
 
         // Compose the subject naturally, tolerating empty and verb-leading prompts.
         $subject   = $prompt !== '' ? $prompt : $cat['default_subject'];
@@ -261,7 +264,7 @@ class ImageReasoningService
             || (bool) preg_match('/^(create|generate|make|design|show|produce|depict|render|illustrate|draw|craft|compose|capture|build)\b/i', $prompt));
 
         $tail = sprintf(
-            ' Composition: %s, with clean deliberate negative space reserved for text to be added later. Lighting: %s. Mood: %s.%s%s Ultra-detailed, photorealistic, professional %s quality, sharp focus, natural textures, high dynamic range. No text, no letters, no words, no logos, no watermark.',
+            ' Composition: %s' . (trim((string) (array_values(array_filter(array_map('strval', (array) ($c['exact_text'] ?? []))))[0] ?? '')) !== '' ? ', with clean deliberate negative space reserved for text to be added later' : ', the subject filling the frame with a natural, uncluttered background') . '. Lighting: %s. Mood: %s.%s%s Ultra-detailed, photorealistic, professional %s quality, sharp focus, natural textures, high dynamic range. No text, no letters, no words, no logos, no watermark.',
             $cat['composition'], $cat['lighting'], $cat['mood'], $styleClause, $brandVisual, $cat['quality_word']
         );
 
