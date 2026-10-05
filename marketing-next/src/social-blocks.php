@@ -74,7 +74,7 @@
       #social .soc-strip{position:relative}
       #social .soc-gal{display:flex;gap:20px;align-items:flex-start;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;margin:0 -8px;padding:6px 8px 22px}#social .soc-gal::-webkit-scrollbar{display:none}
       #social .soc-gal>.soc-card{flex:0 0 296px;scroll-snap-align:start}
-      <?php /* GAL-75: home page, desktop: whole cards at 75% (text too), so they keep their shape */ if (empty($socPage)): ?>@media (min-width:901px){#social .soc-gal>.soc-card{zoom:.75}}<?php endif; ?>
+      <?php /* GAL-75: home page, desktop: whole cards at 75% (text too), so they keep their shape */ if (empty($socPage)): ?>@media (min-width:901px){#social .soc-gal>.soc-card{zoom:.75}}@media (max-width:900px){#social .soc-gal>.soc-card{zoom:.75;flex-basis:58.5%!important}#replies .rp-stage{zoom:.8}}<?php endif; ?>
       #social .soc-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 14px}
       #social .soc-count{display:flex;gap:10px;align-items:flex-start;max-width:760px;font:400 15px/1.5 var(--font);color:var(--ink-2)}#social .soc-count b{color:var(--ink);font-weight:600}#social .soc-count svg{flex:none;width:22px;height:22px;margin-top:1px;color:var(--accent-text,#7c3aed)}
       #social .soc-arrows{display:flex;gap:8px}
@@ -149,10 +149,18 @@
       (function () {
         var s = document.getElementById('social'); if (!s) return;
         var g = s.querySelector('.soc-gal'), b = s.querySelectorAll('.soc-arrow');
-        function step() { var c = g.querySelector('.soc-card'); return c ? (c.getBoundingClientRect().width + 20) * Math.max(1, Math.floor(g.clientWidth / (c.getBoundingClientRect().width + 20))) : 300; }
-        function sync() { b[0].disabled = g.scrollLeft < 8; b[1].disabled = g.scrollLeft + g.clientWidth > g.scrollWidth - 8; }
-        Array.prototype.forEach.call(b, function (x) { x.addEventListener('click', function () { g.scrollBy({ left: step() * (+x.getAttribute('data-dir')), behavior: 'smooth' }); }); });
-        g.addEventListener('scroll', function () { window.requestAnimationFrame(sync); }, { passive: true }); sync();
+        /* GAL-LOOP-1: an endless strip - the set is drawn three times and a settled scroll inside a copy jumps one set back */
+        var orig = Array.prototype.slice.call(g.children), first = orig[0], idle = 0;
+        function copy(c) { var k = c.cloneNode(true); k.setAttribute('aria-hidden', 'true'); k.setAttribute('inert', ''); k.classList.add('soc-copy'); return k; }
+        orig.forEach(function (c) { g.appendChild(copy(c)); });
+        orig.slice().reverse().forEach(function (c) { g.insertBefore(copy(c), g.firstChild); });
+        function setW() { return first.getBoundingClientRect().left - g.children[0].getBoundingClientRect().left; }
+        function jump(dx) { var sn = g.style.scrollSnapType, sb = g.style.scrollBehavior; g.style.scrollSnapType = 'none'; g.style.scrollBehavior = 'auto'; g.scrollLeft += dx; g.offsetWidth; g.style.scrollSnapType = sn; g.style.scrollBehavior = sb; }
+        function home() { var w = setW(); if (w <= 0) return; if (g.scrollLeft < w * 0.5) jump(w); else if (g.scrollLeft > w * 1.5) jump(-w); }
+        function step() { var c = first.getBoundingClientRect().width, gap = parseFloat(getComputedStyle(g).columnGap) || 20; return (c + gap) * Math.max(1, Math.floor(g.clientWidth / (c + gap))); }
+        Array.prototype.forEach.call(b, function (x) { x.disabled = false; x.addEventListener('click', function () { home(); g.scrollBy({ left: step() * (+x.getAttribute('data-dir')), behavior: 'smooth' }); }); });
+        g.addEventListener('scroll', function () { clearTimeout(idle); idle = setTimeout(home, 140); }, { passive: true });
+        jump(setW()); window.addEventListener('resize', function () { clearTimeout(idle); idle = setTimeout(home, 200); });
       })();
     </script>
   </section>

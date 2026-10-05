@@ -276,6 +276,7 @@ $arrow = '<svg class="ic ic--sm" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-
 
   <?php /* 08 — PRICING, from the plans table */ ?>
   <section class="mk-sec" id="price" style="padding-top:40px">
+    <style>@media (max-width:900px){#price .mk-price__cards{zoom:.8}}</style>
     <div class="mk-wrap mk-price">
       <div class="lg-stack gap-3" style="flex:1 1 0;min-width:0"><span class="t-eyebrow" data-rv>Pricing</span><h2 class="mk-h2" data-rv>Start free. Add Sarah when you are ready.</h2><a class="t-footnote t-strong c-accent" href="/next/pricing/" data-rv>Every plan and what is in it</a></div>
       <div class="mk-price__cards">
