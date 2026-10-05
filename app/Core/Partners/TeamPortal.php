@@ -21,6 +21,30 @@ class TeamPortal
         return DB::table('affiliates')->where('leader_id', $leader->id)->orderByDesc('id')->limit(1000)->get(['id', 'display_name', 'status', 'created_at', 'approved_at', 'leader_recommendation', 'leader_rec_note', 'channel_url', 'audience']);
     }
 
+    /**
+     * D22 (Owner: "records stays for all but there must be a badge saying it has upgraded"): members who left this leader's
+     * current team - upgraded, removed or moved - stay in the records, frozen at the day they left (left_at, left_reason).
+     */
+    private static function formers(object $leader)
+    {
+        $since = $leader->leader_since ? \Carbon\Carbon::parse($leader->leader_since)->subSeconds(5) : null;
+        $current = DB::table('affiliates')->where('leader_id', $leader->id)->pluck('id')->all();
+        $rows = DB::table('affiliate_team_history')->where('leader_id', $leader->id)->whereNull('returned_at')->when($since, fn ($q) => $q->where('left_at', '>=', $since))->orderByDesc('id')->get()->unique('recruit_id');
+        return $rows->reject(fn ($h) => in_array($h->recruit_id, $current, true))->map(function ($h) {
+            $m = DB::table('affiliates')->where('id', $h->recruit_id)->first(['id', 'display_name', 'status', 'created_at', 'approved_at', 'leader_recommendation', 'leader_rec_note', 'channel_url', 'audience']);
+            if (! $m) return null;
+            $m->left_reason = $h->reason; $m->left_at = $h->left_at;
+            return $m;
+        })->filter()->values();
+    }
+
+    /** A former member's referrals stop at the day they left: the leader never sees their later work. */
+    private static function upTo(array $refs, ?object $m): array
+    {
+        if (! $m || empty($m->left_at)) return $refs;
+        return array_values(array_filter($refs, fn ($r) => (string) $r['joined'] <= (string) $m->left_at));
+    }
+
     /** The leader's 5% rows (and their reversals), optionally for one recruit. */
     private static function teamRows(int $leaderId, ?int $recruitId = null)
     {
@@ -48,7 +72,8 @@ class TeamPortal
                 ->whereNotIn('id', (clone $team)->pluck('id'))->where('created_at', '>=', $m0)->where('created_at', '<', $m1)->sum('amount_minor');
             $chart[] = ['month' => $m0->format('M'), 'own' => $ownM, 'team' => $teamM];
         }
-        $board = $ms->filter(fn ($m) => $m->status === 'approved')->map(fn ($m) => self::memberLine($leader, $m, $from))->sortByDesc(fn ($x) => [$x['sales_minor'], $x['signups']])->values()->all();
+        $board = $ms->filter(fn ($m) => $m->status === 'approved')->concat(self::formers($leader))->map(fn ($m) => self::memberLine($leader, $m, $from))
+            ->sortBy(fn ($x) => [$x['left'] ? 1 : 0, -$x['sales_minor'], -$x['signups']])->values()->all();
         return [
             'days' => $days,
             'members' => ['active' => $ms->where('status', 'approved')->count(), 'waiting' => $ms->where('status', 'pending')->count()],
@@ -66,14 +91,16 @@ class TeamPortal
 
     private static function memberLine(object $leader, object $m, $from = null): array
     {
-        $since = fn ($q, $col) => $from ? $q->where($col, '>=', $from) : $q;
+        $left = $m->left_at ?? null;   // a former member: their figures stop at the day they left
+        $since = fn ($q, $col) => ($from ? $q->where($col, '>=', $from) : $q)->when($left, fn ($w) => $w->where($col, '<=', $left));
         $last = DB::table('referrals')->where('affiliate_id', $m->id)->max('signed_up_at');
-        $quiet = $m->status === 'approved' && $m->approved_at && now()->diffInDays($m->approved_at, true) >= 30 && (! $last || now()->diffInDays($last, true) >= 30);
+        $quiet = ! $left && $m->status === 'approved' && $m->approved_at && now()->diffInDays($m->approved_at, true) >= 30 && (! $last || now()->diffInDays($last, true) >= 30);
         $note = DB::table('affiliate_team_notes')->where('leader_id', $leader->id)->where('recruit_id', $m->id)->first();
-        $month = DB::table('referrals')->where('affiliate_id', $m->id)->where('status', '!=', 'void')->where('signed_up_at', '>=', now()->startOfMonth())->count();
+        $month = $left ? 0 : DB::table('referrals')->where('affiliate_id', $m->id)->where('status', '!=', 'void')->where('signed_up_at', '>=', now()->startOfMonth())->count();
         return ['id' => $m->id, 'name' => $m->display_name, 'status' => $m->status, 'quiet' => $quiet, 'joined' => $m->approved_at ?: $m->created_at,
+            'left' => $m->left_reason ?? null, 'left_at' => $left,
             'signups' => $since(DB::table('referrals')->where('affiliate_id', $m->id)->where('status', '!=', 'void'), 'signed_up_at')->count(),
-            'paying' => self::payingNow([$m->id]),
+            'paying' => $left ? 0 : self::payingNow([$m->id]),
             'sales_minor' => (int) $since(DB::table('commissions')->where('affiliate_id', $m->id)->whereNull('override_of')->whereIn('source_type', ['invoice', 'domain_order'])->where('amount_minor', '>', 0), 'created_at')->sum('base_minor'),
             'earned_minor' => (int) self::teamRows((int) $leader->id, (int) $m->id)->sum('amount_minor'),
             'goal' => $note->goal_signups ?? null, 'this_month' => $month, 'has_note' => (bool) ($note && $note->note)];
@@ -88,7 +115,7 @@ class TeamPortal
 
     public static function activity(object $leader, int $limit = 40): array
     {
-        $names = DB::table('affiliates')->where('leader_id', $leader->id)->pluck('display_name', 'id');
+        $names = DB::table('affiliates')->where('leader_id', $leader->id)->orWhereIn('id', DB::table('affiliate_team_history')->where('leader_id', $leader->id)->select('recruit_id'))->pluck('display_name', 'id');
         return DB::table('affiliate_team_events')->where('leader_id', $leader->id)->when($leader->leader_since, fn ($q) => $q->where('created_at', '>=', \Carbon\Carbon::parse($leader->leader_since)->subSeconds(5)))->orderByDesc('id')->limit($limit)->get()->map(function ($e) use ($names) {
             $d = json_decode((string) $e->data_json, true) ?: []; $who = $e->recruit_id ? ($names[$e->recruit_id] ?? ($d['name'] ?? 'A former recruit')) : null;
             $t = [
@@ -99,6 +126,8 @@ class TeamPortal
                 'recruit_first_sale' => $who . ' made their first sale',
                 'team_payment' => 'A business ' . $who . ' referred paid: you earned ' . PartnerProgram::money((int) ($d['amount'] ?? 0)),
                 'team_reversal' => 'A refund or dispute on ' . $who . "'s referral took back " . PartnerProgram::money((int) ($d['amount'] ?? 0)),
+                'recruit_upgraded' => $who . ' became a Team Leader and left your team',
+                'recruit_returned' => $who . ' is a regular affiliate again and is back on your team',
                 'invite_sent' => 'Invitation sent to ' . ($d['email'] ?? 'someone'),
                 'leader_on' => 'You became a Team Leader',
                 'fee_from_commissions' => 'Your Team Leader fee: ' . PartnerProgram::money((int) ($d['amount'] ?? 0)) . ' taken from your commissions',
@@ -116,8 +145,11 @@ class TeamPortal
     public static function member(object $leader, int $recruitId): ?array
     {
         $m = DB::table('affiliates')->where('id', $recruitId)->where('leader_id', $leader->id)->first();   // the full row: their codes' terms need their budgets (only listed fields are returned)
-        if (! $m) return null;
-        $refs = PartnerPortal::referrals($m);
+        if (! $m) {   // a former member: read-only, up to the day they left
+            $f = self::formers($leader)->firstWhere('id', $recruitId); if (! $f) return null;
+            $m = DB::table('affiliates')->where('id', $recruitId)->first(); $m->left_reason = $f->left_reason; $m->left_at = $f->left_at;
+        }
+        $refs = self::upTo(PartnerPortal::referrals($m), $m);
         foreach ($refs as &$r) {
             $oids = DB::table('commissions')->where('affiliate_id', $leader->id)->where('referral_id', $r['id'])->whereNotNull('override_of')->pluck('id');
             $r['leader_minor'] = (int) DB::table('commissions')->where(fn ($w) => $w->whereIn('id', $oids)->orWhereIn('reverses_id', $oids))->sum('amount_minor');
@@ -135,9 +167,9 @@ class TeamPortal
     public static function referrals(object $leader): array
     {
         $out = [];
-        foreach (self::members($leader) as $m) {
-            if ($m->status !== 'approved' && $m->status !== 'suspended') continue;
-            foreach (PartnerPortal::referrals($m) as $r) {
+        foreach (self::members($leader)->concat(self::formers($leader)) as $m) {
+            if ($m->status !== 'approved' && $m->status !== 'suspended' && empty($m->left_at)) continue;
+            foreach (self::upTo(PartnerPortal::referrals($m), $m) as $r) {
                 $oids = DB::table('commissions')->where('affiliate_id', $leader->id)->where('referral_id', $r['id'])->whereNotNull('override_of')->pluck('id');
                 $r['leader_minor'] = (int) DB::table('commissions')->where(fn ($w) => $w->whereIn('id', $oids)->orWhereIn('reverses_id', $oids))->sum('amount_minor');
                 $r['recruit'] = $m->display_name; $r['recruit_id'] = $m->id; unset($r['id']);
@@ -175,7 +207,7 @@ class TeamPortal
         $m = DB::table('affiliates')->where('id', $recruitId)->where('leader_id', $leader->id)->first();
         if (! $m) return ['ok' => false, 'error' => 'Not on your team.'];
         DB::table('affiliates')->where('id', $m->id)->update(['leader_id' => null, 'leader_recommendation' => null, 'leader_rec_note' => null, 'updated_at' => now()]);
-        DB::table('affiliate_team_notes')->where('leader_id', $leader->id)->where('recruit_id', $m->id)->delete();
+        TeamLeader::leftTeam((int) $leader->id, $m, 'removed');   // D22: the records stay, badged
         TeamLeader::event((int) $leader->id, (int) $m->id, 'recruit_removed', ['name' => $m->display_name]);
         PartnerEmails::safe(fn () => PartnerEmails::removedFromTeam((int) $m->id, (string) $leader->display_name));   // R1
         return ['ok' => true];

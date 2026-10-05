@@ -114,8 +114,10 @@ Route::middleware(['auth.jwt', \App\Http\Middleware\AdminMiddleware::class])->pr
         if ($to) {
             $l = DB::table('affiliates')->where('id', $to)->first();
             if ((int) $to === $id || ! \App\Core\Partners\TeamLeader::isActive($l)) return response()->json(['error' => 'Choose an active Team Leader (not the affiliate itself).'], 422);
+            if (\App\Core\Partners\TeamLeader::isActive($a)) return response()->json(['error' => 'A Team Leader cannot be on another team (D22).'], 422);
         }
         DB::table('affiliates')->where('id', $id)->update(['leader_id' => $to, 'updated_at' => now()]);
+        if ($a->leader_id && $a->leader_id != $to) \App\Core\Partners\TeamLeader::leftTeam((int) $a->leader_id, $a, 'moved');
         if ($a->leader_id && $a->leader_id != $to) \App\Core\Partners\TeamLeader::event((int) $a->leader_id, $id, 'recruit_removed', ['name' => $a->display_name, 'by' => 'admin']);
         if ($to) \App\Core\Partners\TeamLeader::event((int) $to, $id, 'recruit_approved', ['name' => $a->display_name, 'by' => 'admin']);
         $audit($r, 'team_move', 'Affiliate', $id, ['from' => $a->leader_id, 'to' => $to]);

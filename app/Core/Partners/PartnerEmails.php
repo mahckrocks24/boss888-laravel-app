@@ -244,6 +244,26 @@ class PartnerEmails
             'button' => ['Open your Team area', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'L3');
     }
 
+    // L5: a recruit became a Team Leader and left the team (D22)
+    public static function recruitUpgraded(int $leaderId, string $name): bool
+    {
+        $l = self::partner($leaderId); if (! $l || ! self::once('L5', mb_substr($name, 0, 60) . ':' . now()->toDateString(), $leaderId)) return false;
+        return self::send($l->email, $name . ' became a Team Leader', ['eyebrow' => 'Team Leader', 'heading' => $name . ' has left your team',
+            'lead' => $name . ' upgraded to Team Leader and now leads a team of their own, so they are no longer on yours.',
+            'paragraphs' => ['The 5% from their customers stops on future payments. What you already earned from them stays yours.'],
+            'button' => ['Open your Team area', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'L5');
+    }
+
+    // L6: a former recruit is a regular affiliate again and back on the team
+    public static function recruitReturned(int $leaderId, int $recruitId): bool
+    {
+        $l = self::partner($leaderId); $r = DB::table('affiliates')->where('id', $recruitId)->first(['display_name']);
+        if (! $l || ! $r || ! self::once('L6', $recruitId . ':' . now()->toDateString(), $leaderId)) return false;
+        return self::send($l->email, $r->display_name . ' is back on your team', ['eyebrow' => 'Team Leader', 'tone' => 'success', 'heading' => $r->display_name . ' is back on your team',
+            'lead' => $r->display_name . ' is no longer a Team Leader, so they have returned to your team.',
+            'paragraphs' => ['From now on you get 5% of every payment their customers make again.'], 'button' => ['Open your Team area', self::PORTAL . '#team'], 'signoff' => 'team', 'reason' => self::whyLeader()], 'L6');
+    }
+
     // L4: the first 5% from the team
     public static function firstTeamEarning(int $leaderId, int $commissionId): bool
     {

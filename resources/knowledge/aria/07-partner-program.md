@@ -37,7 +37,7 @@ An upgrade for affiliates, $99 a month. A Team Leader's own customers carry 25% 
 Links: /affiliates/#team-leader
 
 ## How does someone join a Team Leader's team?
-They apply to the Affiliate Program and type the Team Leader's team code, or follow an email invitation from the leader that fills the code in. LevelUpGrowth reviews and approves every application; the leader can recommend applicants. A Team Leader sees their team's results, codes and referrals (emails partly hidden), sets recommended splits and sends announcements.
+They apply to the Affiliate Program and type the Team Leader's team code, or follow an email invitation from the leader that fills the code in. LevelUpGrowth reviews and approves every application; the leader can recommend applicants. A Team Leader sees their team's results, codes and referrals (emails partly hidden), sets recommended splits and sends announcements. A team member who becomes a Team Leader leaves the team (the old leader keeps their records, marked as upgraded, and is emailed) and returns to it if they later go back to being a regular affiliate.
 Links: /affiliates/portal
 
 ## How is the Team Leader fee paid, and what if it is not?

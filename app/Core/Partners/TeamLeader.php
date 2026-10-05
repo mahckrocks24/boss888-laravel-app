@@ -261,8 +261,14 @@ class TeamLeader
             $cur = PartnerProgram::budgets($a);
             $upd += ['tier' => 'leader', 'leader_since' => now(), 'pre_leader_budgets' => json_encode($cur), 'team_code' => $a->team_code ?: self::newTeamCode($a),
                 'budget_monthly_bps' => max($cur['monthly'], self::BUDGET['monthly']), 'budget_yearly_bps' => max($cur['yearly'], self::BUDGET['yearly']), 'budget_domain_bps' => max($cur['domain'], self::BUDGET['domain'])];
+            if ($a->leader_id) $upd['leader_id'] = null;   // D22: a recruit who upgrades leaves their leader's team
             DB::table('affiliates')->where('id', $a->id)->update($upd);
             self::event((int) $a->id, null, 'leader_on', ['sub' => $sub->id]);
+            if ($a->leader_id) {
+                self::leftTeam((int) $a->leader_id, $a, 'upgraded');
+                self::event((int) $a->leader_id, (int) $a->id, 'recruit_upgraded', ['name' => $a->display_name]);
+                PartnerEmails::safe(fn () => PartnerEmails::recruitUpgraded((int) $a->leader_id, (string) $a->display_name));   // L5
+            }
             Log::info('[AFF-TL] leader on', ['affiliate' => $a->id, 'sub' => $sub->id]);
             PartnerEmails::safe(fn () => PartnerEmails::leaderWelcome((int) $a->id, (string) $sub->id));   // L1
             return;
@@ -389,9 +395,32 @@ class TeamLeader
         DB::table('affiliates')->where('leader_id', $a->id)->update(['leader_id' => null, 'leader_recommendation' => null, 'leader_rec_note' => null, 'updated_at' => now()]);
         DB::table('affiliate_team_invites')->where('leader_id', $a->id)->where('status', 'sent')->update(['status' => 'withdrawn', 'updated_at' => now()]);
         self::event((int) $a->id, null, 'team_dissolved', ['why' => $why, 'recruits' => count($recruits)]);
+        self::returnToOldLeader($a);
         Log::info('[AFF-TL] team dissolved', ['affiliate' => $a->id, 'why' => $why, 'recruits' => count($recruits)]);
         PartnerEmails::safe(fn () => PartnerEmails::teamDissolved((int) $a->id, $why));   // G4
         foreach ($recruits as $rid) PartnerEmails::safe(fn () => PartnerEmails::teamEndedForRecruit((int) $rid, (string) $a->display_name));   // G5
+    }
+
+    /** D22: a member leaves a team (upgraded, removed, moved); the leader keeps the records, badged and frozen at this day. */
+    public static function leftTeam(int $leaderId, object $m, string $reason): void
+    {
+        try {
+            DB::table('affiliate_team_history')->insert(['leader_id' => $leaderId, 'recruit_id' => $m->id, 'reason' => $reason, 'joined_at' => $m->approved_at ?? null, 'left_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
+        } catch (\Throwable $e) { Log::warning('[AFF-TL] team history failed', ['error' => $e->getMessage()]); }
+    }
+
+    /** Owner: "if it rolls back to regular affiliate he goes back to his old TL" - when that leader is still a Team Leader. */
+    private static function returnToOldLeader(object $a): void
+    {
+        $h = DB::table('affiliate_team_history')->where('recruit_id', $a->id)->where('reason', 'upgraded')->whereNull('returned_at')->orderByDesc('id')->first();
+        if (! $h) return;
+        $old = DB::table('affiliates')->where('id', $h->leader_id)->first();
+        DB::table('affiliate_team_history')->where('id', $h->id)->update(['returned_at' => now(), 'updated_at' => now()]);
+        if (! self::isActive($old)) return;
+        DB::table('affiliates')->where('id', $a->id)->update(['leader_id' => $old->id, 'updated_at' => now()]);
+        self::event((int) $old->id, (int) $a->id, 'recruit_returned', ['name' => $a->display_name]);
+        Log::info('[AFF-TL] back on the old team', ['affiliate' => $a->id, 'leader' => $old->id]);
+        PartnerEmails::safe(fn () => PartnerEmails::recruitReturned((int) $old->id, (int) $a->id));   // L6
     }
 
     /** Daily (partners:leaders): renewals from commissions, the grace period (collect, remind, end). */
