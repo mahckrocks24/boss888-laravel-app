@@ -176,7 +176,7 @@ JS;
         <a class="lg-btn lg-btn--glass lg-btn--lg" href="#journey">See the journey</a>
       </div>
       <div class="af-trust"><span><?= $check ?>Free to join</span><span><?= $check ?>A person reviews every application</span><span><?= $check ?>Paid monthly</span><span><?= $check ?>No tracking links or cookies</span></div>
-      <div class="af-six" aria-label="You earn on each of their first six monthly payments"><div class="af-six__lbl"><span class="af-six__n">6&times;</span><span><b>Paid on each of their first 6 monthly payments</b><br><span class="c-3">One business on Pro, no-discount code: <?= $m2($pro * .20) ?> a payment, <?= $m2($pro * .20 * 6) ?> in all</span></span></div><div class="af-six__row"><?php for ($i = 1; $i <= 6; $i++): ?><span class="af-six__pay"><small>Payment <?= $i ?></small><b><?= $m2($pro * .20) ?></b></span><?php endfor; ?></div></div>
+      <div class="af-six" aria-label="You get paid 6 times for every business"><div class="af-six__lbl"><span class="af-six__n">6&times;</span><span><b>You get paid 6 times for every business.</b><br><span class="c-2">Example: a business on Pro (<?= $m2($pro) ?> a month) signs up with your code. You get <?= $m2($pro * .20) ?> a month for 6 months, <?= $m2($pro * .20 * 6) ?> in total.</span></span></div><div class="af-six__row"><?php for ($i = 1; $i <= 6; $i++): ?><span class="af-six__pay"><small>Payment <?= $i ?></small><b><?= $m2($pro * .20) ?></b></span><?php endfor; ?></div></div>
     </div>
     <div class="lg-glass lg-glass--thick af-card" style="padding:26px" aria-label="An example affiliate code">
       <div class="lg-row lg-between" style="margin-bottom:14px"><span class="t-eyebrow">Your code</span><span class="lg-badge lg-badge--success">Active</span></div>
