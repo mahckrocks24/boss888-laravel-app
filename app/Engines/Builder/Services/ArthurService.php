@@ -2814,7 +2814,7 @@ PROMPT;
         $ctx = $this->designFontContext($websiteId, $site, $settings, $tv);
         $r = $this->resolveCustomFonts($ctx, $heading, $body, $style ?: null);
         if ($r['error']) { return ['success' => false, 'error' => 'unknown_family', 'message' => $r['error']]; }
-        $layer = \App\Engines\Builder\Support\FontLibrary::layer($r['heading'], $r['body'], $style ?: null, $this->fontLayerColours($websiteId, $tv, true));
+        $layer = \App\Engines\Builder\Support\FontLibrary::layer($r['heading'], $r['body'], $style ?: null, $this->fontLayerColours($websiteId, $tv, true), ! empty($ctx['roles']['vars']));
         $strip = fn ($s) => $s ? ['family' => $s['f'], 'category' => $s['c'], 'weights' => $s['w'], 'italic' => $s['i']] : null;
         return ['success' => true, 'layer' => $layer, 'heading' => $strip($r['heading']), 'body' => $strip($r['body']), 'notes' => $r['notes'], 'credits' => 0];
     }
@@ -2835,7 +2835,7 @@ PROMPT;
         $ctx = $this->designFontContext($websiteId, $site, $settings, $tv);
         $r = $this->resolveCustomFonts($ctx, $heading, $body, $style ?: null);
         if ($r['error']) { return ['success' => false, 'error' => 'unknown_family', 'message' => $r['error']]; }
-        $layer = $FL::layer($r['heading'], $r['body'], $style ?: null, $this->fontLayerColours($websiteId, $tv, true));
+        $layer = $FL::layer($r['heading'], $r['body'], $style ?: null, $this->fontLayerColours($websiteId, $tv, true), ! empty($ctx['roles']['vars']));
         if ($layer === '') { return ['success' => false, 'error' => 'nothing', 'message' => 'Choose a heading or body font first.']; }
         if (! $ctx['from_template'] && empty($tv['design_font_links']) && $ctx['links'] !== []) { $tv['design_font_links'] = $ctx['links']; }   // Reset can put them back
         app(TemplateService::class)->snapshotToHistory($websiteId, 'fonts');
@@ -2850,7 +2850,7 @@ PROMPT;
             return ['success' => false, 'error' => 'verify_failed', 'message' => 'I could not switch the fonts cleanly, so I put the site back exactly as it was.'];
         }
         $keep = fn ($s) => $s ? ['f' => $s['f'], 'c' => $s['c'], 'w' => $s['w'], 'i' => $s['i']] : null;
-        $tv['font_custom'] = ['heading' => $keep($r['heading']), 'body' => $keep($r['body'])];
+        $tv['font_custom'] = ['heading' => $keep($r['heading']), 'body' => $keep($r['body']), 'tokens' => ! empty($ctx['roles']['vars'])];
         unset($tv['font_pair'], $tv['font_display'], $tv['font_body']);
         if ($r['heading']) $tv['font_display'] = $r['heading']['f'];
         if ($r['body']) $tv['font_body'] = $r['body']['f'];

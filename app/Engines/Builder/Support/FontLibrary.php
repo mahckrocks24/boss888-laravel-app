@@ -275,8 +275,11 @@ final class FontLibrary
     /**
      * The injectable layer for a custom choice. $h / $b are resolved specs (null = that role keeps the design's own face).
      * With a style preset ($style) the preset's shapes stay and both faces are written (the preset's own for an unset role).
+     * $tokensOnly (a design that reads its faces from tokens, v2/v3): only the tokens are repointed, so every element keeps
+     * the role the design gave it (an eyebrow set in the display face stays in the new display face); v1 exports also get
+     * the heading/body selector rules, since they name their faces literally.
      */
-    public static function layer(?array $h, ?array $b, ?string $style = null, array $colors = []): string
+    public static function layer(?array $h, ?array $b, ?string $style = null, array $colors = [], bool $tokensOnly = false): string
     {
         $style = DesignStyle::normaliseStyle($style);
         $preset = $style !== null ? DesignStyle::preset($style) : null;
@@ -296,13 +299,13 @@ final class FontLibrary
             $vars[] = "--ds-font-display:'{$d}';--display:{$stack};--fh:{$stack};--fd:{$stack}";
             $wt = '';
             if ($preset !== null) { $vars[] = '--ds-display-weight:' . self::nearest($h['w'], (int) $preset['display_weight'], true); $wt = 'font-weight:var(--ds-display-weight)!important;'; }
-            $rules .= DesignStyle::HEAD_SEL . "{font-family:var(--ds-font-display),{$fb}!important;{$wt}}\n";
+            if (! $tokensOnly || $preset !== null) $rules .= DesignStyle::HEAD_SEL . "{font-family:var(--ds-font-display),{$fb}!important;{$wt}}\n";
         }
         if ($b) {
             $d = htmlspecialchars($b['f'], ENT_QUOTES); $fb = self::FALLBACK[$b['c']] ?? 'system-ui,sans-serif';
             $stack = "'{$d}',{$fb}";
             $vars[] = "--ds-font-body:'{$d}';--body:{$stack};--fb:{$stack}";
-            $rules .= DesignStyle::BODY_SEL . "{font-family:var(--ds-font-body),{$fb}!important}\n";
+            if (! $tokensOnly || $preset !== null) $rules .= DesignStyle::BODY_SEL . "{font-family:var(--ds-font-body),{$fb}!important}\n";
         }
         $shape = '';
         if ($preset !== null) {
@@ -322,7 +325,7 @@ final class FontLibrary
         $c = $tv['font_custom'] ?? null;
         if (is_array($c) && (! empty($c['heading']) || ! empty($c['body']))) {
             $ok = fn ($s) => is_array($s) && isset($s['f'], $s['w']) && preg_match('/^[A-Za-z0-9 \-]+$/', (string) $s['f']) ? $s + ['c' => 'sans-serif', 'i' => []] : null;
-            $l = self::layer($ok($c['heading'] ?? null), $ok($c['body'] ?? null), $tv['design_style'] ?? null, $colors);
+            $l = self::layer($ok($c['heading'] ?? null), $ok($c['body'] ?? null), $tv['design_style'] ?? null, $colors, ! empty($c['tokens']));
             return $l !== '' ? $l : null;
         }
         $pair = (string) ($tv['font_pair'] ?? '');
