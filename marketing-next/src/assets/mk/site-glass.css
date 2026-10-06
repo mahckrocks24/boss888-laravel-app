@@ -610,7 +610,8 @@ html .lg-site .sol-sector-nav a:hover { border-color: var(--tint-rim); color: va
 @media (max-width: 760px) {
   html .lg-site .sol-sites-track { gap: 12px; padding: 6px 7vw 18px; }
   html .lg-site .sol-site { flex-basis: 86vw; }
-  html .lg-site .sol-site-frame img { aspect-ratio: 4 / 3; }
+  html .lg-site .sol-site-frame img { aspect-ratio: 13 / 20; }
+  html .lg-site .sol-site-bar { height: 26px; }
   html .lg-site .sol-sites-nav { display: none; }
   html .lg-site .sol-kit-items li { grid-template-columns: minmax(0, 1fr) auto; }
   html .lg-site .sol-kit-cta { grid-column: 1 / -1; justify-self: start; }

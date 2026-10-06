@@ -14,6 +14,7 @@ $designsAll = json_decode((string) @file_get_contents(__DIR__ . '/designs.json')
 $sites = array_values(array_filter($designsAll, fn ($d) => $d['industry'] === $ind && ! empty($d['business']) && is_file(__DIR__ . '/assets/product/sites/' . $d['slug'] . '.webp')));
 // the base design first (it was remade in October), then the rest by name
 usort($sites, fn ($a, $b) => ($a['slug'] === $ind ? 0 : 1) <=> ($b['slug'] === $ind ? 0 : 1) ?: strcmp($a['business'], $b['business']));
+$shotM = function (string $slug): string { $p = __DIR__ . '/assets/product/sites-m/' . $slug . '.webp'; return is_file($p) ? '/next/assets/product/sites-m/' . $slug . '.webp?v=' . substr(md5_file($p), 0, 8) : ''; };
 $shot = function (string $slug): string { $p = __DIR__ . '/assets/product/sites/' . $slug . '.webp'; return '/next/assets/product/sites/' . $slug . '.webp?v=' . substr(md5_file($p), 0, 8); };
 $plural = strtolower($s['name']);
 $unit = strtolower($s['unit']);
@@ -32,7 +33,7 @@ $unit = strtolower($s['unit']);
     <div class="sol-sites-track" tabindex="0" aria-label="Example websites for <?= e($plural) ?>">
       <?php foreach ($sites as $i => $d): ?>
       <figure class="sol-site">
-        <div class="sol-site-frame"><span class="sol-site-bar" aria-hidden="true"><i></i><i></i><i></i><b><?= e(strtolower(preg_replace('/[^a-z0-9]+/i', '', $d['business']))) ?>.com</b></span><img src="<?= e($shot($d['slug'])) ?>" alt="The <?= e($d['business']) ?> website, as a visitor sees it" width="1440" height="900" loading="<?= $i < 2 ? 'eager' : 'lazy' ?>" decoding="async"></div>
+        <div class="sol-site-frame"><span class="sol-site-bar" aria-hidden="true"><i></i><i></i><i></i><b><?= e(strtolower(preg_replace('/[^a-z0-9]+/i', '', $d['business']))) ?>.com</b></span><picture><?php if ($shotM($d['slug'])): ?><source media="(max-width: 760px)" srcset="<?= e($shotM($d['slug'])) ?>" width="780" height="1200"><?php endif; ?><img src="<?= e($shot($d['slug'])) ?>" alt="The <?= e($d['business']) ?> website, as a visitor sees it" width="1440" height="900" loading="<?= $i < 2 ? 'eager' : 'lazy' ?>" decoding="async"></picture></div>
         <figcaption><b><?= e($d['business']) ?></b><span><?= e($s['short']) ?> · example website</span></figcaption>
       </figure>
       <?php endforeach; ?>
