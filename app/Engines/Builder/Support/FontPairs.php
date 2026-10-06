@@ -83,7 +83,7 @@ final class FontPairs
         $t = DesignStyle::preset($style ?? 'modern');
         $t['display'] = $p['display']; $t['dw'] = $p['dw']; $t['body'] = $p['body']; $t['bw'] = $p['bw']; $t['display_weight'] = $p['display_weight'];
         $t['style'] = $style ?? 'fonts';
-        return DesignStyle::layerFromTokens($t, $colors, $style === null);
+        return DesignStyle::layerFromTokens($t, $colors, $style === null, true);   // FONTS-8: the design's own font tokens follow too (v3 --display/--body)
     }
 
     /** One Google Fonts stylesheet that carries every pairing's faces, for the editor's panel to show them in themselves. */

@@ -35,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('payments:sweep')->when(fn () => is_file(storage_path('app/paysweep.on')))->everyTenMinutes()->withoutOverlapping(9)->runInBackground();   // PAY-CONNECT-1
         $schedule->command('calendar:remind')->when(fn () => is_file(storage_path('app/remind1.on')))->everyMinute()->withoutOverlapping(5)->runInBackground();
         $schedule->command('campaigns:tick --ideas')->dailyAt('13:00')->withoutOverlapping(60)->runInBackground();
+        // FONTS-8: the editor's Google Fonts catalogue (storage/app/google-fonts.json), weekly
+        $schedule->command('fonts:refresh-google')->when(fn () => is_file(storage_path('app/fonts7.on')))->weeklyOn(1, '04:20')->withoutOverlapping(30)->runInBackground();
         // WATCH-1 (RFC-0019): Sarah acts on events, not only the clock — results inside the business, the world, the owner's answers
         $schedule->command('growth:tick --signals')->when(fn () => is_file(storage_path('app/watch1.on')))->everyTenMinutes()->withoutOverlapping(15)->runInBackground();
         $schedule->command('growth:tick --watch')->when(fn () => is_file(storage_path('app/watch1.on')))->hourlyAt(20)->withoutOverlapping(50)->runInBackground();

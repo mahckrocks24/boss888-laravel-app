@@ -72,8 +72,25 @@ use Illuminate\Support\Facades\Route;
             app(\App\Engines\Builder\Services\ArthurService::class)->fontsFor((int) $r->attributes->get('workspace_id'), (int) $id)
         ));
         Route::post('/websites/{id}/fonts', function (\Illuminate\Http\Request $r, $id) {
+            // FONTS-8 (Owner 2026-10-06): {heading, body} = faces from the full Google Fonts library; {pair} = a FONTS-7 pairing or 'design'
+            if ($r->has('heading') || $r->has('body')) {
+                $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyCustomFonts((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('heading', ''), (string) $r->input('body', ''), (int) ($r->attributes->get('user_id') ?? 0) ?: null);
+                return response()->json($res, ! empty($res['success']) ? 200 : 422);
+            }
             $res = app(\App\Engines\Builder\Services\ArthurService::class)->applyFonts((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->input('pair', ''));
             return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
+        // FONTS-8: the layer a heading/body choice would write, for the preview (free, writes nothing)
+        Route::get('/websites/{id}/fonts/custom', function (\Illuminate\Http\Request $r, $id) {
+            $res = app(\App\Engines\Builder\Services\ArthurService::class)->customFontsPreview((int) $r->attributes->get('workspace_id'), (int) $id, (string) $r->query('heading', ''), (string) $r->query('body', ''));
+            return response()->json($res, ! empty($res['success']) ? 200 : 422);
+        });
+        // FONTS-8: the Google Fonts catalogue (family, category, weights, italics, popularity rank), most popular first
+        Route::get('/fonts/google', function () {
+            if (! \App\Engines\Builder\Support\FontPairs::on()) return response()->json(['success' => false, 'error' => 'off', 'families' => []], 404);
+            $c = \App\Engines\Builder\Support\FontLibrary::catalogue();
+            return response()->json(['success' => $c['count'] > 0, 'count' => $c['count'], 'updated_at' => $c['fetched'] ? date('c', (int) $c['fetched']) : null, 'families' => $c['families']])
+                ->header('Cache-Control', 'private, max-age=3600');
         });
         Route::post('/websites/{id}/undo', function (\Illuminate\Http\Request $r, $id) {
             $owned = \Illuminate\Support\Facades\DB::table('websites')->where('id', (int) $id)->where('workspace_id', (int) $r->attributes->get('workspace_id'))->whereNull('deleted_at')->exists();

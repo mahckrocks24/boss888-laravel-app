@@ -2718,7 +2718,147 @@ PROMPT;
                        'recommended' => in_array($id, $rec, true), 'layer' => $isStatic ? $FP::layerFor($id, $style ?: null, $colours) : ''];
         }
         usort($rest, fn ($a, $b) => ((int) $b['recommended'] <=> (int) $a['recommended']));
-        return ['success' => true, 'current' => $FP::currentFor($tv), 'is_static' => $isStatic, 'style' => $style, 'pairs' => array_merge([$first], $rest), 'preview_css' => $FP::previewStylesheet()];
+        // FONTS-8: the design's own faces (named on the default row and the role slots) and the owner's own choice, if any
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $ctx = $isStatic ? $this->designFontContext($websiteId, $site, $settings, $tv) : ['roles' => ['heading' => null, 'body' => null]];
+        $own = ['heading' => $ctx['roles']['heading']['f'] ?? null, 'body' => $ctx['roles']['body']['f'] ?? null];
+        if ($own['heading'] || $own['body']) { $first['note'] = 'The typography this design was made with: ' . ($own['heading'] && $own['body'] && $own['heading'] !== $own['body'] ? $own['heading'] . ' with ' . $own['body'] : ($own['heading'] ?: $own['body'])); }
+        $fc = is_array($tv['font_custom'] ?? null) ? $tv['font_custom'] : [];
+        $custom = ($fc !== []) ? ['heading' => $fc['heading']['f'] ?? null, 'body' => $fc['body']['f'] ?? null] : null;
+        $current = $custom !== null ? 'library' : $FP::currentFor($tv);
+        return ['success' => true, 'current' => $current, 'is_static' => $isStatic, 'style' => $style, 'pairs' => array_merge([$first], $rest), 'preview_css' => $FP::previewStylesheet(),
+                'design_fonts' => $own, 'custom' => $custom, 'library' => true];
+    }
+
+    /**
+     * FONTS-8: the design's own font facts for a built site — its Google Fonts links (template first, then the copy
+     * recorded on the first font change, then the export's own), the CSS that names its roles, the roles themselves.
+     */
+    private function designFontContext(int $websiteId, object $site, array $settings, array $tv): array
+    {
+        $FL = \App\Engines\Builder\Support\FontLibrary::class;
+        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($settings['template'] ?? $settings['industry'] ?? ($site->template_industry ?? ''))));
+        $tpl = $slug !== '' ? (string) @file_get_contents(storage_path("templates/{$slug}/template.html")) : '';
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        // The export is the truth about this site's own faces (an older site may differ from today's template); the copy
+        // recorded on the first font change outlives the strip; the template is the last resort.
+        $links = is_array($tv['design_font_links'] ?? null) ? array_values(array_filter($tv['design_font_links'], 'is_string')) : [];
+        $recorded = $links !== [];
+        if ($links === []) $links = self::exportDesignLinks($home);
+        if ($links === [] && $tpl !== '' && preg_match_all('~<link[^>]+fonts\.googleapis\.com/css2[^>]*>~i', $tpl, $m)) $links = array_values(array_unique($m[0]));
+        $exportCss = preg_replace('~<style id="lug-design-style".*?</style>~is', '', $home) ?? $home;
+        $css = trim($exportCss) !== '' ? $exportCss : $tpl;
+        // from_template = nothing to record (the template still has these links); otherwise the first change records them
+        return ['links' => $links, 'from_template' => $recorded, 'css' => $css, 'home' => $home, 'roles' => $FL::designRoles($css, $links)];
+    }
+
+    /** The design's own Google Fonts links on an export: not a font layer's link, not a trimmed copy. */
+    private static function exportDesignLinks(string $html): array
+    {
+        if (! preg_match_all('~<link[^>]+fonts\.googleapis\.com/css2[^>]*>~i', $html, $m)) return [];
+        $out = [];
+        foreach ($m[0] as $l) {
+            if (preg_match('~^<link rel="stylesheet" href=~i', $l) || stripos($l, 'data-lu-trim') !== false) continue;   // layer links are written rel-first
+            $out[] = $l;
+        }
+        return array_values(array_unique($out));
+    }
+
+    /** FONTS-8: the design-family names to stop loading when $roles are overridden (only what nothing else names). */
+    private static function fontDropList(array $ctx, bool $heading, bool $body): array
+    {
+        $drop = [];
+        if (empty($ctx['roles']['vars'])) return [];   // a v1 export names its faces literally: they keep loading
+        foreach (['heading' => $heading, 'body' => $body] as $role => $on) {
+            $f = $ctx['roles'][$role]['f'] ?? null;
+            if (! $on || ! $f) continue;
+            $other = $ctx['roles'][$role === 'heading' ? 'body' : 'heading']['f'] ?? null;
+            $otherOn = $role === 'heading' ? $body : $heading;
+            if ($other === $f && ! $otherOn) continue;   // the same face still carries the other role
+            if (\App\Engines\Builder\Support\FontLibrary::droppable((string) $ctx['home'], $f)) $drop[] = $f;
+        }
+        return array_values(array_unique($drop));
+    }
+
+    /** FONTS-8: resolve a heading/body choice against what the design needs; error string on an unknown family. */
+    private function resolveCustomFonts(array $ctx, ?string $heading, ?string $body, ?string $style): array
+    {
+        $FL = \App\Engines\Builder\Support\FontLibrary::class;
+        $preset = \App\Engines\Builder\Support\DesignStyle::normaliseStyle($style) !== null ? \App\Engines\Builder\Support\DesignStyle::preset(\App\Engines\Builder\Support\DesignStyle::normaliseStyle($style)) : null;
+        $out = ['heading' => null, 'body' => null, 'notes' => [], 'error' => null];
+        foreach (['heading' => $heading, 'body' => $body] as $role => $fam) {
+            $fam = trim((string) $fam);
+            if ($fam === '') continue;
+            $own = $ctx['roles'][$role] ?? null;
+            $need = $preset !== null ? array_map('intval', explode(';', $preset[$role === 'heading' ? 'dw' : 'bw'])) : ($own['w'] ?? [400, 700]);
+            $spec = $FL::resolve($fam, $need, (bool) ($own['ital'] ?? false), $role);
+            if ($spec === null) { $out['error'] = "I could not find {$fam} in the Google Fonts library."; return $out; }
+            $out[$role] = $spec;
+            $n = $FL::swapNote($spec, $role === 'heading' ? 'headings' : 'body text');
+            if ($n !== '') $out['notes'][] = $n;
+        }
+        return $out;
+    }
+
+    /** FONTS-8: the layer a heading/body choice would write — the panel previews these exact bytes. Free, writes nothing. */
+    public function customFontsPreview(int $wsId, int $websiteId, ?string $heading, ?string $body): array
+    {
+        $FP = \App\Engines\Builder\Support\FontPairs::class;
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found']; }
+        if (! $FP::on()) { return ['success' => false, 'error' => 'off']; }
+        if (! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) { return ['success' => false, 'error' => 'not_static', 'message' => 'This site is rendered live, so its fonts are set in the design settings.']; }
+        $tv = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $style = (string) ($tv['design_style'] ?? '');
+        $ctx = $this->designFontContext($websiteId, $site, $settings, $tv);
+        $r = $this->resolveCustomFonts($ctx, $heading, $body, $style ?: null);
+        if ($r['error']) { return ['success' => false, 'error' => 'unknown_family', 'message' => $r['error']]; }
+        $layer = \App\Engines\Builder\Support\FontLibrary::layer($r['heading'], $r['body'], $style ?: null, $this->fontLayerColours($websiteId, $tv, true));
+        $strip = fn ($s) => $s ? ['family' => $s['f'], 'category' => $s['c'], 'weights' => $s['w'], 'italic' => $s['i']] : null;
+        return ['success' => true, 'layer' => $layer, 'heading' => $strip($r['heading']), 'body' => $strip($r['body']), 'notes' => $r['notes'], 'credits' => 0];
+    }
+
+    /** FONTS-8: apply a heading and/or body face from the full library. Same mechanics as a pairing: snapshot, write, prove, record. Free. */
+    public function applyCustomFonts(int $wsId, int $websiteId, ?string $heading, ?string $body, ?int $actorId = null): array
+    {
+        $FP = \App\Engines\Builder\Support\FontPairs::class; $FL = \App\Engines\Builder\Support\FontLibrary::class;
+        $heading = trim((string) $heading); $body = trim((string) $body);
+        if ($heading === '' && $body === '') { return $this->applyFonts($wsId, $websiteId, $FP::DESIGN, $actorId); }
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) { return ['success' => false, 'error' => 'not_found', 'message' => 'That website is not in this workspace.']; }
+        if (! $FP::on()) { return ['success' => false, 'error' => 'off', 'message' => 'Fonts are not available yet.']; }
+        if (! is_file(storage_path("app/public/sites/{$websiteId}/index.html"))) { return ['success' => false, 'error' => 'not_static', 'message' => 'This site is rendered live, so its fonts are set in the design settings.']; }
+        $tv = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $style = (string) ($tv['design_style'] ?? '');
+        $ctx = $this->designFontContext($websiteId, $site, $settings, $tv);
+        $r = $this->resolveCustomFonts($ctx, $heading, $body, $style ?: null);
+        if ($r['error']) { return ['success' => false, 'error' => 'unknown_family', 'message' => $r['error']]; }
+        $layer = $FL::layer($r['heading'], $r['body'], $style ?: null, $this->fontLayerColours($websiteId, $tv, true));
+        if ($layer === '') { return ['success' => false, 'error' => 'nothing', 'message' => 'Choose a heading or body font first.']; }
+        if (! $ctx['from_template'] && empty($tv['design_font_links']) && $ctx['links'] !== []) { $tv['design_font_links'] = $ctx['links']; }   // Reset can put them back
+        app(TemplateService::class)->snapshotToHistory($websiteId, 'fonts');
+        $ok = self::writeDesignLayer($websiteId, $layer);
+        self::restoreTemplateFontLinks($websiteId, $site, $settings, self::fontDropList($ctx, $r['heading'] !== null, $r['body'] !== null), $ctx['links']);
+        $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
+        $verified = ($r['heading'] === null || strpos($home, "--ds-font-display:'" . htmlspecialchars($r['heading']['f'], ENT_QUOTES) . "'") !== false)
+                 && ($r['body'] === null || strpos($home, "--ds-font-body:'" . htmlspecialchars($r['body']['f'], ENT_QUOTES) . "'") !== false);
+        if (! $ok || ! $verified) {
+            app(TemplateService::class)->undoLatest($websiteId);
+            Log::warning('[Arthur] custom fonts write did not verify; rolled back', ['website' => $websiteId, 'heading' => $heading, 'body' => $body, 'ok' => $ok, 'verified' => $verified]);
+            return ['success' => false, 'error' => 'verify_failed', 'message' => 'I could not switch the fonts cleanly, so I put the site back exactly as it was.'];
+        }
+        $keep = fn ($s) => $s ? ['f' => $s['f'], 'c' => $s['c'], 'w' => $s['w'], 'i' => $s['i']] : null;
+        $tv['font_custom'] = ['heading' => $keep($r['heading']), 'body' => $keep($r['body'])];
+        unset($tv['font_pair'], $tv['font_display'], $tv['font_body']);
+        if ($r['heading']) $tv['font_display'] = $r['heading']['f'];
+        if ($r['body']) $tv['font_body'] = $r['body']['f'];
+        app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
+        try { \App\Http\Controllers\PublishedSiteController::invalidateCache($websiteId); } catch (\Throwable $e) {}
+        Log::info('[Arthur] custom fonts applied', ['website' => $websiteId, 'heading' => $r['heading']['f'] ?? null, 'body' => $r['body']['f'] ?? null, 'actor' => $actorId]);
+        $label = $r['heading'] && $r['body'] ? ($r['heading']['f'] === $r['body']['f'] ? $r['heading']['f'] : $r['heading']['f'] . ' with ' . $r['body']['f']) : ($r['heading'] ? $r['heading']['f'] . ' for headings' : $r['body']['f'] . ' for body text');
+        return ['success' => true, 'pair' => 'library', 'label' => $label, 'notes' => $r['notes'], 'credits' => 0, 'message' => "Switched to {$label}."];
     }
 
     /** Apply a pairing (or the design's own) to a built site: snapshot → write the layer on every page → prove it from the file → record. Free. */
@@ -2736,21 +2876,24 @@ PROMPT;
         $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
         $style = (string) ($tv['design_style'] ?? '');
         $colours = $this->fontLayerColours($websiteId, $tv, true);
+        $ctx = $this->designFontContext($websiteId, $site, $settings, $tv);   // FONTS-8: read before any link is stripped
+        if (! $ctx['from_template'] && empty($tv['design_font_links']) && $ctx['links'] !== []) { $tv['design_font_links'] = $ctx['links']; }
         app(TemplateService::class)->snapshotToHistory($websiteId, 'fonts');
         if ($pair === null) {
             $layer = $DS::layer($style ?: null, null, null, $colours);
             $ok = $layer === '' ? (self::stripDesignLayer($websiteId) >= 0) : self::writeDesignLayer($websiteId, $layer);
             $expect = $layer === '' ? null : (string) (($DS::resolve($style ?: null, null, null) ?? [])['display'] ?? '');
-            unset($tv['font_display'], $tv['font_body'], $tv['font_pair']);
+            unset($tv['font_display'], $tv['font_body'], $tv['font_pair'], $tv['font_custom']);
             $label = "the design's own fonts";
         } else {
             $layer = $FP::layerFor($pairId, $style ?: null, $colours);
             $ok = $layer !== '' && self::writeDesignLayer($websiteId, $layer);
             $expect = (string) $pair['display'];
-            $tv['font_display'] = $pair['display']; $tv['font_body'] = $pair['body']; $tv['font_pair'] = $pairId;
+            $tv['font_display'] = $pair['display']; $tv['font_body'] = $pair['body']; $tv['font_pair'] = $pairId; unset($tv['font_custom']);
             $label = (string) $pair['label'];
         }
-        self::restoreTemplateFontLinks($websiteId, $site, $settings);   // the design's own faces keep loading (writeDesignLayer strips every Google Fonts link)
+        // the design's own faces keep loading (writeDesignLayer strips every Google Fonts link); FONTS-8: minus the faces a pairing replaced
+        self::restoreTemplateFontLinks($websiteId, $site, $settings, $pair === null ? [] : self::fontDropList($ctx, true, true), $ctx['links']);
         // Proof comes from the file, never from the reply.
         $home = (string) @file_get_contents(storage_path("app/public/sites/{$websiteId}/index.html"));
         $verified = ($expect === null || $expect === '')
@@ -2791,13 +2934,40 @@ PROMPT;
         return $n;
     }
 
-    /** Put the design's own Google Fonts links back on every page that lost them (idempotent). */
-    private static function restoreTemplateFontLinks(int $websiteId, object $site, array $settings): int
+    /** FONTS-8: a Google Fonts link without the given families ('' when none is left), marked so a reset knows it is a copy. */
+    private static function trimFontLink(string $link, array $drop): string
     {
-        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($settings['template'] ?? $settings['industry'] ?? ($site->template_industry ?? ''))));
-        $tpl = $slug !== '' ? (string) @file_get_contents(storage_path("templates/{$slug}/template.html")) : '';
-        if ($tpl === '' || ! preg_match_all('~<link[^>]+fonts\.googleapis\.com[^>]*>~i', $tpl, $m)) return 0;
-        $links = array_values(array_unique($m[0]));
+        if (! preg_match('~href="([^"]+)"~i', $link, $m) || stripos($m[1], 'fonts.googleapis.com/css2') === false) return $link;
+        $amp = str_contains($m[1], '&amp;') ? '&amp;' : '&';
+        [$base, $q] = array_pad(explode('?', $m[1], 2), 2, '');
+        $dropLc = array_map('strtolower', $drop);
+        $kept = []; $fams = 0; $gone = 0;
+        foreach (preg_split('/&(?:amp;)?/', $q) as $part) {
+            if (str_starts_with($part, 'family=')) {
+                $name = trim(str_replace('+', ' ', urldecode(explode(':', substr($part, 7), 2)[0])));
+                if (in_array(strtolower($name), $dropLc, true)) { $gone++; continue; }
+                $fams++;
+            }
+            $kept[] = $part;
+        }
+        if ($gone === 0) return $link;
+        if ($fams === 0) return '';
+        $tag = str_replace($m[1], $base . '?' . implode($amp, $kept), $link);
+        return stripos($tag, 'data-lu-trim') === false ? (preg_replace('~^<link~i', '<link data-lu-trim="1"', $tag) ?? $tag) : $tag;
+    }
+
+    /** Put the design's own Google Fonts links back on every page that lost them (idempotent). */
+    private static function restoreTemplateFontLinks(int $websiteId, object $site, array $settings, array $drop = [], ?array $links = null): int
+    {
+        if ($links === null || $links === []) {
+            $slug = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($settings['template'] ?? $settings['industry'] ?? ($site->template_industry ?? ''))));
+            $tpl = $slug !== '' ? (string) @file_get_contents(storage_path("templates/{$slug}/template.html")) : '';
+            if ($tpl === '' || ! preg_match_all('~<link[^>]+fonts\.googleapis\.com[^>]*>~i', $tpl, $m)) return 0;
+            $links = array_values(array_unique($m[0]));
+        }
+        // FONTS-8: a family the owner's choice replaced stops loading — the link keeps only the faces the page still names
+        if ($drop !== []) { $links = array_values(array_filter(array_map(fn ($l) => self::trimFontLink((string) $l, $drop), $links))); }
+        if ($links === []) return 0;
         $root = storage_path("app/public/sites/{$websiteId}");
         $files = glob("{$root}/*.html") ?: [];
         foreach ((glob("{$root}/*/index.html") ?: []) as $nested) { $files[] = $nested; }
@@ -7310,6 +7480,7 @@ PROMPT;
                 $tv['design_style'] = $effStyle;
                 if ($fonts['display']) { $tv['font_display'] = $fonts['display']; }
                 if ($fonts['body'])    { $tv['font_body'] = $fonts['body']; }
+                if ($fonts['display'] || $fonts['body']) { unset($tv['font_custom'], $tv['font_pair']); }   // FONTS-8: fonts named in words replace a panel choice
                 app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
             } elseif ($layer !== '' && ! $isStatic) {
                 $missed[] = 'this site is rendered live, so its style is set in the design settings';

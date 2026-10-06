@@ -107,8 +107,16 @@ final class DesignStyle
         return self::PRESETS[$style] ?? self::PRESETS['modern'];
     }
 
-    /** The layer for a resolved token set; $fontsOnly = the two font rules and nothing that touches shapes or colour. */
-    public static function layerFromTokens(array $t, array $colors = [], bool $fontsOnly = false): string
+    /** The heading and body selector lists every font layer paints (FONTS-8 reads them too). */
+    public const HEAD_SEL = 'h1,h2,h3,h4,.hero-title,.hero-name,.h-section,.section-title,.card-title,.logo,.brand,.stat-value,.price,.plan-name';
+    public const BODY_SEL = 'body,p,li,dd,dt,td,th,label,a,button,input,select,textarea,.section-intro,.hero-subtitle,.hero-body,.card-text,.nav a,nav a,.eyebrow,.hero-eyebrow,.stat-label,.btn,.btn-primary,.nav-cta,.hero-cta';
+
+    /**
+     * The layer for a resolved token set; $fontsOnly = the two font rules and nothing that touches shapes or colour.
+     * $tokenVars (FONTS-8, 2026-10-06): also repoint the designs' own font tokens (v3 --display/--body, v1/v2 --fh/--fb/--fd),
+     * so every rule that reads them takes the new faces, not only the selectors listed above. Off by default: builds unchanged.
+     */
+    public static function layerFromTokens(array $t, array $colors = [], bool $fontsOnly = false, bool $tokenVars = false): string
     {
         $gf = 'https://fonts.googleapis.com/css2?family=' . str_replace(' ', '+', $t['display']) . ':wght@' . $t['dw']
             . '&family=' . str_replace(' ', '+', $t['body']) . ':wght@' . $t['bw'] . '&display=swap';
@@ -117,12 +125,19 @@ final class DesignStyle
         return "\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\"><link rel=\"stylesheet\" href=\"" . htmlspecialchars($gf, ENT_QUOTES) . "\">\n"
             . "<style id=\"lug-design-style\" data-style=\"" . htmlspecialchars($t['style'], ENT_QUOTES) . "\">\n"
             . ":root{--ds-font-display:'{$d}';--ds-font-body:'{$b}';--ds-radius:{$t['radius']};--ds-eyebrow-ls:{$t['eyebrow_ls']};--ds-display-weight:{$t['display_weight']}}\n"
-            . "h1,h2,h3,h4,.hero-title,.hero-name,.h-section,.section-title,.card-title,.logo,.brand,.stat-value,.price,.plan-name{font-family:var(--ds-font-display),Georgia,serif!important;font-weight:var(--ds-display-weight)!important;letter-spacing:-0.01em}\n"
-            . "body,p,li,dd,dt,td,th,label,a,button,input,select,textarea,.section-intro,.hero-subtitle,.hero-body,.card-text,.nav a,nav a,.eyebrow,.hero-eyebrow,.stat-label,.btn,.btn-primary,.nav-cta,.hero-cta{font-family:var(--ds-font-body),system-ui,sans-serif!important}\n"
-            . ($fontsOnly ? '' : ".eyebrow,.hero-eyebrow,[class*='eyebrow'],.stat-label,.section-head span:first-child{letter-spacing:var(--ds-eyebrow-ls)!important;text-transform:uppercase}\n"
-            . ".btn,.btn-primary,.btn-secondary,.nav-cta,.hero-cta,.cta,button,.card,.feature,.service,.plan,input,select,textarea,.form-input,.post-card,.blog-card,.testimonial{border-radius:var(--ds-radius)!important}\n"
-            . self::treatment($t['style'], $colors))
+            . ($tokenVars ? "html:root{--display:'{$d}',Georgia,serif;--fh:'{$d}',Georgia,serif;--fd:'{$d}',Georgia,serif;--body:'{$b}',system-ui,sans-serif;--fb:'{$b}',system-ui,sans-serif}\n" : '')
+            . self::HEAD_SEL . "{font-family:var(--ds-font-display),Georgia,serif!important;font-weight:var(--ds-display-weight)!important;letter-spacing:-0.01em}\n"
+            . self::BODY_SEL . "{font-family:var(--ds-font-body),system-ui,sans-serif!important}\n"
+            . ($fontsOnly ? '' : self::shapeCss($t, $colors))
             . "</style>\n";
+    }
+
+    /** A preset's shapes and colour treatment: eyebrows, radii and the treatment (no fonts). */
+    public static function shapeCss(array $t, array $colors = []): string
+    {
+        return ".eyebrow,.hero-eyebrow,[class*='eyebrow'],.stat-label,.section-head span:first-child{letter-spacing:var(--ds-eyebrow-ls)!important;text-transform:uppercase}\n"
+            . ".btn,.btn-primary,.btn-secondary,.nav-cta,.hero-cta,.cta,button,.card,.feature,.service,.plan,input,select,textarea,.form-input,.post-card,.blog-card,.testimonial{border-radius:var(--ds-radius)!important}\n"
+            . self::treatment($t['style'], $colors);
     }
 
     // ── COLOUR TREATMENT (2026-09-06) ────────────────────────────────────────────────────────────────────

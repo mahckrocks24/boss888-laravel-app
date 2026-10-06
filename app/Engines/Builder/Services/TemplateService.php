@@ -402,9 +402,12 @@ class TemplateService
 
         // DESIGN-STYLE LAYER (2026-09-05): apply the customer's chosen style/fonts (Arthur used
         // to collect `style` and silently discard it). No direction => no layer => template design stands.
-        $dsLayer = \App\Engines\Builder\Support\DesignStyle::layer(
+        // FONTS-8: a font choice made in the editor (library faces or a pairing) is rebuilt with its own real weights
+        $dsColours = ['accent' => $variables['accent_color'] ?? null, 'secondary' => $variables['secondary_color'] ?? null, 'primary' => $variables['primary_color'] ?? null];
+        $dsLayer = \App\Engines\Builder\Support\FontLibrary::savedLayer(is_array($variables) ? $variables : [], $dsColours)
+            ?? \App\Engines\Builder\Support\DesignStyle::layer(
             $variables['design_style'] ?? null, $variables['font_display'] ?? null, $variables['font_body'] ?? null,
-            ['accent' => $variables['accent_color'] ?? null, 'secondary' => $variables['secondary_color'] ?? null, 'primary' => $variables['primary_color'] ?? null]
+            $dsColours
         );
         if ($dsLayer !== '' && stripos($html, 'lug-design-style') === false) {
             $html = (stripos($html, '</head>') !== false) ? str_ireplace('</head>', $dsLayer . '</head>', $html) : $dsLayer . $html;

@@ -1008,7 +1008,7 @@ function _wsShowTemplateEditor(site) {
       '<button type="button" id="t3-add-section-btn" onclick="wsAddSectionToSite()" title="Add a section to the home page from the catalogue (2 credits)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">+ Section</button>' +
       '<button type="button" id="t3-layout-btn" onclick="wsOpenLayouts(' + wsId + ')" title="Switch to another layout of this design family — preview is free" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Layout</button>' +
       '<button type="button" onclick="wsOpenPalettes(' + wsId + ')" title="Colour palettes — hover to preview, click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
-      '<button type="button" class="t3-fonts-btn" onclick="wsOpenFonts(' + wsId + ')" title="Fonts — hover to preview, click to apply" style="' + ((window._t3Flags && window._t3Flags.fonts) ? '' : 'display:none;') + 'background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Fonts</button>' +
+      '<button type="button" class="t3-fonts-btn" onclick="wsOpenFonts(' + wsId + ')" title="Fonts — the design’s own, curated pairings or any Google font" style="' + ((window._t3Flags && window._t3Flags.fonts) ? '' : 'display:none;') + 'background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Fonts</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
     '</div>' +
     // Main
@@ -2633,7 +2633,7 @@ function _wsShowPageEditor(site, pageId) {
         '<button type="button" id="t3-undo" onclick="wsUndoLast(' + (site.id || 0) + ')" title="Undo the last change" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">↶ Undo</button>' +
         '<button type="button" id="pe-refresh" onclick="_wsPageEditorReload()" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:13px">Refresh preview</button>' +
         '<button type="button" onclick="wsOpenPalettes(' + (site.id || 0) + ')" title="Colour palettes — click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Colours</button>' +
-        '<button type="button" class="t3-fonts-btn" onclick="wsOpenFonts(' + (site.id || 0) + ')" title="Fonts — click to apply" style="' + ((window._t3Flags && window._t3Flags.fonts) ? '' : 'display:none;') + 'background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Fonts</button>' +
+        '<button type="button" class="t3-fonts-btn" onclick="wsOpenFonts(' + (site.id || 0) + ')" title="Fonts — the design’s own, curated pairings or any Google font" style="' + ((window._t3Flags && window._t3Flags.fonts) ? '' : 'display:none;') + 'background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:13px">Fonts</button>' +
         '<button type="button" id="pe-publish" onclick="wsPublishFromEditor(' + (site.id || 0) + ', ' + pubName + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">Publish</button>' +
       '</div>' +
       '<div class="pe-main" style="flex:1;display:flex;overflow:hidden">' +
@@ -4393,21 +4393,110 @@ function _t3FontRestore() {
   var base = doc.getElementById('lug-design-style'); if (base && base.getAttribute('data-t3-off')) { base.disabled = false; base.removeAttribute('data-t3-off'); }
   _t3FontPrevOn = false;
 }
+/* FONTS-8 (Owner 2026-10-06: "add that option in the editor but as default we give them the templates' default font").
+   Two tabs: "Recommended pairings" (FONTS-7, unchanged: hover previews, click applies) and "All Google fonts" — the whole
+   library, searchable, filtered by kind, most popular first, each family previewed in the site's own headline or paragraph
+   (a tiny css2 &text= subset, loaded only for rows in view). Heading and body are picked separately; the preview frame shows
+   the exact layer the server would write; Apply is free and snapshotted (Undo), Reset goes back to the design's own fonts.
+   Phone: a bottom sheet that moves to the top while the search field has the keyboard. */
+var _t3GFCat = null, _t3GFLoaded = {};
+function _t3GFCatalogue(auth) {
+  if (!_t3GFCat) {
+    _t3GFCat = fetch(API + 'builder/fonts/google', { headers: auth }).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (j) { if (!j || !j.success || !(j.families || []).length) throw new Error('the library is not available right now'); return j; })
+      .catch(function (e) { _t3GFCat = null; throw e; });
+  }
+  return _t3GFCat;
+}
+function _t3FontSamples() {
+  var doc = _t3FontFrameDoc(), h = '', p = '';
+  try {
+    var h1 = doc && doc.querySelector('h1'); h = ((h1 && h1.textContent) || '').replace(/\s+/g, ' ').trim();
+    var ps = doc ? doc.querySelectorAll('p') : [];
+    for (var i = 0; i < ps.length; i++) { var t = (ps[i].textContent || '').replace(/\s+/g, ' ').trim(); if (t.length >= 30) { p = t; break; } }
+  } catch (_e) {}
+  if (!h) h = 'Your headline, in this font';
+  if (h.length > 48) h = h.slice(0, 46).replace(/\s+\S*$/, '') + '…';
+  if (!p) p = 'Your paragraph text reads like this, clear at every size.';
+  if (p.length > 110) p = p.slice(0, 108).replace(/\s+\S*$/, '') + '…';
+  return { h: h, p: p };
+}
+function _t3GFPreviewLink(f, text) {
+  var key = f.f + '|' + text;
+  if (_t3GFLoaded[key]) return;
+  _t3GFLoaded[key] = 1;
+  var w = (f.w || [400]).reduce(function (a, b) { return Math.abs(b - 400) < Math.abs(a - 400) ? b : a; });
+  var chars = Array.from(new Set(Array.from(text))).join('');
+  var lk = document.createElement('link'); lk.rel = 'stylesheet'; lk.setAttribute('data-t3-gf', '1');
+  lk.href = 'https://fonts.googleapis.com/css2?family=' + f.f.replace(/ /g, '+') + ':wght@' + w + '&text=' + encodeURIComponent(chars) + '&display=swap';
+  document.head.appendChild(lk);
+}
+function _t3FontsCss() {
+  if (document.getElementById('t3-fonts-style')) return;
+  var st = document.createElement('style'); st.id = 't3-fonts-style';
+  st.textContent = '#t3-fonts{display:flex;flex-direction:column;overflow:hidden;-webkit-backdrop-filter:blur(18px) saturate(1.2);backdrop-filter:blur(18px) saturate(1.2)}'
+    + '#t3-fonts .t3f-pane{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}#t3-fonts .t3f-pane[hidden]{display:none}'
+    + '#t3-fonts .t3f-scroll{overflow:auto;min-height:0;flex:1 1 auto;scrollbar-width:thin;scrollbar-color:var(--bd2,rgba(127,127,127,.35)) transparent;margin:0 -6px;padding:0 6px}'
+    + '#t3-fonts .t3f-scroll::-webkit-scrollbar{width:8px}#t3-fonts .t3f-scroll::-webkit-scrollbar-thumb{background:var(--bd2,rgba(127,127,127,.35));border-radius:8px}#t3-fonts .t3f-scroll::-webkit-scrollbar-track{background:transparent}'
+    + '.t3f-tabs{display:flex;gap:4px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:3px;margin-bottom:10px;flex:0 0 auto}'
+    + '.t3f-tab{flex:1;min-height:34px;border:0;border-radius:8px;background:transparent;color:var(--t2);font:600 12.5px var(--fb);cursor:pointer}'
+    + '.t3f-tab[aria-selected="true"]{background:var(--s1);color:var(--t1);box-shadow:0 1px 4px rgba(0,0,0,.16)}'
+    + '.t3f-roles{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;flex:0 0 auto}'
+    + '.t3f-role{position:relative;border:1px solid var(--bd);border-radius:10px;background:var(--s2);min-width:0}'
+    + '.t3f-role.on{border-color:var(--p);box-shadow:inset 0 0 0 1px var(--p)}'
+    + '.t3f-role-pick{display:block;width:100%;text-align:left;padding:7px 28px 7px 10px;background:none;border:0;color:var(--t1);cursor:pointer;font-family:var(--fb);min-height:46px}'
+    + '.t3f-role-pick b{display:block;font-size:10.5px;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;font-weight:700}'
+    + '.t3f-role-pick span{display:block;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}'
+    + '.t3f-role-x{position:absolute;top:6px;right:5px;width:22px;height:22px;border-radius:6px;border:0;background:none;color:var(--t3);cursor:pointer;font-size:14px;line-height:1}'
+    + '.t3f-role-x:hover{background:var(--s1);color:var(--t1)}'
+    + '.t3f-search{width:100%;box-sizing:border-box;min-height:42px;padding:9px 12px;border-radius:10px;border:1px solid var(--bd2);background:var(--s2);color:var(--t1);font-size:16px;font-family:var(--fb);outline:none;-webkit-appearance:none;appearance:none}'
+    + '.t3f-search:focus{border-color:var(--p);box-shadow:0 0 0 3px color-mix(in srgb,var(--p) 22%,transparent)}.t3f-search::placeholder{color:var(--t3)}'
+    + '.t3f-chips{display:flex;gap:6px;overflow-x:auto;padding:8px 0 6px;scrollbar-width:none;flex:0 0 auto}.t3f-chips::-webkit-scrollbar{display:none}'
+    + '.t3f-chip{flex:0 0 auto;min-height:30px;padding:0 11px;border-radius:999px;border:1px solid var(--bd);background:var(--s2);color:var(--t2);font:600 12px var(--fb);cursor:pointer;white-space:nowrap}'
+    + '.t3f-chip[aria-pressed="true"]{background:var(--p);border-color:var(--p);color:#fff}'
+    + '.t3f-count{font-size:11px;color:var(--t3);margin:0 0 6px;flex:0 0 auto}'
+    + '.t3f-row{display:block;width:100%;text-align:left;padding:9px 11px;margin:0 0 6px;border:1px solid var(--bd);border-radius:10px;background:var(--s2);color:var(--t1);cursor:pointer;font-family:var(--fb)}'
+    + '.t3f-row:hover{border-color:var(--bd2)}.t3f-row.sel{border-color:var(--p);box-shadow:inset 0 0 0 1px var(--p)}'
+    + '.t3f-meta{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--t3)}.t3f-meta em{font-style:normal;color:var(--p);font-weight:700;white-space:nowrap}'
+    + '.t3f-sample{font-size:20px;line-height:1.25;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--t1)}'
+    + '.t3f-sample.body{font-size:14px;line-height:1.45;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}'
+    + '.t3f-foot{border-top:1px solid var(--bd);padding-top:10px;margin-top:6px;flex:0 0 auto}'
+    + '.t3f-notes{font-size:12px;line-height:1.45;color:var(--t2);margin-bottom:8px}.t3f-notes:empty{display:none}'
+    + '.t3f-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}'
+    + '.t3f-btn{min-height:38px;padding:0 14px;border-radius:9px;border:1px solid var(--bd2);background:var(--s2);color:var(--t1);font:600 13px var(--fb);cursor:pointer}'
+    + '.t3f-btn.primary{background:var(--p);border-color:var(--p);color:#fff}.t3f-btn:disabled{opacity:.5;cursor:default}'
+    + '.t3f-empty{padding:18px 6px;text-align:center;font-size:12.5px;color:var(--t3)}'
+    + '@media (max-width:640px){#t3-fonts.t3f-sheet{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;max-height:min(68vh,calc(var(--lu-vvh,100vh) - 12px))!important;height:min(68vh,calc(var(--lu-vvh,100vh) - 12px));border-radius:16px 16px 0 0!important;padding:12px 14px calc(12px + env(safe-area-inset-bottom))!important;z-index:100002!important;box-shadow:0 -12px 40px rgba(0,0,0,.35)!important}'
+    + '#t3-fonts.t3f-sheet.t3f-kb{top:8px!important;bottom:auto!important;height:calc(var(--lu-vvh,62vh) - 16px);max-height:calc(var(--lu-vvh,62vh) - 16px)!important;border-radius:16px!important;left:6px!important;right:6px!important}'
+    + '#t3-fonts.t3f-sheet .t3f-grab{display:block;width:40px;height:4px;border-radius:4px;background:var(--bd2);margin:-4px auto 8px}}'
+    + '.t3f-grab{display:none}';
+  document.head.appendChild(st);
+}
 window.wsOpenFonts = async function (siteId) {
   var old = document.getElementById('t3-fonts');
   if (old) { old.remove(); _t3FontRestore(); return; }
   _t3CloseFloating('t3-fonts');
-  var stage = document.querySelector('#template-editor-view .pe-stage') || document.getElementById('pe-frame-wrap') || document.body;
+  _t3FontsCss();
+  var phone = !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
+  var stage = phone ? document.body : (document.querySelector('#template-editor-view .pe-stage') || document.getElementById('pe-frame-wrap') || document.body);
   var panel = document.createElement('div');
   panel.id = 't3-fonts'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Fonts');
-  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(360px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.28);padding:14px;font-family:var(--fb)';
-  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Fonts</div><button type="button" id="t3-fonts-x" aria-label="Close" style="background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:16px;line-height:1">×</button></div>'
-    + '<div id="t3-fonts-sub" style="font-size:12px;color:var(--t3);margin-bottom:12px">Hover to preview, click to apply. The design keeps its own fonts until you choose a pairing. Undo puts the old fonts back.</div>'
-    + '<div id="t3-fonts-list"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
+  if (phone) panel.className = 't3f-sheet';
+  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(400px,calc(100% - 20px));max-height:calc(100% - 20px);z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.28);padding:14px;font-family:var(--fb);box-sizing:border-box';
+  panel.innerHTML = '<div class="t3f-grab" aria-hidden="true"></div>'
+    + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;flex:0 0 auto"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Fonts</div><button type="button" id="t3-fonts-x" aria-label="Close" style="background:none;border:1px solid var(--bd);color:var(--t2);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:16px;line-height:1">×</button></div>'
+    + '<div id="t3-fonts-sub" style="font-size:12px;color:var(--t3);margin-bottom:10px;flex:0 0 auto">Your site uses the design’s own fonts until you choose others. Every change is free, and Undo puts the old fonts back.</div>'
+    + '<div class="t3f-tabs" role="tablist"><button type="button" class="t3f-tab" role="tab" data-tab="pairs" aria-selected="true">Recommended pairings</button><button type="button" class="t3f-tab" role="tab" data-tab="all" aria-selected="false">All Google fonts</button></div>'
+    + '<div class="t3f-pane" data-pane="pairs"><div id="t3-fonts-list" class="t3f-scroll"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div></div>'
+    + '<div class="t3f-pane" data-pane="all" hidden></div>';
   stage.appendChild(panel);
-  panel.querySelector('#t3-fonts-x').addEventListener('click', function () { panel.remove(); _t3FontRestore(); });
+  var close = function () { panel.remove(); _t3FontRestore(); document.removeEventListener('keydown', onKey, true); };
+  var onKey = function (e) { if (e.key === 'Escape' && document.getElementById('t3-fonts') === panel) { e.preventDefault(); close(); } };
+  document.addEventListener('keydown', onKey, true);
+  panel.querySelector('#t3-fonts-x').addEventListener('click', close);
   var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
   var list = panel.querySelector('#t3-fonts-list');
+  var paneAll = panel.querySelector('[data-pane="all"]');
   var data = null;
   try {
     var r = await fetch(API + 'builder/websites/' + siteId + '/fonts', { headers: auth, cache: 'no-store' });
@@ -4419,42 +4508,48 @@ window.wsOpenFonts = async function (siteId) {
   }
   var pairs = (data && data.pairs) || [];
   var current = (data && data.current) || 'design';
-  if (!data || !data.success || !pairs.length) { list.innerHTML = '<div class="lu-empty"><b>' + ((data && data.error === 'off') ? 'Font pairings are not available yet' : 'No font pairings for this site') + '</b></div>'; return; }
+  if (!data || !data.success || !pairs.length) { list.innerHTML = '<div class="lu-empty"><b>' + ((data && data.error === 'off') ? 'Fonts are not available yet' : 'No font choices for this site') + '</b></div>'; panel.querySelector('.t3f-tabs').style.display = 'none'; return; }
   if (data.preview_css && !document.getElementById('t3-fonts-css')) { var lk = document.createElement('link'); lk.id = 't3-fonts-css'; lk.rel = 'stylesheet'; lk.href = data.preview_css; document.head.appendChild(lk); }
   var canPreview = !!data.is_static;
-  if (!canPreview) { var sub = panel.querySelector('#t3-fonts-sub'); if (sub) sub.textContent = 'This site is rendered live, so its fonts are set in the design settings.'; }
-  list.innerHTML = '';
-  list.style.cssText = 'display:grid;grid-template-columns:1fr;gap:8px';
+  if (!canPreview) { var sub = panel.querySelector('#t3-fonts-sub'); if (sub) sub.textContent = 'This site is rendered live, so its fonts are set in the design settings.'; panel.querySelector('.t3f-tabs').style.display = 'none'; }
+  var own = data.design_fonts || {};
+  var sel = { heading: (data.custom && data.custom.heading) || null, body: (data.custom && data.custom.body) || null };
+  var applied = { heading: sel.heading, body: sel.body };
   var applying = false;
-  function tagFor(p) { return current === p.id ? '✓ Current' : (p.recommended ? 'Recommended for you' : ''); }
+
+  /* ── tab 1: the FONTS-7 pairings, with "The design's own" first ── */
+  list.innerHTML = '';
+  list.style.display = 'block';   /* a grid in a height-capped sheet squeezed the cards on phones */
+  function tagFor(p) { return current === p.id ? '✓ Current' : (p.id === 'design' ? 'Default' : (p.recommended ? 'Recommended for you' : '')); }
+  function refreshPairTags() {
+    list.querySelectorAll('button[data-pair]').forEach(function (b) {
+      var q = pairs.filter(function (x) { return x.id === b.getAttribute('data-pair'); })[0] || {};
+      b.style.borderColor = current === q.id ? 'var(--p)' : 'var(--bd)';
+      var t = b.querySelector('.t3-fonts-tag'); if (t) t.textContent = tagFor(q);
+    });
+  }
   pairs.forEach(function (p) {
     var card = document.createElement('button');
     card.type = 'button';
     card.setAttribute('data-pair', p.id);
-    var isCur = current === p.id;
-    card.style.cssText = 'text-align:left;padding:10px 12px;background:var(--s2);border:1px solid ' + (isCur ? 'var(--p)' : 'var(--bd)') + ';border-radius:10px;cursor:pointer;color:var(--t1);font-family:var(--fb)';
+    card.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin:0 0 8px;text-align:left;padding:10px 12px;background:var(--s2);border:1px solid ' + (current === p.id ? 'var(--p)' : 'var(--bd)') + ';border-radius:10px;cursor:pointer;color:var(--t1);font-family:var(--fb)';
     var sample = p.display ? '<div style="font-family:\'' + bld_escH(p.display) + '\',Georgia,serif;font-size:22px;line-height:1.1;color:var(--t1)">' + bld_escH(p.label) + '</div><div style="font-family:\'' + bld_escH(p.body) + '\',system-ui,sans-serif;font-size:12.5px;color:var(--t2);margin-top:4px">' + bld_escH(p.display) + ' with ' + bld_escH(p.body) + ' — ' + bld_escH(p.note) + '</div>'
-                           : '<div style="font-size:15px;font-weight:600;line-height:1.2">' + bld_escH(p.label) + '</div><div style="font-size:12.5px;color:var(--t2);margin-top:4px">' + bld_escH(p.note) + '</div>';
+                           : '<div style="font-size:15px;font-weight:600;line-height:1.2">' + bld_escH(p.label) + ' fonts</div><div style="font-size:12.5px;color:var(--t2);margin-top:4px">' + bld_escH(p.note) + '</div>';
     card.innerHTML = sample + '<div class="t3-fonts-tag" style="font-size:10.5px;color:var(--t3);margin-top:5px;min-height:13px">' + tagFor(p) + '</div>';
-    if (canPreview) {
+    if (canPreview && !phone) {
       card.addEventListener('mouseenter', function () { if (!applying) _t3FontPreview(p.layer || ''); });
       card.addEventListener('mouseleave', function () { if (!applying) _t3FontRestore(); });
     }
     card.addEventListener('click', async function () {
-      if (applying) return;
+      if (applying || !canPreview) return;
       applying = true;
       var tag = card.querySelector('.t3-fonts-tag'); if (tag) tag.textContent = 'Applying…';
       try {
         var rr = await fetch(API + 'builder/websites/' + siteId + '/fonts', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ pair: p.id }) });
         var jj = null; try { jj = await rr.json(); } catch (_e) {}
         if (!rr.ok || !jj || !jj.success) throw new Error((jj && (jj.message || jj.error)) || ('HTTP ' + rr.status));
-        current = p.id;
-        _t3FontRestore();
-        list.querySelectorAll('button[data-pair]').forEach(function (b) {
-          var q = pairs.filter(function (x) { return x.id === b.getAttribute('data-pair'); })[0] || {};
-          b.style.borderColor = q.id === p.id ? 'var(--p)' : 'var(--bd)';
-          var t = b.querySelector('.t3-fonts-tag'); if (t) t.textContent = tagFor(q);
-        });
+        current = p.id; sel = { heading: null, body: null }; applied = { heading: null, body: null };
+        _t3FontRestore(); refreshPairTags(); if (allUi) allUi.sync();
         if (typeof showToast === 'function') showToast(jj.message || ('Switched to ' + p.label), 'success');
         _t3ReloadPreview();
       } catch (e) {
@@ -4465,6 +4560,150 @@ window.wsOpenFonts = async function (siteId) {
     });
     list.appendChild(card);
   });
+
+  /* ── tab 2: the whole Google Fonts library ── */
+  var allUi = null;
+  function buildAll() {
+    if (allUi) return;
+    var role = 'heading', cat = 'all', q = '', fams = [], shown = [], batch = 0, io = null, sentinelIo = null, seq = 0;
+    var samples = _t3FontSamples();
+    var CATS = [['all', 'All'], ['serif', 'Serif'], ['sans-serif', 'Sans serif'], ['display', 'Display'], ['handwriting', 'Handwriting'], ['monospace', 'Monospace']];
+    var CATL = { 'serif': 'Serif', 'sans-serif': 'Sans serif', 'display': 'Display', 'handwriting': 'Handwriting', 'monospace': 'Monospace' };
+    var FB = { 'serif': 'Georgia,serif', 'sans-serif': 'system-ui,sans-serif', 'display': 'system-ui,sans-serif', 'handwriting': 'cursive', 'monospace': 'ui-monospace,monospace' };
+    paneAll.innerHTML = '<div class="t3f-roles">'
+      + '<div class="t3f-role" data-role="heading"><button type="button" class="t3f-role-pick" aria-pressed="true"><b>Headings</b><span></span></button><button type="button" class="t3f-role-x" aria-label="Headings: back to the design’s own" title="Back to the design’s own" hidden>×</button></div>'
+      + '<div class="t3f-role" data-role="body"><button type="button" class="t3f-role-pick" aria-pressed="false"><b>Body text</b><span></span></button><button type="button" class="t3f-role-x" aria-label="Body text: back to the design’s own" title="Back to the design’s own" hidden>×</button></div></div>'
+      + '<input type="text" class="t3f-search" id="t3f-search" inputmode="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search Google fonts" placeholder="Search 1,600+ Google fonts">'
+      + '<div class="t3f-chips" role="group" aria-label="Kind of font">' + CATS.map(function (c) { return '<button type="button" class="t3f-chip" data-cat="' + c[0] + '" aria-pressed="' + (c[0] === 'all') + '">' + c[1] + '</button>'; }).join('') + '</div>'
+      + '<div class="t3f-count" aria-live="polite">Loading the library…</div>'
+      + '<div class="t3f-scroll t3f-list" role="listbox" aria-label="Google fonts"></div>'
+      + '<div class="t3f-foot"><div class="t3f-notes" aria-live="polite"></div><div class="t3f-actions"><button type="button" class="t3f-btn" data-act="reset">Reset to the design’s own</button><button type="button" class="t3f-btn primary" data-act="apply" disabled>Apply</button></div></div>';
+    var rows = paneAll.querySelector('.t3f-list'), count = paneAll.querySelector('.t3f-count'), notes = paneAll.querySelector('.t3f-notes');
+    var search = paneAll.querySelector('#t3f-search'), applyBtn = paneAll.querySelector('[data-act="apply"]'), resetBtn = paneAll.querySelector('[data-act="reset"]');
+    function ownLabel(r) { return 'The design’s own' + (own[r] ? ' · ' + own[r] : ''); }
+    function syncRoles() {
+      ['heading', 'body'].forEach(function (r) {
+        var box = paneAll.querySelector('.t3f-role[data-role="' + r + '"]');
+        box.classList.toggle('on', role === r);
+        box.querySelector('.t3f-role-pick').setAttribute('aria-pressed', String(role === r));
+        var sp = box.querySelector('.t3f-role-pick span'); sp.textContent = sel[r] || ownLabel(r);
+        sp.style.fontFamily = sel[r] ? "'" + sel[r] + "',var(--fb)" : '';
+        box.querySelector('.t3f-role-x').hidden = !sel[r];
+      });
+      var dirty = (sel.heading || null) !== (applied.heading || null) || (sel.body || null) !== (applied.body || null);
+      applyBtn.disabled = !dirty || applying;
+      applyBtn.textContent = dirty ? 'Apply' : (sel.heading || sel.body ? '✓ Applied' : 'Apply');
+      resetBtn.disabled = applying || (current === 'design' && !sel.heading && !sel.body);
+      rows.querySelectorAll('.t3f-row').forEach(markRow);
+    }
+    function markRow(b) {
+      var f = b.getAttribute('data-f'); var on = sel[role] === f;
+      b.classList.toggle('sel', on); b.setAttribute('aria-selected', String(on));
+      var tags = []; if (sel.heading === f) tags.push('Headings'); if (sel.body === f) tags.push('Body');
+      var em = b.querySelector('.t3f-meta em'); if (em) em.textContent = tags.length ? '✓ ' + tags.join(' + ') : '';
+    }
+    function rowFor(f) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 't3f-row'; b.setAttribute('role', 'option'); b.setAttribute('data-f', f.f);
+      var n = (f.w || []).length;
+      var text = role === 'heading' ? samples.h : samples.p;
+      b.innerHTML = '<div class="t3f-meta"><span>' + bld_escH(f.f) + ' · ' + (CATL[f.c] || '') + ' · ' + n + ' weight' + (n === 1 ? '' : 's') + '</span><em></em></div>'
+        + '<div class="t3f-sample' + (role === 'body' ? ' body' : '') + '" style="font-family:\'' + bld_escH(f.f) + '\',' + (FB[f.c] || 'sans-serif') + '">' + bld_escH(text) + '</div>';
+      b._f = f; markRow(b);
+      b.addEventListener('click', function () { if (applying) return; sel[role] = (sel[role] === f.f) ? null : f.f; syncRoles(); preview(); });
+      if (io) io.observe(b);
+      return b;
+    }
+    function renderMore() {
+      var next = shown.slice(batch, batch + 40); batch += next.length;
+      var frag = document.createDocumentFragment(); next.forEach(function (f) { frag.appendChild(rowFor(f)); });
+      var s = rows.querySelector('.t3f-sentinel'); if (s) s.remove();
+      rows.appendChild(frag);
+      if (batch < shown.length) { s = document.createElement('div'); s.className = 't3f-sentinel'; s.style.height = '1px'; rows.appendChild(s); if (sentinelIo) sentinelIo.observe(s); }
+    }
+    function render() {
+      var ql = q.toLowerCase();
+      shown = fams.filter(function (f) { return (cat === 'all' || f.c === cat) && (!ql || f.f.toLowerCase().indexOf(ql) !== -1); });
+      if (ql) shown.sort(function (a, b) { var ap = a.f.toLowerCase().indexOf(ql) === 0 ? 0 : 1, bp = b.f.toLowerCase().indexOf(ql) === 0 ? 0 : 1; return (ap - bp) || (a.p - b.p); });
+      if (io) io.disconnect(); rows.innerHTML = ''; rows.scrollTop = 0; batch = 0;
+      count.textContent = shown.length ? (shown.length.toLocaleString() + ' famil' + (shown.length === 1 ? 'y' : 'ies') + (q ? ' match “' + q + '”' : '') + ' · most popular first') : '';
+      if (!shown.length) { rows.innerHTML = '<div class="t3f-empty">No Google font matches “' + bld_escH(q) + '”. Try part of the name, or another kind.</div>'; return; }
+      renderMore();
+    }
+    async function preview() {
+      var my = ++seq;
+      if (!sel.heading && !sel.body) { _t3FontRestore(); notes.textContent = ''; return; }
+      notes.textContent = 'Previewing on your page…';
+      try {
+        var u = API + 'builder/websites/' + siteId + '/fonts/custom?heading=' + encodeURIComponent(sel.heading || '') + '&body=' + encodeURIComponent(sel.body || '');
+        var rr = await fetch(u, { headers: auth, cache: 'no-store' }); var jj = null; try { jj = await rr.json(); } catch (_e) {}
+        if (my !== seq) return;
+        if (!rr.ok || !jj || !jj.success) throw new Error((jj && (jj.message || jj.error)) || ('HTTP ' + rr.status));
+        _t3FontPreview(jj.layer || '');
+        var dirty = (sel.heading || null) !== (applied.heading || null) || (sel.body || null) !== (applied.body || null);
+        notes.textContent = ((jj.notes || []).join(' ') + (dirty ? ' Preview only: Apply puts it on your site.' : '')).trim();
+      } catch (e) { if (my === seq) notes.textContent = 'Couldn’t preview that — ' + e.message; }
+    }
+    async function post(payload, okMsg) {
+      applying = true; syncRoles(); applyBtn.textContent = 'Applying…';
+      try {
+        var rr = await fetch(API + 'builder/websites/' + siteId + '/fonts', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify(payload) });
+        var jj = null; try { jj = await rr.json(); } catch (_e) {}
+        if (!rr.ok || !jj || !jj.success) throw new Error((jj && (jj.message || jj.error)) || ('HTTP ' + rr.status));
+        return jj;
+      } finally { applying = false; }
+    }
+    applyBtn.addEventListener('click', async function () {
+      if (applying) return;
+      try {
+        var jj = (sel.heading || sel.body) ? await post({ heading: sel.heading || '', body: sel.body || '' }) : await post({ pair: 'design' });
+        applied = { heading: sel.heading, body: sel.body }; current = (sel.heading || sel.body) ? 'library' : 'design';
+        _t3FontRestore(); refreshPairTags(); syncRoles();
+        notes.textContent = (jj.notes || []).join(' ');
+        if (typeof showToast === 'function') showToast(jj.message || 'Fonts applied.', 'success');
+        _t3ReloadPreview();
+      } catch (e) { syncRoles(); if (typeof showToast === 'function') showToast("Couldn’t switch fonts — " + e.message, 'error'); }
+    });
+    resetBtn.addEventListener('click', async function () {
+      if (applying) return;
+      try {
+        var jj = await post({ pair: 'design' });
+        sel = { heading: null, body: null }; applied = { heading: null, body: null }; current = 'design';
+        _t3FontRestore(); refreshPairTags(); syncRoles(); notes.textContent = '';
+        if (typeof showToast === 'function') showToast(jj.message || "Back to the design's own fonts.", 'success');
+        _t3ReloadPreview();
+      } catch (e) { syncRoles(); if (typeof showToast === 'function') showToast("Couldn’t reset fonts — " + e.message, 'error'); }
+    });
+    paneAll.querySelectorAll('.t3f-role').forEach(function (box) {
+      var r = box.getAttribute('data-role');
+      box.querySelector('.t3f-role-pick').addEventListener('click', function () { if (role === r) return; role = r; syncRoles(); render(); });
+      box.querySelector('.t3f-role-x').addEventListener('click', function () { if (applying) return; sel[r] = null; syncRoles(); preview(); });
+    });
+    paneAll.querySelectorAll('.t3f-chip').forEach(function (c) {
+      c.addEventListener('click', function () { cat = c.getAttribute('data-cat'); paneAll.querySelectorAll('.t3f-chip').forEach(function (x) { x.setAttribute('aria-pressed', String(x === c)); }); render(); });
+    });
+    var tmr = null;
+    search.addEventListener('input', function () { clearTimeout(tmr); tmr = setTimeout(function () { q = search.value.trim(); render(); }, 140); });
+    search.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); var first = rows.querySelector('.t3f-row'); if (first) first.click(); } });
+    if (phone) {
+      search.addEventListener('focus', function () { panel.classList.add('t3f-kb'); });
+      search.addEventListener('blur', function () { setTimeout(function () { if (document.activeElement !== search) panel.classList.remove('t3f-kb'); }, 120); });
+    }
+    if ('IntersectionObserver' in window) {
+      io = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting && en.target._f) { _t3GFPreviewLink(en.target._f, role === 'heading' ? samples.h : samples.p); io.unobserve(en.target); } }); }, { root: rows, rootMargin: '160px 0px' });
+      sentinelIo = new IntersectionObserver(function (es) { es.forEach(function (en) { if (en.isIntersecting) { sentinelIo.unobserve(en.target); renderMore(); } }); }, { root: rows, rootMargin: '240px 0px' });
+    }
+    allUi = { sync: syncRoles };
+    syncRoles();
+    _t3GFCatalogue(auth).then(function (j) { fams = j.families || []; search.placeholder = 'Search ' + fams.length.toLocaleString() + ' Google fonts'; render(); })
+      .catch(function (e) { count.textContent = ''; rows.innerHTML = '<div class="t3f-empty">Couldn’t load the Google Fonts library — ' + bld_escH(e.message) + '</div>'; });
+  }
+  function showTab(t) {
+    panel.querySelectorAll('.t3f-tab').forEach(function (b) { b.setAttribute('aria-selected', String(b.getAttribute('data-tab') === t)); });
+    panel.querySelectorAll('.t3f-pane').forEach(function (p) { p.hidden = p.getAttribute('data-pane') !== t; });
+    if (t === 'all') buildAll();
+  }
+  panel.querySelectorAll('.t3f-tab').forEach(function (b) { b.addEventListener('click', function () { showTab(b.getAttribute('data-tab')); }); });
+  if (canPreview && current === 'library') showTab('all');
 };
 
 /* Three-way exit choice, in site CSS (never a native dialog). Resolves 'save' | 'discard' | 'stay'. */
