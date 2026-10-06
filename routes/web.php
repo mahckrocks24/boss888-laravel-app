@@ -871,14 +871,34 @@ Route::get('/templates/{industry}/preview', function (string $industry) {
     if (!is_dir($tplPath) || !is_file($tplPath . '/manifest.json')) abort(404);
 
     $raw = (bool) request()->query('raw', false);
-    $cacheKey = "tpl_preview:{$industry}:" . ($raw ? 'raw' : 'wrap');
+    // PALETTE-PREVIEW-1 (2026-10-06): a v3 design (manifest design.kit = v3) can be previewed in any of the generator's
+    // palettes: ?palette=<name> swaps the brand colour variables and the palette_bg/palette_text neutrals the way a
+    // palette switch does on a site, so PaletteRoles repaints the same page; cached per palette.
+    $palette = (string) request()->query('palette', ''); if (! preg_match('/^[a-z]{2,20}$/', $palette)) $palette = '';
+    $palettes = $palette !== '' && is_file(storage_path('templates/_palettes.json')) ? (json_decode(file_get_contents(storage_path('templates/_palettes.json')), true) ?: []) : [];
+    if ($palette !== '' && ! isset($palettes[$palette])) $palette = '';
+    $cacheKey = "tpl_preview:{$industry}:" . ($raw ? 'raw' : 'wrap') . ($palette !== '' ? ":{$palette}" : '');
 
-    $html = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($industry, $raw, $tplPath) {
+    $html = \Illuminate\Support\Facades\Cache::remember($cacheKey, 3600, function () use ($industry, $raw, $tplPath, $palette, $palettes) {
         $manifest = json_decode(file_get_contents($tplPath . '/manifest.json'), true) ?: [];
         $vars = [];
         foreach (($manifest['variables'] ?? []) as $k => $v) $vars[$k] = $v['default'] ?? '';
+        if ($palette !== '' && (($manifest['design']['kit'] ?? '') === 'v3')) {
+            $p = $palettes[$palette];
+            $rgb = function (string $h): array { $h = ltrim($h, '#'); return [hexdec(substr($h, 0, 2)), hexdec(substr($h, 2, 2)), hexdec(substr($h, 4, 2))]; };
+            $mix = function (string $a, string $b, float $k) use ($rgb): string { [$A, $B] = [$rgb($a), $rgb($b)]; return sprintf('#%02X%02X%02X', ...array_map(fn($i) => max(0, min(255, (int) round($A[$i] + ($B[$i] - $A[$i]) * $k))), [0, 1, 2])); };
+            $vars['primary_color'] = $p['accent']; $vars['accent_color'] = $p['accent']; $vars['primary_deep'] = $mix($p['accent'], '#000000', .18);
+            $vars['secondary_color'] = $mix($p['deep'], $p['accent'], .35); $vars['palette_bg'] = $p['paper']; $vars['palette_text'] = $p['ink']; $vars['palette'] = $palette;
+        }
         $svc = app(\App\Engines\Builder\Services\TemplateService::class);
         $rendered = $svc->render($industry, $vars);
+        if ($palette !== '' && (($manifest['design']['kit'] ?? '') === 'v3')) {
+            // the design's own :root tokens follow too (the roles block repoints them, but the raw values are what a palette switch writes)
+            $p = $palettes[$palette]; $dark = ($manifest['palette_scheme'] ?? 'light') === 'dark';
+            if ($dark) { $paper = $mix($mix('#0B0F19', $p['accent'], .10), '#000000', .15); $tk = ['paper' => $paper, 'ink' => $p['paper'], 'tint' => $mix($paper, $p['paper'], .07), 'line' => $mix($paper, $p['paper'], .20), 'deep' => $mix($paper, '#000000', .45)]; }
+            else { $tk = $p; }
+            $rendered = preg_replace('/--paper:#[0-9A-Fa-f]{6}; --tint:#[0-9A-Fa-f]{6}; --ink:#[0-9A-Fa-f]{6}; --deep:#[0-9A-Fa-f]{6}; --line:#[0-9A-Fa-f]{6};/', "--paper:{$tk['paper']}; --tint:{$tk['tint']}; --ink:{$tk['ink']}; --deep:{$tk['deep']}; --line:{$tk['line']};", $rendered, 1) ?? $rendered;
+        }
         // PREVIEW PARITY (2026-09-11): a customer's export gets the phone menu and the mobile-safety guard at
         // deploy; the preview must show the same page or a phone-width judgement is made on a fiction.
         $rendered = \App\Engines\Builder\Support\ResponsiveNav::inject($rendered);
@@ -891,7 +911,7 @@ Route::get('/templates/{industry}/preview', function (string $industry) {
 
         $tplName = $manifest['name'] ?? ucfirst($industry);
         $useUrl  = '/app/?template=' . urlencode($industry);
-        $rawUrl  = '/templates/' . $industry . '/preview?raw=1';
+        $rawUrl  = '/templates/' . $industry . '/preview?raw=1' . ($palette !== '' ? '&palette=' . $palette : '');
 
         return '<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preview · ' . htmlspecialchars($tplName) . '</title>
