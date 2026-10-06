@@ -92,13 +92,13 @@ $page['head'] = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?
   .ad .adc-cta{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;background:var(--a);color:#0b0d12;font:700 3.6cqw/1 var(--font);padding:2.2cqw 4cqw;white-space:nowrap}
   .ad .adc-brand{position:absolute;left:3cqw;top:3cqw;z-index:2;display:inline-flex;align-items:center;gap:1.6cqw;font:700 3.8cqw/1 var(--font);color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
   .ad .adc-brand i{width:6.2cqw;height:6.2cqw;border-radius:1.8cqw;background:var(--b);display:grid;place-items:center;font:800 3.4cqw/1 var(--font);font-style:normal;color:#fff;box-shadow:0 0 0 .4cqw rgba(255,255,255,.85)}
-  .ad .adc-bar{display:flex;align-items:center;gap:2.4cqw;padding:0 2.4cqw}
-  .ad .adc-bar .adc-logo{width:10.5cqw;height:10.5cqw;flex:none;font-size:5.2cqw}
-  .ad .adc-bar .adc-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.7cqw}
-  .ad .adc-bar .adc-t b{font-size:4.1cqw;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ad .adc-bar .adc-t small{font-size:2.9cqw;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ad .adc-bar .adc-cta{font-size:3.1cqw;padding:2cqw 3.2cqw;flex:none}
-  .ad .adc-bar .adc-sp{position:static;font-size:2cqw;padding:.8cqw 1.1cqw;background:#f1f5f9;flex:none}
+  .ad .adc-bar{display:flex;align-items:center;gap:2cqw;padding:0 2cqw}
+  .ad .adc-bar .adc-logo{width:9cqw;height:9cqw;flex:none;font-size:4.6cqw;border-radius:1.8cqw}
+  .ad .adc-bar .adc-t{flex:1;min-width:0;display:flex;flex-direction:column;gap:.5cqw}
+  .ad .adc-bar .adc-t b{font-size:3.5cqw;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ad .adc-bar .adc-t small{font-size:2.5cqw;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ad .adc-bar .adc-cta{font-size:2.7cqw;padding:1.6cqw 2.8cqw;flex:none}
+  .ad .adc-bar .adc-sp{position:static;font-size:1.8cqw;padding:.7cqw 1cqw;background:#f1f5f9;flex:none}
   .ad .adc-mrec{display:flex;flex-direction:column}
   .ad .adc-mrec .adc-ph{position:relative;height:56%;flex:none;background-size:cover;background-position:center}
   .ad .adc-mrec .adc-ph:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.08),rgba(0,0,0,.38))}
@@ -130,14 +130,17 @@ $page['head'] = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?
   .ad .av-web--l .av-mrec{top:34%}.ad .av-web--r .av-mrec{top:38%}
   .ad .av-phone{position:absolute;left:28.5cqw;top:3cqw;width:43cqw;height:91cqw;border-radius:7cqw;background:#0b0d12;padding:1.5cqw;box-shadow:0 3cqw 8cqw rgba(10,8,40,.45),inset 0 0 0 .3cqw #2a2d36;z-index:3}
   .ad .av-screen{position:relative;width:100%;height:100%;border-radius:5.6cqw;overflow:hidden;background:#fff;color:#14161c;font:400 2cqw/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-  .ad .av-site{position:absolute;inset:0;background:#fff;overflow:hidden}
-  .ad .av-site img{display:block;width:100%;height:auto}
+  .ad .av-site{position:absolute;inset:0;background:#fff;overflow:hidden;display:flex;flex-direction:column}
+  .ad .av-site img{display:block;width:100%;height:auto;flex:none}
+  /* the website continues below its captured hero (Owner 10-06: "website shows white empty space in the phone"): a page continuation in the site's greys */
+  .ad .av-more{flex:1;min-height:0;background:linear-gradient(#e6e8ee,#e6e8ee) 6% 8%/44% 3% no-repeat,linear-gradient(#eef0f4,#eef0f4) 6% 15%/88% 2% no-repeat,linear-gradient(#eef0f4,#eef0f4) 6% 20%/72% 2% no-repeat,linear-gradient(#e1e4ea,#e1e4ea) 6% 29%/42% 28% no-repeat,linear-gradient(#e1e4ea,#e1e4ea) 52% 29%/42% 28% no-repeat,linear-gradient(#eef0f4,#eef0f4) 6% 64%/60% 2% no-repeat,linear-gradient(#eef0f4,#eef0f4) 6% 69%/82% 2% no-repeat,linear-gradient(#1b1d24,#1b1d24) 6% 80%/44% 7% no-repeat,#fff}
   .ad .av-status{position:absolute;left:0;right:0;top:0;height:4.2cqw;display:flex;justify-content:space-between;align-items:center;padding:0 3.4cqw;font-size:1.7cqw;font-weight:600;color:#14161c;background:linear-gradient(#fff,rgba(255,255,255,.7));z-index:2}
   .ad .av-notch{width:12cqw;height:2.6cqw;border-radius:2cqw;background:#0b0d12}
   .ad .av-card{position:absolute;left:4cqw;right:4cqw;top:46cqw;aspect-ratio:300/250;border-radius:1.6cqw;overflow:hidden;background:#fff;box-shadow:0 1.2cqw 3.6cqw rgba(15,10,50,.3),0 0 0 .15cqw rgba(0,0,0,.08);z-index:4;opacity:0;transform:translateY(2cqw) scale(.97);transition:opacity .5s ease,transform .5s ease}
-  .ad .av-bar{position:absolute;left:0;right:0;bottom:0;height:8.4cqw;display:flex;align-items:stretch;background:#fff;border-top:.15cqw solid #e4e6eb;box-shadow:0 -1cqw 3cqw rgba(0,0,0,.12);z-index:5;transform:translateY(100%);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
+  /* the drawer is the real 320x50 strip: 50 px on a 390 px screen = 12.8% of the phone's width (Owner 10-06: "it's supposed to be thin in height") */
+  .ad .av-bar{position:absolute;left:0;right:0;bottom:0;height:5.5cqw;display:flex;align-items:stretch;background:#fff;border-top:.15cqw solid #e4e6eb;box-shadow:0 -1cqw 3cqw rgba(0,0,0,.12);z-index:5;transform:translateY(100%);transition:transform .55s cubic-bezier(.2,.8,.2,1)}
   .ad .av-bar .adc{flex:1;min-width:0;height:auto}
-  .ad .av-bar__x{width:4.4cqw;display:grid;place-items:center;background:#f1f5f9;color:#64748b;font:700 2cqw/1 var(--font);flex:none}
+  .ad .av-bar__x{width:4cqw;display:grid;place-items:center;background:#f1f5f9;color:#64748b;font:700 2cqw/1 var(--font);flex:none}
   .ad .av-modal{position:absolute;inset:0;z-index:6;display:grid;place-items:center;background:rgba(10,8,30,.55);opacity:0;visibility:hidden;transition:opacity .45s ease,visibility 0s linear .45s}
   .ad .av-modal__box{width:84%;aspect-ratio:1/1;border-radius:2.4cqw;overflow:hidden;background:#fff;box-shadow:0 2cqw 6cqw rgba(0,0,0,.4);position:relative;transform:scale(.94);transition:transform .45s ease}
   .ad .av.is-bar .av-bar{transform:none}.ad .av.is-card .av-card{opacity:1;transform:none}.ad .av.is-modal .av-modal{opacity:1;visibility:visible;transition:opacity .45s ease}.ad .av.is-modal .av-modal__box{transform:none}
@@ -159,9 +162,11 @@ $page['head'] = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?
   .ad .pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
   .ad .pl-stage{position:relative;width:100%;aspect-ratio:1/1.12;container-type:inline-size;border-radius:18px;overflow:hidden;background:radial-gradient(120% 90% at 50% 0%,rgba(124,58,237,.18),transparent 60%),var(--fill-hover)}
   .ad .pl-phone{position:absolute;left:50%;top:7cqw;transform:translateX(-50%);width:62cqw;height:124cqw;border-radius:9cqw;background:#0b0d12;padding:2cqw;box-shadow:0 4cqw 10cqw rgba(10,8,40,.35),inset 0 0 0 .4cqw #2a2d36}
-  .ad .pl-screen{position:relative;width:100%;height:100%;border-radius:7.2cqw;overflow:hidden;background:#fff}
-  .ad .pl-screen>img{display:block;width:100%;height:auto}
-  .ad .pl-bar{position:absolute;left:0;right:0;bottom:0;height:11cqw;background:#fff;border-top:.2cqw solid #e4e6eb;box-shadow:0 -1cqw 4cqw rgba(0,0,0,.12);transform:translateY(100%)}
+  .ad .pl-screen{position:relative;width:100%;height:100%;border-radius:7.2cqw;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+  .ad .pl-screen>img{display:block;width:100%;height:auto;flex:none}
+  .ad .pl-bar{position:absolute;left:0;right:0;bottom:0;height:7.4cqw;display:flex;align-items:stretch;background:#fff;border-top:.2cqw solid #e4e6eb;box-shadow:0 -1cqw 4cqw rgba(0,0,0,.12);transform:translateY(100%)}
+  .ad .pl-bar .adc{flex:1;min-width:0;height:auto}
+  .ad .pl-bar__x{width:5.6cqw;display:grid;place-items:center;background:#f1f5f9;color:#64748b;font:700 2.8cqw/1 var(--font);flex:none}
   .ad .pl-card{position:absolute;left:5cqw;right:5cqw;top:62cqw;aspect-ratio:300/250;border-radius:2.2cqw;overflow:hidden;background:#fff;box-shadow:0 1.6cqw 4.8cqw rgba(15,10,50,.3);opacity:0;transform:translateY(3cqw) scale(.97)}
   .ad .pl-modal{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,8,30,.55);opacity:0}
   .ad .pl-modal__box{width:84%;aspect-ratio:1/1;border-radius:3cqw;overflow:hidden;background:#fff;box-shadow:0 2cqw 7cqw rgba(0,0,0,.4);position:relative}
@@ -246,7 +251,7 @@ $page['head'] = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?
   .ad .br input[aria-invalid=true],.ad .br textarea[aria-invalid=true]{box-shadow:0 0 0 3px color-mix(in srgb,#dc2626 30%,transparent)}
   @media (max-width:1000px){.ad .ad-flow{grid-template-columns:repeat(2,minmax(0,1fr))}.ad .ad-flow:before{display:none}.ad .rp-body{grid-template-columns:repeat(2,minmax(0,1fr))}.ad .pk-models{grid-template-columns:1fr}}
   @media (max-width:900px){.ad .ad-hero,.ad .ad-grid3,.ad .ad-grid2,.ad .pl-grid,.ad .pb,.ad .pk,.ad .ru,.ad .br,.ad .rp-split{grid-template-columns:1fr}.ad .av{margin:8px auto 0}.ad .pb__out{border-left:0;border-top:1px solid var(--hairline)}.ad .ad-proof b{font-size:18px}.ad .pl-stage{max-width:420px;margin:0 auto}}
-  @media (max-width:600px){.ad .av{aspect-ratio:1/1.34}.ad .av-web{display:none}.ad .av-phone{left:24cqw;width:52cqw;height:112cqw;top:4cqw}.ad .av-fc{font-size:12px;padding:9px 11px;gap:8px;border-radius:14px}.ad .av-fc b{font-size:12.5px}.ad .av-fc small{font-size:10.5px}.ad .av-dot{width:22px;height:22px}.ad .av-dot svg{width:13px;height:13px}.ad .av-live{font-size:11px}.ad .av-live i{width:7px;height:7px}.ad .av-camp{width:58cqw;top:0}.ad .av-count{display:none}.ad .av-ok{width:54cqw;top:70cqw}.ad .av-on{width:66cqw;top:auto;bottom:0;left:17cqw}.ad .av-on .av-thumbs{padding-right:10px}.ad .av-on .av-thumbs img{width:22px;height:22px;border-radius:6px;margin-right:-5px}.ad .ad-flow{grid-template-columns:1fr}.ad .rp-body{grid-template-columns:1fr 1fr}.ad .rp-inv{grid-template-columns:1fr 1fr 1fr}.ad .br .f2{grid-template-columns:1fr}.ad .nw-site{flex-basis:68%}}
+  @media (max-width:600px){.ad .av{aspect-ratio:1/1.34}.ad .av-web{display:none}.ad .av-phone{left:24cqw;width:52cqw;height:112cqw;top:4cqw}.ad .av-bar{height:6.7cqw}.ad .av-bar__x{width:4.8cqw;font-size:2.4cqw}.ad .av-fc{font-size:12px;padding:9px 11px;gap:8px;border-radius:14px}.ad .av-fc b{font-size:12.5px}.ad .av-fc small{font-size:10.5px}.ad .av-dot{width:22px;height:22px}.ad .av-dot svg{width:13px;height:13px}.ad .av-live{font-size:11px}.ad .av-live i{width:7px;height:7px}.ad .av-camp{width:58cqw;top:0}.ad .av-count{display:none}.ad .av-ok{width:54cqw;top:70cqw}.ad .av-on{width:66cqw;top:auto;bottom:0;left:17cqw}.ad .av-on .av-thumbs{padding-right:10px}.ad .av-on .av-thumbs img{width:22px;height:22px;border-radius:6px;margin-right:-5px}.ad .ad-flow{grid-template-columns:1fr}.ad .rp-body{grid-template-columns:1fr 1fr}.ad .rp-inv{grid-template-columns:1fr 1fr 1fr}.ad .br .f2{grid-template-columns:1fr}.ad .nw-site{flex-basis:68%}}
 </style>
 CSS;
 // example websites in the network strip: real websites built on the platform (assets/product/sites), never "template"
@@ -384,7 +389,7 @@ JS;
         <article class="av-web av-web--r" aria-hidden="true"><div class="av-web__bar"><i></i><i></i><i></i><span>rosefinchbeauty.ae</span></div><img src="<?= e($shot('beauty_salon')) ?>" alt="" width="1440" height="900" loading="eager"><div class="av-mrec"><?= $ad('mrec', 'gym') ?></div></article>
         <div class="av-phone" aria-hidden="true"><div class="av-screen">
           <div class="av-status"><span>9:41</span><span class="av-notch"></span><span>5G</span></div>
-          <div class="av-site"><img src="<?= e($shotM('cafe_kettlerow')) ?>" alt="" width="780" height="1200" loading="eager"></div>
+          <div class="av-site"><img src="<?= e($shotM('cafe_kettlerow')) ?>" alt="" width="780" height="1200" loading="eager"><div class="av-more"></div></div>
           <div class="av-card"><?= $ad('mrec', 'gym') ?></div>
           <div class="av-flash"><span>Viewable impression counted</span></div>
           <div class="av-bar"><?= $ad('bar', 'gym') ?><span class="av-bar__x">×</span></div>
@@ -414,17 +419,17 @@ JS;
       <div class="ad-head"><span class="t-eyebrow" data-rv>The placements</span><h2 class="mk-h2" data-rv>Three ways to be seen. Each one designed to be noticed, not endured.</h2><p class="mk-lead" data-rv>Every placement is labelled "Sponsored" and can be closed. The sizes are the industry's, so a creative you already have will fit.</p></div>
       <div class="pl-grid">
         <div class="ad-card lg-glass lg-glass--thick">
-          <div class="pl-stage" aria-label="Example: the footer bar arriving on a café's website on a phone"><span class="pl-tag lg-glass lg-glass--thin"><i></i>Footer bar</span><div class="pl-phone"><div class="pl-screen"><img src="<?= e($shotM('cafe_kettlerow')) ?>" alt="" width="780" height="1200" loading="lazy"><div class="pl-bar"><?= $ad('bar', 'gym') ?></div></div></div></div>
+          <div class="pl-stage" aria-label="Example: the footer bar arriving on a café's website on a phone"><span class="pl-tag lg-glass lg-glass--thin"><i></i>Footer bar</span><div class="pl-phone"><div class="pl-screen"><img src="<?= e($shotM('cafe_kettlerow')) ?>" alt="" width="780" height="1200" loading="lazy"><div class="av-more"></div><div class="pl-bar"><?= $ad('bar', 'gym') ?><span class="pl-bar__x">×</span></div></div></div></div>
           <h3>The footer bar</h3><p>A slim bar along the bottom of the screen, on every page of the website. Closes to a tab and stays closed for a minute, so it is present without being in the way.</p>
           <div><div class="ad-spec"><span>Size</span><b>320 × 50</b></div><div class="ad-spec"><span>Devices</span><b>Phone, tablet, desktop</b></div><div class="ad-spec"><span>Best for</span><b>Offers and reminders</b></div></div>
         </div>
         <div class="ad-card lg-glass lg-glass--thick">
-          <div class="pl-stage" aria-label="Example: the card appearing below the hero of a dental clinic's website"><span class="pl-tag lg-glass lg-glass--thin"><i></i>Card below the hero</span><div class="pl-phone"><div class="pl-screen"><img src="<?= e($shotM('dental_elmrow')) ?>" alt="" width="780" height="1200" loading="lazy"><div class="pl-card"><?= $ad('mrec', 'cafe') ?></div></div></div></div>
+          <div class="pl-stage" aria-label="Example: the card appearing below the hero of a dental clinic's website"><span class="pl-tag lg-glass lg-glass--thin"><i></i>Card below the hero</span><div class="pl-phone"><div class="pl-screen"><img src="<?= e($shotM('dental_elmrow')) ?>" alt="" width="780" height="1200" loading="lazy"><div class="av-more"></div><div class="pl-card"><?= $ad('mrec', 'cafe') ?></div></div></div></div>
           <h3>The card below the hero</h3><p>One card, directly under the website's opening section, where the eye lands after the headline. Refreshes at most every 30 seconds while the visitor reads.</p>
           <div><div class="ad-spec"><span>Size</span><b>300 × 250</b></div><div class="ad-spec"><span>Devices</span><b>Phone, tablet, desktop</b></div><div class="ad-spec"><span>Best for</span><b>Brand and product stories</b></div></div>
         </div>
         <div class="ad-card lg-glass lg-glass--thick">
-          <div class="pl-stage" aria-label="Example: the full-screen message on a salon's website"><span class="pl-tag lg-glass lg-glass--thin"><i></i>Full-screen message</span><div class="pl-phone"><div class="pl-screen"><img src="<?= e($shotM('beauty_salon')) ?>" alt="" width="780" height="1200" loading="lazy"><div class="pl-modal"><div class="pl-modal__box"><?= $ad('modal', 'restaurant') ?></div></div></div></div></div>
+          <div class="pl-stage" aria-label="Example: the full-screen message on a salon's website"><span class="pl-tag lg-glass lg-glass--thin"><i></i>Full-screen message</span><div class="pl-phone"><div class="pl-screen"><img src="<?= e($shotM('beauty_salon')) ?>" alt="" width="780" height="1200" loading="lazy"><div class="av-more"></div><div class="pl-modal"><div class="pl-modal__box"><?= $ad('modal', 'restaurant') ?></div></div></div></div></div>
           <h3>The full-screen message</h3><p>The whole screen, once. Shown after eight seconds on a second visit, never to someone arriving from a search, never on a checkout or booking page, and the visitor can close it after six seconds.</p>
           <div><div class="ad-spec"><span>Size</span><b>1080 × 1080 or 3:4</b></div><div class="ad-spec"><span>Frequency</span><b>At most once every 3 minutes</b></div><div class="ad-spec"><span>Best for</span><b>Launches and events</b></div></div>
         </div>
