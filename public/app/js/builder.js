@@ -5198,6 +5198,7 @@ window.wsOpenSitePanel = async function (siteId, opts) {
   var _closePanel = function () { if (_ov) _ov.remove(); else panel.remove(); };
   panel.querySelector('#t3-site-x').addEventListener('click', _closePanel);
   _t3SiteStatus(siteId, panel, _closePanel);   // SITECARD-1: status, take offline, delete
+  try { if (window.luDesignUpdate) window.luDesignUpdate.siteSection(siteId, panel); } catch (_du) {}   // DESIGN-UPDATES-1: preview an update, or revert one
   _t3SiteIcon(siteId, panel);   // FAVICON-1: the site icon, above the status
   var body = panel.querySelector('#t3-site-body');
   var d = null;

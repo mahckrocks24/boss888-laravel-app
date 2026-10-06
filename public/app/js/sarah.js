@@ -507,6 +507,15 @@
     acts.push({ label: 'Open client', run: function () { openClient(x.lead_id); } });
     return railItem('appr' + (lvl === 'hot' ? ' hot' : ''), '\u2709', 'Reply to ' + x.name, x.business || '', 'Sarah', acts, 'lead-' + x.lead_id, pv, sum);
   }
+  /* DESIGN-UPDATES-1: a design improvement for one of the owner's websites - a closed card; the preview, Agree and Cancel live in the preview screen */
+  function designItem(x) {
+    var sum = 'Preview it first · nothing changes until you agree';
+    var pv = x.shot_desk ? '<div class="pv"><img src="' + esc(x.shot_desk) + '" alt="Your website after the update" style="width:100%;max-height:150px;object-fit:cover;object-position:top;border-radius:10px"></div>' : '';
+    var desc = (x.note ? x.note + ' ' : 'Arthur improved the design of ' + x.website + '. ') + (x.content && x.content.text ? x.content.text : '');
+    var acts = [{ label: 'Preview the update', kind: 'primary', run: function () { if (window.luDesignUpdate) window.luDesignUpdate.open(x.id); } }];
+    return railItem('appr', '✦', 'Design update: ' + x.website, desc, 'Arthur', acts, 'dupd-' + x.id, pv, sum);
+  }
+  document.addEventListener('lu:design-update', function () { try { loadRail(); } catch (e) {} });
   function loadRail() {
     var rail = document.getElementById('sh-rail'); if (!rail) return;
     Promise.all([
@@ -524,6 +533,7 @@
       appr.forEach(function (a) { items.push(approvalItem(a)); });
       camps.forEach(function (p) { items.push(campaignItem(p)); }); chgs.forEach(function (x) { items.push(campaignChangeItem(x)); });
       var posts = (pa.drafts || []).filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }); posts.forEach(function (x) { items.push(postItem(x)); });   /* POST-TIMELINE-1 */
+      var dupds = pa.design_updates || []; dupds.forEach(function (x) { items.push(designItem(x)); });   /* DESIGN-UPDATES-1 */
       var leadsW = pa.lead_replies || []; leadsW.slice().reverse().forEach(function (x) { if (x.rating && x.rating.level === 'hot') items.unshift(leadItem(x)); }); leadsW.forEach(function (x) { if (!(x.rating && x.rating.level === 'hot')) items.push(leadItem(x)); });   /* LEADS-W1: hot ones first */
       rs.splice(1, 1);
       var evs = Array.isArray(rs[1].json) ? rs[1].json : ((rs[1].json && (rs[1].json.events || rs[1].json.data)) || []);
@@ -540,15 +550,15 @@
         [{ label: 'Connect Google', run: function () { openAdvanced({ view: 'seo', tail: null }); } }], 'gate-gsc'));
       rail.innerHTML = '';
       if (!items.length) { rail.hidden = true; return; }
-      var title = (appr.length || camps.length || chgs.length || posts.length || leadsW.length) ? 'Needs your OK' : 'Worth knowing';
-      try { var __n = appr.length + camps.length + chgs.length + posts.length + leadsW.length; S.railDecisions = __n; var __c = document.querySelector('#sh-brief .att'); if (__c) { if (__n > 0) __c.innerHTML = '<b>' + __n + '</b> ' + (__n === 1 ? 'thing needs your OK' : 'things need your OK'); else __c.remove(); } } catch (e) {}   /* RAIL-CLOSED-1 */
+      var title = (appr.length || camps.length || chgs.length || posts.length || leadsW.length || dupds.length) ? 'Needs your OK' : 'Worth knowing';
+      try { var __n = appr.length + camps.length + chgs.length + posts.length + leadsW.length + dupds.length; S.railDecisions = __n; var __c = document.querySelector('#sh-brief .att'); if (__c) { if (__n > 0) __c.innerHTML = '<b>' + __n + '</b> ' + (__n === 1 ? 'thing needs your OK' : 'things need your OK'); else __c.remove(); } } catch (e) {}   /* RAIL-CLOSED-1 */
       var h = document.createElement('div'); h.className = 'sh-rail-h';
       h.innerHTML = '<button type="button" class="tog" aria-expanded="true" aria-controls="sh-rail-track" title="Minimise"><svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ttl">' + title + '</span></button><span class="pos" aria-live="polite"></span>';
       rail.appendChild(h);
       /* RAIL-2: minimised state is remembered per device; a NEW approval reopens it. */
       var seenKey = 'lu_rail_seen', minKey = 'lu_rail_min', seen = [], isMin = false;
       try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); isMin = localStorage.getItem(minKey) === '1'; } catch (e) {}
-      var apprIds = appr.map(function (a) { return String(a.id); }).concat(camps.map(function (p) { return 'camp-' + p.campaign_id; }), chgs.map(function (x) { return 'chg-' + x.change_id; }), posts.map(function (x) { return 'post-' + x.post_id; }), leadsW.map(function (x) { return 'lead-' + x.lead_id; }));
+      var apprIds = appr.map(function (a) { return String(a.id); }).concat(camps.map(function (p) { return 'camp-' + p.campaign_id; }), chgs.map(function (x) { return 'chg-' + x.change_id; }), posts.map(function (x) { return 'post-' + x.post_id; }), leadsW.map(function (x) { return 'lead-' + x.lead_id; }), dupds.map(function (x) { return 'dupd-' + x.id; }));
       var fresh = apprIds.filter(function (id) { return seen.indexOf(id) < 0; });
       if (fresh.length) { isMin = false; try { localStorage.setItem(minKey, '0'); localStorage.setItem(seenKey, JSON.stringify(seen.concat(fresh).slice(-50))); } catch (e) {} }
       function setMin(v) { isMin = !!v; rail.classList.toggle('min', isMin); var b = h.querySelector('.tog'); b.setAttribute('aria-expanded', isMin ? 'false' : 'true'); b.title = isMin ? 'Show' : 'Minimise'; try { localStorage.setItem(minKey, isMin ? '1' : '0'); } catch (e) {} if (typeof updPos === 'function') updPos(); }

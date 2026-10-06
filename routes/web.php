@@ -1138,3 +1138,6 @@ if (file_exists(__DIR__ . '/marketing-next.php')) { require __DIR__ . '/marketin
 
 // FAVICON-1 (2026-10-04): the platform's own icon. A website's address is answered earlier by PublishedSiteMiddleware.
 Route::get('/favicon.ico', fn () => response(file_get_contents(public_path('img/favicon-platform.ico')), 200)->header('Content-Type', 'image/x-icon')->header('Cache-Control', 'public, max-age=86400'));
+
+// DESIGN-UPDATES-1 (2026-10-06): signed preview pages of a design update (now / after) and the probe shots
+require __DIR__ . '/design-updates-web.php';

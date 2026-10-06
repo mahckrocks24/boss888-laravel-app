@@ -965,6 +965,7 @@ Route::middleware(['auth.jwt', 'traffic.defense', 'connector.brand', 'team.activ
     require __DIR__ . '/api/authenticated/batch-01.php';
     require __DIR__ . '/api/authenticated/memory-01.php'; // RFC-0023 P1 - what Sarah remembers about the owner (/api/memory/*)
     require __DIR__ . '/api/authenticated/actions-01.php'; // APPROVE-BUTTONS-1 2026-09-25 — what the chat surfaces render as buttons
+    require __DIR__ . '/api/authenticated/design-updates-01.php'; // DESIGN-UPDATES-1 2026-10-06 — preview, agree, cancel, revert a design update
     require __DIR__ . '/api/authenticated/mandates-01.php'; // MANDATE-1 2026-09-25 — the Plan of Action (DEC-0018): read, stop
     require __DIR__ . '/api/authenticated/catalogue-01.php'; // CAT-2 2026-09-22 — the catalogue as a section (workspace summary + groups)
     require __DIR__ . '/api/authenticated/businesses-01.php'; require __DIR__ . '/api/authenticated/brand-01.php'; // BRAND-B1 /api/brand/*

@@ -128,15 +128,65 @@ class TemplateService
         }
         return $html . $fs;
     }
+    /** DESIGN-UPDATES-1: slug => ['html','manifest','version'] while renderVersion() renders an archived design version. */
+    private array $dvOverride = [];
+
+    /**
+     * DESIGN-UPDATES-1 — render the design a site was built on (an archived version), with the same variables and the same
+     * per-site steps as render(). Throws when that version was never archived.
+     */
+    public function renderVersion(string $slug, string $version, array $variables, ?int $websiteId = null): string
+    {
+        $slug = preg_replace('/[^a-z0-9_]/', '', strtolower($slug));
+        $dir = \App\Engines\Builder\Support\DesignVersions::archiveDir($slug, $version);
+        if (! is_file("{$dir}/template.html")) throw new \Exception("Design version not archived: {$slug}@{$version}");
+        $this->dvOverride[$slug] = ['html' => "{$dir}/template.html", 'manifest' => "{$dir}/manifest.json", 'version' => $version];
+        try { return $this->render($slug, $variables, $websiteId); } finally { unset($this->dvOverride[$slug]); }
+    }
+
+    /**
+     * Everything deploy() does to the markup, in deploy's order, without writing a file (DESIGN-UPDATES-1: the update builds
+     * its candidate with exactly the steps a deploy would take, so what the owner previews is what goes live).
+     */
+    public function finishForDeploy(int $websiteId, string $html): string
+    {
+        $html = $this->honestBlogSection($websiteId, $html);
+        $html = $this->reapplyStoredSections($websiteId, $html);
+        $html = $this->roleifyLegacyAddedBlocks($websiteId, $html);   // RISK-0191 U1: a block spliced before the roles is repainted on deploy
+        $html = $this->applySectionOps($websiteId, $html);   // remembered section moves (DEC-0051)
+        $html = $this->applyElementOps($websiteId, $html);   // remembered element moves (ELEMENT888, DEC-0052)
+        $html = $this->ensureHeroPhotoSlot($websiteId, $html);   // HERO-BG-1: a text-only hero carries the placed hero photo as its background
+        $html = $this->hideEmptyImages($html);   // IMGRM-1: no broken-image icons on a served page
+        $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
+        $html = self::injectMobileSafety($html);
+        $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20
+        $html = \App\Engines\Builder\Support\SiteScripts::inject($html, $websiteId);   // forms → CRM, tracking ids (DEC-0051)
+        // STATIC-EXPORT BLOG LINK (2026-09-05): the bare blog nav link is made relative (see deploy()).
+        return preg_replace('#href="/blog/?"#i', 'href="blog/"', $html) ?? $html;
+    }
+
+    /** DESIGN-UPDATES-1: the deploy steps that follow writing the home page (blog index, page menu links, thumbnail, version record). */
+    public function afterHomeWritten(int $websiteId, string $html): void
+    {
+        $this->reapplyPageNavLinks($websiteId);
+        try { $this->deployBlogIndex($websiteId, $html); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] blog index deploy failed: ' . $e->getMessage()); }
+        try { \App\Jobs\GenerateSiteThumbnailJob::dispatch($websiteId)->delay(now()->addSeconds(8)); } catch (\Throwable $e) {}
+    }
+
     public function render(string $industry, array $variables, ?int $websiteId = null): string
     {
         $industry = preg_replace('/[^a-z0-9_]/', '', strtolower($industry)); // slug-guard (path traversal)
-        $path = storage_path("templates/{$industry}/template.html");
+        $path = $this->dvOverride[$industry]['html'] ?? storage_path("templates/{$industry}/template.html");
         if (!file_exists($path)) {
             throw new \Exception("Template not found: {$industry}");
         }
 
         $html = file_get_contents($path);
+        // DESIGN-UPDATES-1: every rendered page names the design version it came from, so a deploy records what the site stands on
+        try {
+            $__dv = $this->dvOverride[$industry]['version'] ?? \App\Engines\Builder\Support\DesignVersions::current($industry);
+            if ($__dv !== '' && ! str_contains($html, 'name="lu-dv"')) $html = preg_replace('/<head\b[^>]*>/i', '$0<meta name="lu-dv" content="' . $__dv . '">', $html, 1) ?? $html;
+        } catch (\Throwable $e) {}
 
         // DESIGN VARIANTS (2026-09-10): a template directory is no longer always an industry name.
         // A variant such as restaurant_larder declares its industry as "restaurant" in the manifest,
@@ -144,7 +194,7 @@ class TemplateService
         // variant falls back to a hero path that does not exist and renders a broken image. The
         // directory name stays the fallback, so the 31 original templates behave exactly as before.
         $assetIndustry = $industry;
-        $mfPath = storage_path("templates/{$industry}/manifest.json");
+        $mfPath = $this->dvOverride[$industry]['manifest'] ?? storage_path("templates/{$industry}/manifest.json");
         if (is_file($mfPath)) {
             $mf = json_decode((string) file_get_contents($mfPath), true);
             $declared = is_array($mf) ? (string) ($mf['industry'] ?? '') : '';
@@ -173,7 +223,7 @@ class TemplateService
         // Walk the manifest so image-typed variables that arrived empty get
         // the industry default before substitution. This way CSS like
         // `background-image:url({{hero_image}})` never lands as url().
-        $manifestPath = storage_path("templates/{$industry}/manifest.json");
+        $manifestPath = $this->dvOverride[$industry]['manifest'] ?? storage_path("templates/{$industry}/manifest.json");
         $varTypes = []; // HTML-TYPED VARIABLES (2026-09-05): key => declared type, consulted at substitution
         if (is_file($manifestPath)) {
             $manifest = json_decode(file_get_contents($manifestPath), true) ?: [];
@@ -1745,35 +1795,17 @@ class TemplateService
         // workspace has no real articles, replace the baked sample cards with an
         // honest empty state (applies to the home export AND, via deployBlogIndex
         // below which receives this same $html, the /blog index).
-        $html = $this->honestBlogSection($websiteId, $html);
         $dir = storage_path("app/public/sites/{$websiteId}");
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
         $path = $dir . '/index.html';
-        // MOBILE-4: the static export is served straight off disk by nginx, so PublishedSiteMiddleware never sees
-        // it. Without this the nav overflows a phone in every draft and preview.
-        // DURABLE ADDITIONS (2026-09-06): Arthur-spliced sections are stored in settings_json.arthur_sections; put back any
-        // that a re-render from variables dropped (idempotent — skipped when the block is already present).
-        $html = $this->reapplyStoredSections($websiteId, $html);
-        $html = $this->roleifyLegacyAddedBlocks($websiteId, $html);   // RISK-0191 U1: a block spliced before the roles is repainted on deploy
-        $html = $this->applySectionOps($websiteId, $html);   // remembered section moves (DEC-0051)
-        $html = $this->applyElementOps($websiteId, $html);   // remembered element moves (ELEMENT888, DEC-0052)
-        $html = $this->ensureHeroPhotoSlot($websiteId, $html);   // HERO-BG-1: a text-only hero carries the placed hero photo as its background
-        $html = $this->hideEmptyImages($html);   // IMGRM-1: no broken-image icons on a served page
-        $html = \App\Engines\Builder\Support\ResponsiveNav::inject($html);
-        $html = self::injectMobileSafety($html);
-        $html = \App\Engines\Builder\Support\ScaleGuard::inject($html, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20
-        $html = \App\Engines\Builder\Support\SiteScripts::inject($html, $websiteId);   // forms → CRM, tracking ids (DEC-0051)
-        // STATIC-EXPORT BLOG LINK (2026-09-05): the export is browsed under /storage/sites/{id}/,
-        // so a root-absolute "/blog" hits the PLATFORM blog, not this site's. Make blog nav links
-        // relative so they reach THIS site's own blog export (sites/{id}/blog/). Export-only —
-        // subdomain serving via getFullHtml keeps /blog.
-        // Only the BARE nav link is rewritten. A permalink (/blog/{slug}) is left root-absolute: that is the
-        // real address of a post on the published site, and it is what the serve-time card injector matches on.
-        $html = preg_replace('#href="/blog/?"#i', 'href="blog/"', $html);
+        // RISK-0101 blog honesty, MOBILE-4, DURABLE ADDITIONS, RISK-0191 U1, DEC-0051/0052 ops, HERO-BG-1, IMGRM-1, SCALE GUARD,
+        // site scripts and the static-export blog link: one chain, shared with the design-update candidate (DESIGN-UPDATES-1).
+        $html = $this->finishForDeploy($websiteId, $html);
         file_put_contents($path, $html);
+        \App\Engines\Builder\Support\DesignVersions::recordDeployed($websiteId, $html);   // DESIGN-UPDATES-1
         // …and the menu links of every added page (published, exported) come back too.
         $this->reapplyPageNavLinks($websiteId);
 
