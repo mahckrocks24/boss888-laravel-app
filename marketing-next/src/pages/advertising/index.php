@@ -161,22 +161,25 @@ $page['head'] = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?
   /* placements: three phones, each playing its placement */
   .ad .pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
   .ad .pl-stage{position:relative;width:100%;aspect-ratio:1/1.12;container-type:inline-size;border-radius:18px;overflow:hidden;background:radial-gradient(120% 90% at 50% 0%,rgba(124,58,237,.18),transparent 60%),var(--fill-hover)}
-  .ad .pl-phone{position:absolute;left:50%;top:7cqw;transform:translateX(-50%);width:62cqw;height:124cqw;border-radius:9cqw;background:#0b0d12;padding:2cqw;box-shadow:0 4cqw 10cqw rgba(10,8,40,.35),inset 0 0 0 .4cqw #2a2d36}
+  /* the phone must END inside the stage: its bottom edge carries the footer bar (Owner 10-06: "how come you did not show an ad on the footer bar") */
+  .ad .pl-phone{position:absolute;left:50%;top:5cqw;transform:translateX(-50%);width:62cqw;height:102cqw;border-radius:9cqw;background:#0b0d12;padding:2cqw;box-shadow:0 4cqw 10cqw rgba(10,8,40,.35),inset 0 0 0 .4cqw #2a2d36}
   .ad .pl-screen{position:relative;width:100%;height:100%;border-radius:7.2cqw;overflow:hidden;background:#fff;display:flex;flex-direction:column}
   .ad .pl-screen>img{display:block;width:100%;height:auto;flex:none}
-  .ad .pl-bar{position:absolute;left:0;right:0;bottom:0;height:7.4cqw;display:flex;align-items:stretch;background:#fff;border-top:.2cqw solid #e4e6eb;box-shadow:0 -1cqw 4cqw rgba(0,0,0,.12);transform:translateY(100%)}
+  .ad .pl-screen>img,.ad .pl-screen>.av-more{position:relative;z-index:0}
+  .ad .pl-bar{position:absolute;left:0;right:0;bottom:0;height:7.4cqw;z-index:3;display:flex;align-items:stretch;background:#fff;border-top:.2cqw solid #e4e6eb;box-shadow:0 -1cqw 4cqw rgba(0,0,0,.12);transform:translateY(100%)}
   .ad .pl-bar .adc{flex:1;min-width:0;height:auto}
   .ad .pl-bar__x{width:5.6cqw;display:grid;place-items:center;background:#f1f5f9;color:#64748b;font:700 2.8cqw/1 var(--font);flex:none}
-  .ad .pl-card{position:absolute;left:5cqw;right:5cqw;top:62cqw;aspect-ratio:300/250;border-radius:2.2cqw;overflow:hidden;background:#fff;box-shadow:0 1.6cqw 4.8cqw rgba(15,10,50,.3);opacity:0;transform:translateY(3cqw) scale(.97)}
-  .ad .pl-modal{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,8,30,.55);opacity:0}
+  .ad .pl-card{position:absolute;z-index:4;left:5cqw;right:5cqw;top:50cqw;aspect-ratio:300/250;border-radius:2.2cqw;overflow:hidden;background:#fff;box-shadow:0 1.6cqw 4.8cqw rgba(15,10,50,.3);opacity:0;transform:translateY(3cqw) scale(.97)}
+  .ad .pl-modal{position:absolute;z-index:5;inset:0;display:grid;place-items:center;background:rgba(10,8,30,.55);opacity:0}
   .ad .pl-modal__box{width:84%;aspect-ratio:1/1;border-radius:3cqw;overflow:hidden;background:#fff;box-shadow:0 2cqw 7cqw rgba(0,0,0,.4);position:relative}
   .ad .pl-tag{position:absolute;left:3cqw;top:3cqw;z-index:2;display:inline-flex;align-items:center;gap:1.2cqw;font:600 2.4cqw/1 var(--font);color:var(--ink);padding:1.4cqw 2cqw;border-radius:999px}
   .ad .pl-tag i{width:1.6cqw;height:1.6cqw;border-radius:50%;background:var(--success)}
   .ad .pl-stage.is-live .pl-bar{animation:ad-bar 9s ease-in-out infinite}
   .ad .pl-stage.is-live .pl-card{animation:ad-card 9s ease-in-out infinite}
   .ad .pl-stage.is-live .pl-modal{animation:ad-modal 9s ease-in-out infinite}
-  @keyframes ad-bar{0%,12%{transform:translateY(100%)}20%,78%{transform:none}86%,100%{transform:translateY(100%)}}
-  @keyframes ad-card{0%,14%{opacity:0;transform:translateY(3cqw) scale(.97)}24%,80%{opacity:1;transform:none}90%,100%{opacity:0;transform:translateY(3cqw) scale(.97)}}
+  /* the ads stay on screen for most of each 9 s loop (Owner 10-06 saw a stage between loops with no ad in it) */
+  @keyframes ad-bar{0%,4%{transform:translateY(100%)}11%,92%{transform:none}97%,100%{transform:translateY(100%)}}
+  @keyframes ad-card{0%,6%{opacity:0;transform:translateY(3cqw) scale(.97)}15%,92%{opacity:1;transform:none}97%,100%{opacity:0;transform:translateY(3cqw) scale(.97)}}
   @keyframes ad-modal{0%,24%{opacity:0}32%,72%{opacity:1}80%,100%{opacity:0}}
   @media (prefers-reduced-motion:reduce){.ad .pl-stage .pl-bar,.ad .pl-stage.is-live .pl-bar{animation:none;transform:none}.ad .pl-stage .pl-card,.ad .pl-stage.is-live .pl-card{animation:none;opacity:1;transform:none}.ad .pl-stage .pl-modal,.ad .pl-stage.is-live .pl-modal{animation:none;opacity:1}.ad .av-bar{transform:none}.ad .av-card{opacity:1;transform:none}}
   /* the network strip */
