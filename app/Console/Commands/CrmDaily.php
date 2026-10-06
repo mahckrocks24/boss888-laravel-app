@@ -24,7 +24,9 @@ class CrmDaily extends Command
     public function handle(SarahClients $sc): int
     {
         $dry = (bool) $this->option('dry-run');
-        $wsQ = DB::table('workspaces')->where('onboarded', 1)->where('proactive_enabled', 1);
+        // LEADS-W1 (DEC-0089): in LEADS-W1 workspaces the list comes even with proactive mode off (only this list, nothing else proactive)
+        $__lw = \App\Engines\CRM\Services\LeadsAssistant::workspaces();
+        $wsQ = DB::table('workspaces')->where('onboarded', 1)->where(fn ($q) => $q->where('proactive_enabled', 1)->orWhereIn('id', $__lw ?: [0]));
         if ($this->option('workspace')) $wsQ->where('id', (int) $this->option('workspace'));
         $done = 0;
         foreach ($wsQ->pluck('timezone', 'id') as $ws => $tz) {
@@ -79,7 +81,9 @@ class CrmDaily extends Command
         $new = DB::table('leads')->where('workspace_id', $ws)->whereNull('deleted_at')->where('status', 'new')
             ->where('created_at', '<', now()->subHours(2))->where('created_at', '>', now()->subDays(21))
             ->whereRaw("$human IS NULL")->whereRaw("NOT $openDraft")->orderBy('created_at')->limit(5)->get();
-        foreach ($new as $l) $out[] = ['lead' => $l, 'business' => $biz[$l->business_id] ?? null, 'reason' => 'enquired ' . Carbon::parse($l->created_at)->diffForHumans() . ' and has not heard back yet'];
+        foreach ($new as $l) { if (\App\Engines\CRM\Services\LeadsAssistant::enabled($ws) && \App\Engines\CRM\Services\LeadsAssistant::isSpam($l)) continue;   // LEADS-W1: spam is never listed
+            $__r = \App\Engines\CRM\Services\LeadsAssistant::enabled($ws) ? \App\Engines\CRM\Services\LeadsAssistant::rating($l) : null;
+            $out[] = ['lead' => $l, 'business' => $biz[$l->business_id] ?? null, 'reason' => ($__r ? \App\Engines\CRM\Services\LeadsAssistant::levelWord($__r) . ' lead: ' : '') . 'enquired ' . Carbon::parse($l->created_at)->diffForHumans() . ' and has not heard back yet' . ($__r && $__r['ask'] ? ' (ask them: ' . rtrim($__r['ask'], '.?') . '?)' : '')]; }
         if (count($out) < 5) {
             $quiet = DB::table('leads')->where('workspace_id', $ws)->whereNull('deleted_at')->whereIn('status', ['contacted', 'qualified'])
                 ->whereRaw("$human BETWEEN NOW() - INTERVAL 14 DAY AND NOW() - INTERVAL 3 DAY")->whereRaw("NOT $openDraft")->whereRaw("NOT $future")

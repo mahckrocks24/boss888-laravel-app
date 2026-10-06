@@ -184,6 +184,8 @@
       '.sh-rail-track::-webkit-scrollbar{height:6px}.sh-rail-track::-webkit-scrollbar-thumb{background:var(--sb-thumb,var(--bd2));border-radius:99px}',
       '.sh-rail-track>.sh-item{flex:0 0 calc((100% - 10px) / 1.5);min-width:380px;max-width:none;scroll-snap-align:start;box-sizing:border-box}',
       '.sh-rail-track{align-items:flex-start}',
+      '.sh-item .sh-read{margin:8px 0 0;padding:9px 11px;border-radius:10px;background:var(--s2,rgba(127,127,127,.08));font-size:13px;line-height:1.5;color:var(--t1)}.sh-item .sh-read--hot{box-shadow:inset 3px 0 0 #e5484d}.sh-item .sh-read--warm{box-shadow:inset 3px 0 0 #f5a524}.sh-item .sh-read--cold{box-shadow:inset 3px 0 0 var(--t3,#8b93a7)}',
+      '.sh-item .sh-draft{margin-top:8px;white-space:pre-wrap}.sh-item.hot .hd .t:after{content:"Hot";margin-left:8px;font:700 10.5px/1 var(--fb);letter-spacing:.04em;text-transform:uppercase;color:#fff;background:#e5484d;padding:3px 7px;border-radius:99px;vertical-align:2px}',
       '.sh-rail-track>.sh-item .acts{margin-top:8px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;gap:6px}.sh-rail-track>.sh-item .acts::-webkit-scrollbar{display:none}',
       '.sh-rail-track>.sh-item .acts .sh-btn{min-height:36px;padding:0 11px;font-size:12.5px;white-space:nowrap;flex:none}.sh-rail-track>.sh-item .who{margin-top:4px}',
       /* after the strip mounts (or resizes), the thread keeps its place at the bottom */
@@ -491,6 +493,20 @@
     var pv = '<div class="pv">' + (x.image ? '<img src="' + esc(x.image) + '" alt="" loading="lazy">' : '') + (x.caption ? '<div class="cap">' + esc(String(x.caption)) + '</div>' : '') + (x.link ? '<div class="lk">' + esc(String(x.link)) + '</div>' : '') + '</div>';   /* RAIL-CLOSED-1 */
     return railItem('appr', '\u270E', 'Post ready: ' + plat, (x.account && x.account.name ? x.account.name : ''), 'Sarah', acts, 'post-' + x.post_id, pv, desc);
   }
+  /* LEADS-W1 (DEC-0089): an enquiry nobody answered - Sarah's read and her reply, sent in one tap as the business */
+  function openClient(id) { if (window.nav) nav('crm'); var t = 0; (function w() { if (window._crm2 && typeof window._crm2.open === 'function') window._crm2.open(id); else if (t++ < 40) setTimeout(w, 150); })(); }
+  function leadItem(x) {
+    var r = x.rating || null, lvl = r ? String(r.level || '') : '', tag = lvl ? lvl.charAt(0).toUpperCase() + lvl.slice(1) : '';
+    var sum = (tag ? tag + ' \u00B7 ' : '') + 'waiting ' + (x.waiting || '') + (x.asked ? ' \u00B7 \u201C' + String(x.asked).replace(/\s+/g, ' ').slice(0, 80) + '\u201D' : '');
+    var pv = '<div class="pv sh-lead">' + (x.asked ? '<div class="cap">\u201C' + esc(String(x.asked)) + '\u201D</div>' : '')
+      + (r ? '<div class="sh-read sh-read--' + esc(lvl) + '"><b>Sarah\'s read: ' + esc(tag) + '</b>' + (r.why ? ' \u2014 ' + esc(r.why) : '') + (r.ask ? '<br>Ask them: ' + esc(r.ask) : '') + (r.offer && !/^ask what they need/i.test(r.offer) ? '<br>Offer: ' + esc(r.offer) : '') + '</div>' : '')
+      + (x.draft ? '<div class="cap sh-draft"><b>' + esc(x.draft.subject || 'Reply') + '</b>\n' + esc(String(x.draft.body || '').slice(0, 260)) + (String(x.draft.body || '').length > 260 ? '\u2026' : '') + '</div>' : (x.has_email ? '' : '<div class="lk">' + (x.phone ? 'No email: call them on ' + esc(x.phone) + '.' : 'No email or phone: open them in Clients.') + '</div>')) + '</div>';
+    var acts = [];
+    if (x.draft) acts.push({ label: 'Send reply', kind: 'primary', run: function (b, el) { campAct('crm/drafts/' + x.draft.id + '/send', {}, 'Sent to ' + x.name + ' as your business.', b, el); } });
+    else if (x.has_email) acts.push({ label: 'Write a reply', kind: 'primary', run: function (b) { b.disabled = true; b.textContent = 'Writing\u2026'; api('POST', 'crm/clients/' + x.lead_id + '/reply-draft', {}).then(function (rr) { if (rr.ok && rr.json && rr.json.success !== false) { loadRail(); } else { b.disabled = false; b.textContent = 'Write a reply'; showToast((rr.json && (rr.json.message || rr.json.error)) || 'Could not write it \u2014 try again.', 'error'); } }).catch(function () { b.disabled = false; b.textContent = 'Write a reply'; }); } });
+    acts.push({ label: 'Open client', run: function () { openClient(x.lead_id); } });
+    return railItem('appr' + (lvl === 'hot' ? ' hot' : ''), '\u2709', 'Reply to ' + x.name, x.business || '', 'Sarah', acts, 'lead-' + x.lead_id, pv, sum);
+  }
   function loadRail() {
     var rail = document.getElementById('sh-rail'); if (!rail) return;
     Promise.all([
@@ -508,6 +524,7 @@
       appr.forEach(function (a) { items.push(approvalItem(a)); });
       camps.forEach(function (p) { items.push(campaignItem(p)); }); chgs.forEach(function (x) { items.push(campaignChangeItem(x)); });
       var posts = (pa.drafts || []).filter(function (x) { return !S.dismissedDrafts || !S.dismissedDrafts[String(x.post_id)]; }); posts.forEach(function (x) { items.push(postItem(x)); });   /* POST-TIMELINE-1 */
+      var leadsW = pa.lead_replies || []; leadsW.slice().reverse().forEach(function (x) { if (x.rating && x.rating.level === 'hot') items.unshift(leadItem(x)); }); leadsW.forEach(function (x) { if (!(x.rating && x.rating.level === 'hot')) items.push(leadItem(x)); });   /* LEADS-W1: hot ones first */
       rs.splice(1, 1);
       var evs = Array.isArray(rs[1].json) ? rs[1].json : ((rs[1].json && (rs[1].json.events || rs[1].json.data)) || []);
       evs.filter(function (e) { return e && /booking_pending|pending/.test(String(e.status || e.booking_status || '')) && !/cancel|declin/.test(String(e.status || '')); }).slice(0, 3).forEach(function (e) {
@@ -523,15 +540,15 @@
         [{ label: 'Connect Google', run: function () { openAdvanced({ view: 'seo', tail: null }); } }], 'gate-gsc'));
       rail.innerHTML = '';
       if (!items.length) { rail.hidden = true; return; }
-      var title = (appr.length || camps.length || chgs.length || posts.length) ? 'Needs your OK' : 'Worth knowing';
-      try { var __n = appr.length + camps.length + chgs.length + posts.length; S.railDecisions = __n; var __c = document.querySelector('#sh-brief .att'); if (__c) { if (__n > 0) __c.innerHTML = '<b>' + __n + '</b> ' + (__n === 1 ? 'thing needs your OK' : 'things need your OK'); else __c.remove(); } } catch (e) {}   /* RAIL-CLOSED-1 */
+      var title = (appr.length || camps.length || chgs.length || posts.length || leadsW.length) ? 'Needs your OK' : 'Worth knowing';
+      try { var __n = appr.length + camps.length + chgs.length + posts.length + leadsW.length; S.railDecisions = __n; var __c = document.querySelector('#sh-brief .att'); if (__c) { if (__n > 0) __c.innerHTML = '<b>' + __n + '</b> ' + (__n === 1 ? 'thing needs your OK' : 'things need your OK'); else __c.remove(); } } catch (e) {}   /* RAIL-CLOSED-1 */
       var h = document.createElement('div'); h.className = 'sh-rail-h';
       h.innerHTML = '<button type="button" class="tog" aria-expanded="true" aria-controls="sh-rail-track" title="Minimise"><svg class="chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="ttl">' + title + '</span></button><span class="pos" aria-live="polite"></span>';
       rail.appendChild(h);
       /* RAIL-2: minimised state is remembered per device; a NEW approval reopens it. */
       var seenKey = 'lu_rail_seen', minKey = 'lu_rail_min', seen = [], isMin = false;
       try { seen = JSON.parse(localStorage.getItem(seenKey) || '[]'); isMin = localStorage.getItem(minKey) === '1'; } catch (e) {}
-      var apprIds = appr.map(function (a) { return String(a.id); }).concat(camps.map(function (p) { return 'camp-' + p.campaign_id; }), chgs.map(function (x) { return 'chg-' + x.change_id; }), posts.map(function (x) { return 'post-' + x.post_id; }));
+      var apprIds = appr.map(function (a) { return String(a.id); }).concat(camps.map(function (p) { return 'camp-' + p.campaign_id; }), chgs.map(function (x) { return 'chg-' + x.change_id; }), posts.map(function (x) { return 'post-' + x.post_id; }), leadsW.map(function (x) { return 'lead-' + x.lead_id; }));
       var fresh = apprIds.filter(function (id) { return seen.indexOf(id) < 0; });
       if (fresh.length) { isMin = false; try { localStorage.setItem(minKey, '0'); localStorage.setItem(seenKey, JSON.stringify(seen.concat(fresh).slice(-50))); } catch (e) {} }
       function setMin(v) { isMin = !!v; rail.classList.toggle('min', isMin); var b = h.querySelector('.tog'); b.setAttribute('aria-expanded', isMin ? 'false' : 'true'); b.title = isMin ? 'Show' : 'Minimise'; try { localStorage.setItem(minKey, isMin ? '1' : '0'); } catch (e) {} if (typeof updPos === 'function') updPos(); }

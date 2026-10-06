@@ -62,7 +62,7 @@ class ClientsController extends BaseEngineController
         $pack = $b ? CrmPacks::forBusiness($b) : (['key' => 'general', 'auto' => 'general', 'chosen' => false] + CrmPacks::all()['general']);
         $packs = collect(CrmPacks::all())->map(fn ($p, $k) => ['key' => $k, 'label' => $p['label'], 'about' => $p['about']])->values();
         $counts = DB::table('leads')->where('workspace_id', $ws)->whereNull('deleted_at')->selectRaw('business_id, count(*) n')->groupBy('business_id')->pluck('n', 'business_id');
-        return $this->readJson(['businesses' => $this->businesses($ws), 'pack' => $pack, 'packs' => $packs, 'counts' => $counts, 'unassigned' => (int) ($counts[''] ?? 0)]);
+        return $this->readJson(['businesses' => $this->businesses($ws), 'pack' => $pack, 'packs' => $packs, 'counts' => $counts, 'unassigned' => (int) ($counts[''] ?? 0), 'leads_w1' => \App\Engines\CRM\Services\LeadsAssistant::enabled($ws)]);
     }
 
     /** PUT /crm/setup/{businessId} {pack?, one?, many?} — the owner's choice for one business. */
@@ -363,7 +363,47 @@ class ClientsController extends BaseEngineController
     public function summary(Request $r, int $id): JsonResponse
     {
         $out = app(\App\Engines\CRM\Services\SarahClients::class)->summary($this->wsId($r), $id, $r->boolean('refresh'));
+        // LEADS-W1 (DEC-0089): Sarah's read of the enquiry travels with her summary
+        $ws = $this->wsId($r); $rt = null;
+        if (\App\Engines\CRM\Services\LeadsAssistant::enabled($ws)) { $l = DB::table('leads')->where('id', $id)->where('workspace_id', $ws)->first(); $rt = $l ? \App\Engines\CRM\Services\LeadsAssistant::rating($l) : null; if ($l && ! $rt && $l->status === 'new') $rt = app(\App\Engines\CRM\Services\LeadsAssistant::class)->rate($ws, $id); }
+        if ($out && $rt) $out['rating'] = array_intersect_key($rt, array_flip(['level', 'why', 'say', 'offer', 'ask', 'follow_up']));
         return $out ? $this->readJson(['success' => true] + $out) : response()->json(['success' => false, 'message' => 'No summary yet.'], 404);
+    }
+
+    /** LEADS-W1: POST /crm/clients/{id}/rate — read the enquiry again (no credits, like the summary). */
+    public function rate(Request $r, int $id): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        if (! \App\Engines\CRM\Services\LeadsAssistant::enabled($ws)) return response()->json(['success' => false, 'message' => 'Not available yet.'], 404);
+        $rt = app(\App\Engines\CRM\Services\LeadsAssistant::class)->rate($ws, $id, true);
+        return $rt ? $this->readJson(['success' => true, 'rating' => array_intersect_key($rt, array_flip(['level', 'why', 'say', 'offer', 'ask', 'follow_up']))]) : response()->json(['success' => false, 'message' => 'Sarah could not read this enquiry just now.'], 422);
+    }
+
+    /** LEADS-W1: POST /crm/clients/{id}/lost {reason} — close as lost; the reason is kept for Sarah to learn from. */
+    public function lost(Request $r, int $id): JsonResponse
+    {
+        $why = trim((string) $r->input('reason', ''));
+        if ($why === '') return response()->json(['success' => false, 'message' => 'Say why it was lost, so Sarah can learn from it.'], 422);
+        $ok = app(\App\Engines\CRM\Services\LeadsAssistant::class)->markLost($this->wsId($r), $id, $why, $this->userId($r));
+        return $ok ? $this->readJson(['success' => true]) : response()->json(['success' => false, 'message' => 'Client not found.'], 404);
+    }
+
+    /** LEADS-W1: POST /crm/clients/{id}/reply-draft — Sarah writes a reply to send in one tap (1 credit, as for any reply she writes). */
+    public function replyDraft(Request $r, int $id): JsonResponse
+    {
+        $ws = $this->wsId($r);
+        $l = DB::table('leads')->where('id', $id)->where('workspace_id', $ws)->whereNull('deleted_at')->first();
+        if (! $l) return response()->json(['success' => false, 'message' => 'Client not found.'], 404);
+        $open = DB::table('crm_reply_drafts')->where('lead_id', $id)->where('status', 'draft')->orderByDesc('id')->first(['id', 'subject', 'body']);
+        if ($open) return $this->readJson(['success' => true, 'draft' => (array) $open]);
+        if (! \App\Engines\CRM\Services\ClientIdentity::emailKey($l->email)) return response()->json(['success' => false, 'message' => 'They have no email address to reply to.'], 422);
+        try { if (! app(\App\Core\Billing\CreditService::class)->hasBalance($ws, \App\Engines\CRM\Services\SarahClients::REPLY_CREDITS)) return response()->json(['success' => false, 'message' => 'Not enough credits for Sarah to write a reply.'], 402); } catch (\Throwable $e) {}
+        $sc = app(\App\Engines\CRM\Services\SarahClients::class);
+        $reply = $sc->writeReply($ws, $l, $l->status === 'new' ? 'first_reply' : 'follow_up', $l->status === 'new' ? null : 'checking in');
+        if (! $reply) return response()->json(['success' => false, 'message' => 'Sarah could not write a reply just now. Try again in a minute.'], 422);
+        try { app(\App\Core\Billing\CreditService::class)->debit($ws, \App\Engines\CRM\Services\SarahClients::REPLY_CREDITS, 'crm_reply', $id, ['what' => 'Reply to an enquiry']); } catch (\Throwable $e) {}
+        $did = $sc->saveDraft($ws, $l, $reply, 'enquiry');
+        return $this->readJson(['success' => true, 'draft' => ['id' => $did, 'subject' => $reply['subject'], 'body' => $reply['body']]]);
     }
 
     /** PUT /crm/setup/{businessId}/fields {fields:[{label, type, options?}]} — the owner's own details kept about each client. */

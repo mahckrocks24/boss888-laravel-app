@@ -119,6 +119,20 @@
         camps.forEach(function (p) { s1.appendChild(campaignRow(p)); });
         chgs.forEach(function (x) { s1.appendChild(changeRow(x)); });
         appr.forEach(function (a) { s1.appendChild(approvalRow(a)); });
+        /* LEADS-W1 (DEC-0089): enquiries nobody answered, each with Sarah's read and her reply ready to send */
+        var lr = pa.lead_replies || [];
+        if (lr.length) { var sL = sec('Enquiries to reply to', lr.length, 'People who got in touch and have not heard back. A quick reply wins more of them.'); body.insertBefore(sL, s1.nextSibling);
+          lr.forEach(function (x) {
+            var r = x.rating || null, lvl = r ? String(r.level || '') : '', tag = lvl ? lvl.charAt(0).toUpperCase() + lvl.slice(1) : '';
+            var pv = (x.asked ? '<div class="pv-cap">\u201C' + esc(x.asked) + '\u201D</div>' : '') + (r ? '<div class="pv-line"><b>Sarah\'s read: ' + esc(tag) + '</b>' + (r.why ? ' \u2014 ' + esc(r.why) : '') + (r.ask ? '<br>Ask them: ' + esc(r.ask) : '') + '</div>' : '')
+              + (x.draft ? '<div class="pv-cap" style="margin-top:8px"><b>' + esc(x.draft.subject || 'Reply') + '</b>\n' + esc(x.draft.body || '') + '</div>' : (x.has_email ? '' : '<div class="pv-line">' + (x.phone ? 'No email: call them on ' + esc(x.phone) + '.' : 'No email or phone: open them in Clients.') + '</div>'));
+            var acts = [];
+            if (x.draft) acts.push(btn('Send reply', 'primary', function (b) { b.disabled = true; b.textContent = 'Sending\u2026'; api('POST', 'crm/drafts/' + x.draft.id + '/send', {}).then(function (rr) { if (rr.ok && rr.json && rr.json.success !== false) { if (window.showToast) showToast('Sent to ' + x.name + ' as your business.', 'success'); window.basicAttentionLoad(root); } else { b.disabled = false; b.textContent = 'Send reply'; if (window.showToast) showToast((rr.json && (rr.json.message || rr.json.error)) || 'Not sent \u2014 try again.', 'error'); } }); }));
+            else if (x.has_email) acts.push(btn('Write a reply', 'primary', function (b) { b.disabled = true; b.textContent = 'Writing\u2026'; api('POST', 'crm/clients/' + x.lead_id + '/reply-draft', {}).then(function () { window.basicAttentionLoad(root); }); }));
+            acts.push(btn('Open client', '', function () { if (window.nav) nav('crm'); var t = 0; (function w() { if (window._crm2 && typeof window._crm2.open === 'function') window._crm2.open(x.lead_id); else if (t++ < 40) setTimeout(w, 150); })(); }));
+            sL.appendChild(row(lvl === 'hot' ? 'att' : '', '\u2709', 'Reply to ' + x.name + (tag ? ' \u00B7 ' + tag : ''), (x.business ? x.business + ' \u00B7 ' : '') + 'waiting ' + (x.waiting || ''), acts, pv));
+          });
+        }
 
         var evs = Array.isArray(rs[1].json) ? rs[1].json : ((rs[1].json && (rs[1].json.events || rs[1].json.data)) || []);
         var pend = evs.filter(function (e) { return /^(booking|callback)_pending$/.test(String(e.category || '')); });

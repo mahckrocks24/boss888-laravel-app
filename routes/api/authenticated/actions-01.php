@@ -178,6 +178,8 @@ Route::get('/agents/{slug}/pending-actions', function (Request $r, $slug) {
     // CAMPAIGN-PREVIEW-1: campaign ideas and campaign updates are previewed in the chat like posts — decide without leaving it
     $__pv = ['campaigns' => [], 'changes' => []];
     try { $__pv = app(\App\Core\Growth\ChatReplies::class)->previews($wsId); } catch (\Throwable $e) {}
-    return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'timeline_posts' => $timelinePosts ?? [], 'campaigns' => $__pv['campaigns'], 'campaign_changes' => $__pv['changes'], 'offer' => $offer, 'offer_message_id' => $offerMessageId,
+    $__lr = [];   // LEADS-W1 (DEC-0089): enquiries waiting for a reply, each with Sarah's read and her reply ready to send
+    try { $__lr = app(\App\Engines\CRM\Services\LeadsAssistant::class)->waiting($wsId); } catch (\Throwable $e) {}
+    return response()->json(['success' => true, 'items' => $items, 'drafts' => $drafts, 'lead_replies' => $__lr, 'timeline_posts' => $timelinePosts ?? [], 'campaigns' => $__pv['campaigns'], 'campaign_changes' => $__pv['changes'], 'offer' => $offer, 'offer_message_id' => $offerMessageId,
         'quick_replies' => $chips ?: ($offer ? [['label' => 'Go', 'text' => 'go'], ['label' => 'Not now', 'text' => 'not now']] : [])]);
 });

@@ -70,7 +70,7 @@ class SarahClients
             $r = app(RuntimeClient::class)->chatJson($sys, 'FACTS: ' . json_encode($facts, JSON_UNESCAPED_UNICODE), ['task' => 'crm_client_reply', 'workspace_id' => (string) $ws], 600);
             $p = (($r['success'] ?? false) && is_array($r['parsed'] ?? null)) ? $r['parsed'] : null;
             $subject = trim((string) ($p['subject'] ?? '')); $body = trim((string) ($p['body'] ?? ''));
-            if ($body === '' || mb_strlen($body) < 30 || preg_match('/\b(levelup|artificial intelligence|chatgpt|openai|deepseek|flux\.1|black forest labs|fal\.ai|language model|an assistant)\b/i', $subject . ' ' . $body) || preg_match('/\bAI\b/', $subject . ' ' . $body)) return null;
+            if ($body === '' || mb_strlen($body) < 30 || LeadsAssistant::hasPlaceholder($subject . ' ' . $body) || preg_match('/\b(levelup|artificial intelligence|chatgpt|openai|deepseek|flux\.1|black forest labs|fal\.ai|language model|an assistant)\b/i', $subject . ' ' . $body) || preg_match('/\bAI\b/', $subject . ' ' . $body)) return null;
             return ['subject' => mb_substr($subject ?: 'Thanks for getting in touch', 0, 150), 'body' => mb_substr($body, 0, 2000)];
         } catch (\Throwable $e) {
             Log::warning('[CRM-SARAH-3] writeReply: ' . $e->getMessage());
@@ -179,6 +179,10 @@ class SarahClients
         if (! $lead) return 'gone';
         if ($why = $this->speedBlocker($lead)) return $why;
         $ws = (int) $lead->workspace_id; $biz = (int) $lead->business_id;
+        // LEADS-W1 (DEC-0089): Sarah reads it first; nothing is written to, charged for, or asked about spam
+        $__rt = null;
+        if (LeadsAssistant::enabled($ws)) { try { $__rt = LeadsAssistant::rating($lead) ?? app(LeadsAssistant::class)->rate($ws, $leadId); } catch (\Throwable $e) {} }
+        if ($__rt && ! empty($__rt['spam'])) return 'spam';
         $row = $this->autoreplyRow($ws, $biz);
         if (in_array($row->status, ['off', 'declined'], true)) return 'owner said no';
         try { if (! app(\App\Core\Billing\CreditService::class)->hasBalance($ws, self::REPLY_CREDITS)) return 'no credits'; } catch (\Throwable $e) {}
@@ -189,6 +193,9 @@ class SarahClients
         $bizName = (string) DB::table('businesses')->where('id', $biz)->value('name');
         $first = trim(explode(' ', (string) $lead->name)[0]) ?: 'Someone';
         $asked = mb_substr((string) ($this->leadFacts($lead)['their_message'] ?? ''), 0, 160);
+        // LEADS-W1 (DEC-0089): her read of the enquiry goes with the reply
+        $__read = '';
+        if ($__rt) $__read = "\n\n**My read: " . LeadsAssistant::levelWord($__rt) . '**' . ($__rt['why'] ? ' — ' . $__rt['why'] : '') . ($__rt['ask'] ? "\nAsk them: " . $__rt['ask'] : '') . ($__rt['follow_up'] ? "\nIf they go quiet: " . rtrim($__rt['follow_up'], '. ') . '.' : '');
         if ($row->status === 'on' && $row->mode === 'send') {
             $r = $this->sendDraft($ws, $draftId, null);
             if (! empty($r['success'])) {
@@ -201,7 +208,7 @@ class SarahClients
         }
         // show it first: the first time, ask for the standing yes; after "show me first", ask about this one
         $asking = $row->status !== 'on';
-        $plain = "\n\n**Subject:** " . $reply['subject'] . "\n\n" . $reply['body'] . "\n\n"
+        $plain = $__read . "\n\n**Subject:** " . $reply['subject'] . "\n\n" . $reply['body'] . "\n\n"
             . ($asking ? "Reply **yes, send them** and I will answer every new enquiry for {$bizName} like this within a minute, or **show me first** to approve each one, or **no thanks**." : 'Reply **send it**, or **skip**.');
         $msgId = $this->say($ws, $asking ? 'autoreply_ask' : 'lead_reply',
             $asking ? 'A new enquiry just came in. In two short sentences: say who and what they asked, and offer to answer new enquiries like this for them within a minute, in the business\'s voice, never promising prices or times. The reply you wrote follows your words, so do not repeat it.'

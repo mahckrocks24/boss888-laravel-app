@@ -310,6 +310,10 @@ class CrmService
         if (! array_key_exists('_origin', $data) && is_file(storage_path('app/speedlead.on'))) {
             try { \App\Jobs\SpeedToLeadJob::dispatch((int) $lead->id)->delay(now()->addSeconds(45)); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CRM-SARAH-3] dispatch: ' . $e->getMessage()); }
         }
+        // LEADS-W1 (DEC-0089): Sarah reads every enquiry from a customer: hot / warm / cold and what to do; a hot one is pushed at once
+        if (! array_key_exists('_origin', $data) && \App\Engines\CRM\Services\LeadsAssistant::enabled($wsId)) {
+            try { \App\Jobs\LeadRateJob::dispatch((int) $lead->id)->delay(now()->addSeconds(20)); } catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[LEADS-W1] dispatch: ' . $e->getMessage()); }
+        }
         if (! array_key_exists('_origin', $data)) {
             try { app(\App\Core\EngineKernel\EngineExecutionService::class)->fireCrmTrigger($wsId, 'create_lead', $data, ['entity_type' => 'Lead', 'entity_id' => $lead->id]); }
             catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[CRM-DATA-1] lead_created automations: ' . $e->getMessage()); }

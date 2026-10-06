@@ -24,12 +24,15 @@ final class NeedsYou
         try { $changes = (int) DB::table('campaign_changes')->where('workspace_id', $wsId)->where('status', 'proposed')->count(); } catch (\Throwable $e) {}
         $posts = 0;   // POST-TIMELINE-1: drafted posts waiting for Post it
         try { $posts = (int) DB::table('social_posts')->where('workspace_id', $wsId)->where('status', 'draft')->whereNull('deleted_at')->whereNull('preview_dismissed_at')->where('created_at', '>=', now()->subDays(7))->count(); } catch (\Throwable $e) {}
-        return ['count' => $approvals + $campaigns + $changes + $posts, 'approvals' => $approvals, 'campaigns' => $campaigns, 'changes' => $changes, 'posts' => $posts];
+        $leads = 0;   // LEADS-W1 (DEC-0089): enquiries nobody answered yet
+        try { if (\App\Engines\CRM\Services\LeadsAssistant::enabled($wsId)) $leads = (int) \App\Engines\CRM\Services\LeadsAssistant::unanswered($wsId)->where('created_at', '>', now()->subDays(21))->limit(200)->get(['id', 'metadata_json'])->filter(fn ($l) => \App\Engines\CRM\Services\LeadsAssistant::chaseable($l))->count(); } catch (\Throwable $e) {}
+        return ['count' => $approvals + $campaigns + $changes + $posts + $leads, 'approvals' => $approvals, 'campaigns' => $campaigns, 'changes' => $changes, 'posts' => $posts, 'leads' => $leads];
     }
 
     public static function line(array $n): string
     {
         $parts = [];
+        if (! empty($n['leads'])) $parts[] = $n['leads'] . ' enquir' . ($n['leads'] === 1 ? 'y' : 'ies') . ' to reply to';   // LEADS-W1
         if (! empty($n['posts'])) $parts[] = $n['posts'] . ' post' . ($n['posts'] === 1 ? '' : 's') . ' ready to go out';
         if ($n['campaigns']) $parts[] = $n['campaigns'] . ' campaign idea' . ($n['campaigns'] === 1 ? '' : 's');
         if ($n['changes']) $parts[] = $n['changes'] . ' campaign update' . ($n['changes'] === 1 ? '' : 's');

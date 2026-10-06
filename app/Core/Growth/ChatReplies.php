@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Log;
  */
 final class ChatReplies
 {
-    public const TYPES = ['anticipation', 'owner_fact', 'watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily', 'image_shown'];   // REGEN-2
+    public const TYPES = ['anticipation', 'owner_fact', 'watch_ask', 'campaign_ideas', 'campaign_change', 'brand_intake', 'brand_summary', 'campaign_step', 'search_merge', 'credit_pace', 'plan_nudge', 'autoreply_ask', 'lead_reply', 'crm_daily', 'image_shown', 'lead_old'];   // REGEN-2
     /** Text after this marker is the plain-words version of a card: the app shows it, the web hides it next to the card. */
     public const APP_PART = "\n\n\u{200B}";
 
@@ -91,6 +91,10 @@ final class ChatReplies
                 return ! empty($q['meta']['attachments']);
             case 'autoreply_ask': case 'lead_reply':   // CRM-SARAH-3: open while the reply Sarah wrote is still unsent
                 return DB::table('crm_reply_drafts')->where('id', (int) ($c['draft_id'] ?? 0))->where('workspace_id', $wsId)->where('status', 'draft')->exists();
+            case 'lead_old':   // LEADS-W1: open while any of the old enquiries is still unanswered
+                $q['lead_ids'] = array_map('intval', (array) ($c['lead_ids'] ?? []));
+                $q['open_leads'] = \App\Engines\CRM\Services\LeadsAssistant::unanswered($wsId)->whereIn('id', $q['lead_ids'] ?: [0])->pluck('id')->map(fn ($x) => (int) $x)->all();
+                return (bool) $q['open_leads'];
             case 'crm_daily':
                 $q['draft_ids'] = array_map('intval', (array) ($c['draft_ids'] ?? []));
                 $q['open_drafts'] = DB::table('crm_reply_drafts')->whereIn('id', $q['draft_ids'] ?: [0])->where('workspace_id', $wsId)->where('status', 'draft')->pluck('id')->map(fn ($x) => (int) $x)->all();
@@ -195,6 +199,7 @@ final class ChatReplies
                 ? [['label' => 'Yes, send them', 'text' => 'Yes, send them'], ['label' => 'Show me first', 'text' => 'Show me first'], ['label' => 'Send this one', 'text' => 'Send this one'], ['label' => 'No thanks', 'text' => 'No thanks']]
                 : [['label' => 'Send it', 'text' => 'Send it'], ['label' => 'Skip', 'text' => 'Skip']],
             'lead_reply' => [['label' => 'Send it', 'text' => 'Send it'], ['label' => 'Skip', 'text' => 'Skip']],
+            'lead_old' => array_map(fn ($id) => ['label' => 'Follow up #' . (array_search($id, $q['lead_ids'], true) + 1), 'text' => 'Follow up #' . (array_search($id, $q['lead_ids'], true) + 1)], array_slice($q['open_leads'], 0, 4)),
             'crm_daily' => array_merge(array_map(fn ($id) => ['label' => 'Send #' . (array_search($id, $q['draft_ids'], true) + 1), 'text' => 'Send #' . (array_search($id, $q['draft_ids'], true) + 1)], array_slice($q['open_drafts'], 0, 3)),
                 count($q['open_drafts']) > 1 ? [['label' => 'Send all', 'text' => 'Send all']] : [], [['label' => 'Not today', 'text' => 'Not today']]),
             default => [],
@@ -213,6 +218,8 @@ final class ChatReplies
         $q = $this->openQuestion($wsId);
         // PICKS-FIX-3 (2026-10-01): "2, 3 and 7" answers the design-look card even when an image or a check-in was shown after it
         if (preg_match('/^[\s\d,&+.]+(and[\s\d,&+.]+)*$/i', $t) && (! $q || ! in_array($q['type'], ['brand_intake', 'campaign_ideas'], true))) { $__bq = $this->openQuestion($wsId, 'brand_intake'); if ($__bq) $q = $__bq; }
+        // LEADS-W1: "follow up #2" / "lost #3 because ..." answer the old-enquiry card even when something newer was said after it
+        if (preg_match('/^\s*(follow[\s-]?up|lost|close)\s*#?\s*\d/i', $t)) { $__lo = $this->openQuestion($wsId, 'lead_old'); if ($__lo) $q = $__lo; }
         if (! $q) return null;
         $yes = (bool) preg_match(self::YES, $t);
         $no = (bool) preg_match(self::NO, $t);
@@ -313,6 +320,25 @@ final class ChatReplies
                         if ($draft) $sc->skipDraft($wsId, $draft);
                         if ($q['type'] === 'autoreply_ask' && $biz && preg_match('/\b(no thanks|no)\b/i', $t)) $sc->setAutoreply($wsId, $biz, 'declined', null, $userId);
                         return ['turn' => 'reply', 'note' => "The owner will not send your reply to {$who}" . ($q['type'] === 'autoreply_ask' ? ", and does not want you answering new enquiries for {$bizName} for now; you will still tell them about each one" : '') . '. Acknowledge in one short line.', 'verified' => []];
+                    }
+                    return null;
+                }
+                case 'lead_old': {   // LEADS-W1 (DEC-0089): follow up, or close as lost with the reason
+                    $la = app(\App\Engines\CRM\Services\LeadsAssistant::class);
+                    $pickN = function (string $s) use ($q) { $o = []; if (preg_match_all('/#?\s*(\d)\b/', $s, $mm)) foreach ($mm[1] as $n) { $id = $q['lead_ids'][((int) $n) - 1] ?? null; if ($id && in_array($id, $q['open_leads'], true)) $o[] = $id; } return array_values(array_unique($o)); };
+                    $nm = fn ($id) => (string) DB::table('leads')->where('id', $id)->value('name');
+                    if (preg_match('/^\s*(lost|close)\s*#?\s*(\d)\b\s*(.*)$/is', $t, $m)) {
+                        $id = $q['lead_ids'][((int) $m[2]) - 1] ?? null; $why = trim(preg_replace('/^(because|as|since|-|:|,)\s*/i', '', trim($m[3])));
+                        if (! $id || ! in_array($id, $q['open_leads'], true)) return ['turn' => 'reply', 'note' => 'There is no open enquiry with that number in your list. Ask the owner which one they mean, in one short line.', 'verified' => []];
+                        if ($why === '') return ['turn' => 'reply', 'note' => 'Before closing ' . $nm($id) . ' as lost, ask the owner in one short question why (for example: "lost #' . $m[2] . ' booked elsewhere"). The reason helps you learn what loses customers.', 'verified' => []];
+                        $la->markLost($wsId, (int) $id, $why, $userId);
+                        return ['turn' => 'reply', 'note' => 'Closed ' . $nm($id) . ' as lost, with the reason "' . $why . '" kept on their record. Acknowledge in one short line.', 'verified' => ['closed', 'lost']];
+                    }
+                    if (preg_match('/^\s*follow[\s-]?up\b/i', $t)) {
+                        $ids = preg_match('/\ball\b/i', $t) ? $q['open_leads'] : $pickN($t); $made = []; $noEmail = [];
+                        foreach ($ids as $id) { $d = $la->followUpDraft($wsId, (int) $id); if ($d) $made[] = $nm($id); else $noEmail[] = $nm($id); }
+                        if (! $ids) return ['turn' => 'reply', 'note' => 'That enquiry is already answered or closed, so there is nothing to follow up. Say so in one short line.', 'verified' => []];
+                        return ['turn' => 'reply', 'note' => ($made ? 'You wrote a follow-up for ' . implode(', ', $made) . '; each waits in Needs your OK for the owner to send in one tap (nothing was sent).' : '') . ($noEmail ? ' No follow-up written for ' . implode(', ', $noEmail) . ' (no email address, or no credits): suggest a call if there is a phone number.' : '') . ' Say it in one or two short lines.', 'verified' => ['follow-up', 'follow up', 'written', 'drafted']];
                     }
                     return null;
                 }

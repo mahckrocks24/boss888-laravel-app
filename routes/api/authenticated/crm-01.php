@@ -64,6 +64,9 @@ use Illuminate\Support\Facades\Route;
         Route::put('/clients/{id}/fields', [$k, 'fields'])->whereNumber('id');
         // CRM-SARAH-3: Sarah in Clients
         Route::get('/clients/{id}/summary', [$k, 'summary'])->whereNumber('id');
+        Route::post('/clients/{id}/rate', [$k, 'rate'])->whereNumber('id');   // LEADS-W1
+        Route::post('/clients/{id}/lost', [$k, 'lost'])->whereNumber('id');
+        Route::post('/clients/{id}/reply-draft', [$k, 'replyDraft'])->whereNumber('id');
         Route::get('/drafts', [$k, 'drafts']);
         // CRM-PACKS-4a: quotes, deposits, invoices
         Route::post('/clients/{id}/payments', [$k, 'createPayment'])->whereNumber('id');

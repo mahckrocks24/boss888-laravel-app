@@ -106,6 +106,11 @@ function phoneDigits(p) { return String(p || '').replace(/[^0-9+]/g, ''); }
         '.crm2-kpi{padding:16px 18px}.crm2-kpi .l{font-size:12px;color:var(--t3);font-weight:600}.crm2-kpi .v{font:600 28px var(--fh);color:var(--t1);margin-top:6px}.crm2-kpi .h{font-size:12px;color:var(--t3);margin-top:2px}',
         '.crm2-grid2{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:16px;align-items:start}',
         '.crm2-rows{list-style:none;margin:0;padding:0 8px 8px}',
+        /* LEADS-W1: Sarah's read of the enquiry */
+        '.crm2-read{display:flex;gap:10px;align-items:flex-start;margin-top:10px;padding:10px 12px;border-radius:12px;background:var(--s2);border:1px solid var(--bd)}',
+        '.crm2-read .lv{flex:none;font:700 11px/1 var(--fb);letter-spacing:.05em;text-transform:uppercase;padding:5px 8px;border-radius:99px;color:#fff;background:var(--t3)}',
+        '.crm2-read--hot .lv{background:#e5484d}.crm2-read--warm .lv{background:#d98b0b}.crm2-read--cold .lv{background:#6b7280}',
+        '.crm2-read .bd{font-size:13px;line-height:1.5;color:var(--t1);min-width:0}.crm2-read ul{margin:6px 0 0;padding-left:16px}.crm2-read li{margin:2px 0}',
         '.crm2-row{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;cursor:pointer}',
         '.crm2-row:hover{background:var(--s2)}.crm2-row+.crm2-row{border-top:1px solid var(--bd)}',
         '.crm2-av{width:36px;height:36px;border-radius:50%;background:var(--ps);color:var(--pu);display:flex;align-items:center;justify-content:center;font:600 13px var(--fb);flex-shrink:0}',
@@ -283,8 +288,8 @@ function catCard(R) {
 function refreshSummary(id) {
     api('GET', '/clients/' + id + '/summary').then(function (j) {
         if (!S.rec || S.recId != id) return;
-        var changed = !S.rec.sarah || S.rec.sarah.summary !== j.summary || S.rec.sarah.next_step !== j.next_step;
-        S.rec.sarah = {summary: j.summary, next_step: j.next_step};
+        var changed = !S.rec.sarah || S.rec.sarah.summary !== j.summary || S.rec.sarah.next_step !== j.next_step || JSON.stringify(S.rec.sarah.rating || null) !== JSON.stringify(j.rating || null);
+        S.rec.sarah = {summary: j.summary, next_step: j.next_step, rating: j.rating || null};   /* LEADS-W1 */
         var box = document.getElementById('crm2-sarah'); if (box && changed) box.outerHTML = sarahBox(S.rec);
     }).catch(function () { var box = document.getElementById('crm2-sarah'); if (box && !S.rec.sarah) box.querySelector('p').textContent = factsLine(S.rec); });
 }
@@ -299,6 +304,8 @@ function sarahBox(R) {
     return '<section class="crm2-sarah" id="crm2-sarah" aria-live="polite"><div class="h">' + I('ai', 14) + ' Sarah\'s summary</div>' +
         '<p>' + esc(sm ? sm.summary : 'Reading ' + c.name.split(' ')[0] + '\'s history…') + '</p>' +
         (sm && sm.next_step ? '<div class="nx"><b>Next:</b> ' + esc(sm.next_step) + '</div>' : '') +
+        (sm && sm.rating ? '<div class="crm2-read crm2-read--' + esc(sm.rating.level) + '"><span class="lv">' + esc(sm.rating.level.charAt(0).toUpperCase() + sm.rating.level.slice(1)) + '</span><div class="bd">' + (sm.rating.why ? '<div>' + esc(sm.rating.why) + '</div>' : '') +
+            '<ul>' + (sm.rating.say ? '<li><b>Answer first:</b> ' + esc(sm.rating.say) + '</li>' : '') + (sm.rating.offer && !/^ask what they need/i.test(sm.rating.offer) ? '<li><b>Offer:</b> ' + esc(sm.rating.offer) + '</li>' : '') + (sm.rating.ask ? '<li><b>Ask:</b> ' + esc(sm.rating.ask) + '</li>' : '') + (sm.rating.follow_up ? '<li><b>If they go quiet:</b> ' + esc(sm.rating.follow_up) + '</li>' : '') + '</ul></div></div>' : '') +
         (c.first_message_full ? '<div class="q">“' + esc(c.first_message_full.slice(0, 400)) + '”</div>' : '') + '</section>';
 }
 var PAYST = {draft: ['Not sent', 'crm2-t-lost'], sent: ['Sent', 'crm2-t-contacted'], viewed: ['Opened', 'crm2-t-qualified'], accepted: ['Accepted', 'crm2-t-won'], paid: ['Paid', 'crm2-t-won'], cancelled: ['Withdrawn', 'crm2-t-lost']};
@@ -515,8 +522,16 @@ function wireBoard() {
 async function moveTo(id, stage) {
     var row = S.board.rows.find(function (c) { return c.id == id; }) || (S.rec && S.rec.client.id == id ? S.rec.client : null);
     if (row && row.stage === stage) return;
+    /* LEADS-W1 (DEC-0089): closing as Lost asks why, so Sarah learns what loses customers */
+    var __pk = packOf(row) || S.pack, __st = (__pk && __pk.stages || []).find(function (s) { return s.key === stage; }), __why = null;
+    if (__st && __st.status === 'lost' && S.setup && S.setup.leads_w1 && typeof window.luDialog === 'function') {
+        __why = await window.luDialog({type: 'prompt', title: 'Why was it lost?', message: 'A few words, for example: booked elsewhere, too expensive, no reply. Sarah uses it to learn what loses customers.', okLabel: 'Close as lost', cancelLabel: 'Cancel', placeholder: 'Why it was lost'});
+        if (__why === null || __why === false) return;
+        __why = String(__why).trim(); if (!__why) { toast('Say why it was lost, so Sarah can learn from it.', 'error'); return; }
+    }
     try {
         var j = await api('PUT', '/clients/' + id + '/stage', {stage: stage});
+        if (__why) { try { await api('POST', '/clients/' + id + '/lost', {reason: __why}); } catch (e) {} }
         S.board.rows.forEach(function (c) { if (c.id == id) { c.stage = j.stage; c.stage_name = j.stage_name; } });
         S.list.rows.forEach(function (c) { if (c.id == id) { c.stage = j.stage; c.stage_name = j.stage_name; } });
         toast('Moved to ' + j.stage_name + '.');
