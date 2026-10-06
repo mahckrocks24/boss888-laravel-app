@@ -8,6 +8,8 @@
  */
 $page['title'] = $s['name'];
 $page['description'] = $s['promise'] . ' ' . mb_substr($s['lede'], 0, 140);
+// SOL-SITES-1: an old combined slug (dental-and-medical, beauty-and-barbers, hotels-and-rentals) still answers, pointing search at the real page
+if (! empty($alias_of)) { $page['route'] = $alias_of; $page['noindex'] = true; }
 $pd = require __DIR__ . '/product-data.php';
 $productIndex = []; foreach ($pd['launched'] as $p) { $productIndex[$p['slug']] = $p; }
 $agentBy = []; foreach ($data['agents'] as $a) { $agentBy[$a['slug']] = $a; }
@@ -56,6 +58,8 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
     </div>
   </div>
 </section>
+
+<?php require __DIR__ . '/sol-sites.php'; ?>
 
 <section class="pr-group">
   <div class="container">
@@ -153,7 +157,7 @@ $page['jsonld'][] = ['@context' => 'https://schema.org', '@type' => 'FAQPage', '
 <section class="pr-faq">
   <div class="container pr-faq-in">
     <div class="pr-faq-side">
-      <h2>Questions from <?= e(strtolower($s['short'])) ?></h2>
+      <h2>Questions from <?= e(strtolower($s['name'])) ?></h2>
       <p>Something specific to your business? <a href="/next/contact/">Write to us</a> and a person answers.</p>
     </div>
     <div class="faq"><?php foreach ($s['faq'] as [$q, $a]): ?><details class="faq-item"><summary><?= e($q) ?></summary><p><?= e($a) ?></p></details><?php endforeach; ?></div>

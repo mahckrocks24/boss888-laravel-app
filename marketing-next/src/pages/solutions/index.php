@@ -25,8 +25,14 @@ $avatar = fn (string $slug) => '/img/agents/' . rawurlencode($slug) . '.webp';
 
 <section class="pr-group">
   <div class="container">
+    <?php /* SOL-SITES-1: 33 industries grouped by sector */ $sectors = []; foreach ($sols as $s) { $sectors[$s['sector'] ?? 'Industries'][] = $s; } $anchor = fn (string $n) => preg_replace('/[^a-z0-9]+/', '-', strtolower($n)); ?>
+    <?php if (count($sectors) > 1): ?><nav class="sol-sector-nav" aria-label="Sectors"><?php foreach (array_keys($sectors) as $n): ?><a href="#<?= e($anchor($n)) ?>"><?= e($n) ?></a><?php endforeach; ?></nav><?php endif; ?>
+    <div class="sol-sectors">
+    <?php foreach ($sectors as $sectorName => $group): ?>
+    <div class="sol-sector" id="<?= e($anchor($sectorName)) ?>">
+    <?php if (count($sectors) > 1): ?><h2><?= e($sectorName) ?></h2><?php endif; ?>
     <div class="sol-grid">
-      <?php foreach ($sols as $s): ?>
+      <?php foreach ($group as $s): ?>
       <a class="plan sol-card" href="/next/solutions/<?= e($s['slug']) ?>/">
         <span class="sol-card-top"><span class="sol-card-icon"><?= icon($s['icon'], 22) ?></span><span class="sol-faces"><?php foreach (array_merge(['sarah'], array_column(array_slice($s['team'], 0, 3), 0)) as $f): ?><img src="<?= e($avatar($f)) ?>" alt="" width="28" height="28" loading="lazy"><?php endforeach; ?></span></span>
         <h2><?= e($s['name']) ?></h2>
@@ -35,6 +41,9 @@ $avatar = fn (string $slug) => '/img/agents/' . rawurlencode($slug) . '.webp';
         <span class="sol-fit-go">Explore the solution <?= icon('arrow-right', 16) ?></span>
       </a>
       <?php endforeach; ?>
+    </div>
+    </div>
+    <?php endforeach; ?>
     </div>
   </div>
 </section>

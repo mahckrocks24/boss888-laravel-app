@@ -27,8 +27,13 @@ foreach ($categories as $c) {
     if (($c['slug'] ?? 'all') === 'all') { continue; }
     $routes[] = ['route' => '/blog/category/' . $c['slug'] . '/', 'template' => 'blog-category.php', 'vars' => ['category' => $c, 'posts' => array_values(array_filter($posts, fn ($p) => ($p['category'] ?? '') === $c['slug']))]];
 }
-foreach (require __DIR__ . '/solutions-data.php' as $s) {
+$__sols = require __DIR__ . '/solutions-data.php'; $__solBy = []; foreach ($__sols as $s) { $__solBy[$s['slug']] = $s; }
+foreach ($__sols as $s) {
     $routes[] = ['route' => '/solutions/' . $s['slug'] . '/', 'template' => 'solution-page.php', 'vars' => ['s' => $s]];
+}
+// SOL-SITES-1: the old combined slugs keep answering (noindex, canonical to the industry page)
+foreach (['dental-and-medical' => 'dental', 'beauty-and-barbers' => 'salons', 'hotels-and-rentals' => 'hotels'] as $__old => $__new) {
+    if (isset($__solBy[$__new]) && ! isset($__solBy[$__old])) { $routes[] = ['route' => '/solutions/' . $__old . '/', 'template' => 'solution-page.php', 'vars' => ['s' => $__solBy[$__new], 'alias_of' => '/solutions/' . $__new . '/']]; }
 }
 $legal = require __DIR__ . '/legal-data.php';
 foreach ($legal['pages'] as $l) {

@@ -1,0 +1,1626 @@
+[
+    {
+        "slug": "acct_brightwater",
+        "industry": "accounting",
+        "name": "Accountants — Brightwater",
+        "business": "Brightwater Accountants",
+        "active": true
+    },
+    {
+        "slug": "acct_harrowgreen",
+        "industry": "accounting",
+        "name": "Accountants — Harrow Green",
+        "business": "Harrow Green Accountants",
+        "active": true
+    },
+    {
+        "slug": "acct_harrowgreen_commercial",
+        "industry": "accounting",
+        "name": "Accountants — Harrow Green — Commercial",
+        "business": "Harrow Green Accountants",
+        "active": true
+    },
+    {
+        "slug": "acct_northbank",
+        "industry": "accounting",
+        "name": "Accountants — Northbank",
+        "business": "Northbank Accountancy",
+        "active": true
+    },
+    {
+        "slug": "acct_northbank_commercial",
+        "industry": "accounting",
+        "name": "Accountants — Northbank — Commercial",
+        "business": "Northbank Accountancy",
+        "active": true
+    },
+    {
+        "slug": "acct_quillledger",
+        "industry": "accounting",
+        "name": "Accountants — Quill & Ledger",
+        "business": "Quill & Ledger",
+        "active": true
+    },
+    {
+        "slug": "acct_redgrave",
+        "industry": "accounting",
+        "name": "Accountants — Redgrave",
+        "business": "Redgrave Chartered",
+        "active": true
+    },
+    {
+        "slug": "acct_sixpence",
+        "industry": "accounting",
+        "name": "Accountants — Sixpence",
+        "business": "Sixpence Accounting",
+        "active": true
+    },
+    {
+        "slug": "acct_tallowfinch",
+        "industry": "accounting",
+        "name": "Accountants — Tallow & Finch",
+        "business": "Tallow & Finch",
+        "active": true
+    },
+    {
+        "slug": "aesthetic_fieldhouse",
+        "industry": "aesthetic_clinic",
+        "name": "Aesthetics — Fieldhouse",
+        "business": "Fieldhouse Aesthetics",
+        "active": true
+    },
+    {
+        "slug": "aesthetic_ledger",
+        "industry": "aesthetic_clinic",
+        "name": "Aesthetic — Ledger",
+        "business": "Ledger Clinic",
+        "active": true
+    },
+    {
+        "slug": "aesthetic_porcelain",
+        "industry": "aesthetic_clinic",
+        "name": "Aesthetics — Porcelain",
+        "business": "Porcelain Rooms",
+        "active": true
+    },
+    {
+        "slug": "aesthetic_quiet",
+        "industry": "aesthetic_clinic",
+        "name": "Aesthetic — Quiet",
+        "business": "Quiet Clinic",
+        "active": true
+    },
+    {
+        "slug": "aesthetic_studio",
+        "industry": "aesthetic_clinic",
+        "name": "Aesthetic — Studio",
+        "business": "Studio Aesthetics",
+        "active": true
+    },
+    {
+        "slug": "agency_northstar",
+        "industry": "marketing_agency",
+        "name": "Agency — Northstar",
+        "business": "Northstar Growth",
+        "active": true
+    },
+    {
+        "slug": "agency_pipeline",
+        "industry": "marketing_agency",
+        "name": "Agency — Pipeline",
+        "business": "Pipeline",
+        "active": true
+    },
+    {
+        "slug": "agency_signal",
+        "industry": "marketing_agency",
+        "name": "Agency — Signal",
+        "business": "Signal Works",
+        "active": true
+    },
+    {
+        "slug": "architecture_datum",
+        "industry": "architecture",
+        "name": "Architecture — Datum",
+        "business": "Datum Studio",
+        "active": true
+    },
+    {
+        "slug": "architecture_kerbstone",
+        "industry": "architecture",
+        "name": "Architecture — Kerbstone",
+        "business": "Kerbstone Architects",
+        "active": true
+    },
+    {
+        "slug": "architecture_northlight",
+        "industry": "architecture",
+        "name": "Architecture — Northlight",
+        "business": "Northlight Architecture",
+        "active": true
+    },
+    {
+        "slug": "architecture_plan",
+        "industry": "architecture",
+        "name": "Architecture — Plan",
+        "business": "Plan Architects",
+        "active": true
+    },
+    {
+        "slug": "architecture_plumbline",
+        "industry": "architecture",
+        "name": "Architecture — Plumbline",
+        "business": "Plumbline Studio",
+        "active": true
+    },
+    {
+        "slug": "architecture_section",
+        "industry": "architecture",
+        "name": "Architecture — Section",
+        "business": "Ashby Vane Architects",
+        "active": true
+    },
+    {
+        "slug": "auto_bay",
+        "industry": "automotive",
+        "name": "Automotive — Bay",
+        "business": "Bay Four Motors",
+        "active": true
+    },
+    {
+        "slug": "auto_ramp",
+        "industry": "automotive",
+        "name": "Automotive — Ramp",
+        "business": "Ramp Motors",
+        "active": true
+    },
+    {
+        "slug": "auto_torque",
+        "industry": "automotive",
+        "name": "Automotive — Torque",
+        "business": "Torque & Tread",
+        "active": true
+    },
+    {
+        "slug": "automotive_camshaft",
+        "industry": "automotive",
+        "name": "Automotive — Camshaft",
+        "business": "Camshaft & Sons",
+        "active": true
+    },
+    {
+        "slug": "automotive_halfshaft",
+        "industry": "automotive",
+        "name": "Automotive — Halfshaft",
+        "business": "Halfshaft Garage",
+        "active": true
+    },
+    {
+        "slug": "automotive_pitlane",
+        "industry": "automotive",
+        "name": "Automotive — Pit Lane",
+        "business": "Pit Lane Servicing",
+        "active": true
+    },
+    {
+        "slug": "barber_chairs",
+        "industry": "barbershop",
+        "name": "Barbershop — Chairs",
+        "business": "Six Chairs",
+        "active": true
+    },
+    {
+        "slug": "barber_corner",
+        "industry": "barbershop",
+        "name": "Barbershop — Corner",
+        "business": "The Corner",
+        "active": true
+    },
+    {
+        "slug": "barber_lather",
+        "industry": "barbershop",
+        "name": "Barbershop — Lather",
+        "business": "Lather & Blade",
+        "active": true
+    },
+    {
+        "slug": "barbershop_bayrum",
+        "industry": "barbershop",
+        "name": "Barbershop — Bay Rum",
+        "business": "Bay Rum & Co",
+        "active": true
+    },
+    {
+        "slug": "barbershop_claypot",
+        "industry": "barbershop",
+        "name": "Barbershop — Clay Pot",
+        "business": "The Clay Pot",
+        "active": true
+    },
+    {
+        "slug": "barbershop_fadehouse",
+        "industry": "barbershop",
+        "name": "Barbershop — Fade House",
+        "business": "Fade House",
+        "active": true
+    },
+    {
+        "slug": "beauty_gilthall",
+        "industry": "beauty_salon",
+        "name": "Salon — Gilt Hall",
+        "business": "Gilt Hall",
+        "active": true
+    },
+    {
+        "slug": "beauty_lacquer",
+        "industry": "beauty_salon",
+        "name": "Salon — Lacquer",
+        "business": "Lacquer & Leaf",
+        "active": true
+    },
+    {
+        "slug": "beauty_rosefinch",
+        "industry": "beauty_salon",
+        "name": "Salon — Rosefinch",
+        "business": "Rosefinch Beauty",
+        "active": true
+    },
+    {
+        "slug": "cafe_arch",
+        "industry": "cafe",
+        "name": "Café — Arch",
+        "business": "Arch Coffee",
+        "active": true
+    },
+    {
+        "slug": "cafe_kettlerow",
+        "industry": "cafe",
+        "name": "Cafe — Kettle Row",
+        "business": "Kettle Row",
+        "active": true
+    },
+    {
+        "slug": "cafe_lantern",
+        "industry": "cafe",
+        "name": "Café — Lantern",
+        "business": "Lantern & Loaf",
+        "active": true
+    },
+    {
+        "slug": "cafe_pennyloaf",
+        "industry": "cafe",
+        "name": "Cafe — Penny Loaf",
+        "business": "Penny Loaf",
+        "active": true
+    },
+    {
+        "slug": "cafe_press",
+        "industry": "cafe",
+        "name": "Café — Press",
+        "business": "Press Bakehouse",
+        "active": true
+    },
+    {
+        "slug": "cafe_stonemill",
+        "industry": "cafe",
+        "name": "Cafe — Stone Mill",
+        "business": "Stone Mill Coffee",
+        "active": true
+    },
+    {
+        "slug": "catering_brief",
+        "industry": "catering",
+        "name": "Catering — Brief",
+        "business": "Brief Catering",
+        "active": true
+    },
+    {
+        "slug": "catering_fieldkitchen",
+        "industry": "catering",
+        "name": "Catering — Field Kitchen",
+        "business": "Field Kitchen Co",
+        "active": true
+    },
+    {
+        "slug": "catering_marquee",
+        "industry": "catering",
+        "name": "Catering — Marquee",
+        "business": "Marquee Kitchen",
+        "active": true
+    },
+    {
+        "slug": "catering_saltcellar",
+        "industry": "catering",
+        "name": "Catering — Salt Cellar",
+        "business": "The Salt Cellar",
+        "active": true
+    },
+    {
+        "slug": "catering_service",
+        "industry": "catering",
+        "name": "Catering — Service",
+        "business": "Service & Co",
+        "active": true
+    },
+    {
+        "slug": "catering_trestle",
+        "industry": "catering",
+        "name": "Catering — Trestle",
+        "business": "Trestle & Board",
+        "active": true
+    },
+    {
+        "slug": "childcare_bramble",
+        "industry": "childcare",
+        "name": "Nursery — Bramble",
+        "business": "Bramble Cottage Nursery",
+        "active": true
+    },
+    {
+        "slug": "childcare_kitewood",
+        "industry": "childcare",
+        "name": "Nursery — Kitewood",
+        "business": "Kitewood Day Nursery",
+        "active": true
+    },
+    {
+        "slug": "childcare_pebblepath",
+        "industry": "childcare",
+        "name": "Nursery — Pebble Path",
+        "business": "Pebble Path",
+        "active": true
+    },
+    {
+        "slug": "construction_beam",
+        "industry": "construction",
+        "name": "Construction — Beam",
+        "business": "Beam & Ridge",
+        "active": true
+    },
+    {
+        "slug": "construction_cornerstone",
+        "industry": "construction",
+        "name": "Construction — Cornerstone",
+        "business": "Cornerstone Build",
+        "active": true
+    },
+    {
+        "slug": "construction_gantry",
+        "industry": "construction",
+        "name": "Construction — Gantry",
+        "business": "Gantry & Frame",
+        "active": true
+    },
+    {
+        "slug": "construction_quarryman",
+        "industry": "construction",
+        "name": "Construction — Quarryman",
+        "business": "Quarryman Build",
+        "active": true
+    },
+    {
+        "slug": "construction_site",
+        "industry": "construction",
+        "name": "Construction — Site",
+        "business": "Site Works",
+        "active": true
+    },
+    {
+        "slug": "construction_trueline",
+        "industry": "construction",
+        "name": "Construction — Trueline",
+        "business": "Trueline Contractors",
+        "active": true
+    },
+    {
+        "slug": "consultant_profile",
+        "industry": "consulting",
+        "name": "Consultant — Profile",
+        "business": "Daniel Mercer",
+        "active": true
+    },
+    {
+        "slug": "consulting_ashgrove",
+        "industry": "consulting",
+        "name": "Consulting — Ashgrove",
+        "business": "Ashgrove Partners",
+        "active": true
+    },
+    {
+        "slug": "consulting_blackwater",
+        "industry": "consulting",
+        "name": "Consulting — Blackwater",
+        "business": "Blackwater & Co",
+        "active": true
+    },
+    {
+        "slug": "consulting_ledger",
+        "industry": "consulting",
+        "name": "Consulting — Counsel",
+        "business": "Hollis Parr",
+        "active": true
+    },
+    {
+        "slug": "consulting_partner",
+        "industry": "consulting",
+        "name": "Consulting — Partner",
+        "business": "Partner & Co",
+        "active": true
+    },
+    {
+        "slug": "consulting_quorum",
+        "industry": "consulting",
+        "name": "Consulting — Quorum",
+        "business": "Quorum Advisory",
+        "active": true
+    },
+    {
+        "slug": "courses_cohort",
+        "industry": "online_courses",
+        "name": "Courses — Cohort",
+        "business": "Cohort",
+        "active": true
+    },
+    {
+        "slug": "courses_studio",
+        "industry": "online_courses",
+        "name": "Courses — Studio",
+        "business": "Studio Learning",
+        "active": true
+    },
+    {
+        "slug": "courses_syllabus",
+        "industry": "online_courses",
+        "name": "Courses — Syllabus",
+        "business": "Syllabus",
+        "active": true
+    },
+    {
+        "slug": "dental_chair",
+        "industry": "dental",
+        "name": "Dental — Chair",
+        "business": "Chairside",
+        "active": true
+    },
+    {
+        "slug": "dental_elmrow",
+        "industry": "dental",
+        "name": "Dental — Elm Row",
+        "business": "Elm Row Dental",
+        "active": true
+    },
+    {
+        "slug": "dental_ivorygate",
+        "industry": "dental",
+        "name": "Dental — Ivorygate",
+        "business": "Ivorygate Practice",
+        "active": true
+    },
+    {
+        "slug": "dental_openplan",
+        "industry": "dental",
+        "name": "Dental — Open Plan",
+        "business": "Open Plan Dental",
+        "active": true
+    },
+    {
+        "slug": "dental_porthaven",
+        "industry": "dental",
+        "name": "Dental — Porthaven",
+        "business": "Porthaven Dental Care",
+        "active": true
+    },
+    {
+        "slug": "dental_practice",
+        "industry": "dental",
+        "name": "Dental — Practice",
+        "business": "Practice Dental",
+        "active": true
+    },
+    {
+        "slug": "ecommerce_dockside",
+        "industry": "ecommerce",
+        "name": "Ecommerce — Dockside",
+        "business": "Dockside Supply",
+        "active": true
+    },
+    {
+        "slug": "ecommerce_parcelyard",
+        "industry": "ecommerce",
+        "name": "Ecommerce — Parcel Yard",
+        "business": "Parcel Yard",
+        "active": true
+    },
+    {
+        "slug": "ecommerce_thimble",
+        "industry": "ecommerce",
+        "name": "Ecommerce — Thimble",
+        "business": "Thimble & Thread",
+        "active": true
+    },
+    {
+        "slug": "estate_frontage",
+        "industry": "real_estate_agency",
+        "name": "Estate Agency — Frontage",
+        "business": "Frontage",
+        "active": true
+    },
+    {
+        "slug": "estate_keystone",
+        "industry": "real_estate_agency",
+        "name": "Estate Agency — Keystone",
+        "business": "Keystone & Rowe",
+        "active": true
+    },
+    {
+        "slug": "event_foundry",
+        "industry": "event_venue",
+        "name": "Venue — Foundry",
+        "business": "The Old Foundry",
+        "active": true
+    },
+    {
+        "slug": "event_glasshouse",
+        "industry": "event_venue",
+        "name": "Venue — Glasshouse",
+        "business": "The Glasshouse",
+        "active": true
+    },
+    {
+        "slug": "event_tithebarn",
+        "industry": "event_venue",
+        "name": "Venue — Tithe Barn",
+        "business": "The Tithe Barn",
+        "active": true
+    },
+    {
+        "slug": "gym_barbellyard",
+        "industry": "gym",
+        "name": "Gym — Barbell Yard",
+        "business": "Barbell Yard",
+        "active": true
+    },
+    {
+        "slug": "gym_chalkline",
+        "industry": "gym",
+        "name": "Gym — Chalkline",
+        "business": "Chalkline Gym",
+        "active": true
+    },
+    {
+        "slug": "gym_ironhouse",
+        "industry": "gym",
+        "name": "Gym — Iron House",
+        "business": "Iron House",
+        "active": true
+    },
+    {
+        "slug": "gym_mileend",
+        "industry": "gym",
+        "name": "Gym — Mile End",
+        "business": "Mile End Strength",
+        "active": true
+    },
+    {
+        "slug": "gym_northgate",
+        "industry": "gym",
+        "name": "Gym — Northgate",
+        "business": "Northgate Strength",
+        "active": true
+    },
+    {
+        "slug": "gym_platform",
+        "industry": "gym",
+        "name": "Gym — Platform",
+        "business": "Platform",
+        "active": true
+    },
+    {
+        "slug": "home_hearthside",
+        "industry": "home_services",
+        "name": "Home Services — Hearthside",
+        "business": "Hearthside Home Services",
+        "active": true
+    },
+    {
+        "slug": "home_ladderline",
+        "industry": "home_services",
+        "name": "Home Services — Ladderline",
+        "business": "Ladderline Property Care",
+        "active": true
+    },
+    {
+        "slug": "home_stopcock",
+        "industry": "home_services",
+        "name": "Home Services — Stopcock",
+        "business": "Stopcock Plumbing & Heating",
+        "active": true
+    },
+    {
+        "slug": "hotel_harbourhouse",
+        "industry": "hotel",
+        "name": "Hotel — Harbour House",
+        "business": "Harbour House",
+        "active": true
+    },
+    {
+        "slug": "hotel_lantern",
+        "industry": "hotel",
+        "name": "Hotel — Lantern",
+        "business": "The Lantern Hotel",
+        "active": true
+    },
+    {
+        "slug": "hotel_quaystone",
+        "industry": "hotel",
+        "name": "Hotel — Quaystone",
+        "business": "The Quaystone",
+        "active": true
+    },
+    {
+        "slug": "hotel_rookery",
+        "industry": "hotel",
+        "name": "Hotel — Rookery",
+        "business": "The Rookery",
+        "active": true
+    },
+    {
+        "slug": "hotel_terrace",
+        "industry": "hotel",
+        "name": "Hotel — Terrace",
+        "business": "The Terrace",
+        "active": true
+    },
+    {
+        "slug": "hotel_wintergarden",
+        "industry": "hotel",
+        "name": "Hotel — Winter Garden",
+        "business": "The Winter Garden Hotel",
+        "active": true
+    },
+    {
+        "slug": "interior_northaisle",
+        "industry": "interior_design",
+        "name": "Interiors — North Aisle",
+        "business": "North Aisle Studio",
+        "active": true
+    },
+    {
+        "slug": "interior_plasterhouse",
+        "industry": "interior_design",
+        "name": "Interiors — Plaster House",
+        "business": "Plaster House",
+        "active": true
+    },
+    {
+        "slug": "interior_sablewood",
+        "industry": "interior_design",
+        "name": "Interiors — Sablewood",
+        "business": "Sablewood Interiors",
+        "active": true
+    },
+    {
+        "slug": "interiors_atelier",
+        "industry": "interior_design",
+        "name": "Interiors — Atelier",
+        "business": "Harlow Atelier",
+        "active": true
+    },
+    {
+        "slug": "interiors_scheme",
+        "industry": "interior_design",
+        "name": "Interiors — Scheme",
+        "business": "Scheme Interiors",
+        "active": true
+    },
+    {
+        "slug": "interiors_studioline",
+        "industry": "interior_design",
+        "name": "Interiors — Studio Line",
+        "business": "Studio Line",
+        "active": true
+    },
+    {
+        "slug": "it_bastion",
+        "industry": "it_services",
+        "name": "IT Services — Bastion",
+        "business": "Bastion Managed IT",
+        "active": true
+    },
+    {
+        "slug": "it_ironport",
+        "industry": "it_services",
+        "name": "IT Services — Ironport",
+        "business": "Ironport Systems",
+        "active": true
+    },
+    {
+        "slug": "it_keyfold",
+        "industry": "it_services",
+        "name": "IT Services — Keyfold",
+        "business": "Keyfold IT",
+        "active": true
+    },
+    {
+        "slug": "it_meridian",
+        "industry": "it_services",
+        "name": "IT Services — Meridian",
+        "business": "Meridian IT",
+        "active": true
+    },
+    {
+        "slug": "it_quietrack",
+        "industry": "it_services",
+        "name": "IT Services — Quietrack",
+        "business": "Quietrack Managed IT",
+        "active": true
+    },
+    {
+        "slug": "it_uptime",
+        "industry": "it_services",
+        "name": "IT Services — Uptime",
+        "business": "Uptime",
+        "active": true
+    },
+    {
+        "slug": "legal_ashcombe",
+        "industry": "legal",
+        "name": "Solicitors — Ashcombe",
+        "business": "Ashcombe Solicitors",
+        "active": true
+    },
+    {
+        "slug": "legal_bramber",
+        "industry": "legal",
+        "name": "Solicitors — Bramber",
+        "business": "Bramber & Clay",
+        "active": true
+    },
+    {
+        "slug": "legal_fenwickrowe",
+        "industry": "legal",
+        "name": "Solicitors — Fenwick Rowe",
+        "business": "Fenwick Rowe",
+        "active": true
+    },
+    {
+        "slug": "legal_halewhitlock",
+        "industry": "legal",
+        "name": "Solicitors — Hale & Whitlock",
+        "business": "Hale & Whitlock",
+        "active": true
+    },
+    {
+        "slug": "legal_ledbury",
+        "industry": "legal",
+        "name": "Solicitors — Ledbury",
+        "business": "Ledbury Law",
+        "active": true
+    },
+    {
+        "slug": "legal_marchmont",
+        "industry": "legal",
+        "name": "Solicitors — Marchmont",
+        "business": "Marchmont Legal",
+        "active": true
+    },
+    {
+        "slug": "legal_stonecross",
+        "industry": "legal",
+        "name": "Solicitors — Stonecross",
+        "business": "Stonecross Legal",
+        "active": true
+    },
+    {
+        "slug": "marketing_broadsheet",
+        "industry": "marketing_agency",
+        "name": "Agency — Broadsheet",
+        "business": "Broadsheet & Co",
+        "active": true
+    },
+    {
+        "slug": "marketing_harbourlight",
+        "industry": "marketing_agency",
+        "name": "Agency — Harbourlight",
+        "business": "Harbourlight Marketing",
+        "active": true
+    },
+    {
+        "slug": "marketing_tenpoint",
+        "industry": "marketing_agency",
+        "name": "Agency — Ten Point",
+        "business": "Ten Point",
+        "active": true
+    },
+    {
+        "slug": "medical_atrium",
+        "industry": "medical_clinic",
+        "name": "Medical — Atrium",
+        "business": "Atrium Medical",
+        "active": true
+    },
+    {
+        "slug": "medical_consulting",
+        "industry": "medical_clinic",
+        "name": "Medical — Consulting",
+        "business": "Consulting Rooms",
+        "active": true
+    },
+    {
+        "slug": "medical_greenbank",
+        "industry": "medical_clinic",
+        "name": "Clinic — Greenbank",
+        "business": "Greenbank Medical",
+        "active": true
+    },
+    {
+        "slug": "medical_rounds",
+        "industry": "medical_clinic",
+        "name": "Medical — Rounds",
+        "business": "Rounds Clinic",
+        "active": true
+    },
+    {
+        "slug": "medical_stannes",
+        "industry": "medical_clinic",
+        "name": "Clinic — St Anne's",
+        "business": "St Anne's Practice",
+        "active": true
+    },
+    {
+        "slug": "medical_wellspring",
+        "industry": "medical_clinic",
+        "name": "Clinic — Wellspring",
+        "business": "Wellspring Clinic",
+        "active": true
+    },
+    {
+        "slug": "news_desk",
+        "industry": "news_channel",
+        "name": "Newsroom — Desk",
+        "business": "The Desk",
+        "active": true
+    },
+    {
+        "slug": "news_dispatch",
+        "industry": "news_channel",
+        "name": "Newsroom — Dispatch",
+        "business": "The Evening Dispatch",
+        "active": true
+    },
+    {
+        "slug": "news_inkyard",
+        "industry": "news_channel",
+        "name": "Newsroom — Ink Yard",
+        "business": "The Ink Yard",
+        "active": true
+    },
+    {
+        "slug": "news_ledger",
+        "industry": "news_channel",
+        "name": "Newsroom — Ledger",
+        "business": "The Borough Ledger",
+        "active": true
+    },
+    {
+        "slug": "news_townhall",
+        "industry": "news_channel",
+        "name": "Newsroom — Town Hall",
+        "business": "Town Hall Reports",
+        "active": true
+    },
+    {
+        "slug": "news_wire",
+        "industry": "news_channel",
+        "name": "Newsroom — Wire",
+        "business": "Northside Wire",
+        "active": true
+    },
+    {
+        "slug": "nursery_acorn",
+        "industry": "childcare",
+        "name": "Nursery — Acorn",
+        "business": "Acorn House Nursery",
+        "active": true
+    },
+    {
+        "slug": "nursery_keyperson",
+        "industry": "childcare",
+        "name": "Nursery — Key Person",
+        "business": "Key Person Nursery",
+        "active": true
+    },
+    {
+        "slug": "nursery_meadow",
+        "industry": "childcare",
+        "name": "Nursery — Meadow",
+        "business": "Little Meadow",
+        "active": true
+    },
+    {
+        "slug": "online_chapterone",
+        "industry": "online_courses",
+        "name": "Courses — Chapter One",
+        "business": "Chapter One",
+        "active": true
+    },
+    {
+        "slug": "online_lanterncourse",
+        "industry": "online_courses",
+        "name": "Courses — Lantern",
+        "business": "Lantern Courses",
+        "active": true
+    },
+    {
+        "slug": "online_workbench",
+        "industry": "online_courses",
+        "name": "Courses — Workbench",
+        "business": "Workbench Learning",
+        "active": true
+    },
+    {
+        "slug": "pet_brackenkennels",
+        "industry": "pet_services",
+        "name": "Pet Services — Bracken",
+        "business": "Bracken Kennels",
+        "active": true
+    },
+    {
+        "slug": "pet_pawprint",
+        "industry": "pet_services",
+        "name": "Pet Services — Pawprint",
+        "business": "Pawprint Grooming",
+        "active": true
+    },
+    {
+        "slug": "pet_waggontail",
+        "industry": "pet_services",
+        "name": "Pet Services — Waggon",
+        "business": "Waggon & Tail",
+        "active": true
+    },
+    {
+        "slug": "pets_daycare",
+        "industry": "pet_services",
+        "name": "Pet Services — Day Care",
+        "business": "Day Care Dogs",
+        "active": true
+    },
+    {
+        "slug": "pets_harbour",
+        "industry": "pet_services",
+        "name": "Pet Services — Harbour",
+        "business": "Harbour Hounds",
+        "active": true
+    },
+    {
+        "slug": "pets_paddock",
+        "industry": "pet_services",
+        "name": "Pet Services — Paddock",
+        "business": "The Paddock",
+        "active": true
+    },
+    {
+        "slug": "real_crowncourt",
+        "industry": "real_estate_agency",
+        "name": "Estate Agency — Crown Court",
+        "business": "Crown Court Estates",
+        "active": true
+    },
+    {
+        "slug": "real_fieldrow",
+        "industry": "real_estate_agency",
+        "name": "Estate Agency — Fieldrow",
+        "business": "Fieldrow & Partners",
+        "active": true
+    },
+    {
+        "slug": "real_millgate",
+        "industry": "real_estate_agency",
+        "name": "Estate Agency — Millgate",
+        "business": "Millgate Property",
+        "active": true
+    },
+    {
+        "slug": "realtor_profile",
+        "industry": "real_estate_agency",
+        "name": "Realtor — Portfolio",
+        "business": "Sofia Alvarez",
+        "active": true
+    },
+    {
+        "slug": "rental_almanac",
+        "industry": "short_term_rental",
+        "name": "Holiday Lets — Almanac",
+        "business": "Almanac Stays",
+        "active": true
+    },
+    {
+        "slug": "rental_coastline",
+        "industry": "short_term_rental",
+        "name": "Holiday Lets — Coastline",
+        "business": "Coastline Retreats",
+        "active": true
+    },
+    {
+        "slug": "rental_keyhouse",
+        "industry": "short_term_rental",
+        "name": "Holiday Lets — Keyhouse",
+        "business": "Keyhouse",
+        "active": true
+    },
+    {
+        "slug": "resort_driftwood",
+        "industry": "resort",
+        "name": "Resort — Driftwood",
+        "business": "Driftwood Bay",
+        "active": true
+    },
+    {
+        "slug": "resort_dune",
+        "industry": "resort",
+        "name": "Resort — Dune",
+        "business": "Dune Bay",
+        "active": true
+    },
+    {
+        "slug": "resort_headland",
+        "industry": "resort",
+        "name": "Resort — Headland",
+        "business": "Headland",
+        "active": true
+    },
+    {
+        "slug": "resort_palmcourt",
+        "industry": "resort",
+        "name": "Resort — Palm Court",
+        "business": "The Palm Court",
+        "active": true
+    },
+    {
+        "slug": "resort_reef",
+        "industry": "resort",
+        "name": "Resort — Reef",
+        "business": "Reef House",
+        "active": true
+    },
+    {
+        "slug": "resort_sablebay",
+        "industry": "resort",
+        "name": "Resort — Sable Bay",
+        "business": "Sable Bay Resort",
+        "active": true
+    },
+    {
+        "slug": "restaurant_atrium",
+        "industry": "restaurant",
+        "name": "Restaurant — Atrium",
+        "business": "Atrium",
+        "active": true
+    },
+    {
+        "slug": "restaurant_blackdoor",
+        "industry": "restaurant",
+        "name": "Restaurant — Black Door",
+        "business": "Black Door",
+        "active": true
+    },
+    {
+        "slug": "restaurant_copperpan",
+        "industry": "restaurant",
+        "name": "Restaurant — Copper Pan",
+        "business": "The Copper Pan",
+        "active": true
+    },
+    {
+        "slug": "restaurant_counter",
+        "industry": "restaurant",
+        "name": "Restaurant — Counter",
+        "business": "Counter & Co",
+        "active": true
+    },
+    {
+        "slug": "restaurant_larder",
+        "industry": "restaurant",
+        "name": "Restaurant — Larder",
+        "business": "The Larder",
+        "active": true
+    },
+    {
+        "slug": "restaurant_sorrelroom",
+        "industry": "restaurant",
+        "name": "Restaurant — Sorrel",
+        "business": "The Sorrel Room",
+        "active": true
+    },
+    {
+        "slug": "retail_brasslamp",
+        "industry": "retail_shop",
+        "name": "Retail — Brass Lamp",
+        "business": "The Brass Lamp",
+        "active": true
+    },
+    {
+        "slug": "retail_cornerstall",
+        "industry": "retail_shop",
+        "name": "Retail — Corner Stall",
+        "business": "The Corner Stall",
+        "active": true
+    },
+    {
+        "slug": "retail_counterpoint",
+        "industry": "retail_shop",
+        "name": "Retail — Counterpoint",
+        "business": "Counterpoint",
+        "active": true
+    },
+    {
+        "slug": "retail_haberdash",
+        "industry": "retail_shop",
+        "name": "Retail — Haberdash",
+        "business": "Haberdash & Sons",
+        "active": true
+    },
+    {
+        "slug": "retail_index",
+        "industry": "retail_shop",
+        "name": "Retail — Index",
+        "business": "Index Goods",
+        "active": true
+    },
+    {
+        "slug": "retail_shopfront",
+        "industry": "retail_shop",
+        "name": "Retail — Shopfront",
+        "business": "Shopfront",
+        "active": true
+    },
+    {
+        "slug": "salon_atelier",
+        "industry": "beauty_salon",
+        "name": "Salon — Atelier",
+        "business": "Atelier",
+        "active": true
+    },
+    {
+        "slug": "salon_quiethour",
+        "industry": "beauty_salon",
+        "name": "Salon — Quiet Hour",
+        "business": "Quiet Hour",
+        "active": true
+    },
+    {
+        "slug": "salon_treatment",
+        "industry": "beauty_salon",
+        "name": "Salon — Treatment",
+        "business": "Treatment Rooms",
+        "active": true
+    },
+    {
+        "slug": "shop_batch",
+        "industry": "ecommerce",
+        "name": "Online Shop — Batch",
+        "business": "Batch",
+        "active": true
+    },
+    {
+        "slug": "shop_maker",
+        "industry": "ecommerce",
+        "name": "Online Shop — Maker",
+        "business": "Maker & Field",
+        "active": true
+    },
+    {
+        "slug": "shop_workshop",
+        "industry": "ecommerce",
+        "name": "Online Shop — Workshop",
+        "business": "Workshop Supply",
+        "active": true
+    },
+    {
+        "slug": "short_harbourloft",
+        "industry": "short_term_rental",
+        "name": "Short Stay — Harbour Loft",
+        "business": "The Harbour Loft",
+        "active": true
+    },
+    {
+        "slug": "short_swallowbarn",
+        "industry": "short_term_rental",
+        "name": "Short Stay — Swallow Barn",
+        "business": "Swallow Barn",
+        "active": true
+    },
+    {
+        "slug": "short_wrenscottage",
+        "industry": "short_term_rental",
+        "name": "Short Stay — Wrens Cottage",
+        "business": "Wrens Cottage",
+        "active": true
+    },
+    {
+        "slug": "trades_beacon",
+        "industry": "home_services",
+        "name": "Home Services — Beacon",
+        "business": "Beacon Home Services",
+        "active": true
+    },
+    {
+        "slug": "trades_fixpoint",
+        "industry": "home_services",
+        "name": "Home Services — Fixpoint",
+        "business": "Fixpoint",
+        "active": true
+    },
+    {
+        "slug": "trades_window",
+        "industry": "home_services",
+        "name": "Home Services — Window",
+        "business": "The Window Promise",
+        "active": true
+    },
+    {
+        "slug": "training_anvilworks",
+        "industry": "training_center",
+        "name": "Training — Anvil Works",
+        "business": "Anvil Works Training",
+        "active": true
+    },
+    {
+        "slug": "training_bluecollar",
+        "industry": "training_center",
+        "name": "Training — Blue Collar",
+        "business": "Blue Collar Academy",
+        "active": true
+    },
+    {
+        "slug": "training_forge",
+        "industry": "training_center",
+        "name": "Training — Forge",
+        "business": "Forge Training",
+        "active": true
+    },
+    {
+        "slug": "training_safehands",
+        "industry": "training_center",
+        "name": "Training — Safe Hands",
+        "business": "Safe Hands Training",
+        "active": true
+    },
+    {
+        "slug": "training_summit",
+        "industry": "training_center",
+        "name": "Training — Summit",
+        "business": "Summit Skills Centre",
+        "active": true
+    },
+    {
+        "slug": "training_yard",
+        "industry": "training_center",
+        "name": "Training — Yard",
+        "business": "The Yard Training",
+        "active": true
+    },
+    {
+        "slug": "travel_atlas",
+        "industry": "travel_agency",
+        "name": "Travel — Atlas",
+        "business": "Atlas Journeys",
+        "active": true
+    },
+    {
+        "slug": "travel_compass",
+        "industry": "travel_agency",
+        "name": "Travel — Compass",
+        "business": "Compass & Co",
+        "active": true
+    },
+    {
+        "slug": "travel_farfield",
+        "industry": "travel_agency",
+        "name": "Travel — Farfield",
+        "business": "Farfield Journeys",
+        "active": true
+    },
+    {
+        "slug": "travel_meridian",
+        "industry": "travel_agency",
+        "name": "Travel — Meridian",
+        "business": "Meridian Travel",
+        "active": true
+    },
+    {
+        "slug": "travel_meridianline",
+        "industry": "travel_agency",
+        "name": "Travel — Meridian Line",
+        "business": "Meridian Line Travel",
+        "active": true
+    },
+    {
+        "slug": "travel_saltroute",
+        "industry": "travel_agency",
+        "name": "Travel — Salt Route",
+        "business": "Salt Route",
+        "active": true
+    },
+    {
+        "slug": "tutoring_bridge",
+        "industry": "tutoring",
+        "name": "Tutoring — Bridge",
+        "business": "Bridge Tutors",
+        "active": true
+    },
+    {
+        "slug": "tutoring_brightpath",
+        "industry": "tutoring",
+        "name": "Tutoring — Brightpath",
+        "business": "Brightpath Tuition",
+        "active": true
+    },
+    {
+        "slug": "tutoring_chapter",
+        "industry": "tutoring",
+        "name": "Tutoring — Chapter",
+        "business": "Chapter Tuition",
+        "active": true
+    },
+    {
+        "slug": "tutoring_desk",
+        "industry": "tutoring",
+        "name": "Tutoring — Desk",
+        "business": "The Desk",
+        "active": true
+    },
+    {
+        "slug": "tutoring_quillroom",
+        "industry": "tutoring",
+        "name": "Tutoring — Quill Room",
+        "business": "The Quill Room",
+        "active": true
+    },
+    {
+        "slug": "tutoring_slatepen",
+        "industry": "tutoring",
+        "name": "Tutoring — Slate & Pen",
+        "business": "Slate & Pen Tutoring",
+        "active": true
+    },
+    {
+        "slug": "venue_exclusive",
+        "industry": "event_venue",
+        "name": "Venue — Exclusive Use",
+        "business": "Exclusive Use",
+        "active": true
+    },
+    {
+        "slug": "venue_gallery",
+        "industry": "event_venue",
+        "name": "Venue — Gallery",
+        "business": "The Long Gallery",
+        "active": true
+    },
+    {
+        "slug": "venue_orchard",
+        "industry": "event_venue",
+        "name": "Venue — Orchard",
+        "business": "The Orchard House",
+        "active": true
+    },
+    {
+        "slug": "restaurant",
+        "industry": "restaurant",
+        "name": "Restaurant — Maison Rouge",
+        "business": "Maison Rouge",
+        "active": false
+    },
+    {
+        "slug": "gym",
+        "industry": "gym",
+        "name": "Gym — FORGE Athletic Club",
+        "business": "FORGE Athletic Club",
+        "active": false
+    },
+    {
+        "slug": "dental",
+        "industry": "dental",
+        "name": "Dental — Smile Studio",
+        "business": "Smile Studio Dental",
+        "active": false
+    },
+    {
+        "slug": "real_estate_agency",
+        "industry": "real_estate_agency",
+        "name": "Estate Agency — Whitfield Property",
+        "business": "Whitfield Property",
+        "active": false
+    },
+    {
+        "slug": "beauty_salon",
+        "industry": "beauty_salon",
+        "name": "Beauty Salon — Atelier Soirée",
+        "business": "Atelier Soirée",
+        "active": false
+    },
+    {
+        "slug": "consulting",
+        "industry": "consulting",
+        "name": "Consulting — Summit Advisors",
+        "business": "Summit Advisors",
+        "active": false
+    },
+    {
+        "slug": "retail_shop",
+        "industry": "retail_shop",
+        "name": "Retail — Atelier Rose",
+        "business": "Atelier Rose",
+        "active": false
+    },
+    {
+        "slug": "hotel",
+        "industry": "hotel",
+        "name": "Hotel — The Linden",
+        "business": "The Linden Hotel",
+        "active": false
+    },
+    {
+        "slug": "resort",
+        "industry": "resort",
+        "name": "Resort — Coral Reef",
+        "business": "Coral Reef Resort & Spa",
+        "active": false
+    },
+    {
+        "slug": "short_term_rental",
+        "industry": "short_term_rental",
+        "name": "Holiday Home — The Skyline Residences",
+        "business": "The Skyline Residences",
+        "active": false
+    },
+    {
+        "slug": "medical_clinic",
+        "industry": "medical_clinic",
+        "name": "Medical Clinic — Greenleaf",
+        "business": "Greenleaf Medical",
+        "active": false
+    },
+    {
+        "slug": "barbershop",
+        "industry": "barbershop",
+        "name": "Barbershop — Bulldog & Sons",
+        "business": "Bulldog & Sons Barbers",
+        "active": false
+    },
+    {
+        "slug": "cafe",
+        "industry": "cafe",
+        "name": "Cafe — Ember & Bean",
+        "business": "Ember & Bean",
+        "active": false
+    },
+    {
+        "slug": "ecommerce",
+        "industry": "ecommerce",
+        "name": "Shop — Northpoint Goods",
+        "business": "Northpoint Goods",
+        "active": false
+    },
+    {
+        "slug": "catering",
+        "industry": "catering",
+        "name": "Catering — Lumière",
+        "business": "Lumière Catering Co.",
+        "active": false
+    },
+    {
+        "slug": "aesthetic_clinic",
+        "industry": "aesthetic_clinic",
+        "name": "Aesthetic Clinic — Maison Aesthetic",
+        "business": "Maison Aesthetic",
+        "active": false
+    },
+    {
+        "slug": "architecture",
+        "industry": "architecture",
+        "name": "Architecture Studio — Foliage",
+        "business": "Foliage Studio",
+        "active": false
+    },
+    {
+        "slug": "automotive",
+        "industry": "automotive",
+        "name": "Automotive — Apex Motors",
+        "business": "Apex Motors",
+        "active": false
+    },
+    {
+        "slug": "childcare",
+        "industry": "childcare",
+        "name": "Childcare — Little Lanterns",
+        "business": "Little Lanterns Nursery",
+        "active": false
+    },
+    {
+        "slug": "construction",
+        "industry": "construction",
+        "name": "Construction — Vertex",
+        "business": "Vertex Construction",
+        "active": false
+    },
+    {
+        "slug": "event_venue",
+        "industry": "event_venue",
+        "name": "Events — Aurora Event Studio",
+        "business": "Aurora Event Studio",
+        "active": false
+    },
+    {
+        "slug": "home_services",
+        "industry": "home_services",
+        "name": "Home Services — Sparkle Pro",
+        "business": "Sparkle Pro Cleaning",
+        "active": false
+    },
+    {
+        "slug": "interior_design",
+        "industry": "interior_design",
+        "name": "Interiors — Form & Field",
+        "business": "Form & Field Interiors",
+        "active": false
+    },
+    {
+        "slug": "it_services",
+        "industry": "it_services",
+        "name": "IT Services — Nexora",
+        "business": "Nexora",
+        "active": false
+    },
+    {
+        "slug": "marketing_agency",
+        "industry": "marketing_agency",
+        "name": "Agency — Momentum Digital",
+        "business": "Momentum Digital",
+        "active": false
+    },
+    {
+        "slug": "news_channel",
+        "industry": "news_channel",
+        "name": "News — The Gulf Tribune",
+        "business": "The Gulf Tribune",
+        "active": false
+    },
+    {
+        "slug": "online_courses",
+        "industry": "online_courses",
+        "name": "Courses — Beacon Online Academy",
+        "business": "Beacon Online Academy",
+        "active": false
+    },
+    {
+        "slug": "pet_services",
+        "industry": "pet_services",
+        "name": "Pet Services — Pawsome Care",
+        "business": "Pawsome Care",
+        "active": false
+    },
+    {
+        "slug": "training_center",
+        "industry": "training_center",
+        "name": "Training — Meridian Academy",
+        "business": "Meridian Academy",
+        "active": false
+    },
+    {
+        "slug": "travel_agency",
+        "industry": "travel_agency",
+        "name": "Travel — Bel Étranger",
+        "business": "Bel Étranger Travel",
+        "active": false
+    },
+    {
+        "slug": "tutoring",
+        "industry": "tutoring",
+        "name": "Tutoring — Beacon",
+        "business": "Beacon Tutoring",
+        "active": false
+    }
+]
