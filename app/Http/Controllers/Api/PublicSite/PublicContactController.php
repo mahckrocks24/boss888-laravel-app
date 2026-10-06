@@ -22,7 +22,7 @@ class PublicContactController
     public const WORKSPACE_ID = 1;
     public const SOURCE = 'levelupgrowth_contact';
     public const NOTIFY_TO = 'hello@levelupgrowth.io';
-    public const TOPICS = ['enterprise', 'support', 'press', 'partnership', 'other'];
+    public const TOPICS = ['enterprise', 'support', 'press', 'partnership', 'advertising', 'other'];   // ADV-PAGE-1 (2026-10-06): the /advertising/ brief
     private const MAX_ATTEMPTS = 5;
     private const DECAY_SECONDS = 600;
 
