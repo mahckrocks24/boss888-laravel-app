@@ -160,16 +160,17 @@ $page['head'] = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?
   .ad .av.is-flash .av-flash span{opacity:1;transform:none}
   /* placements: three phones, each playing its placement */
   .ad .pl-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-  .ad .pl-stage{position:relative;width:100%;aspect-ratio:1/1.12;container-type:inline-size;border-radius:18px;overflow:hidden;background:radial-gradient(120% 90% at 50% 0%,rgba(124,58,237,.18),transparent 60%),var(--fill-hover)}
+  .ad .pl-stage{position:relative;width:100%;aspect-ratio:1/1.3;container-type:inline-size;border-radius:18px;overflow:hidden;background:radial-gradient(120% 90% at 50% 0%,rgba(124,58,237,.18),transparent 60%),var(--fill-hover)}
   /* the phone must END inside the stage: its bottom edge carries the footer bar (Owner 10-06: "how come you did not show an ad on the footer bar") */
-  .ad .pl-phone{position:absolute;left:50%;top:5cqw;transform:translateX(-50%);width:62cqw;height:102cqw;border-radius:9cqw;background:#0b0d12;padding:2cqw;box-shadow:0 4cqw 10cqw rgba(10,8,40,.35),inset 0 0 0 .4cqw #2a2d36}
-  .ad .pl-screen{position:relative;width:100%;height:100%;border-radius:7.2cqw;overflow:hidden;background:#fff;display:flex;flex-direction:column}
+  /* a real phone: 56 x 118 stage units is an iPhone's 393 x 852 screen plus its frame (Owner 10-06: "make it a real iphone size") */
+  .ad .pl-phone{position:absolute;left:50%;top:5cqw;transform:translateX(-50%);width:56cqw;height:118cqw;border-radius:8.6cqw;background:#0b0d12;padding:1.8cqw;box-shadow:0 4cqw 10cqw rgba(10,8,40,.35),inset 0 0 0 .4cqw #2a2d36}
+  .ad .pl-screen{position:relative;width:100%;height:100%;border-radius:7cqw;overflow:hidden;background:#fff;display:flex;flex-direction:column}
   .ad .pl-screen>img{display:block;width:100%;height:auto;flex:none}
   .ad .pl-screen>img,.ad .pl-screen>.av-more{position:relative;z-index:0}
   .ad .pl-bar{position:absolute;left:0;right:0;bottom:0;height:7.4cqw;z-index:3;display:flex;align-items:stretch;background:#fff;border-top:.2cqw solid #e4e6eb;box-shadow:0 -1cqw 4cqw rgba(0,0,0,.12);transform:translateY(100%)}
   .ad .pl-bar .adc{flex:1;min-width:0;height:auto}
   .ad .pl-bar__x{width:5.6cqw;display:grid;place-items:center;background:#f1f5f9;color:#64748b;font:700 2.8cqw/1 var(--font);flex:none}
-  .ad .pl-card{position:absolute;z-index:4;left:5cqw;right:5cqw;top:50cqw;aspect-ratio:300/250;border-radius:2.2cqw;overflow:hidden;background:#fff;box-shadow:0 1.6cqw 4.8cqw rgba(15,10,50,.3);opacity:0;transform:translateY(3cqw) scale(.97)}
+  .ad .pl-card{position:absolute;z-index:4;left:4.5cqw;right:4.5cqw;top:64cqw;aspect-ratio:300/250;border-radius:2.2cqw;overflow:hidden;background:#fff;box-shadow:0 1.6cqw 4.8cqw rgba(15,10,50,.3);opacity:0;transform:translateY(3cqw) scale(.97)}
   .ad .pl-modal{position:absolute;z-index:5;inset:0;display:grid;place-items:center;background:rgba(10,8,30,.55);opacity:0}
   .ad .pl-modal__box{width:84%;aspect-ratio:1/1;border-radius:3cqw;overflow:hidden;background:#fff;box-shadow:0 2cqw 7cqw rgba(0,0,0,.4);position:relative}
   .ad .pl-tag{position:absolute;left:3cqw;top:3cqw;z-index:2;display:inline-flex;align-items:center;gap:1.2cqw;font:600 2.4cqw/1 var(--font);color:var(--ink);padding:1.4cqw 2cqw;border-radius:999px}
@@ -190,22 +191,38 @@ $page['head'] = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?
   .ad .nw-site__m b{font-size:13.5px}.ad .nw-site__m span{font-size:12px;opacity:.85}
   .ad .nw-site .ad-sp{position:absolute;left:10px;top:10px}
   .ad .nw-sectors{display:flex;gap:8px;flex-wrap:wrap}
-  /* the media-plan builder */
-  .ad .pb{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:0;border-radius:26px;overflow:hidden}
-  .ad .pb__in{padding:clamp(22px,3vw,34px);display:flex;flex-direction:column;gap:20px}
-  .ad .pb__out{padding:clamp(22px,3vw,34px);display:flex;flex-direction:column;gap:16px;border-left:1px solid var(--hairline);background:color-mix(in srgb,var(--accent-text,#7c3aed) 5%,transparent)}
-  .ad .pb-lbl{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;display:flex;justify-content:space-between;gap:8px}.ad .pb-lbl span{font-weight:500;color:var(--ink-3)}
-  .ad .pb-segs{display:flex;flex-wrap:wrap;gap:6px}
-  .ad .pb-segs button{border:1px solid var(--hairline);background:transparent;color:var(--ink);font:600 13px/1 var(--font);padding:10px 14px;border-radius:999px;cursor:pointer;min-height:40px}
-  .ad .pb-segs button[aria-pressed=true]{background:var(--ink);color:var(--ground,#fff);border-color:transparent}
-  .ad .pb-in{height:44px;border-radius:12px;border:1px solid var(--hairline);background:var(--raised,#fff);color:var(--ink);font:500 15px/1 var(--font);padding:0 14px;width:100%;box-sizing:border-box}
-  .ad .pb-in:focus{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-text,#7c3aed) 30%,transparent)}
-  .ad .pb-plan{display:flex;flex-direction:column;gap:10px}
-  .ad .pb-row{display:flex;justify-content:space-between;gap:12px;font-size:14px;line-height:20px;color:var(--ink-2);padding:8px 0;border-top:1px solid var(--hairline)}.ad .pb-row:first-child{border-top:0;padding-top:0}.ad .pb-row b{color:var(--ink);text-align:right}
-  .ad .pb-price{font-size:clamp(30px,3.6vw,40px);font-weight:800;letter-spacing:-.03em;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
-  .ad .pb-note{font-size:13px;line-height:19px;color:var(--ink-3);margin:0}
-  .ad .pb-next{display:flex;flex-direction:column;gap:8px}
-  .ad .pb-next div{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:19px;color:var(--ink-2)}.ad .pb-next svg{flex:none;width:16px;height:16px;margin-top:1px;color:var(--accent-text,#7c3aed)}
+  /* the media-plan quiz (Owner 10-06: "make it a quiz type"): one question at a time, a result at the end; the body never changes height */
+  .ad .qz{border-radius:26px;overflow:hidden;max-width:880px;margin:0 auto;display:flex;flex-direction:column}
+  .ad .qz-top{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:18px clamp(20px,3vw,32px) 0}
+  .ad .qz-count{font-size:13px;font-weight:600;color:var(--ink-3);white-space:nowrap}
+  .ad .qz-prog{flex:1;display:flex;gap:6px}.ad .qz-prog i{flex:1;height:6px;border-radius:999px;background:var(--fill-press);overflow:hidden;position:relative}.ad .qz-prog i:after{content:"";position:absolute;inset:0;border-radius:999px;background:var(--brand-grad,linear-gradient(90deg,#7c3aed,#2563eb));transform:scaleX(0);transform-origin:left;transition:transform .4s cubic-bezier(.2,.8,.2,1)}.ad .qz-prog i.is-done:after{transform:none}
+  .ad .qz-body{position:relative;min-height:430px;padding:22px clamp(20px,3vw,32px) 0}
+  .ad .qz-step{display:flex;flex-direction:column;gap:16px;opacity:0;transform:translateX(16px);transition:opacity .32s ease,transform .32s ease}
+  .ad .qz-step.is-in{opacity:1;transform:none}.ad .qz-step[hidden]{display:none}
+  .ad .qz-q{font-size:clamp(22px,2.6vw,30px);line-height:1.15;letter-spacing:-.02em;font-weight:800;color:var(--ink);margin:0;text-wrap:balance}
+  .ad .qz-help{font-size:14.5px;line-height:21px;color:var(--ink-2);margin:0}
+  .ad .qz-opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .ad .qz-opts--2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ad .qz-opt{border:1.5px solid var(--hairline);background:var(--raised,#fff);color:var(--ink);text-align:left;border-radius:16px;padding:14px 16px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:72px;font-family:var(--font);transition:border-color .15s,box-shadow .15s,transform .15s}
+  .ad .qz-opt b{font-size:15px;line-height:1.25}.ad .qz-opt span{font-size:12.5px;line-height:17px;color:var(--ink-3)}
+  .ad .qz-opt:hover{border-color:color-mix(in srgb,var(--accent-text,#7c3aed) 45%,transparent)}
+  .ad .qz-opt[aria-pressed=true]{border-color:var(--accent-text,#7c3aed);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-text,#7c3aed) 18%,transparent),0 10px 24px -14px rgba(60,24,150,.5)}
+  .ad .qz-opt[aria-pressed=true]:before{content:"";position:absolute}.ad .qz-opt[aria-pressed=true] b{color:var(--accent-text,#7c3aed)}
+  .ad .qz-opt[disabled]{opacity:.45;cursor:default}
+  .ad .qz-in{height:48px;border-radius:14px;border:1.5px solid var(--hairline);background:var(--raised,#fff);color:var(--ink);font:500 16px/1 var(--font);padding:0 16px;width:100%;box-sizing:border-box}
+  .ad .qz-in:focus{outline:none;border-color:var(--accent-text,#7c3aed);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent-text,#7c3aed) 18%,transparent)}
+  .ad .qz-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px clamp(20px,3vw,32px) 22px}
+  .ad .qz-foot .lg-btn[disabled]{opacity:.4;pointer-events:none}
+  .ad .qz-res{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+  .ad .qz-plan{display:flex;flex-direction:column}
+  .ad .qz-row{display:flex;justify-content:space-between;gap:12px;font-size:14px;line-height:20px;color:var(--ink-2);padding:9px 0;border-top:1px solid var(--hairline)}.ad .qz-row:first-child{border-top:0;padding-top:0}.ad .qz-row b{color:var(--ink);text-align:right}
+  .ad .qz-price{font-size:clamp(28px,3.4vw,38px);font-weight:800;letter-spacing:-.03em;line-height:1.05;color:var(--ink);font-variant-numeric:tabular-nums}
+  .ad .qz-note{font-size:13px;line-height:19px;color:var(--ink-3);margin:6px 0 0}
+  .ad .qz-sure{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+  .ad .qz-sure div{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;line-height:19px;color:var(--ink-2)}.ad .qz-sure svg{flex:none;width:16px;height:16px;margin-top:1px;color:var(--accent-text,#7c3aed)}
+  .ad .qz-done{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  @media (max-width:760px){.ad .qz-opts,.ad .qz-opts--2{grid-template-columns:1fr 1fr}.ad .qz-res{grid-template-columns:1fr}.ad .qz-body{min-height:520px}}
+  @media (max-width:480px){.ad .qz-opts,.ad .qz-opts--2{grid-template-columns:1fr}.ad .qz-opt{min-height:0;padding:12px 14px}.ad .qz-body{min-height:560px}}
   /* the example report */
   .ad .rp{border-radius:24px;overflow:hidden}
   .ad .rp-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:16px 20px;border-bottom:1px solid var(--hairline)}
@@ -308,51 +325,69 @@ $page['scripts'] = <<<JS
     var io = new IntersectionObserver(function (es) { es.forEach(function (e) { e.target.classList.toggle('is-live', e.isIntersecting); }); }, { threshold: .25 });
     st.forEach(function (s) { io.observe(s); });
   })();
-  /* 3. the media-plan builder: the reader's choices become the plan and the brief */
+  /* 3. the media-plan quiz: one question at a time; the answers become the plan and the brief */
   (function () {
     var host = document.getElementById('ad-pb'); if (!host) return;
     var R = $ratesJson;
-    var S = { trades: ['Food & drink'], area: 'Manchester', places: { footer_sticky: true, in_content_mrec: true, interstitial_modal: false }, model: 'cpm', weeks: 4, design: true };
+    var S = { trades: [], area: '', places: {}, model: '', weeks: 0, design: null, step: 0 };
     var q = function (s) { return host.querySelector(s); }, qa = function (s) { return Array.prototype.slice.call(host.querySelectorAll(s)); };
     var names = { footer_sticky: 'Footer bar', in_content_mrec: 'Card below the hero', interstitial_modal: 'Full-screen message' };
     var modelName = { cpm: 'Per 1,000 viewable impressions (CPM)', cpc: 'Per click (CPC)', flat: 'Flat monthly price' };
-    qa('[data-trade]').forEach(function (b) { b.addEventListener('click', function () { var t = b.getAttribute('data-trade'), i = S.trades.indexOf(t); if (i >= 0) { if (S.trades.length > 1) S.trades.splice(i, 1); } else if (S.trades.length < 3) S.trades.push(t); draw(); }); });
-    qa('[data-area]').forEach(function (b) { b.addEventListener('click', function () { S.area = b.getAttribute('data-area'); q('[data-area-in]').value = S.area === 'Your area' ? '' : S.area; draw(); }); });
-    q('[data-area-in]').addEventListener('input', function (e) { S.area = e.target.value.trim() || 'Your area'; draw(false); });
-    qa('[data-place]').forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-place'); var on = Object.keys(S.places).filter(function (x) { return S.places[x]; }); if (S.places[k] && on.length === 1) return; S.places[k] = !S.places[k]; if (S.model === 'cpc' && S.places.interstitial_modal && !S.places.footer_sticky && !S.places.in_content_mrec) S.model = 'cpm'; draw(); }); });
-    qa('[data-model]').forEach(function (b) { b.addEventListener('click', function () { S.model = b.getAttribute('data-model'); draw(); }); });
-    qa('[data-weeks]').forEach(function (b) { b.addEventListener('click', function () { S.weeks = +b.getAttribute('data-weeks'); draw(); }); });
-    qa('[data-design]').forEach(function (b) { b.addEventListener('click', function () { S.design = b.getAttribute('data-design') === 'yes'; draw(); }); });
+    var steps = qa('.qz-step'), LAST = 6, autoTimer = null;
+    function on() { return Object.keys(S.places).filter(function (k) { return S.places[k]; }); }
+    function ready(i) { return [S.trades.length > 0, !!S.area, on().length > 0, !!S.model, S.weeks > 0, S.design !== null, true][i]; }
+    function hint(i) { return ['Pick at least one, up to three', 'Pick a place or type one', 'Pick one or more', 'Pick one', 'Pick one', 'Pick one', ''][i]; }
     function money(v) { return '$' + (Math.round(v * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: v % 1 ? 2 : 0, maximumFractionDigits: 2 }); }
     function priceLine() {
-      if (!R.priced) return null;
-      var on = Object.keys(S.places).filter(function (k) { return S.places[k]; });
-      if (S.model === 'flat') { var tier = on.length === 3 ? 'area' : 'local'; return { big: money(R.flat[tier] || 0) + ' a month', small: (tier === 'area' ? 'Area Takeover' : 'Local Presence') + (S.design ? ' · ad set ' + money(R.creative) + ' once' : '') }; }
-      if (S.model === 'cpc') { var cp = on.filter(function (k) { return R.cpc[k]; }).map(function (k) { return R.cpc[k]; }); return { big: money(Math.min.apply(null, cp)) + ' a click', small: 'Minimum campaign ' + money(R.min) + (S.design ? ' · ad set ' + money(R.creative) + ' once' : '') }; }
-      var cpm = on.map(function (k) { return R.cpm[k]; }); return { big: money(Math.min.apply(null, cpm)) + '–' + money(Math.max.apply(null, cpm)) + ' CPM', small: 'Per 1,000 viewable impressions · minimum ' + money(R.min) + (S.design ? ' · ad set ' + money(R.creative) + ' once' : '') };
+      if (!R.priced) return null; var o = on();
+      if (S.model === 'flat') { var tier = o.length === 3 ? 'area' : 'local'; return { big: money(R.flat[tier] || 0) + ' a month', small: (tier === 'area' ? 'Area Takeover' : 'Local Presence') + (S.design ? ' · ad set ' + money(R.creative) + ' once' : '') }; }
+      if (S.model === 'cpc') { var cp = o.filter(function (k) { return R.cpc[k]; }).map(function (k) { return R.cpc[k]; }); return { big: money(Math.min.apply(null, cp)) + ' a click', small: 'Minimum campaign ' + money(R.min) + (S.design ? ' · ad set ' + money(R.creative) + ' once' : '') }; }
+      var cpm = o.map(function (k) { return R.cpm[k]; }); return { big: money(Math.min.apply(null, cpm)) + '–' + money(Math.max.apply(null, cpm)) + ' CPM', small: 'Per 1,000 viewable impressions · minimum ' + money(R.min) + (S.design ? ' · ad set ' + money(R.creative) + ' once' : '') };
     }
     function brief() {
-      var on = Object.keys(S.places).filter(function (k) { return S.places[k]; }).map(function (k) { return names[k]; });
-      return 'Media plan request\\n' + 'Trades: ' + S.trades.join(', ') + '\\n' + 'Area: ' + S.area + '\\n' + 'Placements: ' + on.join(', ') + '\\n' + 'Pricing: ' + modelName[S.model] + '\\n' + 'Duration: ' + S.weeks + ' weeks\\n' + 'Creatives: ' + (S.design ? 'please design the ad set in our brand' : 'we will supply finished creatives') + '\\n\\nAbout our business and what we want people to do: ';
+      return 'Media plan request\\n' + 'Trades: ' + S.trades.join(', ') + '\\n' + 'Area: ' + S.area + '\\n' + 'Placements: ' + on().map(function (k) { return names[k]; }).join(', ') + '\\n' + 'Pricing: ' + modelName[S.model] + '\\n' + 'Duration: ' + S.weeks + ' weeks\\n' + 'Creatives: ' + (S.design ? 'please design the ad set in our brand' : 'we will supply finished creatives') + '\\n\\nAbout our business and what we want people to do: ';
     }
-    function draw(sync) {
-      qa('[data-trade]').forEach(function (b) { b.setAttribute('aria-pressed', S.trades.indexOf(b.getAttribute('data-trade')) >= 0); });
+    function paint() {
+      qa('[data-trade]').forEach(function (b) { var picked = S.trades.indexOf(b.getAttribute('data-trade')) >= 0; b.setAttribute('aria-pressed', picked); b.disabled = !picked && S.trades.length >= 3; });
       qa('[data-area]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-area') === S.area); });
       qa('[data-place]').forEach(function (b) { b.setAttribute('aria-pressed', !!S.places[b.getAttribute('data-place')]); });
-      var cpcOk = S.places.footer_sticky || S.places.in_content_mrec; var cpcBtn = q('[data-model=cpc]'); if (cpcBtn) { cpcBtn.disabled = !cpcOk; cpcBtn.style.opacity = cpcOk ? '' : '.45'; }
+      var cpcOk = !!(S.places.footer_sticky || S.places.in_content_mrec); var cpcBtn = q('[data-model=cpc]'); if (cpcBtn) { cpcBtn.disabled = !cpcOk; }
       qa('[data-model]').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-model') === S.model); });
       qa('[data-weeks]').forEach(function (b) { b.setAttribute('aria-pressed', +b.getAttribute('data-weeks') === S.weeks); });
-      qa('[data-design]').forEach(function (b) { b.setAttribute('aria-pressed', (b.getAttribute('data-design') === 'yes') === S.design); });
-      var on = Object.keys(S.places).filter(function (k) { return S.places[k]; });
-      q('[data-out=trades]').textContent = S.trades.join(', '); q('[data-out=area]').textContent = S.area; q('[data-out=places]').textContent = on.map(function (k) { return names[k]; }).join(' + ');
-      q('[data-out=model]').textContent = modelName[S.model]; q('[data-out=weeks]').textContent = S.weeks + ' weeks'; q('[data-out=design]').textContent = S.design ? 'Designed by our studio in your brand, approved by you' : 'You supply finished creatives in ' + on.length + (on.length > 1 ? ' sizes' : ' size');
-      var p = priceLine(), pe = q('[data-out=price]'), ps = q('[data-out=price-small]');
-      if (p) { pe.textContent = p.big; ps.textContent = p.small; } else { pe.textContent = 'Quoted with your reach'; ps.textContent = 'The rate card comes with your media plan, within two working days.'; }
-      var ta = document.querySelector('#ad-brief textarea[name=message]'); if (ta && (sync !== false) && (!ta.value || ta.getAttribute('data-auto') === '1')) { ta.value = brief(); ta.setAttribute('data-auto', '1'); }
+      qa('[data-design]').forEach(function (b) { b.setAttribute('aria-pressed', S.design !== null && ((b.getAttribute('data-design') === 'yes') === S.design)); });
+      q('[data-next]').disabled = !ready(S.step); q('[data-back]').disabled = S.step === 0; q('[data-hint]').textContent = ready(S.step) ? (S.step < LAST ? '' : '') : hint(S.step);
+      q('[data-count]').textContent = S.step < LAST ? 'Question ' + (S.step + 1) + ' of ' + LAST : 'Your plan';
+      qa('.qz-prog i').forEach(function (i, k) { i.classList.toggle('is-done', k < S.step || (S.step === LAST)); });
+      q('[data-next]').hidden = S.step === LAST; q('[data-hint]').hidden = S.step === LAST;
+      if (S.step === LAST) {
+        q('[data-out=trades]').textContent = S.trades.join(', '); q('[data-out=area]').textContent = S.area; q('[data-out=places]').textContent = on().map(function (k) { return names[k]; }).join(' + ');
+        q('[data-out=model]').textContent = modelName[S.model]; q('[data-out=weeks]').textContent = S.weeks + ' weeks'; q('[data-out=design]').textContent = S.design ? 'Designed by our studio in your brand, approved by you' : 'You supply finished creatives in ' + on().length + (on().length > 1 ? ' sizes' : ' size');
+        var p = priceLine(), pe = q('[data-out=price]'), ps = q('[data-out=price-small]');
+        if (p) { pe.textContent = p.big; ps.textContent = p.small; } else { pe.textContent = 'Quoted with your reach'; ps.textContent = 'The rate card comes with your media plan, within two working days.'; }
+        var ta = document.querySelector('#ad-brief textarea[name=message]'); if (ta && (!ta.value || ta.getAttribute('data-auto') === '1')) { ta.value = brief(); ta.setAttribute('data-auto', '1'); }
+      }
     }
+    function go(i) {
+      clearTimeout(autoTimer); S.step = Math.max(0, Math.min(LAST, i));
+      steps.forEach(function (s, k) { var onStep = k === S.step; if (onStep) { s.hidden = false; s.classList.remove('is-in'); void s.offsetWidth; s.classList.add('is-in'); } else { s.classList.remove('is-in'); s.hidden = true; } });
+      paint();
+      var top = host.getBoundingClientRect().top; if (top < 70 || top > innerHeight * .5) host.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    function autoNext() { clearTimeout(autoTimer); autoTimer = setTimeout(function () { if (ready(S.step)) go(S.step + 1); }, 420); }   /* single-answer questions move on by themselves */
+    qa('[data-trade]').forEach(function (b) { b.addEventListener('click', function () { var t = b.getAttribute('data-trade'), i = S.trades.indexOf(t); if (i >= 0) S.trades.splice(i, 1); else if (S.trades.length < 3) S.trades.push(t); paint(); }); });
+    qa('[data-area]').forEach(function (b) { b.addEventListener('click', function () { S.area = b.getAttribute('data-area'); q('[data-area-in]').value = ''; paint(); autoNext(); }); });
+    q('[data-area-in]').addEventListener('input', function (e) { S.area = e.target.value.trim(); paint(); });
+    q('[data-area-in]').addEventListener('keydown', function (e) { if (e.key === 'Enter' && ready(1)) { e.preventDefault(); go(2); } });
+    qa('[data-place]').forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-place'); S.places[k] = !S.places[k]; if (S.model === 'cpc' && !(S.places.footer_sticky || S.places.in_content_mrec)) S.model = ''; paint(); }); });
+    qa('[data-model]').forEach(function (b) { b.addEventListener('click', function () { S.model = b.getAttribute('data-model'); paint(); autoNext(); }); });
+    qa('[data-weeks]').forEach(function (b) { b.addEventListener('click', function () { S.weeks = +b.getAttribute('data-weeks'); paint(); autoNext(); }); });
+    qa('[data-design]').forEach(function (b) { b.addEventListener('click', function () { S.design = b.getAttribute('data-design') === 'yes'; paint(); autoNext(); }); });
+    q('[data-next]').addEventListener('click', function () { if (ready(S.step)) go(S.step + 1); });
+    q('[data-back]').addEventListener('click', function () { go(S.step - 1); });
+    q('[data-restart]').addEventListener('click', function () { go(0); });
     var ta0 = document.querySelector('#ad-brief textarea[name=message]'); if (ta0) ta0.addEventListener('input', function () { ta0.setAttribute('data-auto', ta0.value ? '0' : '1'); });
     q('[data-send]').addEventListener('click', function () { var ta = document.querySelector('#ad-brief textarea[name=message]'); if (ta) { ta.value = brief(); ta.setAttribute('data-auto', '1'); } var f = document.getElementById('ad-brief'); if (f) { f.scrollIntoView({ behavior: 'smooth', block: 'start' }); var n = f.querySelector('input[name=name]'); setTimeout(function () { if (n) n.focus({ preventScroll: true }); }, 600); } });
-    draw();
+    steps[0].classList.add('is-in'); paint();
   })();
   /* 4. the example report counts up when it comes on screen */
   (function () {
@@ -455,35 +490,39 @@ JS;
 
   <section class="mk-sec" id="plan" style="padding-top:40px">
     <div class="mk-wrap">
-      <div class="ad-head ad-head--c"><span class="t-eyebrow" data-rv>Your media plan</span><h2 class="mk-h2" data-rv>Say who you want to reach. We check the inventory and come back with a plan.</h2><p class="mk-lead" data-rv style="text-align:center">Build the outline here; it becomes your brief. We confirm how many matching websites exist and what reach they carry before you pay anything.</p></div>
-      <div class="lg-glass lg-glass--thick pb" id="ad-pb">
-        <div class="pb__in">
-          <div><span class="pb-lbl">Trades whose customers you want <span>up to 3</span></span><div class="pb-segs" role="group" aria-label="Trades"><?php foreach ($sectors as $s): ?><button type="button" data-trade="<?= e($s) ?>" aria-pressed="false"><?= e($s) ?></button><?php endforeach; ?></div></div>
-          <div><span class="pb-lbl">Area</span><div class="pb-segs" role="group" aria-label="Area" style="margin-bottom:8px"><button type="button" data-area="Manchester" aria-pressed="true">Manchester</button><button type="button" data-area="London" aria-pressed="false">London</button><button type="button" data-area="Dubai" aria-pressed="false">Dubai</button><button type="button" data-area="Your area" aria-pressed="false">Somewhere else</button></div><input class="pb-in" data-area-in type="text" value="Manchester" placeholder="Type a town, a region or a country" aria-label="Area"></div>
-          <div><span class="pb-lbl">Placements</span><div class="pb-segs" role="group" aria-label="Placements"><button type="button" data-place="footer_sticky" aria-pressed="true">Footer bar</button><button type="button" data-place="in_content_mrec" aria-pressed="true">Card below the hero</button><button type="button" data-place="interstitial_modal" aria-pressed="false">Full-screen message</button></div></div>
-          <div class="ad-grid2" style="gap:16px">
-            <div><span class="pb-lbl">How you want to pay</span><div class="pb-segs" role="group" aria-label="Pricing model"><button type="button" data-model="cpm" aria-pressed="true">Per 1,000 seen</button><button type="button" data-model="cpc" aria-pressed="false">Per click</button><button type="button" data-model="flat" aria-pressed="false">Flat monthly</button></div></div>
-            <div><span class="pb-lbl">Duration</span><div class="pb-segs" role="group" aria-label="Duration"><button type="button" data-weeks="2" aria-pressed="false">2 weeks</button><button type="button" data-weeks="4" aria-pressed="true">4 weeks</button><button type="button" data-weeks="8" aria-pressed="false">8 weeks</button></div></div>
+      <div class="ad-head ad-head--c"><span class="t-eyebrow" data-rv>Your media plan</span><h2 class="mk-h2" data-rv>Six quick questions. Then your plan.</h2><p class="mk-lead" data-rv style="text-align:center">Answer them and your plan is written for you; it becomes your brief. We confirm how many matching websites exist and what reach they carry before you pay anything.</p></div>
+      <?php $sectorHelp = ['Food & drink' => 'Cafés, restaurants, catering', 'Health & dental' => 'Dentists, clinics, therapists', 'Beauty & barbers' => 'Salons, barbershops, aesthetics', 'Fitness & wellbeing' => 'Gyms, studios, coaches', 'Home & property' => 'Estate agents, builders, interiors', 'Hotels, travel & venues' => 'Hotels, rentals, agencies, venues', 'Professional services' => 'Consultants, legal, accounting, IT', 'Retail & automotive' => 'Shops, online stores, garages', 'Learning & family' => 'Courses, tutors, childcare']; ?>
+      <div class="lg-glass lg-glass--thick qz" id="ad-pb" aria-live="polite">
+        <div class="qz-top"><span class="qz-count" data-count>Question 1 of 6</span><div class="qz-prog" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="qz-body">
+          <div class="qz-step" data-step="0"><span class="t-eyebrow">Audience</span><h3 class="qz-q">Whose customers do you want to reach?</h3><p class="qz-help">Pick up to three trades. Your ad appears on the websites of those businesses.</p><div class="qz-opts" role="group" aria-label="Trades"><?php foreach ($sectors as $s): ?><button type="button" class="qz-opt" data-trade="<?= e($s) ?>" aria-pressed="false"><b><?= e($s) ?></b><span><?= e($sectorHelp[$s] ?? '') ?></span></button><?php endforeach; ?></div></div>
+          <div class="qz-step" data-step="1" hidden><span class="t-eyebrow">Area</span><h3 class="qz-q">Where are they?</h3><p class="qz-help">A town, a region or a country. We match the websites in that area.</p><div class="qz-opts" role="group" aria-label="Area"><button type="button" class="qz-opt" data-area="Manchester" aria-pressed="false"><b>Manchester</b><span>Greater Manchester</span></button><button type="button" class="qz-opt" data-area="London" aria-pressed="false"><b>London</b><span>Greater London</span></button><button type="button" class="qz-opt" data-area="Dubai" aria-pressed="false"><b>Dubai</b><span>United Arab Emirates</span></button></div><input class="qz-in" data-area-in type="text" value="" placeholder="Or type somewhere else" aria-label="Area"></div>
+          <div class="qz-step" data-step="2" hidden><span class="t-eyebrow">Placements</span><h3 class="qz-q">Where should your ad appear?</h3><p class="qz-help">Choose one or more. Every placement is labelled Sponsored and can be closed.</p><div class="qz-opts" role="group" aria-label="Placements"><button type="button" class="qz-opt" data-place="footer_sticky" aria-pressed="false"><b>Footer bar</b><span>320 × 50, on every page, every device</span></button><button type="button" class="qz-opt" data-place="in_content_mrec" aria-pressed="false"><b>Card below the hero</b><span>300 × 250, where the eye lands next</span></button><button type="button" class="qz-opt" data-place="interstitial_modal" aria-pressed="false"><b>Full-screen message</b><span>Once, on a second visit, closable</span></button></div></div>
+          <div class="qz-step" data-step="3" hidden><span class="t-eyebrow">Pricing</span><h3 class="qz-q">How would you like to pay?</h3><p class="qz-help">You can change this with the plan. Served-but-unseen impressions never cost anything.</p><div class="qz-opts" role="group" aria-label="Pricing model"><button type="button" class="qz-opt" data-model="cpm" aria-pressed="false"><b>Per 1,000 people who saw it</b><span>CPM on viewable impressions, the IAB/MRC rule</span></button><button type="button" class="qz-opt" data-model="cpc" aria-pressed="false"><b>Per click to my website</b><span>CPC on the bar and the card</span></button><button type="button" class="qz-opt" data-model="flat" aria-pressed="false"><b>One price for the month</b><span>A flat month at the reach we confirm</span></button></div></div>
+          <div class="qz-step" data-step="4" hidden><span class="t-eyebrow">Duration</span><h3 class="qz-q">For how long?</h3><p class="qz-help">Campaigns have a start and an end date, and a budget they never exceed.</p><div class="qz-opts" role="group" aria-label="Duration"><button type="button" class="qz-opt" data-weeks="2" aria-pressed="false"><b>2 weeks</b><span>A launch or an offer</span></button><button type="button" class="qz-opt" data-weeks="4" aria-pressed="false"><b>4 weeks</b><span>The usual first campaign</span></button><button type="button" class="qz-opt" data-weeks="8" aria-pressed="false"><b>8 weeks</b><span>A season</span></button></div></div>
+          <div class="qz-step" data-step="5" hidden><span class="t-eyebrow">Creatives</span><h3 class="qz-q">Who makes the ads?</h3><p class="qz-help">Either way, a person reviews every creative before it serves.</p><div class="qz-opts qz-opts--2" role="group" aria-label="Creatives"><button type="button" class="qz-opt" data-design="yes" aria-pressed="false"><b>Design them for us</b><span>Our studio, in your brand, all three sizes, you approve</span></button><button type="button" class="qz-opt" data-design="no" aria-pressed="false"><b>We have our own</b><span>320 × 50, 300 × 250 and 1080 × 1080, short edge at least 600 px</span></button></div></div>
+          <div class="qz-step" data-step="6" hidden><span class="t-eyebrow">Your plan</span><h3 class="qz-q">Here is your media plan. We confirm the reach, then the price.</h3>
+            <div class="qz-res">
+              <div class="qz-plan">
+                <div class="qz-row"><span>Reaching customers of</span><b data-out="trades"></b></div>
+                <div class="qz-row"><span>In</span><b data-out="area"></b></div>
+                <div class="qz-row"><span>Placements</span><b data-out="places"></b></div>
+                <div class="qz-row"><span>Pricing</span><b data-out="model"></b></div>
+                <div class="qz-row"><span>Duration</span><b data-out="weeks"></b></div>
+                <div class="qz-row"><span>Creatives</span><b data-out="design"></b></div>
+              </div>
+              <div>
+                <div class="qz-price" data-out="price">Quoted with your reach</div><p class="qz-note" data-out="price-small">The rate card comes with your media plan, within two working days.</p>
+                <div class="qz-sure">
+                  <div><?= $check ?><span>We count the websites that match and project their real traffic. If fewer than three match or fewer than 10,000 monthly impressions, we tell you so instead of quoting.</span></div>
+                  <div><?= $check ?><span>You get the plan, the reach and the price in writing. Nothing is charged until you approve it.</span></div>
+                </div>
+                <div class="qz-done"><button type="button" class="lg-btn lg-btn--primary lg-btn--lg" data-send>Send this plan as my brief <?= $arrow ?></button><button type="button" class="lg-btn lg-btn--glass lg-btn--lg" data-restart>Change my answers</button></div>
+              </div>
+            </div>
           </div>
-          <div><span class="pb-lbl">Creatives</span><div class="pb-segs" role="group" aria-label="Creatives"><button type="button" data-design="yes" aria-pressed="true">Design them for us</button><button type="button" data-design="no" aria-pressed="false">We have our own</button></div></div>
         </div>
-        <div class="pb__out">
-          <span class="t-eyebrow">Your plan</span>
-          <div class="pb-plan">
-            <div class="pb-row"><span>Reaching customers of</span><b data-out="trades">Food &amp; drink</b></div>
-            <div class="pb-row"><span>In</span><b data-out="area">Manchester</b></div>
-            <div class="pb-row"><span>Placements</span><b data-out="places">Footer bar + Card below the hero</b></div>
-            <div class="pb-row"><span>Pricing</span><b data-out="model">Per 1,000 viewable impressions (CPM)</b></div>
-            <div class="pb-row"><span>Duration</span><b data-out="weeks">4 weeks</b></div>
-            <div class="pb-row"><span>Creatives</span><b data-out="design">Designed by our studio in your brand, approved by you</b></div>
-          </div>
-          <div><div class="pb-price" data-out="price">Quoted with your reach</div><p class="pb-note" data-out="price-small" style="margin-top:6px">The rate card comes with your media plan, within two working days.</p></div>
-          <div class="pb-next">
-            <div><?= $check ?><span>We count the websites that match and project their real traffic. If fewer than three match or fewer than 10,000 monthly impressions, we tell you so instead of quoting.</span></div>
-            <div><?= $check ?><span>You get the plan, the reach and the price in writing. Nothing is charged until you approve it.</span></div>
-          </div>
-          <button type="button" class="lg-btn lg-btn--primary lg-btn--lg" data-send style="align-self:flex-start">Send this plan as my brief <?= $arrow ?></button>
-        </div>
+        <div class="qz-foot"><button type="button" class="lg-btn lg-btn--glass" data-back disabled><svg class="ic ic--sm" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg> Back</button><span class="t-caption c-3" data-hint>Pick at least one</span><button type="button" class="lg-btn lg-btn--primary" data-next disabled>Next <?= $arrow ?></button></div>
       </div>
     </div>
   </section>
