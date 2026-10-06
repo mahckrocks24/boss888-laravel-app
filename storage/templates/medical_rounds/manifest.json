@@ -1,4 +1,5 @@
 {
+    "design_version": "469e09304eec",
     "id": "medical_rounds",
     "name": "Medical — Rounds",
     "industry": "medical_clinic",
