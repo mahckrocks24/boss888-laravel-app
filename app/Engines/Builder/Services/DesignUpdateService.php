@@ -220,7 +220,10 @@ final class DesignUpdateService
         $u = DB::table('design_updates')->where('id', $updateId)->first(); if (! $u || $u->status !== 'probing') return 'skip';
         $l = sys_getloadavg()[0] ?? 0; if ($l > 2) return 'load';
         $fh = @fopen(self::LOCK, 'r'); if (! $fh) $fh = @fopen(sys_get_temp_dir() . '/lug-dupd.lock', 'c');
-        if (! $fh || ! flock($fh, LOCK_EX | LOCK_NB)) return 'busy';
+        // the render runner releases the lock between batches: wait for that gap (checked every 2 s, up to 10 min), never start a second Chrome
+        $got = false; for ($i = 0; $fh && $i < 300; $i++) { if (flock($fh, LOCK_EX | LOCK_NB)) { $got = true; break; } usleep(2000000); }
+        if (! $got) { if ($fh) fclose($fh); return 'busy'; }
+        if ((sys_getloadavg()[0] ?? 0) > 2) { flock($fh, LOCK_UN); fclose($fh); return 'load'; }
         try {
             $dir = self::dir((int) $u->website_id, $updateId);
             $job = ['base' => rtrim((string) (config('app.probe_base') ?: 'https://staging.levelupgrowth.io'), '/'), 'out' => "{$dir}/probe.json", 'shots' => $dir,

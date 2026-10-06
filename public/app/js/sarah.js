@@ -510,7 +510,7 @@
   /* DESIGN-UPDATES-1: a design improvement for one of the owner's websites - a closed card; the preview, Agree and Cancel live in the preview screen */
   function designItem(x) {
     var sum = 'Preview it first · nothing changes until you agree';
-    var pv = x.shot_desk ? '<div class="pv"><img src="' + esc(x.shot_desk) + '" alt="Your website after the update" style="width:100%;max-height:150px;object-fit:cover;object-position:top;border-radius:10px"></div>' : '';
+    var pv = (x.shot_desk && !(window.matchMedia && matchMedia('(max-width:767px)').matches)) ? '<div class="pv"><img src="' + esc(x.shot_desk) + '" alt="Your website after the update" style="width:100%;max-height:150px;object-fit:cover;object-position:top;border-radius:10px"></div>' : '';
     var desc = (x.note ? x.note + ' ' : 'Arthur improved the design of ' + x.website + '. ') + (x.content && x.content.text ? x.content.text : '');
     var acts = [{ label: 'Preview the update', kind: 'primary', run: function () { if (window.luDesignUpdate) window.luDesignUpdate.open(x.id); } }];
     return railItem('appr', '✦', 'Design update: ' + x.website, desc, 'Arthur', acts, 'dupd-' + x.id, pv, sum);

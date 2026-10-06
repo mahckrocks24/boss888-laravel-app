@@ -117,7 +117,7 @@
       + '</aside></div>';
     shell.querySelector('.dp-x').onclick = close; var cx = shell.querySelector('[data-x]'); if (cx) cx.onclick = close;
     var stage = shell.querySelector('.dp-stage'); var dev = 'desk';
-    if (window.matchMedia('(max-width:899px)').matches) { stage.setAttribute('data-show', 'after'); seg('.dp-views', 'data-view', 'after'); }
+    if (window.matchMedia('(max-width:899px)').matches) { stage.setAttribute('data-show', 'after'); seg('.dp-views', 'data-view', 'after'); dev = 'phone'; seg('.dp-dev', 'data-dev', 'phone'); }   // on a phone the phone frame first
     function fit() {
       shell.querySelectorAll('.dp-frame').forEach(function (fr) {
         var ifr = fr.querySelector('iframe'); var pane = fr.parentNode; var W = dev === 'desk' ? 1280 : 390, H = dev === 'desk' ? 800 : 844;
