@@ -2984,6 +2984,7 @@ function wsPagePreviewSheet(p, price, onAdd) {
   var old = document.getElementById('ws-pp-sheet'); if (old) old.remove();
   var phone = !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
   var raw = p.preview_url + (p.preview_url.indexOf('?') >= 0 ? '&' : '?') + 'raw=1';
+  var siteName = (wsCurrentSite && (wsCurrentSite.title || wsCurrentSite.name)) || 'your site';
   var sh = document.createElement('div'); sh.id = 'ws-pp-sheet'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-label', 'Page preview');
   sh.style.cssText = 'position:fixed;inset:0;z-index:10060;display:flex;flex-direction:column;background:var(--bg,#0b0d14)';
   sh.innerHTML = '<style>#ws-pp-sheet .pp-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--bd);flex:0 0 auto}'
@@ -2994,7 +2995,7 @@ function wsPagePreviewSheet(p, price, onAdd) {
     + '#ws-pp-sheet .pp-foot{display:flex;align-items:center;gap:10px;justify-content:flex-end;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--s1);border-top:1px solid var(--bd);flex:0 0 auto}#ws-pp-sheet .pp-foot span{flex:1;font-size:12px;color:var(--t3)}'
     + '#ws-pp-sheet .pp-add{min-height:42px;padding:0 18px;border-radius:10px;border:0;background:var(--p);color:#fff;font:700 14px var(--fb,inherit);cursor:pointer;white-space:nowrap}#ws-pp-sheet .pp-add:disabled{opacity:.5;cursor:default}'
     + '@media (max-width:640px){#ws-pp-sheet .pp-seg{display:none}#ws-pp-sheet .pp-foot span{display:none}#ws-pp-sheet .pp-add{flex:1}}</style>'
-    + '<div class="pp-bar"><div class="pp-t"><b>Page preview · ' + bld_escH(p.label || p.slug) + '</b><small>How this page will look on ' + bld_escH((wsCurrentSite && (wsCurrentSite.title || wsCurrentSite.name)) || 'your site') + '</small></div>'
+    + '<div class="pp-bar"><div class="pp-t"><b>Page preview · ' + bld_escH(p.label || p.slug) + '</b><small>' + (/^(legal|privacy|privacy_policy|terms|terms_of_service)$/.test(p.slug) ? 'Starting text written for ' + bld_escH(siteName) + ' - review it for your country before you publish.' : 'How this page will look on ' + bld_escH(siteName)) + '</small></div>'   /* PAGE-PREVIEW-2c */
     + '<div class="pp-seg" role="group" aria-label="Screen size"><button type="button" aria-pressed="true" data-d="desk">Desktop</button><button type="button" aria-pressed="false" data-d="ph">Phone</button></div>'
     + '<button type="button" class="pp-x" aria-label="Close">✕</button></div>'
     + '<div class="pp-stage"><iframe title="Page preview" src="' + bld_escH(raw) + '"></iframe></div>'
@@ -4983,7 +4984,7 @@ function _t3LayoutEndPreview() {
     + '#t3-lay .dp-card{border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--s2);display:flex;flex-direction:column}'
     + '#t3-lay .dp-card.cur{border-color:var(--p)}'
     + '#t3-lay .dp-card .shot{position:relative;display:block;width:100%;aspect-ratio:16/10;overflow:hidden;background:var(--s1)}'
-    + '#t3-lay .dp-card .shot img{position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:cover;object-position:left top}'
+    + '#t3-lay .dp-card .shot img{position:relative;z-index:1;display:block;width:100%;height:100%;object-fit:cover;object-position:top center}'
     + '#t3-lay .dp-card .shot img.m{display:none}'
     + '#t3-lay .dp-card .ph{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;padding:12px;'
     +   'background:radial-gradient(120% 90% at 0% 0%,color-mix(in srgb,var(--p) 42%,transparent),transparent 60%),linear-gradient(160deg,var(--s2),var(--s1));color:var(--t1)}'
@@ -5015,8 +5016,8 @@ function _t3LayoutEndPreview() {
     +   '#t3-lay .dp-intro-l{display:none}#t3-lay .dp-intro-s{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
     +   '#t3-lay .dp-lbl{margin:8px 0 4px}#t3-lay .dp-chip{padding:5px 10px;font-size:12px}'
     +   '#t3-lay .dp-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}'
-    +   '#t3-lay .dp-card .shot{aspect-ratio:390/440}'
-    +   '#t3-lay .dp-card .shot img.d{display:block}#t3-lay .dp-card.hasm .shot img.d{display:none}#t3-lay .dp-card.hasm .shot img.m{display:block}'
+    +   '#t3-lay .dp-card .shot{aspect-ratio:16/10}'
+
     +   '#t3-lay .dp-card .b{padding:8px 8px 9px;gap:6px}#t3-lay .dp-card .n{font-size:12.5px;line-height:1.3}#t3-lay .dp-card .m{font-size:10.5px}'
     +   '#t3-lay .dp-card .a{flex-wrap:nowrap;gap:5px}#t3-lay .dp-card .a .lu-btn{flex:1 1 0;min-width:0;padding:6px 4px;font-size:12px;white-space:nowrap}#t3-lay .dp-card .m{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#t3-lay .dp-card .n{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}#t3-lay .lbl-l{display:none}#t3-lay .lbl-s{display:inline}'
     +   '#t3-lay .dp-tag{font-size:9px;padding:1px 6px}'
@@ -5179,7 +5180,7 @@ window.wsOpenLayouts = async function (siteId) {
       var card = document.createElement('div');
       // the current design shows the site itself (its live thumbnail); a design with no shot gets a named placeholder, never an empty box
       var dImg = (L.current && L.site_thumb) ? L.site_thumb : (L.screenshot || '');
-      var mImg = L.screenshot_m || '';
+      var mImg = '';   // Owner 10-07: every card shows the desktop first screen (16:10), phones too; phone shots only in Quick look
       card.className = 'dp-card' + (L.current ? ' cur' : '') + (mImg ? ' hasm' : ''); card.setAttribute('data-lay', L.slug);
       card.innerHTML = '<div class="shot"><div class="ph"><span>' + (L.current ? 'Your site' : (L.kind === 'v3' ? bld_escH(L.layout_label || '') : 'Classic')) + '</span><b>' + bld_escH(_dpName(L)) + '</b></div>'
         + (dImg ? '<img class="d" src="' + dImg + '" alt="" loading="lazy">' : '')
