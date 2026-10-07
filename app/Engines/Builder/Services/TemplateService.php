@@ -793,7 +793,7 @@ class TemplateService
      * — so the user-facing gallery only sees active templates. Admin callers
      * pass $includeInactive=true to see every template regardless of flag.
      */
-    public function listTemplates(bool $includeInactive = false): array
+    public function listTemplates(bool $includeInactive = false, ?int $workspaceId = null): array
     {
         // Load thumbnails keyed by industry (builder_default_assets: hero asset_type).
         $thumbs = [];
@@ -815,7 +815,11 @@ class TemplateService
             $isActive = array_key_exists('is_active', $manifest)
                 ? (bool) $manifest['is_active']
                 : true;
-            if (!$includeInactive && !$isActive) continue;
+            // DESIGN-PICKER-80: the v3 {industry}_{style} review rows are never offered; inactive v3 designs show only to a
+            // workspace on the QA override (storage/app/v3picker.on) until activate3.php switches them on.
+            $slugD = basename($dir);
+            if (!$includeInactive && \App\Engines\Builder\Support\DesignCatalog::isV3Artefact($slugD, $manifest)) continue;
+            if (!$includeInactive && !$isActive && !(\App\Engines\Builder\Support\DesignCatalog::isV3($slugD, $manifest) && \App\Engines\Builder\Support\DesignCatalog::previewFor($workspaceId))) continue;
 
             $industry = $manifest['industry'] ?? basename($dir);
             $htmlPath = $dir . '/template.html';
@@ -824,7 +828,7 @@ class TemplateService
                 $elementCount += count($b['elements'] ?? []);
             }
 
-            $templates[] = [
+            $templates[] = \App\Engines\Builder\Support\DesignCatalog::fieldsFor(basename($dir), $manifest) + [
                 'id'            => $manifest['id'] ?? basename($dir),
                 'name'          => $manifest['name'] ?? basename($dir),
                 'industry'      => $industry,

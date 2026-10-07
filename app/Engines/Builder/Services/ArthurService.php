@@ -2472,7 +2472,10 @@ PROMPT;
             $slug = basename(dirname($mf));
             $m = json_decode((string) @file_get_contents($mf), true);
             if (! is_array($m)) { continue; }
-            if (array_key_exists('is_active', $m) && ! $m['is_active'] && $slug !== $current) { continue; }
+            // DESIGN-PICKER-80: v3 review rows never; inactive v3 designs only on the QA override (v3picker.on)
+            if (\App\Engines\Builder\Support\DesignCatalog::isV3Artefact($slug, $m) && $slug !== $current) { continue; }
+            if (array_key_exists('is_active', $m) && ! $m['is_active'] && $slug !== $current
+                && ! (\App\Engines\Builder\Support\DesignCatalog::isV3($slug, $m) && \App\Engines\Builder\Support\DesignCatalog::previewFor($wsId))) { continue; }
             // CATALOGUE VERIFICATION (2026-09-20): the nine clone bases (one file under nine names, CLONE_OVERRIDE /
             // TemplateSelector::CLONES) are never offered at creation — the Layout switcher must not offer them either,
             // unless the site already sits on one (then it stays listed as the current design).
@@ -2487,7 +2490,7 @@ PROMPT;
             }
             $total = count($copy);
             $shot  = "/assets/product/templates/{$slug}.webp";
-            $out[] = [
+            $out[] = \App\Engines\Builder\Support\DesignCatalog::fieldsFor($slug, $m) + ['preview_url' => '/templates/' . $slug . '/preview?raw=1'] + [
                 'slug' => $slug, 'name' => (string) ($m['name'] ?? ucwords(str_replace('_', ' ', $slug))), 'industry' => $ind,
                 'current' => $slug === $current,
                 'screenshot' => is_file(public_path('marketing-next/dist-root' . $shot)) ? $shot : null,
@@ -2497,7 +2500,8 @@ PROMPT;
             ];
         }
         usort($out, fn ($a, $b) => ((int) $b['current'] <=> (int) $a['current']) ?: strcmp($a['name'], $b['name']));
-        return ['success' => true, 'current' => $current, 'industry' => $industry, 'layouts' => $out];
+        return ['success' => true, 'current' => $current, 'industry' => $industry, 'layouts' => $out, 'vocabulary' => \App\Engines\Builder\Support\DesignCatalog::vocabulary(),
+            'palette' => (string) ((json_decode((string) ($site->settings_json ?: '{}'), true) ?: [])['palette'] ?? '')];
     }
 
     /**
@@ -2651,7 +2655,11 @@ PROMPT;
         $settings['template'] = $design;
         $settings['layout_switched_at'] = now()->toIso8601String();
         $settings['layout_previous'] = $current;
+        // DESIGN-PICKER-80: the design record (DESIGN-UPDATES-1) follows the switch. The deploy above still saw the old slug in
+        // settings, and $settings was read before it, so the record must be re-stamped from the new design and the page's version.
+        unset($settings['design']);
         app(\App\Engines\Builder\Services\BuilderService::class)->saveSettingsAndVariables($websiteId, $settings, $c['variables']);   // Law 11
+        try { \App\Engines\Builder\Support\DesignVersions::stampSite($websiteId, \App\Engines\Builder\Support\DesignVersions::ofHtml($c['html']) ?: null, 'design_switch'); } catch (\Throwable $e) { Log::info('[Arthur] design record after switch skipped: ' . $e->getMessage()); }
         $charged = 0;
         if ($cost > 0 && $c['filled'] > 0) {
             $credits->debit($wsId, $cost, 'builder_arthur_layout', $websiteId, ['design' => $design, 'from' => $current, 'filled' => $c['filled']]);
@@ -4106,7 +4114,7 @@ PROMPT;
         $keywordSlug = $this->resolveTemplateSlug($rawIndustry);
         $tplSelection = ['template' => $keywordSlug, 'industry' => $keywordSlug, 'method' => 'keyword', 'confidence' => 0.0, 'reason' => '', 'alternatives' => [], 'keyword_slug' => $keywordSlug];
         try {
-            $tplSelection = app(\App\Engines\Builder\Services\TemplateSelector::class)->select($data, $keywordSlug);
+            $tplSelection = app(\App\Engines\Builder\Services\TemplateSelector::class)->select($data, $keywordSlug, false, isset($wsId) ? (int) $wsId : null);   // DESIGN-PICKER-80: QA override reaches the chooser
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::warning('[Arthur] template selector threw; keyword resolver used', ['error' => $e->getMessage()]);
         }

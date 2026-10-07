@@ -1006,7 +1006,7 @@ function _wsShowTemplateEditor(site) {
       // (+ Add Page / + Add Section in the Pages state) were never on screen for it. Same pickers, from the toolbar.
       '<button type="button" id="t3-add-page-btn" onclick="wsAddPageToSite()" title="Add a page from the catalogue for your industry (5 credits)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">+ Page</button>' +
       '<button type="button" id="t3-add-section-btn" onclick="wsAddSectionToSite()" title="Add a section to the home page from the catalogue (2 credits)" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb);white-space:nowrap">+ Section</button>' +
-      '<button type="button" id="t3-layout-btn" onclick="wsOpenLayouts(' + wsId + ')" title="Switch to another layout of this design family — preview is free" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Layout</button>' +
+      '<button type="button" id="t3-layout-btn" onclick="wsOpenLayouts(' + wsId + ')" title="Choose another design for this site — previewing is free" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Designs</button>' +
       '<button type="button" onclick="wsOpenPalettes(' + wsId + ')" title="Colour palettes — hover to preview, click to apply" style="background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Colours</button>' +
       '<button type="button" class="t3-fonts-btn" onclick="wsOpenFonts(' + wsId + ')" title="Fonts — the design’s own, curated pairings or any Google font" style="' + ((window._t3Flags && window._t3Flags.fonts) ? '' : 'display:none;') + 'background:var(--s2);border:1px solid var(--bd);color:var(--t1);padding:5px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:var(--fb)">Fonts</button>' +
       '<button onclick="wsPublishFromEditor(' + wsId + ', ' + JSON.stringify(site.title || site.name || 'Website').replace(/"/g,'&quot;') + ')" style="background:var(--p,#6C5CE7);border:none;color:#fff;padding:5px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600">'+window.icon('rocket',18)+' Publish</button>' +
@@ -4753,18 +4753,113 @@ function _t3LayoutEndPreview() {
   if (f) { try { f.removeAttribute('srcdoc'); } catch (_e) {} }
   _t3ReloadPreview();
 }
+/* DESIGN-PICKER-80 (2026-10-07): the Layouts panel is the design picker. A site can move to any design of its industry:
+ * the Classic ones and, in the new system, ten styles x eight layouts in any palette. Style and Layout chips filter the
+ * cards; "Quick look" opens a large real-size preview (desktop or phone) in any palette; "Preview with my content" renders
+ * the site itself in that design (free), and Apply keeps text, images, colours and added sections (Undo puts it back). */
+(function () {
+  if (document.getElementById('t3-dp-css')) return;
+  var st = document.createElement('style'); st.id = 't3-dp-css';
+  st.textContent = ''
+    + '#t3-lay.dp{width:min(760px,calc(100% - 20px))!important}'
+    + '#t3-lay .dp-lbl{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);margin:12px 0 6px}'
+    + '#t3-lay .dp-chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin}'
+    + '#t3-lay .dp-chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);border-radius:999px;padding:6px 12px;font:inherit;font-size:12.5px;cursor:pointer;white-space:nowrap}'
+    + '#t3-lay .dp-chip[aria-pressed=true]{border-color:var(--p);background:color-mix(in srgb,var(--p) 18%,var(--s2));color:var(--t1)}'
+    + '#t3-lay .dp-dots{display:inline-flex}#t3-lay .dp-dots i{width:10px;height:10px;border-radius:50%;border:1px solid rgba(255,255,255,.25);margin-left:-3px}#t3-lay .dp-dots i:first-child{margin-left:0}'
+    + '#t3-lay .dp-ico{width:22px;height:16px;display:block}'
+    + '#t3-lay .dp-pals,.dp-ql .dp-pals{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}'
+    + '.dp-pal{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer;background:none;display:grid;place-items:center}'
+    + '.dp-pal span{width:22px;height:22px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(255,255,255,.18)}'
+    + '.dp-pal[aria-pressed=true]{border-color:var(--p)}'
+    + '.dp-pal.yours{width:auto;border-radius:999px;padding:0 10px;background:var(--s2);border:1px solid var(--bd);color:var(--t1);font:inherit;font-size:12px}'
+    + '.dp-pal.yours[aria-pressed=true]{border-color:var(--p)}'
+    + '#t3-lay .dp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:12px}'
+    + '#t3-lay .dp-card{border:1px solid var(--bd);border-radius:12px;overflow:hidden;background:var(--s2);display:flex;flex-direction:column}'
+    + '#t3-lay .dp-card.cur{border-color:var(--p)}'
+    + '#t3-lay .dp-card img,#t3-lay .dp-card .ph{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;background:#0B0D13}'
+    + '#t3-lay .dp-card .b{padding:10px 11px 11px;display:flex;flex-direction:column;gap:8px;flex:1}'
+    + '#t3-lay .dp-card .n{font-size:13.5px;font-weight:650;color:var(--t1)}'
+    + '#t3-lay .dp-card .m{font-size:11.5px;color:var(--t3);line-height:1.4}'
+    + '#t3-lay .dp-card .a{display:flex;gap:6px;margin-top:auto;flex-wrap:wrap}#t3-lay .dp-card .a .lu-btn{flex:1 1 auto}'
+    + '#t3-lay .dp-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--s1);border:1px solid var(--bd);color:var(--t2);margin-right:6px;vertical-align:1px}'
+    + '#t3-lay .dp-empty{grid-column:1/-1;text-align:center;padding:28px 10px;color:var(--t3);font-size:13px}'
+    + '.dp-ql{position:fixed;inset:0;z-index:100002;background:rgba(6,8,14,.86);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:flex;flex-direction:column;font-family:var(--fb)}'
+    + '.dp-ql .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px 16px;background:var(--s1);border-bottom:1px solid var(--bd2)}'
+    + '.dp-ql .bar .t{font:700 14px var(--fh);color:var(--t1);flex:1 1 auto;min-width:140px}'
+    + '.dp-ql .seg{display:inline-flex;background:var(--s2);border:1px solid var(--bd);border-radius:999px;padding:3px}'
+    + '.dp-ql .seg button{background:none;border:0;color:var(--t2);font:inherit;font-size:12.5px;padding:6px 12px;border-radius:999px;cursor:pointer}'
+    + '.dp-ql .seg button[aria-pressed=true]{background:var(--p);color:#fff}'
+    + '.dp-ql .stage{flex:1;overflow:auto;display:flex;justify-content:center;align-items:flex-start;padding:16px}'
+    + '.dp-ql .frame{background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5);transform-origin:top center}'
+    + '.dp-ql .frame iframe{border:0;display:block;width:100%;height:100%}'
+    + '.dp-ql .palrow{padding:8px 16px;background:var(--s1);border-bottom:1px solid var(--bd)}'
+    + '@media (max-width:760px){#t3-lay .dp-grid{grid-template-columns:1fr}.dp-ql .bar{padding:10px 12px}.dp-ql .stage{padding:10px}}';
+  document.head.appendChild(st);
+})();
+
+var _DP_ICONS = {
+  cinematic: '<rect x="1" y="1" width="20" height="14" rx="2" fill="currentColor" opacity=".55"/><rect x="4" y="9" width="9" height="2" rx="1" fill="currentColor"/>',
+  split: '<rect x="1" y="1" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="11" y="1" width="10" height="14" rx="1" fill="currentColor" opacity=".55"/><rect x="3" y="6" width="6" height="1.6" rx=".8" fill="currentColor"/><rect x="3" y="9" width="5" height="1.4" rx=".7" fill="currentColor" opacity=".6"/>',
+  editorial: '<rect x="1" y="1" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="3" y="3" width="10" height="2" rx="1" fill="currentColor"/><rect x="11" y="7" width="8" height="6" rx="1" fill="currentColor" opacity=".55"/><rect x="3" y="7.5" width="6" height="1.2" rx=".6" fill="currentColor" opacity=".6"/><rect x="3" y="10" width="6" height="1.2" rx=".6" fill="currentColor" opacity=".6"/>',
+  showcase: '<rect x="1" y="1" width="9" height="8" rx="1.5" fill="currentColor" opacity=".55"/><rect x="12" y="1" width="9" height="5" rx="1.5" fill="currentColor" opacity=".55"/><rect x="12" y="8" width="9" height="7" rx="1.5" fill="currentColor" opacity=".55"/><rect x="1" y="11" width="9" height="4" rx="1.5" fill="currentColor" opacity=".55"/>',
+  booking: '<rect x="1" y="1" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="12" y="3" width="7" height="10" rx="1.5" fill="currentColor" opacity=".55"/><rect x="13.5" y="10" width="4" height="1.8" rx=".9" fill="currentColor"/><rect x="3" y="5" width="7" height="1.8" rx=".9" fill="currentColor"/>',
+  story: '<rect x="1" y="1" width="20" height="4" rx="1.5" fill="currentColor" opacity=".55"/><rect x="1" y="6.5" width="20" height="4" rx="1.5" fill="currentColor" opacity=".4"/><rect x="1" y="12" width="20" height="3" rx="1.5" fill="currentColor" opacity=".25"/>',
+  grid: '<rect x="1" y="1" width="6" height="6" rx="1.2" fill="currentColor" opacity=".55"/><rect x="8" y="1" width="6" height="6" rx="1.2" fill="currentColor" opacity=".55"/><rect x="15" y="1" width="6" height="6" rx="1.2" fill="currentColor" opacity=".55"/><rect x="1" y="9" width="6" height="6" rx="1.2" fill="currentColor" opacity=".55"/><rect x="8" y="9" width="6" height="6" rx="1.2" fill="currentColor" opacity=".55"/><rect x="15" y="9" width="6" height="6" rx="1.2" fill="currentColor" opacity=".55"/>',
+  minimal: '<rect x="1" y="1" width="20" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="5" y="6" width="12" height="2" rx="1" fill="currentColor"/><rect x="7" y="9.5" width="8" height="1.2" rx=".6" fill="currentColor" opacity=".6"/>'
+};
+function _dpIcon(k) { return '<svg class="dp-ico" viewBox="0 0 22 16" aria-hidden="true">' + (_DP_ICONS[k] || '') + '</svg>'; }
+function _dpName(L) { return L.kind === 'v3' ? (L.style_label + ' · ' + L.layout_label) : (L.name || 'Classic'); }
+
+/* Quick look: the design itself (sample content), large, desktop or phone, in any palette. */
+function _dpQuickLook(L, vocab, pal, onUseMine) {
+  var old = document.querySelector('.dp-ql'); if (old) old.remove();
+  var ov = document.createElement('div'); ov.className = 'dp-ql'; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Quick look');
+  var mode = window.innerWidth <= 760 ? 'phone' : 'desktop';
+  ov.innerHTML = '<div class="bar"><div class="t">' + bld_escH(_dpName(L)) + '</div>'
+    + '<div class="seg" role="group" aria-label="Device"><button type="button" data-m="desktop">Desktop</button><button type="button" data-m="phone">Phone</button></div>'
+    + (onUseMine ? '<button type="button" class="lu-btn lu-btn--sm" data-a="mine" style="background:var(--p);color:#fff;border-color:var(--p)">Preview with my content</button>' : '')
+    + '<button type="button" class="lu-btn lu-btn--sm" data-a="x" aria-label="Close">Close</button></div>'
+    + '<div class="palrow"><div class="dp-pals"></div></div>'
+    + '<div class="stage"><div class="frame"><iframe title="Design preview" loading="eager"></iframe></div></div>';
+  document.body.appendChild(ov);
+  var fr = ov.querySelector('iframe'), box = ov.querySelector('.frame'), stage = ov.querySelector('.stage');
+  function src() { var u = L.preview_url.indexOf('raw=1') >= 0 ? L.preview_url : L.preview_url + (L.preview_url.indexOf('?') >= 0 ? '&' : '?') + 'raw=1'; return u + (pal ? '&palette=' + encodeURIComponent(pal) : ''); }
+  function size() {
+    var W = mode === 'phone' ? 390 : 1280, H = mode === 'phone' ? 844 : 800;
+    var avail = Math.max(280, stage.clientWidth - 32), sc = Math.min(1, avail / W);
+    box.style.width = W + 'px'; box.style.height = H + 'px'; box.style.transform = 'scale(' + sc + ')';
+    box.style.marginBottom = (-(H * (1 - sc))) + 'px';
+    ov.querySelectorAll('.seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-m') === mode)); });
+  }
+  function pals() {
+    var row = ov.querySelector('.dp-pals');
+    row.innerHTML = '<button type="button" class="dp-pal yours" data-p="" aria-pressed="' + String(!pal) + '">Design colours</button>'
+      + (vocab.palettes || []).map(function (p) { return '<button type="button" class="dp-pal" data-p="' + p.key + '" title="' + bld_escH(p.label) + '" aria-label="' + bld_escH(p.label) + '" aria-pressed="' + String(pal === p.key) + '"><span style="background:linear-gradient(135deg,' + p.accent + ' 0 50%,' + p.deep + ' 50% 100%)"></span></button>'; }).join('');
+    row.querySelectorAll('.dp-pal').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); pal = b.getAttribute('data-p') || ''; pals(); fr.src = src(); }); });
+  }
+  ov.querySelectorAll('.seg button').forEach(function (b) { b.addEventListener('click', function () { mode = b.getAttribute('data-m'); size(); }); });
+  function close() { ov.remove(); window.removeEventListener('resize', size); document.removeEventListener('keydown', onKey, true); }
+  function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); close(); } }
+  ov.querySelector('[data-a=x]').addEventListener('click', close);
+  var mine = ov.querySelector('[data-a=mine]'); if (mine) mine.addEventListener('click', function () { close(); onUseMine(); });
+  document.addEventListener('keydown', onKey, true); window.addEventListener('resize', size);
+  pals(); size(); fr.src = src();
+}
+
 window.wsOpenLayouts = async function (siteId) {
   var old = document.getElementById('t3-lay');
   if (old) { old.remove(); return; }
   _t3CloseFloating('t3-lay');   // FLOAT-DISMISS-1: one floating surface at a time
-  var pal = document.getElementById('t3-pal'); if (pal) pal.remove();
+  var palEl = document.getElementById('t3-pal'); if (palEl) palEl.remove();
   var stage = document.querySelector('#template-editor-view .pe-stage') || document.body;
   var panel = document.createElement('div');
-  panel.id = 't3-lay'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Layouts');
-  panel.style.cssText = 'position:absolute;top:10px;right:10px;width:min(420px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.45);padding:14px;font-family:var(--fb)';
-  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 14px var(--fh);color:var(--t1);flex:1">Layouts</div><button type="button" id="t3-lay-x" aria-label="Close" style="background:none;border:1px solid var(--bd);color:var(--t2);width:28px;height:28px;border-radius:6px;cursor:pointer">×</button></div>'
-    + '<div id="t3-lay-sub" style="font-size:12px;color:var(--t3);margin-bottom:12px">Other layouts in this design family. Click one to preview it with your own content — free. Apply keeps your text, images, colours and added sections; Undo puts the old layout back.</div>'
-    + '<div id="t3-lay-list"><div class="lu-skel" style="width:80%"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
+  panel.id = 't3-lay'; panel.className = 'dp'; panel.setAttribute('role', 'dialog'); panel.setAttribute('aria-label', 'Designs');
+  panel.style.cssText = 'position:absolute;top:10px;right:10px;max-height:calc(100% - 20px);overflow:auto;z-index:120;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);box-shadow:0 18px 48px rgba(0,0,0,.45);padding:14px 14px 16px;font-family:var(--fb)';
+  panel.innerHTML = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:2px"><div style="font:700 15px var(--fh);color:var(--t1);flex:1">Designs</div><button type="button" id="t3-lay-x" aria-label="Close" class="lu-btn lu-btn--sm">Close</button></div>'
+    + '<div id="t3-lay-sub" style="font-size:12px;color:var(--t3);line-height:1.45">Choose a look and a page structure. Preview any design with your own content for free. Applying keeps your text, images, colours and added sections, and Undo puts the old design back.</div>'
+    + '<div id="t3-lay-filters"></div>'
+    + '<div id="t3-lay-list"><div class="lu-skel" style="width:80%;margin-top:12px"></div><div class="lu-skel" style="width:60%;margin-top:8px"></div></div>';
   stage.appendChild(panel);
   panel.querySelector('#t3-lay-x').addEventListener('click', function () { panel.remove(); if (window._t3LayoutPreviewing) _t3LayoutEndPreview(); });
   var auth = { 'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json' };
@@ -4774,54 +4869,98 @@ window.wsOpenLayouts = async function (siteId) {
     var r = await fetch(API + 'builder/websites/' + siteId + '/layouts', { headers: auth, cache: 'no-store' });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     data = await r.json();
-  } catch (e) { list.innerHTML = '<div class="lu-empty"><b>Couldn’t load layouts</b>' + bld_escH(e.message) + '</div>'; return; }
+  } catch (e) { list.innerHTML = '<div class="lu-empty"><b>Couldn’t load designs</b>' + bld_escH(e.message) + '</div>'; return; }
   var lays = (data && data.layouts) || [];
-  if (lays.length < 2) { list.innerHTML = '<div class="lu-empty"><b>This design family has one layout</b>Ask Arthur to build a new site for a different structure.</div>'; return; }
-  list.innerHTML = ''; list.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+  var vocab = (data && data.vocabulary) || { styles: [], layouts: [], palettes: [] };
+  if (lays.length < 2) { list.innerHTML = '<div class="lu-empty"><b>No other designs for this site yet</b>Ask Arthur to build a new site for a different structure.</div>'; return; }
+  var hasV3 = lays.some(function (L) { return L.kind === 'v3'; });
+  var hasClassic = lays.some(function (L) { return L.kind !== 'v3'; });
+  var f = { style: '', layout: '' }, qlPal = '';
+  try { var saved = JSON.parse(sessionStorage.getItem('lu_dp_filter') || '{}'); if (saved && typeof saved === 'object') { f.style = saved.style || ''; f.layout = saved.layout || ''; } } catch (_e) {}
   var busy = false;
-  lays.forEach(function (L) {
-    var card = document.createElement('div');
-    card.setAttribute('data-lay', L.slug);
-    card.style.cssText = 'border:1px solid ' + (L.current ? 'var(--p)' : 'var(--bd)') + ';border-radius:10px;overflow:hidden;background:var(--s2)';
-    card.innerHTML = (L.screenshot ? '<img src="' + L.screenshot + '" alt="" loading="lazy" style="display:block;width:100%;aspect-ratio:16/9;object-fit:cover;object-position:top;background:#0B0D13">' : '<div style="width:100%;aspect-ratio:16/9;background:#0B0D13"></div>')
-      + '<div style="padding:9px 10px 10px;display:flex;align-items:center;gap:10px"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:var(--t1)">' + bld_escH(L.name) + '</div>'
-      + '<div style="font-size:11px;color:var(--t3);margin-top:2px">' + (L.current ? '✓ Current layout' : (L.carry_over + '% of your content carries over · ' + (L.credits > 0 ? L.credits + ' credits to fill the rest' : 'free to apply'))) + '</div></div>'
-      + (L.current ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="preview">Preview</button>') + '</div>';
-    var btn = card.querySelector('[data-a=preview]');
-    if (btn) btn.addEventListener('click', async function () {
-      if (busy) return; busy = true; btn.disabled = true; btn.textContent = 'Rendering…';
+
+  function renderFilters() {
+    var box = panel.querySelector('#t3-lay-filters');
+    if (!hasV3) { box.innerHTML = ''; return; }
+    var styles = vocab.styles.filter(function (s) { return lays.some(function (L) { return L.style === s.key; }); });
+    var layouts = vocab.layouts.filter(function (l) { return lays.some(function (L) { return L.layout === l.key; }); });
+    box.innerHTML = '<div class="dp-lbl">Style</div><div class="dp-chips" role="group" aria-label="Style">'
+      + '<button type="button" class="dp-chip" data-s="" aria-pressed="' + String(f.style === '') + '">All</button>'
+      + styles.map(function (s) { return '<button type="button" class="dp-chip" data-s="' + s.key + '" title="' + bld_escH(s.feel) + '" aria-pressed="' + String(f.style === s.key) + '"><span class="dp-dots"><i style="background:' + s.swatch[0] + '"></i><i style="background:' + s.swatch[1] + '"></i><i style="background:' + s.swatch[2] + '"></i></span>' + bld_escH(s.label) + '</button>'; }).join('')
+      + (hasClassic ? '<button type="button" class="dp-chip" data-s="classic" aria-pressed="' + String(f.style === 'classic') + '">Classic</button>' : '')
+      + '</div><div class="dp-lbl">Layout</div><div class="dp-chips" role="group" aria-label="Layout">'
+      + '<button type="button" class="dp-chip" data-l="" aria-pressed="' + String(f.layout === '') + '">All</button>'
+      + layouts.map(function (l) { return '<button type="button" class="dp-chip" data-l="' + l.key + '" title="' + bld_escH(l.does) + '" aria-pressed="' + String(f.layout === l.key) + '">' + _dpIcon(l.key) + bld_escH(l.label) + '</button>'; }).join('')
+      + '</div>';
+    box.querySelectorAll('[data-s]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); f.style = b.getAttribute('data-s'); if (f.style === 'classic') f.layout = ''; save(); renderFilters(); renderList(); }); });
+    box.querySelectorAll('[data-l]').forEach(function (b) { b.addEventListener('click', function (e) { e.stopPropagation(); f.layout = b.getAttribute('data-l'); if (f.layout && f.style === 'classic') f.style = ''; save(); renderFilters(); renderList(); }); });
+  }
+  function save() { try { sessionStorage.setItem('lu_dp_filter', JSON.stringify(f)); } catch (_e) {} }
+
+  function previewMine(L, btn) {
+    if (busy) return; busy = true; if (btn) { btn.disabled = true; btn.textContent = 'Rendering…'; }
+    (async function () {
       try {
         var rr = await fetch(API + 'builder/websites/' + siteId + '/layout/preview', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ design: L.slug }) });
         var jj = null; try { jj = await rr.json(); } catch (_e) {}
         if (!rr.ok || !jj || !jj.success || !jj.html) throw new Error((jj && (jj.message || jj.error)) || ('HTTP ' + rr.status));
         window._t3LayoutPreviewing = true;
-        var f = document.getElementById('t3-preview'); if (f) f.srcdoc = jj.html;
-        if (window.innerWidth <= 760) { panel.remove(); }   // phone: the bar carries Apply / Back; the page must be visible
-        _t3LayoutBar('Previewing “' + L.name + '”' + (L.credits > 0 ? ' — applying fills ' + L.gaps + ' missing texts for ' + L.credits + ' credits' : ' — free to apply'),
+        var fr = document.getElementById('t3-preview'); if (fr) fr.srcdoc = jj.html;
+        panel.remove();   // DESIGN-PICKER-80: the bar carries Apply / Back on every width; the page must be visible
+        var nm = _dpName(L);
+        _t3LayoutBar('Previewing “' + nm + '” with your content' + (L.credits > 0 ? ' — applying fills ' + L.gaps + ' missing texts for ' + L.credits + ' credits' : ' — free to apply'),
           async function () {
             var b = document.querySelector('#t3-lay-bar [data-a=apply]'); if (b) { b.disabled = true; b.textContent = 'Applying…'; }
             try {
               var ra = await fetch(API + 'builder/websites/' + siteId + '/layout', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, auth), body: JSON.stringify({ design: L.slug }) });
               var ja = null; try { ja = await ra.json(); } catch (_e) {}
               if (!ra.ok || !ja || !ja.success) throw new Error((ja && (ja.message || ja.error)) || ('HTTP ' + ra.status));
-              if (typeof showToast === 'function') showToast(ja.message || ('Switched to ' + L.name + '. Undo puts the old layout back.'), 'success');
+              if (typeof showToast === 'function') showToast(ja.message || ('Switched to ' + nm + '. Undo puts the old design back.'), 'success');
               window._t3LayoutPreviewing = false;
               var bar = document.getElementById('t3-lay-bar'); if (bar) bar.remove();
-              var fr = document.getElementById('t3-preview'); if (fr) { try { fr.removeAttribute('srcdoc'); } catch (_e) {} }
+              var fr2 = document.getElementById('t3-preview'); if (fr2) { try { fr2.removeAttribute('srcdoc'); } catch (_e) {} }
               panel.remove();
               _t3ReloadPreview();
             } catch (e) {
-              if (typeof showToast === 'function') showToast("Couldn’t apply that layout — " + e.message, 'error');
-              if (b) { b.disabled = false; b.textContent = 'Apply this layout'; }
+              if (typeof showToast === 'function') showToast("Couldn’t apply that design — " + e.message, 'error');
+              if (b) { b.disabled = false; b.textContent = 'Apply this design'; }
             }
           },
           function () { _t3LayoutEndPreview(); });
+        var ab = document.querySelector('#t3-lay-bar [data-a=apply]'); if (ab) ab.textContent = 'Apply this design';
       } catch (e) {
-        if (typeof showToast === 'function') showToast("Couldn’t preview that layout — " + e.message, 'error');
-      } finally { busy = false; btn.disabled = false; btn.textContent = 'Preview'; }
+        if (typeof showToast === 'function') showToast("Couldn’t preview that design — " + e.message, 'error');
+      } finally { busy = false; if (btn) { btn.disabled = false; btn.textContent = 'Preview with my content'; } }
+    })();
+  }
+
+  function renderList() {
+    var shown = lays.filter(function (L) {
+      if (L.current) return true;
+      if (f.style === 'classic') return L.kind !== 'v3';
+      if (f.style && L.style !== f.style) return false;
+      if (f.layout && L.layout !== f.layout) return false;
+      return true;
     });
-    list.appendChild(card);
-  });
+    list.innerHTML = '<div class="dp-grid"></div>';
+    var grid = list.querySelector('.dp-grid');
+    if (!shown.some(function (L) { return !L.current; })) { grid.innerHTML += '<div class="dp-empty">No design matches these choices. Try another style or layout.</div>'; }
+    shown.forEach(function (L) {
+      var card = document.createElement('div');
+      card.className = 'dp-card' + (L.current ? ' cur' : ''); card.setAttribute('data-lay', L.slug);
+      card.innerHTML = (L.screenshot ? '<img src="' + L.screenshot + '" alt="" loading="lazy">' : '<div class="ph"></div>')
+        + '<div class="b"><div class="n">' + (L.kind === 'v3' ? '' : '<span class="dp-tag">Classic</span>') + bld_escH(_dpName(L)) + '</div>'
+        + '<div class="m">' + (L.current ? '✓ Your current design' : (L.carry_over + '% of your content carries over · ' + (L.credits > 0 ? L.credits + ' credits to fill the rest' : 'free to apply'))) + '</div>'
+        + '<div class="a">' + (L.preview_url ? '<button type="button" class="lu-btn lu-btn--sm" data-a="look">Quick look</button>' : '')
+        + (L.current ? '' : '<button type="button" class="lu-btn lu-btn--sm" data-a="mine" style="background:var(--p);color:#fff;border-color:var(--p)">Preview with my content</button>') + '</div></div>';
+      var look = card.querySelector('[data-a=look]');
+      if (look) look.addEventListener('click', function () { _dpQuickLook(L, vocab, qlPal, L.current ? null : function () { previewMine(L, null); }); });
+      var mine = card.querySelector('[data-a=mine]');
+      if (mine) mine.addEventListener('click', function () { previewMine(L, mine); });
+      grid.appendChild(card);
+    });
+  }
+  renderFilters(); renderList();
 };
 
 /* ══════════════ PHONE LAYOUT for the template editor overlays (2026-09-14) ══════════════ */
@@ -5571,7 +5710,7 @@ window._t3CloseFloating = function (except) {
   var MOVE = 8, downAt = null, downInPanel = false;
 
   function inPanel(t) {
-    try { return !!(t && t.closest && t.closest('#t3-pal,#t3-lay')); } catch (e) { return false; }
+    try { return !!(t && t.closest && t.closest('#t3-pal,#t3-lay,.dp-ql,#t3-lay-bar')); } catch (e) { return false; }
   }
   /* The buttons that open these panels already toggle them; if an outside-click closed the panel first,
      the button would immediately reopen it. */

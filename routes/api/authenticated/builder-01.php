@@ -948,9 +948,29 @@ use Illuminate\Support\Facades\Route;
         });
 
         // ── Template System ──────────────────────────────────────
-        Route::get('/templates', function () {
+        // DESIGN-PICKER-80: style / layout / palette fields, optional ?industry= &style= &layout= &kind= filters and paging
+        // (?page= &per_page=; absent = the whole list, as before), plus the picker's vocabulary.
+        Route::get('/templates', function (\Illuminate\Http\Request $r) {
             $ts = new \App\Engines\Builder\Services\TemplateService();
-            return response()->json(['templates' => $ts->listTemplates()]);
+            $ws = $r->attributes->get('workspace_id'); $ws = $ws !== null ? (int) $ws : null;
+            $list = $ts->listTemplates(false, $ws);
+            foreach (['industry', 'style', 'layout', 'kind'] as $f) {
+                $v = trim((string) $r->query($f, ''));
+                if ($v !== '') $list = array_values(array_filter($list, fn ($t) => (string) ($t[$f] ?? '') === $v));
+            }
+            usort($list, function ($a, $b) {
+                $so = array_keys(\App\Engines\Builder\Support\DesignCatalog::STYLES); $lo = array_keys(\App\Engines\Builder\Support\DesignCatalog::LAYOUTS);
+                return strcmp((string) $a['industry'], (string) $b['industry'])
+                    ?: ((($a['kind'] ?? '') === 'v3') <=> (($b['kind'] ?? '') === 'v3'))
+                    ?: ((int) array_search($a['style'] ?? '', $so, true) <=> (int) array_search($b['style'] ?? '', $so, true))
+                    ?: ((int) array_search($a['layout'] ?? '', $lo, true) <=> (int) array_search($b['layout'] ?? '', $lo, true))
+                    ?: strcmp((string) $a['name'], (string) $b['name']);
+            });
+            $total = count($list);
+            $per = (int) $r->query('per_page', 0); $page = max(1, (int) $r->query('page', 1));
+            if ($per > 0) { $per = min($per, 200); $list = array_slice($list, ($page - 1) * $per, $per); }
+            return response()->json(['templates' => $list, 'total' => $total, 'page' => $per > 0 ? $page : 1, 'per_page' => $per > 0 ? $per : $total,
+                'vocabulary' => \App\Engines\Builder\Support\DesignCatalog::vocabulary()]);
         });
 
         Route::get('/templates/{industry}', function ($industry) {

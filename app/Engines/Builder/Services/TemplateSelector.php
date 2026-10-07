@@ -60,9 +60,9 @@ final class TemplateSelector
      * @return array{template:string, industry:string, method:string, confidence:float, reason:string,
      *               alternatives:array<int,string>, keyword_slug:?string}
      */
-    public function select(array $business, ?string $keywordSlug = null, bool $includeInactive = false): array
+    public function select(array $business, ?string $keywordSlug = null, bool $includeInactive = false, ?int $workspaceId = null): array
     {
-        $catalogue = $this->catalogue($includeInactive);
+        $catalogue = $this->catalogue($includeInactive, $workspaceId);
         $keywordSlug = $keywordSlug !== null && isset($catalogue[$keywordSlug]) ? $keywordSlug : null;
 
         // 1. An explicit choice (the customer picked a design) is honoured as-is when it is live.
@@ -145,12 +145,14 @@ final class TemplateSelector
      *
      * @return array<string, array{slug:string,industry:string,name:string,brief:string,variant:bool}>
      */
-    public function catalogue(bool $includeInactive = false): array
+    public function catalogue(bool $includeInactive = false, ?int $workspaceId = null): array
     {
         // includeInactive is for evaluation only: it never reaches a customer build.
-        return Cache::remember('arthur:tplsel:catalogue:' . ($includeInactive ? 'all' : 'live'), now()->addMinutes(10), function () use ($includeInactive) {
+        // DESIGN-PICKER-80: the key follows activation (designs-activated.stamp) and the QA override (v3picker.on).
+        $qa = \App\Engines\Builder\Support\DesignCatalog::previewFor($workspaceId);
+        return Cache::remember('arthur:tplsel:catalogue:' . ($includeInactive ? 'all' : 'live') . ($qa ? ':qa' : '') . ':' . \App\Engines\Builder\Support\DesignCatalog::stamp(), now()->addMinutes(10), function () use ($includeInactive, $workspaceId) {
             $out = [];
-            foreach ($this->templates->listTemplates($includeInactive) as $t) {
+            foreach ($this->templates->listTemplates($includeInactive, $workspaceId) as $t) {
                 $slug = (string) ($t['id'] ?? '');
                 if ($slug === '' || in_array($slug, self::CLONES, true)) { continue; }
                 $manifest = $this->templates->getManifest($slug) ?: [];
@@ -162,6 +164,9 @@ final class TemplateSelector
                     'name'     => (string) ($manifest['name'] ?? $slug),
                     'brief'    => $this->brief($slug, $manifest),
                     'variant'  => isset($manifest['design']['generator']),
+                    'kind'     => (string) ($t['kind'] ?? 'classic'),
+                    'style'    => $t['style'] ?? null,
+                    'layout'   => $t['layout'] ?? null,
                 ];
             }
             ksort($out);
@@ -176,6 +181,11 @@ final class TemplateSelector
         $desc = trim((string) ($manifest['description'] ?? ''));
         if ($desc !== '') { $parts[] = $desc; }
         $d = $manifest['design'] ?? null;
+        if (\App\Engines\Builder\Support\DesignCatalog::isV3($slug, $manifest)) {
+            $st = \App\Engines\Builder\Support\DesignCatalog::STYLES[$manifest['style']] ?? null; $ly = \App\Engines\Builder\Support\DesignCatalog::LAYOUTS[$manifest['layout']] ?? null;
+            $parts[] = 'Style ' . ($st[0] ?? $manifest['style']) . ' (' . ($st[1] ?? '') . '); layout ' . ($ly[0] ?? $manifest['layout']) . ' (' . ($ly[1] ?? '') . ').';
+            return implode(' ', $parts);
+        }
         if (is_array($d)) {
             $a = $d['archetypes'] ?? [];
             $parts[] = sprintf('Design: %s palette, %s type, %s hero, %s services layout, %s gallery.',
@@ -189,9 +199,23 @@ final class TemplateSelector
 
     private function systemPrompt(array $catalogue): string
     {
-        $lines = [];
+        // DESIGN-PICKER-80: an industry can carry 80 new-system designs ({industry}_{style}_{layout}); listing each would
+        // drown the prompt, so they are named once per industry as a grid of styles x layouts, with one glossary.
+        $lines = []; $grid = [];
         foreach ($catalogue as $c) {
+            if (($c['kind'] ?? '') === 'v3' && $c['style'] && $c['layout']) { $grid[$c['industry']]['s'][$c['style']] = 1; $grid[$c['industry']]['l'][$c['layout']] = 1; continue; }
             $lines[] = "- {$c['slug']} [industry: {$c['industry']}] — {$c['brief']}";
+        }
+        foreach ($grid as $ind => $g) {
+            $lines[] = "- {$ind}_<style>_<layout> [industry: {$ind}] — the NEW design system for this industry: styles " . implode(', ', array_keys($g['s'])) . '; layouts ' . implode(', ', array_keys($g['l'])) . '. Build the slug from one style and one layout.';
+        }
+        if ($grid !== []) {
+            $lines[] = '';
+            $lines[] = 'NEW-SYSTEM STYLES (the look; match it to the brand\'s mood, colours and audience):';
+            foreach (\App\Engines\Builder\Support\DesignCatalog::STYLES as $k => $s) { $lines[] = "  {$k}: {$s[1]}"; }
+            $lines[] = 'NEW-SYSTEM LAYOUTS (the structure; match it to how the business wins customers):';
+            foreach (\App\Engines\Builder\Support\DesignCatalog::LAYOUTS as $k => $l) { $lines[] = "  {$k}: {$l[1]}"; }
+            $lines[] = 'When the classified industry has new-system designs, choose one of them (prefer it over an older design of the same industry).';
         }
         $industries = implode(', ', self::INDUSTRIES);
         return "You choose the website template for a small business. You are careful and you explain yourself.\n\n"
