@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('memory:sync-runtime')->when(fn () => is_file(storage_path('app/memory1.on')))->hourlyAt(55)->withoutOverlapping(50)->runInBackground();   // RFC-0023 P6 runtime always
         $schedule->command('designs:check-updates')->when(fn () => is_file(storage_path('app/designupd.on')))->dailyAt('02:40')->withoutOverlapping(60)->runInBackground();   // DESIGN-UPDATES-1: prepare design updates off-peak (never applies one)
         $schedule->command('designs:check-updates')->when(fn () => is_file(storage_path('app/designupd.on')))->dailyAt('04:40')->withoutOverlapping(60)->runInBackground();   // a second try when the first met the load gate or the render lock
+        $schedule->command('designs:upgrade-offers')->when(fn () => is_file(storage_path('app/upgradeoffer.on')))->hourlyAt(25)->withoutOverlapping(50)->runInBackground();   // UPGRADE-OFFER-1: a few sites an hour, owner decides
         $schedule->command('lifecycle:tick')->everyFifteenMinutes()->withoutOverlapping(20)->runInBackground();   // LIFECYCLE-1
         // CAL-2: reminders for the owner's own calendar (Sarah in chat + notification + email); switch storage/app/remind1.on
         // CRM-SARAH-3: who to contact today, 08:00 in each owner's own time; switch storage/app/crmdaily.on

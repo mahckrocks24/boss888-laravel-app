@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
 $__dupdWs = fn (Request $r) => (int) $r->attributes->get('workspace_id');
-$__dupdOwn = function (Request $r, int $id) use ($__dupdWs) { return DesignUpdateService::on($__dupdWs($r)) && (int) DB::table('design_updates')->where('id', $id)->value('workspace_id') === $__dupdWs($r); };
+$__dupdOwn = function (Request $r, int $id) use ($__dupdWs) { return (DesignUpdateService::on($__dupdWs($r)) || \App\Engines\Builder\Services\UpgradeOfferService::on($__dupdWs($r))) &&   // UPGRADE-OFFER-1
+    (int) DB::table('design_updates')->where('id', $id)->value('workspace_id') === $__dupdWs($r); };
 
 Route::get('/builder/design-updates', function (Request $r) use ($__dupdWs) {
     return response()->json(['success' => true, 'updates' => app(DesignUpdateService::class)->offers($__dupdWs($r))]);

@@ -511,9 +511,11 @@
   function designItem(x) {
     var sum = 'Preview it first · nothing changes until you agree';
     var pv = (x.shot_desk && !(window.matchMedia && matchMedia('(max-width:767px)').matches)) ? '<div class="pv"><img src="' + esc(x.shot_desk) + '" alt="Your website after the update" style="width:100%;max-height:150px;object-fit:cover;object-position:top;border-radius:10px"></div>' : '';
-    var desc = (x.note ? x.note + ' ' : 'Arthur improved the design of ' + x.website + '. ') + (x.content && x.content.text ? x.content.text : '');
-    var acts = [{ label: 'Preview the update', kind: 'primary', run: function () { if (window.luDesignUpdate) window.luDesignUpdate.open(x.id); } }];
-    return railItem('appr', '✦', 'Design update: ' + x.website, desc, 'Arthur', acts, 'dupd-' + x.id, pv, sum);
+    var up = x.kind === 'upgrade';   /* UPGRADE-OFFER-1: a new look, with the owner's own content in it */
+    if (up) sum = 'See it with your own content · nothing changes until you choose';
+    var desc = up ? ((x.choices && x.choices.length > 1 ? x.choices.length + ' new looks to choose from, ' : 'A new look, ') + 'made with your own words and pictures.') : (x.note ? x.note + ' ' : 'Arthur improved the design of ' + x.website + '. ') + (x.content && x.content.text ? x.content.text : '');
+    var acts = [{ label: up ? 'See the new looks' : 'Preview the update', kind: 'primary', run: function () { if (window.luDesignUpdate) window.luDesignUpdate.open(x.id); } }];
+    return railItem('appr', '✦', up ? 'A new look is ready for ' + x.website : 'Design update: ' + x.website, desc, 'Arthur', acts, 'dupd-' + x.id, pv, sum);
   }
   document.addEventListener('lu:design-update', function () { try { loadRail(); } catch (e) {} });
   function loadRail() {

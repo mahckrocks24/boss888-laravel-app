@@ -25,6 +25,7 @@ class DesignUpdateFlowTest extends TestCase
     {
         parent::setUp();
         if (! Schema::hasTable('design_updates')) { (require base_path('database/migrations/2026_10_06_160000_design_updates.php'))->up(); }
+        (require base_path('database/migrations/2026_10_07_120000_design_updates_upgrade.php'))->up();   // UPGRADE-OFFER-1 columns (additive, idempotent)
         \Illuminate\Support\Facades\Queue::fake();   // no site thumbnail browser in a test
         DesignUpdateService::$onlyWorkspaces = [self::WS];
         $this->writeDesign('.hero{padding:10px}');

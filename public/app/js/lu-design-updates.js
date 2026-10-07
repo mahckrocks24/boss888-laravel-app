@@ -27,6 +27,7 @@
       '#lu-dupd .dp-x{margin-left:auto;width:40px;height:40px;border-radius:12px;border:0;background:transparent;color:inherit;font-size:22px;cursor:pointer}',
       '#lu-dupd .dp-x:hover{background:var(--lg-fill-hover,rgba(18,16,48,.05))}',
       '#lu-dupd .dp-bar{display:flex;align-items:center;gap:10px;padding:10px 20px;flex-wrap:wrap}',
+      '#lu-dupd .dp-choice{flex-wrap:wrap;max-width:100%}#lu-dupd .dp-choice button{white-space:nowrap}',   /* UPGRADE-OFFER-1 */
       '#lu-dupd .dp-seg{display:inline-flex;padding:3px;border-radius:12px;background:var(--lg-fill-hover,rgba(18,16,48,.05));gap:2px}',
       '#lu-dupd .dp-seg button{border:0;background:transparent;color:var(--lg-ink-2,#454A61);font:600 13px var(--lg-font,inherit);padding:8px 14px;border-radius:9px;cursor:pointer;min-height:36px}',
       '#lu-dupd .dp-seg button[aria-pressed="true"]{background:var(--lg-raised,#fff);color:var(--lg-ink,#0D0F1C);box-shadow:var(--lg-shadow-1,0 1px 2px rgba(30,24,80,.08))}',
@@ -97,25 +98,32 @@
 
   function draw(ov, u) {
     var shell = ov.querySelector('.dp-shell'); var waiting = u.status === 'ready';
+    /* UPGRADE-OFFER-1: a move to one of the new looks reads differently from an improvement of the current one */
+    var up = u.kind === 'upgrade';
+    var T = up ? { title: 'A new look is ready for ' + u.website, sub: 'Pick the look you like. Nothing changes until you choose one, and you can go back for 30 days.', after: 'With the new look', agree: 'Use this look', busy: 'Switching…', cancel: 'Keep my current look', aria: 'New look preview' }
+               : { title: 'A design improvement for ' + u.website, sub: 'Nothing changes until you agree. You can go back afterwards for 30 days.', after: 'After the update', agree: 'Agree and update', busy: 'Updating…', cancel: 'Cancel', aria: 'Design update preview' };
+    var choices = up && (u.choices || []).length > 1 ? '<div class="dp-seg dp-choice" role="group" aria-label="Looks">' + u.choices.map(function (c) { return '<button type="button" data-choice="' + Number(c.id) + '" aria-pressed="' + (c.id === u.id ? 'true' : 'false') + '">' + esc(c.label) + '</button>'; }).join('') + '</div>' : '';
+    var noPlace = up ? (u.no_place || []).length : 0;
     var items = (u.changes || []).map(function (c, i) {
       return '<div class="dp-item' + (c.kind === 'kept_custom' || c.kind === 'removed_by_design' ? ' warn' : '') + '"><span class="k">' + esc(KIND[c.kind] || 'Change') + '</span><div>' + esc(c.text) + '</div>'
         + (c.kind !== 'removed_by_design' ? '<button type="button" class="dp-btn sm" data-show="' + esc(c.block) + '">Show me on the preview</button>' : '<button type="button" class="dp-btn sm" data-show-now="' + esc(c.block) + '">Show me where it is now</button>') + '</div>';
     }).join('');
     var notes = (u.notes || []).map(function (n) { return '<div class="dp-item"><span class="k">' + (n.kind === 'draft' ? 'Your draft' : 'Your pages') + '</span><div>' + esc(n.text) + '</div></div>'; }).join('');
     var content = u.content ? '<div class="dp-ok"><span aria-hidden="true">✓</span><div><b>Your content is safe.</b> ' + esc(u.content.text) + '</div></div>' : '';
-    shell.innerHTML = '<div class="dp-hd"><div class="dp-ic">' + SPARK + '</div><div style="min-width:0"><h2 class="dp-t">A design improvement for ' + esc(u.website) + '</h2><p class="dp-s">' + (waiting ? 'Nothing changes until you agree. You can go back afterwards for 30 days.' : 'This update is ' + esc(u.status) + '.') + '</p></div><button type="button" class="dp-x" aria-label="Close">×</button></div>'
-      + '<div class="dp-bar"><div class="dp-seg dp-dev" role="group" aria-label="Device"><button type="button" data-dev="desk" aria-pressed="true">Desktop</button><button type="button" data-dev="phone" aria-pressed="false">Phone</button></div>'
-      + '<div class="dp-seg dp-views" role="group" aria-label="Which version"><button type="button" data-view="both" aria-pressed="true">Side by side</button><button type="button" data-view="now" aria-pressed="false">Now</button><button type="button" data-view="after" aria-pressed="false">After the update</button></div></div>'
+    shell.innerHTML = '<div class="dp-hd"><div class="dp-ic">' + SPARK + '</div><div style="min-width:0"><h2 class="dp-t">' + esc(T.title) + '</h2><p class="dp-s">' + (waiting ? esc(T.sub) : 'This ' + (up ? 'offer' : 'update') + ' is ' + esc(u.status) + '.') + '</p></div><button type="button" class="dp-x" aria-label="Close">×</button></div>'
+      + '<div class="dp-bar">' + choices + '<div class="dp-seg dp-dev" role="group" aria-label="Device"><button type="button" data-dev="desk" aria-pressed="true">Desktop</button><button type="button" data-dev="phone" aria-pressed="false">Phone</button></div>'
+      + '<div class="dp-seg dp-views" role="group" aria-label="Which version"><button type="button" data-view="both" aria-pressed="true">Side by side</button><button type="button" data-view="now" aria-pressed="false">Now</button><button type="button" data-view="after" aria-pressed="false">' + esc(T.after) + '</button></div></div>'
       + '<div class="dp-body"><div class="dp-stage" data-show="both">'
       + '<div class="dp-pane now"><div class="dp-lbl"><i></i>Now</div><div class="dp-frame"><iframe title="Your website now" sandbox="allow-scripts" loading="lazy" src="' + esc(u.now_url) + '"></iframe></div></div>'
-      + '<div class="dp-pane after"><div class="dp-lbl"><i></i>After the update</div><div class="dp-frame"><iframe title="Your website after the update" sandbox="allow-scripts" src="' + esc(u.after_url) + '"></iframe></div></div></div>'
+      + '<div class="dp-pane after"><div class="dp-lbl"><i></i>' + esc(T.after) + (up && u.to_label ? ' · ' + esc(u.to_label) : '') + '</div><div class="dp-frame"><iframe title="Your website ' + esc(T.after.toLowerCase()) + '" sandbox="allow-scripts" src="' + esc(u.after_url) + '"></iframe></div></div></div>'
       + '<aside class="dp-side"><div class="dp-list"><h3 class="dp-h">What changes for you</h3>'
-      + (u.note ? '<div class="dp-note"><b>What improves.</b> ' + esc(u.note) + '</div>' : '<div class="dp-note">Arthur improved this design. The look changes; your words, pictures, colours and menu stay yours.</div>')
-      + content + (u.carried ? '<div class="dp-item"><span class="k">Your customisations</span><div>' + esc(u.carried) + '</div></div>' : '')
-      + (items || (u.carried ? '' : '<div class="dp-item"><span class="k">Your customisations</span><div>Everything you changed carries across as it is. Only the design’s look changes.</div></div>')) + notes + '</div>'
-      + (waiting ? '<div class="dp-ft"><button type="button" class="dp-btn" data-cancel>Cancel</button><button type="button" class="dp-btn primary" data-agree>Agree and update</button></div>' : '<div class="dp-ft"><button type="button" class="dp-btn" data-x>Close</button></div>')
+      + (up ? '<div class="dp-note"><b>What moves.</b> ' + esc(u.carried || 'Your words, pictures and colours move into the new look.') + '</div>' + (noPlace ? '<h3 class="dp-h" style="margin-top:6px">What has no place in this look</h3>' : '')
+         : (u.note ? '<div class="dp-note"><b>What improves.</b> ' + esc(u.note) + '</div>' : '<div class="dp-note">Arthur improved this design. The look changes; your words, pictures, colours and menu stay yours.</div>'))
+      + (up ? '' : content + (u.carried ? '<div class="dp-item"><span class="k">Your customisations</span><div>' + esc(u.carried) + '</div></div>' : ''))
+      + (items || (u.carried || up ? '' : '<div class="dp-item"><span class="k">Your customisations</span><div>Everything you changed carries across as it is. Only the design’s look changes.</div></div>')) + notes + (up ? content : '') + '</div>'
+      + (waiting ? '<div class="dp-ft"><button type="button" class="dp-btn" data-cancel>' + esc(T.cancel) + '</button><button type="button" class="dp-btn primary" data-agree>' + esc(T.agree) + '</button></div>' : '<div class="dp-ft"><button type="button" class="dp-btn" data-x>Close</button></div>')
       + '</aside></div>';
-    shell.querySelector('.dp-x').onclick = close; var cx = shell.querySelector('[data-x]'); if (cx) cx.onclick = close;
+    ov.setAttribute('aria-label', T.aria); shell.querySelector('.dp-x').onclick = close; var cx = shell.querySelector('[data-x]'); if (cx) cx.onclick = close;
     var stage = shell.querySelector('.dp-stage'); var dev = 'desk';
     if (window.matchMedia('(max-width:899px)').matches) { stage.setAttribute('data-show', 'after'); seg('.dp-views', 'data-view', 'after'); dev = 'phone'; seg('.dp-dev', 'data-dev', 'phone'); }   // on a phone the phone frame first
     function fit() {
@@ -139,6 +147,7 @@
     shell.querySelectorAll('[data-show]').forEach(function (b) { b.onclick = function () { show('after', b.getAttribute('data-show')); }; });
     shell.querySelectorAll('[data-show-now]').forEach(function (b) { b.onclick = function () { show('now', b.getAttribute('data-show-now')); }; });
     window.addEventListener('resize', fit); requestAnimationFrame(fit);
+    shell.querySelectorAll('[data-choice]').forEach(function (b) { b.onclick = function () { if (Number(b.getAttribute('data-choice')) === u.id) return; b.disabled = true; call('GET', 'builder/design-updates/' + Number(b.getAttribute('data-choice'))).then(function (r) { if (r.ok && r.json.update) draw(ov, r.json.update); else { b.disabled = false; toast('Couldn’t load that look — try again.', 'error'); } }).catch(function () { b.disabled = false; }); }; });
     var ag = shell.querySelector('[data-agree]'), cn = shell.querySelector('[data-cancel]');
     if (cn) cn.onclick = function () {
       cn.disabled = true; if (ag) ag.disabled = true;
@@ -147,15 +156,15 @@
       }).catch(function () { cn.disabled = false; if (ag) ag.disabled = false; toast('Couldn’t reach the server — try again.', 'error'); });
     };
     if (ag) ag.onclick = function () {
-      ag.disabled = true; cn.disabled = true; ag.textContent = 'Updating…';
+      ag.disabled = true; cn.disabled = true; ag.textContent = T.busy;
       call('POST', 'builder/design-updates/' + u.id + '/agree').then(function (r) {
         var j = r.json || {};
         if (r.status === 409 && j.update) { toast(j.message, 'warning'); draw(ov, j.update); return; }
-        if (!r.ok || !j.success) { ag.disabled = false; cn.disabled = false; ag.textContent = 'Agree and update'; toast(j.message || 'The update could not be applied. Nothing changed.', 'error'); return; }
+        if (!r.ok || !j.success) { ag.disabled = false; cn.disabled = false; ag.textContent = T.agree; toast(j.message || 'The update could not be applied. Nothing changed.', 'error'); return; }
         shell.innerHTML = '<div class="dp-done"><div class="dp-ic">✓</div><h2 class="dp-t">Done</h2><p class="dp-s" style="font-size:14px;line-height:1.5">' + esc(j.message) + '</p><div style="display:flex;gap:10px;justify-content:center;margin-top:18px"><button type="button" class="dp-btn primary" data-x>Close</button></div></div>';
         shell.querySelector('[data-x]').onclick = close; refresh();
         try { if (typeof window._t3ReloadPreview === 'function') window._t3ReloadPreview(); } catch (e) {}
-      }).catch(function () { ag.disabled = false; cn.disabled = false; ag.textContent = 'Agree and update'; toast('Couldn’t reach the server — try again.', 'error'); });
+      }).catch(function () { ag.disabled = false; cn.disabled = false; ag.textContent = T.agree; toast('Couldn’t reach the server — try again.', 'error'); });
     };
   }
 
@@ -169,7 +178,8 @@
       call('GET', 'builder/websites/' + Number(siteId) + '/design-update').then(function (r) {
         var d = r.json || {}; if (!r.ok || !d.on || (!d.offer && !d.applied)) { box.hidden = true; return; }
         box.hidden = false; var h = '<div class="t">Design</div>';
-        if (d.offer) h += '<div class="s">Arthur improved this website’s design. Preview it next to what you have now; nothing changes until you agree.</div><button type="button" class="lu-btn lu-btn--sm" data-prev>Preview the update</button>';
+        if (d.offer) h += d.offer.kind === 'upgrade' ? '<div class="s">A new look is ready for this website, with your own words and pictures in it. Preview it next to what you have now; nothing changes until you choose.</div><button type="button" class="lu-btn lu-btn--sm" data-prev>See the new looks</button>'   /* UPGRADE-OFFER-1 */
+          : '<div class="s">Arthur improved this website’s design. Preview it next to what you have now; nothing changes until you agree.</div><button type="button" class="lu-btn lu-btn--sm" data-prev>Preview the update</button>';
         if (d.applied && d.applied.can_revert) h += (d.offer ? '<div style="height:12px"></div>' : '') + '<div class="s">Updated on ' + esc(day(d.applied.decided_at)) + '. You can go back to the previous design until ' + esc(day(d.applied.revert_until)) + '.</div><button type="button" class="lu-btn lu-btn--sm" data-rev>Revert to previous design</button>';
         box.innerHTML = h;
         var p = box.querySelector('[data-prev]'); if (p) p.onclick = function () { open(d.offer.id); };

@@ -2480,6 +2480,7 @@ PROMPT;
             // TemplateSelector::CLONES) are never offered at creation — the Layout switcher must not offer them either,
             // unless the site already sits on one (then it stays listed as the current design).
             if (isset(self::CLONE_OVERRIDE[$slug]) && $slug !== $current) { continue; }
+            if ($slug !== $current && \App\Engines\Builder\Support\DesignCatalog::hiddenForNew($slug, $m)) { continue; }   // RETIRE-CLASSIC-1
             $ind = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($m['industry'] ?? $slug)));
             if ($ind !== $industry) { continue; }
             $copy = self::layoutCopyKeys($m);
@@ -2509,7 +2510,7 @@ PROMPT;
      * never had is filled by the build's own coverage pass when $fillGaps is true, else it keeps the design's copy.
      * @return array{html:string, variables:array, filled:int}
      */
-    private function composeLayout(int $wsId, int $websiteId, object $site, array $settings, array $tv, string $design, bool $fillGaps): array
+    private function composeLayout(int $wsId, int $websiteId, object $site, array $settings, array $tv, string $design, bool $fillGaps, array $aliases = []): array
     {
         $manifest = $this->templates->getManifest($design) ?: [];
         $industry = $this->templates->industryOf($design);
@@ -2521,7 +2522,11 @@ PROMPT;
         foreach ($tv as $k => $v) { if (is_scalar($v) || is_array($v)) { $variables[(string) $k] = $v; } }
         // …and what the page SHOWS wins over what the record remembers (inline edits, restores and old tests can leave
         // the record behind; the export is what the customer has been looking at).
-        foreach ($this->harvestExportFields($websiteId) as $k => $v) { $variables[$k] = $v; }
+        $__own = $tv;   // UPGRADE-OFFER-1: what the site itself holds, record and page
+        foreach ($this->harvestExportFields($websiteId) as $k => $v) { $variables[$k] = $v; $__own[$k] = $v; }
+        // UPGRADE-OFFER-1: a field the old design named differently lands under the new design's name, unless the site already
+        // holds that name itself (the site's own value always wins over a translation)
+        $__set = []; foreach ($aliases as $from => $to) { if (isset($__own[$from]) && ! isset($__own[$to]) && ! isset($__set[$to]) && array_key_exists($to, $manifest['variables'] ?? [])) { $variables[$to] = $__own[$from]; $__set[$to] = true; } }
         $variables['business_name'] = (string) ($tv['business_name'] ?? $site->name);
         // the design's own colour roles take the site's palette, exactly as a build would paint them
         $colors = array_filter(['primary' => $tv['primary_color'] ?? null, 'secondary' => $tv['secondary_color'] ?? null, 'accent' => $tv['accent_color'] ?? null]);
@@ -2594,6 +2599,22 @@ PROMPT;
             Log::warning('[Arthur] harvestExportFields: ' . $e->getMessage());
         }
         return $out;
+    }
+
+    /**
+     * UPGRADE-OFFER-1 (Owner 2026-10-07): another design — across the Classic / new boundary — rendered with THIS site's content
+     * (record, page and the field-name translations in $aliases). Never writes; the caller finishes and checks it.
+     * @return array{html:string, variables:array, filled:int}
+     */
+    public function composeForUpgrade(int $wsId, int $websiteId, string $design, array $aliases = []): array
+    {
+        $site = DB::table('websites')->where('id', $websiteId)->where('workspace_id', $wsId)->whereNull('deleted_at')->first();
+        if (! $site) throw new \RuntimeException('website not in workspace');
+        $settings = json_decode((string) ($site->settings_json ?: '{}'), true) ?: [];
+        $tv = json_decode((string) ($site->template_variables ?: '{}'), true) ?: [];
+        $design = preg_replace('/[^a-z0-9_]/', '', strtolower($design));
+        if ($design === '' || ! is_file(storage_path("templates/{$design}/manifest.json"))) throw new \RuntimeException('unknown design');
+        return $this->composeLayout($wsId, $websiteId, $site, $settings, $tv, $design, false, $aliases);
     }
 
     /** Free: the chosen layout with the site's content, finished exactly as a deploy would be, for the editor's iframe. */
@@ -4146,6 +4167,9 @@ PROMPT;
             $rawIndustry = $industry;
         }
 
+        // RETIRE-CLASSIC-1 (Owner 2026-10-07): an industry whose new designs are on no longer starts new websites on a Classic one
+        $__retFrom = $industry; $industry = \App\Engines\Builder\Support\DesignCatalog::forNewSite($industry, isset($wsId) ? (int) $wsId : null);
+        if ($industry !== $__retFrom) { \Illuminate\Support\Facades\Log::info('[Arthur] classic design retired for new sites; new design used', ['from' => $__retFrom, 'to' => $industry]); $data['industry'] = $industry; }
         $manifest = $this->templates->getManifest($industry);
 
         // Defensive double-check — if resolveTemplateSlug ever returned a

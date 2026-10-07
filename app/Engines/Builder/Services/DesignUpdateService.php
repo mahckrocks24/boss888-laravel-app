@@ -83,9 +83,9 @@ final class DesignUpdateService
         if ($d['slug'] === '' || ! is_file(storage_path("templates/{$d['slug']}/template.html"))) return "site {$websiteId}: no design";
         if ($d['version'] === '') { $v = DesignVersions::stampSite($websiteId, null, 'baseline'); return "site {$websiteId}: baseline {$v}"; }
         $now = DesignVersions::archive($d['slug']);
-        $open = DB::table('design_updates')->where('website_id', $websiteId)->whereIn('status', ['building', 'probing', 'ready', 'held']);
+        $open = DB::table('design_updates')->where('website_id', $websiteId)->where('kind', 'version')->whereIn('status', ['building', 'probing', 'ready', 'held']);   // UPGRADE-OFFER-1: upgrade offers are their own
         if ($now === $d['version']) { (clone $open)->update(['status' => 'superseded', 'updated_at' => now()]); return "site {$websiteId}: up to date"; }
-        if (DB::table('design_updates')->where('website_id', $websiteId)->where('to_version', $now)->exists()) return "site {$websiteId}: {$now} already handled";
+        if (DB::table('design_updates')->where('website_id', $websiteId)->where('kind', 'version')->where('to_version', $now)->exists()) return "site {$websiteId}: {$now} already handled";
         (clone $open)->update(['status' => 'superseded', 'updated_at' => now()]);
         $id = (int) DB::table('design_updates')->insertGetId(['workspace_id' => (int) DB::table('websites')->where('id', $websiteId)->value('workspace_id'), 'website_id' => $websiteId,
             'design_slug' => $d['slug'], 'from_version' => $d['version'], 'to_version' => $now, 'status' => 'building', 'created_at' => now(), 'updated_at' => now()]);
@@ -218,12 +218,12 @@ final class DesignUpdateService
     public function probe(int $updateId): string
     {
         $u = DB::table('design_updates')->where('id', $updateId)->first(); if (! $u || $u->status !== 'probing') return 'skip';
-        $l = sys_getloadavg()[0] ?? 0; if ($l > 2) return 'load';
+        $l = sys_getloadavg()[0] ?? 0; if ($l > 4) return 'load';   // 4 cores since 10-06 (EV-1343): the render runner waits above 4 too
         $fh = @fopen(self::LOCK, 'r'); if (! $fh) $fh = @fopen(sys_get_temp_dir() . '/lug-dupd.lock', 'c');
         // the render runner releases the lock between batches: wait for that gap (checked every 2 s, up to 10 min), never start a second Chrome
         $got = false; for ($i = 0; $fh && $i < 300; $i++) { if (flock($fh, LOCK_EX | LOCK_NB)) { $got = true; break; } usleep(2000000); }
         if (! $got) { if ($fh) fclose($fh); return 'busy'; }
-        if ((sys_getloadavg()[0] ?? 0) > 2) { flock($fh, LOCK_UN); fclose($fh); return 'load'; }
+        if ((sys_getloadavg()[0] ?? 0) > 4) { flock($fh, LOCK_UN); fclose($fh); return 'load'; }
         try {
             $dir = self::dir((int) $u->website_id, $updateId);
             $job = ['base' => rtrim((string) (config('app.probe_base') ?: 'https://staging.levelupgrowth.io'), '/'), 'out' => "{$dir}/probe.json", 'shots' => $dir,
@@ -256,10 +256,17 @@ final class DesignUpdateService
     /** The offers waiting for the owner, as the card and the preview screen show them. */
     public function offers(int $workspaceId): array
     {
-        if (! self::on($workspaceId)) return [];
+        $ver = self::on($workspaceId); $upg = UpgradeOfferService::on($workspaceId);   // UPGRADE-OFFER-1
+        if (! $ver && ! $upg) return [];
         try {
-            return DB::table('design_updates')->where('workspace_id', $workspaceId)->where('status', 'ready')->orderByDesc('id')->limit(5)->pluck('id')
-                ->map(fn ($id) => $this->forOwner((int) $id))->filter()->values()->all();
+            $rows = DB::table('design_updates')->where('workspace_id', $workspaceId)->where('status', 'ready')->orderByDesc('id')->limit(40)->get(['id', 'kind', 'offer_group']);
+            $seen = []; $ids = [];
+            foreach ($rows as $r) {
+                if (($r->kind ?? 'version') === 'upgrade') { if (! $upg || isset($seen[$r->offer_group])) continue; $seen[$r->offer_group] = true; $ids[] = (int) DB::table('design_updates')->where('offer_group', $r->offer_group)->where('status', 'ready')->min('id'); }
+                elseif ($ver) $ids[] = (int) $r->id;
+                if (count($ids) >= 5) break;
+            }
+            return collect($ids)->map(fn ($id) => $this->forOwner((int) $id))->filter()->values()->all();
         } catch (\Throwable $e) { return []; }
     }
 
@@ -278,13 +285,17 @@ final class DesignUpdateService
             'shot_desk' => $shot('after-desk'), 'shot_phone' => $shot('after-phone'),
             'created_at' => (string) $u->created_at, 'decided_at' => $u->decided_at, 'revert_until' => $u->revert_until,
             'can_revert' => $u->status === 'agreed' && $u->revert_until && now()->lt($u->revert_until),
+            // UPGRADE-OFFER-1
+            'kind' => (string) ($u->kind ?? 'version'), 'to_label' => (string) ($r['to']['label'] ?? ''), 'no_place' => array_values($r['no_place'] ?? []),
+            'choices' => ($u->kind ?? 'version') === 'upgrade' && $u->offer_group ? DB::table('design_updates')->where('offer_group', $u->offer_group)->whereIn('status', ['ready', 'agreed'])->orderBy('id')->get(['id', 'status', 'report_json'])
+                ->map(fn ($c) => ['id' => (int) $c->id, 'status' => (string) $c->status, 'label' => (string) ((json_decode((string) $c->report_json, true) ?: [])['to']['label'] ?? 'New look'), 'shot' => is_file(self::dir((int) $u->website_id, (int) $c->id) . '/after-desk.webp') ? $this->signed((int) $c->id, 'after-desk') : null])->values()->all() : [],
         ];
     }
 
     /** The website's design state for Site settings: an offer waiting, and the latest update that can still be reverted. */
     public function forSite(int $websiteId, int $workspaceId): array
     {
-        if (! self::on($workspaceId)) return ['on' => false];
+        if (! self::on($workspaceId) && ! UpgradeOfferService::on($workspaceId)) return ['on' => false];   // UPGRADE-OFFER-1
         $offer = DB::table('design_updates')->where('website_id', $websiteId)->where('workspace_id', $workspaceId)->where('status', 'ready')->orderByDesc('id')->value('id');
         $applied = DB::table('design_updates')->where('website_id', $websiteId)->where('workspace_id', $workspaceId)->where('status', 'agreed')->where('revert_until', '>', now())->orderByDesc('id')->value('id');
         return ['on' => true, 'offer' => $offer ? $this->forOwner((int) $offer) : null, 'applied' => $applied ? $this->forOwner((int) $applied) : null];
@@ -292,6 +303,9 @@ final class DesignUpdateService
 
     public function cancel(int $updateId, int $workspaceId, ?int $userId = null): array
     {
+        $g = DB::table('design_updates')->where('id', $updateId)->where('workspace_id', $workspaceId)->where('kind', 'upgrade')->value('offer_group');   // UPGRADE-OFFER-1: every suggestion of the offer
+        if ($g) { $n = DB::table('design_updates')->where('offer_group', $g)->where('workspace_id', $workspaceId)->whereIn('status', ['ready', 'probing', 'held', 'building'])->update(['status' => 'cancelled', 'decided_by' => $userId, 'decided_at' => now(), 'updated_at' => now()]);
+            return $n ? ['success' => true, 'message' => 'Nothing changed. Your website keeps its current look.'] : ['success' => false, 'message' => 'This offer is no longer waiting for you.']; }
         $n = DB::table('design_updates')->where('id', $updateId)->where('workspace_id', $workspaceId)->where('status', 'ready')
             ->update(['status' => 'cancelled', 'decided_by' => $userId, 'decided_at' => now(), 'updated_at' => now()]);
         return $n ? ['success' => true, 'message' => 'Nothing changed. Your website stays exactly as it is.'] : ['success' => false, 'message' => 'This update is no longer waiting for you.'];
@@ -301,6 +315,7 @@ final class DesignUpdateService
     {
         $u = DB::table('design_updates')->where('id', $updateId)->where('workspace_id', $workspaceId)->first();
         if (! $u || $u->status !== 'ready') return ['success' => false, 'code' => 'not_waiting', 'message' => 'This update is no longer waiting for you.'];
+        if (($u->kind ?? 'version') === 'upgrade') return $this->agreeUpgrade($u, $userId);   // UPGRADE-OFFER-1
         $sid = (int) $u->website_id; $root = storage_path("app/public/sites/{$sid}"); $dir = self::dir($sid, $updateId);
         $r = json_decode((string) $u->report_json, true) ?: [];
         // the site changed since the preview was made: rebuild, and show the owner the fresh preview when the list changed
@@ -341,6 +356,57 @@ final class DesignUpdateService
             'message' => ($promoted || ! DraftEdits::hasLive($sid) ? 'Your website has the new design.' : 'The new design is in your draft; visitors see it when you publish.') . " You can revert it from Site settings until {$until}.", 'update' => $this->forOwner($updateId)];
     }
 
+    /**
+     * UPGRADE-OFFER-1 (Owner 2026-10-07): Agree on one suggestion of an upgrade offer. Snapshot of every file and of the record
+     * (design columns included), the previewed page written byte for byte, the record moved to the new design (its
+     * composed content, the old design's section moves dropped, what has no place kept in the site's notes), the other
+     * pages given the new menu and footer, the version recorded, Revert for 30 days. Any failure puts the snapshot back.
+     */
+    private function agreeUpgrade(object $u, ?int $userId): array
+    {
+        $updateId = (int) $u->id; $sid = (int) $u->website_id; $root = storage_path("app/public/sites/{$sid}"); $dir = self::dir($sid, $updateId);
+        $r = json_decode((string) $u->report_json, true) ?: [];
+        if (md5((string) @file_get_contents("{$root}/index.html")) !== ($r['current_md5'] ?? '')) {
+            DB::table('design_updates')->where('id', $updateId)->update(['status' => 'building', 'updated_at' => now()]);
+            $b = app(UpgradeOfferService::class)->build($updateId, false);
+            return ['success' => false, 'code' => 'changed', 'message' => ($b['status'] ?? '') === 'ready' ? 'Your website changed since this preview. Here is the fresh preview.' : 'Your website changed since this preview, and the new look could not be prepared again. Nothing changed.', 'update' => $this->forOwner($updateId)];
+        }
+        $cand = (string) @file_get_contents("{$dir}/after.html");
+        $vars = json_decode((string) @file_get_contents("{$dir}/vars.json"), true);
+        if ($cand === '' || md5($cand) !== ($r['candidate_md5'] ?? '') || ! is_array($vars)) return ['success' => false, 'code' => 'missing', 'message' => 'The preview could not be found. Nothing changed.'];
+        if (! DB::table('design_updates')->where('id', $updateId)->where('status', 'ready')->update(['status' => 'applying', 'updated_at' => now()])) return ['success' => false, 'code' => 'not_waiting', 'message' => 'This offer is no longer waiting for you.'];
+        $from = (string) $u->design_slug; $to = (string) $u->to_slug;
+        try {
+            $snap = $this->snapshot($sid, "{$dir}/snapshot");
+            try { $this->templates->snapshotToHistory($sid, 'design_upgrade'); } catch (\Throwable $e) {}
+            $fp = fopen("{$root}/index.html", 'r+'); flock($fp, LOCK_EX); ftruncate($fp, 0); rewind($fp); fwrite($fp, $cand); fflush($fp); flock($fp, LOCK_UN); fclose($fp);
+            $row = DB::table('websites')->where('id', $sid)->first(['settings_json', 'template_variables']);
+            $st = UpgradeOfferService::settingsAfter(json_decode((string) ($row->settings_json ?: '{}'), true) ?: [], $to, $from);
+            $old = json_decode((string) ($row->template_variables ?: '{}'), true) ?: [];
+            $notes = array_values(array_merge((array) ($old['upgrade_notes'] ?? []), array_map(fn ($p) => ['from_design' => $from, 'field' => $p['field'], 'label' => $p['label'], 'kind' => $p['kind'], 'value' => $p['value'], 'kept_at' => date('c')], (array) ($r['no_place'] ?? []))));
+            if ($notes) $vars['upgrade_notes'] = $notes;
+            DB::table('websites')->where('id', $sid)->update(['settings_json' => json_encode($st), 'template_industry' => $to, 'template_variables' => json_encode($vars, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'updated_at' => now()]);
+            $this->rechromePages($sid);
+            $this->templates->afterHomeWritten($sid, $cand);
+            DesignVersions::stampSite($sid, DesignVersions::ofHtml($cand) ?: null, 'design_upgrade');
+            $promoted = false;
+            if (DraftEdits::on() && DraftEdits::hasLive($sid)) { $promoted = (bool) (DraftEdits::promote($sid)['promoted'] ?? false); }
+            try { \App\Http\Controllers\PublishedSiteController::invalidateCache($sid); } catch (\Throwable $e) {}
+            $r['applied'] = ['at' => date('c'), 'files' => $snap['files'], 'promoted' => $promoted, 'home_md5' => md5_file("{$root}/index.html"), 'from' => $from, 'to' => $to];
+            DB::table('design_updates')->where('id', $updateId)->update(['status' => 'agreed', 'decided_by' => $userId, 'decided_at' => now(), 'revert_until' => now()->addDays(self::REVERT_DAYS),
+                'report_json' => json_encode($r, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), 'updated_at' => now()]);
+            DB::table('design_updates')->where('website_id', $sid)->where('id', '!=', $updateId)->whereIn('status', ['ready', 'held', 'probing', 'building'])->update(['status' => 'superseded', 'updated_at' => now()]);
+        } catch (\Throwable $e) {
+            Log::error('[DesignUpdates] upgrade agree failed — restoring the snapshot', ['update' => $updateId, 'e' => $e->getMessage()]);
+            if (is_dir("{$dir}/snapshot/tree")) $this->restore($sid, "{$dir}/snapshot");
+            DB::table('design_updates')->where('id', $updateId)->update(['status' => 'ready', 'updated_at' => now()]);
+            return ['success' => false, 'code' => 'failed', 'message' => 'The new look could not be applied, so your website was put back exactly as it was.'];
+        }
+        $until = now()->addDays(self::REVERT_DAYS)->format('j F');
+        return ['success' => true, 'promoted' => $promoted, 'revert_until' => $until,
+            'message' => ($promoted || ! DraftEdits::hasLive($sid) ? 'Your website has its new look.' : 'The new look is in your draft; visitors see it when you publish.') . " You can go back from Site settings until {$until}.", 'update' => $this->forOwner($updateId)];
+    }
+
     public function revert(int $updateId, int $workspaceId, ?int $userId = null): array
     {
         $u = DB::table('design_updates')->where('id', $updateId)->where('workspace_id', $workspaceId)->first();
@@ -365,8 +431,8 @@ final class DesignUpdateService
         $this->rmTree($to); @mkdir("{$to}/tree", 0775, true);
         $hashes = [];
         $this->copyTree($root, "{$to}/tree", '', $hashes);
-        $row = DB::table('websites')->where('id', $sid)->first(['template_variables', 'settings_json']);
-        file_put_contents("{$to}/record.json", json_encode(['template_variables' => $row->template_variables, 'settings_json' => $row->settings_json]));
+        $row = DB::table('websites')->where('id', $sid)->first(['template_variables', 'settings_json', 'template_industry', 'template']);
+        file_put_contents("{$to}/record.json", json_encode(['template_variables' => $row->template_variables, 'settings_json' => $row->settings_json, 'template_industry' => $row->template_industry, 'template' => $row->template]));   // UPGRADE-OFFER-1: + the design columns
         file_put_contents("{$to}/hashes.json", json_encode($hashes));
         return ['files' => count($hashes)];
     }
@@ -378,11 +444,13 @@ final class DesignUpdateService
         foreach (scandir($root) ?: [] as $e) { if ($e === '.' || $e === '..' || $e === '.history') continue; $p = "{$root}/{$e}"; is_dir($p) ? $this->rmTree($p) : @unlink($p); }
         $h = []; $this->copyTree("{$from}/tree", $root, '', $h);
         $rec = json_decode((string) file_get_contents("{$from}/record.json"), true) ?: [];
-        DB::table('websites')->where('id', $sid)->update(['template_variables' => $rec['template_variables'] ?? null, 'settings_json' => $rec['settings_json'] ?? null, 'updated_at' => now()]);
+        DB::table('websites')->where('id', $sid)->update(['template_variables' => $rec['template_variables'] ?? null, 'settings_json' => $rec['settings_json'] ?? null, 'updated_at' => now()]
+            + (array_key_exists('template_industry', $rec) ? ['template_industry' => $rec['template_industry'], 'template' => $rec['template'] ?? null] : []));   // UPGRADE-OFFER-1
         $want = json_decode((string) file_get_contents("{$from}/hashes.json"), true) ?: [];
         $have = []; $this->hashTree($root, '', $have);
-        $row = DB::table('websites')->where('id', $sid)->first(['template_variables', 'settings_json']);
-        $recordOk = $row && $row->template_variables === ($rec['template_variables'] ?? null) && $row->settings_json === ($rec['settings_json'] ?? null);
+        $row = DB::table('websites')->where('id', $sid)->first(['template_variables', 'settings_json', 'template_industry']);
+        $recordOk = $row && $row->template_variables === ($rec['template_variables'] ?? null) && $row->settings_json === ($rec['settings_json'] ?? null)
+            && (! array_key_exists('template_industry', $rec) || $row->template_industry === $rec['template_industry']);
         ksort($want); ksort($have);
         return ['identical' => $want === $have && $recordOk, 'files' => count($have), 'record' => $recordOk, 'diff' => array_slice(array_keys(array_diff_assoc($want, $have) + array_diff_assoc($have, $want)), 0, 10)];
     }

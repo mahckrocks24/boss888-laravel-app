@@ -63,6 +63,8 @@ final class TemplateSelector
     public function select(array $business, ?string $keywordSlug = null, bool $includeInactive = false, ?int $workspaceId = null): array
     {
         $catalogue = $this->catalogue($includeInactive, $workspaceId);
+        // RETIRE-CLASSIC-1: a keyword answer that names a withheld Classic design keeps its industry, on a new design
+        if ($keywordSlug !== null && ! isset($catalogue[$keywordSlug])) { $__r = \App\Engines\Builder\Support\DesignCatalog::forNewSite($keywordSlug, $workspaceId); if (isset($catalogue[$__r])) $keywordSlug = $__r; }
         $keywordSlug = $keywordSlug !== null && isset($catalogue[$keywordSlug]) ? $keywordSlug : null;
 
         // 1. An explicit choice (the customer picked a design) is honoured as-is when it is live.

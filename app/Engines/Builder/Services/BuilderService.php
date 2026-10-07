@@ -90,7 +90,7 @@ class BuilderService
             // BuilderGenerationDTO refuses anything structured, so raw provider
             // output cannot reach this column.
             'type'               => $data['type'] ?? 'builder',
-            'template_industry'  => $data['template_industry'] ?? null,
+            'template_industry'  => isset($data['template_industry']) && is_string($data['template_industry']) && $data['template_industry'] !== '' ? \App\Engines\Builder\Support\DesignCatalog::forNewSite($data['template_industry'], (int) $wsId) : ($data['template_industry'] ?? null),   // RETIRE-CLASSIC-1
             'template_variables' => isset($data['template_variables'])
                 ? json_encode($data['template_variables'])
                 : null,

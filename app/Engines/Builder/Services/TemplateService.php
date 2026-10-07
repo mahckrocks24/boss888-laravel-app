@@ -820,6 +820,7 @@ class TemplateService
             $slugD = basename($dir);
             if (!$includeInactive && \App\Engines\Builder\Support\DesignCatalog::isV3Artefact($slugD, $manifest)) continue;
             if (!$includeInactive && !$isActive && !(\App\Engines\Builder\Support\DesignCatalog::isV3($slugD, $manifest) && \App\Engines\Builder\Support\DesignCatalog::previewFor($workspaceId))) continue;
+            if (!$includeInactive && \App\Engines\Builder\Support\DesignCatalog::hiddenForNew($slugD, $manifest)) continue;   // RETIRE-CLASSIC-1: Classic designs of an industry whose new designs are on
 
             $industry = $manifest['industry'] ?? basename($dir);
             $htmlPath = $dir . '/template.html';
