@@ -127,10 +127,11 @@ textarea.inp{min-height:84px;padding:10px 14px;resize:vertical}
 .sb-track:focus-visible{box-shadow:0 0 0 3px var(--ac-soft);border-color:var(--ac)}
 .sb-them{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,#10b981,#34d399)}.sb-you{position:absolute;right:0;top:0;bottom:0;background:var(--grad2)}.sb-lbl .you{text-align:right}
 .sb-ticks{position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(90deg,rgba(255,255,255,.35) 1px,transparent 1px);background-size:var(--tick) 100%;mix-blend-mode:overlay}
-.sb-h{position:absolute;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.28),0 0 0 3px rgba(255,255,255,.6);display:grid;place-items:center;transition:left .08s}
+.sb-h{position:absolute;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.28),0 0 0 3px rgba(255,255,255,.6);display:grid;place-items:center}
+.sb-track.is-drag .sb-h{transform:scale(1.08);box-shadow:0 4px 14px rgba(0,0,0,.3),0 0 0 4px rgba(255,255,255,.7)}.sb-track.is-drag{cursor:grabbing}
 .sb-h:before{content:"";width:2px;height:12px;background:#cfd3e0;box-shadow:-4px 0 0 #cfd3e0,4px 0 0 #cfd3e0}
 .sb-ends{display:flex;justify-content:space-between;font-size:11px;color:var(--t3);margin-top:6px}.sb-money{font-size:13px;color:var(--t2);margin-top:8px;min-height:20px}.sb-warn{color:var(--am);font-weight:600}
-@media (prefers-reduced-motion:reduce){.sb-h,.toast,.btn{transition:none}}
+@media (prefers-reduced-motion:reduce){.toast,.btn{transition:none}}
 .hide{display:none!important}
 /* progress of the six payments */
 .six{display:inline-flex;gap:3px;vertical-align:middle;margin-left:8px}.six i{width:9px;height:9px;border-radius:3px;background:var(--bd)}.six i.on{background:var(--grad2)}
@@ -464,22 +465,34 @@ textarea.inp{min-height:84px;padding:10px 14px;resize:vertical}
       '<div class="row"><div class="fld" style="flex:1 1 180px;margin:0"><label for="c-end">Ends <span style="color:var(--t3);font-weight:400">optional</span></label><input class="inp" id="c-end" type="text" placeholder="YYYY-MM-DD" inputmode="numeric" maxlength="10"></div>' +
       '<div class="fld" style="flex:1 1 180px;margin:0"><label for="c-max">Use limit <span style="color:var(--t3);font-weight:400">optional</span></label><input class="inp" id="c-max" inputmode="numeric" placeholder="No limit" maxlength="6"></div></div>' +
       '<p class="err" id="c-err" hidden></p><div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" id="c-save" type="button">Create code</button></div>';
+    // SLIDER-1 (Owner 2026-10-07: the split slider is smooth on the marketing page, not here): the bar is drawn once and then
+    // UPDATED in place on every move, exactly as the affiliates page does it. Rebuilding the markup on each step dropped the pointer
+    // capture mid-drag and made the handle stutter.
     function bar(k) {
-      var el = $('sb-' + k[0]), max = B[k[0]], v = st[k[0]], you = max - v, pct = max ? (v / max) * 100 : 0;   // the handle sits at the customer's share: right = bigger discount
-      var price = k[0] === 'domain' ? DOMAIN : (k[0] === 'yearly' ? S.plan * 10 : S.plan), n = k[0] === 'monthly' ? S.me.months : 1;
-      var earn = price * you / 10000, pays = price - price * v / 10000;
-      var line = k[0] === 'monthly' ? 'You earn ' + money(earn) + ' a month for ' + n + ' months (' + money(earn * n) + ') · they pay ' + money(pays) + ' a month'
-        : (k[0] === 'yearly' ? 'On a ' + money(price) + ' yearly plan: you earn ' + money(earn) + ' once · they pay ' + money(pays) : 'On a .com at ' + money(price) + ': you earn ' + money(earn) + ' · they pay ' + money(pays));
+      var el = $('sb-' + k[0]), max = B[k[0]];
+      function paint() {
+        var v = st[k[0]], you = max - v, pct = max ? (v / max) * 100 : 0;   // the handle sits at the customer's share: right = bigger discount
+        var price = k[0] === 'domain' ? DOMAIN : (k[0] === 'yearly' ? S.plan * 10 : S.plan), n = k[0] === 'monthly' ? S.me.months : 1;
+        var earn = price * you / 10000, pays = price - price * v / 10000;
+        var line = k[0] === 'monthly' ? 'You earn ' + money(earn) + ' a month for ' + n + ' months (' + money(earn * n) + ') · they pay ' + money(pays) + ' a month'
+          : (k[0] === 'yearly' ? 'On a ' + money(price) + ' yearly plan: you earn ' + money(earn) + ' once · they pay ' + money(pays) : 'On a .com at ' + money(price) + ': you earn ' + money(earn) + ' · they pay ' + money(pays));
+        el.querySelector('.them').textContent = 'Customer saves ' + (v / 100) + '%'; el.querySelector('.you').textContent = 'You earn ' + (you / 100) + '%';
+        el.querySelector('.sb-them').style.width = pct + '%'; el.querySelector('.sb-you').style.width = (100 - pct) + '%'; el.querySelector('.sb-h').style.left = pct + '%';
+        var tr = el.querySelector('.sb-track'); tr.setAttribute('aria-valuenow', v / 100); tr.setAttribute('aria-valuetext', 'You earn ' + (you / 100) + '%, customer saves ' + (v / 100) + '%');
+        el.querySelector('.sb-money').innerHTML = (you === 0 ? '<span class="sb-warn">You earn nothing on this code.</span> ' : '') + line;
+      }
+      if (el.querySelector('.sb-track')) return paint();
       el.innerHTML = '<div class="sb-hd"><span class="sb-t">' + k[1] + '</span><span class="sb-b">' + (max / 100) + '% to split · ' + k[2] + '</span></div>' +
-        '<div class="sb-lbl"><span class="them">Customer saves ' + (v / 100) + '%</span><span class="you">You earn ' + (you / 100) + '%</span></div>' +
-        '<div class="sb-track" role="slider" tabindex="0" aria-label="' + k[1] + ' split" aria-valuemin="0" aria-valuemax="' + (max / 100) + '" aria-valuenow="' + (v / 100) + '" aria-valuetext="You earn ' + (you / 100) + '%, customer saves ' + (v / 100) + '%" style="--tick:' + (500 / max * 100) + '%">' +
-          '<div class="sb-them" style="width:' + pct + '%"></div><div class="sb-you" style="width:' + (100 - pct) + '%"></div><div class="sb-ticks"></div><div class="sb-h" style="left:' + pct + '%"></div></div>' +
+        '<div class="sb-lbl"><span class="them"></span><span class="you"></span></div>' +
+        '<div class="sb-track" role="slider" tabindex="0" aria-label="' + k[1] + ' split" aria-valuemin="0" aria-valuemax="' + (max / 100) + '" style="--tick:' + (500 / max * 100) + '%">' +
+          '<div class="sb-them"></div><div class="sb-you"></div><div class="sb-ticks"></div><div class="sb-h"></div></div>' +
         '<div class="sb-ends"><span>◀ less discount, more for you</span><span>bigger discount, less for you ▶</span></div>' +
-        '<div class="sb-money">' + (you === 0 ? '<span class="sb-warn">You earn nothing on this code.</span> ' : '') + line + '</div>';
+        '<div class="sb-money"></div>';
+      paint();
       var tr = el.querySelector('.sb-track');
-      var set = function (bps) { bps = Math.max(0, Math.min(max, Math.round(bps / 100) * 100)); if (bps !== st[k[0]]) { st[k[0]] = bps; bar(k); el.querySelector('.sb-track').focus({ preventScroll: true }); } };
+      var set = function (bps) { bps = Math.max(0, Math.min(max, Math.round(bps / 100) * 100)); if (bps !== st[k[0]]) { st[k[0]] = bps; paint(); } };
       var at = function (x) { var r = tr.getBoundingClientRect(); var f = Math.max(0, Math.min(1, (x - r.left) / r.width)); set(f * max); };
-      tr.addEventListener('pointerdown', function (e) { tr.setPointerCapture(e.pointerId); at(e.clientX); var mv = function (ev) { at(ev.clientX); }; var up = function () { tr.removeEventListener('pointermove', mv); tr.removeEventListener('pointerup', up); }; tr.addEventListener('pointermove', mv); tr.addEventListener('pointerup', up); });
+      tr.addEventListener('pointerdown', function (e) { e.preventDefault(); tr.setPointerCapture(e.pointerId); tr.classList.add('is-drag'); at(e.clientX); var mv = function (ev) { at(ev.clientX); }; var up = function () { tr.classList.remove('is-drag'); tr.removeEventListener('pointermove', mv); tr.removeEventListener('pointerup', up); tr.removeEventListener('pointercancel', up); }; tr.addEventListener('pointermove', mv); tr.addEventListener('pointerup', up); tr.addEventListener('pointercancel', up); tr.focus({ preventScroll: true }); });
       tr.addEventListener('keydown', function (e) {
         var c = st[k[0]], d = { ArrowRight: 100, ArrowUp: 100, ArrowLeft: -100, ArrowDown: -100, PageUp: 500, PageDown: -500 }[e.key];
         if (e.key === 'Home') { e.preventDefault(); return set(0); } if (e.key === 'End') { e.preventDefault(); return set(max); }
