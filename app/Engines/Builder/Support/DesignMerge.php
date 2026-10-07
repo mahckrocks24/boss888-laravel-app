@@ -191,6 +191,8 @@ final class DesignMerge
             }
         }
         if (preg_match('#<style id="lu-more-css">.*?</style>#is', $fh[1], $mc) && ! str_contains($head, 'id="lu-more-css"')) $head .= $mc[0];
+        // TEXT-SIZE-1: the owner's own sizes, alignment and effects (toolbox / Arthur, design_extras) travel with the update
+        if (preg_match('#<style id="lug-design-extras"[^>]*>.*?</style>#is', $fh[1], $dx)) { $head = (string) preg_replace('#<style id="lug-design-extras"[^>]*>.*?</style>#is', '', $head); $head .= $dx[0]; }
         return substr($into, 0, $ih[1][1]) . $head . substr($into, $ih[1][1] + strlen($ih[1][0]));
     }
 

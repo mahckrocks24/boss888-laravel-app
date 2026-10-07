@@ -296,6 +296,7 @@ class BuilderRenderer
             'map'              => $this->renderMap($sec, $brand),
             'related_listings' => $this->renderRelatedListings($sec, $brand),
             'trust_signals'    => $this->renderTrustSignals($sec, $brand),
+            'legal'            => $this->renderLegal($sec, $brand),   // PAGE-PREVIEW-2: privacy, terms, cookies as real clauses
             // v1.4.4 Phase D-5 (2026-05-30)
             'cart_summary'     => $this->renderCartSummary($sec, $brand),
             'checkout_form'    => $this->renderCheckoutForm($sec, $brand),
@@ -1680,6 +1681,28 @@ HTML;
 ";
     }
 
+    /**
+     * PAGE-PREVIEW-2 (2026-10-07): a legal page as readable clauses — one heading and its paragraphs per part, a contents
+     * list on wide screens, in the site's palette (literal colours are role-mapped by roleifyForSite like every section).
+     */
+    private function renderLegal(array $sec, array $brand): string
+    {
+        $parts = '';
+        $toc = '';
+        foreach (($sec['parts'] ?? []) as $i => $p) {
+            $id = 'legal-' . preg_replace('/[^a-z0-9]+/', '-', strtolower((string) ($p['id'] ?? $p['heading'] ?? ('part-' . $i))));
+            $toc .= '<li style="margin:0 0 8px"><a href="#' . e($id) . '" style="color:#5a5f72;text-decoration:none;font-size:14px">' . e((string) ($p['heading'] ?? '')) . '</a></li>';
+            $paras = '';
+            foreach ((array) ($p['paragraphs'] ?? []) as $t) $paras .= '<p style="color:#5a5f72;line-height:1.75;margin:0 0 14px;font-size:16px">' . e((string) $t) . '</p>';
+            $list = '';
+            if (!empty($p['items'])) { $list = '<ul style="color:#5a5f72;line-height:1.7;margin:0 0 14px;padding-left:20px">'; foreach ((array) $p['items'] as $it) $list .= '<li style="margin:0 0 6px">' . e((string) $it) . '</li>'; $list .= '</ul>'; }
+            $parts .= '<section id="' . e($id) . '" style="scroll-margin-top:110px;padding:0 0 28px;margin:0 0 28px;border-bottom:1px solid rgba(0,0,0,.08)"><h2 style="color:#1a1a2e;font-size:clamp(20px,2.4vw,26px);margin:0 0 14px">' . e((string) ($p['heading'] ?? '')) . '</h2>' . $paras . $list . '</section>';
+        }
+        $intro = !empty($sec['intro']) ? '<p style="color:#1a1a2e;font-size:17px;line-height:1.7;margin:0 0 32px">' . e((string) $sec['intro']) . '</p>' : '';
+        $aside = $toc !== '' ? '<nav aria-label="On this page" class="lu-legal-toc" style="position:sticky;top:110px;align-self:start"><div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#5a5f72;margin:0 0 12px">On this page</div><ul style="list-style:none;margin:0;padding:0">' . $toc . '</ul></nav>' : '';
+        return '<section class="lu-legal" style="background:#ffffff;padding:72px 24px"><style>.lu-legal .lu-legal-grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:56px;max-width:1100px;margin:0 auto}@media(max-width:860px){.lu-legal .lu-legal-grid{grid-template-columns:1fr;gap:0}.lu-legal .lu-legal-toc{display:none}}</style>'
+            . '<div class="lu-legal-grid">' . $aside . '<div style="max-width:760px">' . $intro . $parts . '</div></div></section>';
+    }
     private function renderGeneric(array $sec, array $brand): string
     {
         $bg = $this->safeCss((string) ($sec['style']['bg'] ?? ''), '#ffffff');
@@ -1688,7 +1711,7 @@ HTML;
         $textColor = $isLight ? '#5a5f72' : 'rgba(255,255,255,.7)';
 
         $heading = $sec['heading'] ?? '';
-        $body = $sec['body'] ?? '';
+        $body = $sec['body'] ?? $sec['content'] ?? '';   // PAGE-PREVIEW-2: 'content' was dropped
         foreach ($sec['components'] ?? [] as $c) {
             if ($c['type'] === 'heading') $heading = $c['text'] ?? $heading;
             if ($c['type'] === 'text') $body = $c['text'] ?? $body;

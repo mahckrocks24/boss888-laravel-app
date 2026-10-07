@@ -543,7 +543,8 @@ use Illuminate\Support\Facades\Route;
                     $existing = \Illuminate\Support\Facades\DB::table('pages')->where('website_id', $wid)->pluck('slug')->toArray(); }
             }
             $isStatic = $wid > 0 && is_file(storage_path('app/public/sites/' . $wid . '/index.html'));
-            $pages = array_values(array_map(function ($p) use ($existing) { $p['preview_url'] = '/page-templates/' . $p['slug'] . '/preview'; $p['exists'] = in_array(str_replace('_', '-', $p['slug']), $existing, true); return $p; },
+            $__wok = $wid > 0 && $industry !== null;   // PAGE-PREVIEW-2: the preview is the page on THIS site (signed link: a frame carries no bearer)
+            $pages = array_values(array_map(function ($p) use ($existing, $wid, $__wok) { $p['preview_url'] = $__wok ? '/page-preview/' . $wid . '/' . $p['slug'] . '?t=' . \App\Engines\Builder\Support\PageFill::previewToken($wid, (string) $p['slug']) : '/page-templates/' . $p['slug'] . '/preview'; $p['exists'] = in_array(str_replace('_', '-', $p['slug']), $existing, true); return $p; },
                 array_filter(\App\Engines\Builder\Support\BuilderCapabilities::pages($industry), fn($p) => !($isStatic && in_array($p['slug'], ['cart', 'checkout', 'account'], true)))));
             return response()->json([
                 'industry'    => $industry,

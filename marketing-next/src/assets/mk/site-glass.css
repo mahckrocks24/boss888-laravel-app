@@ -618,3 +618,17 @@ html .lg-site .sol-sector-nav a:hover { border-color: var(--tint-rim); color: va
 }
 @media (prefers-reduced-motion: reduce) { html .lg-site .sol-sites-track { scroll-behavior: auto; } }
 @media (max-width: 760px) { html .lg-site .sol-site figcaption { flex-direction: column; align-items: flex-start; gap: 2px; } html .lg-site .sol-site figcaption span { font-size: .68rem; } }
+
+/* §22 SCROLLER-1 (Owner 2026-10-07: "the scroller on the website should be the same as the portal, use the same design as the affiliate page"):
+   one thin glass page scroller on every marketing page and in the affiliate portal (the portal carries the same block). Rules sit on html,
+   so no .lg-site prefix is possible; scrollbar-color drives modern Chrome and Firefox, the -webkit rules cover Safari. */
+html { scrollbar-width: thin; scrollbar-color: rgba(36, 30, 72, .28) transparent; }
+html::-webkit-scrollbar { width: 10px; height: 10px; }
+html::-webkit-scrollbar-track { background: transparent; }
+html::-webkit-scrollbar-thumb { background: rgba(36, 30, 72, .28); border-radius: 10px; border: 3px solid transparent; background-clip: content-box; }
+html::-webkit-scrollbar-thumb:hover { background: rgba(36, 30, 72, .45); background-clip: content-box; }
+@media (prefers-color-scheme: dark) {
+  html { scrollbar-color: rgba(255, 255, 255, .26) transparent; }
+  html::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .26); background-clip: content-box; }
+  html::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .42); background-clip: content-box; }
+}

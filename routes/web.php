@@ -933,6 +933,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; c
 .lu-frame { width: 100%; max-width: none; height: 100%; border: none; background: #fff; transition: max-width .35s cubic-bezier(.2,.8,.2,1); display: block; }
 .lu-stage[data-dev="mobile"] .lu-frame { max-width: 420px; box-shadow: 0 12px 48px rgba(0,0,0,.5); margin-top: 20px; height: calc(100vh - 92px); border-radius: 16px; }
 .lu-stage[data-dev="mobile"] { padding: 0 24px; }
+@media (max-width: 640px) { .lu-bar { padding: 0 10px; gap: 8px; } .lu-bar-center, .lu-bar-badge { display: none; } .lu-bar-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .lu-bar-left { min-width: 0; flex: 1; } .lu-use { padding: 8px 12px; white-space: nowrap; } }   /* PAGE-PREVIEW-2 */
 </style></head>
 <body>
 <div class="lu-bar">
@@ -943,7 +944,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; c
   </div>
   <div class="lu-bar-right">
     <a class="lu-close" href="/app/">Close</a>
-    <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Use This Template →</a>
+    <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Start with this page →</a>
   </div>
 </div>
 <div class="lu-stage" id="luStage" data-dev="desktop"><iframe class="lu-frame" id="luFrame" src="' . htmlspecialchars($rawUrl) . '"></iframe></div>
@@ -965,6 +966,38 @@ function luDev(mode) {
 // page templates (booking, events, listing_browser, …). Renders the
 // section stack with sample data via BuilderRenderer and wraps the
 // output in the same desktop/mobile chrome bar.
+// PAGE-PREVIEW-2 (Owner 2026-10-07): "add a page" previews the page on the customer's own site - their design, palette,
+// fonts, nav (with the new link), footer and details - composed without writing (ArthurService::previewPageForSite).
+// Signed per site and page (PageFill::previewToken, 2 h) because the editor shows it in a frame. ?raw=1 = the page alone.
+Route::get('/page-preview/{id}/{slug}', function (\Illuminate\Http\Request $r, int $id, string $slug) {
+    if (! preg_match('/^[a-z0-9_]+$/', $slug) || ! \App\Engines\Builder\Support\PageFill::verifyPreviewToken($id, $slug, $r->query('t'))) abort(404);
+    $ws = (int) \Illuminate\Support\Facades\DB::table('websites')->where('id', $id)->whereNull('deleted_at')->value('workspace_id');
+    if ($ws <= 0) abort(404);
+    $p = app(\App\Engines\Builder\Services\ArthurService::class)->previewPageForSite($ws, $id, $slug);
+    $hdr = ['Content-Type' => 'text/html; charset=UTF-8', 'Cache-Control' => 'no-store', 'X-Robots-Tag' => 'noindex, nofollow'];
+    if (isset($p['error'])) {
+        $msg = e((string) ($p['message'] ?? 'This page cannot be previewed.'));
+        return response('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page preview</title></head><body style="margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font:16px/1.6 system-ui,-apple-system,sans-serif;background:#f6f7fb;color:#1a1a2e;padding:24px;box-sizing:border-box"><p style="max-width:420px;text-align:center">' . $msg . '</p></body></html>', 200, $hdr);
+    }
+    if ($r->query('raw')) return response($p['html'], 200, $hdr);
+    $raw = '/page-preview/' . $id . '/' . $slug . '?t=' . rawurlencode((string) $r->query('t')) . '&raw=1';
+    $sub = ! empty($p['legal']) ? 'Starting text for ' . e($p['site_name']) . ' - review it for your country before you publish.' : 'How this page will look on ' . e($p['site_name']);
+    return response('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Page preview · ' . e($p['title']) . '</title><style>'
+        . '*{box-sizing:border-box}html,body{margin:0;height:100%;background:#0b0d14;font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#f4f5f8}'
+        . '.pv-bar{position:fixed;left:0;right:0;top:0;height:56px;display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(16,18,28,.86);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);border-bottom:1px solid rgba(255,255,255,.08);z-index:2}'
+        . '.pv-t{display:flex;flex-direction:column;min-width:0;flex:1}.pv-t b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pv-t small{font-size:11.5px;color:#a7adbd;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+        . '.pv-seg{display:flex;gap:2px;background:rgba(255,255,255,.07);padding:3px;border-radius:9px}.pv-seg button{border:0;background:none;color:#c3c7d0;padding:6px 12px;border-radius:7px;font:600 12px system-ui,sans-serif;cursor:pointer}.pv-seg button[aria-pressed=true]{background:rgba(255,255,255,.14);color:#fff}'
+        . '.pv-x{width:36px;height:36px;border-radius:10px;border:1px solid rgba(255,255,255,.14);background:none;color:#e6e8ee;font-size:16px;line-height:1;cursor:pointer;flex:0 0 auto}'
+        . '.pv-stage{position:fixed;left:0;right:0;top:56px;bottom:0;display:flex;justify-content:center;overflow:auto}.pv-stage iframe{width:100%;height:100%;border:0;background:#fff;transition:max-width .3s}.pv-stage.ph iframe{max-width:412px;margin:16px 0;height:calc(100% - 32px);border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.5)}'
+        . '@media(max-width:640px){.pv-seg{display:none}.pv-bar{gap:8px;padding:0 10px;-webkit-backdrop-filter:none;backdrop-filter:none;background:#10121c}}'
+        . '</style></head><body><div class="pv-bar"><div class="pv-t"><b>Page preview · ' . e($p['title']) . '</b><small>' . $sub . '</small></div>'
+        . '<div class="pv-seg" role="group" aria-label="Screen size"><button type="button" aria-pressed="true" data-d="desk">Desktop</button><button type="button" aria-pressed="false" data-d="ph">Phone</button></div>'
+        . '<button type="button" class="pv-x" aria-label="Close" onclick="if(history.length>1){history.back()}else{window.close()}">&#x2715;</button></div>'
+        . '<div class="pv-stage" id="pvs"><iframe src="' . e($raw) . '" title="Page preview"></iframe></div>'
+        . '<script>document.querySelectorAll(".pv-seg button").forEach(function(b){b.addEventListener("click",function(){document.querySelectorAll(".pv-seg button").forEach(function(x){x.setAttribute("aria-pressed",String(x===b))});document.getElementById("pvs").classList.toggle("ph",b.dataset.d==="ph")})})</script>'
+        . '</body></html>', 200, $hdr);
+})->where('slug', '[a-z0-9_]+')->where('id', '[0-9]+');
+
 Route::get('/page-templates/{slug}/preview', function (string $slug) {
     if (!preg_match('/^[a-z0-9_\-]+$/', $slug)) abort(404);
 
@@ -1028,6 +1061,7 @@ Route::get('/page-templates/{slug}/preview', function (string $slug) {
         ]) + ['industry' => $industry];
 
         $sections = $arthur->buildDefaultSectionsForPage($slug, $sample);
+        $sections = \App\Engines\Builder\Support\PageFill::fill($sections, [], $sample, $slug);   // PAGE-PREVIEW-2
         $brand = [
             'primary'       => '#6C5CE7',
             'primary_color' => '#6C5CE7',
@@ -1080,17 +1114,18 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; c
 .lu-frame { width: 100%; max-width: none; height: 100%; border: none; background: #fff; transition: max-width .35s cubic-bezier(.2,.8,.2,1); display: block; }
 .lu-stage[data-dev="mobile"] .lu-frame { max-width: 420px; box-shadow: 0 12px 48px rgba(0,0,0,.5); margin-top: 20px; height: calc(100vh - 92px); border-radius: 16px; }
 .lu-stage[data-dev="mobile"] { padding: 0 24px; }
+@media (max-width: 640px) { .lu-bar { padding: 0 10px; gap: 8px; } .lu-bar-center, .lu-bar-badge { display: none; } .lu-bar-title { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .lu-bar-left { min-width: 0; flex: 1; } .lu-use { padding: 8px 12px; white-space: nowrap; } }   /* PAGE-PREVIEW-2 */
 </style></head>
 <body>
 <div class="lu-bar">
-  <div class="lu-bar-left"><span class="lu-bar-title">' . htmlspecialchars($tplName) . '</span><span class="lu-bar-badge">page template</span></div>
+  <div class="lu-bar-left"><span class="lu-bar-title">' . htmlspecialchars($tplName) . '</span><span class="lu-bar-badge">page preview</span></div>
   <div class="lu-bar-center">
     <button class="lu-dev active" data-dev="desktop" onclick="luDev(\'desktop\')">Desktop</button>
     <button class="lu-dev" data-dev="mobile" onclick="luDev(\'mobile\')">Mobile</button>
   </div>
   <div class="lu-bar-right">
-    <a class="lu-close" href="/admin/">Close</a>
-    <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Use This Template →</a>
+    <a class="lu-close" href="/" onclick="if(history.length>1){history.back();return false}" aria-label="Close">&#x2715;</a>
+    <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Start with this page →</a>
   </div>
 </div>
 <div class="lu-stage" id="luStage" data-dev="desktop"><iframe class="lu-frame" id="luFrame" src="' . htmlspecialchars($rawUrl) . '"></iframe></div>

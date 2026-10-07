@@ -79,15 +79,18 @@ class ArthurService
             $current = 1.0;
             if (isset($extras[$key]) && preg_match('/zoom:([\d.]+)/', (string) $extras[$key], $zm)) $current = (float) $zm[1];
             $step = $big ? 1.3 : 1.15;
-            $factor = max(0.6, min(1.8, round($current * ($up ? $step : 1 / $step), 3)));
-            if ($factor === $current) return ['success' => false, 'message' => ucfirst($label) . ' is already at the ' . ($up ? 'largest' : 'smallest') . ' size I allow (' . (int) round($factor * 100) . '% of the design).'];
-            $css = "{$s}{zoom:{$factor}}";
-            $said = 'made ' . $label . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)';
+            // TEXT-SIZE-1 (Owner 2026-10-07): the toolbox sends the exact size it shows (60-180 % of the design size, 10 % steps;
+            // 100 = the design's own size, which removes the override). Zoom scales the design's own clamp() type, so phone and
+            // desktop keep their proportions. Chat keeps its bigger/smaller steps.
+            $factor = $pctIn !== null ? round(max(60, min(180, (int) $pctIn)) / 100, 2) : max(0.6, min(1.8, round($current * ($up ? $step : 1 / $step), 3)));
+            if ($pctIn === null && $factor === $current) return ['success' => false, 'message' => ucfirst($label) . ' is already at the ' . ($up ? 'largest' : 'smallest') . ' size I allow (' . (int) round($factor * 100) . '% of the design).'];
+            $css = abs($factor - 1.0) < 0.001 ? '' : "{$s}{zoom:{$factor}}";
+            $said = $pctIn !== null ? (abs($factor - 1.0) < 0.001 ? 'put ' . $label . ' back to the design size' : 'set ' . $label . ' to ' . (int) round($factor * 100) . '% of the design size') : ('made ' . $label . ($up ? ' bigger' : ' smaller') . ' (now ' . (int) round($factor * 100) . '% of the design size)');
         }
         try { $this->templates->snapshotToHistory($websiteId, 'element_size'); } catch (\Throwable $e) {}
         if (! self::writeDesignExtras($websiteId, [$key => $css], $tv)) return ['success' => false, 'message' => 'I could not write that change to the page.'];
         app(\App\Engines\Builder\Services\BuilderService::class)->saveTemplateVariables($websiteId, $tv);   // Law 11
-        return ['success' => true, 'message' => $said];
+        return ['success' => true, 'message' => $said, 'state' => ($info['kind'] === 'image' ? null : ['pct' => (int) round(($factor ?? 1) * 100)])];
     }
     /* ═══════════════════ IMAGE-FIT-1 (Owner 2026-09-22) — how a picture sits in its frame ═══════════════════
      * "image resizing is very limited too. there is no option to adjust fit or crop". fit = cover (fill the frame, the
@@ -3415,7 +3418,7 @@ PROMPT;
     private static function writeDesignExtras(int $websiteId, array $rules, array &$tv): bool
     {
         $extras = is_array($tv['design_extras'] ?? null) ? $tv['design_extras'] : [];
-        foreach ($rules as $k => $css) { $extras[(string) $k] = (string) $css; }
+        foreach ($rules as $k => $css) { if ((string) $css === '') unset($extras[(string) $k]); else $extras[(string) $k] = (string) $css; }   // TEXT-SIZE-1: '' removes a rule
         $tv['design_extras'] = $extras;
         $block = '<style id="lug-design-extras" data-owner="arthur">' . implode("\n", $extras) . '</style>';
         $root  = storage_path("app/public/sites/{$websiteId}");
