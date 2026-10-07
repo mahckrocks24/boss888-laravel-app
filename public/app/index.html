@@ -114,7 +114,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B0F19">
-<meta name="lu-build" content="20261007-e0fa9c45">
+<meta name="lu-build" content="20261007-0c275e69">
 <script>/*LT-1 theme boot — before first paint*/(function(){try{var t=localStorage.getItem('lu_theme')||'dark';var l=t==='light'||(t==='system'&&window.matchMedia&&matchMedia('(prefers-color-scheme: light)').matches);if(l)document.documentElement.setAttribute('data-theme','light');}catch(e){}})();</script>
 <link rel="icon" type="image/png" sizes="32x32" href="/img/favicon-32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/img/favicon-16.png">
@@ -4830,7 +4830,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 /* BUILD-CHECK (2026-08-30; STALE-1 2026-09-25): a long-lived tab (phones) reloads itself once when a newer build is live.
    The stamp is written by /root/r190/stamp-build.sh (called by build-bundle.sh; run it after any index.html edit).
    Never while the user is typing or has the editor open — those retry a minute later. */
-(function(){try{var m=document.querySelector('meta[name="lu-build"]');var mine=m?m.getAttribute('content'):'';if(!mine)return;var checking=false,pending='';function busy(){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable))return true;var ed=document.getElementById('template-editor-view');if(ed&&ed.offsetParent!==null)return true;return false;}function apply(t){if(busy()){pending=t;setTimeout(function(){if(pending)apply(pending);},60000);return;}pending='';var k='lu_build_reloaded';if(sessionStorage.getItem(k)===t)return;sessionStorage.setItem(k,t);location.reload();}function check(){if(checking||document.hidden)return;checking=true;fetch('/app/build.txt?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){checking=false;t=(t||'').trim();if(t&&t!==mine)apply(t);}).catch(function(){checking=false;});}window.__luBuildCheck=check;document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(check,400);});setInterval(check,300000);setTimeout(check,15000);}catch(e){}})();
+(function(){try{var m=document.querySelector('meta[name="lu-build"]');var mine=m?m.getAttribute('content'):'';if(!mine)return;var checking=false,pending='';function busy(){var a=document.activeElement;if(a&&(a.tagName==='INPUT'||a.tagName==='TEXTAREA'||a.isContentEditable))return true;/* RELOAD-GUARD-1 (Owner 2026-10-07: 'I always experience the editor reloading itself'): offsetParent is null for a fixed, full-screen editor, so the check saw it as closed and reloaded mid-edit. Now: any visible editor, open dialog or sheet, or unsaved text, counts as busy */var ed=document.getElementById('template-editor-view');if(ed&&ed.getClientRects().length&&getComputedStyle(ed).display!=='none'&&getComputedStyle(ed).visibility!=='hidden')return true;if(document.querySelector('[role="dialog"],#t3-fonts,#t3-lay,#t3-pal,#t3-cat'))return true;try{if(window._t3PendingFields&&Object.keys(window._t3PendingFields).length)return true;}catch(_e){}if(/\/app\/websites\/\d+/.test(location.pathname)&&/[?&]edit=/.test(location.search))return true;return false;}function apply(t){if(busy()){pending=t;setTimeout(function(){if(pending)apply(pending);},60000);return;}pending='';var k='lu_build_reloaded';if(sessionStorage.getItem(k)===t)return;sessionStorage.setItem(k,t);location.reload();}function check(){if(checking||document.hidden)return;checking=true;fetch('/app/build.txt?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():''}).then(function(t){checking=false;t=(t||'').trim();if(t&&t!==mine)apply(t);}).catch(function(){checking=false;});}window.__luBuildCheck=check;document.addEventListener('visibilitychange',function(){if(!document.hidden)setTimeout(check,400);});setInterval(check,300000);setTimeout(check,15000);}catch(e){}})();
 
 // This inline script runs immediately — before core.js is fetched.
 // Guarantees that onclick="nav('crm')" never throws ReferenceError
@@ -4922,7 +4922,7 @@ document.addEventListener('DOMContentLoaded',function(){try{window.luApplyTheme(
 </style>
 <script src="/app/js/auth-refresh.js?v=fs1-20261004"></script>
 <script src="/app/js/launch-scope.js?v=cmp1-20260927"></script>
-<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=196c436a55"></script><!-- /LU-BUNDLE -->
+<!-- LU-BUNDLE --><script defer src="/app/js/app.bundle.js?v=b7dcf046a2"></script><!-- /LU-BUNDLE -->
 <!-- INC-0006: the website a business is operating on. Loaded before core.js so every engine can
      rely on window.LU_Website existing.
      2026-09-10 (Owner): the "Working on" DROPDOWN IS REMOVED. It was never asked for - it arrived with the
