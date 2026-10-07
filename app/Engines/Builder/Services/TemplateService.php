@@ -912,9 +912,29 @@ class TemplateService
         elseif (preg_match('/<header\b[^>]*>.*?<\/header>/is', $home, $nm2)) $nav = $nm2[0];
         elseif (preg_match('/<nav\b[^>]*>.*?<\/nav>/is', $home, $nm3)) $nav = $nm3[0];
         $footer = preg_match('/<footer\b[^>]*>.*?<\/footer>/is', $home, $fm) ? $fm[0] : '';
+        // PAGE-PREVIEW-2b (2026-10-07): the v3 designs keep the phone menu sheet right after </nav> and drive burger, scrolled
+        // nav and reveals from one chrome script - a sub-page needs both, or its burger is dead and its nav stays see-through.
+        $sheet = '';
+        if ($nav !== '' && ($np = strpos($home, $nav)) !== false) {
+            $after = substr($home, $np + strlen($nav), 200000);
+            if (preg_match('/^\s*<div\b[^>]*class="[^"]*\bnav-sheet\b[^"]*"[^>]*>/i', $after, $sm)) {
+                $depth = 0; $len = strlen($after); $i = strpos($after, '<div');
+                for ($j = $i; $j < $len; ) {
+                    $o = stripos($after, '<div', $j); $cl = stripos($after, '</div>', $j);
+                    if ($cl === false) break;
+                    if ($o !== false && $o < $cl) { $depth++; $j = $o + 4; continue; }
+                    $depth--; $j = $cl + 6;
+                    if ($depth === 0) { $sheet = substr($after, $i, $j - $i); break; }
+                }
+            }
+        }
+        $chromeJs = '';
+        if (preg_match_all('#<script\b[^>]*>(.*?)</script>#is', $home, $sc)) {
+            foreach ($sc[0] as $k => $tag) { if (str_contains($sc[1][$k], 'navState') || (str_contains($sc[1][$k], 'nav-burger') && str_contains($sc[1][$k], 'nav-sheet'))) $chromeJs .= $tag; }
+        }
         $lang = preg_match('/<html\b[^>]*lang="([^"]+)"/i', $home, $lm) ? $lm[1] : 'en';
         $siteName = preg_match('/<title>\s*([^<|\x{2014}-]+)/iu', $hm[0], $tn) ? trim($tn[1]) : '';
-        return ['home' => $home, 'head' => $hm[0], 'nav' => $nav, 'footer' => $footer, 'lang' => $lang, 'site_name' => $siteName];
+        return ['home' => $home, 'head' => $hm[0], 'nav' => $nav, 'nav_sheet' => $sheet, 'chrome_js' => $chromeJs, 'footer' => $footer, 'lang' => $lang, 'site_name' => $siteName];
     }
 
     /**
@@ -949,7 +969,7 @@ class TemplateService
         // A fixed/sticky template nav must not cover the page's first section (the home hero carries its own offset).
         $offset = '<script>(function(){try{var n=document.querySelector("nav[data-block=nav],#main-nav,header nav,nav");var m=document.querySelector("main[data-lu-page]");if(!n||!m)return;var p=getComputedStyle(n).position;if(p==="fixed"||p==="absolute"){m.style.paddingTop=(n.offsetHeight+8)+"px";}}catch(e){}})();</script>';
         $doc = '<!doctype html><html lang="' . e($c['lang']) . '">' . $head . '<body>'
-             . $toHome($c['nav']) . '<main data-lu-page="' . e($slug) . '">' . $bodyHtml . '</main>' . $toHome($c['footer']) . $offset . '</body></html>';
+             . $toHome($c['nav']) . $toHome((string) ($c['nav_sheet'] ?? '')) . '<main data-lu-page="' . e($slug) . '">' . $bodyHtml . '</main>' . $toHome($c['footer']) . (string) ($c['chrome_js'] ?? '') . $offset . '</body></html>';   // PAGE-PREVIEW-2b
         $doc = \App\Engines\Builder\Support\ResponsiveNav::inject($doc);
         if (\App\Engines\Builder\Support\BuildQuality::on() && (string) ($c['lang'] ?? '') === 'ar') $doc = \App\Engines\Builder\Support\BuildQuality::localiseChrome($doc, ['business_name' => 'ع']);   // ARTHUR-4: the sub-page chrome speaks Arabic and reads right to left
         $doc = \App\Engines\Builder\Support\ScaleGuard::inject($doc, $this->designSlugOf($websiteId));   // SCALE GUARD 2026-09-20

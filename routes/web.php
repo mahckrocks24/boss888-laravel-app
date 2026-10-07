@@ -944,7 +944,7 @@ body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; c
   </div>
   <div class="lu-bar-right">
     <a class="lu-close" href="/app/">Close</a>
-    <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Start with this page →</a>
+    <a class="lu-use" href="' . htmlspecialchars($useUrl) . '">Start with this design →</a>
   </div>
 </div>
 <div class="lu-stage" id="luStage" data-dev="desktop"><iframe class="lu-frame" id="luFrame" src="' . htmlspecialchars($rawUrl) . '"></iframe></div>
