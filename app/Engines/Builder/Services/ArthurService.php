@@ -2688,9 +2688,6 @@ PROMPT;
         // settings, and $settings was read before it, so the record must be re-stamped from the new design and the page's version.
         unset($settings['design']);
         app(\App\Engines\Builder\Services\BuilderService::class)->saveSettingsAndVariables($websiteId, $settings, $c['variables']);   // Law 11
-        // RECHROME-1 (2026-10-07): the inner pages follow the home into the new design, once the record names it (head, menu, footer); their content is
-        // carried as it is. The history snapshot above holds every page, so Undo puts all of them back.
-        try { $this->templates->rechromePages($websiteId); } catch (\Throwable $e) { Log::warning('[Arthur] inner pages not rebuilt after the switch', ['website' => $websiteId, 'e' => $e->getMessage()]); }
         try { \App\Engines\Builder\Support\DesignVersions::stampSite($websiteId, \App\Engines\Builder\Support\DesignVersions::ofHtml($c['html']) ?: null, 'design_switch'); } catch (\Throwable $e) { Log::info('[Arthur] design record after switch skipped: ' . $e->getMessage()); }
         $charged = 0;
         if ($cost > 0 && $c['filled'] > 0) {

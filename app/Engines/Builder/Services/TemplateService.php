@@ -901,11 +901,11 @@ class TemplateService
      */
     // ── ARTHUR DELEGATION (2026-09-06): added pages and sections live INSIDE the template ─────────────────────
     /** The pieces of a site's static home export that every page shares: head, nav, footer, lang. */
-    public function siteChrome(int $websiteId, ?string $homeHtml = null): ?array
+    public function siteChrome(int $websiteId): ?array
     {
         $path = storage_path("app/public/sites/{$websiteId}/index.html");
-        if ($homeHtml === null && !is_file($path)) return null;
-        $home = $homeHtml ?? (string) file_get_contents($path);   // RECHROME-1: a candidate home (design-update preview) can stand in
+        if (!is_file($path)) return null;
+        $home = (string) file_get_contents($path);
         if (!preg_match('/<head\b[^>]*>.*?<\/head>/is', $home, $hm)) return null;
         $nav = '';
         if (preg_match('/<nav\b[^>]*(?:id="main-nav"|data-block="nav")[^>]*>.*?<\/nav>/is', $home, $nm)) $nav = $nm[0];
@@ -942,16 +942,14 @@ class TemplateService
      * treatment and mobile nav are identical) around $bodyHtml. In-page anchors become ../#anchor, blog → ../blog/.
      */
     /** PAGE-PREVIEW-2 (2026-10-07): the document deployPage() writes, composed without writing — the add-page preview shows exactly this. */
-    public function composePage(int $websiteId, string $slug, string $bodyHtml, string $title, ?string $homeHtml = null): ?string
+    public function composePage(int $websiteId, string $slug, string $bodyHtml, string $title): ?string
     {
         $slug = preg_replace('/[^a-z0-9\-]/', '', strtolower($slug));
         if ($slug === '' || in_array($slug, ['index', 'blog', 'home'], true)) return null;
-        $c = $this->siteChrome($websiteId, $homeHtml);
+        $c = $this->siteChrome($websiteId);
         if (!$c) return null;
         $head = preg_replace('/<title>.*?<\/title>/is', '<title>' . e($title) . ($c['site_name'] !== '' ? ' — ' . e($c['site_name']) : '') . '</title>', $c['head'], 1) ?? $c['head'];
         $head = preg_replace('/<link\b[^>]*rel="canonical"[^>]*>/i', '', $head) ?? $head;
-        // RECHROME-1: a page body keeps working in whichever design wears it - an icon drawn without a size takes its text size, not the column width
-        $head = str_ireplace('</head>', '<style id="lu-page-guard">main[data-lu-page] span > svg:not([width]){width:1em;height:1em}</style></head>', $head);
         $toHome = function (string $frag): string {
             $frag = preg_replace('/href="#"/i', 'href="../"', $frag) ?? $frag;
             $frag = preg_replace('/href="#([a-z0-9\-_]+)"/i', 'href="../#$1"', $frag) ?? $frag;
@@ -1031,85 +1029,7 @@ class TemplateService
         return $n;
     }
 
-    /**
-     * RECHROME-1 (2026-10-07, site 668: a design switch restyled the home and left the inner pages in the old design's
-     * head, nav and footer). The inner pages of a site - every sites/{id}/{slug}/index.html built by deployPage (pages,
-     * catalogue pages), not the blog (deployBlogIndex owns it) - as slug => [title, body]. The body is the page's own
-     * <main data-lu-page> content, which is all a page owns; head, menu and footer always come from the home.
-     */
-    public function innerPages(int $websiteId): array
-    {
-        $root = storage_path("app/public/sites/{$websiteId}");
-        $out = [];
-        foreach (glob("{$root}/*/index.html") ?: [] as $p) {
-            $slug = basename(dirname($p));
-            if ($slug === 'blog' || str_starts_with($slug, '.')) continue;
-            $h = (string) @file_get_contents($p);
-            if (! preg_match('#<main data-lu-page="' . preg_quote($slug, '#') . '">(.*)</main>#s', $h, $mm)) continue;
-            $title = preg_match('#<title>(.*?)</title>#s', $h, $tm) ? html_entity_decode(trim(preg_split('/ — | \x{2014} /u', $tm[1])[0]), ENT_QUOTES | ENT_HTML5, 'UTF-8') : ucfirst($slug);
-            $out[$slug] = ['title' => $title, 'body' => $mm[1], 'path' => $p];
-        }
-        ksort($out);
-        return $out;
-    }
-
-    /**
-     * RECHROME-1: give every inner page the home's current design - head (styles, fonts, palette roles), menu with the
-     * phone sheet, footer, chrome script - and carry each page's own content across unchanged. Called after any change
-     * of design (layout switch, design update, upgrade offer). The caller snapshots first (Undo/Revert cover the pages).
-     * Returns the slugs rebuilt.
-     */
-    public function rechromePages(int $websiteId): array
-    {
-        $done = [];
-        foreach ($this->innerPages($websiteId) as $slug => $p) {
-            try { if ($this->deployPage($websiteId, $slug, $p['body'], $p['title'])) $done[] = $slug; }
-            catch (\Throwable $e) { \Illuminate\Support\Facades\Log::warning('[TemplateService] rechrome failed', ['website' => $websiteId, 'page' => $slug, 'e' => $e->getMessage()]); }
-        }
-        if ($done) \Illuminate\Support\Facades\Log::info('[TemplateService] inner pages rebuilt in the home design', ['website' => $websiteId, 'pages' => $done]);
-        return $done;
-    }
-
-    /** RECHROME-1: one inner page as it would look with $homeHtml as the home (the design-update and upgrade previews). */
-    public function previewInnerPage(int $websiteId, string $slug, string $homeHtml): ?string
-    {
-        $p = $this->innerPages($websiteId)[$slug] ?? null;
-        if (! $p) return null;
-        $doc = $this->composePage($websiteId, $slug, $p['body'], $p['title'], $homeHtml);
-        if ($doc === null) return null;
-        // the candidate home already carries the menu links; a page added after the home was built gets its own
-        return preg_match('/data-page="' . preg_quote($slug, '/') . '"/', $doc) ? $doc : $this->linkPageInHtml($doc, $slug, $p['title'], '../');
-    }
-
-    /**
-     * RECHROME-1: inner pages that do not wear the home's design. Each page is compared with the page a rebuild would
-     * write now (same body, current home chrome): head without its title, the menu, the footer. Nothing is changed.
-     */
-    public function chromeMismatch(int $websiteId): array
-    {
-        $norm = function (string $h): array {
-            $head = preg_match('#<head\b[^>]*>(.*?)</head>#is', $h, $m) ? preg_replace('#<title>.*?</title>#is', '', $m[1]) : '';
-            $nav = preg_match('#<body\b[^>]*>(.*?)<main data-lu-page#is', $h, $n) ? $n[1] : '';
-            $foot = preg_match('#</main>(.*?)</body>#is', $h, $f) ? $f[1] : '';
-            $design = preg_match('/<!-- lug-design:([a-z0-9_]+) -->/', $h, $d) ? $d[1] : '';
-            $w = fn ($x) => md5(preg_replace('/\s+/', '', (string) $x));
-            return ['design' => $design, 'head' => $w($head), 'nav' => $w($nav), 'foot' => $w($foot), 'sheet' => str_contains($h, 'class="nav-sheet')];
-        };
-        $out = [];
-        foreach ($this->innerPages($websiteId) as $slug => $p) {
-            $fresh = $this->composePage($websiteId, $slug, $p['body'], $p['title']);
-            if ($fresh === null) continue;
-            $a = $norm((string) @file_get_contents($p['path'])); $b = $norm($fresh);
-            $why = [];
-            if ($a['design'] !== $b['design']) $why[] = 'design ' . ($a['design'] ?: 'classic') . ' vs home ' . ($b['design'] ?: 'classic');
-            if ($a['head'] !== $b['head']) $why[] = 'head (styles, fonts)';
-            if ($a['nav'] !== $b['nav']) $why[] = 'menu';
-            if ($a['foot'] !== $b['foot']) $why[] = 'footer';
-            if ($a['sheet'] !== $b['sheet']) $why[] = $b['sheet'] ? 'no phone menu' : 'stray phone menu';
-            if ($why) $out[$slug] = $why;
-        }
-        return $out;
-    }    /** PAGE-PREVIEW-2: a link to page $slug in the nav of one document (repoint a same-named link, else add it, or into "More" when the nav is full). */
+    /** PAGE-PREVIEW-2: a link to page $slug in the nav of one document (repoint a same-named link, else add it, or into "More" when the nav is full). */
     public function linkPageInHtml(string $html, string $slug, string $label, string $depth): string
     {
         // NAVEDIT-1: data-field makes the menu label an editable element like the template's own nav links

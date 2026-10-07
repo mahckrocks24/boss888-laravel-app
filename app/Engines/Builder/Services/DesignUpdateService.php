@@ -282,8 +282,6 @@ final class DesignUpdateService
             'note' => (string) ($r['note'] ?? ''), 'changes' => array_values($r['changes'] ?? []), 'notes' => array_values($r['notes'] ?? []),
             'content' => $r['content'] ?? null, 'carried' => (string) ($r['carried'] ?? ''), 'pending_draft' => (int) ($r['pending_draft'] ?? 0),
             'now_url' => $this->signed($updateId, 'now'), 'after_url' => $this->signed($updateId, 'after'),
-            // RECHROME-1: every inner page, now and after, so the owner sees the whole site in the new design
-            'pages' => array_values(array_map(fn ($slug, $p) => ['slug' => $slug, 'title' => $p['title'], 'now_url' => $this->signed($updateId, 'page-' . $slug . '-now'), 'after_url' => $this->signed($updateId, 'page-' . $slug . '-after')], array_keys($__ip = $this->templates->innerPages((int) $u->website_id)), $__ip)),
             'shot_desk' => $shot('after-desk'), 'shot_phone' => $shot('after-phone'),
             'created_at' => (string) $u->created_at, 'decided_at' => $u->decided_at, 'revert_until' => $u->revert_until,
             'can_revert' => $u->status === 'agreed' && $u->revert_until && now()->lt($u->revert_until),
@@ -460,7 +458,14 @@ final class DesignUpdateService
     /** The other pages built from the home page's chrome get the new menu and footer; their own content is untouched. */
     private function rechromePages(int $sid): void
     {
-        $this->templates->rechromePages($sid);   // RECHROME-1: one rebuild for every design change (TemplateService)
+        $root = storage_path("app/public/sites/{$sid}");
+        foreach (glob("{$root}/*/index.html") ?: [] as $p) {
+            $slug = basename(dirname($p)); if ($slug === 'blog' || str_starts_with($slug, '.')) continue;
+            $h = (string) file_get_contents($p);
+            if (! preg_match('#<main data-lu-page="' . preg_quote($slug, '#') . '">(.*)</main>#s', $h, $mm)) continue;
+            $title = preg_match('#<title>(.*?)</title>#s', $h, $tm) ? html_entity_decode(trim(explode(' — ', $tm[1])[0]), ENT_QUOTES | ENT_HTML5, 'UTF-8') : ucfirst($slug);
+            try { $this->templates->deployPage($sid, $slug, $mm[1], $title); } catch (\Throwable $e) { Log::warning('[DesignUpdates] page refresh failed', ['site' => $sid, 'page' => $slug, 'e' => $e->getMessage()]); }
+        }
     }
 
     private function copyTree(string $src, string $dst, string $rel, array &$hashes): void

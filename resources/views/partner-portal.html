@@ -18,11 +18,11 @@
 /* SCROLLER-1: the same thin page scroller as the marketing site (site-glass.css §22) */
 html{scrollbar-width:thin;scrollbar-color:rgba(36,30,72,.28) transparent}html::-webkit-scrollbar{width:10px;height:10px}html::-webkit-scrollbar-track{background:transparent}html::-webkit-scrollbar-thumb{background:rgba(36,30,72,.28);border-radius:10px;border:3px solid transparent;background-clip:content-box}
 @media (prefers-color-scheme:dark){html{scrollbar-color:rgba(255,255,255,.26) transparent}html::-webkit-scrollbar-thumb{background:rgba(255,255,255,.26);background-clip:content-box}}
-*{box-sizing:border-box}html,body{margin:0}body{background:var(--bg);color:var(--t1);font:400 15px/1.55 var(--f);-webkit-font-smoothing:antialiased;min-height:100vh;position:relative}
+*{box-sizing:border-box}html,body{margin:0}html{overflow-x:clip;scroll-behavior:smooth}@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}body{background:var(--bg);color:var(--t1);font:400 15px/1.55 var(--f);-webkit-font-smoothing:antialiased;min-height:100vh;position:relative}
 a{color:var(--ac)}button{font:inherit}
 /* the aurora ground (static; phones never blur) */
 .aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.aurora i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55}
+.aurora i{position:absolute;border-radius:50%;opacity:.55}
 .aurora i:nth-child(1){width:560px;height:560px;left:-180px;top:-200px;background:radial-gradient(closest-side,#c4b5fd,transparent)}
 .aurora i:nth-child(2){width:520px;height:520px;right:-160px;top:12%;background:radial-gradient(closest-side,#99f6e4,transparent)}
 .aurora i:nth-child(3){width:600px;height:600px;left:30%;bottom:-260px;background:radial-gradient(closest-side,#bfdbfe,transparent)}
@@ -30,7 +30,11 @@ a{color:var(--ac)}button{font:inherit}
 :root[data-theme="dark"] .aurora i{opacity:.28}
 @media (max-width:899px){.aurora i{filter:none;opacity:.35;background:radial-gradient(closest-side,rgba(196,181,253,.6),transparent)}}
 /* glass */
-.glass,.card,.top,.mdl,.side,.auth-card{background:var(--s1);border:1px solid var(--bd);box-shadow:inset 0 1px 0 var(--rim),var(--sh);-webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
+.glass,.card,.mdl,.side,.auth-card{background:var(--s1);border:1px solid var(--bd);box-shadow:inset 0 1px 0 var(--rim),var(--sh)}
+.top,.mdl{-webkit-backdrop-filter:blur(14px) saturate(1.3);backdrop-filter:blur(14px) saturate(1.3)}
+.top{background:var(--s1);border-bottom:1px solid var(--bd)}
+/* the site's scroll progress line (site-glass.css s1) */
+#mk-progress{position:fixed;left:0;top:0;height:3px;width:100%;background:var(--grad);transform-origin:left;transform:scaleX(0);z-index:70;pointer-events:none}
 @media (max-width:899px){.glass,.card,.top,.mdl,.side,.auth-card{-webkit-backdrop-filter:none;backdrop-filter:none;background:color-mix(in srgb,var(--bg) 70%,#fff 30%)}@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .glass,:root:not([data-theme="light"]) .card,:root:not([data-theme="light"]) .top,:root:not([data-theme="light"]) .mdl,:root:not([data-theme="light"]) .side,:root:not([data-theme="light"]) .auth-card{background:#161a2e}}}
 /* top bar */
 .top{position:sticky;top:0;z-index:5;border-radius:0;border-left:0;border-right:0;border-top:0;box-shadow:none}
@@ -157,6 +161,7 @@ textarea.inp{min-height:84px;padding:10px 14px;resize:vertical}
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
+<div id="mk-progress" aria-hidden="true"></div>
 <header class="top"><div class="top-in">
   <a class="brand" href="/affiliates/"><img src="/img/logo-icon-40.png" alt="">LevelUpGrowth <small>Affiliate Program</small></a>
   <span class="sp"></span><span class="who" id="who" data-ini=""></span>
@@ -793,6 +798,9 @@ textarea.inp{min-height:84px;padding:10px 14px;resize:vertical}
   }
 
   try { var h = (location.hash || '').slice(1); if (TABS.some(function (t) { return t[0] === h; }) || h === 'team') S.tab = h; } catch (e) {}
+  // SCROLLER-2 (Owner 2026-10-07: "the scroller is very smooth on marketing website but not inside portal"): the site's scroll-linked
+  // progress line, drawn on the next frame of each scroll; smooth scrolling itself comes from html{scroll-behavior:smooth} in the stylesheet
+  (function () { var bar = $('mk-progress'); if (!bar) return; var tick = false; function draw() { tick = false; var max = document.documentElement.scrollHeight - innerHeight; bar.style.transform = 'scaleX(' + (max > 0 ? Math.min(1, window.scrollY / max) : 0) + ')'; } window.addEventListener('scroll', function () { if (!tick) { tick = true; requestAnimationFrame(draw); } }, { passive: true }); window.addEventListener('resize', draw); draw(); })();
   boot();
 })();
 </script>
