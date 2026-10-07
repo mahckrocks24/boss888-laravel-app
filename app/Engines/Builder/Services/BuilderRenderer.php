@@ -879,7 +879,7 @@ HTML;
 
         $cardsHtml = '';
         foreach ($items as $item) {
-            $icon = $item['icon'] ?? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 4 2.5 5.1 5.5.8-4 3.9.9 5.6L12 16.8 7.1 19.4l.9-5.6-4-3.9 5.5-.8Z"/></svg>';
+            $icon = $item['icon'] ?? '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 4 2.5 5.1 5.5.8-4 3.9.9 5.6L12 16.8 7.1 19.4l.9-5.6-4-3.9 5.5-.8Z"/></svg>';
             $title = e($item['heading'] ?? $item['title'] ?? '');
             $text = e($item['text'] ?? $item['description'] ?? '');
             $cardsHtml .= "<div style=\"background:{$cardBg};border:{$cardBorder};border-radius:16px;padding:32px;border-top:3px solid {$brand['accent']}\"><span style=\"font-size:36px;display:block;margin-bottom:16px\">{$icon}</span><h3 style=\"color:{$headColor};font-size:20px;margin-bottom:8px\">{$title}</h3><p style=\"color:{$textColor};font-size:14px;line-height:1.6;margin:0\">{$text}</p></div>";

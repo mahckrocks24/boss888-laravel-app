@@ -19,9 +19,18 @@ Route::get('/design-update/{id}/{which}', function ($id, $which) {
         $p = "{$dir}/{$which}.webp"; if (! is_file($p)) abort(404);
         return response()->file($p, $h + ['Content-Type' => 'image/webp']);
     }
-    if (! in_array($which, ['now', 'after'], true)) abort(404);
+    $__page = preg_match('/^page-([a-z0-9][a-z0-9\-]*)-(now|after)$/', $which, $__pm) ? $__pm : null;   // RECHROME-1: inner pages
+    if (! $__page && ! in_array($which, ['now', 'after'], true)) abort(404);
+    if ($__page) {
+        $__tpl = app(\App\Engines\Builder\Services\TemplateService::class);
+        $__ip = $__tpl->innerPages((int) $u->website_id)[$__page[1]] ?? null; if (! $__ip) abort(404);
+        $html = $__page[2] === 'now' ? (string) @file_get_contents($__ip['path']) : (string) $__tpl->previewInnerPage((int) $u->website_id, $__page[1], (string) @file_get_contents("{$dir}/after.html"));
+        if ($html === '') abort(404);
+        $which = $__page[2] === 'now' ? 'now' : 'after-page';
+    } else {
     $snap = $which === 'after' ? 'after.html' : 'now.html';
     $html = (string) @file_get_contents("{$dir}/{$snap}"); if ($html === '') abort(404);
+    }
     $r = json_decode((string) $u->report_json, true) ?: [];
     $marks = [];
     if ($which === 'after') foreach ((array) ($r['changes'] ?? []) as $c) { $tag = ['kept_custom' => 'Kept as you have it', 'new_section' => 'New from the design', 'added_kept' => 'Your added section']; if (isset($tag[$c['kind']])) $marks[$c['block']] = $tag[$c['kind']]; }

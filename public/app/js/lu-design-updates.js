@@ -40,6 +40,7 @@
       '#lu-dupd .dp-frame{position:relative;overflow:hidden;border-radius:14px;background:var(--lg-raised,#fff);box-shadow:0 0 0 1px var(--lg-edge,rgba(18,16,48,.07)),var(--lg-shadow-2,0 12px 32px rgba(30,24,80,.08))}',
       '#lu-dupd .dp-frame.phone{border-radius:34px;box-shadow:0 0 0 8px #0D0F1C,0 0 0 9px rgba(255,255,255,.12),var(--lg-shadow-2,0 12px 32px rgba(30,24,80,.08));margin:8px auto}',
       '#lu-dupd .dp-frame iframe{position:absolute;top:0;left:0;border:0;transform-origin:0 0;background:#fff}',
+      '#lu-dupd .dp-bar{flex-wrap:wrap}#lu-dupd .dp-pages{max-width:100%;overflow-x:auto;scrollbar-width:none;flex-wrap:nowrap}#lu-dupd .dp-pages::-webkit-scrollbar{display:none}#lu-dupd .dp-pages button{white-space:nowrap}',   /* RECHROME-1 */
       '#lu-dupd .dp-side{border-left:1px solid var(--lg-hairline,rgba(18,16,48,.08));display:flex;flex-direction:column;min-height:0}',
       '#lu-dupd .dp-list{flex:1;overflow:auto;padding:16px 18px;display:flex;flex-direction:column;gap:12px}',
       '#lu-dupd .dp-h{font:700 14px var(--lg-font,inherit);margin:0}',
@@ -104,6 +105,9 @@
                : { title: 'A design improvement for ' + u.website, sub: 'Nothing changes until you agree. You can go back afterwards for 30 days.', after: 'After the update', agree: 'Agree and update', busy: 'Updating…', cancel: 'Cancel', aria: 'Design update preview' };
     var choices = up && (u.choices || []).length > 1 ? '<div class="dp-seg dp-choice" role="group" aria-label="Looks">' + u.choices.map(function (c) { return '<button type="button" data-choice="' + Number(c.id) + '" aria-pressed="' + (c.id === u.id ? 'true' : 'false') + '">' + esc(c.label) + '</button>'; }).join('') + '</div>' : '';
     var noPlace = up ? (u.no_place || []).length : 0;
+    /* RECHROME-1: the whole site, not only the home - every inner page is shown in the new design too */
+    var pages = [{ slug: '', title: 'Home', now_url: u.now_url, after_url: u.after_url }].concat(u.pages || []);
+    var pagesSeg = pages.length > 1 ? '<div class="dp-seg dp-pages" role="group" aria-label="Page">' + pages.map(function (p, i) { return '<button type="button" data-page="' + i + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '">' + esc(p.title) + '</button>'; }).join('') + '</div>' : '';
     var items = (u.changes || []).map(function (c, i) {
       return '<div class="dp-item' + (c.kind === 'kept_custom' || c.kind === 'removed_by_design' || c.kind === 'no_place' ? ' warn' : '') + '"><span class="k">' + esc(KIND[c.kind] || 'Change') + '</span><div>' + esc(c.text) + '</div>'
         + (c.kind === 'no_place' || !c.block ? '' : c.kind !== 'removed_by_design' ? '<button type="button" class="dp-btn sm" data-show="' + esc(c.block) + '">Show me on the preview</button>' : '<button type="button" class="dp-btn sm" data-show-now="' + esc(c.block) + '">Show me where it is now</button>') + '</div>';
@@ -111,7 +115,7 @@
     var notes = (u.notes || []).map(function (n) { return '<div class="dp-item"><span class="k">' + ({ draft: 'Your draft', interface: 'Wording', order: 'Section order', hidden: 'Hidden sections' }[n.kind] || 'Your pages') + '</span><div>' + esc(n.text) + '</div></div>'; }).join('');
     var content = u.content ? '<div class="dp-ok"><span aria-hidden="true">✓</span><div><b>Your content is safe.</b> ' + esc(u.content.text) + '</div></div>' : '';
     shell.innerHTML = '<div class="dp-hd"><div class="dp-ic">' + SPARK + '</div><div style="min-width:0"><h2 class="dp-t">' + esc(T.title) + '</h2><p class="dp-s">' + (waiting ? esc(T.sub) : 'This ' + (up ? 'offer' : 'update') + ' is ' + esc(u.status) + '.') + '</p></div><button type="button" class="dp-x" aria-label="Close">×</button></div>'
-      + '<div class="dp-bar">' + choices + '<div class="dp-seg dp-dev" role="group" aria-label="Device"><button type="button" data-dev="desk" aria-pressed="true">Desktop</button><button type="button" data-dev="phone" aria-pressed="false">Phone</button></div>'
+      + '<div class="dp-bar">' + choices + pagesSeg + '<div class="dp-seg dp-dev" role="group" aria-label="Device"><button type="button" data-dev="desk" aria-pressed="true">Desktop</button><button type="button" data-dev="phone" aria-pressed="false">Phone</button></div>'
       + '<div class="dp-seg dp-views" role="group" aria-label="Which version"><button type="button" data-view="both" aria-pressed="true">Side by side</button><button type="button" data-view="now" aria-pressed="false">Now</button><button type="button" data-view="after" aria-pressed="false">' + esc(T.after) + '</button></div></div>'
       + '<div class="dp-body"><div class="dp-stage" data-show="both">'
       + '<div class="dp-pane now"><div class="dp-lbl"><i></i>Now</div><div class="dp-frame"><iframe title="Your website now" sandbox="allow-scripts" loading="lazy" src="' + esc(u.now_url) + '"></iframe></div></div>'
@@ -137,6 +141,7 @@
       });
     }
     function seg(sel, attr, val) { shell.querySelectorAll(sel + ' button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute(attr) === val ? 'true' : 'false'); }); }
+    shell.querySelectorAll('[data-page]').forEach(function (b) { b.onclick = function () { var p = pages[Number(b.getAttribute('data-page'))]; if (!p) return; seg('.dp-pages', 'data-page', b.getAttribute('data-page')); var n = shell.querySelector('.dp-pane.now iframe'), a = shell.querySelector('.dp-pane.after iframe'); if (n) n.src = p.now_url; if (a) a.src = p.after_url; }; });   /* RECHROME-1 */
     shell.querySelectorAll('[data-dev]').forEach(function (b) { b.onclick = function () { dev = b.getAttribute('data-dev'); seg('.dp-dev', 'data-dev', dev); fit(); }; });
     shell.querySelectorAll('[data-view]').forEach(function (b) { b.onclick = function () { stage.setAttribute('data-show', b.getAttribute('data-view')); seg('.dp-views', 'data-view', b.getAttribute('data-view')); fit(); }; });
     function show(which, block) {
