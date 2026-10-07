@@ -2836,13 +2836,41 @@ async function wsAddSectionToSite() {
     } catch (e) { st.textContent = 'Failed: ' + e.message; btn.disabled = false; btn.textContent = 'Add section · ' + price + ' credits'; }
   });
 }
+/* PAGE-PREVIEW-2: the add-page preview sheet. p = a library page (label, preview_url, exists), onAdd = add it. */
+function wsPagePreviewSheet(p, price, onAdd) {
+  var old = document.getElementById('ws-pp-sheet'); if (old) old.remove();
+  var phone = !!(window.matchMedia && window.matchMedia('(max-width: 640px)').matches);
+  var raw = p.preview_url + (p.preview_url.indexOf('?') >= 0 ? '&' : '?') + 'raw=1';
+  var sh = document.createElement('div'); sh.id = 'ws-pp-sheet'; sh.setAttribute('role', 'dialog'); sh.setAttribute('aria-label', 'Page preview');
+  sh.style.cssText = 'position:fixed;inset:0;z-index:10060;display:flex;flex-direction:column;background:var(--bg,#0b0d14)';
+  sh.innerHTML = '<style>#ws-pp-sheet .pp-bar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--s1);border-bottom:1px solid var(--bd);flex:0 0 auto}'
+    + '#ws-pp-sheet .pp-t{flex:1;min-width:0}#ws-pp-sheet .pp-t b{display:block;font:700 14px var(--fh,inherit);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ws-pp-sheet .pp-t small{display:block;font-size:11.5px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+    + '#ws-pp-sheet .pp-seg{display:flex;gap:2px;background:var(--s2);border:1px solid var(--bd);padding:3px;border-radius:9px}#ws-pp-sheet .pp-seg button{border:0;background:none;color:var(--t2);padding:6px 12px;border-radius:7px;font:600 12px var(--fb,inherit);cursor:pointer}#ws-pp-sheet .pp-seg button[aria-pressed="true"]{background:var(--s1);color:var(--t1);box-shadow:0 1px 4px rgba(0,0,0,.16)}'
+    + '#ws-pp-sheet .pp-x{width:36px;height:36px;border-radius:10px;border:1px solid var(--bd2);background:var(--s2);color:var(--t1);font-size:16px;cursor:pointer;flex:0 0 auto}'
+    + '#ws-pp-sheet .pp-stage{flex:1 1 auto;min-height:0;display:flex;justify-content:center;overflow:auto;background:var(--s2)}#ws-pp-sheet .pp-stage iframe{width:100%;height:100%;border:0;background:#fff}#ws-pp-sheet .pp-stage.ph iframe{max-width:412px;margin:14px 0;height:calc(100% - 28px);border-radius:18px;box-shadow:0 18px 48px rgba(0,0,0,.35)}'
+    + '#ws-pp-sheet .pp-foot{display:flex;align-items:center;gap:10px;justify-content:flex-end;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));background:var(--s1);border-top:1px solid var(--bd);flex:0 0 auto}#ws-pp-sheet .pp-foot span{flex:1;font-size:12px;color:var(--t3)}'
+    + '#ws-pp-sheet .pp-add{min-height:42px;padding:0 18px;border-radius:10px;border:0;background:var(--p);color:#fff;font:700 14px var(--fb,inherit);cursor:pointer;white-space:nowrap}#ws-pp-sheet .pp-add:disabled{opacity:.5;cursor:default}'
+    + '@media (max-width:640px){#ws-pp-sheet .pp-seg{display:none}#ws-pp-sheet .pp-foot span{display:none}#ws-pp-sheet .pp-add{flex:1}}</style>'
+    + '<div class="pp-bar"><div class="pp-t"><b>Page preview · ' + bld_escH(p.label || p.slug) + '</b><small>How this page will look on ' + bld_escH((wsCurrentSite && (wsCurrentSite.title || wsCurrentSite.name)) || 'your site') + '</small></div>'
+    + '<div class="pp-seg" role="group" aria-label="Screen size"><button type="button" aria-pressed="true" data-d="desk">Desktop</button><button type="button" aria-pressed="false" data-d="ph">Phone</button></div>'
+    + '<button type="button" class="pp-x" aria-label="Close">✕</button></div>'
+    + '<div class="pp-stage"><iframe title="Page preview" src="' + bld_escH(raw) + '"></iframe></div>'
+    + '<div class="pp-foot"><span>' + (p.exists ? 'This page is already on your site.' : 'Added pages appear in your menu, in your design.') + '</span><button type="button" class="pp-add"' + (p.exists ? ' disabled' : '') + '>' + (p.exists ? 'Already added' : 'Add this page · ' + price + ' credits') + '</button></div>';
+  document.body.appendChild(sh);
+  var close = function () { sh.remove(); document.removeEventListener('keydown', onKey, true); };
+  var onKey = function (e) { if (e.key === 'Escape') { e.preventDefault(); close(); } };
+  document.addEventListener('keydown', onKey, true);
+  sh.querySelector('.pp-x').addEventListener('click', close);
+  sh.querySelectorAll('.pp-seg button').forEach(function (b) { b.addEventListener('click', function () { sh.querySelectorAll('.pp-seg button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); sh.querySelector('.pp-stage').classList.toggle('ph', b.getAttribute('data-d') === 'ph'); }); });
+  var add = sh.querySelector('.pp-add'); if (add && !p.exists) add.addEventListener('click', function () { close(); onAdd(); });
+}
 async function wsAddPageToSite() {
   if (!wsCurrentSite) return;
   var hdr = {'Authorization': 'Bearer ' + (localStorage.getItem('lu_token') || ''), 'Accept': 'application/json'};
   var lib = null;
   try { var lr = await fetch(API + 'builder/library?website_id=' + wsCurrentSite.id, { headers: hdr }); lib = await lr.json(); } catch (e) { lib = null; }
   var pages = (lib && Array.isArray(lib.pages)) ? lib.pages : [];
-  if (!pages.length) { showToast('No page templates available for this site', 'warning'); return; }
+  if (!pages.length) { showToast('No pages are available to add to this site', 'warning'); return; }
   var price = (lib && lib.pricing && lib.pricing.page) ? lib.pricing.page : 5;
   var old = document.getElementById('ws-page-picker'); if (old) old.remove();
   var ov = document.createElement('div'); ov.id = 'ws-page-picker';
@@ -2853,7 +2881,7 @@ async function wsAddPageToSite() {
       '<div style="font-weight:700;font-size:14px">' + bld_escH(p.label || p.slug) + (p.exists ? ' <span style="font-size:11px;color:var(--t3)">· already added</span>' : '') + '</div>' +
       '<div style="font-size:12px;color:var(--t3);line-height:1.4">' + bld_escH(p.description || '') + '</div>' +
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-size:11px;color:var(--t2)">' + (p.universal ? 'All industries' : 'Industry page') + ' · ' + price + ' credits</span>' +
-      '<a href="' + bld_escH(p.preview_url || '#') + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--p)">Preview ↗</a></div></button>';
+      (p.preview_url ? '<span role="button" tabindex="0" class="ws-pp-prev" data-slug="' + bld_escH(p.slug) + '" style="font-size:12px;font-weight:600;color:var(--p);padding:6px 2px;cursor:pointer">Preview</span>' : '') + '</div></button>';   /* PAGE-PREVIEW-2 */
   }).join('');
   ov.innerHTML = '<div style="background:var(--s1);border:1px solid var(--bd);border-radius:16px;width:min(880px,100%);max-height:86vh;display:flex;flex-direction:column;overflow:hidden">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--bd)"><div><div style="font-weight:700;color:var(--t1)">Add a page to ' + bld_escH(wsCurrentSite.title || 'your site') + '</div><div style="font-size:12px;color:var(--t3)">Arthur writes it for your business, in your colours.</div></div>' +
@@ -2862,6 +2890,17 @@ async function wsAddPageToSite() {
     '<div id="ws-pp-status" style="padding:10px 20px;border-top:1px solid var(--bd);font-size:12px;color:var(--t3);min-height:18px"></div></div>';
   document.body.appendChild(ov);
   ov.addEventListener('click', function (e) { if (e.target === ov || e.target.id === 'ws-pp-close') ov.remove(); });
+  /* PAGE-PREVIEW-2 (Owner 2026-10-07): Preview shows the page on THIS site (its design, palette, fonts, menu, footer) inside
+     the editor - a full-screen sheet with Close back to the list and "Add this page". On phones it shows the phone layout. */
+  ov.querySelectorAll('.ws-pp-prev').forEach(function (el) {
+    var open = function (e) {
+      e.preventDefault(); e.stopPropagation();
+      var slug = el.getAttribute('data-slug'); var p = pages.find(function (x) { return x.slug === slug; }); if (!p) return;
+      wsPagePreviewSheet(p, price, function () { var card = ov.querySelector('.ws-pp-card[data-slug="' + slug + '"]'); if (card && !card.disabled) card.click(); });
+    };
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') open(e); });
+  });
   ov.querySelectorAll('.ws-pp-card:not([disabled])').forEach(function (b) {
     b.addEventListener('click', async function () {
       var slug = b.getAttribute('data-slug'); var st = document.getElementById('ws-pp-status');
@@ -4730,7 +4769,7 @@ function _t3ExitChoice(n) {
     ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', 'Unsaved changes');
     ov.style.cssText = 'position:fixed;inset:0;z-index:100001;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:20px';
     var box = document.createElement('div');
-    box.style.cssText = 'background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);padding:20px;width:min(440px,100%);font-family:var(--fb)';
+    box.style.cssText = 'position:relative;background:var(--s1);border:1px solid var(--bd2);border-radius:var(--rg,12px);padding:20px 48px 20px 20px;width:min(440px,100%);box-sizing:border-box;font-family:var(--fb)';
     // EXIT-1: the copy says exactly what is and is not saved; the primary action is always Save and exit
     box.innerHTML = '<div style="font:700 15px var(--fh);color:var(--t1);margin-bottom:6px">' + (n > 0 ? 'Save your edits before you leave?' : 'Leave the editor?') + '</div>'
       + '<div style="font-size:13px;color:var(--t2);line-height:1.5;margin-bottom:16px">' + (n > 0 ? 'You have ' + n + ' unsaved text edit' + (n === 1 ? '' : 's') + ' in the preview. Save and exit ' + (window._t3SiteStatus === 'published' ? ((window._t3Flags && window._t3Flags.draftedits && window._t3DraftChanges && window._t3DraftChanges.has_live) ? 'keeps ' + (n === 1 ? 'it' : 'them') + ' on your draft; Publish changes puts the draft live.' : 'puts ' + (n === 1 ? 'it' : 'them') + ' on your live site.') : 'keeps ' + (n === 1 ? 'it' : 'them') + ' as a draft on this website.') : 'Everything you changed is already saved on this website — Arthur’s changes, colours, layout and your edits. Undo and Versions can put any of it back next time.') + '</div>'
@@ -4740,6 +4779,11 @@ function _t3ExitChoice(n) {
       + (n > 0 ? '<button type="button" class="lu-btn lu-btn--sm" data-c="discard" style="color:#F87171">Discard Changes &amp; Exit</button>' : '')
       + '<button type="button" class="lu-btn lu-btn--sm lu-btn--primary" data-c="save" style="background:var(--p);color:#fff;border-color:var(--p)">' + (n > 0 ? 'Save and exit' : 'Exit') + '</button>'
       + '</div>';
+    /* EXIT-3 (Owner 2026-10-07: "add an x button to replace keep editing on modal"): the corner x keeps the editor open */
+    var xb = document.createElement('button'); xb.type = 'button'; xb.setAttribute('data-c', 'stay'); xb.setAttribute('aria-label', 'Close');
+    xb.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+    xb.style.cssText = 'position:absolute;top:12px;right:12px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--bd);background:var(--s2);color:var(--t2);cursor:pointer;padding:0';
+    box.appendChild(xb);
     ov.appendChild(box); document.body.appendChild(ov);
     function done(v) { try { ov.remove(); } catch (_e) {} document.removeEventListener('keydown', onKey, true); resolve(v); }
     function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); done('stay'); } }
