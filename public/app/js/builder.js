@@ -4421,15 +4421,30 @@ function _t3FontSamples() {
   if (p.length > 110) p = p.slice(0, 108).replace(/\s+\S*$/, '') + '…';
   return { h: h, p: p };
 }
+/* FONTS-FLICKER-1 (Owner 2026-10-07: "when I am scrolling through google fonts on editor on mobile, screen is flickering"): one
+   <link> per row in view meant a new stylesheet - and a whole-page restyle and repaint under the blurred sheet - every few pixels
+   of scroll. Rows in view are now queued and loaded together: one stylesheet per ~150 ms, up to 12 families each. */
+var _t3GFQueue = {}, _t3GFTimer = null;
+function _t3GFFlush() {
+  _t3GFTimer = null;
+  Object.keys(_t3GFQueue).forEach(function (text) {
+    var fams = _t3GFQueue[text]; delete _t3GFQueue[text];
+    var chars = Array.from(new Set(Array.from(text))).join('');
+    for (var i = 0; i < fams.length; i += 12) {
+      var part = fams.slice(i, i + 12).map(function (x) { return 'family=' + x.f.replace(/ /g, '+') + ':wght@' + x.w; }).join('&');
+      var lk = document.createElement('link'); lk.rel = 'stylesheet'; lk.setAttribute('data-t3-gf', '1');
+      lk.href = 'https://fonts.googleapis.com/css2?' + part + '&text=' + encodeURIComponent(chars) + '&display=swap';
+      document.head.appendChild(lk);
+    }
+  });
+}
 function _t3GFPreviewLink(f, text) {
   var key = f.f + '|' + text;
   if (_t3GFLoaded[key]) return;
   _t3GFLoaded[key] = 1;
   var w = (f.w || [400]).reduce(function (a, b) { return Math.abs(b - 400) < Math.abs(a - 400) ? b : a; });
-  var chars = Array.from(new Set(Array.from(text))).join('');
-  var lk = document.createElement('link'); lk.rel = 'stylesheet'; lk.setAttribute('data-t3-gf', '1');
-  lk.href = 'https://fonts.googleapis.com/css2?family=' + f.f.replace(/ /g, '+') + ':wght@' + w + '&text=' + encodeURIComponent(chars) + '&display=swap';
-  document.head.appendChild(lk);
+  (_t3GFQueue[text] = _t3GFQueue[text] || []).push({ f: f.f, w: w });
+  if (!_t3GFTimer) _t3GFTimer = setTimeout(_t3GFFlush, 150);
 }
 function _t3FontsCss() {
   if (document.getElementById('t3-fonts-style')) return;
@@ -4469,7 +4484,9 @@ function _t3FontsCss() {
     + '@media (max-width:640px){#t3-fonts.t3f-sheet{position:fixed!important;left:0!important;right:0!important;top:auto!important;bottom:0!important;width:auto!important;max-height:min(68vh,calc(var(--lu-vvh,100vh) - 12px))!important;height:min(68vh,calc(var(--lu-vvh,100vh) - 12px));border-radius:16px 16px 0 0!important;padding:12px 14px calc(12px + env(safe-area-inset-bottom))!important;z-index:100002!important;box-shadow:0 -12px 40px rgba(0,0,0,.35)!important}'
     + '#t3-fonts.t3f-sheet.t3f-kb{top:8px!important;bottom:auto!important;height:calc(var(--lu-vvh,62vh) - 16px);max-height:calc(var(--lu-vvh,62vh) - 16px)!important;border-radius:16px!important;left:6px!important;right:6px!important}'
     + '#t3-fonts.t3f-sheet .t3f-grab{display:block;width:40px;height:4px;border-radius:4px;background:var(--bd2);margin:-4px auto 8px}}'
-    + '.t3f-grab{display:none}';
+    + '.t3f-grab{display:none}'
+    + '#t3-fonts .t3f-row{contain:layout paint}#t3-fonts .t3f-sample{min-height:1.25em}#t3-fonts .t3f-scroll{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;transform:translateZ(0)}'   /* FONTS-FLICKER-1 */
+    + '@media (max-width:640px){#t3-fonts.t3f-sheet{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:var(--s1)!important}}';
   document.head.appendChild(st);
 }
 window.wsOpenFonts = async function (siteId) {
