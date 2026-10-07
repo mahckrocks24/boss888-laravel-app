@@ -70,7 +70,7 @@
   }
 
   var SPARK = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.6L18 9.4l-4.2 1.8L12 16l-1.8-4.8L6 9.4l4.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>';
-  var KIND = { kept_custom: 'Kept as you have it', removed_by_design: 'No longer in the design', new_section: 'New from the design', added_kept: 'Your added section' };
+  var KIND = { kept_custom: 'Kept as you have it', removed_by_design: 'No longer in the design', new_section: 'New from the design', added_kept: 'Your added section', no_place: 'Kept in your notes' };   /* UPGRADE-OFFER-1: no_place */
 
   function close() { var o = document.getElementById('lu-dupd'); if (o) o.remove(); document.removeEventListener('keydown', onKey); document.documentElement.style.overflow = ''; }
   function onKey(e) { if (e.key === 'Escape') close(); }
@@ -105,10 +105,10 @@
     var choices = up && (u.choices || []).length > 1 ? '<div class="dp-seg dp-choice" role="group" aria-label="Looks">' + u.choices.map(function (c) { return '<button type="button" data-choice="' + Number(c.id) + '" aria-pressed="' + (c.id === u.id ? 'true' : 'false') + '">' + esc(c.label) + '</button>'; }).join('') + '</div>' : '';
     var noPlace = up ? (u.no_place || []).length : 0;
     var items = (u.changes || []).map(function (c, i) {
-      return '<div class="dp-item' + (c.kind === 'kept_custom' || c.kind === 'removed_by_design' ? ' warn' : '') + '"><span class="k">' + esc(KIND[c.kind] || 'Change') + '</span><div>' + esc(c.text) + '</div>'
-        + (c.kind !== 'removed_by_design' ? '<button type="button" class="dp-btn sm" data-show="' + esc(c.block) + '">Show me on the preview</button>' : '<button type="button" class="dp-btn sm" data-show-now="' + esc(c.block) + '">Show me where it is now</button>') + '</div>';
+      return '<div class="dp-item' + (c.kind === 'kept_custom' || c.kind === 'removed_by_design' || c.kind === 'no_place' ? ' warn' : '') + '"><span class="k">' + esc(KIND[c.kind] || 'Change') + '</span><div>' + esc(c.text) + '</div>'
+        + (c.kind === 'no_place' || !c.block ? '' : c.kind !== 'removed_by_design' ? '<button type="button" class="dp-btn sm" data-show="' + esc(c.block) + '">Show me on the preview</button>' : '<button type="button" class="dp-btn sm" data-show-now="' + esc(c.block) + '">Show me where it is now</button>') + '</div>';
     }).join('');
-    var notes = (u.notes || []).map(function (n) { return '<div class="dp-item"><span class="k">' + (n.kind === 'draft' ? 'Your draft' : 'Your pages') + '</span><div>' + esc(n.text) + '</div></div>'; }).join('');
+    var notes = (u.notes || []).map(function (n) { return '<div class="dp-item"><span class="k">' + ({ draft: 'Your draft', interface: 'Wording', order: 'Section order', hidden: 'Hidden sections' }[n.kind] || 'Your pages') + '</span><div>' + esc(n.text) + '</div></div>'; }).join('');
     var content = u.content ? '<div class="dp-ok"><span aria-hidden="true">✓</span><div><b>Your content is safe.</b> ' + esc(u.content.text) + '</div></div>' : '';
     shell.innerHTML = '<div class="dp-hd"><div class="dp-ic">' + SPARK + '</div><div style="min-width:0"><h2 class="dp-t">' + esc(T.title) + '</h2><p class="dp-s">' + (waiting ? esc(T.sub) : 'This ' + (up ? 'offer' : 'update') + ' is ' + esc(u.status) + '.') + '</p></div><button type="button" class="dp-x" aria-label="Close">×</button></div>'
       + '<div class="dp-bar">' + choices + '<div class="dp-seg dp-dev" role="group" aria-label="Device"><button type="button" data-dev="desk" aria-pressed="true">Desktop</button><button type="button" data-dev="phone" aria-pressed="false">Phone</button></div>'
@@ -117,10 +117,10 @@
       + '<div class="dp-pane now"><div class="dp-lbl"><i></i>Now</div><div class="dp-frame"><iframe title="Your website now" sandbox="allow-scripts" loading="lazy" src="' + esc(u.now_url) + '"></iframe></div></div>'
       + '<div class="dp-pane after"><div class="dp-lbl"><i></i>' + esc(T.after) + (up && u.to_label ? ' · ' + esc(u.to_label) : '') + '</div><div class="dp-frame"><iframe title="Your website ' + esc(T.after.toLowerCase()) + '" sandbox="allow-scripts" src="' + esc(u.after_url) + '"></iframe></div></div></div>'
       + '<aside class="dp-side"><div class="dp-list"><h3 class="dp-h">What changes for you</h3>'
-      + (up ? '<div class="dp-note"><b>What moves.</b> ' + esc(u.carried || 'Your words, pictures and colours move into the new look.') + '</div>' + (noPlace ? '<h3 class="dp-h" style="margin-top:6px">What has no place in this look</h3>' : '')
+      + (up ? '<div class="dp-note"><b>What moves.</b> ' + esc(u.carried || 'Your words, pictures and colours move into the new look.') + '</div>' + notes + (noPlace ? '<h3 class="dp-h" style="margin-top:6px">What has no place in this look</h3>' : '')
          : (u.note ? '<div class="dp-note"><b>What improves.</b> ' + esc(u.note) + '</div>' : '<div class="dp-note">Arthur improved this design. The look changes; your words, pictures, colours and menu stay yours.</div>'))
       + (up ? '' : content + (u.carried ? '<div class="dp-item"><span class="k">Your customisations</span><div>' + esc(u.carried) + '</div></div>' : ''))
-      + (items || (u.carried || up ? '' : '<div class="dp-item"><span class="k">Your customisations</span><div>Everything you changed carries across as it is. Only the design’s look changes.</div></div>')) + notes + (up ? content : '') + '</div>'
+      + (items || (u.carried || up ? '' : '<div class="dp-item"><span class="k">Your customisations</span><div>Everything you changed carries across as it is. Only the design’s look changes.</div></div>')) + (up ? content : notes) + '</div>'
       + (waiting ? '<div class="dp-ft"><button type="button" class="dp-btn" data-cancel>' + esc(T.cancel) + '</button><button type="button" class="dp-btn primary" data-agree>' + esc(T.agree) + '</button></div>' : '<div class="dp-ft"><button type="button" class="dp-btn" data-x>Close</button></div>')
       + '</aside></div>';
     ov.setAttribute('aria-label', T.aria); shell.querySelector('.dp-x').onclick = close; var cx = shell.querySelector('[data-x]'); if (cx) cx.onclick = close;

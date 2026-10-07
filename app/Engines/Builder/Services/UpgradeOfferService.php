@@ -190,7 +190,7 @@ final class UpgradeOfferService
         if (DesignCatalog::isV3($slug, $m) || DesignCatalog::isV3Artefact($slug, $m)) return 'already on a new design';
         $ind = preg_replace('/[^a-z0-9_]/', '', strtolower((string) ($m['industry'] ?? $slug)));
         if (! self::industryOn($ind, (int) $w->workspace_id)) return 'industry not on';
-        if (DB::table('design_updates')->where('website_id', $sid)->where('kind', 'upgrade')->whereIn('status', ['building', 'probing', 'ready', 'applying', 'agreed', 'cancelled'])->exists()) return 'already offered';
+        if (DB::table('design_updates')->where('website_id', $sid)->where('kind', 'upgrade')->whereIn('status', ['building', 'probing', 'ready', 'applying', 'agreed', 'cancelled', 'reverted'])->exists()) return 'already offered';   // a revert is an answer too
         // a held offer (a look with too little room for this site's content) is tried again after a week: the kit grows
         if (DB::table('design_updates')->where('website_id', $sid)->where('kind', 'upgrade')->where('status', 'held')->where('updated_at', '>', now()->subDays(7))->exists()) return 'held recently';
         if ($this->ownerValues($sid, $m) === []) return 'no owner content';
@@ -407,10 +407,12 @@ final class UpgradeOfferService
     {
         $log = []; $ws = self::workspaces();
         if ($ws === []) return ['off: no workspace in ' . self::SWITCH];
-        if ((sys_getloadavg()[0] ?? 0) > 4) return ['load high: skipped'];
+        if ((sys_getloadavg()[0] ?? 0) > 6) return ['load high: skipped'];   // building is light (no browser); the browser check keeps its own gate
         $q = DB::table('websites')->whereNull('deleted_at')->where('type', 'template'); if ($ws !== null) $q->whereIn('workspace_id', $ws);
         $made = 0;
-        foreach ($q->orderByDesc('updated_at')->limit(400)->pluck('id') as $sid) {
+        // customers first; the QA override's workspaces after them
+        $ids = $q->orderByDesc('updated_at')->limit(400)->get(['id', 'workspace_id'])->sortBy(fn ($w) => DesignCatalog::previewFor((int) $w->workspace_id) ? 1 : 0)->pluck('id');
+        foreach ($ids as $sid) {
             if ($made >= $max) break;
             if ($this->ineligible((int) $sid) !== '') continue;
             foreach ($this->offer((int) $sid) as $r) $log[] = "site {$sid}: " . ($r['update'] ?? '-') . ' ' . ($r['to'] ?? '') . ' ' . ($r['status'] ?? '') . (isset($r['reason']) ? ' (' . $r['reason'] . ')' : '');
@@ -418,7 +420,9 @@ final class UpgradeOfferService
         }
         if ($probe) {
             $svc = app(DesignUpdateService::class);
-            foreach (DB::table('design_updates')->where('kind', 'upgrade')->where('status', 'probing')->orderBy('id')->limit(6)->pluck('id') as $id) { $r = $svc->probe((int) $id); $log[] = "update {$id}: probe {$r}"; if (in_array($r, ['busy', 'load'], true)) break; }
+            $wait = DB::table('design_updates')->where('kind', 'upgrade')->where('status', 'probing')->orderBy('id')->limit(200)->get(['id', 'workspace_id'])
+                ->sortBy(fn ($r) => DesignCatalog::previewFor((int) $r->workspace_id) ? 1 : 0)->take(6)->pluck('id');   // customers' looks first
+            foreach ($wait as $id) { $r = $svc->probe((int) $id); $log[] = "update {$id}: probe {$r}"; if (in_array($r, ['busy', 'load'], true)) break; }
         }
         return $log ?: ['nothing to offer'];
     }
