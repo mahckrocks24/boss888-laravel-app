@@ -30,7 +30,7 @@ final class SiteThumbnail
         if (! is_dir($dir)) { @mkdir($dir, 0775, true); }
         $out = "{$dir}/{$websiteId}.jpg";
         $tmp = "{$dir}/{$websiteId}.tmp.jpg";
-        $url = $urlOverride ?? (rtrim((string) config('app.url'), '/') . "/storage/sites/{$websiteId}/index.html?thumb=" . time());
+        $url = $urlOverride ?? (rtrim((string) config('app.url'), '/') . "/storage/sites/{$websiteId}/index.html?thumb=" . time() . (\App\Engines\Builder\Support\Platform6::on() ? '&t=' . \App\Engines\Builder\Support\Platform6::signDraft((int) $websiteId) : ''));   // PREVIEW-DRAFT-1: drafts open only with the signed token
         $tool = base_path('tools/site-thumb.cjs');
         @unlink($tmp);   // a leftover from an interrupted render (possibly another user's) must not block this one
         $cmd = 'HOME=/tmp PUPPETEER_CACHE_DIR=' . escapeshellarg(base_path('.puppeteer-cache')) . ' timeout 90 node '

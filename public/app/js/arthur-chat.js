@@ -1114,7 +1114,7 @@ function _arthurShowWebsiteCard(websiteId, name, industry, workspaceId) {
         + '<div style="font-size:18px;font-weight:700;color:var(--t1);margin-bottom:4px">' + bld_escH(name) + '</div>'
         + '<div style="font-size:12px;color:var(--t3);margin-bottom:16px">' + bld_escH(industry) + ' website \u2022 draft</div>'
         + '<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        + '<a href="/storage/sites/' + websiteId + '/index.html" target="_blank" rel="noopener" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px">'+window.icon('eye',18)+' Preview</a>'
+        + '<a href="/storage/sites/' + websiteId + '/index.html" onclick="return _arthurOpenPreview(' + websiteId + ')" target="_blank" rel="noopener" style="background:var(--s2);color:var(--t1);border:1px solid var(--bd);border-radius:8px;padding:8px 16px;font-size:13px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:6px">'+window.icon('eye',18)+' Preview</a>'
         + (switching ? '<div style="font-size:12px;color:var(--t2);margin:-8px 0 12px">This website lives in its own workspace \u2014 opening it switches you there.</div>' : '')
         + '<button onclick="_arthurOpenBuiltSite(' + websiteId + ', ' + (parseInt(workspaceId || 0, 10) || 0) + ')" style="background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px">'+window.icon('edit',18)+' Open in Editor</button>'
         + '</div></div>';
@@ -1176,9 +1176,25 @@ function _arthurShowBuilding() {
     });
 }
 // Preview a template-generated website
-window.wsPreviewSite = function(websiteId) {
-    window.open(location.origin + '/storage/sites/' + websiteId + '/index.html', '_blank');
+// PREVIEW-DRAFT-1 (2026-10-07): a new site is a draft, and a draft opens only through its signed link (PLATFORM-6) - the bare
+// /storage/sites/{id}/index.html answered 404 on the "Website Created" card. Open a tab first (popup blockers), then point it at
+// the draft_url the websites list signs, or the plain URL once the site is published.
+window._arthurOpenPreview = function(websiteId) {
+    var w = null; try { w = window.open('about:blank', '_blank'); } catch (_e) {}
+    var plain = '/storage/sites/' + websiteId + '/index.html';
+    var go = function(u) { if (w && !w.closed) w.location.href = u; else window.location.href = u; };
+    var t = localStorage.getItem('lu_token') || '';
+    fetch('/api/websites', { headers: { 'Accept': 'application/json', 'Authorization': 'Bearer ' + t }, cache: 'no-store' })
+        .then(function(r) { return r.ok ? r.json() : null; })
+        .then(function(d) {
+            var list = Array.isArray(d) ? d : ((d && (d.websites || d.data)) || []);
+            var s = null; for (var i = 0; i < list.length; i++) { if (parseInt(list[i].id, 10) === parseInt(websiteId, 10)) { s = list[i]; break; } }
+            go((s && s.draft_url) || plain);
+        })
+        .catch(function() { go(plain); });
+    return false;
 };
+window.wsPreviewSite = function(websiteId) { return window._arthurOpenPreview(websiteId); };
 
 
 // ── Website Wizard menu — 2-option picker ─────────────────────────────────
